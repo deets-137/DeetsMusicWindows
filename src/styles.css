@@ -1,0 +1,566 @@
+/* ============================================================
+   App styles. Tokens first (palette → themes → skin), then the
+   app's own rules. Rules reference ONLY semantic tokens —
+   never a raw hex or hardcoded px / font name.
+   ============================================================ */
+@import "./styles/fonts.css";
+@import "./styles/palette.css";
+@import "./styles/themes.css";
+@import "./styles/skin.css";
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  line-height: var(--lh-text);
+  overflow: hidden;
+  user-select: none;            /* app chrome shouldn't feel like a document */
+  display: flex;
+  flex-direction: column;
+
+  /* crisp text: no faux weights, smoothed edges */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Titlebar (our own chrome; OS frame is disabled) ─────────── */
+.titlebar {
+  flex: 0 0 var(--titlebar-h);
+  height: var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+}
+
+/* The only draggable zone: the gap between the title and the lights.
+   Interactive children deliberately do NOT carry data-tauri-drag-region. */
+.drag-region { flex: 1 1 auto; align-self: stretch; }
+
+/* ── Settings trigger (the app title) ───────────────────────── */
+.settings { position: relative; display: inline-flex; align-items: center; height: 100%; }
+
+.app-title {
+  font-family: var(--font-title);
+  font-size: var(--fs-title);
+  font-weight: var(--fw-title);
+  color: var(--title);
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-control);
+  line-height: 1.1;
+  cursor: pointer;
+}
+.app-title:hover { background: var(--surface-hover); }
+.app-title:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+
+/* ── Settings menu + flyout ─────────────────────────────────── */
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0;
+  min-width: var(--menu-min-w);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-1);
+  z-index: 20;
+}
+.menu[hidden] { display: none; }
+
+.menu__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  white-space: nowrap;
+  cursor: default;
+}
+.menu__row:hover { background: var(--surface-hover); }
+.menu__chev { color: var(--subtext); }
+
+.flyout {
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  left: 100%;                   /* touches the menu edge — no hover gap */
+  min-width: var(--menu-min-w);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-1);
+  display: none;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.menu__row:hover .flyout { display: flex; }
+
+/* Each item carries its own data-theme, so --canvas / --title / --border
+   resolve to THAT theme — the chip is a live taste of the theme it selects. */
+.flyout__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;   /* name left, active dot right */
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: var(--canvas);
+  color: var(--title);
+  border: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-text);
+  cursor: pointer;
+  transition: box-shadow 0.12s ease;
+}
+.flyout__item::after {             /* reserved right gutter; dot shows when active */
+  content: "";
+  width: 0.9em;
+  text-align: center;
+  line-height: 1;
+}
+/* Hover gets a muted ring for affordance; selection is shown by the dot alone. */
+.flyout__item:hover {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+}
+.flyout__item[aria-checked="true"]::after { content: "•"; }
+
+/* ── Account flyout ─────────────────────────────────────────── */
+.flyout--account { min-width: 200px; }
+.account { display: flex; flex-direction: column; gap: var(--space-2); }
+.account__status {
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  padding: 0 var(--space-1);
+}
+.account__btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;   /* label left, sigil right */
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: var(--surface-hover);
+  color: var(--title);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  cursor: pointer;
+}
+.account__btn:hover { filter: brightness(0.97); }
+.account__btn[disabled] { cursor: default; }
+
+.account__icon { flex: 0 0 auto; width: 16px; height: 16px; display: grid; place-items: center; }
+.account__icon svg { width: 16px; height: 16px; display: block; }
+.account__btn[data-state="in"]  .account__icon { color: var(--go); }
+.account__btn[data-state="out"] .account__icon { color: var(--stop); }
+
+.account__spinner {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--title);
+  animation: acct-spin 0.7s linear infinite;
+}
+@keyframes acct-spin { to { transform: rotate(360deg); } }
+
+/* ── Traffic lights ─────────────────────────────────────────── */
+.lights { display: flex; gap: var(--traffic-gap); }
+
+.light {
+  width: var(--traffic-size);
+  height: var(--traffic-size);
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+.light:hover  { filter: brightness(1.08); }
+.light:active { filter: brightness(0.92); }
+.light:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+
+.light--max   { background: var(--go); }
+.light--min   { background: var(--pause); }
+.light--close { background: var(--stop); }
+
+/* Stroked SVG sigils — pixel-centered, crisp at any size. */
+.sigil {
+  width: 58%;
+  height: 58%;
+  fill: none;
+  stroke: var(--traffic-glyph-color);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Body / content region ──────────────────────────────────── */
+.app-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--panel-gap);
+  overflow: hidden;             /* the columns scroll, not the whole body */
+}
+
+/* ── Bento grid (a "screen" is a composition of panels) ─────── */
+.bento {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  gap: var(--panel-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);   /* row 1 sizes to Now Playing, row 2 fills */
+}
+
+/* ── Panel primitive ────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border: var(--panel-border-width) solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  padding: var(--panel-pad);
+}
+.panel[data-span="wide"] { grid-column: 1 / -1; }
+
+.panel__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.panel__title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-title);
+  color: var(--title);
+}
+.panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;             /* each column scrolls on its own */
+}
+
+/* Panel header action — small square button (e.g. Library refresh). */
+.panel__action {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--title);
+  cursor: pointer;
+}
+.panel__action:hover { filter: brightness(0.97); }
+.panel__action[disabled] { opacity: 0.6; cursor: default; }
+.panel__action svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.panel__action.is-busy svg { animation: acct-spin 0.7s linear infinite; }
+
+/* ── Library card: toolbar (sort/view pills + search) ───────── */
+.lib-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.lib-pills { display: flex; gap: var(--space-2); }
+.lib-ctrl { position: relative; }     /* anchor for the popover */
+
+.lib-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--lib-pill-radius);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  cursor: pointer;
+}
+.lib-pill:hover { background: var(--surface-hover); }
+.lib-pill__caret {
+  width: 8px; height: 8px;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.7;
+}
+.lib-pill[aria-expanded="true"] .lib-pill__caret { transform: rotate(180deg); }
+
+/* Popover anchored under its pill */
+.lib-pop {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--lib-pop-radius);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-2);
+}
+.lib-pop[hidden] { display: none; }
+.lib-pop__cols { display: flex; gap: var(--space-2); }
+.lib-pop__col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lib-pop__col--dir {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
+}
+
+.lib-pop__opt {
+  text-align: left;
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  cursor: pointer;
+}
+.lib-pop__opt:hover { background: var(--surface-hover); }
+.lib-pop__opt.is-active { background: var(--surface-hover); color: var(--title); font-weight: 600; }
+
+.lib-pop__dir {
+  display: grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--subtext);
+  cursor: pointer;
+}
+.lib-pop__dir:hover { background: var(--surface-hover); }
+.lib-pop__dir.is-active { background: var(--surface-hover); border-color: var(--border); color: var(--title); }
+.lib-pop__dir svg {
+  width: 14px; height: 14px;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* Search field */
+.lib-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.lib-search__icon {
+  flex: 0 0 auto;
+  width: 14px; height: 14px;
+  fill: none; stroke: var(--subtext); stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.lib-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+}
+.lib-search__input::placeholder { color: var(--subtext); }
+.lib-search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+/* ── Library views: lines / small / large ───────────────────── */
+/* .lib-view base carries no layout; the modifier class (.lib-list /
+   .lib-grid / .lib-empty) set by the controller decides the layout. */
+
+/* lines */
+.lib-list { display: flex; flex-direction: column; }
+.lib-row {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+}
+.lib-row:hover { background: var(--surface-hover); }
+.lib-row__title {
+  display: block;
+  color: var(--text);
+  font-size: var(--fs-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lib-row__artist {
+  display: block;
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* square grids */
+.lib-grid {
+  display: grid;
+  gap: var(--lib-grid-gap);
+}
+.lib-view[data-density="small"].lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--lib-tile-small), 1fr));
+}
+.lib-view[data-density="large"].lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--lib-tile-large), 1fr));
+}
+.lib-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-control);
+  cursor: default;
+}
+.lib-tile:hover { background: var(--surface-hover); }
+.lib-tile__cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--lib-tile-radius);
+  background: var(--surface-hover);
+  display: block;
+}
+.lib-tile__cover--empty {
+  display: grid;
+  place-items: center;
+  color: var(--subtext);
+  font-size: var(--fs-title);
+}
+.lib-tile__meta { display: flex; flex-direction: column; min-width: 0; }
+.lib-tile__name {
+  color: var(--text);
+  font-size: var(--fs-subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lib-tile__sub {
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* empty state */
+.lib-empty { display: grid; place-items: center; padding: var(--space-4); }
+.lib-empty__msg { color: var(--subtext); font-size: var(--fs-subtext); }
+
+/* ── Now Playing card ───────────────────────────────────────── */
+/* Full-height album (left) + TBD (right) bookend a centered middle column
+   holding the scrubber and transport. Album/TBD size drives the card height. */
+.np { display: flex; align-items: stretch; gap: var(--space-3); }
+.np__center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* scrub bar — track + fill + token-driven handle */
+.np__scrub { position: relative; height: var(--scrubber-handle-size); display: flex; align-items: center; }
+.np__track {
+  position: relative;
+  width: 100%;
+  height: var(--scrubber-track-h);
+  border-radius: 999px;
+  background: var(--panel-border);
+}
+.np__fill {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  width: var(--np-progress, 0%);
+  background: var(--title);
+  border-radius: 999px;
+}
+.np__handle {
+  position: absolute;
+  top: 50%;
+  left: var(--np-progress, 0%);
+  transform: translate(-50%, -50%);
+  color: var(--title);
+  font-size: var(--scrubber-handle-size);
+  line-height: 1;
+  pointer-events: none;
+}
+.np__handle::after { content: var(--scrubber-handle); }
+
+.np__art {
+  flex: 0 0 auto;
+  width: var(--np-cover); height: var(--np-cover);
+  border-radius: var(--radius-control);
+  background: var(--surface-hover);
+  display: grid; place-items: center;
+  color: var(--subtext);
+  font-size: 40px;
+}
+.np__controls { display: flex; align-items: center; justify-content: center; gap: var(--transport-gap); }
+.np__btn {
+  background: none; border: none; padding: 0;
+  display: grid; place-items: center;
+  color: var(--title);
+  cursor: pointer;
+}
+.np__btn svg { width: var(--transport-size); height: var(--transport-size); display: block; fill: currentColor; }
+.np__btn--play svg { width: calc(var(--transport-size) * 1.25); height: calc(var(--transport-size) * 1.25); }
+.np__tbd {
+  flex: 0 0 auto;
+  width: var(--np-cover); height: var(--np-cover);
+  border-radius: var(--radius-control);
+  border: 1px dashed var(--panel-border);
+  display: grid; place-items: center;
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  letter-spacing: .04em;
+}

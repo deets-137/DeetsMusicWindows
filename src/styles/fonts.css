@@ -1,0 +1,24 @@
+/* ============================================================
+   FONTS — bundled @font-face faces
+   ------------------------------------------------------------
+   Liberation Serif is not present on Windows, so we ship it to
+   render the intended (hinted) font instead of a substitute.
+   Liberation fonts © Red Hat, licensed under SIL OFL 1.1.
+   See fonts/NOTICE.txt.
+   ============================================================ */
+
+@font-face {
+  font-family: "Liberation Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/LiberationSerif-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Liberation Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/LiberationSerif-Bold.ttf") format("truetype");
+}

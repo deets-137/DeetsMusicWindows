@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en" data-theme="fairy" data-skin="default">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>DeetsMusic</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <!-- Custom frameless chrome. The middle .drag-region is the OS drag handle;
+         the title (settings trigger) and lights opt out by not carrying it. -->
+    <header class="titlebar">
+      <div class="settings">
+        <button
+          class="app-title"
+          id="settings-trigger"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >DeetsMusic</button>
+
+        <div class="menu" id="settings-menu" role="menu" hidden>
+          <div class="menu__row" data-row="theme">
+            <span class="menu__label">Theme</span>
+            <span class="menu__chev" aria-hidden="true">›</span>
+            <div class="flyout" role="menu" aria-label="Theme">
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="fairy"     data-theme-choice="fairy">Fairy</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="sepia"     data-theme-choice="sepia">Sepia</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="moonlight" data-theme-choice="moonlight">Moonlight</button>
+            </div>
+          </div>
+
+          <div class="menu__row" data-row="account">
+            <span class="menu__label">Account</span>
+            <span class="menu__chev" aria-hidden="true">›</span>
+            <div class="flyout flyout--account" role="menu" aria-label="Account">
+              <div class="account">
+                <button class="account__btn" id="account-action" type="button" data-state="out">
+                  <span class="account__label">Apple Music</span>
+                  <span class="account__icon" id="account-icon" aria-hidden="true"></span>
+                </button>
+                <div class="account__status" id="account-status">Not signed in</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="drag-region" data-tauri-drag-region></div>
+
+      <div class="lights">
+        <button class="light light--max" id="tl-max" type="button" aria-label="Maximize">
+          <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.6V8.4M1.6 5H8.4" /></svg>
+        </button>
+        <button class="light light--min" id="tl-min" type="button" aria-label="Minimize">
+          <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.6 5H8.4" /></svg>
+        </button>
+        <button class="light light--close" id="tl-close" type="button" aria-label="Close">
+          <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 2.3L7.7 7.7M7.7 2.3L2.3 7.7" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-body">
+      <div class="bento" data-screen="home">
+        <!-- Now Playing — wide transport strip -->
+        <section class="panel" data-card="now-playing" data-span="wide">
+          <div class="np">
+            <div class="np__art" aria-hidden="true">♪</div>
+            <div class="np__center">
+              <div class="np__scrub" style="--np-progress: 33%">
+                <div class="np__track"><div class="np__fill"></div></div>
+                <span class="np__handle" aria-hidden="true"></span>
+              </div>
+              <div class="np__controls">
+                <button class="np__btn" type="button" aria-label="Previous">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg>
+                </button>
+                <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                </button>
+                <button class="np__btn" type="button" aria-label="Next">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg>
+                </button>
+              </div>
+            </div>
+            <div class="np__tbd" aria-hidden="true">TBD</div>
+          </div>
+        </section>
+
+        <!-- Library (left) -->
+        <section class="panel" data-card="library">
+          <header class="panel__head">
+            <h2 class="panel__title">Library</h2>
+            <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+          </header>
+
+          <!-- Library controls: Sort + View pills, then a search field -->
+          <div class="lib-toolbar">
+            <div class="lib-pills">
+              <!-- Sort -->
+              <div class="lib-ctrl" data-ctrl="sort">
+                <button class="lib-pill" id="lib-sort-btn" type="button" aria-haspopup="true" aria-expanded="false">
+                  <span class="lib-pill__label">Sort</span>
+                  <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
+                </button>
+                <div class="lib-pop" id="lib-sort-pop" role="menu" aria-label="Sort" hidden>
+                  <div class="lib-pop__cols">
+                    <div class="lib-pop__col" role="group" aria-label="Sort by">
+                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-sort-key="az">A–Z</button>
+                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-sort-key="release">Release Date</button>
+                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-sort-key="added">Added Date</button>
+                    </div>
+                    <div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Direction">
+                      <button class="lib-pop__dir" type="button" data-sort-dir="asc" aria-label="Ascending">
+                        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M3 5l3-3 3 3" /></svg>
+                      </button>
+                      <button class="lib-pop__dir" type="button" data-sort-dir="desc" aria-label="Descending">
+                        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- View -->
+              <div class="lib-ctrl" data-ctrl="view">
+                <button class="lib-pill" id="lib-view-btn" type="button" aria-haspopup="true" aria-expanded="false">
+                  <span class="lib-pill__label">View</span>
+                  <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
+                </button>
+                <div class="lib-pop" id="lib-view-pop" role="menu" aria-label="View" hidden>
+                  <div class="lib-pop__cols">
+                    <div class="lib-pop__col" role="group" aria-label="Group by">
+                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-view-mode="albums">Albums</button>
+                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-view-mode="songs">Songs</button>
+                    </div>
+                    <div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Density">
+                      <button class="lib-pop__dir" type="button" data-view-density="lines" aria-label="Lines">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /></svg>
+                      </button>
+                      <button class="lib-pop__dir" type="button" data-view-density="small" aria-label="Small squares">
+                        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" stroke="none"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+                      </button>
+                      <button class="lib-pop__dir" type="button" data-view-density="large" aria-label="Large squares">
+                        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" stroke="none"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <label class="lib-search">
+              <svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
+              <input class="lib-search__input" id="lib-search" type="search" placeholder="Search artist, album, song…" autocomplete="off" spellcheck="false" />
+            </label>
+          </div>
+
+          <div class="panel__body"><div class="lib-view" id="lib-view"></div></div>
+        </section>
+
+        <!-- Playlists (right) -->
+        <section class="panel" data-card="playlists">
+          <header class="panel__head"><h2 class="panel__title">Playlists</h2></header>
+          <div class="panel__body"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

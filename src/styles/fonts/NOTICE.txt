@@ -1,0 +1,16 @@
+Liberation(tm) Fonts
+====================
+
+Files: LiberationSerif-Regular.ttf, LiberationSerif-Bold.ttf
+Version: 2.1.5
+Copyright (c) 2012 Red Hat, Inc.
+License: SIL Open Font License, Version 1.1 (OFL-1.1)
+
+"Liberation" is a trademark of Red Hat, Inc. registered in U.S. Patent
+and Trademark Office and certain other jurisdictions.
+
+Upstream: https://github.com/liberationfonts/liberation-fonts
+Full license text: https://scripts.sil.org/OFL
+
+These fonts are bundled unmodified and used under the terms of the OFL,
+which permits embedding and redistribution.

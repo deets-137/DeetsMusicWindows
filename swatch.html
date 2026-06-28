@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-skin="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeetsMusic — Color Reference</title>
+
+  <!-- The real token sheets. This page is a pure color reference. -->
+  <link rel="stylesheet" href="src/styles/fonts.css" />
+  <link rel="stylesheet" href="src/styles/palette.css" />
+  <link rel="stylesheet" href="src/styles/themes.css" />
+  <link rel="stylesheet" href="src/styles/skin.css" />
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #232427;
+      color: #e8e8e8;
+      font-family: var(--font-body, system-ui, sans-serif);
+    }
+    h1 { font-size: 18px; font-weight: 600; letter-spacing: .04em; margin: 0 0 4px; }
+    .lede { font-size: 13px; opacity: .55; margin: 0 0 32px; }
+
+    .theme { margin-bottom: 40px; }
+    .theme h2 {
+      font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+      opacity: .55; margin: 0 0 12px; font-weight: 600;
+    }
+
+    /* typography specimen — colors read true against the theme canvas */
+    .specimen {
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-bottom: 14px;
+    }
+    .specimen .t { font-family: var(--font-title); font-size: 26px; margin: 0 0 6px; }
+    .specimen .x { font-family: var(--font-body); font-size: 14px; margin: 0 0 4px; }
+    .specimen .s { font-family: var(--font-body); font-size: 12px; margin: 0; }
+
+    /* role cards */
+    .roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .card { background: #2f3033; border-radius: 8px; overflow: hidden; }
+    .card .fill { height: 64px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .card .meta { padding: 8px 10px; }
+    .card .role { font-size: 12px; font-weight: 600; font-family: ui-monospace, monospace; }
+    .card .paint { font-size: 11px; opacity: .55; margin-top: 1px; }
+    .card .hex { font-size: 11px; font-family: ui-monospace, monospace; opacity: .7; margin-top: 3px; }
+  </style>
+</head>
+<body>
+  <h1>DeetsMusic — Color Reference</h1>
+  <p class="lede">Every semantic role, per theme, read live from the token sheets. Reference only — not the app.</p>
+  <div id="root"></div>
+
+  <script>
+    const THEMES = ['fairy', 'sepia', 'moonlight'];
+    const ROLES = [
+      ['--canvas',   { fairy: 'Powder Jade',          sepia: 'Parchment',  moonlight: 'Deep Slate' }],
+      ['--go',       { fairy: 'Andean Toucan',        sepia: 'Olive Leaf', moonlight: 'Moonlight White' }],
+      ['--stop',     { fairy: 'Purple Cactus Flower', sepia: 'Terracotta', moonlight: 'Moonlight Gray' }],
+      ['--pause',    { fairy: 'Lemon Chrome',         sepia: 'Amber Glow', moonlight: 'Moonlight Silver' }],
+      ['--title',    { fairy: 'Racing Green',         sepia: 'Espresso',   moonlight: 'Slate Bright' }],
+      ['--text',     { fairy: 'Nautilus',             sepia: 'Cocoa',      moonlight: 'Slate Mid' }],
+      ['--subtext',  { fairy: 'Moon Mist',            sepia: 'Faded Tan',  moonlight: 'Slate Dim' }],
+    ];
+
+    const root = document.getElementById('root');
+    for (const theme of THEMES) {
+      const section = document.createElement('section');
+      section.className = 'theme';
+      section.setAttribute('data-theme', theme);
+
+      // probe to read this theme's computed role values
+      const cs = getComputedStyle(section);
+      document.body.appendChild(section); // attach so computed styles resolve
+      const val = (r) => getComputedStyle(section).getPropertyValue(r).trim();
+
+      section.innerHTML = `<h2>Theme — ${theme}</h2>`;
+
+      const spec = document.createElement('div');
+      spec.className = 'specimen';
+      spec.style.background = val('--canvas');
+      spec.innerHTML =
+        `<p class="t" style="color:${val('--title')}">Racing the title — DeetsMusic</p>
+         <p class="x" style="color:${val('--text')}">Primary text. The readable body of the app, on canvas.</p>
+         <p class="s" style="color:${val('--subtext')}">Subtext — the quiet metadata layer, on canvas.</p>`;
+      section.appendChild(spec);
+
+      const grid = document.createElement('div');
+      grid.className = 'roles';
+      for (const [role, names] of ROLES) {
+        const v = val(role);
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML =
+          `<div class="fill" style="background:${v}"></div>
+           <div class="meta">
+             <div class="role">${role}</div>
+             <div class="paint">${names[theme]}</div>
+             <div class="hex">${v.toUpperCase()}</div>
+           </div>`;
+        grid.appendChild(card);
+      }
+      section.appendChild(grid);
+      root.appendChild(section);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+/* ============================================================
+   SKIN — non-color UI tokens (Tier 3)
+   ------------------------------------------------------------
+   Orthogonal to theme. Theme = color; skin = shape, type, size,
+   spacing, geometry. Swapping [data-skin="..."] changes the whole
+   feel of the app without touching a single color. The UI only
+   references these tokens, never hardcoded px / font names.
+   ============================================================ */
+
+[data-skin="default"] {
+  /* -- typography -------------------------------------------- */
+  --font-title: "Liberation Serif", Georgia, "Times New Roman", serif;
+  --font-body:  "Liberation Sans", Arial, Helvetica, sans-serif;
+
+  --fs-title:   20px;
+  --fs-text:    14px;
+  --fs-subtext: 12px;
+
+  --fw-title:   700;
+  --fw-text:    400;
+  --fw-subtext: 400;
+
+  --lh-text:    1.45;
+
+  /* -- midi-player geometry ---------------------------------- */
+  --midi-w: 480px;   /* quarter of 1920 */
+  --midi-h: 864px;   /* 80% of 1080 */
+
+  /* -- titlebar / chrome ------------------------------------- */
+  --titlebar-h:          40px;
+  --traffic-size:        14px;
+  --traffic-gap:         8px;
+  --traffic-glyph-fs:    11px;
+  --traffic-glyph-color: rgba(0, 0, 0, 0.55);
+
+  /* -- shape ------------------------------------------------- */
+  --radius-panel:   10px;
+  --radius-control: 6px;
+
+  /* -- floating panels (menus / popovers) -------------------- */
+  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --menu-min-w:   122px;
+
+  /* -- bento panels ------------------------------------------ */
+  --panel-gap:          var(--space-3);
+  --panel-radius:       12px;
+  --panel-pad:          var(--space-3);
+  --panel-border-width: 1px;        /* thin grouper edge; future skins restyle it */
+
+  /* -- transport (now playing) ------------------------------- */
+  --transport-size: 22px;
+  --transport-gap:  var(--space-3);
+  --np-cover:       120px;          /* album + TBD square; drives the card height */
+
+  /* -- scrubber (handle glyph is skin-swappable) ------------- */
+  --scrubber-track-h:     3px;
+  --scrubber-handle:      "●";      /* skins swap to ▲, 🦄, an emoji, … */
+  --scrubber-handle-size: 12px;
+
+  /* -- library card (toolbar + square grid) ------------------ */
+  --lib-pill-radius:   999px;       /* fully-rounded sort/view pills */
+  --lib-pop-radius:    var(--radius-panel);
+  --lib-grid-gap:      var(--space-2);
+  --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
+  --lib-tile-large:    132px;       /* min tile width — large squares */
+  --lib-tile-radius:   8px;
+
+  /* -- spacing scale ----------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+}

@@ -1,0 +1,73 @@
+/* ============================================================
+   THEMES — color roles (Tier 2)
+   ------------------------------------------------------------
+   Maps semantic color roles onto palette values. The UI only
+   ever references these roles, never raw paints. A new theme is
+   just another [data-theme="..."] block mapping the same roles.
+
+   Roles:
+     --canvas    app background / wallpaper
+     --go        traffic light: maximize (+)   [green family]
+     --stop      traffic light: close    (x)   [red family]
+     --pause     traffic light: minimize (-)   [yellow family]
+     --title     app title + headings
+     --text      primary text
+     --subtext   secondary / dim text
+   ============================================================ */
+
+[data-theme="fairy"] {
+  --canvas:  var(--paint-powder-jade);
+  --go:      var(--paint-andean-toucan);
+  --stop:    var(--paint-purple-cactus-flower);
+  --pause:   var(--paint-lemon-chrome);
+  --title:   var(--paint-racing-green);
+  --text:    var(--paint-nautilus);
+  --subtext: var(--paint-moon-mist);
+
+  /* surfaces — floating panels (menus, popovers) above the canvas */
+  --surface:       var(--paint-jade-white);
+  --surface-hover: var(--paint-jade-tint);
+  --border:        rgba(12, 56, 35, 0.14);  /* racing-green @ low alpha */
+
+  /* panels — bento groupers; bg matches canvas, edge ready for border skins */
+  --panel:        var(--canvas);
+  --panel-border: rgba(12, 56, 35, 0.30);
+}
+
+[data-theme="sepia"] {
+  --canvas:  var(--paint-parchment);
+  --go:      var(--paint-olive-leaf);
+  --stop:    var(--paint-terracotta);
+  --pause:   var(--paint-amber-glow);
+  --title:   var(--paint-espresso);
+  --text:    var(--paint-cocoa);
+  --subtext: var(--paint-faded-tan);
+
+  /* surfaces — floating panels (menus, popovers) above the canvas */
+  --surface:       var(--paint-parchment-light);
+  --surface-hover: var(--paint-parchment-tint);
+  --border:        rgba(62, 44, 28, 0.16);   /* espresso @ low alpha */
+
+  /* panels — bento groupers; bg matches canvas, edge ready for border skins */
+  --panel:        var(--canvas);
+  --panel-border: rgba(62, 44, 28, 0.30);
+}
+
+[data-theme="moonlight"] {
+  --canvas:  var(--paint-deep-slate);
+  --go:      var(--paint-moonlight-white);   /* lights are monochrome here: */
+  --stop:    var(--paint-moonlight-gray);    /* varying moonlight white → gray */
+  --pause:   var(--paint-moonlight-silver);
+  --title:   var(--paint-slate-bright);      /* title → subtext: bright → dim */
+  --text:    var(--paint-slate-mid);
+  --subtext: var(--paint-slate-dim);
+
+  /* surfaces — floating panels (menus, popovers) above the canvas */
+  --surface:       var(--paint-slate-surface);
+  --surface-hover: var(--paint-slate-surface-tint);
+  --border:        rgba(199, 211, 227, 0.14); /* slate-bright @ low alpha */
+
+  /* panels — bento groupers; bg matches canvas, edge ready for border skins */
+  --panel:        var(--canvas);
+  --panel-border: rgba(199, 211, 227, 0.30);
+}
