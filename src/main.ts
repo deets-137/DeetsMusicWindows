@@ -15,6 +15,24 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("tl-max")?.addEventListener("click", () => appWindow.toggleMaximize());
   document.getElementById("tl-close")?.addEventListener("click", () => appWindow.close());
 
+  // ── Always on Top (toggle row; choice persists like the theme) ──
+  const AOT_KEY = "deets.alwaysOnTop";
+  const aotToggle = document.getElementById("aot-toggle");
+  const applyAlwaysOnTop = (on: boolean) => {
+    appWindow.setAlwaysOnTop(on).catch((e) => console.error("[aot]", e));
+    aotToggle?.setAttribute("aria-checked", String(on));
+    try {
+      localStorage.setItem(AOT_KEY, String(on));
+    } catch {
+      /* storage disabled — still applies for the session */
+    }
+  };
+  applyAlwaysOnTop(localStorage.getItem(AOT_KEY) === "true"); // re-apply on launch
+  aotToggle?.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep the menu open so the dot feedback is visible
+    applyAlwaysOnTop(aotToggle.getAttribute("aria-checked") !== "true");
+  });
+
   // ── Settings menu (click to open; submenu reveals on hover) ──
   const trigger = document.getElementById("settings-trigger");
   const menu = document.getElementById("settings-menu");

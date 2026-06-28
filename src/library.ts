@@ -18,7 +18,7 @@ export interface Track {
   hasLyrics: boolean;
   isrc?: string;
   releaseDate?: string;
-  dateAdded?: string;
+  addedRank?: number;
   artwork?: Artwork;
 }
 

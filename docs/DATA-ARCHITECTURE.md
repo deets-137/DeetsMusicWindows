@@ -66,9 +66,11 @@ vs **catalog**, so:
 
 - **`Track`** carries **both** `libraryId?` and `catalogId?` (either may be absent),
   plus catalog-only optionals (`isrc`, `artwork.textColors`). One unified type covers
-  library items, catalog items, and Spotify. `dateAdded?` (library-only, ISO 8601)
-  drives the Library card's "Added Date" sort — it's read from
-  `attributes.dateAdded`; **old cache rows lack it until a re-sync** backfills them.
+  library items, catalog items, and Spotify. **`addedRank?`** powers the "Added
+  Date" sort: `library/songs` exposes *no* per-song `dateAdded`, so `songs_page`
+  fetches with `sort=dateAdded` and records each row's global position
+  (`offset + index`) as its rank (lower = added earlier). **Old cache rows have no
+  rank until a re-sync** backfills them.
 - **`Artwork`** is a URL **template** (`…/{w}x{h}bb.jpg`) + intrinsic size + optional
   palette colors (catalog only — a future hook for per-album accent theming).
 - **`PlayParams`** is preserved on every Track — it's what MusicKit needs to actually

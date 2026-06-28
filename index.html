@@ -32,6 +32,11 @@
             </div>
           </div>
 
+          <button class="menu__row menu__row--toggle" id="aot-toggle" type="button" role="menuitemcheckbox" aria-checked="false" data-row="aot">
+            <span class="menu__label">Always on Top</span>
+            <span class="menu__dot" aria-hidden="true"></span>
+          </button>
+
           <div class="menu__row" data-row="account">
             <span class="menu__label">Account</span>
             <span class="menu__chev" aria-hidden="true">›</span>
@@ -157,12 +162,24 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Search (icon pill; toggles the inline bar below) -->
+              <div class="lib-ctrl" data-ctrl="search">
+                <button class="lib-pill lib-pill--icon" id="lib-search-btn" type="button" aria-expanded="false" aria-controls="lib-searchbar" aria-label="Search">
+                  <svg class="lib-pill__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
+                </button>
+              </div>
             </div>
 
-            <label class="lib-search">
-              <svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
-              <input class="lib-search__input" id="lib-search" type="search" placeholder="Search artist, album, song…" autocomplete="off" spellcheck="false" />
-            </label>
+            <!-- Inline search bar: slides open below the pills, pushing the list down. -->
+            <div class="lib-searchbar" id="lib-searchbar">
+              <div class="lib-searchbar__inner">
+                <label class="lib-search">
+                  <svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
+                  <input class="lib-search__input" id="lib-search" type="search" placeholder="Search artist, album, song…" autocomplete="off" spellcheck="false" />
+                </label>
+              </div>
+            </div>
           </div>
 
           <div class="panel__body"><div class="lib-view" id="lib-view"></div></div>

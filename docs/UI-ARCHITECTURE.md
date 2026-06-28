@@ -97,10 +97,15 @@ The `DeetsMusic` title is a `<button>` that **opts out of the drag region** and
 opens a settings menu on **click** (`src/main.ts`). The menu is a list of rows;
 each row can own a hover-reveal **flyout**. Today there's one row, **Theme**, whose
 flyout lists the available themes and applies one on click via `src/theme.ts`
-(persisted to `localStorage`, re-applied on launch). A second **Account** row holds
+(persisted to `localStorage`, re-applied on launch). An **Account** row holds
 Apple Music sign-in (✓/✗ + spinner) — wired in `src/apple.ts` (see
-[DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) §2). New settings (e.g. **Skin**) slot in
-as additional rows — same pattern, no new plumbing. Because the title is now
+[DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) §2). A row can also be a **toggle**
+(`.menu__row--toggle`, a `<button role="menuitemcheckbox">`): **Always on Top** flips
+`appWindow.setAlwaysOnTop()` and shows a right-aligned **dot** (`.menu__dot`) when
+active — the same selection indicator the theme flyout uses; the choice persists
+(`localStorage` `deets.alwaysOnTop`) and re-applies on launch (needs the
+`core:window:allow-set-always-on-top` capability). New settings (e.g. **Skin**) slot
+in as additional rows — same pattern, no new plumbing. Because the title is now
 interactive, the **draggable zone is the middle `.drag-region`** between the title and
 the lights, not the whole bar.
 
@@ -135,19 +140,27 @@ a `::before` masked/SVG layer instead.
 
 ### 4a. The Library card (sort · view · search)
 The Library card (`src/library-card.ts`, markup in `index.html`, styles under the
-"Library card" block in `styles.css`) sits above its list a **toolbar**: two
-fully-rounded **pills** — **Sort** and **View** — each opening a card-local
-**popover** (`.lib-pop`, anchored to its pill), then a **search field**.
+"Library card" block in `styles.css`) sits above its list a **toolbar**: a single
+row of three fully-rounded **pills** — **Sort** · **View** · **Search** — splitting
+the width **40 / 40 / 20**. Each opens a card-local **popover** (`.lib-pop`, anchored
+to its pill); Search is an icon-only pill whose dropdown holds the search field.
 
 - **Sort popover** — two columns: *sort key* (`A–Z` / `Release Date` / `Added Date`)
-  and a *direction* pair (asc/desc arrows). A–Z falls back to artist as a tiebreak;
-  date sorts sink missing dates to the bottom either direction.
+  and a *direction* pair (asc/desc arrows). A–Z falls back to artist as a tiebreak.
+  Release Date compares ISO strings; Added Date compares `addedRank` (see below).
+  Missing values sink to the bottom either direction.
 - **View popover** — two columns: *grouping* (`Albums` / `Songs`) and *density*
   (`lines` / `small squares` / `large squares`). Small squares show cover + name +
   artist; large squares show cover + artist only (tweakable). `lines` is the classic
   title/artist list.
 - **Search** — case-insensitive **substring** match on title, artist, or album
   (matches mid-word). In Albums mode an album survives if any of its tracks match.
+  The pill lights up while a query is active so the filter is visible when collapsed.
+
+> **"Added Date" is a rank, not a date.** `library/songs` returns no per-song
+> `dateAdded` (only library albums/playlists carry it), so the backend fetches songs
+> with `sort=dateAdded` and stores each one's position as `Track.addedRank`; the card
+> sorts on that. See [DATA-ARCHITECTURE §3](DATA-ARCHITECTURE.md).
 
 **Everything is client-side.** The card already pulls the whole library into memory
 (`libraryTracks(0, 100000)`), so search, multi-key sort, and **album grouping**
@@ -162,6 +175,13 @@ Square tiles render Apple artwork by filling the `{w}x{h}` URL template
 (`Track.artwork`); tiles with no art fall back to a `♪` glyph. Tile sizing is
 token-driven (`--lib-tile-small/large`, `--lib-grid-gap`, `--lib-pill-radius` in the
 skin), so a skin can reshape the grid with no markup change.
+
+The card's scrolling body uses **our own scrollbar** instead of the OS one — styled
+via the `::-webkit-scrollbar` pseudo-elements (WebView2 is Chromium). Its **color is
+a theme role** (`--scrollbar` / `--scrollbar-hover` in `themes.css`) and its
+width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Currently
+scoped to `[data-card="library"] .panel__body`; widen the selector to theme every
+scroll region the same way.
 
 ### Window-control wiring
 `src/main.ts` calls `@tauri-apps/api/window`:

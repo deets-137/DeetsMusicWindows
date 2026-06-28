@@ -481,7 +481,7 @@ fn track_from_library_song(v: &serde_json::Value) -> Track {
         has_lyrics: a["hasLyrics"].as_bool().unwrap_or(false),
         isrc: a["isrc"].as_str().map(String::from),
         release_date: a["releaseDate"].as_str().map(String::from),
-        date_added: a["dateAdded"].as_str().map(String::from),
+        added_rank: None, // set during sync from the dateAdded-sorted page position
         play_params: PlayParams {
             id: pp["id"].as_str().map(String::from),
             catalog_id: pp["catalogId"].as_str().map(String::from),
@@ -493,15 +493,28 @@ fn track_from_library_song(v: &serde_json::Value) -> Track {
 
 impl MusicProvider for AppleProvider {
     async fn songs_page(&self, offset: u32, limit: u32) -> Result<Page<Track>, String> {
-        let url =
-            format!("https://api.music.apple.com/v1/me/library/songs?limit={limit}&offset={offset}");
+        // Sort by dateAdded so each row's global position is its "added rank"
+        // (songs carry no per-song dateAdded; this is how we order by it). The UI
+        // re-sorts client-side, so this fetch order doesn't affect other views.
+        let url = format!(
+            "https://api.music.apple.com/v1/me/library/songs?limit={limit}&offset={offset}&sort=dateAdded"
+        );
         let (status, body) = api_get(&self.client, &self.dev, &self.user, &url).await?;
         if status != 200 {
             return Err(format!("library/songs HTTP {status}"));
         }
         let items: Vec<Track> = body["data"]
             .as_array()
-            .map(|arr| arr.iter().map(track_from_library_song).collect())
+            .map(|arr| {
+                arr.iter()
+                    .enumerate()
+                    .map(|(i, v)| {
+                        let mut t = track_from_library_song(v);
+                        t.added_rank = Some(offset + i as u32);
+                        t
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
         let total = body["meta"]["total"].as_u64().unwrap_or(items.len() as u64) as u32;
         let next_offset = body["next"].as_str().map(|_| offset + limit);

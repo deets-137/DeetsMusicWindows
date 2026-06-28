@@ -46,11 +46,13 @@ color reference (open in any browser).
   restarts. Account row shows ✓/✗ + spinner.
 - **Library data (songs)**: end-to-end — `library_sync` pulls all songs (parallel) →
   SQLite cache → Library card lists title/artist, auto-syncs on open, refresh re-syncs.
-- **Library card UX**: **Sort** (A–Z / Release Date / Added Date + asc/desc), **View**
-  (Albums or Songs × lines / small / large squares), and a **substring search** over
-  artist/album/song. All client-side (`src/library-card.ts`); albums are derived by
+- **Library card UX**: three pills (**Sort** 40 / **View** 40 / **Search** 20).
+  Sort = A–Z / Release Date / Added Date + asc/desc; View = Albums or Songs × lines /
+  small / large squares; Search = icon pill → dropdown, substring match over
+  artist/album/song. All client-side (`src/library-card.ts`); albums derived by
   grouping cached tracks; square tiles render Apple artwork. State persists. Added
-  `Track.dateAdded` to the model for the date sort (needs a re-sync to backfill).
+  Date uses `Track.addedRank` (songs have no `dateAdded`; we fetch `sort=dateAdded`
+  and store rank) — **needs a re-sync to backfill** old cache rows.
 
 ### Stubbed / not built yet ⬜
 - **Playback** — Now Playing controls are **cosmetic** (play/pause just toggles its

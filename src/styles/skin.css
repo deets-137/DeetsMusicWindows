@@ -65,6 +65,10 @@
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
 
+  /* -- scrollbar (our own; color is a theme role) ------------ */
+  --scrollbar-w:      8px;
+  --scrollbar-radius: 999px;
+
   /* -- spacing scale ----------------------------------------- */
   --space-1: 4px;
   --space-2: 8px;

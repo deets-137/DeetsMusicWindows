@@ -32,6 +32,10 @@
   /* panels — bento groupers; bg matches canvas, edge ready for border skins */
   --panel:        var(--canvas);
   --panel-border: rgba(12, 56, 35, 0.30);
+
+  /* scrollbar thumb (our own, replacing the OS bar) */
+  --scrollbar:       rgba(12, 56, 35, 0.28);
+  --scrollbar-hover: rgba(12, 56, 35, 0.45);
 }
 
 [data-theme="sepia"] {
@@ -51,6 +55,10 @@
   /* panels — bento groupers; bg matches canvas, edge ready for border skins */
   --panel:        var(--canvas);
   --panel-border: rgba(62, 44, 28, 0.30);
+
+  /* scrollbar thumb (our own, replacing the OS bar) */
+  --scrollbar:       rgba(62, 44, 28, 0.26);
+  --scrollbar-hover: rgba(62, 44, 28, 0.44);
 }
 
 [data-theme="moonlight"] {
@@ -70,4 +78,8 @@
   /* panels — bento groupers; bg matches canvas, edge ready for border skins */
   --panel:        var(--canvas);
   --panel-border: rgba(199, 211, 227, 0.30);
+
+  /* scrollbar thumb (our own, replacing the OS bar) */
+  --scrollbar:       rgba(199, 211, 227, 0.22);
+  --scrollbar-hover: rgba(199, 211, 227, 0.40);
 }

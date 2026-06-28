@@ -95,6 +95,17 @@ body {
 .menu__row:hover { background: var(--surface-hover); }
 .menu__chev { color: var(--subtext); }
 
+/* Toggle row (e.g. Always on Top): a clickable row whose right gutter shows the
+   active dot, mirroring the theme flyout's selection indicator. */
+.menu__row--toggle { width: 100%; background: none; border: none; cursor: pointer; }
+.menu__dot {        /* reserved right gutter; dot appears when checked */
+  width: 0.9em;
+  text-align: center;
+  line-height: 1;
+  color: var(--title);
+}
+.menu__row--toggle[aria-checked="true"] .menu__dot::after { content: "•"; }
+
 .flyout {
   position: absolute;
   top: calc(-1 * var(--space-1));
@@ -296,20 +307,34 @@ body {
 }
 .panel__action.is-busy svg { animation: acct-spin 0.7s linear infinite; }
 
+/* Our own scrollbar for the Library list/grid — replaces the OS bar.
+   WebView2 is Chromium, so the ::-webkit-scrollbar pseudo-elements apply;
+   color is a theme role, width/radius are skin tokens. */
+[data-card="library"] .panel__body::-webkit-scrollbar { width: var(--scrollbar-w); }
+[data-card="library"] .panel__body::-webkit-scrollbar-track { background: transparent; }
+[data-card="library"] .panel__body::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: var(--scrollbar-radius);
+}
+[data-card="library"] .panel__body::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
 /* ── Library card: toolbar (sort/view pills + search) ───────── */
 .lib-toolbar {
   flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
+/* Sort / View / Search share the row 40 / 40 / 20. */
 .lib-pills { display: flex; gap: var(--space-2); }
-.lib-ctrl { position: relative; }     /* anchor for the popover */
+.lib-ctrl { position: relative; min-width: 0; }   /* anchor for the popover */
+.lib-ctrl[data-ctrl="sort"]   { flex: 40 1 0; }
+.lib-ctrl[data-ctrl="view"]   { flex: 40 1 0; }
+.lib-ctrl[data-ctrl="search"] { flex: 20 1 0; }
 
 .lib-pill {
+  width: 100%;
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
   background: var(--surface);
@@ -321,13 +346,29 @@ body {
   cursor: pointer;
 }
 .lib-pill:hover { background: var(--surface-hover); }
+.lib-pill__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-pill__caret {
+  flex: 0 0 auto;
   width: 8px; height: 8px;
   fill: none; stroke: currentColor; stroke-width: 1.6;
   stroke-linecap: round; stroke-linejoin: round;
   opacity: 0.7;
 }
 .lib-pill[aria-expanded="true"] .lib-pill__caret { transform: rotate(180deg); }
+
+/* Search is an icon-only pill. */
+.lib-pill--icon { justify-content: center; padding: var(--space-1); }
+.lib-pill__icon {
+  width: 14px; height: 14px;
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+/* Lit when a query is active, so the filter is visible while collapsed. */
+.lib-ctrl[data-ctrl="search"].is-active .lib-pill {
+  background: var(--surface-hover);
+  border-color: var(--title);
+  color: var(--title);
+}
 
 /* Popover anchored under its pill */
 .lib-pop {
@@ -387,13 +428,24 @@ body {
   stroke-linecap: round; stroke-linejoin: round;
 }
 
+/* Inline search bar: clicking the search pill slides it open below the pills,
+   pushing the list/grid down (grid 0fr→1fr animates an auto height cleanly). */
+.lib-searchbar {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.18s ease;
+}
+.lib-searchbar.is-open { grid-template-rows: 1fr; }
+.lib-searchbar__inner { min-height: 0; overflow: hidden; }
+.lib-searchbar .lib-search { margin-top: var(--space-2); }   /* gap shows only when open */
+
 /* Search field */
 .lib-search {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
-  background: var(--surface);
+  background: var(--canvas);
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
 }

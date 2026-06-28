@@ -62,10 +62,12 @@ pub struct Track {
     pub isrc: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_date: Option<String>,
-    /// When the user added this song to their library (ISO 8601). Drives the
-    /// "Added Date" sort. Library-only — absent on pure-catalog tracks.
+    /// Position in the library when sorted oldest→newest by date added.
+    /// Apple's `library/songs` doesn't expose a per-song `dateAdded`, so we fetch
+    /// with `sort=dateAdded` and record each row's rank. Drives the "Added Date"
+    /// sort (lower = added earlier). None on tracks not sourced from a song sync.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub date_added: Option<String>,
+    pub added_rank: Option<u32>,
     pub play_params: PlayParams,
 }
 
