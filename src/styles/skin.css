@@ -69,6 +69,10 @@
   --scrollbar-w:      8px;
   --scrollbar-radius: 999px;
 
+  /* -- in-card navigation (drill-in push/pop slide) ---------- */
+  --nav-dur:  0.26s;
+  --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* -- spacing scale ----------------------------------------- */
   --space-1: 4px;
   --space-2: 8px;

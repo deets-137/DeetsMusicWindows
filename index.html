@@ -98,6 +98,9 @@
         <!-- Library (left) -->
         <section class="panel" data-card="library">
           <header class="panel__head">
+            <button class="panel__back" id="library-back" type="button" aria-label="Back" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            </button>
             <h2 class="panel__title">Library</h2>
             <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -108,81 +111,9 @@
             </button>
           </header>
 
-          <!-- Library controls: Sort + View pills, then a search field -->
-          <div class="lib-toolbar">
-            <div class="lib-pills">
-              <!-- Sort -->
-              <div class="lib-ctrl" data-ctrl="sort">
-                <button class="lib-pill" id="lib-sort-btn" type="button" aria-haspopup="true" aria-expanded="false">
-                  <span class="lib-pill__label">Sort</span>
-                  <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
-                </button>
-                <div class="lib-pop" id="lib-sort-pop" role="menu" aria-label="Sort" hidden>
-                  <div class="lib-pop__cols">
-                    <div class="lib-pop__col" role="group" aria-label="Sort by">
-                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-sort-key="az">A–Z</button>
-                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-sort-key="release">Release Date</button>
-                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-sort-key="added">Added Date</button>
-                    </div>
-                    <div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Direction">
-                      <button class="lib-pop__dir" type="button" data-sort-dir="asc" aria-label="Ascending">
-                        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M3 5l3-3 3 3" /></svg>
-                      </button>
-                      <button class="lib-pop__dir" type="button" data-sort-dir="desc" aria-label="Descending">
-                        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3" /></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- View -->
-              <div class="lib-ctrl" data-ctrl="view">
-                <button class="lib-pill" id="lib-view-btn" type="button" aria-haspopup="true" aria-expanded="false">
-                  <span class="lib-pill__label">View</span>
-                  <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
-                </button>
-                <div class="lib-pop" id="lib-view-pop" role="menu" aria-label="View" hidden>
-                  <div class="lib-pop__cols">
-                    <div class="lib-pop__col" role="group" aria-label="Group by">
-                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-view-mode="albums">Albums</button>
-                      <button class="lib-pop__opt" type="button" role="menuitemradio" data-view-mode="songs">Songs</button>
-                    </div>
-                    <div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Density">
-                      <button class="lib-pop__dir" type="button" data-view-density="lines" aria-label="Lines">
-                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /></svg>
-                      </button>
-                      <button class="lib-pop__dir" type="button" data-view-density="small" aria-label="Small squares">
-                        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" stroke="none"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
-                      </button>
-                      <button class="lib-pop__dir" type="button" data-view-density="large" aria-label="Large squares">
-                        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" stroke="none"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Search (icon pill; toggles the inline bar below) -->
-              <div class="lib-ctrl" data-ctrl="search">
-                <button class="lib-pill lib-pill--icon" id="lib-search-btn" type="button" aria-expanded="false" aria-controls="lib-searchbar" aria-label="Search">
-                  <svg class="lib-pill__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Inline search bar: slides open below the pills, pushing the list down. -->
-            <div class="lib-searchbar" id="lib-searchbar">
-              <div class="lib-searchbar__inner">
-                <label class="lib-search">
-                  <svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
-                  <input class="lib-search__input" id="lib-search" type="search" placeholder="Search artist, album, song…" autocomplete="off" spellcheck="false" />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel__body"><div class="lib-view" id="lib-view"></div></div>
+          <!-- Toolbar (Sort/View/Search) + view are rendered by the collection-card
+               engine into .coll-body, since the controls differ per context. -->
+          <div class="coll-body"></div>
         </section>
 
         <!-- Playlists (right) -->

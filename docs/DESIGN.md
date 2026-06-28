@@ -79,12 +79,12 @@ Status: ✅ done · 🔵 designing · ⬜ todo · ❄️ deferred to later
 **Library**
 | # | Feature | Status |
 |---|---|---|
-| L1 | Saved songs | 🔵 (synced to SQLite cache + listed; needs play/art/sort) |
-| L2 | Saved albums → open → play | ⬜ |
-| L3 | Saved artists → open | ⬜ |
-| L4 | Playlists — list → open → play | ⬜ |
+| L1 | Saved songs | 🔵 (synced + listed w/ mini covers, sort/view/search; needs playback) |
+| L2 | Saved albums → open → play | 🔵 (derived from songs; open→tracks works; needs play + real art) |
+| L3 | Saved artists → open | 🔵 (derived; open→albums+songs works; needs real artist photos) |
+| L4 | Playlists — list → open → play | ⬜ (next: reuse collection-card engine) |
 | L5 | Add / remove from library (like) | ⬜ |
-| L6 | Sort / filter within a view | ⬜ |
+| L6 | Sort / filter within a view | ✅ (sort keys + asc/desc + substring search, client-side) |
 
 **Cross-cutting (not screens, but real work)**
 | # | Feature | Status |
@@ -92,5 +92,6 @@ Status: ✅ done · 🔵 designing · ⬜ todo · ❄️ deferred to later
 | X1 | Mini player surface (on minimize) | ⬜ |
 | X2 | SMTC — Windows media overlay + media keys | ⬜ |
 | X3 | Global hotkeys | ⬜ |
+| X4 | **CLI / local-agent control** — local models & agents can call DeetsMusic to play music (search, queue, play/pause/skip, now-playing). **Wanted before launch.** | ⬜ |
 
 *Order we design/build these = your call (see chat).*

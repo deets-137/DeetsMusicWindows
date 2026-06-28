@@ -69,8 +69,11 @@ vs **catalog**, so:
   library items, catalog items, and Spotify. **`addedRank?`** powers the "Added
   Date" sort: `library/songs` exposes *no* per-song `dateAdded`, so `songs_page`
   fetches with `sort=dateAdded` and records each row's global position
-  (`offset + index`) as its rank (lower = added earlier). **Old cache rows have no
-  rank until a re-sync** backfills them.
+  (`offset + index`) as its rank (lower = added earlier). The card **negates** the
+  rank so the default ↑ direction surfaces *most-recently-added first*; a derived
+  album's rank is its **most-recent** track (`max`). **Old cache rows have no rank
+  until a re-sync** backfills them. (Derived albums also key on album-name + *track*
+  artist, so compilations fragment — fixed later by catalog hydrate.)
 - **`Artwork`** is a URL **template** (`…/{w}x{h}bb.jpg`) + intrinsic size + optional
   palette colors (catalog only — a future hook for per-album accent theming).
 - **`PlayParams`** is preserved on every Track — it's what MusicKit needs to actually

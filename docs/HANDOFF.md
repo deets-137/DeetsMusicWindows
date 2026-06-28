@@ -1,6 +1,6 @@
 # DeetsMusic — Handoff / Status
 
-> Cold-start guide. Read this first. Snapshot as of **2026-06-27**.
+> Cold-start guide. Read this first. Snapshot as of **2026-06-28**.
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data).
 
@@ -46,38 +46,58 @@ color reference (open in any browser).
   restarts. Account row shows ✓/✗ + spinner.
 - **Library data (songs)**: end-to-end — `library_sync` pulls all songs (parallel) →
   SQLite cache → Library card lists title/artist, auto-syncs on open, refresh re-syncs.
-- **Library card UX**: three pills (**Sort** 40 / **View** 40 / **Search** 20).
-  Sort = A–Z / Release Date / Added Date + asc/desc; View = Albums or Songs × lines /
-  small / large squares; Search = icon pill → dropdown, substring match over
-  artist/album/song. All client-side (`src/library-card.ts`); albums derived by
-  grouping cached tracks; square tiles render Apple artwork. State persists. Added
-  Date uses `Track.addedRank` (songs have no `dateAdded`; we fetch `sort=dateAdded`
-  and store rank) — **needs a re-sync to backfill** old cache rows.
+- **Collection-card engine** (`src/collection-card.ts`): a reusable, navigable
+  browser. Per-context **Sort / View / Search** pills (40/40/20); Search slides an
+  inline bar down. Library (`src/library-card.ts`) drives it with **Songs / Albums /
+  Artists** groupings, **drill-in** to album & artist detail (album → tracks, song →
+  its album with the track highlighted), a fixed back-chevron header, and **push/pop
+  pane-slide** navigation (skin-tokened `--nav-dur`/`--nav-ease`, honours reduced
+  motion). Scroll restores on back. Albums/Artists are **derived from cached songs**;
+  square tiles + line mini-covers render Apple artwork. State persists. Added-Date
+  uses `Track.addedRank` (no per-song `dateAdded`; fetched via `sort=dateAdded`),
+  negated so **most-recently-added surfaces first** — **needs a re-sync to backfill**
+  old rows. Custom themed scrollbar on the list.
+- **Always on Top**: settings-menu toggle row with an active dot; persists.
 
 ### Stubbed / not built yet ⬜
 - **Playback** — Now Playing controls are **cosmetic** (play/pause just toggles its
   icon). No MusicKit playback. This is the big DRM unknown (see DESIGN.md §1).
-- **Albums / Artists / Playlists data** — model exists, only **songs** flow so far.
-  Playlists card shows a title only.
-- **Virtualized scrolling** — search/sort/view exist (client-side); the list/grid
-  still renders all rows. Virtualize once libraries get large or artwork I/O bites.
-- **Real album/artist data** — the Albums view is *derived* from songs, not synced.
-- **Catalog hydration** — artwork color palettes, ISRC-rich data not fetched yet.
+- **Playlists card** — still a stub title. Next up: reuse the collection-card engine
+  (a Playlists context: list overview with no View pill → playlist detail with tracks).
+- **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
+  (no catalog). Artist tiles show a round album-cover thumb / initials until hydrate.
+- **Catalog hydration** — `playParams.catalogId` → palette (`Artwork.bgColor`/
+  `textColors`), real artist/album art, `previews` (30s audio!), `isrc`. Not fetched.
+- **CLI / local-agent control** — see roadmap; not started.
+- **Virtualized scrolling** — list/grid renders all rows; fine at a few thousand,
+  virtualize once libraries get large or artwork I/O bites.
 - **Mini player, full window, SMTC, global hotkeys** — not started.
 
 ---
 
-## Immediate next steps (suggested order)
-1. **Extend the sync pipeline to albums/artists/playlists** — same shape as songs:
-   add `albums_page` etc. to the provider, tables/commands in `library.rs`, render in
-   the cards. (Playlists is tiny — 47 items.)
-2. **Search + virtualized list** — once multiple lists exist and we add artwork.
-3. **Artwork** — render `Artwork.urlTemplate` (fill `{w}x{h}`); wire album/track art.
-4. **Catalog hydration** — use `playParams.catalogId` to enrich; the artwork color
-   palette can drive per-album accent theming (nice tie-in with the token system).
-5. **Playback** — the load-bearing risk. Prove full-song DRM via MusicKit JS in
+## Roadmap (agreed order)
+1. **Catalog hydrate** (Stage 2) — storefront lookup + batched `/catalog`
+   songs→artists→albums via `playParams.catalogId`. Fills palette
+   (`Artwork.bgColor`/`textColors`), real **artist photos** (square art, cropped round;
+   initials fallback) + album art, plus `previews`/`isrc`. ~15 polite calls. Store
+   palette on tracks; small `artists`/`albums` tables. Decided scope: **songs + artists
+   + albums** in one pass.
+2. **Playlists card** (Stage 3) — wire `playlists_page` + `playlist_tracks` (+ tables),
+   then drive the **collection-card engine** with a Playlists context: overview list
+   (Sort: A–Z / Added / Modified / Track Count; **no View pill**) → playlist detail
+   (its tracks, density-only). Playlists carry real `dateAdded`/`lastModifiedDate`.
+3. **CLI / local-agent control** (pre-launch goal) — a command surface so the user's
+   **local models and agents can call DeetsMusic to play music** (search, queue,
+   play/pause/skip, now-playing). Likely a thin Rust command layer over the same
+   `player` interface (below) exposed via CLI/IPC. Design the verb set alongside
+   playback so agents and the UI share one control path.
+4. **Playback** — the load-bearing risk. Prove full-song DRM via MusicKit JS in
    WebView2 with a throwaway test before building real transport. May force a design
-   pivot (e.g. play in a hidden browser context, or preview-only fallback).
+   pivot (hidden browser context, or **preview-only** via catalog `previews`). The CLI
+   and UI both drive the same thin `player` interface.
+5. **Per-album accent theming** — feed stored palette into the mini-player and a future
+   skin (nice tie-in with the token system).
+6. **Virtualized list** — only once libraries get large or artwork I/O bites.
 
 ---
 
@@ -93,6 +113,16 @@ color reference (open in any browser).
   the (dev) `apple_dump_library` command if needed.
 - **Intermediate compile errors during multi-file Rust edits** are normal (the dev
   server recompiles per save); only the final build matters.
+- **Collection card — `data-density` collision:** the list/grid view's CSS hook is
+  `data-grid` (NOT `data-density`). The density *buttons* use `data-density`; if the
+  view reuses it, the delegated click handler's `closest("[data-density]")` matches the
+  list and swallows every tile click (silent — looks like clicks "do nothing"). This
+  bit us twice.
+- **Collection card — scroll after mount:** restore `scrollTop` / `scrollIntoView`
+  *after* a pane is appended and laid out (in `slide()`), never in `renderViewInto`
+  while the pane is still detached — it silently no-ops.
+- **Added-Date needs a re-sync:** older cache rows lack `addedRank` until a refresh
+  re-fetches with `sort=dateAdded`.
 
 ---
 
@@ -115,7 +145,9 @@ src/main.ts                 window controls, settings menu, account, library wir
 src/theme.ts                theme switch + persistence
 src/apple.ts                auth bridge (connect/disconnect/isConnected)
 src/library.ts              cache reads, sync trigger, sync-event subscription, types
-src/library-card.ts         Library card: sort / view / search, album grouping, render
+src/collection-card.ts      reusable navigable browser engine (contexts/groupings,
+                            Sort/View/Search, push/pop pane-slide nav, scroll restore)
+src/library-card.ts         Library's contexts/groupings + drill-in; data load + sync
 src/styles.css              app rules (imports the token sheets first)
 src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system + Liberation Serif
 src-tauri/src/lib.rs        Tauri builder: state, DB open, command registry, devtools

@@ -307,16 +307,57 @@ body {
 }
 .panel__action.is-busy svg { animation: acct-spin 0.7s linear infinite; }
 
+/* Collection card body holds a clipping viewport; contexts are panes that slide
+   horizontally (push/pop). Within a pane: fixed toolbar, scrolling view. */
+.coll-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.coll-viewport { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.coll-pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: transform var(--nav-dur) var(--nav-ease);
+  will-change: transform;
+}
+.coll-pane[data-pos="center"] { transform: translateX(0); }
+.coll-pane[data-pos="left"] { transform: translateX(-100%); }
+.coll-pane[data-pos="right"] { transform: translateX(100%); }
+.coll-pane:not([data-pos="center"]) { pointer-events: none; } /* only the on-screen pane is interactive */
+@media (prefers-reduced-motion: reduce) {
+  .coll-pane { transition: none; }
+}
+
 /* Our own scrollbar for the Library list/grid — replaces the OS bar.
    WebView2 is Chromium, so the ::-webkit-scrollbar pseudo-elements apply;
    color is a theme role, width/radius are skin tokens. */
-[data-card="library"] .panel__body::-webkit-scrollbar { width: var(--scrollbar-w); }
-[data-card="library"] .panel__body::-webkit-scrollbar-track { background: transparent; }
-[data-card="library"] .panel__body::-webkit-scrollbar-thumb {
+.lib-view::-webkit-scrollbar { width: var(--scrollbar-w); }
+.lib-view::-webkit-scrollbar-track { background: transparent; }
+.lib-view::-webkit-scrollbar-thumb {
   background: var(--scrollbar);
   border-radius: var(--scrollbar-radius);
 }
-[data-card="library"] .panel__body::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+.lib-view::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* Back chevron in the card header — shown only in a drilled-in context. */
+.panel__back {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-right: var(--space-1);
+  display: grid;
+  place-items: center;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--title);
+  cursor: pointer;
+}
+.panel__back[hidden] { display: none; }
+.panel__back:hover { filter: brightness(0.97); }
+.panel__back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.panel__head .panel__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Library card: toolbar (sort/view pills + search) ───────── */
 .lib-toolbar {
@@ -364,7 +405,7 @@ body {
   stroke-linecap: round; stroke-linejoin: round;
 }
 /* Lit when a query is active, so the filter is visible while collapsed. */
-.lib-ctrl[data-ctrl="search"].is-active .lib-pill {
+.lib-pill.is-active {
   background: var(--surface-hover);
   border-color: var(--title);
   color: var(--title);
@@ -469,16 +510,45 @@ body {
 .lib-search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 
 /* ── Library views: lines / small / large ───────────────────── */
-/* .lib-view base carries no layout; the modifier class (.lib-list /
+/* .lib-view fills the body and scrolls; the modifier class (.lib-list /
    .lib-grid / .lib-empty) set by the controller decides the layout. */
+.lib-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* lines */
 .lib-list { display: flex; flex-direction: column; }
 .lib-row {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
+  cursor: default;
 }
 .lib-row:hover { background: var(--surface-hover); }
+/* clickable affordance + drilled-in highlight (border around the rectangle) */
+.lib-view[data-openable="1"] .lib-row,
+.lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
+.lib-row.is-selected,
+.lib-tile.is-selected {
+  outline: 2px solid var(--title);
+  outline-offset: -2px;
+  border-radius: var(--radius-control);
+}
+/* rows with a mini cover (songs/albums/artists lines) */
+.lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
+.lib-row__art {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface-hover);
+}
+.lib-row__art--round { border-radius: 50%; }
+.lib-row__art--empty {
+  display: grid;
+  place-items: center;
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+}
+.lib-row__text { min-width: 0; display: flex; flex-direction: column; }
 .lib-row__title {
   display: block;
   color: var(--text);
@@ -501,10 +571,10 @@ body {
   display: grid;
   gap: var(--lib-grid-gap);
 }
-.lib-view[data-density="small"].lib-grid {
+.lib-view[data-grid="small"].lib-grid {
   grid-template-columns: repeat(auto-fill, minmax(var(--lib-tile-small), 1fr));
 }
-.lib-view[data-density="large"].lib-grid {
+.lib-view[data-grid="large"].lib-grid {
   grid-template-columns: repeat(auto-fill, minmax(var(--lib-tile-large), 1fr));
 }
 .lib-tile {
@@ -524,6 +594,7 @@ body {
   background: var(--surface-hover);
   display: block;
 }
+.lib-tile__cover--round { border-radius: 50%; }
 .lib-tile__cover--empty {
   display: grid;
   place-items: center;

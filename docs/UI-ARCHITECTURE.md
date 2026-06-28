@@ -138,29 +138,57 @@ a `::before` masked/SVG layer instead.
 **Scrubber handle is skin-swappable:** the Now Playing handle renders from the
 `--scrubber-handle` glyph token (default `●`); a skin swaps it to `▲`, an emoji, etc.
 
-### 4a. The Library card (sort · view · search)
-The Library card (`src/library-card.ts`, markup in `index.html`, styles under the
-"Library card" block in `styles.css`) sits above its list a **toolbar**: a single
-row of three fully-rounded **pills** — **Sort** · **View** · **Search** — splitting
-the width **40 / 40 / 20**. Each opens a card-local **popover** (`.lib-pop`, anchored
-to its pill); Search is an icon-only pill whose dropdown holds the search field.
+### 4a. The collection card (navigable browser engine)
+`src/collection-card.ts` is a **reusable, context-aware browser** that the Library
+card drives today and the Playlists card will reuse. The card markup is just chrome
++ a mount point: a `.panel__head` (with a `.panel__back` chevron + `.panel__title` +
+optional `.panel__action`) and an empty `.coll-body`. The engine renders everything
+inside `.coll-body` and is fed a **root context** (`src/library-card.ts` builds the
+Library's). Styles live under the "Library card" / "collection card" blocks in
+`styles.css`; the class prefix is still `lib-*` (shared with any card the engine runs).
 
-- **Sort popover** — two columns: *sort key* (`A–Z` / `Release Date` / `Added Date`)
-  and a *direction* pair (asc/desc arrows). A–Z falls back to artist as a tiebreak.
-  Release Date compares ISO strings; Added Date compares `addedRank` (see below).
-  Missing values sink to the bottom either direction.
-- **View popover** — two columns: *grouping* (`Albums` / `Songs`) and *density*
-  (`lines` / `small squares` / `large squares`). Small squares show cover + name +
-  artist; large squares show cover + artist only (tweakable). `lines` is the classic
-  title/artist list.
-- **Search** — case-insensitive **substring** match on title, artist, or album
-  (matches mid-word). In Albums mode an album survives if any of its tracks match.
-  The pill lights up while a query is active so the filter is visible when collapsed.
+**Contexts → groupings → sorts.** A **context** has a title, one or more
+**groupings**, and whether density applies. A **grouping** declares its own sort
+specs, a live `list()` accessor, a `match()` for search, a `render(item, density,
+idx)`, and an optional `open(item)` that returns a **child context** to drill into.
+Because each context carries its own controls, the **Sort/View pills re-render per
+level** — and the View pill auto-hides when neither grouping nor density is
+meaningful (e.g. a future playlists overview). Library's contexts:
+- **Library** (root): groupings **Songs / Albums / Artists**.
+- **Album** (drilled from an album, or from a song): that album's tracks, density-only;
+  covers omitted (they'd all match). A song click drills here and **highlights** the
+  clicked track (`.is-selected` border) and scrolls it into view.
+- **Artist** (drilled from an artist): that artist's **Albums + Songs**.
+
+**Toolbar.** Three fully-rounded pills — **Sort · View · Search** (width **40/40/20**).
+Sort/View open card-local popovers (`.lib-pop`); **Search** is an icon pill that
+**slides an inline search bar down** below the pills (`grid-rows 0fr→1fr`), pushing the
+list down. Search is case-insensitive **substring** on title/artist/album; its pill
+lights while a query is active. Density = `lines` / `small` / `large` squares
+(`lines` rows carry a mini cover — round for artists — except inside an album).
+
+**Navigation = a push/pop pane stack.** `.coll-body` holds a clipping
+`.coll-viewport`; each context is a `.coll-pane` (absolute, `data-pos`
+center/left/right). Drilling in **slides** the current pane left while the child
+slides in from the right; back reverses it. Only the header is fixed chrome (the
+title updates, the back chevron shows when drilled). The slide is **skin-tokened**
+(`--nav-dur` / `--nav-ease`) and respects `prefers-reduced-motion` (instant). Scroll
+position is **saved per frame and restored on back** (and a background sync re-render
+keeps your place); the restore runs *after* the pane mounts (doing it while detached
+silently no-ops — a bug we hit and fixed).
+
+> **Gotcha that bit us twice:** the view element's density CSS hook MUST NOT reuse the
+> `data-density` attribute that the density *buttons* use — the click handler's
+> `closest("[data-density]")` then matches the list container and swallows every tile
+> click as a no-op. The view uses `data-grid`; buttons use `data-density`.
 
 > **"Added Date" is a rank, not a date.** `library/songs` returns no per-song
-> `dateAdded` (only library albums/playlists carry it), so the backend fetches songs
-> with `sort=dateAdded` and stores each one's position as `Track.addedRank`; the card
-> sorts on that. See [DATA-ARCHITECTURE §3](DATA-ARCHITECTURE.md).
+> `dateAdded` (only library albums/playlists do), so the backend fetches songs with
+> `sort=dateAdded` and stores each row's position as `Track.addedRank`. The card sorts
+> on it, **negated so the default ↑ surfaces most-recently-added first**; an album's
+> rank is its **most-recent** track. See [DATA-ARCHITECTURE §3](DATA-ARCHITECTURE.md).
+> **Rough edge:** albums group on album-name + *track* artist, so various-artists
+> compilations fragment — catalog hydrate (real album identity) will fix it.
 
 **Everything is client-side.** The card already pulls the whole library into memory
 (`libraryTracks(0, 100000)`), so search, multi-key sort, and **album grouping**
@@ -179,9 +207,8 @@ skin), so a skin can reshape the grid with no markup change.
 The card's scrolling body uses **our own scrollbar** instead of the OS one — styled
 via the `::-webkit-scrollbar` pseudo-elements (WebView2 is Chromium). Its **color is
 a theme role** (`--scrollbar` / `--scrollbar-hover` in `themes.css`) and its
-width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Currently
-scoped to `[data-card="library"] .panel__body`; widen the selector to theme every
-scroll region the same way.
+width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Scoped to the
+scrolling `.lib-view`; widen the selector to theme every scroll region the same way.
 
 ### Window-control wiring
 `src/main.ts` calls `@tauri-apps/api/window`:
@@ -217,7 +244,10 @@ src/main.ts             window controls, settings menu, account; calls initLibra
 src/theme.ts            theme switch + localStorage persistence
 src/apple.ts            Apple Music auth bridge (connect/disconnect/status)
 src/library.ts          cache reads + sync trigger + sync-event subscription + types
-src/library-card.ts     Library card controller: sort / view / search, grid render
+src/collection-card.ts  reusable navigable browser engine (contexts, groupings,
+                        Sort/View/Search toolbar, push/pop pane-slide nav)
+src/library-card.ts     Library's contexts/groupings (Songs/Albums/Artists +
+                        album & artist drill-in); wires data load + sync; calls the engine
 src-tauri/tauri.conf.json          frameless window @ 480×864
 src-tauri/capabilities/default.json  window-control permissions
 ```
