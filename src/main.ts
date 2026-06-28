@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
+import { applySkin, initSkin, type SkinName } from "./skin";
 import { connect, disconnect, isConnected } from "./apple";
 import { initLibraryCard } from "./library-card";
 
@@ -9,6 +10,7 @@ const appWindow = getCurrentWindow();
 
 window.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  initSkin();
 
   // ── Window controls ──────────────────────────────────────────
   document.getElementById("tl-min")?.addEventListener("click", () => appWindow.minimize());
@@ -56,6 +58,14 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       applyTheme(el.dataset.themeChoice as ThemeName);
+      close();
+    });
+  });
+
+  // Skin choices (same pattern as Theme).
+  document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
+    el.addEventListener("click", () => {
+      applySkin(el.dataset.skinChoice as SkinName);
       close();
     });
   });

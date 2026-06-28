@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-skin="default">
+<html lang="en" data-skin="vanilla">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -55,15 +55,15 @@
   <div id="root"></div>
 
   <script>
-    const THEMES = ['fairy', 'sepia', 'moonlight'];
+    const THEMES = ['fairy', 'sepia', 'moonlight', 'hornet'];
     const ROLES = [
-      ['--canvas',   { fairy: 'Powder Jade',          sepia: 'Parchment',  moonlight: 'Deep Slate' }],
-      ['--go',       { fairy: 'Andean Toucan',        sepia: 'Olive Leaf', moonlight: 'Moonlight White' }],
-      ['--stop',     { fairy: 'Purple Cactus Flower', sepia: 'Terracotta', moonlight: 'Moonlight Gray' }],
-      ['--pause',    { fairy: 'Lemon Chrome',         sepia: 'Amber Glow', moonlight: 'Moonlight Silver' }],
-      ['--title',    { fairy: 'Racing Green',         sepia: 'Espresso',   moonlight: 'Slate Bright' }],
-      ['--text',     { fairy: 'Nautilus',             sepia: 'Cocoa',      moonlight: 'Slate Mid' }],
-      ['--subtext',  { fairy: 'Moon Mist',            sepia: 'Faded Tan',  moonlight: 'Slate Dim' }],
+      ['--canvas',   { fairy: 'Dewy Lilac',           sepia: 'Parchment',  moonlight: 'Deep Slate',    hornet: 'Pitch' }],
+      ['--go',       { fairy: 'Fae Mint',             sepia: 'Olive Leaf', moonlight: 'Moonlight White', hornet: 'Hazard' }],
+      ['--stop',     { fairy: 'Purple Cactus Flower', sepia: 'Terracotta', moonlight: 'Moonlight Gray', hornet: 'Straw' }],
+      ['--pause',    { fairy: 'Lemon Chrome',         sepia: 'Amber Glow', moonlight: 'Moonlight Silver', hornet: 'Amber Wax' }],
+      ['--title',    { fairy: 'Twilight Plum',        sepia: 'Espresso',   moonlight: 'Slate Bright',   hornet: 'Hazard' }],
+      ['--text',     { fairy: 'Violet Slate',         sepia: 'Cocoa',      moonlight: 'Slate Mid',      hornet: 'Paper Warm' }],
+      ['--subtext',  { fairy: 'Lavender Grey',        sepia: 'Faded Tan',  moonlight: 'Slate Dim',      hornet: 'Straw' }],
     ];
 
     const root = document.getElementById('root');

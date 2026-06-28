@@ -13,11 +13,11 @@ Styling is split into three orthogonal layers. Each lives in its own file under
 
 | Tier | File | Holds | Selector | Lever |
 |---|---|---|---|---|
-| **Palette** | `palette.css` | raw named hexes (`--paint-fairy-wing`) | `:root` | the box of crayons |
+| **Palette** | `palette.css` | raw named hexes (`--paint-dewy-lilac`) | `:root` | the box of crayons |
 | **Theme** | `themes.css` | color *roles* → palette | `[data-theme="…"]` | recolor the app |
 | **Skin** | `skin.css` | everything non-color: type, size, radius, spacing, geometry | `[data-skin="…"]` | reshape/retype the app |
 
-Both are set on `<html>`: `<html data-theme="fairy" data-skin="default">`.
+Both are set on `<html>`: `<html data-theme="fairy" data-skin="vanilla">`.
 Theme and skin are **independent** — any theme works with any skin.
 
 ### Why palette is separate from theme
@@ -48,10 +48,12 @@ Traffic-light role names are deliberately function-named (`go/stop/pause`) not
 color-named, so a theme can shade them to fit its canvas without the names lying.
 
 ### Themes that ship today
-- **`fairy`** — powdered blue-green canvas, the original spec palette.
+- **`fairy`** — twilight-lilac canvas, twilight-plum headings, with magenta + gold fae accents.
 - **`sepia`** — warm parchment + amber, vibe pulled from the harness "Sepia Dreams".
 - **`moonlight`** — dark mode: deep slate-blue canvas, slate blue-gray type (bright→dim),
   monochrome traffic lights (moonlight white→gray).
+- **`hornet`** — black & yellow (Noir Gold): near-black canvas, hi-vis yellow title, warm-white
+  body, monochrome-yellow traffic lights (no green/red), gold hairline borders.
 
 ### Add a theme
 1. Add any new paints to `palette.css`.
@@ -62,19 +64,58 @@ color-named, so a theme can shade them to fit its canvas without the names lying
 
 ## 3. Skin tokens
 
-The `default` skin defines, among others:
+### Structure: a shared base + per-skin deltas
+`skin.css` opens with a **`[data-skin]` base block** that defines *every* token —
+these values **are Vanilla**. Each named skin (`[data-skin="desk"]`, `…="ocean"`)
+then overrides **only what it changes**. They have equal specificity, base is
+declared first, so a skin's overrides win by source order — and a skin may still
+override *any* base token. `data-skin` selects one value at a time (a skin does
+**not** inherit from the `vanilla` block), which is exactly why the shared defaults
+live in the attribute-present `[data-skin]` selector.
+
+**`vanilla`** is the reference skin: it *is* the base, so its block is empty.
+
+The base defines, among others:
 
 - **Type:** `--font-title` (Liberation Serif), `--font-body` (Liberation Sans),
   `--fs-title / --fs-text / --fs-subtext`, `--fw-*`, `--lh-text`
-- **Geometry:** `--midi-w` (480), `--midi-h` (864), `--titlebar-h`,
-  `--traffic-size`, `--traffic-gap`, `--traffic-glyph-fs`, `--traffic-glyph-color`
-- **Shape:** `--radius-panel`, `--radius-control`
+- **Geometry:** `--midi-w` (480), `--midi-h` (864), `--titlebar-h`, `--traffic-*`
+- **Shape:** `--radius-panel`, `--radius-control`, `--panel-radius`
 - **Spacing:** `--space-1 … --space-5`
+- **Card fill:** `--panel` (which theme surface the cards use) + `--shadow-card`
+- **Canvas pattern:** `--canvas-bg` / `--canvas-bg-size` / `--canvas-bg-repeat` / `--canvas-anim`
+- **Nav motion:** `--nav-dur`, `--nav-ease`, `--nav-at-center / -left / -right`, `--nav-off-opacity`
+
+### A skin never names a color — even for surfaces
+`--panel` is the key example. "Does this skin lift cards off the canvas?" is a
+**skin** decision; the *color* of that surface is a **theme** one. So the skin points
+`--panel` at a theme **role** — Vanilla `var(--canvas)` (flush), Desk `var(--surface)`
+(raised paper) — or **derives** one without naming a hex: Ocean
+`color-mix(in srgb, var(--surface), black 18%)` (recessed/darker). The theme always
+owns the actual color. Same rule for the canvas pattern and soft borders: their tint
+is `var(--border)`, a theme role.
+
+### Nav motion is tokenized, not hardcoded
+`.coll-pane` reads its per-position transform/opacity from `--nav-at-*` /
+`--nav-off-opacity`, so a skin reshapes the **whole drill-in motion** with values
+only — no rule edits. Vanilla slides (`translateX`), Desk drops (`scale`), Ocean
+sinks (`translateY`). `prefers-reduced-motion` still disables it.
+
+### Skins that ship today
+- **`vanilla`** — the reference: flush cards, hairline edge, horizontal slide, Liberation type.
+- **`desk`** — light/airy notebook: raised paper cards (`--surface`) with a drop shadow on a
+  faint dot grid, a drop-onto nav, Caveat (title) + Karla (body).
+- **`ocean`** — deep/abyssal: recessed soft-edged cards (`color-mix`) on a surface of three
+  rolling-wave frequencies (`wave-roll`), a sink/rise nav, Cinzel (title) + Spectral (body).
+  Pairs best with light themes (its black-mix cards + shadows are faint on dark canvases — a
+  per-theme `--surface-sunken` role is the documented upgrade if Ocean needs true depth there).
 
 ### Add a skin
-Add a `[data-skin="yourname"] { … }` block in `skin.css` defining the **same token
-names** with different values (rounder corners, denser spacing, a different type
-pairing). Switch with `data-skin` on `<html>`. No color belongs here.
+Add a `[data-skin="yourname"] { … }` block in `skin.css` overriding only the tokens
+you change. Switch with `data-skin` on `<html>`. **No color belongs here** — point a
+slot at a theme role or `color-mix` a role; never a raw hex. Bundle any new fonts in
+`fonts.css` (SIL OFL, like Liberation). Add the name to `SkinName` in `src/skin.ts`
+and a `.flyout__item` to the Skin row in `index.html`.
 
 ---
 
@@ -104,8 +145,9 @@ Apple Music sign-in (✓/✗ + spinner) — wired in `src/apple.ts` (see
 `appWindow.setAlwaysOnTop()` and shows a right-aligned **dot** (`.menu__dot`) when
 active — the same selection indicator the theme flyout uses; the choice persists
 (`localStorage` `deets.alwaysOnTop`) and re-applies on launch (needs the
-`core:window:allow-set-always-on-top` capability). New settings (e.g. **Skin**) slot
-in as additional rows — same pattern, no new plumbing. Because the title is now
+`core:window:allow-set-always-on-top` capability). A **Skin** row mirrors Theme exactly
+(flyout of `[data-skin-choice]` items, wired in `src/skin.ts` — `applySkin`/`initSkin`,
+`localStorage` `deets.skin`); further settings slot in the same way. Because the title is now
 interactive, the **draggable zone is the middle `.drag-region`** between the title and
 the lights, not the whole bar.
 
@@ -126,14 +168,14 @@ spans both columns); the grid flows them. The home is `auto / 1fr` rows — Now
 Playing is a short wide strip up top, Library + Playlists are tall columns that
 **scroll individually** (the body scrolls, the bento frame stays put).
 
-**Panels in the default skin** are light groupers: `--panel` = `--canvas` (fill
-matches the background) with a thin `1px` `--panel-border` edge to mark each
-panel's bounds. All the panel tokens (`--panel` / `--panel-border` theme;
-`--panel-border-width` / `--panel-radius` / `--panel-pad` skin) are swappable, so a
-future skin restyles them into richer cards (heavier borders, shadows, even
-wavy/rainbow edges) with **no markup change**. Note: rounded + exotic borders (gradient/wavy) can't use CSS
-`border` (border-image ignores `border-radius`) — that skin will draw the edge on
-a `::before` masked/SVG layer instead.
+**Panels under Vanilla** are light groupers: `--panel` = `--canvas` (fill matches the
+background) with a thin `1px` `--panel-border` edge. The fill is a **skin** token now
+(`--panel` points at a theme role — Desk `--surface`, Ocean a `color-mix` of it), the
+edge color (`--panel-border`) stays **theme**, and `--panel-border-width` / `--panel-radius`
+/ `--panel-pad` / `--shadow-card` are **skin** — so Desk/Ocean restyle panels into real
+cards (distinct fill + drop shadow, no border) with **no markup change**. Note: rounded +
+exotic borders (gradient/wavy) can't use CSS `border` (border-image ignores
+`border-radius`) — such a skin draws the edge on a `::before` masked/SVG layer instead.
 
 **Scrubber handle is skin-swappable:** the Now Playing handle renders from the
 `--scrubber-handle` glyph token (default `●`); a skin swaps it to `▲`, an emoji, etc.
@@ -235,13 +277,14 @@ directly.
 index.html              home markup (titlebar, settings menu, bento cards)
 swatch.html             color reference — every role, every theme, read live
 src/styles.css          imports tokens, then app rules (chrome, menu, panels, lists)
-src/styles/fonts.css    @font-face for bundled Liberation Serif
+src/styles/fonts.css    @font-face for bundled fonts (Liberation; Desk/Ocean skin faces)
 src/styles/palette.css  Tier 1 — raw paints
 src/styles/themes.css   Tier 2 — color roles per theme
-src/styles/skin.css     Tier 3 — type / geometry / spacing per skin
-src/styles/fonts/       bundled Liberation Serif TTFs (+ NOTICE)
-src/main.ts             window controls, settings menu, account; calls initLibraryCard()
+src/styles/skin.css     Tier 3 — [data-skin] base + vanilla/desk/ocean deltas (type/geometry/motion)
+src/styles/fonts/       bundled font files (Liberation TTFs + NOTICE; skin WOFF2s)
+src/main.ts             window controls, settings menu, account; calls initTheme/initSkin/initLibraryCard()
 src/theme.ts            theme switch + localStorage persistence
+src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)
 src/apple.ts            Apple Music auth bridge (connect/disconnect/status)
 src/library.ts          cache reads + sync trigger + sync-event subscription + types
 src/collection-card.ts  reusable navigable browser engine (contexts, groupings,

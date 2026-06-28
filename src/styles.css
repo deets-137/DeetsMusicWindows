@@ -235,6 +235,13 @@ body {
   min-height: 0;
   padding: var(--panel-gap);
   overflow: hidden;             /* the columns scroll, not the whole body */
+
+  /* Canvas pattern behind the cards (Desk dot grid / Ocean waves).
+     All four resolve to nothing under Vanilla. */
+  background-image:  var(--canvas-bg);
+  background-size:   var(--canvas-bg-size);
+  background-repeat: var(--canvas-bg-repeat);
+  animation:         var(--canvas-anim);
 }
 
 /* ── Bento grid (a "screen" is a composition of panels) ─────── */
@@ -255,6 +262,7 @@ body {
   background: var(--panel);
   border: var(--panel-border-width) solid var(--panel-border);
   border-radius: var(--panel-radius);
+  box-shadow: var(--shadow-card);   /* none under Vanilla; a real card lift in Desk/Ocean */
   padding: var(--panel-pad);
 }
 .panel[data-span="wide"] { grid-column: 1 / -1; }
@@ -317,15 +325,20 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  transition: transform var(--nav-dur) var(--nav-ease);
-  will-change: transform;
+  transition: transform var(--nav-dur) var(--nav-ease),
+              opacity   var(--nav-dur) var(--nav-ease);
+  will-change: transform, opacity;
 }
-.coll-pane[data-pos="center"] { transform: translateX(0); }
-.coll-pane[data-pos="left"] { transform: translateX(-100%); }
-.coll-pane[data-pos="right"] { transform: translateX(100%); }
+/* The motion lives in skin tokens: Vanilla slides (translateX), Desk
+   drops (scale), Ocean sinks (translateY). z-index keeps the active
+   pane above the others while overlapping motions cross-fade. */
+.coll-pane[data-pos="center"] { transform: var(--nav-at-center); opacity: 1;                   z-index: 1; }
+.coll-pane[data-pos="left"]   { transform: var(--nav-at-left);   opacity: var(--nav-off-opacity); z-index: 0; }
+.coll-pane[data-pos="right"]  { transform: var(--nav-at-right);  opacity: var(--nav-off-opacity); z-index: 0; }
 .coll-pane:not([data-pos="center"]) { pointer-events: none; } /* only the on-screen pane is interactive */
 @media (prefers-reduced-motion: reduce) {
   .coll-pane { transition: none; }
+  .app-body { animation: none; }   /* freeze Ocean's waves */
 }
 
 /* Our own scrollbar for the Library list/grid — replaces the OS bar.

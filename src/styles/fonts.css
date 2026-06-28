@@ -22,3 +22,54 @@
   font-display: swap;
   src: url("./fonts/LiberationSerif-Bold.ttf") format("truetype");
 }
+
+/* ------------------------------------------------------------
+   Skin fonts (all SIL OFL 1.1, bundled like Liberation above).
+   Desk → Caveat (title) + Karla (body).
+   Ocean → Cinzel (title) + Spectral (body).
+   Drop the .woff2 files into ./fonts/ — until then the stacks in
+   skin.css fall back to the nearest system face, so nothing breaks.
+   ------------------------------------------------------------ */
+
+/* Desk — Caveat (handwritten title) */
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Caveat-Bold.woff2") format("woff2");
+}
+
+/* Desk — Karla (body) */
+@font-face {
+  font-family: "Karla";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/Karla-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Karla";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Karla-Bold.woff2") format("woff2");
+}
+
+/* Ocean — Cinzel (engraved caps title) */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/Cinzel-SemiBold.woff2") format("woff2");
+}
+
+/* Ocean — Spectral (body) */
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/Spectral-Regular.woff2") format("woff2");
+}

@@ -1,16 +1,50 @@
-Liberation(tm) Fonts
-====================
+Bundled Fonts
+=============
 
-Files: LiberationSerif-Regular.ttf, LiberationSerif-Bold.ttf
+All fonts below are licensed under the SIL Open Font License, Version 1.1
+(OFL-1.1), which permits embedding and redistribution. Full license text:
+https://scripts.sil.org/OFL
+
+
+Liberation(tm) Fonts
+--------------------
+Files:   LiberationSerif-Regular.ttf, LiberationSerif-Bold.ttf
 Version: 2.1.5
 Copyright (c) 2012 Red Hat, Inc.
-License: SIL Open Font License, Version 1.1 (OFL-1.1)
+Upstream: https://github.com/liberationfonts/liberation-fonts
+Bundled unmodified.
 
 "Liberation" is a trademark of Red Hat, Inc. registered in U.S. Patent
 and Trademark Office and certain other jurisdictions.
 
-Upstream: https://github.com/liberationfonts/liberation-fonts
-Full license text: https://scripts.sil.org/OFL
 
-These fonts are bundled unmodified and used under the terms of the OFL,
-which permits embedding and redistribution.
+Caveat  (Desk skin — title)
+---------------------------
+Files:   Caveat-Bold.woff2
+Copyright (c) The Caveat Project Authors (Pablo Impallari).
+Upstream: https://github.com/googlefonts/caveat
+Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.
+
+
+Karla  (Desk skin — body)
+-------------------------
+Files:   Karla-Regular.woff2, Karla-Bold.woff2
+Copyright (c) The Karla Project Authors (Jonathan Pinhorn).
+Upstream: https://github.com/googlefonts/karla
+Bundled as latin-subset WOFF2 files (via Fontsource); otherwise unmodified.
+
+
+Cinzel  (Ocean skin — title)
+----------------------------
+Files:   Cinzel-SemiBold.woff2
+Copyright (c) The Cinzel Project Authors (Natanael Gama).
+Upstream: https://github.com/NDISCOVER/Cinzel
+Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.
+
+
+Spectral  (Ocean skin — body)
+-----------------------------
+Files:   Spectral-Regular.woff2
+Copyright (c) The Spectral Project Authors (Production Type).
+Upstream: https://github.com/productiontype/Spectral
+Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.

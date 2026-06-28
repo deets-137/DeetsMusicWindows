@@ -2,12 +2,21 @@
    SKIN — non-color UI tokens (Tier 3)
    ------------------------------------------------------------
    Orthogonal to theme. Theme = color; skin = shape, type, size,
-   spacing, geometry. Swapping [data-skin="..."] changes the whole
-   feel of the app without touching a single color. The UI only
-   references these tokens, never hardcoded px / font names.
+   spacing, geometry, MOTION. Swapping [data-skin="..."] changes
+   the whole feel of the app without touching a single color.
+
+   Structure: a shared [data-skin] BASE holds every token that is
+   constant across skins (these ARE the "Vanilla" values). Each
+   named skin below overrides only what it changes. A skin may
+   override any base token; it just doesn't have to repeat them.
+
+   A skin NEVER names a color. Where a skin restyles a surface
+   (e.g. cards), it points a slot at a theme ROLE (var(--surface))
+   or DERIVES one from a role (color-mix) — the theme still owns
+   the hex. The UI references these tokens, never hardcoded values.
    ============================================================ */
 
-[data-skin="default"] {
+[data-skin] {
   /* -- typography -------------------------------------------- */
   --font-title: "Liberation Serif", Georgia, "Times New Roman", serif;
   --font-body:  "Liberation Sans", Arial, Helvetica, sans-serif;
@@ -45,12 +54,27 @@
   --panel-gap:          var(--space-3);
   --panel-radius:       12px;
   --panel-pad:          var(--space-3);
-  --panel-border-width: 1px;        /* thin grouper edge; future skins restyle it */
+  --panel-border-width: 1px;        /* thin grouper edge; skins restyle it */
+
+  /* Card fill — which theme surface the cards sit on. This is a
+     SKIN decision (does this skin lift cards off the canvas?); the
+     theme owns the actual color. Vanilla = flush with the canvas. */
+  --panel:        var(--canvas);
+  --shadow-card:  none;             /* skins add a real card shadow */
+
+  /* -- canvas pattern (Desk dot grid / Ocean waves) ---------- */
+  /* A background-image painted on .app-body, BEHIND the cards. Its
+     color comes from a theme role (--border); the pattern + motion
+     are skin. Vanilla paints nothing. */
+  --canvas-bg:        none;
+  --canvas-bg-size:   auto;
+  --canvas-bg-repeat: repeat;
+  --canvas-anim:      none;
 
   /* -- transport (now playing) ------------------------------- */
   --transport-size: 22px;
   --transport-gap:  var(--space-3);
-  --np-cover:       120px;          /* album + TBD square; drives the card height */
+  --np-cover:       120px;          /* album + TBD square; drives card height */
 
   /* -- scrubber (handle glyph is skin-swappable) ------------- */
   --scrubber-track-h:     3px;
@@ -69,9 +93,16 @@
   --scrollbar-w:      8px;
   --scrollbar-radius: 999px;
 
-  /* -- in-card navigation (drill-in push/pop slide) ---------- */
+  /* -- in-card navigation (drill-in push/pop) ---------------- */
   --nav-dur:  0.26s;
   --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Per-position pane transforms. A skin reshapes the whole nav
+     MOTION (slide / drop / sink) by supplying these values — no CSS
+     rule edits. Vanilla = the classic horizontal push/pop. */
+  --nav-at-center:   translateX(0);
+  --nav-at-left:     translateX(-100%);
+  --nav-at-right:    translateX(100%);
+  --nav-off-opacity: 1;             /* off-screen panes stay opaque */
 
   /* -- spacing scale ----------------------------------------- */
   --space-1: 4px;
@@ -79,4 +110,86 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
+}
+
+/* Vanilla — the reference skin. It IS the base, so this block holds
+   no overrides; it exists as the named default for the selector. */
+[data-skin="vanilla"] { /* (intentionally empty) */ }
+
+/* ============================================================
+   DESK — light/airy notebook. Paper cards lifted off a dotted
+   desk; a new card is set down into place. Handwritten title.
+   ============================================================ */
+[data-skin="desk"] {
+  /* type — a handwritten marker title on a tidy humanist body */
+  --font-title: "Caveat", "Segoe Script", cursive;
+  --font-body:  "Karla", "Segoe UI", system-ui, sans-serif;
+  --fw-title:   700;
+  --fs-title:   26px;               /* handwriting reads small; size up */
+
+  /* cards — a true raised paper surface; the edge becomes a shadow */
+  --panel:              var(--surface);
+  --panel-border-width: 0;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.12);
+
+  /* desk — a faint dot grid in the theme's hairline color */
+  --canvas-bg:        radial-gradient(circle, var(--border) 1.4px, transparent 1.6px);
+  --canvas-bg-size:   22px 22px;
+  --canvas-bg-repeat: repeat;
+
+  /* nav — the new card drops onto the desk */
+  --nav-dur:  0.30s;
+  --nav-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nav-at-center:   scale(1);
+  --nav-at-left:     scale(0.98);
+  --nav-at-right:    scale(1.04);
+  --nav-off-opacity: 0;
+}
+
+/* ============================================================
+   OCEAN — deep/abyssal. Recessed soft-edged cards on a surface of
+   gently rolling waves; cards sink into the depths and rise from
+   beneath. Engraved caps title on a serene serif body.
+   ============================================================ */
+[data-skin="ocean"] {
+  /* type — engraved Roman caps title on a calm serif body */
+  --font-title: "Cinzel", Georgia, "Times New Roman", serif;
+  --font-body:  "Spectral", Georgia, "Times New Roman", serif;
+  --fw-title:   600;
+  --fs-title:   18px;               /* all-caps reads large; size down */
+
+  /* cards — a RECESSED surface, darker than the canvas. Derived in
+     the skin from the theme's surface (no new theme variable). */
+  --panel:              color-mix(in srgb, var(--surface), black 18%);
+  --panel-border-width: 0;
+  /* soft border = a diffuse ring in the theme hairline color + depth */
+  --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
+  --panel-radius:       14px;       /* softer, water-smoothed corners */
+
+  /* surface — three frequencies of rolling waves in --border. Each
+     layer is a row of shallow crests; different tile widths give
+     different wavelengths. */
+  --canvas-bg:
+    radial-gradient(circle at 50% 140%, transparent 71%, var(--border) 71%, var(--border) 73%, transparent 73%),
+    radial-gradient(circle at 50% 140%, transparent 71%, var(--border) 71%, var(--border) 73%, transparent 73%),
+    radial-gradient(circle at 50% 140%, transparent 71%, var(--border) 71%, var(--border) 73%, transparent 73%);
+  --canvas-bg-size:   48px 22px, 64px 26px, 80px 24px;
+  --canvas-bg-repeat: repeat;
+  --canvas-anim:      wave-roll 16s linear infinite;
+
+  /* nav — outgoing sinks, incoming rises from beneath the surface */
+  --nav-dur:  0.42s;
+  --nav-ease: cubic-bezier(0.37, 0, 0.63, 1);
+  --nav-at-center:   translateY(0) scale(1);
+  --nav-at-left:     translateY(45%) scale(0.92);
+  --nav-at-right:    translateY(45%) scale(0.92);
+  --nav-off-opacity: 0;
+}
+
+/* Ocean's wave rows roll horizontally, each layer by a different
+   INTEGER number of its own tile width over one loop → different
+   paces, seamless (an integer-tile shift returns to the same phase).
+   Defined once; only Ocean references it (via --canvas-anim). */
+@keyframes wave-roll {
+  to { background-position: 96px 0, -128px 0, 80px 0; }
 }

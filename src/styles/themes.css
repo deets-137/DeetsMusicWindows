@@ -16,26 +16,25 @@
    ============================================================ */
 
 [data-theme="fairy"] {
-  --canvas:  var(--paint-powder-jade);
-  --go:      var(--paint-andean-toucan);
+  --canvas:  var(--paint-dewy-lilac);
+  --go:      var(--paint-fae-mint);
   --stop:    var(--paint-purple-cactus-flower);
   --pause:   var(--paint-lemon-chrome);
-  --title:   var(--paint-racing-green);
-  --text:    var(--paint-nautilus);
-  --subtext: var(--paint-moon-mist);
+  --title:   var(--paint-twilight-plum);
+  --text:    var(--paint-violet-slate);
+  --subtext: var(--paint-lavender-grey);
 
   /* surfaces — floating panels (menus, popovers) above the canvas */
-  --surface:       var(--paint-jade-white);
-  --surface-hover: var(--paint-jade-tint);
-  --border:        rgba(12, 56, 35, 0.14);  /* racing-green @ low alpha */
+  --surface:       var(--paint-lilac-white);
+  --surface-hover: var(--paint-lilac-tint);
+  --border:        rgba(67, 48, 107, 0.16);  /* twilight-plum @ low alpha */
 
-  /* panels — bento groupers; bg matches canvas, edge ready for border skins */
-  --panel:        var(--canvas);
-  --panel-border: rgba(12, 56, 35, 0.30);
+  /* panel edge — bento grouper hairline (the fill is a skin decision now) */
+  --panel-border: rgba(67, 48, 107, 0.30);
 
   /* scrollbar thumb (our own, replacing the OS bar) */
-  --scrollbar:       rgba(12, 56, 35, 0.28);
-  --scrollbar-hover: rgba(12, 56, 35, 0.45);
+  --scrollbar:       rgba(67, 48, 107, 0.26);
+  --scrollbar-hover: rgba(67, 48, 107, 0.44);
 }
 
 [data-theme="sepia"] {
@@ -52,8 +51,7 @@
   --surface-hover: var(--paint-parchment-tint);
   --border:        rgba(62, 44, 28, 0.16);   /* espresso @ low alpha */
 
-  /* panels — bento groupers; bg matches canvas, edge ready for border skins */
-  --panel:        var(--canvas);
+  /* panel edge — bento grouper hairline (the fill is a skin decision now) */
   --panel-border: rgba(62, 44, 28, 0.30);
 
   /* scrollbar thumb (our own, replacing the OS bar) */
@@ -75,11 +73,32 @@
   --surface-hover: var(--paint-slate-surface-tint);
   --border:        rgba(199, 211, 227, 0.14); /* slate-bright @ low alpha */
 
-  /* panels — bento groupers; bg matches canvas, edge ready for border skins */
-  --panel:        var(--canvas);
+  /* panel edge — bento grouper hairline (the fill is a skin decision now) */
   --panel-border: rgba(199, 211, 227, 0.30);
 
   /* scrollbar thumb (our own, replacing the OS bar) */
   --scrollbar:       rgba(199, 211, 227, 0.22);
   --scrollbar-hover: rgba(199, 211, 227, 0.40);
+}
+
+[data-theme="hornet"] {
+  --canvas:  var(--paint-pitch);
+  --go:      var(--paint-hazard);   /* monochrome yellow family — no green/red: */
+  --stop:    var(--paint-straw);    /* hazard / amber / straw */
+  --pause:   var(--paint-amber-wax);
+  --title:   var(--paint-hazard);
+  --text:    var(--paint-paper-warm);
+  --subtext: var(--paint-straw);
+
+  /* surfaces — floating panels (menus, popovers) above the canvas */
+  --surface:       var(--paint-onyx);
+  --surface-hover: var(--paint-onyx-tint);
+  --border:        rgba(255, 212, 0, 0.14);  /* hazard @ low alpha — gold hairline */
+
+  /* panel edge — bento grouper hairline (the fill is a skin decision now) */
+  --panel-border: rgba(255, 212, 0, 0.30);
+
+  /* scrollbar thumb (our own, replacing the OS bar) */
+  --scrollbar:       rgba(255, 212, 0, 0.22);
+  --scrollbar-hover: rgba(255, 212, 0, 0.40);
 }

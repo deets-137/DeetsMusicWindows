@@ -7,16 +7,18 @@
    ============================================================ */
 
 :root {
-  --paint-fairy-wing:          #E3E8EC; /* pale cool off-white, leaning blue */
-  --paint-powder-jade:         #C4DAD4; /* soft powdered blue-green */
-  --paint-jade-white:          #E8F1EE; /* elevated jade surface */
-  --paint-jade-tint:           #D2E4DD; /* jade hover tint */
-  --paint-andean-toucan:       #2E9E5B; /* mid leafy green */
-  --paint-purple-cactus-flower:#A63A79; /* magenta-purple */
-  --paint-lemon-chrome:        #F6C700; /* vivid yellow */
-  --paint-racing-green:        #0C3823; /* very dark green */
-  --paint-nautilus:            #5A6B73; /* slate blue-grey */
-  --paint-moon-mist:           #D5D8C4; /* pale grey-green */
+  /* twilight-lilac family — enchanted twilight fairy theme */
+  --paint-dewy-lilac:          #E0DCF0; /* dewy lilac canvas */
+  --paint-twilight-plum:       #43306B; /* deep twilight plum (title) */
+  --paint-violet-slate:        #6A6385; /* muted violet-slate (text) */
+  --paint-lavender-grey:       #8B84A8; /* legible lavender-grey (subtext) */
+  --paint-fae-mint:            #2FB089; /* enchanted mint-green (go) */
+  --paint-lilac-white:         #F2EFFA; /* elevated lilac surface */
+  --paint-lilac-tint:          #E7E1F5; /* lilac hover tint */
+
+  /* fae accents — shared sparkle (magenta + gold) */
+  --paint-purple-cactus-flower:#A63A79; /* magenta-purple (stop) */
+  --paint-lemon-chrome:        #F6C700; /* vivid gold (pause) */
 
   /* sepia family — vibe pulled from the harness "Sepia Dreams" theme */
   --paint-parchment:           #F5EFE6; /* warm paper */
@@ -39,4 +41,13 @@
   --paint-moonlight-gray:      #9AA3AF; /* moonlight gray */
   --paint-slate-surface:       #232F40; /* elevated slate panel */
   --paint-slate-surface-tint:  #2E3C50; /* slate hover tint */
+
+  /* hornet family — black & yellow (Noir Gold) */
+  --paint-pitch:               #0F0F0F; /* near-black canvas */
+  --paint-onyx:                #1A1A1A; /* elevated surface */
+  --paint-onyx-tint:           #242424; /* hover tint */
+  --paint-hazard:              #FFD400; /* hi-vis yellow (title / go) */
+  --paint-amber-wax:           #E0B100; /* deep amber (pause) */
+  --paint-straw:               #D8C97A; /* muted yellow (text-dim / stop) */
+  --paint-paper-warm:          #ECE6CF; /* warm off-white (body text) */
 }

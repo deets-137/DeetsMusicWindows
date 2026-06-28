@@ -293,7 +293,7 @@ pub fn apple_begin_auth(
         .replace("__DEV_TOKEN__", &dev)
         .replace("__NONCE__", &nonce)
         .replace("__THEME__", if theme.is_empty() { "fairy" } else { &theme })
-        .replace("__SKIN__", if skin.is_empty() { "default" } else { &skin });
+        .replace("__SKIN__", if skin.is_empty() { "vanilla" } else { &skin });
 
     let store = state.user_token.clone();
     std::thread::spawn(move || serve(server, page, nonce, store));
