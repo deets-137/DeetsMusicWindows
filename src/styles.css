@@ -631,8 +631,8 @@ body {
 .lib-empty__msg { color: var(--subtext); font-size: var(--fs-subtext); }
 
 /* ── Now Playing card ───────────────────────────────────────── */
-/* Full-height album (left) + TBD (right) bookend a centered middle column
-   holding the scrubber and transport. Album/TBD size drives the card height. */
+/* Full-height album cover (left) anchors a middle column holding the now-playing
+   title/artist, the scrubber, and transport. The cover size drives card height. */
 .np { display: flex; align-items: stretch; gap: var(--space-3); }
 .np__center {
   flex: 1 1 auto;
@@ -644,7 +644,7 @@ body {
 }
 
 /* scrub bar — track + fill + token-driven handle */
-.np__scrub { position: relative; height: var(--scrubber-handle-size); display: flex; align-items: center; }
+.np__scrub { position: relative; height: var(--scrubber-handle-size); display: flex; align-items: center; cursor: pointer; touch-action: none; }
 .np__track {
   position: relative;
   width: 100%;
@@ -665,12 +665,13 @@ body {
   top: 50%;
   left: var(--np-progress, 0%);
   transform: translate(-50%, -50%);
-  color: var(--title);
-  font-size: var(--scrubber-handle-size);
-  line-height: 1;
+  width: var(--scrubber-handle-size);
+  height: var(--scrubber-handle-size);
+  background: var(--title);
+  -webkit-mask: var(--scrubber-handle) center / contain no-repeat;
+  mask: var(--scrubber-handle) center / contain no-repeat;
   pointer-events: none;
 }
-.np__handle::after { content: var(--scrubber-handle); }
 
 .np__art {
   flex: 0 0 auto;
@@ -679,8 +680,10 @@ body {
   background: var(--surface-hover);
   display: grid; place-items: center;
   color: var(--subtext);
-  font-size: 40px;
+  font-size: var(--np-cover-glyph);
+  overflow: hidden;
 }
+.np__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .np__controls { display: flex; align-items: center; justify-content: center; gap: var(--transport-gap); }
 .np__btn {
   background: none; border: none; padding: 0;
@@ -690,13 +693,18 @@ body {
 }
 .np__btn svg { width: var(--transport-size); height: var(--transport-size); display: block; fill: currentColor; }
 .np__btn--play svg { width: calc(var(--transport-size) * 1.25); height: calc(var(--transport-size) * 1.25); }
-.np__tbd {
-  flex: 0 0 auto;
-  width: var(--np-cover); height: var(--np-cover);
-  border-radius: var(--radius-control);
-  border: 1px dashed var(--panel-border);
-  display: grid; place-items: center;
-  color: var(--subtext);
-  font-size: var(--fs-subtext);
-  letter-spacing: .04em;
+/* Now-playing title + artist, stacked above the scrubber. */
+.np__meta { min-width: 0; display: flex; flex-direction: column; gap: var(--np-meta-gap); }
+.np__title {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-text);
+  color: var(--title);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.np__artist {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.np__artist:empty { display: none; }

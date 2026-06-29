@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/styles.css" />
     <title>DeetsMusic</title>
+    <!-- MusicKit JS — the in-webview playback engine (DRM via EME). Same build the
+         loopback auth page loads. `player.ts` configures it lazily on first play. -->
+    <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" async></script>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 
@@ -84,9 +87,13 @@
         <!-- Now Playing — wide transport strip -->
         <section class="panel" data-card="now-playing" data-span="wide">
           <div class="np">
-            <div class="np__art" aria-hidden="true">♪</div>
+            <div class="np__art" id="np-art" aria-hidden="true">♪</div>
             <div class="np__center">
-              <div class="np__scrub" style="--np-progress: 33%">
+              <div class="np__meta">
+                <span class="np__title" id="np-title">Not playing</span>
+                <span class="np__artist" id="np-artist"></span>
+              </div>
+              <div class="np__scrub">
                 <div class="np__track"><div class="np__fill"></div></div>
                 <span class="np__handle" aria-hidden="true"></span>
               </div>
@@ -102,7 +109,6 @@
                 </button>
               </div>
             </div>
-            <div class="np__tbd" aria-hidden="true">TBD</div>
           </div>
         </section>
 

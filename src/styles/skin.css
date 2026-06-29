@@ -74,11 +74,15 @@
   /* -- transport (now playing) ------------------------------- */
   --transport-size: 22px;
   --transport-gap:  var(--space-3);
-  --np-cover:       120px;          /* album + TBD square; drives card height */
+  --np-cover:       120px;          /* album-cover square; drives card height */
+  --np-cover-glyph: 40px;           /* placeholder ♪ when no artwork */
+  --np-meta-gap:    var(--space-1); /* title ↔ artist stack spacing */
 
-  /* -- scrubber (handle glyph is skin-swappable) ------------- */
+  /* -- scrubber (handle is a skin-swappable SVG mask) --------- */
+  /* The handle is a --title-filled box masked by this SVG, so the shape is
+     arbitrary and still themes via --title. Skins override the url() only. */
   --scrubber-track-h:     3px;
-  --scrubber-handle:      "●";      /* skins swap to ▲, 🦄, an emoji, … */
+  --scrubber-handle:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23000'/%3E%3C/svg%3E");
   --scrubber-handle-size: 12px;
 
   /* -- library card (toolbar + square grid) ------------------ */
@@ -144,6 +148,9 @@
   --nav-at-left:     scale(0.98);
   --nav-at-right:    scale(1.04);
   --nav-off-opacity: 0;
+
+  /* scrubber handle — a rounded paper chit sliding along the track */
+  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='18' height='18' rx='5' fill='%23000'/%3E%3C/svg%3E");
 }
 
 /* ============================================================
@@ -184,6 +191,9 @@
   --nav-at-left:     translateY(45%) scale(0.92);
   --nav-at-right:    translateY(45%) scale(0.92);
   --nav-off-opacity: 0;
+
+  /* scrubber handle — a water droplet riding the wave */
+  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C12 2 5 10.5 5 15a7 7 0 0 0 14 0C19 10.5 12 2 12 2Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
 /* Ocean's wave rows roll horizontally, each layer by a different

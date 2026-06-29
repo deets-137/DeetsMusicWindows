@@ -36,6 +36,7 @@ pub fn run() {
             apple::apple_developer_token,
             apple::apple_begin_auth,
             apple::apple_connection_status,
+            apple::apple_user_token,
             apple::apple_disconnect,
             apple::apple_dump_library,
             library::library_sync,

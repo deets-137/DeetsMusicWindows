@@ -307,6 +307,18 @@ pub fn apple_connection_status(state: tauri::State<'_, AppleState>) -> bool {
     state.user_token.lock().unwrap().is_some()
 }
 
+/// Hand the captured Music User Token to the renderer.
+///
+/// Auth deliberately keeps the MUT in Rust, but **playback runs MusicKit JS inside
+/// the webview**, which must hold the user token itself — there is no way to play
+/// DRM audio without it reaching the renderer. So playback necessarily relaxes the
+/// "MUT never enters the renderer" rule for this one path. Returns `None` if not
+/// signed in.
+#[tauri::command]
+pub fn apple_user_token(state: tauri::State<'_, AppleState>) -> Option<String> {
+    state.user_token.lock().unwrap().clone()
+}
+
 #[tauri::command]
 pub fn apple_disconnect(state: tauri::State<'_, AppleState>) {
     *state.user_token.lock().unwrap() = None;

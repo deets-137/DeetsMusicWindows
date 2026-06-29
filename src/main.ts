@@ -3,6 +3,7 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { connect, disconnect, isConnected } from "./apple";
 import { initLibraryCard } from "./library-card";
+import { playPause, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -119,16 +120,66 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Library card: sort / search / view + cache render + sync ──
   initLibraryCard();
 
-  // ── Now Playing: play/pause icon toggle (cosmetic until playback is wired) ──
+  // ── Now Playing: real playback via MusicKit (state-driven icon + label) ──
   const playBtn = document.getElementById("np-playpause");
   if (playBtn) {
     const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
     const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
-    let playing = false;
-    playBtn.addEventListener("click", () => {
-      playing = !playing;
-      playBtn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
-      playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+    const npArt = document.getElementById("np-art");
+    const npTitle = document.getElementById("np-title");
+    const npArtist = document.getElementById("np-artist");
+
+    // Drive the icon, title/artist, and cover from actual playback state.
+    onPlayerState((s) => {
+      playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
+      playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+      if (npTitle) npTitle.textContent = s.title ?? "Not playing";
+      if (npArtist) npArtist.textContent = s.artist ?? "";
+      if (npArt) {
+        npArt.innerHTML = s.artworkUrl
+          ? `<img src="${s.artworkUrl}" alt="" />`
+          : "♪";
+      }
     });
+
+    playBtn.addEventListener("click", () => {
+      playPause().catch((e) => console.error("[player] play/pause failed:", e));
+    });
+
+    // ── Scrubber: live progress + drag-to-seek ──
+    const npScrub = document.querySelector<HTMLElement>(".np__scrub");
+    const npTrack = npScrub?.querySelector<HTMLElement>(".np__track");
+    if (npScrub) {
+      let scrubbing = false;
+      const setFill = (frac: number) => {
+        const pct = Math.max(0, Math.min(1, frac)) * 100;
+        npScrub.style.setProperty("--np-progress", `${pct.toFixed(2)}%`);
+      };
+      const fracAt = (clientX: number) => {
+        const rect = (npTrack ?? npScrub).getBoundingClientRect();
+        return rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
+      };
+
+      // Live progress drives the fill — unless the user is mid-drag.
+      onPlayerProgress((p) => {
+        if (!scrubbing) setFill(p.progress);
+      });
+
+      npScrub.addEventListener("pointerdown", (e) => {
+        scrubbing = true;
+        npScrub.setPointerCapture(e.pointerId);
+        setFill(fracAt(e.clientX));
+      });
+      npScrub.addEventListener("pointermove", (e) => {
+        if (scrubbing) setFill(fracAt(e.clientX));
+      });
+      npScrub.addEventListener("pointerup", (e) => {
+        if (!scrubbing) return;
+        scrubbing = false;
+        const frac = fracAt(e.clientX);
+        setFill(frac);
+        seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err));
+      });
+    }
   }
 });

@@ -36,9 +36,17 @@ color reference (open in any browser).
 ### Done ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights (`+ − ×` as
   stroked SVGs) wired to min/maximize/close.
-- **Theme system**: 3 themes (`fairy`, `sepia`, `moonlight`) + `default` skin, all
-  CSS-variable driven (palette → theme → skin). Settings menu (click the title) with
-  a **Theme** flyout (live color-chip previews) and an **Account** row.
+- **Theme system**: 4 themes (`fairy` = Twilight Lilac, `sepia`, `moonlight`,
+  `hornet` = Noir Gold), all CSS-variable driven (palette → theme → skin). Settings
+  menu (click the title) with a **Theme** flyout (live color-chip previews) and an
+  **Account** row.
+- **Skin system** (Tier 3, now switchable): 3 skins — `vanilla` (the baseline slide),
+  `desk` (raised paper cards, dot grid, drop-onto nav, Caveat/Karla), `ocean` (recessed
+  soft cards, rolling waves, sink/rise nav, Cinzel/Spectral). Structured as a shared
+  `[data-skin]` base + per-skin deltas; nav motion is fully tokenized so a skin reshapes
+  the drill-in with values only. `--panel` is a skin role indirection; canvas-pattern /
+  `--shadow-card` tokens are no-ops under vanilla so existing surfaces are untouched.
+  **Skin** selector row in settings mirrors Theme (`src/skin.ts`).
 - **Typography**: Liberation Serif (title) bundled as local TTFs via `@font-face`.
 - **Home bento**: Now Playing strip (top, wide) · Library (left) · Playlists (right),
   span-based grid, columns scroll individually.
@@ -143,13 +151,16 @@ index.html                  home markup (titlebar, settings menu, bento)
 swatch.html                 standalone color reference
 src/main.ts                 window controls, settings menu, account, library wiring
 src/theme.ts                theme switch + persistence
+src/skin.ts                 skin switch + persistence (mirrors theme.ts)
 src/apple.ts                auth bridge (connect/disconnect/isConnected)
 src/library.ts              cache reads, sync trigger, sync-event subscription, types
 src/collection-card.ts      reusable navigable browser engine (contexts/groupings,
                             Sort/View/Search, push/pop pane-slide nav, scroll restore)
 src/library-card.ts         Library's contexts/groupings + drill-in; data load + sync
 src/styles.css              app rules (imports the token sheets first)
-src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system + Liberation Serif
+src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system; skin.css is a
+                            [data-skin] base + vanilla/desk/ocean deltas. Fonts: Liberation
+                            Serif + Caveat/Karla (desk) + Cinzel/Spectral (ocean)
 src-tauri/src/lib.rs        Tauri builder: state, DB open, command registry, devtools
 src-tauri/src/apple.rs      dev-token signing, loopback auth, dump, AppleProvider
 src-tauri/src/model.rs      normalized model

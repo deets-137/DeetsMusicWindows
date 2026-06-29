@@ -30,6 +30,9 @@ export interface Grouping<T = any> {
   match: (x: T, q: string) => boolean;
   render: (x: T, density: Density, idx: number) => string; // root el must carry data-idx="${idx}"
   open?: (x: T) => Context | null; // drill target, or null for a leaf (e.g. a song)
+  // Leaf action on click (e.g. play a song). Takes precedence over `open`, and gets the
+  // current sorted view + index so it can act on "everything from here onward".
+  activate?: (x: T, index: number, items: T[]) => void;
 }
 
 export interface Context {
@@ -412,15 +415,21 @@ export function initCollectionCard(opts: CardOptions) {
       return;
     }
 
-    // a tile/row → drill in if the grouping allows it
+    // a tile/row → activate the leaf (play) if it offers one, else drill in
     const item = t.closest<HTMLElement>("[data-idx]");
     if (item) {
       const g = groupingOf(cur());
-      if (!g.open) return;
-      const x = cur().items[Number(item.dataset.idx)];
+      const idx = Number(item.dataset.idx);
+      const x = cur().items[idx];
       if (!x) return;
-      const child = g.open(x);
-      if (child) drill(child);
+      if (g.activate) {
+        g.activate(x, idx, cur().items);
+        return;
+      }
+      if (g.open) {
+        const child = g.open(x);
+        if (child) drill(child);
+      }
     }
   });
 

@@ -177,8 +177,10 @@ cards (distinct fill + drop shadow, no border) with **no markup change**. Note: 
 exotic borders (gradient/wavy) can't use CSS `border` (border-image ignores
 `border-radius`) — such a skin draws the edge on a `::before` masked/SVG layer instead.
 
-**Scrubber handle is skin-swappable:** the Now Playing handle renders from the
-`--scrubber-handle` glyph token (default `●`); a skin swaps it to `▲`, an emoji, etc.
+**Scrubber handle is skin-swappable:** the Now Playing handle is a `--title`-filled
+box masked by the `--scrubber-handle` SVG token (a `url(<data-uri>)`), so the shape is
+arbitrary yet still themes via `--title` and sizes via `--scrubber-handle-size`. Skins
+override the token only: Vanilla a circle, Ocean a water droplet, Desk a paper chit.
 
 ### 4a. The collection card (navigable browser engine)
 `src/collection-card.ts` is a **reusable, context-aware browser** that the Library
