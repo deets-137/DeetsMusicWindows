@@ -3,7 +3,8 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { connect, disconnect, isConnected } from "./apple";
 import { initLibraryCard } from "./library-card";
-import { playPause, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
+import { initQcard } from "./qcard";
+import { playPause, nextTrack, prevTrack, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -120,6 +121,9 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Library card: sort / search / view + cache render + sync ──
   initLibraryCard();
 
+  // ── Queue card (Qcard): mirrors the queue model in the Playlists slot ──
+  initQcard();
+
   // ── Now Playing: real playback via MusicKit (state-driven icon + label) ──
   const playBtn = document.getElementById("np-playpause");
   if (playBtn) {
@@ -144,6 +148,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
     playBtn.addEventListener("click", () => {
       playPause().catch((e) => console.error("[player] play/pause failed:", e));
+    });
+
+    // ── Prev / Next (native skip within MusicKit's fed window) ──
+    const prevBtn = document.querySelector<HTMLElement>('.np__controls [aria-label="Previous"]');
+    const nextBtn = document.querySelector<HTMLElement>('.np__controls [aria-label="Next"]');
+    prevBtn?.addEventListener("click", () => {
+      prevTrack().catch((e) => console.error("[player] prev failed:", e));
+    });
+    nextBtn?.addEventListener("click", () => {
+      nextTrack().catch((e) => console.error("[player] next failed:", e));
     });
 
     // ── Scrubber: live progress + drag-to-seek ──

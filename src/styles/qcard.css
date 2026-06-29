@@ -1,0 +1,106 @@
+/* Queue card — flat Now-Playing + Up-Next renderer in the Playlists slot.
+   Colors come from theme roles, spacing/radius/type from skin tokens. The two
+   cover sizes are component-scoped tokens for now; migrate to skin.css (with the
+   other geometry tokens) when the skin pass gets there. */
+.qcard {
+  --qcard-now-art: 48px;
+  --qcard-row-art: 32px;
+  --qcard-label-spacing: 0.06em;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Now Playing */
+.qnow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: var(--surface-hover);
+  border-radius: var(--radius-control);
+}
+.qnow--idle { opacity: 0.6; }
+.qnow__art {
+  flex: 0 0 auto;
+  width: var(--qcard-now-art);
+  height: var(--qcard-now-art);
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  display: block;
+  background: var(--surface);
+}
+.qnow__art--empty { display: grid; place-items: center; color: var(--subtext); }
+.qnow__text { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.qnow__title {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-text);
+  color: var(--title);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qnow__artist {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Up Next */
+.qcard__label {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: var(--qcard-label-spacing);
+  padding: 0 var(--space-1);
+}
+.qcard__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.qrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+}
+.qrow:hover { background: var(--surface-hover); }
+.qrow__art {
+  flex: 0 0 auto;
+  width: var(--qcard-row-art);
+  height: var(--qcard-row-art);
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  display: block;
+  background: var(--surface);
+}
+.qrow__art--empty { display: grid; place-items: center; color: var(--subtext); font-size: var(--fs-subtext); }
+.qrow__text { min-width: 0; display: flex; flex-direction: column; }
+.qrow__title {
+  font-size: var(--fs-text);
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qrow__artist {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.qcard__more,
+.qcard__empty {
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  padding: var(--space-2);
+  text-align: center;
+}

@@ -1,6 +1,6 @@
 # DeetsMusic — Handoff / Status
 
-> Cold-start guide. Read this first. Snapshot as of **2026-06-28**.
+> Cold-start guide. Read this first. Snapshot as of **2026-06-29**.
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data).
 
@@ -57,8 +57,9 @@ color reference (open in any browser).
 - **Collection-card engine** (`src/collection-card.ts`): a reusable, navigable
   browser. Per-context **Sort / View / Search** pills (40/40/20); Search slides an
   inline bar down. Library (`src/library-card.ts`) drives it with **Songs / Albums /
-  Artists** groupings, **drill-in** to album & artist detail (album → tracks, song →
-  its album with the track highlighted), a fixed back-chevron header, and **push/pop
+  Artists** groupings, **drill-in** to album & artist detail; **click a song to play**
+  it + queue the rest in the current sort (albums/artists still drill), a fixed
+  back-chevron header, and **push/pop
   pane-slide** navigation (skin-tokened `--nav-dur`/`--nav-ease`, honours reduced
   motion). Scroll restores on back. Albums/Artists are **derived from cached songs**;
   square tiles + line mini-covers render Apple artwork. State persists. Added-Date
@@ -66,12 +67,21 @@ color reference (open in any browser).
   negated so **most-recently-added surfaces first** — **needs a re-sync to backfill**
   old rows. Custom themed scrollbar on the list.
 - **Always on Top**: settings-menu toggle row with an active dot; persists.
+- **Playback** ✅ — **full-song DRM works in WebView2** (the load-bearing risk is dead).
+  `src/player.ts` configures MusicKit JS in the app webview, injects the captured MUT
+  directly (no `authorize()` popup — `apple_user_token` command), and plays. Now Playing
+  shows real cover/title/artist + a **live, drag-to-seek scrubber**, all off MusicKit
+  events. **Click a song → it plays** and queues the rest from that point in the current
+  sort. Catalog→library id fallback for songs not in the catalog.
+- **Queue model** (`src/queue.ts`): history / current / upcoming zones of lightweight
+  handles; `origin`-based stacking (manual play-next survives a new context); a
+  backgrounded pre-click backlog (`played` flag) reachable via Previous, hidden from
+  recently-played until heard. `onQueueChange` for a future queue UI.
 
 ### Stubbed / not built yet ⬜
-- **Playback** — Now Playing controls are **cosmetic** (play/pause just toggles its
-  icon). No MusicKit playback. This is the big DRM unknown (see DESIGN.md §1).
-- **Playlists card** — still a stub title. Next up: reuse the collection-card engine
-  (a Playlists context: list overview with no View pill → playlist detail with tracks).
+- **Playlists card** — stub title; being **temporarily replaced by a Queue card (Qcard)**
+  that renders the queue model. Real Playlists return later (collection-card Playlists
+  context: overview list → playlist detail).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
   (no catalog). Artist tiles show a round album-cover thumb / initials until hydrate.
 - **Catalog hydration** — `playParams.catalogId` → palette (`Artwork.bgColor`/
@@ -84,28 +94,28 @@ color reference (open in any browser).
 ---
 
 ## Roadmap (agreed order)
-1. **Catalog hydrate** (Stage 2) — storefront lookup + batched `/catalog`
-   songs→artists→albums via `playParams.catalogId`. Fills palette
-   (`Artwork.bgColor`/`textColors`), real **artist photos** (square art, cropped round;
-   initials fallback) + album art, plus `previews`/`isrc`. ~15 polite calls. Store
-   palette on tracks; small `artists`/`albums` tables. Decided scope: **songs + artists
-   + albums** in one pass.
-2. **Playlists card** (Stage 3) — wire `playlists_page` + `playlist_tracks` (+ tables),
-   then drive the **collection-card engine** with a Playlists context: overview list
-   (Sort: A–Z / Added / Modified / Track Count; **no View pill**) → playlist detail
-   (its tracks, density-only). Playlists carry real `dateAdded`/`lastModifiedDate`.
-3. **CLI / local-agent control** (pre-launch goal) — a command surface so the user's
-   **local models and agents can call DeetsMusic to play music** (search, queue,
-   play/pause/skip, now-playing). Likely a thin Rust command layer over the same
-   `player` interface (below) exposed via CLI/IPC. Design the verb set alongside
-   playback so agents and the UI share one control path.
-4. **Playback** — the load-bearing risk. Prove full-song DRM via MusicKit JS in
-   WebView2 with a throwaway test before building real transport. May force a design
-   pivot (hidden browser context, or **preview-only** via catalog `previews`). The CLI
-   and UI both drive the same thin `player` interface.
-5. **Per-album accent theming** — feed stored palette into the mini-player and a future
-   skin (nice tie-in with the token system).
-6. **Virtualized list** — only once libraries get large or artwork I/O bites.
+*Playback is built; the near-term work is making the queue first-class.*
+1. **Transport + model-follow + Qcard** (in progress) — wire prev/next, make the queue
+   model **follow MusicKit's live position** (so history/upcoming/backlog reflect
+   reality), and build a **Queue card** that renders the model (temporarily in the
+   Playlists slot).
+2. **Manual queueing** — UI for play-next / add-to-queue / reorder / remove, driving the
+   model (which already supports them) and syncing into MusicKit.
+3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
+   top it up as playback nears an edge so long contexts don't dead-end. The one place
+   model-driven nav crosses the window edge and incurs load latency (see gotchas).
+4. **Catalog hydrate** — storefront lookup + batched `/catalog` songs→artists→albums via
+   `playParams.catalogId`. Fills palette (`Artwork.bgColor`/`textColors`), real **artist
+   photos** + album art, `previews`/`isrc`. ~15 polite calls; small `artists`/`albums`
+   tables. Scope: **songs + artists + albums** in one pass.
+5. **Real Playlists card** — wire `playlists_page` + `playlist_tracks` (+ tables), drive
+   the collection-card with a Playlists context (overview → playlist detail). Restores
+   the slot the Qcard is borrowing.
+6. **CLI / local-agent control** (pre-launch goal) — a command surface so local models /
+   agents can play music (search, queue, play/pause/skip, now-playing): a thin Rust
+   layer over the same `player` interface, so agents and the UI share one control path.
+7. **Per-album accent theming** · **mini-player / SMTC / hotkeys** · **virtualized list**
+   (only once libraries get large or artwork I/O bites).
 
 ---
 
@@ -131,12 +141,29 @@ color reference (open in any browser).
   while the pane is still detached — it silently no-ops.
 - **Added-Date needs a re-sync:** older cache rows lack `addedRank` until a refresh
   re-fetches with `sort=dateAdded`.
+- **Transport latency (the friction to cover up):** within MusicKit's fed window,
+  prev/next is native and **gapless**. But any nav that lands **outside** the window —
+  rewinding past the backlog into older history, or seeking — forces a fresh `setQueue`
+  and **buffers** (a perceptible gap). Same for **scrubbing** a DRM stream. These need a
+  UX cover-up (loading state / optimistic icon / debounced input), not a silent freeze.
+- **Click a song = play (not drill):** the old song→album drill is **retired**. Songs
+  `activate` (play); albums/artists `open` (drill). The engine prefers `activate` over
+  `open` on a leaf.
+- **Queue model isn't yet live-synced to MusicKit:** `queue.ts` is authoritative at
+  `setContext` time but does **not** follow MusicKit's position during playback yet — so
+  history/backlog flags won't be real-time until model-follow lands (with the Qcard).
 
 ---
 
 ## Key decisions made (the "why")
 - **Data ≠ playback.** Library fetching is plain REST (no DRM); we built all the data
   layer without touching the DRM question.
+- **Full-song DRM plays in WebView2** (confirmed) — MusicKit JS in the renderer, MUT
+  injected directly (no `authorize()` popup). The MUT necessarily reaches the renderer
+  for this one path.
+- **Queue model is the source of truth**, decoupled from MusicKit; the player feeds
+  MusicKit a bounded window for cheap setQueue + gapless play, and (soon) mirrors its
+  position back. Lightweight handles (ids), not full Tracks — cheap on huge libraries.
 - **Normalization in a Rust `MusicProvider` trait** — UI is provider-agnostic.
 - **Unified `Track`** with both IDs optional (not split library/catalog types).
 - **Persisted SQLite cache + sync-on-open** (stale-while-revalidate) — instant
@@ -156,7 +183,10 @@ src/apple.ts                auth bridge (connect/disconnect/isConnected)
 src/library.ts              cache reads, sync trigger, sync-event subscription, types
 src/collection-card.ts      reusable navigable browser engine (contexts/groupings,
                             Sort/View/Search, push/pop pane-slide nav, scroll restore)
-src/library-card.ts         Library's contexts/groupings + drill-in; data load + sync
+src/library-card.ts         Library's contexts/groupings + drill-in; song click → play
+src/queue.ts                queue model (history/current/upcoming, backlog, stacking)
+src/player.ts               MusicKit engine: init/MUT-inject, playContext (windowed),
+                            transport, scrubber/state events, catalog→library fallback
 src/styles.css              app rules (imports the token sheets first)
 src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system; skin.css is a
                             [data-skin] base + vanilla/desk/ocean deltas. Fonts: Liberation

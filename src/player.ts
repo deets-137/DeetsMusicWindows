@@ -22,6 +22,12 @@ declare global {
 let music: any = null;
 let initPromise: Promise<any> | null = null;
 
+// Model-follow: MusicKit owns transport within its fed window; the queue model mirrors
+// it. `windowPos` is the MusicKit queue index the model's `current` is aligned to;
+// `loadingContext` suppresses sync while we're (re)building the queue.
+let windowPos = 0;
+let loadingContext = false;
+
 /** Resolve once the async MusicKit CDN script has registered `window.MusicKit`. */
 async function whenMusicKitLoaded(): Promise<void> {
   if (window.MusicKit) return;
@@ -141,8 +147,29 @@ function wireEvents(): void {
   wired = true;
   const E = window.MusicKit.Events;
   music.addEventListener(E.playbackStateDidChange, emit);
-  music.addEventListener(E.nowPlayingItemDidChange, emit);
+  music.addEventListener(E.nowPlayingItemDidChange, onNowPlayingChange);
   music.addEventListener(E.playbackTimeDidChange, emitProgress);
+}
+
+function onNowPlayingChange(): void {
+  if (!loadingContext) syncModelToMusicKit();
+  emit();
+}
+
+/** Walk the queue model to match MusicKit's live position (natural advance + skips). */
+function syncModelToMusicKit(): void {
+  const p: unknown = music?.queue?.position;
+  if (typeof p !== "number" || p < 0) return;
+  let diff = p - windowPos;
+  while (diff > 0) {
+    queue.advance();
+    diff--;
+  }
+  while (diff < 0) {
+    queue.previous();
+    diff++;
+  }
+  windowPos = p;
 }
 
 // ── Context playback ───────────────────────────────────────────────────────────
@@ -186,6 +213,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   const fallbacks = windowHandles.filter((h) => !h.catalogId && h.libraryId).length;
   if (fallbacks) console.log(`[player] window includes ${fallbacks} library-only song(s) via id fallback`);
 
+  loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
   await m.setQueue({ songs: ids });
   // Count only id-bearing handles before the click, so a dropped (id-less) song earlier
   // in the window doesn't shift the jump target.
@@ -193,6 +221,8 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
     await m.changeToMediaAtIndex(pos); // jump to the clicked song within the window
   }
+  windowPos = pos; // the model's `current` is aligned to this MusicKit index
+  loadingContext = false;
   await m.play();
 }
 
