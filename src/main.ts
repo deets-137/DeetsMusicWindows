@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { connect, disconnect, isConnected } from "./apple";
+import { initTrackStore } from "./track-store";
 import { initLibraryCard } from "./library-card";
 import { initQcard } from "./qcard";
 import { playPause, nextTrack, prevTrack, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
@@ -117,6 +118,9 @@ window.addEventListener("DOMContentLoaded", () => {
       setAccount((await isConnected()) ? "in" : "out", `Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   });
+
+  // ── Shared library store: one load, read by both cards ──
+  initTrackStore();
 
   // ── Library card: sort / search / view + cache render + sync ──
   initLibraryCard();

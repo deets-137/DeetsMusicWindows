@@ -6,25 +6,16 @@
 import "./styles/qcard.css";
 import * as queue from "./queue";
 import { onPlayerState, type PlayerState } from "./player";
-import { libraryTracks, type Track } from "./library";
+import { type Track } from "./library";
+import { trackById, onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
 
-let byId = new Map<string, Track>(); // id (catalog or library) → Track, for display
 let lastState: PlayerState | null = null;
 
-function indexTracks(tracks: Track[]): Map<string, Track> {
-  const m = new Map<string, Track>();
-  for (const t of tracks) {
-    if (t.libraryId) m.set(t.libraryId, t);
-    if (t.catalogId) m.set(t.catalogId, t);
-  }
-  return m;
-}
-
 function resolve(e: queue.QueueEntry): Track | undefined {
-  return (e.catalogId ? byId.get(e.catalogId) : undefined) ?? (e.libraryId ? byId.get(e.libraryId) : undefined);
+  return trackById(e.catalogId) ?? trackById(e.libraryId);
 }
 
 function artURL(t: Track | undefined, px: number): string | null {
@@ -91,14 +82,9 @@ export function initQcard(): void {
       ${list}`;
   };
 
-  // Build the id→Track lookup from cache (display only; refreshed on demand later).
-  libraryTracks(0, 100000)
-    .then((page) => {
-      byId = indexTracks(page.items);
-      render();
-    })
-    .catch((e) => console.error("[qcard] track lookup load", e));
-
+  // Metadata comes from the shared track store; re-render when it (re)loads so newly
+  // synced songs resolve instead of showing "Unknown".
+  onTracksChange(render);
   queue.onQueueChange(render);
   onPlayerState((s) => {
     lastState = s;
