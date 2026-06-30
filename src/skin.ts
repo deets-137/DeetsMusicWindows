@@ -1,7 +1,7 @@
 // Skin switching. Mirror of theme.ts: one attribute on <html>, the
 // token sheets (skin.css) do the rest. Choice persists in localStorage.
 
-export type SkinName = "vanilla" | "desk" | "ocean";
+export type SkinName = "vanilla" | "desk" | "ocean" | "glass";
 
 const STORAGE_KEY = "deets.skin";
 const DEFAULT_SKIN: SkinName = "vanilla";

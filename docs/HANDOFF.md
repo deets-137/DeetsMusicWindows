@@ -44,15 +44,19 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 - **Frameless chrome**: custom titlebar, drag region, traffic lights (`+ − ×` as
   stroked SVGs) wired to min/maximize/close.
 - **Theme system**: 4 themes (`fairy` = Twilight Lilac, `sepia`, `moonlight`,
-  `hornet` = Noir Gold), all CSS-variable driven (palette → theme → skin). Settings
-  menu (click the title) with a **Theme** flyout (live color-chip previews) and an
-  **Account** row.
-- **Skin system** (Tier 3, now switchable): 3 skins — `vanilla` (the baseline slide),
-  `desk` (raised paper cards, dot grid, drop-onto nav, Caveat/Karla), `ocean` (recessed
-  soft cards, rolling waves, sink/rise nav, Cinzel/Spectral). Structured as a shared
-  `[data-skin]` base + per-skin deltas; nav motion is fully tokenized so a skin reshapes
-  the drill-in with values only. `--panel` is a skin role indirection; canvas-pattern /
-  `--shadow-card` tokens are no-ops under vanilla so existing surfaces are untouched.
+  `hornet` = Noir Gold), all CSS-variable driven (palette → theme → skin); each sets
+  `color-scheme` + a `--traffic-glyph` role (the sigil stroke is theme-owned, no longer a
+  skin literal). Settings menu (click the title) with a **Theme** flyout (live color-chip
+  previews) and an **Account** row.
+- **Skin system** (Tier 3, now switchable): **4 skins** — `vanilla` (the baseline slide),
+  `desk` (raised paper cards on a dot grid, paper-label controls, airier page, photo-corner
+  covers, hover-lift, Caveat/Karla), `ocean` (recessed soft cards, rolling waves, sink/rise
+  nav, Cinzel/Spectral), `glass` (frosted translucent panels via `--panel-backdrop` over a
+  per-theme accent aurora, glass chips, fade/scale nav). Structured as a shared `[data-skin]`
+  base + per-skin deltas; nav + micro-motion + focus/icon/row geometry are all tokenized so a
+  skin reshapes them with values only (new capabilities like `--hover-lift` / `--panel-backdrop`
+  default to no-ops, so adding one never forces a sweep of the other skins). `--panel` is a skin
+  role indirection. The Queue card's rows share the Library's row tokens (one shape/density).
   **Skin** selector row in settings mirrors Theme (`src/skin.ts`).
 - **Typography**: Liberation Serif (title) bundled as local TTFs via `@font-face`.
 - **Home bento**: Now Playing strip (top, wide) · Library (left) · Queue (right, in the

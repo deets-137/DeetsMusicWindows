@@ -72,6 +72,7 @@
      theme owns the actual color. Vanilla = flush with the canvas. */
   --panel:        var(--canvas);
   --shadow-card:  none;             /* skins add a real card shadow */
+  --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
 
   /* -- canvas pattern (Desk dot grid / Ocean waves) ---------- */
   /* A background-image painted on .app-body, BEHIND the cards. Its
@@ -126,6 +127,7 @@
   --dur-med:  0.18s;
   --dur-spin: 0.7s;
   --ease-ui:  ease;
+  --hover-lift: none;               /* interactive rows/tiles rise on hover; a skin opts in */
 
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;
@@ -164,9 +166,28 @@
   --panel-border-width: 0;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.12);
 
-  /* desk — a faint dot grid in the theme's hairline color */
-  --canvas-bg:        radial-gradient(circle, var(--border) 1.4px, transparent 1.6px);
-  --canvas-bg-size:   22px 22px;
+  /* controls — paper labels, not iOS capsules. Pills lose their pill. */
+  --lib-pill-radius: 7px;
+  --vol-pill-radius: 10px;
+
+  /* an airier notebook page — more breathing room inside cards + the grid
+     (panel-scoped so the titlebar/chrome rhythm is untouched) */
+  --panel-pad:    var(--space-4);   /* 12 → 16 */
+  --lib-grid-gap: var(--space-3);   /*  8 → 12 */
+
+  /* covers — printed-photo corners rather than the generic rounded tile */
+  --lib-tile-radius:    3px;
+  --lib-row-art-radius: 3px;
+
+  /* motion — paper settles; rows rise a hair when you touch them */
+  --dur-fast:   0.16s;
+  --hover-lift: translateY(-1px);
+
+  /* desk — a dot grid that actually reads: the stronger --panel-border
+     hairline (0.30 alpha) instead of the whisper-faint --border (0.16),
+     and a slightly larger dot. */
+  --canvas-bg:        radial-gradient(circle, var(--panel-border) 1.6px, transparent 1.9px);
+  --canvas-bg-size:   24px 24px;
   --canvas-bg-repeat: repeat;
 
   /* nav — the new card drops onto the desk */
@@ -238,4 +259,59 @@
    Defined once; only Ocean references it (via --canvas-anim). */
 @keyframes wave-roll {
   to { background-position: 96px 0, -128px 0, 80px 0; }
+}
+
+/* ============================================================
+   GLASS — frosted glassmorphism. Translucent panels blur a soft
+   accent "aurora" behind them; clean light sans; rounded chips.
+   The frost (--panel-backdrop) is the one new primitive; every
+   color is still derived from a theme role, never named here.
+   ============================================================ */
+[data-skin="glass"] {
+  /* type — drop the serif for a crisp, light modern sans */
+  --font-title: var(--font-body);
+  --fw-title:   600;
+  --fs-title:   19px;
+
+  /* frosted panels — a translucent surface + a real backdrop blur, a
+     hairline edge, soft depth, and a top inner sheen. The 55%/70% mixes
+     thin the theme's --surface to glass; saturate() makes the aurora pop
+     through. No hex is named — translucency is an alpha of a theme role. */
+  --panel:              color-mix(in srgb, var(--surface) 55%, transparent);
+  --panel-backdrop:     blur(14px) saturate(1.3);
+  --panel-border-width: 1px;
+  --panel-radius:       18px;
+  --shadow-card:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent);
+
+  /* controls — rounded glass chips (not the capsule, not the Desk label) */
+  --lib-pill-radius:    12px;
+  --vol-pill-radius:    12px;
+  --lib-tile-radius:    12px;
+  --lib-row-art-radius: 8px;
+
+  /* motion — gentle, with a soft hover rise on rows/tiles */
+  --dur-fast:   0.2s;
+  --hover-lift: translateY(-1px);
+
+  /* aurora — soft accent blobs the frost refracts. Hues are the theme's
+     OWN accent roles (go / stop / pause) at low alpha, so Glass recolors
+     itself per theme while naming no color. Static (no animation) for now. */
+  --canvas-bg:
+    radial-gradient(42% 52% at 16% 10%, color-mix(in srgb, var(--go) 38%, transparent), transparent 70%),
+    radial-gradient(46% 56% at 86% 22%, color-mix(in srgb, var(--stop) 34%, transparent), transparent 70%),
+    radial-gradient(52% 52% at 60% 96%, color-mix(in srgb, var(--pause) 30%, transparent), transparent 72%);
+  --canvas-bg-size:   100% 100%;
+  --canvas-bg-repeat: no-repeat;
+
+  /* nav — panes fade/scale through one another rather than slide */
+  --nav-dur:  0.34s;
+  --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --nav-at-center:   scale(1);
+  --nav-at-left:     scale(0.96);
+  --nav-at-right:    scale(0.96);
+  --nav-off-opacity: 0;
+
+  /* scrubber handle stays the base round bead — fits glass as-is. */
 }

@@ -37,6 +37,7 @@ The complete set the UI is allowed to reference:
 | `--go` | traffic light: **maximize** (`+`) — green family |
 | `--stop` | traffic light: **close** (`×`) — red family |
 | `--pause` | traffic light: **minimize** (`−`) — yellow family |
+| `--traffic-glyph` | the `+ − ×` sigil stroke, drawn *on* the light fills — so its contrast is theme-owned, not a skin literal |
 | `--title` | app title + headings |
 | `--text` | primary text |
 | `--subtext` | secondary / dim text |
@@ -46,6 +47,11 @@ The complete set the UI is allowed to reference:
 
 Traffic-light role names are deliberately function-named (`go/stop/pause`) not
 color-named, so a theme can shade them to fit its canvas without the names lying.
+
+Each theme also declares `color-scheme: light|dark` (so native controls, the
+scrollbar corner, and autofill match) and a few non-table roles every block maps:
+`--surface` / `--surface-hover`, `--border`, `--panel-border`, and `--scrollbar` /
+`--scrollbar-hover`.
 
 ### Themes that ship today
 - **`fairy`** — twilight-lilac canvas, twilight-plum headings, with magenta + gold fae accents.
@@ -57,7 +63,9 @@ color-named, so a theme can shade them to fit its canvas without the names lying
 
 ### Add a theme
 1. Add any new paints to `palette.css`.
-2. Add a `[data-theme="yourname"] { … }` block in `themes.css` mapping **all seven roles**.
+2. Add a `[data-theme="yourname"] { … }` block in `themes.css` mapping **every color
+   role** (the table above + the non-table roles noted there), set `color-scheme`, and
+   pick a `--traffic-glyph` that reads on your light fills.
 3. Add the theme name to the `THEMES` array in `swatch.html` to preview it.
 
 ---
@@ -75,16 +83,31 @@ live in the attribute-present `[data-skin]` selector.
 
 **`vanilla`** is the reference skin: it *is* the base, so its block is empty.
 
+> **The authoritative token list is the code, not this doc.** The `[data-skin]` base
+> block in `skin.css` defines every skin token once, with a comment; `themes.css` does
+> the same for color roles. This section is the *map* — read those two files for the
+> complete, current set. (We deliberately don't keep a separate catalog file — it would
+> duplicate the base block and rot.)
+
 The base defines, among others:
 
 - **Type:** `--font-title` (Liberation Serif), `--font-body` (Liberation Sans),
   `--fs-title / --fs-text / --fs-subtext`, `--fw-*`, `--lh-text`
-- **Geometry:** `--midi-w` (480), `--midi-h` (864), `--titlebar-h`, `--traffic-*`
+- **Geometry:** `--midi-w` (480), `--midi-h` (864), `--titlebar-h`, `--traffic-*`,
+  `--icon-sm / -md / -lg` (SVG-glyph wrappers)
 - **Shape:** `--radius-panel`, `--radius-control`, `--panel-radius`
 - **Spacing:** `--space-1 … --space-5`
-- **Card fill:** `--panel` (which theme surface the cards use) + `--shadow-card`
+- **Card fill:** `--panel` (which theme surface the cards use) + `--shadow-card`;
+  `--panel-backdrop` is the frosted-glass blur behind a panel (base `none`; Glass opts in)
 - **Canvas pattern:** `--canvas-bg` / `--canvas-bg-size` / `--canvas-bg-repeat` / `--canvas-anim`
 - **Nav motion:** `--nav-dur`, `--nav-ease`, `--nav-at-center / -left / -right`, `--nav-off-opacity`
+- **Micro-motion:** `--dur-fast / -med / -spin`, `--ease-ui`, and `--hover-lift` —
+  the transform interactive rows/tiles take on hover (base `none`; a skin opts in)
+- **Focus:** `--focus-ring-w` / `--focus-ring-off` (one knob for every focus outline)
+- **Library rows/tiles:** `--lib-tile-small / -large / -radius`, `--lib-grid-gap`,
+  `--lib-pill-radius`, and `--lib-row-art` / `--lib-row-art-radius` (the density-line
+  mini-cover — **the Queue card's rows read these too**, so both song lists share one
+  shape + density)
 
 ### A skin never names a color — even for surfaces
 `--panel` is the key example. "Does this skin lift cards off the canvas?" is a
@@ -95,6 +118,14 @@ The base defines, among others:
 owns the actual color. Same rule for the canvas pattern and soft borders: their tint
 is `var(--border)`, a theme role.
 
+**Glass is the doctrine taken to the limit.** It needs translucency and a colorful
+backdrop — both still derived, never named. Panels are `color-mix(--surface 55%,
+transparent)` (an *alpha* of a theme role), and the "aurora" the frost refracts is built
+from the theme's **accent roles** (`--go` / `--stop` / `--pause`) at low alpha — so Glass
+recolors itself per theme (mint/magenta/gold on fairy, all-yellow on hornet) without a
+single hex. The one thing a token couldn't express was the *blur* itself, so that became
+a new primitive: `--panel-backdrop`.
+
 ### Nav motion is tokenized, not hardcoded
 `.coll-pane` reads its per-position transform/opacity from `--nav-at-*` /
 `--nav-off-opacity`, so a skin reshapes the **whole drill-in motion** with values
@@ -104,11 +135,18 @@ sinks (`translateY`). `prefers-reduced-motion` still disables it.
 ### Skins that ship today
 - **`vanilla`** — the reference: flush cards, hairline edge, horizontal slide, Liberation type.
 - **`desk`** — light/airy notebook: raised paper cards (`--surface`) with a drop shadow on a
-  faint dot grid, a drop-onto nav, Caveat (title) + Karla (body).
+  dot grid (tinted `--panel-border` so it actually reads), **paper-label controls** (square
+  pills, not capsules), an **airier** page (panel-scoped padding/gap up a step), **photo-corner**
+  covers (3px), a 1px **hover-lift** on rows, a drop-onto nav, Caveat (title) + Karla (body).
 - **`ocean`** — deep/abyssal: recessed soft-edged cards (`color-mix`) on a surface of three
   rolling-wave frequencies (`wave-roll`), a sink/rise nav, Cinzel (title) + Spectral (body).
   Pairs best with light themes (its black-mix cards + shadows are faint on dark canvases — a
   per-theme `--surface-sunken` role is the documented upgrade if Ocean needs true depth there).
+- **`glass`** — frosted glassmorphism: translucent panels (`color-mix` alpha of `--surface`)
+  with a real `backdrop-filter` blur (`--panel-backdrop`) over a per-theme accent "aurora",
+  rounded glass chips, a fade/scale nav, light sans title. See the doctrine note above for how
+  it stays hex-free. Open upgrades: a `--highlight` theme role for a true white sheen, frosted
+  menus, and an animated aurora.
 
 ### Add a skin
 Add a `[data-skin="yourname"] { … }` block in `skin.css` overriding only the tokens

@@ -318,6 +318,8 @@ body {
   flex-direction: column;
   min-height: 0;
   background: var(--panel);
+  -webkit-backdrop-filter: var(--panel-backdrop);  /* none under most skins; Glass frosts */
+  backdrop-filter: var(--panel-backdrop);
   border: var(--panel-border-width) solid var(--panel-border);
   border-radius: var(--panel-radius);
   box-shadow: var(--shadow-card);   /* none under Vanilla; a real card lift in Desk/Ocean */
@@ -397,6 +399,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .coll-pane { transition: none; }
   .app-body { animation: none; }   /* freeze Ocean's waves */
+  /* no hover-lift jump when motion is reduced */
+  .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }
 }
 
 /* Our own scrollbar for the Library list/grid — replaces the OS bar.
@@ -591,8 +595,9 @@ body {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
   cursor: default;
+  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
 }
-.lib-row:hover { background: var(--surface-hover); }
+.lib-row:hover { background: var(--surface-hover); transform: var(--hover-lift); }
 /* clickable affordance + drilled-in highlight (border around the rectangle) */
 .lib-view[data-openable="1"] .lib-row,
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
@@ -655,8 +660,9 @@ body {
   padding: var(--space-1);
   border-radius: var(--radius-control);
   cursor: default;
+  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
 }
-.lib-tile:hover { background: var(--surface-hover); }
+.lib-tile:hover { background: var(--surface-hover); transform: var(--hover-lift); }
 .lib-tile__cover {
   width: 100%;
   aspect-ratio: 1 / 1;

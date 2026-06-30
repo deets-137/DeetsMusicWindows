@@ -1,10 +1,11 @@
 /* Queue card — flat Now-Playing + Up-Next renderer in the Playlists slot.
-   Colors come from theme roles, spacing/radius/type from skin tokens. The two
-   cover sizes are component-scoped tokens for now; migrate to skin.css (with the
-   other geometry tokens) when the skin pass gets there. */
+   Colors come from theme roles, spacing/radius/type from skin tokens. Up-Next
+   ROWS share the Library's row tokens (--lib-row-art / --lib-row-art-radius) so
+   both song lists keep one shape + density and a skin restyles them together.
+   Only the Now-Playing cover (--qcard-now-art) stays component-scoped — it has
+   no Library equivalent. */
 .qcard {
   --qcard-now-art: 48px;
-  --qcard-row-art: 32px;
   --qcard-label-spacing: 0.06em;
 
   display: flex;
@@ -67,7 +68,6 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
 }
 /* Our own scrollbar — mirrors the Library list (.lib-view) for UI consistency:
    color is a theme role, width/radius are skin tokens. */
@@ -85,14 +85,15 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
   cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
 }
-.qrow:hover { background: var(--surface-hover); }
+.qrow:hover { background: var(--surface-hover); transform: var(--hover-lift); }
 .qrow:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 .qrow__art {
   flex: 0 0 auto;
-  width: var(--qcard-row-art);
-  height: var(--qcard-row-art);
-  border-radius: var(--radius-control);
+  width: var(--lib-row-art);
+  height: var(--lib-row-art);
+  border-radius: var(--lib-row-art-radius);
   object-fit: cover;
   display: block;
   background: var(--surface);
