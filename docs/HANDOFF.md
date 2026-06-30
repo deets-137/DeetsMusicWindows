@@ -7,7 +7,8 @@
 > [QUEUE.md](QUEUE.md) (queue model + playback windowing — read before touching
 > queue.ts/player.ts), [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection),
 > [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles),
-> [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (swappable card system + mini/midi/max seam).
+> [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (swappable card system + mini/midi/max seam),
+> [DEETS-REWIND.md](DEETS-REWIND.md) (listening-stats data + the future data-viz card).
 
 ## What this is
 A lightweight Apple Music player for Windows 11 — **Tauri v2 + WebView2**, vanilla
@@ -112,8 +113,8 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 - **Manual queueing** — **built and gapless** (model in lockstep; see [QUEUE.md](QUEUE.md)),
   via right-click menus on two surfaces:
   - **Library** songs + albums → Play Now · Play Next · Add to Queue (`playNext`/`playLater`).
-  - **Qcard Up Next** rows → Play Now · Move to Top · Move to Bottom · Remove (`music.queue.remove`
-    + `playNext`/`playLater`; probe-confirmed gapless — only `queueItemsDidChange` fires).
+  - **Qcard Up Next** rows → Play Now · Move to Top · Move to Bottom · Remove (`music.queue.splice`
+    + `playNext`/`playLater`; gapless — only `queueItemsDidChange` fires).
   Shared popover primitive `src/context-menu.ts`. **Drag-to-reorder** Up Next is also in
   (whole-row press-and-drag, insertion-line, gapless via `reconcileUpcoming` — the general
   model→MusicKit suffix-rebuild primitive that re-windowing will reuse). Still to do: a hover

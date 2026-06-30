@@ -164,11 +164,13 @@ The Qcard's right-click menu edits **upcoming** entries (`removeFromQueue` / `mo
 in `player.ts`). Because the edits only touch items *after* `current`, `current`'s index
 never moves — `windowPos` and model-follow stay valid.
 
-- **Remove** uses `music.queue.remove(mkIndex)` — a **gapless live mutation** (probe-confirmed:
-  current keeps playing, only `queueItemsDidChange` fires, *not* `nowPlayingItemDidChange`,
-  so model-follow isn't disturbed). No `setQueue`, no buffer.
-- **Move to Top / Bottom** compose `remove` + the documented `playNext` / `playLater`
-  inserts — all gapless, no `splice` needed.
+- **Remove** uses `music.queue.splice(mkIndex, 1)` — a **gapless live mutation** (current
+  keeps playing, only `queueItemsDidChange` fires, *not* `nowPlayingItemDidChange`, so
+  model-follow isn't disturbed). No `setQueue`, no buffer. (`splice` is MusicKit JS v3's
+  supported queue mutator; the old `queue.remove(i)` was deprecated and just forwarded to
+  `splice(i, 1)`.)
+- **Move to Top / Bottom** compose a `splice`-out + the documented `playNext` / `playLater`
+  inserts — all gapless.
 - **Index translation:** an upcoming entry at model index `k` sits at MusicKit index
   `nowPlayingItemIndex + 1 + k` (`items` = `[history…, current, upcoming…]`). `mkUpcomingIndex`
   computes that, **id-verifies** it, and falls back to a forward id-search if `setQueue`'s
@@ -191,12 +193,13 @@ reorder (drag-drop to any slot) has no documented MusicKit op — so instead of 
 1. Reorder the model (`queue.move(from, to)`) — it's the source of truth.
 2. `reconcileUpcoming()`: compute the model's expected upcoming (deduped against what MusicKit
    holds up to `current`, capped to `WINDOW_FWD`), find the **first index `d`** where MusicKit's
-   live upcoming diverges, `remove` MusicKit's upcoming `[d..end]`, then `playLater` the model's
-   `[d..end]`.
+   live upcoming diverges, `splice` out MusicKit's upcoming `[d..end]` (one contiguous removal),
+   then `playLater` the model's `[d..end]`.
 
-`remove` + `playLater` both leave `current` untouched → **gapless, no `setQueue`, no buffer**.
-Bounded by the 200-item window, so even a top-of-queue drop is ~200 removes + one batched
-`playLater`. This is the **general sync primitive**: drag-reorder uses it now, and re-windowing
+`splice` + `playLater` both leave `current` untouched → **gapless, no `setQueue`, no buffer**.
+The divergent suffix is contiguous, so it's one `splice(np+1+d, count)` (a single
+`queueItemsDidChange`) + one batched `playLater`, regardless of how far the drop reached. This
+is the **general sync primitive**: drag-reorder uses it now, and re-windowing
 (roadmap #3) will lean on it too. The `player:misalign` canary validates every reconcile.
 
 The drag UI itself lives in `qcard.ts` (whole-row press-and-drag, insertion-line feedback,

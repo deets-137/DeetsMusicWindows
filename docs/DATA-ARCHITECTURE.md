@@ -119,6 +119,20 @@ tracks(library_id TEXT PRIMARY KEY, sort_key TEXT, json TEXT)  -- + idx_tracks_s
 Each row stores the full `Track` as JSON plus a `sort_key` (`lower(title)lower(artist)`)
 for ordered, paged reads. Upserts are one transaction.
 
+**Play stats** (listening tallies, for a future data-vis):
+```sql
+play_stats(track_id TEXT PRIMARY KEY, partial_count INTEGER, full_count INTEGER, last_played INTEGER)
+```
+`track_id` is `library_id ?? catalog_id` — the **same rule as the tracks PK**, so stats
+join straight to track metadata. `record_play(catalogId?, libraryId?, kind)` bumps one
+tally: **partial** = the song became now-playing (it *started*); **full** = playback
+crossed the listened-through threshold (~90%, configurable later — see
+[FUTURE-SETTINGS §7](FUTURE-SETTINGS.md)). `full_count ⊆ partial_count` (every finish also
+started); `last_played` is epoch-ms of the most recent start. The front-end fires both from
+`player.ts` via [`src/stats.ts`](../src/stats.ts), **deduped per song-start** so re-clicks,
+seeks, and window rebuilds don't inflate the count. Purely local — no Apple calls. The full
+plan for reading this back into a stats card lives in [DEETS-REWIND.md](DEETS-REWIND.md).
+
 **Sync (`library_sync`):** stale-while-revalidate.
 1. Fetch page 0 → learn `total`.
 2. Compute all remaining offsets, fetch them **≤5 concurrent** (`buffer_unordered(5)`).
@@ -154,6 +168,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `apple_dump_library` | apple.rs | **dev**: write raw API samples to `dev-dumps/` |
 | `library_sync` | library.rs | full songs sync → cache (emits events) |
 | `library_tracks(offset, limit)` | library.rs | paged read from cache |
+| `record_play(catalogId?, libraryId?, kind)` | library.rs | bump a track's `partial`/`full` play tally |
 
 | Event | Payload |
 |---|---|

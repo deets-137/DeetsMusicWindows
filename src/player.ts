@@ -14,6 +14,7 @@ import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
 import { trackById } from "./track-store";
 import * as diag from "./diag";
+import * as stats from "./stats";
 
 declare global {
   interface Window {
@@ -140,6 +141,7 @@ function emitProgress(): void {
   const currentTime = music?.currentPlaybackTime ?? 0;
   const progress = duration > 0 ? currentTime / duration : 0;
   progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
+  stats.recordProgress(queue.getCurrent(), progress); // credit a "full" once past the threshold
 }
 
 function emit(): void {
@@ -167,6 +169,7 @@ function wireEvents(): void {
 function onNowPlayingChange(): void {
   if (!loadingContext) {
     syncModelToMusicKit();
+    stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
     diag.log("player:np", snap());
     checkDesync();
     checkAlignment("np");
@@ -374,6 +377,7 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   loadingContext = false;
   isLoading = false;
   emit();
+  stats.recordStart(queue.getCurrent()); // settled start (intermediate rebuild changes were suppressed)
 }
 
 /**
@@ -461,11 +465,13 @@ export const queueTracksLater = (tracks: Track[], context = "library"): Promise<
 // ── Queue editing (Up Next context menu: Remove / Move to Top / Move to Bottom) ──
 //
 // All three act on UPCOMING items (after current), so `current`'s MusicKit index never
-// moves — `windowPos` + model-follow stay valid. Probe-confirmed: `music.queue.remove`
-// is a gapless live mutation that fires only `queueItemsDidChange` (NOT
-// `nowPlayingItemDidChange`), so model-follow isn't disturbed. Remove uses it directly;
-// Move composes remove + the documented `playNext`/`playLater` inserts. We update the
-// model first (instant Qcard re-render), then mirror into MusicKit. See docs/QUEUE.md.
+// moves — `windowPos` + model-follow stay valid. `music.queue.splice(index, count)` is a
+// gapless live mutation that fires only `queueItemsDidChange` (NOT
+// `nowPlayingItemDidChange`), so model-follow isn't disturbed. (It's MusicKit's supported
+// queue mutator — the old `queue.remove` was deprecated in v3 and just forwarded to
+// `splice(i, 1)` anyway.) Remove splices the item out; Move composes a splice-out + the
+// documented `playNext`/`playLater` inserts. We update the model first (instant Qcard
+// re-render), then mirror into MusicKit. See docs/QUEUE.md.
 
 /**
  * MusicKit-queue index of the upcoming entry at model index `k`. The window feeds
@@ -491,7 +497,7 @@ export async function removeFromQueue(index: number): Promise<void> {
   const mk = id ? mkUpcomingIndex(m, index, id) : -1;
   diag.log("player:queueEdit", { op: "remove", index, mk, id });
   queue.removeAt(index); // model first → Qcard updates instantly
-  if (mk >= 0 && typeof m.queue?.remove === "function") m.queue.remove(mk);
+  if (mk >= 0 && typeof m.queue?.splice === "function") m.queue.splice(mk, 1);
   checkAlignment("remove");
 }
 
@@ -506,7 +512,7 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
   diag.log("player:queueEdit", { op: `move-${to}`, index, mk, id });
   queue.move(index, to === "top" ? 0 : up.length - 1); // model first → Qcard updates instantly
   // MusicKit: pull it from its slot, re-insert at the chosen end (both gapless inserts).
-  if (mk >= 0 && typeof m.queue?.remove === "function") m.queue.remove(mk);
+  if (mk >= 0 && typeof m.queue?.splice === "function") m.queue.splice(mk, 1);
   if (id) {
     if (to === "top" && typeof m.playNext === "function") await m.playNext({ songs: [id] });
     else if (to === "bottom" && typeof m.playLater === "function") await m.playLater({ songs: [id] });
@@ -551,7 +557,8 @@ export async function reconcileUpcoming(): Promise<void> {
   if (d === mkUp.length && d === expected.length) return; // already in sync
 
   diag.log("player:reconcile", { d, mk: mkUp.length, expected: expected.length });
-  for (let i = items.length - 1; i >= np + 1 + d; i--) m.queue?.remove?.(i); // drop divergent suffix (back→front)
+  const drop = mkUp.length - d; // MK's divergent suffix is contiguous: [np+1+d .. end]
+  if (drop > 0 && typeof m.queue?.splice === "function") m.queue.splice(np + 1 + d, drop); // one splice, one queueItemsDidChange
   const tail = expected.slice(d);
   if (tail.length && typeof m.playLater === "function") await m.playLater({ songs: tail });
   checkAlignment("reconcile");

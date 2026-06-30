@@ -9,6 +9,7 @@ use std::sync::Mutex;
 
 use futures::StreamExt;
 use rusqlite::Connection;
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::apple::{self, AppleProvider, AppleState};
@@ -25,7 +26,18 @@ pub fn init_db(conn: &Connection) -> rusqlite::Result<()> {
             sort_key   TEXT,
             json       TEXT NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS idx_tracks_sort ON tracks(sort_key);",
+        CREATE INDEX IF NOT EXISTS idx_tracks_sort ON tracks(sort_key);
+
+        -- Per-track listening tallies, for a future data-vis. Keyed by the same
+        -- `library_id ?? catalog_id` rule the tracks PK uses, so stats join to track
+        -- metadata. partial = song started (became now-playing); full = playback
+        -- crossed the listened-through threshold. last_played is epoch-ms of last start.
+        CREATE TABLE IF NOT EXISTS play_stats (
+            track_id      TEXT PRIMARY KEY,
+            partial_count INTEGER NOT NULL DEFAULT 0,
+            full_count    INTEGER NOT NULL DEFAULT 0,
+            last_played   INTEGER
+        );",
     )
 }
 
@@ -83,6 +95,77 @@ pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page
         total,
         next_offset,
     })
+}
+
+/// A track's cumulative play tallies (see `record_play`).
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayStat {
+    pub track_id: String,
+    pub partial_count: i64,
+    pub full_count: i64,
+    /// Epoch milliseconds of the most recent start; None until first played.
+    pub last_played: Option<i64>,
+}
+
+/// Increment a track's play tally. `kind` is `"partial"` (the song became
+/// now-playing — it *started*) or `"full"` (playback crossed the listened-through
+/// threshold). Keyed by `library_id ?? catalog_id` to match the `tracks` cache PK,
+/// so stats join to track metadata. `full_count` is always a subset of
+/// `partial_count` (every finish also started). Returns the updated row so the
+/// caller can confirm/log without a separate read. Purely local — no Apple calls.
+#[tauri::command]
+pub fn record_play(
+    catalog_id: Option<String>,
+    library_id: Option<String>,
+    kind: String,
+    db: State<'_, Db>,
+) -> Result<PlayStat, String> {
+    let track_id = library_id.or(catalog_id).unwrap_or_default();
+    if track_id.is_empty() {
+        return Err("record_play: track has no id".into());
+    }
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
+    let conn = db.0.lock().unwrap();
+    // One upsert per kind: create the row on first sight, else bump the tally.
+    // `partial` also stamps last_played (the start); `full` leaves it (it follows a start).
+    let sql = match kind.as_str() {
+        "partial" => {
+            "INSERT INTO play_stats(track_id, partial_count, full_count, last_played)
+             VALUES(?1, 1, 0, ?2)
+             ON CONFLICT(track_id) DO UPDATE SET
+                 partial_count = partial_count + 1,
+                 last_played = ?2"
+        }
+        "full" => {
+            "INSERT INTO play_stats(track_id, partial_count, full_count, last_played)
+             VALUES(?1, 0, 1, ?2)
+             ON CONFLICT(track_id) DO UPDATE SET
+                 full_count = full_count + 1"
+        }
+        other => return Err(format!("record_play: unknown kind '{other}'")),
+    };
+    conn.execute(sql, rusqlite::params![track_id, now_ms])
+        .map_err(|e| e.to_string())?;
+
+    conn.query_row(
+        "SELECT track_id, partial_count, full_count, last_played
+         FROM play_stats WHERE track_id = ?1",
+        rusqlite::params![track_id],
+        |r| {
+            Ok(PlayStat {
+                track_id: r.get(0)?,
+                partial_count: r.get(1)?,
+                full_count: r.get(2)?,
+                last_played: r.get(3)?,
+            })
+        },
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// Full sync of library songs into the cache. Pages are fetched in parallel

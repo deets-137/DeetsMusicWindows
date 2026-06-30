@@ -41,6 +41,7 @@ pub fn run() {
             apple::apple_dump_library,
             library::library_sync,
             library::library_tracks,
+            library::record_play,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

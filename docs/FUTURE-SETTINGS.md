@@ -142,3 +142,32 @@ they look like ordinary headings); optionally extend to the settings/volume trig
 it off the mode the dropdown primitive already tracks (`setDropdownMode`) — e.g. a
 `data-menu-mode` attribute on `<html>` (or a class on the trigger) that the caret CSS keys
 off, so it flips with the Hover-Menu toggle and needs no per-trigger JS.
+
+---
+
+## 7. Listened-through threshold (play-count "full")
+
+**Behavior.** How much of a track must play for it to count as a **full** ("listened
+through") play in the listening stats. The companion **partial** count fires when a song
+*starts* (becomes now-playing) and is not configurable — it's the definition of a start.
+
+**Current default (hardcoded):** **90%** — `FULL_THRESHOLD = 0.9` in
+[`src/stats.ts`](../src/stats.ts). Crossing 0.9 of the track's duration credits one full
+play (latched per play, so seeking past/back over the mark counts once). Robust to skipping
+the outro.
+
+**Options.**
+- **(a) Fraction threshold** — counts at *N%* of the track. *(current default, N = 90)*
+- **(b) Strict end-of-track** — only a natural finish counts (skipping the last seconds
+  doesn't; seeking won't trigger it).
+- **(c) Scrobble rule (Last.fm)** — counts once you've heard **≥50%** *or* **≥4 min**,
+  whichever comes first — kinder to long tracks.
+
+**What the future setting changes.** Lets the user pick the definition (and, for (a), the
+percentage). Both partial and full are stored per track in SQLite (`play_stats`); only the
+**full** trigger's rule changes — the recording plumbing and schema stay put.
+
+**Wiring sketch.** `localStorage` `deets.stats.fullThreshold` (a `0..1` fraction for mode
+(a)) and/or `deets.stats.fullMode` = `"fraction" | "end" | "scrobble"`, read in
+`src/stats.ts` (replace the `FULL_THRESHOLD` constant + the `recordProgress` comparison).
+Likely a small **Playback** / **Stats** subsection in the settings menu once one exists.
