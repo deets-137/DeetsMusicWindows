@@ -16,10 +16,12 @@
    ============================================================ */
 
 [data-theme="fairy"] {
+  color-scheme: light;
   --canvas:  var(--paint-dewy-lilac);
   --go:      var(--paint-fae-mint);
   --stop:    var(--paint-purple-cactus-flower);
   --pause:   var(--paint-lemon-chrome);
+  --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the light fills */
   --title:   var(--paint-twilight-plum);
   --text:    var(--paint-violet-slate);
   --subtext: var(--paint-lavender-grey);
@@ -38,10 +40,12 @@
 }
 
 [data-theme="sepia"] {
+  color-scheme: light;
   --canvas:  var(--paint-parchment);
   --go:      var(--paint-olive-leaf);
   --stop:    var(--paint-terracotta);
   --pause:   var(--paint-amber-glow);
+  --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the light fills */
   --title:   var(--paint-espresso);
   --text:    var(--paint-cocoa);
   --subtext: var(--paint-faded-tan);
@@ -60,10 +64,12 @@
 }
 
 [data-theme="moonlight"] {
+  color-scheme: dark;
   --canvas:  var(--paint-deep-slate);
   --go:      var(--paint-moonlight-white);   /* lights are monochrome here: */
   --stop:    var(--paint-moonlight-gray);    /* varying moonlight white → gray */
   --pause:   var(--paint-moonlight-silver);
+  --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the white→gray fills */
   --title:   var(--paint-slate-bright);      /* title → subtext: bright → dim */
   --text:    var(--paint-slate-mid);
   --subtext: var(--paint-slate-dim);
@@ -82,10 +88,12 @@
 }
 
 [data-theme="hornet"] {
+  color-scheme: dark;
   --canvas:  var(--paint-pitch);
   --go:      var(--paint-hazard);   /* monochrome yellow family — no green/red: */
   --stop:    var(--paint-straw);    /* hazard / amber / straw */
   --pause:   var(--paint-amber-wax);
+  --traffic-glyph: rgba(0, 0, 0, 0.70);  /* crisper stroke on hi-vis yellow */
   --title:   var(--paint-hazard);
   --text:    var(--paint-paper-warm);
   --subtext: var(--paint-straw);

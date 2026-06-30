@@ -87,7 +87,7 @@
   cursor: pointer;
 }
 .qrow:hover { background: var(--surface-hover); }
-.qrow:focus-visible { outline: 2px solid var(--title); outline-offset: -2px; }
+.qrow:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 .qrow__art {
   flex: 0 0 auto;
   width: var(--qcard-row-art);

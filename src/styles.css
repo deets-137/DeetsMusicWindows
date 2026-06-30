@@ -60,7 +60,7 @@ body {
   cursor: pointer;
 }
 .app-title:hover { background: var(--surface-hover); }
-.app-title:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+.app-title:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 /* ── Settings menu + flyout ─────────────────────────────────── */
 .menu {
@@ -140,7 +140,7 @@ body {
   font-weight: var(--fw-title);
   font-size: var(--fs-text);
   cursor: pointer;
-  transition: box-shadow 0.12s ease;
+  transition: box-shadow var(--dur-fast) var(--ease-ui);
 }
 .flyout__item::after {             /* reserved right gutter; dot shows when active */
   content: "";
@@ -182,17 +182,17 @@ body {
 .account__btn:hover { filter: brightness(0.97); }
 .account__btn[disabled] { cursor: default; }
 
-.account__icon { flex: 0 0 auto; width: 16px; height: 16px; display: grid; place-items: center; }
-.account__icon svg { width: 16px; height: 16px; display: block; }
+.account__icon { flex: 0 0 auto; width: var(--icon-md); height: var(--icon-md); display: grid; place-items: center; }
+.account__icon svg { width: var(--icon-md); height: var(--icon-md); display: block; }
 .account__btn[data-state="in"]  .account__icon { color: var(--go); }
 .account__btn[data-state="out"] .account__icon { color: var(--stop); }
 
 .account__spinner {
-  width: 14px; height: 14px;
+  width: var(--icon-sm); height: var(--icon-sm);
   border-radius: 50%;
   border: 2px solid var(--border);
   border-top-color: var(--title);
-  animation: acct-spin 0.7s linear infinite;
+  animation: acct-spin var(--dur-spin) linear infinite;
 }
 @keyframes acct-spin { to { transform: rotate(360deg); } }
 
@@ -229,7 +229,7 @@ body {
   pointer-events: none;
 }
 .vol__pill-label { position: relative; z-index: 1; }  /* above the fill */
-.vol__pill:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+.vol__pill:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 .vol__panel {
   position: absolute; top: 100%; right: 0;     /* right-anchored: drops in-window */
@@ -252,7 +252,7 @@ body {
   display: grid; place-items: center;
 }
 .vol__mute svg { width: 100%; height: 100%; fill: currentColor; }
-.vol__mute:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+.vol__mute:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 /* ── Traffic lights ─────────────────────────────────────────── */
 .lights { display: flex; gap: var(--traffic-gap); }
@@ -266,11 +266,11 @@ body {
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: filter 0.12s ease;
+  transition: filter var(--dur-fast) var(--ease-ui);
 }
 .light:hover  { filter: brightness(1.08); }
 .light:active { filter: brightness(0.92); }
-.light:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+.light:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 .light--max   { background: var(--go); }
 .light--min   { background: var(--pause); }
@@ -281,7 +281,7 @@ body {
   width: 58%;
   height: 58%;
   fill: none;
-  stroke: var(--traffic-glyph-color);
+  stroke: var(--traffic-glyph);
   stroke-width: 1.4;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -348,8 +348,8 @@ body {
 /* Panel header action — small square button (e.g. Library refresh). */
 .panel__action {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: var(--icon-lg);
+  height: var(--icon-lg);
   padding: 0;
   display: grid;
   place-items: center;
@@ -362,8 +362,8 @@ body {
 .panel__action:hover { filter: brightness(0.97); }
 .panel__action[disabled] { opacity: 0.6; cursor: default; }
 .panel__action svg {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
   display: block;
   fill: none;
   stroke: currentColor;
@@ -371,7 +371,7 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.panel__action.is-busy svg { animation: acct-spin 0.7s linear infinite; }
+.panel__action.is-busy svg { animation: acct-spin var(--dur-spin) linear infinite; }
 
 /* Collection card body holds a clipping viewport; contexts are panes that slide
    horizontally (push/pop). Within a pane: fixed toolbar, scrolling view. */
@@ -413,8 +413,8 @@ body {
 /* Back chevron in the card header — shown only in a drilled-in context. */
 .panel__back {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: var(--icon-lg);
+  height: var(--icon-lg);
   padding: 0;
   margin-right: var(--space-1);
   display: grid;
@@ -427,7 +427,7 @@ body {
 }
 .panel__back[hidden] { display: none; }
 .panel__back:hover { filter: brightness(0.97); }
-.panel__back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.panel__back svg { width: var(--icon-md); height: var(--icon-md); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .panel__head .panel__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Library card: toolbar (sort/view pills + search) ───────── */
@@ -471,7 +471,7 @@ body {
 /* Search is an icon-only pill. */
 .lib-pill--icon { justify-content: center; padding: var(--space-1); }
 .lib-pill__icon {
-  width: 14px; height: 14px;
+  width: var(--icon-sm); height: var(--icon-sm);
   fill: none; stroke: currentColor; stroke-width: 1.6;
   stroke-linecap: round; stroke-linejoin: round;
 }
@@ -535,7 +535,7 @@ body {
 .lib-pop__dir:hover { background: var(--surface-hover); }
 .lib-pop__dir.is-active { background: var(--surface-hover); border-color: var(--border); color: var(--title); }
 .lib-pop__dir svg {
-  width: 14px; height: 14px;
+  width: var(--icon-sm); height: var(--icon-sm);
   fill: none; stroke: currentColor; stroke-width: 1.6;
   stroke-linecap: round; stroke-linejoin: round;
 }
@@ -545,7 +545,7 @@ body {
 .lib-searchbar {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.18s ease;
+  transition: grid-template-rows var(--dur-med) var(--ease-ui);
 }
 .lib-searchbar.is-open { grid-template-rows: 1fr; }
 .lib-searchbar__inner { min-height: 0; overflow: hidden; }
@@ -563,7 +563,7 @@ body {
 }
 .lib-search__icon {
   flex: 0 0 auto;
-  width: 14px; height: 14px;
+  width: var(--icon-sm); height: var(--icon-sm);
   fill: none; stroke: var(--subtext); stroke-width: 1.6;
   stroke-linecap: round; stroke-linejoin: round;
 }
@@ -598,17 +598,17 @@ body {
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
 .lib-row.is-selected,
 .lib-tile.is-selected {
-  outline: 2px solid var(--title);
-  outline-offset: -2px;
+  outline: var(--focus-ring-w) solid var(--title);
+  outline-offset: calc(-1 * var(--focus-ring-off));
   border-radius: var(--radius-control);
 }
 /* rows with a mini cover (songs/albums/artists lines) */
 .lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
 .lib-row__art {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
+  width: var(--lib-row-art);
+  height: var(--lib-row-art);
+  border-radius: var(--lib-row-art-radius);
   object-fit: cover;
   background: var(--surface-hover);
 }

@@ -40,7 +40,6 @@
   --traffic-size:        14px;
   --traffic-gap:         8px;
   --traffic-glyph-fs:    11px;
-  --traffic-glyph-color: rgba(0, 0, 0, 0.55);
 
   /* -- volume pill + flyout ---------------------------------- */
   /* Pill height tracks --traffic-size (sits level with the lights). The fill
@@ -104,6 +103,8 @@
   --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
+  --lib-row-art:        36px;       /* mini-cover size on density lines */
+  --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */
 
   /* -- scrollbar (our own; color is a theme role) ------------ */
   --scrollbar-w:      8px;
@@ -119,6 +120,21 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+
+  /* -- micro-motion (hover/expand/spin; nav has its own --nav-*) -- */
+  --dur-fast: 0.12s;
+  --dur-med:  0.18s;
+  --dur-spin: 0.7s;
+  --ease-ui:  ease;
+
+  /* -- focus ring (one place to restyle every focus state) --- */
+  --focus-ring-w:   2px;
+  --focus-ring-off: 2px;
+
+  /* -- icon glyph sizes (SVG wrappers, not content art) ------ */
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 24px;
 
   /* -- spacing scale ----------------------------------------- */
   --space-1: 4px;
