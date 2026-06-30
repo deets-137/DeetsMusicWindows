@@ -1,14 +1,15 @@
 // Queue card (Qcard) — a small custom renderer that mirrors the queue model. It
-// temporarily occupies the Playlists panel slot (title swapped to "Queue"). Display
-// only for now: it proves the model follows MusicKit live (Now Playing + Up Next
-// update as playback advances/skips). Interactions (jump, reorder, remove) come later.
+// temporarily occupies the Playlists panel slot (title swapped to "Queue"). Up Next rows
+// support left-click/Enter to jump, and a right-click menu (Play Now / Move to Top / Move
+// to Bottom / Remove) — the queue-edit ops live in player.ts (gapless; see docs/QUEUE.md).
 
 import "./styles/qcard.css";
 import * as queue from "./queue";
-import { onPlayerState, jumpToUpcoming, type PlayerState } from "./player";
+import { onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, type PlayerState } from "./player";
 import { type Track } from "./library";
 import { trackById, onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
+import { openContextMenu } from "./context-menu";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
 
@@ -99,6 +100,33 @@ export function initQcard(): void {
       e.preventDefault();
       jumpFromEvent(e.target);
     }
+  });
+
+  // Right-click an Up Next row → queue actions. We capture the ENTRY (not the index):
+  // playback may advance while the menu is open, shifting indices, so each action
+  // re-resolves the entry's *live* index at run time (no-op if it's since been consumed).
+  body.addEventListener("contextmenu", (e) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>(".qrow[data-idx]");
+    if (!row) return;
+    const entry = queue.getUpcoming()[Number(row.dataset.idx)];
+    if (!entry) return;
+    e.preventDefault();
+    row.classList.add("is-context");
+    const act = (fn: (i: number) => Promise<void>, label: string) => () => {
+      const i = queue.getUpcoming().indexOf(entry);
+      if (i >= 0) void fn(i).catch((err) => console.error(`[qcard] ${label}`, err));
+    };
+    openContextMenu(
+      e.clientX,
+      e.clientY,
+      [
+        { label: "Play Now", run: act(jumpToUpcoming, "play now") },
+        { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
+        { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
+        { label: "Remove", run: act(removeFromQueue, "remove") },
+      ],
+      () => row.classList.remove("is-context"),
+    );
   });
 
   // Metadata comes from the shared track store; re-render when it (re)loads so newly

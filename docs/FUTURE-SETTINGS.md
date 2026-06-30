@@ -46,3 +46,19 @@ play just the one song. The intents above are the *defaults*, not a fixed law.
 **Wiring sketch.** `localStorage` key(s) e.g. `deets.playNowScope` / `deets.songClickScope`
 = `"song" | "list"`; a toggle row (or, as settings grow, a small "Playback" subsection).
 Defaults: Play Now `"song"`, left-click `"list"`.
+
+---
+
+## 2. Queue right-click menu — actions & order
+
+**Behavior.** Which actions the **queue** (Up Next) context menu offers, and in what order.
+
+**Current default (hardcoded):** Play Now · Move to Top · Move to Bottom · Remove.
+
+**What the future setting changes.** Let the user choose which of these appear, reorder
+them, and opt into extras as they land (e.g. Add to Library, Go to Album / Artist, Add to
+Playlist). Likely a small checklist/reorder UI rather than a single toggle.
+
+**Notes.** The library row menu (Play Now / Play Next / Add to Queue) is a sibling that
+will want the same treatment — a shared "which actions, what order" model keyed by surface
+(`library-row` vs `queue-row`). `localStorage`, e.g. `deets.menu.queue` = ordered action ids.

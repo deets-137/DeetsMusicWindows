@@ -12,6 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
+import { trackById } from "./track-store";
 import * as diag from "./diag";
 
 declare global {
@@ -53,7 +54,7 @@ export function initPlayer(): Promise<any> {
     wireEvents();
     applyVolumeToMusic(); // push the persisted level onto the fresh instance
     (window as any).__music = music; // introspect the opaque instance (dev + bug reports)
-    (window as any).__player = { snap };
+    (window as any).__player = { snap, queue: queueDump };
     diag.log("player:configured", { authorized: !!music.isAuthorized });
     console.log("[player] configured — authorized:", music.isAuthorized);
     return music;
@@ -166,6 +167,7 @@ function onNowPlayingChange(): void {
     syncModelToMusicKit();
     diag.log("player:np", snap());
     checkDesync();
+    checkAlignment("np");
   }
   emit();
 }
@@ -197,6 +199,68 @@ function checkDesync(): void {
       npIndex: music?.nowPlayingItemIndex,
     });
   }
+}
+
+// ── Upcoming alignment (model.upcoming ⟷ MusicKit's live window) ──────────────
+//
+// The lockstep invariant the whole queue rests on. `checkDesync` only watches `current`;
+// this watches the UPCOMING list, which the manual-queue ops (enqueue/remove/move) and a
+// future re-windower all mutate. The invariant: MusicKit's upcoming ids are an
+// ORDER-PRESERVING SUBSEQUENCE of the model's upcoming ids — *subsequence*, not equality,
+// because the fed window dedups repeats and is bounded (50/200), so the model legitimately
+// has MORE upcoming, but never in a different order, and MusicKit must never hold an id the
+// model doesn't. A break = an edit desynced the two.
+
+function alignmentReport() {
+  const items: any[] = music?.queue?.items ?? [];
+  const np = typeof music?.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
+  const mkUp: string[] = np >= 0 ? items.slice(np + 1).map((it) => it?.id).filter(Boolean) : [];
+  const modelUp = queue.getUpcoming().map((e) => playId(e));
+  let i = 0;
+  let firstMismatch: { mkPos: number; mkId: string } | null = null;
+  for (let j = 0; j < mkUp.length; j++) {
+    while (i < modelUp.length && modelUp[i] !== mkUp[j]) i++; // skip model-only ids (dedup/window)
+    if (i >= modelUp.length) {
+      firstMismatch = { mkPos: j, mkId: mkUp[j] }; // a MusicKit id the model doesn't have (in order)
+      break;
+    }
+    i++;
+  }
+  return { aligned: !firstMismatch, firstMismatch, mkUpLen: mkUp.length, modelUpLen: modelUp.length };
+}
+
+/** Best-effort canary: log `player:misalign` when the upcoming lists diverge. */
+function checkAlignment(where: string): void {
+  if (loadingContext) return; // mid-(re)build — expected to differ
+  const r = alignmentReport();
+  if (!r.aligned) diag.log("player:misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
+}
+
+/** `window.__player.queue()` — model vs MusicKit upcoming, side by side, with the verdict. */
+function queueDump() {
+  const items: any[] = music?.queue?.items ?? [];
+  const np = typeof music?.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
+  const fmt = (id?: string) => ({ id, title: trackById(id)?.title });
+  const cur = queue.getCurrent();
+  const mkTitle = (it: any) => it?.title ?? it?.attributes?.name;
+  return {
+    aligned: alignmentReport(),
+    windowPos,
+    nowPlaying: {
+      mkIndex: np,
+      mk: { id: items[np]?.id, title: mkTitle(items[np]) },
+      model: cur ? fmt(playId(cur)) : null,
+    },
+    model: {
+      historyLen: queue.getHistory().length,
+      upcomingLen: queue.getUpcoming().length,
+      upcoming: queue.getUpcoming().slice(0, 20).map((e, k) => ({ k, ...fmt(playId(e)), origin: e.origin })),
+    },
+    musickit: {
+      len: items.length,
+      upcoming: np >= 0 ? items.slice(np + 1, np + 21).map((it, k) => ({ k, id: it?.id, title: mkTitle(it) })) : [],
+    },
+  };
 }
 
 /** Walk the queue model to match MusicKit's live position (natural advance + skips). */
@@ -377,6 +441,7 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
     queue.addToQueueMany(playable);
     if (typeof m.playLater === "function") await m.playLater({ songs: ids });
   }
+  checkAlignment(`enqueue:${where}`);
 }
 
 /** Insert handles right after the current song (gapless). */
@@ -390,6 +455,62 @@ export const queueTracksNext = (tracks: Track[], context = "library"): Promise<v
 /** Add-to-Queue a list of library Tracks. */
 export const queueTracksLater = (tracks: Track[], context = "library"): Promise<void> =>
   enqueueLater(tracks.map((t) => toHandle(t, context)));
+
+// ── Queue editing (Up Next context menu: Remove / Move to Top / Move to Bottom) ──
+//
+// All three act on UPCOMING items (after current), so `current`'s MusicKit index never
+// moves — `windowPos` + model-follow stay valid. Probe-confirmed: `music.queue.remove`
+// is a gapless live mutation that fires only `queueItemsDidChange` (NOT
+// `nowPlayingItemDidChange`), so model-follow isn't disturbed. Remove uses it directly;
+// Move composes remove + the documented `playNext`/`playLater` inserts. We update the
+// model first (instant Qcard re-render), then mirror into MusicKit. See docs/QUEUE.md.
+
+/**
+ * MusicKit-queue index of the upcoming entry at model index `k`. The window feeds
+ * `upcoming` in order after `current`, so it's `nowPlayingItemIndex + 1 + k` — but we
+ * id-verify and fall back to a forward search, in case `setQueue`'s dedup drifted the
+ * indices. Returns -1 if the entry isn't in MusicKit's window (then it's model-only).
+ */
+function mkUpcomingIndex(m: any, k: number, id: string): number {
+  const items: any[] = m.queue?.items ?? [];
+  const np = typeof m.nowPlayingItemIndex === "number" && m.nowPlayingItemIndex >= 0 ? m.nowPlayingItemIndex : windowPos;
+  const guess = np + 1 + k;
+  if (items[guess]?.id === id) return guess;
+  for (let i = np + 1; i < items.length; i++) if (items[i]?.id === id) return i; // dedup drift
+  return -1;
+}
+
+/** Remove an Up Next entry (gapless). */
+export async function removeFromQueue(index: number): Promise<void> {
+  const entry = queue.getUpcoming()[index];
+  if (!entry) return;
+  const m = await initPlayer();
+  const id = playId(entry);
+  const mk = id ? mkUpcomingIndex(m, index, id) : -1;
+  diag.log("player:queueEdit", { op: "remove", index, mk, id });
+  queue.removeAt(index); // model first → Qcard updates instantly
+  if (mk >= 0 && typeof m.queue?.remove === "function") m.queue.remove(mk);
+  checkAlignment("remove");
+}
+
+/** Move an Up Next entry to the front (top) or back (bottom) of upcoming (gapless). */
+export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<void> {
+  const up = queue.getUpcoming();
+  const entry = up[index];
+  if (!entry) return;
+  const m = await initPlayer();
+  const id = playId(entry);
+  const mk = id ? mkUpcomingIndex(m, index, id) : -1; // resolve before we mutate anything
+  diag.log("player:queueEdit", { op: `move-${to}`, index, mk, id });
+  queue.move(index, to === "top" ? 0 : up.length - 1); // model first → Qcard updates instantly
+  // MusicKit: pull it from its slot, re-insert at the chosen end (both gapless inserts).
+  if (mk >= 0 && typeof m.queue?.remove === "function") m.queue.remove(mk);
+  if (id) {
+    if (to === "top" && typeof m.playNext === "function") await m.playNext({ songs: [id] });
+    else if (to === "bottom" && typeof m.playLater === "function") await m.playLater({ songs: [id] });
+  }
+  checkAlignment(`move-${to}`);
+}
 
 // ── Transport ────────────────────────────────────────────────────────────────
 

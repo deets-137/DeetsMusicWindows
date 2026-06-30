@@ -98,13 +98,15 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   **track store** (`src/track-store.ts`) feeds metadata to both cards from one load.
 
 ### Stubbed / not built yet ⬜
-- **Manual queueing** — **Play Next / Add to Queue are built** (gapless `music.playNext`/
-  `playLater` + model in lockstep; see [QUEUE.md](QUEUE.md)), surfaced via a **right-click
-  menu** on Library **songs + albums** (Play Now · Play Next · Add to Queue;
-  `src/context-menu.ts` + the collection-card `menu()` accessor). Still to do: **remove /
-  reorder** (model supports them; needs the gapless-vs-`setQueue` call from QUEUE.md), a
-  hover **"⋯" overflow button** (right-click is the only trigger today — no keyboard/touch
-  path), and extending the menu to the **Qcard** Up-Next rows.
+- **Manual queueing** — **built and gapless** (model in lockstep; see [QUEUE.md](QUEUE.md)),
+  via right-click menus on two surfaces:
+  - **Library** songs + albums → Play Now · Play Next · Add to Queue (`playNext`/`playLater`).
+  - **Qcard Up Next** rows → Play Now · Move to Top · Move to Bottom · Remove (`music.queue.remove`
+    + `playNext`/`playLater`; probe-confirmed gapless — only `queueItemsDidChange` fires).
+  Shared popover primitive `src/context-menu.ts`. Still to do: a hover **"⋯" overflow button**
+  (right-click is the only trigger — no keyboard/touch path), drag-reorder, and a **Now Playing**
+  menu (Go to Album/Artist, Add to Library). Menu action sets are slated to be user-customizable
+  ([FUTURE-SETTINGS.md](FUTURE-SETTINGS.md)).
 - **Real Playlists card** — the Playlists slot currently hosts the Qcard. Real Playlists
   return later (collection-card Playlists context: overview list → playlist detail).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
@@ -123,9 +125,10 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 1. ✅ **Transport + model-follow + Qcard** — prev/next wired, the queue model follows
    MusicKit's live position, and the Qcard renders it (display + jump-to-item) in the
    Playlists slot.
-2. **Manual queueing** (in progress) — ✅ Play Next / Add to Queue via the right-click menu
-   (Library songs + albums), gapless + model-synced. **Remaining:** remove / reorder, a
-   hover "⋯" overflow trigger (a11y/discoverability), and the Qcard's Up-Next menu.
+2. **Manual queueing** — ✅ Library Play Now / Play Next / Add to Queue **and** Qcard Up-Next
+   Play Now / Move to Top / Move to Bottom / Remove, all gapless + model-synced via right-click.
+   **Remaining:** a hover "⋯" overflow trigger (a11y/discoverability), drag-reorder, a Now-Playing
+   menu, and user-customizable menu actions.
 3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
    top it up as playback nears an edge so long contexts don't dead-end. The one place
    model-driven nav crosses the window edge and incurs load latency (see gotchas).

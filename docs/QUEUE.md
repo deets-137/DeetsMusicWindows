@@ -158,6 +158,30 @@ see [UI-ARCHITECTURE §4a](UI-ARCHITECTURE.md).
 > `{ songs: [...] }` descriptor, the same fallback `setQueue` rides. If a library-only
 > song silently doesn't enqueue, that's the place to look.
 
+### Editing Up Next — Remove / Move to Top / Move to Bottom
+
+The Qcard's right-click menu edits **upcoming** entries (`removeFromQueue` / `moveInQueue`
+in `player.ts`). Because the edits only touch items *after* `current`, `current`'s index
+never moves — `windowPos` and model-follow stay valid.
+
+- **Remove** uses `music.queue.remove(mkIndex)` — a **gapless live mutation** (probe-confirmed:
+  current keeps playing, only `queueItemsDidChange` fires, *not* `nowPlayingItemDidChange`,
+  so model-follow isn't disturbed). No `setQueue`, no buffer.
+- **Move to Top / Bottom** compose `remove` + the documented `playNext` / `playLater`
+  inserts — all gapless, no `splice` needed.
+- **Index translation:** an upcoming entry at model index `k` sits at MusicKit index
+  `nowPlayingItemIndex + 1 + k` (`items` = `[history…, current, upcoming…]`). `mkUpcomingIndex`
+  computes that, **id-verifies** it, and falls back to a forward id-search if `setQueue`'s
+  dedup drifted things; `-1` (not in the window) → the edit is model-only and reconciles on
+  the next re-window.
+- **Order:** model first (instant Qcard re-render), then MusicKit. The menu captures the
+  **entry**, not the index, and re-resolves the live index per action — so an edit stays
+  correct even if playback advances while the menu is open.
+
+> **Edge:** "Move to Bottom" appends at the end of MusicKit's *window* via `playLater`;
+> if the model's `upcoming` is longer than the window, that's not the model's true bottom
+> (it reconciles on re-window). Fine for typical queues.
+
 ---
 
 ## The bug this design fixed (so we don't regress)
@@ -186,5 +210,6 @@ for the already-playing song).
 | change window size / dedup / load sequence | `loadFromModel` in [player.ts](../src/player.ts) |
 | change re-click behaviour | `playContext` in [player.ts](../src/player.ts) |
 | change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../src/player.ts), `*Many` in [queue.ts](../src/queue.ts) |
-| change the right-click menu items | `menu()` in [library-card.ts](../src/library-card.ts); popover in [context-menu.ts](../src/context-menu.ts) |
+| change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../src/player.ts) |
+| change the right-click menu items | `menu()` in [library-card.ts](../src/library-card.ts) (library) / the `contextmenu` handler in [qcard.ts](../src/qcard.ts) (queue); popover in [context-menu.ts](../src/context-menu.ts) |
 | debug a wrong-song / frozen-queue issue | `__diag.dump()`; watch `player:loadWindow` `pos`, `player:desync`, `player:reclick`, `player:enqueue` |

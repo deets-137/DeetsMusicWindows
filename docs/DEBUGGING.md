@@ -27,6 +27,12 @@ echoing. Off by default (the buffer still records silently).
   `__music.isPlaying`, …
 - `__player.snap()` — a snapshot of player + model state:
   `{ windowPos, curId, npIndex, qPos, playing, up }`.
+- `__player.queue()` — the **model's upcoming vs MusicKit's live window, side by side**
+  (titles resolved), with an `aligned` verdict + `firstMismatch`. The one-call answer to
+  "did that enqueue / remove / move keep the two in sync?" — and a clean blob to paste back
+  for diagnosis. The invariant it checks: MusicKit's upcoming ids are an order-preserving
+  *subsequence* of the model's (the window dedups + is bounded, so the model can have more,
+  never reordered, and MusicKit must hold nothing the model doesn't).
 
 ## What gets logged
 Auto-captured (no flag needed):
@@ -40,6 +46,12 @@ Player events (`src/player.ts`):
 - `player:reclick` — `{ id }` re-clicked the song already playing → restarted, no rebuild
 - `player:enqueue` — `{ where, n, libOnly }` Play Next / Add to Queue (`libOnly` = how many
   had no catalog id; watch it if a queued library-only song doesn't play)
+- `player:queueEdit` — `{ op, index, mk, id }` Up Next Remove / Move-to-Top / Move-to-Bottom
+  (`mk` = the resolved MusicKit queue index; `-1` = not in the window, edit was model-only)
+- `player:misalign` — **model's upcoming diverged from MusicKit's window** (`{ where, mkPos,
+  mkId, … }`). The auto-canary fired after an edit or on track-change; `where` says which.
+  Run `__player.queue()` to see the full side-by-side. Like `player:desync` but for the
+  *upcoming list*, not just `current`.
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
 - `player:np` — `snap()` on every `nowPlayingItemDidChange`
 - `player:next` / `player:prev` — transport buttons (+ `snap()`)

@@ -88,7 +88,8 @@
   transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
 }
 .qrow:hover { background: var(--surface-hover); transform: var(--hover-lift); }
-.qrow:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.qrow:focus-visible,
+.qrow.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 .qrow__art {
   flex: 0 0 auto;
   width: var(--lib-row-art);
