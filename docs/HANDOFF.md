@@ -30,6 +30,13 @@ npx tsc --noEmit         # typecheck front-end only
 Devtools **auto-open in dev** (set in `lib.rs` setup). `swatch.html` is a standalone
 color reference (open in any browser).
 
+**Debugging the player** (`src/diag.ts`): a ring buffer logs transport actions +
+MusicKit events + model↔MusicKit desyncs, and auto-captures uncaught errors. In the
+console: `__diag.dump()` (table), `__diag.report()` / `__diag.copy()` (text payload —
+the seed of a future in-app "Report a problem"), `__diag.echo(true)` (live echo;
+persists via `localStorage["deets.debug"]`). `__music` is the live MusicKit instance,
+`__player.snap()` the current player/model state.
+
 ---
 
 ## State of play
@@ -202,6 +209,8 @@ src/queue.ts                queue model (history/current/upcoming, backlog, stac
 src/player.ts               MusicKit engine: init/MUT-inject, playContext (windowed),
                             loadFromModel, transport, model-follow, scrubber/state events
 src/qcard.ts                Queue card (Playlists slot): Now Playing + Up Next + jump
+src/diag.ts                 diagnostics ring buffer + window.__diag (bug-report payload)
+src/slider.ts               shared slider primitive (scrubber, volume)
 src/styles.css              app rules (imports the token sheets first)
 src/styles/qcard.css        Queue card styling (imported by qcard.ts)
 src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system; skin.css is a

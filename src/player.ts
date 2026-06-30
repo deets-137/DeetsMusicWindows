@@ -12,6 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
+import * as diag from "./diag";
 
 declare global {
   interface Window {
@@ -51,6 +52,9 @@ export function initPlayer(): Promise<any> {
     await injectUserToken();
     wireEvents();
     applyVolumeToMusic(); // push the persisted level onto the fresh instance
+    (window as any).__music = music; // introspect the opaque instance (dev + bug reports)
+    (window as any).__player = { snap };
+    diag.log("player:configured", { authorized: !!music.isAuthorized });
     console.log("[player] configured — authorized:", music.isAuthorized);
     return music;
   })();
@@ -158,8 +162,41 @@ function wireEvents(): void {
 }
 
 function onNowPlayingChange(): void {
-  if (!loadingContext) syncModelToMusicKit();
+  if (!loadingContext) {
+    syncModelToMusicKit();
+    diag.log("player:np", snap());
+    checkDesync();
+  }
   emit();
+}
+
+/** A small JSON-able snapshot of player + model state, for the diag log. */
+function snap() {
+  const cur = queue.getCurrent();
+  return {
+    windowPos,
+    curId: cur?.catalogId ?? cur?.libraryId,
+    npIndex: music?.nowPlayingItemIndex,
+    qPos: music?.queue?.position,
+    playing: !!music?.isPlaying,
+    up: queue.getUpcoming().length,
+  };
+}
+
+/** Log when the model's current no longer matches MusicKit's now-playing item. */
+function checkDesync(): void {
+  const cur = queue.getCurrent();
+  const npId = music?.nowPlayingItem?.id;
+  if (!cur || !npId) return;
+  if (npId !== cur.catalogId && npId !== cur.libraryId) {
+    diag.log("player:desync", {
+      npId,
+      curCat: cur.catalogId,
+      curLib: cur.libraryId,
+      windowPos,
+      npIndex: music?.nowPlayingItemIndex,
+    });
+  }
 }
 
 /** Walk the queue model to match MusicKit's live position (natural advance + skips). */
@@ -240,6 +277,7 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   // Current's index in the fed window = count of id-bearing handles behind it.
   const pos = back.filter((h) => playId(h)).length;
   windowPos = pos; // the model's `current` is aligned to this MusicKit index
+  diag.log("player:loadWindow", { ids: ids.length, pos });
   if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
     await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
   }
@@ -255,6 +293,7 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
  */
 export async function playContext(handles: TrackHandle[], startIndex: number): Promise<void> {
   const m = await initPlayer();
+  diag.log("player:playContext", { startIndex, len: handles.length });
   queue.setContext(handles, startIndex);
   await loadFromModel(m);
 }
@@ -262,6 +301,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
 /** Jump to an Up Next entry by index (skipped songs are dropped). Re-windows → buffers. */
 export async function jumpToUpcoming(index: number): Promise<void> {
   const m = await initPlayer();
+  diag.log("player:jump", { index });
   if (!queue.jumpTo(index)) return;
   await loadFromModel(m);
 }
@@ -297,13 +337,16 @@ export async function playPause(): Promise<void> {
 /** Skip forward (native within the fed window). */
 export async function nextTrack(): Promise<void> {
   const m = await initPlayer();
+  diag.log("player:next", snap());
   if (typeof m.skipToNextItem === "function") await m.skipToNextItem();
 }
 
 /** Restart the song if we're past the intro, otherwise skip back. */
 export async function prevTrack(): Promise<void> {
   const m = await initPlayer();
-  if ((m.currentPlaybackTime ?? 0) > 3) {
+  const at = Math.round(m.currentPlaybackTime ?? 0);
+  diag.log("player:prev", { at, ...snap() });
+  if (at > 3) {
     await m.seekToTime(0);
     return;
   }
