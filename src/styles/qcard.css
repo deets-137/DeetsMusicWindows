@@ -69,6 +69,15 @@
   flex-direction: column;
   gap: var(--space-1);
 }
+/* Our own scrollbar — mirrors the Library list (.lib-view) for UI consistency:
+   color is a theme role, width/radius are skin tokens. */
+.qcard__list::-webkit-scrollbar { width: var(--scrollbar-w); }
+.qcard__list::-webkit-scrollbar-track { background: transparent; }
+.qcard__list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: var(--scrollbar-radius);
+}
+.qcard__list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 .qrow {
   display: flex;
   align-items: center;

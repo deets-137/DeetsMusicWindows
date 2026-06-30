@@ -37,6 +37,7 @@ Player events (`src/player.ts`):
 - `player:configured` — MusicKit configured (+ authorized?)
 - `player:playContext` — `{ startIndex, len }` a context started
 - `player:jump` — `{ index }` an Up Next row jumped to
+- `player:reclick` — `{ id }` re-clicked the song already playing → restarted, no rebuild
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
 - `player:np` — `snap()` on every `nowPlayingItemDidChange`
 - `player:next` / `player:prev` — transport buttons (+ `snap()`)

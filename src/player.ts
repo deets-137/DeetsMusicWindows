@@ -253,8 +253,33 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   if (!current) return;
   const back = queue.getHistory().slice(-WINDOW_BACK);
   const fwd = queue.getUpcoming().slice(0, WINDOW_FWD);
-  const windowEntries = [...back, current, ...fwd];
-  const ids = windowEntries.map(playId).filter((x): x is string => !!x);
+
+  // Build a DUPLICATE-FREE window. MusicKit's setQueue collapses repeated song ids, so
+  // a window with dupes makes its real queue shorter than ours and throws off the index
+  // changeToMediaAtIndex jumps to — landing on the wrong song. We dedupe here (first id
+  // wins) and insert `current` first-class, so its index `pos` is always exact. The
+  // queue model avoids most dupes already; this is the belt-and-suspenders for the case
+  // a heard song reappears later in the forward context. See docs/QUEUE.md.
+  const curId = playId(current);
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const h of back) {
+    const id = playId(h);
+    if (!id || id === curId || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  const pos = ids.length; // current sits immediately after the deduped back-chain
+  if (curId && !seen.has(curId)) {
+    seen.add(curId);
+    ids.push(curId);
+  }
+  for (const h of fwd) {
+    const id = playId(h);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
   if (!ids.length) {
     console.warn("[player] nothing playable in window");
     return;
@@ -262,7 +287,7 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
 
   // Fallback watch: library-only songs (no catalogId) ride along as library ids. Whether
   // MusicKit plays those — and accepts a mixed list — is the thing to confirm on first run.
-  const fallbacks = windowEntries.filter((h) => !h.catalogId && h.libraryId).length;
+  const fallbacks = [...back, current, ...fwd].filter((h) => !h.catalogId && h.libraryId).length;
   if (fallbacks) console.log(`[player] window includes ${fallbacks} library-only song(s) via id fallback`);
 
   isLoading = true;
@@ -274,9 +299,7 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   // the switch to the new index.
   if (m.isPlaying && typeof m.pause === "function") await m.pause();
   await m.setQueue({ songs: ids });
-  // Current's index in the fed window = count of id-bearing handles behind it.
-  const pos = back.filter((h) => playId(h)).length;
-  windowPos = pos; // the model's `current` is aligned to this MusicKit index
+  windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
   diag.log("player:loadWindow", { ids: ids.length, pos });
   if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
     await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
@@ -294,6 +317,19 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
 export async function playContext(handles: TrackHandle[], startIndex: number): Promise<void> {
   const m = await initPlayer();
   diag.log("player:playContext", { startIndex, len: handles.length });
+
+  // Idempotent re-click: clicking the song that's already current shouldn't tear down
+  // and rebuild MusicKit's queue (a needless buffer/gap, and the path that used to
+  // accumulate). Just restart it from the top — what people expect from re-clicking.
+  const target = handles[startIndex];
+  const cur = queue.getCurrent();
+  if (target && cur && playId(target) && playId(target) === playId(cur) && m.nowPlayingItem) {
+    diag.log("player:reclick", { id: playId(target) });
+    await m.seekToTime(0);
+    if (!m.isPlaying) await m.play();
+    return;
+  }
+
   queue.setContext(handles, startIndex);
   await loadFromModel(m);
 }

@@ -4,7 +4,8 @@
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
 > [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
-> [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection handles).
+> [QUEUE.md](QUEUE.md) (queue model + playback windowing — read before touching
+> queue.ts/player.ts), [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection).
 
 ## What this is
 A lightweight Apple Music player for Windows 11 — **Tauri v2 + WebView2**, vanilla
