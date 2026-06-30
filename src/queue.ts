@@ -132,15 +132,25 @@ export function setContext(handles: TrackHandle[], startIndex: number): QueueEnt
 }
 
 // ── Manual edits ─────────────────────────────────────────────────────────────
+/** Stack a block on top of upcoming, in order (plays right after the current song). */
+export function playNextMany(handles: TrackHandle[]): void {
+  if (!handles.length) return;
+  state.upcoming.unshift(...handles.map((h) => ({ ...h, origin: "manual" as const })));
+  emit();
+}
+/** Append a block to the end of upcoming, in order. */
+export function addToQueueMany(handles: TrackHandle[]): void {
+  if (!handles.length) return;
+  state.upcoming.push(...handles.map((h) => ({ ...h, origin: "manual" as const })));
+  emit();
+}
 /** Stack on top of upcoming (plays after the current song). */
 export function playNext(handle: TrackHandle): void {
-  state.upcoming.unshift({ ...handle, origin: "manual" });
-  emit();
+  playNextMany([handle]);
 }
 /** Append to the end of upcoming. */
 export function addToQueue(handle: TrackHandle): void {
-  state.upcoming.push({ ...handle, origin: "manual" });
-  emit();
+  addToQueueMany([handle]);
 }
 export function removeAt(index: number): void {
   if (index >= 0 && index < state.upcoming.length) {

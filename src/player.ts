@@ -347,6 +347,50 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
   return playContext(tracks.map((t) => toHandle(t, context)), startIndex);
 }
 
+// ── Manual queueing (Play Next / Add to Queue) ───────────────────────────────
+//
+// These INSERT into the live queue without a setQueue rebuild, so they're gapless:
+// `music.playNext`/`playLater` are documented MusicKit ops that mutate the upcoming
+// queue in place. We update our model in lockstep (the source of truth) — and because
+// the insert never moves `current`, `windowPos` and model-follow stay aligned (the
+// inserted items just appear at windowPos+1…, mirrored in both). When nothing is
+// playing yet there's no `current` to insert after, so we bootstrap by playing the
+// block as a fresh context. See docs/QUEUE.md.
+
+/** Shared core: filter to playable handles, bootstrap if idle, else mutate model + MusicKit. */
+async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise<void> {
+  const playable = handles.filter((h) => playId(h));
+  if (!playable.length) return;
+  const m = await initPlayer();
+  const libOnly = playable.filter((h) => !h.catalogId && h.libraryId).length;
+  diag.log("player:enqueue", { where, n: playable.length, libOnly });
+
+  if (!queue.getCurrent()) {
+    await playContext(playable, 0); // nothing playing → start the block
+    return;
+  }
+  const ids = playable.map(playId) as string[];
+  if (where === "next") {
+    queue.playNextMany(playable);
+    if (typeof m.playNext === "function") await m.playNext({ songs: ids });
+  } else {
+    queue.addToQueueMany(playable);
+    if (typeof m.playLater === "function") await m.playLater({ songs: ids });
+  }
+}
+
+/** Insert handles right after the current song (gapless). */
+export const enqueueNext = (handles: TrackHandle[]): Promise<void> => enqueue(handles, "next");
+/** Append handles to the end of the queue (gapless). */
+export const enqueueLater = (handles: TrackHandle[]): Promise<void> => enqueue(handles, "later");
+
+/** Play-Next a list of library Tracks (e.g. a song, or an album in track order). */
+export const queueTracksNext = (tracks: Track[], context = "library"): Promise<void> =>
+  enqueueNext(tracks.map((t) => toHandle(t, context)));
+/** Add-to-Queue a list of library Tracks. */
+export const queueTracksLater = (tracks: Track[], context = "library"): Promise<void> =>
+  enqueueLater(tracks.map((t) => toHandle(t, context)));
+
 // ── Transport ────────────────────────────────────────────────────────────────
 
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */

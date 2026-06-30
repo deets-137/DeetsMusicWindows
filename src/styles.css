@@ -602,11 +602,45 @@ body {
 .lib-view[data-openable="1"] .lib-row,
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
 .lib-row.is-selected,
-.lib-tile.is-selected {
+.lib-tile.is-selected,
+.lib-row.is-context,        /* right-clicked row while its menu is open */
+.lib-tile.is-context {
   outline: var(--focus-ring-w) solid var(--title);
   outline-offset: calc(-1 * var(--focus-ring-off));
   border-radius: var(--radius-control);
 }
+
+/* ── Context menu (right-click) ──────────────────────────────
+   A cursor-anchored popover (src/context-menu.ts). Mirrors the settings flyout —
+   themed via roles, sized via skin tokens — so every theme/skin styles it for free. */
+.ctx-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: var(--menu-min-w);
+  padding: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  font-family: var(--font-body);
+}
+.ctx-menu__item {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-3);
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-text);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui);
+}
+.ctx-menu__item:hover { background: var(--surface-hover); }
+.ctx-menu__item:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.ctx-menu__item:disabled { opacity: 0.5; cursor: default; }
 /* rows with a mini cover (songs/albums/artists lines) */
 .lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
 .lib-row__art {

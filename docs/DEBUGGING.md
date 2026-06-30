@@ -38,6 +38,8 @@ Player events (`src/player.ts`):
 - `player:playContext` — `{ startIndex, len }` a context started
 - `player:jump` — `{ index }` an Up Next row jumped to
 - `player:reclick` — `{ id }` re-clicked the song already playing → restarted, no rebuild
+- `player:enqueue` — `{ where, n, libOnly }` Play Next / Add to Queue (`libOnly` = how many
+  had no catalog id; watch it if a queued library-only song doesn't play)
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
 - `player:np` — `snap()` on every `nowPlayingItemDidChange`
 - `player:next` / `player:prev` — transport buttons (+ `snap()`)

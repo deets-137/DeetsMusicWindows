@@ -11,6 +11,8 @@
 //
 // Everything is client-side over data the card already holds in memory.
 
+import { openContextMenu, type MenuItem } from "./context-menu";
+
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
 
@@ -33,6 +35,9 @@ export interface Grouping<T = any> {
   // Leaf action on click (e.g. play a song). Takes precedence over `open`, and gets the
   // current sorted view + index so it can act on "everything from here onward".
   activate?: (x: T, index: number, items: T[]) => void;
+  // Right-click actions for an item (Play Now / Play Next / Add to Queue …). Omit for
+  // groupings with no menu (e.g. Artists for now). Gets the sorted view + index too.
+  menu?: (x: T, index: number, items: T[]) => MenuItem[];
 }
 
 export interface Context {
@@ -442,6 +447,25 @@ export function initCollectionCard(opts: CardOptions) {
     cur().scroll = 0;
     markSearchPill();
     renderViewInto(pane!, cur());
+  });
+
+  // Right-click a tile/row → open its grouping's context menu (cursor-anchored). Only
+  // groupings that declare `menu` participate; others fall through to the native menu.
+  viewport.addEventListener("contextmenu", (e) => {
+    const t = e.target as HTMLElement;
+    const pane = t.closest<HTMLElement>(".coll-pane");
+    if (!pane || pane !== curPane || animating) return;
+    const el = t.closest<HTMLElement>("[data-idx]");
+    if (!el) return;
+    const g = groupingOf(cur());
+    if (!g.menu) return;
+    const x = cur().items[Number(el.dataset.idx)];
+    if (!x) return;
+    const items = g.menu(x, Number(el.dataset.idx), cur().items);
+    if (!items.length) return;
+    e.preventDefault();
+    el.classList.add("is-context");
+    openContextMenu(e.clientX, e.clientY, items, () => el.classList.remove("is-context"));
   });
 
   document.addEventListener("click", (e) => {

@@ -131,6 +131,35 @@ matching MusicKit's now-playing item.
 
 ---
 
+## Manual queueing — Play Next / Add to Queue
+
+Inserting into the queue is **gapless** and never rebuilds: `enqueueNext` / `enqueueLater`
+(`player.ts`) use MusicKit's documented `playNext` / `playLater` ops, which mutate the
+**upcoming** queue in place — no `setQueue`, no buffer. We keep the model in lockstep:
+
+- **Model side** (`queue.ts`): `playNextMany` unshifts the block onto `upcoming` (order
+  preserved); `addToQueueMany` pushes it on the end. Both tag entries `origin: "manual"`,
+  so a later `setContext` (new play) keeps them (the stacking rule). The singles
+  `playNext`/`addToQueue` just delegate to the batch versions.
+- **Why model-follow doesn't break:** the insert is **after** `current`, so `current`'s
+  index never moves — `windowPos` stays valid and `nowPlayingItemIndex` is unchanged. The
+  new items simply appear at `windowPos+1…` in *both* MusicKit and the model. (Contrast a
+  `setQueue` rebuild, which re-buffers `current`.)
+- **Bootstrap:** with nothing playing there's no `current` to insert after, so both ops
+  fall back to `playContext(block, 0)` — start the block fresh.
+
+`queueTracksNext` / `queueTracksLater` are the `Track[]` wrappers the Library uses (a song
+is a 1-track list; an album is its tracks in disc/track order). The right-click **menu**
+lives in the collection-card engine (`menu()` grouping accessor → `src/context-menu.ts`);
+see [UI-ARCHITECTURE §4a](UI-ARCHITECTURE.md).
+
+> **One thing to confirm on real runs (logged as `player:enqueue` `libOnly`):** whether
+> `playNext`/`playLater` accept **library-only** ids (`l.xxxx`, no catalog id) in the
+> `{ songs: [...] }` descriptor, the same fallback `setQueue` rides. If a library-only
+> song silently doesn't enqueue, that's the place to look.
+
+---
+
 ## The bug this design fixed (so we don't regress)
 
 **Symptom:** clicking the same song repeatedly (or re-playing any row from a list you'd
@@ -156,4 +185,6 @@ for the already-playing song).
 | change Previous / lookback semantics | `setContext` in [queue.ts](../src/queue.ts) |
 | change window size / dedup / load sequence | `loadFromModel` in [player.ts](../src/player.ts) |
 | change re-click behaviour | `playContext` in [player.ts](../src/player.ts) |
-| debug a wrong-song / frozen-queue issue | `__diag.dump()`; watch `player:loadWindow` `pos`, `player:desync`, `player:reclick` |
+| change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../src/player.ts), `*Many` in [queue.ts](../src/queue.ts) |
+| change the right-click menu items | `menu()` in [library-card.ts](../src/library-card.ts); popover in [context-menu.ts](../src/context-menu.ts) |
+| debug a wrong-song / frozen-queue issue | `__diag.dump()`; watch `player:loadWindow` `pos`, `player:desync`, `player:reclick`, `player:enqueue` |

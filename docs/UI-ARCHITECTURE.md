@@ -269,7 +269,9 @@ Library's). Styles live under the "Library card" / "collection card" blocks in
 **Contexts → groupings → sorts.** A **context** has a title, one or more
 **groupings**, and whether density applies. A **grouping** declares its own sort
 specs, a live `list()` accessor, a `match()` for search, a `render(item, density,
-idx)`, and an optional `open(item)` that returns a **child context** to drill into.
+idx)`, an optional `open(item)` that returns a **child context** to drill into, an
+optional `activate(item, i, items)` (the leaf click — play), and an optional
+`menu(item, i, items)` that returns the item's **right-click actions** (see below).
 Because each context carries its own controls, the **Sort/View pills re-render per
 level** — and the View pill auto-hides when neither grouping nor density is
 meaningful (e.g. a future playlists overview). Library's contexts:
@@ -285,6 +287,20 @@ Sort/View open card-local popovers (`.lib-pop`); **Search** is an icon pill that
 list down. Search is case-insensitive **substring** on title/artist/album; its pill
 lights while a query is active. Density = `lines` / `small` / `large` squares
 (`lines` rows carry a mini cover — round for artists — except inside an album).
+
+**Right-click menu.** A grouping's `menu(item)` returns `MenuItem[]`
+(`{ label, run, disabled? }`); the engine adds **one delegated `contextmenu`
+listener** on `.coll-viewport`, resolves the row → its item, and opens a cursor-anchored
+popover (`src/context-menu.ts`, `openContextMenu`). The popover is a themed HTML element
+(`.ctx-menu`, mirrors the settings flyout) **confined to the window** — chosen over a
+native OS menu precisely so themes/skins apply; the trade is it can't overflow the window
+edges, so position is **clamped to the live viewport** (`clientWidth/Height`, never the
+fixed 480×864 — correct under resize / fullscreen / miniplayer) and it closes on
+outside-press / Escape / scroll / resize. Library wires it on **Songs** and **Albums**
+(Play Now · Play Next · Add to Queue — see [DATA-ARCHITECTURE](DATA-ARCHITECTURE.md) /
+[QUEUE.md](QUEUE.md) for the player side); Artists declare no `menu`, so they fall
+through. The right-clicked row carries `.is-context` (same outline as `.is-selected`)
+while its menu is open.
 
 **Navigation = a push/pop pane stack.** `.coll-body` holds a clipping
 `.coll-viewport`; each context is a `.coll-pane` (absolute, `data-pos`

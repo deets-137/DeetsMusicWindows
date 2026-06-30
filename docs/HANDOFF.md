@@ -5,7 +5,8 @@
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
 > [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
 > [QUEUE.md](QUEUE.md) (queue model + playback windowing — read before touching
-> queue.ts/player.ts), [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection).
+> queue.ts/player.ts), [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection),
+> [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles).
 
 ## What this is
 A lightweight Apple Music player for Windows 11 — **Tauri v2 + WebView2**, vanilla
@@ -97,8 +98,13 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   **track store** (`src/track-store.ts`) feeds metadata to both cards from one load.
 
 ### Stubbed / not built yet ⬜
-- **Manual queueing** — the queue *model* supports play-next / add-to-queue / reorder /
-  remove, but there's **no UI** for them yet and no MusicKit-side sync. Next up.
+- **Manual queueing** — **Play Next / Add to Queue are built** (gapless `music.playNext`/
+  `playLater` + model in lockstep; see [QUEUE.md](QUEUE.md)), surfaced via a **right-click
+  menu** on Library **songs + albums** (Play Now · Play Next · Add to Queue;
+  `src/context-menu.ts` + the collection-card `menu()` accessor). Still to do: **remove /
+  reorder** (model supports them; needs the gapless-vs-`setQueue` call from QUEUE.md), a
+  hover **"⋯" overflow button** (right-click is the only trigger today — no keyboard/touch
+  path), and extending the menu to the **Qcard** Up-Next rows.
 - **Real Playlists card** — the Playlists slot currently hosts the Qcard. Real Playlists
   return later (collection-card Playlists context: overview list → playlist detail).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
@@ -117,8 +123,9 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 1. ✅ **Transport + model-follow + Qcard** — prev/next wired, the queue model follows
    MusicKit's live position, and the Qcard renders it (display + jump-to-item) in the
    Playlists slot.
-2. **Manual queueing** (next) — UI for play-next / add-to-queue / reorder / remove,
-   driving the model (which already supports them) and syncing into MusicKit.
+2. **Manual queueing** (in progress) — ✅ Play Next / Add to Queue via the right-click menu
+   (Library songs + albums), gapless + model-synced. **Remaining:** remove / reorder, a
+   hover "⋯" overflow trigger (a11y/discoverability), and the Qcard's Up-Next menu.
 3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
    top it up as playback nears an edge so long contexts don't dead-end. The one place
    model-driven nav crosses the window edge and incurs load latency (see gotchas).
