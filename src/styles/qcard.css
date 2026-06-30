@@ -68,6 +68,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  position: relative;   /* anchor for the drag insertion line */
 }
 /* Our own scrollbar — mirrors the Library list (.lib-view) for UI consistency:
    color is a theme role, width/radius are skin tokens. */
@@ -87,9 +88,33 @@
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
 }
-.qrow:hover { background: var(--surface-hover); transform: var(--hover-lift); }
+/* :not(--dragging) — a hovered dragged row would otherwise win on specificity and
+   override the drag transform, snapping the row back (visual rubber-banding). */
+.qrow:hover:not(.qrow--dragging) { background: var(--surface-hover); transform: var(--hover-lift); }
 .qrow:focus-visible,
 .qrow.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+/* A row being dragged: lifts, follows the pointer 1:1 (--drag-dy set in JS), no transition lag. */
+.qrow--dragging {
+  transform: translateY(var(--drag-dy, 0px)) var(--drag-lift);
+  box-shadow: var(--shadow-panel);
+  background: var(--surface-hover);
+  position: relative;
+  z-index: 2;
+  opacity: 0.96;
+  transition: none;
+  cursor: grabbing;
+}
+/* Insertion indicator — where the dragged row will land (top set in JS). */
+.qcard__drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--drop-line-w);
+  border-radius: var(--drop-line-w);
+  background: var(--title);
+  pointer-events: none;
+  z-index: 3;
+}
 .qrow__art {
   flex: 0 0 auto;
   width: var(--lib-row-art);

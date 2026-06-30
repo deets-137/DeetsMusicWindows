@@ -182,6 +182,27 @@ never moves — `windowPos` and model-follow stay valid.
 > if the model's `upcoming` is longer than the window, that's not the model's true bottom
 > (it reconciles on re-window). Fine for typical queues.
 
+### Arbitrary reorder — `reconcileUpcoming` (drag-and-drop)
+
+Top/Bottom hit fixed positions, so they compose from `playNext`/`playLater`. An **arbitrary**
+reorder (drag-drop to any slot) has no documented MusicKit op — so instead of the undocumented
+`splice`, we **reflect the model into MusicKit by rebuilding only the divergent suffix**:
+
+1. Reorder the model (`queue.move(from, to)`) — it's the source of truth.
+2. `reconcileUpcoming()`: compute the model's expected upcoming (deduped against what MusicKit
+   holds up to `current`, capped to `WINDOW_FWD`), find the **first index `d`** where MusicKit's
+   live upcoming diverges, `remove` MusicKit's upcoming `[d..end]`, then `playLater` the model's
+   `[d..end]`.
+
+`remove` + `playLater` both leave `current` untouched → **gapless, no `setQueue`, no buffer**.
+Bounded by the 200-item window, so even a top-of-queue drop is ~200 removes + one batched
+`playLater`. This is the **general sync primitive**: drag-reorder uses it now, and re-windowing
+(roadmap #3) will lean on it too. The `player:misalign` canary validates every reconcile.
+
+The drag UI itself lives in `qcard.ts` (whole-row press-and-drag, insertion-line feedback,
+render suspended mid-drag so a queue/track change can't yank the row — see
+[UI-ARCHITECTURE §4b](UI-ARCHITECTURE.md)).
+
 ---
 
 ## The bug this design fixed (so we don't regress)
@@ -211,5 +232,7 @@ for the already-playing song).
 | change re-click behaviour | `playContext` in [player.ts](../src/player.ts) |
 | change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../src/player.ts), `*Many` in [queue.ts](../src/queue.ts) |
 | change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../src/player.ts) |
+| change drag-reorder sync / re-windowing | `reconcileUpcoming` in [player.ts](../src/player.ts) |
+| change the drag interaction (Qcard) | the drag block in [qcard.ts](../src/qcard.ts) |
 | change the right-click menu items | `menu()` in [library-card.ts](../src/library-card.ts) (library) / the `contextmenu` handler in [qcard.ts](../src/qcard.ts) (queue); popover in [context-menu.ts](../src/context-menu.ts) |
 | debug a wrong-song / frozen-queue issue | `__diag.dump()`; watch `player:loadWindow` `pos`, `player:desync`, `player:reclick`, `player:enqueue` |

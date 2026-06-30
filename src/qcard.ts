@@ -5,7 +5,7 @@
 
 import "./styles/qcard.css";
 import * as queue from "./queue";
-import { onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, type PlayerState } from "./player";
+import { onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming, type PlayerState } from "./player";
 import { type Track } from "./library";
 import { trackById, onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
@@ -43,7 +43,17 @@ export function initQcard(): void {
   if (!body) return;
   body.classList.add("qcard");
 
+  // Drag state lives out here so the drag handlers (below) and render() share it.
+  let dragging = false;
+  let pendingRender = false;
+  let suppressClick = false; // a click fires after a drag's pointerup — don't let it jump
+
   const render = () => {
+    if (dragging) {
+      pendingRender = true; // a queue/track change arrived mid-drag — defer the rebuild
+      return;
+    }
+    pendingRender = false;
     const current = queue.getCurrent();
     const upcoming = queue.getUpcoming();
 
@@ -89,6 +99,10 @@ export function initQcard(): void {
   // Click (or Enter/Space) an Up Next row → jump to it. Delegated on the persistent
   // body so it survives re-renders. The jump re-windows and buffers (cover-up above).
   const jumpFromEvent = (target: EventTarget | null) => {
+    if (suppressClick) {
+      suppressClick = false; // this click was the tail of a drag — consume it
+      return;
+    }
     const row = (target as HTMLElement | null)?.closest<HTMLElement>(".qrow[data-idx]");
     if (!row) return;
     const idx = Number(row.dataset.idx);
@@ -127,6 +141,125 @@ export function initQcard(): void {
       ],
       () => row.classList.remove("is-context"),
     );
+  });
+
+  // ── Drag-to-reorder (Up Next) ──────────────────────────────────────────────
+  // Whole-row press-and-drag (a quick click still jumps; hold + move past the threshold
+  // drags). Insertion-LINE feedback — no neighbour reflow, cheap for long queues. render()
+  // is suspended mid-drag (above) so a queue/track change can't yank the row. On drop we
+  // move the MODEL then `reconcileUpcoming()` (gapless MusicKit sync). Rows are uniform
+  // height + flush, so the target index is pure arithmetic — no rect reads on the moving row.
+  const DRAG_THRESHOLD = 6;
+  type Drag = {
+    entry: queue.QueueEntry; row: HTMLElement; list: HTMLElement; line: HTMLElement;
+    startY: number; lastY: number; startScroll: number; fromIdx: number; toIdx: number;
+    firstTop: number; rowH: number; count: number; raf: number;
+  };
+  let drag: Drag | null = null;
+  let pending: { entry: queue.QueueEntry; row: HTMLElement; idx: number; startY: number } | null = null;
+
+  // Pin the row under the pointer — compensate for any auto-scroll so it doesn't slide off
+  // with the content (the row's slot scrolls; the pointer doesn't).
+  const paintRow = () => {
+    if (!drag) return;
+    const ty = drag.lastY - drag.startY + (drag.list.scrollTop - drag.startScroll);
+    drag.row.style.setProperty("--drag-dy", `${ty}px`);
+  };
+
+  const computeTarget = () => {
+    if (!drag) return;
+    const lr = drag.list.getBoundingClientRect();
+    const contentY = drag.lastY - lr.top + drag.list.scrollTop;
+    const ins = Math.max(0, Math.min(drag.count, Math.round((contentY - drag.firstTop) / drag.rowH)));
+    drag.toIdx = ins <= drag.fromIdx ? ins : ins - 1; // queue.move() splice semantics
+    // The line is an absolute child of the scrolling <ol>, so it already scrolls WITH the
+    // content — position it in plain content coords (no scrollTop term, or it double-compensates).
+    drag.line.style.top = `${drag.firstTop + ins * drag.rowH}px`;
+  };
+
+  const autoScroll = () => {
+    if (!drag) return;
+    const r = drag.list.getBoundingClientRect();
+    const EDGE = 28;
+    const dy = drag.lastY < r.top + EDGE ? -9 : drag.lastY > r.bottom - EDGE ? 9 : 0;
+    if (dy) {
+      drag.list.scrollTop += dy;
+      paintRow();
+      computeTarget();
+    }
+    drag.raf = requestAnimationFrame(autoScroll);
+  };
+
+  const beginDrag = () => {
+    if (!pending) return;
+    const { entry, row, idx, startY } = pending;
+    const list = row.parentElement as HTMLElement;
+    const rows = Array.from(list.querySelectorAll<HTMLElement>(".qrow"));
+    const line = document.createElement("div");
+    line.className = "qcard__drop-line";
+    list.appendChild(line);
+    dragging = true;
+    row.classList.add("qrow--dragging");
+    drag = {
+      entry, row, list, line, startY, lastY: startY, startScroll: list.scrollTop, fromIdx: idx, toIdx: idx,
+      firstTop: rows[0]?.offsetTop ?? 0, rowH: rows[0]?.offsetHeight || 1, count: rows.length, raf: 0,
+    };
+    computeTarget();
+    drag.raf = requestAnimationFrame(autoScroll);
+  };
+
+  const endDrag = (commit: boolean) => {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointercancel", onCancel);
+    if (!drag) {
+      pending = null;
+      return; // never crossed the threshold → it was a click (let it jump)
+    }
+    cancelAnimationFrame(drag.raf);
+    const { entry, row, line, fromIdx, toIdx } = drag;
+    row.classList.remove("qrow--dragging");
+    row.style.removeProperty("--drag-dy");
+    line.remove();
+    dragging = false;
+    drag = null;
+    pending = null;
+    suppressClick = true; // swallow the click that trails this pointerup
+    if (commit && toIdx !== fromIdx) {
+      const live = queue.getUpcoming().indexOf(entry); // robust if playback advanced
+      if (live >= 0) {
+        queue.move(live, toIdx); // model → onQueueChange → render (now unblocked)
+        reconcileUpcoming().catch((e) => console.error("[qcard] reconcile", e)); // MusicKit
+        return;
+      }
+    }
+    if (pendingRender) render(); // aborted / no-op, but a render was deferred
+  };
+
+  const onMove = (e: PointerEvent) => {
+    if (drag) {
+      drag.lastY = e.clientY;
+      paintRow();
+      computeTarget();
+      e.preventDefault(); // no text selection while dragging
+    } else if (pending && Math.abs(e.clientY - pending.startY) > DRAG_THRESHOLD) {
+      beginDrag();
+    }
+  };
+  const onUp = () => endDrag(true);
+  const onCancel = () => endDrag(false);
+
+  body.addEventListener("pointerdown", (e) => {
+    suppressClick = false;
+    if (e.button !== 0) return; // left button only
+    const row = (e.target as HTMLElement).closest<HTMLElement>(".qrow[data-idx]");
+    if (!row) return;
+    const entry = queue.getUpcoming()[Number(row.dataset.idx)];
+    if (!entry) return;
+    pending = { entry, row, idx: Number(row.dataset.idx), startY: e.clientY };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onCancel);
   });
 
   // Metadata comes from the shared track store; re-render when it (re)loads so newly

@@ -345,6 +345,33 @@ a theme role** (`--scrollbar` / `--scrollbar-hover` in `themes.css`) and its
 width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Scoped to the
 scrolling `.lib-view`; widen the selector to theme every scroll region the same way.
 
+### 4b. The Queue card (Qcard) & drag-to-reorder
+The Qcard (`src/qcard.ts`) is a small **standalone** renderer (not the collection-card
+engine) in the Playlists slot — Now Playing + Up Next, re-rendered (`body.innerHTML = …`)
+on every queue/track/state change. Up Next rows support left-click/Enter to jump, a
+right-click menu, and **drag-to-reorder**.
+
+The drag is **whole-row press-and-drag** (a quick click still jumps; hold + move past a ~6px
+threshold drags) with **insertion-line** feedback — no neighbour reflow, so it's cheap for
+long queues. Two things make it work:
+- **Render is suspended mid-drag.** Because `render()` rebuilds all rows, a queue/track change
+  arriving during a drag would destroy the dragged element — so a `dragging` flag short-circuits
+  `render()` (coalescing into one deferred rebuild on drop). A reusable pattern for any
+  imperative interaction layered over a re-rendering view.
+- **Uniform-height arithmetic.** Rows are equal height and flush, so the drop index is
+  `round((pointerY − firstTop) / rowH)` — no `getBoundingClientRect` on the transformed row.
+- **Two scroll coordinate systems (this bit us twice).** The dragged row is *in-flow* — its slot
+  scrolls with the content — so to keep it pinned under the pointer during auto-scroll its
+  transform **adds** the scroll delta (`+ (scrollTop − startScroll)`). The insertion line is an
+  *absolute child of the same scrolling list*, which **also** scrolls with content, so it takes a
+  **plain content coordinate** (`firstTop + ins·rowH`, no scroll term). Compensating the line the
+  same way as the row double-shifts it off-screen; not compensating the row lets it slide away.
+  Also: `.qrow--dragging`'s transform must beat `.qrow:hover` on specificity (`:hover:not(--dragging)`),
+  or a hovered dragged row snaps back and rubber-bands.
+On drop it moves the **model** (`queue.move`) then `reconcileUpcoming()` reflects it into
+MusicKit gaplessly (see [QUEUE.md](QUEUE.md)). Tokens: `--drag-lift`, `--drop-line-w` (skin);
+the line + lift colors are theme roles.
+
 ### Window-control wiring
 `src/main.ts` calls `@tauri-apps/api/window`:
 `minimize()`, `toggleMaximize()`, `close()`. These are state-changing calls, so

@@ -62,3 +62,18 @@ Playlist). Likely a small checklist/reorder UI rather than a single toggle.
 **Notes.** The library row menu (Play Now / Play Next / Add to Queue) is a sibling that
 will want the same treatment — a shared "which actions, what order" model keyed by surface
 (`library-row` vs `queue-row`). `localStorage`, e.g. `deets.menu.queue` = ordered action ids.
+
+---
+
+## 3. Qcard drag initiation
+
+**Behavior.** How a drag-to-reorder starts on an Up Next row.
+
+**Current default (hardcoded):** **whole-row press-and-drag** — press and move past a ~6px
+threshold to drag; a quick click still plays (jumps to) the row. No separate handle.
+
+**What the future setting changes.** Offer a **dedicated grip handle** (a `⋮⋮` affordance on
+each row) as an alternative — unambiguous, and friendlier for touch where vertical drag
+competes with scroll. Whole-row is cleaner on the narrow card for mouse users; the handle
+trades a little clutter for clarity. Likely a single toggle (`deets.qcard.dragMode` =
+`"row" | "handle"`), defaulting to `"row"`.

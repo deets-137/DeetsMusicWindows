@@ -512,6 +512,49 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
   checkAlignment(`move-${to}`);
 }
 
+/**
+ * Reflect an arbitrary model reorder into MusicKit's live window — GAPLESSLY. The model is
+ * the source of truth; this rebuilds only the **divergent suffix** of MusicKit's upcoming
+ * (`remove` everything from the first mismatch to the end, then `playLater` the model's
+ * upcoming from there). Both ops leave `current` untouched, so no `setQueue`, no buffer.
+ * Bounded by `WINDOW_FWD` (MusicKit only ever holds the forward window). This is the general
+ * sync primitive — drag-reorder uses it, and re-windowing (roadmap) will too. See docs/QUEUE.md.
+ */
+export async function reconcileUpcoming(): Promise<void> {
+  if (!music) return;
+  const m = music;
+  const items: any[] = m.queue?.items ?? [];
+  const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
+  if (np < 0) return;
+
+  // Expected MK upcoming = model upcoming, deduped against what MK already holds up to current,
+  // capped to the window (forward-only mirror of loadFromModel's dedup — current is never touched).
+  const seen = new Set<string>();
+  for (let i = 0; i <= np; i++) {
+    const id = items[i]?.id;
+    if (id) seen.add(id);
+  }
+  const expected: string[] = [];
+  for (const e of queue.getUpcoming()) {
+    if (expected.length >= WINDOW_FWD) break;
+    const id = playId(e);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    expected.push(id);
+  }
+
+  const mkUp: string[] = items.slice(np + 1).map((it) => it?.id);
+  let d = 0;
+  while (d < mkUp.length && d < expected.length && mkUp[d] === expected[d]) d++;
+  if (d === mkUp.length && d === expected.length) return; // already in sync
+
+  diag.log("player:reconcile", { d, mk: mkUp.length, expected: expected.length });
+  for (let i = items.length - 1; i >= np + 1 + d; i--) m.queue?.remove?.(i); // drop divergent suffix (back→front)
+  const tail = expected.slice(d);
+  if (tail.length && typeof m.playLater === "function") await m.playLater({ songs: tail });
+  checkAlignment("reconcile");
+}
+
 // ── Transport ────────────────────────────────────────────────────────────────
 
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */

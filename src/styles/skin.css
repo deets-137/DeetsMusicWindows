@@ -128,6 +128,8 @@
   --dur-spin: 0.7s;
   --ease-ui:  ease;
   --hover-lift: none;               /* interactive rows/tiles rise on hover; a skin opts in */
+  --drag-lift:  scale(1.02);        /* lift of a row being dragged (Qcard reorder) */
+  --drop-line-w: 2px;               /* insertion-indicator thickness */
 
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;

@@ -52,6 +52,8 @@ Player events (`src/player.ts`):
   mkId, … }`). The auto-canary fired after an edit or on track-change; `where` says which.
   Run `__player.queue()` to see the full side-by-side. Like `player:desync` but for the
   *upcoming list*, not just `current`.
+- `player:reconcile` — `{ d, mk, expected }` a drag-reorder (or future re-window) rebuilt
+  MusicKit's upcoming from the first divergence `d` to the window end. Gapless.
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
 - `player:np` — `snap()` on every `nowPlayingItemDidChange`
 - `player:next` / `player:prev` — transport buttons (+ `snap()`)
