@@ -10,10 +10,9 @@ import { type Track } from "./library";
 import { trackById, onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { openContextMenu } from "./context-menu";
+import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
-
-let lastState: PlayerState | null = null;
 
 function resolve(e: queue.QueueEntry): Track | undefined {
   return trackById(e.catalogId) ?? trackById(e.libraryId);
@@ -34,14 +33,18 @@ function rowHTML(idx: number, title: string, artist: string, cover: string | nul
   )}</span><span class="qrow__artist">${esc(artist)}</span></div></li>`;
 }
 
-export function initQcard(): void {
-  const panel = document.querySelector<HTMLElement>('[data-card="playlists"]');
-  if (!panel) return;
-  const titleEl = panel.querySelector<HTMLElement>(".panel__title");
-  if (titleEl) titleEl.textContent = "Queue";
-  const body = panel.querySelector<HTMLElement>(".panel__body");
-  if (!body) return;
-  body.classList.add("qcard");
+export const queueCard: CardDef = {
+  id: "queue",
+  title: "Queue",
+  mount: (host) => mountQueue(host),
+};
+
+// Kept as a standalone function (not inlined into mount) so the body retains its original
+// indentation — the logic is unchanged from the old initQcard, only the mount/teardown wrap.
+function mountQueue(host: HTMLElement): CardInstance {
+  host.innerHTML = `<header class="panel__head"><h2 class="panel__title">Queue</h2></header><div class="panel__body qcard"></div>`;
+  const body = host.querySelector<HTMLElement>(".panel__body")!;
+  let lastState: PlayerState | null = null;
 
   // Drag state lives out here so the drag handlers (below) and render() share it.
   let dragging = false;
@@ -264,11 +267,24 @@ export function initQcard(): void {
 
   // Metadata comes from the shared track store; re-render when it (re)loads so newly
   // synced songs resolve instead of showing "Unknown".
-  onTracksChange(render);
-  queue.onQueueChange(render);
-  onPlayerState((s) => {
+  const unsubTracks = onTracksChange(render);
+  const unsubQueue = queue.onQueueChange(render);
+  const unsubState = onPlayerState((s) => {
     lastState = s;
     render();
   });
   render();
+
+  return {
+    destroy() {
+      unsubTracks();
+      unsubQueue();
+      unsubState();
+      // If destroyed mid-drag, the global drag listeners would outlive the card.
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
+      host.innerHTML = "";
+    },
+  };
 }

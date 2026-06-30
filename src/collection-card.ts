@@ -90,7 +90,7 @@ export function initCollectionCard(opts: CardOptions) {
   const titleEl = opts.root.querySelector<HTMLElement>(".panel__title");
   const backEl = opts.root.querySelector<HTMLButtonElement>(".panel__back");
   const bodyHost = opts.root.querySelector<HTMLElement>(".coll-body");
-  if (!bodyHost) return { reload: () => {} };
+  if (!bodyHost) return { reload: () => {}, destroy: () => {} };
 
   const baseTitle = titleEl?.textContent ?? "";
   bodyHost.innerHTML = `<div class="coll-viewport" data-viewport></div>`;
@@ -468,17 +468,21 @@ export function initCollectionCard(opts: CardOptions) {
     openContextMenu(e.clientX, e.clientY, items, () => el.classList.remove("is-context"));
   });
 
-  document.addEventListener("click", (e) => {
+  // Named (not inline) so destroy() can remove them — these are the only listeners the
+  // engine attaches outside its own DOM subtree, so they're what would leak on remount.
+  const onDocClick = (e: MouseEvent) => {
     if (!(e.target as HTMLElement).closest("[data-popbody], [data-pop]")) closePops();
-  });
-  document.addEventListener("keydown", (e) => {
+  };
+  const onDocKey = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
     closePops();
     if (cur()?.searchOpen) {
       cur().searchOpen = false;
       curPane?.querySelector(".lib-searchbar")?.classList.remove("is-open");
     }
-  });
+  };
+  document.addEventListener("click", onDocClick);
+  document.addEventListener("keydown", onDocKey);
 
   // ── start ──
   const f0 = frameFor(opts.rootContext(), true);
@@ -503,6 +507,12 @@ export function initCollectionCard(opts: CardOptions) {
       renderViewInto(curPane, cur());
       const v2 = curPane.querySelector<HTMLElement>("[data-view]");
       if (v2) v2.scrollTop = keep;
+    },
+    // Remove the engine's document-level listeners. The viewport/back listeners live on
+    // the host subtree, so they're discarded when the card clears its host on unmount.
+    destroy() {
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onDocKey);
     },
   };
 }

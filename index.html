@@ -116,61 +116,13 @@
     </header>
 
     <main class="app-body">
+      <!-- Each .panel is a mount HOST; its card builds its own markup at runtime
+           (src/cards.ts → each card's mount()). Phase 1 keeps these fixed positions;
+           Phase 2 turns them into generic swappable slots. -->
       <div class="bento" data-screen="home">
-        <!-- Now Playing — wide transport strip -->
-        <section class="panel" data-card="now-playing" data-span="wide">
-          <div class="np">
-            <div class="np__art" id="np-art" aria-hidden="true">♪</div>
-            <div class="np__center">
-              <div class="np__meta">
-                <span class="np__title" id="np-title">Not playing</span>
-                <span class="np__artist" id="np-artist"></span>
-              </div>
-              <div class="np__scrub scrub">
-                <div class="scrub__track"><div class="scrub__fill"></div></div>
-                <span class="scrub__handle" aria-hidden="true"></span>
-              </div>
-              <div class="np__controls">
-                <button class="np__btn" type="button" aria-label="Previous">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg>
-                </button>
-                <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-                </button>
-                <button class="np__btn" type="button" aria-label="Next">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Library (left) -->
-        <section class="panel" data-card="library">
-          <header class="panel__head">
-            <button class="panel__back" id="library-back" type="button" aria-label="Back" hidden>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-            </button>
-            <h2 class="panel__title">Library</h2>
-            <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-            </button>
-          </header>
-
-          <!-- Toolbar (Sort/View/Search) + view are rendered by the collection-card
-               engine into .coll-body, since the controls differ per context. -->
-          <div class="coll-body"></div>
-        </section>
-
-        <!-- Playlists (right) -->
-        <section class="panel" data-card="playlists">
-          <header class="panel__head"><h2 class="panel__title">Playlists</h2></header>
-          <div class="panel__body"></div>
-        </section>
+        <section class="panel" data-card="now-playing" data-span="wide"></section>
+        <section class="panel" data-card="library"></section>
+        <section class="panel" data-card="playlists"></section>
       </div>
     </main>
   </body>

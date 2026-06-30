@@ -3,12 +3,8 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
-import { initLibraryCard } from "./library-card";
-import { initQcard } from "./qcard";
-import {
-  playPause, nextTrack, prevTrack, onPlayerState, onPlayerProgress, seekToFraction,
-  getVolume, setVolume, toggleMute, isMuted,
-} from "./player";
+import { registry, type CardId, type CardInstance } from "./cards";
+import { getVolume, setVolume, toggleMute, isMuted } from "./player";
 import { makeSlider } from "./slider";
 import { makeDropdown, type DropdownMode, type DropdownHandle } from "./dropdown";
 
@@ -133,63 +129,21 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ── Shared library store: one load, read by both cards ──
+  // ── Shared library store: one load, read by every card ──
   initTrackStore();
 
-  // ── Library card: sort / search / view + cache render + sync ──
-  initLibraryCard();
-
-  // ── Queue card (Qcard): mirrors the queue model in the Playlists slot ──
-  initQcard();
-
-  // ── Now Playing: real playback via MusicKit (state-driven icon + label) ──
-  const playBtn = document.getElementById("np-playpause");
-  if (playBtn) {
-    const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
-    const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
-    const npArt = document.getElementById("np-art");
-    const npTitle = document.getElementById("np-title");
-    const npArtist = document.getElementById("np-artist");
-
-    // Drive the icon, title/artist, and cover from actual playback state.
-    onPlayerState((s) => {
-      playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
-      playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
-      if (npTitle) npTitle.textContent = s.title ?? "Not playing";
-      if (npArtist) npArtist.textContent = s.artist ?? "";
-      if (npArt) {
-        npArt.innerHTML = s.artworkUrl
-          ? `<img src="${s.artworkUrl}" alt="" />`
-          : "♪";
-      }
-    });
-
-    playBtn.addEventListener("click", () => {
-      playPause().catch((e) => console.error("[player] play/pause failed:", e));
-    });
-
-    // ── Prev / Next (native skip within MusicKit's fed window) ──
-    const prevBtn = document.querySelector<HTMLElement>('.np__controls [aria-label="Previous"]');
-    const nextBtn = document.querySelector<HTMLElement>('.np__controls [aria-label="Next"]');
-    prevBtn?.addEventListener("click", () => {
-      prevTrack().catch((e) => console.error("[player] prev failed:", e));
-    });
-    nextBtn?.addEventListener("click", () => {
-      nextTrack().catch((e) => console.error("[player] next failed:", e));
-    });
-
-    // ── Scrubber: live progress + drag-to-seek (shared slider primitive) ──
-    const npScrub = document.querySelector<HTMLElement>(".np__scrub");
-    if (npScrub) {
-      const seek = makeSlider(npScrub, {
-        axis: "x",
-        onCommit: (frac) =>
-          seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err)),
-      });
-      // Live progress drives the fill — setValue is a no-op while dragging.
-      onPlayerProgress((p) => seek.setValue(p.progress));
-    }
-  }
+  // ── Cards: mount each registered card into its slot. Phase 1 keeps the fixed
+  //    positions (Now Playing top, Library left, Queue in the right/Playlists slot);
+  //    the layout manager will drive these from a persisted assignment in Phase 2. ──
+  const cardMounts: CardInstance[] = [];
+  const mountCard = (selector: string, id: CardId) => {
+    const host = document.querySelector<HTMLElement>(selector);
+    const def = registry[id];
+    if (host && def) cardMounts.push(def.mount(host));
+  };
+  mountCard('[data-card="now-playing"]', "now-playing");
+  mountCard('[data-card="library"]', "library");
+  mountCard('[data-card="playlists"]', "queue"); // Queue still borrows the Playlists slot
 
   // ── Volume: titlebar pill (level meter) + hover flyout + vertical slider ──
   const volRoot = document.getElementById("vol");

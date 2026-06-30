@@ -114,9 +114,10 @@ function artworkUrlOf(item: any, px: number): string | undefined {
 type Listener = (s: PlayerState) => void;
 const listeners = new Set<Listener>();
 
-/** Subscribe to playback state. Fires on play/pause and track change. */
-export function onPlayerState(cb: Listener): void {
+/** Subscribe to playback state. Fires on play/pause and track change. Returns an unsubscribe fn. */
+export function onPlayerState(cb: Listener): () => void {
   listeners.add(cb);
+  return () => listeners.delete(cb);
 }
 
 export interface PlayerProgress {
@@ -128,9 +129,10 @@ export interface PlayerProgress {
 type ProgressListener = (p: PlayerProgress) => void;
 const progressListeners = new Set<ProgressListener>();
 
-/** Subscribe to playback position. Fires several times a second while playing. */
-export function onPlayerProgress(cb: ProgressListener): void {
+/** Subscribe to playback position. Fires several times a second while playing. Returns an unsubscribe fn. */
+export function onPlayerProgress(cb: ProgressListener): () => void {
   progressListeners.add(cb);
+  return () => progressListeners.delete(cb);
 }
 
 function emitProgress(): void {
