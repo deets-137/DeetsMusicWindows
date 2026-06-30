@@ -27,6 +27,7 @@ let initPromise: Promise<any> | null = null;
 // `loadingContext` suppresses sync while we're (re)building the queue.
 let windowPos = 0;
 let loadingContext = false;
+let isLoading = false; // a (re)window is buffering — surfaced in PlayerState.loading
 
 /** Resolve once the async MusicKit CDN script has registered `window.MusicKit`. */
 async function whenMusicKitLoaded(): Promise<void> {
@@ -89,6 +90,9 @@ export interface PlayerState {
   title?: string;
   artist?: string;
   artworkUrl?: string;
+  /** True while a (re)window is buffering — a jump/seek out of the gapless window.
+   *  The UX cover-up hook (see docs/UX-COVERUPS.md); natural play never sets it. */
+  loading?: boolean;
 }
 
 /** Build a concrete artwork URL from a MusicKit item's template (mirrors the library). */
@@ -137,6 +141,7 @@ function emit(): void {
     title: item?.title ?? item?.attributes?.name,
     artist: item?.artistName ?? item?.attributes?.artistName,
     artworkUrl: artworkUrlOf(item, 240),
+    loading: isLoading,
   };
   listeners.forEach((cb) => cb(s));
 }
@@ -192,38 +197,62 @@ const toHandle = (t: Track, context = "library"): TrackHandle => ({
 const playId = (h: TrackHandle): string | undefined => h.catalogId ?? h.libraryId;
 
 /**
+ * (Re)feed MusicKit a bounded window centered on the model's current entry: up to
+ * WINDOW_BACK behind it (so Previous works) + WINDOW_FWD ahead. Used for a fresh
+ * context and for any jump that lands outside the live window — the latter buffers
+ * (the documented latency; `loading` is surfaced for the cover-up).
+ */
+async function loadFromModel(m: any, autoplay = true): Promise<void> {
+  const current = queue.getCurrent();
+  if (!current) return;
+  const back = queue.getHistory().slice(-WINDOW_BACK);
+  const fwd = queue.getUpcoming().slice(0, WINDOW_FWD);
+  const windowEntries = [...back, current, ...fwd];
+  const ids = windowEntries.map(playId).filter((x): x is string => !!x);
+  if (!ids.length) {
+    console.warn("[player] nothing playable in window");
+    return;
+  }
+
+  // Fallback watch: library-only songs (no catalogId) ride along as library ids. Whether
+  // MusicKit plays those — and accepts a mixed list — is the thing to confirm on first run.
+  const fallbacks = windowEntries.filter((h) => !h.catalogId && h.libraryId).length;
+  if (fallbacks) console.log(`[player] window includes ${fallbacks} library-only song(s) via id fallback`);
+
+  isLoading = true;
+  loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
+  emit(); // surface the loading state for the cover-up
+  await m.setQueue({ songs: ids });
+  // Current's index in the fed window = count of id-bearing handles behind it.
+  const pos = back.filter((h) => playId(h)).length;
+  windowPos = pos; // the model's `current` is aligned to this MusicKit index
+  if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
+    // changeToMediaAtIndex starts playback at `pos` itself — calling play() after it
+    // throws "play() without a previous stop()/pause()". Don't double-start.
+    await m.changeToMediaAtIndex(pos);
+  } else if (autoplay && !m.isPlaying) {
+    await m.play();
+  }
+  loadingContext = false;
+  isLoading = false;
+  emit();
+}
+
+/**
  * Play an ordered context (already in the desired sort order) from `startIndex`.
  * `handles` is the full list; the queue model keeps all of it, MusicKit gets a window.
  */
 export async function playContext(handles: TrackHandle[], startIndex: number): Promise<void> {
   const m = await initPlayer();
   queue.setContext(handles, startIndex);
+  await loadFromModel(m);
+}
 
-  const from = Math.max(0, startIndex - WINDOW_BACK);
-  const to = Math.min(handles.length, startIndex + WINDOW_FWD);
-  const windowHandles = handles.slice(from, to);
-  const ids = windowHandles.map(playId).filter((x): x is string => !!x);
-  if (!ids.length) {
-    console.warn("[player] context has no playable ids");
-    return;
-  }
-
-  // Fallback watch: library-only songs (no catalogId) ride along as library ids. Whether
-  // MusicKit plays those — and accepts a mixed list — is the thing to confirm on first run.
-  const fallbacks = windowHandles.filter((h) => !h.catalogId && h.libraryId).length;
-  if (fallbacks) console.log(`[player] window includes ${fallbacks} library-only song(s) via id fallback`);
-
-  loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
-  await m.setQueue({ songs: ids });
-  // Count only id-bearing handles before the click, so a dropped (id-less) song earlier
-  // in the window doesn't shift the jump target.
-  const pos = windowHandles.slice(0, startIndex - from).filter((h) => playId(h)).length;
-  if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
-    await m.changeToMediaAtIndex(pos); // jump to the clicked song within the window
-  }
-  windowPos = pos; // the model's `current` is aligned to this MusicKit index
-  loadingContext = false;
-  await m.play();
+/** Jump to an Up Next entry by index (skipped songs are dropped). Re-windows → buffers. */
+export async function jumpToUpcoming(index: number): Promise<void> {
+  const m = await initPlayer();
+  if (!queue.jumpTo(index)) return;
+  await loadFromModel(m);
 }
 
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
