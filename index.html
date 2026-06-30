@@ -116,13 +116,13 @@
     </header>
 
     <main class="app-body">
-      <!-- Each .panel is a mount HOST; its card builds its own markup at runtime
-           (src/cards.ts → each card's mount()). Phase 1 keeps these fixed positions;
-           Phase 2 turns them into generic swappable slots. -->
+      <!-- Each .panel is a mount HOST. The layout manager (src/layout.ts) mounts a card into
+           each slot from the persisted assignment; the two content slots are swappable via
+           their title picker. Now Playing is anchored to the top slot. -->
       <div class="bento" data-screen="home">
-        <section class="panel" data-card="now-playing" data-span="wide"></section>
-        <section class="panel" data-card="library"></section>
-        <section class="panel" data-card="playlists"></section>
+        <section class="panel" data-slot="np" data-span="wide"></section>
+        <section class="panel" data-slot="left"></section>
+        <section class="panel" data-slot="right"></section>
       </div>
     </main>
   </body>

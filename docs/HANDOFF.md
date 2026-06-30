@@ -1,6 +1,6 @@
 # DeetsMusic — Handoff / Status
 
-> Cold-start guide. Read this first. Snapshot as of **2026-06-29**.
+> Cold-start guide. Read this first. Snapshot as of **2026-06-30**.
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
 > [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
@@ -61,6 +61,16 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   role indirection. The Queue card's rows share the Library's row tokens (one shape/density).
   **Skin** selector row in settings mirrors Theme (`src/skin.ts`).
 - **Typography**: Liberation Serif (title) bundled as local TTFs via `@font-face`.
+- **Card system + swappable slots** (`src/cards.ts`, `src/layout.ts`; see
+  [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md)): every card is a *mountable module* in a
+  registry (`now-playing` / `library` / `queue` / `playlists`-stub). The midi bento has an
+  **anchored Now Playing** slot + **two swappable content slots**; each content slot's
+  **title is a menu** (no caret, hover/click per Hover-Menu) to choose its card —
+  swap/replace, one-instance, persisted (`deets.layout.midi`), **root-level only** (drilling
+  into an album disables it). Cards own their markup (the `index.html` panels are empty
+  hosts). **Menu mode now lives in the dropdown primitive** (`setDropdownMode` + a live
+  registry; `makeDropdown` gained `destroy()`). Phases 1–2 done; the `data-surface`
+  (mini/midi/max) **surface seam is the next step** (Phase 3).
 - **Home bento**: Now Playing strip (top, wide) · Library (left) · Queue (right, in the
   Playlists slot for now), span-based grid, columns scroll individually.
 - **Apple auth**: loopback browser sign-in (themed page), MUT persisted, survives
@@ -129,7 +139,10 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 ---
 
 ## Roadmap (agreed order)
-*Playback + the queue are built and the Qcard is live; manual queueing is next.*
+*Playback, the queue, manual queueing, and the **card system** (swappable midi slots —
+[SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md), Phases 1–2 done) are built. The **surface
+seam** (`data-surface` mini/midi/max) is the immediate next step (that doc's Phase 3). The
+numbered list below is the older feature roadmap, still valid for what rides the foundation.*
 1. ✅ **Transport + model-follow + Qcard** — prev/next wired, the queue model follows
    MusicKit's live position, and the Qcard renders it (display + jump-to-item) in the
    Playlists slot.
@@ -226,7 +239,12 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 ```
 index.html                  home markup (titlebar, settings menu, bento)
 swatch.html                 standalone color reference
-src/main.ts                 window controls, settings menu, account, library wiring
+src/main.ts                 window controls, settings menu, account, menu-mode, initLayout
+src/cards.ts                card registry + CardDef/CardInstance (mountable-card contract)
+src/layout.ts               midi layout: anchored NP + 2 swappable slots + title-menu picker
+src/now-playing-card.ts     Now Playing card (transport strip; extracted from main.ts)
+src/playlists-card.ts       Playlists card — stub for now (selectable; real context later)
+src/dropdown.ts             shared dropdown primitive + menu-mode fan-out (setDropdownMode)
 src/theme.ts                theme switch + persistence
 src/skin.ts                 skin switch + persistence (mirrors theme.ts)
 src/apple.ts                auth bridge (connect/disconnect/isConnected)
@@ -238,7 +256,7 @@ src/track-store.ts          shared in-memory library: one load, id→Track index
 src/queue.ts                queue model (history/current/upcoming, backlog, stacking)
 src/player.ts               MusicKit engine: init/MUT-inject, playContext (windowed),
                             loadFromModel, transport, model-follow, scrubber/state events
-src/qcard.ts                Queue card (Playlists slot): Now Playing + Up Next + jump
+src/qcard.ts                Queue card (queueCard): Now Playing + Up Next + jump-to-item
 src/diag.ts                 diagnostics ring buffer + window.__diag (bug-report payload)
 src/slider.ts               shared slider primitive (scrubber, volume)
 src/styles.css              app rules (imports the token sheets first)

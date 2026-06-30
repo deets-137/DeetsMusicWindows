@@ -51,6 +51,9 @@ export interface CardOptions {
   root: HTMLElement; // the .panel element (must hold .panel__title, .panel__back, .coll-body)
   storeKey: string; // localStorage key for the top-level prefs
   rootContext: () => Context; // built fresh from current data
+  // Fires on every header change (drill in / back out). `atRoot` is true at the top level —
+  // the slot picker uses it to be live only when the card shows its base title.
+  onHeader?: (h: { title: string; atRoot: boolean }) => void;
 }
 
 interface Frame {
@@ -274,8 +277,10 @@ export function initCollectionCard(opts: CardOptions) {
   };
 
   const setHeader = (isTop: boolean, title: string) => {
-    if (titleEl) titleEl.textContent = isTop ? baseTitle : title;
+    const shown = isTop ? baseTitle : title;
+    if (titleEl) titleEl.textContent = shown;
     if (backEl) backEl.hidden = isTop;
+    opts.onHeader?.({ title: shown, atRoot: isTop });
   };
 
   // ── transition (push / pop) ──

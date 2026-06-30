@@ -191,32 +191,36 @@ A **Skin** row mirrors Theme exactly (flyout of `[data-skin-choice]` items, wire
 slot in the same way. Because the title is now interactive, the **draggable zone is the
 middle `.drag-region`** between the title and the lights, not the whole bar.
 
-**One dropdown primitive for every titlebar menu** (`src/dropdown.ts`, `makeDropdown`):
-the settings menu and the volume flyout share a single open/close/dismiss mechanism
-(outside-click + Escape, `aria-expanded`, and an optional `shouldStayOpen` veto so a
-volume drag can't close the panel out from under itself). Each call takes a `root`
-(the hover region — must contain both trigger and panel), a `trigger`, and a `panel`.
-The **`mode`** is `"click"` or `"hover"`; the **Hover-Menu** toggle calls `setMode` on
-every registered handle at once, so both top-level dropdowns switch together. Scope is
+**One dropdown primitive for every menu** (`src/dropdown.ts`, `makeDropdown`): the settings
+menu, the volume flyout, and the **slot-card pickers** share a single open/close/dismiss
+mechanism (outside-click + Escape, `aria-expanded`, an optional `shouldStayOpen` veto so a
+volume drag can't close the panel under itself, and a `disabled` veto the picker uses to go
+inert off-root). Each call takes a `root` (the hover region — must contain both trigger and
+panel), a `trigger`, and a `panel`. **Menu mode lives in the primitive:** every live dropdown
+registers in a module-level set, and `setDropdownMode("click"|"hover")` fans a change out to
+all of them — so the **Hover-Menu** toggle (in `main.ts`, which owns the persistence) flips
+every dropdown at once. `makeDropdown` returns a handle with **`destroy()`** (unregisters +
+drops its document listeners) so a card swapped out of a slot doesn't leak. Scope is
 **top-level triggers only** — nested sub-flyouts (Theme/Skin/Account) stay hover-reveal
-regardless, the conventional behaviour. Click always works even in hover mode (it pins
-the panel open/closed).
+regardless. Click always works even in hover mode (it pins the panel open/closed).
 
 ### Panels & the bento (home screen)
 The content area is a **bento grid** of **panels**. Three altitudes:
 - **Panel** — the primitive (`.panel`): a rounded-rect surface with optional
   `.panel__head` (title + action slot) and a scrolling `.panel__body`.
-- **Card** — a panel filled with specific content (`data-card="now-playing"`,
-  `library`, `playlists`). **Library** renders real synced songs from the Rust cache
-  (`src/library.ts`) with a header **refresh** action (`.panel__action`) that triggers
-  a re-sync; Now Playing + Playlists are still stub/title-only.
-  See **§4a** for the Library card's sort/view/search controls.
-- **Screen** — a composition of cards in the grid (`data-screen="home"`). Future
-  screens (Library, Search…) are just different panel sets in the same grid.
+- **Card** — a **mountable module** in the card registry (`src/cards.ts`), built into a slot
+  at runtime; each card owns its markup (the `index.html` panels are empty hosts). Cards:
+  `now-playing` (live transport), `library` (real synced songs + a header **refresh** action,
+  `.panel__action`), `queue`, `playlists` (a stub for now). The midi bento has an **anchored**
+  Now Playing slot + **two swappable content slots** whose **title is a card picker** — see
+  [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) and **§4a** for the collection-card controls.
+- **Screen** — a composition of cards in the grid (`data-screen="home"`). Future *surfaces*
+  (mini/midi/max) will gate the whole bento off a `data-surface` attribute (the card system's
+  Phase 3 seam).
 
-**Layout is span-based:** each panel declares its footprint (`data-span="wide"`
-spans both columns); the grid flows them. The home is `auto / 1fr` rows — Now
-Playing is a short wide strip up top, Library + Playlists are tall columns that
+**Layout is slot/span-based:** the bento is a 2-col grid of `.panel` hosts
+(`data-slot="np|left|right"`); `data-span="wide"` spans both columns. The home is `auto / 1fr`
+rows — Now Playing is a short wide strip up top, the two content slots are tall columns that
 **scroll individually** (the body scrolls, the bento frame stays put).
 
 **Panels under Vanilla** are light groupers: `--panel` = `--canvas` (fill matches the
@@ -404,7 +408,12 @@ src/styles/palette.css  Tier 1 — raw paints
 src/styles/themes.css   Tier 2 — color roles per theme
 src/styles/skin.css     Tier 3 — [data-skin] base + vanilla/desk/ocean deltas (type/geometry/motion)
 src/styles/fonts/       bundled font files (Liberation TTFs + NOTICE; skin WOFF2s)
-src/main.ts             window controls, settings menu, account; calls initTheme/initSkin/initLibraryCard()
+src/main.ts             window controls, settings menu, account, menu-mode; calls initTheme/initSkin/initLayout()
+src/cards.ts            card registry + CardDef/CardInstance (the mountable-card contract)
+src/layout.ts           midi layout: anchored Now Playing + 2 swappable slots + title-menu picker
+src/now-playing-card.ts Now Playing transport card (extracted from main.ts)
+src/playlists-card.ts   Playlists card — stub for now (selectable; real context later)
+src/dropdown.ts         dropdown primitive + menu-mode fan-out (setDropdownMode, destroy)
 src/theme.ts            theme switch + localStorage persistence
 src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)
 src/apple.ts            Apple Music auth bridge (connect/disconnect/status)

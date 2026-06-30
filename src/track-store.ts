@@ -3,7 +3,8 @@
 // card (handle resolution) read from here, so the library isn't loaded or held twice —
 // and neither goes stale after a background sync.
 
-import { libraryTracks, onSyncEvent, type Track } from "./library";
+import { libraryTracks, librarySync, onSyncEvent, type Track } from "./library";
+import { isConnected } from "./apple";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -50,5 +51,11 @@ export function initTrackStore(): void {
   loadTracks();
   onSyncEvent((e) => {
     if (e.phase === "done") loadTracks();
+  });
+  // Stale-while-revalidate, ONCE per session (not per card mount): kick a background
+  // re-sync at startup if signed in. Lives here — not in the Library card — so swapping
+  // the card in and out of a slot doesn't re-trigger a full Apple sync each time.
+  isConnected().then((c) => {
+    if (c) librarySync().catch((e) => console.error("[track-store] sync", e));
   });
 }

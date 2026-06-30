@@ -8,6 +8,7 @@
 import { nowPlayingCard } from "./now-playing-card";
 import { libraryCard } from "./library-card";
 import { queueCard } from "./qcard";
+import { playlistsCard } from "./playlists-card";
 
 export type CardId = "now-playing" | "library" | "queue" | "playlists" | "search";
 
@@ -35,4 +36,5 @@ export const registry: Partial<Record<CardId, CardDef>> = {
   "now-playing": nowPlayingCard,
   library: libraryCard,
   queue: queueCard,
+  playlists: playlistsCard,
 };

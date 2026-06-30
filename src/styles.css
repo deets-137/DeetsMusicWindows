@@ -328,12 +328,39 @@ body {
 .panel[data-span="wide"] { grid-column: 1 / -1; }
 
 .panel__head {
+  position: relative;            /* anchor for the slot picker menu */
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-2);
 }
+
+/* ── Slot card picker ────────────────────────────────────────── */
+/* A content slot's title opens this to choose which card the slot hosts. Reuses the
+   .flyout__item chrome; drops below the panel header. No caret — the title behaves like
+   the DeetsMusic settings title (plain text trigger). Live only at the card's root. */
+.panel__title.is-pickable { cursor: pointer; }
+.slot-picker__menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 30;
+  min-width: var(--menu-min-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+.slot-picker__menu[hidden] { display: none; }
+
+/* Card stub placeholder (e.g. Playlists before it's built out). */
+.card-stub { display: grid; place-items: center; }
+.card-stub__msg { color: var(--subtext); font-size: var(--fs-subtext); }
 .panel__title {
   margin: 0;
   font-family: var(--font-title);

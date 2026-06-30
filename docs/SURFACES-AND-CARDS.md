@@ -150,19 +150,24 @@ free-form drag/resize layout · playlist editing. All ride the foundation later.
 
 Each phase **compiles and is independently testable**; behaviour only changes when intended.
 
-1. **Foundation refactor — zero behaviour change.** Add the registry + `CardDef`/`CardInstance`.
-   Refactor Library and Queue from `init*()` to `mount(host)`. Extract Now Playing from
-   `main.ts` into a card module. Add unsubscribe to `onPlayerState` / `onPlayerProgress`.
-   `main.ts` boot mounts the same three cards into the same fixed positions — **the app looks
-   identical.** (De-risks the big refactor before any feature rides it.)
-2. **Swappable slots.** Generic slots in `index.html`; `src/layout.ts` (assignment, swap/
-   replace rule, persistence); the **title-as-menu picker** (§3). Now the two content cards
-   swap and the layout persists.
-3. **Surface seam.** `src/surface.ts` sets `data-surface` from size; midi gating in CSS;
+1. ✅ **Foundation refactor — zero behaviour change.** Registry + `CardDef`/`CardInstance`;
+   Library/Queue refactored from `init*()` to `mount(host)`; Now Playing extracted to
+   `now-playing-card.ts`; `onPlayerState`/`onPlayerProgress` + the collection-card engine
+   gained unsubscribe/`destroy`. Cards own their markup (the `index.html` panels are empty
+   hosts). Committed `34829f0`.
+2. ✅ **Swappable slots.** Generic `data-slot` slots; `src/layout.ts` (assignment, swap/
+   replace, validation, persistence via `deets.layout.midi`); the **title-as-menu picker**
+   (§3); **menu mode folded into the dropdown primitive** (`setDropdownMode` + a live registry
+   + `makeDropdown.destroy()`); a **Playlists stub** card so the picker exercises 3 cards / 2
+   slots. Also fixed here: the Library card's startup re-sync moved to `initTrackStore` (once
+   per session) so a slot swap no longer re-triggers a full Apple sync.
+3. ⬜ **Surface seam.** `src/surface.ts` sets `data-surface` from size; midi gating in CSS;
    max/mini fall back to midi. Visually ~no-op for midi — it establishes the attribute the
-   later redesigns hang off.
+   later redesigns hang off. **Next session** — recon done (the bento is reshapeable purely
+   via CSS gated on `data-surface` + token overrides + a ~15-line resize hook; position by
+   **slot**, and max likely wants a larger per-surface slot set).
 
-*(Later, on this foundation: Playlists card → Search card → accent-palette plumbing →
+*(Later, on this foundation: real Playlists context → Search card → accent-palette plumbing →
 shuffle → max & mini compositions.)*
 
 ---
@@ -185,5 +190,7 @@ shuffle → max & mini compositions.)*
 
 One webview, size/aspect-gated · fixed slots, swap contents (no free-form) · a card can't be
 in both slots (swap on conflict) · Now Playing anchored in midi but registered · picker = the
-card title, hover/click per `deets.menuMode`, **root-level only** · max/mini = seam only this
+card title, hover/click per `deets.menuMode`, **root-level only**, **no caret** (a click-mode
+caret affordance is deferred — see [FUTURE-SETTINGS §6](FUTURE-SETTINGS.md)) · menu mode lives
+in the dropdown primitive (`setDropdownMode`) · max/mini = seam only this
 build · Playlists/Search built later as the first riders.

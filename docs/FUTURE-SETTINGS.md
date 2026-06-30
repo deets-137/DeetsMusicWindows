@@ -123,3 +123,22 @@ context order (Apple Music) or leaves the shuffled order (Spotify); whether togg
 on mid-playback reshuffles the live `auto` tail or only affects the *next* context; and
 whether `manual` (Play-Next) picks are ever shuffled (planned default: never). Record the
 chosen defaults + the toggle here when the feature lands.
+
+---
+
+## 6. Menu caret affordance (click vs hover mode)
+
+**Behavior.** Whether menu triggers — the slot-card pickers (a content slot's title) and,
+by extension, the titlebar dropdowns — show a caret/chevron hinting they open a menu.
+
+**Current (hardcoded):** **no caret anywhere** — triggers are plain text (the slot title
+matches the DeetsMusic settings title).
+
+**What to build later.** In **click** mode a caret helps signal the trigger is interactive
+(you have to click to discover it); in **hover** mode it's unnecessary (hovering reveals the
+menu), so suppress it. So: show a caret when `deets.menuMode === "click"`, hide it in hover
+mode. Apply to the slot-picker titles first (the discoverability gap is sharpest there since
+they look like ordinary headings); optionally extend to the settings/volume triggers. Drive
+it off the mode the dropdown primitive already tracks (`setDropdownMode`) — e.g. a
+`data-menu-mode` attribute on `<html>` (or a class on the trigger) that the caret CSS keys
+off, so it flips with the Hover-Menu toggle and needs no per-trigger JS.

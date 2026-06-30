@@ -3,10 +3,10 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
-import { registry, type CardId, type CardInstance } from "./cards";
+import { initLayout } from "./layout";
 import { getVolume, setVolume, toggleMute, isMuted } from "./player";
 import { makeSlider } from "./slider";
-import { makeDropdown, type DropdownMode, type DropdownHandle } from "./dropdown";
+import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -16,15 +16,14 @@ window.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initSkin();
 
-  // ── Dropdown mode (click vs hover) — one setting drives every titlebar
-  //    dropdown. Each makeDropdown handle registers here so the "Hover-Menu"
-  //    toggle can flip them all at once; the choice persists like the theme. ──
+  // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
+  //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the
+  //    persistence + the Hover-Menu toggle UI. ──
   const MENU_MODE_KEY = "deets.menuMode";
-  const dropdowns: DropdownHandle[] = [];
-  let menuMode: DropdownMode = localStorage.getItem(MENU_MODE_KEY) === "hover" ? "hover" : "click";
+  const initialMode: DropdownMode = localStorage.getItem(MENU_MODE_KEY) === "hover" ? "hover" : "click";
+  setDropdownMode(initialMode); // seed the primitive's global mode before any dropdown is made
   const applyMenuMode = (m: DropdownMode) => {
-    menuMode = m;
-    dropdowns.forEach((d) => d.setMode(m));
+    setDropdownMode(m);
     try {
       localStorage.setItem(MENU_MODE_KEY, m);
     } catch {
@@ -61,13 +60,12 @@ window.addEventListener("DOMContentLoaded", () => {
   const menu = document.getElementById("settings-menu");
   if (!settingsRoot || !trigger || !menu) return;
 
-  const settingsDropdown = makeDropdown({ root: settingsRoot, trigger, panel: menu, mode: menuMode });
-  dropdowns.push(settingsDropdown);
+  const settingsDropdown = makeDropdown({ root: settingsRoot, trigger, panel: menu });
   const close = () => settingsDropdown.close();
 
   // ── Hover-Menu toggle: flips click ↔ hover for every dropdown at once ──
   const hoverToggle = document.getElementById("hover-toggle");
-  hoverToggle?.setAttribute("aria-checked", String(menuMode === "hover"));
+  hoverToggle?.setAttribute("aria-checked", String(initialMode === "hover"));
   hoverToggle?.addEventListener("click", (e) => {
     e.stopPropagation(); // keep the menu open so the dot feedback is visible
     const next: DropdownMode = hoverToggle.getAttribute("aria-checked") === "true" ? "click" : "hover";
@@ -132,18 +130,9 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Shared library store: one load, read by every card ──
   initTrackStore();
 
-  // ── Cards: mount each registered card into its slot. Phase 1 keeps the fixed
-  //    positions (Now Playing top, Library left, Queue in the right/Playlists slot);
-  //    the layout manager will drive these from a persisted assignment in Phase 2. ──
-  const cardMounts: CardInstance[] = [];
-  const mountCard = (selector: string, id: CardId) => {
-    const host = document.querySelector<HTMLElement>(selector);
-    const def = registry[id];
-    if (host && def) cardMounts.push(def.mount(host));
-  };
-  mountCard('[data-card="now-playing"]', "now-playing");
-  mountCard('[data-card="library"]', "library");
-  mountCard('[data-card="playlists"]', "queue"); // Queue still borrows the Playlists slot
+  // ── Cards + layout: mount Now Playing (anchored top) + the two swappable content slots
+  //    from the persisted assignment, and wire each slot's title picker. ──
+  initLayout();
 
   // ── Volume: titlebar pill (level meter) + hover flyout + vertical slider ──
   const volRoot = document.getElementById("vol");
@@ -175,11 +164,10 @@ window.addEventListener("DOMContentLoaded", () => {
     reflect(getVolume()); // seed from the persisted level
 
     // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag.
-    const volDropdown = makeDropdown({
+    makeDropdown({
       root: volRoot, trigger: volPill, panel: volPanel,
-      mode: menuMode, shouldStayOpen: () => slider.dragging,
+      shouldStayOpen: () => slider.dragging,
     });
-    dropdowns.push(volDropdown);
 
     volMute.addEventListener("click", (e) => {
       e.stopPropagation();
