@@ -3,7 +3,8 @@
 > Cold-start guide. Read this first. Snapshot as of **2026-06-29**.
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
-> [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass).
+> [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
+> [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection handles).
 
 ## What this is
 A lightweight Apple Music player for Windows 11 — **Tauri v2 + WebView2**, vanilla
@@ -30,12 +31,9 @@ npx tsc --noEmit         # typecheck front-end only
 Devtools **auto-open in dev** (set in `lib.rs` setup). `swatch.html` is a standalone
 color reference (open in any browser).
 
-**Debugging the player** (`src/diag.ts`): a ring buffer logs transport actions +
-MusicKit events + model↔MusicKit desyncs, and auto-captures uncaught errors. In the
-console: `__diag.dump()` (table), `__diag.report()` / `__diag.copy()` (text payload —
-the seed of a future in-app "Report a problem"), `__diag.echo(true)` (live echo;
-persists via `localStorage["deets.debug"]`). `__music` is the live MusicKit instance,
-`__player.snap()` the current player/model state.
+**Debugging the player**: in the console, `__diag.dump()` / `__diag.copy()` (a ring
+buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors), plus
+`__music` (live instance) and `__player.snap()`. Full reference: **[DEBUGGING.md](DEBUGGING.md)**.
 
 ---
 
@@ -78,7 +76,8 @@ persists via `localStorage["deets.debug"]`). `__music` is the live MusicKit inst
 - **Playback** ✅ — **full-song DRM works in WebView2** (the load-bearing risk is dead).
   `src/player.ts` configures MusicKit JS in the app webview, injects the captured MUT
   directly (no `authorize()` popup — `apple_user_token` command), and plays. Now Playing
-  shows real cover/title/artist + a **live, drag-to-seek scrubber**, all off MusicKit
+  shows real cover/title/artist + a **live, drag-to-seek scrubber** and **volume** (both
+  on a shared slider primitive, `src/slider.ts`; volume persists), all off MusicKit
   events. **Click a song → it plays** and queues the rest from that point in the current
   sort. Catalog→library id fallback for songs not in the catalog.
 - **Queue model** (`src/queue.ts`): history / current / upcoming zones of lightweight
