@@ -72,8 +72,11 @@ vs **catalog**, so:
   (`offset + index`) as its rank (lower = added earlier). The card **negates** the
   rank so the default ↑ direction surfaces *most-recently-added first*; a derived
   album's rank is its **most-recent** track (`max`). **Old cache rows have no rank
-  until a re-sync** backfills them. (Derived albums also key on album-name + *track*
-  artist, so compilations fragment — fixed later by catalog hydrate.)
+  until a re-sync** backfills them. (Derived albums key on album-name + **cover-art
+  URL** — all of an album's tracks share one cover — so featured-/various-artist tracks
+  stay unified and the album shows its *dominant* track artist; the real library/catalog
+  album id arrives via on-demand catalog access (the Search card / lazy enrichment), not a
+  batch pre-fetch.)
 - **`Artwork`** is a URL **template** (`…/{w}x{h}bb.jpg`) + intrinsic size + optional
   palette colors (catalog only — a future hook for per-album accent theming).
 - **`PlayParams`** is preserved on every Track — it's what MusicKit needs to actually
@@ -81,8 +84,8 @@ vs **catalog**, so:
 - **`Page<T>`** = `{ items, total, nextOffset }` — the paging contract.
 
 `Album`/`Artist`/`Playlist` are defined but **not yet wired** (only songs flow
-end-to-end so far). Artists are near-empty in the library API (name only) and need a
-catalog hydrate for art/genres.
+end-to-end so far). Artists are near-empty in the library API (name only) and need
+on-demand catalog access (lazy enrichment / Search) for art/genres.
 
 > **Albums in the Library card are *derived*, not synced.** The card groups cached
 > tracks by album+artist in TS (`groupAlbums` in `library-card.ts`) to populate its
@@ -100,8 +103,8 @@ Serde uses `camelCase`, so the TS interfaces in `library.ts` match field-for-fie
 `/v1/me/library/songs?limit&offset`, maps each resource via
 `track_from_library_song`, and returns a `Page<Track>` (reads `meta.total` + `next`).
 
-The trait will grow (`albums_page`, `playlists_page`, `playlist_tracks`,
-`hydrate_catalog`, `search`…) as we extend.
+The trait will grow (`albums_page`, `playlists_page`, `playlist_tracks`, `search`,
+`catalog_lookup` (palette/art on demand)…) as we extend.
 
 ---
 

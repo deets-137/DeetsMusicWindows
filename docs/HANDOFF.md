@@ -6,7 +6,8 @@
 > [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
 > [QUEUE.md](QUEUE.md) (queue model + playback windowing — read before touching
 > queue.ts/player.ts), [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection),
-> [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles).
+> [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles),
+> [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (swappable card system + mini/midi/max seam).
 
 ## What this is
 A lightweight Apple Music player for Windows 11 — **Tauri v2 + WebView2**, vanilla
@@ -112,9 +113,14 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 - **Real Playlists card** — the Playlists slot currently hosts the Qcard. Real Playlists
   return later (collection-card Playlists context: overview list → playlist detail).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
-  (no catalog). Artist tiles show a round album-cover thumb / initials until hydrate.
-- **Catalog hydration** — `playParams.catalogId` → palette (`Artwork.bgColor`/
-  `textColors`), real artist/album art, `previews` (30s audio!), `isrc`. Not fetched.
+  (no catalog). Artist tiles show a round album-cover thumb / initials until a photo is
+  fetched on demand (when you open the artist).
+- **Catalog access (demand-driven, replaces batch hydrate)** — catalog data is pulled
+  **only for what you touch**, never in one big pass: the **Search card** returns catalog
+  results (which carry `previews`, palette, and real artist/album art for free) plus
+  Add-to-Library/Queue; **per-album accent palette** (`Artwork.bgColor`/`textColors`) and
+  **artist photos** are fetched lazily for the album/artist you actually view and cached.
+  `isrc` rides along when a second provider (Spotify) needs it. (See Roadmap #4 / #7.)
 - **CLI / local-agent control** — see roadmap; not started.
 - **Virtualized scrolling** — list/grid renders all rows; fine at a few thousand,
   virtualize once libraries get large or artwork I/O bites.
@@ -134,18 +140,26 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
    top it up as playback nears an edge so long contexts don't dead-end. The one place
    model-driven nav crosses the window edge and incurs load latency (see gotchas).
-4. **Catalog hydrate** — storefront lookup + batched `/catalog` songs→artists→albums via
-   `playParams.catalogId`. Fills palette (`Artwork.bgColor`/`textColors`), real **artist
-   photos** + album art, `previews`/`isrc`. ~15 polite calls; small `artists`/`albums`
-   tables. Scope: **songs + artists + albums** in one pass.
+4. **Search card** — a general catalog **Search** surface: `term` → `/v1/catalog/{sf}/search`
+   (songs/albums/artists), normalized to our model. Catalog results carry **`previews`** (30s),
+   **palette**, and real **artist/album art** for free — so previews live *here*, tied to
+   search, not a batch pre-fetch. **Decided:** a result tap **plays it in full** (you're
+   authorized → full DRM playback) with **Add to Library / Queue** actions; a 30s-preview
+   audition is an optional later add, not the default. Needs a cached storefront + a `search`
+   provider method. *(There is deliberately no "catalog hydrate" item — catalog data is
+   demand-driven: Search for discovery, lazy enrichment (#7) for what you view.)*
 5. **Real Playlists card** — wire `playlists_page` + `playlist_tracks` (+ tables), drive
    the collection-card with a Playlists context (overview → playlist detail). Restores
    the slot the Qcard is borrowing.
 6. **CLI / local-agent control** (pre-launch goal) — a command surface so local models /
    agents can play music (search, queue, play/pause/skip, now-playing): a thin Rust
    layer over the same `player` interface, so agents and the UI share one control path.
-7. **Per-album accent theming** · **mini-player / SMTC / hotkeys** · **virtualized list**
-   (only once libraries get large or artwork I/O bites).
+7. **Per-album accent theming + lazy catalog enrichment** — fetch a track's catalog
+   **palette** (`bgColor`/`textColors`) on demand, keyed by **cover-art URL** (one fetch per
+   album cover), cache it, and route it through `--album-*` accent tokens to tint Now Playing
+   (and album detail). The same demand-driven path fetches **artist photos** on artist-detail.
+   *(This is the home for the visual layer batch hydrate used to cover.)* · **mini-player /
+   SMTC / hotkeys** · **virtualized list** (only once libraries get large or artwork I/O bites).
 
 ---
 

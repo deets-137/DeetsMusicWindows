@@ -77,3 +77,49 @@ each row) as an alternative — unambiguous, and friendlier for touch where vert
 competes with scroll. Whole-row is cleaner on the narrow card for mouse users; the handle
 trades a little clutter for clarity. Likely a single toggle (`deets.qcard.dragMode` =
 `"row" | "handle"`), defaulting to `"row"`.
+
+---
+
+## 4. "Previous" reach — context lookback vs. heard-only
+
+**Behavior.** What the **Previous** button is allowed to walk back into.
+
+**Current default (hardcoded).** The two-layer history (see [QUEUE.md](QUEUE.md)): a durable
+**heard trail** (songs actually played, surviving across contexts) *plus* a **parked
+lookback** — the tracks that sat *before* the one you clicked in a list, seeded so Previous
+can rewind "up" into them even though you jumped into the middle. Previous pops the
+most-recently-*heard* song first, then descends into the lookback. Starting a new context
+discards the prior context's *unheard* lookback (anything you did hear stays in the trail).
+
+**Options.**
+- **(a) Context lookback** — Previous can rewind into the not-yet-heard tracks above your
+  click within the current list. *(current default — "rewind the list I'm in")*
+- **(b) Heard-only** — Previous walks strictly the songs you actually listened to; clicking
+  into the middle of a list and pressing Previous goes to the last thing you *heard*, not the
+  row above the click ("step back through my listening history").
+
+**What the future toggle changes.** Lets the user pick which mental model Previous follows.
+Both are defensible; we shipped (a). Implementation note: the lookback is *seeded* in
+`setContext` ([queue.ts](../src/queue.ts)) — option (b) is simply "don't seed the parked
+lookback," leaving only the heard trail.
+
+**Related sub-knob.** `prevTrack` ([player.ts](../src/player.ts)) restarts the current song
+if you're past **3 s** in, otherwise skips back. That threshold (and whether to restart at
+all vs. always skip) is a smaller, related setting.
+
+**Wiring sketch.** `localStorage` `deets.previousReach` = `"lookback" | "heard"`; restart
+threshold e.g. `deets.prevRestartSecs` (default `3`).
+
+---
+
+## 5. Shuffle behavior (placeholder — fill in when shuffle ships)
+
+**Behavior.** How the shuffle toggle behaves once built — agreed default is a **persistent
+toggle mode** (Apple Music/Spotify-style), but the user wants a setting to switch the
+behavior "either way."
+
+**To pin down when we build it (P6):** whether un-shuffling **restores** the original
+context order (Apple Music) or leaves the shuffled order (Spotify); whether toggling shuffle
+on mid-playback reshuffles the live `auto` tail or only affects the *next* context; and
+whether `manual` (Play-Next) picks are ever shuffled (planned default: never). Record the
+chosen defaults + the toggle here when the feature lands.

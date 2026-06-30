@@ -322,13 +322,15 @@ silently no-ops — a bug we hit and fixed).
 > `sort=dateAdded` and stores each row's position as `Track.addedRank`. The card sorts
 > on it, **negated so the default ↑ surfaces most-recently-added first**; an album's
 > rank is its **most-recent** track. See [DATA-ARCHITECTURE §3](DATA-ARCHITECTURE.md).
-> **Rough edge:** albums group on album-name + *track* artist, so various-artists
-> compilations fragment — catalog hydrate (real album identity) will fix it.
+> **Album identity:** albums group on album-name + **cover-art URL** (an album's tracks
+> all share one cover), so featured-/various-artist tracks stay unified and the album
+> shows its *dominant* track artist; the real library/catalog album id arrives via
+> on-demand catalog access (Search card / lazy enrichment), not a batch pre-fetch.
 
 **Everything is client-side.** The card already pulls the whole library into memory
 (`libraryTracks(0, 100000)`), so search, multi-key sort, and **album grouping**
-(`groupAlbums` — group cached tracks by album+artist; cover from the first arted
-track; release = earliest, added = latest) all run in TS — no SQL/FTS. Albums are
+(`groupAlbums` — group cached tracks by album-name + cover-art URL; dominant track
+artist as the label; release = earliest, added = latest) all run in TS — no SQL/FTS. Albums are
 **derived from songs**, not a separate sync; swapping in a real `albums_page` later
 is invisible to the UI. Revisit only if we virtualize or the library gets huge.
 
