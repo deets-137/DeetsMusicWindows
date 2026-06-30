@@ -10,6 +10,7 @@ import {
   getVolume, setVolume, toggleMute, isMuted,
 } from "./player";
 import { makeSlider } from "./slider";
+import { makeDropdown, type DropdownMode, type DropdownHandle } from "./dropdown";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -18,6 +19,22 @@ const appWindow = getCurrentWindow();
 window.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initSkin();
+
+  // ── Dropdown mode (click vs hover) — one setting drives every titlebar
+  //    dropdown. Each makeDropdown handle registers here so the "Hover-Menu"
+  //    toggle can flip them all at once; the choice persists like the theme. ──
+  const MENU_MODE_KEY = "deets.menuMode";
+  const dropdowns: DropdownHandle[] = [];
+  let menuMode: DropdownMode = localStorage.getItem(MENU_MODE_KEY) === "hover" ? "hover" : "click";
+  const applyMenuMode = (m: DropdownMode) => {
+    menuMode = m;
+    dropdowns.forEach((d) => d.setMode(m));
+    try {
+      localStorage.setItem(MENU_MODE_KEY, m);
+    } catch {
+      /* storage disabled — still applies for the session */
+    }
+  };
 
   // ── Window controls ──────────────────────────────────────────
   document.getElementById("tl-min")?.addEventListener("click", () => appWindow.minimize());
@@ -42,23 +59,24 @@ window.addEventListener("DOMContentLoaded", () => {
     applyAlwaysOnTop(aotToggle.getAttribute("aria-checked") !== "true");
   });
 
-  // ── Settings menu (click to open; submenu reveals on hover) ──
+  // ── Settings menu (mode follows the Hover-Menu setting; submenus stay hover) ──
+  const settingsRoot = document.querySelector<HTMLElement>(".settings");
   const trigger = document.getElementById("settings-trigger");
   const menu = document.getElementById("settings-menu");
-  if (!trigger || !menu) return;
+  if (!settingsRoot || !trigger || !menu) return;
 
-  const open = () => {
-    menu.hidden = false;
-    trigger.setAttribute("aria-expanded", "true");
-  };
-  const close = () => {
-    menu.hidden = true;
-    trigger.setAttribute("aria-expanded", "false");
-  };
+  const settingsDropdown = makeDropdown({ root: settingsRoot, trigger, panel: menu, mode: menuMode });
+  dropdowns.push(settingsDropdown);
+  const close = () => settingsDropdown.close();
 
-  trigger.addEventListener("click", (e) => {
-    e.stopPropagation();          // don't let the document handler immediately close it
-    menu.hidden ? open() : close();
+  // ── Hover-Menu toggle: flips click ↔ hover for every dropdown at once ──
+  const hoverToggle = document.getElementById("hover-toggle");
+  hoverToggle?.setAttribute("aria-checked", String(menuMode === "hover"));
+  hoverToggle?.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep the menu open so the dot feedback is visible
+    const next: DropdownMode = hoverToggle.getAttribute("aria-checked") === "true" ? "click" : "hover";
+    hoverToggle.setAttribute("aria-checked", String(next === "hover"));
+    applyMenuMode(next);
   });
 
   // Theme choices.
@@ -75,14 +93,6 @@ window.addEventListener("DOMContentLoaded", () => {
       applySkin(el.dataset.skinChoice as SkinName);
       close();
     });
-  });
-
-  // Dismiss: click outside, or Escape.
-  document.addEventListener("click", (e) => {
-    if (!menu.hidden && !menu.contains(e.target as Node) && e.target !== trigger) close();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") close();
   });
 
   // ── Account (Apple Music — loopback browser auth) ────────────
@@ -210,38 +220,17 @@ window.addEventListener("DOMContentLoaded", () => {
 
     reflect(getVolume()); // seed from the persisted level
 
-    // Open on hover; close on leave after a short grace (and never mid-drag).
-    let graceTimer: number | undefined;
-    const open = () => {
-      window.clearTimeout(graceTimer);
-      volPanel.hidden = false;
-      volPill.setAttribute("aria-expanded", "true");
-    };
-    const close = () => {
-      volPanel.hidden = true;
-      volPill.setAttribute("aria-expanded", "false");
-    };
-    const scheduleClose = () => {
-      window.clearTimeout(graceTimer);
-      graceTimer = window.setTimeout(() => { if (!slider.dragging) close(); }, 150);
-    };
-
-    volRoot.addEventListener("pointerenter", open);
-    volRoot.addEventListener("pointerleave", scheduleClose);
-    volPill.addEventListener("click", (e) => {
-      e.stopPropagation();
-      volPanel.hidden ? open() : close();
+    // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag.
+    const volDropdown = makeDropdown({
+      root: volRoot, trigger: volPill, panel: volPanel,
+      mode: menuMode, shouldStayOpen: () => slider.dragging,
     });
+    dropdowns.push(volDropdown);
+
     volMute.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleMute();
       reflect(getVolume());
     });
-
-    // Dismiss: click outside, or Escape (mirrors the settings menu).
-    document.addEventListener("click", (e) => {
-      if (!volPanel.hidden && !volRoot.contains(e.target as Node)) close();
-    });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
 });

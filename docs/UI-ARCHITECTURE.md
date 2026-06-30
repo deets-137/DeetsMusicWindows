@@ -136,21 +136,33 @@ our own chrome.
 
 ### Settings menu (the title is the trigger)
 The `DeetsMusic` title is a `<button>` that **opts out of the drag region** and
-opens a settings menu on **click** (`src/main.ts`). The menu is a list of rows;
-each row can own a hover-reveal **flyout**. Today there's one row, **Theme**, whose
-flyout lists the available themes and applies one on click via `src/theme.ts`
-(persisted to `localStorage`, re-applied on launch). An **Account** row holds
-Apple Music sign-in (✓/✗ + spinner) — wired in `src/apple.ts` (see
+opens a settings menu (`src/main.ts`). The menu is a list of rows; each row can own a
+hover-reveal **flyout**. Today there's one row, **Theme**, whose flyout lists the
+available themes and applies one on click via `src/theme.ts` (persisted to
+`localStorage`, re-applied on launch). An **Account** row holds Apple Music sign-in
+(✓/✗ + spinner) — wired in `src/apple.ts` (see
 [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) §2). A row can also be a **toggle**
 (`.menu__row--toggle`, a `<button role="menuitemcheckbox">`): **Always on Top** flips
 `appWindow.setAlwaysOnTop()` and shows a right-aligned **dot** (`.menu__dot`) when
 active — the same selection indicator the theme flyout uses; the choice persists
 (`localStorage` `deets.alwaysOnTop`) and re-applies on launch (needs the
-`core:window:allow-set-always-on-top` capability). A **Skin** row mirrors Theme exactly
-(flyout of `[data-skin-choice]` items, wired in `src/skin.ts` — `applySkin`/`initSkin`,
-`localStorage` `deets.skin`); further settings slot in the same way. Because the title is now
-interactive, the **draggable zone is the middle `.drag-region`** between the title and
-the lights, not the whole bar.
+`core:window:allow-set-always-on-top` capability). **Hover-Menu** is a second toggle
+(`localStorage` `deets.menuMode`, default off/click) — see the dropdown primitive below.
+A **Skin** row mirrors Theme exactly (flyout of `[data-skin-choice]` items, wired in
+`src/skin.ts` — `applySkin`/`initSkin`, `localStorage` `deets.skin`); further settings
+slot in the same way. Because the title is now interactive, the **draggable zone is the
+middle `.drag-region`** between the title and the lights, not the whole bar.
+
+**One dropdown primitive for every titlebar menu** (`src/dropdown.ts`, `makeDropdown`):
+the settings menu and the volume flyout share a single open/close/dismiss mechanism
+(outside-click + Escape, `aria-expanded`, and an optional `shouldStayOpen` veto so a
+volume drag can't close the panel out from under itself). Each call takes a `root`
+(the hover region — must contain both trigger and panel), a `trigger`, and a `panel`.
+The **`mode`** is `"click"` or `"hover"`; the **Hover-Menu** toggle calls `setMode` on
+every registered handle at once, so both top-level dropdowns switch together. Scope is
+**top-level triggers only** — nested sub-flyouts (Theme/Skin/Account) stay hover-reveal
+regardless, the conventional behaviour. Click always works even in hover mode (it pins
+the panel open/closed).
 
 ### Panels & the bento (home screen)
 The content area is a **bento grid** of **panels**. Three altitudes:
