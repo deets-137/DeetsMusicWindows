@@ -69,8 +69,34 @@
 
       <div class="drag-region" data-tauri-drag-region></div>
 
-      <div class="lights">
-        <button class="light light--max" id="tl-max" type="button" aria-label="Maximize">
+      <div class="chrome-right">
+        <!-- Volume: a level-filled pill that drops a vertical scrubber on hover.
+             The pill's tinted fill mirrors the current volume; the panel hosts a
+             mute toggle (speaker icon) above the vertical slider. -->
+        <div class="vol" id="vol">
+          <button
+            class="vol__pill"
+            id="vol-pill"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Volume"
+          >
+            <span class="vol__pill-fill" aria-hidden="true"></span>
+            <span class="vol__pill-label">Vol.</span>
+          </button>
+
+          <div class="vol__panel" id="vol-panel" role="group" aria-label="Volume" hidden>
+            <button class="vol__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false"></button>
+            <div class="scrub scrub--v" id="vol-scrub">
+              <div class="scrub__track"><div class="scrub__fill"></div></div>
+              <span class="scrub__handle" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lights">
+          <button class="light light--max" id="tl-max" type="button" aria-label="Maximize">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.6V8.4M1.6 5H8.4" /></svg>
         </button>
         <button class="light light--min" id="tl-min" type="button" aria-label="Minimize">
@@ -79,6 +105,7 @@
         <button class="light light--close" id="tl-close" type="button" aria-label="Close">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 2.3L7.7 7.7M7.7 2.3L2.3 7.7" /></svg>
         </button>
+        </div>
       </div>
     </header>
 
@@ -93,9 +120,9 @@
                 <span class="np__title" id="np-title">Not playing</span>
                 <span class="np__artist" id="np-artist"></span>
               </div>
-              <div class="np__scrub">
-                <div class="np__track"><div class="np__fill"></div></div>
-                <span class="np__handle" aria-hidden="true"></span>
+              <div class="np__scrub scrub">
+                <div class="scrub__track"><div class="scrub__fill"></div></div>
+                <span class="scrub__handle" aria-hidden="true"></span>
               </div>
               <div class="np__controls">
                 <button class="np__btn" type="button" aria-label="Previous">

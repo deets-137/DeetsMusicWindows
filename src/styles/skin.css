@@ -42,6 +42,18 @@
   --traffic-glyph-fs:    11px;
   --traffic-glyph-color: rgba(0, 0, 0, 0.55);
 
+  /* -- volume pill + flyout ---------------------------------- */
+  /* Pill height tracks --traffic-size (sits level with the lights). The fill
+     hue is the theme's --title; --vol-fill-strength is how hard that tint
+     reads (a skin/material decision, not a color). */
+  --vol-pill-w:        32px;   /* ~2.3× a traffic light */
+  --vol-pill-radius:   999px;  /* true capsule */
+  --vol-pill-fs:       9px;
+  --vol-fill-strength: 30%;
+  --vol-track-len:     90px;   /* vertical slider run inside the flyout */
+  --vol-panel-pad:     var(--space-2);
+  --vol-icon-size:     16px;
+
   /* -- shape ------------------------------------------------- */
   --radius-panel:   10px;
   --radius-control: 6px;

@@ -125,7 +125,8 @@ The OS frame is disabled (`decorations: false` in `tauri.conf.json`) and we draw
 our own chrome.
 
 - **Surfaces:** mini-player · **midi-player** (480×864, current scaffold) · full window.
-- **Titlebar** (`.titlebar` in `index.html`): app title (left) + traffic lights (right).
+- **Titlebar** (`.titlebar` in `index.html`): app title (left) + a right cluster
+  (`.chrome-right`) holding the **volume pill** and the traffic lights.
 - **Drag:** the bar carries `data-tauri-drag-region`, which makes it the OS drag
   handle. Interactive children (the buttons) opt out automatically by *not*
   carrying the attribute. `--webkit-app-region` is **not** used — Tauri's attribute
@@ -181,6 +182,30 @@ exotic borders (gradient/wavy) can't use CSS `border` (border-image ignores
 box masked by the `--scrubber-handle` SVG token (a `url(<data-uri>)`), so the shape is
 arbitrary yet still themes via `--title` and sizes via `--scrubber-handle-size`. Skins
 override the token only: Vanilla a circle, Ocean a water droplet, Desk a paper chit.
+The masked SVG must be drawn **centered in its viewBox** — `mask: center` centers the
+box, not the ink, so an off-center path floats above/below the rail (Ocean's lens path
+spans y = 5→19 of 0–24 for this reason).
+
+**One slider primitive for seek + volume** (`src/slider.ts`, `makeSlider`): a single
+pointer-capture loop maps a drag to a `0..1` fraction along one axis and publishes it
+as the `--slider-fill` CSS prop. The markup is the shared `.scrub` block —
+`.scrub__track` / `.scrub__fill` / `.scrub__handle` — horizontal by default, `.scrub--v`
+flips it vertical (fill grows bottom→top). The seek bar uses `axis: "x"` → `seekToFraction`;
+the volume slider uses `axis: "y"` → `setVolume`. `setValue(frac)` lets external state
+(live playback progress) drive the fill and is a no-op while the user is dragging.
+
+**Volume pill** (`.vol` in `.chrome-right`): a level-meter capsule the height of a
+traffic light that drops a flyout on hover (with a 150 ms close-grace; click also
+toggles it, like the settings menu). The pill's fill is a **tinted `--title`** wash
+(`color-mix` at `--vol-fill-strength`, a skin token) sweeping under a constant `Vol.`
+label — the translucency preserves the surface's light/dark polarity, so the label
+stays legible over both filled and empty halves in every theme. The flyout holds a
+**mute toggle** (speaker glyph, swapped muted/unmuted) above a vertical `.scrub`.
+The audio side is `music.volume` (0..1) — app-side software gain on our own stream,
+*not* the system volume — persisted in `localStorage` (`deets.volume` / `deets.muted`)
+and re-applied on the next `initPlayer` (the MusicKit instance only exists after first
+play, so `setVolume` stores early and pushes the level on init). See
+[DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) for the player module.
 
 ### 4a. The collection card (navigable browser engine)
 `src/collection-card.ts` is a **reusable, context-aware browser** that the Library

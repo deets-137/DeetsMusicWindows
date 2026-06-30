@@ -196,6 +196,64 @@ body {
 }
 @keyframes acct-spin { to { transform: rotate(360deg); } }
 
+/* ── Right chrome cluster (volume pill + traffic lights) ────── */
+.chrome-right { display: flex; align-items: center; gap: var(--space-2); }
+
+/* ── Volume pill + flyout ───────────────────────────────────────────────────
+   The pill is a level meter: a tinted --title fill (strength is a skin token)
+   sweeps left→right under a constant "Vol." label. Hovering drops a panel with
+   a mute toggle over a vertical scrubber (the .scrub primitive). */
+.vol { position: relative; display: flex; align-items: center; }
+
+.vol__pill {
+  position: relative;
+  overflow: hidden;                 /* clip the fill to the pill's rounded ends */
+  height: var(--traffic-size);
+  width: var(--vol-pill-w);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--vol-pill-radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--vol-pill-fs);
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.vol__pill-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: var(--vol-pill-fill, 0%);
+  background: color-mix(in srgb, var(--title) var(--vol-fill-strength), transparent);
+  pointer-events: none;
+}
+.vol__pill-label { position: relative; z-index: 1; }  /* above the fill */
+.vol__pill:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+
+.vol__panel {
+  position: absolute; top: 100%; right: 0;     /* right-anchored: drops in-window */
+  margin-top: var(--space-1);
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-2);
+  padding: var(--vol-panel-pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  z-index: 20;
+}
+.vol__panel[hidden] { display: none; }
+
+.vol__mute {
+  width: var(--vol-icon-size); height: var(--vol-icon-size);
+  padding: 0; border: none; background: none;
+  color: var(--text); cursor: pointer;
+  display: grid; place-items: center;
+}
+.vol__mute svg { width: 100%; height: 100%; fill: currentColor; }
+.vol__mute:focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
+
 /* ── Traffic lights ─────────────────────────────────────────── */
 .lights { display: flex; gap: var(--traffic-gap); }
 
@@ -643,30 +701,45 @@ body {
   gap: var(--space-3);
 }
 
-/* scrub bar — track + fill + token-driven handle */
-.np__scrub { position: relative; height: var(--scrubber-handle-size); display: flex; align-items: center; cursor: pointer; touch-action: none; }
-.np__track {
-  position: relative;
-  width: 100%;
-  height: var(--scrubber-track-h);
-  border-radius: 999px;
-  background: var(--panel-border);
+/* ── Scrubber primitive (seek bar + volume slider share this) ───────────────
+   A track + a fill + a --title box masked by the skin's --scrubber-handle SVG.
+   Horizontal by default (seek); .scrub--v flips it vertical (volume). The fill
+   percentage is the --slider-fill custom prop set by makeSlider (slider.ts). */
+.scrub { position: relative; display: flex; cursor: pointer; touch-action: none; }
+
+/* Horizontal: full width, fill grows left→right, handle rides the fill edge. */
+.scrub:not(.scrub--v) { height: var(--scrubber-handle-size); align-items: center; }
+.scrub:not(.scrub--v) .scrub__track {
+  position: relative; width: 100%; height: var(--scrubber-track-h);
+  border-radius: 999px; background: var(--panel-border);
 }
-.np__fill {
-  position: absolute;
-  left: 0; top: 0;
-  height: 100%;
-  width: var(--np-progress, 0%);
-  background: var(--title);
-  border-radius: 999px;
+.scrub:not(.scrub--v) .scrub__fill {
+  position: absolute; left: 0; top: 0; height: 100%;
+  width: var(--slider-fill, 0%); background: var(--title); border-radius: 999px;
 }
-.np__handle {
-  position: absolute;
-  top: 50%;
-  left: var(--np-progress, 0%);
+.scrub:not(.scrub--v) .scrub__handle {
+  position: absolute; top: 50%; left: var(--slider-fill, 0%);
   transform: translate(-50%, -50%);
-  width: var(--scrubber-handle-size);
-  height: var(--scrubber-handle-size);
+}
+
+/* Vertical: fixed run, fill grows bottom→top, handle rides up the fill edge. */
+.scrub--v { width: var(--scrubber-handle-size); height: var(--vol-track-len); justify-content: center; }
+.scrub--v .scrub__track {
+  position: relative; height: 100%; width: var(--scrubber-track-h);
+  border-radius: 999px; background: var(--panel-border);
+}
+.scrub--v .scrub__fill {
+  position: absolute; left: 0; bottom: 0; width: 100%;
+  height: var(--slider-fill, 0%); background: var(--title); border-radius: 999px;
+}
+.scrub--v .scrub__handle {
+  position: absolute; left: 50%; bottom: var(--slider-fill, 0%);
+  transform: translate(-50%, 50%);
+}
+
+/* Shared handle look — masked --title box, themes via --title, sizes via token. */
+.scrub__handle {
+  width: var(--scrubber-handle-size); height: var(--scrubber-handle-size);
   background: var(--title);
   -webkit-mask: var(--scrubber-handle) center / contain no-repeat;
   mask: var(--scrubber-handle) center / contain no-repeat;

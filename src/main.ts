@@ -5,7 +5,11 @@ import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLibraryCard } from "./library-card";
 import { initQcard } from "./qcard";
-import { playPause, nextTrack, prevTrack, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
+import {
+  playPause, nextTrack, prevTrack, onPlayerState, onPlayerProgress, seekToFraction,
+  getVolume, setVolume, toggleMute, isMuted,
+} from "./player";
+import { makeSlider } from "./slider";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -164,40 +168,80 @@ window.addEventListener("DOMContentLoaded", () => {
       nextTrack().catch((e) => console.error("[player] next failed:", e));
     });
 
-    // ── Scrubber: live progress + drag-to-seek ──
+    // ── Scrubber: live progress + drag-to-seek (shared slider primitive) ──
     const npScrub = document.querySelector<HTMLElement>(".np__scrub");
-    const npTrack = npScrub?.querySelector<HTMLElement>(".np__track");
     if (npScrub) {
-      let scrubbing = false;
-      const setFill = (frac: number) => {
-        const pct = Math.max(0, Math.min(1, frac)) * 100;
-        npScrub.style.setProperty("--np-progress", `${pct.toFixed(2)}%`);
-      };
-      const fracAt = (clientX: number) => {
-        const rect = (npTrack ?? npScrub).getBoundingClientRect();
-        return rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
-      };
-
-      // Live progress drives the fill — unless the user is mid-drag.
-      onPlayerProgress((p) => {
-        if (!scrubbing) setFill(p.progress);
+      const seek = makeSlider(npScrub, {
+        axis: "x",
+        onCommit: (frac) =>
+          seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err)),
       });
-
-      npScrub.addEventListener("pointerdown", (e) => {
-        scrubbing = true;
-        npScrub.setPointerCapture(e.pointerId);
-        setFill(fracAt(e.clientX));
-      });
-      npScrub.addEventListener("pointermove", (e) => {
-        if (scrubbing) setFill(fracAt(e.clientX));
-      });
-      npScrub.addEventListener("pointerup", (e) => {
-        if (!scrubbing) return;
-        scrubbing = false;
-        const frac = fracAt(e.clientX);
-        setFill(frac);
-        seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err));
-      });
+      // Live progress drives the fill — setValue is a no-op while dragging.
+      onPlayerProgress((p) => seek.setValue(p.progress));
     }
+  }
+
+  // ── Volume: titlebar pill (level meter) + hover flyout + vertical slider ──
+  const volRoot = document.getElementById("vol");
+  const volPill = document.getElementById("vol-pill");
+  const volPanel = document.getElementById("vol-panel");
+  const volScrub = document.querySelector<HTMLElement>("#vol-scrub");
+  const volMute = document.getElementById("vol-mute");
+  if (volRoot && volPill && volPanel && volScrub && volMute) {
+    const ICON_VOL =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4zm12.5 3a4 4 0 0 0-2.5-3.7v7.4a4 4 0 0 0 2.5-3.7zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
+    const ICON_MUTE =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4zm17 .4L19.6 8l-2.6 2.6L14.4 8 13 9.4l2.6 2.6L13 14.6 14.4 16l2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6L21 9.4z"/></svg>';
+
+    // Paint a 0..1 level into the pill fill, the slider handle, and the glyph.
+    const reflect = (v: number) => {
+      const pct = (Math.max(0, Math.min(1, v)) * 100).toFixed(2);
+      volPill.style.setProperty("--vol-pill-fill", `${pct}%`);
+      slider.setValue(v);
+      volMute.innerHTML = isMuted() || v === 0 ? ICON_MUTE : ICON_VOL;
+      volMute.setAttribute("aria-pressed", String(isMuted()));
+    };
+
+    const slider = makeSlider(volScrub, {
+      axis: "y",
+      onDrag: (frac) => { setVolume(frac); reflect(getVolume()); },
+      onCommit: (frac) => { setVolume(frac); reflect(getVolume()); },
+    });
+
+    reflect(getVolume()); // seed from the persisted level
+
+    // Open on hover; close on leave after a short grace (and never mid-drag).
+    let graceTimer: number | undefined;
+    const open = () => {
+      window.clearTimeout(graceTimer);
+      volPanel.hidden = false;
+      volPill.setAttribute("aria-expanded", "true");
+    };
+    const close = () => {
+      volPanel.hidden = true;
+      volPill.setAttribute("aria-expanded", "false");
+    };
+    const scheduleClose = () => {
+      window.clearTimeout(graceTimer);
+      graceTimer = window.setTimeout(() => { if (!slider.dragging) close(); }, 150);
+    };
+
+    volRoot.addEventListener("pointerenter", open);
+    volRoot.addEventListener("pointerleave", scheduleClose);
+    volPill.addEventListener("click", (e) => {
+      e.stopPropagation();
+      volPanel.hidden ? open() : close();
+    });
+    volMute.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleMute();
+      reflect(getVolume());
+    });
+
+    // Dismiss: click outside, or Escape (mirrors the settings menu).
+    document.addEventListener("click", (e) => {
+      if (!volPanel.hidden && !volRoot.contains(e.target as Node)) close();
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
 });

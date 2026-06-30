@@ -50,6 +50,7 @@ export function initPlayer(): Promise<any> {
     music = window.MusicKit.getInstance();
     await injectUserToken();
     wireEvents();
+    applyVolumeToMusic(); // push the persisted level onto the fresh instance
     console.log("[player] configured — authorized:", music.isAuthorized);
     return music;
   })();
@@ -163,8 +164,16 @@ function onNowPlayingChange(): void {
 
 /** Walk the queue model to match MusicKit's live position (natural advance + skips). */
 function syncModelToMusicKit(): void {
-  const p: unknown = music?.queue?.position;
-  if (typeof p !== "number" || p < 0) return;
+  // `nowPlayingItemIndex` is the documented v3 index of the current item; `queue.position`
+  // is a fallback (not populated in every build — relying on it left the model frozen,
+  // so the now-playing song lingered at the top of Up Next).
+  const idx = music?.nowPlayingItemIndex;
+  const qp = music?.queue?.position;
+  const p = typeof idx === "number" && idx >= 0 ? idx : typeof qp === "number" && qp >= 0 ? qp : -1;
+  if (p < 0) {
+    console.warn("[player] model-follow: MusicKit gave no queue position");
+    return;
+  }
   let diff = p - windowPos;
   while (diff > 0) {
     queue.advance();
@@ -222,17 +231,19 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   isLoading = true;
   loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
   emit(); // surface the loading state for the cover-up
+  // Pause first so the queue swap starts from a clean transport. MusicKit refuses a
+  // play() "without a previous stop()/pause()" while already playing — that error was
+  // leaving the old song playing on every click. From paused, play() reliably enacts
+  // the switch to the new index.
+  if (m.isPlaying && typeof m.pause === "function") await m.pause();
   await m.setQueue({ songs: ids });
   // Current's index in the fed window = count of id-bearing handles behind it.
   const pos = back.filter((h) => playId(h)).length;
   windowPos = pos; // the model's `current` is aligned to this MusicKit index
   if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
-    // changeToMediaAtIndex starts playback at `pos` itself — calling play() after it
-    // throws "play() without a previous stop()/pause()". Don't double-start.
-    await m.changeToMediaAtIndex(pos);
-  } else if (autoplay && !m.isPlaying) {
-    await m.play();
+    await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
   }
+  if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
   loadingContext = false;
   isLoading = false;
   emit();
@@ -306,4 +317,80 @@ export async function seekToFraction(fraction: number): Promise<void> {
   if (duration <= 0) return;
   const clamped = Math.max(0, Math.min(1, fraction));
   await music.seekToTime(clamped * duration);
+}
+
+// ── Volume ───────────────────────────────────────────────────────────────────
+//
+// App-side software gain on OUR MusicKit instance (`music.volume`, 0..1) — it
+// scales our stream BEFORE the Windows per-app mixer, exactly like the level
+// inside Spotify/Apple Music. It is not the system volume.
+//
+// `level` is the underlying slider position; `muted` is an overlay (mute keeps
+// the level so unmute can restore it). The effective output is 0 while muted.
+// Both persist to localStorage and re-apply on the next launch. Because the
+// MusicKit instance only exists after first play, `setVolume` is safe to call
+// early — the value is stored and pushed onto the instance in `initPlayer`.
+
+const VOLUME_KEY = "deets.volume";
+const MUTE_KEY = "deets.muted";
+
+let level = readStoredLevel(); // 0..1
+let muted = localStorage.getItem(MUTE_KEY) === "true";
+let preMuteLevel = level > 0 ? level : 0.5; // restore target for unmute
+
+function readStoredLevel(): number {
+  const raw = localStorage.getItem(VOLUME_KEY);
+  const n = raw == null ? 1 : Number(raw);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+}
+
+/** Push the current effective level onto the live instance (no-op pre-init). */
+function applyVolumeToMusic(): void {
+  if (!music) return;
+  try {
+    music.volume = muted ? 0 : level;
+  } catch (e) {
+    console.warn("[player] volume not settable:", e);
+  }
+}
+
+function persistVolume(): void {
+  try {
+    localStorage.setItem(VOLUME_KEY, String(level));
+    localStorage.setItem(MUTE_KEY, String(muted));
+  } catch {
+    /* storage disabled — still applies for the session */
+  }
+}
+
+/** Effective output level (0..1) — 0 while muted. Drives the pill + slider UI. */
+export function getVolume(): number {
+  return muted ? 0 : level;
+}
+
+/** Whether output is currently muted (distinct from level === 0). */
+export function isMuted(): boolean {
+  return muted;
+}
+
+/** Set the level from the slider (0..1). Dragging to 0 reads as muted. */
+export function setVolume(v: number): void {
+  level = Math.max(0, Math.min(1, v));
+  muted = level === 0;
+  if (level > 0) preMuteLevel = level;
+  applyVolumeToMusic();
+  persistVolume();
+}
+
+/** Toggle mute, restoring the pre-mute level on unmute. */
+export function toggleMute(): void {
+  if (muted) {
+    muted = false;
+    if (level === 0) level = preMuteLevel; // dragged-to-zero → restore something audible
+  } else {
+    preMuteLevel = level > 0 ? level : preMuteLevel;
+    muted = true;
+  }
+  applyVolumeToMusic();
+  persistVolume();
 }
