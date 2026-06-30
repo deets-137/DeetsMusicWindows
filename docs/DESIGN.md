@@ -67,14 +67,14 @@ Status: ✅ done · 🔵 designing · ⬜ todo · ❄️ deferred to later
 | # | Feature | Status |
 |---|---|---|
 | P1 | Auth — sign in / sign out (Apple Music) | ✅ (loopback browser flow) |
-| P2 | Transport — play / pause | ⬜ |
-| P3 | Skip next / previous | ⬜ |
-| P4 | Seek / scrub + time display | ⬜ |
+| P2 | Transport — play / pause | ✅ (MusicKit JS in WebView2; full-song DRM works) |
+| P3 | Skip next / previous | ✅ (native skip within the fed window) |
+| P4 | Seek / scrub + time display | 🔵 (drag-to-seek scrubber done; time labels TODO) |
 | P5 | Volume | ⬜ |
 | P6 | Shuffle | ⬜ |
 | P7 | Repeat (off / all / one) | ⬜ |
-| P8 | Now Playing display (artwork, title, artist, album) | ⬜ |
-| P9 | Queue — view upcoming, play-next, reorder, remove | ⬜ |
+| P8 | Now Playing display (artwork, title, artist, album) | ✅ (cover/title/artist, live) |
+| P9 | Queue — view upcoming, play-next, reorder, remove | 🔵 (Qcard: view + jump-to-item; manual edit TODO) |
 
 **Library**
 | # | Feature | Status |

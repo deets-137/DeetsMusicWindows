@@ -2,7 +2,8 @@
 
 > Cold-start guide. Read this first. Snapshot as of **2026-06-29**.
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
-> (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data).
+> (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
+> [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass).
 
 ## What this is
 A lightweight Apple Music player for Windows 11 — **Tauri v2 + WebView2**, vanilla
@@ -48,8 +49,8 @@ color reference (open in any browser).
   `--shadow-card` tokens are no-ops under vanilla so existing surfaces are untouched.
   **Skin** selector row in settings mirrors Theme (`src/skin.ts`).
 - **Typography**: Liberation Serif (title) bundled as local TTFs via `@font-face`.
-- **Home bento**: Now Playing strip (top, wide) · Library (left) · Playlists (right),
-  span-based grid, columns scroll individually.
+- **Home bento**: Now Playing strip (top, wide) · Library (left) · Queue (right, in the
+  Playlists slot for now), span-based grid, columns scroll individually.
 - **Apple auth**: loopback browser sign-in (themed page), MUT persisted, survives
   restarts. Account row shows ✓/✗ + spinner.
 - **Library data (songs)**: end-to-end — `library_sync` pulls all songs (parallel) →
@@ -76,12 +77,19 @@ color reference (open in any browser).
 - **Queue model** (`src/queue.ts`): history / current / upcoming zones of lightweight
   handles; `origin`-based stacking (manual play-next survives a new context); a
   backgrounded pre-click backlog (`played` flag) reachable via Previous, hidden from
-  recently-played until heard. `onQueueChange` for a future queue UI.
+  recently-played until heard. The player keeps it **live-synced to MusicKit's position**
+  (model-follow), so it mirrors what's actually playing.
+- **Transport + Queue card (Qcard)**: prev/next wired (native skip within the window —
+  Previous walks backlog→history, Next walks upcoming). The **Qcard** (`src/qcard.ts`)
+  occupies the Playlists slot (title → "Queue") and renders Now Playing + Up Next from the
+  model — **display + jump-to-item** (click/Enter an Up Next row to play it). A shared
+  **track store** (`src/track-store.ts`) feeds metadata to both cards from one load.
 
 ### Stubbed / not built yet ⬜
-- **Playlists card** — stub title; being **temporarily replaced by a Queue card (Qcard)**
-  that renders the queue model. Real Playlists return later (collection-card Playlists
-  context: overview list → playlist detail).
+- **Manual queueing** — the queue *model* supports play-next / add-to-queue / reorder /
+  remove, but there's **no UI** for them yet and no MusicKit-side sync. Next up.
+- **Real Playlists card** — the Playlists slot currently hosts the Qcard. Real Playlists
+  return later (collection-card Playlists context: overview list → playlist detail).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
   (no catalog). Artist tiles show a round album-cover thumb / initials until hydrate.
 - **Catalog hydration** — `playParams.catalogId` → palette (`Artwork.bgColor`/
@@ -94,13 +102,12 @@ color reference (open in any browser).
 ---
 
 ## Roadmap (agreed order)
-*Playback is built; the near-term work is making the queue first-class.*
-1. **Transport + model-follow + Qcard** (in progress) — wire prev/next, make the queue
-   model **follow MusicKit's live position** (so history/upcoming/backlog reflect
-   reality), and build a **Queue card** that renders the model (temporarily in the
-   Playlists slot).
-2. **Manual queueing** — UI for play-next / add-to-queue / reorder / remove, driving the
-   model (which already supports them) and syncing into MusicKit.
+*Playback + the queue are built and the Qcard is live; manual queueing is next.*
+1. ✅ **Transport + model-follow + Qcard** — prev/next wired, the queue model follows
+   MusicKit's live position, and the Qcard renders it (display + jump-to-item) in the
+   Playlists slot.
+2. **Manual queueing** (next) — UI for play-next / add-to-queue / reorder / remove,
+   driving the model (which already supports them) and syncing into MusicKit.
 3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
    top it up as playback nears an edge so long contexts don't dead-end. The one place
    model-driven nav crosses the window edge and incurs load latency (see gotchas).
@@ -149,9 +156,14 @@ color reference (open in any browser).
 - **Click a song = play (not drill):** the old song→album drill is **retired**. Songs
   `activate` (play); albums/artists `open` (drill). The engine prefers `activate` over
   `open` on a leaf.
-- **Queue model isn't yet live-synced to MusicKit:** `queue.ts` is authoritative at
-  `setContext` time but does **not** follow MusicKit's position during playback yet — so
-  history/backlog flags won't be real-time until model-follow lands (with the Qcard).
+- **Model-follow keys off `music.queue.position`:** the queue model mirrors MusicKit by
+  replaying `advance()`/`previous()` on position changes (`syncModelToMusicKit`),
+  suppressed during (re)loads via `loadingContext`. If a MusicKit build reports position
+  differently, the Up Next list would stop tracking — fall back to matching
+  `nowPlayingItem` by id.
+- **`changeToMediaAtIndex` already starts playback** — do NOT call `play()` after it or
+  MusicKit throws *"play() without a previous stop()/pause()"*. `play()` belongs only on
+  the pos-0 (setQueue-only) path, guarded by `!isPlaying`. (Bit us once.)
 
 ---
 
@@ -162,8 +174,9 @@ color reference (open in any browser).
   injected directly (no `authorize()` popup). The MUT necessarily reaches the renderer
   for this one path.
 - **Queue model is the source of truth**, decoupled from MusicKit; the player feeds
-  MusicKit a bounded window for cheap setQueue + gapless play, and (soon) mirrors its
-  position back. Lightweight handles (ids), not full Tracks — cheap on huge libraries.
+  MusicKit a bounded window for cheap setQueue + gapless play, and mirrors its position
+  back (model-follow). Lightweight handles (ids), not full Tracks — cheap on huge
+  libraries; metadata resolves through the shared track store.
 - **Normalization in a Rust `MusicProvider` trait** — UI is provider-agnostic.
 - **Unified `Track`** with both IDs optional (not split library/catalog types).
 - **Persisted SQLite cache + sync-on-open** (stale-while-revalidate) — instant
@@ -184,10 +197,13 @@ src/library.ts              cache reads, sync trigger, sync-event subscription, 
 src/collection-card.ts      reusable navigable browser engine (contexts/groupings,
                             Sort/View/Search, push/pop pane-slide nav, scroll restore)
 src/library-card.ts         Library's contexts/groupings + drill-in; song click → play
+src/track-store.ts          shared in-memory library: one load, id→Track index + notify
 src/queue.ts                queue model (history/current/upcoming, backlog, stacking)
 src/player.ts               MusicKit engine: init/MUT-inject, playContext (windowed),
-                            transport, scrubber/state events, catalog→library fallback
+                            loadFromModel, transport, model-follow, scrubber/state events
+src/qcard.ts                Queue card (Playlists slot): Now Playing + Up Next + jump
 src/styles.css              app rules (imports the token sheets first)
+src/styles/qcard.css        Queue card styling (imported by qcard.ts)
 src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system; skin.css is a
                             [data-skin] base + vanilla/desk/ocean deltas. Fonts: Liberation
                             Serif + Caveat/Karla (desk) + Cinzel/Spectral (ocean)
