@@ -201,7 +201,7 @@
   /* scrubber handle — a lens swell: the bar appears to bulge to a fat middle
      and taper back to track height at the pointed tips. Same --title fill as
      the bar, so it reads as the rail itself swelling at the playhead. */
-  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 8Q12 1 23 8Q12 15 1 8Z' fill='%23000'/%3E%3C/svg%3E");
+  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 12Q12 5 23 12Q12 19 1 12Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
 /* Ocean's wave rows roll horizontally, each layer by a different
