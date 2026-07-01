@@ -128,14 +128,45 @@ without adding a separate control to the panel header.
 
 ## 4. Surface system (seam only, this build)
 
-- `src/surface.ts`: a `ResizeObserver` on the app root computes `mini|midi|max` from
-  width/height/aspect thresholds and sets `data-surface` on `<html>`. **The same lever as
-  `data-theme` / `data-skin`** — CSS gates layout off the attribute; container queries handle
-  finer reflow.
+### What each surface is *for* (the thesis, not just the size)
+The three surfaces are an **engagement ladder** — each has a distinct job, which is what should
+drive its composition when max/mini are built:
+
+- **mini — *listening*.** For when music is **already playing / the queue is already set**.
+  Playback-first and minimal: glanceable now-playing + transport, nothing to curate. You're not
+  building anything here, you're listening.
+- **midi — *queueing*.** The way you **build what plays, however you listen** — the swappable
+  content cards (library / queue / playlists / search / stations) feeding the queue. The current
+  surface; its whole point is getting music *into* the queue in whatever way suits you.
+- **max — *exploring / organizing*.** Full-screen, where you **browse, manage, and interact**
+  with the music at depth — sidebar + main with many slots. The surface for library organization,
+  discovery, and everything that isn't just "queue it and go."
+
+This ladder (listen → queue → explore) is why mini is the smallest/most-locked-down composition
+and max is the richest — and why the *same* cards can appear across surfaces but with different
+prominence (e.g. Now Playing is the *whole* of mini, a strip in midi, and one panel among many in
+max).
+
+- `src/surface.ts`: sets `data-surface="mini|midi|max"` on `<html>` — **the same lever as
+  `data-theme` / `data-skin`** (CSS gates layout off the attribute; container queries handle
+  finer reflow). It owns a `ResizeObserver`, but surface is **not** a pure function of size —
+  see the switching model below.
+- **Switching model (decided):** surface is a **deliberate user choice** with a **resize
+  allowance**. The user picks the surface; each surface remembers its own window size. Within
+  a surface you may resize freely inside that surface's **band**, and only **crossing the
+  band's threshold flips** to the adjacent surface (with a small hysteresis so the boundary
+  doesn't oscillate). The bands, the auto-flip on/off, and the hysteresis are a **setting to
+  build** — specced in [FUTURE-SETTINGS §8](FUTURE-SETTINGS.md).
 - **midi is fully implemented.** **max** and **mini** are **seam only**: the attribute flips
   and the registry/cards are ready, but their compositions **fall back to the midi layout**.
-  Mini's "shrink-in-place + always-on-top" minimize behaviour, and the max full-window
-  composition, are **deferred to a later session** (we'll discuss the switch technicals then).
+  Their intended shapes:
+  - **max — full-screen.** A **sidebar + main** layout (a bento with **many more slots** than
+    midi's two): persistent nav/library rail on the side, a wide main area composing several
+    cards at once. Wants its own, larger per-surface slot set (not midi's `{np, left, right}`).
+  - **mini — compact floating.** "Shrink-in-place + always-on-top" on minimize; a single
+    condensed transport (cover + title/artist + play/prev/next + scrub), no content slots.
+  The max composition and mini's minimize/always-on-top switch technicals are **deferred to a
+  later session** (design each when we build it).
 
 ---
 
@@ -161,11 +192,29 @@ Each phase **compiles and is independently testable**; behaviour only changes wh
    + `makeDropdown.destroy()`); a **Playlists stub** card so the picker exercises 3 cards / 2
    slots. Also fixed here: the Library card's startup re-sync moved to `initTrackStore` (once
    per session) so a slot swap no longer re-triggers a full Apple sync.
-3. ⬜ **Surface seam.** `src/surface.ts` sets `data-surface` from size; midi gating in CSS;
-   max/mini fall back to midi. Visually ~no-op for midi — it establishes the attribute the
-   later redesigns hang off. **Next session** — recon done (the bento is reshapeable purely
-   via CSS gated on `data-surface` + token overrides + a ~15-line resize hook; position by
-   **slot**, and max likely wants a larger per-surface slot set).
+3. ⬜ **Surface seam + sizing/switching — the next build (Fable's starting point).** Establishes
+   the `data-surface` attribute *and* the deliberate-selection + resize-allowance switching model
+   ([FUTURE-SETTINGS §8](FUTURE-SETTINGS.md)); midi stays a visual no-op; max/mini fall back to
+   midi (their compositions come later). **Build tasks:**
+   - **`src/surface.ts`** — a `ResizeObserver` on the app root; a per-surface **size band** table;
+     compute the active surface from the **persisted deliberate choice** (`deets.surface`) *plus*
+     the window size, flipping only when a band **threshold** is crossed, with **hysteresis** so
+     the boundary doesn't oscillate; set `data-surface` on `<html>` (the same lever as
+     `data-theme`/`data-skin`).
+   - **A selection control** — a settings/title-menu row to pick midi/max (mini is entered via the
+     minimize button; mini's shrink-in-place + always-on-top behaviour stays deferred, but the
+     *selection + persistence* plumbing lands now).
+   - **CSS** — gate the current bento on `[data-surface="midi"]`; max/mini inherit the midi map for
+     now (no separate composition).
+   - **Persistence** — `deets.surface` + each surface's last window size (FUTURE-SETTINGS §8 keys).
+   - **Acceptance:** midi visually unchanged; manually flipping `data-surface` in devtools doesn't
+     break; resizing within a band stays put, crossing it flips (respecting hysteresis); the choice
+     survives restart. **Max/mini compositions are explicitly out of scope for this build.**
+   - **Guiding thesis** for later compositions — the *listen → queue → explore* ladder in §4 (mini
+     = listening, midi = queueing, max = exploring/organizing).
+
+   Recon (still valid): the bento is reshapeable purely via CSS gated on `data-surface` + token
+   overrides + a ~15-line resize hook; position by **slot**; max wants a larger per-surface slot set.
 
 *(Later, on this foundation: real Playlists context → Search card → accent-palette plumbing →
 shuffle → max & mini compositions.)*

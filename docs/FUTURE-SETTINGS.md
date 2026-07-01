@@ -171,3 +171,42 @@ percentage). Both partial and full are stored per track in SQLite (`play_stats`)
 (a)) and/or `deets.stats.fullMode` = `"fraction" | "end" | "scrobble"`, read in
 `src/stats.ts` (replace the `FULL_THRESHOLD` constant + the `recordProgress` comparison).
 Likely a small **Playback** / **Stats** subsection in the settings menu once one exists.
+
+---
+
+## 8. Surface switching — trigger & resize allowance
+
+**Behavior.** How the app moves between the three surfaces (`mini` / `midi` / `max`; see
+[SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) §4) and how much free window resizing is
+tolerated before the surface *flips*.
+
+**Decided model (the default to build toward).**
+- **Surface is a deliberate user choice**, not a pure function of window size. The user
+  picks the surface (a control — likely the title menu, plus mini via the minimize button),
+  and each surface has its **own remembered window size**.
+- **Within a surface, the user may freely resize inside an allowance band.** Resizing stays
+  in the current surface until the window crosses that surface's threshold, at which point it
+  **snaps to the adjacent surface** (shrink past mini's floor → still mini but clamped;
+  grow past midi's ceiling → max; shrink past midi's floor → mini). So resize is forgiving
+  in the middle and only flips at the edges — no jitter around a single breakpoint.
+
+**What the setting captures (this is the part to build as configurable):**
+- **Per-surface size band** — min/max width & height (and/or aspect) that define where each
+  surface lives and where the flip thresholds sit. These are the numbers we'll otherwise
+  hardcode; the setting exposes them (or at least a coarse "compact / roomy" preset).
+- **Auto-flip on resize: on/off** — whether crossing a threshold flips the surface at all,
+  or whether surface only ever changes by explicit selection (resize then just clamps to the
+  current surface's band). Some users will want the window to *stay put* in the surface they
+  chose.
+- **Hysteresis / allowance width** — how far past a threshold you must drag before it flips
+  (dead-band), so a surface doesn't oscillate when you hover the boundary.
+
+**Current default (hardcoded, once Phase 3 lands):** deliberate selection + a single
+hardcoded per-surface band with auto-flip **on** and a small hysteresis. No UI yet.
+
+**Wiring sketch.** `src/surface.ts` owns the `ResizeObserver` and the band table. Persist
+the chosen surface + each surface's last window size (`deets.surface` = `"mini"|"midi"|"max"`,
+`deets.surface.size.{mini,midi,max}`); the configurable bands live under e.g.
+`deets.surface.bands` and `deets.surface.autoFlip`. Read them where `surface.ts` computes the
+active surface from size. A **Window / Layout** settings subsection would host the toggle +
+(advanced) the band editor.

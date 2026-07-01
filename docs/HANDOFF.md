@@ -9,6 +9,12 @@
 > [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles),
 > [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (swappable card system + mini/midi/max seam),
 > [PLAYLISTS.md](PLAYLISTS.md) (playlists card spec — local-first store + Apple mirror + gated export),
+> [SEARCH.md](SEARCH.md) (catalog Search card — songs/albums/artists/playlists/stations over the collection-card engine),
+> [FAVORITES.md](FAVORITES.md) (♥/👎 ratings + Add-to-Library; the unified track store so non-library songs resolve),
+> [ALBUM-COLOR.md](ALBUM-COLOR.md) (the radiant Now-Playing aurora — album palette → runtime roles → per-skin aurora),
+> [STATIONS.md](STATIONS.md) (radio: Apple stations + our own generated stations + Deezer BPM enrichment),
+> [DeetsWeather.md](DeetsWeather.md) (weather-driven stations/queues via WeatherKit — a weather recipe over the station engine),
+> [DeetsOTD.md](DeetsOTD.md) (Song of the Day — mark one song per day; the history becomes a local music diary),
 > [DEETS-REWIND.md](DEETS-REWIND.md) (listening-stats data + the future data-viz card).
 
 ## What this is
@@ -140,6 +146,66 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 
 ---
 
+## 🔨 Build queue for Fable (specs to build — 2026-07-02)
+
+> A session-specific build order over the feature specs, for a fresh Fable run pointed at `docs/`.
+> Work **top-down** — each item unblocks the next.
+>
+> **How to operate each item:** (1) read the linked spec end-to-end; (2) resolve its **open 🔵
+> forks** using the doc's recommended default unless the user says otherwise; (3) if it carries a
+> **⚠️ verify-first risk, prove it on a throwaway before building the dependent surface** — the
+> same discipline that de-risked WebView2 DRM; (4) keep everything **token-based** (palette → theme
+> → skin; runtime roles for album/weather) — never a hardcoded color / px / font; (5) compile-check
+> (`npx tsc --noEmit`, `npx vite build`) and hand to the user to test in `npm run tauri dev` —
+> **no throwaway UI harnesses**; (6) as each lands, flip its status in the spec doc + State of play.
+
+1. **Surface seam + sizing/switching — START HERE.** [SURFACES-AND-CARDS §3 (Phase 3)](SURFACES-AND-CARDS.md)
+   + [FUTURE-SETTINGS §8](FUTURE-SETTINGS.md). Foundational, **low-risk**: establishes
+   `data-surface="mini|midi|max"` + the deliberate-selection / resize-allowance behaviour; midi is
+   a visual no-op; max/mini fall back to midi. Unblocks Album Color's `[data-surface="midi"]` gate.
+   That doc's Phase 3 has the concrete build-task checklist. **No verify-first risk.**
+2. **Album Color (radiant Now-Playing aurora).** [ALBUM-COLOR.md](ALBUM-COLOR.md). Depends on #1
+   (the midi gate). Build the runtime `--album-*` roles + theme fallbacks + the per-skin **rotating**
+   aurora **now** — it works immediately on the theme fallback, *no data needed* — then wire real
+   Apple palette once #3 lands. ⚠️ soft: verify the spinning layer behind glass's `backdrop-filter`
+   stays smooth in WebView2.
+3. **Catalog enrichment layer (roadmap #7).** The **shared substrate**: one demand-driven, cached
+   catalog fetch (keyed by cover-URL / catalog id) yielding **palette** (→ #2's real colors),
+   **ISRC** (→ Deezer BPM), and **30s previews**. Unblocks the *real* Album Color data and all of
+   Stations. (Probe 2026-07-01: **0/3717** songs carry an ISRC, **99.8%** carry a catalog id →
+   recoverable in ~13 batch calls.)
+4. **Search card.** [SEARCH.md](SEARCH.md) (roadmap #4). Reuses the collection-card engine; needs a
+   **cached storefront** + a `search` provider method. **Shares the catalog-access plumbing with #3**
+   and is the **discovery surface** a `scope:"catalog"` station leans on. Songs/albums/artists/playlists ship
+   first; the **Stations category lights up once #5's station-playback probe passes**. No standalone
+   verify-first risk of its own.
+5. **Favorites, ratings & library writes.** [FAVORITES.md](FAVORITES.md). **♥ Favorite (love +1) ·
+   👎 Dislike (−1) · Add to Library**, as dedicated buttons + menus across Now Playing / Library /
+   Search / Queue (ratings + library POST via the MUT we already hold; **gated** writes). **Carries
+   the shared data-model change:** `tracks` becomes a **unified store** (library + materialized
+   `seen` catalog tracks) on a **catalog-first canonical key** (+ one-time migration), so
+   rating/playing a **non-library** song resolves — foundational for catalog plays in Rewind and for
+   station feedback. No verify-first risk (but confirm the exact favorites-vs-ratings route against
+   live docs).
+6. **Stations.** [STATIONS.md](STATIONS.md). **⚠️ Verify-first:** prove the **MusicKit-JS
+   station-playback call** in WebView2 on a throwaway *before* building the card. Then: Apple
+   stations (browser + radio-mode display) → Deezer enrichment provider (BPM cache; #3 supplies the
+   ISRC) → own-station generator with the `scope: library|catalog` toggle; **♥/👎 ratings (#5) are
+   its strongest taste signal** (genome substitute). Open 🔵: manual-queue in radio mode, ship order.
+7. **DeetsWeather.** [DeetsWeather.md](DeetsWeather.md). Rides #6's own-station engine (weather = a
+   rule source). **⚠️ Verify-first:** confirm a **WeatherKit-enabled Service ID** exists and the
+   WeatherKit JWT (`sub` = service id — *different from the MusicKit dev token*) returns 200 on a
+   throwaway. **Attribution is mandatory** (Apple Weather logo + legal link). Open 🔵: snapshot vs
+   forecast-arc, location source.
+
+**Also specced, ready when prioritized (off the critical path above):**
+[PLAYLISTS.md](PLAYLISTS.md) (roadmap #5 — real Playlists card, restores the slot the Qcard borrows)
+· [DEETS-REWIND.md](DEETS-REWIND.md) (listening-stats data-viz card)
+· [DeetsOTD.md](DeetsOTD.md) (Song of the Day — small, fully local, no dependencies; a good
+low-risk standalone if a quick win is wanted).
+
+---
+
 ## Roadmap (agreed order)
 *Playback, the queue, manual queueing, and the **card system** (swappable midi slots —
 [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md), Phases 1–2 done) are built. The **surface
@@ -173,8 +239,14 @@ numbered list below is the older feature roadmap, still valid for what rides the
    layer over the same `player` interface, so agents and the UI share one control path.
 7. **Per-album accent theming + lazy catalog enrichment** — fetch a track's catalog
    **palette** (`bgColor`/`textColors`) on demand, keyed by **cover-art URL** (one fetch per
-   album cover), cache it, and route it through `--album-*` accent tokens to tint Now Playing
-   (and album detail). The same demand-driven path fetches **artist photos** on artist-detail.
+   album cover), cache it, and route it through `--album-*` **runtime roles** to tint Now
+   Playing (and album detail). The Now-Playing tint is fully specced in
+   **[ALBUM-COLOR.md](ALBUM-COLOR.md)** (radiant, rotating, per-skin aurora); this palette
+   cache is its data path (its first consumer). The same demand-driven path fetches **artist
+   photos** on artist-detail — and the same catalog object carries **ISRC** (→ Deezer BPM) and
+   **30s previews**, so this one enrichment layer is also the substrate for **[STATIONS.md](STATIONS.md)**
+   (a live-cache probe on 2026-07-01 found **0/3717** library songs carry an ISRC, but **99.8%**
+   have a catalog id — so ISRC is recoverable here, ~13 batch calls for the whole library).
    *(This is the home for the visual layer batch hydrate used to cover.)* · **mini-player /
    SMTC / hotkeys** · **virtualized list** (only once libraries get large or artwork I/O bites).
 
