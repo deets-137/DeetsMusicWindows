@@ -8,6 +8,7 @@
 > queue.ts/player.ts), [DEBUGGING.md](DEBUGGING.md) (the `__diag` log + introspection),
 > [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles),
 > [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (swappable card system + mini/midi/max seam),
+> [PLAYLISTS.md](PLAYLISTS.md) (playlists card spec — local-first store + Apple mirror + gated export),
 > [DEETS-REWIND.md](DEETS-REWIND.md) (listening-stats data + the future data-viz card).
 
 ## What this is
@@ -162,9 +163,11 @@ numbered list below is the older feature roadmap, still valid for what rides the
    audition is an optional later add, not the default. Needs a cached storefront + a `search`
    provider method. *(There is deliberately no "catalog hydrate" item — catalog data is
    demand-driven: Search for discovery, lazy enrichment (#7) for what you view.)*
-5. **Real Playlists card** — wire `playlists_page` + `playlist_tracks` (+ tables), drive
-   the collection-card with a Playlists context (overview → playlist detail). Restores
-   the slot the Qcard is borrowing.
+5. **Real Playlists card** — **now specced: [PLAYLISTS.md](PLAYLISTS.md)** (local-first
+   store + read-only Apple mirror with a source badge + gated one-way create/append export;
+   `amp-api` rejected). Wire `playlists_page` + `playlist_tracks` (+ local CRUD tables), drive
+   the collection-card with a Playlists context (overview → playlist detail). Restores the slot
+   the Qcard is borrowing. UI/UX design is a dedicated next session.
 6. **CLI / local-agent control** (pre-launch goal) — a command surface so local models /
    agents can play music (search, queue, play/pause/skip, now-playing): a thin Rust
    layer over the same `player` interface, so agents and the UI share one control path.
