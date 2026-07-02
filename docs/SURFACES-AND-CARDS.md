@@ -41,7 +41,7 @@ wired inline in `main.ts`. To be swappable a card must instead **mount into a ho
 and **tear itself down** cleanly.
 
 ```ts
-type CardId = "now-playing" | "library" | "queue" | "playlists" | "search";
+type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history";
 
 interface CardInstance {
   destroy(): void;                       // drop every listener, detach DOM
@@ -103,6 +103,25 @@ columns; Now Playing stays on top.
 
 The layout manager is written **surface-keyed** (it reads `data-surface` and applies the
 midi map when midi); max/mini fall back to the midi map until their own compositions land.
+
+### Programmatic summon (2026-07-02)
+
+Cards can ask the layout to bring another card on-screen: `src/layout-bus.ts` exposes
+`requestCard(id)` / `onCardRequest(cb)` (a tiny message module — a direct `layout.ts`
+import from a card would close the cycle layout → cards → card). First consumer: the NP
+card's **queue button**.
+
+- **Target slot = least-recently-touched.** `layout.ts` tracks per-slot recency via a
+  capture-phase `pointerdown` on each slot host (any interaction counts) plus "a card was
+  swapped in". Session-only; on the launch tie the LRU is the **right** slot (queue's
+  default home). A summon lands in the LRU slot — the column you care about least.
+- **Already visible?** `setSlot`'s existing exchange branch means summoning a card that's
+  in the *other* slot **flips the two** ([FUTURE-SETTINGS §10](FUTURE-SETTINGS.md) records
+  the no-op alternative). Already in the LRU slot → no-op.
+- **No drill guard, deliberately:** a summon destroy+remounts the target slot, so a
+  drilled card there returns to root. Recency makes this rare (a slot you drilled is a
+  slot you touched); if it ever stings, "prefer the slot at root" is a small retrofit —
+  layout already receives per-card `atRoot` via `onHeaderChange`.
 
 ---
 
@@ -192,29 +211,27 @@ Each phase **compiles and is independently testable**; behaviour only changes wh
    + `makeDropdown.destroy()`); a **Playlists stub** card so the picker exercises 3 cards / 2
    slots. Also fixed here: the Library card's startup re-sync moved to `initTrackStore` (once
    per session) so a slot swap no longer re-triggers a full Apple sync.
-3. ⬜ **Surface seam + sizing/switching — the next build (Fable's starting point).** Establishes
-   the `data-surface` attribute *and* the deliberate-selection + resize-allowance switching model
-   ([FUTURE-SETTINGS §8](FUTURE-SETTINGS.md)); midi stays a visual no-op; max/mini fall back to
-   midi (their compositions come later). **Build tasks:**
-   - **`src/surface.ts`** — a `ResizeObserver` on the app root; a per-surface **size band** table;
-     compute the active surface from the **persisted deliberate choice** (`deets.surface`) *plus*
-     the window size, flipping only when a band **threshold** is crossed, with **hysteresis** so
-     the boundary doesn't oscillate; set `data-surface` on `<html>` (the same lever as
-     `data-theme`/`data-skin`).
-   - **A selection control** — a settings/title-menu row to pick midi/max (mini is entered via the
-     minimize button; mini's shrink-in-place + always-on-top behaviour stays deferred, but the
-     *selection + persistence* plumbing lands now).
-   - **CSS** — gate the current bento on `[data-surface="midi"]`; max/mini inherit the midi map for
-     now (no separate composition).
-   - **Persistence** — `deets.surface` + each surface's last window size (FUTURE-SETTINGS §8 keys).
-   - **Acceptance:** midi visually unchanged; manually flipping `data-surface` in devtools doesn't
-     break; resizing within a band stays put, crossing it flips (respecting hysteresis); the choice
-     survives restart. **Max/mini compositions are explicitly out of scope for this build.**
+3. ✅ **Surface seam + sizing/switching — built (2026-07-01).** How it works:
+   - **`src/surface.ts`** — a `ResizeObserver` on the app root; the per-surface **size band**
+     table (mini ≤ 380px · midi 380–820px · max > 820px wide, **40px hysteresis**); the active
+     surface = the **persisted deliberate choice** (`deets.surface`) *plus* the window size,
+     flipping only when a band threshold is crossed past the hysteresis; sets `data-surface` on
+     `<html>` (the same lever as `data-theme`/`data-skin`). Programmatic resizes (restoring a
+     surface's remembered size) are guarded so they can't trigger a spurious flip.
+   - **Selection** — a **Surface** settings-menu row (mirrors Theme/Skin) offering
+     **Mini · Midi · Max**, each label rendered at the skin's own type scale as a size preview
+     (`--fs-subtext` / `--fs-text` / `--fs-title`; all rows share the tallest line box).
+     Selecting a surface restores its remembered window size (needs the
+     `core:window:allow-set-size` capability — granted in `capabilities/default.json`).
+   - **CSS** — the `.bento` base block *is* the midi map; max/mini inherit it (commented override
+     stubs mark where their compositions land later).
+   - **Persistence** — `deets.surface` + `deets.surface.size.{mini,midi,max}` (saved debounced on
+     resize, restored on selection and launch) — the FUTURE-SETTINGS §8 keys.
+   - **Still deferred:** the max & mini compositions, mini's minimize-entry / shrink-in-place /
+     always-on-top behaviour, and the band-editor setting. Picking Mini today = a small window
+     with the midi bento inside (functional, squished — by design until mini's composition lands).
    - **Guiding thesis** for later compositions — the *listen → queue → explore* ladder in §4 (mini
      = listening, midi = queueing, max = exploring/organizing).
-
-   Recon (still valid): the bento is reshapeable purely via CSS gated on `data-surface` + token
-   overrides + a ~15-line resize hook; position by **slot**; max wants a larger per-surface slot set.
 
 *(Later, on this foundation: real Playlists context → Search card → accent-palette plumbing →
 shuffle → max & mini compositions.)*

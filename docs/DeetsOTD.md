@@ -27,7 +27,7 @@ and it's why it lives beside the stats, not inside them.
 ```sql
 CREATE TABLE IF NOT EXISTS song_of_day (
     date      TEXT PRIMARY KEY,   -- local calendar day, 'YYYY-MM-DD'
-    track_id  TEXT NOT NULL,      -- library_id ?? catalog_id (same key as play_stats/tracks PK)
+    track_id  TEXT NOT NULL,      -- catalog_id ?? library_id (the catalog-first canonical key, FAVORITES.md)
     marked_at INTEGER NOT NULL,   -- epoch-ms when set/last-changed
     note      TEXT                -- optional journal line ("why this song today"); nullable
 );
@@ -35,8 +35,11 @@ CREATE TABLE IF NOT EXISTS song_of_day (
 
 - **PK on `date` ⇒ one per day**, and a re-mark is a plain **upsert** (last-write-wins). No extra
   conflict logic in the schema.
-- **`track_id`** uses the `library_id ?? catalog_id` rule the `tracks` cache + `play_stats` use, so
-  a diary row **joins to track metadata for free** (cover/title/artist via the track store).
+- **`track_id`** uses the **catalog-first canonical key** (`catalog_id ?? library_id`) decided in
+  [FAVORITES.md](FAVORITES.md) — the rule `tracks` + `play_stats` adopt after that migration — so
+  a diary row **joins to track metadata for free** (cover/title/artist via the track store). (If
+  this ships *before* the migration lands, use catalog-first anyway; the track store indexes both
+  ids, so the join works either way and the row needs no re-keying later.)
 - **The day is the frontend's local calendar day.** The **frontend computes `YYYY-MM-DD`** (it
   knows the local timezone) and passes it to the command — Rust never guesses the day, mirroring how
   `record_play` takes ids from the caller rather than deriving them.

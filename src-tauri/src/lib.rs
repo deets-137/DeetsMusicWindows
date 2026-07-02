@@ -1,4 +1,5 @@
 mod apple;
+mod enrich;
 mod library;
 mod model;
 mod provider;
@@ -20,9 +21,28 @@ pub fn run() {
             // Open the local library cache (SQLite) in the app data dir.
             let dir = app.path().app_data_dir().expect("app data dir");
             std::fs::create_dir_all(&dir).ok();
-            let conn =
-                rusqlite::Connection::open(dir.join("deetsmusic.db")).expect("open library db");
+            let db_path = dir.join("deetsmusic.db");
+
+            // v2 migration (catalog-first keys): detect BEFORE opening the main
+            // connection, back the file up, then migrate inside one transaction.
+            let migrate = library::needs_v2_migration(&db_path);
+            if migrate {
+                // Timestamped so repeated attempts can never clobber a good backup.
+                let stamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                let bak = dir.join(format!("deetsmusic.v1.{stamp}.bak.db"));
+                std::fs::copy(&db_path, &bak).expect("backup db before v2 migration");
+                println!("[library] v1 DB backed up to {}", bak.display());
+            }
+
+            let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
             library::init_db(&conn).expect("init library db");
+            enrich::init_tables(&conn).expect("init enrichment tables");
+            if migrate {
+                library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
+            }
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Auto-open devtools in dev so the webview console is visible.
@@ -39,9 +59,17 @@ pub fn run() {
             apple::apple_user_token,
             apple::apple_disconnect,
             apple::apple_dump_library,
+            apple::catalog_search,
+            apple::catalog_collection_tracks,
+            apple::catalog_artist,
             library::library_sync,
             library::library_tracks,
             library::record_play,
+            library::record_event_start,
+            library::record_event_end,
+            library::materialize_track,
+            enrich::catalog_enrich,
+            enrich::album_palette,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

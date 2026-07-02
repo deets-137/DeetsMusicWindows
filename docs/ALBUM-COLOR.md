@@ -7,6 +7,14 @@
 > red-line). Siblings: [UI-ARCHITECTURE](UI-ARCHITECTURE.md) (the token tiers + doctrine),
 > [SURFACES-AND-CARDS](SURFACES-AND-CARDS.md) (surfaces/cards), [HANDOFF](HANDOFF.md)
 > (roadmap #7 = the data path this rides).
+>
+> **Status: BUILT on the theme-fallback path (2026-07-01), glass-only.** The runtime
+> roles + fallbacks (`themes.css` `:root`), the skin knobs (`--album-aurora-display` /
+> `-strength` / `-reach`, `--album-spin-dur` / `--album-fade-dur`), the cover-anchored
+> rotating halo (`.np__aurora` in `styles.css` + one line in `now-playing-card.ts`), the
+> `@property`-registered crossfade, and reduced-motion freeze are all live. **Pending
+> item #3 (catalog enrichment):** the JS that applies real Apple palettes + the
+> `.np--album` presence class — until then the aurora is theme-accent-sourced.
 
 ---
 
@@ -150,11 +158,16 @@ the three skin tokens (base defaults + per-skin overrides). No album hex anywher
   token. "Fine for now."
 - **Skin-general**: base default expression + per-skin overrides; glass is the flagship.
 
+**Closed (build, 2026-07-01)**
+- **Glass-first** (user call, on seeing it live on Ocean): the base ships a **no-op**
+  (`--album-aurora-display: none`); glass opts in. Other skins get their expressions in a
+  later polish pass by flipping the token + tuning strength/reach.
+- **Halo geometry** (user call): the aurora is sized by the **cover**, not the card — a
+  `--album-aurora-reach` (cover-widths) halo centered on the art, brightest at the rim, with
+  the `--album-c2` blob orbiting just outside it. It radiates from and highlights the cover
+  rather than washing the whole card.
+
 **Open 🔵**
-- **Default-on for all skins vs. glass-first.** Recommend: base default **on** for every skin
-  (truly "available for every skin"), with glass tuned first and the other skins' expressions
-  refined as we polish. Alternative: ship glass's expression only, base no-op, others opt in
-  later.
 - **Global user toggle** ("tint the player with album art" on/off) — a natural future
   setting; defaults on. Record in [FUTURE-SETTINGS](FUTURE-SETTINGS.md) when built.
 - Optional scrubber accent tint (above).

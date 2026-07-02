@@ -71,7 +71,7 @@ Status: ✅ done · 🔵 designing · ⬜ todo · ❄️ deferred to later
 | P3 | Skip next / previous | ✅ (native skip within the fed window) |
 | P4 | Seek / scrub + time display | 🔵 (drag-to-seek scrubber done; time labels TODO) |
 | P5 | Volume | ⬜ |
-| P6 | Shuffle | ⬜ |
+| P6 | Shuffle | 🔵 (one-shot queue-shuffle button ✅ 2026-07-02 — manual-to-top, idle plays library shuffled; persistent *mode* TODO — [FUTURE-SETTINGS §5](FUTURE-SETTINGS.md)) |
 | P7 | Repeat (off / all / one) | ⬜ |
 | P8 | Now Playing display (artwork, title, artist, album) | ✅ (cover/title/artist, live) |
 | P9 | Queue — view upcoming, play-next, reorder, remove | 🔵 (Qcard: view + jump-to-item; manual edit TODO) |

@@ -8,6 +8,7 @@
 
 import { registry, type CardDef, type CardId, type CardInstance } from "./cards";
 import { makeDropdown } from "./dropdown";
+import { onCardRequest } from "./layout-bus";
 
 type Slot = "left" | "right";
 interface MidiLayout {
@@ -136,6 +137,18 @@ export function initLayout(): void {
   let layout = loadLayout();
   const mounted: Record<Slot, { inst: CardInstance; picker: SlotPicker } | null> = { left: null, right: null };
 
+  // ── Slot recency — which content slot the user interacted with least recently.
+  // Any pointerdown inside a slot counts (capture phase, so drills/scrolls/menus all
+  // register), as does a card being swapped in. Session-only; on the launch tie the
+  // LRU is the RIGHT slot (queue's default home, so a fresh-launch summon lands
+  // where you'd expect).
+  const lastTouch: Record<Slot, number> = { left: 0, right: 0 };
+  const touch = (slot: Slot) => { lastTouch[slot] = Date.now(); };
+  (["left", "right"] as const).forEach((slot) => {
+    hosts[slot]?.addEventListener("pointerdown", () => touch(slot), { capture: true });
+  });
+  const lruSlot = (): Slot => (lastTouch.right <= lastTouch.left ? "right" : "left");
+
   const mountSlot = (slot: Slot) => {
     const host = hosts[slot];
     const def = registry[layout[slot]];
@@ -171,8 +184,19 @@ export function initLayout(): void {
       mountSlot(slot);
     }
     saveLayout(layout);
+    touch(slot); // acting on a slot (picker or summon) makes it the freshest
   }
 
   mountSlot("left");
   mountSlot("right");
+
+  // ── Summon requests (e.g. the NP card's queue button) — bring the card into the
+  // LRU slot. setSlot already covers every case: unplaced card → mounts there;
+  // visible in the other slot → the two exchange ("flip"); already in the LRU slot →
+  // no-op. A drilled card in the target slot remounts at root — deliberate, no guard
+  // (recency means a drilled slot is rarely the LRU one).
+  onCardRequest((id) => {
+    if (id === "now-playing") return; // anchored, never a content-slot occupant
+    setSlot(lruSlot(), id);
+  });
 }

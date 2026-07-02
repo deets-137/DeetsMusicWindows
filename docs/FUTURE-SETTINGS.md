@@ -9,6 +9,19 @@
 > toggle would live, and any wiring notes. The established pattern for a settings
 > toggle is a `.menu__row--toggle` in the title menu + a `localStorage` key, re-applied
 > on launch (see **Always on Top** / **Hover-Menu** in [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §4).
+>
+> **Section numbers are stable IDs** (assigned in creation order and referenced from source
+> comments + other docs — e.g. `stats.ts` → §7, `surface.ts` → §8, `layout-bus.ts` → §10), so
+> new entries **append**; don't renumber. For triage, read by the topic groups below, not by
+> number order.
+
+### Grouped by topic (for triage)
+- **Menus & context-menu actions** — §1 "Play Now" scope · §2 Queue menu actions & order ·
+  §6 Menu caret affordance (click vs hover) · §9 Per-menu open mode (hover vs click)
+- **Playback** — §4 "Previous" reach · §5 Shuffle behavior
+- **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
+- **Stats** — §7 Listened-through threshold
+- **Window / surface** — §8 Surface switching
 
 ---
 
@@ -46,6 +59,11 @@ play just the one song. The intents above are the *defaults*, not a fixed law.
 **Wiring sketch.** `localStorage` key(s) e.g. `deets.playNowScope` / `deets.songClickScope`
 = `"song" | "list"`; a toggle row (or, as settings grow, a small "Playback" subsection).
 Defaults: Play Now `"song"`, left-click `"list"`.
+
+**Sibling (added 2026-07-01): Search-result tap scope.** A song tap in the Search card plays
+**just the one** (decided — a discovery surface interjects). The alternative — play it and
+queue the rest of the song results — is this same setting family: e.g.
+`deets.searchTapScope` = `"song" | "list"`, default `"song"`.
 
 ---
 
@@ -112,17 +130,37 @@ threshold e.g. `deets.prevRestartSecs` (default `3`).
 
 ---
 
-## 5. Shuffle behavior (placeholder — fill in when shuffle ships)
+## 5. Shuffle behavior
 
-**Behavior.** How the shuffle toggle behaves once built — agreed default is a **persistent
-toggle mode** (Apple Music/Spotify-style), but the user wants a setting to switch the
-behavior "either way."
+**Shipped (2026-07-02): the one-shot shuffle button** on the NP card's transport row
+(`shuffleQueue` in [player.ts](../src/player.ts) → `shuffleUpcoming` in
+[queue.ts](../src/queue.ts), synced to MusicKit via `reconcileUpcoming` — gapless, no
+rebuild). This is a *one-time reorder action*, **not** the P6 persistent shuffle **mode**
+(see below). Two behaviors were hardcoded and each is a future setting:
 
-**To pin down when we build it (P6):** whether un-shuffling **restores** the original
-context order (Apple Music) or leaves the shuffled order (Spotify); whether toggling shuffle
-on mid-playback reshuffles the live `auto` tail or only affects the *next* context; and
-whether `manual` (Play-Next) picks are ever shuffled (planned default: never). Record the
-chosen defaults + the toggle here when the feature lands.
+**5a. Manual picks on shuffle — placement rule.**
+- **(current default) Manual-to-top** — every `manual` entry (Play-Next *and* Add-to-Queue)
+  rises to the top of upcoming, relative order kept; the `auto` tail shuffles below. Your
+  explicit picks are promises — shuffle keeps them next.
+- Alternatives for the setting: **hold-slots** (manual entries keep their exact positions,
+  autos permute around them) and **mix-everything** (one flat shuffle, origins ignored).
+- Wiring: `deets.shuffle.manual` = `"top" | "hold" | "mix"` (default `"top"`), read in
+  `queue.shuffleUpcoming`.
+
+**5b. Idle press — bootstrap vs no-op.**
+- **(current default) Play the library shuffled** — with nothing playing, the button
+  shuffles the entire cached library (client-side, no extra API calls) and plays it as a
+  fresh context.
+- Alternative: **no-op** (the button only ever acts on an existing queue).
+- Wiring: `deets.shuffle.idle` = `"library" | "noop"` (default `"library"`), read in
+  `player.shuffleQueue`.
+
+**Still future (P6): the persistent shuffle MODE** (Apple Music/Spotify-style sticky
+toggle — future contexts start shuffled). To pin down when built: whether un-shuffling
+**restores** the original context order (Apple Music) or leaves the shuffled order
+(Spotify); whether toggling it on mid-playback reshuffles the live `auto` tail or only
+affects the *next* context. The one-shot button is the natural host for the mode (press
+becomes toggle) — record the chosen defaults here when P6 lands.
 
 ---
 
@@ -210,3 +248,57 @@ the chosen surface + each surface's last window size (`deets.surface` = `"mini"|
 `deets.surface.bands` and `deets.surface.autoFlip`. Read them where `surface.ts` computes the
 active surface from size. A **Window / Layout** settings subsection would host the toggle +
 (advanced) the band editor.
+
+---
+
+## 9. Per-menu open mode (hover vs click granularity)
+
+**Behavior.** Which menus/popovers open on **hover** vs on **click**. Today this is one
+**global** switch — the **Hover-Menu** toggle calls `setDropdownMode` ([dropdown.ts](../src/dropdown.ts)),
+which fans a single mode out to *every* live dropdown (settings menu, volume flyout,
+slot-card pickers, and now the Search card's category filter). All menus move together.
+
+**Current default (hardcoded):** **one mode for all** — flip Hover-Menu and every dropdown
+becomes hover (or click) at once; default **click**.
+
+**What the future setting changes.** Let the mode be set **per menu** (or per menu *class*),
+so a user can have, say, the lightweight titlebar/volume flyouts on **hover** while
+heavier or destructive-adjacent menus (or the Search filter, which sits right next to a
+text field you're actively typing in) stay on **click** — and vice-versa. The global toggle
+stays as the default/bulk control; per-menu overrides layer on top.
+
+**Why it fits cleanly.** The primitive already carries a *per-instance* `mode` with its own
+`setMode(...)` — the global fan-out just overwrites them all. Granularity is "stop blasting
+every instance and let some keep an overridden mode." Each `makeDropdown` call site is
+already a natural key (settings / volume / slot-picker / search-filter).
+
+**Wiring sketch.** Give `makeDropdown` an optional stable `id`; persist overrides as a small
+map, e.g. `deets.menuMode.overrides` = `{ "search-filter": "click", ... }`, with the global
+`deets.menuMode` as the fallback. `setDropdownMode(global)` applies to instances *without* an
+override; a per-menu control (or a small settings list of known menus) writes the map and
+calls that instance's `setMode`. Ties into §6 (the caret affordance would then key off each
+menu's *effective* mode, not just the global one).
+
+---
+
+## 10. Queue summon — flip vs no-op when Queue is already visible
+
+**Behavior.** What the NP card's **queue button** does when the Queue card is *already
+on-screen* in one of the two content slots. (When it's off-screen the button always mounts
+it into the least-recently-touched slot — that part isn't in question.)
+
+**Options.**
+- **(a) Flip** — Queue takes over the least-recently-touched slot anyway; the displaced
+  card moves to Queue's old slot (the two slots exchange). The button always visibly does
+  something. *(current default)*
+- **(b) No-op** — Queue is already visible, so pressing the button does nothing (optionally
+  a brief pulse on the Queue card to acknowledge the press).
+
+**Current default (hardcoded):** **(a) flip** — `setSlot(lruSlot(), "queue")` in
+[`src/layout.ts`](../src/layout.ts); the exchange branch of `setSlot` provides the flip for
+free. Note both slots remount on a flip, so a drilled card in *either* slot returns to root.
+
+**Wiring sketch.** `localStorage` `deets.summonFlip` = `"flip" | "noop"` (default `"flip"`),
+read in the `onCardRequest` handler in `layout.ts`: for `"noop"`, return early when the
+requested card is already in `layout.left`/`layout.right`. If (b) grows the acknowledgment
+pulse, that's a skin motion token, not a color.

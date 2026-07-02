@@ -108,6 +108,14 @@ already starts playback, so `play()` is guarded by `!isPlaying` (only really nee
 `pos === 0` path); calling `play()` while playing throws *"play() without a previous
 stop()/pause()"*.
 
+**`pos === 0` skips `changeToMediaAtIndex` — deliberately.** `setQueue` already leaves the
+queue at index 0, and calling `changeToMediaAtIndex(0)` anyway makes MusicKit race *itself*:
+its internal event handler fires a second `play()` on top of the in-flight one → an uncaught
+*"play() without a previous stop()/pause()"* rejection in the console (observed 2026-07-02,
+queueing an album from idle). Plain `play()` is sufficient at 0. (This guard was briefly
+removed chasing a "fresh context at the top doesn't start" symptom whose real cause was the
+dead-id NOT_FOUND rejection below — don't remove it again.)
+
 ---
 
 ## Idempotent re-click
@@ -208,6 +216,59 @@ render suspended mid-drag so a queue/track change can't yank the row — see
 
 ---
 
+## Dead ids — NOT_FOUND self-healing (2026-07-02)
+
+**The failure.** A library's cached `catalogId`s go stale (region pulls, catalog
+takedowns). Every MusicKit feed op — `setQueue`, `playNext`, `playLater` — is
+**all-or-nothing**: one unresolvable id in the batch rejects the *whole* call with
+`NOT_FOUND: One or more items could not be resolved: <ids>`, and nothing plays/inserts.
+Whole-library windows (idle shuffle, the play-button bootstrap) made this near-certain;
+any 200-song window could hit it.
+
+**The healing (player.ts).** The rejection *names* the offenders, so:
+
+1. **`deadIds`** — a session-scoped denylist. Every id MusicKit reports unresolvable is
+   banked (logged as `player:deadIds`).
+2. **`playId` is deadIds-aware** — the fallback chain per handle is now
+   **catalog id → library id → skip**. A dead catalog id makes the handle ride its
+   library id (the user's owned copy usually still plays); a handle with no live id
+   left is skipped by every window/insert builder.
+3. **Retry, rebuilt** — `doLoadFromModel`'s `setQueue` and `insertWithRetry` (wrapping
+   `playNext`/`playLater` in `enqueue`, `moveInQueue`, and `reconcileUpcoming`'s tail)
+   catch NOT_FOUND, bank, **rebuild their id list**, and retry (≤3 attempts). Non-resolve
+   errors and persistent failures still throw.
+
+**Net behavior:** invisible to the user — first contact with a dead id costs one extra
+round-trip, then the session denylist makes every later window/insert skip it up front.
+The queue **model** never drops entries: a fully-dead song still shows in the Qcard but
+is silently absent from what MusicKit is fed (it reconciles as model-only, same as any
+beyond-window entry — the alignment invariant treats MK as a subsequence, so no
+`player:misalign`).
+
+**Future work:** persist the denylist (SQLite) so it survives restarts, and let catalog
+hydrate repair or clear stale `catalogId`s at the source.
+
+---
+
+## The session play log — the History card's source
+
+`history[]` serves **Previous** — it's deduped and mutated (setContext rebuilds, `previous()`
+pops), so it can't honestly answer "what did I listen to?". For that, `queue.ts` keeps a
+separate **append-only play log** (`getPlayLog()`, capped at `PLAY_LOG_CAP = 200`,
+session-scoped): an entry is logged (as a copy) the moment a song **stops being current**
+— in `pushHistory` (advance/jump) and in `setContext` (the outgoing song). Repeats are
+real: a song heard three times appears three times, and re-queueing a song from History
+never removes its earlier rows — the window dedup in `loadFromModel` handles playback
+correctness; the log is display-only.
+
+The **History card** (`history-card.ts`) renders it newest-first: hero block (most recent,
+mirrors the Qcard's Now Playing) + "Previously" list. Read-only rows; right-click →
+Play Now / Play Next / Add to Queue via the handle-level ops (`playContext` /
+`enqueueNext` / `enqueueLater`), stamped `context: "history"`. Row markup/resolution is
+shared with the Qcard via `queue-rows.ts`.
+
+---
+
 ## The bug this design fixed (so we don't regress)
 
 **Symptom:** clicking the same song repeatedly (or re-playing any row from a list you'd
@@ -237,5 +298,7 @@ for the already-playing song).
 | change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../src/player.ts) |
 | change drag-reorder sync / re-windowing | `reconcileUpcoming` in [player.ts](../src/player.ts) |
 | change the drag interaction (Qcard) | the drag block in [qcard.ts](../src/qcard.ts) |
+| change the History card / play log | [history-card.ts](../src/history-card.ts) / `getPlayLog`+`logPlay` in [queue.ts](../src/queue.ts) |
+| change queue-row markup (Qcard + History) | [queue-rows.ts](../src/queue-rows.ts) |
 | change the right-click menu items | `menu()` in [library-card.ts](../src/library-card.ts) (library) / the `contextmenu` handler in [qcard.ts](../src/qcard.ts) (queue); popover in [context-menu.ts](../src/context-menu.ts) |
 | debug a wrong-song / frozen-queue issue | `__diag.dump()`; watch `player:loadWindow` `pos`, `player:desync`, `player:reclick`, `player:enqueue` |

@@ -9,8 +9,10 @@ import { nowPlayingCard } from "./now-playing-card";
 import { libraryCard } from "./library-card";
 import { queueCard } from "./qcard";
 import { playlistsCard } from "./playlists-card";
+import { searchCard } from "./search-card";
+import { historyCard } from "./history-card";
 
-export type CardId = "now-playing" | "library" | "queue" | "playlists" | "search";
+export type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history";
 
 export interface CardInstance {
   /** Tear down: drop every listener and clear the host. Called when a slot swaps cards. */
@@ -37,4 +39,6 @@ export const registry: Partial<Record<CardId, CardDef>> = {
   library: libraryCard,
   queue: queueCard,
   playlists: playlistsCard,
+  search: searchCard,
+  history: historyCard,
 };

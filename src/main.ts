@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
+import { applySurface, initSurface, type SurfaceName } from "./surface";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
@@ -15,6 +16,7 @@ const appWindow = getCurrentWindow();
 window.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initSkin();
+  initSurface();
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the
@@ -85,6 +87,14 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       applySkin(el.dataset.skinChoice as SkinName);
+      close();
+    });
+  });
+
+  // Surface choices (same pattern; mini is entered via minimize, later — not offered here).
+  document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
+    el.addEventListener("click", () => {
+      applySurface(el.dataset.surfaceChoice as SurfaceName);
       close();
     });
   });

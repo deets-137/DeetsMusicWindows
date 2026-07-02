@@ -54,7 +54,17 @@ Player events (`src/player.ts`):
   *upcoming list*, not just `current`.
 - `player:reconcile` — `{ d, mk, expected }` a drag-reorder (or future re-window) rebuilt
   MusicKit's upcoming from the first divergence `d` to the window end. Gapless.
+- `player:shuffle` — `{ idle, n | up }` the one-shot shuffle button (`idle: true` = nothing
+  was playing → whole library shuffled as a fresh context; `false` = upcoming reshuffled +
+  reconciled)
+- `player:deadIds` — `{ where, n, attempt, bad }` MusicKit rejected a feed with
+  `NOT_FOUND` and the named ids were banked in the session denylist, then the op rebuilt +
+  retried (`where` = which path: the window load, `enqueue:*`, `move-*`, `reconcile`). See
+  [QUEUE.md §Dead ids](QUEUE.md). Routine after a fresh launch; a *flood* of these means the
+  sync is producing stale catalog ids.
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
+- `player:loadError` / `player:loadSkip` — a window load failed (error rethrown to the
+  caller) / was superseded by a newer click before it ran (loads are serialized + coalesced)
 - `player:np` — `snap()` on every `nowPlayingItemDidChange`
 - `player:next` / `player:prev` — transport buttons (+ `snap()`)
 - `player:desync` — **model's `current` ≠ MusicKit's now-playing item** (the bug class
@@ -70,9 +80,19 @@ Player events (`src/player.ts`):
 ## MusicKit quirks learned (so we don't relearn them)
 - **`music.queue.position` is empty in this build** — use `music.nowPlayingItemIndex`
   for the live index. (Relying on `queue.position` froze the queue model.)
-- **`changeToMediaAtIndex` doesn't switch the playing track on its own** — you must
-  `play()` after it, and `play()` is refused *"without a previous stop()/pause()"* while
-  already playing. The fix: **pause → setQueue → changeToMediaAtIndex → play**.
+- **`changeToMediaAtIndex` starts playback itself** — the sequence is **pause → setQueue →
+  changeToMediaAtIndex(pos) → play()** with `play()` guarded by `!isPlaying` (calling it
+  while playing throws *"play() without a previous stop()/pause()"*).
+- **Never call `changeToMediaAtIndex(0)` on a fresh queue** — `setQueue` already sits at
+  index 0, and the call makes MusicKit race itself (its internal event handler fires a
+  second `play()` on top of the in-flight one → the same *"without a previous
+  stop()/pause()"* as an **uncaught rejection**). At `pos === 0`, plain `play()` is the
+  whole job. (Bit us 2026-07-02, queueing an album from idle.)
+- **Feed ops are all-or-nothing on unresolvable ids** — `setQueue`/`playNext`/`playLater`
+  reject the *entire* batch with `NOT_FOUND: One or more items could not be resolved: <ids>`
+  if even one catalog id has gone stale (region pulls/takedowns). The player self-heals
+  (banks the named ids, retries with library-id fallbacks — `player:deadIds` above); see
+  [QUEUE.md §Dead ids](QUEUE.md).
 - See HANDOFF "Known gotchas" for the canonical list.
 
 ## Future: in-app "Report a problem"

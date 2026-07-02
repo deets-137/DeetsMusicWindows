@@ -14,7 +14,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
-use crate::model::{Artwork, Page, PlayParams, Track};
+use crate::model::{
+    Album, Artist, ArtistDetail, Artwork, Page, PlayParams, Playlist, SearchResults, Track,
+};
 use crate::provider::MusicProvider;
 
 /// Contents of `secrets/apple.json`.
@@ -342,7 +344,7 @@ fn write_dump(name: &str, value: &serde_json::Value) -> Result<(), String> {
 }
 
 /// GET an Apple Music API URL, returning (http_status, parsed_body).
-async fn api_get(
+pub(crate) async fn api_get(
     client: &reqwest::Client,
     dev: &str,
     mut_tok: &str,
@@ -493,13 +495,96 @@ fn track_from_library_song(v: &serde_json::Value) -> Track {
         has_lyrics: a["hasLyrics"].as_bool().unwrap_or(false),
         isrc: a["isrc"].as_str().map(String::from),
         release_date: a["releaseDate"].as_str().map(String::from),
-        added_rank: None, // set during sync from the dateAdded-sorted page position
+        preview_url: None, // catalog-only; library payloads never carry previews
+        added_rank: None,  // set during sync from the dateAdded-sorted page position
         play_params: PlayParams {
             id: pp["id"].as_str().map(String::from),
             catalog_id: pp["catalogId"].as_str().map(String::from),
             kind: pp["kind"].as_str().map(String::from),
             is_library: pp["isLibrary"].as_bool().unwrap_or(false),
         },
+    }
+}
+
+// ── Catalog normalizers (search results — the rich shapes) ───────────────────
+
+fn track_from_catalog_song(v: &serde_json::Value) -> Track {
+    let a = &v["attributes"];
+    let pp = &a["playParams"];
+    let id = v["id"].as_str().map(String::from);
+    Track {
+        library_id: None,
+        catalog_id: id.clone(),
+        title: a["name"].as_str().unwrap_or_default().to_string(),
+        artist_name: a["artistName"].as_str().unwrap_or_default().to_string(),
+        album_name: a["albumName"].as_str().map(String::from),
+        artwork: artwork_from(&a["artwork"]),
+        duration_ms: a["durationInMillis"].as_u64(),
+        track_number: a["trackNumber"].as_u64().map(|n| n as u32),
+        disc_number: a["discNumber"].as_u64().map(|n| n as u32),
+        genres: a["genreNames"]
+            .as_array()
+            .map(|arr| arr.iter().filter_map(|g| g.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
+        content_rating: a["contentRating"].as_str().map(String::from),
+        has_lyrics: a["hasLyrics"].as_bool().unwrap_or(false),
+        isrc: a["isrc"].as_str().map(String::from),
+        preview_url: a["previews"][0]["url"].as_str().map(String::from),
+        release_date: a["releaseDate"].as_str().map(String::from),
+        added_rank: None,
+        play_params: PlayParams {
+            id: pp["id"].as_str().map(String::from).or(id),
+            catalog_id: pp["id"].as_str().map(String::from),
+            kind: pp["kind"].as_str().map(String::from),
+            is_library: false,
+        },
+    }
+}
+
+fn album_from_catalog(v: &serde_json::Value) -> Album {
+    let a = &v["attributes"];
+    Album {
+        library_id: None,
+        catalog_id: v["id"].as_str().map(String::from),
+        title: a["name"].as_str().unwrap_or_default().to_string(),
+        artist_name: a["artistName"].as_str().unwrap_or_default().to_string(),
+        artwork: artwork_from(&a["artwork"]),
+        genres: a["genreNames"]
+            .as_array()
+            .map(|arr| arr.iter().filter_map(|g| g.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
+        release_date: a["releaseDate"].as_str().map(String::from),
+        track_count: a["trackCount"].as_u64().map(|n| n as u32),
+        date_added: None,
+    }
+}
+
+fn artist_from_catalog(v: &serde_json::Value) -> Artist {
+    let a = &v["attributes"];
+    Artist {
+        library_id: None,
+        catalog_id: v["id"].as_str().map(String::from),
+        name: a["name"].as_str().unwrap_or_default().to_string(),
+        artwork: artwork_from(&a["artwork"]),
+    }
+}
+
+fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
+    let a = &v["attributes"];
+    Playlist {
+        library_id: None,
+        catalog_id: v["id"].as_str().map(String::from),
+        global_id: a["playParams"]["globalId"].as_str().map(String::from),
+        name: a["name"].as_str().unwrap_or_default().to_string(),
+        // Catalog playlists nest description as { standard, short }.
+        description: a["description"]["standard"].as_str().map(String::from),
+        curator_name: a["curatorName"].as_str().map(String::from),
+        artwork: artwork_from(&a["artwork"]),
+        can_edit: false,
+        is_public: true,
+        date_added: None,
+        last_modified: a["lastModifiedDate"].as_str().map(String::from),
+        track_count: None, // not on the search result; the detail fetch carries tracks
     }
 }
 
@@ -536,4 +621,173 @@ impl MusicProvider for AppleProvider {
             next_offset,
         })
     }
+
+    async fn search(
+        &self,
+        sf: &str,
+        term: &str,
+        types: &[String],
+        limit: u32,
+    ) -> Result<SearchResults, String> {
+        // Only the four shippable categories; music-videos are never requested,
+        // stations wait on the playback probe (SEARCH.md).
+        const ALLOWED: [&str; 4] = ["songs", "albums", "artists", "playlists"];
+        let types: Vec<&str> = if types.is_empty() {
+            ALLOWED.to_vec()
+        } else {
+            ALLOWED
+                .iter()
+                .copied()
+                .filter(|t| types.iter().any(|x| x == t))
+                .collect()
+        };
+        if types.is_empty() {
+            return Ok(SearchResults::default());
+        }
+
+        let mut url = reqwest::Url::parse(&format!(
+            "https://api.music.apple.com/v1/catalog/{sf}/search"
+        ))
+        .map_err(|e| e.to_string())?;
+        url.query_pairs_mut()
+            .append_pair("term", term)
+            .append_pair("types", &types.join(","))
+            .append_pair("limit", &limit.to_string());
+
+        let (status, body) = api_get(&self.client, &self.dev, &self.user, url.as_str()).await?;
+        if status != 200 {
+            return Err(format!("catalog/search HTTP {status}"));
+        }
+        let r = &body["results"];
+        let bucket = |key: &str| -> Vec<serde_json::Value> {
+            r[key]["data"].as_array().cloned().unwrap_or_default()
+        };
+        Ok(SearchResults {
+            songs: bucket("songs").iter().map(track_from_catalog_song).collect(),
+            albums: bucket("albums").iter().map(album_from_catalog).collect(),
+            artists: bucket("artists").iter().map(artist_from_catalog).collect(),
+            playlists: bucket("playlists").iter().map(playlist_from_catalog).collect(),
+        })
+    }
+}
+
+/// A catalog album's or playlist's tracks, in authored order. Follows the tracks
+/// relationship's `next` links (capped) so long playlists don't truncate silently.
+/// Music videos are skipped (`Track` is song-only — PLAYLISTS.md). Results piggyback
+/// into the enrichment caches like search results do.
+#[tauri::command]
+pub async fn catalog_collection_tracks(
+    kind: String,
+    id: String,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Track>, String> {
+    if kind != "albums" && kind != "playlists" {
+        return Err(format!("catalog_collection_tracks: bad kind '{kind}'"));
+    }
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}?include=tracks");
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status != 200 {
+        return Err(format!("catalog/{kind}/{id} HTTP {status}"));
+    }
+    let rel = &body["data"][0]["relationships"]["tracks"];
+    let mut items: Vec<serde_json::Value> = rel["data"].as_array().cloned().unwrap_or_default();
+
+    // Follow pagination (playlists page at 100). Cap defends against a runaway loop.
+    let mut next = rel["next"].as_str().map(String::from);
+    for _ in 0..10 {
+        let Some(path) = next.take() else { break };
+        let (st, page) = api_get(&client, &dev, &user, &format!("https://api.music.apple.com{path}")).await?;
+        if st != 200 {
+            break; // partial is better than an error mid-drill; the UI shows what loaded
+        }
+        items.extend(page["data"].as_array().cloned().unwrap_or_default());
+        next = page["next"].as_str().map(String::from);
+    }
+
+    let tracks: Vec<Track> = items
+        .iter()
+        .filter(|v| v["type"].as_str() == Some("songs")) // skip music-videos
+        .map(track_from_catalog_song)
+        .collect();
+    {
+        let conn = db.0.lock().unwrap();
+        crate::enrich::cache_tracks(&conn, &tracks)?;
+    }
+    Ok(tracks)
+}
+
+/// A catalog artist's detail: albums + top songs, one fetch (`views=`).
+#[tauri::command]
+pub async fn catalog_artist(
+    id: String,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<ArtistDetail, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+
+    let url =
+        format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{id}?views=top-songs,full-albums");
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status != 200 {
+        return Err(format!("catalog/artists/{id} HTTP {status}"));
+    }
+    let a = &body["data"][0];
+    let views = &a["views"];
+    let top_songs: Vec<Track> = views["top-songs"]["data"]
+        .as_array()
+        .map(|arr| arr.iter().filter(|v| v["type"].as_str() == Some("songs")).map(track_from_catalog_song).collect())
+        .unwrap_or_default();
+    let albums: Vec<Album> = views["full-albums"]["data"]
+        .as_array()
+        .map(|arr| arr.iter().map(album_from_catalog).collect())
+        .unwrap_or_default();
+    {
+        let conn = db.0.lock().unwrap();
+        crate::enrich::cache_tracks(&conn, &top_songs)?;
+    }
+    Ok(ArtistDetail {
+        artist: artist_from_catalog(a),
+        albums,
+        top_songs,
+    })
+}
+
+/// Catalog search command. Normalizes per category and — since catalog songs carry
+/// ISRC / preview / palette for free — piggybacks the results into the enrichment
+/// caches (SEARCH.md: "Search doubles as a lazy-enrichment source").
+#[tauri::command]
+pub async fn catalog_search(
+    term: String,
+    types: Option<Vec<String>>,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<SearchResults, String> {
+    let dev = developer_token()?;
+    let user = state
+        .user_token
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("not connected to Apple Music")?;
+    let provider = AppleProvider::new(dev.clone(), user.clone());
+    let sf = crate::enrich::storefront(&provider.client, &dev, &user, &db).await?;
+
+    let results = provider
+        .search(&sf, &term, &types.unwrap_or_default(), 25)
+        .await?;
+
+    {
+        let conn = db.0.lock().unwrap();
+        crate::enrich::cache_tracks(&conn, &results.songs)?;
+    }
+    Ok(results)
 }

@@ -90,6 +90,17 @@
   --np-cover-glyph: 40px;           /* placeholder ♪ when no artwork */
   --np-meta-gap:    var(--space-1); /* title ↔ artist stack spacing */
 
+  /* -- album aurora (Now Playing; ALBUM-COLOR.md) ------------- */
+  /* Expression knobs only — the COLORS are the runtime --album-*
+     roles (JS-set, theme fallback). Glass-first (decided 2026-07-01):
+     the base is a NO-OP; a skin opts in by flipping the display token.
+     A skin tunes strength/reach/period to its idiom, never a color. */
+  --album-aurora-display:  none;    /* glass opts in; other skins later */
+  --album-aurora-strength: 36%;     /* alpha/mix strength of the stops */
+  --album-aurora-reach:    3;       /* halo diameter, in cover-widths */
+  --album-spin-dur:        48s;     /* rotation period of the highlight sweep */
+  --album-fade-dur:        600ms;   /* crossfade on track change */
+
   /* -- scrubber (handle is a skin-swappable SVG mask) --------- */
   /* The handle is a --title-filled box masked by this SVG, so the shape is
      arbitrary and still themes via --title. Skins override the url() only. */
@@ -292,6 +303,11 @@
   --vol-pill-radius:    12px;
   --lib-tile-radius:    12px;
   --lib-row-art-radius: 8px;
+
+  /* album aurora — the flagship (and for now only) expression: the frost mutes
+     what's behind it, so drive the stops harder and let saturate() make them glow */
+  --album-aurora-display:  block;
+  --album-aurora-strength: 52%;
 
   /* motion — gentle, with a soft hover rise on rows/tiles */
   --dur-fast:   0.2s;

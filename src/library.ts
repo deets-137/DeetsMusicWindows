@@ -17,6 +17,8 @@ export interface Track {
   contentRating?: string;
   hasLyrics: boolean;
   isrc?: string;
+  /** Catalog-only: 30s preview stream URL (rides search results). */
+  previewUrl?: string;
   releaseDate?: string;
   addedRank?: number;
   artwork?: Artwork;
@@ -37,10 +39,12 @@ export interface Page<T> {
 }
 
 export interface SyncEvent {
-  phase: "start" | "progress" | "done";
+  phase: "start" | "progress" | "done" | "error";
   fetched?: number;
   count?: number;
   total?: number;
+  /** Set on `error`: which pages failed after a retry. The cache holds what DID fetch. */
+  message?: string;
 }
 
 /** Read cached tracks (ordered by title/artist). */

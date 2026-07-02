@@ -1,6 +1,12 @@
 # DeetsMusic — Handoff / Status
 
-> Cold-start guide. Read this first. Snapshot as of **2026-06-30**.
+> Cold-start guide. Read this first. Snapshot as of **2026-07-02**. 2026-07-01 was a heavy
+> build day (the ⚡ entries in State of play); **2026-07-02** verified the fresh cards —
+> **Search** (+ a UI-polish pass aligning it to the Library toolbar and two right-click bug
+> fixes) and **History** are both user-verified now. Also landed + user-verified 2026-07-02:
+> **NP transport-row buttons** (queue summon + one-shot shuffle) and **dead-id playback
+> self-healing** (see State of play). **Next up: build-queue #5 — Favorites,
+> ratings & library writes** ([FAVORITES.md](FAVORITES.md)).
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
 > [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
@@ -110,11 +116,55 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   backgrounded pre-click backlog (`played` flag) reachable via Previous, hidden from
   recently-played until heard. The player keeps it **live-synced to MusicKit's position**
   (model-follow), so it mirrors what's actually playing.
+- **Surface seam** (`src/surface.ts`; [SURFACES-AND-CARDS §Build order #3](SURFACES-AND-CARDS.md)):
+  `data-surface="mini|midi|max"` on `<html>` — deliberate choice (a **Surface** settings row with
+  size-preview labels) + resize allowance (band table, 40px hysteresis), per-surface remembered
+  window sizes (`deets.surface*` keys). Max/mini inherit the midi layout until their compositions
+  are designed. Needed `core:window:allow-set-size` in `capabilities/default.json`.
+- **Album Color — full path** ([ALBUM-COLOR.md](ALBUM-COLOR.md)): runtime `--album-*` roles
+  (theme fallbacks at `:root` in `themes.css`), skin knobs (`--album-aurora-*`), and the
+  cover-anchored rotating halo on the NP card (`.np__aurora`). **Glass-only** via
+  `--album-aurora-display`. **Real palettes are wired** (`src/album-color.ts` → the
+  `album_palette` command, cache-first, crossfades in). ⚡ Latest tune (untested): the visible
+  rim uses the vivid `textColor` accents — Apple's `bgColor` (usually near-black) stays hidden
+  under the cover.
+- ⚡ **Catalog enrichment + unified store + play-events log** — build-queue item 3, all three
+  slices built 2026-07-01; details in that queue entry below. The DB was **reset + fresh-synced**
+  onto the new catalog-first schema the same day.
+- ✅ **Search card** ([SEARCH.md](SEARCH.md) §As built) — standalone sectioned card (Artists /
+  Songs / Albums / Playlists h-scrollers, filter popover, recents, drill panes, queue menus),
+  three catalog commands, enrichment piggyback, transient + materialized catalog tracks.
+  Built 2026-07-01; **user-verified + a UI-polish pass 2026-07-02** that aligned the bar/filter to
+  the Library toolbar (canvas well + magnifier, themed clear button, filter on the shared dropdown
+  primitive, matched scrollbars) and fixed two right-click bugs (Search artist-pane album tiles now
+  get our menu, not the native one; sparse tile grids no longer stretch — see gotchas).
 - **Transport + Queue card (Qcard)**: prev/next wired (native skip within the window —
   Previous walks backlog→history, Next walks upcoming). The **Qcard** (`src/qcard.ts`)
   occupies the Playlists slot (title → "Queue") and renders Now Playing + Up Next from the
   model — **display + jump-to-item** (click/Enter an Up Next row to play it). A shared
   **track store** (`src/track-store.ts`) feeds metadata to both cards from one load.
+- ✅ **NP transport-row buttons + dead-id self-healing** (built + user-verified 2026-07-02):
+  the NP card's transport row is a `1fr auto 1fr` grid — **shuffle** (left) and **queue
+  summon** (right), both in the Library-Sync `.panel__action` style.
+  - **Queue summon** (`src/layout-bus.ts` `requestCard`/`onCardRequest` → `layout.ts`):
+    brings the Queue card into the **least-recently-touched** content slot (pointerdown-
+    capture recency, session-only, launch tie → right); if Queue is already in the other
+    slot the two **flip** ([FUTURE-SETTINGS §10](FUTURE-SETTINGS.md)).
+  - **One-shot shuffle** (`shuffleQueue` in player.ts → `shuffleUpcoming` in queue.ts,
+    synced via `reconcileUpcoming`, gapless): manual picks rise to the top (order kept),
+    the auto tail Fisher–Yates-shuffles; **idle press plays the whole library shuffled**.
+    Both knobs are future settings ([FUTURE-SETTINGS §5](FUTURE-SETTINGS.md)); the P6
+    persistent shuffle *mode* is still future.
+  - **Dead-id self-healing** ([QUEUE.md §Dead ids](QUEUE.md)): stale catalog ids no longer
+    sink `setQueue`/`playNext`/`playLater` — NOT_FOUND offenders are banked in a session
+    denylist, `playId` falls back catalog → library → skip, and the op rebuilds + retries.
+    Surfaced (and fixed) by the idle-shuffle/bootstrap paths; protects every feed op now.
+- ✅ **History card** (`src/history-card.ts`, built 2026-07-02, **user-verified 2026-07-02**;
+  [QUEUE.md §play log](QUEUE.md)) — renders the new session **play log** (`queue.getPlayLog()`,
+  append-only, repeats real): hero = most recent play (Qcard-style `qnow` block, blank when idle),
+  "Previously" list below (appears from the 2nd play). Read-only rows; right-click → Play Now /
+  Play Next / Add to Queue (handle-level, gapless, `context: "history"`). Row markup/resolution
+  shared with the Qcard via `src/queue-rows.ts`. In the slot picker via the registry.
 
 ### Stubbed / not built yet ⬜
 - **Manual queueing** — **built and gapless** (model in lockstep; see [QUEUE.md](QUEUE.md)),
@@ -133,12 +183,12 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
   (no catalog). Artist tiles show a round album-cover thumb / initials until a photo is
   fetched on demand (when you open the artist).
-- **Catalog access (demand-driven, replaces batch hydrate)** — catalog data is pulled
-  **only for what you touch**, never in one big pass: the **Search card** returns catalog
-  results (which carry `previews`, palette, and real artist/album art for free) plus
-  Add-to-Library/Queue; **per-album accent palette** (`Artwork.bgColor`/`textColors`) and
-  **artist photos** are fetched lazily for the album/artist you actually view and cached.
-  `isrc` rides along when a second provider (Spotify) needs it. (See Roadmap #4 / #7.)
+- **Catalog access — BUILT** (demand-driven, as designed): the enrichment layer
+  (`enrich.rs`) + Search's catalog commands pull **only what you touch** and cache it;
+  palette/ISRC/previews ride every fetch. Remaining under this heading: **Library-card**
+  artist photos / real album art (the Library's derived Albums/Artists views still render
+  from song artwork + initials — wiring them to the same lazy enrichment is a small later
+  pass; Search's artist drill already shows real photos).
 - **CLI / local-agent control** — see roadmap; not started.
 - **Virtualized scrolling** — list/grid renders all rows; fine at a few thousand,
   virtualize once libraries get large or artwork I/O bites.
@@ -159,44 +209,71 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 > (`npx tsc --noEmit`, `npx vite build`) and hand to the user to test in `npm run tauri dev` —
 > **no throwaway UI harnesses**; (6) as each lands, flip its status in the spec doc + State of play.
 
-1. **Surface seam + sizing/switching — START HERE.** [SURFACES-AND-CARDS §3 (Phase 3)](SURFACES-AND-CARDS.md)
-   + [FUTURE-SETTINGS §8](FUTURE-SETTINGS.md). Foundational, **low-risk**: establishes
-   `data-surface="mini|midi|max"` + the deliberate-selection / resize-allowance behaviour; midi is
-   a visual no-op; max/mini fall back to midi. Unblocks Album Color's `[data-surface="midi"]` gate.
-   That doc's Phase 3 has the concrete build-task checklist. **No verify-first risk.**
-2. **Album Color (radiant Now-Playing aurora).** [ALBUM-COLOR.md](ALBUM-COLOR.md). Depends on #1
-   (the midi gate). Build the runtime `--album-*` roles + theme fallbacks + the per-skin **rotating**
-   aurora **now** — it works immediately on the theme fallback, *no data needed* — then wire real
-   Apple palette once #3 lands. ⚠️ soft: verify the spinning layer behind glass's `backdrop-filter`
-   stays smooth in WebView2.
-3. **Catalog enrichment layer (roadmap #7).** The **shared substrate**: one demand-driven, cached
-   catalog fetch (keyed by cover-URL / catalog id) yielding **palette** (→ #2's real colors),
-   **ISRC** (→ Deezer BPM), and **30s previews**. Unblocks the *real* Album Color data and all of
-   Stations. (Probe 2026-07-01: **0/3717** songs carry an ISRC, **99.8%** carry a catalog id →
-   recoverable in ~13 batch calls.)
-4. **Search card.** [SEARCH.md](SEARCH.md) (roadmap #4). Reuses the collection-card engine; needs a
-   **cached storefront** + a `search` provider method. **Shares the catalog-access plumbing with #3**
-   and is the **discovery surface** a `scope:"catalog"` station leans on. Songs/albums/artists/playlists ship
-   first; the **Stations category lights up once #5's station-playback probe passes**. No standalone
-   verify-first risk of its own.
+0. **Run both verify-first probes up front (cheap throwaways — do them alongside #1):**
+   (a) the **MusicKit-JS station-playback call** in WebView2 ([STATIONS §2](STATIONS.md)) — its
+   outcome gates #6 *and* decides whether #4 ships its Stations category live, display-only, or
+   hidden; (b) the **WeatherKit JWT / Service-ID** 200 check ([DeetsWeather §1](DeetsWeather.md)) —
+   gates #7 entirely. Both are throwaway probes with no build dependencies, and their results
+   shape items 4–7 — front-load them instead of probing at each item.
+1. ✅ **Surface seam + sizing/switching — built (2026-07-01).** See
+   [SURFACES-AND-CARDS §Build order #3](SURFACES-AND-CARDS.md) (now feature documentation) +
+   the State-of-play entry above. Station probe (`__probeStation`) shipped alongside it as a
+   dev-only console function in `player.ts` — **verdict: FAILED (HTTP 400) on
+   `setQueue({ station })`, 2026-07-01.** Consequences: Search's Stations category ships
+   non-interactive (or hidden) for now; STATIONS §2's Apple-station half needs a descriptor-variant
+   probe pass (`url` / `playParams` forms) before building. **Own stations are unaffected** —
+   they're normal generated track queues, no station descriptor involved.
+2. ✅ **Album Color (radiant Now-Playing aurora) — built on the fallback path (2026-07-01).**
+   [ALBUM-COLOR.md](ALBUM-COLOR.md) (see its status block). **Glass-only** + **cover-anchored
+   halo** (user calls, recorded in the spec's closed decisions). Remaining for #3: apply real
+   Apple palettes (`--album-*` inline on the NP card) + the `.np--album` presence class. Glass
+   `backdrop-filter` perf in WebView2: user-verified OK so far.
+3. ✅ **Catalog enrichment layer + data-model migration + Rewind event log — built (2026-07-01).**
+   - **Enrichment** (`src-tauri/src/enrich.rs`): cached storefront (`meta` kv), chunked
+     `?ids=` catalog-songs fetch → `track_catalog` (catalog_id → ISRC / preview / cover URL) +
+     `album_palette` (cover URL → bg/c1/c2, double-keyed under requester + catalog cover URLs).
+     Commands: `catalog_enrich` (batch, cache-first — Stations' ISRC backfill rides this) and
+     `album_palette` (the NP lookup; caches empty palettes so misses don't re-fetch). First
+     consumer wired: `src/album-color.ts` applies real palettes as inline `--album-*` on the NP
+     card + `.np--album`, cache-first, stale-response-guarded.
+   - **Unified store** ([FAVORITES.md](FAVORITES.md) data-model half): `tracks(track_id, source,
+     …)` on the **catalog-first key**; sync upserts graduate `seen`→`library` and prune only
+     `library` rows; `library_tracks` filters to `source='library'`; `record_play` canonicalizes
+     catalog-first; `materialize_track` command ready (callers arrive with Search/Favorites).
+     A v1→v2 migration exists for old DBs (timestamped backup + one transaction), but this
+     machine's DB was **reset + fresh-synced** instead (pre-production call, 2026-07-01).
+   - **Event log** ([DEETS-REWIND §5a](DEETS-REWIND.md), now feature-documented): `play_events`
+     + `record_event_start`/`record_event_end`; real `ms_listened` from tick deltas; `context`
+     threaded. **The un-backfillable clock is running.**
+4. ✅ **Search card — BUILT 2026-07-01, user-verified + polished 2026-07-02.** [SEARCH.md](SEARCH.md) — the
+   **§As built** section is the authoritative description (standalone card per the screen
+   taxonomy; sectioned layout; three catalog commands; enrichment piggyback; transient +
+   materialized catalog tracks). **Stations category hidden** (the probe failed — see item 0).
+   The 2026-07-02 pass aligned the bar/filter to the Library toolbar and fixed the right-click
+   bugs (see State of play + SEARCH.md §As built → UI polish). **Remaining minor check:** under
+   glass the drill panes' translucent `--panel` background may show the pane beneath during
+   slides — opaque-fix if it reads wrong.
 5. **Favorites, ratings & library writes.** [FAVORITES.md](FAVORITES.md). **♥ Favorite (love +1) ·
    👎 Dislike (−1) · Add to Library**, as dedicated buttons + menus across Now Playing / Library /
-   Search / Queue (ratings + library POST via the MUT we already hold; **gated** writes). **Carries
-   the shared data-model change:** `tracks` becomes a **unified store** (library + materialized
-   `seen` catalog tracks) on a **catalog-first canonical key** (+ one-time migration), so
-   rating/playing a **non-library** song resolves — foundational for catalog plays in Rewind and for
-   station feedback. No verify-first risk (but confirm the exact favorites-vs-ratings route against
-   live docs).
-6. **Stations.** [STATIONS.md](STATIONS.md). **⚠️ Verify-first:** prove the **MusicKit-JS
-   station-playback call** in WebView2 on a throwaway *before* building the card. Then: Apple
-   stations (browser + radio-mode display) → Deezer enrichment provider (BPM cache; #3 supplies the
-   ISRC) → own-station generator with the `scope: library|catalog` toggle; **♥/👎 ratings (#5) are
-   its strongest taste signal** (genome substitute). Open 🔵: manual-queue in radio mode, ship order.
+   Search / Queue (ratings + library POST via the MUT we already hold; **gated** writes). The
+   shared data-model change (unified `tracks` store + catalog-first key) **lands in #3** — by this
+   point it's in place, leaving #5 as the write plumbing + UI: ratings/add-to-library provider
+   methods, the local ratings mirror, and the buttons. No verify-first risk (but confirm the exact
+   favorites-vs-ratings route against live docs).
+6. **Stations.** [STATIONS.md](STATIONS.md). **⚠️ Verify-first:** the **MusicKit-JS
+   station-playback probe** (item 0 — should already be done by now; if not, prove it on a
+   throwaway *before* building the card). Ship order within the item: **Apple stations** (browser +
+   radio-mode display) → **re-windowing (roadmap #3)** — the window top-up via `reconcileUpcoming`
+   ([QUEUE.md](QUEUE.md)); **not yet built and a hard prerequisite for own stations**, whose
+   generator refills `upcoming` through exactly this hook (without it an own-station dead-ends at
+   the window edge) → Deezer enrichment provider (BPM cache; #3 supplies the ISRC) → **own-station
+   generator** with the `scope: library|catalog` toggle; **♥/👎 ratings (#5) are its strongest
+   taste signal** (genome substitute). Open 🔵: manual-queue in radio mode, ship order.
 7. **DeetsWeather.** [DeetsWeather.md](DeetsWeather.md). Rides #6's own-station engine (weather = a
-   rule source). **⚠️ Verify-first:** confirm a **WeatherKit-enabled Service ID** exists and the
-   WeatherKit JWT (`sub` = service id — *different from the MusicKit dev token*) returns 200 on a
-   throwaway. **Attribution is mandatory** (Apple Weather logo + legal link). Open 🔵: snapshot vs
-   forecast-arc, location source.
+   rule source). **⚠️ Verify-first:** the **WeatherKit Service-ID / JWT probe** (item 0 — should
+   already be done; `sub` = a WeatherKit-enabled service id, *different from the MusicKit dev
+   token*, must return 200 on a throwaway). **Attribution is mandatory** (Apple Weather logo +
+   legal link). Open 🔵: snapshot vs forecast-arc, location source.
 
 **Also specced, ready when prioritized (off the critical path above):**
 [PLAYLISTS.md](PLAYLISTS.md) (roadmap #5 — real Playlists card, restores the slot the Qcard borrows)
@@ -221,7 +298,7 @@ numbered list below is the older feature roadmap, still valid for what rides the
 3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
    top it up as playback nears an edge so long contexts don't dead-end. The one place
    model-driven nav crosses the window edge and incurs load latency (see gotchas).
-4. **Search card** — a general catalog **Search** surface: `term` → `/v1/catalog/{sf}/search`
+4. ✅ **Search card** — a general catalog **Search** surface: `term` → `/v1/catalog/{sf}/search`
    (songs/albums/artists), normalized to our model. Catalog results carry **`previews`** (30s),
    **palette**, and real **artist/album art** for free — so previews live *here*, tied to
    search, not a batch pre-fetch. **Decided:** a result tap **plays it in full** (you're
@@ -272,6 +349,11 @@ numbered list below is the older feature roadmap, still valid for what rides the
 - **Collection card — scroll after mount:** restore `scrollTop` / `scrollIntoView`
   *after* a pane is appended and laid out (in `slide()`), never in `renderViewInto`
   while the pane is still detached — it silently no-ops.
+- **Collection card — sparse grid stretches tiles:** `.lib-grid` fills the tall `.lib-view`,
+  and grid's default `align-content` acts as *stretch*, so a view with only a few tiles (e.g. an
+  artist with one album) stretches that single row — and the tile with it — to full height. Only
+  visible when the right-click `is-context` outline wraps the giant tile. Fixed with
+  `align-content: start` on `.lib-grid` (pack rows at natural height; still scrolls when full).
 - **Added-Date needs a re-sync:** older cache rows lack `addedRank` until a refresh
   re-fetches with `sort=dateAdded`.
 - **Transport latency (the friction to cover up):** within MusicKit's fed window,
@@ -279,6 +361,10 @@ numbered list below is the older feature roadmap, still valid for what rides the
   rewinding past the backlog into older history, or seeking — forces a fresh `setQueue`
   and **buffers** (a perceptible gap). Same for **scrubbing** a DRM stream. These need a
   UX cover-up (loading state / optimistic icon / debounced input), not a silent freeze.
+- **Catalog tracks resolve through two layers:** the track-store's `transient` map
+  (session display — Qcard rows, album color) and Rust `materialize_track` (`source='seen'`
+  rows — durable stats joins). Search feeds **both** on play *and* enqueue. If a catalog song
+  ever shows "Unknown" in the Qcard, the transient ingest is what broke, not the queue.
 - **Click a song = play (not drill):** the old song→album drill is **retired**. Songs
   `activate` (play); albums/artists `open` (drill). The engine prefers `activate` over
   `open` on a leaf.
@@ -289,7 +375,15 @@ numbered list below is the older feature roadmap, still valid for what rides the
   `nowPlayingItem` by id.
 - **`changeToMediaAtIndex` already starts playback** — do NOT call `play()` after it or
   MusicKit throws *"play() without a previous stop()/pause()"*. `play()` belongs only on
-  the pos-0 (setQueue-only) path, guarded by `!isPlaying`. (Bit us once.)
+  the pos-0 (setQueue-only) path, guarded by `!isPlaying`. And the inverse: **never call
+  `changeToMediaAtIndex(0)` on a fresh queue** — setQueue already sits at 0 and the call
+  makes MusicKit double-play against itself (same error, uncaught). (Bit us twice — see
+  [QUEUE.md §Windowing](QUEUE.md).)
+- **Stale catalog ids reject whole feed batches** — `setQueue`/`playNext`/`playLater` are
+  all-or-nothing: one dead id → `NOT_FOUND` for the entire call, nothing plays. The player
+  self-heals (session denylist + library-id fallback + rebuild/retry — the
+  `player:deadIds` diag event and a console warn are the breadcrumbs). See
+  [QUEUE.md §Dead ids](QUEUE.md); persisting the denylist is noted future work.
 
 ---
 
@@ -318,11 +412,18 @@ swatch.html                 standalone color reference
 src/main.ts                 window controls, settings menu, account, menu-mode, initLayout
 src/cards.ts                card registry + CardDef/CardInstance (mountable-card contract)
 src/layout.ts               midi layout: anchored NP + 2 swappable slots + title-menu picker
+                            + slot recency (LRU) + summon handling
+src/layout-bus.ts           card-summon bus (requestCard/onCardRequest — NP queue button)
 src/now-playing-card.ts     Now Playing card (transport strip; extracted from main.ts)
 src/playlists-card.ts       Playlists card — stub for now (selectable; real context later)
 src/dropdown.ts             shared dropdown primitive + menu-mode fan-out (setDropdownMode)
 src/theme.ts                theme switch + persistence
 src/skin.ts                 skin switch + persistence (mirrors theme.ts)
+src/surface.ts              surface system: data-surface bands + deliberate choice + resize
+                            allowance + per-surface remembered window sizes
+src/album-color.ts          NP aurora data path: current album's palette → --album-* inline
+src/search.ts               catalog search data access (types + invoke wrappers)
+src/search-card.ts          Search card — standalone sectioned discovery surface (SEARCH.md)
 src/apple.ts                auth bridge (connect/disconnect/isConnected)
 src/library.ts              cache reads, sync trigger, sync-event subscription, types
 src/collection-card.ts      reusable navigable browser engine (contexts/groupings,
@@ -344,7 +445,10 @@ src-tauri/src/lib.rs        Tauri builder: state, DB open, command registry, dev
 src-tauri/src/apple.rs      dev-token signing, loopback auth, dump, AppleProvider
 src-tauri/src/model.rs      normalized model
 src-tauri/src/provider.rs   MusicProvider trait
-src-tauri/src/library.rs    SQLite cache + sync
+src-tauri/src/library.rs    SQLite cache + sync + play_stats/play_events + the unified
+                            track store (catalog-first keys) + v1→v2 migration
+src-tauri/src/enrich.rs     lazy catalog enrichment: storefront cache, batch catalog fetch,
+                            track_catalog + album_palette caches (roadmap #7)
 src-tauri/secrets/          Apple key/IDs + captured MUT (gitignored)
 dev-dumps/                  raw API samples used to design the model (gitignored)
 ```

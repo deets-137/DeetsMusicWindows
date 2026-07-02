@@ -31,11 +31,28 @@ export async function loadTracks(): Promise<void> {
   }
 }
 
-/** Live track list (for browsing). */
+/** Live track list (for browsing). Library only — transients don't browse. */
 export const tracks = (): Track[] => all;
 
-/** Resolve a queue handle id (catalog or library) → Track, for display. */
-export const trackById = (id?: string): Track | undefined => (id ? byId.get(id) : undefined);
+// Transient catalog tracks (played/queued from Search) — resolvable for display
+// (Qcard rows, album color) without being part of the browsable library. Kept in a
+// separate map so a library reload can't drop them; session-only (the durable copy
+// is Rust's materialize_track).
+const transient = new Map<string, Track>();
+
+/** Ingest catalog tracks so queue handles pointing at them resolve. */
+export function addTransientTracks(list: Track[]): void {
+  for (const t of list) {
+    if (t.libraryId) transient.set(t.libraryId, t);
+    if (t.catalogId) transient.set(t.catalogId, t);
+  }
+  listeners.forEach((cb) => cb());
+}
+
+/** Resolve a queue handle id (catalog or library) → Track, for display.
+ *  The library copy wins (richer: addedRank); transients cover catalog-only plays. */
+export const trackById = (id?: string): Track | undefined =>
+  id ? byId.get(id) ?? transient.get(id) : undefined;
 
 /** Subscribe to load/reload. Returns an unsubscribe fn. */
 export function onTracksChange(cb: () => void): () => void {
@@ -50,7 +67,8 @@ export function initTrackStore(): void {
   started = true;
   loadTracks();
   onSyncEvent((e) => {
-    if (e.phase === "done") loadTracks();
+    // Reload on error too: an incomplete sync still upserted the pages that DID fetch.
+    if (e.phase === "done" || e.phase === "error") loadTracks();
   });
   // Stale-while-revalidate, ONCE per session (not per card mount): kick a background
   // re-sync at startup if signed in. Lives here — not in the Library card — so swapping

@@ -154,6 +154,13 @@ body {
 }
 .flyout__item[aria-checked="true"]::after { content: "•"; }
 
+/* Surface flyout: the label's size IS the preview (Mini < Midi < Max). Sizes come
+   from the skin's own type scale, so the preview re-scales with the active skin.
+   Every row reserves the tallest label's line box, so the three boxes match. */
+.flyout__item[data-surface-choice]        { line-height: var(--fs-title); }
+.flyout__item[data-surface-choice="mini"] { font-size: var(--fs-subtext); }
+.flyout__item[data-surface-choice="max"]  { font-size: var(--fs-title); }
+
 /* ── Account flyout ─────────────────────────────────────────── */
 .flyout--account { min-width: 200px; }
 .account { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -303,6 +310,10 @@ body {
 }
 
 /* ── Bento grid (a "screen" is a composition of panels) ─────── */
+/* Surface gate (SURFACES-AND-CARDS §4): `data-surface` on <html> selects the
+   composition. This base block IS the midi map; max and mini deliberately inherit
+   it until their own compositions are designed (seam only this build). When those
+   land, they override under [data-surface="max"] / [data-surface="mini"] below. */
 .bento {
   height: 100%;
   min-height: 0;
@@ -311,6 +322,8 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: auto minmax(0, 1fr);   /* row 1 sizes to Now Playing, row 2 fills */
 }
+/* [data-surface="max"] .bento  { …own composition, later (sidebar + multi-slot) } */
+/* [data-surface="mini"] .bento { …own composition, later (condensed transport)  } */
 
 /* ── Panel primitive ────────────────────────────────────────── */
 .panel {
@@ -469,9 +482,13 @@ body {
 /* Sort / View / Search share the row 40 / 40 / 20. */
 .lib-pills { display: flex; gap: var(--space-2); }
 .lib-ctrl { position: relative; min-width: 0; }   /* anchor for the popover */
-.lib-ctrl[data-ctrl="sort"]   { flex: 40 1 0; }
-.lib-ctrl[data-ctrl="view"]   { flex: 40 1 0; }
-.lib-ctrl[data-ctrl="search"] { flex: 20 1 0; }
+.lib-ctrl[data-ctrl="sort"]   { flex: 1 1 0; }
+.lib-ctrl[data-ctrl="view"]   { flex: 1 1 0; }
+/* icon-only: a circle, not a stretched pill. The square constraint lives on the CELL
+   (the flex item) so the width it reserves matches the width it occupies — height comes
+   from the row stretch, aspect-ratio transfers it to width. (Putting aspect-ratio on the
+   inner pill instead lets it render wider than the cell reserved → clipped off the row.) */
+.lib-ctrl[data-ctrl="search"] { flex: 0 0 auto; aspect-ratio: 1; }
 
 .lib-pill {
   width: 100%;
@@ -499,8 +516,9 @@ body {
 }
 .lib-pill[aria-expanded="true"] .lib-pill__caret { transform: rotate(180deg); }
 
-/* Search is an icon-only pill. */
-.lib-pill--icon { justify-content: center; padding: var(--space-1); }
+/* Search is an icon-only pill — fills its square cell (above); --lib-pill-radius rounds
+   it to a circle wherever the sort/view pills are fully rounded. */
+.lib-pill--icon { justify-content: center; padding: 0; width: 100%; height: 100%; }
 .lib-pill__icon {
   width: var(--icon-sm); height: var(--icon-sm);
   fill: none; stroke: currentColor; stroke-width: 1.6;
@@ -707,6 +725,7 @@ body {
 .lib-grid {
   display: grid;
   gap: var(--lib-grid-gap);
+  align-content: start;   /* pack rows at natural height — a sparse grid mustn't stretch tiles to fill */
 }
 .lib-view[data-grid="small"].lib-grid {
   grid-template-columns: repeat(auto-fill, minmax(var(--lib-tile-small), 1fr));
@@ -755,10 +774,243 @@ body {
 .lib-empty { display: grid; place-items: center; padding: var(--space-4); }
 .lib-empty__msg { color: var(--subtext); font-size: var(--fs-subtext); }
 
+/* ── Search card (SEARCH.md — the "searches" screen archetype) ── */
+/* Blended sectioned results: bar-divided vertical sections, each an h-scroller.
+   All values route through theme roles + skin tokens (no literals). */
+.search { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.search__bar { position: relative; display: flex; gap: var(--space-1); align-items: center; }
+/* The field is a canvas-filled well (matches Library's .lib-search): a leading
+   magnifier + a borderless transparent input + the trailing busy dot / clear button. */
+.search__field {
+  position: relative; flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas); border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.search__icon {
+  flex: 0 0 auto; width: var(--icon-sm); height: var(--icon-sm);
+  fill: none; stroke: var(--subtext); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.search__input {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--font-body); font-size: var(--fs-text); color: var(--text);
+  background: transparent; border: none;
+  /* reserve the trailing zone for the busy dot + clear button */
+  padding-right: calc(var(--icon-sm) + 3 * var(--space-1) + 6px);
+}
+.search__input::placeholder { color: var(--subtext); }
+/* Drop the native (blue) clear affordance — we render our own themed one. */
+.search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+/* No focus ring — the hairline border is the box (matches the Library search input,
+   which uses outline:none). The heavy --title ring read as an out-of-place black box. */
+.search__input:focus, .search__input:focus-visible { outline: none; }
+.search__filter-wrap { flex: 0 0 auto; position: relative; display: flex; } /* hover region + anchor for the popover */
+/* Matches Library's icon pill (.lib-pill--icon): surface fill, pill radius, --text
+   icon, sized by padding around an --icon-sm glyph, bg-only hover. */
+.search__filter {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  padding: var(--space-1);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--lib-pill-radius); color: var(--text); cursor: pointer;
+}
+.search__filter-icon {
+  width: var(--icon-sm); height: var(--icon-sm);
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.search__filter:hover { background: var(--surface-hover); }
+.search__filter-pop {
+  position: absolute; top: calc(100% + var(--space-1)); right: 0; z-index: 30;
+  display: flex; flex-direction: column; gap: var(--space-1);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-control); box-shadow: var(--shadow-panel); padding: var(--space-2);
+}
+.search__filter-pop[hidden] { display: none; } /* class sets display:flex, which would beat the [hidden] UA rule */
+.search__filter-row { font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--text); display: flex; gap: var(--space-1); align-items: center; cursor: pointer; white-space: nowrap; }
+
+/* Clear button — our themed replacement for the native (blue) X; sits at the input's
+   trailing edge, colored by theme roles. */
+.search__clear {
+  position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: var(--icon-sm); height: var(--icon-sm);
+  padding: 0; background: none; border: none; color: var(--subtext); cursor: pointer;
+}
+.search__clear svg { width: var(--icon-sm); height: var(--icon-sm); }
+.search__clear:hover { color: var(--title); }
+.search__clear[hidden] { display: none; } /* class sets display:grid, which would beat [hidden] */
+
+/* busy: a small pulsing dot just LEFT of the clear button while a query is in flight */
+.search__busy { display: none; }
+.search__bar--busy .search__busy {
+  display: block; position: absolute; top: 50%;
+  right: calc(var(--space-2) + var(--icon-sm) + var(--space-1));
+  width: 6px; height: 6px; margin-top: -3px; border-radius: 999px;
+  background: var(--subtext); animation: search-pulse 0.9s ease-in-out infinite;
+}
+@keyframes search-pulse { 50% { opacity: 0.25; } }
+
+/* panes — the drill stack, riding the same --nav-* tokens as the engine */
+.search__panes { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.spane {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background: var(--panel);
+  transition: transform var(--nav-dur) var(--nav-ease), opacity var(--nav-dur) var(--nav-ease);
+}
+.spane[data-pos="center"] { transform: var(--nav-at-center); opacity: 1; z-index: 1; }
+.spane[data-pos="left"]   { transform: var(--nav-at-left);   opacity: var(--nav-off-opacity); z-index: 0; }
+.spane[data-pos="right"]  { transform: var(--nav-at-right);  opacity: var(--nav-off-opacity); z-index: 0; }
+.spane:not([data-pos="center"]) { pointer-events: none; }
+.spane__head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-1); }
+.spane__back {
+  background: none; border: none; color: var(--title); cursor: pointer;
+  font-size: var(--fs-title); line-height: 1; padding: 0 var(--space-1);
+}
+.spane__title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
+  color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.spane__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+/* Match the Library's custom Chromium scrollbar across every search scroll surface
+   — the vertical pane scroll and the horizontal section scrollers. */
+.spane__scroll::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
+.spane__scroll::-webkit-scrollbar-track { background: transparent; }
+.spane__scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
+.spane__scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* sections */
+.search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.search__sec:last-child { border-bottom: none; }
+.search__sec-title, .search__label {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
+  color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
+  margin: 0 0 var(--space-1);
+}
+.search__scroller { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
+.search__scroller::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
+.search__scroller::-webkit-scrollbar-track { background: transparent; }
+.search__scroller::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
+.search__scroller::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+.search__scroller--songs {
+  display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto);
+  grid-auto-columns: 170px; gap: var(--space-1) var(--space-2);
+}
+
+/* items */
+.search__song, .search__row {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1); border-radius: var(--radius-control); cursor: pointer;
+}
+.search__row { margin-bottom: var(--space-1); }
+.search__song:hover, .search__row:hover { background: var(--surface-hover); transform: var(--hover-lift); }
+.search__song-art {
+  flex: 0 0 auto; width: var(--lib-row-art); height: var(--lib-row-art);
+  border-radius: var(--lib-row-art-radius); object-fit: cover;
+}
+.search__song-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); }
+.search__song-text { min-width: 0; display: flex; flex-direction: column; }
+.search__song-title { font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search__song-artist { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; }
+.search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
+.search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
+.search__tile:hover { transform: var(--hover-lift); }
+.search__tile-name { font-size: var(--fs-subtext); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search__tile-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.search__artist { flex: 0 0 auto; width: 72px; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); cursor: pointer; }
+.search__artist-art { width: 64px; height: 64px; border-radius: 999px; object-fit: cover; }
+.search__artist-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); }
+.search__artist:hover { transform: var(--hover-lift); }
+.search__artist-name { font-size: var(--fs-subtext); color: var(--text); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* empty state */
+.search__prompt { font-family: var(--font-body); font-size: var(--fs-text); color: var(--subtext); padding: var(--space-2) 0; }
+.search__recents { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.search__recent {
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--lib-pill-radius); padding: var(--space-1) var(--space-2); cursor: pointer;
+}
+.search__recent:hover { background: var(--surface-hover); color: var(--title); }
+
+@media (prefers-reduced-motion: reduce) {
+  .spane { transition: none; }
+  .search__bar--busy .search__busy { animation: none; }
+}
+
 /* ── Now Playing card ───────────────────────────────────────── */
 /* Full-height album cover (left) anchors a middle column holding the now-playing
    title/artist, the scrubber, and transport. The cover size drives card height. */
 .np { display: flex; align-items: stretch; gap: var(--space-3); }
+
+/* ── Album aurora (ALBUM-COLOR.md) ──────────────────────────── */
+/* A color layer behind the NP card content, sourced from the runtime --album-*
+   roles (theme-accent fallback until a real palette is applied). The gradient
+   stack rides an oversized square centered on the COVER, slowly rotating, so the
+   album's accents orbit the art like a sweeping light. Colors are roles; the
+   strength/period/fade knobs are skin tokens. Card-scoped: Library/Queue panels
+   never see it. */
+
+/* Registered so the roles INTERPOLATE — the track-change crossfade is then just
+   a transition on the custom props (JS sets them inline on the card, item #3). */
+@property --album-bg { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --album-c1 { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --album-c2 { syntax: "<color>"; inherits: true; initial-value: transparent; }
+
+.np {
+  position: relative;
+  transition:
+    --album-bg var(--album-fade-dur),
+    --album-c1 var(--album-fade-dur),
+    --album-c2 var(--album-fade-dur);
+}
+.np__aurora {
+  display: var(--album-aurora-display); /* glass-first: skins opt in via the token */
+  position: absolute;
+  inset: calc(-1 * var(--panel-pad));   /* bleed under the panel padding */
+  border-radius: var(--panel-radius);
+  overflow: hidden;                     /* clip the spinning layer to the card */
+  pointer-events: none;
+  z-index: 0;
+}
+.np__aurora::before {
+  content: "";
+  position: absolute;
+  /* a halo sized by the COVER (not the card): --album-aurora-reach cover-widths
+     across, centered on the cover, so the glow radiates from the art itself */
+  left: calc(var(--panel-pad) + var(--np-cover) / 2);
+  top: 50%;
+  width: calc(var(--np-cover) * var(--album-aurora-reach));
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(0turn);
+  /* Cover edge sits at 1/(2·reach) of the layer width (~17% at reach 3). Apple's
+     bgColor is the art's BACKGROUND field — usually dark — so it stays hidden under
+     the cover; the vivid textColor accents own the visible rim. Every stop is mixed
+     toward transparent, so a blown-out palette can't nuke legibility. */
+  background:
+    radial-gradient(circle at 50% 50%,
+      color-mix(in srgb, var(--album-bg) var(--album-aurora-strength), transparent) 0%,
+      color-mix(in srgb, var(--album-c1) var(--album-aurora-strength), transparent) 19%,
+      color-mix(in srgb, var(--album-c2) calc(var(--album-aurora-strength) * 0.85), transparent) 40%,
+      transparent 72%),
+    /* the highlight: a cover-scaled blob just outside the rim — as the layer
+       spins, this is what visibly ORBITS the art */
+    radial-gradient(circle calc(var(--np-cover) * 0.9) at 71% 29%,
+      color-mix(in srgb, var(--album-c2) calc(var(--album-aurora-strength) * 0.8), transparent) 0%,
+      transparent 100%);
+  animation: np-aurora-spin var(--album-spin-dur) linear infinite;
+}
+@keyframes np-aurora-spin {
+  to { transform: translate(-50%, -50%) rotate(1turn); }
+}
+/* Content rides above the aurora. */
+.np__art, .np__center { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .np__aurora::before { animation: none; }  /* static aurora; the crossfade stays (not vestibular) */
+}
 .np__center {
   flex: 1 1 auto;
   min-width: 0;
@@ -824,6 +1076,15 @@ body {
   overflow: hidden;
 }
 .np__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Transport row: 1fr auto 1fr grid keeps the play cluster OPTICALLY centered in the
+   card while the queue-summon button rides the right edge; the empty left cell is the
+   counterweight. The summon button wears .panel__action so it mirrors the Library
+   Sync button exactly — no geometry of its own beyond grid placement. */
+.np__bottom { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.np__bottom .np__controls { grid-column: 2; }
+.np__shuffle { grid-column: 1; justify-self: start; }
+.np__summon { grid-column: 3; justify-self: end; }
+
 .np__controls { display: flex; align-items: center; justify-content: center; gap: var(--transport-gap); }
 .np__btn {
   background: none; border: none; padding: 0;

@@ -92,7 +92,8 @@
    override the drag transform, snapping the row back (visual rubber-banding). */
 .qrow:hover:not(.qrow--dragging) { background: var(--surface-hover); transform: var(--hover-lift); }
 .qrow:focus-visible,
-.qrow.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.qrow.is-context,
+.qnow.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 /* A row being dragged: lifts, follows the pointer 1:1 (--drag-dy set in JS), no transition lag. */
 .qrow--dragging {
   transform: translateY(var(--drag-dy, 0px)) var(--drag-lift);

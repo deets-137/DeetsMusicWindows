@@ -15,6 +15,18 @@
      --subtext   secondary / dim text
    ============================================================ */
 
+/* ── Runtime album roles (ALBUM-COLOR.md) ─────────────────────
+   A fourth color source ABOVE theme: JS sets real per-track values
+   as inline custom props on the NP card; these theme-owned fallbacks
+   keep the props resolvable, so with no album loaded the aurora is
+   theme-accent-sourced. Declared once — each var() resolves against
+   the ACTIVE theme's roles. No album hex ever lives in CSS. */
+:root {
+  --album-bg: var(--surface);
+  --album-c1: var(--go);
+  --album-c2: var(--stop);
+}
+
 [data-theme="fairy"] {
   color-scheme: light;
   --canvas:  var(--paint-dewy-lilac);

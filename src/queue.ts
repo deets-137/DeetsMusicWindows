@@ -35,6 +35,7 @@ export interface QueueEntry extends TrackHandle {
 }
 
 const HISTORY_CAP = 100;
+const PLAY_LOG_CAP = 200;
 
 /** Play-target id for an entry — catalog preferred, library as fallback (mirrors player.ts). */
 const idOf = (h: TrackHandle): string | undefined => h.catalogId ?? h.libraryId;
@@ -44,6 +45,14 @@ const state: { history: QueueEntry[]; current: QueueEntry | null; upcoming: Queu
   current: null,
   upcoming: [],
 };
+
+// Session play log (see getPlayLog). Copies, so later flag flips on the live entries
+// can't retroactively rewrite the log.
+const playLog: QueueEntry[] = [];
+function logPlay(entry: QueueEntry): void {
+  playLog.push({ ...entry });
+  if (playLog.length > PLAY_LOG_CAP) playLog.shift();
+}
 
 // ── Subscriptions (the future queue UI renders off this) ─────────────────────
 type Listener = () => void;
@@ -63,6 +72,14 @@ export const getUpcoming = (): readonly QueueEntry[] => state.upcoming;
 export const getHistory = (): readonly QueueEntry[] => state.history;
 /** Only songs actually heard, newest last — what a "recently played" view shows. */
 export const getRecentlyPlayed = (): QueueEntry[] => state.history.filter((e) => e.played);
+/**
+ * The session play log, oldest first — what the History card renders. Unlike
+ * `history[]` (the Previous back-chain, which setContext dedupes for window
+ * correctness), this is APPEND-ONLY: a song heard three times appears three times,
+ * and nothing is ever pulled back out. An entry is logged the moment it stops being
+ * current and joins the heard trail. Session-scoped; entries are copies.
+ */
+export const getPlayLog = (): readonly QueueEntry[] => playLog;
 /** The next entry without consuming it — player.ts uses this to preload (gapless). */
 export const peekNext = (): QueueEntry | null => state.upcoming[0] ?? null;
 
@@ -99,6 +116,7 @@ export function setContext(handles: TrackHandle[], startIndex: number): QueueEnt
   // Durable heard trail: prior heard songs + the song that was playing (it counts as
   // heard). Drop any copy of the song we're about to play — it becomes `current`.
   const heard = state.history.filter((e) => e.played && idOf(e) !== startId);
+  if (state.current) logPlay(state.current); // the outgoing song played — log it
   if (state.current && idOf(state.current) !== startId) heard.push(state.current);
   while (heard.length > HISTORY_CAP) heard.shift();
 
@@ -164,6 +182,30 @@ export function move(from: number, to: number): void {
   emit();
 }
 
+// ── Shuffle (one-shot; behavior knobs live in docs/FUTURE-SETTINGS.md §5) ─────
+/** In-place Fisher–Yates. Exported so player.ts can shuffle handle lists too. */
+export function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * One-shot shuffle of upcoming: every `manual` pick rises to the TOP (relative order
+ * kept — they're explicit promises, wherever Play-Next/Add-to-Queue originally put
+ * them), and the `auto` tail shuffles below. The manual-placement rule is a future
+ * setting (FUTURE-SETTINGS §5).
+ */
+export function shuffleUpcoming(): void {
+  if (state.upcoming.length < 2) return;
+  const manual = state.upcoming.filter((e) => e.origin === "manual");
+  const auto = shuffleInPlace(state.upcoming.filter((e) => e.origin === "auto"));
+  state.upcoming = [...manual, ...auto];
+  emit();
+}
+
 // ── Transport ────────────────────────────────────────────────────────────────
 export function advance(): QueueEntry | null {
   if (state.current) pushHistory(state.current);
@@ -196,6 +238,7 @@ export function clear(): void {
 }
 
 function pushHistory(entry: QueueEntry): void {
+  logPlay(entry); // joining the heard trail = it played
   state.history.push(entry);
   if (state.history.length > HISTORY_CAP) state.history.shift();
 }

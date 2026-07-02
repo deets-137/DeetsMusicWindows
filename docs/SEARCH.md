@@ -62,12 +62,23 @@ search bar (always-on)  ──debounce──▶  provider.search(term, types)  �
   `Playlist` / `Station` (playlists/stations per [PLAYLISTS](PLAYLISTS.md) / [STATIONS](STATIONS.md);
   add the normalized types if absent). **Front-end only ever sees our model**, never raw Apple shapes.
 
-### Presentation 🔵
-- **Category selector (MVP, recommended)** — a pill row `Songs · Albums · Playlists · Stations`;
-  the selected one shows its result list. Default **Songs**. Max engine reuse (it's the grouping
-  control), simplest on the narrow midi card, and directly matches "split into categories."
-- **Blended "Top results" overview (later)** — an Apple-style combined view (top few per category +
-  "See all" → drills into that category). Nicer, more layout work; a clean enhancement, not MVP.
+### Presentation ✅ (decided 2026-07-01 — user call, supersedes the pill-row MVP)
+**Blended sectioned results**: a single scrolling body of **vertical sections divided by a
+bar — Artists first, then Songs, then Albums, then Playlists** — each section a **horizontal
+scroller ~2 rows tall** (Apple-Music-mobile style: e.g. songs as h-scrolling columns of 2,
+artists as round thumbs, albums as tiles). A **filter control next to the search bar** lets the
+user narrow which categories are searched (default: all; narrowing also trims the `types=`
+param — fewer bytes fetched). **Stations stays hidden** until the station-playback probe passes
+(the 2026-07-01 probe returned HTTP 400). Empty state: **prompt + recent searches** (a small
+localStorage ring, tappable). Song tap plays **just the one** (interject) — queue-the-rest is
+recorded as a future setting (FUTURE-SETTINGS §1 sibling).
+
+**Architecture ✅ (user call, 2026-07-01): Search is a STANDALONE card** (like the Qcard), not a
+collection-card context. The screen taxonomy is **collections** (the engine: browse/sort/filter) ·
+**queues** (Qcard: a live ordered stream) · **searches** (this card: blended discovery) — each
+archetype owns its display idiom, sharing the primitives (row/tile CSS, context-menu,
+`playContext`, track-store, dropdown, the `--nav-*` motion tokens so drill-in feels identical).
+The future Stations browser's sectioned root follows the search idiom, not the engine.
 
 ---
 
@@ -151,14 +162,47 @@ a later, fetch-heavier idea. Recommend **recents + prompt** for MVP.
 
 ---
 
-## Build notes (file touches)
-- `src-tauri/src/apple.rs` — `AppleProvider::search(term, types, limit, offset)` + storefront fetch
-  (`/v1/me/storefront`, cached); normalize songs/albums/artists/playlists/stations.
-- `src-tauri/src/provider.rs` / `model.rs` — a `search` trait method; ensure `Artist` / `Playlist` /
-  `Station` normalized types.
-- `src-tauri/src/lib.rs` — register the `catalog_search` (+ `storefront`) commands.
-- `src/search-card.ts` (new) + registry entry in `src/cards.ts` — drives the collection-card engine
-  with a **Search context** (groupings = the five categories, `list()` fed by query results,
-  `open()` = catalog drill, `activate()` = play, `menu()` = the queue actions); the always-on
-  debounced search bar lives in the card chrome, not the engine's Search pill.
-- Styling under a "Search card" block in `styles.css` (theme roles + skin tokens only).
+## As built (2026-07-01)
+- `src-tauri/src/apple.rs` — catalog normalizers (`track_from_catalog_song` / album / artist /
+  playlist), the `search` trait method (URL-encoded term, category whitelist, never
+  music-videos), and three commands: `catalog_search`, `catalog_collection_tracks` (album/playlist
+  tracks, follows `next` pagination capped at 10 pages, skips music videos),
+  `catalog_artist` (`views=top-songs,full-albums`). All three **piggyback results into the
+  enrichment caches** (`enrich::cache_tracks`) — every search warms palette/ISRC/preview.
+- `src-tauri/src/model.rs` — `Playlist` reshaped (both ids optional, like Track; + curator,
+  trackCount), `SearchResults`, `ArtistDetail`, `Track.preview_url`, `play_params` defaulted on
+  deserialize (Tracks round-trip through the frontend for `materialize_track`).
+- `src/search.ts` — TS wrappers + types. `src/search-card.ts` — the standalone card: debounced
+  (300ms / 2-char min / stale-token-guarded) bar, filter popover (persisted `deets.search.types`;
+  narrowing trims the `types=` param) — rides the shared `makeDropdown` primitive so it follows the
+  global click/hover menu mode (Hover-Menu setting), sectioned root (songs = a 2-row h-scroll grid; artists =
+  round thumbs; albums/playlists = tiles), recents empty state (`deets.search.recents`), drill
+  panes on the shared `--nav-*` tokens, right-click menus, `onHeaderChange` so the slot picker
+  disables while drilled.
+- **Semantics as built:** a *result* song tap plays just-the-one; a row tap inside a
+  *detail pane* (album/playlist/artist top songs) plays that list from the row — Library
+  semantics, an album is its tracks. Catalog tracks are `addTransientTracks`'d into the
+  track-store (session display: Qcard/album-color resolve) **and** `materialize_track`'d
+  (durable stats join) on play *and* enqueue — the cheap end of FAVORITES' open trigger fork.
+- Styling under the "Search card" block in `styles.css` (theme roles + skin tokens only).
+- **UI polish (2026-07-02) — aligned to the Library card for consistency:**
+  - **Search bar mirrors Library's `.lib-search`**: a `--canvas`-filled well (border +
+    `--radius-control`) holding a leading magnifier + a *borderless, transparent* input
+    (no per-input box/focus-ring — the well is the box).
+  - **Themed clear button** (`.search__clear`) replaces the native (blue)
+    `::-webkit-search-cancel-button`, which is suppressed; it shows only when there's text
+    and sits at the input's trailing edge, with the **busy dot to its left**. Both use
+    theme roles (`--subtext` → `--title`).
+  - **Filter button matches `.lib-pill--icon`** (surface fill, `--lib-pill-radius`, `--text`
+    icon at stroke 1.6, bg-only hover).
+  - **Scrollbars** (vertical panes + horizontal section scrollers) use the same
+    `--scrollbar-*` treatment as `.lib-view`.
+  - **Empty state**: flavor prompt removed; recents (`deets.search.recents`) stack vertically.
+  - **Right-click fix**: album tiles in the **artist drill pane** now open our `collectionMenu`
+    (Play Now / Play Next / Add to Queue, fetch-then-enqueue). They live outside `root`, so the
+    root's delegated right-click never reached them and the native menu showed instead.
+  - *(Sibling Library tweaks: the Library toolbar's search pill is now a circle sized to the
+    sort/view pill height — `aspect-ratio:1` on the flex **cell**, not the inner pill; and
+    `.lib-grid { align-content: start }` stops sparse tile grids from stretching tiles to full
+    pane height — see HANDOFF gotchas.)*
+- **Add to Library** is deliberately absent until Favorites (item 5) lands the gated write path.

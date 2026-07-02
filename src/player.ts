@@ -12,7 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
-import { trackById } from "./track-store";
+import { trackById, tracks } from "./track-store";
 import * as diag from "./diag";
 import * as stats from "./stats";
 
@@ -141,7 +141,15 @@ function emitProgress(): void {
   const currentTime = music?.currentPlaybackTime ?? 0;
   const progress = duration > 0 ? currentTime / duration : 0;
   progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
-  stats.recordProgress(queue.getCurrent(), progress); // credit a "full" once past the threshold
+  // Credit a "full" once past the threshold — but only when the model's current IS the
+  // song MusicKit is playing. During a context switch the model flips to the new song
+  // while the old one is still emitting ticks; without the id check, song A finishing
+  // at 92% credits song B a "full" it never played (and burns B's own latch).
+  const cur = queue.getCurrent();
+  const npId = music?.nowPlayingItem?.id;
+  if (!loadingContext && cur && npId && (npId === cur.catalogId || npId === cur.libraryId)) {
+    stats.recordProgress(cur, progress, currentTime);
+  }
 }
 
 function emit(): void {
@@ -268,6 +276,56 @@ function queueDump() {
   };
 }
 
+/**
+ * DEV-ONLY THROWAWAY — the STATIONS.md §2 verify-first probe. Run `__probeStation()`
+ * in the devtools console. Proves (or kills) MusicKit-JS station playback in WebView2:
+ * searches the catalog for a station, tries `setQueue({ station })`, and reports what
+ * actually plays. Delete once STATIONS lands (the real `playStation` replaces it).
+ */
+async function probeStation(term = "pop"): Promise<void> {
+  const step = (name: string, data: unknown) => {
+    diag.log("probe:station", { step: name, data });
+    console.log(`[probe:station] ${name}`, data);
+  };
+  try {
+    const m = await initPlayer();
+    step("configured", { authorized: !!m.isAuthorized });
+
+    // 1. Find a real station id via catalog search ({{storefront}} templating is v3-native).
+    const res = await m.api.music("/v1/catalog/{{storefront}}/search", {
+      term,
+      types: "stations",
+      limit: 5,
+    });
+    const stations: any[] = res?.data?.results?.stations?.data ?? [];
+    step("search", stations.map((s) => ({ id: s.id, name: s.attributes?.name, isLive: s.attributes?.isLive })));
+    if (!stations.length) {
+      step("verdict", "NO STATIONS RETURNED — search failed, probe inconclusive");
+      return;
+    }
+    const target = stations.find((s) => !s.attributes?.isLive) ?? stations[0];
+
+    // 2. The load-bearing call: does MusicKit JS accept a station queue descriptor?
+    await m.setQueue({ station: target.id });
+    step("setQueue", { ok: true, station: target.id, name: target.attributes?.name });
+    await m.play();
+
+    // 3. Give it a moment, then read back what's actually playing.
+    setTimeout(() => {
+      const item = m.nowPlayingItem;
+      step("verdict", item
+        ? { PROVEN: true, playing: item.title ?? item.attributes?.name, state: m.playbackState }
+        : { PROVEN: false, note: "setQueue accepted but nothing is playing — check playbackState/errors", state: m.playbackState });
+    }, 4000);
+  } catch (e) {
+    step("verdict", { PROVEN: false, error: e instanceof Error ? `${e.name}: ${e.message}` : String(e) });
+  }
+}
+
+// Exposed at module scope (probeStation boots the player itself), so the probe is
+// runnable from the console on a fresh launch with nothing playing yet.
+(window as any).__probeStation = probeStation;
+
 /** Walk the queue model to match MusicKit's live position (natural advance + skips). */
 function syncModelToMusicKit(): void {
   // `nowPlayingItemIndex` is the documented v3 index of the current item; `queue.position`
@@ -308,8 +366,66 @@ const toHandle = (t: Track, context = "library"): TrackHandle => ({
   context,
 });
 
-/** Best play target for a handle — catalog id preferred, library id as fallback. */
-const playId = (h: TrackHandle): string | undefined => h.catalogId ?? h.libraryId;
+// Session denylist of ids MusicKit reported as unresolvable (NOT_FOUND from setQueue —
+// catalog ids gone stale since the library cached them: region pulls, takedowns). A dead
+// catalog id makes the handle fall back to its LIBRARY id (the user's copy usually still
+// plays); a handle with no live id left is skipped by the window builders entirely.
+const deadIds = new Set<string>();
+
+/** Best play target for a handle — catalog id preferred, library id as fallback;
+ *  ids MusicKit has declared dead this session are passed over. */
+const playId = (h: TrackHandle): string | undefined => {
+  if (h.catalogId && !deadIds.has(h.catalogId)) return h.catalogId;
+  if (h.libraryId && !deadIds.has(h.libraryId)) return h.libraryId;
+  return undefined;
+};
+
+/** Extract the id list from a MusicKit "items could not be resolved" rejection. */
+function unresolvedIds(e: unknown): string[] {
+  const msg = e instanceof Error ? e.message : String(e);
+  const m = /could not be resolved:\s*(.+)/i.exec(msg);
+  return m ? m[1].split(",").map((s) => s.trim()).filter(Boolean) : [];
+}
+
+/** The still-playable ids of a handle list (deadIds-aware, unplayables dropped). */
+const liveIds = (hs: TrackHandle[]): string[] =>
+  hs.map(playId).filter((id): id is string => !!id);
+
+/**
+ * Run a MusicKit insert (playNext/playLater) with the same NOT_FOUND self-healing as
+ * doLoadFromModel's setQueue: the insert is all-or-nothing, so bank the ids MusicKit
+ * names as unresolvable, rebuild the id list (playId swaps in library-id fallbacks or
+ * drops the handle), retry. Ends silently once nothing playable is left — the model
+ * keeps its entries; the window builders skip dead ones. See docs/QUEUE.md.
+ */
+async function insertWithRetry(
+  where: string,
+  run: (ids: string[]) => Promise<void>,
+  rebuild: () => string[],
+): Promise<void> {
+  let ids = rebuild();
+  for (let attempt = 0; ids.length; attempt++) {
+    try {
+      await run(ids);
+      return;
+    } catch (e) {
+      const bad = unresolvedIds(e);
+      if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
+      bad.forEach((id) => deadIds.add(id));
+      diag.log("player:deadIds", { where, n: bad.length, attempt, bad: bad.slice(0, 10) });
+      console.warn(`[player] ${where}: ${bad.length} unresolvable id(s) dropped; retrying`);
+      ids = rebuild();
+    }
+  }
+}
+
+// Loads are SERIALIZED and COALESCED. Two concurrent loadFromModel calls would
+// interleave their pause/setQueue/changeToMediaAtIndex sequences and desync
+// `windowPos`/`loadingContext` (rapid-click two rows to reproduce). The chain runs
+// them one at a time; the generation counter skips a queued load that a newer click
+// has already superseded (the model holds the newest state — only the last load matters).
+let loadGen = 0;
+let loadChain: Promise<void> = Promise.resolve();
 
 /**
  * (Re)feed MusicKit a bounded window centered on the model's current entry: up to
@@ -317,7 +433,23 @@ const playId = (h: TrackHandle): string | undefined => h.catalogId ?? h.libraryI
  * context and for any jump that lands outside the live window — the latter buffers
  * (the documented latency; `loading` is surfaced for the cover-up).
  */
-async function loadFromModel(m: any, autoplay = true): Promise<void> {
+function loadFromModel(m: any, autoplay = true): Promise<void> {
+  const gen = ++loadGen;
+  const run = loadChain.then(() => {
+    if (gen !== loadGen) {
+      diag.log("player:loadSkip", { gen, superseded: loadGen });
+      return; // a newer load was requested while this one waited — it covers the model's state
+    }
+    return doLoadFromModel(m, autoplay);
+  });
+  loadChain = run.then(
+    () => {},
+    () => {}, // keep the chain alive past a failed load
+  );
+  return run;
+}
+
+async function doLoadFromModel(m: any, autoplay = true): Promise<void> {
   const current = queue.getCurrent();
   if (!current) return;
   const back = queue.getHistory().slice(-WINDOW_BACK);
@@ -329,26 +461,33 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   // wins) and insert `current` first-class, so its index `pos` is always exact. The
   // queue model avoids most dupes already; this is the belt-and-suspenders for the case
   // a heard song reappears later in the forward context. See docs/QUEUE.md.
-  const curId = playId(current);
-  const seen = new Set<string>();
-  const ids: string[] = [];
-  for (const h of back) {
-    const id = playId(h);
-    if (!id || id === curId || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
-  }
-  const pos = ids.length; // current sits immediately after the deduped back-chain
-  if (curId && !seen.has(curId)) {
-    seen.add(curId);
-    ids.push(curId);
-  }
-  for (const h of fwd) {
-    const id = playId(h);
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
-  }
+  //
+  // Re-runnable because playId is deadIds-aware: after a NOT_FOUND rejection banks the
+  // unresolvable ids, a rebuild swaps them for library-id fallbacks (or drops them).
+  const buildWindow = (): { ids: string[]; pos: number } => {
+    const curId = playId(current);
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const h of back) {
+      const id = playId(h);
+      if (!id || id === curId || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+    const pos = ids.length; // current sits immediately after the deduped back-chain
+    if (curId && !seen.has(curId)) {
+      seen.add(curId);
+      ids.push(curId);
+    }
+    for (const h of fwd) {
+      const id = playId(h);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+    return { ids, pos };
+  };
+  let { ids, pos } = buildWindow();
   if (!ids.length) {
     console.warn("[player] nothing playable in window");
     return;
@@ -362,22 +501,53 @@ async function loadFromModel(m: any, autoplay = true): Promise<void> {
   isLoading = true;
   loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
   emit(); // surface the loading state for the cover-up
-  // Pause first so the queue swap starts from a clean transport. MusicKit refuses a
-  // play() "without a previous stop()/pause()" while already playing — that error was
-  // leaving the old song playing on every click. From paused, play() reliably enacts
-  // the switch to the new index.
-  if (m.isPlaying && typeof m.pause === "function") await m.pause();
-  await m.setQueue({ songs: ids });
-  windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
-  diag.log("player:loadWindow", { ids: ids.length, pos });
-  if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
-    await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
+  try {
+    // Pause first so the queue swap starts from a clean transport. MusicKit refuses a
+    // play() "without a previous stop()/pause()" while already playing — that error was
+    // leaving the old song playing on every click. From paused, play() reliably enacts
+    // the switch to the new index.
+    if (m.isPlaying && typeof m.pause === "function") await m.pause();
+    // setQueue is all-or-nothing: ONE unresolvable id rejects the whole window
+    // (NOT_FOUND — stale catalog ids). The rejection names the offenders, so bank
+    // them in deadIds, rebuild the window (library-id fallback / drop), and retry.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await m.setQueue({ songs: ids });
+        break;
+      } catch (e) {
+        const bad = unresolvedIds(e);
+        if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
+        bad.forEach((id) => deadIds.add(id));
+        diag.log("player:deadIds", { n: bad.length, attempt, bad: bad.slice(0, 10) });
+        console.warn(`[player] ${bad.length} unresolvable id(s) dropped from window; retrying`);
+        ({ ids, pos } = buildWindow());
+        if (!ids.length) throw e; // everything in the window was dead
+      }
+    }
+    windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
+    diag.log("player:loadWindow", { ids: ids.length, pos });
+    // pos=0 deliberately SKIPS changeToMediaAtIndex: setQueue already leaves the queue
+    // at index 0, and changeToMediaAtIndex(0) races MusicKit's internal play (its event
+    // handler fires play() on top of the in-flight one → the uncaught "play() without a
+    // previous stop()/pause()" rejection). Plain play() below is sufficient there —
+    // the historical "pos=0 doesn't start" symptom was really the dead-id NOT_FOUND
+    // rejection (see the retry loop above), not a selection problem.
+    if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
+      await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
+    }
+    if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
+    stats.recordStart(queue.getCurrent()); // settled start (intermediate rebuild changes were suppressed)
+  } catch (e) {
+    // Surface and rethrow — but NEVER leave `loadingContext` stuck (the finally): a
+    // rejection here used to suppress model-follow for the rest of the session.
+    diag.log("player:loadError", { e: String(e) });
+    console.warn("[player] load failed:", e);
+    throw e;
+  } finally {
+    loadingContext = false;
+    isLoading = false;
+    emit();
   }
-  if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
-  loadingContext = false;
-  isLoading = false;
-  emit();
-  stats.recordStart(queue.getCurrent()); // settled start (intermediate rebuild changes were suppressed)
 }
 
 /**
@@ -397,6 +567,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
     diag.log("player:reclick", { id: playId(target) });
     await m.seekToTime(0);
     if (!m.isPlaying) await m.play();
+    stats.recordRestart(cur); // a deliberate restart is a fresh play (no np-change fires here)
     return;
   }
 
@@ -439,13 +610,14 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
     await playContext(playable, 0); // nothing playing → start the block
     return;
   }
-  const ids = playable.map(playId) as string[];
   if (where === "next") {
     queue.playNextMany(playable);
-    if (typeof m.playNext === "function") await m.playNext({ songs: ids });
+    if (typeof m.playNext === "function")
+      await insertWithRetry("enqueue:next", (ids) => m.playNext({ songs: ids }), () => liveIds(playable));
   } else {
     queue.addToQueueMany(playable);
-    if (typeof m.playLater === "function") await m.playLater({ songs: ids });
+    if (typeof m.playLater === "function")
+      await insertWithRetry("enqueue:later", (ids) => m.playLater({ songs: ids }), () => liveIds(playable));
   }
   checkAlignment(`enqueue:${where}`);
 }
@@ -514,8 +686,11 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
   // MusicKit: pull it from its slot, re-insert at the chosen end (both gapless inserts).
   if (mk >= 0 && typeof m.queue?.splice === "function") m.queue.splice(mk, 1);
   if (id) {
-    if (to === "top" && typeof m.playNext === "function") await m.playNext({ songs: [id] });
-    else if (to === "bottom" && typeof m.playLater === "function") await m.playLater({ songs: [id] });
+    const one = () => liveIds([entry]); // re-resolves after a dead-id bank (fallback or drop)
+    if (to === "top" && typeof m.playNext === "function")
+      await insertWithRetry("move-top", (ids) => m.playNext({ songs: ids }), one);
+    else if (to === "bottom" && typeof m.playLater === "function")
+      await insertWithRetry("move-bottom", (ids) => m.playLater({ songs: ids }), one);
   }
   checkAlignment(`move-${to}`);
 }
@@ -537,19 +712,24 @@ export async function reconcileUpcoming(): Promise<void> {
 
   // Expected MK upcoming = model upcoming, deduped against what MK already holds up to current,
   // capped to the window (forward-only mirror of loadFromModel's dedup — current is never touched).
-  const seen = new Set<string>();
-  for (let i = 0; i <= np; i++) {
-    const id = items[i]?.id;
-    if (id) seen.add(id);
-  }
-  const expected: string[] = [];
-  for (const e of queue.getUpcoming()) {
-    if (expected.length >= WINDOW_FWD) break;
-    const id = playId(e);
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    expected.push(id);
-  }
+  // A closure so the NOT_FOUND retry can rebuild it after a dead-id bank (playId is deadIds-aware).
+  const computeExpected = (): string[] => {
+    const seen = new Set<string>();
+    for (let i = 0; i <= np; i++) {
+      const id = items[i]?.id;
+      if (id) seen.add(id);
+    }
+    const expected: string[] = [];
+    for (const e of queue.getUpcoming()) {
+      if (expected.length >= WINDOW_FWD) break;
+      const id = playId(e);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      expected.push(id);
+    }
+    return expected;
+  };
+  const expected = computeExpected();
 
   const mkUp: string[] = items.slice(np + 1).map((it) => it?.id);
   let d = 0;
@@ -559,9 +739,38 @@ export async function reconcileUpcoming(): Promise<void> {
   diag.log("player:reconcile", { d, mk: mkUp.length, expected: expected.length });
   const drop = mkUp.length - d; // MK's divergent suffix is contiguous: [np+1+d .. end]
   if (drop > 0 && typeof m.queue?.splice === "function") m.queue.splice(np + 1 + d, drop); // one splice, one queueItemsDidChange
-  const tail = expected.slice(d);
-  if (tail.length && typeof m.playLater === "function") await m.playLater({ songs: tail });
+  // The matched prefix [0..d) resolved in MK already, so it can't be dead — a retry
+  // rebuild only ever changes the tail.
+  if (typeof m.playLater === "function")
+    await insertWithRetry("reconcile", (ids) => m.playLater({ songs: ids }), () => computeExpected().slice(d));
   checkAlignment("reconcile");
+}
+
+// ── Shuffle (one-shot; the NP card's shuffle button) ─────────────────────────
+
+/**
+ * Shuffle the remaining queue once. Playing: manual picks rise to the top, the auto
+ * tail shuffles (queue.shuffleUpcoming), and MusicKit's live window is reconciled
+ * gaplessly — same primitive as drag-reorder, `current` never moves. Idle: plays the
+ * whole cached library shuffled. Both behaviors have future-setting knobs
+ * (FUTURE-SETTINGS §5); the P6 persistent shuffle MODE is a separate, later feature.
+ */
+export async function shuffleQueue(): Promise<void> {
+  await initPlayer();
+  if (!queue.getCurrent()) {
+    const all = tracks();
+    if (!all.length) {
+      console.warn("[player] shuffle: no cached library to play");
+      return;
+    }
+    const handles = queue.shuffleInPlace(all.map((t) => toHandle(t)));
+    diag.log("player:shuffle", { idle: true, n: handles.length });
+    await playContext(handles, 0);
+    return;
+  }
+  diag.log("player:shuffle", { idle: false, up: queue.getUpcoming().length });
+  queue.shuffleUpcoming();
+  await reconcileUpcoming();
 }
 
 // ── Transport ────────────────────────────────────────────────────────────────

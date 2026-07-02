@@ -6,32 +6,13 @@
 import "./styles/qcard.css";
 import * as queue from "./queue";
 import { onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming, type PlayerState } from "./player";
-import { type Track } from "./library";
-import { trackById, onTracksChange } from "./track-store";
+import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
+import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu } from "./context-menu";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
-
-function resolve(e: queue.QueueEntry): Track | undefined {
-  return trackById(e.catalogId) ?? trackById(e.libraryId);
-}
-
-function artURL(t: Track | undefined, px: number): string | null {
-  if (!t?.artwork?.urlTemplate) return null;
-  const s = String(px);
-  return t.artwork.urlTemplate.replace("{w}", s).replace("{h}", s).replace("{f}", "jpg");
-}
-
-function rowHTML(idx: number, title: string, artist: string, cover: string | null): string {
-  const art = cover
-    ? `<img class="qrow__art" src="${esc(cover)}" alt="" loading="lazy" />`
-    : `<div class="qrow__art qrow__art--empty" aria-hidden="true">♪</div>`;
-  return `<li class="qrow" data-idx="${idx}" role="button" tabindex="0">${art}<div class="qrow__text"><span class="qrow__title">${esc(
-    title,
-  )}</span><span class="qrow__artist">${esc(artist)}</span></div></li>`;
-}
 
 export const queueCard: CardDef = {
   id: "queue",
@@ -65,7 +46,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     // the interim cover-up for the buffer gap (see docs/UX-COVERUPS.md).
     const curTrack = current ? resolve(current) : undefined;
     const loading = !!lastState?.loading;
-    const npTitle = (loading ? curTrack?.title : lastState?.title ?? curTrack?.title) ?? "Nothing playing";
+    const npTitle = (loading ? curTrack?.title : lastState?.title ?? curTrack?.title) ?? "";
     const npArtist = (loading ? curTrack?.artistName : lastState?.artist ?? curTrack?.artistName) ?? "";
     const npCover = loading ? artURL(curTrack, 96) : lastState?.artworkUrl ?? artURL(curTrack, 96);
     const npArt = npCover
@@ -85,7 +66,7 @@ function mountQueue(host: HTMLElement): CardInstance {
         : "";
     const list = rows
       ? `<ol class="qcard__list">${rows}${more}</ol>`
-      : `<p class="qcard__empty">Nothing queued.</p>`;
+      : `<p class="qcard__empty">...</p>`;
 
     body.innerHTML = `
       <div class="qnow${current ? "" : " qnow--idle"}${loading ? " qnow--loading" : ""}">

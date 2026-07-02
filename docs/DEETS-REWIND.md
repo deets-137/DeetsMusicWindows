@@ -29,7 +29,7 @@ play_stats(
 
 | Column | Meaning |
 |---|---|
-| `track_id` | Canonical id, `library_id ?? catalog_id` — **the same rule as the `tracks` PK**, so stats join straight to track metadata. |
+| `track_id` | Canonical id — **the same rule as the `tracks` PK**, so stats join straight to track metadata. **Catalog-first** (`catalog_id ?? library_id`) since the 2026-07-01 unified-store migration ([FAVORITES.md](FAVORITES.md)). |
 | `partial_count` | How many times the song **started** (became now-playing). |
 | `full_count` | How many of those starts **crossed the listened-through threshold** (~90%). |
 | `last_played` | Epoch-ms of the most recent **start** (set on `partial`; not touched by `full`). |
@@ -146,9 +146,13 @@ The store is **cumulative counters + last start**. That deliberately cannot answ
 
 ### 5a. DECIDED — add an event log, and capture minutes from day one
 
-> **Status:** decided (2026-06-30). To be built in a **dedicated future session**; this
-> section is the spec to build against. Nothing here is wired yet — today is still
-> counters-only (§1).
+> **Status: BUILT (2026-07-01)** — the log is live and accruing. `play_events` table
+> in `library.rs` (catalog-first key); start-row append + end-of-play finalize in
+> `stats.ts` (`ms_listened` accumulated from forward progress-tick deltas, so seeks
+> don't count as listening; finalized when the next song starts or on app close;
+> a crash leaves the row with `ms_listened = NULL`, by design). Verify via
+> `__diag.dump()` → `stats:event-start` / `stats:event-end`. Still tracking-only —
+> the read path + card are Phase B.
 
 We will add an append-only **`play_events`** log alongside the counters. **Minutes-listened
 is a headline Rewind stat**, so the log captures *real elapsed listen time* (`ms_listened`)
@@ -173,7 +177,7 @@ leaderboard; the log is the timeline.
 ```sql
 play_events(
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  track_id    TEXT NOT NULL,               -- same canonical id as play_stats (library_id ?? catalog_id)
+  track_id    TEXT NOT NULL,               -- same canonical id as play_stats — catalog-first (catalog_id ?? library_id) per FAVORITES.md; the log ships after that migration
   started_ts  INTEGER NOT NULL,            -- epoch-ms when the play started
   ms_listened INTEGER,                     -- actual elapsed listen time (NULL until finalized)
   completed   INTEGER NOT NULL DEFAULT 0,  -- 1 once it crossed the listened-through threshold
@@ -212,13 +216,13 @@ ships, the deeper the first Rewind.**
 
 ## 6. Build checklist
 
-**Phase A — the event log (a dedicated session of its own; ship this early so data accrues).**
-- [ ] Add the `play_events` table (§5a schema) to `init_db`.
-- [ ] **Start path:** append a row (`started_ts` + `context`, `ms_listened` NULL) where `recordStart` fires today; return the new row `id`.
-- [ ] **End-of-play hook** in [`player.ts`](../src/player.ts): on the outgoing song (next-song-starts / playback-stops), capture its elapsed time **before** the model advances, and finalize the row (`ms_listened`, `completed`).
-- [ ] Thread `context` from `TrackHandle.context` through the recorder (it's dropped today).
-- [ ] Keep `play_stats` counters incrementing in parallel — unchanged.
-- [ ] Verify via `__diag` (e.g. `stats:event-start` / `stats:event-end`) — still tracking-only, no UI.
+**Phase A — the event log. ✅ BUILT 2026-07-01.**
+- [x] `play_events` table (§5a schema) in `init_db` (+ an index on `started_ts`).
+- [x] **Start path:** `record_event_start` appends the row where `recordStart`/`recordRestart` fire; the row id returns to `stats.ts`.
+- [x] **End-of-play:** the outgoing row finalizes when the next song starts (`startEvent` → `finalizeEvent`) or on `beforeunload`; `ms_listened` = accumulated forward tick deltas (seek jumps filtered), captured before the model advances.
+- [x] `context` threaded from `TrackHandle.context` through `record_event_start`.
+- [x] `play_stats` counters unchanged, incrementing in parallel.
+- [x] `__diag` echoes `stats:event-start` / `stats:event-end` — tracking-only, no UI.
 
 **Phase B — the card (a later session).**
 - [ ] Read command(s) (`play_stats_all` / `top_n` / time-bucketed event queries) + register in `lib.rs`.
