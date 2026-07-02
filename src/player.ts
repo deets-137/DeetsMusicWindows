@@ -12,7 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
-import { trackById, tracks } from "./track-store";
+import { trackById, tracks, addTransientTracks } from "./track-store";
 import * as diag from "./diag";
 import * as stats from "./stats";
 
@@ -350,6 +350,19 @@ const toHandle = (t: Track, context = "library"): TrackHandle => ({
   context,
 });
 
+// Play/queue callers hand us full Tracks, but the queue model keeps only id handles —
+// so the Qcard later resolves those ids back to Tracks via the store. Library songs are
+// already in the store; catalog-only songs (playlists, albums, stations not in the
+// user's library) are NOT, and would render as "Unknown" until they became current.
+// Ingest them as transients here, at the one funnel every Track[]-play passes through,
+// so every collection resolves — no per-card ingest needed (Search still does its own
+// alongside materializeTrack; that's idempotent). Library copies still win in trackById
+// (byId is checked before transients), so ingesting library songs here is a harmless no-op.
+const handlesFrom = (list: Track[], context: string): TrackHandle[] => {
+  addTransientTracks(list);
+  return list.map((t) => toHandle(t, context));
+};
+
 // Session denylist of ids MusicKit reported as unresolvable (NOT_FOUND from setQueue —
 // catalog ids gone stale since the library cached them: region pulls, takedowns). A dead
 // catalog id makes the handle fall back to its LIBRARY id (the user's copy usually still
@@ -569,7 +582,7 @@ export async function jumpToUpcoming(index: number): Promise<void> {
 
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
 export function playTracks(tracks: Track[], startIndex: number, context = "library"): Promise<void> {
-  return playContext(tracks.map((t) => toHandle(t, context)), startIndex);
+  return playContext(handlesFrom(tracks, context), startIndex);
 }
 
 // ── Manual queueing (Play Next / Add to Queue) ───────────────────────────────
@@ -613,10 +626,10 @@ export const enqueueLater = (handles: TrackHandle[]): Promise<void> => enqueue(h
 
 /** Play-Next a list of library Tracks (e.g. a song, or an album in track order). */
 export const queueTracksNext = (tracks: Track[], context = "library"): Promise<void> =>
-  enqueueNext(tracks.map((t) => toHandle(t, context)));
+  enqueueNext(handlesFrom(tracks, context));
 /** Add-to-Queue a list of library Tracks. */
 export const queueTracksLater = (tracks: Track[], context = "library"): Promise<void> =>
-  enqueueLater(tracks.map((t) => toHandle(t, context)));
+  enqueueLater(handlesFrom(tracks, context));
 
 // ── Queue editing (Up Next context menu: Remove / Move to Top / Move to Bottom) ──
 //
