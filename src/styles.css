@@ -463,6 +463,10 @@ body {
 }
 .panel__action:hover { filter: brightness(0.97); }
 .panel__action[disabled] { opacity: 0.6; cursor: default; }
+.panel__action[hidden] { display: none; } /* class sets display:grid, which would beat [hidden] */
+/* Space between clustered header actions (Playlists: + then Sync) so the bordered
+   boxes don't touch. Adjacent-sibling + head scope → only fires when two co-exist. */
+.panel__head .panel__action + .panel__action { margin-left: var(--space-1); }
 .panel__action svg {
   width: var(--icon-sm);
   height: var(--icon-sm);
@@ -836,6 +840,22 @@ body {
   font-size: var(--fs-subtext);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* Source sigil (e.g. Apple Music) — the generic trailing slot musicCell exposes.
+   Color is a theme role, size a token; placement is right-aligned on the sub line
+   (tiles) or the row's trailing edge (lines). */
+.lib-src-badge {
+  flex: 0 0 auto;
+  display: block;                     /* no inline baseline gap under the glyph */
+  width: var(--icon-sm); height: var(--icon-sm);
+  fill: var(--subtext);
+}
+/* line-height:1 collapses the count's tall line box to its glyph, so center-align
+   lands the sigil on the text's optical center instead of dipping below it. */
+.lib-tile__subrow { display: flex; align-items: center; gap: var(--space-1); min-width: 0; line-height: 1; }
+.lib-tile__subrow .lib-tile__sub { flex: 1 1 auto; }   /* count takes the space, sigil sits right */
+.lib-tile__subrow .lib-src-badge { margin-top: -0.08em; } /* optical lift: glyph mass reads a hair low */
+.lib-row > .lib-src-badge { margin-left: auto; }        /* trailing accessory on list rows */
 
 /* empty state */
 .lib-empty { display: grid; place-items: center; padding: var(--space-4); }

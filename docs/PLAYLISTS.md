@@ -14,7 +14,16 @@
 > provider, `apple_playlists_sync` + cache-first `apple_playlist_tracks`), and the real
 > card (`src/playlists-card.ts` on the collection-card engine: overview → detail,
 > click-to-play with `playlist:{id}` origin, Play Now/Next/Queue menus, once-per-session
-> auto-sync + explicit ⟳). **Deferred to the creation-UX session:** New Playlist,
+> auto-sync + explicit ⟳). Also (2026-07-02): **eager overview count backfill** — the flat
+> mirror list carries no track count (Apple rejects `extend`/`include`/`fields`, HTTP 400,
+> probed), so `apple_playlist_counts` fills each uncounted tile with one tiny `tracks?limit=1`
+> call (`meta.total`), persisted once; opt out via `deets.playlists.eagerCounts=off`
+> ([FUTURE-SETTINGS §14](FUTURE-SETTINGS.md)). Also (2026-07-02): the **New Playlist (+)
+> button is placed as a STUB** — styled like Sync (`.panel__action`), sitting directly left
+> of Sync (both actions cluster right so the title stays anchored left like other cards),
+> visible only at the overview root (hidden in detail); the click is a no-op breadcrumb
+> pending the create-flow decision (§5.4). **Deferred to the
+> creation-UX session:** New Playlist (the create flow behind the stub button),
 > Add to Playlist ▸, rename/reorder/remove, Import-to-edit, source badges, mosaic
 > covers, export (§6) — the §10 open questions stand. This doc still fixes *what* and
 > *why* for those parts.
@@ -91,7 +100,10 @@ one cell, one density system, no per-card drift.
 - **Subtitle:** "N songs" + the **source badge** on mirrored rows.
 - **Sorts:** A–Z · Recently Updated · Recently Added. **Search:** by name.
 - **Header actions:** `＋ New Playlist` and `⟳ Sync` (refresh the Apple mirror), mirroring
-  Library's refresh button.
+  Library's refresh button. **As built (2026-07-02):** Sync is live; the `＋` button is a
+  **stub** — same `.panel__action` styling, directly left of Sync (title stays anchored
+  left), root-only, no-op click — awaiting the create-flow decision below (A: create-then-
+  rename · B: inline name field · C: mini-dialog).
 - **Tile → drills in** (`open`, like albums — you want to *see* it first). Play is via
   right-click / detail, never a bare tile click.
 - **Right-click menu**, per class: local → Play Now / Next / Queue · Rename · Duplicate ·

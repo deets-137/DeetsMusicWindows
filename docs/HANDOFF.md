@@ -218,9 +218,14 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   **Now Playing** menu (Go to Album/Artist, Add to Library), and touch/grip-handle dragging.
   Menu action sets + drag mode are slated to be user-customizable ([FUTURE-SETTINGS.md](FUTURE-SETTINGS.md)).
 - **Playlists — creation/editing UX** — the ⚡ card built 2026-07-02 is **view/play-only**
-  (Apple mirror + the local store underneath). Still deferred to the creation-UX session:
-  New Playlist, `Add to Playlist ▸`, rename/reorder/remove, Import-to-edit, source badges,
-  mosaic covers, export. The Rust local CRUD commands already exist (no UI callers).
+  (Apple mirror + the local store underneath). Landed since: eager count backfill
+  ([FUTURE-SETTINGS §14](FUTURE-SETTINGS.md)), the **Apple source sigil** on AM playlists
+  (`.lib-src-badge` via the shared `musicCell` badge slot), and the **New Playlist (+) button
+  as a STUB** (styled like Sync, directly left of it, root-only, no-op click — the create flow
+  A/B/C is the pending decision, [PLAYLISTS.md §5.4](PLAYLISTS.md)). Still deferred to the creation-UX
+  session: the create flow itself, `Add to Playlist ▸`, rename/reorder/remove, Import-to-edit,
+  mosaic covers, export. The Rust local CRUD commands already exist (`playlist_create`/
+  `rename`/`delete`/`add_tracks`/`remove_track`/`reorder` in `playlists.rs`, no UI callers yet).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
   (no catalog). Artist tiles show a round album-cover thumb / initials until a photo is
   fetched on demand (when you open the artist).
@@ -258,8 +263,9 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
    shape items 4–7 — front-load them instead of probing at each item.
 1. ✅ **Surface seam + sizing/switching — built (2026-07-01).** See
    [SURFACES-AND-CARDS §Build order #3](SURFACES-AND-CARDS.md) (now feature documentation) +
-   the State-of-play entry above. Station probe (`__probeStation`) shipped alongside it as a
-   dev-only console function in `player.ts` — **verdict: FAILED (HTTP 400) on
+   the State-of-play entry above. Station probe (`__probeStation`, since **removed**
+   2026-07-02 after serving its purpose — restore from git if the variant re-probe wants a
+   base) — **verdict: FAILED (HTTP 400) on
    `setQueue({ station })`, 2026-07-01.** Consequences: Search's Stations category ships
    non-interactive (or hidden) for now; STATIONS §2's Apple-station half needs a descriptor-variant
    probe pass (`url` / `playParams` forms) before building. **Own stations are unaffected** —

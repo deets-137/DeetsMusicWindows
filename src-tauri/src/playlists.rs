@@ -222,6 +222,101 @@ pub async fn apple_playlists_sync(
     Ok(all.len() as u32)
 }
 
+/// Backfill the "N songs" overview count for Apple mirror playlists that don't have
+/// one yet (PLAYLISTS.md). The flat list carries no count and Apple rejects the
+/// extend/include/fields tricks (probed 2026-07-02), so each uncounted playlist costs
+/// ONE tiny `tracks?limit=1` call — it reads `meta.total`, not the contents. The
+/// learned count is persisted onto the playlist row, so a playlist is counted at most
+/// once ever, then served from cache. `buffer_unordered(5)` keeps the burst polite
+/// (same 5-wide cap as `library_sync`). Returns how many were filled.
+///
+/// The front-end gates this on the eager-counts setting (FUTURE-SETTINGS §14): eager
+/// backfill (this) vs. leaving "Playlist" on the tile until the user opens it.
+#[tauri::command]
+pub async fn apple_playlist_counts(
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<u32, String> {
+    use futures::StreamExt;
+
+    // Which mirror rows still lack a count? Lock only for the read.
+    let missing: Vec<String> = {
+        let conn = db.0.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT json FROM apple_playlists").map_err(err)?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
+        let mut ids = Vec::new();
+        for row in rows {
+            let p: Playlist = serde_json::from_str(&row.map_err(err)?).map_err(err)?;
+            if p.track_count.is_none() {
+                if let Some(id) = p.library_id {
+                    ids.push(id);
+                }
+            }
+        }
+        ids
+    };
+    if missing.is_empty() {
+        return Ok(0);
+    }
+
+    let dev = apple::developer_token()?;
+    let user = apple_state
+        .user_token
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("not connected to Apple Music")?;
+    let provider = AppleProvider::new(dev, user);
+
+    // One tiny tracks?limit=1 per playlist → meta.total (an empty playlist 404s → 0).
+    let mut stream = futures::stream::iter(missing.into_iter().map(|id| {
+        let p = provider.clone();
+        async move {
+            let count = p.playlist_tracks_page(&id, 0, 1).await.map(|pg| pg.total);
+            (id, count)
+        }
+    }))
+    .buffer_unordered(5);
+
+    let mut learned: Vec<(String, u32)> = Vec::new();
+    while let Some((id, res)) = stream.next().await {
+        match res {
+            Ok(total) => learned.push((id, total)),
+            Err(e) => eprintln!("[playlists] count backfill {id}: {e}"),
+        }
+    }
+    drop(stream);
+
+    // Persist each learned count back onto its playlist json, one transaction.
+    let mut conn = db.0.lock().unwrap();
+    let tx = conn.transaction().map_err(err)?;
+    let mut filled = 0u32;
+    for (id, total) in &learned {
+        let json: Option<String> = tx
+            .query_row(
+                "SELECT json FROM apple_playlists WHERE playlist_id = ?1",
+                [id.as_str()],
+                |r| r.get(0),
+            )
+            .ok();
+        let Some(json) = json else { continue };
+        let Ok(mut p) = serde_json::from_str::<Playlist>(&json) else { continue };
+        if p.track_count.is_some() {
+            continue; // a concurrent open already learned it — don't clobber
+        }
+        p.track_count = Some(*total);
+        let updated = serde_json::to_string(&p).map_err(err)?;
+        tx.execute(
+            "UPDATE apple_playlists SET json = ?1 WHERE playlist_id = ?2",
+            rusqlite::params![updated, id],
+        )
+        .map_err(err)?;
+        filled += 1;
+    }
+    tx.commit().map_err(err)?;
+    Ok(filled)
+}
+
 /// A mirror playlist's tracks, authored order — cache-first (zero Apple calls after
 /// the first open). On a fetch, the learned count is written back onto the playlist
 /// row so the overview can show "N songs". An empty cached playlist refetches each

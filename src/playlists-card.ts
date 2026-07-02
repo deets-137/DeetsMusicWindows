@@ -8,7 +8,7 @@
 // Contents are cache-first (zero Apple calls to re-open); the header ⟳ is the
 // explicit mirror re-sync that also drops content caches.
 
-import { playlistsCached, applePlaylistsSync, playlistTracks } from "./playlists";
+import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks } from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
@@ -19,6 +19,16 @@ import type { CardDef } from "./cards";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 
+// Source sigil for playlists that live on Apple Music (`source: "apple"`), shown
+// right-aligned on the count row. Filled by a theme role + sized by token in CSS
+// (`.lib-src-badge`); the shape is the Apple mark. Local playlists carry no badge.
+const APPLE_SIGIL =
+  `<svg class="lib-src-badge" viewBox="0 0 24 24" role="img" aria-label="Apple Music">` +
+  `<path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35` +
+  `C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8` +
+  `-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25` +
+  `.29 2.58-2.34 4.5-3.74 4.25z"/></svg>`;
+
 // Auto-sync the mirror once per session — a slot remount must not re-hit Apple.
 let sessionSynced = false;
 
@@ -28,6 +38,9 @@ const HEAD = `
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
     </button>
     <h2 class="panel__title">Playlists</h2>
+    <button class="panel__action" id="playlists-add" type="button" aria-label="New playlist">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg>
+    </button>
     <button class="panel__action" id="playlists-refresh" type="button" aria-label="Sync playlists">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
@@ -44,6 +57,7 @@ export const playlistsCard: CardDef = {
   mount(host) {
     host.innerHTML = HEAD;
     const refreshBtn = host.querySelector<HTMLElement>("#playlists-refresh");
+    const addBtn = host.querySelector<HTMLElement>("#playlists-add");
 
     let lists: Playlist[] = [];
     const trackCache = new Map<string, Track[]>(); // pid → authored-order tracks
@@ -148,7 +162,10 @@ export const playlistsCard: CardDef = {
           name: (p) => p.name,
           match: (p, q) =>
             p.name.toLowerCase().includes(q) || (p.curatorName?.toLowerCase().includes(q) ?? false),
-          render: (p, density, idx) => musicCell(density, idx, p.artwork, p.name, subOf(p)),
+          render: (p, density, idx) =>
+            musicCell(density, idx, p.artwork, p.name, subOf(p), {
+              badge: p.source === "apple" ? APPLE_SIGIL : "",
+            }),
           open: detail,
           menu: listMenu,
         } satisfies Grouping<Playlist>,
@@ -165,6 +182,7 @@ export const playlistsCard: CardDef = {
       rootContext,
       onHeader: (h) => {
         lastHeader = h;
+        if (addBtn) addBtn.hidden = !h.atRoot; // New Playlist is a root-only action (create from the overview)
         headerSubs.forEach((cb) => cb(h));
       },
     });
@@ -178,6 +196,20 @@ export const playlistsCard: CardDef = {
         })
         .catch((e) => console.error("[playlists] load", e));
 
+    // Eager count backfill: the flat mirror list carries no track count, so tiles
+    // read "Playlist" until a count is learned. Fill the missing ones (one tiny
+    // Apple call each, persisted, once ever) and re-render when any land. Gated so
+    // the user can opt back to "Playlist-until-opened" (FUTURE-SETTINGS §14).
+    const EAGER_COUNTS = localStorage.getItem("deets.playlists.eagerCounts") !== "off";
+    const backfillCounts = () => {
+      if (!EAGER_COUNTS) return;
+      applePlaylistCounts()
+        .then((filled) => {
+          if (filled > 0) void load();
+        })
+        .catch((e) => console.error("[playlists] counts", e));
+    };
+
     const doSync = (fresh: boolean) => {
       refreshBtn?.classList.add("is-busy");
       applePlaylistsSync(fresh)
@@ -186,16 +218,26 @@ export const playlistsCard: CardDef = {
           if (fresh) trackCache.clear(); // contents refetch on next open
           return load();
         })
+        .then(backfillCounts) // new playlists from the sync get their counts too
         .catch((e) => console.error("[playlists] sync", e))
         .finally(() => refreshBtn?.classList.remove("is-busy"));
     };
 
-    void load(); // cached list renders instantly
+    void load().then(backfillCounts); // cached list renders instantly; counts fill in
     if (!sessionSynced) {
       sessionSynced = true;
       doSync(false);
     }
     refreshBtn?.addEventListener("click", () => doSync(true));
+
+    // STUB: the New Playlist (+) button. Placed + styled + root-only-visible, but the
+    // create flow (inline name field vs. dialog, drill-or-not) is still being decided
+    // — see PLAYLISTS.md §5.4. The Rust local CRUD (playlist_create/rename/… in
+    // playlists.rs) is already built; wiring it is the creation-UX slice. For now the
+    // click is a no-op breadcrumb so the button reads as intentional, not broken.
+    addBtn?.addEventListener("click", () => {
+      console.info("[playlists] New Playlist — stub; creation UX pending (PLAYLISTS.md §5.4)");
+    });
 
     return {
       destroy() {

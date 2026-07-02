@@ -74,6 +74,7 @@ pub fn run() {
             enrich::album_palette,
             playlists::playlists_cached,
             playlists::apple_playlists_sync,
+            playlists::apple_playlist_counts,
             playlists::apple_playlist_tracks,
             playlists::playlist_create,
             playlists::playlist_rename,

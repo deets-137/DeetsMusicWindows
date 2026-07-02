@@ -24,6 +24,7 @@
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
   §13 CyberStorm storm dials (skin-specific)
+- **Playlists** — §14 Eager playlist-count backfill
 
 ---
 
@@ -395,3 +396,37 @@ apply only while CyberStorm is active.
 **Wiring sketch.** Like §12: a single preset (`deets.cyberstorm.storm` =
 `"distant" | "overhead"`, default `"distant"`) as a `data-` attr swapping cycle/glow/
 translucency values in one block — not per-knob controls.
+
+---
+
+## 14. Eager playlist-count backfill
+
+**Tag: behavior, default ON.** The Playlists overview shows "N songs" under each tile —
+but Apple's library-playlists *list* endpoint carries **no track count** (and rejects the
+`extend` / `include=tracks` / `fields[…]` tricks with HTTP 400 — probed 2026-07-02). A
+count is only knowable by asking a playlist's tracks relationship. So on overview open,
+the card **eagerly backfills** the missing counts: one tiny `tracks?limit=1` call per
+uncounted playlist (reads `meta.total`, not the contents), persisted onto the row — a
+playlist is counted **once ever**, then served from cache with zero Apple calls. Fills in
+a second or two after the card opens; opening a playlist still learns its count the
+accurate (song-only) way regardless.
+
+**The knob:** `deets.playlists.eagerCounts` (localStorage, default eager) — set to `"off"`
+to skip the backfill and leave uncounted tiles reading **"Playlist"** until the user opens
+them (the pre-2026-07-02 behavior). A privacy/stewardship-minded user who doesn't want the
+one-time N-call burst can opt out; everyone else gets counts for free.
+
+**Cost:** ~one lightweight call per *uncounted* playlist, once (N = playlists never opened;
+for a ~50-playlist library, ~50 tiny calls the first time, `buffer_unordered(5)` polite),
+then never again. Not a per-session cost.
+
+**Caveat (known, minor):** `meta.total` counts **all** playlist items including music
+videos, while the drill-in count is **songs-only** (we skip videos). A playlist with videos
+can read e.g. "100 songs" on the overview and "98 songs" once opened. Rare in library
+playlists and small; filtering it out would defeat the cheap probe (it needs the full
+track list), so we accept the drift. If it ever matters, the fix is a "songs only" vs
+"all items" label choice, not more fetching.
+
+**Wiring:** the eager path is `apple_playlist_counts` (Rust, `src-tauri/src/playlists.rs`);
+the front-end gate is the one `localStorage` read in `src/playlists-card.ts`. Graduating it
+to a real toggle is a checkbox in the (future) Playlists settings that writes the key.

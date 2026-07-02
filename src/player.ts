@@ -309,55 +309,6 @@ function queueDump() {
   };
 }
 
-/**
- * DEV-ONLY THROWAWAY — the STATIONS.md §2 verify-first probe. Run `__probeStation()`
- * in the devtools console. Proves (or kills) MusicKit-JS station playback in WebView2:
- * searches the catalog for a station, tries `setQueue({ station })`, and reports what
- * actually plays. Delete once STATIONS lands (the real `playStation` replaces it).
- */
-async function probeStation(term = "pop"): Promise<void> {
-  const step = (name: string, data: unknown) => {
-    diag.log("probe:station", { step: name, data });
-    console.log(`[probe:station] ${name}`, data);
-  };
-  try {
-    const m = await initPlayer();
-    step("configured", { authorized: !!m.isAuthorized });
-
-    // 1. Find a real station id via catalog search ({{storefront}} templating is v3-native).
-    const res = await m.api.music("/v1/catalog/{{storefront}}/search", {
-      term,
-      types: "stations",
-      limit: 5,
-    });
-    const stations: any[] = res?.data?.results?.stations?.data ?? [];
-    step("search", stations.map((s) => ({ id: s.id, name: s.attributes?.name, isLive: s.attributes?.isLive })));
-    if (!stations.length) {
-      step("verdict", "NO STATIONS RETURNED — search failed, probe inconclusive");
-      return;
-    }
-    const target = stations.find((s) => !s.attributes?.isLive) ?? stations[0];
-
-    // 2. The load-bearing call: does MusicKit JS accept a station queue descriptor?
-    await m.setQueue({ station: target.id });
-    step("setQueue", { ok: true, station: target.id, name: target.attributes?.name });
-    await m.play();
-
-    // 3. Give it a moment, then read back what's actually playing.
-    setTimeout(() => {
-      const item = m.nowPlayingItem;
-      step("verdict", item
-        ? { PROVEN: true, playing: item.title ?? item.attributes?.name, state: m.playbackState }
-        : { PROVEN: false, note: "setQueue accepted but nothing is playing — check playbackState/errors", state: m.playbackState });
-    }, 4000);
-  } catch (e) {
-    step("verdict", { PROVEN: false, error: e instanceof Error ? `${e.name}: ${e.message}` : String(e) });
-  }
-}
-
-// Exposed at module scope (probeStation boots the player itself), so the probe is
-// runnable from the console on a fresh launch with nothing playing yet.
-(window as any).__probeStation = probeStation;
 
 /** Walk the queue model to match MusicKit's live position (natural advance + skips). */
 function syncModelToMusicKit(): void {

@@ -20,6 +20,17 @@ export function applePlaylistsSync(fresh = false): Promise<number> {
   return invoke<number>("apple_playlists_sync", { fresh });
 }
 
+/**
+ * Backfill missing "N songs" counts for Apple mirror playlists. The flat list carries
+ * no count, so each uncounted playlist costs ONE tiny `tracks?limit=1` call (reads
+ * `meta.total`), persisted onto the row — a playlist is counted once ever, then cached.
+ * Returns how many were filled (0 if none were missing). Gated by the eager-counts
+ * setting (FUTURE-SETTINGS §14); the alternative is showing "Playlist" until opened.
+ */
+export function applePlaylistCounts(): Promise<number> {
+  return invoke<number>("apple_playlist_counts");
+}
+
 /** The local-vs-mirror id seam: local playlists ride a synthetic `local:{rowid}`. */
 const localId = (p: Playlist): number | null => {
   const m = /^local:(\d+)$/.exec(p.libraryId ?? "");
