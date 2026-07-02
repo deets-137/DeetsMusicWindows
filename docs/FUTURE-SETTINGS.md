@@ -22,6 +22,8 @@
 - **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
 - **Stats** — §7 Listened-through threshold
 - **Window / surface** — §8 Surface switching
+- **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
+  §13 CyberStorm storm dials (skin-specific)
 
 ---
 
@@ -302,3 +304,94 @@ free. Note both slots remount on a flip, so a drilled card in *either* slot retu
 read in the `onCardRequest` handler in `layout.ts`: for `"noop"`, return early when the
 requested card is already in `layout.left`/`layout.right`. If (b) grows the acknowledgment
 pulse, that's a skin motion token, not a color.
+
+---
+
+## 11. Title underline behavior (always / hover / off)
+
+**Behavior.** Vanilla draws an **editorial underline** under the app title and the card
+titles (`--title-underline` + `-w` / `-offset` skin tokens; base is a no-op, Vanilla opts
+in — the ink is `currentColor` = `--title`, so the theme owns the color). When it should
+*show* is a taste knob: constant rule, hover-only affordance, or off.
+
+**Options.**
+- **(a) Always** — a permanent typographic rule; part of the skin's identity. *(current default)*
+- **(b) On hover** — the underline becomes the hover affordance (could then drop the
+  `--surface-hover` wash on `.app-title` for an even quieter titlebar).
+- **(c) Off** — suppress it even where the skin opts in.
+
+**Current default (hardcoded):** **(a) always**, and only under Vanilla.
+
+**Wiring sketch.** `localStorage` `deets.titleUnderline` = `"always" | "hover" | "off"`
+(default `"always"`), applied as `data-underline` on `<html>` next to `data-theme`/`data-skin`.
+CSS gates the *line* only — `[data-underline="off"]` zeroes `text-decoration-line`;
+`[data-underline="hover"]` zeroes it at rest and restores `var(--title-underline)` on
+`:hover`/`:focus-visible` of `.app-title` / `.panel__title.is-pickable` (a static panel title
+has no hover concept — hover mode simply hides its rule). The skin tokens stay the single
+source of *shape*; the setting only picks *when* they apply, so every skin that later opts
+in gets the toggle for free.
+
+---
+
+## 12. Glass pop intensity — the tunable numbers
+
+**Tag: skin-specific (Glass).** Unlike §1–11 (app behaviors), these are *aesthetic
+intensity knobs of one skin*, hardcoded in the `[data-skin="glass"]` block. If a
+"skin options" settings surface ever exists, these are its first tenants; they'd apply
+only while Glass is active.
+
+**The knobs (2026-07-02 "pop" batch values):**
+- **Frost saturation** — `--panel-backdrop: blur(14px) saturate(1.5)` (was 1.3).
+- **Canvas aurora heat** — the three blob mixes, now `50/44/38%` (was `38/34/30%`).
+  "Polite" ≈ the old values; "vivid" ≈ current.
+- **Aurora drift** — `--canvas-anim: aurora-drift 60s ease-in-out infinite`
+  (speed/off are the obvious toggles; `prefers-reduced-motion` already forces off).
+- **Album aurora** — `--album-aurora-reach: 3.5`, `--album-spin-dur: 30s`
+  (base 3 / 48s; strength 52% unchanged).
+- **Menu frost** — `--menu-surface` at 65% alpha + `--menu-backdrop: blur(16px)
+  saturate(1.4)`. Menus are deliberately milkier than panels (55%) for text legibility.
+
+**Wiring sketch.** No per-knob toggles — if exposed, a single **intensity preset**
+(`deets.glass.pop` = `"calm" | "vivid"`, default `"vivid"`) applied as a `data-` attr
+that swaps the token values in one `[data-skin="glass"][data-glass-pop="calm"]` block.
+Per-knob granularity is a rabbit hole; two curated presets is the honest setting.
+
+---
+
+## 13. CyberStorm storm dials — the tunable numbers
+
+**Tag: skin-specific (CyberStorm).** Same species as §12: aesthetic intensity knobs of
+one skin, hardcoded in the `[data-skin="cyberstorm"]` block (+ the `storm-strike`
+keyframes and `src/storm.ts`). Tenants of the same future "skin options" surface;
+apply only while CyberStorm is active.
+
+**The knobs (initial 2026-07-02 values):**
+- **Strike cycles** — `--storm-cycle-1: 8s` / `--storm-cycle-2: 12s`. The draw phase is
+  60% of the cycle (fixed in the `storm-strike` keyframes), so the bolts crawl down in
+  ~4.8s / ~7.2s — the agreed "5-second" feel. Faster storm = shorter cycles; the
+  keyframe *percentages* (draw span, flicker, dark window) are a deeper cut of the
+  same dial.
+- **Glow radius/heat** — `--storm-glow: drop-shadow(0 0 6px color-mix(in srgb,
+  var(--title) 60%, transparent))`. 6px/60% is "present but not neon".
+- **Stroke width** — `--storm-w: 2px` (non-scaling, so it's a true px).
+- **Panel translucency** — `--panel: color-mix(in srgb, var(--canvas) 86%,
+  transparent)`. The 14% window is what lets a bolt glow *through* a card; 100%
+  (opaque) confines the storm to the gutters, lower mixes trade text contrast for
+  drama.
+- **Bolt count** — two `<path>`s in the markup today. More bolts = more markup + one
+  `nth-child` rule each, not a token; noted so "make it a real storm" has a home.
+- **Bolt shape / branching** — each `--storm-path-N` is a **forked channel**: a main trunk
+  plus branch detours drawn as out-and-back **retraces**, kept a single continuous subpath
+  so the top-down draw-on stays one clean wipe (separate `M` subpaths fragment the reveal —
+  `stroke-dasharray` restarts per subpath). Fork count, branch length, and jag irregularity
+  are pure geometry edits to the two path tokens; forks inherit the trunk's stroke width
+  (**tapered branches** would need separate `<path>` children with their own `--storm-w` +
+  staggered `animation-delay` — the one shape change that isn't a token-only edit).
+- **Position scatter** — `storm.ts` rolls 8..92 viewBox units + a coin-flip mirror.
+- **Two-tone option (decided against for now)** — both bolts strike in `--title`;
+  the runner-up was bolt 2 in an accent role (`--pause`). A one-line change in the
+  `.storm__bolt:nth-child(2)` ink if it ever becomes a preference.
+
+**Wiring sketch.** Like §12: a single preset (`deets.cyberstorm.storm` =
+`"distant" | "overhead"`, default `"distant"`) as a `data-` attr swapping cycle/glow/
+translucency values in one block — not per-knob controls.

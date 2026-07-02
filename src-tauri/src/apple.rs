@@ -585,6 +585,42 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         date_added: None,
         last_modified: a["lastModifiedDate"].as_str().map(String::from),
         track_count: None, // not on the search result; the detail fetch carries tracks
+        source: None,      // a catalog search hit is neither local nor a library mirror
+        kind: None,
+    }
+}
+
+/// Normalize an Apple `library-playlists` resource → `Playlist` (the mirror rows —
+/// PLAYLISTS.md §2). Apple sends every kind with the same shape; the kind is inferred:
+/// `canEdit` → user-authored; else a `globalId` → catalog list added to the library;
+/// else a smart playlist (rule-based — the API only ever returns materialized tracks).
+fn playlist_from_library(v: &serde_json::Value) -> Playlist {
+    let a = &v["attributes"];
+    let pp = &a["playParams"];
+    let can_edit = a["canEdit"].as_bool().unwrap_or(false);
+    let global_id = pp["globalId"].as_str().map(String::from);
+    let kind = if can_edit {
+        "user"
+    } else if global_id.is_some() {
+        "catalog"
+    } else {
+        "smart"
+    };
+    Playlist {
+        library_id: v["id"].as_str().map(String::from),
+        catalog_id: pp["catalogId"].as_str().map(String::from),
+        global_id,
+        name: a["name"].as_str().unwrap_or_default().to_string(),
+        description: a["description"]["standard"].as_str().map(String::from),
+        curator_name: a["curatorName"].as_str().map(String::from),
+        artwork: artwork_from(&a["artwork"]),
+        can_edit,
+        is_public: a["isPublic"].as_bool().unwrap_or(false),
+        date_added: a["dateAdded"].as_str().map(String::from),
+        last_modified: a["lastModifiedDate"].as_str().map(String::from),
+        track_count: a["trackCount"].as_u64().map(|n| n as u32), // usually absent on the flat list
+        source: Some("apple".into()),
+        kind: Some(kind.into()),
     }
 }
 
@@ -610,6 +646,68 @@ impl MusicProvider for AppleProvider {
                         t.added_rank = Some(offset + i as u32);
                         t
                     })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let total = body["meta"]["total"].as_u64().unwrap_or(items.len() as u64) as u32;
+        let next_offset = body["next"].as_str().map(|_| offset + limit);
+        Ok(Page {
+            items,
+            total,
+            next_offset,
+        })
+    }
+
+    async fn playlists_page(&self, offset: u32, limit: u32) -> Result<Page<Playlist>, String> {
+        let url = format!(
+            "https://api.music.apple.com/v1/me/library/playlists?limit={limit}&offset={offset}"
+        );
+        let (status, body) = api_get(&self.client, &self.dev, &self.user, &url).await?;
+        if status != 200 {
+            return Err(format!("library/playlists HTTP {status}"));
+        }
+        let items: Vec<Playlist> = body["data"]
+            .as_array()
+            .map(|arr| arr.iter().map(playlist_from_library).collect())
+            .unwrap_or_default();
+        let total = body["meta"]["total"].as_u64().unwrap_or(items.len() as u64) as u32;
+        let next_offset = body["next"].as_str().map(|_| offset + limit);
+        Ok(Page {
+            items,
+            total,
+            next_offset,
+        })
+    }
+
+    async fn playlist_tracks_page(
+        &self,
+        id: &str,
+        offset: u32,
+        limit: u32,
+    ) -> Result<Page<Track>, String> {
+        let url = format!(
+            "https://api.music.apple.com/v1/me/library/playlists/{id}/tracks?limit={limit}&offset={offset}"
+        );
+        let (status, body) = api_get(&self.client, &self.dev, &self.user, &url).await?;
+        // Apple quirk: an EMPTY playlist's tracks endpoint 404s instead of returning [].
+        if status == 404 {
+            return Ok(Page {
+                items: vec![],
+                total: 0,
+                next_offset: None,
+            });
+        }
+        if status != 200 {
+            return Err(format!("library/playlists/{id}/tracks HTTP {status}"));
+        }
+        // The relationship resolves library-songs AND library-music-videos; Track is
+        // song-only, so videos are skipped (PLAYLISTS.md — skipped-with-count later).
+        let items: Vec<Track> = body["data"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter(|v| v["type"].as_str() == Some("library-songs"))
+                    .map(track_from_library_song)
                     .collect()
             })
             .unwrap_or_default();

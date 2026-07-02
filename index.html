@@ -30,9 +30,11 @@
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout" role="menu" aria-label="Theme">
               <button class="flyout__item" type="button" role="menuitemradio" data-theme="fairy"     data-theme-choice="fairy">Fairy</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="glade"     data-theme-choice="glade">Glade</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-theme="sepia"     data-theme-choice="sepia">Sepia</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-theme="moonlight" data-theme-choice="moonlight">Moonlight</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-theme="hornet"    data-theme-choice="hornet">Hornet</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="viper"     data-theme-choice="viper">Viper</button>
             </div>
           </div>
 
@@ -44,6 +46,7 @@
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="desk"    data-skin-choice="desk">Desk</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"   data-skin-choice="ocean">Ocean</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"   data-skin-choice="glass">Glass</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="cyberstorm" data-skin-choice="cyberstorm">CyberStorm</button>
             </div>
           </div>
 
@@ -126,6 +129,16 @@
     </header>
 
     <main class="app-body">
+      <!-- Storm layer — decorative strokes drawn BEHIND the cards; inert
+           (display:none) unless a skin opts in via --storm-display (CyberStorm).
+           The paths carry no `d` — geometry is a skin token applied via CSS
+           d: path(...); pathLength="1" normalizes every path so the draw-down
+           is a plain dashoffset 1→0. Position is runtime (src/storm.ts). -->
+      <svg class="storm" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <path class="storm__bolt" pathLength="1"></path>
+        <path class="storm__bolt" pathLength="1"></path>
+      </svg>
+
       <!-- Each .panel is a mount HOST. The layout manager (src/layout.ts) mounts a card into
            each slot from the persisted assignment; the two content slots are swappable via
            their title picker. Now Playing is anchored to the top slot. -->

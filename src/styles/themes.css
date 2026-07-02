@@ -51,6 +51,30 @@
   --scrollbar-hover: rgba(67, 48, 107, 0.44);
 }
 
+[data-theme="glade"] {
+  color-scheme: light;
+  --canvas:  var(--paint-dewy-chartreuse);
+  --go:      var(--paint-fern);
+  --stop:    var(--paint-foxglove);
+  --pause:   var(--paint-lemon-chrome);
+  --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the light fills */
+  --title:   var(--paint-forest);
+  --text:    var(--paint-moss);
+  --subtext: var(--paint-sage-grey);
+
+  /* surfaces — floating panels (menus, popovers) above the canvas */
+  --surface:       var(--paint-chartreuse-white);
+  --surface-hover: var(--paint-chartreuse-tint);
+  --border:        rgba(30, 77, 43, 0.16);   /* forest @ low alpha */
+
+  /* panel edge — bento grouper hairline (the fill is a skin decision now) */
+  --panel-border: rgba(30, 77, 43, 0.30);
+
+  /* scrollbar thumb (our own, replacing the OS bar) */
+  --scrollbar:       rgba(30, 77, 43, 0.26);
+  --scrollbar-hover: rgba(30, 77, 43, 0.44);
+}
+
 [data-theme="sepia"] {
   color-scheme: light;
   --canvas:  var(--paint-parchment);
@@ -121,4 +145,28 @@
   /* scrollbar thumb (our own, replacing the OS bar) */
   --scrollbar:       rgba(255, 212, 0, 0.22);
   --scrollbar-hover: rgba(255, 212, 0, 0.40);
+}
+
+[data-theme="viper"] {
+  color-scheme: dark;
+  --canvas:  var(--paint-pitch);
+  --go:      var(--paint-siren);    /* monochrome red family — no green/yellow: */
+  --stop:    var(--paint-ember);    /* siren / blood / ember */
+  --pause:   var(--paint-blood);
+  --traffic-glyph: rgba(0, 0, 0, 0.70);  /* crisper stroke on hot red fills */
+  --title:   var(--paint-siren);
+  --text:    var(--paint-ash-white);
+  --subtext: var(--paint-ember);
+
+  /* surfaces — floating panels (menus, popovers) above the canvas */
+  --surface:       var(--paint-onyx);
+  --surface-hover: var(--paint-onyx-tint);
+  --border:        rgba(255, 43, 43, 0.14);  /* siren @ low alpha — red hairline */
+
+  /* panel edge — bento grouper hairline (the fill is a skin decision now) */
+  --panel-border: rgba(255, 43, 43, 0.30);
+
+  /* scrollbar thumb (our own, replacing the OS bar) */
+  --scrollbar:       rgba(255, 43, 43, 0.22);
+  --scrollbar-hover: rgba(255, 43, 43, 0.40);
 }

@@ -212,7 +212,6 @@ export function initCollectionCard(opts: CardOptions) {
               <span class="lib-pill__label">Sort</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
-            <div class="lib-pop" data-popbody="sort" role="menu" aria-label="Sort" hidden>${sortPopBody(f)}</div>
           </div>
           ${
             showView
@@ -221,7 +220,6 @@ export function initCollectionCard(opts: CardOptions) {
               <span class="lib-pill__label">View</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
-            <div class="lib-pop" data-popbody="view" role="menu" aria-label="View" hidden>${viewPopBody(f)}</div>
           </div>`
               : ""
           }
@@ -345,17 +343,119 @@ export function initCollectionCard(opts: CardOptions) {
 
   backEl?.addEventListener("click", back);
 
-  // ── delegated interactions (scoped to the current, on-screen pane) ──
+  // ── Sort/View popover (portaled to <body>) ──
+  // Anchored under its pill but mounted on <body> so it can overflow the card: the
+  // pane's transform + the viewport's overflow:hidden would otherwise clip an in-pane
+  // popover. Mirrors context-menu.ts. One at a time; controls act on it directly since
+  // it lives outside the viewport's delegated-click subtree.
+  let popEl: HTMLElement | null = null;
+  let popAnchor: HTMLElement | null = null; // the pill, for aria + re-click toggling
+  let popCleanup: (() => void) | null = null;
+
+  const closePop = () => {
+    popCleanup?.();
+    popCleanup = null;
+    popAnchor?.setAttribute("aria-expanded", "false");
+    popAnchor = null;
+    popEl?.remove();
+    popEl = null;
+  };
+
+  // Apply a control click within the open pop; keep it open so tweaks can continue.
+  const onPopClick = (e: MouseEvent, pop: HTMLElement) => {
+    const t = e.target as HTMLElement;
+    const pane = curPane;
+    if (!pane) return;
+    const setActive = (attr: string, val: string) =>
+      pop.querySelectorAll<HTMLElement>(`[${attr}]`).forEach((el) => el.classList.toggle("is-active", el.getAttribute(attr) === val));
+
+    const sk = t.closest<HTMLElement>("[data-sort-key]");
+    if (sk) {
+      cur().sortKey = sk.dataset.sortKey!;
+      persist();
+      setActive("data-sort-key", sk.dataset.sortKey!);
+      renderViewInto(pane, cur());
+      return;
+    }
+    const sd = t.closest<HTMLElement>("[data-sort-dir]");
+    if (sd) {
+      cur().sortDir = sd.dataset.sortDir as SortDir;
+      persist();
+      setActive("data-sort-dir", sd.dataset.sortDir!);
+      renderViewInto(pane, cur());
+      return;
+    }
+    const dn = t.closest<HTMLElement>("[data-density]");
+    if (dn) {
+      cur().density = dn.dataset.density as Density;
+      persist();
+      setActive("data-density", dn.dataset.density!);
+      renderViewInto(pane, cur());
+      return;
+    }
+    const gr = t.closest<HTMLElement>("[data-group]");
+    if (gr) {
+      const f = cur();
+      f.grouping = gr.dataset.group!;
+      const g = groupingOf(f);
+      if (!g.sorts.some((s) => s.key === f.sortKey)) f.sortKey = g.sorts[0].key; // sorts differ per grouping
+      f.scroll = 0;
+      persist();
+      setActive("data-group", f.grouping);
+      renderViewInto(pane, f);
+    }
+  };
+
+  const openPop = (which: "sort" | "view", pill: HTMLElement, f: Frame) => {
+    const reopen = popAnchor === pill;
+    closePop();
+    if (reopen) return; // clicking the open pill again just closes it
+
+    const pop = document.createElement("div");
+    pop.className = "lib-pop";
+    pop.dataset.popbody = which; // marks clicks as "inside a pop" for onDocClick
+    pop.setAttribute("role", "menu");
+    pop.setAttribute("aria-label", which === "sort" ? "Sort" : "View");
+    pop.innerHTML = which === "sort" ? sortPopBody(f) : viewPopBody(f);
+    pop.addEventListener("click", (e) => onPopClick(e, pop));
+
+    // Measure hidden, then anchor under the pill and clamp to the live viewport.
+    pop.style.visibility = "hidden";
+    document.body.appendChild(pop);
+    const r = pill.getBoundingClientRect();
+    const pad = 6;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const w = pop.offsetWidth;
+    const h = pop.offsetHeight;
+    const left = Math.max(pad, Math.min(r.left, vw - w - pad)); // align to pill's left, stay on-screen
+    let top = r.bottom + 4;
+    if (top + h + pad > vh) top = Math.max(pad, r.top - h - 4); // flip above the pill if no room below
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+    pop.style.visibility = "";
+
+    popEl = pop;
+    popAnchor = pill;
+    pill.setAttribute("aria-expanded", "true");
+
+    // Fixed-positioned, so a scroll/resize would leave it mis-anchored — dismiss instead.
+    // (Outside-click and Escape are handled by the card's onDocClick/onDocKey.)
+    const onAway = () => closePop();
+    document.addEventListener("scroll", onAway, true);
+    window.addEventListener("resize", onAway);
+    popCleanup = () => {
+      document.removeEventListener("scroll", onAway, true);
+      window.removeEventListener("resize", onAway);
+    };
+  };
+
   const closePops = () => {
-    curPane?.querySelectorAll<HTMLElement>("[data-popbody]").forEach((p) => (p.hidden = true));
+    closePop();
     curPane?.querySelectorAll<HTMLElement>("[data-pop]").forEach((b) => b.setAttribute("aria-expanded", "false"));
   };
   const markSearchPill = () => {
     curPane?.querySelector('[data-pop="search"]')?.classList.toggle("is-active", !!cur().query);
-  };
-  const refreshActive = (kind: "sort-key" | "sort-dir" | "density" | "group", val: string) => {
-    const attr = { "sort-key": "data-sort-key", "sort-dir": "data-sort-dir", density: "data-density", group: "data-group" }[kind];
-    curPane?.querySelectorAll<HTMLElement>(`[${attr}]`).forEach((el) => el.classList.toggle("is-active", el.getAttribute(attr) === val));
   };
 
   viewport.addEventListener("click", (e) => {
@@ -376,54 +476,12 @@ export function initCollectionCard(opts: CardOptions) {
         if (open) pane.querySelector<HTMLInputElement>("[data-search]")?.focus();
         return;
       }
-      const target = pane.querySelector<HTMLElement>(`[data-popbody="${which}"]`);
-      const willOpen = !!target?.hidden;
-      closePops();
-      if (target && willOpen) {
-        target.hidden = false;
-        pop.setAttribute("aria-expanded", "true");
-      }
+      // Sort/View → portaled popover (overflows the card); toggles on re-click.
+      openPop(which as "sort" | "view", pop, cur());
       return;
     }
 
-    const sk = t.closest<HTMLElement>("[data-sort-key]");
-    if (sk) {
-      cur().sortKey = sk.dataset.sortKey!;
-      persist();
-      refreshActive("sort-key", sk.dataset.sortKey!);
-      renderViewInto(pane, cur());
-      return;
-    }
-    const sd = t.closest<HTMLElement>("[data-sort-dir]");
-    if (sd) {
-      cur().sortDir = sd.dataset.sortDir as SortDir;
-      persist();
-      refreshActive("sort-dir", sd.dataset.sortDir!);
-      renderViewInto(pane, cur());
-      return;
-    }
-    const dn = t.closest<HTMLElement>("[data-density]");
-    if (dn) {
-      cur().density = dn.dataset.density as Density;
-      persist();
-      refreshActive("density", dn.dataset.density!);
-      renderViewInto(pane, cur());
-      return;
-    }
-    const gr = t.closest<HTMLElement>("[data-group]");
-    if (gr) {
-      const f = cur();
-      f.grouping = gr.dataset.group!;
-      const g = groupingOf(f);
-      if (!g.sorts.some((s) => s.key === f.sortKey)) f.sortKey = g.sorts[0].key;
-      f.scroll = 0;
-      persist();
-      const sb = pane.querySelector<HTMLElement>('[data-popbody="sort"]'); // sorts differ per grouping
-      if (sb) sb.innerHTML = sortPopBody(f);
-      refreshActive("group", f.grouping);
-      renderViewInto(pane, f);
-      return;
-    }
+    // Sort/View popover controls are handled in onPopClick (the pop lives on <body>).
 
     // a tile/row → activate the leaf (play) if it offers one, else drill in
     const item = t.closest<HTMLElement>("[data-idx]");
@@ -516,6 +574,7 @@ export function initCollectionCard(opts: CardOptions) {
     // Remove the engine's document-level listeners. The viewport/back listeners live on
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {
+      closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
     },

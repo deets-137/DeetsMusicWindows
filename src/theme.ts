@@ -1,7 +1,7 @@
 // Theme switching. The whole mechanism is one attribute on <html>;
 // the token sheets (themes.css) do the rest. Choice persists in localStorage.
 
-export type ThemeName = "fairy" | "sepia" | "moonlight" | "hornet";
+export type ThemeName = "fairy" | "glade" | "sepia" | "moonlight" | "hornet" | "viper";
 
 const STORAGE_KEY = "deets.theme";
 const DEFAULT_THEME: ThemeName = "fairy";

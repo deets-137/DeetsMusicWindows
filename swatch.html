@@ -47,23 +47,108 @@
     .card .role { font-size: 12px; font-weight: 600; font-family: ui-monospace, monospace; }
     .card .paint { font-size: 11px; opacity: .55; margin-top: 1px; }
     .card .hex { font-size: 11px; font-family: ui-monospace, monospace; opacity: .7; margin-top: 3px; }
+
+    /* ── skins demo — live mini-mockups built from the real tokens ── */
+    .pick { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .pick__btn {
+      font: 600 12px/1 var(--font-body, system-ui, sans-serif);
+      color: #e8e8e8; background: #2f3033; border: 1px solid transparent;
+      border-radius: 999px; padding: 7px 14px; cursor: pointer;
+      text-transform: capitalize;
+    }
+    .pick__btn.is-on { background: #45464b; border-color: rgba(255,255,255,.25); }
+
+    .skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .skinbox h3 {
+      font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+      opacity: .55; margin: 0 0 8px; font-weight: 600;
+    }
+
+    /* Every value below is a live token — theme comes from the ancestor's
+       data-theme, skin from this element's own data-skin. No literals. */
+    .mock {
+      background: var(--canvas);
+      border-radius: 10px;
+      overflow: hidden;
+      color: var(--text);
+      font-family: var(--font-body);
+    }
+    .mock__bar {
+      display: flex; align-items: center; justify-content: space-between;
+      height: var(--titlebar-h); padding: 0 12px;
+    }
+    .mock__title {
+      font-family: var(--font-title); font-weight: var(--fw-title);
+      font-size: var(--fs-title); color: var(--title);
+      text-decoration-line: var(--title-underline);
+      text-decoration-thickness: var(--title-underline-w);
+      text-underline-offset: var(--title-underline-offset);
+    }
+    .mock__lights { display: flex; gap: var(--traffic-gap); }
+    .light {
+      width: var(--traffic-size); height: var(--traffic-size); border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: var(--traffic-glyph-fs); line-height: 1; color: var(--traffic-glyph);
+    }
+    .mock__body {
+      padding: var(--panel-pad);
+      background-image: var(--canvas-bg);
+      background-size: var(--canvas-bg-size);
+      background-repeat: var(--canvas-bg-repeat);
+      animation: var(--canvas-anim);
+    }
+    .mock__panel {
+      background: var(--panel);
+      backdrop-filter: var(--panel-backdrop);
+      border: var(--panel-border-width) solid var(--panel-border);
+      border-radius: var(--panel-radius);
+      padding: var(--panel-pad);
+      box-shadow: var(--shadow-card);
+    }
+    .mock__ptitle {
+      font-family: var(--font-title); font-weight: var(--fw-title);
+      font-size: calc(var(--fs-title) * 0.8); color: var(--title);
+      margin: 0 0 var(--space-2);
+      text-decoration-line: var(--title-underline);
+      text-decoration-thickness: var(--title-underline-w);
+      text-underline-offset: var(--title-underline-offset);
+    }
+    .mock__pills { display: flex; gap: var(--space-2); margin: 0 0 var(--space-3); }
+    .mpill {
+      font-size: var(--fs-subtext); color: var(--text);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--lib-pill-radius); padding: 4px 12px;
+    }
+    .mock__text { font-size: var(--fs-text); color: var(--text); margin: 0 0 2px; }
+    .mock__sub  { font-size: var(--fs-subtext); color: var(--subtext); margin: 0 0 var(--space-3); }
+    .mscrub { position: relative; height: var(--scrubber-handle-size); display: flex; align-items: center; }
+    .mscrub__track { width: 100%; height: var(--scrubber-track-h); background: var(--border); border-radius: 999px; }
+    .mscrub__fill  { position: absolute; left: 0; width: 40%; height: var(--scrubber-track-h); background: var(--title); border-radius: 999px; }
+    .mscrub__handle {
+      position: absolute; left: 40%; transform: translateX(-50%);
+      width: var(--scrubber-handle-size); height: var(--scrubber-handle-size);
+      background: var(--title);
+      -webkit-mask: var(--scrubber-handle) center / contain no-repeat;
+      mask: var(--scrubber-handle) center / contain no-repeat;
+    }
   </style>
 </head>
 <body>
   <h1>DeetsMusic — Color Reference</h1>
-  <p class="lede">Every semantic role, per theme, read live from the token sheets. Reference only — not the app.</p>
+  <p class="lede">Every semantic role, per theme, read live from the token sheets — plus a live mini-mockup of every skin. Reference only — not the app.</p>
   <div id="root"></div>
 
   <script>
-    const THEMES = ['fairy', 'sepia', 'moonlight', 'hornet'];
+    const THEMES = ['fairy', 'glade', 'sepia', 'moonlight', 'hornet', 'viper'];
+    const SKINS  = ['vanilla', 'desk', 'ocean', 'glass'];
     const ROLES = [
-      ['--canvas',   { fairy: 'Dewy Lilac',           sepia: 'Parchment',  moonlight: 'Deep Slate',    hornet: 'Pitch' }],
-      ['--go',       { fairy: 'Fae Mint',             sepia: 'Olive Leaf', moonlight: 'Moonlight White', hornet: 'Hazard' }],
-      ['--stop',     { fairy: 'Purple Cactus Flower', sepia: 'Terracotta', moonlight: 'Moonlight Gray', hornet: 'Straw' }],
-      ['--pause',    { fairy: 'Lemon Chrome',         sepia: 'Amber Glow', moonlight: 'Moonlight Silver', hornet: 'Amber Wax' }],
-      ['--title',    { fairy: 'Twilight Plum',        sepia: 'Espresso',   moonlight: 'Slate Bright',   hornet: 'Hazard' }],
-      ['--text',     { fairy: 'Violet Slate',         sepia: 'Cocoa',      moonlight: 'Slate Mid',      hornet: 'Paper Warm' }],
-      ['--subtext',  { fairy: 'Lavender Grey',        sepia: 'Faded Tan',  moonlight: 'Slate Dim',      hornet: 'Straw' }],
+      ['--canvas',   { fairy: 'Dewy Lilac',           glade: 'Dewy Chartreuse', sepia: 'Parchment',  moonlight: 'Deep Slate',      hornet: 'Pitch',      viper: 'Pitch' }],
+      ['--go',       { fairy: 'Fae Mint',             glade: 'Fern',            sepia: 'Olive Leaf', moonlight: 'Moonlight White', hornet: 'Hazard',     viper: 'Siren' }],
+      ['--stop',     { fairy: 'Purple Cactus Flower', glade: 'Foxglove',        sepia: 'Terracotta', moonlight: 'Moonlight Gray',  hornet: 'Straw',      viper: 'Ember' }],
+      ['--pause',    { fairy: 'Lemon Chrome',         glade: 'Lemon Chrome',    sepia: 'Amber Glow', moonlight: 'Moonlight Silver', hornet: 'Amber Wax', viper: 'Blood' }],
+      ['--title',    { fairy: 'Twilight Plum',        glade: 'Forest',          sepia: 'Espresso',   moonlight: 'Slate Bright',    hornet: 'Hazard',     viper: 'Siren' }],
+      ['--text',     { fairy: 'Violet Slate',         glade: 'Moss',            sepia: 'Cocoa',      moonlight: 'Slate Mid',       hornet: 'Paper Warm', viper: 'Ash White' }],
+      ['--subtext',  { fairy: 'Lavender Grey',        glade: 'Sage Grey',       sepia: 'Faded Tan',  moonlight: 'Slate Dim',       hornet: 'Straw',      viper: 'Ember' }],
     ];
 
     const root = document.getElementById('root');
@@ -106,6 +191,68 @@
       section.appendChild(grid);
       root.appendChild(section);
     }
+
+    // ── skins × themes — a live mini-mockup per skin; the picker retints
+    //    all four at once by swapping data-theme on their shared parent.
+    //    Everything inside .mock is driven by the real tokens.
+    const skinsSection = document.createElement('section');
+    skinsSection.className = 'theme';
+    skinsSection.innerHTML = '<h2>Skins — every skin, any theme</h2>';
+
+    const pick = document.createElement('div');
+    pick.className = 'pick';
+    const skinGrid = document.createElement('div');
+    skinGrid.className = 'skin-grid';
+    skinGrid.setAttribute('data-theme', THEMES[0]);
+
+    for (const theme of THEMES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pick__btn' + (theme === THEMES[0] ? ' is-on' : '');
+      btn.textContent = theme;
+      btn.addEventListener('click', () => {
+        skinGrid.setAttribute('data-theme', theme);
+        pick.querySelectorAll('.pick__btn').forEach((b) => b.classList.toggle('is-on', b === btn));
+      });
+      pick.appendChild(btn);
+    }
+
+    for (const skin of SKINS) {
+      const box = document.createElement('div');
+      box.className = 'skinbox';
+      box.innerHTML = `<h3>${skin}</h3>`;
+      const mock = document.createElement('div');
+      mock.className = 'mock';
+      mock.setAttribute('data-skin', skin);
+      mock.innerHTML =
+        `<div class="mock__bar">
+           <span class="mock__title">DeetsMusic</span>
+           <span class="mock__lights">
+             <span class="light" style="background:var(--go)">+</span>
+             <span class="light" style="background:var(--pause)">&minus;</span>
+             <span class="light" style="background:var(--stop)">&times;</span>
+           </span>
+         </div>
+         <div class="mock__body">
+           <div class="mock__panel">
+             <p class="mock__ptitle">Library</p>
+             <div class="mock__pills"><span class="mpill">Sort</span><span class="mpill">View</span></div>
+             <p class="mock__text">Golden Hour — primary text</p>
+             <p class="mock__sub">3:42 · subtext metadata</p>
+             <div class="mscrub">
+               <span class="mscrub__track"></span>
+               <span class="mscrub__fill"></span>
+               <span class="mscrub__handle"></span>
+             </div>
+           </div>
+         </div>`;
+      box.appendChild(mock);
+      skinGrid.appendChild(box);
+    }
+
+    skinsSection.appendChild(pick);
+    skinsSection.appendChild(skinGrid);
+    root.appendChild(skinsSection);
   </script>
 </body>
 </html>

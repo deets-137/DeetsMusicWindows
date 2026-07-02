@@ -42,6 +42,24 @@
   --paint-slate-surface:       #232F40; /* elevated slate panel */
   --paint-slate-surface-tint:  #2E3C50; /* slate hover tint */
 
+  /* glade family — chartreuse fairy-forest (light) */
+  --paint-dewy-chartreuse:     #E9F0C0; /* dewy chartreuse canvas */
+  --paint-forest:              #1E4D2B; /* deep forest green (title) */
+  --paint-moss:                #54664B; /* muted moss (text) */
+  --paint-sage-grey:           #87977A; /* legible sage-grey (subtext) */
+  --paint-fern:                #4C9A46; /* fresh fern green (go) */
+  --paint-foxglove:            #B04A6E; /* berry-rose (stop) — glade's fae sparkle */
+  --paint-chartreuse-white:    #F4F8E3; /* elevated chartreuse surface */
+  --paint-chartreuse-tint:     #EAF1D0; /* chartreuse hover tint */
+  /* (glade's --pause reuses --paint-lemon-chrome from the fae accents) */
+
+  /* viper family — black & red cyber villain
+     (canvas/surfaces reuse hornet's pitch / onyx / onyx-tint) */
+  --paint-siren:               #FF2B2B; /* bright siren red (title / go) */
+  --paint-blood:               #C01020; /* deep blood red (pause) */
+  --paint-ember:               #D8837A; /* muted ember (text-dim / stop) */
+  --paint-ash-white:           #EFE2DE; /* red-warmed off-white (body text) */
+
   /* hornet family — black & yellow (Noir Gold) */
   --paint-pitch:               #0F0F0F; /* near-black canvas */
   --paint-onyx:                #1A1A1A; /* elevated surface */

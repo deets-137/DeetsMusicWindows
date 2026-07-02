@@ -34,6 +34,12 @@ export interface Playlist {
   canEdit: boolean;
   isPublic: boolean;
   trackCount?: number;
+  dateAdded?: string;
+  lastModified?: string;
+  /** "local" (our store, editable) | "apple" (read-only mirror); absent on search hits. */
+  source?: string;
+  /** Mirror classification: "user" | "catalog" | "smart" (PLAYLISTS.md §2). */
+  kind?: string;
 }
 
 export interface SearchResults {

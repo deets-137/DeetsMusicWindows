@@ -5,8 +5,20 @@
 > **Search** (+ a UI-polish pass aligning it to the Library toolbar and two right-click bug
 > fixes) and **History** are both user-verified now. Also landed + user-verified 2026-07-02:
 > **NP transport-row buttons** (queue summon + one-shot shuffle) and **dead-id playback
-> self-healing** (see State of play). **Next up: build-queue #5 — Favorites,
-> ratings & library writes** ([FAVORITES.md](FAVORITES.md)).
+> self-healing** (see State of play). Also built 2026-07-02: the **Playlists card,
+> view/play-only** ([PLAYLISTS.md](PLAYLISTS.md) status block — Apple mirror read-in +
+> local store plumbing; creation/editing UX is a dedicated later session) —
+> **user-verified 2026-07-02** (+ a popover-divider polish fix, see gotchas) — and
+> ⚡ **re-windowing** (roadmap #3 — forward window top-up + the Previous-past-the-edge fix,
+> [QUEUE.md §Re-windowing](QUEUE.md)), which compiles clean and rode the same session but
+> still **needs a long-queue listen** (150+ songs past the click, or Previous past the
+> lookback) to observe `player:topUp` / `player:prevRewindow` in anger. A **skin-flair session** also landed
+> 2026-07-02: Desk (Comic Sans title, cut-paper corners, sticky-note menus, tilted drag —
+> user-verified), Vanilla (borderless cards + editorial title underline — user-verified),
+> and the Glass "pop" batch (drifting aurora, frosted menus via `--menu-surface`/
+> `--menu-backdrop`, hotter frost, glass-ring scrubber; FUTURE-SETTINGS §12 has the numbers) —
+> Glass verified except the final aurora hard-line fix (oversized layers), **awaiting re-test**.
+> **Next up: build-queue #5 — Favorites, ratings & library writes** ([FAVORITES.md](FAVORITES.md)).
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
 > [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger for the holistic UX pass),
@@ -64,11 +76,18 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   `color-scheme` + a `--traffic-glyph` role (the sigil stroke is theme-owned, no longer a
   skin literal). Settings menu (click the title) with a **Theme** flyout (live color-chip
   previews) and an **Account** row.
-- **Skin system** (Tier 3, now switchable): **4 skins** — `vanilla` (the baseline slide),
+- **Skin system** (Tier 3, now switchable): **5 skins** — `vanilla` (the baseline slide),
   `desk` (raised paper cards on a dot grid, paper-label controls, airier page, photo-corner
-  covers, hover-lift, Caveat/Karla), `ocean` (recessed soft cards, rolling waves, sink/rise
+  covers, cut-paper radius ladder + sticky-note menus, hover-lift, tilted paper drag,
+  Comic Sans MS/Comic Neue + Karla), `ocean` (recessed soft cards, rolling waves, sink/rise
   nav, Cinzel/Spectral), `glass` (frosted translucent panels via `--panel-backdrop` over a
-  per-theme accent aurora, glass chips, fade/scale nav). Structured as a shared `[data-skin]`
+  per-theme accent aurora that **drifts**, frosted menus via the `--menu-surface`/`--menu-backdrop`
+  pair, glass-ring scrubber, glass chips, fade/scale nav; intensity numbers in
+  FUTURE-SETTINGS §12), and `cyberstorm` (electric/futuristic: **forked lightning bolts** slow-draw down a
+  `--border` circuit-grid canvas behind smoked-glass panels — 86% mix, a bolt glows through
+  dimly — square corners, skew-snap nav jolt, a lightning-bolt scrubber, Orbitron/Rajdhani;
+  the storm layer is a reusable opt-in primitive, dials in FUTURE-SETTINGS §13). Structured
+  as a shared `[data-skin]`
   base + per-skin deltas; nav + micro-motion + focus/icon/row geometry are all tokenized so a
   skin reshapes them with values only (new capabilities like `--hover-lift` / `--panel-backdrop`
   default to no-ops, so adding one never forces a sweep of the other skins). `--panel` is a skin
@@ -165,6 +184,26 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   "Previously" list below (appears from the 2nd play). Read-only rows; right-click → Play Now /
   Play Next / Add to Queue (handle-level, gapless, `context: "history"`). Row markup/resolution
   shared with the Qcard via `src/queue-rows.ts`. In the slot picker via the registry.
+- ⚡ **Re-windowing** (roadmap #3, built 2026-07-02, **needs a long-queue listen to
+  verify** — nothing in a short session crosses the window edge;
+  [QUEUE.md §Re-windowing](QUEUE.md)): `maybeTopUpWindow` refills MusicKit's forward
+  window via `reconcileUpcoming` (gapless, one batched `playLater`) when it drains below
+  50; `prevTrack` now re-windows (buffered) instead of silently no-opping when Previous
+  crosses the back edge. Diag: `player:topUp`, `player:prevRewindow`. Unblocks own
+  stations (build-queue #6).
+- ✅ **Playlists card — view/play-only** (built + **user-verified 2026-07-02**;
+  [PLAYLISTS.md](PLAYLISTS.md) status block): real `CardDef.mount` on the collection-card
+  engine (second live instance — verified the engine holds no module state). Overview
+  (unified list, A–Z/Added sorts, search, lines/grid) → drill into authored-order tracks;
+  click plays with `playlist:{id}` origin; Play Now/Next/Queue menus on both tracks and
+  playlists. Data: `src-tauri/src/playlists.rs` — Apple mirror (`apple_playlists_sync`,
+  once per session + explicit ⟳ which also drops content caches; `apple_playlist_tracks`
+  cache-first, learns trackCount, 404-on-empty handled, music videos skipped) + the local
+  store (`local_playlists`/`local_playlist_tracks` + full CRUD commands, **no UI callers
+  yet** — creation UX is its own session). Library's row/tile cell builders are now
+  exported and shared. Polish: the popover column divider is now drawn only between two
+  columns (`.lib-pop__col + .lib-pop__col--dir`), so single-grouping View popovers
+  (Playlists, Library's album/artist details) render bare.
 
 ### Stubbed / not built yet ⬜
 - **Manual queueing** — **built and gapless** (model in lockstep; see [QUEUE.md](QUEUE.md)),
@@ -178,8 +217,10 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   **"⋯" overflow button** (right-click is the only menu trigger — no keyboard/touch path), a
   **Now Playing** menu (Go to Album/Artist, Add to Library), and touch/grip-handle dragging.
   Menu action sets + drag mode are slated to be user-customizable ([FUTURE-SETTINGS.md](FUTURE-SETTINGS.md)).
-- **Real Playlists card** — the Playlists slot currently hosts the Qcard. Real Playlists
-  return later (collection-card Playlists context: overview list → playlist detail).
+- **Playlists — creation/editing UX** — the ⚡ card built 2026-07-02 is **view/play-only**
+  (Apple mirror + the local store underneath). Still deferred to the creation-UX session:
+  New Playlist, `Add to Playlist ▸`, rename/reorder/remove, Import-to-edit, source badges,
+  mosaic covers, export. The Rust local CRUD commands already exist (no UI callers).
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
   (no catalog). Artist tiles show a round album-cover thumb / initials until a photo is
   fetched on demand (when you open the artist).
@@ -263,10 +304,10 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 6. **Stations.** [STATIONS.md](STATIONS.md). **⚠️ Verify-first:** the **MusicKit-JS
    station-playback probe** (item 0 — should already be done by now; if not, prove it on a
    throwaway *before* building the card). Ship order within the item: **Apple stations** (browser +
-   radio-mode display) → **re-windowing (roadmap #3)** — the window top-up via `reconcileUpcoming`
-   ([QUEUE.md](QUEUE.md)); **not yet built and a hard prerequisite for own stations**, whose
-   generator refills `upcoming` through exactly this hook (without it an own-station dead-ends at
-   the window edge) → Deezer enrichment provider (BPM cache; #3 supplies the ISRC) → **own-station
+   radio-mode display) → **re-windowing (roadmap #3)** — ⚡ **built 2026-07-02** (the window
+   top-up via `reconcileUpcoming`, [QUEUE.md §Re-windowing](QUEUE.md)); the hard prerequisite
+   for own stations is in place — their generator refills `upcoming` through exactly this
+   hook → Deezer enrichment provider (BPM cache; #3 supplies the ISRC) → **own-station
    generator** with the `scope: library|catalog` toggle; **♥/👎 ratings (#5) are its strongest
    taste signal** (genome substitute). Open 🔵: manual-queue in radio mode, ship order.
 7. **DeetsWeather.** [DeetsWeather.md](DeetsWeather.md). Rides #6's own-station engine (weather = a
@@ -295,9 +336,10 @@ numbered list below is the older feature roadmap, still valid for what rides the
    Play Now / Move to Top / Move to Bottom / Remove, **and drag-to-reorder** — all gapless +
    model-synced. **Remaining:** a hover "⋯" overflow trigger (a11y/discoverability), a
    Now-Playing menu, touch/grip dragging, and user-customizable menu actions.
-3. **Re-windowing** — `playContext` feeds MusicKit a bounded window (50 back / 200 fwd);
-   top it up as playback nears an edge so long contexts don't dead-end. The one place
-   model-driven nav crosses the window edge and incurs load latency (see gotchas).
+3. ⚡ **Re-windowing** — **built 2026-07-02, awaiting user test**
+   ([QUEUE.md §Re-windowing](QUEUE.md)): forward top-up is gapless via
+   `reconcileUpcoming`; Previous past the back edge re-windows with the documented
+   buffer (was a silent no-op).
 4. ✅ **Search card** — a general catalog **Search** surface: `term` → `/v1/catalog/{sf}/search`
    (songs/albums/artists), normalized to our model. Catalog results carry **`previews`** (30s),
    **palette**, and real **artist/album art** for free — so previews live *here*, tied to
@@ -306,11 +348,11 @@ numbered list below is the older feature roadmap, still valid for what rides the
    audition is an optional later add, not the default. Needs a cached storefront + a `search`
    provider method. *(There is deliberately no "catalog hydrate" item — catalog data is
    demand-driven: Search for discovery, lazy enrichment (#7) for what you view.)*
-5. **Real Playlists card** — **now specced: [PLAYLISTS.md](PLAYLISTS.md)** (local-first
-   store + read-only Apple mirror with a source badge + gated one-way create/append export;
-   `amp-api` rejected). Wire `playlists_page` + `playlist_tracks` (+ local CRUD tables), drive
-   the collection-card with a Playlists context (overview → playlist detail). Restores the slot
-   the Qcard is borrowing. UI/UX design is a dedicated next session.
+5. ✅ **Real Playlists card** — **read/play path built + user-verified 2026-07-02**
+   ([PLAYLISTS.md](PLAYLISTS.md) status block): Apple mirror read-in + local store + the
+   view/play-only card (overview → detail on the collection-card engine). **Remaining:**
+   the creation/editing UX session (New Playlist, Add to Playlist ▸, rename/reorder/remove,
+   Import-to-edit, source badges, mosaic covers) + the gated export.
 6. **CLI / local-agent control** (pre-launch goal) — a command surface so local models /
    agents can play music (search, queue, play/pause/skip, now-playing): a thin Rust
    layer over the same `player` interface, so agents and the UI share one control path.
@@ -354,6 +396,20 @@ numbered list below is the older feature roadmap, still valid for what rides the
   artist with one album) stretches that single row — and the tile with it — to full height. Only
   visible when the right-click `is-context` outline wraps the giant tile. Fixed with
   `align-content: start` on `.lib-grid` (pack rows at natural height; still scrolls when full).
+- **Collection card — popover divider is adjacency-scoped:** `.lib-pop__col--dir`'s
+  left border only draws via `.lib-pop__col + .lib-pop__col--dir`, so a single-grouping
+  context's View popover (Playlists, Library's album/artist details — density column
+  only) renders bare instead of showing an orphaned divider. Adding a second column to
+  such a popover brings the divider back automatically.
+- **Collection card — a transform traps `position: fixed`:** `.coll-pane` always carries a
+  transform (`--nav-at-*`) + `will-change: transform`, so a `fixed` child is positioned/clipped
+  by the *pane*, not the window — it can't escape `.coll-viewport`'s `overflow: hidden`. The
+  Sort/View popovers therefore **portal to `<body>`** (like `context-menu.ts`) and anchor under
+  their pill; don't try to un-clip them with CSS from inside the card.
+- **Collection card — one shared cell (`musicCell`):** every card renders music through
+  `musicCell` in `library-card.ts` (row-vs-tile + density in one place). It shows a primary +
+  sub line at *all* densities. When it was copy-pasted per grouping, a "title missing at large
+  density" bug appeared in Library **and** Playlists independently — keep new cards on `musicCell`.
 - **Added-Date needs a re-sync:** older cache rows lack `addedRank` until a refresh
   re-fetches with `sort=dateAdded`.
 - **Transport latency (the friction to cover up):** within MusicKit's fed window,
@@ -415,10 +471,13 @@ src/layout.ts               midi layout: anchored NP + 2 swappable slots + title
                             + slot recency (LRU) + summon handling
 src/layout-bus.ts           card-summon bus (requestCard/onCardRequest — NP queue button)
 src/now-playing-card.ts     Now Playing card (transport strip; extracted from main.ts)
-src/playlists-card.ts       Playlists card — stub for now (selectable; real context later)
+src/playlists.ts            playlists data access (unified cached list, mirror sync, tracks)
+src/playlists-card.ts       Playlists card — view/play-only (overview → detail on the
+                            collection-card engine; creation/editing UX is a later session)
 src/dropdown.ts             shared dropdown primitive + menu-mode fan-out (setDropdownMode)
 src/theme.ts                theme switch + persistence
 src/skin.ts                 skin switch + persistence (mirrors theme.ts)
+src/storm.ts                CyberStorm storm-layer position re-roll (inert for other skins)
 src/surface.ts              surface system: data-surface bands + deliberate choice + resize
                             allowance + per-surface remembered window sizes
 src/album-color.ts          NP aurora data path: current album's palette → --album-* inline
@@ -439,8 +498,10 @@ src/slider.ts               shared slider primitive (scrubber, volume)
 src/styles.css              app rules (imports the token sheets first)
 src/styles/qcard.css        Queue card styling (imported by qcard.ts)
 src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system; skin.css is a
-                            [data-skin] base + vanilla/desk/ocean deltas. Fonts: Liberation
-                            Serif + Caveat/Karla (desk) + Cinzel/Spectral (ocean)
+                            [data-skin] base + vanilla/desk/ocean/glass/cyberstorm deltas.
+                            Fonts: Liberation Serif + Comic Neue/Karla (desk; title is system
+                            Comic Sans MS, Caveat retired but still bundled) + Cinzel/Spectral
+                            (ocean) + Orbitron/Rajdhani (cyberstorm)
 src-tauri/src/lib.rs        Tauri builder: state, DB open, command registry, devtools
 src-tauri/src/apple.rs      dev-token signing, loopback auth, dump, AppleProvider
 src-tauri/src/model.rs      normalized model
@@ -449,6 +510,8 @@ src-tauri/src/library.rs    SQLite cache + sync + play_stats/play_events + the u
                             track store (catalog-first keys) + v1→v2 migration
 src-tauri/src/enrich.rs     lazy catalog enrichment: storefront cache, batch catalog fetch,
                             track_catalog + album_palette caches (roadmap #7)
+src-tauri/src/playlists.rs  playlists: local store + CRUD, Apple mirror sync + content
+                            cache (PLAYLISTS.md)
 src-tauri/secrets/          Apple key/IDs + captured MUT (gitignored)
 dev-dumps/                  raw API samples used to design the model (gitignored)
 ```

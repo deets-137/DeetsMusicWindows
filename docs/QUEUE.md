@@ -95,6 +95,30 @@ around the click. Jumps/seeks that land *outside* the live window force a fresh 
 and **buffer** (the documented latency; `isLoading`/`PlayerState.loading` is the cover-up
 hook — see [UX-COVERUPS.md](UX-COVERUPS.md)).
 
+### Re-windowing (roadmap #3 — built 2026-07-02)
+
+Without a top-up, a long context would dead-end at the window edge (song #201 of a
+1000-song plan never plays). Two edges, two mechanisms:
+
+- **Forward (gapless):** `maybeTopUpWindow()` runs on every settled
+  `nowPlayingItemDidChange`. When MusicKit's remaining upcoming drains below
+  `REWINDOW_LOW = 50` while the model has more, it calls `reconcileUpcoming()` — the
+  matched prefix stays put, the model's missing tail is appended in **one batched
+  `playLater`** (capped to `WINDOW_FWD`). `current` never moves: no `setQueue`, no
+  buffer. Hysteresis means one refill per ~150 songs, not one per track. A `toppingUp`
+  flag stops a second top-up stacking on an in-flight one; `player:topUp` is the diag
+  breadcrumb. Dead ids self-heal inside `reconcileUpcoming` as usual.
+- **Backward (buffered, by necessity):** MusicKit has no "play-earlier" insert, so
+  Previous past the fed back-window can't be gapless. `prevTrack` detects the edge
+  (MusicKit index 0 + the model still holds history), replays `queue.previous()`, and
+  re-windows via `loadFromModel` — the documented outside-window buffer, `loading`
+  covers it. Logged as `player:prevRewindow`. Before this, Previous at the edge
+  silently no-opped.
+
+Known-and-accepted: MusicKit's `items` array grows over a very long session (played
+items + appended top-ups never trim). Ids are cheap; if it ever bites, a full re-window
+at a natural pause would trim it — `player:topUp` logs `mkLen` so we'd see it coming.
+
 **The window is deduped (belt-and-suspenders).** MusicKit's `setQueue` collapses repeated
 song ids, which makes its real queue shorter than ours and desyncs the index
 `changeToMediaAtIndex` jumps to — landing on the wrong song. `loadFromModel` builds a
@@ -207,8 +231,8 @@ reorder (drag-drop to any slot) has no documented MusicKit op — so instead of 
 `splice` + `playLater` both leave `current` untouched → **gapless, no `setQueue`, no buffer**.
 The divergent suffix is contiguous, so it's one `splice(np+1+d, count)` (a single
 `queueItemsDidChange`) + one batched `playLater`, regardless of how far the drop reached. This
-is the **general sync primitive**: drag-reorder uses it now, and re-windowing
-(roadmap #3) will lean on it too. The `player:misalign` canary validates every reconcile.
+is the **general sync primitive**: drag-reorder and the forward window top-up
+(§Re-windowing above) both ride it. The `player:misalign` canary validates every reconcile.
 
 The drag UI itself lives in `qcard.ts` (whole-row press-and-drag, insertion-line feedback,
 render suspended mid-drag so a queue/track change can't yank the row — see
@@ -296,7 +320,7 @@ for the already-playing song).
 | change re-click behaviour | `playContext` in [player.ts](../src/player.ts) |
 | change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../src/player.ts), `*Many` in [queue.ts](../src/queue.ts) |
 | change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../src/player.ts) |
-| change drag-reorder sync / re-windowing | `reconcileUpcoming` in [player.ts](../src/player.ts) |
+| change drag-reorder sync / re-windowing | `reconcileUpcoming` + `maybeTopUpWindow` (+ the `prevTrack` edge) in [player.ts](../src/player.ts) |
 | change the drag interaction (Qcard) | the drag block in [qcard.ts](../src/qcard.ts) |
 | change the History card / play log | [history-card.ts](../src/history-card.ts) / `getPlayLog`+`logPlay` in [queue.ts](../src/queue.ts) |
 | change queue-row markup (Qcard + History) | [queue-rows.ts](../src/queue-rows.ts) |

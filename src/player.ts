@@ -181,8 +181,41 @@ function onNowPlayingChange(): void {
     diag.log("player:np", snap());
     checkDesync();
     checkAlignment("np");
+    maybeTopUpWindow();
   }
   emit();
+}
+
+// ── Re-windowing: forward top-up (roadmap #3) ─────────────────────────────────
+//
+// MusicKit only holds a bounded window (WINDOW_FWD ahead), so a long context would
+// dead-end at the window edge. As playback advances and MusicKit's remaining upcoming
+// drains below the low-water mark, reconcileUpcoming() refills it back up to WINDOW_FWD
+// from the model — one batched playLater, GAPLESS (current never moves, no setQueue).
+// Hysteresis: one refill every ~(WINDOW_FWD − REWINDOW_LOW) songs, not one per track.
+// The backward edge (Previous past the fed window) can't be gapless — no "play-earlier"
+// insert exists — so prevTrack re-windows with the documented buffer instead.
+
+const REWINDOW_LOW = 50;
+let toppingUp = false; // reconcile is async — don't stack a second top-up on an in-flight one
+
+function maybeTopUpWindow(): void {
+  if (toppingUp || !music) return;
+  const items: any[] = music.queue?.items ?? [];
+  const np = typeof music.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
+  if (np < 0) return;
+  const mkRemaining = items.length - np - 1;
+  if (mkRemaining >= REWINDOW_LOW) return;
+  // Model has nothing beyond what MusicKit already holds → natural end of the plan.
+  // (Extras that dedup/dead-drop to nothing make reconcile a cheap early return.)
+  if (queue.getUpcoming().length <= mkRemaining) return;
+  toppingUp = true;
+  diag.log("player:topUp", { mkRemaining, modelUp: queue.getUpcoming().length, mkLen: items.length });
+  reconcileUpcoming()
+    .catch((e) => console.warn("[player] window top-up failed:", e))
+    .finally(() => {
+      toppingUp = false;
+    });
 }
 
 /** A small JSON-able snapshot of player + model state, for the diag log. */
@@ -810,6 +843,17 @@ export async function prevTrack(): Promise<void> {
   diag.log("player:prev", { at, ...snap() });
   if (at > 3) {
     await m.seekToTime(0);
+    return;
+  }
+  // Backward window edge: MusicKit holds nothing before current (index 0), but the
+  // model still has history — skipToPreviousItem would silently no-op. Re-window
+  // around the previous entry instead (a fresh setQueue → the documented buffer;
+  // `loading` covers it). No gapless path exists backwards.
+  const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
+  if (np === 0 && queue.getHistory().length) {
+    diag.log("player:prevRewindow", { hist: queue.getHistory().length });
+    queue.previous();
+    await loadFromModel(m);
     return;
   }
   if (typeof m.skipToPreviousItem === "function") await m.skipToPreviousItem();

@@ -18,8 +18,18 @@ Bundled unmodified.
 and Trademark Office and certain other jurisdictions.
 
 
-Caveat  (Desk skin — title)
----------------------------
+Comic Neue  (Desk skin — title fallback)
+----------------------------------------
+Files:   ComicNeue-Bold.woff2
+Copyright (c) The Comic Neue Project Authors (Craig Rozynski).
+Upstream: https://github.com/crozynski/comicneue
+Bundled as a latin-subset WOFF2 (via Google Fonts); otherwise unmodified.
+(First-choice title face is Comic Sans MS, a Windows system font — not
+bundled; Comic Neue loads only where it is missing.)
+
+
+Caveat  (Desk skin — retired title, kept while direction settles)
+-----------------------------------------------------------------
 Files:   Caveat-Bold.woff2
 Copyright (c) The Caveat Project Authors (Pablo Impallari).
 Upstream: https://github.com/googlefonts/caveat
@@ -32,6 +42,22 @@ Files:   Karla-Regular.woff2, Karla-Bold.woff2
 Copyright (c) The Karla Project Authors (Jonathan Pinhorn).
 Upstream: https://github.com/googlefonts/karla
 Bundled as latin-subset WOFF2 files (via Fontsource); otherwise unmodified.
+
+
+Orbitron  (CyberStorm skin — title)
+-----------------------------------
+Files:   Orbitron-Bold.woff2
+Copyright (c) The Orbitron Project Authors (Matt McInerney).
+Upstream: https://github.com/theleagueof/orbitron
+Bundled as a latin-subset WOFF2 (via Google Fonts); otherwise unmodified.
+
+
+Rajdhani  (CyberStorm skin — body)
+----------------------------------
+Files:   Rajdhani-Medium.woff2, Rajdhani-Bold.woff2
+Copyright (c) The Rajdhani Project Authors (Indian Type Foundry).
+Upstream: https://github.com/itfoundry/rajdhani
+Bundled as latin-subset WOFF2 files (via Google Fonts); otherwise unmodified.
 
 
 Cinzel  (Ocean skin — title)

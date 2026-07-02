@@ -7,10 +7,17 @@
 > engine) · [SURFACES-AND-CARDS](SURFACES-AND-CARDS.md) (the card system this rides) ·
 > [FUTURE-SETTINGS](FUTURE-SETTINGS.md) (the export toggles).
 >
-> **Status: spec — data + behavioural model only. Not built.**
-> **UI/UX design is deferred to a dedicated next session.** This doc fixes *what* and
-> *why*; the visual layout, exact interactions, badge/affordance styling, empty states,
-> and dialog design are **open** (see §10).
+> **Status: read/play path BUILT + USER-VERIFIED (2026-07-02) — the card is
+> VIEW/PLAY-ONLY for now.**
+> Built: the Rust local store + CRUD commands (`src-tauri/src/playlists.rs`, no UI
+> callers yet), the Apple mirror read-in (`playlists_page`/`playlist_tracks_page` on the
+> provider, `apple_playlists_sync` + cache-first `apple_playlist_tracks`), and the real
+> card (`src/playlists-card.ts` on the collection-card engine: overview → detail,
+> click-to-play with `playlist:{id}` origin, Play Now/Next/Queue menus, once-per-session
+> auto-sync + explicit ⟳). **Deferred to the creation-UX session:** New Playlist,
+> Add to Playlist ▸, rename/reorder/remove, Import-to-edit, source badges, mosaic
+> covers, export (§6) — the §10 open questions stand. This doc still fixes *what* and
+> *why* for those parts.
 
 ---
 
@@ -73,7 +80,9 @@ relationship via `?include=` — doesn't change the v1 flatten.)*
 ## 3. The unified card
 
 Reuses the collection-card engine (`src/collection-card.ts`), same pattern as the Library
-card (`src/library-card.ts`).
+card (`src/library-card.ts`). Rows/tiles render through the shared **`musicCell`** builder
+(exported from `library-card.ts`), so playlists present music identically to the Library —
+one cell, one density system, no per-card drift.
 
 **Overview (root context)** — one **"Playlists"** grouping (not songs/albums/artists):
 - **Cover:** a 2×2 **mosaic** composited from the first distinct track covers (the same

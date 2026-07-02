@@ -25,13 +25,26 @@
 
 /* ------------------------------------------------------------
    Skin fonts (all SIL OFL 1.1, bundled like Liberation above).
-   Desk → Caveat (title) + Karla (body).
+   Desk → Comic Sans MS (system, title) + Karla (body);
+          Comic Neue is the bundled fallback for the title.
    Ocean → Cinzel (title) + Spectral (body).
    Drop the .woff2 files into ./fonts/ — until then the stacks in
    skin.css fall back to the nearest system face, so nothing breaks.
    ------------------------------------------------------------ */
 
-/* Desk — Caveat (handwritten title) */
+/* Desk — Comic Neue (title fallback; Comic Sans MS is the system-face
+   first choice and can't be bundled, so this face only ever loads on a
+   machine missing it — @font-face fetches lazily, on first use). */
+@font-face {
+  font-family: "Comic Neue";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/ComicNeue-Bold.woff2") format("woff2");
+}
+
+/* Desk — Caveat (retired title face; kept bundled while the Comic Sans
+   direction settles — delete this block + the .woff2 to reclaim it) */
 @font-face {
   font-family: "Caveat";
   font-style: normal;
@@ -54,6 +67,32 @@
   font-weight: 700;
   font-display: swap;
   src: url("./fonts/Karla-Bold.woff2") format("woff2");
+}
+
+/* CyberStorm — Orbitron (machined sci-fi title) */
+@font-face {
+  font-family: "Orbitron";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Orbitron-Bold.woff2") format("woff2");
+}
+
+/* CyberStorm — Rajdhani (condensed squared body; 500 is the body weight —
+   Rajdhani's 400 runs thin at list sizes, so the skin sets --fw-text: 500) */
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/Rajdhani-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Rajdhani-Bold.woff2") format("woff2");
 }
 
 /* Ocean — Cinzel (engraved caps title) */

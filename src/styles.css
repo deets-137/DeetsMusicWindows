@@ -58,6 +58,11 @@ body {
   border-radius: var(--radius-control);
   line-height: 1.1;
   cursor: pointer;
+  /* editorial title rule — a skin opt-in (no-op under most; Vanilla flips it
+     on). Ink is currentColor = --title, so the theme still owns the color. */
+  text-decoration-line: var(--title-underline);
+  text-decoration-thickness: var(--title-underline-w);
+  text-underline-offset: var(--title-underline-offset);
 }
 .app-title:hover { background: var(--surface-hover); }
 .app-title:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
@@ -69,7 +74,9 @@ body {
   left: 0;
   margin-top: 0;
   min-width: var(--menu-min-w);
-  background: var(--surface);
+  background: var(--menu-surface);          /* opaque under most skins; Glass frosts */
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
@@ -111,7 +118,9 @@ body {
   top: calc(-1 * var(--space-1));
   left: 100%;                   /* touches the menu edge — no hover gap */
   min-width: var(--menu-min-w);
-  background: var(--surface);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
@@ -244,7 +253,9 @@ body {
   display: flex; flex-direction: column; align-items: center;
   gap: var(--space-2);
   padding: var(--vol-panel-pad);
-  background: var(--surface);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
@@ -300,6 +311,7 @@ body {
   min-height: 0;
   padding: var(--panel-gap);
   overflow: hidden;             /* the columns scroll, not the whole body */
+  position: relative;           /* anchors the storm layer */
 
   /* Canvas pattern behind the cards (Desk dot grid / Ocean waves).
      All four resolve to nothing under Vanilla. */
@@ -307,6 +319,48 @@ body {
   background-size:   var(--canvas-bg-size);
   background-repeat: var(--canvas-bg-repeat);
   animation:         var(--canvas-anim);
+}
+
+/* ── Storm layer (decorative strokes behind the cards) ──────── */
+/* Inert unless a skin opts in (--storm-display; CyberStorm). Everything
+   here reads tokens: geometry via CSS `d:` (--storm-path-*), ink/glow
+   from theme roles, per-bolt timing from --storm-cycle-*. The viewBox is
+   0..100 both axes with preserveAspectRatio="none" — bolts are authored
+   around x=0 and positioned by --storm-x (user units ≈ % of width; CSS px
+   on an SVG transform are user units), which src/storm.ts re-rolls per
+   strike along with a --storm-flip mirror. non-scaling-stroke keeps the
+   stroke width in real px despite the stretched viewBox. */
+.storm {
+  display: var(--storm-display);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.bento { position: relative; z-index: 1; }  /* cards ride above the storm */
+.storm__bolt {
+  fill: none;
+  stroke: var(--storm-ink);
+  stroke-width: var(--storm-w);
+  stroke-linejoin: miter;       /* sharp elbows — it's lightning */
+  vector-effect: non-scaling-stroke;
+  filter: var(--storm-glow);
+  stroke-dasharray: 1;          /* against pathLength="1" in the markup */
+  stroke-dashoffset: 1;
+  opacity: 0;                   /* dark unless the animation says otherwise */
+  transform: translateX(var(--storm-x, 50px)) scaleX(var(--storm-flip, 1));
+}
+.storm__bolt:nth-child(1) {
+  d: var(--storm-path-1);
+  animation: storm-strike var(--storm-cycle-1) linear infinite;
+  --storm-x: 30px;
+}
+.storm__bolt:nth-child(2) {
+  d: var(--storm-path-2);
+  animation: storm-strike var(--storm-cycle-2) linear infinite;
+  --storm-x: 70px;
 }
 
 /* ── Bento grid (a "screen" is a composition of panels) ─────── */
@@ -364,7 +418,9 @@ body {
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-1);
-  background: var(--surface);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
@@ -380,6 +436,10 @@ body {
   font-weight: var(--fw-title);
   font-size: var(--fs-title);
   color: var(--title);
+  /* editorial title rule — same skin opt-in as .app-title */
+  text-decoration-line: var(--title-underline);
+  text-decoration-thickness: var(--title-underline-w);
+  text-underline-offset: var(--title-underline-offset);
 }
 .panel__body {
   flex: 1 1 auto;
@@ -438,7 +498,8 @@ body {
 .coll-pane:not([data-pos="center"]) { pointer-events: none; } /* only the on-screen pane is interactive */
 @media (prefers-reduced-motion: reduce) {
   .coll-pane { transition: none; }
-  .app-body { animation: none; }   /* freeze Ocean's waves */
+  .app-body { animation: none; }   /* freeze the canvas anim (Ocean waves / Glass drift) */
+  .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
   /* no hover-lift jump when motion is reduced */
   .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }
 }
@@ -531,13 +592,15 @@ body {
   color: var(--title);
 }
 
-/* Popover anchored under its pill */
+/* Popover for the Sort/View pills. Portaled to <body> (src/collection-card.ts) and
+   fixed-positioned under its pill, so it overflows the card's clipped viewport — the
+   pane's transform would otherwise trap it inside the card. JS sets top/left. */
 .lib-pop {
-  position: absolute;
-  top: calc(100% + var(--space-1));
-  left: 0;
-  z-index: 20;
-  background: var(--surface);
+  position: fixed;
+  z-index: 100;                     /* same tier as the context menu */
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border: 1px solid var(--border);
   border-radius: var(--lib-pop-radius);
   box-shadow: var(--shadow-panel);
@@ -550,7 +613,9 @@ body {
   flex-direction: column;
   gap: 2px;
 }
-.lib-pop__col--dir {
+/* The divider only makes sense between two columns — a lone density column
+   (a single-grouping View popover, e.g. Playlists) renders bare. */
+.lib-pop__col + .lib-pop__col--dir {
   padding-left: var(--space-2);
   border-left: 1px solid var(--border);
 }
@@ -663,7 +728,9 @@ body {
   z-index: 100;
   min-width: var(--menu-min-w);
   padding: var(--space-1);
-  background: var(--surface);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
@@ -823,7 +890,9 @@ body {
 .search__filter-pop {
   position: absolute; top: calc(100% + var(--space-1)); right: 0; z-index: 30;
   display: flex; flex-direction: column; gap: var(--space-1);
-  background: var(--surface); border: 1px solid var(--border);
+  background: var(--menu-surface); border: 1px solid var(--border);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
   border-radius: var(--radius-control); box-shadow: var(--shadow-panel); padding: var(--space-2);
 }
 .search__filter-pop[hidden] { display: none; } /* class sets display:flex, which would beat the [hidden] UA rule */
@@ -854,7 +923,7 @@ body {
 .search__panes { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .spane {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  background: var(--panel);
+  background: var(--spane-bg);
   transition: transform var(--nav-dur) var(--nav-ease), opacity var(--nav-dur) var(--nav-ease);
 }
 .spane[data-pos="center"] { transform: var(--nav-at-center); opacity: 1; z-index: 1; }

@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { applySurface, initSurface, type SurfaceName } from "./surface";
+import { initStorm } from "./storm";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
@@ -17,6 +18,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initSkin();
   initSurface();
+  initStorm(); // storm-layer position re-roll; inert unless the skin opts in
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the

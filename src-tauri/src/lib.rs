@@ -2,6 +2,7 @@ mod apple;
 mod enrich;
 mod library;
 mod model;
+mod playlists;
 mod provider;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,6 +41,7 @@ pub fn run() {
             let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
             library::init_db(&conn).expect("init library db");
             enrich::init_tables(&conn).expect("init enrichment tables");
+            playlists::init_tables(&conn).expect("init playlist tables");
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
             }
@@ -70,6 +72,16 @@ pub fn run() {
             library::materialize_track,
             enrich::catalog_enrich,
             enrich::album_palette,
+            playlists::playlists_cached,
+            playlists::apple_playlists_sync,
+            playlists::apple_playlist_tracks,
+            playlists::playlist_create,
+            playlists::playlist_rename,
+            playlists::playlist_delete,
+            playlists::playlist_add_tracks,
+            playlists::playlist_remove_track,
+            playlists::playlist_reorder,
+            playlists::local_playlist_tracks,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

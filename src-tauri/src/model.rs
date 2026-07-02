@@ -135,6 +135,14 @@ pub struct Playlist {
     pub last_modified: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub track_count: Option<u32>,
+    /// Where the playlist lives: `"local"` (our SQLite store, fully editable) or
+    /// `"apple"` (read-only mirror). None on plain catalog search results.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// Mirror classification (PLAYLISTS.md §2): `"user"` (canEdit), `"catalog"`
+    /// (added editorial/curator list), `"smart"` (rule-based — rules never exposed).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
 }
 
 /// A catalog artist's detail view: the artist + their releases + top songs.

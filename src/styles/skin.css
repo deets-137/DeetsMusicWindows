@@ -31,6 +31,15 @@
 
   --lh-text:    1.45;
 
+  /* Editorial title rule — an underline under the app title + card titles
+     (.app-title / .panel__title). Ink is currentColor (--title), so the
+     theme owns the color; these knobs are pure geometry. Base is a NO-OP
+     so a new skin never inherits it by accident — a skin opts in.
+     FUTURE-SETTINGS §11: behavior (always/hover/off) may become a toggle. */
+  --title-underline:        none;
+  --title-underline-w:      auto;
+  --title-underline-offset: auto;
+
   /* -- midi-player geometry ---------------------------------- */
   --midi-w: 480px;   /* quarter of 1920 */
   --midi-h: 864px;   /* 80% of 1080 */
@@ -60,12 +69,26 @@
   /* -- floating panels (menus / popovers) -------------------- */
   --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.18);
   --menu-min-w:   122px;
+  /* Menu material — same doctrine as --panel/--panel-backdrop, for the
+     FLOATING tier (.menu, .flyout, popovers, ctx-menu, pickers). Base is
+     opaque theme surface + no frost; Glass opts into a translucent mix +
+     blur. A skin points these at roles/derivations, never a hex. */
+  --menu-surface:  var(--surface);
+  --menu-backdrop: none;
+
+  /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
+     base paints the panel material — an opaque slide masks the pane beneath.
+     Translucent skins (Glass, CyberStorm) drop this to transparent: they FADE
+     off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting
+     --panel over the card's own frost stacks into a visible rectangle. */
+  --spane-bg:      var(--panel);
 
   /* -- bento panels ------------------------------------------ */
   --panel-gap:          var(--space-3);
   --panel-radius:       12px;
   --panel-pad:          var(--space-3);
-  --panel-border-width: 1px;        /* thin grouper edge; skins restyle it */
+  --panel-border-width: 0;          /* borderless: spacing/typography carry the
+                                       grouping (Glass opts back into a 1px edge) */
 
   /* Card fill — which theme surface the cards sit on. This is a
      SKIN decision (does this skin lift cards off the canvas?); the
@@ -100,6 +123,22 @@
   --album-aurora-reach:    3;       /* halo diameter, in cover-widths */
   --album-spin-dur:        48s;     /* rotation period of the highlight sweep */
   --album-fade-dur:        600ms;   /* crossfade on track change */
+
+  /* -- storm layer (decorative strokes behind the cards) ------ */
+  /* An inline-SVG layer in .app-body (two <path pathLength="1"> bolts)
+     that a skin opts into — same doctrine as --panel-backdrop. The
+     GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can
+     reuse the layer for rain / streaks / scan lines; the ink is a theme
+     ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per
+     strike by src/storm.ts) — not a skin token. Base is fully inert. */
+  --storm-display: none;            /* cyberstorm opts in */
+  --storm-ink:     var(--title);    /* stroke color — theme role, recolors per theme */
+  --storm-glow:    none;            /* drop-shadow() halo; a skin opts in */
+  --storm-w:       2px;             /* stroke width (non-scaling) */
+  --storm-path-1:  none;            /* bolt geometry, via CSS d: path(...) */
+  --storm-path-2:  none;
+  --storm-cycle-1: 8s;              /* full strike period: draw ~60% + linger + dark */
+  --storm-cycle-2: 12s;             /* unequal cycles → phases drift, never sync */
 
   /* -- scrubber (handle is a skin-swappable SVG mask) --------- */
   /* The handle is a --title-filled box masked by this SVG, so the shape is
@@ -160,24 +199,42 @@
 }
 
 /* Vanilla — the reference skin. It IS the base, so this block holds
-   no overrides; it exists as the named default for the selector. */
-[data-skin="vanilla"] { /* (intentionally empty) */ }
+   (almost) nothing. Exception, by design: a VANILLA-ONLY expression that
+   other skins shouldn't inherit lives here, with the base as the no-op —
+   same opt-in doctrine as --hover-lift / --panel-backdrop. */
+[data-skin="vanilla"] {
+  /* editorial title rule — with borderless cards, a thin underline under
+     the app + card titles is the one line vanilla keeps */
+  --title-underline:        underline;
+  --title-underline-w:      1px;
+  --title-underline-offset: 5px;
+}
 
 /* ============================================================
    DESK — light/airy notebook. Paper cards lifted off a dotted
    desk; a new card is set down into place. Handwritten title.
    ============================================================ */
 [data-skin="desk"] {
-  /* type — a handwritten marker title on a tidy humanist body */
-  --font-title: "Caveat", "Segoe Script", cursive;
+  /* type — a school-notebook hand title on a tidy humanist body.
+     Comic Sans MS is a Windows system face (this app is Windows-only);
+     Comic Neue is the bundled SIL-OFL fallback so the stack never
+     degrades to a generic cursive. */
+  --font-title: "Comic Sans MS", "Comic Neue", cursive;
   --font-body:  "Karla", "Segoe UI", system-ui, sans-serif;
   --fw-title:   700;
-  --fs-title:   26px;               /* handwriting reads small; size up */
+  --fs-title:   22px;               /* Comic Sans reads big; size down from base+ */
 
-  /* cards — a true raised paper surface; the edge becomes a shadow */
+  /* cards — a true raised paper surface; the edge becomes a shadow.
+     6px corners land the cut-paper ladder: 3px covers → 6px cards → 7px pills. */
   --panel:              var(--surface);
   --panel-border-width: 0;
+  --panel-radius:       6px;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.12);
+
+  /* floating panels — sticky notes, not hovering OS chrome: squared to
+     match the cards, and the same contact + ambient shadow language */
+  --radius-panel: 6px;
+  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.20), 0 6px 16px rgba(0, 0, 0, 0.14);
 
   /* controls — paper labels, not iOS capsules. Pills lose their pill. */
   --lib-pill-radius: 7px;
@@ -195,6 +252,11 @@
   /* motion — paper settles; rows rise a hair when you touch them */
   --dur-fast:   0.16s;
   --hover-lift: translateY(-1px);
+
+  /* drag — a picked-up sheet tilts (CCW: a right hand lifting the left
+     edge) and the insertion line fattens to a pencil stroke */
+  --drag-lift:   scale(1.03) rotate(-1.2deg);
+  --drop-line-w: 3px;
 
   /* desk — a dot grid that actually reads: the stronger --panel-border
      hairline (0.30 alpha) instead of the whisper-faint --border (0.16),
@@ -291,7 +353,7 @@
      thin the theme's --surface to glass; saturate() makes the aurora pop
      through. No hex is named — translucency is an alpha of a theme role. */
   --panel:              color-mix(in srgb, var(--surface) 55%, transparent);
-  --panel-backdrop:     blur(14px) saturate(1.3);
+  --panel-backdrop:     blur(14px) saturate(1.5);
   --panel-border-width: 1px;
   --panel-radius:       18px;
   --shadow-card:
@@ -304,24 +366,52 @@
   --lib-tile-radius:    12px;
   --lib-row-art-radius: 8px;
 
-  /* album aurora — the flagship (and for now only) expression: the frost mutes
-     what's behind it, so drive the stops harder and let saturate() make them glow */
+  /* album aurora — the flagship expression: the frost mutes what's behind it,
+     so drive the stops harder and let saturate() make them glow. Wider reach +
+     a faster orbit than base so the halo reads as alive, not subliminal.
+     Intensity knobs are catalogued in FUTURE-SETTINGS §12 (skin-specific). */
   --album-aurora-display:  block;
   --album-aurora-strength: 52%;
+  --album-aurora-reach:    3.5;
+  --album-spin-dur:        30s;
 
-  /* motion — gentle, with a soft hover rise on rows/tiles */
+  /* menus — frosted like the panels, but milkier (65% vs 55%): menus carry
+     dense text over arbitrary backdrops, so legibility buys more opacity */
+  --menu-surface:  color-mix(in srgb, var(--surface) 65%, transparent);
+  --menu-backdrop: blur(16px) saturate(1.4);
+
+  /* single frost = the card itself; panes fade (no mask needed), so don't
+     re-paint --panel and double the tint into a rectangle below the bar. */
+  --spane-bg:      transparent;
+
+  /* motion — gentle, with a soft hover rise on rows/tiles; a dragged queue
+     row floats off the glass a touch higher than base */
   --dur-fast:   0.2s;
   --hover-lift: translateY(-1px);
+  --drag-lift:  scale(1.04);
 
   /* aurora — soft accent blobs the frost refracts. Hues are the theme's
      OWN accent roles (go / stop / pause) at low alpha, so Glass recolors
-     itself per theme while naming no color. Static (no animation) for now. */
+     itself per theme while naming no color. The blobs DRIFT (aurora-drift).
+     Two hard-line traps, both handled here:
+     · the layers are OVERSIZED by 128px so the drift (range −128..0) never
+       drags the gradient image's cut edge into view — at 100% size a shifted
+       layer shows a crisp straight boundary where a bleeding blob is cut off;
+     · each fade gets a mid stop and runs to a farther terminus, so there's
+       no abrupt slope change (Mach band) rimming the hotter blobs. */
   --canvas-bg:
-    radial-gradient(42% 52% at 16% 10%, color-mix(in srgb, var(--go) 38%, transparent), transparent 70%),
-    radial-gradient(46% 56% at 86% 22%, color-mix(in srgb, var(--stop) 34%, transparent), transparent 70%),
-    radial-gradient(52% 52% at 60% 96%, color-mix(in srgb, var(--pause) 30%, transparent), transparent 72%);
-  --canvas-bg-size:   100% 100%;
+    radial-gradient(42% 52% at 16% 10%,
+      color-mix(in srgb, var(--go) 50%, transparent),
+      color-mix(in srgb, var(--go) 20%, transparent) 45%, transparent 80%),
+    radial-gradient(46% 56% at 86% 22%,
+      color-mix(in srgb, var(--stop) 44%, transparent),
+      color-mix(in srgb, var(--stop) 18%, transparent) 45%, transparent 80%),
+    radial-gradient(52% 52% at 60% 96%,
+      color-mix(in srgb, var(--pause) 38%, transparent),
+      color-mix(in srgb, var(--pause) 15%, transparent) 45%, transparent 82%);
+  --canvas-bg-size:   calc(100% + 128px) calc(100% + 128px);
   --canvas-bg-repeat: no-repeat;
+  --canvas-anim:      aurora-drift 60s ease-in-out infinite;
 
   /* nav — panes fade/scale through one another rather than slide */
   --nav-dur:  0.34s;
@@ -331,5 +421,113 @@
   --nav-at-right:    scale(0.96);
   --nav-off-opacity: 0;
 
-  /* scrubber handle stays the base round bead — fits glass as-is. */
+  /* scrubber handle — a glass ring (evenodd hollow): the --title fill draws
+     only the rim, so the track shows THROUGH the handle like a little lens */
+  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z' fill='%23000'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   CYBERSTORM — electric/futuristic. Lightning bolts slow-draw down
+   the canvas behind the cards (the storm layer); machined sci-fi
+   type; every corner cut square; nav snaps with a lateral jolt.
+   Intensity dials are catalogued in FUTURE-SETTINGS §13.
+   ============================================================ */
+[data-skin="cyberstorm"] {
+  /* type — machined geometric title on a condensed squared body.
+     Orbitron reads very wide, size down; Rajdhani runs thin and
+     small-x-height, so the body sits at 500 and a size up. */
+  --font-title: "Orbitron", "Segoe UI", system-ui, sans-serif;
+  --font-body:  "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  --fw-title:   700;
+  --fs-title:   17px;
+  --fs-text:    15px;
+  --fw-text:    500;
+  --fs-subtext: 13px;
+  --fw-subtext: 500;
+
+  /* shape — blades, not pebbles: everything square or near-square */
+  --radius-panel:       0;
+  --radius-control:     2px;
+  --panel-radius:       0;
+  --lib-pill-radius:    2px;
+  --vol-pill-radius:    2px;
+  --lib-pop-radius:     0;
+  --lib-tile-radius:    0;
+  --lib-row-art-radius: 0;
+  --scrollbar-radius:   0;
+
+  /* cards — smoked-glass plates with a hard 1px edge, no soft shadow
+     (sharp things don't have soft shadows). The 86% mix leaves the
+     panels a touch translucent so a bolt passing behind a card glows
+     through dimly, full-bright in the gutters. (Dial: FUTURE-SETTINGS §13.) */
+  --panel:              color-mix(in srgb, var(--canvas) 86%, transparent);
+  --panel-border-width: 1px;
+  --shadow-card:        none;
+  /* panel is translucent (bolts glow through) — same as Glass, don't re-paint
+     it on the pane or the content area double-darkens and dims the storm. */
+  --spane-bg:           transparent;
+
+  /* storm — the flagship expression (see the base block + storm-strike
+     below). Two --title bolts, ~5s and ~7s draws, glow in a soft halo
+     of the same role. */
+  --storm-display: block;
+  --storm-glow:    drop-shadow(0 0 6px color-mix(in srgb, var(--title) 60%, transparent));
+  --storm-path-1:  path("M 0 -2 L 5 14 L -3 27 L -9 36 L -12 45 L -9 36 L -3 27 L 4 41 L -2 55 L 3 70 L 10 80 L 16 92 L 10 80 L 3 70 L -4 85 L 1 102");
+  --storm-path-2:  path("M 0 -2 L -4 15 L 3 28 L 9 37 L 13 47 L 9 37 L 3 28 L -2 42 L 5 56 L -3 71 L -10 80 L -15 90 L -10 80 L -3 71 L 2 86 L -1 102");
+
+  /* canvas — a faint circuit grid under the bolts, ruled in the theme
+     hairline (same role Desk's dots use) */
+  --canvas-bg:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  --canvas-bg-size:   28px 28px;
+  --canvas-bg-repeat: repeat;
+
+  /* nav — an electric snap: fast, hard ease, the pane jolts in with a
+     skew that straightens at center */
+  --nav-dur:  0.14s;
+  --nav-ease: cubic-bezier(0.7, 0, 0.3, 1);
+  --nav-at-center:   translateX(0) skewX(0deg);
+  --nav-at-left:     translateX(-100%) skewX(6deg);
+  --nav-at-right:    translateX(100%) skewX(-6deg);
+  --nav-off-opacity: 0;
+
+  /* micro-motion — twitch-fast; a dragged queue row banks like a blade */
+  --dur-fast:    0.08s;
+  --hover-lift:  translateY(-1px);
+  --drag-lift:   scale(1.02) skewX(-2deg);
+  --drop-line-w: 3px;
+
+  /* scrubber handle — the playhead is a lightning bolt (still --title
+     filled via the mask, like every skin's handle) */
+  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 2 L6 14 h5 l-2 8 L18 9 h-5 l3 -7 Z' fill='%23000'/%3E%3C/svg%3E");
+  --scrubber-handle-size: 14px;
+}
+
+/* CyberStorm's strike cycle: the bolt draws top→bottom over ~60% of its
+   period (dashoffset 1→0 against pathLength=1), flickers once at full
+   reach, cuts to dark, and rests until the next strike. Both bolts run
+   THESE keyframes at different --storm-cycle-* durations — that alone
+   yields "two visible at once, drawing at different rates". storm.ts
+   re-rolls each bolt's position during the dark window (opacity 0 at
+   the loop seam, so the jump is never visible). Defined once; only
+   CyberStorm references it (via the .storm__bolt animation). */
+@keyframes storm-strike {
+  0%        { stroke-dashoffset: 1; opacity: 0; }
+  2%        { opacity: 1; }
+  60%       { stroke-dashoffset: 0; opacity: 1; }
+  64%       { opacity: 0.4; }   /* flicker at full reach */
+  68%       { opacity: 1; }
+  74%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Glass's aurora blobs wander and return: each layer drifts a different
+   direction, out of phase, with symmetric 0/50/100 keyframes so the loop is
+   seamless. Rest position is −64px (the oversized layer's center); every
+   offset stays within −128..0 on both axes, so the image edge — the hard
+   cut line — can never enter the viewport. Defined once; only Glass
+   references it (via --canvas-anim). */
+@keyframes aurora-drift {
+  0%, 100% { background-position: -64px -64px, -64px -64px, -64px -64px; }
+  50%      { background-position: -16px -32px, -120px -40px, -28px -108px; }
 }
