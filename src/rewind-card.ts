@@ -89,7 +89,7 @@ function mountRewind(host: HTMLElement): CardInstance {
         const top = view[0];
         const cover = artURL(top.track, 96);
         const heroArt = cover
-          ? `<img class="qnow__art" src="${esc(cover)}" alt="" />`
+          ? `<img class="qnow__art" src="${esc(cover)}" alt="" data-art />`
           : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
         const hero = `
           <div class="qnow${round}" data-idx="0">
@@ -103,7 +103,7 @@ function mountRewind(host: HTMLElement): CardInstance {
         const rows2 = view.slice(1).map((r, i) => {
           const c = artURL(r.track, 72);
           const art = c
-            ? `<img class="qrow__art" src="${esc(c)}" alt="" loading="lazy" />`
+            ? `<img class="qrow__art" src="${esc(c)}" alt="" loading="lazy" data-art />`
             : `<div class="qrow__art qrow__art--empty" aria-hidden="true">♪</div>`;
           return `<li class="qrow${round}" data-idx="${i + 1}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
             r.title,

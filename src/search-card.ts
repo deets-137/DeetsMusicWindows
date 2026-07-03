@@ -8,7 +8,8 @@
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addTransientTracks } from "./track-store";
 import { addToPlaylistItem } from "./playlists";
-import { openContextMenu } from "./context-menu";
+import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
+import { openContextMenu, type MenuItem } from "./context-menu";
 import { makeDropdown } from "./dropdown";
 import { esc } from "./collection-card";
 import {
@@ -34,7 +35,7 @@ const art = (tmpl: string | undefined, px: number): string | null =>
 
 const coverHTML = (url: string | null, cls: string): string =>
   url
-    ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy" />`
+    ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy" data-art />`
     : `<div class="${cls} ${cls}--empty" aria-hidden="true">♪</div>`;
 
 // ── persisted bits ──
@@ -347,7 +348,8 @@ function mountSearch(host: HTMLElement): CardInstance {
       // Catalog tracks land as denormalised snapshots — no library/queue
       // materialization needed; the local store is self-contained by design.
       addToPlaylistItem(() => [t]),
-    ]);
+      addSongToLibraryItem(t), // null unless the Library Add toggle is on
+    ].filter(Boolean) as MenuItem[]);
   };
   const collectionMenu = (e: MouseEvent, kind: "albums" | "playlists", id: string, ctx: string) => {
     const fetchThen = (how: "now" | "next" | "later") =>
@@ -359,7 +361,10 @@ function mountSearch(host: HTMLElement): CardInstance {
       { label: "Play Next", run: () => void fetchThen("next") },
       { label: "Add to Queue", run: () => void fetchThen("later") },
       addToPlaylistItem(() => collectionTracks(kind, id)), // fetch-then-add, lazy on pick
-    ]);
+      // Albums add as a library resource (fork A: graduates the album's tracks so they
+      // appear right away). Playlists have no add-to-library path here.
+      kind === "albums" ? addAlbumToLibraryItem(id, () => collectionTracks(kind, id)) : null,
+    ].filter(Boolean) as MenuItem[]);
   };
 
   // ── root interactions (delegated; survive re-renders) ──

@@ -3,6 +3,8 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { applySurface, initSurface, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
+import { initArtworkHeal } from "./artwork-heal";
+import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
@@ -19,6 +21,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSkin();
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
+  initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the
@@ -75,6 +78,17 @@ window.addEventListener("DOMContentLoaded", () => {
     const next: DropdownMode = hoverToggle.getAttribute("aria-checked") === "true" ? "click" : "hover";
     hoverToggle.setAttribute("aria-checked", String(next === "hover"));
     applyMenuMode(next);
+  });
+
+  // ── Library Add: reveals the "Add to Library" right-click item (default off; the
+  //    module owns persistence, menus read the flag at build time — no fan-out). ──
+  const libraryAddToggle = document.getElementById("libraryadd-toggle");
+  libraryAddToggle?.setAttribute("aria-checked", String(libraryAddEnabled()));
+  libraryAddToggle?.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep the menu open so the dot feedback is visible
+    const next = libraryAddToggle.getAttribute("aria-checked") !== "true";
+    setLibraryAddEnabled(next);
+    libraryAddToggle.setAttribute("aria-checked", String(next));
   });
 
   // Theme choices.

@@ -482,3 +482,30 @@ alone.
 (default `"search"`), read at the `requestCard("search")` call in `createAndEnter`
 (`src/playlists-card.ts`). A Playlists settings tenant alongside §14/§15. If the §10
 summon behavior ever grows options, this should follow the same vocabulary.
+
+---
+
+## 17. Radio break-out — resume the station after the manual queue ends
+
+**Behavior.** What happens when the **break-out block** finishes. Queueing songs while
+an Apple station plays (Play Next / Add to Queue) defers a **break-out**: the block
+waits for the current station song to end, then takes over as a normal finite queue
+(STATIONS.md §1 — decided 2026-07-03). When that block's last song ends, playback
+simply stops (the standard end-of-queue behavior).
+
+**Current default (hardcoded):** **stop at the end of the block** — the break-out is
+permanent; the station is gone the moment the block takes over.
+
+**Options.**
+- **(a) Stop when the block ends** *(current default)* — predictable; radio was left.
+- **(b) Resume the station** — the interrupted station re-enters when the block's last
+  song ends ("play these three songs, then back to my station"). Implementation is a
+  natural hook: `player.ts` remembers the interrupted `Station` at break-out, and the
+  end-of-queue moment (model `upcoming` empty + MusicKit queue exhausted) calls
+  `playStation` again. The re-entry rebuilds the station queue, so there's a boundary
+  buffer — same as the break-out itself.
+
+**Wiring sketch.** `localStorage` `deets.radio.resumeAfterBreakout` = `"off" | "on"`
+(default `"off"`), read where the break-out swaps engines (`onNowPlayingChange`'s radio
+branch in `src/player.ts` — stash the station there; act on it at queue exhaustion). A
+Radio settings tenant.

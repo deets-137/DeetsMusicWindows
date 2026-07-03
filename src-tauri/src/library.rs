@@ -484,6 +484,34 @@ pub fn materialize_track(track: Track, db: State<'_, Db>) -> Result<(), String> 
     Ok(())
 }
 
+/// Graduate tracks to `source='library'` after an explicit Add-to-Library (or insert
+/// fresh library rows). Stamps a synthetic `added_rank` — Unix seconds, guaranteed
+/// above every real rank (0..library-size) and monotonic — so a just-added track sorts
+/// to the top of "Added Date" immediately; the next `dateAdded` sync overwrites both
+/// the rank and the JSON with authoritative values. Called under the DB lock by the
+/// add-to-library command. `added_rank` is a u32, so seconds (not ms) is required.
+pub(crate) fn graduate_tracks(conn: &Connection, tracks: &[Track]) -> Result<(), String> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as u32)
+        .unwrap_or(0);
+    for t in tracks {
+        let Some(id) = track_key(t) else { continue };
+        let sort_key = format!("{}\u{1f}{}", t.title.to_lowercase(), t.artist_name.to_lowercase());
+        let mut row = t.clone();
+        row.added_rank = Some(now);
+        let json = serde_json::to_string(&row).map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'library', ?2, ?3)
+             ON CONFLICT(track_id) DO UPDATE SET
+                 source = 'library', sort_key = excluded.sort_key, json = excluded.json",
+            rusqlite::params![id, sort_key, json],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 // One sync at a time. Overlapping invocations (double-triggered refresh, a card
 // re-mount racing the startup sync) would double the Apple traffic and interleave
 // progress events. The guard's Drop releases the flag on every exit path.

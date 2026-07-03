@@ -12,6 +12,7 @@ import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTrack
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
+import { addSongToLibraryItem } from "./library-add";
 import { initCollectionCard, type Context, type Grouping, type SortSpec } from "./collection-card";
 import { musicCell, trackMenu } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
@@ -61,6 +62,7 @@ export const playlistsCard: CardDef = {
     const addBtn = host.querySelector<HTMLElement>("#playlists-add");
 
     let lists: Playlist[] = [];
+    let openPlaylist: Playlist | null = null; // the drilled-into playlist, or null at overview
     const trackCache = new Map<string, Track[]>(); // pid → authored-order tracks
     const posOf = new WeakMap<Track, number>(); // authored position (Playlist-Order sort)
     const pending = new Set<string>();
@@ -89,8 +91,27 @@ export const playlistsCard: CardDef = {
         .finally(() => pending.delete(id));
     };
 
+    // Stale-while-revalidate refetch for a playlist that's ALREADY cached + on-screen
+    // (the fresh ⟳ while its detail pane is open). Unlike ensureTracks it force-fetches
+    // over the existing entry, so the pane keeps showing the current tracks until the
+    // new ones land — then reload swaps them in with no blank flash.
+    const revalidate = (p: Playlist) => {
+      const id = pid(p);
+      if (pending.has(id)) return;
+      pending.add(id);
+      playlistTracks(p)
+        .then((ts) => {
+          ts.forEach((t, i) => posOf.set(t, i));
+          trackCache.set(id, ts);
+          card.reload();
+        })
+        .catch((e) => console.error("[playlists] revalidate", e))
+        .finally(() => pending.delete(id));
+    };
+
     // ── detail: a playlist's tracks, authored order ──
     const detail = (p: Playlist): Context => {
+      openPlaylist = p; // track the open playlist so a fresh sync can revalidate it in place
       ensureTracks(p);
       const id = pid(p);
       const ctxTag = `playlist:${id}`;
@@ -120,7 +141,9 @@ export const playlistsCard: CardDef = {
         // indexOf pinpoints the right duplicate; -1 = the list shifted under the
         // open menu → no-op rather than remove the wrong row).
         menu: (t) => {
-          const base = trackMenu([t], ctxTag);
+          // Add-to-Library rides after the shared actions (null unless the toggle is on
+          // and the track is catalog-only); Remove stays destructive-last on locals.
+          const base = [...trackMenu([t], ctxTag), addSongToLibraryItem(t)].filter(Boolean) as MenuItem[];
           if (p.source !== "local") return base;
           return [
             ...base,
@@ -219,6 +242,7 @@ export const playlistsCard: CardDef = {
       rootContext,
       onHeader: (h) => {
         lastHeader = h;
+        if (h.atRoot) openPlaylist = null; // backed out to the overview — nothing open to revalidate
         if (addBtn) addBtn.hidden = !h.atRoot; // New Playlist is a root-only action (create from the overview)
         headerSubs.forEach((cb) => cb(h));
       },
@@ -252,7 +276,14 @@ export const playlistsCard: CardDef = {
       applePlaylistsSync(fresh)
         .then((n) => {
           console.log(`[playlists] mirror synced — ${n} playlist(s)${fresh ? " (fresh)" : ""}`);
-          if (fresh) trackCache.clear(); // contents refetch on next open
+          if (fresh) {
+            // Drop every playlist's contents so each refetches on next open — EXCEPT one
+            // whose detail pane is open: keep its stale entry visible and revalidate it in
+            // place (below), so the open pane doesn't blank while the resync runs.
+            const keep = openPlaylist ? pid(openPlaylist) : null;
+            for (const id of [...trackCache.keys()]) if (id !== keep) trackCache.delete(id);
+            if (openPlaylist) revalidate(openPlaylist);
+          }
           return load();
         })
         .then(backfillCounts) // new playlists from the sync get their counts too

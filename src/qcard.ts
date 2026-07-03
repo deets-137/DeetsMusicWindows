@@ -9,7 +9,8 @@ import { onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileU
 import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
-import { openContextMenu } from "./context-menu";
+import { openContextMenu, type MenuItem } from "./context-menu";
+import { addSongToLibraryItem } from "./library-add";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
@@ -50,7 +51,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const npArtist = (loading ? curTrack?.artistName : lastState?.artist ?? curTrack?.artistName) ?? "";
     const npCover = loading ? artURL(curTrack, 96) : lastState?.artworkUrl ?? artURL(curTrack, 96);
     const npArt = npCover
-      ? `<img class="qnow__art" src="${esc(npCover)}" alt="" />`
+      ? `<img class="qnow__art" src="${esc(npCover)}" alt="" data-art />`
       : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
 
     const shown = upcoming.slice(0, UP_NEXT_CAP);
@@ -100,31 +101,48 @@ function mountQueue(host: HTMLElement): CardInstance {
     }
   });
 
-  // Right-click an Up Next row → queue actions. We capture the ENTRY (not the index):
-  // playback may advance while the menu is open, shifting indices, so each action
-  // re-resolves the entry's *live* index at run time (no-op if it's since been consumed).
+  // Right-click → context menu. Two targets:
+  //  - an Up Next row → queue actions (+ Add to Library). We capture the ENTRY (not the
+  //    index): playback may advance while the menu is open, shifting indices, so each
+  //    action re-resolves the entry's *live* index at run time (no-op if consumed).
+  //  - the Now Playing hero → the current song's Add to Library (its main use: saving a
+  //    catalog/station song that's playing but not in the library).
+  // Add to Library rides the shared gated builder (null when the toggle's off / already
+  // in library / no catalog id); a hero menu with nothing to offer simply doesn't open.
   body.addEventListener("contextmenu", (e) => {
-    const row = (e.target as HTMLElement).closest<HTMLElement>(".qrow[data-idx]");
-    if (!row) return;
-    const entry = queue.getUpcoming()[Number(row.dataset.idx)];
-    if (!entry) return;
-    e.preventDefault();
-    row.classList.add("is-context");
-    const act = (fn: (i: number) => Promise<void>, label: string) => () => {
-      const i = queue.getUpcoming().indexOf(entry);
-      if (i >= 0) void fn(i).catch((err) => console.error(`[qcard] ${label}`, err));
-    };
-    openContextMenu(
-      e.clientX,
-      e.clientY,
-      [
+    const target = e.target as HTMLElement;
+    const row = target.closest<HTMLElement>(".qrow[data-idx]");
+    if (row) {
+      const entry = queue.getUpcoming()[Number(row.dataset.idx)];
+      if (!entry) return;
+      e.preventDefault();
+      row.classList.add("is-context");
+      const act = (fn: (i: number) => Promise<void>, label: string) => () => {
+        const i = queue.getUpcoming().indexOf(entry);
+        if (i >= 0) void fn(i).catch((err) => console.error(`[qcard] ${label}`, err));
+      };
+      const t = resolve(entry);
+      const items: MenuItem[] = [
         { label: "Play Now", run: act(jumpToUpcoming, "play now") },
         { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
         { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
         { label: "Remove", run: act(removeFromQueue, "remove") },
-      ],
-      () => row.classList.remove("is-context"),
-    );
+      ];
+      const add = t ? addSongToLibraryItem(t) : null;
+      if (add) items.push(add);
+      openContextMenu(e.clientX, e.clientY, items, () => row.classList.remove("is-context"));
+      return;
+    }
+
+    const hero = target.closest<HTMLElement>(".qnow");
+    if (!hero) return;
+    const cur = queue.getCurrent();
+    const t = cur ? resolve(cur) : undefined;
+    const add = t ? addSongToLibraryItem(t) : null;
+    if (!add) return; // nothing to offer for the current song (toggle off / already in library)
+    e.preventDefault();
+    hero.classList.add("is-context");
+    openContextMenu(e.clientX, e.clientY, [add], () => hero.classList.remove("is-context"));
   });
 
   // ── Drag-to-reorder (Up Next) ──────────────────────────────────────────────

@@ -917,6 +917,20 @@ body {
 .lib-empty { display: grid; place-items: center; padding: var(--space-4); }
 .lib-empty__msg { color: var(--subtext); font-size: var(--fs-subtext); }
 
+/* ── Radio card (STATIONS.md §3a — the stations browser) ── */
+/* Shelf headers are LIST ITEMS in the engine's root pane (the heterogeneous shelf
+   list), voiced like the Search card's section titles so the two sectioned surfaces
+   speak one language. Non-interactive: no hover treatment, default cursor. */
+.lib-shelf {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
+  color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
+  padding: var(--space-3) 0 var(--space-1);
+  cursor: default;
+}
+.lib-shelf:first-child { padding-top: 0; }
+/* In grid densities a header is still a grid child — span it across the full row. */
+.lib-grid .lib-shelf { grid-column: 1 / -1; }
+
 /* ── Search card (SEARCH.md — the "searches" screen archetype) ── */
 /* Blended sectioned results: bar-divided vertical sections, each an h-scroller.
    All values route through theme roles + skin tokens (no literals). */
@@ -1254,3 +1268,21 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .np__artist:empty { display: none; }
+
+/* Radio transport caps (STATIONS.md §1): a LIVE station has no seek and no skip.
+   `.np--live` swaps the scrubber for the LIVE marker (same slot, so the strip keeps
+   its height) and the disabled prev/next dim. The marker's color is a theme role. */
+.np__live {
+  display: none;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-subtext);
+  letter-spacing: 0.08em;
+  color: var(--stop);
+}
+.np--live .np__scrub .scrub__track,
+.np--live .np__scrub .scrub__handle { visibility: hidden; }
+.np--live .np__scrub { pointer-events: none; }
+.np--live .np__live { display: block; }
+.np__btn[disabled] { opacity: 0.35; cursor: default; }

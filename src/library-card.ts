@@ -115,13 +115,13 @@ function initials(name: string): string {
 function rowThumb(art: Artwork | undefined, round: boolean, name: string): string {
   const r = round ? " lib-row__art--round" : "";
   const url = artURL(art, 72);
-  if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" />`;
+  if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" data-art />`;
   return `<div class="lib-row__art${r} lib-row__art--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 function tileCover(art: Artwork | undefined, px: number, round: boolean, name: string): string {
   const r = round ? " lib-tile__cover--round" : "";
   const url = artURL(art, px);
-  if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" />`;
+  if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" data-art />`;
   return `<div class="lib-tile__cover${r} lib-tile__cover--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 const px = (density: Density) => (density === "large" ? 300 : 160);

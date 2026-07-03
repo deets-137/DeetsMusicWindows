@@ -24,6 +24,7 @@ const TEMPLATE = `
       <div class="np__scrub scrub">
         <div class="scrub__track"><div class="scrub__fill"></div></div>
         <span class="scrub__handle" aria-hidden="true"></span>
+        <span class="np__live" aria-hidden="true">LIVE</span>
       </div>
       <div class="np__bottom">
         <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle">
@@ -68,14 +69,23 @@ export const nowPlayingCard: CardDef = {
     const npArt = host.querySelector<HTMLElement>("#np-art");
     const npTitle = host.querySelector<HTMLElement>("#np-title");
     const npArtist = host.querySelector<HTMLElement>("#np-artist");
+    const npEl2 = host.querySelector<HTMLElement>(".np");
+    const prevBtn = host.querySelector<HTMLButtonElement>('.np__controls [aria-label="Previous"]');
+    const nextBtn = host.querySelector<HTMLButtonElement>('.np__controls [aria-label="Next"]');
 
-    // Drive the icon, title/artist, and cover from actual playback state.
+    // Drive the icon, title/artist, cover, and radio transport caps from playback
+    // state. A LIVE station has no seek and no skip (STATIONS.md §1): `.np--live`
+    // swaps the scrubber for a LIVE marker and the prev/next buttons disable.
     const unsubState = onPlayerState((s) => {
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
       if (npTitle) npTitle.textContent = s.title ?? "Not playing";
-      if (npArtist) npArtist.textContent = s.artist ?? "";
-      if (npArt) npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" />` : "♪";
+      if (npArtist) npArtist.textContent = s.artist ?? (s.station ? s.station.name : "");
+      if (npArt) npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
+      const live = !!s.station?.live;
+      npEl2?.classList.toggle("np--live", live);
+      if (prevBtn) prevBtn.disabled = live;
+      if (nextBtn) nextBtn.disabled = live;
     });
 
     playBtn.addEventListener("click", () => {

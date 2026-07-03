@@ -23,11 +23,22 @@ export interface SortSpec<T = any> {
   type: "str" | "num";
 }
 
+/** The frame state a `list()` accessor may shape itself around (e.g. Radio's shelf
+ *  headers exist only in featured order — an A–Z sort flattens the list). */
+export interface ViewState {
+  sortKey: string;
+  sortDir: SortDir;
+  density: Density;
+  query: string;
+}
+
 export interface Grouping<T = any> {
   key: string;
   label: string;
   sorts: SortSpec<T>[];
-  list: () => T[]; // live accessor — recomputed each render so syncs flow through
+  // live accessor — recomputed each render so syncs flow through; the optional view
+  // state lets a heterogeneous list restructure per sort/density (most cards ignore it)
+  list: (view?: ViewState) => T[];
   name: (x: T) => string; // search tiebreak + (for details) the drilled title
   match: (x: T, q: string) => boolean;
   render: (x: T, density: Density, idx: number) => string; // root el must carry data-idx="${idx}"
@@ -205,15 +216,22 @@ export function initCollectionCard(opts: CardOptions) {
 
   const toolbarHTML = (f: Frame) => {
     const showView = f.ctx.groupings.length > 1 || f.ctx.density;
+    // Auto-hide, same doctrine as View: a context whose every grouping has a single
+    // fixed order (e.g. Radio's featured shelves) gets no one-option Sort pill.
+    const showSort = f.ctx.groupings.some((g) => g.sorts.length > 1);
     return `
       <div class="lib-toolbar">
         <div class="lib-pills">
-          <div class="lib-ctrl" data-ctrl="sort">
+          ${
+            showSort
+              ? `<div class="lib-ctrl" data-ctrl="sort">
             <button class="lib-pill" data-pop="sort" type="button" aria-haspopup="true" aria-expanded="false">
               <span class="lib-pill__label">Sort</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
-          </div>
+          </div>`
+              : ""
+          }
           ${
             showView
               ? `<div class="lib-ctrl" data-ctrl="view">
@@ -257,7 +275,7 @@ export function initCollectionCard(opts: CardOptions) {
     if (!view) return;
     const g = groupingOf(f);
     const q = f.query.trim().toLowerCase();
-    let items = g.list();
+    let items = g.list({ sortKey: f.sortKey, sortDir: f.sortDir, density: f.density, query: f.query });
     if (q) items = items.filter((x) => g.match(x, q));
     const spec = g.sorts.find((s) => s.key === f.sortKey) ?? g.sorts[0];
     items = sortItems(items, spec, f.sortDir, g.name);

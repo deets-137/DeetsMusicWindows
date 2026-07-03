@@ -14,6 +14,7 @@ import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
 import { trackById, tracks, addTransientTracks, inLibrary } from "./track-store";
 import { materializeTrack } from "./search";
+import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
 import * as stats from "./stats";
 
@@ -32,6 +33,23 @@ let initPromise: Promise<any> | null = null;
 let windowPos = 0;
 let loadingContext = false;
 let isLoading = false; // a (re)window is buffering — surfaced in PlayerState.loading
+
+// ── Radio mode (STATIONS.md §1–2) ────────────────────────────────────────────
+// While an Apple station plays, MusicKit OWNS the queue and its refill — the model
+// keeps only the heard trail (stationFollow). Every window-machinery path
+// (model-follow walk, top-up, reconcile, alignment canaries) is guarded on `mode`.
+type PlayerMode = "queue" | "radio";
+let mode: PlayerMode = "queue";
+let radioStation: Station | null = null;
+// A manual insert during radio waits for the CURRENT song to end (your call,
+// 2026-07-03), then the block takes over as a finite queue (see onNowPlayingChange).
+let pendingBreakout = false;
+
+function exitRadio(): void {
+  mode = "queue";
+  radioStation = null;
+  pendingBreakout = false;
+}
 
 /** Resolve once the async MusicKit CDN script has registered `window.MusicKit`. */
 async function whenMusicKitLoaded(): Promise<void> {
@@ -53,6 +71,7 @@ export function initPlayer(): Promise<any> {
     });
     music = window.MusicKit.getInstance();
     await injectUserToken();
+    installMusicKitRejectionFilter();
     wireEvents();
     applyVolumeToMusic(); // push the persisted level onto the fresh instance
     (window as any).__music = music; // introspect the opaque instance (dev + bug reports)
@@ -91,6 +110,32 @@ async function injectUserToken(): Promise<void> {
   }
 }
 
+// During a queue transition MusicKit's own event handlers re-issue play() on their
+// INTERNAL promise chains — chains we don't await, so a throw there surfaces as an
+// "Uncaught (in promise)" we can't try/catch. Two are benign transport races that do
+// NOT affect playback (verified with the station break-out swap):
+//  - "play() … without a previous stop() or pause()" — an internal re-play mid-swap.
+//  - "play() request was interrupted by a new load request" (AbortError) — a load
+//    superseded by a newer one (our own coalescing does this by design).
+// Swallow EXACTLY these messages; everything else propagates untouched. Our own
+// awaited play()/setQueue calls still surface through their normal try/catch — this
+// only intercepts MusicKit's un-awaited internal rejections. Logged to diag so a real
+// regression here is still visible.
+let rejectionFilterInstalled = false;
+function installMusicKitRejectionFilter(): void {
+  if (rejectionFilterInstalled) return;
+  rejectionFilterInstalled = true;
+  const BENIGN =
+    /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by a new load request)/i;
+  window.addEventListener("unhandledrejection", (e) => {
+    const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? "");
+    if (BENIGN.test(msg)) {
+      diag.log("player:mkRaceSwallowed", { msg });
+      e.preventDefault(); // benign MusicKit transport race — keep it out of the console
+    }
+  });
+}
+
 // ── State broadcast (UI subscribes; we read straight off the live instance) ──────
 
 export interface PlayerState {
@@ -101,6 +146,9 @@ export interface PlayerState {
   /** True while a (re)window is buffering — a jump/seek out of the gapless window.
    *  The UX cover-up hook (see docs/UX-COVERUPS.md); natural play never sets it. */
   loading?: boolean;
+  /** Set while an Apple station owns the queue (radio mode). `live` drives the
+   *  transport caps: no seek, no skip, LIVE indicator (STATIONS.md §1). */
+  station?: { name: string; live: boolean };
 }
 
 /** Build a concrete artwork URL from a MusicKit item's template (mirrors the library). */
@@ -161,6 +209,10 @@ function emit(): void {
     artist: item?.artistName ?? item?.attributes?.artistName,
     artworkUrl: artworkUrlOf(item, 240),
     loading: isLoading,
+    station:
+      mode === "radio" && radioStation
+        ? { name: radioStation.name, live: radioStation.isLive }
+        : undefined,
   };
   listeners.forEach((cb) => cb(s));
 }
@@ -177,14 +229,93 @@ function wireEvents(): void {
 
 function onNowPlayingChange(): void {
   if (!loadingContext) {
-    syncModelToMusicKit();
-    stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
-    diag.log("player:np", snap());
-    checkDesync();
-    checkAlignment("np");
-    maybeTopUpWindow();
+    if (mode === "radio") {
+      // Break-out boundary: a manual insert waited for the current song to end —
+      // the block takes over as a finite queue now. The station's next song may
+      // sound for a beat while the rebuild buffers (`loading` covers it).
+      // FUTURE-SETTINGS §17: optionally resume the station when that queue ends.
+      if (pendingBreakout && queue.getUpcoming().length) {
+        diag.log("player:breakout", { n: queue.getUpcoming().length });
+        exitRadio();
+        queue.advance(); // finished station song → trail; block's first song → current
+        // Defer the rebuild OUT of this nowPlayingItemDidChange handler (a macrotask lets
+        // MusicKit settle its in-flight station advance first), and load with stopFirst +
+        // noBack: fully stop the station controller, then start the block at index 0. This
+        // is what stops MusicKit's next station song from continuing to play under a model
+        // that has already moved to the block. Model-follow stays suppressed across the gap.
+        loadingContext = true;
+        const m = music;
+        setTimeout(() => {
+          loadFromModel(m, true, { stopFirst: true, noBack: true }).catch((e) => {
+            loadingContext = false; // never leave follow wedged if the load bailed
+            console.warn("[player] breakout load:", e);
+          });
+        }, 0);
+      } else {
+        pendingBreakout = false; // an emptied block (rows removed) — stay in radio
+        stationFollow();
+        diag.log("player:np", snap());
+      }
+    } else {
+      syncModelToMusicKit();
+      stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
+      diag.log("player:np", snap());
+      checkDesync();
+      checkAlignment("np");
+      maybeTopUpWindow();
+    }
   }
   emit();
+}
+
+/**
+ * Radio model-follow (STATIONS.md §2): mirror MusicKit's now-playing item into the
+ * model — previous `current` joins the heard trail, the new song becomes `current` —
+ * after ingesting it through the same funnel every play passes (transient + durable
+ * 'seen' row), so the trail resolves in the Qcard/History/Rewind and durable plays are
+ * logged (record_play / play_events, keyed by catalog id).
+ *
+ * Gate: skip only the station CONTAINER item (`ra.…`), which MusicKit sometimes surfaces
+ * as now-playing between tracks. We deliberately do NOT gate on the item's kind/type —
+ * station-fed song items don't always report `kind:"song"` the way library songs do, and
+ * that check was silently dropping every station play from history. A real song has a
+ * non-`ra.` id; that's the only reliable discriminator. (`snap`/diag logs type+kind so a
+ * genuinely non-song item — a live DJ segment without an id — can be spotted if needed.)
+ */
+function stationFollow(): void {
+  const item = music?.nowPlayingItem;
+  const id: string | undefined = item?.id;
+  if (!item || !id) return;
+  diag.log("player:stationFollow", { id, type: item?.type, kind: item?.playParams?.kind });
+  if (id.startsWith("ra.")) return; // the station container itself, not a track
+  const cur = queue.getCurrent();
+  if (cur && (cur.catalogId === id || cur.libraryId === id)) return; // duplicate event
+  const a = item.attributes ?? {};
+  const tmpl: unknown = item?.artwork?.url ?? a?.artwork?.url;
+  const t: Track = {
+    catalogId: id,
+    title: item.title ?? a.name ?? "",
+    artistName: item.artistName ?? a.artistName ?? "",
+    albumName: item.albumName ?? a.albumName,
+    durationMs: a.durationInMillis,
+    genres: [],
+    hasLyrics: false,
+    artwork:
+      typeof tmpl === "string"
+        ? {
+            urlTemplate: tmpl,
+            width: item?.artwork?.width ?? 0,
+            height: item?.artwork?.height ?? 0,
+          }
+        : undefined,
+  };
+  addTransientTracks([t]);
+  if (!inLibrary(id)) materializeTrack(t);
+  queue.appendCurrent({
+    catalogId: id,
+    context: radioStation ? `station:${radioStation.id}` : "station",
+  });
+  stats.recordStart(queue.getCurrent());
 }
 
 // ── Re-windowing: forward top-up (roadmap #3) ─────────────────────────────────
@@ -201,7 +332,7 @@ const REWINDOW_LOW = 50;
 let toppingUp = false; // reconcile is async — don't stack a second top-up on an in-flight one
 
 function maybeTopUpWindow(): void {
-  if (toppingUp || !music) return;
+  if (toppingUp || !music || mode === "radio") return; // stations refill themselves
   const items: any[] = music.queue?.items ?? [];
   const np = typeof music.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
   if (np < 0) return;
@@ -437,14 +568,24 @@ let loadChain: Promise<void> = Promise.resolve();
  * context and for any jump that lands outside the live window — the latter buffers
  * (the documented latency; `loading` is surfaced for the cover-up).
  */
-function loadFromModel(m: any, autoplay = true): Promise<void> {
+// Load options. Break-out from a station sets both: `stopFirst` fully stops MusicKit's
+// continuous (station) controller before the swap — a mere pause() leaves it primed to
+// advance, and its next-track load then interrupts our setQueue/play (AbortError);
+// `noBack` omits the history back-chain so `current` sits at index 0, taking the plain
+// pos=0 play path and skipping the changeToMediaAtIndex that races the station transition.
+interface LoadOpts {
+  stopFirst?: boolean;
+  noBack?: boolean;
+}
+
+function loadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Promise<void> {
   const gen = ++loadGen;
   const run = loadChain.then(() => {
     if (gen !== loadGen) {
       diag.log("player:loadSkip", { gen, superseded: loadGen });
       return; // a newer load was requested while this one waited — it covers the model's state
     }
-    return doLoadFromModel(m, autoplay);
+    return doLoadFromModel(m, autoplay, opts);
   });
   loadChain = run.then(
     () => {},
@@ -453,10 +594,13 @@ function loadFromModel(m: any, autoplay = true): Promise<void> {
   return run;
 }
 
-async function doLoadFromModel(m: any, autoplay = true): Promise<void> {
+async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Promise<void> {
+  // Any finite-window load IS queue-mode playback — jumps, Play Now, the break-out,
+  // Previous re-window all land here, so radio exits in one place.
+  exitRadio();
   const current = queue.getCurrent();
   if (!current) return;
-  const back = queue.getHistory().slice(-WINDOW_BACK);
+  const back = opts.noBack ? [] : queue.getHistory().slice(-WINDOW_BACK);
   const fwd = queue.getUpcoming().slice(0, WINDOW_FWD);
 
   // Build a DUPLICATE-FREE window. MusicKit's setQueue collapses repeated song ids, so
@@ -506,11 +650,12 @@ async function doLoadFromModel(m: any, autoplay = true): Promise<void> {
   loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
   emit(); // surface the loading state for the cover-up
   try {
-    // Pause first so the queue swap starts from a clean transport. MusicKit refuses a
-    // play() "without a previous stop()/pause()" while already playing — that error was
-    // leaving the old song playing on every click. From paused, play() reliably enacts
-    // the switch to the new index.
-    if (m.isPlaying && typeof m.pause === "function") await m.pause();
+    // Clean the transport before the swap. MusicKit refuses a play() "without a previous
+    // stop()/pause()" while already playing. Normally pause() is enough; leaving a STATION
+    // needs a full stop() (`stopFirst`) — pausing a continuous controller leaves it primed
+    // to advance, and that advance interrupts our setQueue/play (AbortError).
+    if (opts.stopFirst && typeof m.stop === "function") await m.stop();
+    else if (m.isPlaying && typeof m.pause === "function") await m.pause();
     // setQueue is all-or-nothing: ONE unresolvable id rejects the whole window
     // (NOT_FOUND — stale catalog ids). The rejection names the offenders, so bank
     // them in deadIds, rebuild the window (library-id fallback / drop), and retry.
@@ -592,6 +737,102 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
   return playContext(handlesFrom(tracks, context), startIndex);
 }
 
+// ── Radio playback (STATIONS.md §2) ──────────────────────────────────────────
+
+/**
+ * Feed MusicKit the station queue. WHICH descriptor MusicKit JS v3 accepts for a
+ * station is the spec's load-bearing unknown — so the first real click IS the probe:
+ * try the plausible shapes in order and diag-log which one took (watch the console).
+ */
+async function setStationQueue(m: any, s: Station): Promise<void> {
+  // Only the two id-based descriptor shapes — both are real MusicKit-JS queue
+  // descriptors. The earlier {url} probe is dropped: passing a URL descriptor made
+  // MusicKit try to build a media item from a shape it only half-supports and throw
+  // internally ("s is not a constructor" — a minified musickit.js error surfaced as a
+  // dialog). If BOTH id shapes ever fail on a real station, that's the news to chase.
+  const candidates: Array<[string, unknown]> = [
+    ["station", { station: s.id }],
+    ["stations", { stations: [s.id] }],
+  ];
+  let lastErr: unknown = null;
+  for (const [shape, desc] of candidates) {
+    try {
+      await m.setQueue(desc);
+      diag.log("player:stationQueue", { shape, id: s.id, mkLen: m.queue?.items?.length });
+      console.log(`[player] station queued via {${shape}} — MusicKit holds ${m.queue?.items?.length ?? "?"} item(s)`);
+      return;
+    } catch (e) {
+      lastErr = e;
+      diag.log("player:stationQueueFail", { shape, id: s.id, e: String(e) });
+      console.warn(`[player] station descriptor {${shape}} rejected:`, e);
+    }
+  }
+  throw lastErr ?? new Error("no station descriptor accepted");
+}
+
+/**
+ * Play an Apple station (radio mode). MusicKit owns the queue + refill; our model
+ * keeps only the heard trail via stationFollow, so Previous-history, stats, and
+ * Rewind stay whole. Entering disposes the finite plan — manual picks included (an
+ * explicit departure). Exit = Stop Station, any finite-context play, or a break-out.
+ */
+export async function playStation(s: Station): Promise<void> {
+  const m = await initPlayer();
+  diag.log("player:playStation", { id: s.id, live: s.isLive });
+  queue.disposePlan();
+  mode = "radio";
+  radioStation = s;
+  pendingBreakout = false;
+  isLoading = true;
+  loadingContext = true; // suppress model-follow while the station queue builds
+  emit();
+  try {
+    if (m.isPlaying && typeof m.pause === "function") await m.pause();
+    await setStationQueue(m, s);
+    if (!m.isPlaying) await m.play();
+    recordStationPlay(s); // recents — an actual play, not a browse
+  } catch (e) {
+    exitRadio();
+    diag.log("player:stationError", { id: s.id, e: String(e) });
+    console.warn("[player] station failed:", e);
+    throw e;
+  } finally {
+    loadingContext = false;
+    isLoading = false;
+    // The first track may have landed while model-follow was suppressed — settle it
+    // now; if MusicKit is still fetching, the coming np-change event handles it.
+    if (mode === "radio") stationFollow();
+    emit();
+  }
+}
+
+/**
+ * Stop Station (the Qcard affordance). The plan was disposed on entry, so this lands
+ * on an idle transport; the heard trail stays (Previous/History unaffected). Clears
+ * MusicKit's station queue where possible so a later Play can't resurrect the stream
+ * behind queue-mode's back.
+ */
+export async function stopStation(): Promise<void> {
+  if (mode !== "radio") return;
+  const m = await initPlayer();
+  diag.log("player:stopStation", { id: radioStation?.id });
+  exitRadio();
+  try {
+    if (typeof m.stop === "function") await m.stop();
+    else if (typeof m.pause === "function") await m.pause();
+  } catch (e) {
+    console.warn("[player] stop station:", e);
+  }
+  // clearQueue is UNSUPPORTED for continuous/station playback — best-effort, quiet.
+  // (stop() already halts the stream; this only tidies the queue when allowed.)
+  try {
+    if (typeof m.clearQueue === "function") await m.clearQueue();
+  } catch {
+    /* unsupported for station playback — expected */
+  }
+  emit();
+}
+
 // ── Manual queueing (Play Next / Add to Queue) ───────────────────────────────
 //
 // These INSERT into the live queue without a setQueue rebuild, so they're gapless:
@@ -612,6 +853,18 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
 
   if (!queue.getCurrent()) {
     await playContext(playable, 0); // nothing playing → start the block
+    return;
+  }
+  if (mode === "radio") {
+    // Radio break-out, deferred to the song boundary (your call, 2026-07-03): the
+    // block lands in the MODEL only — MusicKit's station queue is left alone until
+    // the current song ends, where onNowPlayingChange swaps engines. The Qcard shows
+    // the block as Up Next meanwhile (editable, model-only).
+    // FUTURE-SETTINGS §17: optionally resume the station when the block ends.
+    if (where === "next") queue.playNextMany(playable);
+    else queue.addToQueueMany(playable);
+    pendingBreakout = true;
+    diag.log("player:enqueueRadio", { where, n: playable.length });
     return;
   }
   if (where === "next") {
@@ -708,7 +961,8 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
  * sync primitive — drag-reorder uses it, and re-windowing (roadmap) will too. See docs/QUEUE.md.
  */
 export async function reconcileUpcoming(): Promise<void> {
-  if (!music) return;
+  // Radio: MusicKit's queue is station-owned; a break-out block edit is model-only.
+  if (!music || mode === "radio") return;
   const m = music;
   const items: any[] = m.queue?.items ?? [];
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
@@ -816,6 +1070,9 @@ export async function prevTrack(): Promise<void> {
     await m.seekToTime(0);
     return;
   }
+  // Radio: no backward walk in v1 — re-windowing into an Apple station's trail means
+  // requesting songs Apple may refuse to replay (STATIONS.md risk). Restart-only above.
+  if (mode === "radio") return;
   // Backward window edge: MusicKit holds nothing before current (index 0), but the
   // model still has history — skipToPreviousItem would silently no-op. Re-window
   // around the previous entry instead (a fresh setQueue → the documented buffer;

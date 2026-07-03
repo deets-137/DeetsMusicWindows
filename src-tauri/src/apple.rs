@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::model::{
-    Album, Artist, ArtistDetail, Artwork, Page, PlayParams, Playlist, SearchResults, Track,
+    Album, Artist, ArtistDetail, Artwork, Page, PlayParams, Playlist, SearchResults, Station,
+    StationGenre, Track,
 };
 use crate::provider::MusicProvider;
 
@@ -359,6 +360,29 @@ pub(crate) async fn api_get(
     Ok((status, body))
 }
 
+/// POST an Apple Music API URL with no body, returning (http_status, parsed_body).
+/// Same auth headers as `api_get`; used for library writes (add-to-library).
+pub(crate) async fn api_post(
+    client: &reqwest::Client,
+    dev: &str,
+    mut_tok: &str,
+    url: &str,
+) -> Result<(u16, serde_json::Value), String> {
+    let resp = client
+        .post(url)
+        .header("Authorization", format!("Bearer {dev}"))
+        .header("Music-User-Token", mut_tok)
+        .header("Content-Length", "0")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = resp.status().as_u16();
+    let text = resp.text().await.unwrap_or_default();
+    let body = serde_json::from_str::<serde_json::Value>(&text)
+        .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
+    Ok((status, body))
+}
+
 /// Pull a representative sample of the user's library + a catalog lookup and
 /// write the raw JSON to `dev-dumps/`. Returns a human-readable summary.
 #[tauri::command]
@@ -582,6 +606,31 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         track_count: None, // not on the search result; the detail fetch carries tracks
         source: None,      // a catalog search hit is neither local nor a library mirror
         kind: None,
+    }
+}
+
+fn station_from_catalog(v: &serde_json::Value) -> Station {
+    let a = &v["attributes"];
+    let pp = &a["playParams"];
+    let id = v["id"].as_str().unwrap_or_default().to_string();
+    let notes = &a["editorialNotes"];
+    Station {
+        name: a["name"].as_str().unwrap_or_default().to_string(),
+        artwork: artwork_from(&a["artwork"]),
+        is_live: a["isLive"].as_bool().unwrap_or(false),
+        tagline: notes["short"]
+            .as_str()
+            .or_else(|| notes["standard"].as_str())
+            .map(String::from),
+        content_rating: a["contentRating"].as_str().map(String::from),
+        url: a["url"].as_str().map(String::from),
+        play_params: PlayParams {
+            id: pp["id"].as_str().map(String::from).or_else(|| Some(id.clone())),
+            catalog_id: None,
+            kind: pp["kind"].as_str().map(String::from),
+            is_library: false,
+        },
+        id,
     }
 }
 
@@ -815,6 +864,44 @@ pub async fn catalog_collection_tracks(
     Ok(tracks)
 }
 
+/// Add catalog resources to the user's iCloud Music Library (FAVORITES.md), then
+/// graduate the provided tracks to `source='library'` locally so the Library card
+/// reflects them immediately — no full re-sync. `kind` ∈ {"songs","albums"}; `ids` are
+/// CATALOG ids to POST; `tracks` are the already-normalized rows to reflect (the one
+/// song, or an album's fetched tracks — fork A). Apple is add-only: there is no remove
+/// counterpart. The add is async on Apple's side (202 Accepted); we mirror it now and
+/// let the next `library_sync` reconcile the real `added_rank`/`library_id`.
+#[tauri::command]
+pub async fn apple_add_to_library(
+    kind: String,
+    ids: Vec<String>,
+    tracks: Vec<Track>,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<(), String> {
+    if kind != "songs" && kind != "albums" {
+        return Err(format!("apple_add_to_library: bad kind '{kind}'"));
+    }
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    // `ids[songs]=a,b` — reqwest percent-encodes the brackets, which Apple accepts.
+    let url = format!(
+        "https://api.music.apple.com/v1/me/library?ids[{kind}]={}",
+        ids.join(",")
+    );
+    let (status, body) = api_post(&client, &dev, &user, &url).await?;
+    if !(200..300).contains(&status) {
+        return Err(format!("add-to-library HTTP {status}: {body}"));
+    }
+    let conn = db.0.lock().unwrap();
+    crate::library::graduate_tracks(&conn, &tracks)?;
+    Ok(())
+}
+
 /// A catalog artist's detail: albums + top songs, one fetch (`views=`).
 #[tauri::command]
 pub async fn catalog_artist(
@@ -883,4 +970,152 @@ pub async fn catalog_search(
         crate::enrich::cache_tracks(&conn, &results.songs)?;
     }
     Ok(results)
+}
+
+// ── Radio (STATIONS.md §2–3) ─────────────────────────────────────────────────
+// Metadata-only: the catalog API browses stations but never lists their tracks —
+// playback is the MusicKit wiring batch. All four are cheap single fetches; the
+// front-end session-caches them, so a card remount costs zero Apple calls.
+
+/// GET a catalog listing and collect its `data` array, following `next` links
+/// (capped — same partial-over-error doctrine as `catalog_collection_tracks`).
+async fn paged_data(
+    client: &reqwest::Client,
+    dev: &str,
+    user: &str,
+    url: &str,
+    what: &str,
+) -> Result<Vec<serde_json::Value>, String> {
+    let (status, body) = api_get(client, dev, user, url).await?;
+    if status != 200 {
+        return Err(format!("{what} HTTP {status}"));
+    }
+    let mut items: Vec<serde_json::Value> = body["data"].as_array().cloned().unwrap_or_default();
+    let mut next = body["next"].as_str().map(String::from);
+    for _ in 0..10 {
+        let Some(path) = next.take() else { break };
+        let (st, page) =
+            api_get(client, dev, user, &format!("https://api.music.apple.com{path}")).await?;
+        if st != 200 {
+            break; // partial is better than an error; the UI shows what loaded
+        }
+        items.extend(page["data"].as_array().cloned().unwrap_or_default());
+        next = page["next"].as_str().map(String::from);
+    }
+    Ok(items)
+}
+
+/// The Apple Music live-radio lineup (Apple Music 1 / Hits / Country / Música Uno /
+/// Club / Chill) — storefront-static, so effectively cache-forever.
+#[tauri::command]
+pub async fn radio_live(
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Station>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!(
+        "https://api.music.apple.com/v1/catalog/{sf}/stations?filter[featured]=apple-music-live-radio"
+    );
+    let items = paged_data(&client, &dev, &user, &url, "stations/live").await?;
+    Ok(items.iter().map(station_from_catalog).collect())
+}
+
+/// The user's My Station ("<Name>'s Station" — heavy rotation of known taste).
+/// The cleanly documented personalized station: `filter[identity]=personal`
+/// (needs the Music User Token). Absence just hides its For You row.
+#[tauri::command]
+pub async fn radio_my_station(
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Option<Station>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!(
+        "https://api.music.apple.com/v1/catalog/{sf}/stations?filter[identity]=personal"
+    );
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status != 200 {
+        return Err(format!("stations/personal HTTP {status}"));
+    }
+    Ok(body["data"].as_array().and_then(|a| a.first()).map(station_from_catalog))
+}
+
+/// The user's Discovery Station (new-music counterpart to My Station). No
+/// documented filter exists — it surfaces inside `/v1/me/recommendations`, so we
+/// scan every recommendation's contents for station resources and pick the
+/// `ra.q-` one (name-match fallback). Absence is not an error: the row hides.
+#[tauri::command]
+pub async fn radio_discovery(
+    state: tauri::State<'_, AppleState>,
+) -> Result<Option<Station>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let url = "https://api.music.apple.com/v1/me/recommendations";
+    let (status, body) = api_get(&client, &dev, &user, url).await?;
+    if status != 200 {
+        return Err(format!("me/recommendations HTTP {status}"));
+    }
+    let mut stations: Vec<&serde_json::Value> = Vec::new();
+    if let Some(recs) = body["data"].as_array() {
+        for rec in recs {
+            if let Some(contents) = rec["relationships"]["contents"]["data"].as_array() {
+                stations.extend(contents.iter().filter(|v| v["type"].as_str() == Some("stations")));
+            }
+        }
+    }
+    let found = stations
+        .iter()
+        .find(|v| v["id"].as_str().is_some_and(|id| id.starts_with("ra.q-")))
+        .or_else(|| {
+            stations.iter().find(|v| {
+                v["attributes"]["name"].as_str().is_some_and(|n| n.contains("Discovery"))
+            })
+        });
+    Ok(found.map(|v| station_from_catalog(v)))
+}
+
+/// All station genres for the storefront (name-only rows; a genre's stations are
+/// fetched lazily on drill via `radio_genre_stations`).
+#[tauri::command]
+pub async fn radio_genres(
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<StationGenre>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres");
+    let items = paged_data(&client, &dev, &user, &url, "station-genres").await?;
+    Ok(items
+        .iter()
+        .filter_map(|v| {
+            Some(StationGenre {
+                id: v["id"].as_str()?.to_string(),
+                name: v["attributes"]["name"].as_str()?.to_string(),
+            })
+        })
+        .collect())
+}
+
+/// A genre's curated stations (the `stations` relationship on `station-genres`).
+#[tauri::command]
+pub async fn radio_genre_stations(
+    id: String,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Station>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres/{id}/stations");
+    let items = paged_data(&client, &dev, &user, &url, "station-genres/stations").await?;
+    Ok(items.iter().map(station_from_catalog).collect())
 }

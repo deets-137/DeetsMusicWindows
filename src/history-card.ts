@@ -12,6 +12,7 @@ import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { resolveEntry, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
+import { addSongToLibraryItem } from "./library-add";
 import type { CardDef, CardInstance } from "./cards";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
@@ -38,7 +39,7 @@ function mountHistory(host: HTMLElement): CardInstance {
     const t = latest ? resolveEntry(latest) : undefined;
     const cover = artURL(t, 96);
     const heroArt = cover
-      ? `<img class="qnow__art" src="${esc(cover)}" alt="" />`
+      ? `<img class="qnow__art" src="${esc(cover)}" alt="" data-art />`
       : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
     const hero = `
       <div class="qnow${latest ? "" : " qnow--idle"}" data-idx="0">
@@ -74,11 +75,17 @@ function mountHistory(host: HTMLElement): CardInstance {
   const menuFor = (e: queue.QueueEntry): MenuItem[] => {
     const h = { catalogId: e.catalogId, libraryId: e.libraryId, context: "history" };
     const err = (what: string) => (x: unknown) => console.error(`[history] ${what}`, x);
-    return [
+    const items: MenuItem[] = [
       { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")) },
       { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
       { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
     ];
+    // Add to Library — gated builder (null when toggle's off / already in library / no
+    // catalog id). Applies to the hero too: it shares this handler via data-idx="0".
+    const t = resolveEntry(e);
+    const add = t ? addSongToLibraryItem(t) : null;
+    if (add) items.push(add);
+    return items;
   };
   body.addEventListener("contextmenu", (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");

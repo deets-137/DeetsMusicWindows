@@ -28,7 +28,7 @@ export function rowHTML(
   interactive = true,
 ): string {
   const art = cover
-    ? `<img class="qrow__art" src="${esc(cover)}" alt="" loading="lazy" />`
+    ? `<img class="qrow__art" src="${esc(cover)}" alt="" loading="lazy" data-art />`
     : `<div class="qrow__art qrow__art--empty" aria-hidden="true">♪</div>`;
   const role = interactive ? ` role="button" tabindex="0"` : "";
   return `<li class="qrow" data-idx="${idx}"${role}>${art}<div class="qrow__text"><span class="qrow__title">${esc(

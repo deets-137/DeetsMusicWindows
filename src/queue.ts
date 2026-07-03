@@ -206,6 +206,32 @@ export function shuffleUpcoming(): void {
   emit();
 }
 
+// ── Radio mode (STATIONS.md §1–2) ────────────────────────────────────────────
+/**
+ * Radio-mode model-follow: the station fed a new song. Previous `current` joins the
+ * heard trail (so Previous/stats/History keep working — radio never touches the
+ * durable trail); the new song becomes `current`; `upcoming` is left alone (a station
+ * has no visible plan — anything present is a pending break-out block).
+ */
+export function appendCurrent(handle: TrackHandle): QueueEntry | null {
+  if (state.current) pushHistory(state.current);
+  setCurrent({ ...handle, origin: "auto" });
+  emit();
+  return state.current;
+}
+
+/**
+ * Entering radio disposes the WHOLE plan — auto tail AND manual picks. A station is
+ * an explicit departure; keeping manual picks would instantly trigger the break-out
+ * the moment the first station song ends. The heard trail + current stay put
+ * (current joins the trail via the first appendCurrent).
+ */
+export function disposePlan(): void {
+  if (!state.upcoming.length) return;
+  state.upcoming = [];
+  emit();
+}
+
 // ── Transport ────────────────────────────────────────────────────────────────
 export function advance(): QueueEntry | null {
   if (state.current) pushHistory(state.current);

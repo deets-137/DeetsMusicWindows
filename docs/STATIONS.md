@@ -1,11 +1,18 @@
 # DeetsMusic — Stations (radio) & audio-feature enrichment
 
-> Two ways to get an endless stream: **Apple's stations** (opaque, server-fed) and **our own
-> stations** (generated over our library from metadata + derived audio features). Plus the
-> **Deezer enrichment provider** that supplies the BPM our own stations run on. Read with
-> [QUEUE.md](QUEUE.md) (the queue model this bends), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md)
-> (provider trait + cache), [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (the card system).
-> Status: ✅ decided · 🔵 open (my proposal unless you red-line) · ⬜ later.
+> **✅ RADIO CARD COMPLETE (2026-07-03).** The Radio card (Apple's live / My Station /
+> Discovery / genre stations) and the full radio-mode playback wiring are **built + user-
+> verified**: stations play, the break-out swap works, transport caps + LIVE marker are wired,
+> and station plays populate History/Rewind durably. Remaining Apple-station work is **one
+> follow-up**: the seeded **right-click "Start Station"** verb (song/artist → its station) —
+> **next build session** — plus the search-card stations section. The **own-station engine
+> (§4) is dropped**; Deezer/§4 text is research-record only.
+>
+> Original framing (kept for context): two ways to get an endless stream — **Apple's stations**
+> (opaque, server-fed) and ~~our own stations~~ (dropped). Read with [QUEUE.md](QUEUE.md) (the
+> queue model this bends), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (provider trait + cache),
+> [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (the card system).
+> Status: ✅ decided/built · 🔵 open · ⬜ later.
 
 ---
 
@@ -23,6 +30,14 @@
 Both present to the user as **"radio mode"** — an endless now-playing stream — but they're two
 engines behind one façade. Our own stations fit DeetsMusic's architecture far better; Apple's
 are the quick win and the source of *seeded* radio ("start a station from this song").
+
+> **🗑 2026-07-03 — the own-station engine is DROPPED.** Apple's curated + personalized
+> stations are the whole radio story ("Apple curated is perfect"). The right column of the
+> table above, §4 (Deezer enrichment, generator, scope, thumbs), and the "My Stations" shelf
+> are retired; §4's text stays below purely as research record (Deezer findings, the ISRC
+> probe). **Ripple:** [DeetsWeather.md](DeetsWeather.md) was premised on the own-station
+> engine — its recipe needs a rethink (Apple-station/playlist-picking instead of generation)
+> if it's ever picked up.
 
 ---
 
@@ -43,37 +58,73 @@ fixed list**. So radio mode is a `PlayerMode = "queue" | "radio"` flag on the pl
 - **Transport capabilities vary and must be reflected in the UI:**
   - **Live radio** (Apple Music 1): no seek, no skip, no duration → hide scrubber, disable
     prev/next, show a "LIVE" badge.
-  - **On-demand stations** (personal/genre/ours): skip-forward allowed; Previous walks our
+  - **On-demand stations** (Discovery/genre/ours): skip-forward allowed; Previous walks our
     heard trail; scrubber works per current track.
-- **Manual queueing interplay** 🔵 — inserting a "Play Next" mid-station. Proposal: a manual
-  insert **breaks out of radio** into a normal finite queue seeded with `[current, inserteds…]`
-  (Apple can't accept inserts anyway). Alternative: disable manual queueing while a station
-  plays and offer only "Stop station." Recommend the break-out.
+- **Manual queueing interplay** ✅ (2026-07-03) — a manual insert **breaks out of radio at the
+  song boundary**: the block lands in the model only, the Qcard shows it as editable Up Next,
+  and when the current station song ends the block takes over as a normal finite queue. The
+  boundary swap is fiddly (MusicKit's continuous/station controller fights a naive rebuild):
+  it's **deferred a macrotask out of the `nowPlayingItemDidChange` handler**, then loaded with
+  **`stopFirst` + `noBack`** — a full `stop()` of the station controller (a mere pause leaves
+  it primed to advance, and that advance AbortErrors our `setQueue`, leaving the station's next
+  song playing under a model already moved to the block) and the block placed at **index 0**
+  (skips the `changeToMediaAtIndex` that also raced the transition). The station's next song
+  may sound for a beat while it buffers. Starting a station
+  disposes manual picks too (an explicit departure — keeping them would trigger an instant
+  break-out). [FUTURE-SETTINGS §17](FUTURE-SETTINGS.md): optionally resume the station when
+  the block ends (default: stop).
 
 ---
 
 ## 2. Apple stations
 
 ### Types
-1. **Live radio** — Apple Music 1 / Hits / Country (`isLive: true`).
-2. **Personal Station** — `…/stations?filter[identity]=personal` (the user's own).
+1. **Live radio** — Apple Music 1 / Hits / Country / Música Uno / Club / Chill
+   (`isLive: true`; the whole lineup is one `filter[featured]=apple-music-live-radio` call).
+2. **Personalized** — Apple ships exactly two, and we surface both on the For You shelf
+   (✅ 2026-07-03), My Station first (Apple's own ordering):
+   - **My Station** ("&lt;Name&gt;'s Station" — heavy rotation of known taste, `ra.u-…`):
+     the cleanly documented one, `…/stations?filter[identity]=personal` (needs the MUT).
+   - **Discovery Station** (new music, `ra.q-…`): **no documented filter exists** — it
+     surfaces inside `/v1/me/recommendations`, so we scan every recommendation's contents
+     for station resources and pick the `ra.q-` one (name-match fallback).
+   Either one absent (or its per-user endpoint hiccuping) just hides its row — never a
+   card failure.
 3. **Genre / mood** — curated catalog stations (`/v1/catalog/{sf}/stations`, browse by
-   `/v1/catalog/{sf}/station-genres`).
+   `/v1/catalog/{sf}/station-genres` → each genre's `stations` relationship).
 4. **Seeded** — "Create Station from this song/artist/album."
 
-### Player wiring
-- `playStation(stationId)` in `player.ts`: set the MusicKit queue to the station, `play()`,
-  set `mode = "radio"`, park the finite queue.
-  - 🔎 **VERIFY (load-bearing):** the exact **MusicKit JS** call to queue a station. Native
-    MusicKit has `setStationQueue`; MusicKit JS is expected to accept a station via the queue
-    descriptor (e.g. `music.setQueue({ station: id })` or the station's `playParams`). Since our
-    whole player is MusicKit JS in WebView2, **prove this on a throwaway before speccing the card
-    deeper** — same discipline as the original DRM risk.
-- **Model-follow in radio:** on `nowPlayingItemDidChange`, append the *previous* now-playing to
-  the heard trail and set the new `current`; **do not** try to reconstruct `upcoming`
-  (`syncModelToMusicKit`'s window-walk is a no-op in radio — guard it on `mode`).
-- **Capabilities:** read the station's attributes for `isLive` / skip allowance and drive the
-  transport enable/disable + scrubber visibility above.
+### Player wiring — ✅ built 2026-07-03 (core batch; first-click probe pending)
+- `playStation(station)` in `player.ts`: dispose the plan (manual picks included), set
+  `mode = "radio"`, feed MusicKit the station, `play()`, record the recents row.
+  - 🔎 **Descriptor probe** (`setStationQueue`): tries `{ station: id }` → `{ stations: [id] }`
+    and diag-logs which took (`player:stationQueue` / `…Fail`). The speculative `{ url }` shape
+    was **removed** — it made MusicKit throw internally ("s is not a constructor", surfaced as a
+    dialog). Stations confirmed queuing/playing 2026-07-03 (live + on-demand); the exact winning
+    shape is in the `player:stationQueue` log.
+- **Model-follow in radio** (`stationFollow`): on `nowPlayingItemDidChange`, the new item is
+  ingested through the standard funnel (transient + durable 'seen' row → Qcard/History/Rewind
+  all resolve) and `queue.appendCurrent` grows the heard trail; `stats.recordStart` +
+  `recordProgress` log the durable play/event (keyed by catalog id) so **station plays are
+  revisitable across restarts**. Gate: skip only the station **container** item (`ra.…`) —
+  NOT on kind/type. (An early `kind.includes("song")` check silently dropped every station
+  play from history, because station-fed song items don't always report `kind:"song"` like
+  library songs; `player:stationFollow` diag logs type+kind for visibility.) All window
+  machinery (`syncModelToMusicKit`, top-up, `reconcileUpcoming`, alignment canaries) is guarded
+  on `mode`; any finite-window load exits radio in one place (`doLoadFromModel`).
+- **Capabilities:** `PlayerState.station = { name, live }`; live → the NP card swaps the
+  scrubber for a LIVE marker (`--stop` role, same slot so the strip keeps height) and disables
+  prev/next. On-demand: next = native station skip; **Previous is restart-only in v1** (no
+  backward walk — Apple may refuse replays).
+- **Stop Station** (`stopStation`): exit radio, `stop()` + `clearQueue()` where available
+  (`clearQueue` is UNSUPPORTED for continuous playback — swallowed quietly; `stop()` already
+  halts the stream); heard trail stays, transport goes idle.
+- **MusicKit transport-race filter** (`installMusicKitRejectionFilter`): the break-out swap
+  makes MusicKit re-issue `play()` on its own internal (un-awaited) promise chains, surfacing
+  benign "Uncaught (in promise)" races we can't try/catch — `play() without a previous
+  stop()/pause()` and the `interrupted by a new load request` AbortError. A scoped
+  `unhandledrejection` handler swallows **exactly** those two messages (logged to diag);
+  everything else propagates, and our own awaited calls still surface normally.
 
 ### Seeded stations = a context-menu action (fits what we have)
 Add **"Start Station"** to the existing right-click menus (library song / artist / album — the
@@ -87,23 +138,39 @@ UI surface — it rides the context-menu primitive we already ship.
 
 Two distinct jobs — keep them separate:
 
-**(a) The Stations browser** — a launcher, built as a **collection-card context** (reuses the
-engine, [UI-ARCHITECTURE §4a](UI-ARCHITECTURE.md)) so it's a registry card the slot picker can
-mount. Sections: **Live Radio · For You (personal) · Genre & Mood · Recently played (local)**
-and later **My Stations** (our own, §4). Rows show station art + name + tagline + a LIVE badge;
-`activate(station)` → `playStation`. Stations are leaves (no drill), or a genre drills into its
-station list. The **View** pill auto-hides (no density needed) — the engine already does this
-when grouping/density aren't meaningful.
+**(a) The Stations browser** — ✅ **built 2026-07-03 (browse-first)** as the **Radio card**
+(`src/radio-card.ts` + `src/radio.ts` data layer; Rust commands `radio_live` / `radio_discovery`
+/ `radio_genres` / `radio_genre_stations` in `apple.rs`). It rides the collection-card engine
+([UI-ARCHITECTURE §4a](UI-ARCHITECTURE.md)) with one root grouping over a **heterogeneous shelf
+list** (header / station / genre rows — headers exist only in **Featured(↑)** order; an A–Z sort
+or a search query flattens the pane to plain deduped rows, via the engine's `list(view)` state).
+Shelves: **Recently Played (local, hidden when empty) · For You (My Station + Discovery) ·
+Live · Genres**. Rows show station art + name + tagline (genres get
+round initial thumbs); the full **Sort · View · Search** trio applies (Featured/A–Z ×
+lines/small/large — headers span grid rows). No LIVE chip on rows (✅ 2026-07-03: redundant
+under the Live shelf — live-ness resurfaces as the radio-mode transport's LIVE state, §1). A
+genre drills (pane-slide) into its lazily fetched station list. Everything is **session-cached** (`radio.ts` module scope — a slot remount
+costs zero Apple calls; header ⟳ drops the cache); recents live in `localStorage`
+(`deets.radio.recents`, cap 6) via `recordStationPlay`, which the wiring batch will call.
+`activate(station)` is a **stub** until `playStation` lands — build order (✅ your call
+2026-07-03): **card first, MusicKit probe + wiring after**, which is also when the seeded
+"Start Station" context-menu verb and search-card stations turn on. Engine polish that rode
+along: the **Sort pill auto-hides** when no grouping offers >1 sort (mirrors the View pill).
 
-**(b) The radio-mode display** — while a station plays, the **Qcard** enters radio mode: title
-becomes `📻 <Station name>`, the body shows the current track + a "Up next chosen by <station>"
-note instead of an editable list (Apple) *or* the generated Up Next (ours — which stays fully
-editable), plus a **Stop station / Back to queue** affordance. 🔵 Reuse the Qcard (recommended —
-it's already the now-playing/queue surface) vs. a dedicated Station card.
+**(b) The radio-mode display** — 🔵 **deferred to a dedicated UX pass** (2026-07-03). A first
+cut (station banner + Stop Station + "Up next chosen by Apple Music" in the Qcard) was built
+and then **reverted** — the user wants to design the whole "what the now-playing/queue surface
+does while a station plays" experience holistically first. So today the Qcard renders
+**normally** during a station (Now Playing + an empty/edit-only Up Next). Consequences to
+resolve in that pass: **Stop Station currently has no button** (`stopStation()` exists in
+player.ts, unwired) — you leave a station by playing anything else or by a break-out; and the
+LIVE treatment currently lives only on the **Now Playing card** (scrubber→LIVE marker, skip
+disabled), which the user kept. Note for the pass: the panel title can't simply become
+`📻 <name>` — it's the slot-picker trigger, so station identity needs its own slot.
 
 ---
 
-## 4. Deezer enrichment + our own stations (the payoff)
+## 4. Deezer enrichment + our own stations — 🗑 DROPPED 2026-07-03 (kept as research record, see §0 note)
 
 ### 4a. Deezer is an *enrichment* provider, not a playback one
 We can't play Deezer audio in an Apple-licensed app — **playback stays MusicKit**. Deezer joins
@@ -240,38 +307,41 @@ expression** of one shared taste model.
   only the *future* differs.
 - Apple stations: 4 types; seeded stations = a context-menu action; transport/scrubber reflect
   live-vs-on-demand capabilities.
+- **(2026-07-03) Apple-only radio: the own-station engine (§4) is dropped** — "Apple curated
+  is perfect." Both personalized stations ship on For You: **My Station** (documented filter)
+  above **Discovery** (recommendations scan, `ra.q-` id + name fallback); either row hides
+  gracefully. Shelf order: Recently Played · For You · Live · Genres.
+- **(2026-07-03) Browser ships browse-first** — the Radio card is built with `activate` stubbed;
+  the MusicKit station-queue probe gates the *wiring* batch (playStation + radio mode + seeded
+  "Start Station" menu verb + search-card stations), not the card.
 - Station card split into **browser (launcher)** + **radio-mode display**.
-- Deezer = **enrichment-only** provider (playback stays MusicKit); features in a **separate
-  cache** (Track stays clean), demand-driven + throttled + cached. Gives **BPM/gain/rank** +
-  discovery endpoints (radio/related/chart) + **`bpm_min-max` search**; **no key/energy** (that's
-  preview-analysis, later).
-- Our own stations fit the queue model natively (generator refills `upcoming`).
-- **Own stations take a user-chosen `scope`**: **`library`** (similar songs *within* the user's
-  library — Deezer as attribute source) and **`catalog`** (reach beyond — Deezer as discovery,
-  ISRC-mapped to Apple for playback). Library-only is an **option, not a constraint** — both ship.
+- 🗑 *(dropped with §4, 2026-07-03)* Deezer = enrichment-only provider; own stations fit the
+  queue model natively; own-station `scope` (`library`/`catalog`). Kept for the record only.
+
+- **(2026-07-03) Core wiring built + verified**: stations play (live + on-demand); break-out at
+  the **song boundary** (`stopFirst`+`noBack` clean swap; [FUTURE-SETTINGS §17](FUTURE-SETTINGS.md)
+  = optional station resume); Previous restart-only in radio v1; **station plays populate
+  History/Rewind** durably (the `stationFollow` gate skips only the `ra.` container, not on
+  kind); benign MusicKit transport-race rejections are filtered. Radio-mode Qcard face was
+  reverted — a **dedicated radio now-playing/queue UX pass** is deferred (§3b), which also owns
+  Stop Station's home (`stopStation()` exists, currently unwired to any button).
+- **Remaining Apple-station work — NEXT SESSION**: seeded **right-click "Start Station"** on
+  song/artist (resolve the entity's `station` relationship → `playStation`) + the search-card
+  stations section. That's the last of the Apple-radio line.
 
 **Open 🔵**
-- Manual-queue interplay during a station: **break out to a finite queue** (recommended) vs.
-  disable inserts.
-- Radio-mode display: **reuse the Qcard** (recommended) vs. a dedicated card.
-- Own-station **ship order** (scope itself is decided — both `library` and `catalog` are the
-  goal): **`library` scope first, `catalog` second** (recommended) vs. both at once.
-- BPM source order: **Deezer-by-ISRC first, preview-analysis fallback** (recommended) — or skip
-  Deezer and go straight to preview-analysis for full control (no coverage gaps, no third party,
-  but more work + gives key too eventually).
+- ~~Manual-queue interplay~~ / ~~radio-mode display~~ — ✅ closed above (2026-07-03).
+- ~~Own-station ship order~~ / ~~BPM source order~~ — 🗑 moot (own-station engine dropped).
 
 ---
 
 ## Risks / verify
-- **MusicKit JS station playback** (§2) — the load-bearing unknown; prove it on a throwaway
-  before building the card, exactly like the DRM risk.
-- **Infinite queue + windowing** — an own-station's generator must top up `upcoming` before the
-  window edge or playback dead-ends; reuses `reconcileUpcoming`/re-window (roadmap #3).
+- **MusicKit JS station playback** (§2) — the load-bearing unknown; the card shipped
+  browse-first, so this probe now gates the *wiring* batch.
 - **Radio Previous** — walking back into the heard trail during an Apple station may require
   re-requesting tracks Apple won't replay; on-demand only, and library-resident tracks replay
   fine.
-- **Deezer coverage/accuracy + rate limits** — cache aggressively; tolerate missing/zero BPM
-  (a track with no tempo simply isn't eligible for a tempo recipe); sanity-clamp obvious
-  half/double-tempo errors.
-- **Model purity** — features must not leak hexes/DSP into the normalized `Track`; keep the
-  `track_features` cache separate (doctrine parallel to the palette cache).
+- **Discovery Station placement** — its recommendations-scan is undocumented; if Apple
+  reshuffles `/v1/me/recommendations`, the row hides (graceful) — check the `ra.q-` scan first.
+- 🗑 *(dropped with §4)* infinite-queue windowing, Deezer coverage/rate limits, feature-cache
+  model purity.

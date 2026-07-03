@@ -145,6 +145,44 @@ pub struct Playlist {
     pub kind: Option<String>,
 }
 
+/// An Apple radio station (STATIONS.md §2 — live / Discovery / genre / seeded).
+/// Stations are opaque server-fed streams: there is NO track list to normalize —
+/// `play_params` is what the radio-mode player wiring will hand to MusicKit.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Station {
+    /// Catalog station id (`ra.…`; personalized ones are `ra.q-…`/`ra.u-…`).
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artwork: Option<Artwork>,
+    /// Livestream (Apple Music 1 / Hits / …) — the UI shows a LIVE badge and the
+    /// transport hides seek/skip in radio mode.
+    pub is_live: bool,
+    /// `editorialNotes.short` (falls back to `standard`) — the row tagline.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tagline: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_rating: Option<String>,
+    /// The music.apple.com share link — doubles as a fallback queue descriptor
+    /// for the MusicKit station probe (player.ts setStationQueue).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Defaulted on deserialize: recents round-trip through the frontend, whose
+    /// TS type doesn't re-state playParams (same doctrine as `Track`).
+    #[serde(default)]
+    pub play_params: PlayParams,
+}
+
+/// A station genre (`station-genres` — name only; its stations arrive via the
+/// genre's `stations` relationship, fetched lazily per drill).
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StationGenre {
+    pub id: String,
+    pub name: String,
+}
+
 /// A catalog artist's detail view: the artist + their releases + top songs.
 #[derive(Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
