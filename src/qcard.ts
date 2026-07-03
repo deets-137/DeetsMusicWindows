@@ -1,7 +1,8 @@
 // Queue card (Qcard) — a small custom renderer that mirrors the queue model. It
 // temporarily occupies the Playlists panel slot (title swapped to "Queue"). Up Next rows
 // support left-click/Enter to jump, and a right-click menu (Play Now / Move to Top / Move
-// to Bottom / Remove) — the queue-edit ops live in player.ts (gapless; see docs/QUEUE.md).
+// to Bottom / Remove, + Start Station / Add to Library) — the queue-edit ops live in
+// player.ts (gapless; see docs/QUEUE.md).
 
 import "./styles/qcard.css";
 import * as queue from "./queue";
@@ -11,6 +12,7 @@ import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
+import { startStationItem } from "./start-station";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
@@ -128,6 +130,10 @@ function mountQueue(host: HTMLElement): CardInstance {
         { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
         { label: "Remove", run: act(removeFromQueue, "remove") },
       ];
+      // Start Station keys off the entry's catalog id directly — works even when the
+      // track hasn't resolved in the store yet.
+      const start = startStationItem("songs", entry.catalogId);
+      if (start) items.push(start);
       const add = t ? addSongToLibraryItem(t) : null;
       if (add) items.push(add);
       openContextMenu(e.clientX, e.clientY, items, () => row.classList.remove("is-context"));
@@ -138,11 +144,14 @@ function mountQueue(host: HTMLElement): CardInstance {
     if (!hero) return;
     const cur = queue.getCurrent();
     const t = cur ? resolve(cur) : undefined;
-    const add = t ? addSongToLibraryItem(t) : null;
-    if (!add) return; // nothing to offer for the current song (toggle off / already in library)
+    const items = [
+      startStationItem("songs", cur?.catalogId), // "more like what's playing"
+      t ? addSongToLibraryItem(t) : null,
+    ].filter(Boolean) as MenuItem[];
+    if (!items.length) return; // nothing to offer for the current song
     e.preventDefault();
     hero.classList.add("is-context");
-    openContextMenu(e.clientX, e.clientY, [add], () => hero.classList.remove("is-context"));
+    openContextMenu(e.clientX, e.clientY, items, () => hero.classList.remove("is-context"));
   });
 
   // ── Drag-to-reorder (Up Next) ──────────────────────────────────────────────

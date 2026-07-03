@@ -13,6 +13,7 @@ import { esc } from "./collection-card";
 import { resolveEntry, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
+import { startStationItem } from "./start-station";
 import type { CardDef, CardInstance } from "./cards";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
@@ -80,8 +81,10 @@ function mountHistory(host: HTMLElement): CardInstance {
       { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
       { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
     ];
-    // Add to Library — gated builder (null when toggle's off / already in library / no
-    // catalog id). Applies to the hero too: it shares this handler via data-idx="0".
+    // Start Station + Add to Library — gated builders (null when they shouldn't offer).
+    // Apply to the hero too: it shares this handler via data-idx="0".
+    const start = startStationItem("songs", e.catalogId);
+    if (start) items.push(start);
     const t = resolveEntry(e);
     const add = t ? addSongToLibraryItem(t) : null;
     if (add) items.push(add);

@@ -1,12 +1,13 @@
 # DeetsMusic — Stations (radio) & audio-feature enrichment
 
-> **✅ RADIO CARD COMPLETE (2026-07-03).** The Radio card (Apple's live / My Station /
-> Discovery / genre stations) and the full radio-mode playback wiring are **built + user-
-> verified**: stations play, the break-out swap works, transport caps + LIVE marker are wired,
-> and station plays populate History/Rewind durably. Remaining Apple-station work is **one
-> follow-up**: the seeded **right-click "Start Station"** verb (song/artist → its station) —
-> **next build session** — plus the search-card stations section. The **own-station engine
-> (§4) is dropped**; Deezer/§4 text is research-record only.
+> **✅ THE APPLE-RADIO LINE IS DONE (2026-07-03).** The Radio card (Apple's live / My Station /
+> Discovery / genre stations), the full radio-mode playback wiring, and the seeded
+> **right-click "Start Station"** verb (song + artist, every surface — §2) are all **built +
+> user-verified**: stations play, the break-out swap works, transport caps + LIVE marker are
+> wired, and station plays populate History/Rewind durably. **Deferred backlog:** the
+> search-card stations section (`stations` as a search type; model/tile/playback exist) and
+> the radio-mode NP/queue UX pass (§3b — owns Stop Station's button). The **own-station
+> engine (§4) is dropped**; Deezer/§4 text is research-record only.
 >
 > Original framing (kept for context): two ways to get an endless stream — **Apple's stations**
 > (opaque, server-fed) and ~~our own stations~~ (dropped). Read with [QUEUE.md](QUEUE.md) (the
@@ -126,11 +127,37 @@ fixed list**. So radio mode is a `PlayerMode = "queue" | "radio"` flag on the pl
   `unhandledrejection` handler swallows **exactly** those two messages (logged to diag);
   everything else propagates, and our own awaited calls still surface normally.
 
-### Seeded stations = a context-menu action (fits what we have)
-Add **"Start Station"** to the existing right-click menus (library song / artist / album — the
-`menu()` grouping accessor, [UI-ARCHITECTURE §4a](UI-ARCHITECTURE.md)). It resolves the seed to
-an Apple station (from the entity's `playParams`/station kind) and calls `playStation`. Zero new
-UI surface — it rides the context-menu primitive we already ship.
+### Seeded stations = a context-menu action — ✅ built 2026-07-03
+**"Start Station"** rides the shared context-menu builders — zero new UI surface. The chain:
+`radio_seed_station(kind, id)` (Rust, `apple.rs` — `GET /v1/catalog/{sf}/{songs|artists}/{id}/
+station`; 404/empty = `None`, not an error) → `seedStation` in `radio.ts` (session-cached per
+seed, **negative results included**, dropped by the card's ⟳) → the gated `startStationItem`
+builder (`src/start-station.ts` — a sibling of the library-add builders: `null` without a
+catalog id, callers `.filter(Boolean)`; its own module because `player.ts` imports `radio.ts`,
+so a `playStation` call inside radio.ts would cycle) → `playStation`.
+
+**Where it's offered** (every *song* surface + catalog artists):
+- the shared `trackMenu` (`library-card.ts`) — Library songs / album-detail / artist-detail,
+  **Playlists** detail rows, **Rewind** song rows, all for free. Gated `items.length === 1`:
+  a 1-track list is a song; a longer one is an album, and **albums have no station
+  relationship** (no album tiles).
+- **Search** — song rows + drill-pane track lists, and the artist right-click
+  (`kind: "artists"`).
+- **Qcard** — Up Next rows + the now-playing hero ("more like what's playing"); keys off the
+  entry's catalog id directly, so it works before the track resolves in the store.
+- **History** — rows + hero.
+- **Library Artists tiles** — derived groups carry only a NAME (no catalog artist id), so the
+  seed resolves in **two lazy hops on pick**: one of the artist's songs' catalog ids → its
+  primary artist id (`catalog_song_artist`, Rust) → `seedStation("artists", …)`. Both hops
+  session-cached (`startArtistStationItem`); artists whose songs are all catalog-less uploads
+  just don't offer the item. This deliberately does NOT wait for the artist-enrichment pass —
+  photos/real ids in the Library grid remain that pass's job.
+
+**Behavior calls:** resolution is **lazy** (on pick, never at menu-open — no per-right-click
+Apple call; ~1 call per new seed, then cached). No consent gate (read-only + playback, not an
+account write). A seed with no station (rare) is a quiet console warn — no toast system yet
+([FUTURE-SETTINGS §18](FUTURE-SETTINGS.md)). Menu position: after Add to Playlist, before Add
+to Library.
 
 ---
 
@@ -325,9 +352,12 @@ expression** of one shared taste model.
   kind); benign MusicKit transport-race rejections are filtered. Radio-mode Qcard face was
   reverted — a **dedicated radio now-playing/queue UX pass** is deferred (§3b), which also owns
   Stop Station's home (`stopStation()` exists, currently unwired to any button).
-- **Remaining Apple-station work — NEXT SESSION**: seeded **right-click "Start Station"** on
-  song/artist (resolve the entity's `station` relationship → `playStation`) + the search-card
-  stations section. That's the last of the Apple-radio line.
+- **(2026-07-03) Seeded "Start Station" built + verified** — song verb on every song surface
+  via the shared builders, artist verb on Search **and Library Artists tiles** (the latter via
+  the lazy two-hop song→artist-id resolve, no schema/enrichment needed); lazy resolution,
+  session caches, no consent gate (§2). **This closes the Apple-radio line.** The search-card
+  stations section (add `stations` to the search types + a normalized `Station` bucket —
+  model + tile already exist) is **deferred backlog**, not a next step.
 
 **Open 🔵**
 - ~~Manual-queue interplay~~ / ~~radio-mode display~~ — ✅ closed above (2026-07-03).

@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/styles.css" />
     <title>DeetsMusic</title>
+    <!-- Silence MusicKit's BLOCKING alert() for benign playback-transport races: an
+         internal play() promise superseded by a queue swap (e.g. the second setQueue on a
+         dead-catalog-id fallback, or a changeToMediaAtIndex jump) — the clicked song still
+         plays, but MusicKit pops the abandoned promise as a modal dialog that freezes the
+         transport. MUST run BEFORE musickit.js so the override is in place however MusicKit
+         reaches alert (it can own the reference from load). Mirrors the unhandledrejection
+         filter in player.ts (installMusicKitRejectionFilter); keep the two regexes in sync. -->
+    <script>
+      (function () {
+        var BENIGN = /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by (?:a new load request|a call to pause\(\)))/i;
+        var nativeAlert = window.alert.bind(window);
+        window.alert = function (message) {
+          var msg = message == null ? "" : String(message);
+          if (BENIGN.test(msg)) {
+            console.debug("[player] swallowed benign MusicKit alert:", msg);
+            return;
+          }
+          return nativeAlert(message);
+        };
+      })();
+    </script>
     <!-- MusicKit JS — the in-webview playback engine (DRM via EME). Same build the
          loopback auth page loads. `player.ts` configures it lazily on first play. -->
     <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" async></script>

@@ -94,21 +94,22 @@ The future Stations browser's sectioned root follows the search idiom, not the e
   — then a track tap plays. Same pane-slide drill the Library uses.
 - **Artist** → **drill in** to their **albums + top songs** (catalog fetch), like Library's Artist
   context; from there tap a track to play or an album to drill further.
-- **Station** → **play it** → enters **radio mode** ([STATIONS §1–2](STATIONS.md)). (Depends on the
-  MusicKit-JS station-playback probe flagged in Stations.)
+- **Station** → **play it** → enters **radio mode** ([STATIONS §1–2](STATIONS.md)). ⬜ The
+  stations search *type* isn't wired yet (deferred backlog) — playback, model, and tile all
+  exist from the Radio card, so this is a results-section-only add when picked up.
 
 ### Right-click menu ✅ (the queue actions you asked for)
 Rides the existing `menu()` grouping accessor → [context-menu.ts](../src/context-menu.ts), and the
 gapless [enqueue path](QUEUE.md#manual-queueing--play-next--add-to-queue):
-- **Song** → **Play Now · Play Next · Add to Queue** (+ **Add to Library**). Straight to
-  `playContext` / `queueTracksNext` / `queueTracksLater`.
+- **Song** → **Play Now · Play Next · Add to Queue** (+ **Add to Playlist ▸ · Start Station ·
+  Add to Library**). Straight to `playContext` / `queueTracksNext` / `queueTracksLater`.
 - **Album / Playlist** → same actions, but **fetch the collection's tracks first, then enqueue** the
   block (an album/playlist is its tracks in order — the wrappers already accept a `Track[]`). One
   catalog fetch on demand; note the tiny latency (cover with the loading state).
-- **Artist** → **Go to Artist** (drill) · **Start Station** (seed an Apple station from the artist,
-  [STATIONS](STATIONS.md)). An artist isn't directly queueable, so no Play-Next/Add-to-Queue —
-  matching Library, where Artists declare no queue menu.
-- **Station** → **Play** / **Start Station** (no queue-insert — stations are their own mode).
+- **Artist** → **Go to Artist** (drill) · **Start Station** ✅ (seed an Apple station from the
+  artist, [STATIONS §2](STATIONS.md)). An artist isn't directly queueable, so no
+  Play-Next/Add-to-Queue — matching Library, where Artist tiles offer only Start Station.
+- **Station** → **Play** (no queue-insert — stations are their own mode). ⬜ with the stations type.
 - **Add to Library** writes via the catalog id (create/append, gated — consistent with the
   [Playlists export decision](PLAYLISTS.md)); on library-only surfaces this stays the one Apple write.
 

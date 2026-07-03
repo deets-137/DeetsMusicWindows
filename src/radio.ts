@@ -72,6 +72,22 @@ export function radioGenreStationsPeek(genreId: string): Station[] | undefined {
   return genreStationsCache.get(genreId);
 }
 
+// ── seeded stations ("Start Station", STATIONS.md §2) ──────────────────────────
+// Resolved lazily on the menu pick (never at menu-open — no per-right-click Apple
+// call) and session-cached per seed, negative results included, so repeat starts
+// of the same seed cost zero calls.
+export type SeedKind = "songs" | "artists";
+const seedStationCache = new Map<string, Station | null>();
+
+export async function seedStation(kind: SeedKind, id: string): Promise<Station | null> {
+  const key = `${kind}:${id}`;
+  const hit = seedStationCache.get(key);
+  if (hit !== undefined) return hit;
+  const s = await invoke<Station | null>("radio_seed_station", { kind, id });
+  seedStationCache.set(key, s);
+  return s;
+}
+
 /** The ⟳ action: forget everything so the next fetches hit Apple again. */
 export function radioDropCaches(): void {
   liveCache = null;
@@ -79,6 +95,7 @@ export function radioDropCaches(): void {
   discoveryCache = undefined;
   genresCache = null;
   genreStationsCache.clear();
+  seedStationCache.clear();
 }
 
 // ── recents (local) ────────────────────────────────────────────────────────────

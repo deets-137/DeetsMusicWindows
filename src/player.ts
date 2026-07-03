@@ -121,13 +121,15 @@ async function injectUserToken(): Promise<void> {
 //    item-0 buffering cut off by our changeToMediaAtIndex() jump (fires whenever you
 //    play a song that ISN'T first in its context, so pos>0). The clicked song still
 //    plays; the abandoned item-0 play() promise is what rejects.
-// The first two arrive as unhandled rejections (console noise). The third, MusicKit pops
-// as a BLOCKING window.alert() (its own catch calls alert — the minified-musickit dialog
-// setStationQueue also hit) — which FREEZES the transport mid-transition, the real cause
-// of the "Not playing" stall behind the dialog. preventDefault on the rejection event
-// can't reach an alert(), so we guard both surfaces. Swallow EXACTLY these messages;
-// everything else propagates / alerts untouched (our own awaited play()/setQueue still
-// surface through their normal try/catch). Logged to diag so a real regression stays visible.
+// The first two arrive as unhandled rejections (console noise) — swallowed here. The
+// third, MusicKit ALSO pops as a BLOCKING window.alert() (its own catch calls alert — the
+// minified-musickit dialog setStationQueue hit), which FREEZES the transport mid-transition
+// (the real cause of the "Not playing" stall behind the dialog). preventDefault on the
+// rejection event can't reach an alert(), and MusicKit can own its alert reference from
+// load — so that surface is guarded by an inline script in index.html that runs BEFORE
+// musickit.js (keep its regex in sync with BENIGN_PLAYBACK below). This handler covers only
+// the console/rejection surface. Swallow EXACTLY these; everything else propagates untouched
+// (our own awaited play()/setQueue still surface through their normal try/catch).
 const BENIGN_PLAYBACK =
   /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by (?:a new load request|a call to pause\(\)))/i;
 
@@ -142,19 +144,6 @@ function installMusicKitRejectionFilter(): void {
       e.preventDefault(); // benign MusicKit transport race — keep it out of the console
     }
   });
-  // Guard alert() itself: MusicKit surfaces the interrupted-by-pause race as a modal
-  // dialog its own catch raised, so the rejection filter above never sees it. No-op the
-  // benign playback strings (which also unfreezes the transport), pass everything else
-  // through untouched. The app never calls alert() itself, so nothing legit is masked.
-  const nativeAlert = window.alert.bind(window);
-  window.alert = (message?: any): void => {
-    const msg = String(message ?? "");
-    if (BENIGN_PLAYBACK.test(msg)) {
-      diag.log("player:mkRaceSwallowed", { via: "alert", msg });
-      return;
-    }
-    nativeAlert(message);
-  };
 }
 
 // ── State broadcast (UI subscribes; we read straight off the live instance) ──────

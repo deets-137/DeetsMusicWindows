@@ -9,6 +9,7 @@ import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addTransientTracks } from "./track-store";
 import { addToPlaylistItem } from "./playlists";
 import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
+import { startStationItem } from "./start-station";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { makeDropdown } from "./dropdown";
 import { esc } from "./collection-card";
@@ -348,6 +349,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       // Catalog tracks land as denormalised snapshots — no library/queue
       // materialization needed; the local store is self-contained by design.
       addToPlaylistItem(() => [t]),
+      startStationItem("songs", t.catalogId),
       addSongToLibraryItem(t), // null unless the Library Add toggle is on
     ].filter(Boolean) as MenuItem[]);
   };
@@ -418,7 +420,8 @@ function mountSearch(host: HTMLElement): CardInstance {
       const a = results?.artists.find((x) => x.catalogId === artist.dataset.artist);
       openContextMenu(e.clientX, e.clientY, [
         { label: "Go to Artist", run: () => openArtist(artist.dataset.artist!, a?.name ?? "Artist") },
-      ]);
+        startStationItem("artists", artist.dataset.artist),
+      ].filter(Boolean) as MenuItem[]);
     }
   });
 

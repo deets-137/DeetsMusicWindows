@@ -7,11 +7,14 @@ time, "skinnable") with a small, variable-driven UI system.
 > **New here? Read [docs/HANDOFF.md](docs/HANDOFF.md) first** — it's the cold-start
 > guide (state, how to run, next steps).
 
-## Status (2026-06-27)
-- ✅ Frameless custom chrome, 3 themes + skin system, settings menu
-- ✅ Apple Music sign-in (loopback browser flow), library **songs** synced to a local
-  SQLite cache and listed in the Library card
-- ⬜ Playback (DRM unknown), albums/artists/playlists data, search, mini/full surfaces
+## Status (2026-07-03)
+- ✅ **Full DRM playback** (MusicKit JS in WebView2) with a live-synced queue model,
+  gapless manual queueing, and drag-to-reorder
+- ✅ Frameless custom chrome; 6 themes × 5 skins (token-driven palette → theme → skin)
+- ✅ Apple Music sign-in (loopback browser flow), library synced to a local SQLite cache
+- ✅ Feature cards: Library, Search, Playlists, Queue, History, Rewind, and Radio
+  (Apple stations + seeded right-click "Start Station" everywhere)
+- ⬜ Toward v1: settings surface, release packaging, SMTC/media keys, mini/max surfaces
 
 ## Stack
 - **Tauri v2** (Rust) + **WebView2**, Windows 11
