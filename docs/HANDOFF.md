@@ -8,7 +8,13 @@
 > self-healing** (see State of play). Also built 2026-07-02: the **Playlists card,
 > view/play-only** ([PLAYLISTS.md](PLAYLISTS.md) status block — Apple mirror read-in +
 > local store plumbing; creation/editing UX is a dedicated later session) —
-> **user-verified 2026-07-02** (+ a popover-divider polish fix, see gotchas) — and
+> **user-verified 2026-07-02** (+ a popover-divider polish fix, see gotchas). ⚡ The
+> **playlists creation-UX session also landed 2026-07-02** ([PLAYLISTS.md](PLAYLISTS.md)
+> status block): New Playlist (+ → dropdown name field → drill + Search summon),
+> **Add to Playlist ▸** (a new JS-latched flyout submenu in `context-menu.ts`, on
+> Library/Playlists/Search menus), Remove-from-Playlist + empty-only Delete on locals,
+> and locals joining the Added-Date sort — **awaiting user test**. Export ▸ is spec'd
+> (PLAYLISTS §6) but parked with the gating decision. Also 2026-07-02:
 > ⚡ **re-windowing** (roadmap #3 — forward window top-up + the Previous-past-the-edge fix,
 > [QUEUE.md §Re-windowing](QUEUE.md)), which compiles clean and rode the same session but
 > still **needs a long-queue listen** (150+ songs past the click, or Previous past the
@@ -18,6 +24,9 @@
 > and the Glass "pop" batch (drifting aurora, frosted menus via `--menu-surface`/
 > `--menu-backdrop`, hotter frost, glass-ring scrubber; FUTURE-SETTINGS §12 has the numbers) —
 > Glass verified except the final aurora hard-line fix (oversized layers), **awaiting re-test**.
+> ⚡ Also 2026-07-02: the **Rewind card** (DEETS-REWIND Phase B) — the stat × time-window
+> listening leaderboard — **built + user-verified**, with a cross-session resolution fix
+> riding along (seen-row ingest + play-funnel materialization; see State of play).
 > **Next up: build-queue #5 — Favorites, ratings & library writes** ([FAVORITES.md](FAVORITES.md)).
 > Deeper docs: [DESIGN.md](DESIGN.md) (product), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md)
 > (front-end), [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data),
@@ -184,6 +193,20 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   "Previously" list below (appears from the 2nd play). Read-only rows; right-click → Play Now /
   Play Next / Add to Queue (handle-level, gapless, `context: "history"`). Row markup/resolution
   shared with the Qcard via `src/queue-rows.ts`. In the slot picker via the registry.
+- ✅ **Rewind card** (`src/rewind.ts` + `src/rewind-card.ts`, built + **user-verified
+  2026-07-02**; [DEETS-REWIND.md](DEETS-REWIND.md) §3/§6 Phase B is authoritative) — the
+  listening-stats leaderboard over the play-event log: **stat** (Songs / Artists / Albums /
+  Playlists) × **window** (Past Day / Week / Month / This Year / Past Year) via two
+  `lib-pill` pickers (default Songs × Past Week, persisted), qcard hero + top-20
+  runners-up, each row `minutes · plays` (real `ms_listened`). One Rust read command
+  (`play_events_since`), all grouping/ranking in TS. Right-click menus on songs (shared
+  `trackMenu`), albums (full library album, played-subset fallback), playlists (lazy
+  authored-tracks fetch, keeps `playlist:` attribution); artists read-only. Group artwork
+  = most-listened track's cover (round for artists) — zero Apple calls. **Rode along:
+  cross-session track resolution** — `seen_tracks` loads materialized rows into the
+  track-store transient map at startup, and `handlesFrom` (player.ts) now **materializes
+  every non-library play** (previously only Search did), so historical plays resolve
+  instead of rendering "Unknown".
 - ⚡ **Re-windowing** (roadmap #3, built 2026-07-02, **needs a long-queue listen to
   verify** — nothing in a short session crosses the window edge;
   [QUEUE.md §Re-windowing](QUEUE.md)): `maybeTopUpWindow` refills MusicKit's forward
@@ -199,11 +222,27 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   playlists. Data: `src-tauri/src/playlists.rs` — Apple mirror (`apple_playlists_sync`,
   once per session + explicit ⟳ which also drops content caches; `apple_playlist_tracks`
   cache-first, learns trackCount, 404-on-empty handled, music videos skipped) + the local
-  store (`local_playlists`/`local_playlist_tracks` + full CRUD commands, **no UI callers
-  yet** — creation UX is its own session). Library's row/tile cell builders are now
-  exported and shared. Polish: the popover column divider is now drawn only between two
-  columns (`.lib-pop__col + .lib-pop__col--dir`), so single-grouping View popovers
-  (Playlists, Library's album/artist details) render bare.
+  store (`local_playlists`/`local_playlist_tracks` + full CRUD commands). Library's
+  row/tile cell builders are now exported and shared. Polish: the popover column divider
+  is now drawn only between two columns (`.lib-pop__col + .lib-pop__col--dir`), so
+  single-grouping View popovers (Playlists, Library's album/artist details) render bare.
+- ⚡ **Playlists — the make-and-fill flow** (built 2026-07-02, **awaiting user test**;
+  [PLAYLISTS.md](PLAYLISTS.md) status block is authoritative):
+  - **New Playlist (+)**: root-only header button → anchored dropdown text field
+    (`openContextMenuUnder` + `InputItem`) → Enter creates → drills into the empty detail
+    (`emptyText` engine hook) → **summons Search** into the other slot
+    ([FUTURE-SETTINGS §16](FUTURE-SETTINGS.md)).
+  - **Add to Playlist ▸**: `context-menu.ts` grew **submenu flyouts** (`SubmenuItem` —
+    JS-latched reveal so its "New Playlist…" field survives typing; side-flip + clamp +
+    internal scroll; inside-menu scrolls no longer dismiss). On Library songs/albums
+    (shared `trackMenu` → playlist details too), playlist rows (bulk add, self-excluded;
+    mirrors as sources = partial import), Search songs/albums/playlists (fetch-then-add).
+    Targets local-only, recent-first ([FUTURE-SETTINGS §15](FUTURE-SETTINGS.md)).
+  - **Remove from Playlist** (local details; identity = authored position, re-resolved
+    live — duplicates legal) + **Delete Playlist** (local rows, enabled only while empty).
+  - Plumbing: `onPlaylistsChange` bus in `playlists.ts` (any mutation live-refreshes the
+    card from any surface); locals' `created_at` → `date_added` (RFC3339, chrono) so the
+    Added-Date sort covers them.
 
 ### Stubbed / not built yet ⬜
 - **Manual queueing** — **built and gapless** (model in lockstep; see [QUEUE.md](QUEUE.md)),
@@ -217,15 +256,12 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
   **"⋯" overflow button** (right-click is the only menu trigger — no keyboard/touch path), a
   **Now Playing** menu (Go to Album/Artist, Add to Library), and touch/grip-handle dragging.
   Menu action sets + drag mode are slated to be user-customizable ([FUTURE-SETTINGS.md](FUTURE-SETTINGS.md)).
-- **Playlists — creation/editing UX** — the ⚡ card built 2026-07-02 is **view/play-only**
-  (Apple mirror + the local store underneath). Landed since: eager count backfill
-  ([FUTURE-SETTINGS §14](FUTURE-SETTINGS.md)), the **Apple source sigil** on AM playlists
-  (`.lib-src-badge` via the shared `musicCell` badge slot), and the **New Playlist (+) button
-  as a STUB** (styled like Sync, directly left of it, root-only, no-op click — the create flow
-  A/B/C is the pending decision, [PLAYLISTS.md §5.4](PLAYLISTS.md)). Still deferred to the creation-UX
-  session: the create flow itself, `Add to Playlist ▸`, rename/reorder/remove, Import-to-edit,
-  mosaic covers, export. The Rust local CRUD commands already exist (`playlist_create`/
-  `rename`/`delete`/`add_tracks`/`remove_track`/`reorder` in `playlists.rs`, no UI callers yet).
+- **Playlists — remaining editing UX** — the make-and-fill core landed 2026-07-02 (see
+  Done ✅ above): create, Add to Playlist ▸, remove-track, empty-only delete. **Still
+  open:** rename + drag-reorder on locals (the Rust commands exist, no UI), Import-to-edit,
+  the non-empty delete UX, mosaic covers, and **export** — the Export ▸ menu is spec'd
+  ([PLAYLISTS.md §6](PLAYLISTS.md)) and parked with the gating decision (settings toggle vs
+  one-time confirm), alongside the parked direct-append-to-editable-Apple-playlists idea.
 - **Real album/artist data + artist photos** — Albums/Artists are *derived* from songs
   (no catalog). Artist tiles show a round album-cover thumb / initials until a photo is
   fetched on demand (when you open the artist).
@@ -324,7 +360,8 @@ buffer of transport + MusicKit events + desyncs; auto-captures uncaught errors),
 
 **Also specced, ready when prioritized (off the critical path above):**
 [PLAYLISTS.md](PLAYLISTS.md) (roadmap #5 — real Playlists card, restores the slot the Qcard borrows)
-· [DEETS-REWIND.md](DEETS-REWIND.md) (listening-stats data-viz card)
+· ✅ [DEETS-REWIND.md](DEETS-REWIND.md) (listening-stats card — **built + user-verified 2026-07-02**;
+remaining nice-to-haves noted in its Phase B checklist: privacy copy, an all-time window)
 · [DeetsOTD.md](DeetsOTD.md) (Song of the Day — small, fully local, no dependencies; a good
 low-risk standalone if a quick win is wanted).
 
@@ -354,11 +391,13 @@ numbered list below is the older feature roadmap, still valid for what rides the
    audition is an optional later add, not the default. Needs a cached storefront + a `search`
    provider method. *(There is deliberately no "catalog hydrate" item — catalog data is
    demand-driven: Search for discovery, lazy enrichment (#7) for what you view.)*
-5. ✅ **Real Playlists card** — **read/play path built + user-verified 2026-07-02**
+5. ✅ **Real Playlists card** — **read/play path built + user-verified 2026-07-02**;
+   **make-and-fill flow built 2026-07-02 (awaiting user test)**
    ([PLAYLISTS.md](PLAYLISTS.md) status block): Apple mirror read-in + local store + the
-   view/play-only card (overview → detail on the collection-card engine). **Remaining:**
-   the creation/editing UX session (New Playlist, Add to Playlist ▸, rename/reorder/remove,
-   Import-to-edit, source badges, mosaic covers) + the gated export.
+   card (overview → detail on the collection-card engine) + New Playlist / Add to
+   Playlist ▸ / remove-track / empty-only delete / source sigil. **Remaining:**
+   rename + drag-reorder, Import-to-edit, non-empty delete UX, mosaic covers, and the
+   gated export (Export ▸ spec'd in §6, parked with the gating decision).
 6. **CLI / local-agent control** (pre-launch goal) — a command surface so local models /
    agents can play music (search, queue, play/pause/skip, now-playing): a thin Rust
    layer over the same `player` interface, so agents and the UI share one control path.
@@ -426,9 +465,11 @@ numbered list below is the older feature roadmap, still valid for what rides the
   and **buffers** (a perceptible gap). Same for **scrubbing** a DRM stream. These need a
   UX cover-up (loading state / optimistic icon / debounced input), not a silent freeze.
 - **Catalog tracks resolve through two layers:** the track-store's `transient` map
-  (session display — Qcard rows, album color) and Rust `materialize_track` (`source='seen'`
-  rows — durable stats joins). Search feeds **both** on play *and* enqueue. If a catalog song
-  ever shows "Unknown" in the Qcard, the transient ingest is what broke, not the queue.
+  (session display — Qcard rows, album color) and Rust's `source='seen'` rows (durable
+  stats joins). `handlesFrom` (player.ts) feeds **both** on every play/enqueue — it adds
+  transients *and* materializes non-library tracks — and `loadTracks` ingests all seen
+  rows at startup so history (Rewind) resolves across sessions. If a catalog song shows
+  "Unknown" in the Qcard or Rewind, that funnel is what broke, not the queue/log.
 - **Click a song = play (not drill):** the old song→album drill is **retired**. Songs
   `activate` (play); albums/artists `open` (drill). The engine prefers `activate` over
   `open` on a leaf.
@@ -479,9 +520,12 @@ src/layout.ts               midi layout: anchored NP + 2 swappable slots + title
                             + slot recency (LRU) + summon handling
 src/layout-bus.ts           card-summon bus (requestCard/onCardRequest — NP queue button)
 src/now-playing-card.ts     Now Playing card (transport strip; extracted from main.ts)
-src/playlists.ts            playlists data access (unified cached list, mirror sync, tracks)
-src/playlists-card.ts       Playlists card — view/play-only (overview → detail on the
-                            collection-card engine; creation/editing UX is a later session)
+src/playlists.ts            playlists data access + local CRUD wrappers, the shared
+                            Add-to-Playlist ▸ submenu builder, and the onPlaylistsChange bus
+src/playlists-card.ts       Playlists card — overview → detail on the collection-card engine;
+                            New Playlist (+) flow, remove-track, empty-only delete
+src/context-menu.ts         shared popover primitive: cursor- or element-anchored menus;
+                            action / text-input / submenu-flyout items (JS-latched reveal)
 src/dropdown.ts             shared dropdown primitive + menu-mode fan-out (setDropdownMode)
 src/theme.ts                theme switch + persistence
 src/skin.ts                 skin switch + persistence (mirrors theme.ts)
@@ -501,10 +545,19 @@ src/queue.ts                queue model (history/current/upcoming, backlog, stac
 src/player.ts               MusicKit engine: init/MUT-inject, playContext (windowed),
                             loadFromModel, transport, model-follow, scrubber/state events
 src/qcard.ts                Queue card (queueCard): Now Playing + Up Next + jump-to-item
+src/history-card.ts         History card: session play log (hero + "Previously" list)
+src/queue-rows.ts           shared queue-row rendering (entry→Track resolve, .qrow markup)
+src/rewind.ts               Rewind data layer: play_events_since wrapper + stat×window
+                            grouping/ranking (DEETS-REWIND Phase B)
+src/rewind-card.ts          Rewind card: listening leaderboard (pill pickers, hero + top-20,
+                            per-stat right-click menus)
+src/stats.ts                play-stats recorder: partial/full counters + play-event log
+                            (start/finalize, real ms_listened from tick deltas)
 src/diag.ts                 diagnostics ring buffer + window.__diag (bug-report payload)
 src/slider.ts               shared slider primitive (scrubber, volume)
 src/styles.css              app rules (imports the token sheets first)
-src/styles/qcard.css        Queue card styling (imported by qcard.ts)
+src/styles/qcard.css        Queue card styling (imported by qcard.ts, history-card, rewind-card)
+src/styles/rewind.css       Rewind extras: pinned pill row, minutes·plays meta line, round artist art
 src/styles/{palette,themes,skin,fonts}.css + fonts/  the token system; skin.css is a
                             [data-skin] base + vanilla/desk/ocean/glass/cyberstorm deltas.
                             Fonts: Liberation Serif + Comic Neue/Karla (desk; title is system

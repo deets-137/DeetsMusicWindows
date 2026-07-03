@@ -757,6 +757,62 @@ body {
 .ctx-menu__item:hover { background: var(--surface-hover); }
 .ctx-menu__item:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 .ctx-menu__item:disabled { opacity: 0.5; cursor: default; }
+/* Text-input menu item (New Playlist name; later Add-to-Playlist ▸ "New Playlist…") —
+   the same canvas well as .lib-search / .search__field, sitting inside the menu shell.
+   No focus ring: the hairline well IS the box (matches the search inputs). */
+.ctx-menu__field {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.ctx-menu__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+}
+.ctx-menu__input::placeholder { color: var(--subtext); }
+/* Submenu (Add to Playlist ▸): a settings-flyout twin scoped to the ctx-menu — same
+   surface recipe as .flyout, but rows keep ctx-menu chrome (not the theme-chip look).
+   Reveal is JS-latched in context-menu.ts (not :hover) so a flyout text field
+   survives typing; side-flip (.is-left) + vertical clamp are measured there too. */
+.ctx-menu__sub { position: relative; }
+.ctx-menu__chev { color: var(--subtext); }
+.ctx-menu__item--sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ctx-menu__sub.is-open > .ctx-menu__item { background: var(--surface-hover); } /* row reads active while its flyout is open */
+.ctx-menu__fly {
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  left: 100%; /* touches the menu edge — no hover gap */
+  z-index: 1;
+  min-width: var(--menu-min-w);
+  max-height: calc(100vh - 12px); /* 2× the 6px viewport clamp pad (context-menu.ts PAD) */
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+.ctx-menu__fly.is-left { left: auto; right: 100%; }
+.ctx-menu__fly[hidden] { display: none; }
+.ctx-menu__fly::-webkit-scrollbar { width: var(--scrollbar-w); }
+.ctx-menu__fly::-webkit-scrollbar-track { background: transparent; }
+.ctx-menu__fly::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
 /* rows with a mini cover (songs/albums/artists lines) */
 .lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
 .lib-row__art {

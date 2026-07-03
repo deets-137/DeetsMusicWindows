@@ -84,9 +84,13 @@ vs **catalog**, so:
   play later. Don't drop it.
 - **`Page<T>`** = `{ items, total, nextOffset }` — the paging contract.
 
-`Album`/`Artist`/`Playlist` are defined but **not yet wired** (only songs flow
-end-to-end so far). Artists are near-empty in the library API (name only) and need
-on-demand catalog access (lazy enrichment / Search) for art/genres.
+`Album`/`Artist` are defined but **not yet wired** as synced entities (the Library card
+*derives* them from songs — see below). `Playlist` **is wired** (2026-07-02): the Apple
+mirror + local store in `playlists.rs` ([PLAYLISTS.md](PLAYLISTS.md)); local rows ride a
+synthetic `local:{rowid}` library id, and their `created_at` serializes into
+`date_added` (RFC3339, chrono) so one comparator sorts both sources. Artists are
+near-empty in the library API (name only) and need on-demand catalog access (lazy
+enrichment / Search) for art/genres.
 
 > **Albums in the Library card are *derived*, not synced.** The card groups cached
 > tracks by album+artist in TS (`groupAlbums` in `library-card.ts`) to populate its
@@ -104,8 +108,9 @@ Serde uses `camelCase`, so the TS interfaces in `library.ts` match field-for-fie
 `/v1/me/library/songs?limit&offset`, maps each resource via
 `track_from_library_song`, and returns a `Page<Track>` (reads `meta.total` + `next`).
 
-The trait will grow (`albums_page`, `playlists_page`, `playlist_tracks`, `search`,
-`catalog_lookup` (palette/art on demand)…) as we extend.
+The trait has since grown `playlists_page` / `playlist_tracks_page` (the Apple mirror
+read-in, [PLAYLISTS.md](PLAYLISTS.md)) and the Search/enrichment catalog paths; it will
+keep growing (`albums_page`, …) as we extend.
 
 ---
 
@@ -168,8 +173,10 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `apple_disconnect` | apple.rs | clear MUT (memory + file) |
 | `apple_dump_library` | apple.rs | **dev**: write raw API samples to `dev-dumps/` |
 | `library_sync` | library.rs | full songs sync → cache (emits events) |
-| `library_tracks(offset, limit)` | library.rs | paged read from cache |
+| `library_tracks(offset, limit)` | library.rs | paged read from cache (synced rows only) |
+| `seen_tracks` | library.rs | all materialized (`source='seen'`) rows — ingested as track-store transients so historical plays resolve cross-session |
 | `record_play(catalogId?, libraryId?, kind)` | library.rs | bump a track's `partial`/`full` play tally |
+| `play_events_since(sinceTs)` | library.rs | windowed read of the play-event log (the Rewind card) |
 
 | Event | Payload |
 |---|---|

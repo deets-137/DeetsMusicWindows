@@ -12,7 +12,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
-import { trackById, tracks, addTransientTracks } from "./track-store";
+import { trackById, tracks, addTransientTracks, inLibrary } from "./track-store";
+import { materializeTrack } from "./search";
 import * as diag from "./diag";
 import * as stats from "./stats";
 
@@ -360,6 +361,12 @@ const toHandle = (t: Track, context = "library"): TrackHandle => ({
 // (byId is checked before transients), so ingesting library songs here is a harmless no-op.
 const handlesFrom = (list: Track[], context: string): TrackHandle[] => {
   addTransientTracks(list);
+  // The DURABLE twin of the transient ingest: persist catalog-only tracks as 'seen'
+  // rows so plays logged against them (play_events / play_stats) still resolve to
+  // metadata in FUTURE sessions — the Rewind card reads history across restarts.
+  // Synced library tracks skip (the sync owns their rows); materialize_track is a
+  // local DO-NOTHING-on-conflict upsert, so re-plays are cheap and idempotent.
+  for (const t of list) if (!inLibrary(t.catalogId ?? t.libraryId)) materializeTrack(t);
   return list.map((t) => toHandle(t, context));
 };
 

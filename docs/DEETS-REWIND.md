@@ -81,7 +81,14 @@ straight from SQLite (`stats:err` if a write fails).
 
 ## 3. Reading it for the card (the join)
 
-The read path is **not built yet** (we shipped tracking-only). When the card lands:
+> **Status: BUILT (2026-07-02)** — the Rewind card shipped: `play_events_since` (Rust),
+> [`rewind.ts`](../src/rewind.ts) (read wrapper + stat×window aggregation),
+> [`rewind-card.ts`](../src/rewind-card.ts) (hero + top-20 leaderboard, stat/window
+> pill pickers). Song/artist/album group off joined metadata; playlist groups off the
+> event `context` tag ("minutes listened FROM this playlist"). Windows are rolling
+> (24h/7d/30d/365d) except This Year (local Jan 1). Rows show real minutes · plays.
+
+The original plan, for reference:
 
 1. **Add a read command** (Rust, `library.rs`) — e.g.
    `play_stats_all() -> Vec<PlayStat>` (or a paged / `top_n` variant once libraries are
@@ -224,11 +231,14 @@ ships, the deeper the first Rewind.**
 - [x] `play_stats` counters unchanged, incrementing in parallel.
 - [x] `__diag` echoes `stats:event-start` / `stats:event-end` — tracking-only, no UI.
 
-**Phase B — the card (a later session).**
-- [ ] Read command(s) (`play_stats_all` / `top_n` / time-bucketed event queries) + register in `lib.rs`.
-- [ ] TS read wrapper; join via `trackById`; handle `null` (uncached) tracks.
-- [ ] Card UI as a mountable card ([SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md)); viz colors via theme roles, geometry/type via skin tokens.
-- [ ] Keep it local-only; surface that in the UI copy (it's a privacy feature, not just an implementation detail).
+**Phase B — the Rewind card. ✅ BUILT 2026-07-02.**
+- [x] Read command: `play_events_since(since_ts)` (windowed at the SQL layer via `idx_play_events_ts`) + registered in `lib.rs`. Grouping/ranking lives in TS — at this scale (tens of thousands of small rows worst-case) one O(n) Map pass beats maintaining per-stat SQL over the JSON-blob track metadata; if the log ever outgrows memory, swap `topBy()`'s internals for SQL rollups behind the same signature.
+- [x] TS layer ([`rewind.ts`](../src/rewind.ts)): join via `trackById`, `null` → "Unknown"; rank by `SUM(ms_listened)` then plays; unfinalized rows (in-flight / crashed) count the play, contribute 0 min. Representative artwork = the group's most-listened resolvable track (the Library card's borrowed-album-art trick — zero Apple calls; round for artists).
+- [x] Card UI ([`rewind-card.ts`](../src/rewind-card.ts)): qcard hero + top-20 list, two `lib-pill` pickers (stat: Songs/Artists/Albums/Playlists × window: Past Day/Week/Month/This Year/Past Year, default Songs × Past Week, persisted to localStorage). Right-click menus (Play Now / Play Next / Add to Queue / Add to Playlist): songs ride the shared `trackMenu` (`context: "rewind"`); albums play the full library album in disc/track order (played-subset fallback for catalog-only albums, `context: "album:<key>"`); playlists fetch their authored tracks lazily on action (`context: "playlist:<id>"`, so those plays keep attributing). Artists stay read-only (no obvious play order). Re-renders on queue/track-store/playlist changes. All tokens, no hardcoded values.
+- [x] Local-only (reads our SQLite, no Apple calls). *Known accepted lag:* the currently playing song's minutes land when the next song starts.
+- [x] **Cross-session resolution (2026-07-02):** historical catalog-only plays were "Unknown" — two gaps. Write: only Search materialized; now `handlesFrom` (player.ts, the funnel every Track[]-play crosses) materializes non-library tracks, so playlist/album plays persist their metadata. Read: `library_tracks` filters to synced rows, so 'seen' rows never reached the store; new `seen_tracks` command loads them into the transient map at startup. Plays logged BEFORE this fix that were never materialized stay "Unknown" forever (no metadata was captured) — pre-production, accepted.
+- [ ] Surface the privacy angle in UI copy (a subtitle/tooltip — deferred, copy TBD).
+- [ ] All-time window (needs `play_stats` or full-log scan — deferred; today's five windows are all event-log).
 
 ---
 

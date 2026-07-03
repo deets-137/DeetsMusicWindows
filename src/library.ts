@@ -52,6 +52,12 @@ export function libraryTracks(offset = 0, limit = 200): Promise<Page<Track>> {
   return invoke<Page<Track>>("library_tracks", { offset, limit });
 }
 
+/** Read the materialized ('seen') catalog-only tracks — the durable metadata for
+ *  plays that aren't in the library. The track store ingests them as transients. */
+export function seenTracks(): Promise<Track[]> {
+  return invoke<Track[]>("seen_tracks");
+}
+
 /** Trigger a full background sync of library songs into the cache. */
 export function librarySync(): Promise<number> {
   return invoke<number>("library_sync");

@@ -1,0 +1,28 @@
+/* Rewind card — only what qcard.css doesn't already cover: the picker row, the
+   minutes·plays meta line, and round art for the artist stat. Colors are theme
+   roles, spacing/type are skin tokens (no hardcoded values). */
+
+/* Two equal pills; .lib-pills (styles.css) supplies flex + gap, .lib-ctrl the cell. */
+.rewind__pills { flex: 0 0 auto; }
+.rewind__pills .lib-ctrl { flex: 1 1 0; }
+
+/* The board owns the scroll so the pills stay pinned while the list moves. */
+.rewind__board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+/* minutes · plays — third line under title/artist, same voice as the artist line. */
+.rewind__meta {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Artist stat: round covers (the Library card's artist grammar). */
+.rewind--round .qnow__art,
+.rewind--round .qrow__art { border-radius: 50%; }

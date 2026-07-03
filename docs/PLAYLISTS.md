@@ -7,26 +7,43 @@
 > engine) · [SURFACES-AND-CARDS](SURFACES-AND-CARDS.md) (the card system this rides) ·
 > [FUTURE-SETTINGS](FUTURE-SETTINGS.md) (the export toggles).
 >
-> **Status: read/play path BUILT + USER-VERIFIED (2026-07-02) — the card is
-> VIEW/PLAY-ONLY for now.**
-> Built: the Rust local store + CRUD commands (`src-tauri/src/playlists.rs`, no UI
-> callers yet), the Apple mirror read-in (`playlists_page`/`playlist_tracks_page` on the
-> provider, `apple_playlists_sync` + cache-first `apple_playlist_tracks`), and the real
-> card (`src/playlists-card.ts` on the collection-card engine: overview → detail,
+> **Status: read/play path + the core make-and-fill flow BUILT (2026-07-02).**
+> Built: the Rust local store + CRUD commands (`src-tauri/src/playlists.rs`), the Apple
+> mirror read-in (`playlists_page`/`playlist_tracks_page` on the provider,
+> `apple_playlists_sync` + cache-first `apple_playlist_tracks`), and the real card
+> (`src/playlists-card.ts` on the collection-card engine: overview → detail,
 > click-to-play with `playlist:{id}` origin, Play Now/Next/Queue menus, once-per-session
 > auto-sync + explicit ⟳). Also (2026-07-02): **eager overview count backfill** — the flat
 > mirror list carries no track count (Apple rejects `extend`/`include`/`fields`, HTTP 400,
 > probed), so `apple_playlist_counts` fills each uncounted tile with one tiny `tracks?limit=1`
 > call (`meta.total`), persisted once; opt out via `deets.playlists.eagerCounts=off`
-> ([FUTURE-SETTINGS §14](FUTURE-SETTINGS.md)). Also (2026-07-02): the **New Playlist (+)
-> button is placed as a STUB** — styled like Sync (`.panel__action`), sitting directly left
-> of Sync (both actions cluster right so the title stays anchored left like other cards),
-> visible only at the overview root (hidden in detail); the click is a no-op breadcrumb
-> pending the create-flow decision (§5.4). **Deferred to the
-> creation-UX session:** New Playlist (the create flow behind the stub button),
-> Add to Playlist ▸, rename/reorder/remove, Import-to-edit, source badges, mosaic
-> covers, export (§6) — the §10 open questions stand. This doc still fixes *what* and
-> *why* for those parts.
+> ([FUTURE-SETTINGS §14](FUTURE-SETTINGS.md)).
+>
+> **Creation-UX session (2026-07-02) — BUILT:**
+> - **New Playlist (+)** — the root-only header button opens an anchored dropdown
+>   (`openContextMenuUnder` + an `InputItem` text field, `src/context-menu.ts`): Enter
+>   creates → drills into the empty detail ("Add songs from your Library or Search.") →
+>   summons the Search card into the other slot (`requestCard`). Escape/click-away cancels.
+> - **Add to Playlist ▸** (§4) — a JS-latched side flyout (`SubmenuItem`; the settings-menu
+>   flyout grammar, side-flipped + clamped) on song/album menus (the shared `trackMenu` →
+>   Library + playlist detail), playlist rows (bulk add, self-excluded; mirrors work as
+>   sources = a lightweight partial import), and Search songs/albums/playlists
+>   (fetch-then-add). Targets: local playlists only, sorted recent-first
+>   ([FUTURE-SETTINGS §15](FUTURE-SETTINGS.md)), topped by a "New Playlist…" field
+>   (create-and-add in one gesture). A change bus (`onPlaylistsChange`, `src/playlists.ts`)
+>   live-refreshes the card after mutations from any surface.
+> - **Delete Playlist** — local rows only; enabled only while empty (greyed with songs —
+>   the non-empty delete UX is still an open fork). Locals' `created_at` serializes into
+>   `date_added` (RFC3339, chrono) so the Added Date sort covers both sources.
+> - **Remove from Playlist** — on song rows in a LOCAL playlist's detail (destructive-last;
+>   mirrors keep the shared menu). Identity is the row's authored POSITION, re-resolved
+>   live at click time (duplicates are legal; the qcard re-resolve pattern), via
+>   `playlist_remove_track` + the change bus.
+>
+> **Still deferred:** rename/reorder, Import-to-edit, non-empty delete, mosaic covers,
+> export (§6 — the **Export ▸ menu is now spec'd** there, parked with the gating
+> decision, alongside the parked **direct-append-to-editable-Apple-playlists** idea).
+> This doc still fixes *what* and *why* for those parts.
 
 ---
 
@@ -100,14 +117,18 @@ one cell, one density system, no per-card drift.
 - **Subtitle:** "N songs" + the **source badge** on mirrored rows.
 - **Sorts:** A–Z · Recently Updated · Recently Added. **Search:** by name.
 - **Header actions:** `＋ New Playlist` and `⟳ Sync` (refresh the Apple mirror), mirroring
-  Library's refresh button. **As built (2026-07-02):** Sync is live; the `＋` button is a
-  **stub** — same `.panel__action` styling, directly left of Sync (title stays anchored
-  left), root-only, no-op click — awaiting the create-flow decision below (A: create-then-
-  rename · B: inline name field · C: mini-dialog).
+  Library's refresh button. **As built (2026-07-02):** both live. The `＋` (root-only,
+  directly left of Sync) opens an anchored dropdown text field (**flow B won** over
+  create-then-rename / mini-dialog): Enter creates → drills into the empty detail →
+  summons Search into the other slot ([FUTURE-SETTINGS §16](FUTURE-SETTINGS.md));
+  Escape / click-away cancels.
 - **Tile → drills in** (`open`, like albums — you want to *see* it first). Play is via
   right-click / detail, never a bare tile click.
-- **Right-click menu**, per class: local → Play Now / Next / Queue · Rename · Duplicate ·
-  Export · Delete; mirror → Play Now / Next / Queue · **Import to edit**.
+- **Right-click menu**, per class. **As built (2026-07-02):** local → Play Now / Next /
+  Queue · Add to Playlist ▸ · Delete (enabled only while empty); mirror → Play Now /
+  Next / Queue · Add to Playlist ▸ (bulk add = a lightweight partial import). **Still
+  future:** Rename · Duplicate · Export ▸ (§6) on locals; **Import to edit** on mirrors;
+  the non-empty delete UX.
 
 **Detail (drill-in)** — the playlist's tracks, authored order:
 - **Default sort = "Playlist order"** (a position-based `SortSpec`); A–Z / Artist / Added
@@ -129,12 +150,16 @@ glyph + tint, not a rebuild. A badge means "mirrored, read-only until imported."
 
 ## 4. Building playlists
 
-Two entry points, both on the `src/context-menu.ts` primitive:
+Two entry points, both on the `src/context-menu.ts` primitive — **both BUILT 2026-07-02**:
 - **`＋ New Playlist`** → name input → empty local playlist → drills in → empty state invites
   "Add songs from your Library or Search."
-- **`Add to Playlist ▸`** — a submenu **grafted onto the existing track menus** (Library
-  songs/albums via `trackMenu` in `library-card.ts`, Qcard rows; Search later). Lists local
-  playlists + "New Playlist…". Appends to the end. Only local playlists are targets.
+- **`Add to Playlist ▸`** — a JS-latched side-flyout submenu (`SubmenuItem`) on Library
+  songs/albums (shared `trackMenu` — playlist-detail rows ride it too), playlist rows
+  (bulk add, self-excluded), and Search songs/albums/playlists (fetch-then-add). Lists
+  local playlists (recent-first, [FUTURE-SETTINGS §15](FUTURE-SETTINGS.md)) topped by a
+  "New Playlist…" field (create-and-add in one gesture). Appends to the end; duplicates
+  legal. Only local playlists are targets (direct Apple append is parked in §6). Qcard /
+  History rows are future tenants (handles, not full Tracks — [FUTURE-SETTINGS §2](FUTURE-SETTINGS.md)).
 
 ---
 
@@ -164,6 +189,42 @@ Lives behind an **"Apple Music sync" settings section** (see
 **Flow:** `POST` create playlist (name + description) → add tracks (catalog/library song ids);
 unresolvable tracks (music videos) skipped with a count; store the resulting Apple id + date on
 the local playlist (`exportedAppleId`) so the row can show **"Exported ✓ (Jun 30)."**
+
+**Menu entry — spec'd 2026-07-02 (design chat), parked with the gating decision.**
+- **Shape:** an **`Export ▸`** `SubmenuItem` on LOCAL playlist rows only, between
+  Add to Playlist ▸ and Delete; its flyout lists destinations — "Apple Music" (with the
+  source sigil) today, Spotify slots in later. **Greyed while the playlist is empty**
+  (same disabled-with-reason pattern as Delete).
+- **Click flow (2 API calls):** create (local name + description) → one tracks-append
+  POST with all ids, mapped `catalogId → "songs"` else `libraryId → "library-songs"` →
+  store `exported_apple_id` + `exported_at` (columns already in `local_playlists`) →
+  kick a non-fresh `apple_playlists_sync` so the Apple copy **appears in the unified
+  list with its sigil** — that appearance IS the success feedback (no toast needed).
+- **v1 hardcodes §6's decided defaults:** re-export = **fresh copy** (append-new-only is
+  the future setting); repeated exports accumulate same-named Apple copies — documented
+  trade. **Partial failure:** create-succeeded/append-failed still stores the Apple id
+  (the playlist genuinely exists there) + logs; fresh-copy re-export is the recovery.
+  No rollback pretense — we can't delete it anyway.
+- **Rust to build:** `playlist_export_apple(local_id)` (§7 lists it; ~80 lines: provider
+  create + append). The schema is ready.
+- **Gating (the open fork):** the settings toggle above, or ship earlier with a one-time
+  in-menu confirm (`deets.playlists.exportConfirmed`) — export is *less* dangerous than
+  direct append (it only ever creates new things on Apple), so confirm-only is
+  proportionate; parked alongside the append idea below until decided.
+
+**Direct append to editable Apple playlists (idea parked 2026-07-02 — build when the
+settings toggle above exists).** Append isn't limited to playlists we created:
+`POST /me/library/playlists/{id}/tracks` works on any mirror with `canEdit: true` (the
+user-authored class — editorial/smart rows are `canEdit: false` and self-exclude). The
+sketch: the **Add to Playlist ▸** flyout grows a sectioned tail — an "On Apple Music"
+label row, then the editable mirrors with the source sigil. Needs: a Rust
+`apple_playlist_append(id, tracks)` (POST → drop that playlist's content cache + bump its
+count), the change bus carrying a cache key instead of a local rowid, a menu label-item
+primitive, and a **first-use confirm** ("adds to your playlist on Apple Music —
+DeetsMusic can't remove it afterwards", `deets.playlists.appleAppendConfirmed`) that
+graduates into the same Apple-Music-sync settings section as the export enable. The
+irreversibility is the whole caveat: append is the one write with no undo on our side.
+Duplicates: allowed, like Apple's own client — no de-dupe in v1.
 
 ---
 
@@ -200,19 +261,20 @@ cover logic · the dropdown / menu-mode fan-out · the settings-row pattern.
 
 ## 9. Build order (each phase compiles + is testable on its own)
 
-1. **Rust local store** — `local_playlists` / `local_playlist_tracks` + CRUD. Zero Apple
+1. ✅ **Rust local store** — `local_playlists` / `local_playlist_tracks` + CRUD. Zero Apple
    calls; testable against SQLite.
 2. **Card + overview + detail (local only)** — real `CardDef.mount` reusing
-   `initCollectionCard`; New Playlist, drill-in, drag-reorder, remove. A fully usable local
-   playlist manager with **no Apple involvement**.
-3. **`Add to Playlist ▸`** — wire the submenu into Library/Qcard track menus. Now you can
-   actually build playlists.
-4. **Apple mirror (read-in)** — `playlists_page` + `playlist_tracks`, `apple_playlists_sync`,
-   source badges, Import-to-edit.
-5. **Export (create/append)** — the settings block + `playlist_export_apple`.
+   `initCollectionCard`; New Playlist ✅, drill-in ✅, remove ✅, empty-delete ✅;
+   **drag-reorder + rename still open**.
+3. ✅ **`Add to Playlist ▸`** — the flyout submenu on Library/Playlists/Search menus
+   (Qcard rows deferred — handles, not Tracks). Now you can actually build playlists.
+4. ✅ **Apple mirror (read-in)** — `playlists_page` + `playlist_tracks`, `apple_playlists_sync`,
+   the source sigil. **Import-to-edit still open.**
+5. **Export (create/append)** — the settings block + `playlist_export_apple`. Menu spec'd
+   (§6), parked with the gating decision.
 
 Phases 1–3 deliver the whole make-and-manage experience with **no API risk**; 4–5 layer Apple
-on top. First thing to verify at Phase 2: the collection-card second-instance check above.
+on top. The collection-card second-instance check passed at Phase 2 (engine holds no module state).
 
 ---
 
@@ -227,11 +289,14 @@ snapshot** · playlists play with a `playlist:{id}` queue origin · local playli
 
 ## Open — next session (UI/UX)
 
-Overview layout (tiles vs lines, default density) · the source-badge **glyph + placement** ·
-detail-header composition (Play / overflow / read-only pill) · the New-Playlist input
-affordance · the `Add to Playlist ▸` submenu UX · empty states · the export enable-toggle +
-confirm-dialog design · mosaic-cover rendering specifics · whether imported Apple originals are
-dimmed vs hidden.
+*(Closed 2026-07-02: the New-Playlist input affordance → anchored dropdown field; the
+`Add to Playlist ▸` submenu UX → JS-latched side flyout; empty states → `emptyText` on the
+detail context; source badge → the `.lib-src-badge` sigil on the count row.)*
+
+Still open: detail-header composition (Play / overflow / read-only pill) · drag-reorder +
+rename on locals · the non-empty delete UX · the export enable-toggle + first-use confirm
+design (§6 — gates both Export ▸ and direct Apple append) · mosaic-cover rendering
+specifics · whether imported Apple originals are dimmed vs hidden.
 
 ---
 

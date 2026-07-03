@@ -279,6 +279,27 @@ pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page
     })
 }
 
+/// All materialized (`source = 'seen'`) rows — catalog-only tracks the user has
+/// interacted with. The front-end store ingests these as TRANSIENTS at load so
+/// historical feedback (play events / stats / Rewind) resolves to metadata across
+/// sessions; library views still read only synced rows (`library_tracks`).
+#[tauri::command]
+pub fn seen_tracks(db: State<'_, Db>) -> Result<Vec<Track>, String> {
+    let conn = db.0.lock().unwrap();
+    let mut stmt = conn
+        .prepare("SELECT json FROM tracks WHERE source = 'seen'")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    let mut items = Vec::new();
+    for row in rows {
+        let s = row.map_err(|e| e.to_string())?;
+        items.push(serde_json::from_str(&s).map_err(|e| e.to_string())?);
+    }
+    Ok(items)
+}
+
 /// A track's cumulative play tallies (see `record_play`).
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -396,6 +417,45 @@ pub fn record_event_end(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// One row from the play-event log, for the Rewind card (DEETS-REWIND Phase B).
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayEvent {
+    pub track_id: String,
+    pub started_ts: i64,
+    /// Real elapsed listen time; None = never finalized (in flight, or a crashed session).
+    pub ms_listened: Option<i64>,
+    pub completed: bool,
+    pub context: Option<String>,
+}
+
+/// Read play events with `started_ts >= since_ts` (epoch-ms), oldest first. The time
+/// windowing happens HERE (via idx_play_events_ts) so a day view never ships a year of
+/// rows over IPC; all grouping/ranking lives in TS where the track-store join is.
+#[tauri::command]
+pub fn play_events_since(since_ts: i64, db: State<'_, Db>) -> Result<Vec<PlayEvent>, String> {
+    let conn = db.0.lock().unwrap();
+    let mut stmt = conn
+        .prepare(
+            "SELECT track_id, started_ts, ms_listened, completed, context
+             FROM play_events WHERE started_ts >= ?1 ORDER BY started_ts",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([since_ts], |r| {
+            Ok(PlayEvent {
+                track_id: r.get(0)?,
+                started_ts: r.get(1)?,
+                ms_listened: r.get(2)?,
+                completed: r.get::<_, i64>(3)? != 0,
+                context: r.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }
 
 /// Materialize a non-library track into the unified store (`source = 'seen'`) so

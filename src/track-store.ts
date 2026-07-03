@@ -3,7 +3,7 @@
 // card (handle resolution) read from here, so the library isn't loaded or held twice —
 // and neither goes stale after a background sync.
 
-import { libraryTracks, librarySync, onSyncEvent, type Track } from "./library";
+import { libraryTracks, librarySync, onSyncEvent, seenTracks, type Track } from "./library";
 import { isConnected } from "./apple";
 
 let all: Track[] = [];
@@ -22,9 +22,16 @@ function index(): void {
 /** Reload the full library from the cache and notify subscribers. */
 export async function loadTracks(): Promise<void> {
   try {
-    const page = await libraryTracks(0, 100000);
+    // The durable 'seen' rows (materialized catalog-only tracks) ride along into the
+    // TRANSIENT map, so historical feedback (Rewind, play stats) resolves to metadata
+    // across sessions — while the browsable library stays synced rows only.
+    const [page, seen] = await Promise.all([libraryTracks(0, 100000), seenTracks()]);
     all = page.items;
     index();
+    for (const t of seen) {
+      if (t.libraryId) transient.set(t.libraryId, t);
+      if (t.catalogId) transient.set(t.catalogId, t);
+    }
     listeners.forEach((cb) => cb());
   } catch (e) {
     console.error("[track-store] load", e);
@@ -53,6 +60,10 @@ export function addTransientTracks(list: Track[]): void {
  *  The library copy wins (richer: addedRank); transients cover catalog-only plays. */
 export const trackById = (id?: string): Track | undefined =>
   id ? byId.get(id) ?? transient.get(id) : undefined;
+
+/** Is this id a SYNCED library track? (Transients don't count — the player uses this
+ *  to decide which played tracks need durable materialization.) */
+export const inLibrary = (id?: string): boolean => (id ? byId.has(id) : false);
 
 /** Subscribe to load/reload. Returns an unsubscribe fn. */
 export function onTracksChange(cb: () => void): () => void {

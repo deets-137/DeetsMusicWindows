@@ -13,6 +13,7 @@
 import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { tracks, onTracksChange } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
+import { addToPlaylistItem } from "./playlists";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
@@ -187,7 +188,7 @@ const artistSorts: SortSpec<ArtistGroup>[] = [
 // One builder for songs and albums: a song is a 1-track list; an album is its tracks
 // in disc/track order. "Play Now" plays the list from the top (a song → just that song;
 // an album → the whole album as the new context). Next/Later insert without a rebuild.
-const albumOrder = (ts: Track[]): Track[] =>
+export const albumOrder = (ts: Track[]): Track[] =>
   [...ts].sort((a, b) => (a.discNumber ?? 1) - (b.discNumber ?? 1) || (a.trackNumber ?? 0) - (b.trackNumber ?? 0));
 
 export function trackMenu(items: Track[], context?: string): MenuItem[] {
@@ -196,6 +197,7 @@ export function trackMenu(items: Track[], context?: string): MenuItem[] {
     { label: "Play Now", run: () => void playTracks(items, 0, context).catch(err("play now")) },
     { label: "Play Next", run: () => void queueTracksNext(items, context).catch(err("play next")) },
     { label: "Add to Queue", run: () => void queueTracksLater(items, context).catch(err("add to queue")) },
+    addToPlaylistItem(() => items),
   ];
 }
 

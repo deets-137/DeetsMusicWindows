@@ -41,7 +41,7 @@ wired inline in `main.ts`. To be swappable a card must instead **mount into a ho
 and **tear itself down** cleanly.
 
 ```ts
-type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history";
+type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind";
 
 interface CardInstance {
   destroy(): void;                       // drop every listener, detach DOM

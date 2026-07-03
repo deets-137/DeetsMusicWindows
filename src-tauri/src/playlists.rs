@@ -78,12 +78,12 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
 
     // Local playlists (fully editable, no badge). The front-end keys on the
     // synthetic `local:{id}` — locals have no Apple identity by definition.
-    // date_added stays None until the creation-UX session decides how local
-    // timestamps should sort against Apple's ISO dates.
+    // created_at serializes into date_added as RFC3339, the same shape as Apple's
+    // ISO dates, so the "Added Date" sort covers both sources with one comparator.
     {
         let mut stmt = conn
             .prepare(
-                "SELECT p.id, p.name, p.description,
+                "SELECT p.id, p.name, p.description, p.created_at,
                         (SELECT COUNT(*) FROM local_playlist_tracks t WHERE t.playlist_id = p.id)
                  FROM local_playlists p",
             )
@@ -94,12 +94,13 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                     r.get::<_, i64>(0)?,
                     r.get::<_, String>(1)?,
                     r.get::<_, Option<String>>(2)?,
-                    r.get::<_, u32>(3)?,
+                    r.get::<_, i64>(3)?,
+                    r.get::<_, u32>(4)?,
                 ))
             })
             .map_err(err)?;
         for row in rows {
-            let (id, name, description, n) = row.map_err(err)?;
+            let (id, name, description, created_at, n) = row.map_err(err)?;
             out.push(Playlist {
                 library_id: Some(format!("local:{id}")),
                 name,
@@ -108,6 +109,8 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                 track_count: Some(n),
                 source: Some("local".into()),
                 kind: Some("user".into()),
+                date_added: chrono::DateTime::from_timestamp_millis(created_at)
+                    .map(|d| d.to_rfc3339()),
                 ..Default::default()
             });
         }

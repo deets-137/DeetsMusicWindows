@@ -28,4 +28,6 @@ tiny_http = "0.12"
 getrandom = "0.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
 futures = "0.3"
+# ms → RFC3339 for local playlists' date_added (already in the tree transitively)
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 

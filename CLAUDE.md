@@ -27,6 +27,9 @@ front-end, Rust back-end).
   geometry/type/spacing/motion → skin token.
 - He values polish and good stewardship (e.g. minimize Apple API calls; ask cost before
   committing to a fetch-heavy approach).
+- **Do NOT delegate to subagents (the `Agent` tool) for this codebase.** It's small
+  enough to hold in context directly — explore, read, and edit files yourself so you
+  keep the full picture while building. Only exception: if he explicitly asks for one.
 
 ## Run
 ```

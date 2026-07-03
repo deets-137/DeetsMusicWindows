@@ -266,7 +266,7 @@ The content area is a **bento grid** of **panels**. Three altitudes:
 - **Card** — a **mountable module** in the card registry (`src/cards.ts`), built into a slot
   at runtime; each card owns its markup (the `index.html` panels are empty hosts). Cards:
   `now-playing` (live transport), `library` (real synced songs + a header **refresh** action,
-  `.panel__action`), `queue`, `playlists` (a stub for now). The midi bento has an **anchored**
+  `.panel__action`), `queue`, `playlists`, `search`, `history`. The midi bento has an **anchored**
   Now Playing slot + **two swappable content slots** whose **title is a card picker** — see
   [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) and **§4a** for the collection-card controls.
 - **Screen** — a composition of cards in the grid (`data-screen="home"`). Future *surfaces*
@@ -362,19 +362,27 @@ tiles are just bigger covers, not fewer labels. Keeping the row-vs-tile + densit
 in one place is deliberate: it used to be copy-pasted per grouping, so the same
 "title missing at large density" bug lived in every card independently.
 
-**Right-click menu.** A grouping's `menu(item)` returns `MenuItem[]`
-(`{ label, run, disabled? }`); the engine adds **one delegated `contextmenu`
-listener** on `.coll-viewport`, resolves the row → its item, and opens a cursor-anchored
-popover (`src/context-menu.ts`, `openContextMenu`). The popover is a themed HTML element
-(`.ctx-menu`, mirrors the settings flyout) **confined to the window** — chosen over a
-native OS menu precisely so themes/skins apply; the trade is it can't overflow the window
-edges, so position is **clamped to the live viewport** (`clientWidth/Height`, never the
-fixed 480×864 — correct under resize / fullscreen / miniplayer) and it closes on
-outside-press / Escape / scroll / resize. Library wires it on **Songs** and **Albums**
-(Play Now · Play Next · Add to Queue — see [DATA-ARCHITECTURE](DATA-ARCHITECTURE.md) /
-[QUEUE.md](QUEUE.md) for the player side); Artists declare no `menu`, so they fall
-through. The right-clicked row carries `.is-context` (same outline as `.is-selected`)
-while its menu is open.
+**Right-click menu.** A grouping's `menu(item)` returns `MenuItem[]`; the engine adds
+**one delegated `contextmenu` listener** on `.coll-viewport`, resolves the row → its
+item, and opens a cursor-anchored popover (`src/context-menu.ts`, `openContextMenu`;
+`openContextMenuUnder` is the element-anchored dropdown twin — e.g. the Playlists
+**+ New Playlist** field). Items come in three species (2026-07-02): **actions**
+(`{ label, run, disabled? }`), **text inputs** (`InputItem` — Enter commits, every
+dismiss is a cancel), and **submenus** (`SubmenuItem` — a `›` row opening a side
+**flyout** in the settings-menu grammar, but **JS-latched** rather than `:hover` so a
+flyout text field survives typing; it side-flips near the right edge, clamps + scrolls
+vertically, and its `sub()` items resolve lazily on first open — Add to Playlist ▸ is
+the first tenant). The popover is a themed HTML element (`.ctx-menu`, mirrors the
+settings flyout) **confined to the window** — chosen over a native OS menu precisely so
+themes/skins apply; the trade is it can't overflow the window edges, so position is
+**clamped to the live viewport** (`clientWidth/Height`, never the fixed 480×864 —
+correct under resize / fullscreen / miniplayer) and it closes on outside-press / Escape /
+outside-scroll / resize (scrolls **inside** the menu — a long flyout — don't dismiss).
+Library wires it on **Songs** and **Albums** (Play Now · Play Next · Add to Queue ·
+Add to Playlist ▸ — see [DATA-ARCHITECTURE](DATA-ARCHITECTURE.md) / [QUEUE.md](QUEUE.md) /
+[PLAYLISTS.md](PLAYLISTS.md) for the action sides); Artists declare no `menu`, so they
+fall through. The right-clicked row carries `.is-context` (same outline as
+`.is-selected`) while its menu is open.
 
 **Navigation = a push/pop pane stack.** `.coll-body` holds a clipping
 `.coll-viewport`; each context is a `.coll-pane` (absolute, `data-pos`
@@ -483,7 +491,8 @@ src/main.ts             window controls, settings menu, account, menu-mode; call
 src/cards.ts            card registry + CardDef/CardInstance (the mountable-card contract)
 src/layout.ts           midi layout: anchored Now Playing + 2 swappable slots + title-menu picker
 src/now-playing-card.ts Now Playing transport card (extracted from main.ts)
-src/playlists-card.ts   Playlists card — stub for now (selectable; real context later)
+src/playlists-card.ts   Playlists card — overview → detail on the engine; New Playlist (+),
+                        remove-track, empty-only delete (PLAYLISTS.md)
 src/dropdown.ts         dropdown primitive + menu-mode fan-out (setDropdownMode, destroy)
 src/theme.ts            theme switch + localStorage persistence
 src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)

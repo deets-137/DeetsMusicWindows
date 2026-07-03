@@ -45,6 +45,7 @@ export interface Context {
   groupings: Grouping[]; // >= 1; >1 → View shows a grouping column
   density: boolean; // whether the density column applies
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
+  emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
 }
 
 export interface CardOptions {
@@ -93,7 +94,7 @@ export function initCollectionCard(opts: CardOptions) {
   const titleEl = opts.root.querySelector<HTMLElement>(".panel__title");
   const backEl = opts.root.querySelector<HTMLButtonElement>(".panel__back");
   const bodyHost = opts.root.querySelector<HTMLElement>(".coll-body");
-  if (!bodyHost) return { reload: () => {}, destroy: () => {} };
+  if (!bodyHost) return { reload: () => {}, drill: (_ctx: Context) => {}, destroy: () => {} };
 
   const baseTitle = titleEl?.textContent ?? "";
   bodyHost.innerHTML = `<div class="coll-viewport" data-viewport></div>`;
@@ -266,7 +267,7 @@ export function initCollectionCard(opts: CardOptions) {
     view.dataset.openable = g.open ? "1" : ""; // that collides with the density buttons)
     if (!items.length) {
       view.className = "lib-view lib-empty";
-      view.innerHTML = `<p class="lib-empty__msg">${f.query ? "No matches." : "Nothing here yet."}</p>`;
+      view.innerHTML = `<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`;
       return;
     }
     view.className = f.density === "lines" ? "lib-view lib-list" : "lib-view lib-grid";
@@ -556,6 +557,11 @@ export function initCollectionCard(opts: CardOptions) {
   viewport.appendChild(curPane);
 
   return {
+    // Push a child context programmatically — same slide/header path as clicking a
+    // tile (e.g. Playlists drills straight into a just-created playlist).
+    drill(ctx: Context) {
+      drill(ctx);
+    },
     // Refresh data without losing the user's place. Live grouping closures pick up
     // new data; we just re-render the visible pane (deeper frames re-render on back).
     reload() {

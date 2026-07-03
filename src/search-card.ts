@@ -7,6 +7,7 @@
 
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addTransientTracks } from "./track-store";
+import { addToPlaylistItem } from "./playlists";
 import { openContextMenu } from "./context-menu";
 import { makeDropdown } from "./dropdown";
 import { esc } from "./collection-card";
@@ -343,6 +344,9 @@ function mountSearch(host: HTMLElement): CardInstance {
       { label: "Play Now", run: () => enqueue([t], "now", "search") },
       { label: "Play Next", run: () => enqueue([t], "next", "search") },
       { label: "Add to Queue", run: () => enqueue([t], "later", "search") },
+      // Catalog tracks land as denormalised snapshots — no library/queue
+      // materialization needed; the local store is self-contained by design.
+      addToPlaylistItem(() => [t]),
     ]);
   };
   const collectionMenu = (e: MouseEvent, kind: "albums" | "playlists", id: string, ctx: string) => {
@@ -354,6 +358,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       { label: "Play Now", run: () => void fetchThen("now") },
       { label: "Play Next", run: () => void fetchThen("next") },
       { label: "Add to Queue", run: () => void fetchThen("later") },
+      addToPlaylistItem(() => collectionTracks(kind, id)), // fetch-then-add, lazy on pick
     ]);
   };
 

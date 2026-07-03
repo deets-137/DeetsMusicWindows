@@ -8,13 +8,14 @@
 // Contents are cache-first (zero Apple calls to re-open); the header ⟳ is the
 // explicit mirror re-sync that also drops content caches.
 
-import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks } from "./playlists";
+import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, addToPlaylistItem, onPlaylistsChange } from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { initCollectionCard, type Context, type Grouping, type SortSpec } from "./collection-card";
 import { musicCell, trackMenu } from "./library-card";
-import type { MenuItem } from "./context-menu";
+import { openContextMenuUnder, type MenuItem } from "./context-menu";
+import { requestCard } from "./layout-bus";
 import type { CardDef } from "./cards";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
@@ -112,13 +113,34 @@ export const playlistsCard: CardDef = {
         // Click a song → play the playlist from here, in the current sort order.
         activate: (_t, idx, items) =>
           void playTracks(items, idx, ctxTag).catch((e) => console.error("[playlists] play", e)),
-        menu: (t) => trackMenu([t], ctxTag),
+        // Locals append Remove (destructive-last); mirrors keep the shared menu —
+        // no Apple remove path. Identity is the row's AUTHORED position (duplicates
+        // are legal): re-resolve it live at run time via indexOf (the qcard pattern —
+        // the cached array is authored order and every row is a distinct object, so
+        // indexOf pinpoints the right duplicate; -1 = the list shifted under the
+        // open menu → no-op rather than remove the wrong row).
+        menu: (t) => {
+          const base = trackMenu([t], ctxTag);
+          if (p.source !== "local") return base;
+          return [
+            ...base,
+            {
+              label: "Remove from Playlist",
+              run: () => {
+                const i = (trackCache.get(id) ?? []).indexOf(t);
+                if (i >= 0)
+                  void playlistRemoveTrack(p, i).catch((e) => console.error("[playlists] remove track", e));
+              },
+            },
+          ];
+        },
       };
       return {
         title: p.name,
         density: true,
         groupings: [grouping],
         defaults: { density: "lines", sortKey: "order" },
+        emptyText: "Add songs from your Library or Search.",
       };
     };
 
@@ -132,11 +154,26 @@ export const playlistsCard: CardDef = {
     const listMenu = (p: Playlist): MenuItem[] => {
       const ctxTag = `playlist:${pid(p)}`;
       const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
-      return [
+      const items: MenuItem[] = [
         { label: "Play Now", run: () => void tracksOf(p).then((ts) => { if (ts.length) return playTracks(ts, 0, ctxTag); }).catch(err("play now")) },
         { label: "Play Next", run: () => void tracksOf(p).then((ts) => { if (ts.length) return queueTracksNext(ts, ctxTag); }).catch(err("play next")) },
         { label: "Add to Queue", run: () => void tracksOf(p).then((ts) => { if (ts.length) return queueTracksLater(ts, ctxTag); }).catch(err("add to queue")) },
+        // Bulk add — works from mirrors too (a partial import, snapshot semantics);
+        // self-excluded so a playlist can't append to itself.
+        addToPlaylistItem(() => tracksOf(p), p.libraryId),
       ];
+      // Local playlists only (mirrors have no delete path — the Apple write ceiling).
+      // Greyed while it has songs: the non-empty delete UX is a decided-later slice.
+      // The change bus (below) handles the cache eviction + list reload.
+      if (p.source === "local") {
+        const n = trackCache.get(pid(p))?.length ?? p.trackCount ?? 0;
+        items.push({
+          label: "Delete Playlist",
+          disabled: n > 0,
+          run: () => void playlistDelete(p).catch(err("delete")),
+        });
+      }
+      return items;
     };
 
     // "Added Date" mirrors Library's semantics: ascending (the default ↑) puts the
@@ -230,17 +267,45 @@ export const playlistsCard: CardDef = {
     }
     refreshBtn?.addEventListener("click", () => doSync(true));
 
-    // STUB: the New Playlist (+) button. Placed + styled + root-only-visible, but the
-    // create flow (inline name field vs. dialog, drill-or-not) is still being decided
-    // — see PLAYLISTS.md §5.4. The Rust local CRUD (playlist_create/rename/… in
-    // playlists.rs) is already built; wiring it is the creation-UX slice. For now the
-    // click is a no-op breadcrumb so the button reads as intentional, not broken.
-    addBtn?.addEventListener("click", () => {
-      console.info("[playlists] New Playlist — stub; creation UX pending (PLAYLISTS.md §5.4)");
+    // Local-store change bus: any create / add-tracks / delete (from ANY card —
+    // Library, Search, or here) refreshes the list and, when a specific playlist
+    // was touched, evicts + refetches its content cache so an open detail pane
+    // live-updates instead of going stale.
+    const unsubChanges = onPlaylistsChange((rowid) => {
+      if (rowid != null) {
+        const key = `local:${rowid}`;
+        trackCache.delete(key);
+        const p = lists.find((x) => x.libraryId === key);
+        if (p) ensureTracks(p);
+      }
+      void load();
     });
+
+    // New Playlist (+): a dropdown text field under the button (PLAYLISTS.md §5.4,
+    // flow B). Enter → create local playlist → drill into its empty detail → summon
+    // Search into the other slot so adding songs is one card away. Escape / click-away
+    // cancels — Enter is the only commit (no accidental junk playlists).
+    const createAndEnter = (name: string) =>
+      playlistCreate(name)
+        .then(async (rowid) => {
+          await load(); // the new playlist joins the unified list
+          const p = lists.find((x) => x.libraryId === `local:${rowid}`);
+          if (!p) throw new Error("created playlist missing from cached list");
+          card.drill(detail(p));
+          requestCard("search");
+        })
+        .catch((e) => console.error("[playlists] create", e));
+
+    if (addBtn)
+      addBtn.addEventListener("click", () => {
+        openContextMenuUnder(addBtn, [
+          { input: { placeholder: "Playlist name", onSubmit: (name) => void createAndEnter(name) } },
+        ]);
+      });
 
     return {
       destroy() {
+        unsubChanges();
         card.destroy();
         host.innerHTML = "";
       },

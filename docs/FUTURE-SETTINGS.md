@@ -24,7 +24,8 @@
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
   §13 CyberStorm storm dials (skin-specific)
-- **Playlists** — §14 Eager playlist-count backfill
+- **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
+  §16 New-Playlist Search summon
 
 ---
 
@@ -430,3 +431,54 @@ track list), so we accept the drift. If it ever matters, the fix is a "songs onl
 **Wiring:** the eager path is `apple_playlist_counts` (Rust, `src-tauri/src/playlists.rs`);
 the front-end gate is the one `localStorage` read in `src/playlists-card.ts`. Graduating it
 to a real toggle is a checkbox in the (future) Playlists settings that writes the key.
+
+---
+
+## 15. Add-to-Playlist submenu — target-list sort
+
+**Behavior.** The order of the local playlists listed in the **Add to Playlist ▸**
+submenu (on song / album / playlist right-click menus).
+
+**Current default (hardcoded):** **Recently Added first** — sorted by `date_added`
+descending (for locals that's creation time, serialized from `created_at`). Rationale:
+the playlist you're actively filling is almost always the one you just created, so it
+sits at the top where the repeated add-add-add gesture is cheapest.
+
+**Options.**
+- **(a) Recently Added first** *(current default)* — best for the create-then-fill burst.
+- **(b) A–Z** — stable positions; better once the playlist set is large and long-lived
+  (muscle memory beats recency).
+- **(c) Recently Updated first** — the playlists you're *using* bubble up even if old.
+  Needs `updated_at` surfaced onto the model (it's already stored in `local_playlists`
+  and bumped by add/remove/reorder/rename); Apple mirrors would need `lastModified`,
+  which the flat sync doesn't carry — but mirrors are never add-targets, so this is
+  locals-only and cheap.
+
+**Wiring sketch.** `localStorage` `deets.playlists.addMenuSort` = `"added" | "az" |
+"updated"` (default `"added"`), read where the submenu items are built. A Playlists
+settings subsection tenant alongside §14.
+
+---
+
+## 16. New-Playlist flow — Search card summon
+
+**Behavior.** Committing a name in the **New Playlist (+)** dropdown drills into the
+fresh playlist's empty detail **and force-summons the Search card** into the other
+content slot (`requestCard("search")` in `src/playlists-card.ts` — the same
+least-recently-touched/flip mechanics as the NP queue button, §10).
+
+**Current default (hardcoded):** **summon ON** — the whole flow is choreographed to
+land you in "empty playlist here, Search beside it, start adding." But it *does*
+commandeer the other slot, evicting whatever card was there (and a flip remounts both
+slots, dropping any drilled-in state) — a user who creates playlists ahead of filling
+them, or who curates from the Library card instead of Search, may want the slots left
+alone.
+
+**Options.**
+- **(a) Summon Search** *(current default)* — create → drill → Search appears.
+- **(b) No summon** — create → drill only; the other slot keeps whatever it had.
+
+**Wiring sketch.** `localStorage` `deets.playlists.createSummon` = `"search" | "none"`
+(default `"search"`), read at the `requestCard("search")` call in `createAndEnter`
+(`src/playlists-card.ts`). A Playlists settings tenant alongside §14/§15. If the §10
+summon behavior ever grows options, this should follow the same vocabulary.
