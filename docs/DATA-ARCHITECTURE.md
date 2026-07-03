@@ -37,7 +37,8 @@ The in-app webview **cannot open OAuth popups** (a known Tauri/WebView2 limitati
 Flow (`apple_begin_auth`):
 1. Rust signs an Apple **developer token** (ES256 JWT from the `.p8`, ~150-day exp).
 2. Rust starts a **one-shot loopback HTTP server** on `127.0.0.1:<ephemeral>` and
-   opens the user's default browser at it.
+   opens the user's default browser at it (via `tauri-plugin-opener` —
+   cross-platform: Windows/macOS/Linux, no `cmd`/`xdg-open` shell-out).
 3. The served page is the app's own themed sign-in page (see §6) — it loads
    MusicKit JS, configures with the dev token, runs `authorize()` (popups work in a
    real browser), and **POSTs the Music User Token back** to `/callback`.

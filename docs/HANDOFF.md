@@ -379,7 +379,9 @@ numbered list below is the older feature roadmap, still valid for what rides the
 
 ## Known gotchas
 - **No in-app OAuth popups** (Tauri/WebView2). Auth is browser-loopback by design —
-  don't try to "fix" `authorize()` in the webview. See DATA-ARCHITECTURE §2.
+  don't try to "fix" `authorize()` in the webview. See DATA-ARCHITECTURE §2. The
+  browser-open goes through `tauri-plugin-opener`, so this flow is cross-platform
+  (Windows/macOS/Linux) — no OS-specific shell-out.
 - **Liberation fonts aren't on Windows** — bundled locally; the loopback page serves
   them too (embedded in the binary) so it matches the app.
 - **Secrets & cache paths are dev-oriented**: resolved from `CARGO_MANIFEST_DIR`.

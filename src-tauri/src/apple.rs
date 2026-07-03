@@ -13,6 +13,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
+use tauri_plugin_opener::OpenerExt;
 
 use crate::model::{
     Album, Artist, ArtistDetail, Artwork, Page, PlayParams, Playlist, SearchResults, Track,
@@ -121,15 +122,6 @@ fn sanitize_ident(s: &str) -> String {
         .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
         .take(32)
         .collect()
-}
-
-fn open_in_browser(url: &str) {
-    #[cfg(windows)]
-    let _ = std::process::Command::new("cmd")
-        .args(["/C", "start", "", url])
-        .spawn();
-    #[cfg(not(windows))]
-    let _ = std::process::Command::new("xdg-open").arg(url).spawn();
 }
 
 fn content_type(value: &str) -> tiny_http::Header {
@@ -274,6 +266,7 @@ pub fn apple_developer_token() -> Result<String, String> {
 /// `theme`/`skin` mirror the app's active selection so the page matches.
 #[tauri::command]
 pub fn apple_begin_auth(
+    app: tauri::AppHandle,
     theme: String,
     skin: String,
     state: tauri::State<'_, AppleState>,
@@ -300,7 +293,9 @@ pub fn apple_begin_auth(
     let store = state.user_token.clone();
     std::thread::spawn(move || serve(server, page, nonce, store));
 
-    open_in_browser(&format!("http://127.0.0.1:{port}/"));
+    app.opener()
+        .open_url(format!("http://127.0.0.1:{port}/"), None::<&str>)
+        .map_err(|e| format!("could not open browser: {e}"))?;
     Ok(())
 }
 
