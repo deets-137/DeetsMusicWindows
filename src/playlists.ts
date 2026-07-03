@@ -121,6 +121,42 @@ export function addToPlaylistItem(
   };
 }
 
+// ── Folders (manual grouping over the unified list — PLAYLISTS.md §Folders) ────
+// All local SQLite; mutations ride the change bus so every mounted card refreshes.
+
+export interface PlaylistFolder {
+  id: number;
+  name: string;
+}
+
+export function foldersList(): Promise<PlaylistFolder[]> {
+  return invoke<PlaylistFolder[]>("playlist_folders_list");
+}
+
+export function folderCreate(name: string): Promise<number> {
+  return invoke<number>("playlist_folder_create", { name }).then((id) => {
+    emitChange();
+    return id;
+  });
+}
+
+export function folderRename(id: number, name: string): Promise<void> {
+  return invoke<void>("playlist_folder_rename", { id, name }).then(() => emitChange());
+}
+
+/** Delete a folder; its members become unfiled (playlists untouched). */
+export function folderDelete(id: number): Promise<void> {
+  return invoke<void>("playlist_folder_delete", { id }).then(() => emitChange());
+}
+
+/** File a playlist (local or mirror — keyed on its libraryId) or unfile with null. */
+export function folderAssign(p: Playlist, folderId: number | null): Promise<void> {
+  if (!p.libraryId) return Promise.reject(new Error(`playlist "${p.name}" has no library id`));
+  return invoke<void>("playlist_folder_assign", { playlistKey: p.libraryId, folderId }).then(() =>
+    emitChange(),
+  );
+}
+
 /** A playlist's tracks in authored order — local store or mirror cache/fetch. */
 export function playlistTracks(p: Playlist): Promise<Track[]> {
   const local = localId(p);

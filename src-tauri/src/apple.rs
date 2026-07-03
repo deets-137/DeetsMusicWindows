@@ -606,6 +606,7 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         track_count: None, // not on the search result; the detail fetch carries tracks
         source: None,      // a catalog search hit is neither local nor a library mirror
         kind: None,
+        folder_id: None, // folders are local metadata, stamped by playlists_cached
     }
 }
 
@@ -665,6 +666,7 @@ fn playlist_from_library(v: &serde_json::Value) -> Playlist {
         track_count: a["trackCount"].as_u64().map(|n| n as u32), // usually absent on the flat list
         source: Some("apple".into()),
         kind: Some(kind.into()),
+        folder_id: None, // folders are local metadata, stamped by playlists_cached
     }
 }
 
@@ -1118,4 +1120,58 @@ pub async fn radio_genre_stations(
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres/{id}/stations");
     let items = paged_data(&client, &dev, &user, &url, "station-genres/stations").await?;
     Ok(items.iter().map(station_from_catalog).collect())
+}
+
+/// The Apple station seeded from a song or artist ("Start Station" — STATIONS.md §2).
+/// Direct relationship fetch: `GET /v1/catalog/{sf}/{kind}/{id}/station`.
+/// 404 / empty data = no station exists for the seed (`None`, not an error).
+#[tauri::command]
+pub async fn radio_seed_station(
+    kind: String, // "songs" | "artists"
+    id: String,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Option<Station>, String> {
+    if kind != "songs" && kind != "artists" {
+        return Err(format!("unsupported seed kind: {kind}"));
+    }
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}/station");
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status == 404 {
+        return Ok(None);
+    }
+    if status != 200 {
+        return Err(format!("{kind}/station HTTP {status}"));
+    }
+    Ok(body["data"].as_array().and_then(|a| a.first()).map(station_from_catalog))
+}
+
+/// A catalog song's primary artist catalog id — the song→artist hop behind "Start
+/// Station" on a derived library artist (STATIONS.md §2). Library rows carry only an
+/// artist NAME, so the seed rides one of the artist's songs' catalog ids instead.
+#[tauri::command]
+pub async fn catalog_song_artist(
+    id: String,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Option<String>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/songs/{id}?include=artists");
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status == 404 {
+        return Ok(None);
+    }
+    if status != 200 {
+        return Err(format!("songs/{id} HTTP {status}"));
+    }
+    Ok(body["data"][0]["relationships"]["artists"]["data"][0]["id"]
+        .as_str()
+        .map(String::from))
 }

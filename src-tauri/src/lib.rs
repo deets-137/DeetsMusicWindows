@@ -70,6 +70,8 @@ pub fn run() {
             apple::radio_discovery,
             apple::radio_genres,
             apple::radio_genre_stations,
+            apple::radio_seed_station,
+            apple::catalog_song_artist,
             library::library_sync,
             library::library_tracks,
             library::seen_tracks,
@@ -91,6 +93,11 @@ pub fn run() {
             playlists::playlist_remove_track,
             playlists::playlist_reorder,
             playlists::local_playlist_tracks,
+            playlists::playlist_folders_list,
+            playlists::playlist_folder_create,
+            playlists::playlist_folder_rename,
+            playlists::playlist_folder_delete,
+            playlists::playlist_folder_assign,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

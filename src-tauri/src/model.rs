@@ -143,6 +143,10 @@ pub struct Playlist {
     /// (added editorial/curator list), `"smart"` (rule-based — rules never exposed).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    /// Manual folder membership (playlist_folder_members) — stamped fresh by
+    /// `playlists_cached` on every read, never persisted into cached json.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder_id: Option<i64>,
 }
 
 /// An Apple radio station (STATIONS.md §2 — live / Discovery / genre / seeded).

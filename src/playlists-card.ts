@@ -8,12 +8,12 @@
 // Contents are cache-first (zero Apple calls to re-open); the header ⟳ is the
 // explicit mirror re-sync that also drops content caches.
 
-import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, addToPlaylistItem, onPlaylistsChange } from "./playlists";
+import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, addToPlaylistItem, onPlaylistsChange, foldersList, folderCreate, folderRename, folderDelete, folderAssign, type PlaylistFolder } from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addSongToLibraryItem } from "./library-add";
-import { initCollectionCard, type Context, type Grouping, type SortSpec } from "./collection-card";
+import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { musicCell, trackMenu } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { requestCard } from "./layout-bus";
@@ -33,6 +33,68 @@ const APPLE_SIGIL =
 
 // Auto-sync the mirror once per session — a slot remount must not re-hit Apple.
 let sessionSynced = false;
+
+// ── sections (PLAYLISTS.md §Folders) ────────────────────────────────────────────
+// The overview is a heterogeneous pos-pinned "shelf list" (the Radio grammar):
+// manual folders first (A–Z), then the unfiled playlists auto-clustered by kind.
+// Headers exist only in the Folders(↑) sort with no query — any other sort or an
+// active search flattens to plain playlist rows (so collapsed members still match).
+type PlRow = { pos: number } & (
+  | { kind: "folder"; id: number; label: string; count: number }
+  | { kind: "cluster"; key: string; label: string; count: number }
+  | { kind: "playlist"; p: Playlist }
+);
+
+const sectionKey = (x: PlRow) => (x.kind === "folder" ? `folder:${x.id}` : x.kind === "cluster" ? x.key : "");
+
+const byName = <T extends { name: string }>(a: T, b: T) =>
+  a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+
+// Unfiled auto-clusters, fixed order. "Apple Mixes" is the weeklies shelf: Apple's
+// personalised mixes all end in "Mix" (New Music Mix, Favourites Mix, …); "Replays"
+// collects the yearly Replay playlists ("Replay 2024", …).
+type ClusterKey = "yours" | "mixes" | "replays" | "apple";
+const clusterOf = (p: Playlist): ClusterKey =>
+  p.source === "local" || p.kind === "user"
+    ? "yours"
+    : /\bmix$/i.test(p.name)
+      ? "mixes"
+      : /^replay\b/i.test(p.name)
+        ? "replays"
+        : "apple";
+const CLUSTERS: { key: ClusterKey; label: string }[] = [
+  { key: "yours", label: "Your Playlists" },
+  { key: "mixes", label: "Apple Mixes" },
+  { key: "replays", label: "Replays" },
+  { key: "apple", label: "From Apple Music" },
+];
+
+// Collapse state, persisted across remounts/restarts (section keys, not indices).
+const COLLAPSE_KEY = "deets.playlists.collapsed";
+const loadCollapsed = (): Set<string> => {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+};
+
+// One-time pref migration: sections only show under the (new) Folders sort, so a
+// pre-folders persisted sortKey would silently hide them behind the Sort pill.
+const migrateSortPref = () => {
+  try {
+    if (localStorage.getItem("deets.playlists.foldersMigrated")) return;
+    localStorage.setItem("deets.playlists.foldersMigrated", "1");
+    const raw = localStorage.getItem("deets.playlists.view");
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    s.sortKey = "folders";
+    s.sortDir = "asc";
+    localStorage.setItem("deets.playlists.view", JSON.stringify(s));
+  } catch {
+    /* corrupt prefs — frameFor falls back to defaults anyway */
+  }
+};
 
 const HEAD = `
   <header class="panel__head">
@@ -58,10 +120,13 @@ export const playlistsCard: CardDef = {
   title: "Playlists",
   mount(host) {
     host.innerHTML = HEAD;
+    migrateSortPref(); // before the engine reads the persisted view prefs
     const refreshBtn = host.querySelector<HTMLElement>("#playlists-refresh");
     const addBtn = host.querySelector<HTMLElement>("#playlists-add");
 
     let lists: Playlist[] = [];
+    let folders: PlaylistFolder[] = [];
+    const collapsed = loadCollapsed();
     let openPlaylist: Playlist | null = null; // the drilled-into playlist, or null at overview
     const trackCache = new Map<string, Track[]>(); // pid → authored-order tracks
     const posOf = new WeakMap<Track, number>(); // authored position (Playlist-Order sort)
@@ -174,6 +239,52 @@ export const playlistsCard: CardDef = {
       return p.curatorName ?? "Playlist";
     };
 
+    // "Move to Folder ▸" — the Add-to-Playlist flyout grammar: a New Folder… field
+    // (create-and-file in one gesture), the folders A–Z (current one excluded), and
+    // Remove from Folder when filed. Works on locals AND mirrors (folder membership
+    // is local metadata keyed on libraryId — no Apple writes involved).
+    const moveToFolderItem = (p: Playlist): MenuItem => ({
+      label: "Move to Folder",
+      sub: () =>
+        foldersList().then((fs) => {
+          const items: MenuItem[] = [
+            {
+              input: {
+                placeholder: "New Folder…",
+                onSubmit: (name) =>
+                  void folderCreate(name)
+                    .then((id) => folderAssign(p, id))
+                    .catch((e) => console.error("[playlists] new folder", e)),
+              },
+            },
+            ...fs
+              .sort(byName)
+              .filter((f) => f.id !== p.folderId)
+              .map((f) => ({
+                label: f.name,
+                run: () => void folderAssign(p, f.id).catch((e) => console.error("[playlists] move to folder", e)),
+              })),
+          ];
+          if (p.folderId != null)
+            items.push({
+              label: "Remove from Folder",
+              run: () => void folderAssign(p, null).catch((e) => console.error("[playlists] unfile", e)),
+            });
+          return items;
+        }),
+    });
+
+    // Folder headers: rename in place, delete unfiles the members (playlists untouched).
+    const folderMenu = (id: number): MenuItem[] => [
+      {
+        input: {
+          placeholder: "Rename folder…",
+          onSubmit: (name) => void folderRename(id, name).catch((e) => console.error("[playlists] rename folder", e)),
+        },
+      },
+      { label: "Delete Folder", run: () => void folderDelete(id).catch((e) => console.error("[playlists] delete folder", e)) },
+    ];
+
     const listMenu = (p: Playlist): MenuItem[] => {
       const ctxTag = `playlist:${pid(p)}`;
       const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
@@ -184,6 +295,7 @@ export const playlistsCard: CardDef = {
         // Bulk add — works from mirrors too (a partial import, snapshot semantics);
         // self-excluded so a playlist can't append to itself.
         addToPlaylistItem(() => tracksOf(p), p.libraryId),
+        moveToFolderItem(p),
       ];
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
       // Greyed while it has songs: the non-empty delete UX is a decided-later slice.
@@ -207,6 +319,55 @@ export const playlistsCard: CardDef = {
       return Number.isFinite(t) ? -t : undefined;
     };
 
+    // The heterogeneous shelf list (see PlRow above). `pos` pins the section order
+    // through the engine's sort; any non-Folders(↑) view or an active query flattens
+    // to plain playlist rows — name-sorted, so pos-order stays deterministic — which
+    // also lets a search reach INTO collapsed sections.
+    const shelf = (view?: ViewState): PlRow[] => {
+      const shelved = !view || (view.sortKey === "folders" && view.sortDir === "asc" && !view.query.trim());
+      const rows: PlRow[] = [];
+      let pos = 0;
+      const sorted = [...lists].sort(byName);
+      if (!shelved) {
+        for (const p of sorted) rows.push({ pos: pos++, kind: "playlist", p });
+        return rows;
+      }
+      const section = (header: PlRow, members: Playlist[]) => {
+        rows.push(header);
+        if (!collapsed.has(sectionKey(header))) for (const p of members) rows.push({ pos: pos++, kind: "playlist", p });
+      };
+      // Folders always render, even empty — a just-emptied folder must stay
+      // reachable for rename/delete. Empty auto-clusters just hide.
+      for (const f of [...folders].sort(byName)) {
+        const members = sorted.filter((p) => p.folderId === f.id);
+        section({ pos: pos++, kind: "folder", id: f.id, label: f.name, count: members.length }, members);
+      }
+      const unfiled = sorted.filter((p) => p.folderId == null);
+      for (const c of CLUSTERS) {
+        const members = unfiled.filter((p) => clusterOf(p) === c.key);
+        if (!members.length) continue;
+        section({ pos: pos++, kind: "cluster", key: c.key, label: c.label, count: members.length }, members);
+      }
+      return rows;
+    };
+
+    const toggleSection = (key: string) => {
+      if (collapsed.has(key)) collapsed.delete(key);
+      else collapsed.add(key);
+      try {
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
+      } catch {
+        /* storage unavailable — collapse still works for the session */
+      }
+      card.reload();
+    };
+
+    // Section header cell: the Radio .lib-shelf voice + a collapse chevron and count.
+    const shelfCell = (x: PlRow & { label: string; count: number }, idx: number) =>
+      `<div class="lib-shelf lib-shelf--toggle${collapsed.has(sectionKey(x)) ? " is-collapsed" : ""}" data-idx="${idx}">` +
+      `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+      `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`;
+
     const rootContext = (): Context => ({
       title: "Playlists",
       density: true,
@@ -215,22 +376,32 @@ export const playlistsCard: CardDef = {
           key: "playlists",
           label: "Playlists",
           sorts: [
-            { key: "az", label: "A–Z", type: "str", get: (p) => p.name },
-            { key: "added", label: "Added Date", type: "num", get: (p) => recency(p.dateAdded) },
+            { key: "folders", label: "Folders", type: "num", get: (x) => x.pos },
+            // Headers are already flattened out by shelf() for any non-Folders view.
+            { key: "az", label: "A–Z", type: "str", get: (x) => (x.kind === "playlist" ? x.p.name : undefined) },
+            { key: "added", label: "Added Date", type: "num", get: (x) => (x.kind === "playlist" ? recency(x.p.dateAdded) : undefined) },
           ],
-          list: () => lists,
-          name: (p) => p.name,
-          match: (p, q) =>
-            p.name.toLowerCase().includes(q) || (p.curatorName?.toLowerCase().includes(q) ?? false),
-          render: (p, density, idx) =>
-            musicCell(density, idx, p.artwork, p.name, subOf(p), {
-              badge: p.source === "apple" ? APPLE_SIGIL : "",
-            }),
-          open: detail,
-          menu: listMenu,
-        } satisfies Grouping<Playlist>,
+          list: shelf,
+          name: (x) => (x.kind === "playlist" ? x.p.name : x.label),
+          // Headers never match — a query flattens to plain playlist hits.
+          match: (x, q) =>
+            x.kind === "playlist" &&
+            (x.p.name.toLowerCase().includes(q) || (x.p.curatorName?.toLowerCase().includes(q) ?? false)),
+          render: (x, density, idx) =>
+            x.kind === "playlist"
+              ? musicCell(density, idx, x.p.artwork, x.p.name, subOf(x.p), {
+                  badge: x.p.source === "apple" ? APPLE_SIGIL : "",
+                })
+              : shelfCell(x, idx),
+          activate: (x) => {
+            if (x.kind === "playlist") card.drill(detail(x.p));
+            else toggleSection(sectionKey(x));
+          },
+          menu: (x) =>
+            x.kind === "playlist" ? listMenu(x.p) : x.kind === "folder" ? folderMenu(x.id) : [],
+        } satisfies Grouping<PlRow>,
       ],
-      defaults: { grouping: "playlists", density: "lines", sortKey: "az", sortDir: "asc" },
+      defaults: { grouping: "playlists", density: "lines", sortKey: "folders", sortDir: "asc" },
     });
 
     // Header state for the slot picker (same pattern as the Library card).
@@ -250,9 +421,10 @@ export const playlistsCard: CardDef = {
 
     // ── load + sync (stale-while-revalidate, like songs) ──
     const load = () =>
-      playlistsCached()
-        .then((ps) => {
+      Promise.all([playlistsCached(), foldersList()])
+        .then(([ps, fs]) => {
           lists = ps;
+          folders = fs;
           card.reload();
         })
         .catch((e) => console.error("[playlists] load", e));
@@ -327,10 +499,19 @@ export const playlistsCard: CardDef = {
         })
         .catch((e) => console.error("[playlists] create", e));
 
+    // Two labelled create fields (playlist / folder): a new playlist drills in and
+    // summons Search; a new folder just appears as an (empty, collapsible) section.
     if (addBtn)
       addBtn.addEventListener("click", () => {
         openContextMenuUnder(addBtn, [
-          { input: { placeholder: "Playlist name", onSubmit: (name) => void createAndEnter(name) } },
+          { input: { label: "Playlist", placeholder: "Playlist name", onSubmit: (name) => void createAndEnter(name) } },
+          {
+            input: {
+              label: "Folder",
+              placeholder: "Folder name",
+              onSubmit: (name) => void folderCreate(name).catch((e) => console.error("[playlists] create folder", e)),
+            },
+          },
         ]);
       });
 

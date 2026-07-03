@@ -9,11 +9,15 @@
 //
 // Albums/Artists are grouped from the tracks (no extra API calls); real artist
 // photos + album art arrive later via catalog hydrate, behind the same tiles.
+// Artists group by PARSED credit (artist-credit.ts), so collabs/features land
+// under every credited artist instead of fragmenting into one tile per credit.
 
 import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
+import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addToPlaylistItem } from "./playlists";
+import { startStationItem, startArtistStationItem } from "./start-station";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
@@ -76,20 +80,25 @@ function groupAlbums(tracks: Track[]): AlbumGroup[] {
   return groups;
 }
 
+// Artists come from PARSED credits, not raw strings ("Drake & Future" counts under
+// both), so a song can join several groups — songCount is appearances. The split
+// rules + vocabulary live in artist-credit.ts.
 function groupArtists(tracks: Track[]): ArtistGroup[] {
+  const idx = creditIndex(tracks);
   const map = new Map<string, ArtistGroup & { albums: Set<string> }>();
   for (const t of tracks) {
-    const name = t.artistName ?? "";
-    let g = map.get(name);
-    if (!g) {
-      g = { name, albumCount: 0, songCount: 0, albums: new Set() };
-      map.set(name, g);
+    for (const name of idx.namesOf(t)) {
+      let g = map.get(name);
+      if (!g) {
+        g = { name, albumCount: 0, songCount: 0, albums: new Set() };
+        map.set(name, g);
+      }
+      g.songCount++;
+      if (t.albumName) g.albums.add(t.albumName);
+      if (!g.artwork && t.artwork) g.artwork = t.artwork;
+      if (t.releaseDate && (!g.releaseDate || t.releaseDate > g.releaseDate)) g.releaseDate = t.releaseDate; // latest
+      if (t.addedRank != null && (g.addedRank == null || t.addedRank < g.addedRank)) g.addedRank = t.addedRank;
     }
-    g.songCount++;
-    if (t.albumName) g.albums.add(t.albumName);
-    if (!g.artwork && t.artwork) g.artwork = t.artwork;
-    if (t.releaseDate && (!g.releaseDate || t.releaseDate > g.releaseDate)) g.releaseDate = t.releaseDate; // latest
-    if (t.addedRank != null && (g.addedRank == null || t.addedRank < g.addedRank)) g.addedRank = t.addedRank;
   }
   return [...map.values()].map((g) => ({ ...g, albumCount: g.albums.size }));
 }
@@ -198,7 +207,10 @@ export function trackMenu(items: Track[], context?: string): MenuItem[] {
     { label: "Play Next", run: () => void queueTracksNext(items, context).catch(err("play next")) },
     { label: "Add to Queue", run: () => void queueTracksLater(items, context).catch(err("add to queue")) },
     addToPlaylistItem(() => items),
-  ];
+    // A station seeds from ONE song — a 1-track list is a song, a longer one is an
+    // album, which has no station relationship (STATIONS.md §2).
+    ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
+  ].filter(Boolean) as MenuItem[];
 }
 
 // ── groupings ─────────────────────────────────────────────────────────────────
@@ -258,6 +270,17 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
     render: (a, density, idx) =>
       musicCell(density, idx, a.artwork, a.name, `${a.songCount} song${a.songCount === 1 ? "" : "s"}`, { round: true }),
     open: openDetail,
+    // Right-click → Start Station (the artist seed resolves lazily via one of their
+    // songs — derived groups carry no catalog artist id; see start-station.ts).
+    menu: (a) =>
+      [
+        startArtistStationItem(
+          a.name,
+          creditIndex(list())
+            .tracksFor(a.name)
+            .map((t) => t.catalogId),
+        ),
+      ].filter(Boolean) as MenuItem[],
   };
 }
 
@@ -304,7 +327,7 @@ export const libraryCard: CardDef = {
     });
 
     const artistDetail = (a: ArtistGroup): Context => {
-      const sub = () => tracks().filter((t) => (t.artistName ?? "") === a.name);
+      const sub = () => creditIndex(tracks()).tracksFor(a.name);
       return {
         title: a.name,
         density: true,

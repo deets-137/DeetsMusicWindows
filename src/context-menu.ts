@@ -26,7 +26,9 @@ export interface ActionItem {
   disabled?: boolean;
 }
 export interface InputItem {
-  input: { placeholder: string; onSubmit: (value: string) => void };
+  /** `label` is an optional non-interactive title rendered above the field (e.g. the
+   *  New (+) dropdown's "Playlist" / "Folder" pair of labelled create fields). */
+  input: { label?: string; placeholder: string; onSubmit: (value: string) => void };
 }
 export interface SubmenuItem {
   label: string;
@@ -129,6 +131,15 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
         continue;
       }
       if ("input" in item) {
+        // The optional title sits ABOVE the field as its own row — the field wrap
+        // itself is the canvas well, and the label mustn't sit inside the box.
+        if (item.input.label) {
+          const title = document.createElement("div");
+          title.className = "ctx-menu__label";
+          title.textContent = item.input.label;
+          if (topLevel) title.addEventListener("pointerenter", closeFly);
+          host.appendChild(title);
+        }
         const wrap = document.createElement("div");
         wrap.className = "ctx-menu__field";
         const inp = document.createElement("input");

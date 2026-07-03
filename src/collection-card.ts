@@ -282,7 +282,9 @@ export function initCollectionCard(opts: CardOptions) {
     f.items = items;
 
     view.dataset.grid = f.density; // CSS hook for column sizing (NOT data-density —
-    view.dataset.openable = g.open ? "1" : ""; // that collides with the density buttons)
+    // that collides with the density buttons). Openable = pointer-cursor affordance:
+    // rows that drill OR activate (play a song, toggle a section) are clickable.
+    view.dataset.openable = g.open || g.activate ? "1" : "";
     if (!items.length) {
       view.className = "lib-view lib-empty";
       view.innerHTML = `<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`;

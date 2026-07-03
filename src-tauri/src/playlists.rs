@@ -54,6 +54,19 @@ pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
             position    INTEGER NOT NULL,
             json        TEXT NOT NULL,
             PRIMARY KEY (playlist_id, position)
+        );
+        -- Manual folders (PLAYLISTS.md §Folders): purely local metadata over the
+        -- unified list. Members key on the front-end libraryId ('local:{rowid}' or
+        -- the Apple playlist id), so mirrors are filable and membership survives a
+        -- mirror re-sync. A playlist lives in at most one folder.
+        CREATE TABLE IF NOT EXISTS playlist_folders (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS playlist_folder_members (
+            playlist_key TEXT PRIMARY KEY,
+            folder_id    INTEGER NOT NULL
         );",
     )
 }
@@ -75,6 +88,18 @@ fn err<E: std::fmt::Display>(e: E) -> String {
 pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
     let conn = db.0.lock().unwrap();
     let mut out: Vec<Playlist> = Vec::new();
+
+    // Folder membership, stamped onto both sources below (never baked into the
+    // cached json — this read is the one source of folder truth).
+    let folder_of: std::collections::HashMap<String, i64> = {
+        let mut stmt = conn
+            .prepare("SELECT playlist_key, folder_id FROM playlist_folder_members")
+            .map_err(err)?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+            .map_err(err)?;
+        rows.collect::<Result<_, _>>().map_err(err)?
+    };
 
     // Local playlists (fully editable, no badge). The front-end keys on the
     // synthetic `local:{id}` — locals have no Apple identity by definition.
@@ -101,8 +126,10 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
             .map_err(err)?;
         for row in rows {
             let (id, name, description, created_at, n) = row.map_err(err)?;
+            let key = format!("local:{id}");
             out.push(Playlist {
-                library_id: Some(format!("local:{id}")),
+                folder_id: folder_of.get(&key).copied(),
+                library_id: Some(key),
                 name,
                 description,
                 can_edit: true,
@@ -126,7 +153,9 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
             .map_err(err)?;
         for row in rows {
             let s = row.map_err(err)?;
-            out.push(serde_json::from_str(&s).map_err(err)?);
+            let mut p: Playlist = serde_json::from_str(&s).map_err(err)?;
+            p.folder_id = p.library_id.as_ref().and_then(|id| folder_of.get(id)).copied();
+            out.push(p);
         }
     }
     Ok(out)
@@ -210,11 +239,16 @@ pub async fn apple_playlists_sync(
         .map_err(err)?;
         seen.insert(id);
     }
-    // Playlists deleted on Apple: drop their orphaned content caches.
+    // Playlists deleted on Apple: drop their orphaned content caches + folder rows.
     for id in old.keys() {
         if !seen.contains(id) {
             tx.execute(
                 "DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1",
+                [id.as_str()],
+            )
+            .map_err(err)?;
+            tx.execute(
+                "DELETE FROM playlist_folder_members WHERE playlist_key = ?1",
                 [id.as_str()],
             )
             .map_err(err)?;
@@ -438,6 +472,11 @@ pub fn playlist_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
     let tx = conn.transaction().map_err(err)?;
     tx.execute("DELETE FROM local_playlist_tracks WHERE playlist_id = ?1", [id])
         .map_err(err)?;
+    tx.execute(
+        "DELETE FROM playlist_folder_members WHERE playlist_key = ?1",
+        [format!("local:{id}")],
+    )
+    .map_err(err)?;
     tx.execute("DELETE FROM local_playlists WHERE id = ?1", [id])
         .map_err(err)?;
     tx.commit().map_err(err)
@@ -533,4 +572,90 @@ pub fn local_playlist_tracks(id: i64, db: State<'_, Db>) -> Result<Vec<Track>, S
         out.push(serde_json::from_str(&j).map_err(err)?);
     }
     Ok(out)
+}
+
+// ── Folders (manual grouping over the unified list — all SQLite, zero Apple calls) ──
+
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistFolder {
+    pub id: i64,
+    pub name: String,
+}
+
+#[tauri::command]
+pub fn playlist_folders_list(db: State<'_, Db>) -> Result<Vec<PlaylistFolder>, String> {
+    let conn = db.0.lock().unwrap();
+    let mut stmt = conn
+        .prepare("SELECT id, name FROM playlist_folders")
+        .map_err(err)?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(PlaylistFolder {
+                id: r.get(0)?,
+                name: r.get(1)?,
+            })
+        })
+        .map_err(err)?;
+    rows.collect::<Result<_, _>>().map_err(err)
+}
+
+#[tauri::command]
+pub fn playlist_folder_create(name: String, db: State<'_, Db>) -> Result<i64, String> {
+    let conn = db.0.lock().unwrap();
+    conn.execute(
+        "INSERT INTO playlist_folders(name, created_at) VALUES(?1, ?2)",
+        rusqlite::params![name, now_ms()],
+    )
+    .map_err(err)?;
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+pub fn playlist_folder_rename(id: i64, name: String, db: State<'_, Db>) -> Result<(), String> {
+    let conn = db.0.lock().unwrap();
+    conn.execute(
+        "UPDATE playlist_folders SET name = ?2 WHERE id = ?1",
+        rusqlite::params![id, name],
+    )
+    .map_err(err)?;
+    Ok(())
+}
+
+/// Delete a folder; its members become unfiled (the playlists themselves are untouched).
+#[tauri::command]
+pub fn playlist_folder_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
+    let mut conn = db.0.lock().unwrap();
+    let tx = conn.transaction().map_err(err)?;
+    tx.execute("DELETE FROM playlist_folder_members WHERE folder_id = ?1", [id])
+        .map_err(err)?;
+    tx.execute("DELETE FROM playlist_folders WHERE id = ?1", [id])
+        .map_err(err)?;
+    tx.commit().map_err(err)
+}
+
+/// File a playlist into a folder (`folder_id: Some`) or unfile it (`None`).
+/// The key is the front-end libraryId — locals and Apple mirrors alike.
+#[tauri::command]
+pub fn playlist_folder_assign(
+    playlist_key: String,
+    folder_id: Option<i64>,
+    db: State<'_, Db>,
+) -> Result<(), String> {
+    let conn = db.0.lock().unwrap();
+    match folder_id {
+        Some(fid) => conn
+            .execute(
+                "INSERT OR REPLACE INTO playlist_folder_members(playlist_key, folder_id) VALUES(?1, ?2)",
+                rusqlite::params![playlist_key, fid],
+            )
+            .map_err(err)?,
+        None => conn
+            .execute(
+                "DELETE FROM playlist_folder_members WHERE playlist_key = ?1",
+                [playlist_key.as_str()],
+            )
+            .map_err(err)?,
+    };
+    Ok(())
 }

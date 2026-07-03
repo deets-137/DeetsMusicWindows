@@ -40,6 +40,8 @@ export interface Playlist {
   source?: string;
   /** Mirror classification: "user" | "catalog" | "smart" (PLAYLISTS.md §2). */
   kind?: string;
+  /** Manual folder membership (Playlists card sections); absent = unfiled. */
+  folderId?: number;
 }
 
 export interface SearchResults {

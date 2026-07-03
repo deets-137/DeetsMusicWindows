@@ -26,6 +26,8 @@
   §13 CyberStorm storm dials (skin-specific)
 - **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
   §16 New-Playlist Search summon
+- **Radio** — §17 Resume station after break-out
+- **Feedback & notices** — §18 Quiet-failure feedback (toast system)
 
 ---
 
@@ -509,3 +511,59 @@ permanent; the station is gone the moment the block takes over.
 (default `"off"`), read where the break-out swaps engines (`onNowPlayingChange`'s radio
 branch in `src/player.ts` — stash the station there; act on it at queue exhaustion). A
 Radio settings tenant.
+
+---
+
+## 18. Quiet-failure feedback — the toast system
+
+**Behavior.** How the app tells the user a menu action quietly did nothing. Today every
+"couldn't do it" lands in the console only — the user just sees nothing happen. The
+motivating case (2026-07-03): **Start Station** on a seed with no Apple station
+(`startStationItem` in [start-station.ts](../src/start-station.ts) — a rare but real
+click-and-nothing-happens). Same species: a failed enqueue/play from a menu, a failed
+Add to Library, a failed playlist write — all `console.error`/`warn` today.
+
+**Current default (hardcoded):** **silent** — a `console.warn`/`error`, no visible surface.
+
+**What to build later.** A small **toast/notice primitive** (one transient, self-dismissing
+strip — likely bottom of the window, sibling of the context-menu/dropdown primitives; all
+geometry/motion through skin tokens, color through theme roles). Then route the known quiet
+failures through it. This is *capability first, setting second*: the entry exists so the
+alternative isn't lost, and because once toasts exist, "how chatty" is a real preference.
+
+**Options (once the primitive exists).**
+- **(a) Failures only** — toasts appear only when an action couldn't do what it said.
+  *(the sensible default)*
+- **(b) Silent (off)** — keep today's console-only behavior; a user who never wants
+  transient UI can opt out.
+- **(c) Failures + confirmations** — also acknowledge fire-and-forget successes (e.g.
+  "Added to Library") — the chattiest tier; pairs with FAVORITES.md's silent-success
+  doctrine, so default off.
+
+**Wiring sketch.** `localStorage` `deets.toasts` = `"failures" | "off" | "all"` (default
+`"failures"` once built). The primitive exposes `toast(msg, kind)`; call sites keep their
+console logging regardless (diag stays the debugging source of truth). Until built, the
+ledger rule for new features: quiet failures log to console and get a pointer to this
+entry (see STATIONS.md §2).
+
+## 19. Artist grouping — collab/feature placement
+
+**Behavior.** Where a multi-artist song lands in the Library's Artists view. Since the
+2026-07-03 consolidation, credits are PARSED ([artist-credit.ts](../src/artist-credit.ts)):
+"Drake & Future" no longer spawns its own artist tile. The open taste question is
+*placement*: under every credited artist, or only the primary?
+
+**Current default (hardcoded): multi-index** — the song appears under each credited
+artist the library vocabulary knows (an artist's tile collects everything they appear
+on; Spotify's behavior). The user chose this 2026-07-03.
+
+**Options.**
+- **(a) Every credited artist** *(current)* — consolidating, but songCounts count
+  appearances (a song can live under 2–3 tiles).
+- **(b) Primary artist only** — each song in exactly one place (Apple Music's
+  behavior); a loved feature won't surface under the guest.
+
+**Wiring sketch.** `localStorage` `deets.library.artistPlacement` = `"all" | "primary"`
+(default `"all"`). In `creditArtists` (artist-credit.ts), primary-only keeps just the
+first resolved name (leading remainder or first match) and skips feat guests. The
+vocabulary/split machinery is shared either way.

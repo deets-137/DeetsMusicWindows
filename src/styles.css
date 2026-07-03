@@ -779,6 +779,14 @@ body {
   font-size: var(--fs-text);
 }
 .ctx-menu__input::placeholder { color: var(--subtext); }
+/* Optional title above a field (InputItem.label) — the shelf-header voice, menu-scaled. */
+.ctx-menu__label {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
+  color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  cursor: default;
+}
+.ctx-menu__label:first-child { padding-top: var(--space-1); }
 /* Submenu (Add to Playlist ▸): a settings-flyout twin scoped to the ctx-menu — same
    surface recipe as .flyout, but rows keep ctx-menu chrome (not the theme-chip look).
    Reveal is JS-latched in context-menu.ts (not :hover) so a flyout text field
@@ -930,6 +938,21 @@ body {
 .lib-shelf:first-child { padding-top: 0; }
 /* In grid densities a header is still a grid child — span it across the full row. */
 .lib-grid .lib-shelf { grid-column: 1 / -1; }
+
+/* Playlists card: collapsible section headers (folders + kind clusters). Same shelf
+   voice, but interactive: click toggles, the chevron flips closed, count sits right. */
+.lib-shelf--toggle { display: flex; align-items: center; gap: var(--space-1); cursor: pointer; }
+.lib-shelf--toggle:hover { color: var(--text); }
+.lib-shelf__chev {
+  flex: 0 0 auto;
+  width: 8px; height: 8px;              /* matches .lib-pill__caret */
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.7;
+  transition: transform var(--nav-dur) var(--nav-ease);
+}
+.lib-shelf--toggle.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
+.lib-shelf__count { margin-left: auto; opacity: 0.7; }
 
 /* ── Search card (SEARCH.md — the "searches" screen archetype) ── */
 /* Blended sectioned results: bar-divided vertical sections, each an h-scroller.

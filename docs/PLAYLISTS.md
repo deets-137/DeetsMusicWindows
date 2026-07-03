@@ -40,6 +40,10 @@
 >   live at click time (duplicates are legal; the qcard re-resolve pattern), via
 >   `playlist_remove_track` + the change bus.
 >
+> **Folders session (2026-07-03) — BUILT:** manual folders + kind auto-clusters as
+> **collapsible sections** in the overview (§3a). Local metadata over the unified
+> list — mirrors are filable too, zero Apple calls.
+>
 > **Still deferred:** rename/reorder, Import-to-edit, non-empty delete, mosaic covers,
 > export (§6 — the **Export ▸ menu is now spec'd** there, parked with the gating
 > decision, alongside the parked **direct-append-to-editable-Apple-playlists** idea).
@@ -147,6 +151,47 @@ now, Spotify later), **not** Apple's logo (trademark-safe). Token-driven, so a n
 glyph + tint, not a rebuild. A badge means "mirrored, read-only until imported."
 
 ---
+
+## 3a. Folders + sections (built 2026-07-03)
+
+**The user's mental groups** — Apple weeklies together, personal together, per-artist
+together — need **manual folders** ("artist ones" isn't derivable from Apple metadata),
+plus **kind auto-clusters** so the unfiled pile self-organizes. Both render as
+**collapsible sections** in one scrolling overview (drill-in folder tiles lost the fork).
+
+**These are OUR folders, not Apple's.** Purely local metadata over the unified list
+(zero Apple calls); reconstructing Apple's own folder hierarchy (§2) stays deferred.
+
+- **Data:** `playlist_folders` (id, name, created_at) + `playlist_folder_members`
+  (playlist_key PK → folder_id), keyed on the front-end `libraryId` (`local:{rowid}` or
+  the Apple playlist id) — so **mirrors are filable** and membership survives a mirror
+  re-sync. One folder per playlist. `playlists_cached` stamps `folderId` onto every row
+  fresh per read (never baked into cached json). Housekeeping: local delete and
+  gone-from-Apple sync rows drop their membership.
+- **Commands:** `playlist_folders_list` / `playlist_folder_create` / `_rename` /
+  `_delete` (members unfile — playlists untouched) / `_assign(playlist_key, folder_id?)`
+  (None = unfile). Front-end wrappers in `playlists.ts` ride the change bus.
+- **Sections (the Radio shelf grammar):** the overview grouping is a heterogeneous
+  pos-pinned `PlRow` list — folder sections A–Z first (empty folders still show, for
+  rename/delete reach), then unfiled auto-clusters in fixed order: **Your Playlists**
+  (locals + `kind:"user"` mirrors) · **Apple Mixes** (non-user mirrors matching
+  `/\bmix$/i` — the weeklies) · **Replays** (`/^replay\b/i` — the yearly Replay
+  playlists) · **From Apple Music** (the rest); empty clusters hide.
+  Headers exist only under the **Folders(↑)** sort with no query — any other sort or an
+  active search **flattens** (headers never match; so search reaches into collapsed
+  sections). A one-time pref migration (`deets.playlists.foldersMigrated`) rewrites a
+  pre-folders persisted sortKey to `folders`.
+- **Collapse:** header click toggles; state = a section-key set in
+  `deets.playlists.collapsed` (survives remounts/restarts). Header row =
+  `.lib-shelf--toggle` (chevron + count on the Radio `.lib-shelf` voice).
+- **Menus:** playlist rows gain **Move to Folder ▸** (the Add-to-Playlist flyout
+  grammar: "New Folder…" create-and-file input, folders A–Z, "Remove from Folder" when
+  filed) between Add to Playlist ▸ and Delete. Folder headers: **Rename** (input) ·
+  **Delete Folder**. Cluster headers: no menu.
+- **The ＋ dropdown** holds TWO labelled create fields (`InputItem.label`, a new
+  context-menu affordance — a `.ctx-menu__label` title row above the well): "Playlist"
+  (create → drill in → summon Search, as before) and "Folder" (create → the empty
+  section appears in place).
 
 ## 4. Building playlists
 
@@ -283,11 +328,13 @@ on top. The collection-card second-instance check passed at Phase 2 (engine hold
 Local-first source of truth · **no amp-api** · unified card, local editable + service mirror
 with a **source badge** · **Import to edit** deep-copy · export is a **gated one-way**
 create/append bridge · re-export is a user setting, **default fresh copy** · **flatten
-folders** in v1 · music videos **skipped-with-count** · smart playlists import as a **static
+Apple's folders** in v1 (our own local folders shipped 2026-07-03 — §3a; manual folders +
+kind auto-clusters as collapsible sections, one folder per playlist, mirrors filable) ·
+music videos **skipped-with-count** · smart playlists import as a **static
 snapshot** · playlists play with a `playlist:{id}` queue origin · local playlist rows store a
 **denormalised `Track` snapshot** keyed by position.
 
-## Open — next session (UI/UX)
+## Open (UI/UX — deferred, pick up when playlists polish is prioritized)
 
 *(Closed 2026-07-02: the New-Playlist input affordance → anchored dropdown field; the
 `Add to Playlist ▸` submenu UX → JS-latched side flyout; empty states → `emptyText` on the

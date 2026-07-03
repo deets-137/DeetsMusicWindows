@@ -6,8 +6,8 @@
 >
 > **Where things stand:** the foundation (playback, queue, card/slot system, themes/skins,
 > library + catalog data) and the feature cards (Library, Search, Playlists, Queue, History,
-> Rewind, **Radio**) are built and user-verified. **Next build item: seeded right-click
-> "Start Station"** — see [Next up](#next-up).
+> Rewind, **Radio** incl. seeded right-click "Start Station") are built and user-verified.
+> **The Apple-radio line is done.** Next: the **v1 push** — see [Next up](#next-up).
 
 Deeper docs, by area:
 [DESIGN.md](DESIGN.md) (product) · [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) (front-end tokens/cards) ·
@@ -45,17 +45,20 @@ auto-captures uncaught errors), `__music` (live instance), `__player.snap()`. Fu
 
 ## Next up
 
-**Seeded "Start Station" — the last of the Apple-radio line** ([STATIONS.md](STATIONS.md) §2).
-A right-click **Start Station** verb on a song (and later artist): resolve the entity's Apple
-`station` relationship (`GET /v1/catalog/{sf}/songs/{id}?include=station`, or `/station`
-directly) → hand the resulting station to `playStation` (already built). It rides the existing
-context-menu primitive — no new surface. Needs a catalog id (99.8% of the library has one; rows
-without one just don't show the item). Pairs with the **search-card stations section** (add
-`stations` to the search types + a normalized `Station` bucket — the `Station` model + tile
-already exist from the Radio card).
+**The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
+pass before building; the user directs):
+1. **Settings card** — a lean vessel that rehomes the existing title-menu toggles
+   (Always-on-Top / Hover-Menu / Library-Add) and seeds a curated handful of
+   [FUTURE-SETTINGS](FUTURE-SETTINGS.md) entries (§1 / §4 / §5a / §7 are the
+   highest-taste-variance). Explicitly NOT a full ledger burn-down.
+2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
+   MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
+3. **SMTC / global hotkeys** — media keys + the Windows media flyout.
 
-**Also deferred, when prioritized:** the **radio-mode now-playing/queue UX** (a holistic pass —
-what the Qcard/NP surface does while a station plays; also owns **Stop Station**'s button, since
+**Deferred, when prioritized:** the **search-card stations section** (the one optional radio
+leftover — add `stations` to the search types; `Station` model/tile/playback all exist, activation
+is just `playStation`) · the **radio-mode now-playing/queue UX** (a holistic pass — what the
+Qcard/NP surface does while a station plays; also owns **Stop Station**'s button, since
 `stopStation()` exists but is currently unwired) · **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent
 control** · **mini/max surface compositions** · **virtualized scrolling** (only once libraries
@@ -96,11 +99,18 @@ get large).
   (`play_events`, real `ms_listened`) — the un-backfillable clock is running.
 - **Feature cards** (all on the collection-card engine unless noted):
   - **Library** — Songs / Albums / Artists (albums/artists derived from songs), drill-in, click
-    a song to play + queue the rest in sort order.
+    a song to play + queue the rest in sort order. **Artists consolidate by PARSED credit**
+    (2026-07-03, `src/artist-credit.ts`): a vocabulary of solo-proven names splits compound
+    credits ("Drake & Future" → both; "Earth, Wind & Fire" stays whole), multi-indexed so a
+    collab lands under every credited artist (placement toggle: FUTURE-SETTINGS §19). True
+    catalog artist identity is still the post-v1 hydrate below.
   - **Search** ([SEARCH.md](SEARCH.md)) — standalone sectioned discovery (songs/albums/artists/
     playlists), enrichment piggyback, transient + materialized catalog tracks.
   - **Playlists** ([PLAYLISTS.md](PLAYLISTS.md)) — Apple mirror + local store; overview → detail;
-    New Playlist, Add to Playlist ▸ submenu, remove-track, empty-only delete. Remaining: rename +
+    New Playlist, Add to Playlist ▸ submenu, remove-track, empty-only delete. **Folders**
+    (2026-07-03, §3a): manual folders + kind auto-clusters (Your Playlists / Apple Mixes /
+    From Apple Music) as collapsible sections under the Folders sort; Move to Folder ▸ files
+    locals AND mirrors (local metadata, zero Apple calls). Remaining: rename +
     drag-reorder (Rust commands exist), non-empty delete, mosaic covers, gated export.
   - **Queue** (`qcard.ts`) + **History** (`history-card.ts`) — Now Playing + Up Next / session
     play log; shared row markup (`queue-rows.ts`).
@@ -111,8 +121,11 @@ get large).
     playback** (station queue owned by MusicKit; break-out to a finite queue at the song
     boundary; transport caps + LIVE marker; station plays populate History/Rewind durably).
     Data: `radio.ts` + `radio_live`/`radio_my_station`/`radio_discovery`/`radio_genres`/
-    `radio_genre_stations` in `apple.rs`. **The own-station generator engine (Deezer BPM, scope
-    toggle, thumbs) is DROPPED** — Apple curated is the whole radio story; §4 of the spec is
+    `radio_genre_stations`/`radio_seed_station`/`catalog_song_artist` in `apple.rs`. **Seeded
+    "Start Station"** right-click verb on every song surface + artists (Search, and Library
+    Artists tiles via a lazy two-hop song→artist-id resolve — `src/start-station.ts`, gated
+    builders, session-cached). **The own-station generator engine (Deezer BPM, scope toggle,
+    thumbs) is DROPPED** — Apple curated is the whole radio story; §4 of the spec is
     research-record only.
 - **Album Color** ([ALBUM-COLOR.md](ALBUM-COLOR.md)): real Apple palettes → `--album-*` runtime
   roles → the rotating Now-Playing aurora (Glass-only display).
@@ -124,8 +137,12 @@ get large).
 - **♥ Favorites** — the love-only ♥ (Apple `PUT +1`) + local mirror + ♥ on Now Playing / menus.
   Parked, explicitly not the next step (user's call). **Ratings / 👎 are off the roadmap.**
 - **Real album/artist data + artist photos in the Library card** — Library's Albums/Artists are
-  derived from song artwork + initials; wiring them to the lazy enrichment (Search's artist drill
-  already shows real photos) is a small later pass.
+  derived from song artwork + initials (Search's artist drill already shows real photos). Scoped
+  2026-07-03: **bigger than it looks** — the Artists overview shows hundreds at once, so lazy
+  per-touch enrichment can't fill it (needs an eager one-time backfill, a deliberate exception
+  to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
+  table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
+  (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **CLI / local-agent control** · **mini/max surface compositions** · **SMTC / global hotkeys** ·
   **virtualized scrolling** · **playlist rename / drag-reorder / export UX**.
 
@@ -209,6 +226,7 @@ src/now-playing-card.ts     Now Playing transport strip (+ radio LIVE caps)
 src/collection-card.ts      reusable navigable browser engine (contexts/groupings, Sort/View/
                             Search, push/pop pane-slide, list(view) state hook)
 src/library-card.ts         Library contexts/groupings + drill-in; shared musicCell + trackMenu
+src/artist-credit.ts        credit-string parser: vocabulary-gated split → consolidated Artists
 src/search.ts / search-card.ts    catalog search data + Search card (SEARCH.md)
 src/playlists.ts / playlists-card.ts   playlists data + card (PLAYLISTS.md); Add-to-Playlist ▸
 src/qcard.ts                Queue card: Now Playing + Up Next + jump-to-item + right-click menus
@@ -217,6 +235,7 @@ src/queue-rows.ts           shared queue-row rendering (entry→Track resolve, .
 src/rewind.ts / rewind-card.ts    Rewind data + leaderboard card (DEETS-REWIND)
 src/radio.ts / radio-card.ts      Radio data (session cache + recents) + stations browser card
 src/library-add.ts          Add-to-Library toggle + gated menu-item builders (FAVORITES.md)
+src/start-station.ts        seeded "Start Station" gated menu-item builder (STATIONS.md §2)
 src/player.ts               MusicKit engine: init/MUT-inject, windowed loadFromModel, transport,
                             model-follow, radio mode (playStation/stationFollow/stopStation)
 src/queue.ts                queue model (history/current/upcoming, backlog, stacking, radio ops)
