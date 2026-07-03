@@ -112,28 +112,49 @@ async function injectUserToken(): Promise<void> {
 
 // During a queue transition MusicKit's own event handlers re-issue play() on their
 // INTERNAL promise chains — chains we don't await, so a throw there surfaces as an
-// "Uncaught (in promise)" we can't try/catch. Two are benign transport races that do
-// NOT affect playback (verified with the station break-out swap):
+// "Uncaught (in promise)" we can't try/catch. Three are benign transport races that do
+// NOT affect the song that actually plays (verified with the station break-out swap):
 //  - "play() … without a previous stop() or pause()" — an internal re-play mid-swap.
 //  - "play() request was interrupted by a new load request" (AbortError) — a load
 //    superseded by a newer one (our own coalescing does this by design).
-// Swallow EXACTLY these messages; everything else propagates untouched. Our own
-// awaited play()/setQueue calls still surface through their normal try/catch — this
-// only intercepts MusicKit's un-awaited internal rejections. Logged to diag so a real
-// regression here is still visible.
+//  - "play() request was interrupted by a call to pause()" — setQueue's implicit
+//    item-0 buffering cut off by our changeToMediaAtIndex() jump (fires whenever you
+//    play a song that ISN'T first in its context, so pos>0). The clicked song still
+//    plays; the abandoned item-0 play() promise is what rejects.
+// The first two arrive as unhandled rejections (console noise). The third, MusicKit pops
+// as a BLOCKING window.alert() (its own catch calls alert — the minified-musickit dialog
+// setStationQueue also hit) — which FREEZES the transport mid-transition, the real cause
+// of the "Not playing" stall behind the dialog. preventDefault on the rejection event
+// can't reach an alert(), so we guard both surfaces. Swallow EXACTLY these messages;
+// everything else propagates / alerts untouched (our own awaited play()/setQueue still
+// surface through their normal try/catch). Logged to diag so a real regression stays visible.
+const BENIGN_PLAYBACK =
+  /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by (?:a new load request|a call to pause\(\)))/i;
+
 let rejectionFilterInstalled = false;
 function installMusicKitRejectionFilter(): void {
   if (rejectionFilterInstalled) return;
   rejectionFilterInstalled = true;
-  const BENIGN =
-    /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by a new load request)/i;
   window.addEventListener("unhandledrejection", (e) => {
     const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? "");
-    if (BENIGN.test(msg)) {
-      diag.log("player:mkRaceSwallowed", { msg });
+    if (BENIGN_PLAYBACK.test(msg)) {
+      diag.log("player:mkRaceSwallowed", { via: "rejection", msg });
       e.preventDefault(); // benign MusicKit transport race — keep it out of the console
     }
   });
+  // Guard alert() itself: MusicKit surfaces the interrupted-by-pause race as a modal
+  // dialog its own catch raised, so the rejection filter above never sees it. No-op the
+  // benign playback strings (which also unfreezes the transport), pass everything else
+  // through untouched. The app never calls alert() itself, so nothing legit is masked.
+  const nativeAlert = window.alert.bind(window);
+  window.alert = (message?: any): void => {
+    const msg = String(message ?? "");
+    if (BENIGN_PLAYBACK.test(msg)) {
+      diag.log("player:mkRaceSwallowed", { via: "alert", msg });
+      return;
+    }
+    nativeAlert(message);
+  };
 }
 
 // ── State broadcast (UI subscribes; we read straight off the live instance) ──────
