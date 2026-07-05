@@ -5,7 +5,7 @@
 // Rides the collection-card engine with ONE root grouping over a heterogeneous
 // "shelf list" — header / station / genre rows in a fixed featured order:
 //
-//   Recently Played (local, hidden when empty)
+//   Recents         (local, hidden when empty)
 //   For You         (My Station + Discovery Station — either row hides if absent)
 //   Live            (Apple Music 1 / Hits / Country / Música Uno / Club / Chill)
 //   Genres          (station-genres → drill into that genre's stations)
@@ -34,10 +34,22 @@ import { playStation } from "./player";
 import type { CardDef } from "./cards";
 
 type ShelfItem = { pos: number } & (
-  | { kind: "header"; label: string }
+  | { kind: "header"; label: string; count: number }
   | { kind: "station"; station: Station }
   | { kind: "genre"; genre: StationGenre }
 );
+
+// Collapse state, persisted across remounts/restarts (section labels, not indices —
+// the labels are fixed + unique, so they're a stable key). Mirrors the Playlists
+// card's fold store; only bites in the shelved (Featured↑) view where headers exist.
+const COLLAPSE_KEY = "deets.radio.collapsed";
+const loadCollapsed = (): Set<string> => {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+};
 
 // No LIVE chip: the Live shelf header already says it (your call, 2026-07-03) —
 // live-ness resurfaces in radio mode as the transport's LIVE state instead.
@@ -82,9 +94,22 @@ export const radioCard: CardDef = {
     let loading = true;
     let failed = false;
     const pendingGenres = new Set<string>();
+    const collapsed = loadCollapsed();
+
+    // Fold/unfold a shelf, persist, re-render the root pane.
+    const toggleSection = (label: string) => {
+      if (collapsed.has(label)) collapsed.delete(label);
+      else collapsed.add(label);
+      try {
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
+      } catch {
+        /* storage unavailable — collapse still works for the session */
+      }
+      card.reload();
+    };
 
     // Start a station (radio mode — player.ts owns the probe + guards). On success
-    // the Recently Played shelf just gained a row — re-render the root pane.
+    // the Recents shelf just gained a row — re-render the root pane.
     const startStation = (s: Station) =>
       void playStation(s)
         .then(() => card.reload())
@@ -98,35 +123,31 @@ export const radioCard: CardDef = {
       const shelved = !view || (view.sortKey === "featured" && view.sortDir === "asc");
       const items: ShelfItem[] = [];
       let pos = 0;
-      const header = (label: string) => {
-        if (shelved) items.push({ pos: pos++, kind: "header", label });
-      };
       const seen = new Set<string>();
       const station = (s: Station) => {
         if (!shelved && seen.has(s.id)) return;
         seen.add(s.id);
         items.push({ pos: pos++, kind: "station", station: s });
       };
+      // A featured section: its header (with member count) then its rows, unless the
+      // header is folded. Any non-featured view drops headers and emits the rows flat
+      // regardless of collapse (so search reaches into folded shelves).
+      const section = (label: string, count: number, emit: () => void) => {
+        if (!shelved) return void emit();
+        items.push({ pos: pos++, kind: "header", label, count });
+        if (!collapsed.has(label)) emit();
+      };
 
       const recents = radioRecents();
-      if (recents.length) {
-        header("Recently Played");
-        recents.forEach(station);
-      }
+      if (recents.length) section("Recents", recents.length, () => recents.forEach(station));
       // Apple's own ordering: My Station (known taste) above Discovery (new music).
-      if (myStation || discovery) {
-        header("For You");
-        if (myStation) station(myStation);
-        if (discovery) station(discovery);
-      }
-      if (live.length) {
-        header("Live");
-        live.forEach(station);
-      }
-      if (genres.length) {
-        header("Genres");
-        for (const g of genres) items.push({ pos: pos++, kind: "genre", genre: g });
-      }
+      const forYou = [myStation, discovery].filter((s): s is Station => !!s);
+      if (forYou.length) section("For You", forYou.length, () => forYou.forEach(station));
+      if (live.length) section("Live", live.length, () => live.forEach(station));
+      if (genres.length)
+        section("Genres", genres.length, () => {
+          for (const g of genres) items.push({ pos: pos++, kind: "genre", genre: g });
+        });
       return items;
     };
 
@@ -191,12 +212,15 @@ export const radioCard: CardDef = {
                 : false,
           render: (x, density, idx) =>
             x.kind === "header"
-              ? `<div class="lib-shelf" data-idx="${idx}">${esc(x.label)}</div>`
+              ? `<div class="lib-shelf lib-shelf--toggle${collapsed.has(x.label) ? " is-collapsed" : ""}" data-idx="${idx}">` +
+                `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+                `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`
               : x.kind === "station"
                 ? stationCell(x.station, density, idx)
                 : genreCell(x.genre, density, idx),
           activate: (x) => {
-            if (x.kind === "station") startStation(x.station);
+            if (x.kind === "header") toggleSection(x.label);
+            else if (x.kind === "station") startStation(x.station);
             else if (x.kind === "genre") card.drill(genreCtx(x.genre));
           },
         } satisfies Grouping<ShelfItem>,
