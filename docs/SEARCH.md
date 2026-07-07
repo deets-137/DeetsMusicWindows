@@ -50,9 +50,10 @@ search bar (always-on)  ──debounce──▶  provider.search(term, types)  �
    results per category  ──▶  the engine renders the selected category's grouping
 ```
 
-- **Debounced, metered** ✅ (stewardship): fire on a **~300 ms** debounce, **min 2 chars**, and
-  **cancel the in-flight request** when the term changes — no per-keystroke calls. Optionally cache
-  the last few terms in-session.
+- **Debounced, metered** ✅ (stewardship): fire on a **~300 ms** debounce, **min 1 char**
+  (lowered from 2 on 2026-07-06 — single-letter artists like "Q" are real queries, and the
+  debounce already guards the keystroke storm), and **cancel the in-flight request** when the
+  term changes — no per-keystroke calls. Optionally cache the last few terms in-session.
 - **Storefront** (prerequisite): catalog search is `/v1/catalog/{storefront}/search`. Fetch the
   user's storefront once (`/v1/me/storefront`) and **cache** it (rarely changes); the provider
   needs it for every catalog call — Search, and later enrichment, share it.
@@ -101,14 +102,20 @@ The future Stations browser's sectioned root follows the search idiom, not the e
 ### Right-click menu ✅ (the queue actions you asked for)
 Rides the existing `menu()` grouping accessor → [context-menu.ts](../src/context-menu.ts), and the
 gapless [enqueue path](QUEUE.md#manual-queueing--play-next--add-to-queue):
-- **Song** → **Play Now · Play Next · Add to Queue** (+ **Add to Playlist ▸ · Start Station ·
-  Add to Library**). Straight to `playContext` / `queueTracksNext` / `queueTracksLater`.
+- **Song** → **Play Now · Play Next · Add to Queue** (+ **Add to Playlist ▸ · Go to Artist ·
+  Go to Album · Start Station · Add to Library**). Straight to `playContext` /
+  `queueTracksNext` / `queueTracksLater`.
 - **Album / Playlist** → same actions, but **fetch the collection's tracks first, then enqueue** the
   block (an album/playlist is its tracks in order — the wrappers already accept a `Track[]`). One
-  catalog fetch on demand; note the tiny latency (cover with the loading state).
+  catalog fetch on demand; note the tiny latency (cover with the loading state). Albums also offer
+  **Go to Artist**.
 - **Artist** → **Go to Artist** (drill) · **Start Station** ✅ (seed an Apple station from the
   artist, [STATIONS §2](STATIONS.md)). An artist isn't directly queueable, so no
   Play-Next/Add-to-Queue — matching Library, where Artist tiles offer only Start Station.
+- **Go to Artist / Go to Album** ✅ (2026-07-06) are the **drill-in verbs**: a song hops to its
+  artist or album, an album to its artist. In the Search card they push a catalog detail pane in
+  place; the same verbs are now on **every** card (Library, Playlists, Rewind, Queue, History, Now
+  Playing) — see the As-built note and [FUTURE-SETTINGS §20](FUTURE-SETTINGS.md#20-drill-in-target--in-place-local-vs-search-card-catalog).
 - **Station** → **Play** (no queue-insert — stations are their own mode). ⬜ with the stations type.
 - **Add to Library** writes via the catalog id (create/append, gated — consistent with the
   [Playlists export decision](PLAYLISTS.md)); on library-only surfaces this stays the one Apple write.
@@ -174,7 +181,7 @@ a later, fetch-heavier idea. Recommend **recents + prompt** for MVP.
   trackCount), `SearchResults`, `ArtistDetail`, `Track.preview_url`, `play_params` defaulted on
   deserialize (Tracks round-trip through the frontend for `materialize_track`).
 - `src/search.ts` — TS wrappers + types. `src/search-card.ts` — the standalone card: debounced
-  (300ms / 2-char min / stale-token-guarded) bar, filter popover (persisted `deets.search.types`;
+  (300ms / 1-char min / stale-token-guarded) bar, filter popover (persisted `deets.search.types`;
   narrowing trims the `types=` param) — rides the shared `makeDropdown` primitive so it follows the
   global click/hover menu mode (Hover-Menu setting), sectioned root (songs = a 2-row h-scroll grid; artists =
   round thumbs; albums/playlists = tiles), recents empty state (`deets.search.recents`), drill
@@ -207,3 +214,25 @@ a later, fetch-heavier idea. Recommend **recents + prompt** for MVP.
     `.lib-grid { align-content: start }` stops sparse tile grids from stretching tiles to full
     pane height — see HANDOFF gotchas.)*
 - **Add to Library** is deliberately absent until Favorites (item 5) lands the gated write path.
+
+## As built (2026-07-06) — single-char search + drill-in verbs everywhere
+- **Single-character search** — `MIN_CHARS` lowered 2 → 1 in `src/search-card.ts` (empty input
+  still resets to recents; the 300 ms debounce already meters keystrokes). Single-letter artists
+  ("Q") now resolve.
+- **Go to Artist / Go to Album** drill-ins, app-wide. The resolve hop is a generic Rust command
+  `catalog_related(kind, id, rel)` (`apple.rs` — one `include=` fetch → `{id, name}`, e.g.
+  `songs/{id}?include=artists`), wrapped by a session-cached `catalogRelated` in `search.ts`.
+  - **In the Search card**: a song's/album's menu drills to the catalog artist/album — the pane
+    opens immediately on a fallback title, resolves the id, then fills (`drillRelated` in
+    `search-card.ts`, reusing the extracted `fillArtist`/`fillCollection`).
+  - **From every other card** (Queue, History, Now Playing — which gained its first right-click
+    menu — plus Playlists & Rewind): shared menu-item builders `goToArtistItem`/`goToAlbumItem`
+    (`src/go-to.ts`, siblings of `startStationItem`) summon the Search card (`requestCard`) and
+    hand it the intent over a tiny drill-intent bus; the Search card runs the same `drillRelated`.
+    So the Search card is the app's canonical **catalog** detail surface and resolution/caching
+    live in one place.
+  - **The Library card drills IN-PLACE instead** (user call): its song/album/artist menus push the
+    same context the tile would, over the **user's library** — collab songs list each credited
+    artist as a submenu, album tiles target the dominant credited artist. Mechanism: `trackMenu`
+    gained an optional `nav?: LibNav` (`library-card.ts`) — present → local drill, absent →
+    catalog. In-place vs Search is recorded as **[FUTURE-SETTINGS §20](FUTURE-SETTINGS.md#20-drill-in-target--in-place-local-vs-search-card-catalog)**.

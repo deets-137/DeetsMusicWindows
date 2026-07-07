@@ -60,6 +60,36 @@ export interface ArtistDetail {
 export type SearchType = "songs" | "albums" | "artists" | "playlists";
 export const ALL_TYPES: SearchType[] = ["songs", "albums", "artists", "playlists"];
 
+/** A resolved catalog entity handle (drill-in targets — see `catalogRelated`). */
+export interface NamedRef {
+  id: string;
+  name: string;
+}
+
+// Session cache for drill-in id resolution, keyed by (kind, id, rel). Lives in the
+// data layer (not the search card) so any future caller — library/queue "Go to
+// Artist" — shares the same memoized hops rather than re-fetching.
+const relatedCache = new Map<string, NamedRef | null>();
+
+/**
+ * Resolve a catalog entity's first related resource ({id, name}) — the song→artist,
+ * song→album, album→artist hops behind the "Go to …" verbs. `kind` is the SOURCE
+ * type ("songs" | "albums"), `rel` the relationship ("artists" | "albums"). One
+ * Apple `include=` fetch, memoized per (kind, id, rel), so repeat picks are free.
+ */
+export async function catalogRelated(
+  kind: "songs" | "albums",
+  id: string,
+  rel: "artists" | "albums",
+): Promise<NamedRef | null> {
+  const key = `${kind}/${id}/${rel}`;
+  const hit = relatedCache.get(key);
+  if (hit !== undefined) return hit;
+  const ref = await invoke<NamedRef | null>("catalog_related", { kind, id, rel });
+  relatedCache.set(key, ref);
+  return ref;
+}
+
 /** Catalog search. `types` narrows the categories queried (default: all four). */
 export function searchCatalog(term: string, types?: SearchType[]): Promise<SearchResults> {
   return invoke<SearchResults>("catalog_search", { term, types: types ?? null });

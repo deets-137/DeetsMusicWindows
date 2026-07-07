@@ -13,6 +13,7 @@ import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
+import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
@@ -130,8 +131,13 @@ function mountQueue(host: HTMLElement): CardInstance {
         { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
         { label: "Remove", run: act(removeFromQueue, "remove") },
       ];
-      // Start Station keys off the entry's catalog id directly — works even when the
-      // track hasn't resolved in the store yet.
+      // Go to Artist/Album + Start Station key off the entry's catalog id directly —
+      // the resolved track (t) only supplies fallback pane titles, so they work even
+      // before the store has resolved the row.
+      const goA = goToArtistItem("songs", entry.catalogId, t?.artistName);
+      if (goA) items.push(goA);
+      const goAl = goToAlbumItem(entry.catalogId, t?.albumName);
+      if (goAl) items.push(goAl);
       const start = startStationItem("songs", entry.catalogId);
       if (start) items.push(start);
       const add = t ? addSongToLibraryItem(t) : null;
@@ -145,6 +151,8 @@ function mountQueue(host: HTMLElement): CardInstance {
     const cur = queue.getCurrent();
     const t = cur ? resolve(cur) : undefined;
     const items = [
+      goToArtistItem("songs", cur?.catalogId, t?.artistName),
+      goToAlbumItem(cur?.catalogId, t?.albumName),
       startStationItem("songs", cur?.catalogId), // "more like what's playing"
       t ? addSongToLibraryItem(t) : null,
     ].filter(Boolean) as MenuItem[];

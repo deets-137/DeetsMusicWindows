@@ -7,6 +7,12 @@ import { playPause, nextTrack, prevTrack, shuffleQueue, onPlayerState, onPlayerP
 import { makeSlider } from "./slider";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
+import * as queue from "./queue";
+import { resolveEntry } from "./queue-rows";
+import { openContextMenu, type MenuItem } from "./context-menu";
+import { addSongToLibraryItem } from "./library-add";
+import { startStationItem } from "./start-station";
+import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef } from "./cards";
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
@@ -109,6 +115,26 @@ export const nowPlayingCard: CardDef = {
     // Queue summon — bring the Queue card into the least-recently-touched slot
     // (flips if it's already on-screen in the other slot; see layout.ts).
     host.querySelector<HTMLElement>("#np-summon")?.addEventListener("click", () => requestCard("queue"));
+
+    // Right-click the song identity (cover / title / artist) → drill or seed from the
+    // CURRENT track. Mirrors the Queue now-hero menu, but always reachable since NP is
+    // anchored. Keys off the queue's current entry (player state carries no catalog id).
+    const npMenu = (e: MouseEvent) => {
+      const cur = queue.getCurrent();
+      if (!cur) return; // nothing playing → let the native menu through
+      const t = resolveEntry(cur);
+      const items = [
+        goToArtistItem("songs", cur.catalogId, t?.artistName),
+        goToAlbumItem(cur.catalogId, t?.albumName),
+        startStationItem("songs", cur.catalogId),
+        t ? addSongToLibraryItem(t) : null,
+      ].filter(Boolean) as MenuItem[];
+      if (!items.length) return;
+      e.preventDefault();
+      openContextMenu(e.clientX, e.clientY, items);
+    };
+    host.querySelector<HTMLElement>(".np__art")?.addEventListener("contextmenu", npMenu);
+    host.querySelector<HTMLElement>(".np__meta")?.addEventListener("contextmenu", npMenu);
 
     // Album Color — tint the card's aurora with the current album's real palette.
     const npEl = host.querySelector<HTMLElement>(".np")!;

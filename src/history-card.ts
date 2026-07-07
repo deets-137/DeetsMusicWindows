@@ -14,6 +14,7 @@ import { resolveEntry, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
+import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef, CardInstance } from "./cards";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
@@ -76,16 +77,20 @@ function mountHistory(host: HTMLElement): CardInstance {
   const menuFor = (e: queue.QueueEntry): MenuItem[] => {
     const h = { catalogId: e.catalogId, libraryId: e.libraryId, context: "history" };
     const err = (what: string) => (x: unknown) => console.error(`[history] ${what}`, x);
+    const t = resolveEntry(e); // supplies fallback pane titles for the drill-ins
     const items: MenuItem[] = [
       { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")) },
       { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
       { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
     ];
-    // Start Station + Add to Library — gated builders (null when they shouldn't offer).
-    // Apply to the hero too: it shares this handler via data-idx="0".
+    // Go to Artist/Album + Start Station + Add to Library — gated builders (null when
+    // they shouldn't offer). Apply to the hero too: it shares this handler via data-idx="0".
+    const goA = goToArtistItem("songs", e.catalogId, t?.artistName);
+    if (goA) items.push(goA);
+    const goAl = goToAlbumItem(e.catalogId, t?.albumName);
+    if (goAl) items.push(goAl);
     const start = startStationItem("songs", e.catalogId);
     if (start) items.push(start);
-    const t = resolveEntry(e);
     const add = t ? addSongToLibraryItem(t) : null;
     if (add) items.push(add);
     return items;

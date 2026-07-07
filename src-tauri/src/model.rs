@@ -187,6 +187,17 @@ pub struct StationGenre {
     pub name: String,
 }
 
+/// A minimal `{id, name}` handle for a resolved catalog entity — the payload of the
+/// search card's drill-in hops ("Go to Artist" / "Go to Album"). `name` lets the
+/// target pane title itself accurately (the resolved artist, not the song's display
+/// artist string which may carry features).
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NamedRef {
+    pub id: String,
+    pub name: String,
+}
+
 /// A catalog artist's detail view: the artist + their releases + top songs.
 #[derive(Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]

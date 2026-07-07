@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::model::{
-    Album, Artist, ArtistDetail, Artwork, Page, PlayParams, Playlist, SearchResults, Station,
-    StationGenre, Track,
+    Album, Artist, ArtistDetail, Artwork, NamedRef, Page, PlayParams, Playlist, SearchResults,
+    Station, StationGenre, Track,
 };
 use crate::provider::MusicProvider;
 
@@ -1174,4 +1174,37 @@ pub async fn catalog_song_artist(
     Ok(body["data"][0]["relationships"]["artists"]["data"][0]["id"]
         .as_str()
         .map(String::from))
+}
+
+/// Resolve a catalog entity's first related resource as `{id, name}` — the generic
+/// hop behind the search card's drill-in verbs. `kind`/`id` name the SOURCE
+/// (`songs`/`albums`), `rel` the relationship to follow (`artists`/`albums`). One
+/// `include=` fetch; both artists and albums expose `attributes.name`, so the same
+/// read serves every hop. The front-end session-caches per (kind, id, rel), so a
+/// repeat "Go to …" on the same row is free.
+#[tauri::command]
+pub async fn catalog_related(
+    kind: String,
+    id: String,
+    rel: String,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Option<NamedRef>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}?include={rel}");
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status == 404 {
+        return Ok(None);
+    }
+    if status != 200 {
+        return Err(format!("{kind}/{id} include={rel} HTTP {status}"));
+    }
+    let node = &body["data"][0]["relationships"][rel.as_str()]["data"][0];
+    Ok(node["id"].as_str().map(|id| NamedRef {
+        id: id.to_string(),
+        name: node["attributes"]["name"].as_str().unwrap_or_default().to_string(),
+    }))
 }

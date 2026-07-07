@@ -18,6 +18,7 @@ import { tracks, onTracksChange } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addToPlaylistItem } from "./playlists";
 import { startStationItem, startArtistStationItem } from "./start-station";
+import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
@@ -200,15 +201,74 @@ const artistSorts: SortSpec<ArtistGroup>[] = [
 export const albumOrder = (ts: Track[]): Track[] =>
   [...ts].sort((a, b) => (a.discNumber ?? 1) - (b.discNumber ?? 1) || (a.trackNumber ?? 0) - (b.trackNumber ?? 0));
 
-export function trackMenu(items: Track[], context?: string): MenuItem[] {
+/**
+ * In-place drill navigation for a card's right-click menus. When passed to `trackMenu`
+ * (the Library card supplies it), "Go to Artist/Album" pushes the SAME context an
+ * artist/album tile would — over the user's library, staying in this card's stack.
+ * Absent (Playlists/Rewind), the verbs fall back to the shared catalog drill-in
+ * (go-to.ts → Search card). `artistNames` returns a track's credited artists,
+ * leading-credit first (so a collab offers each as a submenu row).
+ */
+export interface LibNav {
+  artistNames: (t: Track) => string[];
+  drillArtist: (name: string) => void;
+  drillAlbum: (t: Track) => void;
+}
+
+// The album's dominant credited artist (mode of each track's leading credit) — the
+// "Go to Artist" target for an album tile, where a per-track featured guest shouldn't
+// win. Always a credited name, so it resolves to a real library artist group.
+function dominantArtist(items: Track[], nav: LibNav): string | undefined {
+  const counts = new Map<string, number>();
+  for (const t of items) {
+    const primary = nav.artistNames(t)[0];
+    if (primary) counts.set(primary, (counts.get(primary) ?? 0) + 1);
+  }
+  let best: string | undefined;
+  let top = 0;
+  for (const [name, c] of counts) if (c > top) { top = c; best = name; }
+  return best;
+}
+
+// The "Go to Artist" / "Go to Album" verbs for a menu — in-place over the library when
+// `nav` is present, else the catalog drill-in (Search). A song (1-track list) can go to
+// its album; an album (longer list) can only go to its artist.
+function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
+  const first = items[0];
+  if (!first) return [];
+  if (!nav) {
+    return [
+      goToArtistItem("songs", first.catalogId, first.artistName),
+      items.length === 1 ? goToAlbumItem(first.catalogId, first.albumName) : null,
+    ];
+  }
+  let artistItem: MenuItem | null;
+  if (items.length > 1) {
+    const dom = dominantArtist(items, nav);
+    artistItem = dom ? { label: "Go to Artist", run: () => nav.drillArtist(dom) } : null;
+  } else {
+    const names = nav.artistNames(first);
+    artistItem =
+      names.length === 0
+        ? null
+        : names.length === 1
+          ? { label: "Go to Artist", run: () => nav.drillArtist(names[0]) }
+          : { label: "Go to Artist", sub: () => names.map((n) => ({ label: n, run: () => nav.drillArtist(n) })) };
+  }
+  const albumItem =
+    items.length === 1 && first.albumName ? { label: "Go to Album", run: () => nav.drillAlbum(first) } : null;
+  return [artistItem, albumItem];
+}
+
+export function trackMenu(items: Track[], context?: string, nav?: LibNav): MenuItem[] {
   const err = (what: string) => (e: unknown) => console.error(`[library] ${what}`, e);
   return [
     { label: "Play Now", run: () => void playTracks(items, 0, context).catch(err("play now")) },
     { label: "Play Next", run: () => void queueTracksNext(items, context).catch(err("play next")) },
     { label: "Add to Queue", run: () => void queueTracksLater(items, context).catch(err("add to queue")) },
     addToPlaylistItem(() => items),
-    // A station seeds from ONE song — a 1-track list is a song, a longer one is an
-    // album, which has no station relationship (STATIONS.md §2).
+    ...goToItems(items, nav),
+    // A station seeds from ONE song — a longer list is an album, which has no station.
     ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
   ].filter(Boolean) as MenuItem[];
 }
@@ -218,6 +278,7 @@ interface SongOpts {
   hideCover?: boolean; // album detail: every track shares the cover, so omit it
   selectedId?: string; // highlight this track (e.g. drilled-in)
   context?: string; // queue-origin tag for entries played from this list
+  nav?: LibNav; // in-place "Go to Artist/Album" (Library only)
 }
 function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {
@@ -240,11 +301,15 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     activate: (_t, idx, items) =>
       playTracks(items, idx, o.context).catch((e) => console.error("[library] play", e)),
     // Right-click → act on just this song (Play Now plays only it; see docs/FUTURE-SETTINGS).
-    menu: (t) => trackMenu([t], o.context),
+    menu: (t) => trackMenu([t], o.context, o.nav),
   };
 }
 
-function albumsGrouping(list: () => Track[], openDetail: (a: AlbumGroup) => Context): Grouping<AlbumGroup> {
+function albumsGrouping(
+  list: () => Track[],
+  openDetail: (a: AlbumGroup) => Context,
+  nav?: LibNav,
+): Grouping<AlbumGroup> {
   return {
     key: "albums",
     label: "Albums",
@@ -255,7 +320,7 @@ function albumsGrouping(list: () => Track[], openDetail: (a: AlbumGroup) => Cont
     render: (a, density, idx) => musicCell(density, idx, a.artwork, a.name, a.artist),
     open: openDetail,
     // Right-click → act on the whole album, tracks in disc/track order.
-    menu: (a) => trackMenu(albumOrder(list().filter((t) => albumKey(t) === a.key)), `album:${a.key}`),
+    menu: (a) => trackMenu(albumOrder(list().filter((t) => albumKey(t) === a.key)), `album:${a.key}`, nav),
   };
 }
 
@@ -321,6 +386,7 @@ export const libraryCard: CardDef = {
           hideCover: true,
           selectedId: highlight ? trackId(highlight) : undefined,
           context: `album:${a.key}`,
+          nav: libNav,
         }),
       ],
       defaults: { density: "lines", sortKey: "az" },
@@ -331,17 +397,33 @@ export const libraryCard: CardDef = {
       return {
         title: a.name,
         density: true,
-        groupings: [albumsGrouping(sub, albumDetail), songsGrouping(sub, { context: `artist:${a.name}` })],
+        groupings: [albumsGrouping(sub, albumDetail, libNav), songsGrouping(sub, { context: `artist:${a.name}`, nav: libNav })],
         defaults: { grouping: "albums", density: "small", sortKey: "release", sortDir: "desc" },
       };
+    };
+
+    // In-place drill nav for the library's menus: "Go to Artist/Album" pushes the same
+    // context the artist/album tile would, over the user's library. Defined here (not at
+    // module scope) because it closes over `card` (the drill target) and the detail-context
+    // builders; `card` isn't assigned until below, but these run only on a menu click, long
+    // after init. creditIndex is memoized per library array, so `artistNames` is cheap.
+    // Library drills in place; every other surface routes Go-to to the catalog Search card
+    // (go-to.ts). In-place vs Search is a future toggle — see docs/FUTURE-SETTINGS.md §20.
+    const libNav: LibNav = {
+      artistNames: (t) => creditIndex(tracks()).namesOf(t),
+      drillArtist: (name) => card.drill(artistDetail({ name, albumCount: 0, songCount: 0 })),
+      drillAlbum: (t) =>
+        card.drill(
+          albumDetail({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0 }, t),
+        ),
     };
 
     const rootContext = (): Context => ({
       title: "Library",
       density: true,
       groupings: [
-        songsGrouping(tracks, { context: "library" }),
-        albumsGrouping(tracks, albumDetail),
+        songsGrouping(tracks, { context: "library", nav: libNav }),
+        albumsGrouping(tracks, albumDetail, libNav),
         artistsGrouping(tracks, artistDetail),
       ],
       defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },

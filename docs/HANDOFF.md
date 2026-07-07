@@ -132,6 +132,12 @@ get large).
 - **Add to Library** ([FAVORITES.md](FAVORITES.md)): ➕ add a catalog song/album to iCloud Music
   Library, gated behind the **Library Add** settings toggle (default off), on Search / Playlists /
   **Queue / History** right-click menus (incl. the now-playing hero). Apple's API is add-only.
+- **Go to Artist / Go to Album** (2026-07-06, [SEARCH.md](SEARCH.md)): drill-in right-click verbs on
+  **every** song/album surface (Search, Library, Playlists, Rewind, Queue, History, Now Playing —
+  NP gained its first menu). Shared builders in `src/go-to.ts`; the id hop is `catalog_related` in
+  `apple.rs` (session-cached via `catalogRelated`). Most surfaces route to the **catalog** detail in
+  the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
+  `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
 ### Not built yet ⬜
 - **♥ Favorites** — the love-only ♥ (Apple `PUT +1`) + local mirror + ♥ on Now Playing / menus.
@@ -236,6 +242,7 @@ src/rewind.ts / rewind-card.ts    Rewind data + leaderboard card (DEETS-REWIND)
 src/radio.ts / radio-card.ts      Radio data (session cache + recents) + stations browser card
 src/library-add.ts          Add-to-Library toggle + gated menu-item builders (FAVORITES.md)
 src/start-station.ts        seeded "Start Station" gated menu-item builder (STATIONS.md §2)
+src/go-to.ts                "Go to Artist/Album" menu-item builders + drill-intent bus (SEARCH.md)
 src/player.ts               MusicKit engine: init/MUT-inject, windowed loadFromModel, transport,
                             model-follow, radio mode (playStation/stationFollow/stopStation)
 src/queue.ts                queue model (history/current/upcoming, backlog, stacking, radio ops)

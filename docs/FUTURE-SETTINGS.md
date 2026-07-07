@@ -17,7 +17,8 @@
 
 ### Grouped by topic (for triage)
 - **Menus & context-menu actions** — §1 "Play Now" scope · §2 Queue menu actions & order ·
-  §6 Menu caret affordance (click vs hover) · §9 Per-menu open mode (hover vs click)
+  §6 Menu caret affordance (click vs hover) · §9 Per-menu open mode (hover vs click) ·
+  §20 Drill-in target (in-place vs Search card)
 - **Playback** — §4 "Previous" reach · §5 Shuffle behavior
 - **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
 - **Stats** — §7 Listened-through threshold
@@ -567,3 +568,57 @@ on; Spotify's behavior). The user chose this 2026-07-03.
 (default `"all"`). In `creditArtists` (artist-credit.ts), primary-only keeps just the
 first resolved name (leading remainder or first match) and skips feat guests. The
 vocabulary/split machinery is shared either way.
+
+---
+
+## 20. Drill-in target — in-place (local) vs Search card (catalog)
+
+**Behavior.** Where the right-click **Go to Artist** / **Go to Album** verbs land. Two
+targets exist and both are shipped today, chosen **per surface**:
+- **In-place (local)** — push the artist/album context inside the *current* card's own
+  drill stack, over the **user's library** (the artist's albums/songs *they own*). This is
+  what clicking an Artist/Album tile in the Library already does.
+- **Catalog (Search)** — summon the **Search card** and open the **Apple catalog** artist/
+  album detail (resolved via one `include=` hop, cached). Works from any surface for any
+  track with a catalog id.
+
+**Current default (hardcoded, as built 2026-07-06):**
+- **Library card → in-place.** Its song/album/artist menus drill locally (the user asked
+  for this explicitly). Collab songs offer each credited artist as a **submenu**; album
+  tiles target the album's *dominant* credited artist (see §19's credit parsing).
+- **Everywhere else → catalog in Search.** Playlists, Rewind, Queue, History, and the Now
+  Playing strip all route their Go-to verbs to the Search card.
+
+**Why the split is deliberate, not arbitrary.** In-place only *works* on a surface that
+already owns an artist/album context to push — the **Library** does (its collection-card
+engine has Artists/Albums groupings). The Queue, History, and Now Playing cards have no
+such local stack, so **catalog/Search is their only option**. The Playlists card uses the
+same engine but is organized by playlist, not by artist/album — a playlist song has no
+natural *local* artist context, so it too routes to catalog. So the real choice this
+setting exposes is **Library's** (in-place vs Search); the non-collection surfaces are
+catalog-only unless a third mode (below) is built.
+
+**Options.**
+- **(a) In-place where the surface supports it, else Search** *(current default)* — Library
+  local, the rest catalog.
+- **(b) Always Search (catalog)** — even in the Library, Go-to opens the Apple catalog
+  detail in the Search card (uniform behavior, one mental model; loses the "my library"
+  framing).
+- **(c) Route to the Library card, drilled** *(a richer future mode)* — from *any* surface,
+  "Go to Artist" could summon the **Library** card drilled to that artist (when the track is
+  in the library), falling back to catalog/Search only for non-library tracks. This unifies
+  "in-place" across surfaces by borrowing Library's stack via the summon bus, instead of
+  each card growing its own contexts. More wiring (cross-card drill target + a library-
+  membership check); recorded so the idea isn't lost.
+
+**Wiring sketch.** The mechanism already exists: `trackMenu(items, ctx, nav?)`
+([library-card.ts](../src/library-card.ts)) picks in-place when handed a `LibNav`, catalog
+when not — the Library supplies one (`libNav`, closing over the card's `drill` + its
+detail-context builders), Playlists/Rewind pass nothing. The catalog path is the shared
+`go-to.ts` builders (`goToArtistItem`/`goToAlbumItem`) → a drill-intent bus → the Search
+card's `drillRelated`. So the toggle is simply **"does the Library pass its `nav`"**:
+`localStorage` `deets.goTo.target` = `"inPlace" | "search"` (default `"inPlace"`), read where
+the Library builds `libNav` (pass `undefined` for `"search"`). Option (c) is a larger change
+— a new intent that targets the Library card via `requestCard("library")` + a programmatic
+`card.drill`, gated on a library-membership lookup. If (c) lands, this key grows a third
+value (`"library"`). A **Menus** settings subsection tenant alongside §1/§2.

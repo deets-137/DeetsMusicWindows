@@ -12,9 +12,10 @@ import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { makeDropdown } from "./dropdown";
+import { onDrillRequest } from "./go-to";
 import { esc } from "./collection-card";
 import {
-  searchCatalog, collectionTracks, artistDetail, materializeTrack,
+  searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
   ALL_TYPES, type SearchType, type SearchResults, type Artist,
 } from "./search";
 import type { Track } from "./library";
@@ -24,7 +25,7 @@ const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
-const MIN_CHARS = 2;
+const MIN_CHARS = 1;
 
 const SECTION_LABEL: Record<SearchType, string> = {
   artists: "Artists", songs: "Songs", albums: "Albums", playlists: "Playlists",
@@ -235,7 +236,10 @@ function mountSearch(host: HTMLElement): CardInstance {
   });
 
   // ── drill panes (push/pop on the shared --nav-* tokens) ──
-  const pushPane = (title: string, fill: (body: HTMLElement) => void) => {
+  const pushPane = (
+    title: string,
+    fill: (body: HTMLElement, setTitle: (t: string) => void) => void,
+  ) => {
     const pane = document.createElement("div");
     pane.className = "spane";
     pane.dataset.pos = "right";
@@ -243,7 +247,10 @@ function mountSearch(host: HTMLElement): CardInstance {
       <div class="spane__head"><button class="spane__back" type="button" aria-label="Back">‹</button><span class="spane__title">${esc(title)}</span></div>
       <div class="spane__scroll"></div>`;
     panes.appendChild(pane);
-    fill(pane.querySelector<HTMLElement>(".spane__scroll")!);
+    // setTitle lets a drill-in relabel the pane once the target resolves (fallback
+    // name shown while the id hop is in flight, real name swapped in on arrival).
+    const titleEl = pane.querySelector<HTMLElement>(".spane__title")!;
+    fill(pane.querySelector<HTMLElement>(".spane__scroll")!, (t) => { titleEl.textContent = t; });
     const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>('.spane[data-pos="center"]');
     void pane.offsetWidth; // commit the off-screen position before sliding in
     pane.dataset.pos = "center";
@@ -287,20 +294,21 @@ function mountSearch(host: HTMLElement): CardInstance {
     });
   };
 
-  const openCollection = (kind: "albums" | "playlists", id: string, title: string) => {
-    pushPane(title, (body) => {
-      body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-      collectionTracks(kind, id)
-        .then((tracks) => {
-          body.innerHTML = tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`;
-          wireTrackList(body, tracks, `search-${kind}:${id}`);
-        })
-        .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
-    });
+  // Body fillers, split from the open* wrappers so the drill-ins can reuse them:
+  // a drill opens the pane on the FALLBACK name, then fills once the id resolves.
+  const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string) => {
+    body.innerHTML = `<p class="search__prompt">Loading…</p>`;
+    collectionTracks(kind, id)
+      .then((tracks) => {
+        body.innerHTML = tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`;
+        wireTrackList(body, tracks, `search-${kind}:${id}`);
+      })
+      .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
   };
+  const openCollection = (kind: "albums" | "playlists", id: string, title: string) =>
+    pushPane(title, (body) => fillCollection(body, kind, id));
 
-  const openArtist = (id: string, name: string) => {
-    pushPane(name, (body) => {
+  const fillArtist = (body: HTMLElement, id: string) => {
       body.innerHTML = `<p class="search__prompt">Loading…</p>`;
       artistDetail(id)
         .then((d) => {
@@ -328,8 +336,43 @@ function mountSearch(host: HTMLElement): CardInstance {
           });
         })
         .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
-    });
   };
+  const openArtist = (id: string, name: string) => pushPane(name, (body) => fillArtist(body, id));
+
+  // ── drill-ins ("Go to Artist" / "Go to Album") ──
+  // Open the target pane immediately on the fallback name (the source row's own
+  // artist/album string), resolve the catalog id via one memoized `include=` hop,
+  // then relabel + fill in place. The resolve is session-cached in search.ts, so a
+  // repeat drill on the same row costs no Apple call.
+  const drillRelated = (
+    kind: "songs" | "albums",
+    id: string,
+    rel: "artists" | "albums",
+    fallbackName: string,
+    fill: (body: HTMLElement, targetId: string) => void,
+  ) =>
+    pushPane(fallbackName, (body, setTitle) => {
+      body.innerHTML = `<p class="search__prompt">Loading…</p>`;
+      catalogRelated(kind, id, rel)
+        .then((ref) => {
+          if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
+          setTitle(ref.name || fallbackName);
+          fill(body, ref.id);
+        })
+        .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
+    });
+  const goToArtist = (kind: "songs" | "albums", id: string, name: string) =>
+    drillRelated(kind, id, "artists", name, fillArtist);
+  const goToAlbum = (songId: string, name: string) =>
+    drillRelated("songs", songId, "albums", name, (body, albumId) => fillCollection(body, "albums", albumId));
+
+  // Remote drill-ins: other cards' "Go to Artist/Album" summon this card (go-to.ts)
+  // and emit an intent here. Same machinery as an in-card drill — a pane pushes on top
+  // of whatever the search card is currently showing.
+  const unsubDrill = onDrillRequest((intent) => {
+    if (intent.rel === "artists") goToArtist(intent.srcKind, intent.srcId, intent.name);
+    else goToAlbum(intent.srcId, intent.name);
+  });
 
   // ── menus ──
   const enqueue = (tracks: Track[], how: "now" | "next" | "later", context: string) => {
@@ -349,11 +392,20 @@ function mountSearch(host: HTMLElement): CardInstance {
       // Catalog tracks land as denormalised snapshots — no library/queue
       // materialization needed; the local store is self-contained by design.
       addToPlaylistItem(() => [t]),
+      t.catalogId ? { label: "Go to Artist", run: () => goToArtist("songs", t.catalogId!, t.artistName) } : null,
+      t.catalogId && t.albumName
+        ? { label: "Go to Album", run: () => goToAlbum(t.catalogId!, t.albumName!) }
+        : null,
       startStationItem("songs", t.catalogId),
       addSongToLibraryItem(t), // null unless the Library Add toggle is on
     ].filter(Boolean) as MenuItem[]);
   };
-  const collectionMenu = (e: MouseEvent, kind: "albums" | "playlists", id: string, ctx: string) => {
+  // `artistName` is supplied only where the album's artist isn't already on screen
+  // (root results) — omitting it suppresses the redundant "Go to Artist" on album
+  // tiles shown INSIDE an artist pane.
+  const collectionMenu = (
+    e: MouseEvent, kind: "albums" | "playlists", id: string, ctx: string, artistName?: string,
+  ) => {
     const fetchThen = (how: "now" | "next" | "later") =>
       collectionTracks(kind, id)
         .then((tracks) => { if (tracks.length) enqueue(tracks, how, ctx); })
@@ -363,6 +415,9 @@ function mountSearch(host: HTMLElement): CardInstance {
       { label: "Play Next", run: () => void fetchThen("next") },
       { label: "Add to Queue", run: () => void fetchThen("later") },
       addToPlaylistItem(() => collectionTracks(kind, id)), // fetch-then-add, lazy on pick
+      kind === "albums" && artistName
+        ? { label: "Go to Artist", run: () => goToArtist("albums", id, artistName) }
+        : null,
       // Albums add as a library resource (fork A: graduates the album's tracks so they
       // appear right away). Playlists have no add-to-library path here.
       kind === "albums" ? addAlbumToLibraryItem(id, () => collectionTracks(kind, id)) : null,
@@ -411,7 +466,12 @@ function mountSearch(host: HTMLElement): CardInstance {
       return;
     }
     const album = t.closest<HTMLElement>("[data-album]");
-    if (album?.dataset.album) { e.preventDefault(); collectionMenu(e, "albums", album.dataset.album, `search-albums:${album.dataset.album}`); return; }
+    if (album?.dataset.album) {
+      e.preventDefault();
+      const al = results?.albums.find((x) => x.catalogId === album.dataset.album);
+      collectionMenu(e, "albums", album.dataset.album, `search-albums:${album.dataset.album}`, al?.artistName);
+      return;
+    }
     const pl = t.closest<HTMLElement>("[data-playlist]");
     if (pl?.dataset.playlist) { e.preventDefault(); collectionMenu(e, "playlists", pl.dataset.playlist, `search-playlists:${pl.dataset.playlist}`); return; }
     const artist = t.closest<HTMLElement>("[data-artist]");
@@ -433,6 +493,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       window.clearTimeout(debounceTimer);
       queryToken++; // orphan any in-flight response
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
+      unsubDrill(); // stop receiving remote drill intents once unmounted
       headerCbs.clear();
       host.innerHTML = "";
     },

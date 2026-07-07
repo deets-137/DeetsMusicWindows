@@ -72,6 +72,7 @@ pub fn run() {
             apple::radio_genre_stations,
             apple::radio_seed_station,
             apple::catalog_song_artist,
+            apple::catalog_related,
             library::library_sync,
             library::library_tracks,
             library::seen_tracks,
