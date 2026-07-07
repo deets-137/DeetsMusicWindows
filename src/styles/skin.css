@@ -297,22 +297,31 @@
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
   --panel-radius:       14px;       /* softer, water-smoothed corners */
 
-  /* surface — three opaque swells, each crest a hairline in --border. Every
-     layer fills its body with --canvas (invisible against the canvas itself,
+  /* surface — three opaque swells, each crest a hairline. Every layer
+     fills its body with --canvas (invisible against the canvas itself,
      but OPAQUE), so a nearer swell occludes the crest behind it instead of
      three see-through lines crossing — that's what clears up the clutter.
      Front→back = first→last; the stagger is in each circle's center-Y, NOT
-     background-position (the wave-roll animation owns position), so the back
+     background-position (the wave animations own position), so the back
      crests sit higher and peek over the front fill. Taller tiles toward the
-     back space the crest rows out. Tune by eye: tile-height = crest spacing,
-     center-Y = crest height/stagger, 70→72% = crest thickness. */
+     back space the crest rows out.
+     Atmospheric perspective: the front crest is full --border and boldest;
+     middle/back crests fade toward --canvas (70% / 45% ink) and thin out
+     (band 72.4 → 71.8 → 71.2%), so far waves recede into haze. Tune by eye:
+     tile-height = crest spacing, center-Y = crest height/stagger,
+     band width = crest thickness, mix % = haze. */
   --canvas-bg:
-    radial-gradient(circle at 50% 158%, var(--canvas) 70%, var(--border) 70%, var(--border) 72%, transparent 72%),
-    radial-gradient(circle at 50% 150%, var(--canvas) 70%, var(--border) 70%, var(--border) 72%, transparent 72%),
-    radial-gradient(circle at 50% 142%, var(--canvas) 70%, var(--border) 70%, var(--border) 72%, transparent 72%);
+    radial-gradient(circle at 50% 158%, var(--canvas) 70%, var(--border) 70%, var(--border) 72.4%, transparent 72.4%),
+    radial-gradient(circle at 50% 150%, var(--canvas) 70%, color-mix(in srgb, var(--border) 70%, var(--canvas)) 70%, color-mix(in srgb, var(--border) 70%, var(--canvas)) 71.8%, transparent 71.8%),
+    radial-gradient(circle at 50% 142%, var(--canvas) 70%, color-mix(in srgb, var(--border) 45%, var(--canvas)) 70%, color-mix(in srgb, var(--border) 45%, var(--canvas)) 71.2%, transparent 71.2%);
   --canvas-bg-size:   48px 30px, 64px 38px, 80px 46px;
   --canvas-bg-repeat: repeat;
-  --canvas-anim:      wave-roll 16s linear infinite;
+  /* two composed animations: wave-roll drifts X, wave-bob swells Y */
+  --canvas-anim:      wave-roll 16s linear infinite,
+                      wave-bob 9s ease-in-out infinite alternate;
+
+  /* micro-motion — cards float on the surface; a touch buoys them up */
+  --hover-lift: translateY(-1px);
 
   /* nav — outgoing sinks, incoming rises from beneath the surface */
   --nav-dur:  0.42s;
@@ -328,12 +337,21 @@
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 12Q12 5 23 12Q12 19 1 12Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
-/* Ocean's wave rows roll horizontally, each layer by a different
-   INTEGER number of its own tile width over one loop → different
-   paces, seamless (an integer-tile shift returns to the same phase).
-   Defined once; only Ocean references it (via --canvas-anim). */
+/* Ocean's swell — one wave train. All layers roll the SAME direction,
+   nearest fastest (9 / 8 / 5 px/s front→back), each by an INTEGER number
+   of its own tile width over one loop (144=3×48, 128=2×64, 80=1×80), so
+   the seam is invisible. Drift and swell are SPLIT across the -x/-y
+   longhands so two animations compose on one element: wave-roll owns the
+   horizontal drift (linear), wave-bob the rise-and-fall (ease-in-out
+   alternate ≈ a sine). Amplitudes shrink with distance (3/−2/1px); the
+   middle layer bobs in counter-phase so the sea breathes rather than
+   pumps. 9s·2 vs 16s never sync (LCM 144s) — the pattern doesn't visibly
+   repeat. Defined once; only Ocean references them (via --canvas-anim). */
 @keyframes wave-roll {
-  to { background-position: 96px 0, -128px 0, 80px 0; }
+  to { background-position-x: 144px, 128px, 80px; }
+}
+@keyframes wave-bob {
+  to { background-position-y: 3px, -2px, 1px; }
 }
 
 /* ============================================================
