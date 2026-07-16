@@ -43,3 +43,6 @@ npm run tauri dev     # opens the app (first Rust build is slow)
 - `index.html`, `src/` — front-end (TS + the token-based CSS system in `src/styles/`)
 - `src-tauri/` — Rust (auth, provider/model, SQLite cache)
 - `swatch.html` — standalone theme/color reference
+
+## License
+[MIT](LICENSE)

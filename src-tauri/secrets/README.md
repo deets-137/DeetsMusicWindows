@@ -21,6 +21,11 @@ The Rust side reads `apple.json`, loads the `.p8` next to it, and signs the Appl
 Music **developer token** (ES256 JWT). The private key never leaves Rust / never
 reaches the frontend.
 
+A third file, **`user-token.txt`**, appears here after your first sign-in: it's the
+Music User Token captured by the loopback browser auth flow, persisted so later
+launches start already signed in. You never create it by hand, and it's gitignored
+like the rest. Delete it to force a fresh sign-in.
+
 ## Where to get these
 
 - **Team ID** — developer.apple.com/account → Membership (top-right, 10 chars).
