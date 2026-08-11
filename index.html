@@ -1,8 +1,30 @@
 <!doctype html>
-<html lang="en" data-theme="fairy" data-skin="vanilla" data-surface="midi">
+<html lang="en" data-theme="lilac" data-skin="press" data-surface="midi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Appearance pre-paint. The attributes above are the light-mode
+         defaults; this resolves the REAL choice (saved id, retired-id
+         migration, or the OS light/dark preference) before the stylesheet
+         below is applied, so a dark-mode launch never flashes Lilac × Press.
+         theme.ts / skin.ts own the same logic and re-apply it on load —
+         keep the two RETIRED maps and the defaults in sync. -->
+    <script>
+      (function () {
+        var R = {
+          fairy: "lilac", glade: "green", hornet: "black-yellow", viper: "black-red",
+          desk: "press", cyberstorm: "retro-future",
+        };
+        var dark = false;
+        try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
+        [["deets.theme", "data-theme", dark ? "black-red" : "lilac"],
+         ["deets.skin",  "data-skin",  dark ? "retro-future" : "press"]].forEach(function (a) {
+          var saved = null;
+          try { saved = localStorage.getItem(a[0]); } catch (e) {}
+          document.documentElement.setAttribute(a[1], saved ? (R[saved] || saved) : a[2]);
+        });
+      })();
+    </script>
     <link rel="stylesheet" href="/src/styles.css" />
     <title>DeetsMusic</title>
     <!-- Silence MusicKit's BLOCKING alert() for benign playback-transport races: an
@@ -50,12 +72,12 @@
             <span class="menu__label">Theme</span>
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout" role="menu" aria-label="Theme">
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="fairy"     data-theme-choice="fairy">Fairy</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="glade"     data-theme-choice="glade">Glade</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="sepia"     data-theme-choice="sepia">Sepia</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="moonlight" data-theme-choice="moonlight">Moonlight</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="hornet"    data-theme-choice="hornet">Hornet</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="viper"     data-theme-choice="viper">Viper</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="lilac"        data-theme-choice="lilac">Lilac</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="green"        data-theme-choice="green">Green</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="sepia"        data-theme-choice="sepia">Sepia</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="moonlight"    data-theme-choice="moonlight">Moonlight</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="black-yellow" data-theme-choice="black-yellow">Black &amp; Yellow</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="black-red"    data-theme-choice="black-red">Black &amp; Red</button>
             </div>
           </div>
 
@@ -63,11 +85,11 @@
             <span class="menu__label">Skin</span>
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout" role="menu" aria-label="Skin">
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="vanilla" data-skin-choice="vanilla">Vanilla</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="desk"    data-skin-choice="desk">Desk</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"   data-skin-choice="ocean">Ocean</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"   data-skin-choice="glass">Glass</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="cyberstorm" data-skin-choice="cyberstorm">CyberStorm</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="vanilla"      data-skin-choice="vanilla">Vanilla</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="press"        data-skin-choice="press">Press</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"        data-skin-choice="ocean">Ocean</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"        data-skin-choice="glass">Glass</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="retro-future" data-skin-choice="retro-future">Retro-Future</button>
             </div>
           </div>
 
@@ -155,8 +177,38 @@
     </header>
 
     <main class="app-body">
+      <!-- Ocean layer — three seamless wave trains rolling BEHIND the cards;
+           inert (display:none) unless a skin opts in via --ocean-display
+           (Ocean). Each <pattern> tile is ONE full sine period (Q + T
+           reflection), so the curve's value AND tangent match at the tile
+           edge — no seam, no crossings. Each train is an opaque --canvas
+           fill under a hairline crest, so a nearer swell occludes the ones
+           behind it. Farthest (3) paints first; the crest inks fade with
+           distance via --ocean-ink-1..3. Roll (on the <rect>) and bob (on
+           the wrapping <g>) are separate elements so the two transform
+           animations compose — see .ocean in src/styles.css. -->
+      <svg class="ocean" aria-hidden="true">
+        <defs>
+          <pattern id="ocean-swell-3" width="80" height="46" patternUnits="userSpaceOnUse">
+            <path class="ocean__fill"  d="M0 26 Q20 22 40 26 T80 26 L80 46 L0 46 Z" />
+            <path class="ocean__crest ocean__crest--3" d="M0 26 Q20 22 40 26 T80 26" />
+          </pattern>
+          <pattern id="ocean-swell-2" width="64" height="38" patternUnits="userSpaceOnUse">
+            <path class="ocean__fill"  d="M0 22 Q16 17 32 22 T64 22 L64 38 L0 38 Z" />
+            <path class="ocean__crest ocean__crest--2" d="M0 22 Q16 17 32 22 T64 22" />
+          </pattern>
+          <pattern id="ocean-swell-1" width="48" height="30" patternUnits="userSpaceOnUse">
+            <path class="ocean__fill"  d="M0 17 Q12 11 24 17 T48 17 L48 30 L0 30 Z" />
+            <path class="ocean__crest ocean__crest--1" d="M0 17 Q12 11 24 17 T48 17" />
+          </pattern>
+        </defs>
+        <g class="ocean__bob ocean__bob--3"><rect class="ocean__roll ocean__roll--3" fill="url(#ocean-swell-3)" /></g>
+        <g class="ocean__bob ocean__bob--2"><rect class="ocean__roll ocean__roll--2" fill="url(#ocean-swell-2)" /></g>
+        <g class="ocean__bob ocean__bob--1"><rect class="ocean__roll ocean__roll--1" fill="url(#ocean-swell-1)" /></g>
+      </svg>
+
       <!-- Storm layer — decorative strokes drawn BEHIND the cards; inert
-           (display:none) unless a skin opts in via --storm-display (CyberStorm).
+           (display:none) unless a skin opts in via --storm-display (Retro-Future).
            The paths carry no `d` — geometry is a skin token applied via CSS
            d: path(...); pathLength="1" normalizes every path so the draw-down
            is a plain dashoffset 1→0. Position is runtime (src/storm.ts). -->

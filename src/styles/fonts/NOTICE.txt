@@ -18,42 +18,35 @@ Bundled unmodified.
 and Trademark Office and certain other jurisdictions.
 
 
-Comic Neue  (Desk skin — title fallback)
-----------------------------------------
-Files:   ComicNeue-Bold.woff2
-Copyright (c) The Comic Neue Project Authors (Craig Rozynski).
-Upstream: https://github.com/crozynski/comicneue
-Bundled as a latin-subset WOFF2 (via Google Fonts); otherwise unmodified.
-(First-choice title face is Comic Sans MS, a Windows system font — not
-bundled; Comic Neue loads only where it is missing.)
+Anton  (Press skin — title)
+---------------------------
+Files:   Anton-Regular.woff2
+Copyright (c) The Anton Project Authors (Vernon Adams, Cyreal).
+Upstream: https://github.com/googlefonts/anton
+Bundled as a full-range WOFF2 (converted from the Google Fonts TTF with
+fontTools); otherwise unmodified.
 
 
-Caveat  (Desk skin — retired title, kept while direction settles)
------------------------------------------------------------------
-Files:   Caveat-Bold.woff2
-Copyright (c) The Caveat Project Authors (Pablo Impallari).
-Upstream: https://github.com/googlefonts/caveat
-Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.
+IBM Plex Mono  (Press skin — body)
+----------------------------------
+Files:   IBMPlexMono-Regular.woff2, IBMPlexMono-SemiBold.woff2
+Copyright (c) 2017 IBM Corp.
+Upstream: https://github.com/IBM/plex
+Bundled as full-range WOFF2 files (converted from the Google Fonts TTFs
+with fontTools); otherwise unmodified. The SemiBold face is bound to
+font-weight 700 in fonts.css — see the note there.
 
 
-Karla  (Desk skin — body)
--------------------------
-Files:   Karla-Regular.woff2, Karla-Bold.woff2
-Copyright (c) The Karla Project Authors (Jonathan Pinhorn).
-Upstream: https://github.com/googlefonts/karla
-Bundled as latin-subset WOFF2 files (via Fontsource); otherwise unmodified.
-
-
-Orbitron  (CyberStorm skin — title)
------------------------------------
+Orbitron  (Retro-Future skin — title)
+-------------------------------------
 Files:   Orbitron-Bold.woff2
 Copyright (c) The Orbitron Project Authors (Matt McInerney).
 Upstream: https://github.com/theleagueof/orbitron
 Bundled as a latin-subset WOFF2 (via Google Fonts); otherwise unmodified.
 
 
-Rajdhani  (CyberStorm skin — body)
-----------------------------------
+Rajdhani  (Retro-Future skin — body)
+------------------------------------
 Files:   Rajdhani-Medium.woff2, Rajdhani-Bold.woff2
 Copyright (c) The Rajdhani Project Authors (Indian Type Foundry).
 Upstream: https://github.com/itfoundry/rajdhani

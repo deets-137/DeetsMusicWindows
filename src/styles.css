@@ -311,18 +311,64 @@ body {
   min-height: 0;
   padding: var(--panel-gap);
   overflow: hidden;             /* the columns scroll, not the whole body */
-  position: relative;           /* anchors the storm layer */
+  position: relative;           /* anchors the ocean + storm layers */
 
-  /* Canvas pattern behind the cards (Desk dot grid / Ocean waves).
-     All four resolve to nothing under Vanilla. */
+  /* Canvas pattern behind the cards (Press halftone / Retro-Future grid /
+     Glass aurora). All four resolve to nothing under Vanilla. */
   background-image:  var(--canvas-bg);
   background-size:   var(--canvas-bg-size);
   background-repeat: var(--canvas-bg-repeat);
   animation:         var(--canvas-anim);
 }
 
+/* ── Ocean layer (rolling swell behind the cards) ───────────── */
+/* Inert unless a skin opts in (--ocean-display; Ocean). Tile geometry is
+   static markup in index.html; the fill is the theme's --canvas and the
+   crest inks are skin tokens that fade with distance. The roll and bob
+   keyframes (skin.css) read per-layer distances from the --roll-dist /
+   --bob-amp custom properties set here. */
+.ocean {
+  display: var(--ocean-display, none);
+  position: absolute;
+  inset: 0;
+  /* explicit: an <svg> is a replaced element, so inset alone leaves it at
+     its 300×150 intrinsic default instead of stretching to the body */
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Oversized and left-shifted so a full roll cycle (≤144px) never drags the
+   rect's own edge into view; the pattern just tiles across the slack. */
+.ocean__roll {
+  x: -160px;
+  y: -8px;
+  width: calc(100% + 320px);
+  height: calc(100% + 16px);
+  animation: ocean-roll 16s linear infinite;
+}
+.ocean__bob  { animation: ocean-bob 9s ease-in-out infinite alternate; }
+.ocean__fill { fill: var(--canvas); }
+.ocean__crest {
+  fill: none;
+  stroke-width: 1px;
+}
+.ocean__crest--1 { stroke: var(--ocean-ink-1); }
+.ocean__crest--2 { stroke: var(--ocean-ink-2); }
+.ocean__crest--3 { stroke: var(--ocean-ink-3); }
+/* Roll: each train drifts an INTEGER number of its own tile width per 16s
+   loop (144=3×48, 128=2×64, 80=1×80) so the wrap is invisible, the nearest
+   moving fastest. Bob: amplitudes shrink with distance; the middle train is
+   counter-phase (negative) so the sea breathes rather than pumps. */
+.ocean__roll--1 { --roll-dist: 144px; }
+.ocean__roll--2 { --roll-dist: 128px; }
+.ocean__roll--3 { --roll-dist:  80px; }
+.ocean__bob--1  { --bob-amp:  3px; }
+.ocean__bob--2  { --bob-amp: -2px; }
+.ocean__bob--3  { --bob-amp:  1px; }
+
 /* ── Storm layer (decorative strokes behind the cards) ──────── */
-/* Inert unless a skin opts in (--storm-display; CyberStorm). Everything
+/* Inert unless a skin opts in (--storm-display; Retro-Future). Everything
    here reads tokens: geometry via CSS `d:` (--storm-path-*), ink/glow
    from theme roles, per-bolt timing from --storm-cycle-*. The viewBox is
    0..100 both axes with preserveAspectRatio="none" — bolts are authored
@@ -389,7 +435,7 @@ body {
   backdrop-filter: var(--panel-backdrop);
   border: var(--panel-border-width) solid var(--panel-border);
   border-radius: var(--panel-radius);
-  box-shadow: var(--shadow-card);   /* none under Vanilla; a real card lift in Desk/Ocean */
+  box-shadow: var(--shadow-card);   /* none under Vanilla; Press prints a plate, Ocean/Glass lift */
   padding: var(--panel-pad);
 }
 .panel[data-span="wide"] { grid-column: 1 / -1; }
@@ -493,8 +539,8 @@ body {
               opacity   var(--nav-dur) var(--nav-ease);
   will-change: transform, opacity;
 }
-/* The motion lives in skin tokens: Vanilla slides (translateX), Desk
-   drops (scale), Ocean sinks (translateY). z-index keeps the active
+/* The motion lives in skin tokens: Vanilla slides (translateX), Press
+   stamps (a hard-eased slide), Ocean sinks (translateY). z-index keeps the active
    pane above the others while overlapping motions cross-fade. */
 .coll-pane[data-pos="center"] { transform: var(--nav-at-center); opacity: 1;                   z-index: 1; }
 .coll-pane[data-pos="left"]   { transform: var(--nav-at-left);   opacity: var(--nav-off-opacity); z-index: 0; }
@@ -502,7 +548,10 @@ body {
 .coll-pane:not([data-pos="center"]) { pointer-events: none; } /* only the on-screen pane is interactive */
 @media (prefers-reduced-motion: reduce) {
   .coll-pane { transition: none; }
-  .app-body { animation: none; }   /* freeze the canvas anim (Ocean waves / Glass drift) */
+  .app-body { animation: none; }   /* freeze the canvas anim (Glass drift) */
+  /* Ocean stays VISIBLE, just still: a motionless sea is still a sea (unlike
+     a half-drawn bolt), so the skin keeps its surface instead of going blank. */
+  .ocean__roll, .ocean__bob { animation: none; }
   .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
   /* no hover-lift jump when motion is reduced */
   .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }

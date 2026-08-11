@@ -51,10 +51,10 @@ Two new attributes on `<html>`, sibling to `data-theme` / `data-skin`, **owned b
 
 - **Skin and theme stay independent axes** ✅ — the signature architectural move:
   - **`data-skin="weather"`** — shapes react: fonts, sky animation, particles, motion per
-    condition. Colors still come from whatever theme is active (rain on hornet = golden rain).
+    condition. Colors still come from whatever theme is active (rain on black-yellow = golden rain).
   - **`data-theme="weather"`** — colors react: the role table (`--canvas`, `--title`,
     `--text`, traffic lights, `--surface`, …) branches on `[data-weather]`/`[data-daylight]`.
-    Works under any skin (weather-colored Desk is legitimate).
+    Works under any skin (weather-colored Press is legitimate).
   - **The full experience = both.** The Skin/Theme flyouts stay as they are; "Weather" is
     simply a new entry in each. ⬜ Later nicety: picking the weather *skin* offers to bring
     the theme along (one-tap pairing), never forces it.
@@ -87,9 +87,9 @@ Two layers behind the bento, different tech for different jobs:
 
 ### 2a. The sky — pure CSS, existing tokens
 Per condition × daylight, the weather skin overrides `--canvas-bg` / `--canvas-anim` (the
-same levers Ocean's `wave-roll` and Glass's `aurora-drift` already use): slow-drifting
+same levers Ocean's `ocean-roll` and Glass's `aurora-drift` already use): slow-drifting
 gradient stacks. Colors are **theme roles / color-mixes only** — under the weather theme the
-sky gets true weather color; under fairy it's a fairy-tinted sky. Golden hour is a warm
+sky gets true weather color; under lilac it's a lilac-tinted sky. Golden hour is a warm
 `color-mix` pass over whatever scene is active — sunset *through* rain works.
 
 ### 2b. The weather — a `<canvas>` particle layer (new primitive ⚠️)

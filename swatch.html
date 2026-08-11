@@ -92,12 +92,40 @@
     }
     .mock__body {
       padding: var(--panel-pad);
+      position: relative;           /* anchors the mock's ocean layer */
       background-image: var(--canvas-bg);
       background-size: var(--canvas-bg-size);
       background-repeat: var(--canvas-bg-repeat);
       animation: var(--canvas-anim);
     }
+    /* Ocean layer — a scoped copy of the app's .ocean (src/styles.css), so
+       the Ocean mock shows its actual surface and not a blank canvas. Pattern
+       ids are suffixed per mock: two <pattern id="ocean-swell-1"> on one page
+       would make every url(#…) resolve to the first. */
+    .ocean {
+      display: var(--ocean-display, none);
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 0;
+    }
+    .ocean__roll {
+      x: -160px; y: -8px;
+      width: calc(100% + 320px); height: calc(100% + 16px);
+      animation: ocean-roll 16s linear infinite;
+    }
+    .ocean__bob  { animation: ocean-bob 9s ease-in-out infinite alternate; }
+    .ocean__fill { fill: var(--canvas); }
+    .ocean__crest { fill: none; stroke-width: 1px; }
+    .ocean__crest--1 { stroke: var(--ocean-ink-1); }
+    .ocean__crest--2 { stroke: var(--ocean-ink-2); }
+    .ocean__crest--3 { stroke: var(--ocean-ink-3); }
+    .ocean__roll--1 { --roll-dist: 144px; }
+    .ocean__roll--2 { --roll-dist: 128px; }
+    .ocean__roll--3 { --roll-dist:  80px; }
+    .ocean__bob--1  { --bob-amp:  3px; }
+    .ocean__bob--2  { --bob-amp: -2px; }
+    .ocean__bob--3  { --bob-amp:  1px; }
     .mock__panel {
+      position: relative; z-index: 1;   /* the card rides above the ocean layer */
       background: var(--panel);
       backdrop-filter: var(--panel-backdrop);
       border: var(--panel-border-width) solid var(--panel-border);
@@ -139,17 +167,20 @@
   <div id="root"></div>
 
   <script>
-    const THEMES = ['fairy', 'glade', 'sepia', 'moonlight', 'hornet', 'viper'];
-    const SKINS  = ['vanilla', 'desk', 'ocean', 'glass'];
+    const THEMES = ['lilac', 'green', 'sepia', 'moonlight', 'black-yellow', 'black-red'];
+    const SKINS  = ['vanilla', 'press', 'ocean', 'glass', 'retro-future'];
+    const K = ['lilac', 'green', 'sepia', 'moonlight', 'black-yellow', 'black-red'];
+    // Paint names per role, in THEMES order.
     const ROLES = [
-      ['--canvas',   { fairy: 'Dewy Lilac',           glade: 'Dewy Chartreuse', sepia: 'Parchment',  moonlight: 'Deep Slate',      hornet: 'Pitch',      viper: 'Pitch' }],
-      ['--go',       { fairy: 'Fae Mint',             glade: 'Fern',            sepia: 'Olive Leaf', moonlight: 'Moonlight White', hornet: 'Hazard',     viper: 'Siren' }],
-      ['--stop',     { fairy: 'Purple Cactus Flower', glade: 'Foxglove',        sepia: 'Terracotta', moonlight: 'Moonlight Gray',  hornet: 'Straw',      viper: 'Ember' }],
-      ['--pause',    { fairy: 'Lemon Chrome',         glade: 'Lemon Chrome',    sepia: 'Amber Glow', moonlight: 'Moonlight Silver', hornet: 'Amber Wax', viper: 'Blood' }],
-      ['--title',    { fairy: 'Twilight Plum',        glade: 'Forest',          sepia: 'Espresso',   moonlight: 'Slate Bright',    hornet: 'Hazard',     viper: 'Siren' }],
-      ['--text',     { fairy: 'Violet Slate',         glade: 'Moss',            sepia: 'Cocoa',      moonlight: 'Slate Mid',       hornet: 'Paper Warm', viper: 'Ash White' }],
-      ['--subtext',  { fairy: 'Lavender Grey',        glade: 'Sage Grey',       sepia: 'Faded Tan',  moonlight: 'Slate Dim',       hornet: 'Straw',      viper: 'Ember' }],
-    ];
+      ['--canvas',  ['Dewy Lilac', 'Dewy Chartreuse', 'Parchment', 'Deep Slate', 'Pitch', 'Pitch']],
+      ['--go',      ['Fae Mint', 'Fern', 'Olive Leaf', 'Moonlight White', 'Hazard', 'Siren']],
+      ['--stop',    ['Purple Cactus Flower', 'Foxglove', 'Terracotta', 'Moonlight Gray', 'Straw', 'Ember']],
+      ['--pause',   ['Lemon Chrome', 'Lemon Chrome', 'Amber Glow', 'Moonlight Silver', 'Amber Wax', 'Blood']],
+      ['--title',   ['Twilight Plum', 'Forest', 'Espresso', 'Slate Bright', 'Hazard', 'Siren']],
+      ['--text',    ['Violet Slate', 'Moss', 'Cocoa', 'Slate Mid', 'Paper Warm', 'Ash White']],
+      ['--subtext', ['Lavender Grey', 'Sage Grey', 'Faded Tan', 'Slate Dim', 'Straw', 'Ember']],
+      ['--ink-2',   ['Cactus Flower (plate)', 'Foxglove (plate)', 'Terracotta (plate)', 'Silver (muted plate)', 'Hazard (plate)', 'Siren (plate)']],
+    ].map(([role, list]) => [role, Object.fromEntries(K.map((t, i) => [t, list[i]]))]);
 
     const root = document.getElementById('root');
     for (const theme of THEMES) {
@@ -217,6 +248,28 @@
       pick.appendChild(btn);
     }
 
+    // One full sine period per tile (Q + T reflection) — value AND tangent
+    // match at the tile edge, so the horizontal seam is invisible. Farthest
+    // train first, each an opaque --canvas fill under a hairline crest.
+    const SWELLS = [
+      [3, 80, 46, 26, 4],
+      [2, 64, 38, 22, 5],
+      [1, 48, 30, 17, 6],
+    ];
+    const ocean = (skin) => {
+      const crest = (W, c, a) => `M0 ${c} Q${W / 4} ${c - a} ${W / 2} ${c} T${W} ${c}`;
+      const defs = SWELLS.map(([n, W, H, c, a]) => `
+        <pattern id="ocean-swell-${n}-${skin}" width="${W}" height="${H}" patternUnits="userSpaceOnUse">
+          <path class="ocean__fill" d="${crest(W, c, a)} L${W} ${H} L0 ${H} Z" />
+          <path class="ocean__crest ocean__crest--${n}" d="${crest(W, c, a)}" />
+        </pattern>`).join('');
+      const trains = SWELLS.map(([n]) => `
+        <g class="ocean__bob ocean__bob--${n}">
+          <rect class="ocean__roll ocean__roll--${n}" fill="url(#ocean-swell-${n}-${skin})" />
+        </g>`).join('');
+      return `<svg class="ocean" aria-hidden="true"><defs>${defs}</defs>${trains}</svg>`;
+    };
+
     for (const skin of SKINS) {
       const box = document.createElement('div');
       box.className = 'skinbox';
@@ -234,6 +287,7 @@
            </span>
          </div>
          <div class="mock__body">
+           ${ocean(skin)}
            <div class="mock__panel">
              <p class="mock__ptitle">Library</p>
              <div class="mock__pills"><span class="mpill">Sort</span><span class="mpill">View</span></div>

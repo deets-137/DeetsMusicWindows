@@ -54,12 +54,49 @@ const FONTS_CSS: &str = include_str!("../../src/styles/fonts.css");
 const FONT_REGULAR: &[u8] = include_bytes!("../../src/styles/fonts/LiberationSerif-Regular.ttf");
 const FONT_BOLD: &[u8] = include_bytes!("../../src/styles/fonts/LiberationSerif-Bold.ttf");
 
+/// The installed app's data dir, seeded once from Tauri at startup (`lib.rs`).
+/// A `OnceLock` rather than threading an `AppHandle` through: the secrets
+/// helpers below are plain functions called from a dozen places, including the
+/// loopback server thread, which has no handle.
+static APP_DATA_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Called once from `lib.rs`'s `setup()`, before anything reads a secret.
+pub fn set_app_data_dir(dir: PathBuf) {
+    let _ = APP_DATA_DIR.set(dir);
+}
+
+/// Where the credentials you authored live: `apple.json` + the `.p8` key.
+///
+/// An INSTALLED build must not depend on the source tree, so the app data dir
+/// wins — but only if it actually holds an `apple.json`, so a dev run with an
+/// empty app data dir keeps working off the repo exactly as before. Copy
+/// `src-tauri/secrets/` into the app data dir to make an install self-contained
+/// (see `secrets/README.md`).
 fn secrets_dir() -> PathBuf {
+    if let Some(dir) = APP_DATA_DIR.get() {
+        let installed = dir.join("secrets");
+        if installed.join("apple.json").is_file() {
+            return installed;
+        }
+    }
+    repo_secrets_dir()
+}
+
+/// The compile-time source-tree path. Dev fallback only — in an installed
+/// build this points at wherever the machine that COMPILED it kept the repo.
+fn repo_secrets_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("secrets")
 }
 
+/// Where the captured user token is WRITTEN. Always app data when we have it:
+/// the token is runtime state, not something you authored, and an installed
+/// app writing back into the source tree is exactly what we're fixing. Falls
+/// back to the repo only when Tauri never handed us a data dir.
 fn user_token_path() -> PathBuf {
-    secrets_dir().join("user-token.txt")
+    match APP_DATA_DIR.get() {
+        Some(dir) => dir.join("user-token.txt"),
+        None => repo_secrets_dir().join("user-token.txt"),
+    }
 }
 
 fn load_config() -> Result<AppleConfig, String> {
@@ -102,11 +139,23 @@ fn persist_user_token(tok: &str) -> std::io::Result<()> {
 }
 
 /// Read a previously captured MUT from disk (called on startup).
+///
+/// Falls back to the pre-app-data location in the repo, so an existing dev
+/// sign-in isn't silently dropped the first time this runs — and re-persists
+/// it to the new path so the fallback is needed exactly once.
 pub fn load_persisted_user_token() -> Option<String> {
-    std::fs::read_to_string(user_token_path())
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+    let read = |p: PathBuf| {
+        std::fs::read_to_string(p)
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    };
+    if let Some(tok) = read(user_token_path()) {
+        return Some(tok);
+    }
+    let legacy = read(repo_secrets_dir().join("user-token.txt"))?;
+    let _ = persist_user_token(&legacy);
+    Some(legacy)
 }
 
 // ── Loopback auth flow ───────────────────────────────────────────────────────
@@ -288,8 +337,8 @@ pub fn apple_begin_auth(
     let page = AUTH_PAGE
         .replace("__DEV_TOKEN__", &dev)
         .replace("__NONCE__", &nonce)
-        .replace("__THEME__", if theme.is_empty() { "fairy" } else { &theme })
-        .replace("__SKIN__", if skin.is_empty() { "vanilla" } else { &skin });
+        .replace("__THEME__", if theme.is_empty() { "lilac" } else { &theme })
+        .replace("__SKIN__", if skin.is_empty() { "press" } else { &skin });
 
     let store = state.user_token.clone();
     std::thread::spawn(move || serve(server, page, nonce, store));
@@ -321,6 +370,9 @@ pub fn apple_user_token(state: tauri::State<'_, AppleState>) -> Option<String> {
 pub fn apple_disconnect(state: tauri::State<'_, AppleState>) {
     *state.user_token.lock().unwrap() = None;
     let _ = std::fs::remove_file(user_token_path());
+    // Also clear the pre-app-data copy, or the next launch's fallback in
+    // load_persisted_user_token() would quietly sign you back in.
+    let _ = std::fs::remove_file(repo_secrets_dir().join("user-token.txt"));
 }
 
 // ── Phase 2: raw data dump (for designing the model) ─────────────────────────

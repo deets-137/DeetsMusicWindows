@@ -17,7 +17,7 @@ Styling is split into three orthogonal layers. Each lives in its own file under
 | **Theme** | `themes.css` | color *roles* → palette | `[data-theme="…"]` | recolor the app |
 | **Skin** | `skin.css` | everything non-color: type, size, radius, spacing, geometry | `[data-skin="…"]` | reshape/retype the app |
 
-Both are set on `<html>`: `<html data-theme="fairy" data-skin="vanilla">`.
+Both are set on `<html>`: `<html data-theme="lilac" data-skin="press">`.
 Theme and skin are **independent** — any theme works with any skin.
 
 ### Why palette is separate from theme
@@ -44,6 +44,7 @@ The complete set the UI is allowed to reference:
 | `--surface` | floating panel background (menus, popovers) — distinct from canvas |
 | `--surface-hover` | highlighted / hovered row inside a panel |
 | `--border` | hairline panel edge (kept as low-alpha so it reads on any canvas) |
+| `--ink-2` | the **second plate** — one spot color printed slightly out of register behind cards and menus. Only the Press skin prints it, but the *choice* is the theme's: which of its own accents survives as a solid 4px block on that theme's stock. `:root` falls back to `--go`, so a theme that never names it still prints. |
 
 Traffic-light role names are deliberately function-named (`go/stop/pause`) not
 color-named, so a theme can shade them to fit its canvas without the names lying.
@@ -54,15 +55,15 @@ scrollbar corner, and autofill match) and a few non-table roles every block maps
 `--scrollbar-hover`.
 
 ### Themes that ship today
-- **`fairy`** — twilight-lilac canvas, twilight-plum headings, with magenta + gold fae accents.
-- **`glade`** — fairy's structure in chartreuse: dewy chartreuse canvas, forest-green title,
+- **`lilac`** — twilight-lilac canvas, twilight-plum headings, with magenta + gold fae accents.
+- **`green`** — lilac's structure in chartreuse: dewy chartreuse canvas, forest-green title,
   moss/sage type, fern + foxglove + gold traffic lights (gold reuses lemon-chrome).
 - **`sepia`** — warm parchment + amber, vibe pulled from the harness "Sepia Dreams".
 - **`moonlight`** — dark mode: deep slate-blue canvas, slate blue-gray type (bright→dim),
   monochrome traffic lights (moonlight white→gray).
-- **`hornet`** — black & yellow (Noir Gold): near-black canvas, hi-vis yellow title, warm-white
+- **`black-yellow`** — Noir Gold: near-black canvas, hi-vis yellow title, warm-white
   body, monochrome-yellow traffic lights (no green/red), gold hairline borders.
-- **`viper`** — hornet's structure in black & red (cyber villain): reuses pitch/onyx surfaces,
+- **`black-red`** — black-yellow's structure in red (cyber villain): reuses pitch/onyx surfaces,
   siren-red title, ash-white body, monochrome-red traffic lights (siren/blood/ember), red
   hairline borders.
 
@@ -79,7 +80,7 @@ scrollbar corner, and autofill match) and a few non-table roles every block maps
 
 ### Structure: a shared base + per-skin deltas
 `skin.css` opens with a **`[data-skin]` base block** that defines *every* token —
-these values **are Vanilla**. Each named skin (`[data-skin="desk"]`, `…="ocean"`)
+these values **are Vanilla**. Each named skin (`[data-skin="press"]`, `…="ocean"`)
 then overrides **only what it changes**. They have equal specificity, base is
 declared first, so a skin's overrides win by source order — and a skin may still
 override *any* base token. `data-skin` selects one value at a time (a skin does
@@ -123,8 +124,8 @@ The base defines, among others:
 ### A skin never names a color — even for surfaces
 `--panel` is the key example. "Does this skin lift cards off the canvas?" is a
 **skin** decision; the *color* of that surface is a **theme** one. So the skin points
-`--panel` at a theme **role** — Vanilla `var(--canvas)` (flush), Desk `var(--surface)`
-(raised paper) — or **derives** one without naming a hex: Ocean
+`--panel` at a theme **role** — Vanilla `var(--canvas)` (flush), Press `var(--surface)`
+(printed stock) — or **derives** one without naming a hex: Ocean
 `color-mix(in srgb, var(--surface), black 18%)` (recessed/darker). The theme always
 owns the actual color. Same rule for the canvas pattern and soft borders: their tint
 is `var(--border)`, a theme role.
@@ -133,30 +134,37 @@ is `var(--border)`, a theme role.
 backdrop — both still derived, never named. Panels are `color-mix(--surface 55%,
 transparent)` (an *alpha* of a theme role), and the "aurora" the frost refracts is built
 from the theme's **accent roles** (`--go` / `--stop` / `--pause`) at low alpha — so Glass
-recolors itself per theme (mint/magenta/gold on fairy, all-yellow on hornet) without a
+recolors itself per theme (mint/magenta/gold on lilac, all-yellow on black-yellow) without a
 single hex. The one thing a token couldn't express was the *blur* itself, so that became
 a new primitive: `--panel-backdrop`.
 
 ### Nav motion is tokenized, not hardcoded
 `.coll-pane` reads its per-position transform/opacity from `--nav-at-*` /
 `--nav-off-opacity`, so a skin reshapes the **whole drill-in motion** with values
-only — no rule edits. Vanilla slides (`translateX`), Desk drops (`scale`), Ocean
-sinks (`translateY`). `prefers-reduced-motion` still disables it.
+only — no rule edits. Vanilla slides (`translateX`), Press stamps (the same slide, but
+fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scales.
+`prefers-reduced-motion` still disables it.
 
 ### Skins that ship today
 - **`vanilla`** — the reference: flush **borderless** cards (spacing/typography carry the
   grouping) with an **editorial underline** under the app + card titles (`--title-underline`
   tokens, vanilla-only opt-in; behavior toggle is
   [FUTURE-SETTINGS §11](FUTURE-SETTINGS.md)), horizontal slide, Liberation type.
-- **`desk`** — light/airy notebook: raised paper cards (`--surface`) with a drop shadow on a
-  dot grid (tinted `--panel-border` so it actually reads), **paper-label controls** (square
-  pills, not capsules), an **airier** page (panel-scoped padding/gap up a step), **photo-corner**
-  covers (3px) on a **cut-paper radius ladder** (3px covers → 6px cards/menus → 7px pills;
-  menus get a sticky-note shadow), a 1px **hover-lift** on rows, a **tilted paper drag**
-  (`--drag-lift` rotates the picked-up queue row; fatter pencil drop-line), a drop-onto nav,
-  Comic Sans MS (title; bundled Comic Neue fallback — Caveat retired) + Karla (body).
+- **`press`** — a risograph print shop; ink on stock, not light on glass. Opaque `--surface`
+  cards with a printed `--panel-border` keyline, **every radius trimmed to 0**, and — instead
+  of a shadow — a **second plate** printed slightly out of register: a hard `4px 4px 0
+  var(--ink-2)` block (menus go one step further, 5px). Blur radius is `0` in every shadow
+  here on purpose; a soft edge would break the illusion. The stock is a fine **halftone
+  screen** (`--panel-border` dots on a 7px pitch — at that size it reads as paper tooth, not
+  as a pattern). The hover-lift moves on **both axes** (`translate(-1px, -1px)`, the only skin
+  that does): the sheet slides up-left off its ink, *widening* the misregistration to 5px
+  rather than floating above it. Mono body sizes down a step (14 → 13px) with extra leading,
+  since Plex Mono runs wide at the 480px midi width. Anton (title, one weight — `--fw-title`
+  drops to 400) + IBM Plex Mono (body). **Retired the `desk` skin** it replaced; a saved
+  `desk` id migrates via `RETIRED` in `skin.ts`.
 - **`ocean`** — deep/abyssal: recessed soft-edged cards (`color-mix`) on a surface of three
-  rolling-wave frequencies (`wave-roll`), a sink/rise nav, Cinzel (title) + Spectral (body).
+  rolling **SVG wave trains** (the ocean layer, below), a sink/rise nav, Cinzel (title) +
+  Spectral (body).
   Pairs best with light themes (its black-mix cards + shadows are faint on dark canvases — a
   per-theme `--surface-sunken` role is the documented upgrade if Ocean needs true depth there).
 - **`glass`** — frosted glassmorphism: translucent panels (`color-mix` alpha of `--surface`)
@@ -168,14 +176,41 @@ sinks (`translateY`). `prefers-reduced-motion` still disables it.
   chips, a fade/scale nav, light sans title. See the doctrine note above for how it stays
   hex-free. Intensity numbers are catalogued in [FUTURE-SETTINGS §12](FUTURE-SETTINGS.md)
   (skin-specific). Open upgrade: a `--highlight` theme role for a true white sheen.
-- **`cyberstorm`** — electric/futuristic: two lightning bolts slow-draw down the canvas
+- **`retro-future`** — electric/futuristic: two lightning bolts slow-draw down the canvas
   behind the cards (the **storm layer**, below), smoked-glass panels (86% `--canvas` mix —
   a bolt passing behind a card glows through dimly) with a hard 1px edge and no soft shadow,
   a faint `--border` circuit grid, square corners everywhere, a skew-snap nav jolt
   (`skewX` in the `--nav-at-*` transforms), a lightning-bolt scrubber handle, Orbitron
   (title) + Rajdhani 500 (body). Storm dials are catalogued in
   [FUTURE-SETTINGS §13](FUTURE-SETTINGS.md) (skin-specific). Pairs best with dark themes
-  (moonlight / hornet / viper), where the bolts read as light.
+  (moonlight / black-yellow / black-red), where the bolts read as light.
+
+### The ocean layer (opt-in rolling swell)
+The same opt-in doctrine as the storm layer, for a *surface* rather than strokes: an
+inline `<svg class="ocean">` in `.app-body` behind the bento, holding three
+`<pattern>` wave trains. Inert unless a skin flips `--ocean-display` (only Ocean does).
+
+Each tile is **one full sine period** — `M0 c Q W/4 (c−a) W/2 c T W c`, the `T`
+mirroring the `Q` — so the curve's **value and tangent** both match at the tile edge and
+the horizontal seam is invisible. Each train paints an **opaque `--canvas` fill** beneath
+its hairline crest, so a nearer swell *occludes* the ones behind it instead of three
+see-through lines crossing. Atmospheric perspective is three skin tokens: `--ocean-ink-1`
+is full `--border`, `-2` / `-3` mix it toward `--canvas` (70% / 45%), so far waves recede
+into haze.
+
+Motion is split across **two elements** so the transforms compose rather than overwrite:
+`ocean-roll` translates the `<rect>` (linear), `ocean-bob` the wrapping `<g>` (ease-in-out
+alternate ≈ a sine). Per-layer distances come from `--roll-dist` / `--bob-amp`, resolved
+*inside* the shared keyframes per element. Each train rolls an **integer number of its own
+tile width** per 16s loop (144 = 3×48, 128 = 2×64, 80 = 1×80), nearest fastest, so the wrap
+never shows; the middle train bobs counter-phase so the sea breathes rather than pumps, and
+9s·2 vs 16s never sync (LCM 144s). The `<rect>` is oversized +320px and shifted −160px so a
+full roll never drags its own edge into view.
+
+This **replaced** a radial-gradient version, where the scallop arcs crossed at tile corners
+and scattered chevron artifacts across the canvas — the reason the layer is SVG at all.
+Under `prefers-reduced-motion` the ocean stays *visible* and merely stops (unlike the storm,
+which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
 
 ### The storm layer (opt-in decorative strokes)
 A reusable primitive, same opt-in doctrine as `--panel-backdrop`: an inline
@@ -282,17 +317,17 @@ rows — Now Playing is a short wide strip up top, the two content slots are tal
 background) and `--panel-border-width` = `0` — no edge, no shadow; the bento gap, panel
 padding, and card titles do the structuring (Glass is the one skin that opts back into a
 `1px` edge). The fill is a **skin** token now
-(`--panel` points at a theme role — Desk `--surface`, Ocean a `color-mix` of it), the
+(`--panel` points at a theme role — Press `--surface`, Ocean a `color-mix` of it), the
 edge color (`--panel-border`) stays **theme**, and `--panel-border-width` / `--panel-radius`
-/ `--panel-pad` / `--shadow-card` are **skin** — so Desk/Ocean restyle panels into real
-cards (distinct fill + drop shadow, no border) with **no markup change**. Note: rounded +
+/ `--panel-pad` / `--shadow-card` are **skin** — so Press/Ocean restyle panels into real
+cards (distinct fill + a printed plate or a drop shadow) with **no markup change**. Note: rounded +
 exotic borders (gradient/wavy) can't use CSS `border` (border-image ignores
 `border-radius`) — such a skin draws the edge on a `::before` masked/SVG layer instead.
 
 **Scrubber handle is skin-swappable:** the Now Playing handle is a `--title`-filled
 box masked by the `--scrubber-handle` SVG token (a `url(<data-uri>)`), so the shape is
 arbitrary yet still themes via `--title` and sizes via `--scrubber-handle-size`. Skins
-override the token only: Vanilla a circle, Ocean a water droplet, Desk a paper chit.
+override the token only: Vanilla a circle, Ocean a water droplet, Press a trimmed block.
 The masked SVG must be drawn **centered in its viewBox** — `mask: center` centers the
 box, not the ink, so an off-center path floats above/below the rail (Ocean's lens path
 spans y = 5→19 of 0–24 for this reason).
@@ -482,10 +517,10 @@ index.html              home markup (titlebar, settings menu, bento cards)
 swatch.html             color reference — every role, every theme, read live; plus
                         live skin × theme mini-mockups (one-page demo)
 src/styles.css          imports tokens, then app rules (chrome, menu, panels, lists)
-src/styles/fonts.css    @font-face for bundled fonts (Liberation; Desk/Ocean skin faces)
+src/styles/fonts.css    @font-face for bundled fonts (Liberation; Press/Ocean/Retro-Future faces)
 src/styles/palette.css  Tier 1 — raw paints
 src/styles/themes.css   Tier 2 — color roles per theme
-src/styles/skin.css     Tier 3 — [data-skin] base + vanilla/desk/ocean deltas (type/geometry/motion)
+src/styles/skin.css     Tier 3 — [data-skin] base + press/ocean/glass/retro-future deltas (type/geometry/motion)
 src/styles/fonts/       bundled font files (Liberation TTFs + NOTICE; skin WOFF2s)
 src/main.ts             window controls, settings menu, account, menu-mode; calls initTheme/initSkin/initLayout()
 src/cards.ts            card registry + CardDef/CardInstance (the mountable-card contract)
@@ -494,9 +529,9 @@ src/now-playing-card.ts Now Playing transport card (extracted from main.ts)
 src/playlists-card.ts   Playlists card — overview → detail on the engine; New Playlist (+),
                         remove-track, empty-only delete (PLAYLISTS.md)
 src/dropdown.ts         dropdown primitive + menu-mode fan-out (setDropdownMode, destroy)
-src/theme.ts            theme switch + localStorage persistence
+src/theme.ts            theme switch + localStorage persistence (RETIRED id migration, OS-preference default)
 src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)
-src/storm.ts            storm-layer position re-roll (CyberStorm bolts; inert otherwise)
+src/storm.ts            storm-layer position re-roll (Retro-Future bolts; inert otherwise)
 src/apple.ts            Apple Music auth bridge (connect/disconnect/status)
 src/library.ts          cache reads + sync trigger + sync-event subscription + types
 src/collection-card.ts  reusable navigable browser engine (contexts, groupings,

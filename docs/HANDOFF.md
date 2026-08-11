@@ -41,6 +41,28 @@ Devtools **auto-open in dev** (`lib.rs` setup). Debug the player in the console:
 auto-captures uncaught errors), `__music` (live instance), `__player.snap()`. Full reference:
 [DEBUGGING.md](DEBUGGING.md).
 
+## Ship it (installable Windows app)
+
+```bash
+npm run release           # = tauri build; ~3 min cold, front-end is bundled into the exe
+```
+
+Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~4.8 MB).
+Run it → installs per-user to `%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**, adds a
+Start Menu entry (right-click → *Pin to taskbar*) and an uninstaller.
+
+- **`mainBinaryName`** is set alongside `productName` in `tauri.conf.json`. Without it the
+  installed exe takes the *Cargo package* name (`deetsmusic.exe`) — `productName` alone only
+  renames the shortcut, install dir, and uninstall entry.
+- **The icon is still the stock Tauri logo.** Drop a 1024×1024 PNG somewhere and run
+  `npx tauri icon path/to/icon.png` to regenerate every size + the `.ico`.
+- **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
+  falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the
+  install self-contained — see `src-tauri/secrets/README.md`.
+- Version comes from `tauri.conf.json`; bump it before cutting a build you intend to keep.
+- The installer is **unsigned**, so SmartScreen will warn on first run (*More info → Run
+  anyway*). Silencing that needs a code-signing certificate.
+
 ---
 
 ## Next up
@@ -70,11 +92,16 @@ get large).
 
 ### Built ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.
-- **Themes** (palette → theme → skin, all CSS-variable driven): `fairy`, `glade`, `sepia`,
-  `moonlight`, `hornet`, `viper`. Settings menu (click the title) with Theme + Skin flyouts,
-  Account row, Always-on-Top / Hover-Menu / Library-Add toggles.
-- **Skins**: `vanilla` (borderless + editorial underline), `desk` (paper cards), `ocean`
-  (recessed waves), `glass` (frosted, drifting aurora), `cyberstorm` (lightning storm layer).
+- **Themes** (palette → theme → skin, all CSS-variable driven): `lilac`, `green`, `sepia`,
+  `moonlight`, `black-yellow`, `black-red`. Settings menu (click the title) with Theme + Skin
+  flyouts, Account row, Always-on-Top / Hover-Menu / Library-Add toggles. A first launch with
+  no saved choice follows the OS light/dark preference, landing on Press × Lilac or
+  Retro-Future × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`)
+  migrate via the `RETIRED` maps in `theme.ts` / `skin.ts` and the pre-paint script in
+  `index.html` — keep all three in sync.
+- **Skins**: `vanilla` (borderless + editorial underline), `press` (riso print shop —
+  square trim, halftone stock, offset `--ink-2` plate), `ocean` (recessed cards + SVG wave
+  trains), `glass` (frosted, drifting aurora), `retro-future` (lightning storm layer).
   Shared `[data-skin]` base + per-skin deltas; nav/motion/geometry fully tokenized (new
   capabilities like `--hover-lift` / `--panel-backdrop` default to no-ops).
 - **Card + slot system** (`cards.ts`, `layout.ts`; [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md)):

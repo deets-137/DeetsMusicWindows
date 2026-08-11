@@ -25,74 +25,37 @@
 
 /* ------------------------------------------------------------
    Skin fonts (all SIL OFL 1.1, bundled like Liberation above).
-   Desk → Comic Sans MS (system, title) + Karla (body);
-          Comic Neue is the bundled fallback for the title.
-   Ocean → Cinzel (title) + Spectral (body).
-   Drop the .woff2 files into ./fonts/ — until then the stacks in
-   skin.css fall back to the nearest system face, so nothing breaks.
+   Each pairs with a [data-skin] in skin.css:
+     Press        → Anton (poster grotesque title) + IBM Plex Mono
+                    (spec-sheet body).
+     Ocean        → Cinzel (engraved caps title) + Spectral (serif body).
+     Retro-Future → Orbitron (machined title) + Rajdhani (condensed body).
    ------------------------------------------------------------ */
 
-/* Desk — Comic Neue (title fallback; Comic Sans MS is the system-face
-   first choice and can't be bundled, so this face only ever loads on a
-   machine missing it — @font-face fetches lazily, on first use). */
+/* Press — Anton (title). One weight only; --fw-title is 400 there. */
 @font-face {
-  font-family: "Comic Neue";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("./fonts/ComicNeue-Bold.woff2") format("woff2");
-}
-
-/* Desk — Caveat (retired title face; kept bundled while the Comic Sans
-   direction settles — delete this block + the .woff2 to reclaim it) */
-@font-face {
-  font-family: "Caveat";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("./fonts/Caveat-Bold.woff2") format("woff2");
-}
-
-/* Desk — Karla (body) */
-@font-face {
-  font-family: "Karla";
+  font-family: "Anton";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("./fonts/Karla-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Karla";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("./fonts/Karla-Bold.woff2") format("woff2");
+  src: url("./fonts/Anton-Regular.woff2") format("woff2");
 }
 
-/* CyberStorm — Orbitron (machined sci-fi title) */
+/* Press — IBM Plex Mono (body). SemiBold, not Bold, is bound to 700: at
+   mono widths the bold face blocks up, and 600 already reads as emphasis. */
 @font-face {
-  font-family: "Orbitron";
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/IBMPlexMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url("./fonts/Orbitron-Bold.woff2") format("woff2");
-}
-
-/* CyberStorm — Rajdhani (condensed squared body; 500 is the body weight —
-   Rajdhani's 400 runs thin at list sizes, so the skin sets --fw-text: 500) */
-@font-face {
-  font-family: "Rajdhani";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("./fonts/Rajdhani-Medium.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Rajdhani";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("./fonts/Rajdhani-Bold.woff2") format("woff2");
+  src: url("./fonts/IBMPlexMono-SemiBold.woff2") format("woff2");
 }
 
 /* Ocean — Cinzel (engraved caps title) */
@@ -111,4 +74,30 @@
   font-weight: 400;
   font-display: swap;
   src: url("./fonts/Spectral-Regular.woff2") format("woff2");
+}
+
+/* Retro-Future — Orbitron (machined sci-fi title) */
+@font-face {
+  font-family: "Orbitron";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Orbitron-Bold.woff2") format("woff2");
+}
+
+/* Retro-Future — Rajdhani (condensed squared body; 500 is the body weight —
+   Rajdhani's 400 runs thin at list sizes, so the skin sets --fw-text: 500) */
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/Rajdhani-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Rajdhani-Bold.woff2") format("woff2");
 }

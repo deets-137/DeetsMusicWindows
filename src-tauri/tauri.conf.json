@@ -1,6 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "deetsmusic",
+  "productName": "DeetsMusic",
+  "mainBinaryName": "DeetsMusic",
   "version": "0.1.0",
   "identifier": "com.deetsmusic.app",
   "build": {
@@ -29,13 +30,23 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "publisher": "Aditya Sundaram",
+    "copyright": "© 2026 Aditya Sundaram",
+    "category": "Music",
+    "shortDescription": "A lightweight Apple Music player for Windows 11.",
+    "longDescription": "A lightweight Apple Music player for Windows 11: frameless midi-player chrome, a bento of swappable cards, and a token-based theme × skin system.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }

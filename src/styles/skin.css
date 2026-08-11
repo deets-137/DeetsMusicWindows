@@ -78,7 +78,7 @@
 
   /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
      base paints the panel material — an opaque slide masks the pane beneath.
-     Translucent skins (Glass, CyberStorm) drop this to transparent: they FADE
+     Translucent skins (Glass, Retro-Future) drop this to transparent: they FADE
      off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting
      --panel over the card's own frost stacks into a visible rectangle. */
   --spane-bg:      var(--panel);
@@ -97,7 +97,7 @@
   --shadow-card:  none;             /* skins add a real card shadow */
   --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
 
-  /* -- canvas pattern (Desk dot grid / Ocean waves) ---------- */
+  /* -- canvas pattern (Press halftone / Retro-Future grid) --- */
   /* A background-image painted on .app-body, BEHIND the cards. Its
      color comes from a theme role (--border); the pattern + motion
      are skin. Vanilla paints nothing. */
@@ -105,6 +105,17 @@
   --canvas-bg-size:   auto;
   --canvas-bg-repeat: repeat;
   --canvas-anim:      none;
+
+  /* -- ocean layer (rolling swell behind the cards) ----------- */
+  /* An inline-SVG layer in .app-body (three seamless wave-train
+     <pattern>s) that a skin opts into — same doctrine as --storm-*.
+     Unlike the storm the geometry is fully static, so it lives as
+     markup in index.html; the ink fades with distance via these
+     roles, so far swells recede into haze. Base is inert. */
+  --ocean-display: none;             /* ocean opts in */
+  --ocean-ink-1:   var(--border);
+  --ocean-ink-2:   var(--border);
+  --ocean-ink-3:   var(--border);
 
   /* -- transport (now playing) ------------------------------- */
   --transport-size: 22px;
@@ -131,7 +142,7 @@
      reuse the layer for rain / streaks / scan lines; the ink is a theme
      ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per
      strike by src/storm.ts) — not a skin token. Base is fully inert. */
-  --storm-display: none;            /* cyberstorm opts in */
+  --storm-display: none;            /* retro-future opts in */
   --storm-ink:     var(--title);    /* stroke color — theme role, recolors per theme */
   --storm-glow:    none;            /* drop-shadow() halo; a skin opts in */
   --storm-w:       2px;             /* stroke width (non-scaling) */
@@ -211,70 +222,85 @@
 }
 
 /* ============================================================
-   DESK — light/airy notebook. Paper cards lifted off a dotted
-   desk; a new card is set down into place. Handwritten title.
+   PRESS — a risograph print shop. Ink on stock, not light on
+   glass: a poster grotesque over a spec-sheet mono, every corner
+   trimmed square, and NO blur anywhere. Where the other skins
+   cast a shadow, Press prints a SECOND PLATE slightly out of
+   register — a hard offset block of --ink-2, the theme-owned spot
+   color (themes.css). Blur radius is 0 in every shadow here, on
+   purpose; a soft edge would break the illusion.
+   (Retired the Desk skin, 2026-08-10 — same slot, new idiom.)
    ============================================================ */
-[data-skin="desk"] {
-  /* type — a school-notebook hand title on a tidy humanist body.
-     Comic Sans MS is a Windows system face (this app is Windows-only);
-     Comic Neue is the bundled SIL-OFL fallback so the stack never
-     degrades to a generic cursive. */
-  --font-title: "Comic Sans MS", "Comic Neue", cursive;
-  --font-body:  "Karla", "Segoe UI", system-ui, sans-serif;
-  --fw-title:   700;
-  --fs-title:   22px;               /* Comic Sans reads big; size down from base+ */
+[data-skin="press"] {
+  /* type — a condensed poster grotesque over a spec-sheet mono. Anton
+     ships one weight and it is heavy, so --fw-title drops to 400. Plex
+     Mono runs wide: the body sizes DOWN a step so a density line still
+     fits the 480px midi width, and takes extra leading to breathe. */
+  --font-title: "Anton", "Haettenschweiler", "Arial Narrow", sans-serif;
+  --font-body:  "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --fw-title:   400;
+  --fs-title:   22px;               /* condensed caps take the extra size well */
+  --fs-text:    13px;               /* 14 → 13: mono is wider per character */
+  --fs-subtext: 11px;
+  --lh-text:    1.7;
 
-  /* cards — a true raised paper surface; the edge becomes a shadow.
-     6px corners land the cut-paper ladder: 3px covers → 6px cards → 7px pills. */
+  /* shape — everything comes off a trimmer */
+  --radius-panel:       0;
+  --radius-control:     0;
+  --panel-radius:       0;
+  --lib-pill-radius:    0;
+  --vol-pill-radius:    0;
+  --lib-pop-radius:     0;
+  --lib-tile-radius:    0;
+  --lib-row-art-radius: 0;
+  --scrollbar-radius:   0;
+
+  /* cards — opaque stock, a printed keyline, and the offset plate. The
+     keyline is --panel-border (the theme's stronger hairline), not the
+     faint --border: at 0 radius a whisper edge reads as a rendering
+     artifact rather than a deliberate rule. */
   --panel:              var(--surface);
-  --panel-border-width: 0;
-  --panel-radius:       6px;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.12);
+  --panel-border-width: 1px;
+  --panel-backdrop:     none;
+  --shadow-card:        4px 4px 0 var(--ink-2);
 
-  /* floating panels — sticky notes, not hovering OS chrome: squared to
-     match the cards, and the same contact + ambient shadow language */
-  --radius-panel: 6px;
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.20), 0 6px 16px rgba(0, 0, 0, 0.14);
+  /* menus print too — same plate, one step further off register */
+  --menu-surface: var(--surface);
+  --shadow-panel: 5px 5px 0 var(--ink-2);
 
-  /* controls — paper labels, not iOS capsules. Pills lose their pill. */
-  --lib-pill-radius: 7px;
-  --vol-pill-radius: 10px;
-
-  /* an airier notebook page — more breathing room inside cards + the grid
-     (panel-scoped so the titlebar/chrome rhythm is untouched) */
-  --panel-pad:    var(--space-4);   /* 12 → 16 */
-  --lib-grid-gap: var(--space-3);   /*  8 → 12 */
-
-  /* covers — printed-photo corners rather than the generic rounded tile */
-  --lib-tile-radius:    3px;
-  --lib-row-art-radius: 3px;
-
-  /* motion — paper settles; rows rise a hair when you touch them */
-  --dur-fast:   0.16s;
-  --hover-lift: translateY(-1px);
-
-  /* drag — a picked-up sheet tilts (CCW: a right hand lifting the left
-     edge) and the insertion line fattens to a pencil stroke */
-  --drag-lift:   scale(1.03) rotate(-1.2deg);
-  --drop-line-w: 3px;
-
-  /* desk — a dot grid that actually reads: the stronger --panel-border
-     hairline (0.30 alpha) instead of the whisper-faint --border (0.16),
-     and a slightly larger dot. */
-  --canvas-bg:        radial-gradient(circle, var(--panel-border) 1.6px, transparent 1.9px);
-  --canvas-bg-size:   24px 24px;
+  /* stock — a halftone screen, dotted in the theme's hairline. Tighter
+     and finer than Desk's old dot grid: at 7px it reads as paper tooth,
+     not as a pattern you are meant to look at. */
+  --canvas-bg:        radial-gradient(circle, var(--panel-border) 1.1px, transparent 1.4px);
+  --canvas-bg-size:   7px 7px;
   --canvas-bg-repeat: repeat;
 
-  /* nav — the new card drops onto the desk */
-  --nav-dur:  0.30s;
-  --nav-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --nav-at-center:   scale(1);
-  --nav-at-left:     scale(0.98);
-  --nav-at-right:    scale(1.04);
-  --nav-off-opacity: 0;
+  /* motion — a press stroke, not a settle. The lift moves on BOTH axes
+     (every other skin only rises): the sheet slides up-left off its ink,
+     widening the misregistration to 5px instead of floating above it. */
+  --dur-fast:   0.1s;
+  --dur-med:    0.16s;
+  --hover-lift: translate(-1px, -1px);
 
-  /* scrubber handle — a crisp paper square sliding along the track */
-  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='4' width='16' height='16' rx='1' fill='%23000'/%3E%3C/svg%3E");
+  /* drag — a lifted sheet pulls further off its plate (no tilt: the trim
+     is square and stays square), and the insertion line fattens to a rule */
+  --drag-lift:   translate(-2px, -2px) scale(1.01);
+  --drop-line-w: 3px;
+
+  /* nav — a sheet pulled off the stack and the next one stamped down:
+     the classic horizontal push, but fast and hard-eased at both ends,
+     and the stock is opaque so the outgoing pane needs no fade. */
+  --nav-dur:  0.16s;
+  --nav-ease: cubic-bezier(0.85, 0, 0.15, 1);
+  --nav-at-center:   translateX(0);
+  --nav-at-left:     translateX(-100%);
+  --nav-at-right:    translateX(100%);
+  --nav-off-opacity: 1;
+
+  /* scrubber handle — a trimmed block riding the rail, corners square */
+  --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='2' width='12' height='20' fill='%23000'/%3E%3C/svg%3E");
+  --scrubber-handle-size: 12px;
+  --scrubber-track-h:     4px;
 }
 
 /* ============================================================
@@ -297,28 +323,20 @@
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
   --panel-radius:       14px;       /* softer, water-smoothed corners */
 
-  /* surface — three opaque swells, each crest a hairline. Every layer
-     fills its body with --canvas (invisible against the canvas itself,
-     but OPAQUE), so a nearer swell occludes the crest behind it instead of
-     three see-through lines crossing — that's what clears up the clutter.
-     Front→back = first→last; the stagger is in each circle's center-Y, NOT
-     background-position (the wave animations own position), so the back
-     crests sit higher and peek over the front fill. Taller tiles toward the
-     back space the crest rows out.
-     Atmospheric perspective: the front crest is full --border and boldest;
-     middle/back crests fade toward --canvas (70% / 45% ink) and thin out
-     (band 72.4 → 71.8 → 71.2%), so far waves recede into haze. Tune by eye:
-     tile-height = crest spacing, center-Y = crest height/stagger,
-     band width = crest thickness, mix % = haze. */
-  --canvas-bg:
-    radial-gradient(circle at 50% 158%, var(--canvas) 70%, var(--border) 70%, var(--border) 72.4%, transparent 72.4%),
-    radial-gradient(circle at 50% 150%, var(--canvas) 70%, color-mix(in srgb, var(--border) 70%, var(--canvas)) 70%, color-mix(in srgb, var(--border) 70%, var(--canvas)) 71.8%, transparent 71.8%),
-    radial-gradient(circle at 50% 142%, var(--canvas) 70%, color-mix(in srgb, var(--border) 45%, var(--canvas)) 70%, color-mix(in srgb, var(--border) 45%, var(--canvas)) 71.2%, transparent 71.2%);
-  --canvas-bg-size:   48px 30px, 64px 38px, 80px 46px;
-  --canvas-bg-repeat: repeat;
-  /* two composed animations: wave-roll drifts X, wave-bob swells Y */
-  --canvas-anim:      wave-roll 16s linear infinite,
-                      wave-bob 9s ease-in-out infinite alternate;
+  /* surface — the rolling swell, an SVG layer (.ocean in styles.css;
+     wave-train markup in index.html). Three opaque wave trains,
+     each crest a hairline over a --canvas fill, so a nearer swell occludes
+     the ones behind it instead of three see-through lines crossing.
+     Atmospheric perspective: the front crest is full --border; middle and
+     back fade toward --canvas (70% / 45% ink), so far waves recede into
+     haze. (This replaced the old radial-gradient scallops, whose arcs
+     crossed at tile corners and scattered chevron artifacts across the
+     canvas — each SVG tile is one full sine period, so the curve's value
+     AND tangent match at the seam.) */
+  --ocean-display: block;
+  --ocean-ink-1:   var(--border);
+  --ocean-ink-2:   color-mix(in srgb, var(--border) 70%, var(--canvas));
+  --ocean-ink-3:   color-mix(in srgb, var(--border) 45%, var(--canvas));
 
   /* micro-motion — cards float on the surface; a touch buoys them up */
   --hover-lift: translateY(-1px);
@@ -337,21 +355,21 @@
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 12Q12 5 23 12Q12 19 1 12Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
-/* Ocean's swell — one wave train. All layers roll the SAME direction,
-   nearest fastest (9 / 8 / 5 px/s front→back), each by an INTEGER number
-   of its own tile width over one loop (144=3×48, 128=2×64, 80=1×80), so
-   the seam is invisible. Drift and swell are SPLIT across the -x/-y
-   longhands so two animations compose on one element: wave-roll owns the
-   horizontal drift (linear), wave-bob the rise-and-fall (ease-in-out
-   alternate ≈ a sine). Amplitudes shrink with distance (3/−2/1px); the
-   middle layer bobs in counter-phase so the sea breathes rather than
-   pumps. 9s·2 vs 16s never sync (LCM 144s) — the pattern doesn't visibly
-   repeat. Defined once; only Ocean references them (via --canvas-anim). */
-@keyframes wave-roll {
-  to { background-position-x: 144px, 128px, 80px; }
+/* Ocean's swell — motion for the injected layer. All trains roll the SAME
+   direction, nearest fastest, each by an INTEGER number of its own tile
+   width over one loop (144=3×48, 128=2×64, 80=1×80), so the seam is
+   invisible. Roll owns the horizontal drift (linear, on the <rect>s), bob
+   the rise-and-fall (ease-in-out alternate ≈ a sine, on the wrapping
+   <g>s) — separate elements, so the two transforms compose instead of
+   overwriting each other. Per-layer distances come from --roll-dist /
+   --bob-amp, set on the elements in styles.css and resolved inside these
+   keyframes per element. 9s·2 vs 16s never sync (LCM 144s) — the pattern
+   doesn't visibly repeat. Only Ocean animates them (via --ocean-display). */
+@keyframes ocean-roll {
+  to { transform: translateX(var(--roll-dist, 0px)); }
 }
-@keyframes wave-bob {
-  to { background-position-y: 3px, -2px, 1px; }
+@keyframes ocean-bob {
+  to { transform: translateY(var(--bob-amp, 0px)); }
 }
 
 /* ============================================================
@@ -378,7 +396,7 @@
     0 8px 32px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent);
 
-  /* controls — rounded glass chips (not the capsule, not the Desk label) */
+  /* controls — rounded glass chips (not the capsule, not the Press trim) */
   --lib-pill-radius:    12px;
   --vol-pill-radius:    12px;
   --lib-tile-radius:    12px;
@@ -445,12 +463,12 @@
 }
 
 /* ============================================================
-   CYBERSTORM — electric/futuristic. Lightning bolts slow-draw down
-   the canvas behind the cards (the storm layer); machined sci-fi
-   type; every corner cut square; nav snaps with a lateral jolt.
-   Intensity dials are catalogued in FUTURE-SETTINGS §13.
+   RETRO-FUTURE — electric/futuristic. Lightning bolts slow-draw
+   down the canvas behind the cards (the storm layer); machined
+   sci-fi type; every corner cut square; nav snaps with a lateral
+   jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
-[data-skin="cyberstorm"] {
+[data-skin="retro-future"] {
   /* type — machined geometric title on a condensed squared body.
      Orbitron reads very wide, size down; Rajdhani runs thin and
      small-x-height, so the body sits at 500 and a size up. */
@@ -494,7 +512,7 @@
   --storm-path-2:  path("M 0 -2 L -4 15 L 3 28 L 9 37 L 13 47 L 9 37 L 3 28 L -2 42 L 5 56 L -3 71 L -10 80 L -15 90 L -10 80 L -3 71 L 2 86 L -1 102");
 
   /* canvas — a faint circuit grid under the bolts, ruled in the theme
-     hairline (same role Desk's dots use) */
+     hairline (same role Press's halftone screen uses) */
   --canvas-bg:
     linear-gradient(var(--border) 1px, transparent 1px),
     linear-gradient(90deg, var(--border) 1px, transparent 1px);
@@ -522,14 +540,14 @@
   --scrubber-handle-size: 14px;
 }
 
-/* CyberStorm's strike cycle: the bolt draws top→bottom over ~60% of its
+/* Retro-Future's strike cycle: the bolt draws top→bottom over ~60% of its
    period (dashoffset 1→0 against pathLength=1), flickers once at full
    reach, cuts to dark, and rests until the next strike. Both bolts run
    THESE keyframes at different --storm-cycle-* durations — that alone
    yields "two visible at once, drawing at different rates". storm.ts
    re-rolls each bolt's position during the dark window (opacity 0 at
    the loop seam, so the jump is never visible). Defined once; only
-   CyberStorm references it (via the .storm__bolt animation). */
+   Retro-Future references it (via the .storm__bolt animation). */
 @keyframes storm-strike {
   0%        { stroke-dashoffset: 1; opacity: 0; }
   2%        { opacity: 1; }

@@ -29,8 +29,8 @@ export async function dumpLibrary(): Promise<string> {
  */
 export async function connect(timeoutMs = 5 * 60 * 1000): Promise<void> {
   // Pass the active theme/skin so the browser sign-in page matches the app.
-  const theme = document.documentElement.dataset.theme ?? "fairy";
-  const skin = document.documentElement.dataset.skin ?? "vanilla";
+  const theme = document.documentElement.dataset.theme ?? "lilac";
+  const skin = document.documentElement.dataset.skin ?? "press";
   await invoke("apple_begin_auth", { theme, skin }); // serves the page + opens the default browser
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {

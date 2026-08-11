@@ -24,7 +24,7 @@
 - **Stats** — §7 Listened-through threshold
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
-  §13 CyberStorm storm dials (skin-specific)
+  §13 Retro-Future storm dials (skin-specific)
 - **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
   §16 New-Playlist Search summon
 - **Radio** — §17 Resume station after break-out
@@ -363,12 +363,12 @@ Per-knob granularity is a rabbit hole; two curated presets is the honest setting
 
 ---
 
-## 13. CyberStorm storm dials — the tunable numbers
+## 13. Retro-Future storm dials — the tunable numbers
 
-**Tag: skin-specific (CyberStorm).** Same species as §12: aesthetic intensity knobs of
-one skin, hardcoded in the `[data-skin="cyberstorm"]` block (+ the `storm-strike`
+**Tag: skin-specific (Retro-Future).** Same species as §12: aesthetic intensity knobs of
+one skin, hardcoded in the `[data-skin="retro-future"]` block (+ the `storm-strike`
 keyframes and `src/storm.ts`). Tenants of the same future "skin options" surface;
-apply only while CyberStorm is active.
+apply only while Retro-Future is active.
 
 **The knobs (initial 2026-07-02 values):**
 - **Strike cycles** — `--storm-cycle-1: 8s` / `--storm-cycle-2: 12s`. The draw phase is
@@ -397,7 +397,7 @@ apply only while CyberStorm is active.
   the runner-up was bolt 2 in an accent role (`--pause`). A one-line change in the
   `.storm__bolt:nth-child(2)` ink if it ever becomes a preference.
 
-**Wiring sketch.** Like §12: a single preset (`deets.cyberstorm.storm` =
+**Wiring sketch.** Like §12: a single preset (`deets.retro-future.storm` =
 `"distant" | "overhead"`, default `"distant"`) as a `data-` attr swapping cycle/glow/
 translucency values in one block — not per-knob controls.
 

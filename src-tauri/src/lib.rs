@@ -7,15 +7,9 @@ mod provider;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Seed the user-token store from disk so a prior sign-in survives restarts.
-    let apple_state = apple::AppleState::default();
-    if let Some(tok) = apple::load_persisted_user_token() {
-        *apple_state.user_token.lock().unwrap() = Some(tok);
-    }
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(apple_state)
+        .manage(apple::AppleState::default())
         .setup(|app| {
             use tauri::Manager;
 
@@ -23,6 +17,17 @@ pub fn run() {
             let dir = app.path().app_data_dir().expect("app data dir");
             std::fs::create_dir_all(&dir).ok();
             let db_path = dir.join("deetsmusic.db");
+
+            // Hand the same dir to the Apple module, which resolves secrets and
+            // the persisted user token against it. MUST happen before the token
+            // is read below — hence the seeding moved in here from run()'s top,
+            // where it ran before Tauri could tell us where app data lives.
+            apple::set_app_data_dir(dir.clone());
+
+            // Seed the user-token store so a prior sign-in survives restarts.
+            if let Some(tok) = apple::load_persisted_user_token() {
+                *app.state::<apple::AppleState>().user_token.lock().unwrap() = Some(tok);
+            }
 
             // v2 migration (catalog-first keys): detect BEFORE opening the main
             // connection, back the file up, then migrate inside one transaction.

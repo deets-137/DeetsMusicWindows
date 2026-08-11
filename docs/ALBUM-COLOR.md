@@ -84,7 +84,7 @@ This is **the first consumer of #7's per-album palette plumbing** — build them
   built from the `--album-*` roles, on a layer *behind* the card content.
 - **Per-skin override**: a skin restyles the same layer in its idiom without naming a color —
   **glass** refracts it through `--panel-backdrop` (its frost already saturates the aurora);
-  a flat skin (vanilla) shows it as a soft radial bloom; desk/ocean can tune strength/shape.
+  a flat skin (vanilla) shows it as a soft radial bloom; press/ocean can tune strength/shape.
 - **Placement:** the aurora is a `::before` (or a dedicated child) on the NP card, absolutely
   positioned, `z` below the cover/text, clipped to the card radius. Its gradient origin is
   aligned to the **cover's center** (the cover is a fixed `--np-cover` square in the strip).
@@ -103,7 +103,7 @@ radial-gradient(at <cover-center>,
 
 `S` = `--album-aurora-strength` (a skin token, default e.g. `36%`). **Contrast safety** ✅:
 every stop is a `color-mix(... , transparent)` and may additionally mix toward `--surface`,
-so a blown-out Apple `bgColor` can't nuke legibility on dark themes (moonlight / hornet).
+so a blown-out Apple `bgColor` can't nuke legibility on dark themes (moonlight / black-yellow).
 
 ---
 
