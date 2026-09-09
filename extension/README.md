@@ -21,7 +21,9 @@ title menu → **Extension → Install guide…** opens it too. Short version:
 ## Layout
 
 ```
-manifest.json          MV3, Chrome-first (activeTab + scripting + storage, host 127.0.0.1)
+manifest.json          MV3, Chrome-first (activeTab + scripting + storage; deliberately
+                       NO host_permissions — one would strip the Origin header the app
+                       pairs on, see docs/EXTENSION.md §3)
 src/common/shared.js   settings, bridge client, title heuristics, log
 src/readers.js         page readers injected on click (YouTube DOM, MAIN world, YT Music)
 src/bg/service-worker.js  opens settings on first install; otherwise idle

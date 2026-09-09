@@ -38,7 +38,16 @@ and a second MusicKit sign-in in the browser; (C) A with B as fallback — overk
 - **No pairing code (decided 2026-09-09).** A request is *the extension* when its
   `Origin` is `chrome-extension://` / `moz-extension://` — the browser sets that header
   and a web page can't forge it. CORS echoes only that origin; a web page gets no CORS
-  header at all. Accepted cost: any *native* process on the PC could forge the header
+  header at all.
+- **The manifest must NOT declare `host_permissions` for `127.0.0.1` (2026-09-09).**
+  A host permission makes the popup's fetch a privileged, non-CORS request and Chrome
+  then attaches **no `Origin` header at all** — so the only credential vanishes and every
+  call is `401 unpaired` (first user test: `bridge.log` showed `GET /health paired=false`
+  on every popup open). Without the permission the fetch is a genuine CORS request,
+  Chrome sends the `Origin`, and the preflight branch below answers it. `activeTab` +
+  `scripting` still cover reading the page, so nothing else is lost. The preflight also
+  replies `Access-Control-Allow-Private-Network: true` for Chrome's private-network
+  check. Accepted cost: any *native* process on the PC could forge the header
   and add songs / read now-playing — nothing sensitive leaks (no Apple tokens; adds are
   add-only). Rejected: the copy-paste code (friction for a low-stakes surface) and a
   Bluetooth-style Allow prompt (needs a dialog primitive the app doesn't have).
@@ -51,7 +60,7 @@ and a second MusicKit sign-in in the browser; (C) A with B as fallback — overk
 
 | Route | Auth | Body → Reply |
 |---|---|---|
-| `OPTIONS *` | – | CORS preflight |
+| `OPTIONS *` | – | CORS preflight (+ `Allow-Private-Network`) |
 | `GET /health` | – | `{ok, app:"DeetsMusic", version, connected, paired, theme, skin}` |
 | `POST /resolve` | ✓ | `{title, artist?, album?, source?, url?}` → `{candidates:[{track, inLibrary, score, artworkUrl}]}` (top 3) |
 | `POST /add` | ✓ | `{track}` *or* `{album}` → `{ok}`; an album fetches its tracks first (fork A, like the app's menu); emits `library-changed` to the app |

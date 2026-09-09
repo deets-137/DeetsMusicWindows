@@ -234,6 +234,7 @@ fn respond(req: Request, status: u16, body: String, mime: &str, origin: Option<S
             .with_header(header("Access-Control-Allow-Origin", &o))
             .with_header(header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
             .with_header(header("Access-Control-Allow-Headers", "Authorization, Content-Type"))
+            .with_header(header("Access-Control-Allow-Private-Network", "true"))
             .with_header(header("Access-Control-Max-Age", "600"))
             .with_header(header("Vary", "Origin"));
     }
