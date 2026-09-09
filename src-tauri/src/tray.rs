@@ -147,6 +147,7 @@ pub fn sync_menu(app: &AppHandle) {
     let win = CheckMenuItemBuilder::with_id("read-windows", "Read Windows media").checked(read_windows).build(app);
     let quit = MenuItemBuilder::with_id("quit", "Quit DeetsMusic").build(app);
     let (Ok(open), Ok(panel), Ok(win), Ok(quit)) = (open, panel, win, quit) else { return };
+    #[cfg_attr(not(debug_assertions), allow(unused_mut))]
     let mut menu = MenuBuilder::new(app).item(&open).item(&panel).separator().item(&win);
     #[cfg(debug_assertions)]
     {
