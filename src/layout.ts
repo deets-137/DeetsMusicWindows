@@ -1,49 +1,85 @@
-// Layout manager (midi surface) — mounts Now Playing into the anchored top slot and the two
-// swappable content cards into the left/right slots from a persisted assignment, and wires
-// each content slot's title-as-menu picker. See docs/SURFACES-AND-CARDS.md.
+// Layout manager — composes the bento per SURFACE (SURFACES-AND-CARDS.md §2/§4).
 //
-// Swap mechanism is destroy + remount. That's safe because the picker is root-only (a card
-// can only be swapped while showing its base title), so a swap never strands a drill — it
-// only discards scroll position, which is negligible.
+// Now Playing is mounted once into the anchored top slot and never swapped; the CSS
+// composition for each surface restyles it in place. Every other slot comes from the
+// active surface's Composition: which content slots it has, which cards are anchored
+// (never offered by the pickers), the default assignment, and the localStorage key it
+// persists to. mini rides midi's map (CSS hides the right slot); max has its own four
+// content slots plus the Queue card anchored under the stage.
+//
+// Swap mechanism is destroy + remount. That's safe because the picker is root-only (a
+// card can only be swapped while showing its base title), so a swap never strands a
+// drill — it only discards scroll position, which is negligible. A surface flip between
+// compositions tears every content slot down and remounts from the new map.
 
 import { registry, type CardDef, type CardId, type CardInstance } from "./cards";
 import { makeDropdown } from "./dropdown";
 import { onCardRequest } from "./layout-bus";
-import { currentSurface } from "./surface";
+import { currentSurface, onSurfaceChange, type SurfaceName } from "./surface";
 
-type Slot = "left" | "right";
-interface MidiLayout {
-  left: CardId;
-  right: CardId;
+type Slot = "left" | "right" | "c" | "d";
+type Assignment = Partial<Record<Slot, CardId>>;
+
+interface Composition {
+  /** localStorage key for the persisted assignment. */
+  key: string;
+  /** Content slots, in order. The LRU tie-break prefers the LATER slot (midi: right). */
+  slots: Slot[];
+  /** Cards the pickers never offer (they're on-screen by construction). */
+  anchored: CardId[];
+  defaults: Assignment;
+  /** Mount the Queue card into the dedicated [data-slot="queue"] host (max). */
+  queueSlot: boolean;
 }
 
-const LAYOUT_KEY = "deets.layout.midi";
-const DEFAULT_LAYOUT: MidiLayout = { left: "library", right: "queue" };
+const MIDI: Composition = {
+  key: "deets.layout.midi",
+  slots: ["left", "right"],
+  anchored: ["now-playing"],
+  defaults: { left: "library", right: "queue" },
+  queueSlot: false,
+};
+// max (2026-09-09, option A): stage + anchored queue on the left, a 2×2 bento on the right.
+const MAX: Composition = {
+  key: "deets.layout.max",
+  slots: ["left", "right", "c", "d"],
+  anchored: ["now-playing", "queue"],
+  defaults: { left: "library", right: "search", c: "playlists", d: "history" },
+  queueSlot: true,
+};
 
-/** Cards selectable in a content slot — everything except the anchored Now Playing. */
-const contentCards = (): CardDef[] =>
-  (Object.values(registry).filter(Boolean) as CardDef[]).filter((c) => c.id !== "now-playing");
+/** mini shares midi's map — its composition only hides the right slot (CSS). */
+const compositionFor = (s: SurfaceName): Composition => (s === "max" ? MAX : MIDI);
 
-function loadLayout(): MidiLayout {
+/** Cards selectable in a content slot under a composition — everything not anchored. */
+const poolFor = (comp: Composition): CardDef[] =>
+  (Object.values(registry).filter(Boolean) as CardDef[]).filter((c) => !comp.anchored.includes(c.id));
+
+function loadLayout(comp: Composition): Assignment {
   try {
-    const raw = localStorage.getItem(LAYOUT_KEY);
+    const raw = localStorage.getItem(comp.key);
     if (raw) {
-      const s = JSON.parse(raw) as Partial<MidiLayout>;
-      const ids = new Set(contentCards().map((c) => c.id));
-      // Must be two distinct, still-registered content cards, else fall back to default.
-      if (s.left && s.right && ids.has(s.left) && ids.has(s.right) && s.left !== s.right) {
-        return { left: s.left, right: s.right };
+      const s = JSON.parse(raw) as Assignment;
+      const ids = new Set(poolFor(comp).map((c) => c.id));
+      const picked = comp.slots.map((slot) => s[slot]);
+      // Every slot filled with a distinct, still-registered, non-anchored card — else default.
+      const valid =
+        picked.every((id) => id && ids.has(id)) && new Set(picked).size === picked.length;
+      if (valid) {
+        const out: Assignment = {};
+        comp.slots.forEach((slot) => (out[slot] = s[slot]));
+        return out;
       }
     }
   } catch {
     /* corrupt prefs → default */
   }
-  return { ...DEFAULT_LAYOUT };
+  return { ...comp.defaults };
 }
 
-function saveLayout(l: MidiLayout): void {
+function saveLayout(comp: Composition, l: Assignment): void {
   try {
-    localStorage.setItem(LAYOUT_KEY, JSON.stringify(l));
+    localStorage.setItem(comp.key, JSON.stringify(l));
   } catch {
     /* storage disabled — still applies for the session */
   }
@@ -59,6 +95,7 @@ function makePicker(
   host: HTMLElement,
   currentId: CardId,
   inst: CardInstance,
+  pool: CardDef[],
   onPick: (slot: Slot, id: CardId) => void,
 ): SlotPicker {
   const head = host.querySelector<HTMLElement>(".panel__head");
@@ -69,7 +106,7 @@ function makePicker(
   menu.className = "slot-picker__menu";
   menu.setAttribute("role", "menu");
   menu.hidden = true;
-  menu.innerHTML = contentCards()
+  menu.innerHTML = pool
     .map(
       (c) =>
         `<button class="flyout__item" type="button" role="menuitemradio" data-card-id="${c.id}" aria-checked="${
@@ -129,33 +166,44 @@ function makePicker(
 export function initLayout(): void {
   const npHost = document.querySelector<HTMLElement>('[data-slot="np"]');
   const npDef = registry["now-playing"];
-  if (npHost && npDef) npDef.mount(npHost); // anchored; never swapped
+  if (npHost && npDef) npDef.mount(npHost); // anchored in every surface; never swapped
 
   const hosts: Record<Slot, HTMLElement | null> = {
     left: document.querySelector<HTMLElement>('[data-slot="left"]'),
     right: document.querySelector<HTMLElement>('[data-slot="right"]'),
+    c: document.querySelector<HTMLElement>('[data-slot="c"]'),
+    d: document.querySelector<HTMLElement>('[data-slot="d"]'),
   };
-  let layout = loadLayout();
-  const mounted: Record<Slot, { inst: CardInstance; picker: SlotPicker } | null> = { left: null, right: null };
+  const queueHost = document.querySelector<HTMLElement>('[data-slot="queue"]');
+
+  let comp: Composition = compositionFor(currentSurface());
+  let layout: Assignment = loadLayout(comp);
+  const mounted: Partial<Record<Slot, { inst: CardInstance; picker: SlotPicker }>> = {};
+  let queueInst: CardInstance | null = null;
 
   // ── Slot recency — which content slot the user interacted with least recently.
   // Any pointerdown inside a slot counts (capture phase, so drills/scrolls/menus all
   // register), as does a card being swapped in. Session-only; on the launch tie the
-  // LRU is the RIGHT slot (queue's default home, so a fresh-launch summon lands
-  // where you'd expect).
-  const lastTouch: Record<Slot, number> = { left: 0, right: 0 };
+  // LRU is the LAST slot of the composition (midi: right — queue's default home, so a
+  // fresh-launch summon lands where you'd expect).
+  const lastTouch: Record<Slot, number> = { left: 0, right: 0, c: 0, d: 0 };
   const touch = (slot: Slot) => { lastTouch[slot] = Date.now(); };
-  (["left", "right"] as const).forEach((slot) => {
+  (Object.keys(hosts) as Slot[]).forEach((slot) => {
     hosts[slot]?.addEventListener("pointerdown", () => touch(slot), { capture: true });
   });
-  const lruSlot = (): Slot => (lastTouch.right <= lastTouch.left ? "right" : "left");
+  const lruSlot = (): Slot => {
+    let best = comp.slots[0];
+    for (const s of comp.slots) if (lastTouch[s] <= lastTouch[best]) best = s; // ties → later slot
+    return best;
+  };
 
   const mountSlot = (slot: Slot) => {
     const host = hosts[slot];
-    const def = registry[layout[slot]];
-    if (!host || !def) return;
+    const id = layout[slot];
+    const def = id ? registry[id] : undefined;
+    if (!host || !id || !def) return;
     const inst = def.mount(host);
-    const picker = makePicker(slot, host, layout[slot], inst, setSlot);
+    const picker = makePicker(slot, host, id, inst, poolFor(comp), setSlot);
     mounted[slot] = { inst, picker };
   };
 
@@ -164,42 +212,63 @@ export function initLayout(): void {
     if (!m) return;
     m.picker.destroy();
     m.inst.destroy();
-    mounted[slot] = null;
+    delete mounted[slot];
   };
 
   function setSlot(slot: Slot, id: CardId): void {
-    if (layout[slot] === id) return; // already here
-    const other: Slot = slot === "left" ? "right" : "left";
-    if (layout[other] === id) {
-      // chosen card is in the other slot → exchange the two
+    if (!comp.slots.includes(slot) || layout[slot] === id) return; // not in this composition / already here
+    const other = comp.slots.find((s) => layout[s] === id);
+    if (other) {
+      // chosen card is in another slot → exchange the two
       const prev = layout[slot];
-      unmountSlot("left");
-      unmountSlot("right");
-      layout = slot === "left" ? { left: id, right: prev } : { left: prev, right: id };
-      mountSlot("left");
-      mountSlot("right");
+      unmountSlot(slot);
+      unmountSlot(other);
+      layout = { ...layout, [slot]: id, [other]: prev };
+      mountSlot(slot);
+      mountSlot(other);
     } else {
       // bring an unplaced card into this slot (the displaced card goes unplaced)
       unmountSlot(slot);
-      layout = slot === "left" ? { left: id, right: layout.right } : { left: layout.left, right: id };
+      layout = { ...layout, [slot]: id };
       mountSlot(slot);
     }
-    saveLayout(layout);
+    saveLayout(comp, layout);
     touch(slot); // acting on a slot (picker or summon) makes it the freshest
   }
 
-  mountSlot("left");
-  mountSlot("right");
+  const compose = () => {
+    comp.slots.forEach(mountSlot);
+    if (comp.queueSlot && queueHost && registry.queue) queueInst = registry.queue.mount(queueHost);
+  };
+  const decompose = () => {
+    (Object.keys(mounted) as Slot[]).forEach(unmountSlot);
+    queueInst?.destroy();
+    queueInst = null;
+  };
+
+  compose();
+
+  // A surface flip between compositions (midi/mini ↔ max) remounts the content slots
+  // from the new map; mini ↔ midi share a map, so nothing remounts (CSS does the work).
+  onSurfaceChange((s) => {
+    const next = compositionFor(s);
+    if (next === comp) return;
+    decompose();
+    comp = next;
+    layout = loadLayout(comp);
+    compose();
+  });
 
   // ── Summon requests (e.g. the NP card's queue button) — bring the card into the
   // LRU slot. setSlot already covers every case: unplaced card → mounts there;
-  // visible in the other slot → the two exchange ("flip"); already in the LRU slot →
+  // visible in another slot → the two exchange ("flip"); already in the LRU slot →
   // no-op. A drilled card in the target slot remounts at root — deliberate, no guard
   // (recency means a drilled slot is rarely the LRU one).
   // In mini only the LEFT slot is on-screen (the right one is display:none), so a
-  // summon must land there or it lands nowhere visible.
+  // summon must land there or it lands nowhere visible. An anchored card (max's
+  // queue) is already on-screen by construction → no-op.
   onCardRequest((id) => {
-    if (id === "now-playing") return; // anchored, never a content-slot occupant
+    if (comp.anchored.includes(id)) return;
     setSlot(currentSurface() === "mini" ? "left" : lruSlot(), id);
   });
 }

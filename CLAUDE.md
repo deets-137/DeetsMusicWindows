@@ -9,7 +9,8 @@ front-end, Rust back-end).
 - `docs/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
 - `docs/DESIGN.md` — product intent.
 - `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
-  extension + the loopback bridge (`extension/` is the MV3 source).
+  extension + the loopback bridge (`extension/` is the MV3 source); `docs/AGENT.md` —
+  the agent/CLI routes on that bridge.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -37,6 +38,7 @@ front-end, Rust back-end).
 ```
 npm install
 npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 window
+npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
 npx tsc --noEmit      # front-end typecheck
 ```
 Devtools auto-open in dev (`src-tauri/src/lib.rs`).

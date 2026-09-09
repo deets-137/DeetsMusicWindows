@@ -23,6 +23,23 @@ pub fn run() {
             std::fs::create_dir_all(&dir).ok();
             let db_path = dir.join("deetsmusic.db");
 
+            // First launch of the DEV identifier (`npm run dev:app`, HANDOFF → Run it): seed
+            // its data dir from the installed app's — the library cache and the persisted
+            // user token — so it opens signed-in with the library, zero Apple calls. Only
+            // ever copies INTO an empty dev dir; the release dir is never written.
+            if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev") && !db_path.exists() {
+                let release = dir.with_file_name("com.deetsmusic.app");
+                for name in ["deetsmusic.db", "user-token.txt"] {
+                    let from = release.join(name);
+                    if from.is_file() {
+                        match std::fs::copy(&from, dir.join(name)) {
+                            Ok(_) => println!("[dev] seeded {name} from {}", release.display()),
+                            Err(e) => eprintln!("[dev] seed {name} failed: {e}"),
+                        }
+                    }
+                }
+            }
+
             // Hand the same dir to the Apple module, which resolves secrets and
             // the persisted user token against it. MUST happen before the token
             // is read below — hence the seeding moved in here from run()'s top,
@@ -128,6 +145,7 @@ pub fn run() {
             bridge::bridge_log,
             bridge::bridge_open_install_page,
             bridge::bridge_resolve,
+            bridge::agent_reply,
             bridge::bridge_add,
             media::win_media_now_playing,
             media::win_media_transport,

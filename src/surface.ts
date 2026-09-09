@@ -124,7 +124,17 @@ function markActive(s: SurfaceName): void {
   });
 }
 
+// Surface-change subscribers (the layout manager recomposes its slots on a flip).
+type SurfaceListener = (s: SurfaceName, prev: SurfaceName) => void;
+const listeners = new Set<SurfaceListener>();
+/** Subscribe to surface flips (deliberate picks AND band crossings). Returns an unsubscribe fn. */
+export function onSurfaceChange(cb: SurfaceListener): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
 function activate(s: SurfaceName): void {
+  const prev = active;
   active = s;
   setAttribute(s);
   persistChoice(s);
@@ -132,6 +142,7 @@ function activate(s: SurfaceName): void {
   if (s !== "mini") {
     try { localStorage.setItem(FULL_KEY, s); } catch { /* session-only */ }
   }
+  if (prev !== s) listeners.forEach((cb) => cb(s, prev));
 }
 
 /** The surface the real app window uses (midi unless the user chose max). */

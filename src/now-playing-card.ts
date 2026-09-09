@@ -26,12 +26,14 @@ const TEMPLATE = `
       <div class="np__meta">
         <span class="np__title" id="np-title">Not playing</span>
         <span class="np__artist" id="np-artist"></span>
+        <span class="np__album" id="np-album"></span>
       </div>
       <div class="np__scrub scrub">
         <div class="scrub__track"><div class="scrub__fill"></div></div>
         <span class="scrub__handle" aria-hidden="true"></span>
         <span class="np__live" aria-hidden="true">LIVE</span>
       </div>
+      <div class="np__times" aria-hidden="true"><span id="np-elapsed">0:00</span><span id="np-remaining">0:00</span></div>
       <div class="np__bottom">
         <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -75,6 +77,13 @@ export const nowPlayingCard: CardDef = {
     const npArt = host.querySelector<HTMLElement>("#np-art");
     const npTitle = host.querySelector<HTMLElement>("#np-title");
     const npArtist = host.querySelector<HTMLElement>("#np-artist");
+    const npAlbum = host.querySelector<HTMLElement>("#np-album");
+    const npElapsed = host.querySelector<HTMLElement>("#np-elapsed");
+    const npRemaining = host.querySelector<HTMLElement>("#np-remaining");
+    const fmt = (s: number) => {
+      const t = Math.max(0, Math.floor(s));
+      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+    };
     const npEl2 = host.querySelector<HTMLElement>(".np");
     const prevBtn = host.querySelector<HTMLButtonElement>('.np__controls [aria-label="Previous"]');
     const nextBtn = host.querySelector<HTMLButtonElement>('.np__controls [aria-label="Next"]');
@@ -87,6 +96,7 @@ export const nowPlayingCard: CardDef = {
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
       if (npTitle) npTitle.textContent = s.title ?? "Not playing";
       if (npArtist) npArtist.textContent = s.artist ?? (s.station ? s.station.name : "");
+      if (npAlbum) npAlbum.textContent = s.album ?? "";
       if (npArt) npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
       const live = !!s.station?.live;
       npEl2?.classList.toggle("np--live", live);
@@ -136,6 +146,26 @@ export const nowPlayingCard: CardDef = {
     host.querySelector<HTMLElement>(".np__art")?.addEventListener("contextmenu", npMenu);
     host.querySelector<HTMLElement>(".np__meta")?.addEventListener("contextmenu", npMenu);
 
+    // Transport row overflow (mini at minimum width): when shuffle + prev/play/next +
+    // summon can't fit one row, drop the two side buttons to a second row. Measured
+    // from the rendered buttons (their widths don't change when stacked, so the
+    // threshold can't oscillate) and the grid's own column-gap, so it follows the skin.
+    const bottom = host.querySelector<HTMLElement>(".np__bottom");
+    const shuffleBtn = host.querySelector<HTMLElement>("#np-shuffle");
+    const controls = host.querySelector<HTMLElement>(".np__controls");
+    const summonBtn = host.querySelector<HTMLElement>("#np-summon");
+    let stackObserver: ResizeObserver | undefined;
+    if (bottom && shuffleBtn && controls && summonBtn) {
+      const fit = () => {
+        const gap = parseFloat(getComputedStyle(bottom).columnGap) || 0;
+        const needed = shuffleBtn.offsetWidth + controls.offsetWidth + summonBtn.offsetWidth + gap * 2;
+        bottom.classList.toggle("np__bottom--stacked", bottom.clientWidth < needed);
+      };
+      stackObserver = new ResizeObserver(fit);
+      stackObserver.observe(bottom);
+      fit();
+    }
+
     // Album Color — tint the card's aurora with the current album's real palette.
     const npEl = host.querySelector<HTMLElement>(".np")!;
     const unsubAlbumColor = watchAlbumColor(npEl);
@@ -148,7 +178,11 @@ export const nowPlayingCard: CardDef = {
         axis: "x",
         onCommit: (frac) => seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err)),
       });
-      unsubProgress = onPlayerProgress((p) => seek.setValue(p.progress)); // no-op while dragging
+      unsubProgress = onPlayerProgress((p) => {
+        seek.setValue(p.progress); // no-op while dragging
+        if (npElapsed) npElapsed.textContent = fmt(p.currentTime);
+        if (npRemaining) npRemaining.textContent = p.duration ? `-${fmt(p.duration - p.currentTime)}` : "0:00";
+      });
     }
 
     return {
@@ -156,6 +190,7 @@ export const nowPlayingCard: CardDef = {
         unsubState();
         unsubProgress();
         unsubAlbumColor();
+        stackObserver?.disconnect();
         host.innerHTML = "";
       },
     };

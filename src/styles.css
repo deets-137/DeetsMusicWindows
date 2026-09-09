@@ -422,7 +422,27 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: auto minmax(0, 1fr);   /* row 1 sizes to Now Playing, row 2 fills */
 }
-/* [data-surface="max"] .bento  { …own composition, later (sidebar + multi-slot) } */
+/* The max-only hosts (anchored queue + slots c/d) don't exist outside max. */
+.panel[data-slot="queue"], .panel[data-slot="c"], .panel[data-slot="d"] { display: none; }
+
+/* max (2026-09-09, option A "stage + bento"): a stage column on the left — Now Playing
+   as a tall card over the anchored Queue — and a 2×2 bento of content slots on the
+   right. Two equal rows so the bento stays a bento; the stage's cover flexes to fill
+   whatever its row leaves after meta + transport. */
+[data-surface="max"] .bento {
+  grid-template-columns: minmax(0, var(--max-stage-w)) repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "np    left  right"
+    "queue c     d";
+}
+[data-surface="max"] .panel[data-slot="np"]    { grid-area: np; }
+[data-surface="max"] .panel[data-slot="queue"] { grid-area: queue; display: flex; }
+[data-surface="max"] .panel[data-slot="left"]  { grid-area: left; }
+[data-surface="max"] .panel[data-slot="right"] { grid-area: right; }
+[data-surface="max"] .panel[data-slot="c"]     { grid-area: c; display: flex; }
+[data-surface="max"] .panel[data-slot="d"]     { grid-area: d; display: flex; }
+
 /* mini (2026-09-09, first slice): ONE wide column — Now Playing, then the two content
    cards stacked. The composition is being built piece by piece from here. */
 [data-surface="mini"] .bento {
@@ -1317,10 +1337,18 @@ body {
    card while the queue-summon button rides the right edge; the empty left cell is the
    counterweight. The summon button wears .panel__action so it mirrors the Library
    Sync button exactly — no geometry of its own beyond grid placement. */
-.np__bottom { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.np__bottom { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: var(--space-2); row-gap: var(--space-2); align-items: center; }
 .np__bottom .np__controls { grid-column: 2; }
 .np__shuffle { grid-column: 1; justify-self: start; }
 .np__summon { grid-column: 3; justify-self: end; }
+/* Overflow fallback (mini at minimum width): when shuffle + transport + summon can't
+   share one row, the card (now-playing-card.ts, a ResizeObserver) sets --stacked and
+   the two side buttons drop to a second row, still flush left/right, so the transport
+   keeps its optical center. Width math is done in JS from the rendered buttons, so
+   the threshold follows the skin's tokens rather than a hardcoded px. */
+.np__bottom--stacked .np__controls { grid-column: 1 / -1; grid-row: 1; }
+.np__bottom--stacked .np__shuffle { grid-row: 2; }
+.np__bottom--stacked .np__summon { grid-row: 2; }
 
 .np__controls { display: flex; align-items: center; justify-content: center; gap: var(--transport-gap); }
 .np__btn {
@@ -1364,6 +1392,36 @@ body {
 .np--live .np__scrub { pointer-events: none; }
 .np--live .np__live { display: block; }
 .np__btn[disabled] { opacity: 0.35; cursor: default; }
+
+/* Album name + elapsed/remaining readout — markup is always present, only the max
+   stage shows them (the strip stays title/artist/scrubber). */
+.np__album { display: none; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np__album:empty { display: none; }
+.np__times { display: none; justify-content: space-between; font-size: var(--fs-subtext); color: var(--subtext); font-variant-numeric: tabular-nums; }
+.np--live .np__times { visibility: hidden; }
+
+/* ── The max stage: the same card, composed as a column ─────── */
+/* Cover on top (flexes to fill the row), then meta / scrubber / transport pinned to
+   the bottom. The queue lives in its own anchored panel below, so the summon button
+   has nothing to summon and hides. */
+[data-surface="max"] .panel[data-slot="np"] .np { flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch; }
+[data-surface="max"] .np__art {
+  flex: 1 1 auto; min-height: 0;
+  width: auto; height: auto; aspect-ratio: 1;
+  align-self: center; max-width: 100%;
+  font-size: var(--np-stage-glyph);
+}
+[data-surface="max"] .np__center { flex: 0 0 auto; }
+[data-surface="max"] .np__title { font-size: var(--fs-title); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+[data-surface="max"] .np__album { display: block; }
+[data-surface="max"] .np__times { display: flex; }
+[data-surface="max"] .np__summon { display: none; }
+/* Aurora on the stage: the halo is centered on the (now centered, larger) cover. */
+[data-surface="max"] .np__aurora::before {
+  left: 50%;
+  top: calc(var(--panel-pad) + var(--np-stage-cover) / 2);
+  width: calc(var(--np-stage-cover) * var(--album-aurora-reach));
+}
 
 /* ── Tray panel (tray.html · TRAY.md) ───────────────────────── */
 /* A second window that mirrors the Now Playing card. It reuses .titlebar / .panel /

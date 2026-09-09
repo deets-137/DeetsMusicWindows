@@ -32,9 +32,19 @@ already signed in).
 ```bash
 npm install
 npm run tauri dev        # compiles Rust (first run slow), opens the window
+npm run dev:app          # same, but SIDE BY SIDE with the installed app (see below)
 npx tsc --noEmit         # typecheck front-end
 npx vite build           # bundle-check
 ```
+
+**Dev alongside the installed app (2026-09-09):** `npm run dev:app` merges
+`src-tauri/tauri.dev.conf.json`, which changes only the identifier to `com.deetsmusic.dev`
+(and the window titles). That gives the dev build its own `%APPDATA%\com.deetsmusic.dev`
+(SQLite cache, settings.json, MUT) and its own WebView2 profile — two builds sharing one
+profile is what produced the blank window with `ERR_CACHE_READ_FAILURE` on every module.
+The bridge just takes the next free port (the extension and the CLI probe the list).
+Seed the dev dir once by copying `deetsmusic.db` + `user-token.txt` from the release dir
+(zero Apple calls); localStorage (theme/skin/layout) starts fresh.
 
 Devtools **auto-open in dev** (`lib.rs` setup). Debug the player in the console:
 `__diag.dump()` / `__diag.copy()` (ring buffer of transport + MusicKit events + desyncs,
@@ -97,6 +107,11 @@ card under Now Playing (user-led from here). **Surfaces:** all three width cutof
 (mini: in < 340 / out > 350 · midi ↔ max at 820 ± 40; `minWidth` lowered to 320 so the
 flip into mini is actually reachable) — the user is evaluating resize-into-mini alongside
 the tray flyout and the menu pick. **Next:** the mini composition, piece by piece.
+**2026-09-09, branch `maxmaxxing` (untested):** the **max composition** (stage + anchored
+queue + 2×2 bento, [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) build order #4); the
+mini transport row stacks its side buttons when they'd overflow; and the **agent/CLI
+routes** on the bridge (`/command` `/play` `/queue` `/history`, [AGENT.md](AGENT.md)) —
+plus the `deetsmusic` CLI + MCP binary in `cli/` and `npm run dev:app` for dev alongside the installed app.
 
 **Deferred, when prioritized:** the **search-card stations section** (the one optional radio
 leftover — add `stations` to the search types; `Station` model/tile/playback all exist, activation

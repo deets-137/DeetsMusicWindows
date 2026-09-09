@@ -28,3 +28,7 @@ dev-dumps/
 *.njsproj
 *.sln
 *.sw?
+
+# Generated dev config (scripts/dev-app.mjs) + the CLI crate's build dir
+src-tauri/.tauri.dev.gen.json
+cli/target/

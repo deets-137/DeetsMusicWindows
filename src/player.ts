@@ -219,7 +219,7 @@ function emit(): void {
     title: item?.title ?? item?.attributes?.name,
     artist: item?.artistName ?? item?.attributes?.artistName,
     album: item?.albumName ?? item?.attributes?.albumName,
-    artworkUrl: artworkUrlOf(item, 240),
+    artworkUrl: artworkUrlOf(item, 480),
     loading: isLoading,
     station:
       mode === "radio" && radioStation

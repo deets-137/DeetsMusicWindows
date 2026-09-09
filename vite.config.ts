@@ -16,9 +16,11 @@ export default defineConfig(async () => ({
   //
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
+  // 2. tauri expects a fixed port, fail if that port is not available. `npm run dev:app`
+  //    (scripts/dev-app.mjs) finds a free one first and passes it as VITE_PORT, so a
+  //    second dev server on this machine (another Deets* app) doesn't block us.
   server: {
-    port: 1420,
+    port: Number(process.env.VITE_PORT) || 1420,
     strictPort: true,
     host: host || false,
     hmr: host

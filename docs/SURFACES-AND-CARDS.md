@@ -233,8 +233,26 @@ Each phase **compiles and is independently testable**; behaviour only changes wh
    - **Guiding thesis** for later compositions — the *listen → queue → explore* ladder in §4 (mini
      = listening, midi = queueing, max = exploring/organizing).
 
+4. ✅ **Max composition — built (2026-09-09, option A "stage + bento"), awaiting the
+   first user test.**
+   - **Shape**: `[data-surface="max"] .bento` is a 3-column × 2-row grid with named areas —
+     `np left right / queue c d`. The stage column (`--max-stage-w`, a skin token) holds
+     Now Playing over the **anchored Queue**; the right side is a 2×2 bento of content slots.
+   - **The same NP card, composed as a column**: cover on top (flexes to fill the row, square),
+     then title (two lines, `--fs-title`) / artist / **album** / scrubber / **elapsed · −remaining**
+     / transport. The album + times markup is always present and CSS-hidden outside max. The
+     summon button hides (the queue is on-screen by construction). Aurora halo re-centers on
+     the larger cover (`--np-stage-cover`). The player publishes 480 px art so the stage is sharp.
+   - **Layout manager is now per-surface** (`layout.ts`): a `Composition` = content slots +
+     anchored cards + defaults + storage key. midi `{left,right}` (mini shares it; CSS hides
+     right) and max `{left,right,c,d}` with `queue` anchored and `deets.layout.max` persisted
+     (default library / search / playlists / history). `surface.ts` gained `onSurfaceChange`;
+     a flip between compositions tears down and remounts the content slots. The pickers offer
+     the surface's pool (max never offers Queue); a summon for an anchored card is a no-op.
+   - Hosts: `index.html` carries `queue`, `c`, `d` panels that are `display:none` outside max.
+
 *(Later, on this foundation: real Playlists context → Search card → accent-palette plumbing →
-shuffle → max & mini compositions.)*
+shuffle → the mini composition.)*
 
 ---
 

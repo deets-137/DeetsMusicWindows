@@ -484,6 +484,30 @@ pub fn materialize_track(track: Track, db: State<'_, Db>) -> Result<(), String> 
     Ok(())
 }
 
+/// The same local upsert as `materialize_track`, for a batch under one lock — the
+/// bridge's search route parks its hits so a later play-by-id resolves offline.
+pub(crate) fn materialize_many(conn: &Connection, tracks: &[Track]) -> Result<(), String> {
+    for track in tracks {
+        let Some(id) = track_key(track) else { continue };
+        let sort_key = format!("{}\u{1f}{}", track.title.to_lowercase(), track.artist_name.to_lowercase());
+        let json = serde_json::to_string(track).map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'seen', ?2, ?3)
+             ON CONFLICT(track_id) DO NOTHING",
+            rusqlite::params![id, sort_key, json],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// A track by its store key (catalog id, else library id) — library or seen rows.
+pub(crate) fn track_by_id(conn: &Connection, id: &str) -> Option<Track> {
+    conn.query_row("SELECT json FROM tracks WHERE track_id = ?1", [id], |r| r.get::<_, String>(0))
+        .ok()
+        .and_then(|j| serde_json::from_str(&j).ok())
+}
+
 /// True when the store holds this id as a SYNCED library row (a `seen`/transient row
 /// doesn't count — the same rule the front-end's `inLibrary` applies to the loaded
 /// store). Used by the bridge/tray to hide "+" for songs already in the library.

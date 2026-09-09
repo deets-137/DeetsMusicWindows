@@ -1,0 +1,24 @@
+[package]
+name = "deetsmusic-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Command-line + MCP client for the DeetsMusic bridge (docs/AGENT.md)."
+
+# The shipped command is `deetsmusic` (installed to <app>\cli\ so it can't collide with
+# DeetsMusic.exe on case-insensitive Windows). Standalone crate on purpose — no workspace
+# tie to src-tauri, so `tauri dev` and this build never contend for one target dir.
+[[bin]]
+name = "deetsmusic"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
