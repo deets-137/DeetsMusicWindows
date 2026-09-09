@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en" data-theme="lilac" data-skin="press">
+<head>
+  <meta charset="utf-8">
+  <title>DeetsMusic extension — Settings</title>
+  <link rel="stylesheet" href="../styles/fonts.css">
+  <link rel="stylesheet" href="../styles/palette.css">
+  <link rel="stylesheet" href="../styles/themes.css">
+  <link rel="stylesheet" href="../styles/skin.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="opt">
+    <header class="opt__head">
+      <span class="opt__brand">DeetsMusic</span>
+      <span class="opt__sub">extension settings</span>
+    </header>
+
+    <section class="opt__card">
+      <h2 class="opt__h">Connection</h2>
+      <p class="opt__note">The extension talks to the DeetsMusic app on this PC. Nothing to set up — it finds the app on its own.</p>
+      <div class="opt__btnrow">
+        <button type="button" class="opt__action" id="test">Test connection</button>
+        <span class="opt__status" id="status"></span>
+      </div>
+    </section>
+
+    <section class="opt__card">
+      <h2 class="opt__h">Look</h2>
+      <label class="opt__check">
+        <input type="checkbox" id="follow" checked>
+        Follow DeetsMusic's theme and skin
+      </label>
+      <div class="opt__pick" id="pick">
+        <label class="opt__row">
+          <span class="opt__label">Theme</span>
+          <select class="opt__select" id="theme">
+            <option value="lilac">Lilac</option>
+            <option value="green">Green</option>
+            <option value="sepia">Sepia</option>
+            <option value="moonlight">Moonlight</option>
+            <option value="black-yellow">Black &amp; Yellow</option>
+            <option value="black-red">Black &amp; Red</option>
+          </select>
+        </label>
+        <label class="opt__row">
+          <span class="opt__label">Skin</span>
+          <select class="opt__select" id="skin">
+            <option value="vanilla">Vanilla</option>
+            <option value="press">Press</option>
+            <option value="ocean">Ocean</option>
+            <option value="glass">Glass</option>
+            <option value="retro-future">Retro-Future</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="opt__card">
+      <h2 class="opt__h">Debug</h2>
+      <label class="opt__check">
+        <input type="checkbox" id="debug">
+        Show the debug panel in the popup (what was read, what was asked, what came back)
+      </label>
+    </section>
+
+    <p class="opt__foot">Nothing is sent anywhere but the DeetsMusic app on 127.0.0.1. The page is only read while the popup is open.</p>
+  </div>
+  <script src="../src/common/shared.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

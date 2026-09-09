@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" data-theme="lilac" data-skin="press" data-surface="midi" data-window="tray">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Tray panel (TRAY.md). Same origin as the main window, so the saved theme/skin
+         resolve from the same localStorage keys; keep this pre-paint in sync with
+         index.html (RETIRED maps + defaults). Live changes arrive as the `appearance`
+         event from the hub. -->
+    <script>
+      (function () {
+        var R = {
+          fairy: "lilac", glade: "green", hornet: "black-yellow", viper: "black-red",
+          desk: "press", cyberstorm: "retro-future",
+        };
+        var dark = false;
+        try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
+        [["deets.theme", "data-theme", dark ? "black-red" : "lilac"],
+         ["deets.skin",  "data-skin",  dark ? "retro-future" : "press"]].forEach(function (a) {
+          var saved = null;
+          try { saved = localStorage.getItem(a[0]); } catch (e) {}
+          document.documentElement.setAttribute(a[1], saved ? (R[saved] || saved) : a[2]);
+        });
+      })();
+    </script>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>DeetsMusic</title>
+    <script type="module" src="/src/tray.ts" defer></script>
+  </head>
+
+  <body class="tray">
+    <header class="titlebar tray__head">
+      <button class="app-title" id="tray-open" type="button" title="Open DeetsMusic">DeetsMusic</button>
+      <div class="drag-region" data-tauri-drag-region></div>
+      <span class="tray__source" id="tray-source" hidden></span>
+      <div class="lights">
+        <button class="light light--close" id="tray-hide" type="button" aria-label="Hide">
+          <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 2.3L7.7 7.7M7.7 2.3L2.3 7.7" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-body tray__body">
+      <section class="panel tray__panel">
+        <!-- Mirror of the Now Playing card (now-playing-card.ts): same classes, same
+             tokens, so every theme × skin renders it identically. The shuffle/queue
+             corners become "+ Add to Library" (left) and the source badge (right). -->
+        <div class="np" id="np">
+          <div class="np__aurora" aria-hidden="true"></div>
+          <div class="np__art" id="np-art" aria-hidden="true">♪</div>
+          <div class="np__center">
+            <div class="np__meta">
+              <span class="np__title" id="np-title">Not playing</span>
+              <span class="np__artist" id="np-artist"></span>
+            </div>
+            <div class="np__scrub scrub" id="np-scrub">
+              <div class="scrub__track"><div class="scrub__fill"></div></div>
+              <span class="scrub__handle" aria-hidden="true"></span>
+              <span class="np__live" aria-hidden="true">LIVE</span>
+            </div>
+            <div class="np__bottom">
+              <button class="panel__action np__shuffle tray__add" id="np-add" type="button" aria-label="Add to Library" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              </button>
+              <div class="np__controls">
+                <button class="np__btn" id="np-prev" type="button" aria-label="Previous">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg>
+                </button>
+                <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                </button>
+                <button class="np__btn" id="np-next" type="button" aria-label="Next">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg>
+                </button>
+              </div>
+              <span class="tray__time" id="np-time" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Volume: the app's software gain when DeetsMusic is the source, the
+             Windows master level otherwise. -->
+        <div class="tray__vol" id="vol">
+          <button class="vol__mute tray__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false"></button>
+          <div class="scrub" id="vol-scrub">
+            <div class="scrub__track"><div class="scrub__fill"></div></div>
+            <span class="scrub__handle" aria-hidden="true"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

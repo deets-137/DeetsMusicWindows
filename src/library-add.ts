@@ -36,6 +36,17 @@ async function addToLibrary(kind: "songs" | "albums", ids: string[], tracks: Tra
   await loadTracks();
 }
 
+/**
+ * Direct add of one song — the tray panel's "+" (via np-bus). NOT gated by the
+ * Library Add toggle: that toggle reveals a right-click item, whereas pressing an
+ * explicit "+" IS the consent. Rejects catalog-less rows the same way the menu does.
+ */
+export async function addTrackToLibrary(t: Track): Promise<void> {
+  if (!t.catalogId) throw new Error("track has no catalog id");
+  if (alreadyInLibrary(t)) return;
+  await addToLibrary("songs", [t.catalogId], [t]);
+}
+
 // A track actually in the library shouldn't offer "Add" (it'd be a no-op). We test REAL
 // membership against the synced store — NOT the mere presence of a libraryId: a mirror
 // playlist's tracks all carry a library-relationship id even when the song isn't in the

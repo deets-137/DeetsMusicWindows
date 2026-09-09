@@ -18,10 +18,24 @@
         "title": "DeetsMusic",
         "width": 480,
         "height": 864,
-        "minWidth": 360,
+        "minWidth": 320,
         "minHeight": 560,
         "decorations": false,
-        "resizable": true
+        "resizable": true,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=HardwareMediaKeyHandling,MediaSessionService,GlobalMediaControls"
+      },
+      {
+        "label": "tray",
+        "title": "DeetsMusic",
+        "url": "tray.html",
+        "width": 360,
+        "height": 232,
+        "resizable": false,
+        "decorations": false,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "shadow": false
       }
     ],
     "security": {
@@ -43,9 +57,20 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "../extension/manifest.json": "extension/manifest.json",
+      "../extension/install.html": "extension/install.html",
+      "../extension/README.md": "extension/README.md",
+      "../extension/src/": "extension/src/",
+      "../extension/popup/": "extension/popup/",
+      "../extension/options/": "extension/options/",
+      "../extension/styles/": "extension/styles/",
+      "../extension/icons/": "extension/icons/"
+    },
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerHooks": "./nsis/hooks.nsh"
       }
     }
   }

@@ -118,6 +118,25 @@
             <span class="menu__dot" aria-hidden="true"></span>
           </button>
 
+          <button class="menu__row menu__row--toggle" id="tray-toggle" type="button" role="menuitemcheckbox" aria-checked="true" data-row="tray">
+            <span class="menu__label">Minimize to Tray</span>
+            <span class="menu__dot" aria-hidden="true"></span>
+          </button>
+
+          <!-- Browser extension (EXTENSION.md): bridge status, the unpacked-install guide,
+               the bridge log. No pairing — the bridge trusts the extension's Origin. -->
+          <div class="menu__row" data-row="extension">
+            <span class="menu__label">Extension</span>
+            <span class="menu__chev" aria-hidden="true">›</span>
+            <div class="flyout flyout--extension" role="menu" aria-label="Extension">
+              <div class="ext">
+                <div class="ext__status" id="ext-status">Bridge off</div>
+                <button class="flyout__item" type="button" role="menuitem" id="ext-install">Install guide…</button>
+                <button class="flyout__item" type="button" role="menuitem" id="ext-log">Copy bridge log</button>
+              </div>
+            </div>
+          </div>
+
           <div class="menu__row" data-row="account">
             <span class="menu__label">Account</span>
             <span class="menu__chev" aria-hidden="true">›</span>

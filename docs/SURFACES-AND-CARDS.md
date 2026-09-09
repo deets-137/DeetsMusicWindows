@@ -213,7 +213,7 @@ Each phase **compiles and is independently testable**; behaviour only changes wh
    per session) so a slot swap no longer re-triggers a full Apple sync.
 3. ✅ **Surface seam + sizing/switching — built (2026-07-01).** How it works:
    - **`src/surface.ts`** — a `ResizeObserver` on the app root; the per-surface **size band**
-     table (mini ≤ 380px · midi 380–820px · max > 820px wide, **40px hysteresis**); the active
+     table (mini: in below 340px / out above 350px · midi ↔ max at 820px with **40px hysteresis**; window `minWidth` is 320 so the flip into mini is reachable; in mini a queue summon targets the visible left slot; the tray flyout is mini's other entrance, TRAY.md §1); the active
      surface = the **persisted deliberate choice** (`deets.surface`) *plus* the window size,
      flipping only when a band threshold is crossed past the hysteresis; sets `data-surface` on
      `<html>` (the same lever as `data-theme`/`data-skin`). Programmatic resizes (restoring a

@@ -1,0 +1,240 @@
+/* Popup — component tier. Colors are theme roles, geometry/type/motion are skin
+   tokens (the copied palette/themes/skin sheets). The match row mirrors the app's
+   Now Playing card: cover left, title/artist/album stacked, the "+" on the right.
+   The mini Search card below it reuses the app's .search__* recipe (SEARCH.md). */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+html { font-size: 14px; }
+body {
+  width: 22rem;
+  background: var(--canvas);
+  background-image: var(--canvas-bg);
+  background-size: var(--canvas-bg-size);
+  background-repeat: var(--canvas-bg-repeat);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  font-weight: var(--fw-text, 400);
+  line-height: var(--lh-text);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.pop { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+
+/* header: brand · source badge · (spacer) · refresh · settings */
+.pop__head {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-1);
+  min-height: calc(var(--titlebar-h) * 0.8);
+}
+.pop__brand {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-title);
+  color: var(--title);
+  text-decoration-line: var(--title-underline);
+  text-decoration-thickness: var(--title-underline-w);
+  text-underline-offset: var(--title-underline-offset);
+}
+.pop__source {
+  font-size: var(--fs-subtext); color: var(--subtext);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border); border-radius: var(--radius-control);
+  white-space: nowrap;
+}
+.pop__spacer { flex: 1 1 auto; }
+.pop__iconbtn {
+  width: var(--icon-lg); height: var(--icon-lg);
+  display: grid; place-items: center;
+  background: none; border: none; border-radius: var(--radius-control);
+  color: var(--subtext); cursor: pointer;
+}
+.pop__iconbtn:hover { background: var(--surface-hover); color: var(--title); }
+.pop__iconbtn svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pop__iconbtn.is-busy svg { animation: pop-spin var(--dur-spin, 900ms) linear infinite; }
+
+/* content sits on a panel, never bare on the canvas */
+.pop__card {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--panel-pad);
+  background: var(--panel);
+  border: var(--panel-border-width) solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--shadow-card);
+}
+
+.pop__empty, .pop__note { color: var(--subtext); font-size: var(--fs-subtext); }
+.pop__msg { display: flex; flex-direction: column; gap: var(--space-1); }
+.pop__title-sm { font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text); color: var(--title); }
+
+/* ── the match ── */
+.pop__match { display: flex; flex-direction: column; gap: var(--space-2); }
+.pop__row { display: flex; align-items: stretch; gap: var(--space-3); }
+.pop__art {
+  flex: 0 0 auto;
+  width: calc(var(--np-cover) * 0.6); height: calc(var(--np-cover) * 0.6);
+  border-radius: var(--radius-control);
+  background: var(--surface-hover);
+  display: grid; place-items: center; overflow: hidden;
+  color: var(--subtext); font-size: calc(var(--np-cover-glyph) * 0.6);
+}
+.pop__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pop__meta { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--np-meta-gap); }
+.pop__title { font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop__artist, .pop__album { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop__album:empty { display: none; }
+
+/* the "+": same chrome as the app's panel action buttons; as tall as the cover so
+   it reads as the row's third column rather than a floating pill */
+.pop__add {
+  flex: 0 0 auto; align-self: stretch;
+  width: calc(var(--icon-lg) * 1.35);
+  display: grid; place-items: center;
+  background: var(--surface-hover);
+  border: 1px solid var(--border); border-radius: var(--radius-control);
+  color: var(--title); cursor: pointer;
+}
+.pop__add:hover { filter: brightness(0.97); }
+.pop__add[disabled] { opacity: 0.6; cursor: default; }
+.pop__add svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pop__add.is-done { color: var(--go); border-color: var(--go); }
+.pop__add.is-busy svg { animation: pop-spin var(--dur-spin, 900ms) linear infinite; }
+@keyframes pop-spin { to { transform: rotate(1turn); } }
+
+/* Status line ("Adding…" → "Added…"): the row grows/shrinks via grid-rows so what's
+   underneath slides instead of jumping, and the text itself crossfades. */
+.pop__status-wrap {
+  display: grid; grid-template-rows: 0fr;
+  margin-top: calc(-1 * var(--space-2));   /* cancel the column gap; the line brings its own */
+  transition: grid-template-rows var(--nav-dur) var(--nav-ease);
+}
+.pop__status-wrap.is-open { grid-template-rows: 1fr; }
+.pop__status-clip { min-height: 0; overflow: hidden; }
+.pop__status { padding-top: var(--space-2); opacity: 0; transition: opacity var(--dur-med) var(--ease-ui); }
+.pop__status-wrap.is-open .pop__status { opacity: 1; }
+
+.pop__linklet { align-self: flex-start; background: none; border: none; padding: 0; color: var(--subtext); font: inherit; font-size: var(--fs-subtext); text-decoration: underline; cursor: pointer; }
+.pop__linklet:hover { color: var(--title); }
+
+/* ── mini Search card: same grid-rows reveal as the status line ── */
+.pop__search-wrap {
+  display: grid; grid-template-rows: 0fr;
+  margin-top: calc(-1 * var(--space-2));
+  transition: grid-template-rows var(--nav-dur) var(--nav-ease);
+}
+.pop__search-wrap.is-open { grid-template-rows: 1fr; }
+.pop__search-clip { min-height: 0; overflow: hidden; }
+.search { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
+
+.search__bar { position: relative; display: flex; gap: var(--space-1); align-items: center; }
+.search__field {
+  position: relative; flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas); border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.search__icon {
+  flex: 0 0 auto; width: var(--icon-sm); height: var(--icon-sm);
+  fill: none; stroke: var(--subtext); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.search__input {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--font-body); font-size: var(--fs-text); color: var(--text);
+  background: transparent; border: none;
+  padding-right: calc(var(--icon-sm) + 3 * var(--space-1) + 6px);
+}
+.search__input::placeholder { color: var(--subtext); }
+.search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.search__input:focus, .search__input:focus-visible { outline: none; }
+.search__clear {
+  position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: var(--icon-sm); height: var(--icon-sm);
+  padding: 0; background: none; border: none; color: var(--subtext); cursor: pointer;
+}
+.search__clear svg { width: var(--icon-sm); height: var(--icon-sm); }
+.search__clear:hover { color: var(--title); }
+.search__busy { display: none; }
+.search__bar--busy .search__busy {
+  display: block; position: absolute; top: 50%;
+  right: calc(var(--space-2) + var(--icon-sm) + var(--space-1));
+  width: 6px; height: 6px; margin-top: -3px; border-radius: 999px;
+  background: var(--subtext); animation: search-pulse 0.9s ease-in-out infinite;
+}
+@keyframes search-pulse { 50% { opacity: 0.25; } }
+
+.search__root { display: flex; flex-direction: column; }
+.search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.search__sec:first-child { padding-top: 0; }
+.search__sec:last-child { border-bottom: none; padding-bottom: 0; }
+.search__sec-title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--title);
+  margin-bottom: var(--space-1);
+}
+.search__prompt { font-size: var(--fs-subtext); color: var(--subtext); padding: var(--space-1) 0; }
+
+/* songs: rows (cover · title/artist · +) */
+.search__song {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1); border-radius: var(--radius-control); cursor: pointer;
+}
+.search__song:hover { background: var(--surface-hover); transform: var(--hover-lift); }
+.search__song-art { flex: 0 0 auto; width: var(--icon-lg); height: var(--icon-lg); border-radius: var(--radius-control); object-fit: cover; }
+.search__song-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); }
+.search__song-text { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.search__song-title { font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search__song-artist { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* albums: a horizontal scroller of tiles (cover · name · artist) */
+.search__scroller { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
+.search__scroller::-webkit-scrollbar { height: var(--scrollbar-w); }
+.search__scroller::-webkit-scrollbar-track { background: transparent; }
+.search__scroller::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
+.search__scroller::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+.search__tile { position: relative; flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); }
+.search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; display: block; }
+.search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
+.search__tile:hover { transform: var(--hover-lift); }
+.search__tile-name { font-size: var(--fs-subtext); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search__tile-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the per-item "+": the match row's button, one size down; on tiles it sits on the cover */
+.search__add {
+  flex: 0 0 auto;
+  width: var(--icon-lg); height: var(--icon-lg);
+  display: grid; place-items: center;
+  background: var(--surface-hover);
+  border: 1px solid var(--border); border-radius: var(--radius-control);
+  color: var(--title); cursor: pointer;
+}
+.search__add:hover { filter: brightness(0.97); }
+.search__add[disabled] { opacity: 0.7; cursor: default; }
+.search__add svg { width: calc(var(--icon-sm) * 0.85); height: calc(var(--icon-sm) * 0.85); fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.search__add.is-done { color: var(--go); border-color: var(--go); }
+.search__add.is-busy svg { animation: pop-spin var(--dur-spin, 900ms) linear infinite; }
+.search__tile .search__add { position: absolute; right: var(--space-1); top: calc(96px - var(--icon-lg) - var(--space-1)); background: var(--panel); }
+
+/* ── actions ── */
+.pop__action {
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-hover);
+  border: 1px solid var(--border); border-radius: var(--radius-control);
+  color: var(--title); font: inherit; cursor: pointer;
+  align-self: flex-start;
+}
+.pop__action:hover { filter: brightness(0.97); }
+.pop__action--quiet { background: none; color: var(--subtext); }
+.pop__action--quiet:hover { color: var(--title); background: var(--surface-hover); }
+.pop__btnrow { display: flex; gap: var(--space-2); }
+
+/* ── debug ── */
+.pop__devhead { font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext); text-transform: uppercase; letter-spacing: 0.06em; color: var(--title); }
+.pop__stats { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem var(--space-2); font-size: var(--fs-subtext); }
+.pop__stats dt { color: var(--subtext); }
+.pop__stats dd { color: var(--text); overflow-wrap: anywhere; user-select: text; }
+.pop__events { list-style: none; font-size: var(--fs-subtext); color: var(--subtext); max-height: 9rem; overflow-y: auto; user-select: text; }
+.pop__events li { overflow-wrap: anywhere; }
+.pop__events b { color: var(--text); font-weight: 400; }
+.pop__pre { font-size: var(--fs-subtext); color: var(--subtext); max-height: 10rem; overflow: auto; white-space: pre-wrap; user-select: text; }

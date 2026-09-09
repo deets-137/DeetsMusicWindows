@@ -152,6 +152,7 @@ export interface PlayerState {
   playing: boolean;
   title?: string;
   artist?: string;
+  album?: string;
   artworkUrl?: string;
   /** True while a (re)window is buffering — a jump/seek out of the gapless window.
    *  The UX cover-up hook (see docs/UX-COVERUPS.md); natural play never sets it. */
@@ -217,6 +218,7 @@ function emit(): void {
     playing: !!music?.isPlaying,
     title: item?.title ?? item?.attributes?.name,
     artist: item?.artistName ?? item?.attributes?.artistName,
+    album: item?.albumName ?? item?.attributes?.albumName,
     artworkUrl: artworkUrlOf(item, 240),
     loading: isLoading,
     station:
@@ -1104,6 +1106,14 @@ export async function seekToFraction(fraction: number): Promise<void> {
   if (duration <= 0) return;
   const clamped = Math.max(0, Math.min(1, fraction));
   await music.seekToTime(clamped * duration);
+}
+
+/** Seek to an absolute position in seconds (the OS media session scrubs in seconds). */
+export async function seekToSeconds(seconds: number): Promise<void> {
+  if (!music) return;
+  const duration = music.currentPlaybackDuration ?? 0;
+  if (duration <= 0) return;
+  await music.seekToTime(Math.max(0, Math.min(duration, seconds)));
 }
 
 // ── Volume ───────────────────────────────────────────────────────────────────

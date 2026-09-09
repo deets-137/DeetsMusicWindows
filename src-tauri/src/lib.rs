@@ -1,15 +1,20 @@
 mod apple;
+mod bridge;
 mod enrich;
 mod library;
 mod model;
+mod media;
 mod playlists;
 mod provider;
+mod settings;
+mod tray;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(apple::AppleState::default())
+        .manage(bridge::Hub::default())
         .setup(|app| {
             use tauri::Manager;
 
@@ -52,6 +57,12 @@ pub fn run() {
             }
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
+            // Back-end settings (minimize-to-tray, Windows-media fallback, the
+            // extension pairing token), then the tray + the extension bridge.
+            app.manage(settings::Settings::load(dir.clone()));
+            tray::setup(app.handle())?;
+            bridge::start(app.handle().clone());
+
             // Auto-open devtools in dev so the webview console is visible.
             #[cfg(debug_assertions)]
             if let Some(win) = app.get_webview_window("main") {
@@ -59,6 +70,7 @@ pub fn run() {
             }
             Ok(())
         })
+        .on_window_event(|win, ev| tray::on_window_event(win, ev))
         .invoke_handler(tauri::generate_handler![
             apple::apple_developer_token,
             apple::apple_begin_auth,
@@ -104,6 +116,31 @@ pub fn run() {
             playlists::playlist_folder_rename,
             playlists::playlist_folder_delete,
             playlists::playlist_folder_assign,
+            settings::settings_get,
+            settings::settings_set_minimize_to_tray,
+            settings::settings_set_read_windows_media,
+            settings::settings_rotate_bridge_token,
+            bridge::np_publish,
+            bridge::np_snapshot,
+            bridge::np_command,
+            bridge::appearance_publish,
+            bridge::bridge_info,
+            bridge::bridge_log,
+            bridge::bridge_open_install_page,
+            bridge::bridge_resolve,
+            bridge::bridge_add,
+            media::win_media_now_playing,
+            media::win_media_transport,
+            media::win_media_seek,
+            media::system_volume_get,
+            media::system_volume_set,
+            media::system_volume_mute,
+            tray::tray_panel_hide,
+            tray::tray_open_main,
+            tray::tray_place_main,
+            tray::tray_pin_main,
+            tray::tray_panel_resize,
+            tray::app_quit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

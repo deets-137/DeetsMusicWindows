@@ -423,7 +423,13 @@ body {
   grid-template-rows: auto minmax(0, 1fr);   /* row 1 sizes to Now Playing, row 2 fills */
 }
 /* [data-surface="max"] .bento  { …own composition, later (sidebar + multi-slot) } */
-/* [data-surface="mini"] .bento { …own composition, later (condensed transport)  } */
+/* mini (2026-09-09, first slice): ONE wide column — Now Playing, then the two content
+   cards stacked. The composition is being built piece by piece from here. */
+[data-surface="mini"] .bento {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+[data-surface="mini"] .panel[data-slot="right"] { display: none; }  /* one card: the left slot's */
 
 /* ── Panel primitive ────────────────────────────────────────── */
 .panel {
@@ -1358,3 +1364,47 @@ body {
 .np--live .np__scrub { pointer-events: none; }
 .np--live .np__live { display: block; }
 .np__btn[disabled] { opacity: 0.35; cursor: default; }
+
+/* ── Tray panel (tray.html · TRAY.md) ───────────────────────── */
+/* A second window that mirrors the Now Playing card. It reuses .titlebar / .panel /
+   .np / .scrub wholesale so every theme × skin renders it like the card; the rules
+   here are only the deltas: a content-sized body (the window fits itself), the
+   source badge, the time readout, and the volume row under the strip. */
+body.tray { height: auto; overflow: hidden; }
+.tray__head .app-title { cursor: pointer; }
+.tray__source {
+  flex: 0 0 auto;
+  margin-right: var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  white-space: nowrap;
+}
+.tray__body { flex: 0 0 auto; padding-top: 0; }
+.tray__panel { gap: var(--space-2); }
+.tray__time {
+  grid-column: 3; justify-self: end;
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tray__add.is-busy svg { animation: acct-spin var(--dur-spin) linear infinite; }
+.tray__add[disabled] { opacity: 0.6; cursor: default; }
+.tray__vol { display: flex; align-items: center; gap: var(--space-2); }
+.tray__vol .scrub { flex: 1 1 auto; }
+.tray__mute {
+  flex: 0 0 auto;
+  width: var(--icon-lg); height: var(--icon-lg);
+  display: grid; place-items: center;
+  background: none; border: none; padding: 0;
+  color: var(--title); cursor: pointer;
+}
+.tray__mute svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; display: block; }
+
+/* ── Extension flyout (settings menu · EXTENSION.md) ────────── */
+.flyout--extension { min-width: calc(var(--menu-min-w) * 1.9); }
+.ext { display: flex; flex-direction: column; gap: var(--space-1); }
+.ext__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }

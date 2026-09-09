@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -29,5 +29,21 @@ getrandom = "0.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
 futures = "0.3"
 # ms → RFC3339 for local playlists' date_added (already in the tree transitively)
-chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+
+# OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
+# Global System Media Transport Controls session + the master volume endpoint.
+# Already in the dependency tree transitively (Tauri), so no new crate downloads.
+[dependencies.windows]
+version = "0.61"
+features = [
+  "Foundation",
+  "Foundation_Collections",
+  "Media_Control",
+  "Storage_Streams",
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  "Win32_System_Com",
+]
 

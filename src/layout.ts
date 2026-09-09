@@ -9,6 +9,7 @@
 import { registry, type CardDef, type CardId, type CardInstance } from "./cards";
 import { makeDropdown } from "./dropdown";
 import { onCardRequest } from "./layout-bus";
+import { currentSurface } from "./surface";
 
 type Slot = "left" | "right";
 interface MidiLayout {
@@ -195,8 +196,10 @@ export function initLayout(): void {
   // visible in the other slot → the two exchange ("flip"); already in the LRU slot →
   // no-op. A drilled card in the target slot remounts at root — deliberate, no guard
   // (recency means a drilled slot is rarely the LRU one).
+  // In mini only the LEFT slot is on-screen (the right one is display:none), so a
+  // summon must land there or it lands nowhere visible.
   onCardRequest((id) => {
     if (id === "now-playing") return; // anchored, never a content-slot occupant
-    setSlot(lruSlot(), id);
+    setSlot(currentSurface() === "mini" ? "left" : lruSlot(), id);
   });
 }

@@ -484,6 +484,15 @@ pub fn materialize_track(track: Track, db: State<'_, Db>) -> Result<(), String> 
     Ok(())
 }
 
+/// True when the store holds this id as a SYNCED library row (a `seen`/transient row
+/// doesn't count — the same rule the front-end's `inLibrary` applies to the loaded
+/// store). Used by the bridge/tray to hide "+" for songs already in the library.
+pub(crate) fn in_library(conn: &Connection, id: &str) -> bool {
+    conn.query_row("SELECT source FROM tracks WHERE track_id = ?1", [id], |r| r.get::<_, String>(0))
+        .map(|s| s == "library")
+        .unwrap_or(false)
+}
+
 /// Graduate tracks to `source='library'` after an explicit Add-to-Library (or insert
 /// fresh library rows). Stamps a synthetic `added_rank` — Unix seconds, guaranteed
 /// above every real rank (0..library-size) and monotonic — so a just-added track sorts

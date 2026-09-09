@@ -8,6 +8,8 @@ front-end, Rust back-end).
 - `docs/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
 - `docs/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
 - `docs/DESIGN.md` — product intent.
+- `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
+  extension + the loopback bridge (`extension/` is the MV3 source).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

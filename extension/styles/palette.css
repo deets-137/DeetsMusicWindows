@@ -1,0 +1,71 @@
+/* ============================================================
+   PALETTE — raw named colors (Tier 1)
+   ------------------------------------------------------------
+   Literal hexes only. Nothing in the UI references these
+   directly; themes map them onto semantic roles (see themes.css).
+   Add a color here, name it after the paint, then wire it in a theme.
+   ============================================================ */
+
+:root {
+  /* twilight-lilac family — the Lilac theme (enchanted twilight fairy) */
+  --paint-dewy-lilac:          #E0DCF0; /* dewy lilac canvas */
+  --paint-twilight-plum:       #43306B; /* deep twilight plum (title) */
+  --paint-violet-slate:        #6A6385; /* muted violet-slate (text) */
+  --paint-lavender-grey:       #8B84A8; /* legible lavender-grey (subtext) */
+  --paint-fae-mint:            #2FB089; /* enchanted mint-green (go) */
+  --paint-lilac-white:         #F2EFFA; /* elevated lilac surface */
+  --paint-lilac-tint:          #E7E1F5; /* lilac hover tint */
+
+  /* fae accents — shared sparkle (magenta + gold) */
+  --paint-purple-cactus-flower:#A63A79; /* magenta-purple (stop) */
+  --paint-lemon-chrome:        #F6C700; /* vivid gold (pause) */
+
+  /* sepia family — vibe pulled from the harness "Sepia Dreams" theme */
+  --paint-parchment:           #F5EFE6; /* warm paper */
+  --paint-espresso:            #3E2C1C; /* dark roast brown */
+  --paint-cocoa:               #5C4733; /* mid brown */
+  --paint-faded-tan:           #B8A583; /* quiet tan */
+  --paint-olive-leaf:          #6B8E4E; /* muted green */
+  --paint-terracotta:          #A8432F; /* burnt red */
+  --paint-amber-glow:          #D4A017; /* warm amber */
+  --paint-parchment-light:     #FBF6EE; /* elevated parchment surface */
+  --paint-parchment-tint:      #EFE6D6; /* parchment hover tint */
+
+  /* moonlight family — dark slate-blue night theme */
+  --paint-deep-slate:          #1A2436; /* deep slate-blue canvas */
+  --paint-slate-bright:        #C7D3E3; /* bright slate blue-gray (title) */
+  --paint-slate-mid:           #93A2B8; /* mid slate blue-gray (text) */
+  --paint-slate-dim:           #5E6E84; /* dim slate blue-gray (subtext) */
+  --paint-moonlight-white:     #EEF2F7; /* brightest moonlight white */
+  --paint-moonlight-silver:    #C4CCD6; /* moonlight silver */
+  --paint-moonlight-gray:      #9AA3AF; /* moonlight gray */
+  --paint-slate-surface:       #232F40; /* elevated slate panel */
+  --paint-slate-surface-tint:  #2E3C50; /* slate hover tint */
+
+  /* Green family — chartreuse fairy-forest (light) */
+  --paint-dewy-chartreuse:     #E9F0C0; /* dewy chartreuse canvas */
+  --paint-forest:              #1E4D2B; /* deep forest green (title) */
+  --paint-moss:                #54664B; /* muted moss (text) */
+  --paint-sage-grey:           #87977A; /* legible sage-grey (subtext) */
+  --paint-fern:                #4C9A46; /* fresh fern green (go) */
+  --paint-foxglove:            #B04A6E; /* berry-rose (stop) — Green's fae sparkle */
+  --paint-chartreuse-white:    #F4F8E3; /* elevated chartreuse surface */
+  --paint-chartreuse-tint:     #EAF1D0; /* chartreuse hover tint */
+  /* (Green's --pause reuses --paint-lemon-chrome from the fae accents) */
+
+  /* Black & Red family — cyber villain
+     (canvas/surfaces reuse Black & Yellow's pitch / onyx / onyx-tint) */
+  --paint-siren:               #FF2B2B; /* bright siren red (title / go) */
+  --paint-blood:               #C01020; /* deep blood red (pause) */
+  --paint-ember:               #D8837A; /* muted ember (text-dim / stop) */
+  --paint-ash-white:           #EFE2DE; /* red-warmed off-white (body text) */
+
+  /* Black & Yellow family — Noir Gold */
+  --paint-pitch:               #0F0F0F; /* near-black canvas */
+  --paint-onyx:                #1A1A1A; /* elevated surface */
+  --paint-onyx-tint:           #242424; /* hover tint */
+  --paint-hazard:              #FFD400; /* hi-vis yellow (title / go) */
+  --paint-amber-wax:           #E0B100; /* deep amber (pause) */
+  --paint-straw:               #D8C97A; /* muted yellow (text-dim / stop) */
+  --paint-paper-warm:          #ECE6CF; /* warm off-white (body text) */
+}

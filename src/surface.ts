@@ -15,14 +15,19 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 export type SurfaceName = "mini" | "midi" | "max";
 
 const STORAGE_KEY = "deets.surface";
+const FULL_KEY = "deets.surface.full"; // last non-mini surface — what "Open DeetsMusic" restores
 const sizeKey = (s: SurfaceName) => `deets.surface.size.${s}`;
 const DEFAULT_SURFACE: SurfaceName = "midi";
 
 // ── Band table (hardcoded this build; the editor UI is a future setting) ──
-// Width-driven: ≤ MINI_CEIL → mini · ≤ MIDI_CEIL → midi · above → max.
-const MINI_CEIL = 380;
+// Width-driven: ≤ MINI_CEIL → mini · ≤ MIDI_CEIL → midi · above → max. Narrowing the
+// app window below 340 px flips it to mini in place, widening past 350 flips it back (the
+// window's minWidth in tauri.conf is 320 so that point is reachable); the tray flyout is
+// the other entrance (TRAY.md §1). Being evaluated by the user, 2026-09-09.
+const MINI_CEIL = 345;
 const MIDI_CEIL = 820;
-const HYST = 40; // must drag this far past a threshold before the surface flips
+const HYST = 40; // must drag this far past the midi/max threshold before the surface flips
+const MINI_HYST = 5; // the mini edge is tight on purpose: in below 340, out above 350
 
 // Fallback sizes until a surface has a remembered one. midi = today's window.
 const DEFAULT_SIZES: Record<SurfaceName, { w: number; h: number }> = {
@@ -46,10 +51,10 @@ function bandFor(width: number): SurfaceName {
 function flipFor(width: number, cur: SurfaceName): SurfaceName {
   switch (cur) {
     case "mini":
-      return width > MINI_CEIL + HYST ? bandFor(width) : "mini";
+      return width > MINI_CEIL + MINI_HYST ? bandFor(width) : "mini";
     case "midi":
       if (width > MIDI_CEIL + HYST) return "max";
-      if (width < MINI_CEIL - HYST) return "mini";
+      if (width < MINI_CEIL - MINI_HYST) return "mini";
       return "midi";
     case "max":
       return width < MIDI_CEIL - HYST ? bandFor(width) : "max";
@@ -96,9 +101,9 @@ function rememberedSize(s: SurfaceName): { w: number; h: number } {
   return DEFAULT_SIZES[s];
 }
 
-/** Resize the OS window to a surface's remembered size, without triggering a flip. */
-async function applySize(s: SurfaceName): Promise<void> {
-  const { w, h } = rememberedSize(s);
+/** Resize the OS window to a surface's remembered (or default) size, without triggering a flip. */
+async function applySize(s: SurfaceName, useDefault = false): Promise<void> {
+  const { w, h } = useDefault ? DEFAULT_SIZES[s] : rememberedSize(s);
   applyingSize = true;
   try {
     await appWindow.setSize(new LogicalSize(w, h));
@@ -124,13 +129,25 @@ function activate(s: SurfaceName): void {
   setAttribute(s);
   persistChoice(s);
   markActive(s);
+  if (s !== "mini") {
+    try { localStorage.setItem(FULL_KEY, s); } catch { /* session-only */ }
+  }
 }
 
-/** Deliberate selection (settings row / minimize). Restores the surface's remembered size. */
-export function applySurface(s: SurfaceName): void {
-  if (s === active) return;
+/** The surface the real app window uses (midi unless the user chose max). */
+export function fullSurface(): SurfaceName {
+  const v = localStorage.getItem(FULL_KEY);
+  return v === "max" ? "max" : "midi";
+}
+
+/** Deliberate selection (settings row / tray). Restores the surface's remembered size —
+ *  or, with `fixed`, its default (the tray flyout is a fixed panel, DA/DR style, so a
+ *  stray remembered mini size can't make it tall). Resolves once the OS window has that
+ *  size (the tray anchors after it). */
+export async function applySurface(s: SurfaceName, fixed = false): Promise<void> {
+  if (s === active && !fixed) return;
   activate(s);
-  void applySize(s);
+  await applySize(s, fixed);
 }
 
 export function currentSurface(): SurfaceName {

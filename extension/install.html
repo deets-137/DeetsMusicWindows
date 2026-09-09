@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-theme="lilac" data-skin="press">
+<head>
+  <meta charset="utf-8">
+  <title>Install the DeetsMusic extension</title>
+  <link rel="stylesheet" href="styles/fonts.css">
+  <link rel="stylesheet" href="styles/palette.css">
+  <link rel="stylesheet" href="styles/themes.css">
+  <link rel="stylesheet" href="styles/skin.css">
+  <style>
+    /* Same component tier as the options page; kept inline so this file works
+       straight off disk (file://) with no build. */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      min-height: 100vh; background: var(--canvas); background-image: var(--canvas-bg);
+      background-size: var(--canvas-bg-size); background-repeat: var(--canvas-bg-repeat);
+      color: var(--text); font-family: var(--font-body); font-size: var(--fs-text); font-weight: var(--fw-text, 400);
+      line-height: var(--lh-text); -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 36rem; margin: 0 auto; padding: var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+    .brand { font-family: var(--font-title); font-weight: var(--fw-title); font-size: calc(var(--fs-title) * 1.4); color: var(--title);
+      text-decoration-line: var(--title-underline); text-decoration-thickness: var(--title-underline-w); text-underline-offset: var(--title-underline-offset); }
+    .card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--panel-pad); background: var(--panel);
+      border: var(--panel-border-width) solid var(--panel-border); border-radius: var(--panel-radius); box-shadow: var(--shadow-card); }
+    h2 { font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-title); color: var(--title); }
+    ol { padding-left: 1.4rem; display: flex; flex-direction: column; gap: var(--space-2); }
+    li b { color: var(--title); font-weight: 600; }
+    .note { color: var(--subtext); font-size: var(--fs-subtext); }
+    .row { display: flex; gap: var(--space-2); align-items: center; }
+    code, .field { font-family: var(--font-body); padding: var(--space-1) var(--space-2); background: var(--canvas); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius-control); user-select: all; }
+    .field { flex: 1 1 auto; min-width: 0; font: inherit; }
+    button { padding: var(--space-1) var(--space-3); background: var(--surface-hover); border: 1px solid var(--border);
+      border-radius: var(--radius-control); color: var(--title); font: inherit; cursor: pointer; white-space: nowrap; }
+    button:hover { filter: brightness(0.97); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div><span class="brand">DeetsMusic</span> <span class="note">browser extension</span></div>
+
+    <section class="card">
+      <h2>What it does</h2>
+      <p>Adds a toolbar button. On a YouTube (or YouTube Music) page, one click looks the song up on Apple Music
+        and a <b>+</b> adds it to your library — through the DeetsMusic app, so no Apple credentials ever live in the browser.</p>
+    </section>
+
+    <section class="card">
+      <h2>Install (Chrome / Edge / Brave)</h2>
+      <p class="note">Until it's on the Web Store the extension loads "unpacked" from the DeetsMusic install folder.
+        Chrome won't let a page open its extensions screen, so step 1 is a paste.</p>
+      <ol>
+        <li>Open a new tab and go to <span class="row"><code id="ext-url">chrome://extensions</code><button type="button" id="copy-url">Copy</button></span>
+          <span class="note">Edge: <code>edge://extensions</code> · Brave: <code>brave://extensions</code></span></li>
+        <li>Turn on <b>Developer mode</b> (top right).</li>
+        <li>Click <b>Load unpacked</b> and pick this folder:
+          <span class="row"><input class="field" id="path" type="text" readonly><button type="button" id="copy-path">Copy</button></span></li>
+        <li>Pin <b>DeetsMusic</b> from the puzzle-piece menu so the button is always visible.</li>
+        <li>That's it — with DeetsMusic running, click the button on any YouTube video. (The settings
+          page that opens on install has a <b>Test connection</b> button if you want to check.)</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Firefox</h2>
+      <p class="note">Not yet — the manifest is Chrome-first (MV3 service worker). A Firefox pass is on the list.</p>
+    </section>
+  </div>
+  <script>
+    (function () {
+      /* This page lives next to the extension's manifest, so its own folder IS the
+         "Load unpacked" target. */
+      var href = decodeURIComponent(location.href);
+      var m = href.match(/^file:\/\/\/?(.*)\/[^\/]*$/);
+      var folder = m ? m[1].replace(/\//g, "\\") : "(open this page from the DeetsMusic install folder)";
+      document.getElementById("path").value = folder;
+      var flash = function (btn) { var t = btn.textContent; btn.textContent = "Copied"; setTimeout(function () { btn.textContent = t; }, 1200); };
+      var copy = function (text, btn) {
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { flash(btn); }, function () { fallback(text, btn); });
+        else fallback(text, btn);
+      };
+      var fallback = function (text, btn) {
+        var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); flash(btn); } catch (e) {}
+        document.body.removeChild(ta);
+      };
+      document.getElementById("copy-path").addEventListener("click", function () { copy(folder, this); });
+      document.getElementById("copy-url").addEventListener("click", function () { copy("chrome://extensions", this); });
+      var dark = false;
+      try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
+      if (dark) { document.documentElement.setAttribute("data-theme", "black-red"); document.documentElement.setAttribute("data-skin", "retro-future"); }
+    })();
+  </script>
+</body>
+</html>

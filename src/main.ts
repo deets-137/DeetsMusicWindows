@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
-import { applySurface, initSurface, type SurfaceName } from "./surface";
+import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initArtworkHeal } from "./artwork-heal";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
@@ -9,6 +9,10 @@ import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
 import { getVolume, setVolume, toggleMute, isMuted } from "./player";
+import { initMediaSession } from "./media-session";
+import { initNpBus, publishAppearance } from "./np-bus";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 
@@ -22,6 +26,8 @@ window.addEventListener("DOMContentLoaded", () => {
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
+  initMediaSession(); // Windows media keys + the SMTC flyout (no-op if the runtime declines)
+  initNpBus(); // tray panel + extension hub (TRAY.md / EXTENSION.md)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the
@@ -91,10 +97,55 @@ window.addEventListener("DOMContentLoaded", () => {
     libraryAddToggle.setAttribute("aria-checked", String(next));
   });
 
+  // ── Minimize to Tray: × hides the window instead of quitting (TRAY.md; default on;
+  //    the Rust side owns it because the close policy runs before any JS can answer). ──
+  const trayToggle = document.getElementById("tray-toggle");
+  interface BackendSettings { minimizeToTray: boolean; readWindowsMedia: boolean }
+  invoke<BackendSettings>("settings_get")
+    .then((s) => trayToggle?.setAttribute("aria-checked", String(s.minimizeToTray)))
+    .catch((e) => console.warn("[settings] get", e));
+  trayToggle?.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep the menu open so the dot feedback is visible
+    const next = trayToggle.getAttribute("aria-checked") !== "true";
+    trayToggle.setAttribute("aria-checked", String(next));
+    invoke("settings_set_minimize_to_tray", { on: next }).catch((err) => console.error("[settings] tray", err));
+  });
+
+  // ── Extension flyout: bridge status + install guide + bridge log (EXTENSION.md).
+  //    No pairing code: the bridge trusts the extension's Origin header. ──
+  interface BridgeInfo { port: number | null; token: string; ports: number[] }
+  const extStatus = document.getElementById("ext-status");
+  invoke<BridgeInfo>("bridge_info")
+    .then((b) => {
+      if (extStatus) extStatus.textContent = b.port ? `Bridge on 127.0.0.1:${b.port}` : "Bridge off (no free port)";
+    })
+    .catch((e) => console.warn("[bridge] info", e));
+  const flash = (el: HTMLElement | null, text: string) => {
+    if (!el) return;
+    const was = el.textContent;
+    el.textContent = text;
+    window.setTimeout(() => (el.textContent = was), 1200);
+  };
+  document.getElementById("ext-install")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
+  });
+  document.getElementById("ext-log")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget as HTMLElement;
+    invoke<string>("bridge_log").then((text) =>
+      navigator.clipboard.writeText(text).then(
+        () => flash(btn, "Copied"),
+        () => console.log(text),
+      ),
+    );
+  });
+
   // Theme choices.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       applyTheme(el.dataset.themeChoice as ThemeName);
+      publishAppearance(); // tray panel + extension popup follow
       close();
     });
   });
@@ -103,16 +154,36 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       applySkin(el.dataset.skinChoice as SkinName);
+      publishAppearance();
       close();
     });
   });
 
-  // Surface choices (same pattern; mini is entered via minimize, later — not offered here).
+  // Surface choices (same pattern). A deliberate pick also pins a tray-popped window
+  // (it stops hiding on blur) — the user has made it theirs.
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      applySurface(el.dataset.surfaceChoice as SurfaceName);
+      void applySurface(el.dataset.surfaceChoice as SurfaceName);
+      invoke("tray_pin_main").catch(() => {});
       close();
     });
+  });
+
+  // Tray left-click (TRAY.md §1): go mini, then let Rust anchor + show the window at
+  // the click. Order matters — the anchor needs the mini size, so we resize first.
+  void listen("tray-pop", () => {
+    applySurface("mini", true)
+      .catch((e) => console.error("[tray] mini", e))
+      .then(() => invoke("tray_place_main"))
+      .catch((e) => console.error("[tray] place", e));
+  });
+  // Tray menu "Open DeetsMusic": the real app — back to the full surface (midi/max) at
+  // its own remembered size; Rust then restores the pre-pop position and pins it.
+  void listen("tray-open", () => {
+    applySurface(fullSurface())
+      .catch((e) => console.error("[tray] full", e))
+      .then(() => invoke("tray_place_main"))
+      .catch((e) => console.error("[tray] place", e));
   });
 
   // ── Account (Apple Music — loopback browser auth) ────────────

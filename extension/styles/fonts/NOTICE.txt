@@ -1,0 +1,69 @@
+Bundled Fonts
+=============
+
+All fonts below are licensed under the SIL Open Font License, Version 1.1
+(OFL-1.1), which permits embedding and redistribution. Full license text:
+https://scripts.sil.org/OFL
+
+
+Liberation(tm) Fonts
+--------------------
+Files:   LiberationSerif-Regular.ttf, LiberationSerif-Bold.ttf
+Version: 2.1.5
+Copyright (c) 2012 Red Hat, Inc.
+Upstream: https://github.com/liberationfonts/liberation-fonts
+Bundled unmodified.
+
+"Liberation" is a trademark of Red Hat, Inc. registered in U.S. Patent
+and Trademark Office and certain other jurisdictions.
+
+
+Anton  (Press skin — title)
+---------------------------
+Files:   Anton-Regular.woff2
+Copyright (c) The Anton Project Authors (Vernon Adams, Cyreal).
+Upstream: https://github.com/googlefonts/anton
+Bundled as a full-range WOFF2 (converted from the Google Fonts TTF with
+fontTools); otherwise unmodified.
+
+
+IBM Plex Mono  (Press skin — body)
+----------------------------------
+Files:   IBMPlexMono-Regular.woff2, IBMPlexMono-SemiBold.woff2
+Copyright (c) 2017 IBM Corp.
+Upstream: https://github.com/IBM/plex
+Bundled as full-range WOFF2 files (converted from the Google Fonts TTFs
+with fontTools); otherwise unmodified. The SemiBold face is bound to
+font-weight 700 in fonts.css — see the note there.
+
+
+Orbitron  (Retro-Future skin — title)
+-------------------------------------
+Files:   Orbitron-Bold.woff2
+Copyright (c) The Orbitron Project Authors (Matt McInerney).
+Upstream: https://github.com/theleagueof/orbitron
+Bundled as a latin-subset WOFF2 (via Google Fonts); otherwise unmodified.
+
+
+Rajdhani  (Retro-Future skin — body)
+------------------------------------
+Files:   Rajdhani-Medium.woff2, Rajdhani-Bold.woff2
+Copyright (c) The Rajdhani Project Authors (Indian Type Foundry).
+Upstream: https://github.com/itfoundry/rajdhani
+Bundled as latin-subset WOFF2 files (via Google Fonts); otherwise unmodified.
+
+
+Cinzel  (Ocean skin — title)
+----------------------------
+Files:   Cinzel-SemiBold.woff2
+Copyright (c) The Cinzel Project Authors (Natanael Gama).
+Upstream: https://github.com/NDISCOVER/Cinzel
+Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.
+
+
+Spectral  (Ocean skin — body)
+-----------------------------
+Files:   Spectral-Regular.woff2
+Copyright (c) The Spectral Project Authors (Production Type).
+Upstream: https://github.com/productiontype/Spectral
+Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.

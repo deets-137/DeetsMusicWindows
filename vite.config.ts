@@ -5,6 +5,12 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
+  build: {
+    rollupOptions: {
+      input: { main: "index.html", tray: "tray.html" },
+    },
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

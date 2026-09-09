@@ -18,7 +18,7 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
-[DeetsWeather.md](DeetsWeather.md).
+[DeetsWeather.md](DeetsWeather.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md).
 
 ---
 
@@ -54,8 +54,12 @@ Start Menu entry (right-click → *Pin to taskbar*) and an uninstaller.
 - **`mainBinaryName`** is set alongside `productName` in `tauri.conf.json`. Without it the
   installed exe takes the *Cargo package* name (`deetsmusic.exe`) — `productName` alone only
   renames the shortcut, install dir, and uninstall entry.
-- **The icon is still the stock Tauri logo.** Drop a 1024×1024 PNG somewhere and run
-  `npx tauri icon path/to/icon.png` to regenerate every size + the `.ico`.
+- **Icon**: `app-icon.png` (the DM mark, DeetsAirplay/DeetsRGB lineage — transparent
+  background, scarlet `#E8341C` D + burgundy `#7A1A2E` M, 2026-09-09). Regenerate every
+  size + the `.ico` with `npx tauri icon app-icon.png` (delete the `android/` / `ios/`
+  dirs it also emits); the extension's icons are LANCZOS resizes of the same file.
+- The installer bundles the browser extension (`extension/` → `$INSTDIR\extension`) and
+  `src-tauri/nsis/hooks.nsh` asks post-install whether to open its install guide.
 - **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
   falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the
   install self-contained — see `src-tauri/secrets/README.md`.
@@ -75,7 +79,24 @@ pass before building; the user directs):
    highest-taste-variance). Explicitly NOT a full ledger burn-down.
 2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
    MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
-3. **SMTC / global hotkeys** — media keys + the Windows media flyout.
+3. **SMTC / global hotkeys** — media keys + the Windows media flyout. (media-session.ts
+   is the zero-dependency probe of the Chromium route; unverified.)
+
+**Built 2026-09-08, awaiting the first user test** (each has its own doc — read it before
+touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](TRAY.md));
+the **browser extension + loopback bridge** ([EXTENSION.md](EXTENSION.md), source in
+`extension/`, shipped inside the NSIS installer with a post-install prompt). The app icon is
+now the DM mark (`app-icon.png` → `npx tauri icon`). The Web Store listing is the user's step.
+**2026-09-09 polish (untested):** tray left-click now pops the *app* as mini at the cursor
+(TRAY.md §1; the panel moved to the right-click menu); the extension's status line
+slides/crossfades instead of jumping; "Not it?" opens a mini Search card (songs +
+albums, `/search`); the popup re-reads the tab every 2 s. **Pairing code dropped**: the
+bridge trusts the extension's `Origin` (EXTENSION.md §3). Tray right-click *Open* now
+restores the real app (full surface + pre-pop position). Mini = one wide column, one
+card under Now Playing (user-led from here). **Surfaces:** all three width cutoffs are back
+(mini: in < 340 / out > 350 · midi ↔ max at 820 ± 40; `minWidth` lowered to 320 so the
+flip into mini is actually reachable) — the user is evaluating resize-into-mini alongside
+the tray flyout and the menu pick. **Next:** the mini composition, piece by piece.
 
 **Deferred, when prioritized:** the **search-card stations section** (the one optional radio
 leftover — add `stations` to the search types; `Station` model/tile/playback all exist, activation

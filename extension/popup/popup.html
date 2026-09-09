@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" data-theme="lilac" data-skin="press">
+<head>
+  <meta charset="utf-8">
+  <title>DeetsMusic</title>
+  <link rel="stylesheet" href="../styles/fonts.css">
+  <link rel="stylesheet" href="../styles/palette.css">
+  <link rel="stylesheet" href="../styles/themes.css">
+  <link rel="stylesheet" href="../styles/skin.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="pop">
+    <header class="pop__head">
+      <span class="pop__brand">DeetsMusic</span>
+      <span class="pop__source" id="source" hidden></span>
+      <span class="pop__spacer"></span>
+      <button type="button" class="pop__iconbtn" id="refresh" aria-label="Read the page again" title="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg>
+      </button>
+      <button type="button" class="pop__iconbtn" id="open-options" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </header>
+
+    <section class="pop__card">
+      <!-- states: one of these is visible at a time -->
+      <p class="pop__empty" id="st-looking">Looking…</p>
+      <div class="pop__msg" id="st-offline" hidden>
+        <p class="pop__title-sm">DeetsMusic isn't running</p>
+        <p class="pop__note">Open the app — the extension talks to it on this PC.</p>
+        <button type="button" class="pop__action pop__action--quiet" id="retry-offline">Try again</button>
+      </div>
+      <div class="pop__msg" id="st-unpaired" hidden>
+        <p class="pop__title-sm">DeetsMusic didn't accept this extension</p>
+        <p class="pop__note">The app only answers the browser extension. Reload the extension, then try again.</p>
+        <button type="button" class="pop__action pop__action--quiet" id="retry-unpaired">Try again</button>
+      </div>
+      <div class="pop__msg" id="st-noapple" hidden>
+        <p class="pop__title-sm">Not signed in to Apple Music</p>
+        <p class="pop__note">Sign in from DeetsMusic's Account menu first.</p>
+      </div>
+      <div class="pop__msg" id="st-nosong" hidden>
+        <p class="pop__title-sm" id="nosong-title">Open a YouTube video</p>
+        <p class="pop__note" id="nosong-note">Then click this button to send the song to Apple Music.</p>
+      </div>
+      <div class="pop__msg" id="st-error" hidden>
+        <p class="pop__title-sm">Something went wrong</p>
+        <p class="pop__note" id="error-note"></p>
+        <button type="button" class="pop__action pop__action--quiet" id="retry-error">Try again</button>
+      </div>
+
+      <!-- the match: cover · title / artist / album · + -->
+      <div class="pop__match" id="st-match" hidden>
+        <div class="pop__row">
+          <div class="pop__art" id="m-art"><span class="pop__glyph">♪</span></div>
+          <div class="pop__meta">
+            <div class="pop__title" id="m-title"></div>
+            <div class="pop__artist" id="m-artist"></div>
+            <div class="pop__album" id="m-album"></div>
+          </div>
+          <button type="button" class="pop__add" id="m-add" aria-label="Add to Apple Music library" title="Add to Library">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="pop__status-wrap" id="m-status-wrap"><div class="pop__status-clip"><p class="pop__note pop__status" id="m-status"></p></div></div>
+        <button type="button" class="pop__linklet" id="m-others" aria-expanded="false">Not it? Search instead</button>
+
+        <!-- mini Search card (the app's Search card, songs + albums only) -->
+        <div class="pop__search-wrap" id="m-search-wrap">
+          <div class="pop__search-clip">
+            <div class="search" id="m-search">
+              <div class="search__bar" id="s-bar">
+                <div class="search__field">
+                  <svg class="search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
+                  <input class="search__input" id="s-input" type="search" placeholder="Search Apple Music" spellcheck="false" autocomplete="off">
+                  <span class="search__busy" aria-hidden="true"></span>
+                  <button class="search__clear" id="s-clear" type="button" aria-label="Clear search" hidden>
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="search__root" id="s-root"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Debug panel (Settings → Debug): what was read, what was asked, what came back -->
+    <section class="pop__card pop__debug" id="debug" hidden>
+      <h2 class="pop__devhead">Debug</h2>
+      <dl class="pop__stats" id="dbg-stats"></dl>
+      <h2 class="pop__devhead">Log</h2>
+      <ul class="pop__events" id="dbg-log"></ul>
+      <div class="pop__btnrow">
+        <button type="button" class="pop__action pop__action--quiet" id="dbg-copy">Copy report</button>
+        <button type="button" class="pop__action pop__action--quiet" id="dbg-applog">App bridge log</button>
+      </div>
+      <pre class="pop__pre" id="dbg-applog-out" hidden></pre>
+    </section>
+  </div>
+  <script src="../src/common/shared.js"></script>
+  <script src="../src/readers.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
