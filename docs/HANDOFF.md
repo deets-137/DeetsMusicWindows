@@ -84,6 +84,15 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**Public release (decided 2026-09-09, next session)** — the repo is already public and the
+secret audit is clean (the `.p8`/MUT/`dev-dumps` were never committed in any branch). The
+blocker is that a MusicKit key needs a **paid Apple membership**, so no ordinary subscriber can
+run the app. Fix: a **Cloudflare Worker on deets.solutions mints the developer token** — long
+lifetime, open endpoint rate-limited by IP, local signing kept as the dev seam. Full build
+order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still needed before
+posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
+attached (none exist), and a plain note about SmartScreen on the unsigned installer.
+
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
 1. **Settings card** — a lean vessel that rehomes the existing title-menu toggles

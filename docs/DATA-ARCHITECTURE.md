@@ -29,6 +29,13 @@ model — never a raw Apple (or future Spotify) shape.** Normalization lives in 
 
 ## 2. Auth — the loopback browser flow
 
+> Two tokens, two different problems. The **developer token** is minted from the MusicKit
+> `.p8` and identifies the *app*; the **music-user token (MUT)** comes from the flow below and
+> identifies the *listener*. This section is about the MUT. The developer token is about to
+> move off the client entirely — a MusicKit key needs a paid Apple membership, so a public
+> build cannot carry one. See [RELEASE.md](RELEASE.md) §7 for the Cloudflare Worker that
+> mints it and the cache that keeps `developer_token()` synchronous.
+
 The in-app webview **cannot open OAuth popups** (a known Tauri/WebView2 limitation,
 [tauri#14263](https://github.com/tauri-apps/tauri/issues/14263)), and MusicKit's
 `authorize()` is popup-based — so in-app auth hangs forever. We sign in via the
@@ -195,6 +202,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | Bridge log | `<app_data_dir>/bridge.log` | n/a (runtime) |
 | Raw API dumps | `dev-dumps/` | ✗ gitignored |
 | Shipped installers | `installers/` | ✗ gitignored ([RELEASE.md](RELEASE.md)) |
+| Cached developer token | `<app_data_dir>/developer-token.json` | n/a (runtime) — **planned**, [RELEASE.md](RELEASE.md) §7 |
 
 `<app_data_dir>` is `%APPDATA%\com.deetsmusic.app`, or `…\com.deetsmusic.dev` under
 `npm run dev:app` — the identifier is the only thing that config changes, which is what keeps
