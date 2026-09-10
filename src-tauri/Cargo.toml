@@ -35,11 +35,12 @@ futures = "0.3"
 # ms → RFC3339 for local playlists' date_added (already in the tree transitively)
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
-# The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app. The
-# committed form is the git dependency below, rev-pinned; while the crate is being
-# developed alongside, the path form is used and flips to git once it is pushed.
-# deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "<sha>" }
-deets-airplay = { path = "../../DeetsAirplay/crates/airplay" }
+# The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app, pinned to
+# a commit of that public repo so a clone of this one builds alone. To change the crate:
+# commit + push DeetsAirplay, then bump `rev` here. (For a long local iteration, a
+# gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
+# works, but it churns Cargo.lock — prefer push + bump.)
+deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "3a1feff38e32997b929e371f5bb9bc239c69adec" }
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

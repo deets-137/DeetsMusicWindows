@@ -2,7 +2,8 @@
 
 > Scoped and **built 2026-09-10** on branch `release-prep`; **connected and played on the desk**
 > the same day. Source of the sender: `../DeetsAirplay` (public repo `deets-137/DeetsAirplay`),
-> now a library crate, `crates/airplay` (`deets-airplay` 0.2.0). Read its `CLAUDE.md` "Never"
+> now a library crate, `crates/airplay` (`deets-airplay` 0.2.0, a git dependency pinned by
+> `rev`). Read its `CLAUDE.md` "Never"
 > list before touching any wire code. Code here: `src-tauri/src/airplay.rs` (the session,
 > metadata, commands), `src/airplay.ts` (the "Play on" panel, the volume takeover), the AirPlay
 > row in `settings-card.ts`, `settings.rs` (three fields), `player.ts` (`setVolumeSink`).
@@ -170,9 +171,9 @@ latency change.
 1. ~~Desk test (§6)~~ done: the PC keeps playing (decision 2 as resolved).
 2. ~~Dev firewall rule~~ added 2026-09-10 ("DeetsMusic dev", inbound UDP). A `cargo clean`
    keeps it: the rule is by exe path.
-3. **Push the crate, flip the dependency** to `git = …, rev = <sha>` in `src-tauri/Cargo.toml`
-   (the path line is marked). Add a gitignored `src-tauri/.cargo/config.toml` `[patch]` for
-   local development if the crate keeps changing.
+3. ~~Push the crate, flip the dependency~~ done 2026-09-10: `deets-airplay` is a git
+   dependency pinned to a DeetsAirplay commit. To change the crate: commit + push
+   DeetsAirplay, bump `rev` in `src-tauri/Cargo.toml`.
 4. **`npm run release`** then confirm the first-connect UAC prompt on an installed build.
 
 ## 10. The per-process capture: what was learned, and what v2 must do

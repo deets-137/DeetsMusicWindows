@@ -160,7 +160,7 @@ stage volume row** (mute · slider · a hidden AirPlay square; the titlebar pill
 menu** ([SETTINGS.md](SETTINGS.md) — one `deets.settings` store, the v1 rows, the Rewind gate
 at 50 play starts; **Play Now now defaults to "Song and rest of list"**). Third batch, same day: **AirPlay**
 ([AIRPLAY.md](AIRPLAY.md)) — `../DeetsAirplay` is now a library crate (`crates/airplay`) this app
-depends on (by path until pushed, then git); the "Play on" panel behind the AirPlay square (pill
+depends on (git, pinned by `rev`); the "Play on" panel behind the AirPlay square (pill
 panel in mini/midi, stage row in max), **v1 = "All PC sound"** (loopback of the default
 output; the PC keeps playing), one volume slider driving the speaker, now-playing text +
 cover to the speaker, no Settings rows. **Connected and played on the desk.** The per-process
