@@ -18,6 +18,13 @@ enum arguments, **prefixed ids everywhere**, and a two-step flow — search (or 
 stations) first, then play or queue by the returned id. Free-text `play "<term>"` exists
 only as a human shortcut on the CLI; the MCP `play` tool rejects anything that isn't an id.
 
+**It is a long-lived process.** `deetsmusic mcp` runs for the whole agent session, which
+means the installed `cli\deetsmusic.exe` is an **open file** — Windows then refuses to replace
+or delete it, so it blocks both an install and an uninstall of the app. The NSIS
+`PREINSTALL` / `PREUNINSTALL` hooks stop it by path ([RELEASE.md](RELEASE.md) §3). Note also
+that an MCP client config (e.g. `.claude.json`) holds the **absolute path** to that exe, so an
+uninstall breaks the tools until a reinstall puts it back in the same place.
+
 ## 2. Architecture
 
 ```

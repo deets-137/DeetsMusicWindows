@@ -8,8 +8,10 @@ front-end, Rust back-end).
 - `docs/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
 - `docs/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
 - `docs/DESIGN.md` — product intent.
-- `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
-  extension + the loopback bridge (`extension/` is the MV3 source).
+- `docs/TRAY.md` — tray icon/panel, minimize-to-tray, window lifecycle (single instance);
+  `docs/EXTENSION.md` — browser extension + the loopback bridge (`extension/` is the MV3
+  source); `docs/AGENT.md` — the agent/CLI routes on that bridge; `docs/RELEASE.md` — build,
+  install, uninstall.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -33,10 +35,22 @@ front-end, Rust back-end).
   enough to hold in context directly — explore, read, and edit files yourself so you
   keep the full picture while building. Only exception: if he explicitly asks for one.
 
+## How to explain things to me
+- Write in ASD-STE100 (Simplified Technical English): short sentences, active voice, one
+  idea per sentence, plain approved words, no metaphor.
+- Name the exact control or gesture ("the tray icon", "the pinned taskbar button"). Define
+  the terms once, at the start.
+- Test each option against the code BEFORE you show it to me. Discard the options that the
+  code already rules out. Show the real forks only.
+- A question about the UI needs the front-end state, not only the Rust. Check localStorage
+  keys and the `surface`/`theme`/`skin` modules first.
+
 ## Run
 ```
 npm install
 npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 window
+npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
+npm run release       # build the installer (→ installers/; see docs/RELEASE.md)
 npx tsc --noEmit      # front-end typecheck
 ```
 Devtools auto-open in dev (`src-tauri/src/lib.rs`).

@@ -191,8 +191,24 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | Apple key + IDs | `src-tauri/secrets/{apple.json, *.p8}` | ✗ gitignored |
 | Captured MUT | `src-tauri/secrets/user-token.txt` | ✗ gitignored |
 | Library cache | `<app_data_dir>/deetsmusic.db` | n/a (runtime) |
+| Back-end settings | `<app_data_dir>/settings.json` | n/a (runtime) |
+| Bridge log | `<app_data_dir>/bridge.log` | n/a (runtime) |
 | Raw API dumps | `dev-dumps/` | ✗ gitignored |
+| Shipped installers | `installers/` | ✗ gitignored ([RELEASE.md](RELEASE.md)) |
 
-**Dev-only path caveat:** the secrets dir is resolved from `CARGO_MANIFEST_DIR`
-(works in `tauri dev`). For a packaged build, secrets/cache paths need to move to
-proper app dirs — see [HANDOFF.md](HANDOFF.md) production TODOs.
+`<app_data_dir>` is `%APPDATA%\com.deetsmusic.app`, or `…\com.deetsmusic.dev` under
+`npm run dev:app` — the identifier is the only thing that config changes, which is what keeps
+a dev build off the installed build's cache, settings and WebView2 profile.
+
+**`settings.json` (`settings.rs`)** is the handful of choices Rust must know *before* the
+webview is up, so they can't live in localStorage: `minimizeToTray` (the × policy runs before
+any JS could answer), `readWindowsMedia` (the tray panel's GSMTC fallback), `bridgeToken` (the
+extension's shared secret), and `windowPos` (where the real window sat, so the tray flyout can
+be put back — [TRAY.md](TRAY.md) §5). Every field has a default, so a missing or stale file
+never blocks startup. Everything else — theme, skin, layout, surface — stays in localStorage.
+
+**Path resolution:** `secrets_dir()` prefers `<app_data_dir>/secrets/` and falls back to the
+compile-time `CARGO_MANIFEST_DIR`, so an installed build can be made self-contained by copying
+`src-tauri/secrets/` there (`secrets/README.md`). The captured MUT is always *written* to app
+data — an installed app writing back into the source tree is the thing that fix was for. Only
+`dev-dumps/` is still repo-relative, which is correct: it's a dev-only artifact.

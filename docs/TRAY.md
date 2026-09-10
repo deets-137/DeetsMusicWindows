@@ -1,7 +1,9 @@
 # Tray panel + minimize-to-tray
 
-> Design agreed 2026-09-08. Status: **built, awaiting first user test.** Code:
-> `src-tauri/src/tray.rs` (icon, menu, window policy), `src-tauri/src/media.rs` (Windows
+> Design agreed 2026-09-08. Status: **built and user-tested** through 0.1.3; the window
+> lifecycle (§6) landed 2026-09-09 after the pinned-taskbar bug. Code:
+> `src-tauri/src/tray.rs` (icon, menu, window policy, single-instance activation),
+> `src-tauri/src/lib.rs` (the single-instance plugin), `src-tauri/src/media.rs` (Windows
 > media session + master volume), `tray.html` + `src/tray.ts` (the panel),
 > `src/np-bus.ts` + `bridge.rs` `Hub` (state relay), `src-tauri/src/settings.rs`.
 
@@ -21,11 +23,22 @@
   taskbar** (`set_skip_taskbar(true)` on pop, back to `false` on Open / pin) and always
   opens at mini's **default** size (`applySurface("mini", true)`) — a fixed panel like
   DA's, so a remembered mini size from narrowing the app window can't stretch it.
-- **Right-click → *Open DeetsMusic* = the real app**: Rust emits `tray-open` → the page
-  switches to the **full surface** (`deets.surface.full`: midi, or max if that was the
-  last non-mini choice) → `tray_place_main` restores the pre-pop position and shows it
-  **pinned** (no hide-on-blur). A window that's already visible and pinned just gets
-  focus. Picking a surface from the title menu also pins (`tray_pin_main`).
+- **Right-click → *Open DeetsMusic* = the real app**: `show_main` **hides the window
+  first**, then emits `tray-open` → the page switches to the **full surface**
+  (`deets.surface.full`: midi, or max if that was the last non-mini choice) and resizes
+  while hidden → `tray_place_main` restores the position, shows, and leaves it **pinned**
+  (no hide-on-blur). The hide is what makes it one clean cut: resizing and moving a
+  *visible* window made the flyout visibly grow and travel across the screen. It
+  deliberately does not route through `hide_main`, whose `main_hidden_at` would make the
+  re-show look like a fresh hide to the 300 ms re-pop guard. A window that's already
+  visible and pinned just gets `unminimize` + focus. Picking a surface from the title menu
+  also pins (`tray_pin_main`).
+- **The position is remembered across × and across restarts** — `remember_pos` writes it to
+  both `Inner.restore_pos` and `settings.json` (`windowPos`), and `restore_window_pos` reads
+  it back at startup, discarding a position that no longer lands on any connected monitor.
+  It is captured on a pop *and* in `hide_main`, but **never while popped**: a popped window
+  sits at the tray anchor, and recording that as the real position is what used to strand
+  the full window in the bottom-right corner after × → tray-click → Open.
 - **Right-click menu**: *Open DeetsMusic* · *Now Playing panel* · ☑ *Read Windows media* ·
   (dev: *Panel devtools*) · *Quit DeetsMusic*. *Now Playing panel* anchors the panel at the
   last tray click.
@@ -77,7 +90,40 @@ queue / MusicKit code; `tray.ts` is a pure consumer.
   Dev builds: tray menu → *Panel devtools*.
 - Bridge: `GET /now-playing` (with the pairing token) or the app's *Copy bridge log*.
 
-## 5. Later
+## 5. Window lifecycle — one instance, one window
+
+Added 2026-09-09. The tray flyout runs with `set_skip_taskbar(true)`, so while it is up the
+app has **no taskbar button**. Windows matches a pinned shortcut to a running window by
+identity (for a plain desktop app, the exe path), finds nothing to match, and treats a click
+on the pin as *launch*. A minimize-to-tray × does the same — a hidden window has no button
+either.
+
+The result was a **second process**, and it was not inert: a second tray icon, a second writer
+on the same SQLite file, and a bridge that failed over to port 47826 (`bridge.rs` `PORTS`), so
+the extension and the MCP server could end up driving the wrong process.
+
+**`tauri-plugin-single-instance`, registered FIRST in the builder** (`lib.rs`). The position is
+load-bearing, not style: a later registration lets the duplicate run setup — open the database,
+take a port — before it is told to die. Its callback is one call, `tray::show_main`, so a
+pinned-button click is the same path as the menu's *Open DeetsMusic*: a flyout un-pops to its
+full surface and back onto the taskbar, and a window hidden to the tray returns.
+
+The guard's mutex name derives from the **app identifier**, so `com.deetsmusic.dev` keeps its
+own — `npm run dev:app` still runs beside the installed app. A plain `npm run tauri dev` shares
+`com.deetsmusic.app`, and therefore shares the guard and the data dir, with the installed build.
+
+Known limits, both accepted:
+
+- While the flyout is up the pin shows **no running mark**, because there is still no taskbar
+  button. That is the cost of the off-taskbar flyout; single-instance fixes the *click*, not
+  the icon state.
+- A **debug** build shows a console window for the turned-away duplicate: it starts, finds the
+  mutex, exits. `main.rs` suppresses the console under `not(debug_assertions)`, so release
+  builds show nothing.
+- A dev build gets its **own taskbar button** beside the pin — different exe path, different
+  identity. Two DeetsMusic icons in dev is expected, not a duplicate process.
+
+## 6. Later
 - Theme/skin pre-paint on the panel already follows the shared `deets.theme` / `deets.skin`
   keys (same origin); live changes ride the `appearance` event.
 - "Read Windows media" is only in the tray menu; a mirror in the Settings card when that

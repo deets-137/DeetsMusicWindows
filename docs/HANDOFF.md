@@ -18,7 +18,8 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
-[DeetsWeather.md](DeetsWeather.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md).
+[DeetsWeather.md](DeetsWeather.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
+[RELEASE.md](RELEASE.md) (build / install / uninstall).
 
 ---
 
@@ -53,29 +54,31 @@ auto-captures uncaught errors), `__music` (live instance), `__player.snap()`. Fu
 
 ## Ship it (installable Windows app)
 
+Full procedure — version sync, the three build stages, the NSIS hooks, install, uninstall,
+and why there's no updater — is in **[RELEASE.md](RELEASE.md)**. The short version:
+
 ```bash
-npm run release           # = tauri build; ~3 min cold, front-end is bundled into the exe
+npm run release     # cli:build → tauri build → archive-installer; ~3 min cold
 ```
 
-Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~4.8 MB).
-Run it → installs per-user to `%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**, adds a
-Start Menu entry (right-click → *Pin to taskbar*) and an uninstaller.
+Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~5.6 MB)
+and copies it into `installers/` (gitignored, the DeetsAirplay pattern). Installs per-user to
+`%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**.
 
-- **`mainBinaryName`** is set alongside `productName` in `tauri.conf.json`. Without it the
-  installed exe takes the *Cargo package* name (`deetsmusic.exe`) — `productName` alone only
-  renames the shortcut, install dir, and uninstall entry.
-- **Icon**: `app-icon.png` (the DM mark, DeetsAirplay/DeetsRGB lineage — transparent
-  background, scarlet `#E8341C` D + burgundy `#7A1A2E` M, 2026-09-09). Regenerate every
-  size + the `.ico` with `npx tauri icon app-icon.png` (delete the `android/` / `ios/`
-  dirs it also emits); the extension's icons are LANCZOS resizes of the same file.
-- The installer bundles the browser extension (`extension/` → `$INSTDIR\extension`) and
-  `src-tauri/nsis/hooks.nsh` asks post-install whether to open its install guide.
-- **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
-  falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the
-  install self-contained — see `src-tauri/secrets/README.md`.
-- Version comes from `tauri.conf.json`; bump it before cutting a build you intend to keep.
-- The installer is **unsigned**, so SmartScreen will warn on first run (*More info → Run
-  anyway*). Silencing that needs a code-signing certificate.
+Three things that bite:
+
+- **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
+  stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
+- **The version lives in three files** — `package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml` — and they must agree or the archive step fails.
+- **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
+  file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
+  0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).
+
+Icon: `app-icon.png` (the DM mark, DeetsAirplay/DeetsRGB lineage — transparent background,
+scarlet `#E8341C` D + burgundy `#7A1A2E` M, 2026-09-09). Regenerate every size + the `.ico`
+with `npx tauri icon app-icon.png` (delete the `android/` / `ios/` dirs it also emits); the
+extension's icons are LANCZOS resizes of the same file.
 
 ---
 
@@ -112,6 +115,13 @@ queue + 2×2 bento, [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) build order #
 mini transport row stacks its side buttons when they'd overflow; and the **agent/CLI
 routes** on the bridge (`/command` `/play` `/queue` `/history`, [AGENT.md](AGENT.md)) —
 plus the `deetsmusic` CLI + MCP binary in `cli/` and `npm run dev:app` for dev alongside the installed app.
+**2026-09-09, 0.1.3 (installer line, user-tested):** **one instance only** — the pinned
+taskbar button now activates the running app instead of starting a second process
+([TRAY.md](TRAY.md) §5); *Open DeetsMusic* is one **clean cut** (hide → resize hidden →
+place → show) instead of a visible grow-and-travel; the window **position survives** × and
+restart (`settings.json` → `windowPos`); and the NSIS installer **stops the bundled CLI**
+before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
+([RELEASE.md](RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
 
 **Deferred, when prioritized:** the **search-card stations section** (the one optional radio
 leftover — add `stations` to the search types; `Station` model/tile/playback all exist, activation
@@ -218,6 +228,18 @@ get large).
 ---
 
 ## Known gotchas
+- **The tray flyout hides the taskbar button, and that used to spawn a second process** —
+  `set_skip_taskbar(true)` on a pop (and a hidden window after × to tray) leaves Windows
+  nothing to match the pinned shortcut against, so a click on the pin *launched* the exe
+  again: second tray icon, second writer on the SQLite file, bridge failed over to port
+  47826. Fixed by `tauri-plugin-single-instance`, which **must stay FIRST in the builder**
+  (`lib.rs`) or the duplicate opens the DB and takes a port before it's turned away. Its
+  callback is `tray::show_main`. See [TRAY.md](TRAY.md) §5 — including why two DeetsMusic
+  taskbar icons in dev are expected, and why a debug build flashes a console.
+- **A running `deetsmusic mcp` blocks install and uninstall** — Windows won't replace or
+  delete an open file, and the CLI is long-lived (an MCP session lasts as long as the agent).
+  Uninstalling 0.1.2 removed the registry entry and then left every file on disk. The NSIS
+  `PREINSTALL`/`PREUNINSTALL` hooks stop it by path; see [RELEASE.md](RELEASE.md) §3.
 - **No in-app OAuth popups** (Tauri/WebView2) — auth is browser-loopback by design (via
   `tauri-plugin-opener`, cross-platform); don't try to "fix" `authorize()` in the webview.
 - **Liberation + skin fonts aren't on Windows** — bundled locally; the loopback page serves them
@@ -328,6 +350,18 @@ src-tauri/src/provider.rs   MusicProvider trait
 src-tauri/src/library.rs    SQLite cache + sync + play_stats/play_events + unified track store
 src-tauri/src/enrich.rs     lazy catalog enrichment: storefront cache, batch fetch, palette cache
 src-tauri/src/playlists.rs  playlists: local store + CRUD, Apple mirror sync + content cache
+src-tauri/src/tray.rs       tray icon/menu, window policy, single-instance activation (TRAY.md)
+src-tauri/src/settings.rs   back-end settings.json: minimizeToTray, readWindowsMedia,
+                            bridgeToken, windowPos
+src-tauri/src/bridge.rs     loopback bridge: Hub state relay + extension/agent routes
+src-tauri/src/media.rs      Windows media session (GSMTC) + master volume
+src-tauri/nsis/hooks.nsh    NSIS hooks: stop the CLI pre-(un)install, offer the extension
+cli/                        the `deetsmusic` binary: CLI + MCP server (AGENT.md)
+extension/                  MV3 browser extension source (EXTENSION.md)
+scripts/dev-app.mjs         generates the dev identifier config for `npm run dev:app`
+scripts/cli-dist.mjs        stages cli/dist/deetsmusic.exe for bundle.resources
+scripts/archive-installer.mjs   copies each shipped setup exe into installers/
+installers/                 local archive of shipped NSIS installers (gitignored)
 src-tauri/secrets/          Apple key/IDs + captured MUT (gitignored)
 dev-dumps/                  raw API samples used to design the model (gitignored)
 ```

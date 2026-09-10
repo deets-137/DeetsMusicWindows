@@ -109,6 +109,8 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
 - The extension ships **inside the NSIS installer** as `$INSTDIR\extension\` (Tauri
   `bundle.resources`). `src-tauri/nsis/hooks.nsh` (`NSIS_HOOK_POSTINSTALL`) asks
   *"Also set up the DeetsMusic browser extension?"* and opens `extension/install.html`.
+  That file now holds two more macros — `PREINSTALL` / `PREUNINSTALL` stop the bundled CLI,
+  which otherwise locks its own exe against the installer ([RELEASE.md](RELEASE.md) §3).
 - **Chrome refuses to auto-install anything outside the Web Store**, so `install.html` is a
   themed load-unpacked walkthrough that locates its own folder (copy buttons for the path and
   `chrome://extensions`). The app's title menu → **Extension → Install guide…** opens the same
