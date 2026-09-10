@@ -98,10 +98,11 @@ attached (none exist), and a plain note about SmartScreen on the unsigned instal
 bottom and build; the only inputs still the user's are the repo name and host (proposed
 `DeetsMusicToken` / `music-api.deets.solutions`).
 
-**Before v1: AirPlay (built 2026-09-10, untested).** See [AIRPLAY.md](AIRPLAY.md): the sender
-is the shared `deets-airplay` crate in `../DeetsAirplay/crates/airplay` (read that repo's
-CLAUDE.md "Never" list before touching wire code). Decisions are locked in AIRPLAY.md §5; the
-to-do before shipping is §9 (desk test of the mute, dev firewall rule, flip the Cargo dep to git).
+**AirPlay: in v0.2.0, desk-tested in dev.** See [AIRPLAY.md](AIRPLAY.md): the sender is the
+shared `deets-airplay` crate (git dependency on DeetsAirplay, pinned by `rev`; read that
+repo's CLAUDE.md "Never" list before touching wire code). Decisions are locked in §5; v1 =
+"All PC sound", the per-process path is parked for v2 (§10). Left: confirm the first-connect
+firewall prompt on the **installed** 0.2.0 build.
 
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
