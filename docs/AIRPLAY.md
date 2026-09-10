@@ -145,8 +145,8 @@ connect time, and a `ChoiceRow` with `get`/`set` is how a Rust-owned choice rend
 | Send to speaker (All PC sound also sends other apps) — *DeetsMusic only* / *All PC sound* | `airplay_capture` | `app` / `system` | `airplay.rs` `start_live` (behind `V2_PER_PROCESS`) |
 
 Also in `settings.json`, not shown as rows: `airplay_last_speaker` (name, ip, port; feeds
-the dropdown's remembered row), `airplay_firewall_seeded` (the one-shot prompt fired). The
-speaker volume is not stored: the speaker owns it.
+the dropdown's remembered row), `airplay_firewall_exe` (the exe the one-shot prompt was
+answered for), `airplay_speaker_volumes` (by speaker name, §1).
 
 A change to the row while connected reconnects in place (same speaker), like DeetsAirplay's
 latency change.
@@ -175,6 +175,11 @@ latency change.
    dependency pinned to a DeetsAirplay commit. To change the crate: commit + push
    DeetsAirplay, bump `rev` in `src-tauri/Cargo.toml`.
 4. **`npm run release`** then confirm the first-connect UAC prompt on an installed build.
+   **0.2.0 failed this** (2026-09-10): the dev build and the installed build share
+   `settings.json` (same identifier), the dev run had set the yes/no flag, so the installed
+   build skipped the prompt and "Couldn't reach" the speaker. 0.2.1 remembers the **exe
+   path** the rule was made for (`airplayFirewallExe`); a dev build reports itself seeded
+   and records nothing. Re-test on the installed 0.2.1.
 
 ## 10. The per-process capture: what was learned, and what v2 must do
 

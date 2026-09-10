@@ -90,6 +90,11 @@ No admin prompt. Adds a Start Menu entry (right-click → *Pin to taskbar*) and 
 then offers the extension walkthrough.
 
 - The installer is **unsigned**, so SmartScreen warns on first run (*More info → Run anyway*).
+  The user-facing wording for each release lives in [RELEASE-NOTES.md](RELEASE-NOTES.md);
+  paste that entry into the GitHub Release.
+- **`npm run tauri dev` and the installed app share `%APPDATA%\com.deetsmusic.app`** (same
+  identifier). Anything a dev run writes to `settings.json` the installed build reads. Use
+  `npm run dev:app` (own identifier) when testing anything that seeds a one-shot state.
   Silencing it needs a code-signing certificate.
 - **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
   falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the install

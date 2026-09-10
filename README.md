@@ -63,6 +63,7 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 [docs/DESIGN.md](docs/DESIGN.md) — product design and backlog ·
 [docs/UI-ARCHITECTURE.md](docs/UI-ARCHITECTURE.md) — themes, skins, panels, chrome ·
 [docs/DATA-ARCHITECTURE.md](docs/DATA-ARCHITECTURE.md) — auth, model, provider, cache ·
+[docs/RELEASE-NOTES.md](docs/RELEASE-NOTES.md) — what each version brings, and how to install ·
 [docs/RELEASE.md](docs/RELEASE.md) — build, install, uninstall ·
 [docs/TRAY.md](docs/TRAY.md) — tray, panel, window lifecycle ·
 [docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) — connect Claude Desktop, Claude Code, Cursor, or a terminal (plain words)

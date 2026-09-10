@@ -469,7 +469,7 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             error: state.error.lock().unwrap().clone(),
             last_speaker: settings.airplay_last_speaker,
             speakers: state.speakers.lock().unwrap().clone(),
-            firewall_seeded: settings.airplay_firewall_seeded,
+            firewall_seeded: firewall_seeded(&app),
         };
         Ok(status)
     })
@@ -495,19 +495,30 @@ pub async fn airplay_volume(app: AppHandle, pct: f64) -> Result<(), String> {
     .map_err(|e| e.to_string())?
 }
 
-/// The one-shot firewall prompt, before the first connect. Marks itself done
+/// Has THIS exe had its firewall prompt? A dev build never needs one (its rule is
+/// added by hand, AIRPLAY.md §4), and never records anything, so it cannot mark the
+/// installed build as done — they share settings.json.
+fn firewall_seeded(app: &AppHandle) -> bool {
+    if cfg!(debug_assertions) {
+        return true;
+    }
+    let me = std::env::current_exe().ok().map(|p| p.display().to_string());
+    me.is_some() && app.state::<Settings>().get().airplay_firewall_exe == me
+}
+
+/// The one-shot firewall prompt, before the first connect. Marks this exe done
 /// whatever the outcome, so a "No" is not asked again every time.
 #[tauri::command]
 pub async fn airplay_firewall_prompt(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let settings = app.state::<Settings>();
-        if settings.get().airplay_firewall_seeded {
+        if firewall_seeded(&app) {
             return Ok(());
         }
         if let Err(e) = firewall_add_rule() {
             log(&format!("firewall: {e}"));
         }
-        settings.update(|d| d.airplay_firewall_seeded = true).map(|_| ())
+        let me = std::env::current_exe().ok().map(|p| p.display().to_string());
+        app.state::<Settings>().update(|d| d.airplay_firewall_exe = me).map(|_| ())
     })
     .await
     .map_err(|e| e.to_string())?

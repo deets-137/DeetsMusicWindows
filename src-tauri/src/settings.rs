@@ -37,8 +37,11 @@ pub struct SettingsData {
     pub airplay_capture: AirplayCapture,
     /// Last speaker connected to; the dropdown offers it before a scan finds it.
     pub airplay_last_speaker: Option<AirplaySpeaker>,
-    /// The one-shot Windows Firewall prompt (inbound UDP for the speaker's replies) fired.
-    pub airplay_firewall_seeded: bool,
+    /// The exe the one-shot Windows Firewall prompt (inbound UDP for the speaker's
+    /// replies) was answered for. By path, not yes/no: the dev build and the installed
+    /// build share this file (same identifier), and a rule is per exe — 0.2.0 shipped
+    /// with a bool, the dev run set it, and the installed build never prompted.
+    pub airplay_firewall_exe: Option<String>,
     /// The volume (0–100) a speaker was last left at, by speaker name. A speaker never
     /// used before starts at `AIRPLAY_FIRST_VOLUME` so nobody gets blasted.
     pub airplay_speaker_volumes: std::collections::HashMap<String, f64>,
@@ -66,7 +69,7 @@ impl Default for SettingsData {
         Self {
             airplay_capture: AirplayCapture::App,
             airplay_last_speaker: None,
-            airplay_firewall_seeded: false,
+            airplay_firewall_exe: None,
             airplay_speaker_volumes: std::collections::HashMap::new(),
             minimize_to_tray: true,
             agent_control: true,
