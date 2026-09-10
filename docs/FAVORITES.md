@@ -56,7 +56,9 @@ the [Playlists export decision](PLAYLISTS.md)):
 
 ## The "Library Add" setting (the gate)
 
-Add-to-Library is **off by default** and revealed by a settings toggle — **Library Add** — modeled
+Add-to-Library is gated by a settings toggle — **Library Add** — **on by default since
+2026-09-10** (it shipped opt-in; the user judged the hidden item a bug once the feature was
+verified). Modeled
 on the existing **Hover-Menu** / **Always on Top** rows. When **on**, the **Add to Library** item
 appears in the right-click menu on catalog tracks; when **off**, it's absent everywhere. The toggle
 *is* the deliberate consent: with it enabled, the action itself is frictionless — **silent, no
@@ -68,7 +70,8 @@ be one-click without risking accidental account writes, given there's **no remov
 - **The row.** A `menu__row--toggle` in the settings menu (`index.html`), grouped with **Always on
   Top** / **Hover-Menu**, above **Account**: `role="menuitemcheckbox"`, a `.menu__label`
   ("Library Add") + the `.menu__dot` indicator. Same markup shape as the AOT row.
-- **Persistence.** `localStorage["deets.libraryAdd"]` (`"on"` / `"off"`), **default off** — mirrors
+- **Persistence.** `localStorage["deets.libraryAdd"]` (`"on"` / `"off"`), **default on** (absent
+  key = on; only an explicit `"off"` hides it) — mirrors
   `deets.alwaysOnTop` / `deets.menuMode`. Seeded on launch into `aria-checked`; click flips +
   persists.
 - **No live fan-out needed** — the key difference from **Hover-Menu**. Right-click menus are built

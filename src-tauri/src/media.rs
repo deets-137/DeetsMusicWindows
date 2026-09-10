@@ -57,7 +57,7 @@ pub struct SystemVolume {
     pub muted: bool,
 }
 
-/// Our own process re-registers a session through WebView2 (media-session.ts) —
+/// Our own process registers a session (smtc.rs; WebView2 may add one too) —
 /// that must never count as "something else is playing".
 fn is_self(app_id: &str) -> bool {
     let a = app_id.to_ascii_lowercase();

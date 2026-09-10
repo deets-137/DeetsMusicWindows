@@ -36,18 +36,21 @@ futures = "0.3"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
-# Global System Media Transport Controls session + the master volume endpoint.
-# Already in the dependency tree transitively (Tauri), so no new crate downloads.
+# Global System Media Transport Controls session + the master volume endpoint;
+# and our own media session (smtc.rs: `Media`). Already in the dependency tree
+# transitively (Tauri), so no new crate downloads.
 [dependencies.windows]
 version = "0.61"
 features = [
   "Foundation",
   "Foundation_Collections",
+  "Media",
   "Media_Control",
   "Storage_Streams",
   "Win32_Foundation",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
   "Win32_System_Com",
+  "Win32_System_WinRT",
 ]
 

@@ -6,7 +6,10 @@
 
 import "./styles/qcard.css";
 import * as queue from "./queue";
-import { onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming, type PlayerState } from "./player";
+import {
+  onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming,
+  stopStation, dropResumeStation, type PlayerState,
+} from "./player";
 import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
@@ -68,8 +71,26 @@ function mountQueue(host: HTMLElement): CardInstance {
       upcoming.length > UP_NEXT_CAP
         ? `<li class="qcard__more">+${upcoming.length - UP_NEXT_CAP} more</li>`
         : "";
-    const list = rows
-      ? `<ol class="qcard__list">${rows}${more}</ol>`
+    // Radio (STATIONS.md §3b, 2026-09-10): the station sits in Up Next AS IF it were
+    // the next song — last, after any manual break-out block, since that block plays
+    // first and the station returns after it. No data-idx: not jumpable, not draggable.
+    const st = lastState?.station ?? lastState?.resume;
+    let stationRow = "";
+    if (st) {
+      const sub = lastState?.resume
+        ? "Resumes after the queue"
+        : st.live
+          ? "LIVE · Apple Music picks what's next"
+          : "Apple Music picks what's next";
+      const art = st.artworkUrl
+        ? `<img class="qrow__art" src="${esc(st.artworkUrl)}" alt="" loading="lazy" data-art />`
+        : `<div class="qrow__art qrow__art--empty" aria-hidden="true">📻</div>`;
+      stationRow = `<li class="qrow qrow--station" data-station="${esc(st.id)}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
+        st.name,
+      )}</span><span class="qrow__artist">${esc(sub)}</span></div></li>`;
+    }
+    const list = rows || stationRow
+      ? `<ol class="qcard__list">${rows}${more}${stationRow}</ol>`
       : `<p class="qcard__empty">...</p>`;
 
     body.innerHTML = `
@@ -114,6 +135,17 @@ function mountQueue(host: HTMLElement): CardInstance {
   // in library / no catalog id); a hero menu with nothing to offer simply doesn't open.
   body.addEventListener("contextmenu", (e) => {
     const target = e.target as HTMLElement;
+    // The station row: leave the station (radio) or cancel its return (after a break-out).
+    const stRow = target.closest<HTMLElement>(".qrow--station");
+    if (stRow) {
+      e.preventDefault();
+      stRow.classList.add("is-context");
+      const items: MenuItem[] = lastState?.station
+        ? [{ label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[qcard] stop station", err)) }]
+        : [{ label: "Don't resume", run: () => dropResumeStation() }];
+      openContextMenu(e.clientX, e.clientY, items, () => stRow.classList.remove("is-context"));
+      return;
+    }
     const row = target.closest<HTMLElement>(".qrow[data-idx]");
     if (row) {
       const entry = queue.getUpcoming()[Number(row.dataset.idx)];
@@ -155,6 +187,9 @@ function mountQueue(host: HTMLElement): CardInstance {
       goToAlbumItem(cur?.catalogId, t?.albumName),
       startStationItem("songs", cur?.catalogId), // "more like what's playing"
       t ? addSongToLibraryItem(t) : null,
+      lastState?.station
+        ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[qcard] stop station", err)) }
+        : null,
     ].filter(Boolean) as MenuItem[];
     if (!items.length) return; // nothing to offer for the current song
     e.preventDefault();
@@ -213,7 +248,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     if (!pending) return;
     const { entry, row, idx, startY } = pending;
     const list = row.parentElement as HTMLElement;
-    const rows = Array.from(list.querySelectorAll<HTMLElement>(".qrow"));
+    const rows = Array.from(list.querySelectorAll<HTMLElement>(".qrow[data-idx]")); // not the station row
     const line = document.createElement("div");
     line.className = "qcard__drop-line";
     list.appendChild(line);

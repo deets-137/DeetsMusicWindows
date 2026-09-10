@@ -1,11 +1,11 @@
 // Search card (SEARCH.md) — a STANDALONE card, the "searches" screen archetype
 // (collections = the engine, queues = the Qcard, searches = this). Blended sectioned
-// results: Artists → Songs → Albums → Playlists, each a horizontal scroller, divided
+// results: Artists → Songs → Albums → Playlists → Stations, each a horizontal scroller, divided
 // by bars; an always-on debounced search bar with a category-filter popover; recents
 // as the empty state; drill-in panes riding the same --nav-* motion tokens as the
 // engine (shared idiom, not shared code).
 
-import { playTracks, queueTracksNext, queueTracksLater } from "./player";
+import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
 import { addTransientTracks } from "./track-store";
 import { addToPlaylistItem } from "./playlists";
 import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
@@ -28,9 +28,9 @@ const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
 
 const SECTION_LABEL: Record<SearchType, string> = {
-  artists: "Artists", songs: "Songs", albums: "Albums", playlists: "Playlists",
+  artists: "Artists", songs: "Songs", albums: "Albums", playlists: "Playlists", stations: "Stations",
 };
-const SECTION_ORDER: SearchType[] = ["artists", "songs", "albums", "playlists"];
+const SECTION_ORDER: SearchType[] = ["artists", "songs", "albums", "playlists", "stations"];
 
 const art = (tmpl: string | undefined, px: number): string | null =>
   tmpl ? tmpl.replace("{w}", String(px)).replace("{h}", String(px)).replace("{f}", "jpg") : null;
@@ -130,7 +130,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     </div>`;
   };
 
-  const tileCell = (kind: "album" | "playlist", id: string, name: string, sub: string, cover: string | null): string =>
+  const tileCell = (kind: "album" | "playlist" | "station", id: string, name: string, sub: string, cover: string | null): string =>
     `<div class="search__tile" data-${kind}="${esc(id)}" role="button" tabindex="0">
       ${coverHTML(cover, "search__tile-art")}
       <span class="search__tile-name">${esc(name)}</span>${sub ? `<span class="search__tile-sub">${esc(sub)}</span>` : ""}
@@ -156,6 +156,11 @@ function mountSearch(host: HTMLElement): CardInstance {
       playlists: () =>
         results!.playlists
           .map((p) => tileCell("playlist", p.catalogId ?? "", p.name, p.curatorName ?? "", art(p.artwork?.urlTemplate, 128)))
+          .join(""),
+      // A station tile plays on tap (radio mode) — no drill, no queue (STATIONS.md §1).
+      stations: () =>
+        results!.stations
+          .map((s) => tileCell("station", s.id, s.name, s.isLive ? "Live" : s.tagline ?? "", art(s.artwork?.urlTemplate, 128)))
           .join(""),
     };
     for (const sec of SECTION_ORDER) {
@@ -455,6 +460,12 @@ function mountSearch(host: HTMLElement): CardInstance {
     if (pl?.dataset.playlist) {
       const p = results?.playlists.find((x) => x.catalogId === pl.dataset.playlist);
       openCollection("playlists", pl.dataset.playlist, p?.name ?? "Playlist");
+      return;
+    }
+    const st = t.closest<HTMLElement>("[data-station]");
+    if (st?.dataset.station) {
+      const s = results?.stations.find((x) => x.id === st.dataset.station);
+      if (s) playStation(s).catch((err) => console.error("[search] play station", err));
     }
   });
   root.addEventListener("contextmenu", (e) => {

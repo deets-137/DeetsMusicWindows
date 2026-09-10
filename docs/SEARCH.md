@@ -95,9 +95,13 @@ The future Stations browser's sectioned root follows the search idiom, not the e
   — then a track tap plays. Same pane-slide drill the Library uses.
 - **Artist** → **drill in** to their **albums + top songs** (catalog fetch), like Library's Artist
   context; from there tap a track to play or an album to drill further.
-- **Station** → **play it** → enters **radio mode** ([STATIONS §1–2](STATIONS.md)). ⬜ The
-  stations search *type* isn't wired yet (deferred backlog) — playback, model, and tile all
-  exist from the Radio card, so this is a results-section-only add when picked up.
+- **Station** → **play it** → enters **radio mode** ([STATIONS §1–2](STATIONS.md)). ✅ Wired
+  2026-09-10: `stations` is a fifth search type (Rust `ALLOWED` + a `Station` bucket on
+  `SearchResults`), a last "Stations" tile section (sub-line: "Live" or the tagline), tap →
+  `playStation`. No drill, no queue, no context menu. The bridge remembers station hits so
+  `play station:<id>` resolves after a `/search`; the CLI/MCP station search asks the catalog
+  first, then falls back to the featured/genre name match. A filter saved before this date
+  lacks `stations` until the user ticks it (the stored list is honored as-is).
 
 ### Right-click menu ✅ (the queue actions you asked for)
 Rides the existing `menu()` grouping accessor → [context-menu.ts](../src/context-menu.ts), and the

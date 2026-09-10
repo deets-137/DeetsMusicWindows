@@ -493,18 +493,20 @@ summon behavior ever grows options, this should follow the same vocabulary.
 **Behavior.** What happens when the **break-out block** finishes. Queueing songs while
 an Apple station plays (Play Next / Add to Queue) defers a **break-out**: the block
 waits for the current station song to end, then takes over as a normal finite queue
-(STATIONS.md §1 — decided 2026-07-03). When that block's last song ends, playback
-simply stops (the standard end-of-queue behavior).
+(STATIONS.md §1 — decided 2026-07-03).
 
-**Current default (hardcoded):** **stop at the end of the block** — the break-out is
-permanent; the station is gone the moment the block takes over.
+**Current default (built 2026-09-10, the radio UX pass): (b) resume the station.** The
+Qcard shows the station as the row *after* the block ("Resumes after the queue"), and a
+right-click **"Don't resume"** on that row is the per-instance opt-out. The toggle below
+would make (a) the standing default for users who never want the return.
 
 **Options.**
-- **(a) Stop when the block ends** *(current default)* — predictable; radio was left.
-- **(b) Resume the station** — the interrupted station re-enters when the block's last
-  song ends ("play these three songs, then back to my station"). Implementation is a
-  natural hook: `player.ts` remembers the interrupted `Station` at break-out, and the
-  end-of-queue moment (model `upcoming` empty + MusicKit queue exhausted) calls
+- **(a) Stop when the block ends** — predictable; radio was left.
+- **(b) Resume the station** *(current default)* — the interrupted station re-enters when
+  the block's last song ends ("play these three songs, then back to my station").
+  Built as: `player.ts` remembers the interrupted `Station` at break-out
+  (`resumeStation`), and `maybeResumeStation` on the end-of-queue moment (model
+  `upcoming` empty + MusicKit `completed`/`ended`) calls
   `playStation` again. The re-entry rebuilds the station queue, so there's a boundary
   buffer — same as the break-out itself.
 

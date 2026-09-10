@@ -4,6 +4,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Artwork, Track } from "./library";
+import type { Station } from "./radio";
 
 export interface Album {
   libraryId?: string;
@@ -49,6 +50,8 @@ export interface SearchResults {
   albums: Album[];
   artists: Artist[];
   playlists: Playlist[];
+  /** Catalog stations — the Radio card's model; a tap enters radio mode. */
+  stations: Station[];
 }
 
 export interface ArtistDetail {
@@ -57,8 +60,8 @@ export interface ArtistDetail {
   topSongs: Track[];
 }
 
-export type SearchType = "songs" | "albums" | "artists" | "playlists";
-export const ALL_TYPES: SearchType[] = ["songs", "albums", "artists", "playlists"];
+export type SearchType = "songs" | "albums" | "artists" | "playlists" | "stations";
+export const ALL_TYPES: SearchType[] = ["songs", "albums", "artists", "playlists", "stations"];
 
 /** A resolved catalog entity handle (drill-in targets — see `catalogRelated`). */
 export interface NamedRef {

@@ -184,16 +184,31 @@ costs zero Apple calls; header ⟳ drops the cache); recents live in `localStora
 "Start Station" context-menu verb and search-card stations turn on. Engine polish that rode
 along: the **Sort pill auto-hides** when no grouping offers >1 sort (mirrors the View pill).
 
-**(b) The radio-mode display** — 🔵 **deferred to a dedicated UX pass** (2026-07-03). A first
-cut (station banner + Stop Station + "Up next chosen by Apple Music" in the Qcard) was built
-and then **reverted** — the user wants to design the whole "what the now-playing/queue surface
-does while a station plays" experience holistically first. So today the Qcard renders
-**normally** during a station (Now Playing + an empty/edit-only Up Next). Consequences to
-resolve in that pass: **Stop Station currently has no button** (`stopStation()` exists in
-player.ts, unwired) — you leave a station by playing anything else or by a break-out; and the
-LIVE treatment currently lives only on the **Now Playing card** (scrubber→LIVE marker, skip
-disabled), which the user kept. Note for the pass: the panel title can't simply become
-`📻 <name>` — it's the slot-picker trigger, so station identity needs its own slot.
+**(b) The radio-mode display** — ✅ **built 2026-09-10 (the radio UX pass; user's picks).**
+A first cut (station banner + Stop Station + "Up next chosen by Apple Music") had been built
+2026-07-03 and reverted pending a holistic design. The shipped shape:
+- **The station is the "next song".** Up Next's last row is the station itself
+  (`.qrow--station`: round art, name, sub-line "Apple Music picks what's next" / "LIVE · …").
+  No `data-idx`, so it is not jumpable or draggable. A manual break-out block renders
+  *above* it as editable rows, and the station row's sub-line becomes **"Resumes after the
+  queue"** — because it does: `player.ts` remembers the interrupted station
+  (`resumeStation`) at the break-out and `maybeResumeStation` (on `playbackStateDidChange`,
+  when MusicKit reports `completed`/`ended` with the model's upcoming empty) calls
+  `playStation` again. FUTURE-SETTINGS §17 option (b) is now the default. The return is
+  dropped by any explicit departure (new context, another station, Stop Station) or by the
+  row's **"Don't resume"**.
+- **Now Playing keeps the LIVE treatment**, and the station's name rides the **cover as a
+  hover chip** (`.np__station`; `--np-chip-*` skin tokens, `--panel`/`--title` roles).
+  The overlay / tray see the station name as the album line (`NpState.station`).
+- **Stop Station lives in three menus**: the station row's right-click, the Qcard hero's
+  right-click, and the Now Playing cover/meta right-click (radio only). No visible button —
+  the row *is* the affordance.
+- **After Stop the last song stays on screen, paused** (user's call): `stopStation` pauses,
+  leaves radio mode, and rebuilds MusicKit's queue as a finite window around the current
+  song (`loadFromModel(m, false, { stopFirst: true })`) so Play resumes *that song* under
+  queue mode instead of the stream. The heard trail stays; a pending break-out block stays
+  queued behind it.
+- The panel title stays the slot-picker trigger (station identity never goes there).
 
 ---
 
@@ -356,8 +371,8 @@ expression** of one shared taste model.
   via the shared builders, artist verb on Search **and Library Artists tiles** (the latter via
   the lazy two-hop song→artist-id resolve, no schema/enrichment needed); lazy resolution,
   session caches, no consent gate (§2). **This closes the Apple-radio line.** The search-card
-  stations section (add `stations` to the search types + a normalized `Station` bucket —
-  model + tile already exist) is **deferred backlog**, not a next step.
+  stations section (a `stations` search type + a `Station` bucket on `SearchResults`) was
+  built 2026-09-10 — see [SEARCH.md](SEARCH.md).
 
 **Open 🔵**
 - ~~Manual-queue interplay~~ / ~~radio-mode display~~ — ✅ closed above (2026-07-03).

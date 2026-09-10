@@ -3,7 +3,7 @@
 // it can be mounted into a slot like any other card (in midi it's anchored to the top slot).
 // Volume lives in the titlebar chrome, not here.
 
-import { playPause, nextTrack, prevTrack, shuffleQueue, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
+import { playPause, nextTrack, prevTrack, shuffleQueue, stopStation, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
 import { makeSlider } from "./slider";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
@@ -91,13 +91,24 @@ export const nowPlayingCard: CardDef = {
     // Drive the icon, title/artist, cover, and radio transport caps from playback
     // state. A LIVE station has no seek and no skip (STATIONS.md §1): `.np--live`
     // swaps the scrubber for a LIVE marker and the prev/next buttons disable.
+    let onStation = false; // radio mode → the menu offers Stop Station
     const unsubState = onPlayerState((s) => {
+      onStation = !!s.station;
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
       if (npTitle) npTitle.textContent = s.title ?? "Not playing";
       if (npArtist) npArtist.textContent = s.artist ?? (s.station ? s.station.name : "");
       if (npAlbum) npAlbum.textContent = s.album ?? "";
-      if (npArt) npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
+      if (npArt) {
+        npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
+        // Radio: the station's name rides the cover as a hover chip (STATIONS.md §3b).
+        if (s.station) {
+          const chip = document.createElement("span");
+          chip.className = "np__station";
+          chip.textContent = s.station.name;
+          npArt.appendChild(chip);
+        }
+      }
       const live = !!s.station?.live;
       npEl2?.classList.toggle("np--live", live);
       if (prevBtn) prevBtn.disabled = live;
@@ -138,6 +149,9 @@ export const nowPlayingCard: CardDef = {
         goToAlbumItem(cur.catalogId, t?.albumName),
         startStationItem("songs", cur.catalogId),
         t ? addSongToLibraryItem(t) : null,
+        onStation
+          ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
+          : null,
       ].filter(Boolean) as MenuItem[];
       if (!items.length) return;
       e.preventDefault();

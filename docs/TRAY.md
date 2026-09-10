@@ -67,7 +67,7 @@
 | – | idle | "Not playing" | – | system | hidden |
 
 The Windows reader skips our own process (`deetsmusic` / `msedgewebview2` AUMIDs — the
-webview registers its own SMTC session via media-session.ts) and prefers a *playing*
+app registers its own SMTC session natively, `smtc.rs`) and prefers a *playing*
 foreign session. Position is interpolated from the session's `LastUpdatedTime`, since
 apps report it sparsely. Thumbnails come back as data URLs, cached per track.
 

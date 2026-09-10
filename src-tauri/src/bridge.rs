@@ -97,6 +97,8 @@ pub struct NpState {
     /// True while DeetsMusic has a current item (playing OR paused).
     pub active: bool,
     pub playing: bool,
+    /// The station's name while one plays (radio mode).
+    pub station: Option<String>,
     pub title: Option<String>,
     pub artist: Option<String>,
     pub album: Option<String>,
@@ -129,6 +131,7 @@ pub struct Hub {
 #[tauri::command]
 pub fn np_publish(state: NpState, app: AppHandle, hub: tauri::State<'_, Hub>) {
     *hub.np.lock().unwrap() = state.clone();
+    crate::smtc::update(&state);
     let _ = app.emit_to("tray", "np", state);
 }
 
@@ -615,6 +618,9 @@ async fn handle(app: AppHandle, mut req: Request) {
                                 log(&format!("materialize after search failed: {e}"));
                             }
                         }
+                        // Station hits go into the same by-id table the /stations
+                        // listing feeds, so `play station:<id>` resolves after a search.
+                        remember_stations(&results.stations);
                         json(req, 200, serde_json::to_value(results).unwrap_or_default(), origin)
                     }
                     Err(e) => {

@@ -7,6 +7,7 @@ mod media;
 mod playlists;
 mod provider;
 mod settings;
+mod smtc;
 mod tray;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -89,6 +90,13 @@ pub fn run() {
             app.manage(settings::Settings::load(dir.clone()));
             tray::setup(app.handle())?;
             bridge::start(app.handle().clone());
+
+            // Our Windows media session (overlay + media keys) on the main HWND.
+            if let Some(win) = app.get_webview_window("main") {
+                if let Err(e) = smtc::init(app.handle().clone(), &win) {
+                    bridge::log(&format!("smtc init failed: {e}"));
+                }
+            }
 
             // Auto-open devtools in dev so the webview console is visible.
             #[cfg(debug_assertions)]

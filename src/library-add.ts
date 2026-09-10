@@ -16,7 +16,7 @@ import { inLibrary, loadTracks } from "./track-store";
 
 // ── the "Library Add" setting (mirrors deets.alwaysOnTop / deets.menuMode) ──
 const KEY = "deets.libraryAdd";
-let enabled = localStorage.getItem(KEY) === "on"; // default off — opt-in consent
+let enabled = localStorage.getItem(KEY) !== "off"; // default ON (2026-09-10; was opt-in)
 export const libraryAddEnabled = (): boolean => enabled;
 export function setLibraryAddEnabled(on: boolean): void {
   enabled = on;

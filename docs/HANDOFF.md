@@ -117,8 +117,13 @@ pass before building; the user directs):
    highest-taste-variance). Explicitly NOT a full ledger burn-down.
 2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
    MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
-3. **SMTC / global hotkeys** — media keys + the Windows media flyout. (media-session.ts
-   is the zero-dependency probe of the Chromium route; unverified.)
+3. ✅ **SMTC / global hotkeys** — built 2026-09-10 as a **native session** (`src-tauri/src/smtc.rs`,
+   registered on the main HWND from `setup`, fed by `np_publish`). The Chromium route was
+   probed and found half-working: media keys toggled play, but WebView2 never registered a
+   session, so the Win11 overlay stayed blank. The probe (`media-session.ts`) is deleted and
+   Chromium's `HardwareMediaKeyHandling` is disabled in `tauri.conf.json` so a key press is
+   handled once. Overlay buttons / keys / the overlay scrubber arrive as the same `np-command`
+   events the tray panel sends. Awaiting the first user test.
 
 **Built 2026-09-08, awaiting the first user test** (each has its own doc — read it before
 touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](TRAY.md));
@@ -148,11 +153,15 @@ restart (`settings.json` → `windowPos`); and the NSIS installer **stops the bu
 before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
 ([RELEASE.md](RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
 
-**Deferred, when prioritized:** the **search-card stations section** (the one optional radio
-leftover — add `stations` to the search types; `Station` model/tile/playback all exist, activation
-is just `playStation`) · the **radio-mode now-playing/queue UX** (a holistic pass — what the
-Qcard/NP surface does while a station plays; also owns **Stop Station**'s button, since
-`stopStation()` exists but is currently unwired) · **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
+**2026-09-10, branch `release-prep` (untested):** **stations in Search** (a fifth search type,
+[SEARCH.md](SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
+**radio UX pass** ([STATIONS.md](STATIONS.md) §3b — the station is Up Next's last row, Stop
+Station in three right-click menus, the station resumes after a break-out block, Stop leaves
+the last song paused); **Library Add now defaults ON**. Decisions for the rest of the branch
+(stage volume row, AirPlay shared crate, hybrid settings + Settings card, Rewind gate) are in
+the session memory and will land in the docs as each piece is built.
+
+**Deferred, when prioritized:** **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent
 control** · **mini/max surface compositions** · **virtualized scrolling** (only once libraries
 get large).
@@ -248,7 +257,7 @@ get large).
   to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
-- **CLI / local-agent control** · **mini/max surface compositions** · **SMTC / global hotkeys** ·
+- **CLI / local-agent control** · **mini/max surface compositions** ·
   **virtualized scrolling** · **playlist rename / drag-reorder / export UX**.
 
 ---

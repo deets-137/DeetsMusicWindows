@@ -9,7 +9,6 @@ import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
 import { getVolume, setVolume, toggleMute, isMuted } from "./player";
-import { initMediaSession } from "./media-session";
 import { initNpBus, publishAppearance } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -26,8 +25,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
-  initMediaSession(); // Windows media keys + the SMTC flyout (no-op if the runtime declines)
-  initNpBus(); // tray panel + extension hub (TRAY.md / EXTENSION.md)
+  initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the
