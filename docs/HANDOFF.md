@@ -93,6 +93,22 @@ order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still n
 posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
 attached (none exist), and a plain note about SmartScreen on the unsigned installer.
 
+**Build day 2026-09-11:** step 1 (Worker repo) and step 2 (the cache + dev seam in
+`apple.rs`) of RELEASE.md §7, in that order. All forks are decided there — read §7 top to
+bottom and build; the only inputs still the user's are the repo name and host (proposed
+`DeetsMusicToken` / `music-api.deets.solutions`).
+
+**Before v1: DeetsAirplay integration (user's call, 2026-09-10).** `../DeetsAirplay` is the
+sibling tray app that streams Windows system audio to a HomePod over a from-scratch AirPlay 2
+stack in Rust (`src-tauri/src/airplay/` + `crypto/`; v0.1.1; read its CLAUDE.md "Never" list
+before touching the wire code). The user wants a copy or an integration of it in DeetsMusic
+so playback can go to a HomePod. **Not designed yet.** Real fork to talk through first:
+(a) vendor the sender crates into this app and add a speaker picker to Now Playing, vs.
+(b) drive the installed DeetsAirplay from here (it already taps WASAPI loopback, so what
+this app plays reaches the HomePod with zero code — the integration is then just
+discovery/launch/transport handoff). Ask cost before choosing: (a) doubles the AirPlay
+maintenance surface across two repos.
+
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
 1. **Settings card** — a lean vessel that rehomes the existing title-menu toggles
@@ -154,7 +170,8 @@ get large).
   Retro-Future × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`)
   migrate via the `RETIRED` maps in `theme.ts` / `skin.ts` and the pre-paint script in
   `index.html` — keep all three in sync.
-- **Skins**: `vanilla` (borderless + editorial underline), `press` (riso print shop —
+- **Skins**: `vanilla` (borderless + editorial underline; hidden from the picker since
+  2026-09-10, block kept as the base), `press` (riso print shop —
   square trim, halftone stock, offset `--ink-2` plate), `ocean` (recessed cards + SVG wave
   trains), `glass` (frosted, drifting aurora), `retro-future` (lightning storm layer).
   Shared `[data-skin]` base + per-skin deltas; nav/motion/geometry fully tokenized (new

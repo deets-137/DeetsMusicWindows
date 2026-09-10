@@ -22,7 +22,7 @@ separate SwiftUI iOS app. This is the Windows port, and it shares no code with i
 - **Library sync** into a local SQLite cache, so browsing doesn't hit the network
 - **Feature surfaces:** Library, Search, Playlists, Queue, History, Rewind, and Radio
   (Apple stations plus seeded right-click "Start Station")
-- **6 themes × 5 skins**, frameless custom chrome, all driven from CSS tokens
+- **6 themes × 4 skins**, frameless custom chrome, all driven from CSS tokens
 - **Tray-first window behavior** — a tray-click flyout, minimize-to-tray, and a single
   running instance however you launch it
 - **Agent control** — a `deetsmusic` CLI and MCP server over a loopback bridge, plus an

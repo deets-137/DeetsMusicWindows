@@ -123,6 +123,10 @@
   --np-cover:       120px;          /* album-cover square; drives card height */
   --np-cover-glyph: 40px;           /* placeholder ♪ when no artwork */
   --np-meta-gap:    var(--space-1); /* title ↔ artist stack spacing */
+  /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
+  --max-stage-w:    340px;          /* stage + queue column width */
+  --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */
+  --np-stage-glyph: 96px;           /* placeholder ♪ on the stage */
 
   /* -- album aurora (Now Playing; ALBUM-COLOR.md) ------------- */
   /* Expression knobs only — the COLORS are the runtime --album-*

@@ -146,7 +146,8 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
 `prefers-reduced-motion` still disables it.
 
 ### Skins that ship today
-- **`vanilla`** — the reference: flush **borderless** cards (spacing/typography carry the
+- **`vanilla`** — the reference, **hidden from the picker since 2026-09-10** (the block stays:
+  it is the base, and a saved `vanilla` still applies): flush **borderless** cards (spacing/typography carry the
   grouping) with an **editorial underline** under the app + card titles (`--title-underline`
   tokens, vanilla-only opt-in; behavior toggle is
   [FUTURE-SETTINGS §11](FUTURE-SETTINGS.md)), horizontal slide, Liberation type.

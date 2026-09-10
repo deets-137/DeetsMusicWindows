@@ -85,7 +85,8 @@
             <span class="menu__label">Skin</span>
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout" role="menu" aria-label="Skin">
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="vanilla"      data-skin-choice="vanilla">Vanilla</button>
+              <!-- Vanilla is hidden from the picker (2026-09-10): its block is still the
+                   [data-skin] base in skin.css and a saved "vanilla" still applies. -->
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="press"        data-skin-choice="press">Press</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"        data-skin-choice="ocean">Ocean</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"        data-skin-choice="glass">Glass</button>

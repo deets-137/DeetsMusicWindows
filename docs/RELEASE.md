@@ -11,8 +11,9 @@ archive.
 
 ## 1. Cut a build
 
-Three files hold the version and **must agree**: `package.json`, `src-tauri/tauri.conf.json`,
-`src-tauri/Cargo.toml`. Tauri names the installer from `tauri.conf.json`;
+Four files hold the version and **must agree**: `package.json`, `src-tauri/tauri.conf.json`,
+`src-tauri/Cargo.toml`, and `cli/Cargo.toml` (what `deetsmusic --version` and the MCP
+server info report). Tauri names the installer from `tauri.conf.json`;
 `scripts/archive-installer.mjs` looks for it using `package.json`. A mismatch fails the
 archive step with a message that says to check all three — deliberately, because the
 alternative is an installer that silently never gets archived.
@@ -180,8 +181,9 @@ Mirrors **DeetsAccounts** exactly, which is the house pattern for a Worker: its 
 subdomain route. The static site repo holds no Worker code.
 
 ```
-DeetsMusicToken/           (name + subdomain are the user's call)
-  wrangler.jsonc           name, main, compatibility_date, ALLOWED_ORIGINS
+DeetsMusicToken/           (proposed 2026-09-10; host music-api.deets.solutions — the
+                           siblings are api / radio-api / cities-api / mahjong-api / id)
+  wrangler.jsonc           name, main, compatibility_date, KILL var, ratelimit binding, route
   src/index.js             one GET route, plain WebCrypto
   README.md                setup + deploy, in the accounts-setup.md style
 ```
@@ -193,8 +195,14 @@ DeetsMusicToken/           (name + subdomain are the user's call)
   a per-request signature avoids handing every client one shared token with one shared expiry.
 - **Secrets** — `npx wrangler secret put APPLE_P8`, `… TEAM_ID`, `… KEY_ID`. The `.p8` is
   pasted as a secret; it is never committed, exactly as in this repo.
-- **Rate limiting by IP** is a Cloudflare **Rate Limiting rule on the route**, set in the
-  dashboard — not code. Keeps the Worker dependency-free and the limit tunable without a deploy.
+- **Rate limiting by IP** is a `ratelimit` binding under `unsafe.bindings` in
+  `wrangler.jsonc` — the house pattern (DeetsAccounts `AUTH_RL` 20/60 s, DeetsRadio
+  `PEEK_RL` 30/60 s), **not** a dashboard rule (revised 2026-09-10: the binding is versioned
+  with the code). **10 per 60 s**, fail OPEN if the binding is absent. An honest install
+  fetches once every ~4 months, so this only stops a scraper loop.
+- **Kill switch**: a `KILL` var; when set, every request gets 503. Flipping it is a
+  `wrangler deploy` of the Worker, never a release of the app.
+- **No Origin check.** A desktop app sends no browser Origin; the endpoint is open by design.
 - Deploy: `npx wrangler deploy`. Local: `npx wrangler dev --port <free port>`.
 
 One deviation from the DeetsAccounts convention worth noting: its design doc lives in
@@ -210,7 +218,11 @@ All of it inside `apple.rs`, plus one call in `lib.rs`:
    from the Worker. So the dev loop never depends on the network, and a contributor with their
    own MusicKit key still builds fully offline.
 2. Cache `{ token, exp }` in a `static`, persisted to `<app_data>/developer-token.json`.
-   Refresh when the stored expiry is inside a margin; otherwise use what is on disk.
+   Read the file first; if more than **30 days** remain, done, zero network. Otherwise fetch.
+   `reqwest` here is async-only, so the one fetch runs as
+   `tauri::async_runtime::block_on` inside `setup()` with a short timeout (~8 s) — it must
+   finish before the webview asks for the token to configure MusicKit. Place it after
+   `set_app_data_dir` and before the user-token seed.
 3. `developer_token()` becomes a sync cache read. Signature unchanged, so no caller moves.
 4. Errors must name the cause — no local key *and* no network is a real first-run state, and
    "could not read apple.json" would be the wrong message for it.
@@ -231,12 +243,14 @@ Only if the Worker gets a page. The DNS record is created by `wrangler` on first
 4. Test a build with `apple.json` **moved away**, which is the state a stranger installs into.
 5. Cut the release, attach the installer, then publish.
 
-### Still open
+### Decided 2026-09-10 (build day is 2026-09-11)
 
-- The repo name, Worker name and subdomain.
-- The exact lifetime. Apple's ceiling is ~182 days; this repo currently signs 150. Pick the
-  number with the refresh margin together.
-- Whether a 401 from Apple should force a refresh, or whether startup-only is enough.
+- **Lifetime 150 days** (what `developer_token()` signs today; Apple's ceiling is ~182),
+  **refresh margin 30 days**. One startup fetch per install every ~4 months.
+- **Startup-only refresh.** A 401 from Apple can only mean a revoked key, and a refresh would
+  mint from the same key. Revisit only if a real 401 ever shows up.
+- **Name / host:** `DeetsMusicToken` on `music-api.deets.solutions` (proposed; confirm at
+  build time). Add the row to DeetsSolutions' `CLAUDE.md` Backends table.
 
 ### The cost to name
 
