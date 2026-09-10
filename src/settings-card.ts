@@ -30,13 +30,18 @@ interface ChoiceRow {
   id: string;
   label: string;
   hint?: string;
-  key: keyof Settings;
+  /** A store key — or `get`/`set` for a value another owner holds (the Rust settings). */
+  key?: keyof Settings;
+  get?: () => string;
+  set?: (v: string) => void;
   options: { value: string; label: string }[];
 }
 type Row = ToggleRow | ChoiceRow;
 interface Section {
   title: string;
   rows: Row[];
+  /** Extra markup after the rows (a status line, action rows); events are wired by data attributes. */
+  tail?: string;
 }
 
 const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
@@ -58,9 +63,11 @@ function mountSettings(host: HTMLElement): CardInstance {
   host.innerHTML = `<header class="panel__head"><h2 class="panel__title">Settings</h2></header><div class="panel__body set"></div>`;
   const body = host.querySelector<HTMLElement>(".panel__body")!;
 
-  // Minimize to Tray lives in Rust (the close policy runs before JS can answer);
-  // cache the value here and write through.
+  // Minimize to Tray and the AirPlay rows live in Rust (read there before JS can
+  // answer, or at connect time); cache the values here and write through.
   let minimizeToTray = true;
+  let autostart = false;
+  let agentControl = true;
 
   const sections: Section[] = [
     // Labels: one short active statement each; the hint (hover) only where a word is
@@ -88,6 +95,19 @@ function mountSettings(host: HTMLElement): CardInstance {
           set: (on) => setSetting("menuMode", on ? "hover" : "click"),
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        {
+          kind: "toggle",
+          id: "autostart",
+          label: "Start with Windows",
+          hint: () => "Starts in the tray at sign-in",
+          get: () => autostart,
+          set: (on) => {
+            autostart = on;
+            invoke<boolean>("autostart_set", { on })
+              .then((v) => { autostart = v; render(); })
+              .catch((e) => console.error("[settings] autostart", e));
+          },
+        },
       ],
     },
     {
@@ -143,6 +163,40 @@ function mountSettings(host: HTMLElement): CardInstance {
         ),
       ],
     },
+    {
+      title: "Extension",
+      rows: [],
+      // EXTENSION.md: bridge status + the two actions.
+      tail: `<div class="set__status" id="set-ext-status">Bridge off</div>
+        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>
+        <button class="set__row set__action" type="button" data-action="ext-log" title="Copies the bridge log to the clipboard"><span class="set__label">Copy log</span></button>`,
+    },
+    {
+      title: "Agents",
+      rows: [
+        {
+          kind: "toggle",
+          id: "agent",
+          label: "Agent control",
+          hint: () => "Lets a CLI or an AI app drive DeetsMusic on this PC",
+          get: () => agentControl,
+          set: (on) => {
+            agentControl = on;
+            invoke("settings_set_agent_control", { on }).catch((e) => console.error("[settings] agent", e));
+            refreshExtension();
+          },
+        },
+      ],
+      // AGENT-SETUP.md: the live line, the per-client setup copy, the guide.
+      tail: `<div class="set__status" id="set-agent-status">…</div>
+        <div class="set__row set__row--choice" title="Copies the exact text for that app"><span class="set__label">Copy setup for</span><div class="set__seg">
+          <button class="set__pill" type="button" data-setup="claude-desktop">Claude Desktop</button>
+          <button class="set__pill" type="button" data-setup="claude-code">Claude Code</button>
+          <button class="set__pill" type="button" data-setup="cursor">Cursor</button>
+          <button class="set__pill" type="button" data-setup="other">Other</button>
+        </div></div>
+        <button class="set__row set__action" type="button" data-action="agent-guide" title="Opens the setup guide in your browser"><span class="set__label">Open guide</span></button>`,
+    },
   ];
 
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
@@ -153,7 +207,7 @@ function mountSettings(host: HTMLElement): CardInstance {
     if (r.kind === "toggle") {
       return `<button class="set__row set__row--toggle" type="button" role="switch" data-row="${r.id}" aria-checked="${r.get()}"${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
     }
-    const cur = String(setting(r.key));
+    const cur = r.get ? r.get() : String(setting(r.key!));
     const pills = r.options
       .map((o) => `<button class="set__pill" type="button" data-row="${r.id}" data-value="${esc(o.value)}" aria-pressed="${o.value === cur}">${esc(o.label)}</button>`)
       .join("");
@@ -163,13 +217,8 @@ function mountSettings(host: HTMLElement): CardInstance {
   const render = () => {
     body.innerHTML =
       sections
-        .map((s) => `<section class="set__section"><h3 class="set__head">${esc(s.title)}</h3>${s.rows.map(rowHTML).join("")}</section>`)
-        .join("") +
-      `<section class="set__section"><h3 class="set__head">Extension</h3>
-        <div class="set__status" id="set-ext-status">Bridge off</div>
-        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>
-        <button class="set__row set__action" type="button" data-action="ext-log" title="Copies the bridge log to the clipboard"><span class="set__label">Copy log</span></button>
-      </section>`;
+        .map((s) => `<section class="set__section"><h3 class="set__head">${esc(s.title)}</h3>${s.rows.map(rowHTML).join("")}${s.tail ?? ""}</section>`)
+        .join("");
     refreshExtension();
   };
 
@@ -177,9 +226,13 @@ function mountSettings(host: HTMLElement): CardInstance {
   interface BridgeInfo { port: number | null }
   const refreshExtension = () => {
     const el = body.querySelector<HTMLElement>("#set-ext-status");
-    if (!el) return;
+    const ag = body.querySelector<HTMLElement>("#set-agent-status");
+    if (!el && !ag) return;
     invoke<BridgeInfo>("bridge_info")
-      .then((b) => { el.textContent = b.port ? `Bridge on 127.0.0.1:${b.port}` : "Bridge off (no free port)"; })
+      .then((b) => {
+        if (el) el.textContent = b.port ? `Bridge on 127.0.0.1:${b.port}` : "Bridge off (no free port)";
+        if (ag) ag.textContent = !agentControl ? "Off" : b.port ? `Ready at 127.0.0.1:${b.port}` : "Off (no free port)";
+      })
       .catch((e) => console.warn("[bridge] info", e));
   };
   const flash = (el: HTMLElement, text: string) => {
@@ -197,6 +250,17 @@ function mountSettings(host: HTMLElement): CardInstance {
       invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
       return;
     }
+    if (action === "agent-guide") {
+      invoke("agent_open_guide").catch((err) => console.error("[agent] guide", err));
+      return;
+    }
+    const setup = t.closest<HTMLElement>("[data-setup]");
+    if (setup?.dataset.setup) {
+      invoke<string>("agent_setup_text", { client: setup.dataset.setup }).then((text) =>
+        navigator.clipboard.writeText(text).then(() => flash(setup, "Copied"), () => console.log(text)),
+      );
+      return;
+    }
     if (action === "ext-log") {
       const label = t.closest<HTMLElement>("[data-action]")!.querySelector<HTMLElement>(".set__label")!;
       invoke<string>("bridge_log").then((text) =>
@@ -207,7 +271,10 @@ function mountSettings(host: HTMLElement): CardInstance {
     const pill = t.closest<HTMLElement>(".set__pill");
     if (pill?.dataset.row && pill.dataset.value !== undefined) {
       const r = byId(pill.dataset.row);
-      if (r?.kind === "choice") setSetting(r.key, pill.dataset.value as never);
+      if (r?.kind === "choice") {
+        if (r.set) { r.set(pill.dataset.value); render(); }
+        else setSetting(r.key!, pill.dataset.value as never);
+      }
       return;
     }
     const toggle = t.closest<HTMLElement>(".set__row--toggle");
@@ -221,9 +288,12 @@ function mountSettings(host: HTMLElement): CardInstance {
   // Rust setting we cached). A full re-render is cheap here — a dozen rows.
   const unsubStore = onSettingsChange(render);
   const unsubLibAdd = onLibraryAddChange(render);
-  invoke<{ minimizeToTray: boolean }>("settings_get")
-    .then((s) => { minimizeToTray = s.minimizeToTray; render(); })
+  invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get")
+    .then((s) => { minimizeToTray = s.minimizeToTray; agentControl = s.agentControl; render(); })
     .catch((e) => console.warn("[settings] get", e));
+  invoke<boolean>("autostart_get")
+    .then((v) => { autostart = v; render(); })
+    .catch((e) => console.warn("[settings] autostart", e));
 
   render();
 

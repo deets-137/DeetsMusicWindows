@@ -107,6 +107,12 @@ async function run(cmd: NpCommand): Promise<void> {
   switch (cmd.kind) {
     case "play-pause":
       return playPause();
+    case "play": // a HomePod's touch surface / Siri, relayed by airplay.rs
+      if (!lastState.playing) return playPause();
+      return;
+    case "pause":
+      if (lastState.playing) return playPause();
+      return;
     case "next":
       return nextTrack();
     case "previous":

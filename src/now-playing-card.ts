@@ -9,6 +9,7 @@ import {
 } from "./player";
 import { makeSlider } from "./slider";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
+import { mountAirplay, type AirplayMount } from "./airplay";
 import { onTracksChange } from "./track-store";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
@@ -83,7 +84,7 @@ const TEMPLATE = `
           <div class="scrub__track"><div class="scrub__fill"></div></div>
           <span class="scrub__handle" aria-hidden="true"></span>
         </div>
-        <button class="panel__action np__airplay" id="np-airplay" type="button" aria-label="AirPlay" hidden>
+        <button class="panel__action np__airplay ap-square" id="np-airplay" type="button" aria-label="AirPlay" data-state="idle">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17a8 8 0 1 1 14 0" fill="none"></path><path d="M8 21l4-5 4 5z" fill="none"></path></svg>
         </button>
       </div>
@@ -194,11 +195,14 @@ export const nowPlayingCard: CardDef = {
 
     // Stage volume row (max only, CSS-gated): the same app gain the titlebar pill
     // drives, on the horizontal scrubber primitive. onVolumeChange keeps every
-    // control in step whoever moved the level. The AirPlay square stays hidden
-    // until the AirPlay work lands.
+    // control in step whoever moved the level. The AirPlay square opens the
+    // "Play on" panel (airplay.ts); the pill's panel has the same square for mini/midi.
     const volMute = host.querySelector<HTMLButtonElement>("#np-vol-mute");
     const volScrub = host.querySelector<HTMLElement>("#np-vol-scrub");
     let unsubVolume = () => {};
+    let airplay: AirplayMount | null = null;
+    const airplaySquare = host.querySelector<HTMLElement>("#np-airplay");
+    if (airplaySquare) airplay = mountAirplay(airplaySquare);
     if (volMute && volScrub) {
       const volSlider = makeSlider(volScrub, {
         axis: "x",
@@ -297,6 +301,7 @@ export const nowPlayingCard: CardDef = {
         unsubAddTracks();
         unsubAddToggle();
         unsubVolume();
+        airplay?.destroy();
         stackObserver?.disconnect();
         host.innerHTML = "";
       },

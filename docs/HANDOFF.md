@@ -98,16 +98,10 @@ attached (none exist), and a plain note about SmartScreen on the unsigned instal
 bottom and build; the only inputs still the user's are the repo name and host (proposed
 `DeetsMusicToken` / `music-api.deets.solutions`).
 
-**Before v1: DeetsAirplay integration (user's call, 2026-09-10).** `../DeetsAirplay` is the
-sibling tray app that streams Windows system audio to a HomePod over a from-scratch AirPlay 2
-stack in Rust (`src-tauri/src/airplay/` + `crypto/`; v0.1.1; read its CLAUDE.md "Never" list
-before touching the wire code). The user wants a copy or an integration of it in DeetsMusic
-so playback can go to a HomePod. **Not designed yet.** Real fork to talk through first:
-(a) vendor the sender crates into this app and add a speaker picker to Now Playing, vs.
-(b) drive the installed DeetsAirplay from here (it already taps WASAPI loopback, so what
-this app plays reaches the HomePod with zero code — the integration is then just
-discovery/launch/transport handoff). Ask cost before choosing: (a) doubles the AirPlay
-maintenance surface across two repos.
+**Before v1: AirPlay (built 2026-09-10, untested).** See [AIRPLAY.md](AIRPLAY.md): the sender
+is the shared `deets-airplay` crate in `../DeetsAirplay/crates/airplay` (read that repo's
+CLAUDE.md "Never" list before touching wire code). Decisions are locked in AIRPLAY.md §5; the
+to-do before shipping is §9 (desk test of the mute, dev firewall rule, flip the Cargo dep to git).
 
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
@@ -164,9 +158,19 @@ Library square** on Now Playing (+ / spinner / ✓, [FAVORITES.md](FAVORITES.md)
 stage volume row** (mute · slider · a hidden AirPlay square; the titlebar pill stays;
 `onVolumeChange` in `player.ts` keeps every control in step); the **Settings card + hybrid
 menu** ([SETTINGS.md](SETTINGS.md) — one `deets.settings` store, the v1 rows, the Rewind gate
-at 50 play starts; **Play Now now defaults to "Song and rest of list"**). Still to build on this
-branch: **AirPlay** as a shared crate extracted from `../DeetsAirplay` (per-process loopback of
-this app as the primary capture; the dropdown hangs off the volume row's AirPlay square).
+at 50 play starts; **Play Now now defaults to "Song and rest of list"**). Third batch, same day: **AirPlay**
+([AIRPLAY.md](AIRPLAY.md)) — `../DeetsAirplay` is now a library crate (`crates/airplay`) this app
+depends on (by path until pushed, then git); the "Play on" panel behind the AirPlay square (pill
+panel in mini/midi, stage row in max), **v1 = "All PC sound"** (loopback of the default
+output; the PC keeps playing), one volume slider driving the speaker, now-playing text +
+cover to the speaker, no Settings rows. **Connected and played on the desk.** The per-process
+"DeetsMusic only" path is built, probe-verified, and parked for v2 behind `V2_PER_PROCESS`
+(AIRPLAY.md §10 lists the five things learned about it). Also that evening: **per-speaker
+remembered volume** (20 % on a speaker's first use), **Settings › Agents** (Agent control
+switch, default on, gating the six agent routes with a 403; "Copy setup for" Claude Desktop /
+Claude Code / Cursor / Other; the plain-words [AGENT-SETUP.md](AGENT-SETUP.md)), and
+**Start with Windows** (HKCU Run key, `--tray` launch starts hidden; seeded once on the first
+installed run, DeetsAirplay pattern).
 
 **Deferred, when prioritized:** **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent

@@ -138,6 +138,14 @@ pub fn show_main(app: &AppHandle) {
     let _ = tauri::Emitter::emit_to(app, MAIN, "tray-open", ());
 }
 
+/// A `--tray` launch: the window never shows; the tray icon opens it.
+pub fn start_hidden(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window(MAIN) {
+        w.hide().ok();
+    }
+    state(app).main_hidden_at = Some(Instant::now());
+}
+
 fn hide_main(app: &AppHandle) {
     let mut s = state(app);
     // A × close of the real window is the other way its position is lost. Capture it
@@ -353,5 +361,6 @@ pub fn tray_panel_resize(width: f64, height: f64, app: AppHandle) {
 
 #[tauri::command]
 pub fn app_quit(app: AppHandle) {
+    crate::airplay::shutdown(&app);
     app.exit(0);
 }

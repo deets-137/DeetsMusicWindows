@@ -11,11 +11,45 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+/// What the speaker receives (AIRPLAY.md §7).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AirplayCapture {
+    /// Only DeetsMusic (per-process loopback of this app's process tree).
+    App,
+    /// Everything the PC plays (loopback of the default output).
+    System,
+}
+
+/// A speaker as the dropdown remembers it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AirplaySpeaker {
+    pub name: String,
+    pub ip: String,
+    pub port: u16,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SettingsData {
+    // ── AirPlay (AIRPLAY.md) — read in Rust at connect time ──
+    pub airplay_capture: AirplayCapture,
+    /// Last speaker connected to; the dropdown offers it before a scan finds it.
+    pub airplay_last_speaker: Option<AirplaySpeaker>,
+    /// The one-shot Windows Firewall prompt (inbound UDP for the speaker's replies) fired.
+    pub airplay_firewall_seeded: bool,
+    /// The volume (0–100) a speaker was last left at, by speaker name. A speaker never
+    /// used before starts at `AIRPLAY_FIRST_VOLUME` so nobody gets blasted.
+    pub airplay_speaker_volumes: std::collections::HashMap<String, f64>,
     /// × hides the main window to the tray instead of quitting (default on).
     pub minimize_to_tray: bool,
+    /// The CLI / MCP routes on the bridge answer (AGENT-SETUP.md). Off → 403 with a
+    /// plain sentence; the browser extension's routes are untouched.
+    pub agent_control: bool,
+    /// First installed run enrolled the app in Launch-at-startup (once, like
+    /// DeetsAirplay); the Settings toggle owns it from then on.
+    pub autostart_seeded: bool,
     /// The tray panel falls back to Windows' media session when DeetsMusic is idle.
     pub read_windows_media: bool,
     /// Shared secret the browser extension presents on every bridge call.
@@ -30,7 +64,13 @@ pub struct SettingsData {
 impl Default for SettingsData {
     fn default() -> Self {
         Self {
+            airplay_capture: AirplayCapture::App,
+            airplay_last_speaker: None,
+            airplay_firewall_seeded: false,
+            airplay_speaker_volumes: std::collections::HashMap::new(),
             minimize_to_tray: true,
+            agent_control: true,
+            autostart_seeded: false,
             read_windows_media: true,
             bridge_token: String::new(),
             window_pos: None,
@@ -116,8 +156,100 @@ pub fn settings_set_read_windows_media(
     Ok(out)
 }
 
+#[tauri::command]
+pub fn settings_set_agent_control(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    settings.update(|d| d.agent_control = on)
+}
+
+// ── start with Windows (HKCU Run key via reg.exe; DeetsAirplay / DeetsRGB pattern) ──
+
+const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+const RUN_VALUE: &str = "DeetsMusic";
+
+fn reg(args: &[&str]) -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let out = std::process::Command::new("reg").args(args).creation_flags(CREATE_NO_WINDOW).output().map_err(|e| format!("reg.exe: {e}"))?;
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+pub fn autostart_enabled() -> bool {
+    reg(&["query", RUN_KEY, "/v", RUN_VALUE]).map(|s| s.contains(RUN_VALUE)).unwrap_or(false)
+}
+
+/// Registers `"<exe>" --tray`: a login launch starts in the tray, not on screen.
+pub fn autostart_write(on: bool) -> Result<(), String> {
+    if on {
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let cmd = format!("\"{}\" --tray", exe.display());
+        reg(&["add", RUN_KEY, "/v", RUN_VALUE, "/t", "REG_SZ", "/d", &cmd, "/f"])?;
+    } else {
+        reg(&["delete", RUN_KEY, "/v", RUN_VALUE, "/f"])?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn autostart_get() -> bool {
+    autostart_enabled()
+}
+
+#[tauri::command]
+pub fn autostart_set(on: bool) -> Result<bool, String> {
+    autostart_write(on)?;
+    Ok(autostart_enabled())
+}
+
+// ── the agent setup text (AGENT-SETUP.md §2) ──
+
+/// Where the shipped `deetsmusic.exe` is: the install's resource folder, else the
+/// per-user install path (what a config written on another build should point at).
+fn cli_path(app: &tauri::AppHandle) -> String {
+    use tauri::Manager;
+    if let Ok(dir) = app.path().resource_dir() {
+        let p = dir.join("cli").join("deetsmusic.exe");
+        if p.is_file() {
+            return p.display().to_string();
+        }
+    }
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| r"C:\Users\you\AppData\Local".into());
+    format!(r"{local}\DeetsMusic\cli\deetsmusic.exe")
+}
+
+/// The text the Settings card copies for one client: `claude-desktop`, `claude-code`,
+/// `cursor`, or `other`.
+#[tauri::command]
+pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
+    let path = cli_path(&app);
+    let json = format!(
+        "{{\n  \"mcpServers\": {{\n    \"deetsmusic\": {{\n      \"command\": \"{}\",\n      \"args\": [\"mcp\"]\n    }}\n  }}\n}}",
+        path.replace('\\', "\\\\")
+    );
+    match client.as_str() {
+        "claude-code" => format!("claude mcp add deetsmusic -- \"{path}\" mcp"),
+        "claude-desktop" | "cursor" => json,
+        _ => format!("Command: {path}\nArgument: mcp\n\nAs JSON for an MCP config file:\n{json}"),
+    }
+}
+
+/// The plain-words guide, in the browser.
+#[tauri::command]
+pub fn agent_open_guide(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url("https://github.com/deets-137/DeetsMusic/blob/main/docs/AGENT-SETUP.md", None::<String>)
+        .map_err(|e| e.to_string())
+}
+
 /// Regenerate the pairing token (the old one stops working immediately).
 #[tauri::command]
 pub fn settings_rotate_bridge_token(settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
     settings.update(|d| d.bridge_token = random_token())
+}
+
+#[tauri::command]
+pub fn settings_set_airplay_capture(v: AirplayCapture, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    let out = settings.update(|d| d.airplay_capture = v)?;
+    crate::airplay::prefs_changed(&app);
+    Ok(out)
 }

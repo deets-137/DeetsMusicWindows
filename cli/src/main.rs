@@ -118,6 +118,7 @@ impl Failure {
     fn exit_code(&self) -> i32 {
         match self.status {
             409 => 2, // not connected to Apple Music
+            403 => 6, // Agent control is off in Settings
             400 => 3, // no match / bad id
             504 => 4, // the app window didn't answer
             0 => 5,   // no bridge found

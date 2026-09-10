@@ -1,3 +1,4 @@
+mod airplay;
 mod apple;
 mod bridge;
 mod enrich;
@@ -26,6 +27,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(apple::AppleState::default())
         .manage(bridge::Hub::default())
+        .manage(airplay::AirplayState::default())
         .setup(|app| {
             use tauri::Manager;
 
@@ -88,7 +90,26 @@ pub fn run() {
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
             // extension pairing token), then the tray + the extension bridge.
             app.manage(settings::Settings::load(dir.clone()));
+            airplay::setup(&dir);
             tray::setup(app.handle())?;
+
+            // A login launch (`--tray`, the Run-key command) starts in the tray.
+            if std::env::args().any(|a| a == "--tray") {
+                tray::start_hidden(app.handle());
+            }
+            // First run of an INSTALLED build enrols in start-with-Windows once
+            // (DeetsAirplay / DeetsRGB pattern); the Settings toggle owns it after.
+            // A dev build never touches the registry.
+            #[cfg(not(debug_assertions))]
+            {
+                let s = app.state::<settings::Settings>();
+                if !s.get().autostart_seeded {
+                    if let Err(e) = settings::autostart_write(true) {
+                        bridge::log(&format!("autostart: {e}"));
+                    }
+                    s.update(|d| d.autostart_seeded = true).ok();
+                }
+            }
             bridge::start(app.handle().clone());
 
             // Our Windows media session (overlay + media keys) on the main HWND.
@@ -156,6 +177,18 @@ pub fn run() {
             settings::settings_set_minimize_to_tray,
             settings::settings_set_read_windows_media,
             settings::settings_rotate_bridge_token,
+            settings::settings_set_airplay_capture,
+            settings::settings_set_agent_control,
+            settings::autostart_get,
+            settings::autostart_set,
+            settings::agent_setup_text,
+            settings::agent_open_guide,
+            airplay::airplay_scan,
+            airplay::airplay_connect,
+            airplay::airplay_disconnect,
+            airplay::airplay_status,
+            airplay::airplay_volume,
+            airplay::airplay_firewall_prompt,
             bridge::np_publish,
             bridge::np_snapshot,
             bridge::np_command,

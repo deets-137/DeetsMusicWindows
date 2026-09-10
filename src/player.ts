@@ -1201,17 +1201,58 @@ export function onVolumeChange(cb: () => void): () => void {
   return () => volumeListeners.delete(cb);
 }
 
+// AirPlay takeover (AIRPLAY.md decision 4): while a speaker plays, the app's one
+// slider drives the SPEAKER's volume. MusicKit's own gain pins to 100 % (the
+// speaker applies its gain to the stream), every slider change goes to the sink,
+// nothing persists, and the app level from before comes back on release.
+let volumeSink: ((v: number) => void) | null = null;
+let levelBeforeSink: { level: number; muted: boolean } | null = null;
+
+/** Hand the slider to a speaker (`initial` = the speaker's current 0..1), or `null` to take it back. */
+export function setVolumeSink(sink: ((v: number) => void) | null, initial?: number): void {
+  if (sink) {
+    if (!volumeSink) levelBeforeSink = { level, muted };
+    volumeSink = sink;
+    if (initial !== undefined) {
+      level = Math.max(0, Math.min(1, initial));
+      muted = level === 0;
+    }
+  } else {
+    volumeSink = null;
+    if (levelBeforeSink) {
+      ({ level, muted } = levelBeforeSink);
+      levelBeforeSink = null;
+    }
+  }
+  applyVolumeToMusic();
+}
+
+/** The speaker moved on its own (Siri, its touch surface): show it, send nothing. */
+export function reflectExternalVolume(v: number): void {
+  if (!volumeSink) return;
+  const next = Math.max(0, Math.min(1, v));
+  if (Math.abs(next - (muted ? 0 : level)) < 0.01) return;
+  level = next;
+  muted = level === 0;
+  if (level > 0) preMuteLevel = level;
+  applyVolumeToMusic();
+}
+
 function applyVolumeToMusic(): void {
   volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
-    music.volume = muted ? 0 : level;
+    music.volume = volumeSink ? 1 : muted ? 0 : level;
   } catch (e) {
     console.warn("[player] volume not settable:", e);
   }
 }
 
 function persistVolume(): void {
+  if (volumeSink) {
+    volumeSink(muted ? 0 : level); // the speaker's volume is the speaker's to keep
+    return;
+  }
   try {
     localStorage.setItem(VOLUME_KEY, String(level));
     localStorage.setItem(MUTE_KEY, String(muted));

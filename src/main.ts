@@ -16,6 +16,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
+import { initAirplay, mountAirplay } from "./airplay";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -178,11 +179,15 @@ window.addEventListener("DOMContentLoaded", () => {
     reflect(getVolume()); // seed from the persisted level
     onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes
 
-    // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag.
+    // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag —
+    // or while the nested "Play on" panel is open.
+    const volAirplay = document.getElementById("vol-airplay");
     makeDropdown({
       root: volRoot, trigger: volPill, panel: volPanel,
-      shouldStayOpen: () => slider.dragging,
+      shouldStayOpen: () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true",
     });
+    if (volAirplay) mountAirplay(volAirplay);
+    initAirplay();
 
     volMute.addEventListener("click", (e) => {
       e.stopPropagation();

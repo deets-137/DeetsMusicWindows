@@ -34,7 +34,9 @@ window's always-on-top and the dropdown mode in `main.ts`, the Rewind gate in
 **Not in the store** (the card talks to the owner directly): **Library Add** — its own
 module (`library-add.ts`, `deets.libraryAdd`, with `onLibraryAddChange`); **Minimize to
 Tray** — Rust `settings.json` (`settings_get` / `settings_set_minimize_to_tray`), because
-the close policy runs before any JS can answer.
+the close policy runs before any JS can answer. (v1 has no AirPlay rows; the v2 row is
+Rust-owned too — [AIRPLAY.md](AIRPLAY.md) §7.) A
+`ChoiceRow` with `get`/`set` instead of `key` is how a Rust-owned choice renders.
 
 ## 3. The rows (v1 cut)
 
@@ -48,6 +50,8 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Keep on top (The window stays above other windows) | `alwaysOnTop` | off / on | `main.ts` (subscribes) |
 | Window | Close to tray (× hides the window. The tray icon opens it again) | Rust | on / off | `tray.rs` close policy |
 | Window | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
+| Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
+| Agents | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) · status line · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · Open guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md) |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
 | Playback | Previous rewinds (§4) — *The list* / *Played songs* | `previousReach` | lookback / heard | `queue.ts` `setContext` (heard = no parked lookback) |

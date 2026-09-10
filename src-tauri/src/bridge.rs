@@ -132,6 +132,7 @@ pub struct Hub {
 pub fn np_publish(state: NpState, app: AppHandle, hub: tauri::State<'_, Hub>) {
     *hub.np.lock().unwrap() = state.clone();
     crate::smtc::update(&state);
+    crate::airplay::on_np_state(&app, &state);
     let _ = app.emit_to("tray", "np", state);
 }
 
@@ -524,8 +525,13 @@ async fn handle(app: AppHandle, mut req: Request) {
     let path = url.split('?').next().unwrap_or("/").to_string();
     let origin = cors_origin(find_header(&req, "Origin").as_deref());
     let auth = find_header(&req, "Authorization").unwrap_or_default();
-    let token = app.state::<crate::settings::Settings>().get().bridge_token;
+    let settings = app.state::<crate::settings::Settings>().get();
+    let token = settings.bridge_token;
     let paired = origin.is_some() || auth.strip_prefix("Bearer ").map(|t| t.trim() == token).unwrap_or(false);
+    // The agent routes (AGENT.md §3) obey the Settings › Agents switch. The browser
+    // extension (an Origin) is a different feature and is never gated by it.
+    const AGENT_ROUTES: [&str; 6] = ["/command", "/play", "/queue", "/history", "/stations", "/playlists"];
+    let agent_off = !settings.agent_control && origin.is_none() && AGENT_ROUTES.contains(&path.as_str());
 
     if method == Method::Options {
         return respond(req, 204, String::new(), "text/plain", origin);
@@ -547,12 +553,14 @@ async fn handle(app: AppHandle, mut req: Request) {
                 serde_json::json!({
                     "ok": true, "app": "DeetsMusic", "version": env!("CARGO_PKG_VERSION"),
                     "connected": connected, "paired": paired, "theme": a.theme, "skin": a.skin,
+                    "agent": settings.agent_control,
                 }),
                 origin,
             )
         }
         (_, "/health") => json(req, 405, serde_json::json!({ "error": "method" }), origin),
         _ if !paired => json(req, 401, serde_json::json!({ "error": "unpaired" }), origin),
+        _ if agent_off => json(req, 403, serde_json::json!({ "error": "Agent control is off. Turn it on in DeetsMusic › Settings › Agents." }), origin),
 
         (Method::Get, "/now-playing") => {
             let np = app.state::<Hub>().np.lock().unwrap().clone();
