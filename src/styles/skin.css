@@ -123,6 +123,19 @@
   --np-cover:       120px;          /* album-cover square; drives card height */
   --np-cover-glyph: 40px;           /* placeholder ♪ when no artwork */
   --np-meta-gap:    var(--space-1); /* title ↔ artist stack spacing */
+  --np-chip-pad:    var(--space-1) var(--space-2); /* station-name chip over the cover (radio) */
+  --np-chip-strength: 82%;          /* how opaque that chip's panel wash is */
+  --np-vol-gap:     var(--space-2); /* transport row ↔ the stage volume row (max) */
+  /* AirPlay "Play on" panel (AIRPLAY.md) */
+  --ap-panel-w:     220px;
+  --ap-row-h:       var(--icon-lg);
+  --ap-dot:         0.9em;          /* the ✓ gutter on a row */
+  --ap-pulse:       1.2s;           /* the square's breathing while connecting */
+  /* settings card (SETTINGS.md) */
+  --set-section-gap: var(--space-3);
+  --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
+  --set-pill-pad:    var(--space-1) var(--space-2);
+  --set-pill-radius: 999px;
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */

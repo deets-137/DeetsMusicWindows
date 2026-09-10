@@ -113,7 +113,7 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
   which otherwise locks its own exe against the installer ([RELEASE.md](RELEASE.md) §3).
 - **Chrome refuses to auto-install anything outside the Web Store**, so `install.html` is a
   themed load-unpacked walkthrough that locates its own folder (copy buttons for the path and
-  `chrome://extensions`). The app's title menu → **Extension → Install guide…** opens the same
+  `chrome://extensions`). The app's Settings card → **Extension → Install guide…** opens the same
   page (`bridge_open_install_page`; repo path in dev, resource dir when installed).
 - `node extension/scripts/pack.cjs` re-syncs the token CSS from `src/styles/` and zips
   `extension/dist/deetsmusic-<v>.zip` for a Web Store upload. **Web Store publication is the
@@ -125,7 +125,7 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
 - Popup → Settings → **Debug**: what was read (raw title, channel, credits), the query, the
   candidates with scores, the extension log, and a button that pulls the app's `/log`.
   **Copy report** bundles it all.
-- App: title menu → **Extension → Copy bridge log**; the same log is also appended to
+- App: Settings card → **Extension → Copy bridge log**; the same log is also appended to
   `<app_data>/bridge.log`. Every request, resolve, ranking and add is a line.
 - `curl` from the machine works with the settings.json `bridge_token` (or by faking the
   header: `-H "Origin: chrome-extension://x"`):

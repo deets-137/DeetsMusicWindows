@@ -16,8 +16,14 @@ import { inLibrary, loadTracks } from "./track-store";
 
 // ── the "Library Add" setting (mirrors deets.alwaysOnTop / deets.menuMode) ──
 const KEY = "deets.libraryAdd";
-let enabled = localStorage.getItem(KEY) === "on"; // default off — opt-in consent
+let enabled = localStorage.getItem(KEY) !== "off"; // default ON (2026-09-10; was opt-in)
 export const libraryAddEnabled = (): boolean => enabled;
+const toggleListeners = new Set<() => void>();
+/** Fires when the Library Add toggle flips (the Now Playing "+" square shows/hides live). */
+export function onLibraryAddChange(cb: () => void): () => void {
+  toggleListeners.add(cb);
+  return () => toggleListeners.delete(cb);
+}
 export function setLibraryAddEnabled(on: boolean): void {
   enabled = on;
   try {
@@ -25,6 +31,13 @@ export function setLibraryAddEnabled(on: boolean): void {
   } catch {
     /* storage disabled — still applies for the session */
   }
+  toggleListeners.forEach((cb) => cb());
+}
+
+/** Would "Add to Library" be offered for this track right now? (toggle on, not in the
+ *  library, has a catalog id) — the visibility rule for the Now Playing "+" square. */
+export function libraryAddOffered(t: Track): boolean {
+  return enabled && !!t.catalogId && !alreadyInLibrary(t);
 }
 
 // ── the write ──

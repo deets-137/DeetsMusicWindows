@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic"
-version = "0.1.3"
+version = "0.2.0"
 description = "A lightweight Apple Music player for Windows 11."
 authors = ["Aditya Sundaram"]
 edition = "2021"
@@ -35,19 +35,28 @@ futures = "0.3"
 # ms → RFC3339 for local playlists' date_added (already in the tree transitively)
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
+# The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app. The
+# committed form is the git dependency below, rev-pinned; while the crate is being
+# developed alongside, the path form is used and flips to git once it is pushed.
+# deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "<sha>" }
+deets-airplay = { path = "../../DeetsAirplay/crates/airplay" }
+
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
-# Global System Media Transport Controls session + the master volume endpoint.
-# Already in the dependency tree transitively (Tauri), so no new crate downloads.
+# Global System Media Transport Controls session + the master volume endpoint;
+# and our own media session (smtc.rs: `Media`). Already in the dependency tree
+# transitively (Tauri), so no new crate downloads.
 [dependencies.windows]
 version = "0.61"
 features = [
   "Foundation",
   "Foundation_Collections",
+  "Media",
   "Media_Control",
   "Storage_Streams",
   "Win32_Foundation",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
   "Win32_System_Com",
+  "Win32_System_WinRT",
 ]
 

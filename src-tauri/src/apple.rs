@@ -825,9 +825,9 @@ impl MusicProvider for AppleProvider {
         types: &[String],
         limit: u32,
     ) -> Result<SearchResults, String> {
-        // Only the four shippable categories; music-videos are never requested,
-        // stations wait on the playback probe (SEARCH.md).
-        const ALLOWED: [&str; 4] = ["songs", "albums", "artists", "playlists"];
+        // Only the five shippable categories; music-videos are never requested
+        // (SEARCH.md). Stations normalize through the Radio card's `Station`.
+        const ALLOWED: [&str; 5] = ["songs", "albums", "artists", "playlists", "stations"];
         let types: Vec<&str> = if types.is_empty() {
             ALLOWED.to_vec()
         } else {
@@ -863,6 +863,7 @@ impl MusicProvider for AppleProvider {
             albums: bucket("albums").iter().map(album_from_catalog).collect(),
             artists: bucket("artists").iter().map(artist_from_catalog).collect(),
             playlists: bucket("playlists").iter().map(playlist_from_catalog).collect(),
+            stations: bucket("stations").iter().map(station_from_catalog).collect(),
         })
     }
 }

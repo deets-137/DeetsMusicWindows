@@ -41,6 +41,11 @@ play_stats(
 > **Cumulative, not historical.** These are running totals, never decremented or
 > windowed. There is **no per-play event history** — see §5 for what that rules out.
 
+> **The card is gated (2026-09-10, [SETTINGS.md](SETTINGS.md) §4):** hidden from the slot
+> pickers until **50 play starts** (`play_event_count` at boot + per-start counting in
+> `stats.ts`), then revealed once, silently; the Settings card's "Rewind card" toggle turns it
+> off or on after that.
+
 ---
 
 ## 2. The hooks — where the numbers come from

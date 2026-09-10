@@ -1,6 +1,10 @@
 # Agent / CLI control — `deetsmusic`
 
 > Design agreed 2026-09-09 (DESIGN.md X4). Status: **built, awaiting first user test.**
+> User-facing setup: [AGENT-SETUP.md](AGENT-SETUP.md). **Settings › Agents › Agent control**
+> (default on, `agentControl` in `settings.json`) gates the six agent routes with a `403` and a
+> plain sentence; the extension's routes are never gated. The card's **Copy setup for** row
+> copies a ready config per client (`agent_setup_text`), with the installed exe path.
 > Code: `src-tauri/src/bridge.rs` (routes + the `ask()` request/reply), `src/np-bus.ts`
 > (`runAgent`, the main-window half), `cli/` (the `deetsmusic` binary: CLI + MCP server).
 

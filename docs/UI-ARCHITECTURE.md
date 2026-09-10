@@ -270,7 +270,10 @@ hover-reveal **flyout**. Today there's one row, **Theme**, whose flyout lists th
 available themes and applies one on click via `src/theme.ts` (persisted to
 `localStorage`, re-applied on launch). An **Account** row holds Apple Music sign-in
 (✓/✗ + spinner) — wired in `src/apple.ts` (see
-[DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) §2). A row can also be a **toggle**
+[DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) §2). **Since 2026-09-10 the menu holds
+only Theme / Skin / Surface / Account and one `Settings…` row that summons the Settings
+card; every preference toggle below moved there — see [SETTINGS.md](SETTINGS.md). The
+pattern is kept here as history.** A row can also be a **toggle**
 (`.menu__row--toggle`, a `<button role="menuitemcheckbox">`): **Always on Top** flips
 `appWindow.setAlwaysOnTop()` and shows a right-aligned **dot** (`.menu__dot`) when
 active — the same selection indicator the theme flyout uses; the choice persists

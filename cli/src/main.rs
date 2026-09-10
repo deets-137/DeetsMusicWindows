@@ -118,6 +118,7 @@ impl Failure {
     fn exit_code(&self) -> i32 {
         match self.status {
             409 => 2, // not connected to Apple Music
+            403 => 6, // Agent control is off in Settings
             400 => 3, // no match / bad id
             504 => 4, // the app window didn't answer
             0 => 5,   // no bridge found
@@ -297,14 +298,18 @@ fn name_match(hay: &str, needle: &str) -> bool {
     norm(needle).split_whitespace().all(|w| h.contains(w))
 }
 
-/// Search → (human lines, raw json). Stations and your own playlists are matched by
-/// name locally (Apple search has no station type we parse; your playlists aren't in
-/// the catalog), everything else is one catalog search.
+/// Search → (human lines, raw json). Stations come from the catalog search first, then
+/// the featured / genre listings by name; your own playlists are matched by name
+/// locally (they aren't in the catalog); everything else is one catalog search.
 fn op_search(c: &Client, query: &str, kind: Kind, limit: usize) -> Result<(String, Value), Failure> {
     match kind {
         Kind::Station => {
-            let featured = c.get("/stations?group=featured")?;
-            let mut hits: Vec<Value> = arr(&featured, "stations").into_iter().filter(|st| name_match(s(st, "name"), query)).cloned().collect();
+            let cat = c.post("/search", json!({ "term": query, "types": ["stations"] }))?;
+            let mut hits: Vec<Value> = arr(&cat, "stations").into_iter().cloned().collect();
+            if hits.len() < limit {
+                let featured = c.get("/stations?group=featured")?;
+                hits.extend(arr(&featured, "stations").into_iter().filter(|st| name_match(s(st, "name"), query)).cloned());
+            }
             if hits.len() < limit {
                 let genres = c.get("/stations?group=genres")?;
                 if let Some(g) = arr(&genres, "genres").into_iter().find(|g| name_match(s(g, "name"), query)) {

@@ -8,6 +8,7 @@
 // Contents are cache-first (zero Apple calls to re-open); the header ⟳ is the
 // explicit mirror re-sync that also drops content caches.
 
+import { setting } from "./settings-store";
 import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, addToPlaylistItem, onPlaylistsChange, foldersList, folderCreate, folderRename, folderDelete, folderAssign, type PlaylistFolder } from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
@@ -433,9 +434,8 @@ export const playlistsCard: CardDef = {
     // read "Playlist" until a count is learned. Fill the missing ones (one tiny
     // Apple call each, persisted, once ever) and re-render when any land. Gated so
     // the user can opt back to "Playlist-until-opened" (FUTURE-SETTINGS §14).
-    const EAGER_COUNTS = localStorage.getItem("deets.playlists.eagerCounts") !== "off";
     const backfillCounts = () => {
-      if (!EAGER_COUNTS) return;
+      if (!setting("playlistEagerCounts")) return;
       applePlaylistCounts()
         .then((filled) => {
           if (filled > 0) void load();
@@ -495,7 +495,7 @@ export const playlistsCard: CardDef = {
           const p = lists.find((x) => x.libraryId === `local:${rowid}`);
           if (!p) throw new Error("created playlist missing from cached list");
           card.drill(detail(p));
-          requestCard("search");
+          if (setting("playlistCreateSummon")) requestCard("search"); // FUTURE-SETTINGS §16
         })
         .catch((e) => console.error("[playlists] create", e));
 

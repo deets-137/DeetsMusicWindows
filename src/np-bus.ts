@@ -6,7 +6,7 @@
 // store when the extension/tray adds a song (`library-changed`); and reports the
 // active theme/skin so the panel and the extension popup can match the app.
 //
-// A pure consumer of the player's broadcasts, like media-session.ts: it never
+// A pure consumer of the player's broadcasts: it never
 // touches MusicKit directly.
 
 import { invoke } from "@tauri-apps/api/core";
@@ -38,6 +38,8 @@ import { log } from "./diag";
 export interface NpState {
   active: boolean;
   playing: boolean;
+  /** The station's name while one plays (radio mode) — the overlay's album line. */
+  station?: string;
   title?: string;
   artist?: string;
   album?: string;
@@ -68,6 +70,7 @@ function snapshot(): NpState {
   return {
     active: !!lastState.title,
     playing: lastState.playing,
+    station: lastState.station?.name,
     title: lastState.title,
     artist: lastState.artist ?? lastState.station?.name,
     album: lastState.album,
@@ -104,6 +107,12 @@ async function run(cmd: NpCommand): Promise<void> {
   switch (cmd.kind) {
     case "play-pause":
       return playPause();
+    case "play": // a HomePod's touch surface / Siri, relayed by airplay.rs
+      if (!lastState.playing) return playPause();
+      return;
+    case "pause":
+      if (lastState.playing) return playPause();
+      return;
     case "next":
       return nextTrack();
     case "previous":

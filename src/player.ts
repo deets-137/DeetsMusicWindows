@@ -8,6 +8,7 @@
 // without calling `authorize()` (whose OAuth popup can't open in WebView2 — the
 // reason auth runs through the loopback browser flow). See `injectUserToken`.
 
+import { setting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
@@ -44,11 +45,34 @@ let radioStation: Station | null = null;
 // A manual insert during radio waits for the CURRENT song to end (your call,
 // 2026-07-03), then the block takes over as a finite queue (see onNowPlayingChange).
 let pendingBreakout = false;
+// The station a break-out interrupted. It re-enters when the finite queue runs dry
+// (radio UX pass, 2026-09-10 — FUTURE-SETTINGS §17 option (b) is now the default).
+// Cleared by any explicit departure: a new context, another station, Stop Station,
+// or the Qcard's "Don't resume".
+let resumeStation: Station | null = null;
 
 function exitRadio(): void {
   mode = "queue";
   radioStation = null;
   pendingBreakout = false;
+}
+
+/** Drop the queued station return (the Qcard's "Don't resume"). */
+export function dropResumeStation(): void {
+  if (!resumeStation) return;
+  diag.log("player:dropResume", { id: resumeStation.id });
+  resumeStation = null;
+  emit();
+}
+
+/** A 72px station cover URL for the Qcard's station row (null when the station has none). */
+function stationArt(s: Station): string | undefined {
+  const t = s.artwork?.urlTemplate;
+  return t ? t.replace("{w}", "72").replace("{h}", "72").replace("{f}", "jpg") : undefined;
+}
+
+function stationInfo(s: Station): NonNullable<PlayerState["station"]> {
+  return { id: s.id, name: s.name, live: s.isLive, artworkUrl: stationArt(s) };
 }
 
 /** Resolve once the async MusicKit CDN script has registered `window.MusicKit`. */
@@ -159,7 +183,10 @@ export interface PlayerState {
   loading?: boolean;
   /** Set while an Apple station owns the queue (radio mode). `live` drives the
    *  transport caps: no seek, no skip, LIVE indicator (STATIONS.md §1). */
-  station?: { name: string; live: boolean };
+  station?: { id: string; name: string; live: boolean; artworkUrl?: string };
+  /** The station that resumes once the finite queue runs dry (after a break-out).
+   *  The Qcard shows it as the last Up Next row. */
+  resume?: { id: string; name: string; live: boolean; artworkUrl?: string };
 }
 
 /** Build a concrete artwork URL from a MusicKit item's template (mirrors the library). */
@@ -221,12 +248,32 @@ function emit(): void {
     album: item?.albumName ?? item?.attributes?.albumName,
     artworkUrl: artworkUrlOf(item, 480),
     loading: isLoading,
-    station:
-      mode === "radio" && radioStation
-        ? { name: radioStation.name, live: radioStation.isLive }
-        : undefined,
+    station: mode === "radio" && radioStation ? stationInfo(radioStation) : undefined,
+    resume: resumeStation ? stationInfo(resumeStation) : undefined,
   };
   listeners.forEach((cb) => cb(s));
+}
+
+/**
+ * Station return: once the break-out block has played out (model upcoming empty and
+ * MusicKit reports the queue finished), re-enter the interrupted station. Runs on
+ * every playback-state change; cheap no-op otherwise.
+ */
+function maybeResumeStation(): void {
+  if (!music || mode !== "queue" || !resumeStation || loadingContext || isLoading) return;
+  const S = window.MusicKit?.PlaybackStates;
+  const st = music.playbackState;
+  const finished = !!S && (st === S.completed || st === S.ended);
+  if (!finished || queue.getUpcoming().length) return;
+  const s = resumeStation;
+  resumeStation = null;
+  diag.log("player:resumeStation", { id: s.id });
+  playStation(s).catch((e) => console.warn("[player] resume station:", e));
+}
+
+function onPlaybackStateChange(): void {
+  emit();
+  maybeResumeStation();
 }
 
 let wired = false;
@@ -234,7 +281,7 @@ function wireEvents(): void {
   if (wired || !music) return;
   wired = true;
   const E = window.MusicKit.Events;
-  music.addEventListener(E.playbackStateDidChange, emit);
+  music.addEventListener(E.playbackStateDidChange, onPlaybackStateChange);
   music.addEventListener(E.nowPlayingItemDidChange, onNowPlayingChange);
   music.addEventListener(E.playbackTimeDidChange, emitProgress);
 }
@@ -245,10 +292,12 @@ function onNowPlayingChange(): void {
       // Break-out boundary: a manual insert waited for the current song to end —
       // the block takes over as a finite queue now. The station's next song may
       // sound for a beat while the rebuild buffers (`loading` covers it).
-      // FUTURE-SETTINGS §17: optionally resume the station when that queue ends.
+      // The station is remembered and returns when that queue ends (maybeResumeStation).
       if (pendingBreakout && queue.getUpcoming().length) {
         diag.log("player:breakout", { n: queue.getUpcoming().length });
+        const interrupted = radioStation;
         exitRadio();
+        resumeStation = interrupted;
         queue.advance(); // finished station song → trail; block's first song → current
         // Defer the rebuild OUT of this nowPlayingItemDidChange handler (a macrotask lets
         // MusicKit settle its in-flight station advance first), and load with stopFirst +
@@ -732,6 +781,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
     return;
   }
 
+  resumeStation = null; // a deliberate new context ends any queued station return
   queue.setContext(handles, startIndex);
   await loadFromModel(m);
 }
@@ -794,6 +844,7 @@ export async function playStation(s: Station): Promise<void> {
   queue.disposePlan();
   mode = "radio";
   radioStation = s;
+  resumeStation = null;
   pendingBreakout = false;
   isLoading = true;
   loadingContext = true; // suppress model-follow while the station queue builds
@@ -819,28 +870,28 @@ export async function playStation(s: Station): Promise<void> {
 }
 
 /**
- * Stop Station (the Qcard affordance). The plan was disposed on entry, so this lands
- * on an idle transport; the heard trail stays (Previous/History unaffected). Clears
- * MusicKit's station queue where possible so a later Play can't resurrect the stream
- * behind queue-mode's back.
+ * Stop Station (Qcard station row / Now Playing menu). Leaves radio mode with the
+ * last station song still on screen, PAUSED (your call, 2026-09-10): the song stays
+ * `current` in the model and MusicKit's queue is rebuilt as a finite window around it
+ * (stopFirst halts the station controller, so a later Play plays that song under
+ * queue mode instead of resurrecting the stream). The heard trail stays, so Previous
+ * and History are unaffected. A pending break-out block stays queued behind it.
  */
 export async function stopStation(): Promise<void> {
   if (mode !== "radio") return;
   const m = await initPlayer();
   diag.log("player:stopStation", { id: radioStation?.id });
   exitRadio();
+  resumeStation = null;
   try {
-    if (typeof m.stop === "function") await m.stop();
-    else if (typeof m.pause === "function") await m.pause();
+    if (m.isPlaying && typeof m.pause === "function") await m.pause();
   } catch (e) {
     console.warn("[player] stop station:", e);
   }
-  // clearQueue is UNSUPPORTED for continuous/station playback — best-effort, quiet.
-  // (stop() already halts the stream; this only tidies the queue when allowed.)
-  try {
-    if (typeof m.clearQueue === "function") await m.clearQueue();
-  } catch {
-    /* unsupported for station playback — expected */
+  if (queue.getCurrent()) {
+    await loadFromModel(m, false, { stopFirst: true }).catch((e) =>
+      console.warn("[player] stop station reload:", e),
+    );
   }
   emit();
 }
@@ -872,7 +923,7 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
     // block lands in the MODEL only — MusicKit's station queue is left alone until
     // the current song ends, where onNowPlayingChange swaps engines. The Qcard shows
     // the block as Up Next meanwhile (editable, model-only).
-    // FUTURE-SETTINGS §17: optionally resume the station when the block ends.
+    // The station is the row after the block and returns when it ends (maybeResumeStation).
     if (where === "next") queue.playNextMany(playable);
     else queue.addToQueueMany(playable);
     pendingBreakout = true;
@@ -1028,6 +1079,7 @@ export async function reconcileUpcoming(): Promise<void> {
 export async function shuffleQueue(): Promise<void> {
   await initPlayer();
   if (!queue.getCurrent()) {
+    if (setting("shuffleIdle") === "noop") return; // FUTURE-SETTINGS §5b: idle press does nothing
     const all = tracks();
     if (!all.length) {
       console.warn("[player] shuffle: no cached library to play");
@@ -1142,16 +1194,65 @@ function readStoredLevel(): number {
 }
 
 /** Push the current effective level onto the live instance (no-op pre-init). */
+const volumeListeners = new Set<() => void>();
+/** Fires after any level/mute change, whoever made it (pill, stage row, tray, agent). */
+export function onVolumeChange(cb: () => void): () => void {
+  volumeListeners.add(cb);
+  return () => volumeListeners.delete(cb);
+}
+
+// AirPlay takeover (AIRPLAY.md decision 4): while a speaker plays, the app's one
+// slider drives the SPEAKER's volume. MusicKit's own gain pins to 100 % (the
+// speaker applies its gain to the stream), every slider change goes to the sink,
+// nothing persists, and the app level from before comes back on release.
+let volumeSink: ((v: number) => void) | null = null;
+let levelBeforeSink: { level: number; muted: boolean } | null = null;
+
+/** Hand the slider to a speaker (`initial` = the speaker's current 0..1), or `null` to take it back. */
+export function setVolumeSink(sink: ((v: number) => void) | null, initial?: number): void {
+  if (sink) {
+    if (!volumeSink) levelBeforeSink = { level, muted };
+    volumeSink = sink;
+    if (initial !== undefined) {
+      level = Math.max(0, Math.min(1, initial));
+      muted = level === 0;
+    }
+  } else {
+    volumeSink = null;
+    if (levelBeforeSink) {
+      ({ level, muted } = levelBeforeSink);
+      levelBeforeSink = null;
+    }
+  }
+  applyVolumeToMusic();
+}
+
+/** The speaker moved on its own (Siri, its touch surface): show it, send nothing. */
+export function reflectExternalVolume(v: number): void {
+  if (!volumeSink) return;
+  const next = Math.max(0, Math.min(1, v));
+  if (Math.abs(next - (muted ? 0 : level)) < 0.01) return;
+  level = next;
+  muted = level === 0;
+  if (level > 0) preMuteLevel = level;
+  applyVolumeToMusic();
+}
+
 function applyVolumeToMusic(): void {
+  volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
-    music.volume = muted ? 0 : level;
+    music.volume = volumeSink ? 1 : muted ? 0 : level;
   } catch (e) {
     console.warn("[player] volume not settable:", e);
   }
 }
 
 function persistVolume(): void {
+  if (volumeSink) {
+    volumeSink(muted ? 0 : level); // the speaker's volume is the speaker's to keep
+    return;
+  }
   try {
     localStorage.setItem(VOLUME_KEY, String(level));
     localStorage.setItem(MUTE_KEY, String(muted));

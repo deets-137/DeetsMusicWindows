@@ -53,7 +53,7 @@
   `.np` / `.scrub` classes verbatim, so every theme × skin renders it exactly like the Now
   Playing card; the deltas (`.tray__*`) are a source badge, a time readout, the **+**, and a
   horizontal volume row.
-- **Minimize to Tray** — title-menu toggle, **default on**, stored in
+- **Minimize to Tray** — a Settings-card toggle (SETTINGS.md; a title-menu row until 2026-09-10), **default on**, stored in
   `<app_data>/settings.json` (Rust owns it because the close policy runs before any JS
   could answer). On: **×** hides the main window to the tray and playback keeps running (a
   hidden WebView2 still plays). Off: × quits as before. The minimize light is untouched.
@@ -67,7 +67,7 @@
 | – | idle | "Not playing" | – | system | hidden |
 
 The Windows reader skips our own process (`deetsmusic` / `msedgewebview2` AUMIDs — the
-webview registers its own SMTC session via media-session.ts) and prefers a *playing*
+app registers its own SMTC session natively, `smtc.rs`) and prefers a *playing*
 foreign session. Position is interpolated from the session's `LastUpdatedTime`, since
 apps report it sparsely. Thumbnails come back as data URLs, cached per track.
 

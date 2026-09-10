@@ -1,3 +1,4 @@
+import { setting } from "./settings-store";
 // The playback queue model — the source of truth for what plays, decoupled from
 // MusicKit (player.ts feeds MusicKit a small window of this). Three zones:
 //
@@ -128,7 +129,9 @@ export function setContext(handles: TrackHandle[], startIndex: number): QueueEnt
     if (id) exclude.add(id);
   }
   if (startId) exclude.add(startId);
-  const seedFrom = Math.max(0, startIndex - HISTORY_CAP);
+  // "Heard songs only" (SETTINGS.md / FUTURE-SETTINGS §4 option b): don't seed the
+  // parked lookback at all — Previous then walks strictly the heard trail.
+  const seedFrom = setting("previousReach") === "heard" ? startIndex : Math.max(0, startIndex - HISTORY_CAP);
   const lookback: QueueEntry[] = [];
   for (let i = seedFrom; i < startIndex; i++) {
     const id = idOf(handles[i]);
@@ -200,9 +203,20 @@ export function shuffleInPlace<T>(arr: T[]): T[] {
  */
 export function shuffleUpcoming(): void {
   if (state.upcoming.length < 2) return;
-  const manual = state.upcoming.filter((e) => e.origin === "manual");
-  const auto = shuffleInPlace(state.upcoming.filter((e) => e.origin === "auto"));
-  state.upcoming = [...manual, ...auto];
+  // Where manual picks land (SETTINGS.md / FUTURE-SETTINGS §5a): on top (default),
+  // held in place with the autos permuting around them, or mixed into one flat shuffle.
+  const rule = setting("shuffleManual");
+  if (rule === "mix") {
+    state.upcoming = shuffleInPlace([...state.upcoming]);
+  } else if (rule === "hold") {
+    const autos = shuffleInPlace(state.upcoming.filter((e) => e.origin === "auto"));
+    let a = 0;
+    state.upcoming = state.upcoming.map((e) => (e.origin === "manual" ? e : autos[a++]));
+  } else {
+    const manual = state.upcoming.filter((e) => e.origin === "manual");
+    const auto = shuffleInPlace(state.upcoming.filter((e) => e.origin === "auto"));
+    state.upcoming = [...manual, ...auto];
+  }
   emit();
 }
 

@@ -13,6 +13,7 @@
 // compositions tears every content slot down and remounts from the new map.
 
 import { registry, type CardDef, type CardId, type CardInstance } from "./cards";
+import { setting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { onCardRequest } from "./layout-bus";
 import { currentSurface, onSurfaceChange, type SurfaceName } from "./surface";
@@ -51,9 +52,12 @@ const MAX: Composition = {
 /** mini shares midi's map — its composition only hides the right slot (CSS). */
 const compositionFor = (s: SurfaceName): Composition => (s === "max" ? MAX : MIDI);
 
-/** Cards selectable in a content slot under a composition — everything not anchored. */
+/** Cards selectable in a content slot under a composition — everything not anchored,
+ *  minus Rewind while its setting is off (the 50-start gate, SETTINGS.md). */
 const poolFor = (comp: Composition): CardDef[] =>
-  (Object.values(registry).filter(Boolean) as CardDef[]).filter((c) => !comp.anchored.includes(c.id));
+  (Object.values(registry).filter(Boolean) as CardDef[]).filter(
+    (c) => !comp.anchored.includes(c.id) && (c.id !== "rewind" || setting("rewindCard")),
+  );
 
 function loadLayout(comp: Composition): Assignment {
   try {
@@ -270,5 +274,22 @@ export function initLayout(): void {
   onCardRequest((id) => {
     if (comp.anchored.includes(id)) return;
     setSlot(currentSurface() === "mini" ? "left" : lruSlot(), id);
+  });
+
+  // The Rewind gate flipped: pickers re-read the pool, and a slot that was showing
+  // Rewind while it went off falls back to an unplaced card (or the slot's default).
+  onSettingsChange((k) => {
+    if (k !== "rewindCard") return;
+    if (!setting("rewindCard")) {
+      const slot = comp.slots.find((s) => layout[s] === "rewind");
+      if (slot) {
+        const used = new Set(comp.slots.map((s) => layout[s]));
+        const fallback = poolFor(comp).find((c) => !used.has(c.id))?.id ?? comp.defaults[slot];
+        if (fallback) layout = { ...layout, [slot]: fallback };
+        saveLayout(comp, layout);
+      }
+    }
+    decompose();
+    compose();
   });
 }

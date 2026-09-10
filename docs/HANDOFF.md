@@ -14,7 +14,7 @@ Deeper docs, by area:
 [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data) · [QUEUE.md](QUEUE.md) (queue model +
 playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGING.md](DEBUGGING.md)
 (`__diag` log) · [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (card system + surface seam) ·
-[FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) ·
+[FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](SETTINGS.md) (the settings store + card) ·
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
@@ -98,27 +98,28 @@ attached (none exist), and a plain note about SmartScreen on the unsigned instal
 bottom and build; the only inputs still the user's are the repo name and host (proposed
 `DeetsMusicToken` / `music-api.deets.solutions`).
 
-**Before v1: DeetsAirplay integration (user's call, 2026-09-10).** `../DeetsAirplay` is the
-sibling tray app that streams Windows system audio to a HomePod over a from-scratch AirPlay 2
-stack in Rust (`src-tauri/src/airplay/` + `crypto/`; v0.1.1; read its CLAUDE.md "Never" list
-before touching the wire code). The user wants a copy or an integration of it in DeetsMusic
-so playback can go to a HomePod. **Not designed yet.** Real fork to talk through first:
-(a) vendor the sender crates into this app and add a speaker picker to Now Playing, vs.
-(b) drive the installed DeetsAirplay from here (it already taps WASAPI loopback, so what
-this app plays reaches the HomePod with zero code — the integration is then just
-discovery/launch/transport handoff). Ask cost before choosing: (a) doubles the AirPlay
-maintenance surface across two repos.
+**Before v1: AirPlay (built 2026-09-10, untested).** See [AIRPLAY.md](AIRPLAY.md): the sender
+is the shared `deets-airplay` crate in `../DeetsAirplay/crates/airplay` (read that repo's
+CLAUDE.md "Never" list before touching wire code). Decisions are locked in AIRPLAY.md §5; the
+to-do before shipping is §9 (desk test of the mute, dev firewall rule, flip the Cargo dep to git).
 
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
-1. **Settings card** — a lean vessel that rehomes the existing title-menu toggles
-   (Always-on-Top / Hover-Menu / Library-Add) and seeds a curated handful of
-   [FUTURE-SETTINGS](FUTURE-SETTINGS.md) entries (§1 / §4 / §5a / §7 are the
-   highest-taste-variance). Explicitly NOT a full ledger burn-down.
+1. ✅ **Settings card** — built 2026-09-10 as the **hybrid** ([SETTINGS.md](SETTINGS.md)):
+   the title menu keeps Theme / Skin / Surface / Account + one **Settings…** row that
+   summons the card; the card hosts the rehomed toggles (Always on Top, Minimize to Tray,
+   hover menus, Library Add, the Extension block), eight FUTURE-SETTINGS rows (§1 §4 §5a
+   §5b §7 §8 §14 §16) and the **Rewind gate** (hidden until 50 play starts). One typed
+   store, `deets.settings`. Awaiting the first user test.
 2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
    MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
-3. **SMTC / global hotkeys** — media keys + the Windows media flyout. (media-session.ts
-   is the zero-dependency probe of the Chromium route; unverified.)
+3. ✅ **SMTC / global hotkeys** — built 2026-09-10 as a **native session** (`src-tauri/src/smtc.rs`,
+   registered on the main HWND from `setup`, fed by `np_publish`). The Chromium route was
+   probed and found half-working: media keys toggled play, but WebView2 never registered a
+   session, so the Win11 overlay stayed blank. The probe (`media-session.ts`) is deleted and
+   Chromium's `HardwareMediaKeyHandling` is disabled in `tauri.conf.json` so a key press is
+   handled once. Overlay buttons / keys / the overlay scrubber arrive as the same `np-command`
+   events the tray panel sends. Awaiting the first user test.
 
 **Built 2026-09-08, awaiting the first user test** (each has its own doc — read it before
 touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](TRAY.md));
@@ -148,11 +149,30 @@ restart (`settings.json` → `windowPos`); and the NSIS installer **stops the bu
 before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
 ([RELEASE.md](RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
 
-**Deferred, when prioritized:** the **search-card stations section** (the one optional radio
-leftover — add `stations` to the search types; `Station` model/tile/playback all exist, activation
-is just `playStation`) · the **radio-mode now-playing/queue UX** (a holistic pass — what the
-Qcard/NP surface does while a station plays; also owns **Stop Station**'s button, since
-`stopStation()` exists but is currently unwired) · **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
+**2026-09-10, branch `release-prep` (untested):** **stations in Search** (a fifth search type,
+[SEARCH.md](SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
+**radio UX pass** ([STATIONS.md](STATIONS.md) §3b — the station is Up Next's last row, Stop
+Station in three right-click menus, the station resumes after a break-out block, Stop leaves
+the last song paused); **Library Add now defaults ON**. Second batch, same day: the **Add to
+Library square** on Now Playing (+ / spinner / ✓, [FAVORITES.md](FAVORITES.md)); the **max
+stage volume row** (mute · slider · a hidden AirPlay square; the titlebar pill stays;
+`onVolumeChange` in `player.ts` keeps every control in step); the **Settings card + hybrid
+menu** ([SETTINGS.md](SETTINGS.md) — one `deets.settings` store, the v1 rows, the Rewind gate
+at 50 play starts; **Play Now now defaults to "Song and rest of list"**). Third batch, same day: **AirPlay**
+([AIRPLAY.md](AIRPLAY.md)) — `../DeetsAirplay` is now a library crate (`crates/airplay`) this app
+depends on (by path until pushed, then git); the "Play on" panel behind the AirPlay square (pill
+panel in mini/midi, stage row in max), **v1 = "All PC sound"** (loopback of the default
+output; the PC keeps playing), one volume slider driving the speaker, now-playing text +
+cover to the speaker, no Settings rows. **Connected and played on the desk.** The per-process
+"DeetsMusic only" path is built, probe-verified, and parked for v2 behind `V2_PER_PROCESS`
+(AIRPLAY.md §10 lists the five things learned about it). Also that evening: **per-speaker
+remembered volume** (20 % on a speaker's first use), **Settings › Agents** (Agent control
+switch, default on, gating the six agent routes with a 403; "Copy setup for" Claude Desktop /
+Claude Code / Cursor / Other; the plain-words [AGENT-SETUP.md](AGENT-SETUP.md)), and
+**Start with Windows** (HKCU Run key, `--tray` launch starts hidden; seeded once on the first
+installed run, DeetsAirplay pattern).
+
+**Deferred, when prioritized:** **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent
 control** · **mini/max surface compositions** · **virtualized scrolling** (only once libraries
 get large).
@@ -164,8 +184,9 @@ get large).
 ### Built ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.
 - **Themes** (palette → theme → skin, all CSS-variable driven): `lilac`, `green`, `sepia`,
-  `moonlight`, `black-yellow`, `black-red`. Settings menu (click the title) with Theme + Skin
-  flyouts, Account row, Always-on-Top / Hover-Menu / Library-Add toggles. A first launch with
+  `moonlight`, `black-yellow`, `black-red`. Title menu (click the title) with Theme / Skin /
+  Surface flyouts, a **Settings…** row (summons the Settings card, [SETTINGS.md](SETTINGS.md)),
+  and the Account row. A first launch with
   no saved choice follows the OS light/dark preference, landing on Press × Lilac or
   Retro-Future × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`)
   migrate via the `RETIRED` maps in `theme.ts` / `skin.ts` and the pre-paint script in
@@ -229,7 +250,7 @@ get large).
 - **Album Color** ([ALBUM-COLOR.md](ALBUM-COLOR.md)): real Apple palettes → `--album-*` runtime
   roles → the rotating Now-Playing aurora (Glass-only display).
 - **Add to Library** ([FAVORITES.md](FAVORITES.md)): ➕ add a catalog song/album to iCloud Music
-  Library, gated behind the **Library Add** settings toggle (default off), on Search / Playlists /
+  Library, gated behind the **Library Add** settings toggle (default on since 2026-09-10), on Search / Playlists /
   **Queue / History** right-click menus (incl. the now-playing hero). Apple's API is add-only.
 - **Go to Artist / Go to Album** (2026-07-06, [SEARCH.md](SEARCH.md)): drill-in right-click verbs on
   **every** song/album surface (Search, Library, Playlists, Rewind, Queue, History, Now Playing —
@@ -248,7 +269,7 @@ get large).
   to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
-- **CLI / local-agent control** · **mini/max surface compositions** · **SMTC / global hotkeys** ·
+- **CLI / local-agent control** · **mini/max surface compositions** ·
   **virtualized scrolling** · **playlist rename / drag-reorder / export UX**.
 
 ---

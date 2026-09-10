@@ -91,6 +91,11 @@
 /* :not(--dragging) — a hovered dragged row would otherwise win on specificity and
    override the drag transform, snapping the row back (visual rubber-banding). */
 .qrow:hover:not(.qrow--dragging) { background: var(--surface-hover); transform: var(--hover-lift); }
+/* The station row (radio): the "next song" is the station itself — informative, not a
+   jump target, so no lift; right-click still offers Stop Station / Don't resume. */
+.qrow--station { cursor: default; }
+.qrow--station:hover { transform: none; }
+.qrow--station .qrow__art { border-radius: 50%; }
 .qrow:focus-visible,
 .qrow.is-context,
 .qnow.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }

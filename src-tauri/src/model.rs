@@ -215,6 +215,8 @@ pub struct SearchResults {
     pub albums: Vec<Album>,
     pub artists: Vec<Artist>,
     pub playlists: Vec<Playlist>,
+    /// Catalog stations (`ra.…`) — the Radio card's model; a tap plays (STATIONS.md §1).
+    pub stations: Vec<Station>,
 }
 
 /// A page of results from a paged provider call.

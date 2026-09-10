@@ -65,6 +65,7 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 [docs/DATA-ARCHITECTURE.md](docs/DATA-ARCHITECTURE.md) — auth, model, provider, cache ·
 [docs/RELEASE.md](docs/RELEASE.md) — build, install, uninstall ·
 [docs/TRAY.md](docs/TRAY.md) — tray, panel, window lifecycle ·
+[docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) — connect Claude Desktop, Claude Code, Cursor, or a terminal (plain words)
 [docs/AGENT.md](docs/AGENT.md) — the CLI / MCP surface
 
 ## Layout

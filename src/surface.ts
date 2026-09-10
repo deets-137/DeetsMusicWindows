@@ -10,6 +10,7 @@
 // This build is the seam only: midi is fully implemented; max/mini fall back to the
 // midi layout until their compositions are designed.
 
+import { setting } from "./settings-store";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 export type SurfaceName = "mini" | "midi" | "max";
@@ -175,8 +176,12 @@ export function initSurface(): void {
   // The resize allowance: free within the band, flip past threshold + hysteresis.
   const observer = new ResizeObserver(() => {
     if (applyingSize) return;
-    const next = flipFor(window.innerWidth, active);
-    if (next !== active) activate(next);
+    // "Resize flips the surface" off (SETTINGS.md / FUTURE-SETTINGS §8): the window
+    // resizes freely and the surface only changes by a deliberate pick.
+    if (setting("surfaceAutoFlip")) {
+      const next = flipFor(window.innerWidth, active);
+      if (next !== active) activate(next);
+    }
     saveSize();
   });
   observer.observe(document.documentElement);

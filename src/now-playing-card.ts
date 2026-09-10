@@ -3,14 +3,23 @@
 // it can be mounted into a slot like any other card (in midi it's anchored to the top slot).
 // Volume lives in the titlebar chrome, not here.
 
-import { playPause, nextTrack, prevTrack, shuffleQueue, onPlayerState, onPlayerProgress, seekToFraction } from "./player";
+import {
+  playPause, nextTrack, prevTrack, shuffleQueue, stopStation, onPlayerState, onPlayerProgress, seekToFraction,
+  getVolume, setVolume, toggleMute, isMuted, onVolumeChange,
+} from "./player";
 import { makeSlider } from "./slider";
+import { ICON_VOL, ICON_MUTE } from "./volume-icons";
+import { mountAirplay, type AirplayMount } from "./airplay";
+import { onTracksChange } from "./track-store";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
 import * as queue from "./queue";
 import { resolveEntry } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
-import { addSongToLibraryItem } from "./library-add";
+import { addSongToLibraryItem, addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
+
+const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef } from "./cards";
@@ -55,13 +64,28 @@ const TEMPLATE = `
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg>
           </button>
         </div>
-        <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <line x1="3" y1="6" x2="13" y2="6"></line>
-            <line x1="3" y1="12" x2="13" y2="12"></line>
-            <line x1="3" y1="18" x2="13" y2="18"></line>
-            <path d="M17 8.5 22 12 17 15.5z" fill="none"></path>
-          </svg>
+        <div class="np__right">
+          <button class="panel__action np__add" id="np-add" type="button" aria-label="Add to Library" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="3" y1="6" x2="13" y2="6"></line>
+              <line x1="3" y1="12" x2="13" y2="12"></line>
+              <line x1="3" y1="18" x2="13" y2="18"></line>
+              <path d="M17 8.5 22 12 17 15.5z" fill="none"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="np__vol">
+        <button class="panel__action np__vol-mute" id="np-vol-mute" type="button" aria-label="Mute" aria-pressed="false"></button>
+        <div class="scrub np__vol-scrub" id="np-vol-scrub">
+          <div class="scrub__track"><div class="scrub__fill"></div></div>
+          <span class="scrub__handle" aria-hidden="true"></span>
+        </div>
+        <button class="panel__action np__airplay ap-square" id="np-airplay" type="button" aria-label="AirPlay" data-state="idle">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17a8 8 0 1 1 14 0" fill="none"></path><path d="M8 21l4-5 4 5z" fill="none"></path></svg>
         </button>
       </div>
     </div>
@@ -91,13 +115,24 @@ export const nowPlayingCard: CardDef = {
     // Drive the icon, title/artist, cover, and radio transport caps from playback
     // state. A LIVE station has no seek and no skip (STATIONS.md §1): `.np--live`
     // swaps the scrubber for a LIVE marker and the prev/next buttons disable.
+    let onStation = false; // radio mode → the menu offers Stop Station
     const unsubState = onPlayerState((s) => {
+      onStation = !!s.station;
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
       if (npTitle) npTitle.textContent = s.title ?? "Not playing";
       if (npArtist) npArtist.textContent = s.artist ?? (s.station ? s.station.name : "");
       if (npAlbum) npAlbum.textContent = s.album ?? "";
-      if (npArt) npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
+      if (npArt) {
+        npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
+        // Radio: the station's name rides the cover as a hover chip (STATIONS.md §3b).
+        if (s.station) {
+          const chip = document.createElement("span");
+          chip.className = "np__station";
+          chip.textContent = s.station.name;
+          npArt.appendChild(chip);
+        }
+      }
       const live = !!s.station?.live;
       npEl2?.classList.toggle("np--live", live);
       if (prevBtn) prevBtn.disabled = live;
@@ -115,6 +150,75 @@ export const nowPlayingCard: CardDef = {
     host.querySelector<HTMLElement>('.np__controls [aria-label="Next"]')?.addEventListener("click", () => {
       nextTrack().catch((e) => console.error("[player] next failed:", e));
     });
+
+    // Add to Library square (option B, 2026-09-10), the tray panel's four states: hidden
+    // (toggle off / no catalog id), "+" to add, a spinner while adding, and a check once
+    // the song is in the library (mirrors the extension). Re-evaluated on every song
+    // change, library reload, and toggle flip.
+    const addBtn = host.querySelector<HTMLButtonElement>("#np-add");
+    const currentTrack = () => {
+      const cur = queue.getCurrent();
+      return cur ? resolveEntry(cur) : undefined;
+    };
+    let adding = false;
+    const setAdd = (state: "hidden" | "add" | "added" | "busy") => {
+      if (!addBtn) return;
+      addBtn.hidden = state === "hidden";
+      addBtn.disabled = state !== "add";
+      addBtn.classList.toggle("is-busy", state === "busy");
+      addBtn.innerHTML = state === "added" ? ICON_CHECK : ICON_PLUS;
+      addBtn.setAttribute("aria-label", state === "added" ? "In your library" : "Add to Library");
+      addBtn.title = state === "added" ? "In your library" : "Add to Library";
+    };
+    const refreshAdd = () => {
+      const t = currentTrack();
+      if (!t?.catalogId || !libraryAddEnabled()) return setAdd("hidden");
+      if (adding) return setAdd("busy");
+      setAdd(libraryAddOffered(t) ? "add" : "added");
+    };
+    addBtn?.addEventListener("click", () => {
+      const t = currentTrack();
+      if (!t || adding) return;
+      adding = true;
+      refreshAdd();
+      addTrackToLibrary(t)
+        .catch((e) => console.error("[np] add to library", e))
+        .finally(() => {
+          adding = false;
+          refreshAdd();
+        });
+    });
+    const unsubAddState = onPlayerState(refreshAdd);
+    const unsubAddTracks = onTracksChange(refreshAdd);
+    const unsubAddToggle = onLibraryAddChange(refreshAdd);
+    refreshAdd();
+
+    // Stage volume row (max only, CSS-gated): the same app gain the titlebar pill
+    // drives, on the horizontal scrubber primitive. onVolumeChange keeps every
+    // control in step whoever moved the level. The AirPlay square opens the
+    // "Play on" panel (airplay.ts); the pill's panel has the same square for mini/midi.
+    const volMute = host.querySelector<HTMLButtonElement>("#np-vol-mute");
+    const volScrub = host.querySelector<HTMLElement>("#np-vol-scrub");
+    let unsubVolume = () => {};
+    let airplay: AirplayMount | null = null;
+    const airplaySquare = host.querySelector<HTMLElement>("#np-airplay");
+    if (airplaySquare) airplay = mountAirplay(airplaySquare);
+    if (volMute && volScrub) {
+      const volSlider = makeSlider(volScrub, {
+        axis: "x",
+        onDrag: (frac) => setVolume(frac),
+        onCommit: (frac) => setVolume(frac),
+      });
+      const reflectVolume = () => {
+        const v = getVolume();
+        volSlider.setValue(v);
+        volMute.innerHTML = isMuted() || v === 0 ? ICON_MUTE : ICON_VOL;
+        volMute.setAttribute("aria-pressed", String(isMuted()));
+      };
+      volMute.addEventListener("click", () => toggleMute());
+      unsubVolume = onVolumeChange(reflectVolume);
+      reflectVolume();
+    }
 
     // Shuffle — one-shot: manual picks to the top, auto tail shuffles; idle press
     // plays the whole library shuffled (see player.shuffleQueue / FUTURE-SETTINGS §5).
@@ -138,6 +242,9 @@ export const nowPlayingCard: CardDef = {
         goToAlbumItem(cur.catalogId, t?.albumName),
         startStationItem("songs", cur.catalogId),
         t ? addSongToLibraryItem(t) : null,
+        onStation
+          ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
+          : null,
       ].filter(Boolean) as MenuItem[];
       if (!items.length) return;
       e.preventDefault();
@@ -153,12 +260,12 @@ export const nowPlayingCard: CardDef = {
     const bottom = host.querySelector<HTMLElement>(".np__bottom");
     const shuffleBtn = host.querySelector<HTMLElement>("#np-shuffle");
     const controls = host.querySelector<HTMLElement>(".np__controls");
-    const summonBtn = host.querySelector<HTMLElement>("#np-summon");
+    const rightCluster = host.querySelector<HTMLElement>(".np__right"); // "+" and summon
     let stackObserver: ResizeObserver | undefined;
-    if (bottom && shuffleBtn && controls && summonBtn) {
+    if (bottom && shuffleBtn && controls && rightCluster) {
       const fit = () => {
         const gap = parseFloat(getComputedStyle(bottom).columnGap) || 0;
-        const needed = shuffleBtn.offsetWidth + controls.offsetWidth + summonBtn.offsetWidth + gap * 2;
+        const needed = shuffleBtn.offsetWidth + controls.offsetWidth + rightCluster.offsetWidth + gap * 2;
         bottom.classList.toggle("np__bottom--stacked", bottom.clientWidth < needed);
       };
       stackObserver = new ResizeObserver(fit);
@@ -190,6 +297,11 @@ export const nowPlayingCard: CardDef = {
         unsubState();
         unsubProgress();
         unsubAlbumColor();
+        unsubAddState();
+        unsubAddTracks();
+        unsubAddToggle();
+        unsubVolume();
+        airplay?.destroy();
         stackObserver?.disconnect();
         host.innerHTML = "";
       },

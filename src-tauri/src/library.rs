@@ -431,6 +431,15 @@ pub struct PlayEvent {
     pub context: Option<String>,
 }
 
+/// How many plays have ever started (one row per start). The Rewind card's 50-start
+/// auto-reveal reads this once at boot, then counts starts in the renderer.
+#[tauri::command]
+pub fn play_event_count(db: State<'_, Db>) -> Result<i64, String> {
+    let conn = db.0.lock().unwrap();
+    conn.query_row("SELECT COUNT(*) FROM play_events", [], |r| r.get(0))
+        .map_err(|e| e.to_string())
+}
+
 /// Read play events with `started_ts >= since_ts` (epoch-ms), oldest first. The time
 /// windowing happens HERE (via idx_play_events_ts) so a day view never ships a year of
 /// rows over IPC; all grouping/ranking lives in TS where the track-store join is.
