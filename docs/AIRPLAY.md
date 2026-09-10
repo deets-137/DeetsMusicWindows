@@ -179,7 +179,15 @@ latency change.
    `settings.json` (same identifier), the dev run had set the yes/no flag, so the installed
    build skipped the prompt and "Couldn't reach" the speaker. 0.2.1 remembers the **exe
    path** the rule was made for (`airplayFirewallExe`); a dev build reports itself seeded
-   and records nothing. Re-test on the installed 0.2.1.
+   and records nothing. **Re-tested on the installed 0.2.1: prompt shown, AirPlay works.**
+5. **The firewall prompt scares people (open, user's note 2026-09-10).** Today the only
+   warning is one line in the panel's state area, then Windows' UAC dialog appears with
+   `netsh` as the program. A first-time user has no reason to trust that. Two shapes to
+   pick from, both after toasts land (FUTURE-SETTINGS §18 is parked): (a) a confirmation
+   inside the app before the dialog — "Windows will ask for permission so the speaker can
+   answer DeetsMusic. Continue?" with a Not now that leaves the speaker list usable; (b) a
+   toast that stays until the dialog closes, naming what to click. Either way the sentence
+   must say it happens once, and the dialog names `netsh`, so say that too.
 
 ## 10. The per-process capture: what was learned, and what v2 must do
 
