@@ -1,0 +1,66 @@
+/* ── Settings card (SETTINGS.md) ──────────────────────────────────────────────
+   One scroll, section headers, two row kinds: a TOGGLE (label + dot, the title-menu
+   idiom) and a CHOICE (label over a segmented row of pills). Color through theme
+   roles, geometry through skin tokens — the card must survive every theme × skin. */
+
+.set { display: flex; flex-direction: column; gap: var(--set-section-gap); }
+
+.set__section { display: flex; flex-direction: column; gap: var(--space-1); }
+.set__head {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-subtext);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtext);
+  padding: 0 var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--border); /* a hairline groups the section; no boxes */
+  margin-bottom: var(--space-1);
+}
+
+.set__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  color: var(--text);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+.set__row--toggle { cursor: pointer; }
+.set__row--toggle:hover { background: var(--surface-hover); }
+.set__row--toggle:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* A choice row keeps its pills on the label's line, right-aligned; they wrap under the
+   label only when the slot is too narrow (flex-wrap on the row, pills pushed right). */
+.set__row--choice { flex-wrap: wrap; min-height: var(--set-row-h); }
+.set__label { min-width: 0; flex: 1 1 auto; }
+.set__dot { width: 1em; text-align: center; color: var(--title); }
+.set__row--toggle { min-height: var(--set-row-h); }
+.set__row--toggle[aria-checked="true"] .set__dot::after { content: "•"; }
+
+/* Segmented choice: pills share one border; the pressed one takes the hover wash + title ink. */
+.set__seg { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); margin-left: auto; }
+.set__pill {
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--set-pill-radius);
+  padding: var(--set-pill-pad);
+  cursor: pointer;
+}
+.set__pill:hover { background: var(--surface-hover); }
+.set__pill[aria-pressed="true"] { color: var(--title); border-color: var(--title); background: var(--surface-hover); }
+.set__pill:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* Extension block: a status line then two action rows. */
+.set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
+.set__action { cursor: pointer; }
+.set__action:hover { background: var(--surface-hover); }

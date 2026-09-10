@@ -8,6 +8,7 @@
 // without calling `authorize()` (whose OAuth popup can't open in WebView2 — the
 // reason auth runs through the loopback browser flow). See `injectUserToken`.
 
+import { setting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
@@ -1078,6 +1079,7 @@ export async function reconcileUpcoming(): Promise<void> {
 export async function shuffleQueue(): Promise<void> {
   await initPlayer();
   if (!queue.getCurrent()) {
+    if (setting("shuffleIdle") === "noop") return; // FUTURE-SETTINGS §5b: idle press does nothing
     const all = tracks();
     if (!all.length) {
       console.warn("[player] shuffle: no cached library to play");
@@ -1192,7 +1194,15 @@ function readStoredLevel(): number {
 }
 
 /** Push the current effective level onto the live instance (no-op pre-init). */
+const volumeListeners = new Set<() => void>();
+/** Fires after any level/mute change, whoever made it (pill, stage row, tray, agent). */
+export function onVolumeChange(cb: () => void): () => void {
+  volumeListeners.add(cb);
+  return () => volumeListeners.delete(cb);
+}
+
 function applyVolumeToMusic(): void {
+  volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
     music.volume = muted ? 0 : level;

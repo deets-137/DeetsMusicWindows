@@ -4,11 +4,13 @@ import { applySkin, initSkin, type SkinName } from "./skin";
 import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initArtworkHeal } from "./artwork-heal";
-import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
+import { setting, onSettingsChange } from "./settings-store";
+import { requestCard } from "./layout-bus";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
-import { getVolume, setVolume, toggleMute, isMuted } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange } from "./player";
+import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -30,39 +32,20 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the
   //    persistence + the Hover-Menu toggle UI. ──
-  const MENU_MODE_KEY = "deets.menuMode";
-  const initialMode: DropdownMode = localStorage.getItem(MENU_MODE_KEY) === "hover" ? "hover" : "click";
-  setDropdownMode(initialMode); // seed the primitive's global mode before any dropdown is made
-  const applyMenuMode = (m: DropdownMode) => {
-    setDropdownMode(m);
-    try {
-      localStorage.setItem(MENU_MODE_KEY, m);
-    } catch {
-      /* storage disabled — still applies for the session */
-    }
-  };
+  setDropdownMode(setting("menuMode")); // seed the primitive's global mode before any dropdown is made
 
   // ── Window controls ──────────────────────────────────────────
   document.getElementById("tl-min")?.addEventListener("click", () => appWindow.minimize());
   document.getElementById("tl-max")?.addEventListener("click", () => appWindow.toggleMaximize());
   document.getElementById("tl-close")?.addEventListener("click", () => appWindow.close());
 
-  // ── Always on Top (toggle row; choice persists like the theme) ──
-  const AOT_KEY = "deets.alwaysOnTop";
-  const aotToggle = document.getElementById("aot-toggle");
-  const applyAlwaysOnTop = (on: boolean) => {
-    appWindow.setAlwaysOnTop(on).catch((e) => console.error("[aot]", e));
-    aotToggle?.setAttribute("aria-checked", String(on));
-    try {
-      localStorage.setItem(AOT_KEY, String(on));
-    } catch {
-      /* storage disabled — still applies for the session */
-    }
-  };
-  applyAlwaysOnTop(localStorage.getItem(AOT_KEY) === "true"); // re-apply on launch
-  aotToggle?.addEventListener("click", (e) => {
-    e.stopPropagation(); // keep the menu open so the dot feedback is visible
-    applyAlwaysOnTop(aotToggle.getAttribute("aria-checked") !== "true");
+  // ── Settings that act on the window / the dropdown primitive: applied here on
+  //    launch and whenever the Settings card changes them (SETTINGS.md). ──
+  const applyAlwaysOnTop = (on: boolean) => appWindow.setAlwaysOnTop(on).catch((e) => console.error("[aot]", e));
+  applyAlwaysOnTop(setting("alwaysOnTop")); // re-apply on launch
+  onSettingsChange((k) => {
+    if (k === "alwaysOnTop") applyAlwaysOnTop(setting("alwaysOnTop"));
+    if (k === "menuMode") setDropdownMode(setting("menuMode") as DropdownMode);
   });
 
   // ── Settings menu (mode follows the Hover-Menu setting; submenus stay hover) ──
@@ -74,69 +57,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const settingsDropdown = makeDropdown({ root: settingsRoot, trigger, panel: menu });
   const close = () => settingsDropdown.close();
 
-  // ── Hover-Menu toggle: flips click ↔ hover for every dropdown at once ──
-  const hoverToggle = document.getElementById("hover-toggle");
-  hoverToggle?.setAttribute("aria-checked", String(initialMode === "hover"));
-  hoverToggle?.addEventListener("click", (e) => {
-    e.stopPropagation(); // keep the menu open so the dot feedback is visible
-    const next: DropdownMode = hoverToggle.getAttribute("aria-checked") === "true" ? "click" : "hover";
-    hoverToggle.setAttribute("aria-checked", String(next === "hover"));
-    applyMenuMode(next);
-  });
-
-  // ── Library Add: reveals the "Add to Library" right-click item (default off; the
-  //    module owns persistence, menus read the flag at build time — no fan-out). ──
-  const libraryAddToggle = document.getElementById("libraryadd-toggle");
-  libraryAddToggle?.setAttribute("aria-checked", String(libraryAddEnabled()));
-  libraryAddToggle?.addEventListener("click", (e) => {
-    e.stopPropagation(); // keep the menu open so the dot feedback is visible
-    const next = libraryAddToggle.getAttribute("aria-checked") !== "true";
-    setLibraryAddEnabled(next);
-    libraryAddToggle.setAttribute("aria-checked", String(next));
-  });
-
-  // ── Minimize to Tray: × hides the window instead of quitting (TRAY.md; default on;
-  //    the Rust side owns it because the close policy runs before any JS can answer). ──
-  const trayToggle = document.getElementById("tray-toggle");
-  interface BackendSettings { minimizeToTray: boolean; readWindowsMedia: boolean }
-  invoke<BackendSettings>("settings_get")
-    .then((s) => trayToggle?.setAttribute("aria-checked", String(s.minimizeToTray)))
-    .catch((e) => console.warn("[settings] get", e));
-  trayToggle?.addEventListener("click", (e) => {
-    e.stopPropagation(); // keep the menu open so the dot feedback is visible
-    const next = trayToggle.getAttribute("aria-checked") !== "true";
-    trayToggle.setAttribute("aria-checked", String(next));
-    invoke("settings_set_minimize_to_tray", { on: next }).catch((err) => console.error("[settings] tray", err));
-  });
-
-  // ── Extension flyout: bridge status + install guide + bridge log (EXTENSION.md).
-  //    No pairing code: the bridge trusts the extension's Origin header. ──
-  interface BridgeInfo { port: number | null; token: string; ports: number[] }
-  const extStatus = document.getElementById("ext-status");
-  invoke<BridgeInfo>("bridge_info")
-    .then((b) => {
-      if (extStatus) extStatus.textContent = b.port ? `Bridge on 127.0.0.1:${b.port}` : "Bridge off (no free port)";
-    })
-    .catch((e) => console.warn("[bridge] info", e));
-  const flash = (el: HTMLElement | null, text: string) => {
-    if (!el) return;
-    const was = el.textContent;
-    el.textContent = text;
-    window.setTimeout(() => (el.textContent = was), 1200);
-  };
-  document.getElementById("ext-install")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
-  });
-  document.getElementById("ext-log")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const btn = e.currentTarget as HTMLElement;
-    invoke<string>("bridge_log").then((text) =>
-      navigator.clipboard.writeText(text).then(
-        () => flash(btn, "Copied"),
-        () => console.log(text),
-      ),
-    );
+  // ── Settings… → summon the Settings card into a slot (the hybrid, SETTINGS.md). ──
+  document.getElementById("settings-open")?.addEventListener("click", () => {
+    requestCard("settings");
+    close();
   });
 
   // Theme choices.
@@ -236,11 +160,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const volScrub = document.querySelector<HTMLElement>("#vol-scrub");
   const volMute = document.getElementById("vol-mute");
   if (volRoot && volPill && volPanel && volScrub && volMute) {
-    const ICON_VOL =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4zm12.5 3a4 4 0 0 0-2.5-3.7v7.4a4 4 0 0 0 2.5-3.7zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
-    const ICON_MUTE =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4zm17 .4L19.6 8l-2.6 2.6L14.4 8 13 9.4l2.6 2.6L13 14.6 14.4 16l2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6L21 9.4z"/></svg>';
-
     // Paint a 0..1 level into the pill fill, the slider handle, and the glyph.
     const reflect = (v: number) => {
       const pct = (Math.max(0, Math.min(1, v)) * 100).toFixed(2);
@@ -257,6 +176,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
     reflect(getVolume()); // seed from the persisted level
+    onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes
 
     // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag.
     makeDropdown({

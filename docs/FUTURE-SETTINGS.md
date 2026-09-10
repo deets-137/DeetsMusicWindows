@@ -6,9 +6,15 @@
 > agonizing — pick a default, ship, and note it so the alternative isn't lost.
 >
 > Each entry: the behavior, the options, the current hardcoded default, where the
-> toggle would live, and any wiring notes. The established pattern for a settings
-> toggle is a `.menu__row--toggle` in the title menu + a `localStorage` key, re-applied
-> on launch (see **Always on Top** / **Hover-Menu** in [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §4).
+> toggle would live, and any wiring notes. **The pattern for a shipped setting is now the
+> Settings card + the `deets.settings` store — see [SETTINGS.md](SETTINGS.md)** (2026-09-10;
+> the old title-menu `.menu__row--toggle` idiom is retired for preferences).
+>
+> **Built into the Settings card 2026-09-10 (v1 cut):** §1 (`playNowScope`), §4
+> (`previousReach`), §5a (`shuffleManual`), §5b (`shuffleIdle`), §7 (`fullPlayRule`),
+> §8's auto-flip toggle (`surfaceAutoFlip`), §14 (`playlistEagerCounts`), §16
+> (`playlistCreateSummon`). §17's resume is the default since the radio UX pass. The
+> entries below stay as the design record; SETTINGS.md §3 is the live table.
 >
 > **Section numbers are stable IDs** (assigned in creation order and referenced from source
 > comments + other docs — e.g. `stats.ts` → §7, `surface.ts` → §8, `layout-bus.ts` → §10), so
@@ -38,10 +44,11 @@
 
 **Options.**
 - **(a) Just this song** — plays only the selected track as a single-song context;
-  whatever was queued is replaced. *(current default)*
+  whatever was queued is replaced. *(the default until 2026-09-10)*
 - **(b) This song, then the rest of the list** — plays the selected track and queues
   the remainder of the current sorted/filtered list from that point (this is what a
-  **left-click** on a song does today).
+  **left-click** on a song does today). ***(current default — built as the Settings
+  card's "Play Now plays" row, `playNowScope`, 2026-09-10; user's call.)***
 
 **Current behavior (hardcoded, as built):**
 - **left-click** a song → **(b)**: plays it and queues the rest of the current list from

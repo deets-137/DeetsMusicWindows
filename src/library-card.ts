@@ -12,6 +12,7 @@
 // Artists group by PARSED credit (artist-credit.ts), so collabs/features land
 // under every credited artist instead of fragmenting into one tile per credit.
 
+import { setting } from "./settings-store";
 import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange } from "./track-store";
@@ -260,10 +261,22 @@ function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
   return [artistItem, albumItem];
 }
 
-export function trackMenu(items: Track[], context?: string, nav?: LibNav): MenuItem[] {
+/** The list a song sits in, for "Play Now → the song, then the list" (SETTINGS.md / §1). */
+export interface ListFrom {
+  items: Track[];
+  idx: number;
+}
+
+export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFrom?: ListFrom): MenuItem[] {
   const err = (what: string) => (e: unknown) => console.error(`[library] ${what}`, e);
+  // Play Now scope: the song then the rest of its list (default — the same play a
+  // left-click does), or just the song(s). Only a single song inside a list can widen.
+  const playNow =
+    listFrom && items.length === 1 && setting("playNowScope") === "list"
+      ? () => playTracks(listFrom.items, listFrom.idx, context)
+      : () => playTracks(items, 0, context);
   return [
-    { label: "Play Now", run: () => void playTracks(items, 0, context).catch(err("play now")) },
+    { label: "Play Now", run: () => void playNow().catch(err("play now")) },
     { label: "Play Next", run: () => void queueTracksNext(items, context).catch(err("play next")) },
     { label: "Add to Queue", run: () => void queueTracksLater(items, context).catch(err("add to queue")) },
     addToPlaylistItem(() => items),
@@ -300,8 +313,9 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     // current sort order (the engine hands us the live sorted view).
     activate: (_t, idx, items) =>
       playTracks(items, idx, o.context).catch((e) => console.error("[library] play", e)),
-    // Right-click → act on just this song (Play Now plays only it; see docs/FUTURE-SETTINGS).
-    menu: (t) => trackMenu([t], o.context, o.nav),
+    // Right-click → act on this song; Play Now's scope (just it, or it then the list)
+    // is the setting (SETTINGS.md / FUTURE-SETTINGS §1).
+    menu: (t, idx, items) => trackMenu([t], o.context, o.nav, { items, idx }),
   };
 }
 

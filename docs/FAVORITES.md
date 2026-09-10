@@ -32,7 +32,11 @@ the [Playlists export decision](PLAYLISTS.md)):
 ### Where the buttons live
 - **Add to Library** (active step) — a right-click item on **Search** (song rows + album tiles) and
   **Playlists** (detail song rows), shown only when the track isn't already in the library and only
-  while the [Library Add setting](#the-library-add-setting-the-gate) is on.
+  while the [Library Add setting](#the-library-add-setting-the-gate) is on. **Since 2026-09-10 also a
+  square on Now Playing** (right cluster, before the queue summon; `#np-add`) with the tray
+  panel's four states: hidden (toggle off / no catalog id) · **+** to add · spinner while adding ·
+  **✓ "In your library"** once it is (disabled, mirrors the extension). Menus and the square
+  share one visibility rule, `libraryAddOffered(t)` in `library-add.ts`.
 - **♥ Favorite** (later step) — a dedicated **♥** on Now Playing (filled if loved) + a right-click
   item across Library / Search / Queue. Surfaces TBD when that step is built.
 - All are icon/theme-tokened glyphs — no hardcoded colors/sizes.
@@ -41,7 +45,7 @@ the [Playlists export decision](PLAYLISTS.md)):
 > ♥ Favorites step (5b, parked — not next per the user)**, **gated behind the "Library Add" settings toggle**
 > (see [§The "Library Add" setting](#the-library-add-setting-the-gate)). Scoped to **Search**
 > (song rows + album tiles) and **Playlists** (detail song rows) right-click menus; **Now Playing
-> deferred** (own discussion). Built with **fork A** (album adds fetch + graduate their tracks so
+> landed 2026-09-10** (the square above, plus the right-click item on the NP cover/meta). Built with **fork A** (album adds fetch + graduate their tracks so
 > they appear immediately) and a **synthetic `added_rank`** stamp (Unix seconds) so a just-added
 > track sorts to the top of Added-Date until the next sync overwrites it. Files: new
 > `src/library-add.ts` (flag + invoke + `addSongToLibraryItem`/`addAlbumToLibraryItem`),
@@ -67,7 +71,7 @@ be one-click without risking accidental account writes, given there's **no remov
 (see [Risks](#risks--verify)).
 
 ### As it looks / works
-- **The row.** A `menu__row--toggle` in the settings menu (`index.html`), grouped with **Always on
+- **The row.** Since 2026-09-10 a toggle in the **Settings card** ([SETTINGS.md](SETTINGS.md), "Add to Library"). Until then: a `menu__row--toggle` in the title menu (`index.html`), grouped with **Always on
   Top** / **Hover-Menu**, above **Account**: `role="menuitemcheckbox"`, a `.menu__label`
   ("Library Add") + the `.menu__dot` indicator. Same markup shape as the AOT row.
 - **Persistence.** `localStorage["deets.libraryAdd"]` (`"on"` / `"off"`), **default on** (absent

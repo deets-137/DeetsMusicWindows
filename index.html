@@ -104,39 +104,12 @@
             </div>
           </div>
 
-          <button class="menu__row menu__row--toggle" id="aot-toggle" type="button" role="menuitemcheckbox" aria-checked="false" data-row="aot">
-            <span class="menu__label">Always on Top</span>
-            <span class="menu__dot" aria-hidden="true"></span>
+          <!-- Everything else (Always on Top, Minimize to Tray, hover menus, Library Add,
+               the Extension block, the playback/playlist preferences) lives in the
+               Settings card (SETTINGS.md); this row summons it into a slot. -->
+          <button class="menu__row menu__row--toggle" id="settings-open" type="button" role="menuitem" data-row="settings">
+            <span class="menu__label">Settings…</span>
           </button>
-
-          <button class="menu__row menu__row--toggle" id="hover-toggle" type="button" role="menuitemcheckbox" aria-checked="false" data-row="hover">
-            <span class="menu__label">Hover-Menu</span>
-            <span class="menu__dot" aria-hidden="true"></span>
-          </button>
-
-          <button class="menu__row menu__row--toggle" id="libraryadd-toggle" type="button" role="menuitemcheckbox" aria-checked="false" data-row="libraryadd">
-            <span class="menu__label">Library Add</span>
-            <span class="menu__dot" aria-hidden="true"></span>
-          </button>
-
-          <button class="menu__row menu__row--toggle" id="tray-toggle" type="button" role="menuitemcheckbox" aria-checked="true" data-row="tray">
-            <span class="menu__label">Minimize to Tray</span>
-            <span class="menu__dot" aria-hidden="true"></span>
-          </button>
-
-          <!-- Browser extension (EXTENSION.md): bridge status, the unpacked-install guide,
-               the bridge log. No pairing — the bridge trusts the extension's Origin. -->
-          <div class="menu__row" data-row="extension">
-            <span class="menu__label">Extension</span>
-            <span class="menu__chev" aria-hidden="true">›</span>
-            <div class="flyout flyout--extension" role="menu" aria-label="Extension">
-              <div class="ext">
-                <div class="ext__status" id="ext-status">Bridge off</div>
-                <button class="flyout__item" type="button" role="menuitem" id="ext-install">Install guide…</button>
-                <button class="flyout__item" type="button" role="menuitem" id="ext-log">Copy bridge log</button>
-              </div>
-            </div>
-          </div>
 
           <div class="menu__row" data-row="account">
             <span class="menu__label">Account</span>

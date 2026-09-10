@@ -9,13 +9,47 @@
 // Tracking only for now — no read-out UI. Each record echoes to the `__diag` log
 // (`stats:partial` / `stats:full`) so you can confirm events fire via __diag.dump().
 
+import { setting, setSetting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import type { TrackHandle } from "./queue";
 import * as diag from "./diag";
 
-/** Fraction of a track that must play for it to count as a "full" listen.
- *  Hardcoded for now; slated to become a user preference — see FUTURE-SETTINGS §7. */
+/** Fraction of a track that must play for it to count as a "full" listen under the
+ *  default rule. The rule itself is a setting (SETTINGS.md / FUTURE-SETTINGS §7). */
 const FULL_THRESHOLD = 0.9;
+/** "Reaches the end" — the last percent; a natural finish always crosses it. */
+const END_THRESHOLD = 0.99;
+/** Scrobble rule: half the track, or four minutes of real listening. */
+const SCROBBLE_MS = 4 * 60 * 1000;
+
+/** Has this play earned a "full" under the active rule? */
+function listenedThrough(progress: number, msListened: number): boolean {
+  switch (setting("fullPlayRule")) {
+    case "end":
+      return progress >= END_THRESHOLD;
+    case "scrobble":
+      return progress >= 0.5 || msListened >= SCROBBLE_MS;
+    default:
+      return progress >= FULL_THRESHOLD;
+  }
+}
+
+// ── The Rewind gate (SETTINGS.md): the card reveals itself once, at 50 play starts.
+// Seeded from the durable event count at boot, then counted here per start.
+const REWIND_UNLOCK_STARTS = 50;
+let startCount: number | null = null;
+function maybeUnlockRewind(): void {
+  if (startCount === null || startCount < REWIND_UNLOCK_STARTS || setting("rewindAutoShown")) return;
+  setSetting("rewindAutoShown", true);
+  setSetting("rewindCard", true);
+  diag.log("stats:rewind-unlock", { starts: startCount });
+}
+void invoke<number>("play_event_count")
+  .then((n) => {
+    startCount = n;
+    maybeUnlockRewind();
+  })
+  .catch((e) => diag.log("stats:err", { kind: "event-count", e: String(e) }));
 
 /** Stable per-song key for the dedup latches (mirrors player.ts's playId). */
 const playId = (h: TrackHandle): string | undefined => h.catalogId ?? h.libraryId;
@@ -93,6 +127,10 @@ export function recordStart(cur: TrackHandle | null): void {
   fullCountedId = undefined;
   record(cur, "partial");
   startEvent(cur);
+  if (startCount !== null) {
+    startCount++;
+    maybeUnlockRewind();
+  }
 }
 
 /** An explicit restart of the current song (the re-click path, which seeks to 0
@@ -125,10 +163,10 @@ export function recordProgress(cur: TrackHandle | null, progress: number, curren
       if (d > 0 && d < 2) openEvent.msListened += d * 1000;
     }
     openEvent.lastTickSec = currentTime;
-    if (progress >= FULL_THRESHOLD) openEvent.completed = true;
+    if (listenedThrough(progress, openEvent.msListened)) openEvent.completed = true;
   }
 
-  if (progress < FULL_THRESHOLD || id === fullCountedId) return;
+  if (!listenedThrough(progress, openEvent?.msListened ?? 0) || id === fullCountedId) return;
   fullCountedId = id;
   record(cur, "full");
 }

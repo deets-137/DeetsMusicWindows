@@ -1355,7 +1355,9 @@ body {
 .np__bottom { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: var(--space-2); row-gap: var(--space-2); align-items: center; }
 .np__bottom .np__controls { grid-column: 2; }
 .np__shuffle { grid-column: 1; justify-self: start; }
-.np__summon { grid-column: 3; justify-self: end; }
+/* Right cluster: the Add-to-Library "+" square (option B, 2026-09-10) then the summon.
+   Both are .panel__action squares; the "+" hides unless the song can be added. */
+.np__right { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: var(--space-2); }
 /* Overflow fallback (mini at minimum width): when shuffle + transport + summon can't
    share one row, the card (now-playing-card.ts, a ResizeObserver) sets --stacked and
    the two side buttons drop to a second row, still flush left/right, so the transport
@@ -1363,7 +1365,14 @@ body {
    the threshold follows the skin's tokens rather than a hardcoded px. */
 .np__bottom--stacked .np__controls { grid-column: 1 / -1; grid-row: 1; }
 .np__bottom--stacked .np__shuffle { grid-row: 2; }
-.np__bottom--stacked .np__summon { grid-row: 2; }
+.np__bottom--stacked .np__right { grid-row: 2; }
+
+/* The stage volume row (max only): mute square · full-width slider · AirPlay square.
+   Same primitives as the tray panel's row; the titlebar pill stays as the level meter. */
+.np__vol { display: none; align-items: center; gap: var(--space-2); margin-top: var(--np-vol-gap); }
+.np__vol .scrub { flex: 1 1 auto; }
+.np__vol-mute svg { fill: currentColor; stroke: none; } /* filled speaker glyphs, unlike the stroked actions */
+[data-surface="max"] .np__vol { display: flex; }
 
 .np__controls { display: flex; align-items: center; justify-content: center; gap: var(--transport-gap); }
 .np__btn {
@@ -1477,7 +1486,3 @@ body.tray { height: auto; overflow: hidden; }
 }
 .tray__mute svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; display: block; }
 
-/* ── Extension flyout (settings menu · EXTENSION.md) ────────── */
-.flyout--extension { min-width: calc(var(--menu-min-w) * 1.9); }
-.ext { display: flex; flex-direction: column; gap: var(--space-1); }
-.ext__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }

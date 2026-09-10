@@ -14,7 +14,7 @@ Deeper docs, by area:
 [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data) · [QUEUE.md](QUEUE.md) (queue model +
 playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGING.md](DEBUGGING.md)
 (`__diag` log) · [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (card system + surface seam) ·
-[FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) ·
+[FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](SETTINGS.md) (the settings store + card) ·
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
@@ -111,10 +111,12 @@ maintenance surface across two repos.
 
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
-1. **Settings card** — a lean vessel that rehomes the existing title-menu toggles
-   (Always-on-Top / Hover-Menu / Library-Add) and seeds a curated handful of
-   [FUTURE-SETTINGS](FUTURE-SETTINGS.md) entries (§1 / §4 / §5a / §7 are the
-   highest-taste-variance). Explicitly NOT a full ledger burn-down.
+1. ✅ **Settings card** — built 2026-09-10 as the **hybrid** ([SETTINGS.md](SETTINGS.md)):
+   the title menu keeps Theme / Skin / Surface / Account + one **Settings…** row that
+   summons the card; the card hosts the rehomed toggles (Always on Top, Minimize to Tray,
+   hover menus, Library Add, the Extension block), eight FUTURE-SETTINGS rows (§1 §4 §5a
+   §5b §7 §8 §14 §16) and the **Rewind gate** (hidden until 50 play starts). One typed
+   store, `deets.settings`. Awaiting the first user test.
 2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
    MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
 3. ✅ **SMTC / global hotkeys** — built 2026-09-10 as a **native session** (`src-tauri/src/smtc.rs`,
@@ -157,9 +159,14 @@ before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
 [SEARCH.md](SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
 **radio UX pass** ([STATIONS.md](STATIONS.md) §3b — the station is Up Next's last row, Stop
 Station in three right-click menus, the station resumes after a break-out block, Stop leaves
-the last song paused); **Library Add now defaults ON**. Decisions for the rest of the branch
-(stage volume row, AirPlay shared crate, hybrid settings + Settings card, Rewind gate) are in
-the session memory and will land in the docs as each piece is built.
+the last song paused); **Library Add now defaults ON**. Second batch, same day: the **Add to
+Library square** on Now Playing (+ / spinner / ✓, [FAVORITES.md](FAVORITES.md)); the **max
+stage volume row** (mute · slider · a hidden AirPlay square; the titlebar pill stays;
+`onVolumeChange` in `player.ts` keeps every control in step); the **Settings card + hybrid
+menu** ([SETTINGS.md](SETTINGS.md) — one `deets.settings` store, the v1 rows, the Rewind gate
+at 50 play starts; **Play Now now defaults to "Song and rest of list"**). Still to build on this
+branch: **AirPlay** as a shared crate extracted from `../DeetsAirplay` (per-process loopback of
+this app as the primary capture; the dropdown hangs off the volume row's AirPlay square).
 
 **Deferred, when prioritized:** **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent
@@ -173,8 +180,9 @@ get large).
 ### Built ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.
 - **Themes** (palette → theme → skin, all CSS-variable driven): `lilac`, `green`, `sepia`,
-  `moonlight`, `black-yellow`, `black-red`. Settings menu (click the title) with Theme + Skin
-  flyouts, Account row, Always-on-Top / Hover-Menu / Library-Add toggles. A first launch with
+  `moonlight`, `black-yellow`, `black-red`. Title menu (click the title) with Theme / Skin /
+  Surface flyouts, a **Settings…** row (summons the Settings card, [SETTINGS.md](SETTINGS.md)),
+  and the Account row. A first launch with
   no saved choice follows the OS light/dark preference, landing on Press × Lilac or
   Retro-Future × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`)
   migrate via the `RETIRED` maps in `theme.ts` / `skin.ts` and the pre-paint script in
@@ -238,7 +246,7 @@ get large).
 - **Album Color** ([ALBUM-COLOR.md](ALBUM-COLOR.md)): real Apple palettes → `--album-*` runtime
   roles → the rotating Now-Playing aurora (Glass-only display).
 - **Add to Library** ([FAVORITES.md](FAVORITES.md)): ➕ add a catalog song/album to iCloud Music
-  Library, gated behind the **Library Add** settings toggle (default off), on Search / Playlists /
+  Library, gated behind the **Library Add** settings toggle (default on since 2026-09-10), on Search / Playlists /
   **Queue / History** right-click menus (incl. the now-playing hero). Apple's API is add-only.
 - **Go to Artist / Go to Album** (2026-07-06, [SEARCH.md](SEARCH.md)): drill-in right-click verbs on
   **every** song/album surface (Search, Library, Playlists, Rewind, Queue, History, Now Playing —

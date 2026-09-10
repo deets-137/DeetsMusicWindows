@@ -132,6 +132,7 @@ pub fn run() {
             library::record_event_start,
             library::record_event_end,
             library::play_events_since,
+            library::play_event_count,
             library::materialize_track,
             enrich::catalog_enrich,
             enrich::album_palette,

@@ -41,7 +41,9 @@ wired inline in `main.ts`. To be swappable a card must instead **mount into a ho
 and **tear itself down** cleanly.
 
 ```ts
-type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind";
+type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings";
+// rewind is offered by the pickers only while its setting is on (SETTINGS.md §4);
+// settings is summoned by the title menu's Settings… row (and pickable like any card).
 
 interface CardInstance {
   destroy(): void;                       // drop every listener, detach DOM
@@ -243,6 +245,11 @@ Each phase **compiles and is independently testable**; behaviour only changes wh
      / transport. The album + times markup is always present and CSS-hidden outside max. The
      summon button hides (the queue is on-screen by construction). Aurora halo re-centers on
      the larger cover (`--np-stage-cover`). The player publishes 480 px art so the stage is sharp.
+     **2026-09-10:** the transport's right cluster (`.np__right`) holds the **Add to Library
+     square** then the summon (so in max the square takes the right edge alone), and a
+     **volume row** (`.np__vol`: mute · horizontal scrubber · AirPlay square, hidden until
+     AirPlay lands) sits under the transport, **max only** (CSS-gated; `--np-vol-gap`). It
+     drives the same app gain as the titlebar pill, which stays.
    - **Layout manager is now per-surface** (`layout.ts`): a `Composition` = content slots +
      anchored cards + defaults + storage key. midi `{left,right}` (mini shares it; CSS hides
      right) and max `{left,right,c,d}` with `queue` anchored and `deets.layout.max` persisted
