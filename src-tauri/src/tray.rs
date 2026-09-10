@@ -49,6 +49,31 @@ fn state(app: &AppHandle) -> std::sync::MutexGuard<'_, Inner> {
     app.state::<TrayState>().inner().0.lock().unwrap()
 }
 
+/// Remember where the REAL app window sits, in `Inner` and in settings.json. Called
+/// before anything moves it to the tray (a pop) or hides it (× to tray), so "Open
+/// DeetsMusic" and the pinned taskbar button can put it back — after a × close and
+/// after a restart, which an in-memory field alone cannot do.
+fn remember_pos(app: &AppHandle, s: &mut Inner) {
+    let Some(w) = app.get_webview_window(MAIN) else { return };
+    let Ok(p) = w.outer_position() else { return };
+    s.restore_pos = Some(p);
+    // Only touch the disk when it actually moved — this runs on every tray pop.
+    let settings = app.state::<crate::settings::Settings>();
+    if settings.get().window_pos != Some([p.x, p.y]) {
+        let _ = settings.update(|d| d.window_pos = Some([p.x, p.y]));
+    }
+}
+
+/// The position to restore to: this session's, else the one from settings.json.
+fn recall_pos(app: &AppHandle, s: &mut Inner) -> Option<PhysicalPosition<i32>> {
+    s.restore_pos.take().or_else(|| {
+        app.state::<crate::settings::Settings>()
+            .get()
+            .window_pos
+            .map(|[x, y]| PhysicalPosition::new(x, y))
+    })
+}
+
 /// Bottom-right corner of `w` at `p`, kept inside the monitor under `p`.
 fn anchor(app: &AppHandle, w: &tauri::WebviewWindow, p: PhysicalPosition<f64>) {
     let size = w.outer_size().unwrap_or_default();
@@ -101,16 +126,32 @@ pub fn show_main(app: &AppHandle) {
     s.pop_at = None;
     s.shown_at = Some(Instant::now());
     drop(s);
+    // Hide first: the page is about to resize the window from the mini flyout to the
+    // full surface, and `tray_place_main` then moves it. Doing that while it is visible
+    // makes the window visibly grow and travel. Hidden, it is one clean cut — the
+    // flyout goes, the full window appears already at its size and place. `hide` here
+    // deliberately skips `hide_main`, which would set `main_hidden_at` and make the
+    // re-show look like a fresh hide to the re-pop guard.
+    if visible {
+        w.hide().ok();
+    }
     let _ = tauri::Emitter::emit_to(app, MAIN, "tray-open", ());
 }
 
 fn hide_main(app: &AppHandle) {
+    let mut s = state(app);
+    // A × close of the real window is the other way its position is lost. Capture it
+    // now, while the window still has one. A POPPED window sits at the tray anchor,
+    // which must never overwrite the real position.
+    if !s.popped {
+        remember_pos(app, &mut s);
+    }
+    s.popped = false;
+    s.main_hidden_at = Some(Instant::now());
+    drop(s);
     if let Some(w) = app.get_webview_window(MAIN) {
         w.hide().ok();
     }
-    let mut s = state(app);
-    s.popped = false;
-    s.main_hidden_at = Some(Instant::now());
 }
 
 /// Left-click: a popped, visible window hides; otherwise ask the page to go mini
@@ -129,7 +170,7 @@ fn toggle_main(app: &AppHandle, at: PhysicalPosition<f64>) {
     }
     if visible && !s.popped {
         // The real window is about to be moved to the tray — remember where it was.
-        s.restore_pos = app.get_webview_window(MAIN).and_then(|w| w.outer_position().ok());
+        remember_pos(app, &mut s);
     }
     s.pop_at = Some(at);
     s.popped = true;
@@ -160,8 +201,27 @@ pub fn sync_menu(app: &AppHandle) {
     }
 }
 
+/// Put the window back where the last session left it (`settings.json` → `windowPos`).
+/// Guarded on the monitor layout: a position from a monitor that is now unplugged would
+/// park the window off-screen, so an unmatched position is discarded and Windows places
+/// the window as it normally would.
+fn restore_window_pos(app: &AppHandle) {
+    let Some([x, y]) = app.state::<crate::settings::Settings>().get().window_pos else { return };
+    let Some(w) = app.get_webview_window(MAIN) else { return };
+    let on_a_monitor = app.available_monitors().is_ok_and(|mons| {
+        mons.iter().any(|m| {
+            let (p, sz) = (m.position(), m.size());
+            x >= p.x && y >= p.y && x < p.x + sz.width as i32 && y < p.y + sz.height as i32
+        })
+    });
+    if on_a_monitor {
+        w.set_position(PhysicalPosition::new(x, y)).ok();
+    }
+}
+
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     app.manage(TrayState(Mutex::new(Inner::default())));
+    restore_window_pos(app);
     TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().expect("window icon").clone())
         .tooltip("DeetsMusic")
@@ -256,7 +316,9 @@ pub fn tray_place_main(app: AppHandle) {
     let (at, restore) = {
         let mut s = state(&app);
         s.shown_at = Some(Instant::now());
-        (s.pop_at.take(), if s.popped { None } else { s.restore_pos.take() })
+        let at = s.pop_at.take();
+        let restore = if s.popped { None } else { recall_pos(&app, &mut s) };
+        (at, restore)
     };
     let Some(w) = app.get_webview_window(MAIN) else { return };
     let popped = state(&app).popped;

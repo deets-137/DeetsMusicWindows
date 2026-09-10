@@ -32,3 +32,8 @@ dev-dumps/
 # Generated dev config (scripts/dev-app.mjs) + the CLI crate's build dir
 src-tauri/.tauri.dev.gen.json
 cli/target/
+
+# Local archive of shipped NSIS installers (scripts/archive-installer.mjs), kept the
+# way DeetsAirplay keeps its installers/ — handy to re-install an older build, too big
+# to carry in git (~6 MB each).
+installers/

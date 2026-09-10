@@ -20,11 +20,21 @@ pub struct SettingsData {
     pub read_windows_media: bool,
     /// Shared secret the browser extension presents on every bridge call.
     pub bridge_token: String,
+    /// Where the real app window last sat, as [x, y] outer position. A tray pop moves
+    /// the window to the tray, so "Open DeetsMusic" and the pinned taskbar button need
+    /// a position to put it back at — and that must survive a × close and a restart,
+    /// not just live in `tray::Inner`. `None` until the window has been placed once.
+    pub window_pos: Option<[i32; 2]>,
 }
 
 impl Default for SettingsData {
     fn default() -> Self {
-        Self { minimize_to_tray: true, read_windows_media: true, bridge_token: String::new() }
+        Self {
+            minimize_to_tray: true,
+            read_windows_media: true,
+            bridge_token: String::new(),
+            window_pos: None,
+        }
     }
 }
 
