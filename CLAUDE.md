@@ -34,6 +34,16 @@ front-end, Rust back-end).
   enough to hold in context directly — explore, read, and edit files yourself so you
   keep the full picture while building. Only exception: if he explicitly asks for one.
 
+## How to explain things to me
+- Write in ASD-STE100 (Simplified Technical English): short sentences, active
+  voice, one idea per sentence, plain approved words, no metaphor.
+- Name the exact control or gesture ("the tray icon", "the pinned taskbar
+  button"). Define the terms once, at the start.
+- Test each option against the code BEFORE you show it to me. Discard the
+  options that the code already rules out. Show the real forks only.
+- A question about the UI needs the front-end state, not only the Rust. Check
+  localStorage keys and the `surface`/`theme`/`skin` modules first.
+
 ## Run
 ```
 npm install

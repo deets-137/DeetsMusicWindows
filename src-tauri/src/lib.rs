@@ -11,7 +11,17 @@ mod tray;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // FIRST plugin on purpose: a second process must be turned away BEFORE any setup
+    // runs, or it opens the same SQLite file and takes the next bridge port. The
+    // callback activates the window we already have — the same path as the tray menu's
+    // "Open DeetsMusic", so a tray flyout un-pops to the full surface, back on the
+    // taskbar, and a window hidden to the tray comes back.
+    let single_instance = tauri_plugin_single_instance::init(|app: &tauri::AppHandle, _argv, _cwd| {
+        tray::show_main(app);
+    });
+
     tauri::Builder::default()
+        .plugin(single_instance)
         .plugin(tauri_plugin_opener::init())
         .manage(apple::AppleState::default())
         .manage(bridge::Hub::default())
