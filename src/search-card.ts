@@ -201,6 +201,10 @@ function mountSearch(host: HTMLElement): CardInstance {
   const onInput = () => {
     window.clearTimeout(debounceTimer);
     clearBtn.hidden = !input.value;
+    // The search bar owns the card: any keystroke (or a clear, or a recents tap)
+    // returns to the root results. Otherwise a drill pane stays on top and hides
+    // the new results rendered into `root` below it.
+    resetToRoot();
     const term = input.value.trim();
     if (term.length < MIN_CHARS) {
       queryToken++; // cancel any in-flight response
@@ -273,6 +277,8 @@ function mountSearch(host: HTMLElement): CardInstance {
     window.setTimeout(() => pane.remove(), 400); // past --nav-dur; cheap cleanup
     notifyHeader();
   };
+  /** Drop every drill pane at once, so `root` is the visible pane again. */
+  const resetToRoot = () => { while (paneStack.length) popPane(); };
 
   const listRow = (t: Track, i: number): string =>
     `<div class="search__row" data-row="${i}" role="button" tabindex="0">
