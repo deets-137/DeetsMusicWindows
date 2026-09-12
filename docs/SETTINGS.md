@@ -63,6 +63,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Library | New playlist opens Search (§16) | `playlistCreateSummon` | on / off | `playlists-card.ts` `createAndEnter` |
 | Cards | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
 | Extension | status · Install guide · Copy log | — | — | `bridge_info` / `bridge_open_install_page` / `bridge_log` |
+| Bugs | Open log folder | — | — | `log_open_folder` (+ `diag_flush` first; LOGGING.md) |
 
 **Play Now default changed 2026-09-10 to "Song and rest of list"** — the same play a
 left-click does; "Song only" is the opt-in interjection. (FUTURE-SETTINGS §1 records the

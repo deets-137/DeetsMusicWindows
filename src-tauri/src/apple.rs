@@ -245,8 +245,8 @@ async fn fetch_from_mint() -> Result<DevToken, String> {
 
 /// Make `t` the live token. Logs the source and the expiry date — never the token.
 fn install(t: DevToken) {
-    crate::bridge::log(&format!(
-        "[token] source={} expires={}",
+    crate::log::info(&format!(
+        "token: source={} expires={}",
         t.source,
         chrono::DateTime::from_timestamp(t.exp as i64, 0)
             .map(|d| d.format("%Y-%m-%d").to_string())
@@ -293,13 +293,13 @@ pub fn ensure_developer_token() -> Result<(), String> {
         Err(e) => match cached {
             // Still valid, just inside the margin: keep it, retry next launch.
             Some(t) => {
-                crate::bridge::log(&format!("[token] refresh failed ({e}); using cached token"));
+                crate::log::warn(&format!("token: refresh failed ({e}); using cached token"));
                 install(t);
                 Ok(())
             }
             None => {
                 let msg = format!("no developer token: no local MusicKit key and {e}");
-                crate::bridge::log(&format!("[token] {msg}"));
+                crate::log::warn(&format!("token: {msg}"));
                 *DEV_TOKEN_ERROR.lock().unwrap() = Some(msg.clone());
                 Err(msg)
             }
@@ -338,7 +338,7 @@ async fn refetch_after_401() -> Option<String> {
     if !minted || REFETCHED_ON_401.swap(true, Ordering::SeqCst) {
         return None;
     }
-    crate::bridge::log("[token] 401 from Apple; refetching once");
+    crate::log::warn("token: 401 from Apple; refetching once");
     match fetch_from_mint().await {
         Ok(t) => {
             let tok = t.token.clone();
@@ -350,7 +350,7 @@ async fn refetch_after_401() -> Option<String> {
             Some(tok)
         }
         Err(e) => {
-            crate::bridge::log(&format!("[token] refetch after 401 failed: {e}"));
+            crate::log::error(&format!("token: refetch after 401 failed: {e}"));
             None
         }
     }
@@ -462,6 +462,7 @@ fn serve(server: tiny_http::Server, page: String, nonce: String, store: Arc<Mute
     let deadline = Instant::now() + Duration::from_secs(300);
     loop {
         let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+            crate::log::warn("sign-in: no callback within 5 min; browser sign-in abandoned");
             break;
         };
         match server.recv_timeout(remaining) {
@@ -481,10 +482,14 @@ fn serve(server: tiny_http::Server, page: String, nonce: String, store: Arc<Mute
                         });
                     if let Some(tok) = token {
                         *store.lock().unwrap() = Some(tok.clone());
-                        let _ = persist_user_token(&tok);
+                        if let Err(e) = persist_user_token(&tok) {
+                            crate::log::warn(&format!("sign-in: token captured but not persisted: {e}"));
+                        }
+                        crate::log::info("sign-in: user token captured");
                         let _ = req.respond(tiny_http::Response::from_string(DONE_RESPONSE));
                         break; // captured — shut down
                     }
+                    crate::log::warn("sign-in: callback rejected (nonce mismatch or empty token)");
                     let _ = req
                         .respond(tiny_http::Response::from_string("bad request").with_status_code(400));
                 } else if !is_post {
@@ -656,10 +661,21 @@ async fn api_get_once(
         .await
         .map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
+    log_failure(status, url);
     let text = resp.text().await.map_err(|e| e.to_string())?;
     let body = serde_json::from_str::<serde_json::Value>(&text)
         .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
     Ok((status, body))
+}
+
+/// Apple failures only, status + path (LOGGING.md): the host is always the same
+/// and the query holds nothing but ids and limits.
+fn log_failure(status: u16, url: &str) {
+    if status < 400 {
+        return;
+    }
+    let path = url.split_once("api.music.apple.com").map(|(_, p)| p).unwrap_or(url);
+    crate::log::warn(&format!("apple: {status} {path}"));
 }
 
 /// POST an Apple Music API URL with no body, returning (http_status, parsed_body).
@@ -695,6 +711,7 @@ async fn api_post_once(
         .await
         .map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
+    log_failure(status, url);
     let text = resp.text().await.unwrap_or_default();
     let body = serde_json::from_str::<serde_json::Value>(&text)
         .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
@@ -989,17 +1006,21 @@ fn playlist_from_library(v: &serde_json::Value) -> Playlist {
 }
 
 impl MusicProvider for AppleProvider {
-    async fn songs_page(&self, offset: u32, limit: u32) -> Result<Page<Track>, String> {
+    async fn songs_page(&self, offset: u32, limit: u32, newest_first: bool) -> Result<Page<Track>, String> {
         // Sort by dateAdded so each row's global position is its "added rank"
         // (songs carry no per-song dateAdded; this is how we order by it). The UI
         // re-sorts client-side, so this fetch order doesn't affect other views.
+        // Newest-first (the incremental sync) maps the position back onto the same
+        // ascending rank via the total, so a song added today still sorts newest.
+        let sort = if newest_first { "-dateAdded" } else { "dateAdded" };
         let url = format!(
-            "https://api.music.apple.com/v1/me/library/songs?limit={limit}&offset={offset}&sort=dateAdded"
+            "https://api.music.apple.com/v1/me/library/songs?limit={limit}&offset={offset}&sort={sort}"
         );
         let (status, body) = api_get(&self.client, &self.dev, &self.user, &url).await?;
         if status != 200 {
             return Err(format!("library/songs HTTP {status}"));
         }
+        let total = body["meta"]["total"].as_u64().unwrap_or(0) as u32;
         let items: Vec<Track> = body["data"]
             .as_array()
             .map(|arr| {
@@ -1007,13 +1028,14 @@ impl MusicProvider for AppleProvider {
                     .enumerate()
                     .map(|(i, v)| {
                         let mut t = track_from_library_song(v);
-                        t.added_rank = Some(offset + i as u32);
+                        let pos = offset + i as u32;
+                        t.added_rank = Some(if newest_first { total.saturating_sub(pos + 1) } else { pos });
                         t
                     })
                     .collect()
             })
             .unwrap_or_default();
-        let total = body["meta"]["total"].as_u64().unwrap_or(items.len() as u64) as u32;
+        let total = if total == 0 { items.len() as u32 } else { total };
         let next_offset = body["next"].as_str().map(|_| offset + limit);
         Ok(Page {
             items,

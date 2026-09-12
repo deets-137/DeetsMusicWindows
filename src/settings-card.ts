@@ -13,6 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { esc } from "./collection-card";
+import * as diag from "./diag";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -169,7 +170,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       // EXTENSION.md: bridge status + the two actions.
       tail: `<div class="set__status" id="set-ext-status">Bridge off</div>
         <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>
-        <button class="set__row set__action" type="button" data-action="ext-log" title="Copies the bridge log to the clipboard"><span class="set__label">Copy log</span></button>`,
+        <button class="set__row set__action" type="button" data-action="ext-log" title="Copies the recent app log to the clipboard"><span class="set__label">Copy log</span></button>`,
     },
     {
       title: "Agents",
@@ -196,6 +197,13 @@ function mountSettings(host: HTMLElement): CardInstance {
           <button class="set__pill" type="button" data-setup="other">Other</button>
         </div></div>
         <button class="set__row set__action" type="button" data-action="agent-guide" title="Opens the setup guide in your browser"><span class="set__label">Open guide</span></button>`,
+    },
+    {
+      title: "Bugs",
+      rows: [],
+      // LOGGING.md: the rolling log file the app always writes; the report form and
+      // "My reports" (support.md) join this section next.
+      tail: `<button class="set__row set__action" type="button" data-action="log-folder" title="Shows the log file the app writes on this PC"><span class="set__label">Open log folder</span></button>`,
     },
   ];
 
@@ -252,6 +260,11 @@ function mountSettings(host: HTMLElement): CardInstance {
     }
     if (action === "agent-guide") {
       invoke("agent_open_guide").catch((err) => console.error("[agent] guide", err));
+      return;
+    }
+    if (action === "log-folder") {
+      diag.flush(); // so the file the user is about to read has the front end's last events
+      invoke("log_open_folder").catch((err) => console.error("[log] folder", err));
       return;
     }
     const setup = t.closest<HTMLElement>("[data-setup]");

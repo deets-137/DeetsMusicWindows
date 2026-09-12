@@ -125,8 +125,8 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
 - Popup → Settings → **Debug**: what was read (raw title, channel, credits), the query, the
   candidates with scores, the extension log, and a button that pulls the app's `/log`.
   **Copy report** bundles it all.
-- App: Settings card → **Extension → Copy bridge log**; the same log is also appended to
-  `<app_data>/bridge.log`. Every request, resolve, ranking and add is a line.
+- App: Settings card → **Extension → Copy bridge log**; the same ring is also written to
+  `<app_data>/deetsmusic.log` (rolling, [LOGGING.md](LOGGING.md)). Every request, resolve, ranking and add is a line.
 - `curl` from the machine works with the settings.json `bridge_token` (or by faking the
   header: `-H "Origin: chrome-extension://x"`):
   `curl -H "Authorization: Bearer <token>" http://127.0.0.1:47825/now-playing`.

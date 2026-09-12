@@ -84,9 +84,10 @@ export function initTrackStore(): void {
   // Stale-while-revalidate, ONCE per session (not per card mount): kick a background
   // re-sync at startup if signed in. Lives here — not in the Library card — so swapping
   // the card in and out of a slot doesn't re-trigger a full Apple sync each time.
+  // `false` = Rust picks the incremental pass inside the six-hour window.
   isConnected().then((c) => {
     if (c)
-      librarySync().catch((e) => {
+      librarySync(false).catch((e) => {
         // A concurrent sync (the Library card auto-syncs on open too) is deduped by
         // the Rust SYNC_IN_FLIGHT guard — expected, not a failure. Only surface real errors.
         const msg = e instanceof Error ? e.message : String(e);

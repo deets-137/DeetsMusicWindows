@@ -255,7 +255,7 @@ pub async fn apple_playlists_sync(
         }
     }
     tx.commit().map_err(err)?;
-    println!("[playlists] mirror synced — {} playlist(s)", all.len());
+    crate::log::info(&format!("playlists: mirror synced, {} playlist(s)", all.len()));
     Ok(all.len() as u32)
 }
 
@@ -319,7 +319,7 @@ pub async fn apple_playlist_counts(
     while let Some((id, res)) = stream.next().await {
         match res {
             Ok(total) => learned.push((id, total)),
-            Err(e) => eprintln!("[playlists] count backfill {id}: {e}"),
+            Err(e) => crate::log::warn(&format!("playlists: count backfill {id}: {e}")),
         }
     }
     drop(stream);

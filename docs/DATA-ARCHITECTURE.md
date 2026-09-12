@@ -199,7 +199,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | Captured MUT | `src-tauri/secrets/user-token.txt` | ✗ gitignored |
 | Library cache | `<app_data_dir>/deetsmusic.db` | n/a (runtime) |
 | Back-end settings | `<app_data_dir>/settings.json` | n/a (runtime) |
-| Bridge log | `<app_data_dir>/bridge.log` | n/a (runtime) |
+| App log | `<app_data_dir>/deetsmusic.log` (+ `.1.log`, LOGGING.md) | n/a (runtime) |
 | Raw API dumps | `dev-dumps/` | ✗ gitignored |
 | Shipped installers | `installers/` | ✗ gitignored ([RELEASE.md](RELEASE.md)) |
 | Cached developer token | `<app_data_dir>/developer-token.json` | n/a (runtime) — `{token, exp, source, config}`; written only when the mint is used, [RELEASE.md](RELEASE.md) §7 |

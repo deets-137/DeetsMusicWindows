@@ -4,9 +4,10 @@ What the app writes down, so a fault a user cannot reproduce is still
 readable afterwards. It is also the payload an in-app bug report
 attaches (`DeetsSolutions/docs/support.md`).
 
-**Scoped 2026-09-11. Not built.** Two halves already exist and are not
-being rebuilt; this doc bounds them, joins them, and says what starts
-writing.
+**Scoped 2026-09-11. Steps 1–4 built the same day** (`src-tauri/src/log.rs`, `diag.flush()`, Settings › Bugs;
+the "What already exists" section below describes the state before it).
+Step 5, the report form, is open. Two halves already existed and were not rebuilt; this
+doc bounds them, joins them, and says what starts writing.
 
 ---
 

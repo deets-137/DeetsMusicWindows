@@ -28,6 +28,7 @@
 - **Playback** — §4 "Previous" reach · §5 Shuffle behavior
 - **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
 - **Stats** — §7 Listened-through threshold
+- **Library** — §21 Sync cadence (full pass every 6 h; incremental at startup)
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
   §13 Retro-Future storm dials (skin-specific)
@@ -641,3 +642,22 @@ the Library builds `libNav` (pass `undefined` for `"search"`). Option (c) is a l
 — a new intent that targets the Library card via `requestCard("library")` + a programmatic
 `card.drill`, gated on a library-membership lookup. If (c) lands, this key grows a third
 value (`"library"`). A **Menus** settings subsection tenant alongside §1/§2.
+
+## 21. Library sync cadence — how often the full pass runs
+
+**Behavior.** At startup the app re-syncs the library (stale-while-revalidate,
+`track-store.ts`). Since 2026-09-11 that startup call is **incremental** when the last
+complete pass is under **six hours** old: `library.rs` fetches newest-added first, one page
+of 100 at a time, and stops at the first page holding a song already cached — so an album
+added on the phone is one or two Apple requests, not ~40. Upsert only; a song removed on
+another device disappears at the next full pass. The refresh button in the Library card is
+always a full pass, and a full pass writes `meta.full_sync_at` in the cache db (it dies with
+the cache, so a fresh db always full-syncs).
+
+**Options.** The window: 1 h · 6 h *(current default)* · 24 h · only on refresh (never
+automatic). Possibly a second switch: incremental at startup on/off.
+
+**Where.** Settings › Library, one CHOICE row ("Check library fully every"). **Wiring.** A
+`librarySyncWindowHours` key in `deets.settings`, passed to `library_sync` as an argument
+(the constant `FULL_SYNC_EVERY_SECS` becomes the default). The log line
+`library: incremental sync done, N new in P page(s)` shows what a launch cost.

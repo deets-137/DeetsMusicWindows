@@ -3,6 +3,7 @@ mod apple;
 mod bridge;
 mod enrich;
 mod library;
+mod log;
 mod model;
 mod media;
 mod playlists;
@@ -34,6 +35,8 @@ pub fn run() {
             // Open the local library cache (SQLite) in the app data dir.
             let dir = app.path().app_data_dir().expect("app data dir");
             std::fs::create_dir_all(&dir).ok();
+            // The rolling log first (LOGGING.md): everything below may need to write.
+            log::init(&dir);
             let db_path = dir.join("deetsmusic.db");
 
             // First launch of the DEV identifier (`npm run dev:app`, HANDOFF → Run it): seed
@@ -46,8 +49,8 @@ pub fn run() {
                     let from = release.join(name);
                     if from.is_file() {
                         match std::fs::copy(&from, dir.join(name)) {
-                            Ok(_) => println!("[dev] seeded {name} from {}", release.display()),
-                            Err(e) => eprintln!("[dev] seed {name} failed: {e}"),
+                            Ok(_) => log::info(&format!("dev: seeded {name} from {}", release.display())),
+                            Err(e) => log::warn(&format!("dev: seed {name} failed: {e}")),
                         }
                     }
                 }
@@ -65,7 +68,7 @@ pub fn run() {
             // from the mint (RELEASE.md §7). A failure is logged, never fatal —
             // a first run with no network is a real state, and the message names it.
             if let Err(e) = apple::ensure_developer_token() {
-                eprintln!("[token] {e}");
+                log::error(&format!("token: {e}"));
             }
 
             // Seed the user-token store so a prior sign-in survives restarts.
@@ -84,7 +87,7 @@ pub fn run() {
                     .unwrap_or(0);
                 let bak = dir.join(format!("deetsmusic.v1.{stamp}.bak.db"));
                 std::fs::copy(&db_path, &bak).expect("backup db before v2 migration");
-                println!("[library] v1 DB backed up to {}", bak.display());
+                log::info(&format!("migration: v1 db detected; backed up to {}", bak.display()));
             }
 
             let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
@@ -114,7 +117,7 @@ pub fn run() {
                 let s = app.state::<settings::Settings>();
                 if !s.get().autostart_seeded {
                     if let Err(e) = settings::autostart_write(true) {
-                        bridge::log(&format!("autostart: {e}"));
+                        log::warn(&format!("autostart: {e}"));
                     }
                     s.update(|d| d.autostart_seeded = true).ok();
                 }
@@ -124,7 +127,7 @@ pub fn run() {
             // Our Windows media session (overlay + media keys) on the main HWND.
             if let Some(win) = app.get_webview_window("main") {
                 if let Err(e) = smtc::init(app.handle().clone(), &win) {
-                    bridge::log(&format!("smtc init failed: {e}"));
+                    log::warn(&format!("smtc: init failed: {e}"));
                 }
             }
 
@@ -205,6 +208,8 @@ pub fn run() {
             bridge::appearance_publish,
             bridge::bridge_info,
             bridge::bridge_log,
+            log::diag_flush,
+            log::log_open_folder,
             bridge::bridge_open_install_page,
             bridge::bridge_resolve,
             bridge::agent_reply,

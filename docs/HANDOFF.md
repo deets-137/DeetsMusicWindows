@@ -114,19 +114,27 @@ and desk-tested (same day: `apple.json` moved away → `source=worker`, playback
 cached token → one 401 refetch heals search AND an already-configured MusicKit):** `apple.rs` resolves the token once in `setup()` — local key,
 else `developer-token.json`, else the mint — and `api_get`/`api_post` retry once after a 401.
 To test the stranger's path: move `src-tauri/secrets/apple.json` away and start the app; the
-bridge log line `[token] source=worker` confirms it. **Rate-limit finding (same day):** the
+log line `token: source=worker` confirms it. **Rate-limit finding (same day):** the
 `unsafe.bindings` ratelimit form is inert; use the top-level `ratelimits` key (done here and
 in all five sibling workers, redeployed and pushed the same day). Then,
 on this side: the rolling log file, the report form, and **My reports** in Settings. The page
 design and the report fields are the user's own pass.
 
-**Logging is scoped in [LOGGING.md](LOGGING.md)** (2026-09-11, not built). Correction to an
-earlier reading of this file: a log file **does** exist — `bridge::log()` appends to
-`<app_data>/bridge.log` — but it **never rotates and has no size cap**, and almost nothing
-outside `bridge.rs` writes to it. `src/diag.ts` is already the front-end half. The plan bounds
-both (512 KB × 2 as `deetsmusic.log`), adds a **panic hook**, scrubs bearer tokens at the
-write boundary, and logs **catalog ids, never track titles**. Steps 1–2 there are worth doing
-on their own merits, before any support work.
+**Logging: steps 1–4 of [LOGGING.md](LOGGING.md) built 2026-09-11 (step 1–2 lines seen on the desk; 3–4 awaiting).**
+`src-tauri/src/log.rs` is the rolling `<app_data>/deetsmusic.log` (512 KB × 2, dated lines,
+three levels, a panic hook, JWT / `Bearer` scrubbed at the write boundary); the old
+`bridge.log` is adopted as `deetsmusic.1.log` on first run and `bridge::log` is an alias.
+Startup, token source, every Apple ≥ 400 (status + path), library sync, enrich batches,
+AirPlay, sign-in outcomes, migration and the bridge now write to it. `diag.flush()` appends the
+front-end ring on an uncaught error, on unload and from **Settings › Bugs › Open log folder**.
+Still to do: step 5, the report form + My reports (support.md). **The log's first catch:** the
+startup library sync was a full ~40-request pass on every launch; it is now **incremental**
+inside a six-hour window (newest-first, stop at the first cached song, upsert only; the
+refresh button and a stale cache still run the full pass, which stamps `meta.full_sync_at`
+in the cache db) — FUTURE-SETTINGS.md §21 holds the window as a later Settings row. Also fixed that day: `npm run
+dev:app` opened TWO full windows — the dev overlay's bare `windows` array replaced the real one
+(JSON merge patch), so the tray label lost `tray.html` and loaded the app; the launcher now
+stamps "(dev)" onto the full window objects.
 
 **AirPlay: in v0.2.0, desk-tested in dev.** See [AIRPLAY.md](AIRPLAY.md): the sender is the
 shared `deets-airplay` crate (git dependency on DeetsAirplay, pinned by `rev`; read that

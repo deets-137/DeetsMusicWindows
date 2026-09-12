@@ -2,10 +2,17 @@
 // console handle (window.__diag). The buffer ALWAYS records (bounded, cheap); the
 // console echo is opt-in via localStorage "deets.debug" = "1" (or __diag.echo(true)).
 //
-// This buffer is the payload a future in-app "Report a problem" action will attach,
-// so users can file actionable bug reports without us reading minds. It also
-// auto-captures uncaught errors / promise rejections — exactly the class we hit
-// (the "play() without a previous stop()/pause()" rejection).
+// This buffer is the payload the in-app "Report a problem" action attaches, so users
+// can file actionable bug reports without us reading minds. It also auto-captures
+// uncaught errors / promise rejections — exactly the class we hit (the "play()
+// without a previous stop()/pause()" rejection).
+//
+// It reaches disk through `flush()` → the Rust `diag_flush` command, which appends
+// `report()` to the rolling app log (LOGGING.md). Normal use writes nothing extra:
+// the triggers are an uncaught error (throttled), `beforeunload`, and the report
+// form opening — so a crash still leaves a trace.
+
+import { invoke } from "@tauri-apps/api/core";
 
 export interface DiagEvent {
   t: number; // ms since page load (monotonic)
@@ -51,6 +58,24 @@ export function report(): string {
   return [header, ...lines].join("\n");
 }
 
+/** Append the report to the app log file. Fire-and-forget; never throws. An empty
+ *  buffer still writes its header line — "0 events" is itself a finding. */
+export function flush(): void {
+  invoke("diag_flush", { text: report() }).catch((e) => {
+    console.warn("[diag] flush failed", e); // not under Tauri, or the command is missing
+  });
+}
+
+// One uncaught error tends to bring friends; write the buffer once per burst.
+const FLUSH_GAP_MS = 5000;
+let lastErrorFlush = -Infinity;
+function flushOnError(): void {
+  const now = performance.now();
+  if (now - lastErrorFlush < FLUSH_GAP_MS) return;
+  lastErrorFlush = now;
+  flush();
+}
+
 async function copyReport(): Promise<void> {
   try {
     await navigator.clipboard.writeText(report());
@@ -61,20 +86,24 @@ async function copyReport(): Promise<void> {
 }
 
 // Auto-capture uncaught errors and promise rejections into the same log.
-window.addEventListener("error", (e) =>
-  log("window:error", { msg: e.message, src: e.filename, line: e.lineno }),
-);
-window.addEventListener("unhandledrejection", (e) =>
+window.addEventListener("error", (e) => {
+  log("window:error", { msg: e.message, src: e.filename, line: e.lineno });
+  flushOnError();
+});
+window.addEventListener("unhandledrejection", (e) => {
   log("window:unhandledrejection", {
     reason: e.reason instanceof Error ? e.reason.message : String(e.reason),
-  }),
-);
+  });
+  flushOnError();
+});
+window.addEventListener("beforeunload", flush);
 
 // Console handle (available in prod too, so bug reports can be gathered anywhere).
 (window as any).__diag = {
   events,
   report,
   copy: copyReport,
+  flush,
   dump: () => console.table(buffer),
   clear: () => {
     buffer.length = 0;

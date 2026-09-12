@@ -50,7 +50,7 @@ The archive earns its keep because `src-tauri/target/` is the only other copy, a
 
 Install root is `%LOCALAPPDATA%\DeetsMusic` (`installMode: currentUser`). User data lives
 elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
-`user-token.txt`, `settings.json`, `bridge.log`.
+`user-token.txt`, `settings.json`, `deetsmusic.log`.
 
 ## 3. The NSIS hooks
 

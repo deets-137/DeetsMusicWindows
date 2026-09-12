@@ -20,7 +20,7 @@
 //!   POST /search         {term} → {songs:[candidate], albums:[{album, artworkUrl}]}
 //!                        (the popup's mini search card — songs + albums only)
 //!   GET  /now-playing    the hub snapshot (what the tray panel sees)
-//!   GET  /log            text/plain — the bridge's ring log (debug)
+//!   GET  /log            text/plain — the app log ring (debug)
 //!
 //! Agent / CLI control (AGENT.md) — the same loopback + token, routed to the main
 //! window (which owns MusicKit + the queue model) through `ask()` and answered by
@@ -37,12 +37,13 @@
 //!   POST /search         {term, types?:[…]} — with `types`, the raw catalog results
 //!                        (song hits are materialized so a later play-by-id is local)
 //!
-//! Debug: everything logs to the ring buffer AND `<app_data>/bridge.log`.
+//! Debug: `log()` is an alias onto the app log (log.rs, LOGGING.md): the 400-line ring
+//! served at `/log` plus the rolling `<app_data>/deetsmusic.log`.
 
 use crate::model::{Album, Station, Track};
 use futures::channel::oneshot;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::io::Read;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
@@ -53,35 +54,14 @@ pub const PORTS: [u16; 4] = [47825, 47826, 47827, 47828];
 
 // ── ring log ──────────────────────────────────────────────────────────────────
 
-const LOG_CAP: usize = 400;
-static LOG: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
-static LOG_PATH: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
-
+/// Thin alias onto the app log (`log.rs`, LOGGING.md): the ring + the rolling file
+/// live there now; `bridge.log` was adopted as `deetsmusic.1.log` on first run.
 pub fn log(msg: &str) {
-    let ts = chrono::Local::now().format("%H:%M:%S%.3f");
-    let line = format!("{ts} {msg}");
-    // Not println!: it panics if stdout is a pipe whose reader went away (the dev
-    // runner killed while the app lives on), and a bridge log line must never take
-    // the app down.
-    {
-        use std::io::Write;
-        let _ = writeln!(std::io::stdout(), "[bridge] {msg}");
-    }
-    let mut l = LOG.lock().unwrap();
-    l.push_back(line.clone());
-    while l.len() > LOG_CAP {
-        l.pop_front();
-    }
-    if let Some(p) = LOG_PATH.get() {
-        use std::io::Write;
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) {
-            let _ = writeln!(f, "{line}");
-        }
-    }
+    crate::log::info(&format!("bridge: {msg}"));
 }
 
 pub fn log_text() -> String {
-    LOG.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n")
+    crate::log::ring_text()
 }
 
 // ── now-playing hub ───────────────────────────────────────────────────────────
@@ -260,8 +240,6 @@ pub fn bridge_open_install_page(app: AppHandle) -> Result<(), String> {
 // ── the server ────────────────────────────────────────────────────────────────
 
 pub fn start(app: AppHandle) {
-    let dir = app.path().app_data_dir().expect("app data dir");
-    let _ = LOG_PATH.set(dir.join("bridge.log"));
     let mut bound: Option<(Server, u16)> = None;
     for port in PORTS {
         match Server::http(("127.0.0.1", port)) {
@@ -273,7 +251,7 @@ pub fn start(app: AppHandle) {
         }
     }
     let Some((server, port)) = bound else {
-        log("no bridge port free — extension bridge OFF");
+        crate::log::error("bridge: no port free — extension bridge OFF");
         return;
     };
     *app.state::<Hub>().port.lock().unwrap() = Some(port);
