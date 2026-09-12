@@ -236,8 +236,10 @@ DeetsSupport/              (renamed 2026-09-11 from the proposed DeetsMusicToken
   actually for" below).
   **Measured 2026-09-11, two corrections to the house pattern:** (1) declare it under the
   top-level **`ratelimits`** key — the older `unsafe.bindings` form deploys as "Unsafe
-  Metadata" and never trips (DeetsAccounts `AUTH_RL` and DeetsRadio `PEEK_RL` still use that
-  form and are therefore inert — a follow-up in those repos); (2) the binding counts per
+  Metadata" and never trips (DeetsAccounts, DeetsRadio, DeetsCities, DeetsMahjong and DeetsPoker
+  carried that form and were inert — all five moved to `ratelimits` and redeployed the same
+  day; DeetsCities also moved off namespace 2001, which it shared with DeetsAccounts, since
+  bindings on one namespace share a counter); (2) the binding counts per
   isolate and syncs lazily, so a burst over fresh connections passes while one reused
   connection trips at ~26/30 and holds at 429. Enough for a runaway client loop (reqwest
   pools its connection); not a wall against a scan, which was never claimed.

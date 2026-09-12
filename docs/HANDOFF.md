@@ -115,8 +115,8 @@ cached token → one 401 refetch heals search AND an already-configured MusicKit
 else `developer-token.json`, else the mint — and `api_get`/`api_post` retry once after a 401.
 To test the stranger's path: move `src-tauri/secrets/apple.json` away and start the app; the
 bridge log line `[token] source=worker` confirms it. **Rate-limit finding (same day):** the
-`unsafe.bindings` ratelimit form is inert; use the top-level `ratelimits` key (done here;
-DeetsAccounts and DeetsRadio still carry the inert form). Then,
+`unsafe.bindings` ratelimit form is inert; use the top-level `ratelimits` key (done here and
+in all five sibling workers, redeployed and pushed the same day). Then,
 on this side: the rolling log file, the report form, and **My reports** in Settings. The page
 design and the report fields are the user's own pass.
 
