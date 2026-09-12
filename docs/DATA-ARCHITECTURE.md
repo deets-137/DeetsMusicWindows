@@ -202,7 +202,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | Bridge log | `<app_data_dir>/bridge.log` | n/a (runtime) |
 | Raw API dumps | `dev-dumps/` | ✗ gitignored |
 | Shipped installers | `installers/` | ✗ gitignored ([RELEASE.md](RELEASE.md)) |
-| Cached developer token | `<app_data_dir>/developer-token.json` | n/a (runtime) — **planned**, [RELEASE.md](RELEASE.md) §7 |
+| Cached developer token | `<app_data_dir>/developer-token.json` | n/a (runtime) — `{token, exp, source, config}`; written only when the mint is used, [RELEASE.md](RELEASE.md) §7 |
 
 `<app_data_dir>` is `%APPDATA%\com.deetsmusic.app`, or `…\com.deetsmusic.dev` under
 `npm run dev:app` — the identifier is the only thing that config changes, which is what keeps

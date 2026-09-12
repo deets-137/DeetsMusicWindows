@@ -139,7 +139,21 @@ open-file rules, and the `PREINSTALL` hook is what makes that survivable.
 ## 7. Distributing a usable build — the developer token
 
 > Decided 2026-09-09: **long token lifetime · open endpoint, rate-limited by IP · the dev
-> seam keeps local signing.** Not built yet; this section is the build order.
+> seam keeps local signing.** **The worker is live (2026-09-11):** `DeetsSupport` is deployed on
+> both hosts, `/token` mints a 60-day ES256 token that Apple accepts (search → 200, corrupted
+> signature → 401), wrong `User-Agent` → 403. **Repo 2 is built the same day**: the cache, the
+> dev seam, the 429/offline fallback and the once-per-process 401 refetch in `apple.rs`;
+> `player.ts` re-runs `configure` on `developer-token-changed`. **Desk-tested 2026-09-11** with
+> `apple.json` moved away: one `GET /token` 200 in the Cloudflare tail, `source=worker` in the
+> log, playback fine (Order step 4 done). **The 401 refetch is desk-tested too:** a cached token
+> with a dead signature → search hits 401 → `refetching once` in the log, one `/token` in the
+> Cloudflare tail, the search succeeds on the retry; and with MusicKit already configured on
+> the dead token, playback works after the refetch without a restart (the
+> `developer-token-changed` reconfigure). **The dead first run is desk-tested via `KILL`:** no key,
+> no cache, mint 503 → the window opens, the log reads `no developer token: no local MusicKit key
+> and mint switched off (503)`, and a search shows the same text. The offline case shares that
+> branch (only the string differs). Wanted later: a launch toast for it (FUTURE-SETTINGS §18).
+> Steps 1–4 done; step 5 (the release) remains.
 
 ### The problem
 
@@ -216,11 +230,17 @@ DeetsSupport/              (renamed 2026-09-11 from the proposed DeetsMusicToken
   a per-request signature avoids handing every client one shared token with one shared expiry.
 - **Secrets** — `npx wrangler secret put APPLE_P8`, `… TEAM_ID`, `… KEY_ID`. The `.p8` is
   pasted as a secret; it is never committed, exactly as in this repo.
-- **Rate limiting by IP** is a `ratelimit` binding under `unsafe.bindings` in
-  `wrangler.jsonc` — the house pattern (DeetsAccounts `AUTH_RL` 20/60 s, DeetsRadio
-  `PEEK_RL` 30/60 s), **not** a dashboard rule (revised 2026-09-10: the binding is versioned
-  with the code). **30 per 60 s**, fail OPEN if the binding is absent (raised from 10 on
-  2026-09-11 — see "What the rate limit is actually for" below).
+- **Rate limiting by IP** is a rate-limit binding in `wrangler.jsonc`, **not** a dashboard
+  rule (revised 2026-09-10: the binding is versioned with the code). **30 per 60 s**, fail
+  OPEN if the binding is absent (raised from 10 on 2026-09-11 — see "What the rate limit is
+  actually for" below).
+  **Measured 2026-09-11, two corrections to the house pattern:** (1) declare it under the
+  top-level **`ratelimits`** key — the older `unsafe.bindings` form deploys as "Unsafe
+  Metadata" and never trips (DeetsAccounts `AUTH_RL` and DeetsRadio `PEEK_RL` still use that
+  form and are therefore inert — a follow-up in those repos); (2) the binding counts per
+  isolate and syncs lazily, so a burst over fresh connections passes while one reused
+  connection trips at ~26/30 and holds at 429. Enough for a runaway client loop (reqwest
+  pools its connection); not a wall against a scan, which was never claimed.
 - **Kill switch**: a `KILL` var; when set, every request gets 503. Flipping it is a
   `wrangler deploy` of the Worker, never a release of the app.
 - **No Origin check.** A desktop app sends no browser Origin; the endpoint is open by design.

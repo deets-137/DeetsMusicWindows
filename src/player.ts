@@ -10,6 +10,7 @@
 
 import { setting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
@@ -82,6 +83,25 @@ async function whenMusicKitLoaded(): Promise<void> {
     document.addEventListener("musickitloaded", () => resolve(), { once: true }),
   );
 }
+
+/**
+ * After a 401 from Apple, Rust refetches the developer token from the mint once
+ * per process and emits this (RELEASE.md §7). MusicKit keeps its own copy from
+ * `configure()`, so re-run it with the fresh token; before the first configure
+ * there is nothing to do — `initPlayer` will read the new token itself.
+ */
+void listen("developer-token-changed", async () => {
+  if (!initPromise) return;
+  try {
+    const developerToken = await invoke<string>("apple_developer_token");
+    await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: "0.1.0" } });
+    music = window.MusicKit.getInstance();
+    await injectUserToken();
+    diag.log("player:reconfigured", { authorized: !!music.isAuthorized });
+  } catch (e) {
+    diag.log("player:reconfigureFailed", { err: String(e) });
+  }
+});
 
 /** Configure MusicKit once (lazy — only when the user first hits play). */
 export function initPlayer(): Promise<any> {

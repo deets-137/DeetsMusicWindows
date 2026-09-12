@@ -42,7 +42,7 @@ pub fn run() {
             // ever copies INTO an empty dev dir; the release dir is never written.
             if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev") && !db_path.exists() {
                 let release = dir.with_file_name("com.deetsmusic.app");
-                for name in ["deetsmusic.db", "user-token.txt"] {
+                for name in ["deetsmusic.db", "user-token.txt", "developer-token.json"] {
                     let from = release.join(name);
                     if from.is_file() {
                         match std::fs::copy(&from, dir.join(name)) {
@@ -58,6 +58,15 @@ pub fn run() {
             // is read below — hence the seeding moved in here from run()'s top,
             // where it ran before Tauri could tell us where app data lives.
             apple::set_app_data_dir(dir.clone());
+            apple::set_app_handle(app.handle().clone());
+
+            // Resolve the developer token ONCE, before the webview can ask for it:
+            // local .p8 if present (the dev seam), else the cache, else one fetch
+            // from the mint (RELEASE.md §7). A failure is logged, never fatal —
+            // a first run with no network is a real state, and the message names it.
+            if let Err(e) = apple::ensure_developer_token() {
+                eprintln!("[token] {e}");
+            }
 
             // Seed the user-token store so a prior sign-in survives restarts.
             if let Some(tok) = apple::load_persisted_user_token() {
@@ -129,6 +138,7 @@ pub fn run() {
         .on_window_event(|win, ev| tray::on_window_event(win, ev))
         .invoke_handler(tauri::generate_handler![
             apple::apple_developer_token,
+            apple::apple_remote_config,
             apple::apple_begin_auth,
             apple::apple_connection_status,
             apple::apple_user_token,

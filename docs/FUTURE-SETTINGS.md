@@ -556,6 +556,16 @@ console logging regardless (diag stays the debugging source of truth). Until bui
 ledger rule for new features: quiet failures log to console and get a pointer to this
 entry (see STATIONS.md §2).
 
+**Candidate added 2026-09-11 — no developer token at startup.** A first run with no local
+MusicKit key and no reachable mint (offline, or the worker's `KILL` switch — desk-tested via
+`KILL`, RELEASE.md §7) opens the window normally, and the user only learns something is wrong
+when a search fails with "Search failed: no developer token: no local MusicKit key and mint
+switched off (503)". The message is right; the *timing* is the confusion — a stranger sees a
+working-looking app that cannot do anything. Once toasts exist, `ensure_developer_token()`'s
+`Err` (surfaced from `lib.rs` `setup()`, or read by the front end at boot via
+`apple_developer_token`) should raise one toast at launch: "Can't reach the token service —
+check your connection and restart." Same species as the rest of this entry: failures-only tier.
+
 ## 19. Artist grouping — collab/feature placement
 
 **Behavior.** Where a multi-artist song lands in the Library's Artists view. Since the

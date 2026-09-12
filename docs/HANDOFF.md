@@ -106,7 +106,17 @@ RELEASE.md §7 stays the source of truth for the mint itself, and now says: **60
 15-day margin, one refetch on a 401, 30 req/60 s per IP**. The app compiles in
 `music-api.deets.solutions/token`, never the `support.` host.
 
-Still to build, in order: the worker, then step 2 (the cache + dev seam in `apple.rs`). Then,
+**The worker is built and deployed (2026-09-11)** — `../DeetsSupport`, both hosts live, `/token`
+smoke-tested against Apple; the repo has no commits yet. Decided the same day: config rides
+`/token` from a `CONFIG` **var** (no D1 on the mint path); the app re-runs MusicKit configure
+after a 401 refetch (an event from Rust); `/health` signs a throwaway token. **Step 2 is built
+and desk-tested (same day: `apple.json` moved away → `source=worker`, playback fine; a dead
+cached token → one 401 refetch heals search AND an already-configured MusicKit):** `apple.rs` resolves the token once in `setup()` — local key,
+else `developer-token.json`, else the mint — and `api_get`/`api_post` retry once after a 401.
+To test the stranger's path: move `src-tauri/secrets/apple.json` away and start the app; the
+bridge log line `[token] source=worker` confirms it. **Rate-limit finding (same day):** the
+`unsafe.bindings` ratelimit form is inert; use the top-level `ratelimits` key (done here;
+DeetsAccounts and DeetsRadio still carry the inert form). Then,
 on this side: the rolling log file, the report form, and **My reports** in Settings. The page
 design and the report fields are the user's own pass.
 
