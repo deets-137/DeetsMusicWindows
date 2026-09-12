@@ -84,6 +84,11 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+> **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
+> anything already committed works unless this file says otherwise. Confirmed in use
+> 2026-09-11: the extension, the mini/midi/max layouts, stations, and the CLI. Do not
+> label committed work "untested" or add a test step for it to a roadmap.
+
 **Public release (decided 2026-09-09, next session)** — the repo is already public and the
 secret audit is clean (the `.p8`/MUT/`dev-dumps` were never committed in any branch). The
 blocker is that a MusicKit key needs a **paid Apple membership**, so no ordinary subscriber can
@@ -93,10 +98,25 @@ order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still n
 posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
 attached (none exist), and a plain note about SmartScreen on the unsigned installer.
 
-**Build day 2026-09-11:** step 1 (Worker repo) and step 2 (the cache + dev seam in
-`apple.rs`) of RELEASE.md §7, in that order. All forks are decided there — read §7 top to
-bottom and build; the only inputs still the user's are the repo name and host (proposed
-`DeetsMusicToken` / `music-api.deets.solutions`).
+**2026-09-11 — the Worker grew into a support back end.** The mint is now one route on
+**`DeetsSupport`**, which also holds the status / suggestions / issues boards, anonymous
+report intake and **remote config** for every Deets app. Scope:
+**`DeetsSolutions/docs/support.md`** (source of truth for the repo, hosts and schema);
+RELEASE.md §7 stays the source of truth for the mint itself, and now says: **60-day token,
+15-day margin, one refetch on a 401, 30 req/60 s per IP**. The app compiles in
+`music-api.deets.solutions/token`, never the `support.` host.
+
+Still to build, in order: the worker, then step 2 (the cache + dev seam in `apple.rs`). Then,
+on this side: the rolling log file, the report form, and **My reports** in Settings. The page
+design and the report fields are the user's own pass.
+
+**Logging is scoped in [LOGGING.md](LOGGING.md)** (2026-09-11, not built). Correction to an
+earlier reading of this file: a log file **does** exist — `bridge::log()` appends to
+`<app_data>/bridge.log` — but it **never rotates and has no size cap**, and almost nothing
+outside `bridge.rs` writes to it. `src/diag.ts` is already the front-end half. The plan bounds
+both (512 KB × 2 as `deetsmusic.log`), adds a **panic hook**, scrubs bearer tokens at the
+write boundary, and logs **catalog ids, never track titles**. Steps 1–2 there are worth doing
+on their own merits, before any support work.
 
 **AirPlay: in v0.2.0, desk-tested in dev.** See [AIRPLAY.md](AIRPLAY.md): the sender is the
 shared `deets-airplay` crate (git dependency on DeetsAirplay, pinned by `rev`; read that
@@ -112,7 +132,7 @@ pass before building; the user directs):
    summons the card; the card hosts the rehomed toggles (Always on Top, Minimize to Tray,
    hover menus, Library Add, the Extension block), eight FUTURE-SETTINGS rows (§1 §4 §5a
    §5b §7 §8 §14 §16) and the **Rewind gate** (hidden until 50 play starts). One typed
-   store, `deets.settings`. Awaiting the first user test.
+   store, `deets.settings`. In use.
 2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
    MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
 3. ✅ **SMTC / global hotkeys** — built 2026-09-10 as a **native session** (`src-tauri/src/smtc.rs`,
@@ -121,14 +141,14 @@ pass before building; the user directs):
    session, so the Win11 overlay stayed blank. The probe (`media-session.ts`) is deleted and
    Chromium's `HardwareMediaKeyHandling` is disabled in `tauri.conf.json` so a key press is
    handled once. Overlay buttons / keys / the overlay scrubber arrive as the same `np-command`
-   events the tray panel sends. Awaiting the first user test.
+   events the tray panel sends. In use.
 
-**Built 2026-09-08, awaiting the first user test** (each has its own doc — read it before
+**Built 2026-09-08, in use** (each has its own doc — read it before
 touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](TRAY.md));
 the **browser extension + loopback bridge** ([EXTENSION.md](EXTENSION.md), source in
 `extension/`, shipped inside the NSIS installer with a post-install prompt). The app icon is
 now the DM mark (`app-icon.png` → `npx tauri icon`). The Web Store listing is the user's step.
-**2026-09-09 polish (untested):** tray left-click now pops the *app* as mini at the cursor
+**2026-09-09 polish:** tray left-click now pops the *app* as mini at the cursor
 (TRAY.md §1; the panel moved to the right-click menu); the extension's status line
 slides/crossfades instead of jumping; "Not it?" opens a mini Search card (songs +
 albums, `/search`); the popup re-reads the tab every 2 s. **Pairing code dropped**: the
@@ -138,7 +158,7 @@ card under Now Playing (user-led from here). **Surfaces:** all three width cutof
 (mini: in < 340 / out > 350 · midi ↔ max at 820 ± 40; `minWidth` lowered to 320 so the
 flip into mini is actually reachable) — the user is evaluating resize-into-mini alongside
 the tray flyout and the menu pick. **Next:** the mini composition, piece by piece.
-**2026-09-09, branch `maxmaxxing` (untested):** the **max composition** (stage + anchored
+**2026-09-09, branch `maxmaxxing` (merged):** the **max composition** (stage + anchored
 queue + 2×2 bento, [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) build order #4); the
 mini transport row stacks its side buttons when they'd overflow; and the **agent/CLI
 routes** on the bridge (`/command` `/play` `/queue` `/history`, [AGENT.md](AGENT.md)) —
@@ -151,7 +171,7 @@ restart (`settings.json` → `windowPos`); and the NSIS installer **stops the bu
 before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
 ([RELEASE.md](RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
 
-**2026-09-10, branch `release-prep` (untested):** **stations in Search** (a fifth search type,
+**2026-09-10, branch `release-prep` (merged):** **stations in Search** (a fifth search type,
 [SEARCH.md](SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
 **radio UX pass** ([STATIONS.md](STATIONS.md) §3b — the station is Up Next's last row, Stop
 Station in three right-click menus, the station resumes after a break-out block, Stop leaves
