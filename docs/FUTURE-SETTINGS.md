@@ -567,6 +567,17 @@ working-looking app that cannot do anything. Once toasts exist, `ensure_develope
 `apple_developer_token`) should raise one toast at launch: "Can't reach the token service —
 check your connection and restart." Same species as the rest of this entry: failures-only tier.
 
+**Three more candidates, 2026-09-11 (the log's first day).** (1) **Sign-in did not
+complete** — the browser sign-in times out after 5 min or the callback is rejected;
+`apple.rs` logs `sign-in: …` and the Account row just goes back to "Sign in". (2) **Signed
+in, no Apple Music subscription** — sign-in succeeds, playback fails, nothing says why; the
+first playback failure after a fresh sign-in should say "This Apple ID has no Apple Music
+subscription". (3) **A library playlist Apple no longer has** — the count backfill
+(`playlists.rs`) gets a 404 for one playlist every launch (`apple: 404
+/v1/me/library/playlists/<id>/tracks`; on the desk it was "Tamil Amma Songs"). The toast
+must **name the playlist** so the user can deal with it, and the backfill should remember the
+404 instead of asking again each launch.
+
 ## 19. Artist grouping — collab/feature placement
 
 **Behavior.** Where a multi-artist song lands in the Library's Artists view. Since the
