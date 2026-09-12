@@ -120,7 +120,12 @@ in all five sibling workers, redeployed and pushed the same day). Then,
 on this side: the rolling log file, the report form, and **My reports** in Settings. The page
 design and the report fields are the user's own pass.
 
-**Logging: steps 1–4 of [LOGGING.md](LOGGING.md) built 2026-09-11 (step 1–2 lines seen on the desk; 3–4 awaiting).**
+**0.2.2 installer built 2026-09-11 late (`installers/`), for a desk pilot the next day:** the
+log, the incremental sync, deets-airplay 0.2.1 (its log rotates too; DeetsAirplay 0.1.2 was
+built the same night). Branch `polish`, not yet merged to `main`.
+
+**Logging: steps 1–4 of [LOGGING.md](LOGGING.md) built 2026-09-11, all four desk-verified
+(the flush blocks, the unload flush, the incremental line `1 new in 1 page(s)`).**
 `src-tauri/src/log.rs` is the rolling `<app_data>/deetsmusic.log` (512 KB × 2, dated lines,
 three levels, a panic hook, JWT / `Bearer` scrubbed at the write boundary); the old
 `bridge.log` is adopted as `deetsmusic.1.log` on first run and `bridge::log` is an alias.
