@@ -12,6 +12,8 @@ import { setting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
+import { isConnected } from "./apple";
+import * as health from "./apple-health";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
@@ -88,23 +90,43 @@ async function whenMusicKitLoaded(): Promise<void> {
 }
 
 /**
- * After a 401 from Apple, Rust refetches the developer token from the mint once
- * per process and emits this (RELEASE.md §7). MusicKit keeps its own copy from
- * `configure()`, so re-run it with the fresh token; before the first configure
- * there is nothing to do — `initPlayer` will read the new token itself.
+ * After Rust swaps the developer token (a 401 heal, RELEASE.md §7) MusicKit still holds
+ * the old one from `configure()`. Re-configure — once per new token, however many
+ * callers ask (the `developer-token-changed` event AND a playback recovery both do);
+ * before the first configure there is nothing to do: `initPlayer` reads the new token.
  */
-void listen("developer-token-changed", async () => {
-  if (!initPromise) return;
-  try {
-    const developerToken = await invoke<string>("apple_developer_token");
-    await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: await getVersion() } });
-    music = window.MusicKit.getInstance();
-    await injectUserToken();
-    diag.log("player:reconfigured", { authorized: !!music.isAuthorized });
-  } catch (e) {
-    diag.log("player:reconfigureFailed", { err: String(e) });
-  }
-});
+let configuredToken = "";
+let reconfiguring: Promise<void> | null = null;
+function syncDeveloperToken(): Promise<void> {
+  if (!initPromise) return Promise.resolve();
+  reconfiguring ??= (async () => {
+    try {
+      await initPromise;
+      const developerToken = await invoke<string>("apple_developer_token");
+      if (developerToken === configuredToken) return;
+      await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: await getVersion() } });
+      configuredToken = developerToken;
+      music = window.MusicKit.getInstance();
+      await injectUserToken();
+      diag.log("player:reconfigured", { authorized: !!music.isAuthorized });
+    } catch (e) {
+      diag.log("player:reconfigureFailed", { err: String(e) });
+    } finally {
+      reconfiguring = null;
+    }
+  })();
+  return reconfiguring;
+}
+void listen("developer-token-changed", () => void syncDeveloperToken());
+
+/** A play with no Apple sign-in: say so (one toast, a Sign in button) instead of letting
+ *  MusicKit fail with "Unable to prepare for playback." */
+const SIGNED_OUT = "signed out of Apple Music";
+async function requireSignIn(): Promise<void> {
+  if (await isConnected()) return;
+  health.show("signedOut", true, "play");
+  throw new Error(SIGNED_OUT);
+}
 
 /** Configure MusicKit once (lazy — only when the user first hits play). */
 export function initPlayer(): Promise<any> {
@@ -117,6 +139,7 @@ export function initPlayer(): Promise<any> {
       developerToken,
       app: { name: "DeetsMusic", build: await getVersion() },
     });
+    configuredToken = developerToken;
     music = window.MusicKit.getInstance();
     perf.bind(() => music?.nowPlayingItem?.id);
     await injectUserToken();
@@ -1078,6 +1101,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
  */
 export async function playContext(handles: TrackHandle[], startIndex: number): Promise<void> {
   perf.mark("model"); // ingest + re-renders done; what follows up to `context` is MusicKit init
+  await requireSignIn();
   const m = await initPlayer();
   diag.log("player:playContext", { startIndex, len: handles.length });
   perf.mark("context", { len: handles.length });
@@ -1113,6 +1137,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
 /** Jump to an Up Next entry by index (skipped songs are dropped). Re-windows → buffers. */
 export async function jumpToUpcoming(index: number): Promise<void> {
   perf.click("jump", index + 1);
+  await requireSignIn();
   const m = await initPlayer();
   diag.log("player:jump", { index });
   if (!queue.jumpTo(index)) return perf.abandon("noJump");
@@ -1124,13 +1149,31 @@ export async function jumpToUpcoming(index: number): Promise<void> {
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
 export function playTracks(tracks: Track[], startIndex: number, context = "library"): Promise<void> {
   perf.click(context, tracks.length); // BEFORE the ingest — stage A includes it
-  return playContext(handlesFrom(tracks, context), startIndex).catch((e) => {
+  const handles = handlesFrom(tracks, context);
+  const play = () => playContext(handles, startIndex);
+  return play().catch(async (e) => {
     // Every play click (every card, the agent) lands here; the callers only log (TOASTS.md).
+    const msg = String(e instanceof Error ? e.message : e);
+    if (msg === SIGNED_OUT) throw e; // requireSignIn's toast already says why
+    const gone = msg.startsWith("nothing to play");
+    if (!gone) {
+      // Maybe Apple rejected a token: find the cause, heal, retry once (bounded in
+      // recoverFromFailure). A named cause has its own toast, so no "Couldn't play" too.
+      const r = await recoverFromFailure("play");
+      if (r.retry) {
+        try {
+          await play();
+          return;
+        } catch (e2) {
+          e = e2;
+        }
+      }
+      if (r.trouble !== "none" || performance.now() - lastTroubleAt < 5000) throw e;
+    }
     // A dead song gets the named dead-song toast about a second later (the feed rejects,
     // dead_ids_mark answers, the names collect for DEAD_TOAST_GAP_MS): wait past that and
     // stay quiet if it named this song.
     const title = tracks[startIndex]?.title;
-    const gone = String(e instanceof Error ? e.message : e).startsWith("nothing to play");
     window.setTimeout(() => {
       if (title && deadToasted.delete(title)) return;
       const text = gone
@@ -1186,6 +1229,7 @@ async function setStationQueue(m: any, s: Station): Promise<void> {
  * explicit departure). Exit = Stop Station, any finite-context play, or a break-out.
  */
 export async function playStation(s: Station): Promise<void> {
+  await requireSignIn();
   const m = await initPlayer();
   diag.log("player:playStation", { id: s.id, live: s.isLive });
   queue.disposePlan();
@@ -1452,6 +1496,7 @@ export async function shuffleQueue(): Promise<void> {
 
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */
 export async function playPause(): Promise<void> {
+  if (!music?.isPlaying) await requireSignIn(); // pausing never needs a sign-in
   const m = await initPlayer();
   if (m.isPlaying) {
     await m.pause();
@@ -1589,11 +1634,73 @@ function onPlaybackError(e: any): void {
         text: "Playback failed after sign-in. DeetsMusic needs an Apple Music subscription on this Apple ID.",
         timeout: 8000,
       });
+      return;
     }
+    onMusicKitTrouble(msg, "playbackError");
     return;
   }
   healDeadNext(music, msg, true).catch((err) => console.warn("[player] dead-next heal:", err));
 }
+
+// ── Apple trouble recovery (TOASTS.md §Apple health) ─────────────────────────────
+// Failures arrive without bound — every click, every MusicKit dialog, every auto-advance.
+// The bounds: Rust caches the health check (60 s) and refetches the developer token at
+// most once per 10 min; concurrent failures here share ONE check; a retry after a heal
+// happens at most once per RETRY_GAP_MS; MusicKit trouble starts at most one recovery per
+// RETRY_GAP_MS however many dialogs it raises. Nothing here loops or schedules itself.
+
+const RETRY_GAP_MS = 30_000;
+let lastRetryAt = -Infinity;
+let lastTroubleAt = -Infinity;
+let recovering: Promise<{ trouble: health.Trouble; healed: boolean }> | null = null;
+
+/** Find the cause (health.check shows its toast) and re-configure MusicKit when the
+ *  developer token was swapped. `retry` is true for the first caller only, once per gap. */
+async function recoverFromFailure(source: string): Promise<{ trouble: health.Trouble; retry: boolean }> {
+  if (recovering) {
+    const r = await recovering;
+    return { trouble: r.trouble, retry: false };
+  }
+  recovering = (async () => {
+    const r = await health.check(false, true, source);
+    if (r.healed) await syncDeveloperToken();
+    return r;
+  })();
+  try {
+    const r = await recovering;
+    const retry = r.healed && performance.now() - lastRetryAt > RETRY_GAP_MS;
+    if (retry) lastRetryAt = performance.now();
+    return { trouble: r.trouble, retry };
+  } finally {
+    recovering = null;
+  }
+}
+
+/** MusicKit failed on its own (its alert dialog, or a playback error that is not a dead
+ *  song): no native dialog, find the cause, retry the current song once after a heal. */
+function onMusicKitTrouble(msg: string, via: string): void {
+  diag.log("player:mkTrouble", { msg, via });
+  const now = performance.now();
+  if (now - lastTroubleAt < RETRY_GAP_MS) return;
+  lastTroubleAt = now;
+  void (async () => {
+    if (!(await isConnected())) return health.show("signedOut", true, via);
+    const r = await recoverFromFailure(via);
+    if (r.retry && music && mode === "queue" && queue.getCurrent()) {
+      try {
+        await loadFromModel(music);
+        return;
+      } catch (e) {
+        console.warn("[player] retry after heal:", e);
+      }
+    }
+    if (r.trouble === "none") toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+  })();
+}
+
+// index.html routes every non-benign MusicKit alert() here; drain what arrived first.
+(window as any).__deetsMkAlert = (msg: string) => onMusicKitTrouble(String(msg), "alert");
+for (const msg of ((window as any).__deetsMkAlerts ?? []).splice(0)) onMusicKitTrouble(String(msg), "alert");
 
 // Dev-only: the no-subscription hint (DEBUGGING.md §Toasts). `armNoSub` marks a fresh
 // sign-in and waits for a real playback error; `noSub` also feeds onPlaybackError a

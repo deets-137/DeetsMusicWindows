@@ -37,14 +37,20 @@
     <script>
       (function () {
         var BENIGN = /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by (?:a new load request|a call to pause\(\)))/i;
-        var nativeAlert = window.alert.bind(window);
+        // Every OTHER alert (MusicKit's "Unable to prepare for playback.", …) never
+        // shows as a native dialog either: it goes to player.ts, which finds the cause
+        // and raises the right toast (TOASTS.md §Apple health). Alerts that arrive before
+        // player.ts loads wait in a small queue.
+        window.__deetsMkAlerts = [];
         window.alert = function (message) {
           var msg = message == null ? "" : String(message);
           if (BENIGN.test(msg)) {
             console.debug("[player] swallowed benign MusicKit alert:", msg);
             return;
           }
-          return nativeAlert(message);
+          console.warn("[player] MusicKit alert → toast:", msg);
+          if (typeof window.__deetsMkAlert === "function") window.__deetsMkAlert(msg);
+          else if (window.__deetsMkAlerts.length < 5) window.__deetsMkAlerts.push(msg);
         };
       })();
     </script>

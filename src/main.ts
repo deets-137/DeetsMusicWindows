@@ -7,7 +7,8 @@ import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
-import { connect, disconnect, isConnected } from "./apple";
+import { connect, disconnect, isConnected, SignInError } from "./apple";
+import * as health from "./apple-health";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn } from "./player";
@@ -165,29 +166,75 @@ window.addEventListener("DOMContentLoaded", () => {
         note ?? (state === "in" ? "Connected" : state === "out" ? "Not connected" : "Working…");
     }
   };
-  isConnected().then((c) => setAccount(c ? "in" : "out"));
+  // The row follows Apple health too (apple-health.ts): a token on disk only means the
+  // user signed in once, not that Apple still accepts it. An expired sign-in reads as
+  // signed out (the button signs in); an Apple-side problem keeps "Connected" and says so.
+  let acctTrouble: health.Trouble = "none";
+  const paintAccount = async (note?: string) => {
+    const hasToken = await isConnected();
+    if (!hasToken) return setAccount("out", note);
+    if (acctTrouble === "signin") return setAccount("out", note ?? "Sign-in expired");
+    const troubleNote =
+      acctTrouble === "app" ? "Connected · Apple Music isn't responding" : acctTrouble === "offline" ? "Connected · Offline" : undefined;
+    setAccount("in", note ?? troubleNote);
+  };
+  health.onTrouble((t) => {
+    acctTrouble = t;
+    void paintAccount();
+  });
+
+  // Sign-in failures in plain words, each with the button that helps (TOASTS.md §Apple
+  // health). The flyout is usually closed by the time a sign-in ends, so the toast is
+  // the visible half; the raw reason stays in the console and the log.
+  const signInFailed = (e: unknown) => {
+    const retry = [{ label: "Try again", run: () => void signIn() }];
+    const code = e instanceof SignInError ? e.code : "other";
+    if (code === "unavailable") health.show("app", true, "signin");
+    else if (code === "offline") health.show("offline", true, "signin");
+    else if (code === "timeout") toast({ kind: "error", text: "Sign-in didn't finish in time.", actions: retry });
+    else if (code === "ports") toast({ kind: "warn", text: "Another sign-in page is still open. Close it, then try again.", actions: retry });
+    else if (code === "rejected")
+      // Apple said Unauthorized: an Apple-side problem gets its own toast; otherwise say it plainly.
+      void health.check(true, true, "signin", true).then((r) => {
+        if (r.trouble !== "app" && r.trouble !== "offline")
+          toast({ kind: "warn", text: "Apple Music didn't accept the sign-in. Try again in a few minutes.", actions: retry });
+      });
+    else toast({ kind: "warn", text: "Sign-in didn't finish. Try again.", actions: retry });
+  };
+
+  const signIn = async () => {
+    setAccount("loading", "Continue sign-in in your browser…");
+    try {
+      await connect();
+      noteSignedIn(); // the first playback failure after this gets the subscription hint
+      health.reset();
+      await paintAccount();
+    } catch (e) {
+      console.error("[account] sign-in failed", e);
+      await paintAccount("Sign-in didn't finish");
+      signInFailed(e);
+    }
+  };
+
+  const signOut = async () => {
+    setAccount("loading", "Disconnecting…");
+    try {
+      await disconnect();
+      health.reset();
+      await paintAccount();
+    } catch (e) {
+      console.error("[account] sign-out failed", e);
+      await paintAccount();
+      toast({ kind: "warn", text: "Couldn't sign out. Try again." });
+    }
+  };
 
   acctBtn?.addEventListener("click", async () => {
-    const wasIn = await isConnected();
-    setAccount("loading", wasIn ? "Disconnecting…" : "Continue sign-in in your browser…");
-    try {
-      if (wasIn) await disconnect();
-      else {
-        await connect();
-        noteSignedIn(); // the first playback failure after this gets the subscription hint
-      }
-      setAccount((await isConnected()) ? "in" : "out");
-    } catch (e) {
-      console.error("[account] auth error", e);
-      const msg = e instanceof Error ? e.message : String(e);
-      setAccount((await isConnected()) ? "in" : "out", `Error: ${msg}`);
-      // The Account flyout is closed by the time a 5-min sign-in times out, so the row's
-      // error text is invisible; the toast is the visible half (TOASTS.md).
-      // Plain copy only; the raw text stays in the console and the row (TOASTS.md).
-      if (/timed out/i.test(msg)) toast({ kind: "error", text: "Sign-in did not complete. Open Account and try again." });
-      else toast({ kind: "warn", text: wasIn ? "Couldn't disconnect. Try again." : "Sign-in failed. Open Account and try again." });
-    }
+    const signedIn = (await isConnected()) && acctTrouble !== "signin";
+    void (signedIn ? signOut() : signIn());
   });
+  window.addEventListener("deets:sign-in", () => void signIn()); // the "Sign in" toast button
+  void paintAccount();
 
   // No developer token at all (a first run offline, or the mint's KILL switch —
   // RELEASE.md §7): Rust logged it at setup and every Apple call will fail with the
@@ -197,6 +244,19 @@ window.addEventListener("DOMContentLoaded", () => {
     console.warn("[boot] no developer token:", e);
     toast({ kind: "error", text: "Can't reach the token service. Check your connection and restart DeetsMusic." });
   });
+
+  // Remote notice (support.md): the Worker's CONFIG `notice` rides the /token response,
+  // so an outage message reaches installs without a release. It refreshes when the token
+  // does (about weekly). Shown once per distinct text; "Don't show again" silences that text.
+  invoke<{ notice?: unknown }>("apple_remote_config")
+    .then((cfg) => {
+      const text = typeof cfg?.notice === "string" ? cfg.notice.trim() : "";
+      if (!text) return;
+      let h = 5381;
+      for (const ch of text) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+      toast({ kind: "info", text, dismissKey: `deets.notice.remote.${h.toString(36)}` });
+    })
+    .catch((e) => console.warn("[boot] remote config:", e));
 
   // ── Shared library store: one load, read by every card ──
   initTrackStore();

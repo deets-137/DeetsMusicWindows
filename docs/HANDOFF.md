@@ -100,12 +100,31 @@ extension's icons are LANCZOS resizes of the same file.
 2026-09-13"). App: Apple Music icon on the playlist badge, Settings › About notice, README
 privacy + trademarks, real MusicKit `app.build`, MUT redacted in the log, `Origin:
 http://tauri.localhost` on every Rust call to Apple, sign-in on fixed ports 47831–47833,
-refresh margin 3 days. Worker (`../DeetsSupport`, uncommitted, **not deployed**): 14-day
-shared token per 7-day window, `mint_counts` table, `TOKEN_ORIGINS` claim built but empty.
-Deploy order: apply `schema.sql`, then `wrangler deploy`. Open: **item 4, the new MusicKit
-key for the live mint** (the user's portal step), then revoke `22CB27A4ZK`, which kills the
-26 tokens printed on 2026-09-11. Note: 0.3.0 installs keep a 15-day margin, so against
-14-day tokens they refetch on every launch until they update (cheap, under the rate limit).
+refresh margin 3 days. Worker (`../DeetsSupport`, uncommitted, **deployed 2026-09-13**,
+version `5771f7e5` + secrets): 14-day shared token per 7-day window, `mint_counts` table
+(created with `--command`; `--file` imports fail with auth error 10000), `TOKEN_ORIGINS`
+claim built but empty. **Key rotated:** the Worker signs with **`63Y9S9P5Z8` (DeetsMusic
+PRD)**; `22CB27A4ZK` is **revoked**. Dev signs with **`WPYRNBYCRT` (DeetsMusic DEV)** —
+`src-tauri/secrets/apple.json` points at it (the old `.p8` stays in that folder). Right after
+the revoke Apple answered inconsistently for a while (the PRD Worker token flipped 200/401,
+the brand-new DEV key returned 500, a local PRD token with the same claims got 200) — read as
+Apple propagating the key changes; re-verify both keys before trusting either.
+Every `.p8` is copied to `Documents\Deets' Secrets` (README there maps ids → apps;
+`5685728SWS` is DeetsRadio). **Never delete a `.p8`.** Note: 0.3.0 installs keep a 15-day
+margin, so against 14-day tokens they refetch on every launch until they update.
+
+**2026-09-13 — Apple health: say why Apple Music stopped, heal without the user, NOT yet
+desk-tested** (branch `toast-time`). Found live after the key rotation: MusicKit showed
+"Unable to prepare for playback." as a native dialog, the Account row still said Connected,
+the sign-in page said "Error: Unauthorized", and a play-only install never healed (only a
+Rust call triggered the token refetch). Built: `apple_check` (which token Apple rejects, with
+the bounded heal) + `apple_auth_status` (the page reports failures) in `apple.rs`;
+`apple-health.ts` (one toast per cause, Account row states, 5-min recheck while Apple-side);
+`requireSignIn` on every play path; every MusicKit `alert()` routed to player.ts; play retry
+after a heal; the Worker `notice` shown at launch. Bounds and copy: [TOASTS.md](TOASTS.md)
+§Apple health rows. **Rust changed: restart the dev runner.** Test: sign out → play (toast +
+Sign in button); sign in; the installed 0.3.0 stays as it is until a new installer. The
+hosted sign-in (DATA-ARCHITECTURE §2a, another session) can reuse `apple_auth_status`.
 
 **2026-09-13 — Library virtualization (option A, windowing): decided to explore, not
 started.** Fresh branch + session. Cold start: **[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)**
@@ -114,6 +133,17 @@ first). Proven fallback if A stalls: option B (`content-visibility: auto` on row
 blocks), measured in DEBUGGING.md. Also shipped that day: the ambient skin layers
 (compositor-only, `--ambient-fps`, paused when hidden) and Settings › Window › **Animate
 backgrounds** — both need a fresh installer to reach the installed app.
+
+**2026-09-13 — Hosted sign-in page + deep link: designed, NOT built.** The browser sign-in
+moves from `http://127.0.0.1:4783x` to `https://music-api.deets.solutions/signin`. The page
+returns the MUT to the app with a `deetsmusic://auth?n=<nonce>&mut=…` link, so the MUT never
+passes through the Worker. All forks are settled (1A–5A): page on the mint host · themed
+(app CSS copied into the Worker at deploy) · automatic link **and** a Return button · dev
+build uses `deetsmusic-dev://` · loopback page kept one release as a fallback link. Do not
+re-open the forks. Cold start: **[DATA-ARCHITECTURE.md §2a](DATA-ARCHITECTURE.md)** (flow,
+nonce rules, plugin + config notes, three desk-test checks). Work spans this repo
+(single-instance `deep-link` feature, `tauri-plugin-deep-link`, `apple.rs`) and
+`../DeetsSupport` (static `/signin` route). A Worker deploy needs the user's OK first.
 
 > **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
 > anything already committed works unless this file says otherwise. Confirmed in use
@@ -389,6 +419,8 @@ get large).
   to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
+- **Hosted sign-in page + `deetsmusic://` deep link** — designed 2026-09-13, forks settled.
+  [DATA-ARCHITECTURE.md §2a](DATA-ARCHITECTURE.md).
 - **CLI / local-agent control** · **mini/max surface compositions** ·
   **virtualized scrolling** · **playlist rename / drag-reorder / export UX**.
 
