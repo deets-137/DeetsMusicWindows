@@ -116,7 +116,7 @@ fn load_config() -> Result<AppleConfig, String> {
 //
 //   1. a local `apple.json` + `.p8` → sign here, exactly as before (the dev seam;
 //      a contributor with their own MusicKit key never touches the network)
-//   2. else `<app_data>/developer-token.json` with > 15 days left → use it
+//   2. else `<app_data>/developer-token.json` with > 3 days left → use it
 //   3. else one fetch from the mint, ~8 s budget, and persist the answer
 //
 // A fetch failure (offline, 429, 503) keeps any still-valid cached token, so
@@ -130,8 +130,19 @@ fn load_config() -> Result<AppleConfig, String> {
 /// Compiled in. Never the `support.` host (support.md: a future split of the mint
 /// must stay a route move, not an app release).
 const TOKEN_URL: &str = "https://music-api.deets.solutions/token";
-/// Refetch at startup once fewer than this many seconds remain.
-const REFRESH_MARGIN_SECS: u64 = 15 * 24 * 60 * 60;
+/// The Origin every Rust call to Apple sends: the release webview's own origin. A
+/// token with an `origin` claim gets a 401 for a missing or unlisted Origin (probed
+/// 2026-09-13), and reqwest sends none, so this keeps Rust calls valid once the
+/// Worker turns the claim on (`TOKEN_ORIGINS`, RELEASE.md §7). Harmless before that.
+const APPLE_ORIGIN: &str = "http://tauri.localhost";
+/// The sign-in page's loopback ports, tried in order. Fixed, not ephemeral: Apple
+/// matches the `origin` claim by exact host AND port (no wildcards), so the Worker
+/// lists these three. All busy → sign-in reports it instead of using another port.
+const AUTH_PORTS: [u16; 3] = [47831, 47832, 47833];
+/// Refetch at startup once fewer than this many seconds remain. Must stay below the
+/// Worker's rotation window (7 days): a shared token is handed out with 7–14 days left,
+/// so a larger margin would refetch on every launch.
+const REFRESH_MARGIN_SECS: u64 = 3 * 24 * 60 * 60;
 /// The startup fetch runs inside `setup()`; it must not stall the window.
 const MINT_TIMEOUT: Duration = Duration::from_secs(8);
 
@@ -384,9 +395,11 @@ pub fn load_persisted_user_token() -> Option<String> {
             .filter(|s| !s.is_empty())
     };
     if let Some(tok) = read(user_token_path()) {
+        crate::log::register_secret(&tok);
         return Some(tok);
     }
     let legacy = read(repo_secrets_dir().join("user-token.txt"))?;
+    crate::log::register_secret(&legacy);
     let _ = persist_user_token(&legacy);
     Some(legacy)
 }
@@ -447,7 +460,7 @@ const DEV_TOKEN="__DEV_TOKEN__", NONCE="__NONCE__";
 const status=document.getElementById("status");
 async function ready(){
   if(!window.MusicKit){ await new Promise(r=>document.addEventListener("musickitloaded",r,{once:true})); }
-  await MusicKit.configure({developerToken:DEV_TOKEN, app:{name:"DeetsMusic",build:"0.1.0"}});
+  await MusicKit.configure({developerToken:DEV_TOKEN, app:{name:"DeetsMusic",build:"__VERSION__"}});
   return MusicKit.getInstance();
 }
 document.getElementById("go").onclick=async()=>{
@@ -490,6 +503,7 @@ fn serve(server: tiny_http::Server, page: String, nonce: String, store: Arc<Mute
                             (state == nonce && !mut_tok.is_empty()).then(|| mut_tok.to_string())
                         });
                     if let Some(tok) = token {
+                        crate::log::register_secret(&tok);
                         *store.lock().unwrap() = Some(tok.clone());
                         if let Err(e) = persist_user_token(&tok) {
                             crate::log::warn(&format!("sign-in: token captured but not persisted: {e}"));
@@ -572,7 +586,10 @@ pub fn apple_begin_auth(
     let theme = sanitize_ident(&theme);
     let skin = sanitize_ident(&skin);
 
-    let server = tiny_http::Server::http("127.0.0.1:0").map_err(|e| e.to_string())?;
+    let server = AUTH_PORTS
+        .iter()
+        .find_map(|p| tiny_http::Server::http(("127.0.0.1", *p)).ok())
+        .ok_or("sign-in ports 47831–47833 are all in use; close the other app and try again")?;
     let port = server
         .server_addr()
         .to_ip()
@@ -582,6 +599,7 @@ pub fn apple_begin_auth(
     let page = AUTH_PAGE
         .replace("__DEV_TOKEN__", &dev)
         .replace("__NONCE__", &nonce)
+        .replace("__VERSION__", env!("CARGO_PKG_VERSION"))
         .replace("__THEME__", if theme.is_empty() { "lilac" } else { &theme })
         .replace("__SKIN__", if skin.is_empty() { "press" } else { &skin });
 
@@ -665,6 +683,7 @@ async fn api_get_once(
     let resp = client
         .get(url)
         .header("Authorization", format!("Bearer {dev}"))
+        .header("Origin", APPLE_ORIGIN)
         .header("Music-User-Token", mut_tok)
         .send()
         .await
@@ -714,6 +733,7 @@ async fn api_post_once(
     let resp = client
         .post(url)
         .header("Authorization", format!("Bearer {dev}"))
+        .header("Origin", APPLE_ORIGIN)
         .header("Music-User-Token", mut_tok)
         .header("Content-Length", "0")
         .send()
@@ -759,6 +779,7 @@ async fn api_send_once(
     let mut req = client
         .request(method, url)
         .header("Authorization", format!("Bearer {dev}"))
+        .header("Origin", APPLE_ORIGIN)
         .header("Music-User-Token", mut_tok);
     req = match body {
         Some(b) => req.json(b),

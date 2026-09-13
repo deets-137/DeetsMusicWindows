@@ -95,18 +95,17 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
-**2026-09-13 — toasts, built overnight, NOT yet desk-tested** (branch
-`claude/deetsmusic-toast-impl-rfw6ch`). The one transient-notice primitive from
-FUTURE-SETTINGS §18, ported from the Deets.Solutions toast: `src/toast.ts` +
-`src/styles/toast.css`, the `toasts` setting (Settings › Window › **Show notices**:
-Failures / Everything / Off), and every call site wired — Start Station with no station,
-Copy Link, Add to Library (+ the one-time "no undo" notice), songs first found dead
-(named, coalesced), no developer token at launch, the sign-in timeout, the post-sign-in
-subscription hint, the weekly Replay and the Rewind unlock. No Rust change. Decisions:
-mini/midi bottom-centred, max top-right; stack of 3; `error` sticky by default. Spec:
-**[TOASTS.md](TOASTS.md)**. **Morning: run the test script in [DEBUGGING.md
-§Toasts](DEBUGGING.md#toasts)** (`__toast.demo()` first), then commit. Typecheck and
-`vite build` are clean; the tray bundle carries none of it.
+**2026-09-13 — Apple terms + D.7 pass, built, NOT yet desk-tested or deployed** (branch
+`toast-time`; decisions and the origin probe in [RELEASE.md §7](RELEASE.md) "Revised
+2026-09-13"). App: Apple Music icon on the playlist badge, Settings › About notice, README
+privacy + trademarks, real MusicKit `app.build`, MUT redacted in the log, `Origin:
+http://tauri.localhost` on every Rust call to Apple, sign-in on fixed ports 47831–47833,
+refresh margin 3 days. Worker (`../DeetsSupport`, uncommitted, **not deployed**): 14-day
+shared token per 7-day window, `mint_counts` table, `TOKEN_ORIGINS` claim built but empty.
+Deploy order: apply `schema.sql`, then `wrangler deploy`. Open: **item 4, the new MusicKit
+key for the live mint** (the user's portal step), then revoke `22CB27A4ZK`, which kills the
+26 tokens printed on 2026-09-11. Note: 0.3.0 installs keep a 15-day margin, so against
+14-day tokens they refetch on every launch until they update (cheap, under the rate limit).
 
 > **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
 > anything already committed works unless this file says otherwise. Confirmed in use

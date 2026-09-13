@@ -8,8 +8,10 @@
 //! Two rules live INSIDE `write`, not at the call sites, so one careless
 //! `format!` a year from now cannot defeat them:
 //! - **Redaction**: anything shaped like a JWT (`eyJ…`) or following `Bearer `
-//!   is replaced. The app holds two bearer credentials, the file is readable
-//!   over loopback, and it becomes the body of a bug report.
+//!   is replaced, and so is every value passed to `register_secret` (the Music
+//!   User Token is not JWT-shaped, so the pattern alone would miss it). The app
+//!   holds two bearer credentials, the file is readable over loopback, and it
+//!   becomes the body of a bug report.
 //! - **Never panic**: a log line must never take the app down. Every I/O
 //!   result is dropped.
 //!
@@ -132,11 +134,36 @@ fn write(level: &str, msg: &str) {
     }
 }
 
-/// Replace anything shaped like a JWT (`eyJ` + base64url with dots) and anything
-/// following `Bearer ` up to the next whitespace.
+/// Credentials that no pattern can catch, redacted by exact value.
+static SECRETS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Redact `secret` from every later log line. Call it wherever a non-JWT
+/// credential enters the process (the MUT: loaded from disk, or captured at sign-in).
+pub fn register_secret(secret: &str) {
+    let secret = secret.trim();
+    if secret.len() < 16 {
+        return; // a short value would redact ordinary words
+    }
+    if let Ok(mut v) = SECRETS.lock() {
+        if !v.iter().any(|s| s == secret) {
+            v.push(secret.to_string());
+        }
+    }
+}
+
+/// Replace every registered secret, anything shaped like a JWT (`eyJ` + base64url
+/// with dots), and anything following `Bearer ` up to the next whitespace.
 fn scrub(msg: &str) -> String {
-    let mut out = String::with_capacity(msg.len());
-    let mut rest = msg;
+    let mut owned = msg.to_string();
+    if let Ok(v) = SECRETS.lock() {
+        for s in v.iter() {
+            if owned.contains(s.as_str()) {
+                owned = owned.replace(s.as_str(), "[redacted]");
+            }
+        }
+    }
+    let mut out = String::with_capacity(owned.len());
+    let mut rest = owned.as_str();
     loop {
         let jwt = rest.find("eyJ");
         let bearer = rest.find("Bearer ");
@@ -191,5 +218,13 @@ mod tests {
         assert_eq!(scrub("token eyJabc.def-ghi_jk done"), "token [redacted] done");
         assert_eq!(scrub("Authorization: Bearer abc.def; next"), "Authorization: Bearer [redacted]; next");
         assert_eq!(scrub("plain line 401 /v1/catalog"), "plain line 401 /v1/catalog");
+    }
+
+    #[test]
+    fn scrubs_registered_secret() {
+        super::register_secret("AgNotAJwtShapedMusicUserToken0123456789");
+        assert_eq!(scrub("mut=AgNotAJwtShapedMusicUserToken0123456789 ok"), "mut=[redacted] ok");
+        super::register_secret("short"); // ignored: would redact ordinary words
+        assert_eq!(scrub("a short word"), "a short word");
     }
 }

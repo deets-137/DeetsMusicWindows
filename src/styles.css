@@ -722,13 +722,18 @@ body {
   .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }
 }
 
-/* Ambient pause (src/ambient.ts): while the window cannot be seen, the endless
-   decorative loops hold still. play-state keeps each loop's position, so they resume
-   in place with no jump and no restart cost. */
+/* Ambient pause (src/ambient.ts): while the window cannot be seen — or when the user
+   turns "Animate backgrounds" off — the endless decorative loops hold still.
+   play-state keeps each loop's position, so they resume in place with no jump and no
+   restart cost. */
 :root[data-ambient="paused"] :is(.ocean__bob, .ocean__roll, .aurora__blob, .storm__strike, .storm__hold),
-:root[data-ambient="paused"] .np__aurora::before {
+:root[data-ambient="paused"] .np__aurora::before,
+:root[data-bg-motion="off"] :is(.ocean__bob, .ocean__roll, .aurora__blob),
+:root[data-bg-motion="off"] .np__aurora::before {
   animation-play-state: paused;
 }
+/* Off hides the storm, as reduced motion does: a frozen half-drawn bolt reads as a bug. */
+:root[data-bg-motion="off"] .storm { display: none; }
 
 /* Our own scrollbar for the Library list/grid and any plain panel body that scrolls
    (Settings) — replaces the OS bar. WebView2 is Chromium, so the ::-webkit-scrollbar

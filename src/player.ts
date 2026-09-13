@@ -11,6 +11,7 @@
 import { setting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
@@ -96,7 +97,7 @@ void listen("developer-token-changed", async () => {
   if (!initPromise) return;
   try {
     const developerToken = await invoke<string>("apple_developer_token");
-    await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: "0.1.0" } });
+    await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: await getVersion() } });
     music = window.MusicKit.getInstance();
     await injectUserToken();
     diag.log("player:reconfigured", { authorized: !!music.isAuthorized });
@@ -114,7 +115,7 @@ export function initPlayer(): Promise<any> {
     const developerToken = await invoke<string>("apple_developer_token");
     await window.MusicKit.configure({
       developerToken,
-      app: { name: "DeetsMusic", build: "0.1.0" },
+      app: { name: "DeetsMusic", build: await getVersion() },
     });
     music = window.MusicKit.getInstance();
     perf.bind(() => music?.nowPlayingItem?.id);

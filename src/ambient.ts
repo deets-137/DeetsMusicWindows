@@ -13,12 +13,25 @@
 //
 // Resume is one IPC round trip (a few ms) and play-state keeps each loop's position,
 // so a re-opened window shows the layers already moving, from where they stopped.
+//
+// It also applies the "Animate backgrounds" setting (`backgroundMotion`) as
+// `data-bg-motion` on <html>: reduced lowers --ambient-fps (skin.css), off holds the
+// loops still and hides the storm (styles.css).
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { setting, onSettingsChange } from "./settings-store";
 
 export function initAmbient(): void {
   const win = getCurrentWindow();
   const root = document.documentElement;
+
+  const applyMotion = () => {
+    root.dataset.bgMotion = setting("backgroundMotion");
+  };
+  applyMotion();
+  onSettingsChange((k) => {
+    if (k === "backgroundMotion") applyMotion();
+  });
   let seq = 0; // only the newest check may write — events can arrive in a burst
 
   const check = async () => {

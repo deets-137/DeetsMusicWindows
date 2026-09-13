@@ -133,6 +133,11 @@ function mountSettings(host: HTMLElement): CardInstance {
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
         storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
         {
+          kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
+          hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
+          options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
+        },
+        {
           kind: "choice", id: "toasts", label: "Show notices", key: "toasts",
           hint: "Failures: only when an action couldn't do what it said. Everything: confirmations too. Off: nothing (the log still records)",
           options: [{ value: "failures", label: "Failures" }, { value: "all", label: "Everything" }, { value: "off", label: "Off" }],
@@ -288,6 +293,16 @@ function mountSettings(host: HTMLElement): CardInstance {
           ],
         },
       ],
+    },
+    {
+      // Trademark + non-affiliation notice (RELEASE.md §7, Apple's third-party guidelines).
+      title: "About",
+      rows: [],
+      tail:
+        `<div class="set__status">Apple Music is a trademark of Apple Inc. ` +
+        `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
+        `<div class="set__status">The log stays on this PC. The app contacts Apple, and ` +
+        `music-api.deets.solutions for its access key. It sends no listening history.</div>`,
     },
   ];
 

@@ -84,6 +84,25 @@ compositions. The installer is **unsigned**, so SmartScreen warns on first run, 
 no auto-updater — each release is a fresh installer, archived locally
 ([docs/RELEASE.md](docs/RELEASE.md)).
 
+## Privacy
+
+- **Apple.** Sign-in, your library, search and playback go straight to Apple
+  (`api.music.apple.com` and MusicKit). Your Apple sign-in token stays on your PC.
+- **The access key.** The app needs an Apple Music developer token. It fetches one from
+  `music-api.deets.solutions/token` about once a week. That request carries the app
+  version only. The server keeps a daily count of tokens it gives out. It does not store
+  your IP address, the token, or anything about you.
+- **The log.** The app writes a log file on your PC (Settings › Bugs › App log). It
+  redacts tokens, names catalog ids instead of song titles, and is never sent anywhere
+  unless you copy it yourself.
+- **Nothing else.** No analytics, no listening history leaves your PC.
+
+## Trademarks
+
+Apple Music is a trademark of Apple Inc., registered in the U.S. and other countries.
+DeetsMusic is an independent project. It is not affiliated with, sponsored by, or
+endorsed by Apple.
+
 ## License
 
 [MIT](LICENSE)

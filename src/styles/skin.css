@@ -693,6 +693,10 @@
    never enter the viewport. The ease is sampled into the keyframes —
    (1 − cos 2πt) / 2 at tenths — because the stepped timing (--ambient-fps)
    replaces any easing. Defined once; only Glass opts in (--aurora-display). */
+/* "Animate backgrounds: Reduced" (settings, src/ambient.ts) halves the ambient rate
+   for every skin. A user choice, so it outranks the skin's --ambient-fps. */
+:root[data-bg-motion="reduced"] { --ambient-fps: 15; }
+
 @keyframes aurora-drift {
   0%, 100% { transform: translate(0, 0); }
   10%, 90% { transform: translate(calc(var(--drift-x) * 0.0955), calc(var(--drift-y) * 0.0955)); }
