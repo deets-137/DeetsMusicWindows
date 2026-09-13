@@ -64,7 +64,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Playback | Make a Replay each week (A playlist of the past week's most-played songs, made for you) | `replayAuto` | on / off | `replay.ts` `runWeeklyReplay` (boot) |
 | Playback | Replay day (The day the weekly Replay is made) — *Mon … Sun* | `replayDay` | mon / … | `replay.ts` `lastDue` |
 | Playback | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
-| Library | Add to Library (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square); the ♥ (`favorites.ts`) rides the same consent |
+| Library | Add to Library (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square + the Search row squares); the ♥ (`favorites.ts`) rides the same consent |
 | Library | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
 | Library | New playlist opens Search (§16) | `playlistCreateSummon` | on / off | `playlists-card.ts` `createAndEnter` |
 | Cards | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |

@@ -6,10 +6,12 @@
 // engine (shared idiom, not shared code).
 
 import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
-import { addTransientTracks } from "./track-store";
+import { addTransientTracks, onTracksChange } from "./track-store";
 import { addToPlaylistItem } from "./playlists";
 import * as frames from "./frames";
-import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
+import {
+  addSongToLibraryItem, addAlbumToLibraryItem, addTrackToLibrary, libraryAddEnabled, libraryAddOffered, onLibraryAddChange,
+} from "./library-add";
 import { startStationItem } from "./start-station";
 import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -29,6 +31,8 @@ const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
 const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
 const ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
+const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
@@ -130,6 +134,56 @@ function mountSearch(host: HTMLElement): CardInstance {
   // Track lookup for delegated handlers: keyed maps refreshed per render.
   let songsById = new Map<string, Track>();
 
+  // ── Add-to-Library square on song rows (root Songs grid + drill-pane track lists) ──
+  // Mirrors the Now Playing "+": a press IS the consent (addTrackToLibrary), the Library
+  // Add toggle is the only thing that removes it. "+" when not in the library, ✓ when it
+  // is. Shown on row hover/focus (CSS). Membership is the local store — no Apple call
+  // until a press.
+  const addable = new Map<string, Track>(); // catalogId → the row's track
+  const adding = new Set<string>();
+  const addBtnHTML = (t: Track): string => {
+    if (!t.catalogId) return "";
+    addable.set(t.catalogId, t);
+    return `<button class="panel__action search__add" type="button" data-add="${esc(t.catalogId)}" hidden></button>`;
+  };
+  const paintAdd = (btn: HTMLButtonElement) => {
+    const id = btn.dataset.add!;
+    const t = addable.get(id);
+    btn.hidden = !t || !libraryAddEnabled();
+    if (btn.hidden || !t) return;
+    const busy = adding.has(id);
+    const inLib = !busy && !libraryAddOffered(t);
+    btn.classList.toggle("is-busy", busy);
+    btn.classList.toggle("is-in", inLib);
+    btn.setAttribute("aria-disabled", String(inLib || busy));
+    btn.innerHTML = inLib ? ICON_CHECK : ICON_PLUS;
+    const label = inLib ? "In your library" : "Add to Library";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  };
+  const refreshAdds = () => host.querySelectorAll<HTMLButtonElement>("[data-add]").forEach(paintAdd);
+  // Capture phase on the host: runs before the row's play handlers (root + panes) and
+  // stops the press from also playing the song.
+  host.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-add]");
+    if (!btn) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const id = btn.dataset.add!;
+    const t = addable.get(id);
+    if (!t || adding.has(id) || !libraryAddOffered(t)) return;
+    adding.add(id);
+    paintAdd(btn);
+    addTrackToLibrary(t)
+      .catch((err) => console.error("[search] add to library", err))
+      .finally(() => {
+        adding.delete(id);
+        refreshAdds();
+      });
+  }, true);
+  const unsubAddTracks = onTracksChange(refreshAdds, "search.add");
+  const unsubAddToggle = onLibraryAddChange(refreshAdds);
+
   // ── root rendering ──
   // Empty state: a Pinned block above Recent (NEXT-VERSION §1). Each row is one pill
   // cut in two — the term (re-runs it) | a pin glyph (pins or unpins). A pinned term
@@ -166,6 +220,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     return `<div class="search__song" data-song="${esc(id)}" role="button" tabindex="0">
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
+      ${addBtnHTML(t)}
     </div>`;
   };
 
@@ -214,6 +269,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     root.innerHTML = sections.length
       ? sections.join("")
       : `<p class="search__prompt">No results for “${esc(lastTerm)}”.</p>`;
+    refreshAdds();
   };
 
   // ── querying ──
@@ -326,6 +382,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     `<div class="search__row" data-row="${i}" role="button" tabindex="0">
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
+      ${addBtnHTML(t)}
     </div>`;
 
   /** A detail pane's track list: tap plays the list from that row (Library semantics). */
@@ -374,6 +431,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       .then((tracks) => {
         body.innerHTML = heroHTML(kind, meta, tracks) + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
         wireTrackList(body, tracks, `search-${kind}:${id}`);
+        refreshAdds();
         // The album hero's artist subtitle → the artist pane, via the album's own relationship.
         body.querySelector<HTMLElement>("[data-hero-artist]")?.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -398,6 +456,7 @@ function mountSearch(host: HTMLElement): CardInstance {
             <div class="search__label">Top Songs</div>
             ${d.topSongs.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`}`;
           wireTrackList(body, d.topSongs, `search-artist:${id}`);
+          refreshAdds();
           body.addEventListener("click", (e) => {
             const tile = (e.target as HTMLElement).closest<HTMLElement>("[data-album]");
             if (!tile) return;
@@ -595,6 +654,8 @@ function mountSearch(host: HTMLElement): CardInstance {
       queryToken++; // orphan any in-flight response
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted
+      unsubAddTracks();
+      unsubAddToggle();
       headerCbs.clear();
       host.innerHTML = "";
     },

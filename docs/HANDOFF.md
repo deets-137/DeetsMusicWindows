@@ -122,6 +122,14 @@ order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still n
 posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
 attached (none exist), and a plain note about SmartScreen on the unsigned installer.
 
+**Before release: polished keyboard control (added 2026-09-13).** Every action a mouse can do
+must also work from the keyboard, with a visible focus ring. Known gaps: search result rows
+are `role="button" tabindex="0"` but Enter/Space do not play them; hover-only controls (the
+Search Add-to-Library square) only show on `:focus-within`. Scope still to design on paper:
+a Tab order per card, arrow keys inside lists and grids, Enter/Space/Menu-key on rows, Escape
+to pop a drill pane, focus return after a menu or pane closes, and the fixed shortcut set in
+[NEXT-VERSION.md](NEXT-VERSION.md) (`Ctrl+K` Search and friends).
+
 **2026-09-11 — the Worker grew into a support back end.** The mint is now one route on
 **`DeetsSupport`**, which also holds the status / suggestions / issues boards, anonymous
 report intake and **remote config** for every Deets app. Scope:

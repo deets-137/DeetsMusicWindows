@@ -571,7 +571,7 @@ silence the other:
 | When | Text (draft) | Key |
 |---|---|---|
 | The user sets a local playlist cover (NEXT-VERSION §2) | Covers stay in DeetsMusic. Apple Music makes its own. | `deets.notice.coverLocal` |
-| The first Add to Library in a session (`#np-add` or a menu item) | Added. Apple has no undo from here; remove it in the Music app. | `deets.notice.addOneWay` |
+| The first Add to Library in a session (`#np-add`, a Search row square, or a menu item) | Added. Apple has no undo from here; remove it in the Music app. | `deets.notice.addOneWay` |
 
 Shape when built: `toast(msg, { kind, action?, dismissKey? })` in a new `src/toast.ts`; one
 strip, newest replaces the previous, auto-dismiss after a skin-token duration (`--toast-dur`,

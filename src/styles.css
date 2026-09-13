@@ -1301,7 +1301,15 @@ body {
   border-radius: var(--lib-row-art-radius); object-fit: cover;
 }
 .search__song-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); }
-.search__song-text { min-width: 0; display: flex; flex-direction: column; }
+.search__song-text { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+/* Add-to-Library square (a .panel__action): space always reserved so titles never
+   jump; visible only while the row is hovered or focused (or an add is running). */
+.search__add { visibility: hidden; }
+.search__song:hover .search__add, .search__row:hover .search__add,
+.search__song:focus-within .search__add, .search__row:focus-within .search__add,
+.search__add.is-busy { visibility: visible; }
+.search__add.is-in, .search__add.is-busy { cursor: default; }
+.search__add.is-in:hover { filter: none; }
 .search__song-title { font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__song-artist { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

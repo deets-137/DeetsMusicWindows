@@ -124,6 +124,24 @@ gapless [enqueue path](QUEUE.md#manual-queueing--play-next--add-to-queue):
 - **Add to Library** writes via the catalog id (create/append, gated — consistent with the
   [Playlists export decision](PLAYLISTS.md)); on library-only surfaces this stays the one Apple write.
 
+### Add-to-Library square (2026-09-13, on trial)
+The user may revert this after testing it. Decisions: 1A (hover only), 2B (drill panes too), keyboard focus yes.
+- **Where:** every song row with a catalog id — the root **Songs** grid (`.search__song`) and the
+  track rows in album / playlist / artist drill panes (`.search__row`). A `.panel__action` square
+  (`--icon-lg`, the Now Playing "+" geometry) at the row's right end, after the explicit mark.
+- **States:** **+** (not in the library) · spinner while adding · **✓ "In your library"**
+  (`aria-disabled`, a press does nothing). Hidden when the Library Add setting is off.
+- **Visibility:** only while the row is hovered or has focus (`:focus-within`), or while an add runs.
+  The space is always reserved, so titles do not jump on hover.
+- **The press** is the consent, like the NP square: `addTrackToLibrary(t)`. A capture-phase click
+  handler on the card host stops the press from also playing the row. Membership comes from the
+  local store (`libraryAddOffered`), so rendering costs no Apple call.
+- **Live state:** `onTracksChange` (the store reload after an add) and `onLibraryAddChange` repaint
+  every `[data-add]` square in the card.
+- **Code:** `addBtnHTML` / `paintAdd` / `refreshAdds` in `src/search-card.ts`; CSS `.search__add`.
+- **Keyboard:** Tab reaches the row, then the square. Full keyboard polish is a pre-release item
+  ([HANDOFF.md § Next up](HANDOFF.md#next-up)).
+
 ---
 
 ## Empty state 🔵
