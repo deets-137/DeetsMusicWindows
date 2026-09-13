@@ -131,9 +131,10 @@ produces a frame every display period during the gestures that have to feel butt
 **Windows.** One per interaction, each closing with a single line in the console and
 the dev log:
 `[perf] frames <name> [<detail>] <elapsed> ms · N frames @<hz> Hz · dropped D (P%) ·
-worst W ms [· longtasks K (max M ms)]`. A dropped frame is a gap over 1.5× the display
+worst W ms [· first F ms] [· longtasks K (max M ms)]`. A dropped frame is a gap over 1.5× the display
 period; `longtasks` are the browser's >50 ms main-thread tasks that overlapped the window
-(the usual cause). Names: `scroll <container>` (opens itself on any scroll event, closes
+(the usual cause); `first` appears when the gap from the gesture's own start to its first
+frame — the synchronous build (a pane render, a folder re-render) — is itself over budget. Names: `scroll <container>` (opens itself on any scroll event, closes
 150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
 seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
 `fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
@@ -143,8 +144,9 @@ menu opening), `appearance theme|skin` (the view transition), `sample` (manual).
 `[perf] display <hz> Hz (period <ms>)`; every window is judged against that period, so a
 144 Hz panel is held to 6.9 ms, not 16.7.
 
-**Inputs.** The Event Timing API reports any press/click/key whose input→paint took over
-two periods: `[perf] input <event> <element-class> <ms> ms (delay <ms>)` — `delay` is
+**Inputs.** The Event Timing API reports any press / click / key / wheel (hover traffic is
+skipped, and the press-up-click trio painted in one frame logs once) whose input→paint took
+over two periods: `[perf] input <event> <element-class> <ms> ms (delay <ms>)` — `delay` is
 the wait before the handler ran (a busy main thread), the rest is the handler + paint.
 
 **Driving it from the session.** `__frames` on the console: `__frames.hz`,
@@ -158,6 +160,76 @@ line too). Gestures with a pointer (scrub, drag) are hand tests.
 Glass skin) delays rAF only once the frame pipeline backs up; a mild one slips through.
 Pair a suspicious skin with devtools → Rendering → *Frame Rendering Stats* and *Paint
 flashing*.
+
+## Reviewing the telemetry — the recipe (2026-09-13)
+
+Where each signal lives and what "bad" looks like. All paths are the DEV app unless said.
+
+1. **Frames.** `grep "\[perf\] frames" %APPDATA%\com.deetsmusic.dev\deetsmusic.log`. Read
+   `dropped N (P%)`, `worst`, `first`, `longtasks`. A `worst` of 2× the period with no
+   `longtasks` is a paint-heavy frame (Glass blur, cover decode); `longtasks` of 100 ms+ is
+   the main thread — style, layout, or our JS. A line with `first` names a synchronous build
+   (pane render, folder re-render) that alone blew the budget.
+2. **Inputs.** `grep "\[perf\] input"`: press→paint over two frames, with the input delay
+   split out. `delay` > 0 means the main thread was busy when the press arrived.
+3. **Heaviness.** `scripts/heaviness-samples.log`, one line per app per sample
+   (`installed` = the live app, `dev`, `dev-page` = the dev page's JS heap / DOM / img
+   count). Written by `scripts/heaviness-sample.ps1 -Loop 3600` (a detached terminal
+   loop; run it again after a reboot). A leak = `renderer` / `heap` / `dom` that only ever
+   climbs across hours of use; a step up that then holds is a cache filling.
+4. **Profile a suspect.** `node scripts/webview-profile.mjs "<expr>"` samples the main
+   thread's JS while `<expr>` runs (a promise is awaited); `--trace` swaps in Chromium's
+   timeline events (Layout, Paint, FunctionCall…) summed by name — the view that says what
+   the engine did. The cold-scroll expression used on 2026-09-13 (a scrollbar-thumb drag
+   through the whole Library in 120 frames, with the frame line as the result):
+   ```
+   (async () => { const w = (ms) => new Promise(r => setTimeout(r, ms)); const lib = [...document.querySelectorAll('.panel')].find(p => p.querySelector('.panel__title')?.textContent?.trim() === 'Library'); const v = lib.querySelector('[data-view]'); v.scrollTo({ top: 0 }); await w(300); const max = v.scrollHeight - v.clientHeight; let y = 0; const step = max / 120; const p = __frames.sample(2200, 'drag'); const f = () => { y += step; v.scrollTop = Math.min(y, max); if (y < max) requestAnimationFrame(f); }; requestAnimationFrame(f); return (await p).replace('[perf] frames ', ''); })()
+   ```
+   **Cold vs warm:** once a cover is in the renderer's memory cache the same pass is
+   perfectly smooth, so a scroll measurement is only meaningful cold. `location.reload()`
+   usually drops the memory cache (the disk cache stays — no Apple traffic) but not always:
+   count `img.complete && img.naturalWidth` before the pass and retry if it is high.
+   **Target the right list:** `document.querySelector('.lib-view')` is whichever card comes
+   first — an 8-row Playlists view once passed for the Library.
+
+### What the 2026-09-13 pass found
+- **Cold Library scroll dropped ~80% of frames, on every skin.** The trace: 16 forced
+  layouts of 140–200 ms, one per frame. Each batch of lazy covers loading dirtied layout,
+  and the list was a flex column, so one dirty row re-laid out all 3,895. Fixed in
+  `styles.css`: the list is a block stack and every art row is a relayout boundary
+  (`contain: size layout` + a pinned `--lib-row-h`). After: no long tasks, worst 34 ms,
+  Press 5% dropped, Glass ~50% two-frame gaps (its blur) with thousands of covers streaming.
+  Not fixed: `decoding="async"` (kept, harmless), `content-visibility: auto` alone,
+  `overflow-anchor: none`, containment on the `<img>` only. Grid densities (tiles) still
+  re-lay out on cover arrival — untested, the tile height is not fixed.
+- **The installed app on Ocean idled at about half a core** (main 15%, renderer 20%, GPU
+  14%) while the dev app on Press idled at 0%. Hypothesis: Ocean's SVG wave animation
+  repaints the whole window every frame (SVG child transforms are not composited). Not
+  yet proven — the comparison needs the same app paused on two skins.
+- **The appearance publish bug** (bridge `/health` reported the OLD skin after a switch):
+  `publishAppearance()` ran outside the view transition, before the attribute flipped.
+  Moved into the transition's `after` callback; verified by clicking through Press/Glass.
+- **On disk:** installer 6.2 MB, exe 19 MB, web bundle 1.3 MB (745 KB of it two Liberation
+  Serif TTFs — WOFF2 would halve the bundle). WebView2 profile ~400 MB per identifier,
+  almost all Chromium's HTTP cache, self-capped.
+
+## Heaviness sampler — `scripts/heaviness-sample.ps1`
+
+One line per running app (installed + dev) per sample: summed working set, the largest
+renderer, the GPU process, and a 5 s CPU rate (100 = one core), then the dev page's heap /
+DOM / img counts when the dev app answers on its CDP port. `-Loop N` repeats every N
+seconds and appends to `scripts/heaviness-samples.log` (gitignored) until the terminal
+closes. Bare `deetsmusic.exe` processes with no WebView2 children (the CLI / MCP bridges)
+are skipped. The tree walk keys on the exe name, so both apps report even when the installed
+one has no CDP port.
+
+## Profiling the webview — `scripts/webview-profile.mjs` (dev only)
+
+Same CDP discovery as webview-eval. Without flags: V8's sampling profiler over the
+expression, top functions and files by self time — `(program)` is the engine outside JS.
+`--trace`: the `devtools.timeline` categories, complete events summed by name with count
+and max on the renderer's main thread (picked as the thread with the most Layout / style /
+paint / script time). Inclusive times: `RunTask` contains everything under it.
 
 ## Driving the webview — `scripts/webview-eval.mjs` (dev only)
 The MCP and CLI reach the player through the bridge. They cannot run console calls such

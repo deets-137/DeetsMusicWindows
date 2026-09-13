@@ -849,7 +849,19 @@ body {
 .lib-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* lines */
-.lib-list { display: flex; flex-direction: column; }
+/* A BLOCK stack, not a flex column, and every art row is a RELAYOUT BOUNDARY (size +
+   layout containment with a pinned height). Measured 2026-09-13 (DEBUGGING.md §Heaviness):
+   a cold pass through the 3,895-row Library dropped ~80% of frames because each batch of
+   lazy covers loading dirtied layout, and one dirty row made the flex column re-lay out all
+   3,895 rows (140–200 ms per frame). With the boundary, layout stops at the row: no long
+   tasks, worst frame ~34 ms with thousands of covers streaming in. Rows without art keep
+   their natural height. */
+.lib-list { display: block; }
+.lib-list .lib-row--art {
+  contain: size layout;
+  height: var(--lib-row-h);
+  box-sizing: border-box;
+}
 .lib-row {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
@@ -969,6 +981,7 @@ body {
 /* rows with a mini cover (songs/albums/artists lines) */
 .lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
 .lib-row__art {
+  contain: size;              /* fixed box — a cover arriving must not re-size anything */
   flex: 0 0 auto;
   width: var(--lib-row-art);
   height: var(--lib-row-art);
@@ -1033,11 +1046,51 @@ body {
 }
 .lib-tile__cover--round { border-radius: 50%; }
 /* The derived playlist cover (NEXT-VERSION §2): four track covers in a 2×2 grid, or one. */
-.lib-tile__cover--mosaic, .lib-row__art--mosaic {
+.lib-tile__cover--mosaic, .lib-row__art--mosaic, .lib-hero__cover--mosaic {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--lib-mosaic-gap); overflow: hidden;
 }
-.lib-tile__cover--mosaic-one, .lib-row__art--mosaic-one { grid-template-columns: 1fr; }
-.lib-tile__cover--mosaic img, .lib-row__art--mosaic img { display: block; width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.lib-tile__cover--mosaic-one, .lib-row__art--mosaic-one, .lib-hero__cover--mosaic-one { grid-template-columns: 1fr; }
+.lib-tile__cover--mosaic img, .lib-row__art--mosaic img, .lib-hero__cover--mosaic img { display: block; width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+
+/* ── Detail hero (album / playlist) ──────────────────────────
+   The first block inside the scrolling view: a big cover, the bold title, an optional
+   tappable subtitle (an album's artist, with a › glyph) and a muted meta line. It scrolls
+   away with the rows. Size is a skin token; colors are theme roles. Shared by the
+   collection engine (Library, Playlists) and the Search card's catalog panes. */
+.lib-hero {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: var(--hero-gap);
+  padding: var(--space-2) var(--space-2) var(--space-3);
+}
+.lib-grid .lib-hero { grid-column: 1 / -1; }
+.lib-hero__cover {
+  width: var(--hero-cover); height: var(--hero-cover);
+  border-radius: var(--lib-tile-radius);
+  object-fit: cover; display: block;
+  background: var(--surface-hover);
+  margin-bottom: var(--space-1);
+}
+.lib-hero__cover--empty { display: grid; place-items: center; color: var(--subtext); font-size: var(--fs-title); }
+.lib-hero__title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-title);
+  color: var(--title); line-height: 1.2; overflow-wrap: anywhere;
+}
+.lib-hero__sub { color: var(--text); font-size: var(--fs-text); }
+.lib-hero__sub--link {
+  appearance: none; background: none; border: none; padding: 0; margin: 0;
+  font: inherit; font-size: var(--fs-text); color: var(--text); cursor: pointer;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.lib-hero__sub--link:hover { color: var(--title); }
+.lib-hero__chev { color: var(--subtext); }
+.lib-hero__meta { color: var(--subtext); font-size: var(--fs-subtext); }
+
+/* An album's line rows: the track number sits in the cover's slot. */
+.lib-row__num {
+  flex: 0 0 auto; width: var(--lib-row-art); text-align: center;
+  color: var(--subtext); font-size: var(--fs-subtext); font-variant-numeric: tabular-nums;
+}
 .lib-tile__cover--empty {
   display: grid;
   place-items: center;

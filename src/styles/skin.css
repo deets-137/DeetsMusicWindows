@@ -194,6 +194,11 @@
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
   --lib-row-art:        36px;       /* mini-cover size on density lines */
+  --lib-row-h:          46px;       /* a line row's fixed height — its natural height under this
+                                       skin's type (title + artist stack + padding); pinned so the
+                                       row can be a relayout boundary (UI-ARCHITECTURE.md §4a) */
+  --hero-cover:         180px;      /* the detail hero's cover square (album / playlist) */
+  --hero-gap:           var(--space-1); /* title ↔ subtitle ↔ meta stack spacing */
   --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */
 
   /* -- scrollbar (our own; color is a theme role) ------------ */
@@ -280,6 +285,7 @@
    (Retired the Desk skin, 2026-08-10 — same slot, new idiom.)
    ============================================================ */
 [data-skin="press"] {
+  --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — a condensed poster grotesque over a spec-sheet mono. Anton
      ships one weight and it is heavy, so --fw-title drops to 400. Plex
      Mono runs wide: the body sizes DOWN a step so a density line still
@@ -536,6 +542,7 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="retro-future"] {
+  --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — machined geometric title on a condensed squared body.
      Orbitron reads very wide, size down; Rajdhani runs thin and
      small-x-height, so the body sits at 500 and a size up. */

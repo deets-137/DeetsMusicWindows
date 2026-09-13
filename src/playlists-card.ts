@@ -16,8 +16,8 @@ import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addSongToLibraryItem } from "./library-add";
 import { initFavorites, reconcile } from "./favorites";
-import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
-import { musicCell, trackMenu, explicitBadge } from "./library-card";
+import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
+import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { requestCard } from "./layout-bus";
 import { toast } from "./toast";
@@ -269,6 +269,20 @@ export const playlistsCard: CardDef = {
       };
       return {
         title: p.name,
+        headerLabel: "Playlist",
+        // The hero: the playlist's own cover (or the mosaic), its name, and songs · length ·
+        // source. Tracks land async — the reload after ensureTracks re-renders the line.
+        hero: () => {
+          const ts = trackCache.get(id);
+          const n = ts?.length ?? p.trackCount;
+          const total = ts ? formatTotal(ts.reduce((acc, t) => acc + (t.durationMs ?? 0), 0)) : "";
+          const source = p.source === "local" ? "Yours" : p.curatorName ?? "Apple Music";
+          return {
+            cover: heroCover(p.artwork, p.name, p.coverUrls),
+            title: p.name,
+            meta: [n != null ? `${n} song${n === 1 ? "" : "s"}` : "", total, source].filter(Boolean).join(" · "),
+          };
+        },
         density: true,
         groupings: [grouping],
         defaults: { density: "lines", sortKey: "order" },

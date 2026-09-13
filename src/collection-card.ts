@@ -52,8 +52,26 @@ export interface Grouping<T = any> {
   menu?: (x: T, index: number, items: T[]) => MenuItem[];
 }
 
+/**
+ * The detail hero (UI-ARCHITECTURE.md §Detail hero): a big cover, the bold title, an
+ * optional subtitle (tappable when it carries `run` — an album's artist drills to the
+ * artist) and a muted meta line ("2016 · 17 songs · 1 hr 2 min"). Rendered as the first
+ * block INSIDE the scrolling view, so it scrolls away with the list. Built by a function
+ * so async facts (a playlist's tracks landing) fill in on the next render.
+ */
+export interface Hero {
+  cover: string; // HTML for the cover slot — heroCover() in library-card.ts
+  title: string;
+  sub?: { text: string; run?: () => void };
+  meta?: string;
+}
+
 export interface Context {
   title: string;
+  /** What the card header shows while drilled ("Album", "Playlist") when a hero owns
+   *  the title itself. Absent → the header shows `title`, as before. */
+  headerLabel?: string;
+  hero?: () => Hero;
   groupings: Grouping[]; // >= 1; >1 → View shows a grouping column
   density: boolean; // whether the density column applies
   /** An optional icon toggle between View and Search (Library: ♥ favorites only). The
@@ -62,6 +80,26 @@ export interface Context {
   filter?: { label: string; icon: string; active: () => boolean; toggle: () => void };
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
+}
+
+/** "1 hr 2 min" / "48 min" for a summed duration; "" below a minute or unknown. */
+export function formatTotal(ms: number | undefined): string {
+  if (!ms || ms < 60_000) return "";
+  const min = Math.round(ms / 60_000);
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h ? `${h} hr${m ? ` ${m} min` : ""}` : `${m} min`;
+}
+
+function heroHTML(h: Hero | undefined): string {
+  if (!h) return "";
+  const sub = h.sub
+    ? h.sub.run
+      ? `<button class="lib-hero__sub lib-hero__sub--link" type="button" data-hero-sub>${esc(h.sub.text)}<span class="lib-hero__chev" aria-hidden="true">›</span></button>`
+      : `<span class="lib-hero__sub">${esc(h.sub.text)}</span>`
+    : "";
+  const meta = h.meta ? `<span class="lib-hero__meta">${esc(h.meta)}</span>` : "";
+  return `<div class="lib-hero">${h.cover}<span class="lib-hero__title">${esc(h.title)}</span>${sub}${meta}</div>`;
 }
 
 export interface CardOptions {
@@ -297,13 +335,14 @@ export function initCollectionCard(opts: CardOptions) {
     // that collides with the density buttons). Openable = pointer-cursor affordance:
     // rows that drill OR activate (play a song, toggle a section) are clickable.
     view.dataset.openable = g.open || g.activate ? "1" : "";
+    const hero = heroHTML(f.ctx.hero?.()); // rides inside the scroll, above the rows (1A)
     if (!items.length) {
       view.className = "lib-view lib-empty";
-      view.innerHTML = `<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`;
+      view.innerHTML = `${hero}<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`;
       return;
     }
     view.className = f.density === "lines" ? "lib-view lib-list" : "lib-view lib-grid";
-    view.innerHTML = items.map((x, i) => g.render(x, f.density, i)).join("");
+    view.innerHTML = hero + items.map((x, i) => g.render(x, f.density, i)).join("");
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
 
@@ -365,14 +404,14 @@ export function initCollectionCard(opts: CardOptions) {
     if (v) cur().scroll = v.scrollTop;
     const f = frameFor(childCtx, false);
     stack.push(f);
-    setHeader(false, f.ctx.title);
+    setHeader(false, f.ctx.headerLabel ?? f.ctx.title);
     slide(buildPane(f), "push", f);
   };
 
   const back = () => {
     if (animating || stack.length <= 1) return;
     const prev = stack[stack.length - 2];
-    setHeader(stack.length - 1 === 1, prev.ctx.title);
+    setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title);
     slide(buildPane(prev), "pop", prev, () => stack.pop());
   };
 
@@ -528,6 +567,12 @@ export function initCollectionCard(opts: CardOptions) {
     }
 
     // Sort/View popover controls are handled in onPopClick (the pop lives on <body>).
+
+    // the hero's tappable subtitle (an album's artist) → its own drill
+    if (t.closest("[data-hero-sub]")) {
+      cur().ctx.hero?.()?.sub?.run?.();
+      return;
+    }
 
     // a tile/row → activate the leaf (play) if it offers one, else drill in
     const item = t.closest<HTMLElement>("[data-idx]");

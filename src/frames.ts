@@ -16,6 +16,11 @@
 //
 //   [perf] input pointerdown lib-row 41 ms (delay 3)
 //
+// (presses, clicks, keys and wheel only — hover events are skipped — and one line per
+// painted frame, so a press/up/click trio logs once). A window's first gap runs from
+// begin() itself, so the synchronous build before the first frame is counted and, when
+// it alone is over budget, named as `first`.
+//
 // Scroll windows open themselves (a capturing scroll listener) and close 150 ms after
 // the last scroll event. Everything else is begun/ended by the gesture's own code via
 // `begin()` (returns the closer) or `during()` (a fixed-length window for a CSS
@@ -34,13 +39,16 @@ const ON = import.meta.env.DEV;
 const SCROLL_IDLE_MS = 150; // a scroll window closes this long after the last scroll event
 const DROP_FACTOR = 1.5; // a frame gap over this × the period counts as dropped
 const INPUT_SHOW_FRAMES = 2; // an input→paint over this many periods is logged
+// Discrete inputs only — hover traffic (pointerover/out/enter/leave, mouseover…) shares
+// the same frame and would repeat every slow line five to ten times.
+const INPUT_KINDS = new Set(["pointerdown", "pointerup", "click", "keydown", "wheel", "auxclick", "dblclick"]);
 const HZ_SAMPLES = 40;
 
 interface Win {
   name: string;
   detail: string;
   t0: number;
-  last: number; // last rAF timestamp seen (0 = none yet)
+  last: number; // last rAF timestamp seen (0 = none yet; the first gap runs from t0)
   gaps: number[];
   longTasks: number[];
   deadline?: number; // auto-closing windows (scroll, during)
@@ -59,7 +67,7 @@ const toLog = (line: string): void => {
 function tick(now: number): void {
   raf = 0;
   for (const w of open) {
-    if (w.last) w.gaps.push(now - w.last);
+    w.gaps.push(now - (w.last || w.t0)); // the first gap counts from begin(): a synchronous build shows up
     w.last = now;
     if (w.deadline !== undefined && now >= w.deadline) close(w);
   }
@@ -75,12 +83,15 @@ function close(w: Win): void {
   const elapsed = Math.round(performance.now() - w.t0);
   const n = w.gaps.length;
   if (n < 2) return; // too short to say anything
+  const first = Math.round(w.gaps[0]);
   const dropped = w.gaps.filter((g) => g > period * DROP_FACTOR).length;
   const worst = Math.round(Math.max(...w.gaps));
   const lt = w.longTasks.length ? ` · longtasks ${w.longTasks.length} (max ${Math.round(Math.max(...w.longTasks))} ms)` : "";
   const line =
     `[perf] frames ${w.name}${w.detail ? " " + w.detail : ""} ${elapsed} ms · ${n} frames @${hz} Hz` +
-    ` · dropped ${dropped} (${((dropped / n) * 100).toFixed(1)}%) · worst ${worst} ms${lt}`;
+    ` · dropped ${dropped} (${((dropped / n) * 100).toFixed(1)}%) · worst ${worst} ms` +
+    (first > period * DROP_FACTOR ? ` · first ${first} ms` : "") +
+    lt;
   console.info(line);
   toLog(line);
   w.resolve?.(line);
@@ -135,8 +146,12 @@ function observeLongTasks(): void {
 function observeInputs(): void {
   try {
     new PerformanceObserver((list) => {
+      let lastFrame = -1; // pointerup + mouseup + click land in one frame: log the first only
       for (const e of list.getEntries() as PerformanceEventTiming[]) {
-        if (e.duration < period * INPUT_SHOW_FRAMES) continue;
+        if (!INPUT_KINDS.has(e.name) || e.duration < period * INPUT_SHOW_FRAMES) continue;
+        const frame = e.startTime + e.duration; // the presentation time — equal for events painted together
+        if (Math.abs(frame - lastFrame) < 1) continue;
+        lastFrame = frame;
         const delay = Math.round(e.processingStart - e.startTime);
         const line = `[perf] input ${e.name} ${firstClass(e.target)} ${Math.round(e.duration)} ms (delay ${delay})`;
         console.info(line);

@@ -75,8 +75,14 @@ window.addEventListener("DOMContentLoaded", () => {
   // transition so the old snapshot never catches it half-closed.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), { after: close });
-      publishAppearance(); // tray panel + extension popup follow (they snap)
+      // `after` runs inside the transition's update callback, AFTER applyTheme — a publish
+      // outside it would read the attributes before they flip and report the OLD theme.
+      withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), {
+        after: () => {
+          close();
+          publishAppearance(); // tray panel + extension popup follow (they snap)
+        },
+      });
     });
   });
 
@@ -84,8 +90,13 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       const skin = el.dataset.skinChoice as SkinName;
-      withAppearanceTransition("skin", () => applySkin(skin), { skin, after: close });
-      publishAppearance();
+      withAppearanceTransition("skin", () => applySkin(skin), {
+        skin,
+        after: () => {
+          close();
+          publishAppearance();
+        },
+      });
     });
   });
 

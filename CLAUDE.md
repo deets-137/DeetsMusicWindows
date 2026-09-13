@@ -42,6 +42,9 @@ front-end, Rust back-end).
   appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`
   for any slow press→paint. `__frames.sample(ms)` from `scripts/webview-eval.mjs` measures a
   scripted scroll. DEBUGGING.md §Frame telemetry.
+- **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
+  and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
+  to read all of it: DEBUGGING.md §Reviewing the telemetry.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the

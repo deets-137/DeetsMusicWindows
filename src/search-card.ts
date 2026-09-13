@@ -16,13 +16,13 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
 import { onDrillRequest } from "./go-to";
-import { esc } from "./collection-card";
-import { explicitBadge } from "./library-card";
+import { esc, formatTotal } from "./collection-card";
+import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
   ALL_TYPES, type SearchType, type SearchResults, type Artist,
 } from "./search";
-import type { Track } from "./library";
+import type { Track, Artwork } from "./library";
 import type { CardDef, CardInstance } from "./cards";
 
 const TYPES_KEY = "deets.search.types";
@@ -43,7 +43,7 @@ const art = (tmpl: string | undefined, px: number): string | null =>
 
 const coverHTML = (url: string | null, cls: string): string =>
   url
-    ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy" data-art />`
+    ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`
     : `<div class="${cls} ${cls}--empty" aria-hidden="true">♪</div>`;
 
 // ── persisted bits ──
@@ -349,17 +349,42 @@ function mountSearch(host: HTMLElement): CardInstance {
 
   // Body fillers, split from the open* wrappers so the drill-ins can reuse them:
   // a drill opens the pane on the FALLBACK name, then fills once the id resolves.
-  const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string) => {
+  // What the hero knows before the tracks land: the result tile's own facts. Anything
+  // missing (a drill-in only has a name) falls back to the first track.
+  interface CollectionMeta { title: string; artwork?: Artwork; artistName?: string; releaseDate?: string; curatorName?: string }
+  const heroHTML = (kind: "albums" | "playlists", m: CollectionMeta, tracks: Track[]): string => {
+    const t0 = tracks[0];
+    const cover = heroCover(m.artwork ?? t0?.artwork, m.title);
+    const total = formatTotal(tracks.reduce((n, t) => n + (t.durationMs ?? 0), 0));
+    const count = `${tracks.length} song${tracks.length === 1 ? "" : "s"}`;
+    if (kind === "albums") {
+      const artist = m.artistName ?? t0?.artistName ?? "";
+      const year = (m.releaseDate ?? t0?.releaseDate)?.slice(0, 4);
+      const sub = artist
+        ? `<button class="lib-hero__sub lib-hero__sub--link" type="button" data-hero-artist="${esc(artist)}">${esc(artist)}<span class="lib-hero__chev" aria-hidden="true">›</span></button>`
+        : "";
+      return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(m.title)}</span>${sub}<span class="lib-hero__meta">${esc([year, count, total].filter(Boolean).join(" · "))}</span></div>`;
+    }
+    const meta = [count, total, m.curatorName ?? "Apple Music"].filter(Boolean).join(" · ");
+    return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(m.title)}</span><span class="lib-hero__meta">${esc(meta)}</span></div>`;
+  };
+  const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string, meta: CollectionMeta) => {
     body.innerHTML = `<p class="search__prompt">Loading…</p>`;
     collectionTracks(kind, id)
       .then((tracks) => {
-        body.innerHTML = tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`;
+        body.innerHTML = heroHTML(kind, meta, tracks) + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
         wireTrackList(body, tracks, `search-${kind}:${id}`);
+        // The album hero's artist subtitle → the artist pane, via the album's own relationship.
+        body.querySelector<HTMLElement>("[data-hero-artist]")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          goToArtist("albums", id, (e.currentTarget as HTMLElement).dataset.heroArtist ?? "Artist");
+        });
       })
       .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
   };
-  const openCollection = (kind: "albums" | "playlists", id: string, title: string) =>
-    pushPane(title, (body) => fillCollection(body, kind, id));
+  // The pane header shows the kind; the hero owns the name.
+  const openCollection = (kind: "albums" | "playlists", id: string, meta: CollectionMeta) =>
+    pushPane(kind === "albums" ? "Album" : "Playlist", (body) => fillCollection(body, kind, id, meta));
 
   const fillArtist = (body: HTMLElement, id: string) => {
       body.innerHTML = `<p class="search__prompt">Loading…</p>`;
@@ -377,7 +402,7 @@ function mountSearch(host: HTMLElement): CardInstance {
             const tile = (e.target as HTMLElement).closest<HTMLElement>("[data-album]");
             if (!tile) return;
             const al = d.albums.find((a) => a.catalogId === tile.dataset.album);
-            if (al?.catalogId) openCollection("albums", al.catalogId, al.title);
+            if (al?.catalogId) openCollection("albums", al.catalogId, { title: al.title, artwork: al.artwork, artistName: d.artist.name, releaseDate: al.releaseDate });
           });
           // Album tiles live outside `root`, so the root's delegated right-click doesn't
           // reach them — wire the same fetch-then-enqueue menu here (else native menu shows).
@@ -402,22 +427,23 @@ function mountSearch(host: HTMLElement): CardInstance {
     id: string,
     rel: "artists" | "albums",
     fallbackName: string,
-    fill: (body: HTMLElement, targetId: string) => void,
+    fill: (body: HTMLElement, targetId: string, resolvedName: string) => void,
   ) =>
     pushPane(fallbackName, (body, setTitle) => {
       body.innerHTML = `<p class="search__prompt">Loading…</p>`;
       catalogRelated(kind, id, rel)
         .then((ref) => {
           if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
-          setTitle(ref.name || fallbackName);
-          fill(body, ref.id);
+          // An album pane's header reads "Album" (the hero carries the name); an artist pane keeps the name.
+          setTitle(rel === "albums" ? "Album" : ref.name || fallbackName);
+          fill(body, ref.id, ref.name || fallbackName);
         })
         .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
     });
   const goToArtist = (kind: "songs" | "albums", id: string, name: string) =>
     drillRelated(kind, id, "artists", name, fillArtist);
   const goToAlbum = (songId: string, name: string) =>
-    drillRelated("songs", songId, "albums", name, (body, albumId) => fillCollection(body, "albums", albumId));
+    drillRelated("songs", songId, "albums", name, (body, albumId, resolved) => fillCollection(body, "albums", albumId, { title: resolved }));
 
   // Remote drill-ins: other cards' "Go to Artist/Album" summon this card (go-to.ts)
   // and emit an intent here. Same machinery as an in-card drill — a pane pushes on top
@@ -517,13 +543,13 @@ function mountSearch(host: HTMLElement): CardInstance {
     const album = t.closest<HTMLElement>("[data-album]");
     if (album?.dataset.album) {
       const al = results?.albums.find((x) => x.catalogId === album.dataset.album);
-      openCollection("albums", album.dataset.album, al?.title ?? "Album");
+      openCollection("albums", album.dataset.album, { title: al?.title ?? "Album", artwork: al?.artwork, artistName: al?.artistName, releaseDate: al?.releaseDate });
       return;
     }
     const pl = t.closest<HTMLElement>("[data-playlist]");
     if (pl?.dataset.playlist) {
       const p = results?.playlists.find((x) => x.catalogId === pl.dataset.playlist);
-      openCollection("playlists", pl.dataset.playlist, p?.name ?? "Playlist");
+      openCollection("playlists", pl.dataset.playlist, { title: p?.name ?? "Playlist", artwork: p?.artwork, curatorName: p?.curatorName });
       return;
     }
     const st = t.closest<HTMLElement>("[data-station]");

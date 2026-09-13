@@ -468,6 +468,44 @@ a theme role** (`--scrollbar` / `--scrollbar-hover` in `themes.css`) and its
 width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Scoped to the
 scrolling `.lib-view`; widen the selector to theme every scroll region the same way.
 
+### Long lists: rows are relayout boundaries
+
+`.lib-list` is a **block** stack (not a flex column) and every art row (`.lib-row--art`)
+carries `contain: size layout` with a pinned height, `--lib-row-h` — a skin token because the
+natural height is the skin's title + artist stack (46px base, 49px on Press / Retro-Future).
+Measured 2026-09-13 (DEBUGGING.md §Reviewing the telemetry): a cold pass through the
+3,895-row Library dropped ~80% of frames because each batch of lazy covers loading dirtied
+layout, and a flex column re-lays out every child when one is dirty (140–200 ms a frame).
+With the boundary, layout stops at the row. Keep it when restyling rows: a row's height must
+stay pinned by the token, and a new row voice that changes the type stack needs its own
+`--lib-row-h`. Rows without art keep their natural height.
+
+### Detail hero (album / playlist)
+
+A drilled album or playlist opens on a **hero**: the cover big (`--hero-cover`, 180px
+base), the name in the title face, an optional subtitle and a muted meta line
+("2016 · 17 songs · 1 hr 2 min" / "24 songs · 1 hr 32 min · Yours"). Decided 2026-09-13:
+
+- **It rides inside the scrolling view**, as the first block above the rows (in grid
+  densities it spans every column like a shelf), so it scrolls away — a bento card body is
+  ~350px tall and a pinned hero would leave three rows.
+- **The card header shows the kind** ("Album", "Playlist") while drilled, via
+  `Context.headerLabel`; the hero owns the name. Without a hero the header shows the title
+  as before.
+- **An album's artist is the subtitle**, tappable with a › glyph (`data-hero-sub` → the
+  hero's `sub.run`, which drills the Library's artist detail in place). Playlists have no
+  subtitle; their source ("Yours" / the curator) ends the meta line.
+- **Album rows drop the mini cover** (every row shares it) and show the track number in the
+  cover's slot (`.lib-row__num`) with the length as the subline; a "Track Order" sort leads
+  and is the default. **Playlist rows keep the cover** — each song is from a different album.
+
+The contract is `Context.hero?: () => Hero` (`{ cover, title, sub?, meta? }`), a function so
+async facts (a playlist's tracks landing, then `card.reload()`) fill the meta line on the
+next render. `heroCover()` in `library-card.ts` builds the cover slot (real cover, the 2×2
+mosaic, or ♪) at 2× the token size. The Search card's catalog album / playlist panes render
+the same `.lib-hero` markup themselves (they don't use the engine); the artist subtitle
+there hops via the album's own `artists` relationship.
+
 ### 4b. The Queue card (Qcard) & drag-to-reorder
 The Qcard (`src/qcard.ts`) is a small **standalone** renderer (not the collection-card
 engine) in the Playlists slot — Now Playing + Up Next, re-rendered (`body.innerHTML = …`)
