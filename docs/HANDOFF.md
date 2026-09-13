@@ -107,6 +107,14 @@ key for the live mint** (the user's portal step), then revoke `22CB27A4ZK`, whic
 26 tokens printed on 2026-09-11. Note: 0.3.0 installs keep a 15-day margin, so against
 14-day tokens they refetch on every launch until they update (cheap, under the rate limit).
 
+**2026-09-13 — Library virtualization (option A, windowing): decided to explore, not
+started.** Fresh branch + session. Cold start: **[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)**
+(measurements, how the collection engine renders, what must not break, the forks to settle
+first). Proven fallback if A stalls: option B (`content-visibility: auto` on rows / 60-tile
+blocks), measured in DEBUGGING.md. Also shipped that day: the ambient skin layers
+(compositor-only, `--ambient-fps`, paused when hidden) and Settings › Window › **Animate
+backgrounds** — both need a fresh installer to reach the installed app.
+
 > **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
 > anything already committed works unless this file says otherwise. Confirmed in use
 > 2026-09-11: the extension, the mini/midi/max layouts, stations, and the CLI. Do not

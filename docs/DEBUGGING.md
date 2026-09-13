@@ -222,6 +222,21 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   window. `--ambient-fps` (skin token, 30) steps every loop, which cut that by ~⅔.
   Probe that found it (injected `<style>`): masks off 36→21, motion stopped →0,
   `steps()` at 30 fps →15.
+- **Skin switch and grid scroll are whole-Library costs (tested, NOT fixed).** Dev app,
+  Retro-Future, 3,897-row Library, styles injected at runtime (no file changes):
+  - *Skin switch* (direct attribute flip, to the 2nd frame): 353–488 ms. Trace: one Layout
+    172–192 ms + style 81–90 ms over ~23k nodes; the View Transition adds ~150–200 ms on top.
+    `album-color.ts`'s rAF `getPropertyValue` (93 ms) only pulls that same style pass forward.
+    `content-visibility: auto; contain-intrinsic-size: auto var(--lib-row-h)` on list rows →
+    **112–145 ms**.
+  - *Cold Small/Large grid scroll*: 83–91% dropped, 7–8 long tasks of ~345 ms. Trace: 8
+    forced Layouts = 1,698 ms — the CSS Grid algorithm re-running over all 3,893 tiles.
+    No tile-level fix helps: `contain: size` on the cover (344 ms), `content-visibility` on
+    tiles (436 ms), a fixed-height `contain: size layout` tile (443 ms). Wrapping the tiles in
+    blocks of 60 (each its own grid, the view a block stack): `contain: layout` blocks still
+    281 ms; **`content-visibility: auto` blocks → 23% dropped, worst 54 ms, no long tasks.**
+  - *Cold list scroll*: no long tasks, worst 42–54 ms, the same on Press and Retro-Future —
+    paint/decode of ~2,000 covers in a 2 s scripted pass, not layout. Low priority.
 - **WebView2 keeps drawing when the window is minimized or hidden to the tray.**
   `document.visibilityState` stays `visible` and rAF runs at 60/s. `src/ambient.ts` asks
   the window instead (resize / focus events + a `main-visibility` event from tray.rs's hide
