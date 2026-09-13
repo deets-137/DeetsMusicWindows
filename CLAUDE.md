@@ -37,6 +37,11 @@ front-end, Rust back-end).
   library click is a hand test) and its round trip is ~1 s (Previous within 3 s of a
   click can't be reached). Full reference: `docs/DEBUGGING.md`. This is dev-only
   telemetry (`src/perf.ts`, Vite `DEV` flag) — the release bundle carries none of it.
+- **Frame smoothness is measured the same way (2026-09-13).** `src/frames.ts` logs one
+  `[perf] frames …` line per scroll / scrub / pane slide / folder open / queue drag / menu /
+  appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`
+  for any slow press→paint. `__frames.sample(ms)` from `scripts/webview-eval.mjs` measures a
+  scripted scroll. DEBUGGING.md §Frame telemetry.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the

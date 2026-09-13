@@ -27,7 +27,7 @@ export async function dumpLibrary(): Promise<string> {
  * Open the system browser to sign in, then poll until Rust captures the token.
  * Resolves when connected; rejects on timeout.
  */
-export async function connect(timeoutMs = 5 * 60 * 1000): Promise<void> {
+export async function connect(timeoutMs = devSignInTimeout() ?? 5 * 60 * 1000): Promise<void> {
   // Pass the active theme/skin so the browser sign-in page matches the app.
   const theme = document.documentElement.dataset.theme ?? "lilac";
   const skin = document.documentElement.dataset.skin ?? "press";
@@ -38,4 +38,16 @@ export async function connect(timeoutMs = 5 * 60 * 1000): Promise<void> {
     if (await isConnected()) return;
   }
   throw new Error("Timed out waiting for browser sign-in");
+}
+
+/** Dev-only test seam: `localStorage["deets.dev.signInTimeoutMs"]` shortens the sign-in
+ *  wait, to reach the timeout toast in seconds (DEBUGGING.md §Toasts). Release: none. */
+function devSignInTimeout(): number | undefined {
+  if (!import.meta.env.DEV) return undefined;
+  try {
+    const ms = Number(localStorage.getItem("deets.dev.signInTimeoutMs"));
+    return ms > 0 ? ms : undefined;
+  } catch {
+    return undefined;
+  }
 }

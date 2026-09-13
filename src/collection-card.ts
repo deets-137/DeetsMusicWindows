@@ -11,6 +11,7 @@
 //
 // Everything is client-side over data the card already holds in memory.
 
+import * as frames from "./frames";
 import { openContextMenu, type MenuItem } from "./context-menu";
 
 export type Density = "lines" | "small" | "large";
@@ -326,6 +327,7 @@ export function initCollectionCard(opts: CardOptions) {
 
   const slide = (incoming: HTMLElement, dir: "push" | "pop", frame: Frame, onDone?: () => void) => {
     animating = true;
+    const endFrames = frames.begin("slide", dir);
     const outgoing = curPane;
     incoming.dataset.pos = dir === "push" ? "right" : "left";
     incoming.style.transition = "none"; // place off-screen without animating
@@ -344,6 +346,7 @@ export function initCollectionCard(opts: CardOptions) {
       incoming.removeEventListener("transitionend", finish);
       if (outgoing) outgoing.remove();
       animating = false;
+      endFrames();
       onDone?.();
     };
     const durStr = getComputedStyle(incoming).transitionDuration;

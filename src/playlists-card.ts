@@ -8,6 +8,7 @@
 // Contents are cache-first (zero Apple calls to re-open); the header ⟳ is the
 // explicit mirror re-sync that also drops content caches.
 
+import * as frames from "./frames";
 import { setting } from "./settings-store";
 import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, playlistSetCover, addToPlaylistItem, onPlaylistsChange, foldersList, folderCreate, folderRename, folderDelete, folderAssign, type PlaylistFolder } from "./playlists";
 import type { Playlist } from "./search";
@@ -399,6 +400,7 @@ export const playlistsCard: CardDef = {
     };
 
     const toggleSection = (key: string) => {
+      frames.during("fold", 250, collapsed.has(key) ? "open" : "close");
       if (collapsed.has(key)) collapsed.delete(key);
       else collapsed.add(key);
       try {

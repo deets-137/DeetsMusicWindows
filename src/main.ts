@@ -19,6 +19,7 @@ import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
+import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
 import { runWeeklyReplay } from "./replay";
@@ -191,6 +192,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Warm MusicKit + the DRM module at idle so the session's first click pays neither
   // (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the click before this).
   window.setTimeout(warmPlayer, 1500);
+  frames.init(); // dev-only frame telemetry (frames.ts): scroll / scrub / slide / drag windows
 
   // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
   // store has had a moment to load so the ranking can resolve titles.

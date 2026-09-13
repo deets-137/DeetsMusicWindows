@@ -8,6 +8,7 @@
 import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
 import { addTransientTracks } from "./track-store";
 import { addToPlaylistItem } from "./playlists";
+import * as frames from "./frames";
 import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
 import { favoriteItem, reconcile } from "./favorites";
@@ -301,6 +302,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     fill(pane.querySelector<HTMLElement>(".spane__scroll")!, (t) => { titleEl.textContent = t; });
     const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>('.spane[data-pos="center"]');
     void pane.offsetWidth; // commit the off-screen position before sliding in
+    frames.during("slide", 450, "search-push");
     pane.dataset.pos = "center";
     if (below) below.dataset.pos = "left";
     paneStack.push(pane);
@@ -311,6 +313,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     const pane = paneStack.pop();
     if (!pane) return;
     const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>(".spane:first-child");
+    frames.during("slide", 450, "search-pop");
     pane.dataset.pos = "right";
     if (below) below.dataset.pos = "center";
     window.setTimeout(() => pane.remove(), 400); // past --nav-dur; cheap cleanup

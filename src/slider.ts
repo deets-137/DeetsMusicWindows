@@ -25,12 +25,15 @@ export interface SliderHandle {
   readonly dragging: boolean;
 }
 
+import * as frames from "./frames";
+
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 /** Attach drag-to-set behaviour to `el`. Returns a handle for external updates. */
 export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
   const { axis, onDrag, onCommit } = opts;
   let dragging = false;
+  let endFrames = () => {}; // dev-only: the drag's frame window (frames.ts)
 
   // Map a pointer position to a 0..1 fraction along the active axis. Vertical
   // sliders read bottom→top (up = more), so the Y fraction is inverted.
@@ -46,6 +49,7 @@ export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
 
   el.addEventListener("pointerdown", (e) => {
     dragging = true;
+    endFrames = frames.begin("scrub", axis === "x" ? "seek" : "volume");
     el.setPointerCapture(e.pointerId);
     const f = fracAt(e.clientX, e.clientY);
     reflect(f);
@@ -60,6 +64,7 @@ export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
   const end = (e: PointerEvent) => {
     if (!dragging) return;
     dragging = false;
+    endFrames();
     const f = fracAt(e.clientX, e.clientY);
     reflect(f);
     onCommit?.(f);

@@ -122,6 +122,43 @@ Player events (`src/player.ts`):
 - `player:desync` — **model's `current` ≠ MusicKit's now-playing item** (the bug class
   that froze Up Next). If you see these, model-follow is drifting.
 
+## Frame telemetry — `src/frames.ts` (dev only, 2026-09-13)
+
+The smoothness counterpart of the click-to-sound telemetry, gated on the same `DEV`
+flag (the release bundle carries none of it). It measures whether the main thread
+produces a frame every display period during the gestures that have to feel buttery.
+
+**Windows.** One per interaction, each closing with a single line in the console and
+the dev log:
+`[perf] frames <name> [<detail>] <elapsed> ms · N frames @<hz> Hz · dropped D (P%) ·
+worst W ms [· longtasks K (max M ms)]`. A dropped frame is a gap over 1.5× the display
+period; `longtasks` are the browser's >50 ms main-thread tasks that overlapped the window
+(the usual cause). Names: `scroll <container>` (opens itself on any scroll event, closes
+150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
+seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
+`fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
+menu opening), `appearance theme|skin` (the view transition), `sample` (manual).
+
+**The display.** At launch + 3 s the module samples 40 idle frames and logs
+`[perf] display <hz> Hz (period <ms>)`; every window is judged against that period, so a
+144 Hz panel is held to 6.9 ms, not 16.7.
+
+**Inputs.** The Event Timing API reports any press/click/key whose input→paint took over
+two periods: `[perf] input <event> <element-class> <ms> ms (delay <ms>)` — `delay` is
+the wait before the handler ran (a busy main thread), the rest is the handler + paint.
+
+**Driving it from the session.** `__frames` on the console: `__frames.hz`,
+`__frames.begin("x")` (returns the closer), and `__frames.sample(ms)` — a window of the
+given length whose summary line resolves the promise, so
+`node scripts/webview-eval.mjs "document.querySelector('.lib-view').scrollBy({top:3000,behavior:'smooth'}); __frames.sample(1500)"`
+scrolls the Library and returns the frame line (the auto `scroll` window logs its own
+line too). Gestures with a pointer (scrub, drag) are hand tests.
+
+**What it cannot see.** A compositor-only stall (a heavy GPU backdrop blur under the
+Glass skin) delays rAF only once the frame pipeline backs up; a mild one slips through.
+Pair a suspicious skin with devtools → Rendering → *Frame Rendering Stats* and *Paint
+flashing*.
+
 ## Driving the webview — `scripts/webview-eval.mjs` (dev only)
 The MCP and CLI reach the player through the bridge. They cannot run console calls such
 as `__toast.demo()` or `__diag.dump()`. For those, `npm run dev:app` opens a WebView2
@@ -190,12 +227,18 @@ setting is Settings › Window › **Show notices**, default *Failures*.
    pulled release). Expect one warn "Skipped “Title” — Apple Music no longer offers it."
    Play it again: silent (the mark is on disk). A cache reset (Settings › Library)
    makes it fresh again.
-7. **Sign-in timeout.** Account › Disconnect, then Sign in, and close the browser tab.
-   Five minutes later: the sticky "Sign-in did not complete." error, with the flyout
-   closed. (Reconnect afterwards.)
-8. **No token.** Only with the mint's `KILL` switch and no cached token (RELEASE.md §7),
-   or move `src-tauri/secrets/*.p8` away and the token cache with it: the window opens
-   with the sticky "Can't reach the token service." error.
+7. **Sign-in timeout.** Dev builds read `localStorage["deets.dev.signInTimeoutMs"]`
+   (`apple.ts`) to shorten the 5-minute wait. First back up
+   `%APPDATA%\com.deetsmusic.dev\user-token.txt`, because Disconnect deletes it. Set the key
+   to `15000`, press Account › Disconnect, then Sign in, and ignore the browser tab. After
+   15 s: the sticky "Sign-in did not complete." error. Then remove the key, stop the dev
+   app, put the token file back, and relaunch: the dev app is signed in again, with no
+   browser sign-in. The release build ignores the key.
+8. **No token.** `DEETS_DEV_NO_TOKEN=1 npm run dev:app` (debug builds only; `apple.rs`
+   `ensure_developer_token`) acts as if the local key, the token cache and the mint all
+   failed. The log has `token: no developer token: forced by DEETS_DEV_NO_TOKEN`, and the
+   window opens with the sticky "Can't reach the token service." error (`role="alert"`,
+   Dismiss). Relaunch without the variable to recover. Desk-tested 2026-09-13.
 9. **From the CLI/MCP** (`deetsmusic` tools, AGENT.md): a play that lands on a dead id
    still writes its `[perf]` line, and `__diag.flush()` from the console (or the next
    crash/close) puts the `toast` line beside it in the log. There is no bridge route to

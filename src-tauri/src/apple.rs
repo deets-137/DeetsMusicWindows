@@ -260,6 +260,15 @@ fn install(t: DevToken) {
 /// `setup()` after `set_app_data_dir`. An `Err` means there is NO token at all;
 /// startup still continues (Apple calls fail with that message until a restart).
 pub fn ensure_developer_token() -> Result<(), String> {
+    // 0. Test seam (debug builds only): `DEETS_DEV_NO_TOKEN=1 npm run dev:app` behaves as if
+    //    every source failed, to exercise the launch-time "no token" toast (DEBUGGING.md §Toasts).
+    if cfg!(debug_assertions) && std::env::var_os("DEETS_DEV_NO_TOKEN").is_some() {
+        let msg = "no developer token: forced by DEETS_DEV_NO_TOKEN".to_string();
+        crate::log::warn(&format!("token: {msg}"));
+        *DEV_TOKEN_ERROR.lock().unwrap() = Some(msg.clone());
+        return Err(msg);
+    }
+
     // 1. The dev seam.
     if local_key_present() {
         return match sign_local() {
