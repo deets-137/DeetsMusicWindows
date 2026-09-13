@@ -169,8 +169,9 @@ window.addEventListener("DOMContentLoaded", () => {
       setAccount((await isConnected()) ? "in" : "out", `Error: ${msg}`);
       // The Account flyout is closed by the time a 5-min sign-in times out, so the row's
       // error text is invisible; the toast is the visible half (TOASTS.md).
+      // Plain copy only; the raw text stays in the console and the row (TOASTS.md).
       if (/timed out/i.test(msg)) toast({ kind: "error", text: "Sign-in did not complete. Open Account and try again." });
-      else toast({ kind: "warn", text: `Account: ${msg}` });
+      else toast({ kind: "warn", text: wasIn ? "Couldn't disconnect. Try again." : "Sign-in failed. Open Account and try again." });
     }
   });
 

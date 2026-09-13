@@ -19,6 +19,7 @@ import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, ty
 import { musicCell, trackMenu, explicitBadge } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { requestCard } from "./layout-bus";
+import { toast } from "./toast";
 import type { CardDef } from "./cards";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
@@ -61,9 +62,16 @@ function pickCover(p: Playlist): void {
       // Center-crop to a square, like every other cover.
       const s = Math.min(img.naturalWidth, img.naturalHeight);
       ctx.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, SIDE, SIDE);
-      playlistSetCover(p, c.toDataURL("image/jpeg", 0.85)).catch((e) => console.error("[playlists] set cover", e));
+      playlistSetCover(p, c.toDataURL("image/jpeg", 0.85)).catch((e) => {
+        console.error("[playlists] set cover", e);
+        toast({ kind: "warn", text: "Couldn't save the cover." });
+      });
     };
-    img.onerror = () => { URL.revokeObjectURL(url); console.warn("[playlists] cover: not an image"); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      console.warn("[playlists] cover: not an image");
+      toast({ kind: "warn", text: `“${file.name}” is not an image DeetsMusic can read.` });
+    };
     img.src = url;
   });
   input.click();
@@ -545,7 +553,10 @@ export const playlistsCard: CardDef = {
           card.drill(detail(p));
           if (setting("playlistCreateSummon")) requestCard("search"); // FUTURE-SETTINGS §16
         })
-        .catch((e) => console.error("[playlists] create", e));
+        .catch((e) => {
+          console.error("[playlists] create", e);
+          toast({ kind: "warn", text: "Couldn't create the playlist." });
+        });
 
     // Two labelled create fields (playlist / folder): a new playlist drills in and
     // summons Search; a new folder just appears as an (empty, collapsible) section.
@@ -557,7 +568,11 @@ export const playlistsCard: CardDef = {
             input: {
               label: "Folder",
               placeholder: "Folder name",
-              onSubmit: (name) => void folderCreate(name).catch((e) => console.error("[playlists] create folder", e)),
+              onSubmit: (name) =>
+                void folderCreate(name).catch((e) => {
+                  console.error("[playlists] create folder", e);
+                  toast({ kind: "warn", text: "Couldn't create the folder." });
+                }),
             },
           },
         ]);

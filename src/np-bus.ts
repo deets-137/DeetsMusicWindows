@@ -34,6 +34,7 @@ import { materializeTrack } from "./search";
 import type { Track } from "./library";
 import type { Station } from "./radio";
 import { log } from "./diag";
+import { onToast, type ToastKind } from "./toast";
 
 export interface NpState {
   active: boolean;
@@ -213,11 +214,47 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
   }
 }
 
+// Agent notices (AGENT.md §3): the warn/error toasts raised while an agent request runs
+// ride its reply as `notices`, whatever the user's Show notices tier — the agent needs
+// to know the command went wrong so it can correct it. The window still shows them per
+// the tier. Requests that start playback wait NOTICE_GRACE_MS after they finish: the
+// dead-song toast collects names for 1 s, and a playback error lands after the start.
+const NOTICE_GRACE_MS = 1500;
+const NOTICE_KINDS: ReadonlySet<ToastKind> = new Set(["warn", "error"]);
+const startsPlayback = (kind: string, payload: any): boolean =>
+  kind === "play" || kind === "queue" || kind === "play-station" ||
+  (kind === "command" && ["next", "previous", "play", "play-pause"].includes(String(payload?.kind)));
+
+async function runAgentWithNotices(kind: string, payload: any): Promise<unknown> {
+  if (kind === "queue-get" || kind === "history-get") return runAgent(kind, payload);
+  const notices: { kind: ToastKind; text: string }[] = [];
+  const off = onToast((t) => {
+    if (NOTICE_KINDS.has(t.kind)) notices.push(t);
+  });
+  const grace = () =>
+    startsPlayback(kind, payload) ? new Promise((r) => window.setTimeout(r, NOTICE_GRACE_MS)) : Promise.resolve();
+  try {
+    const result = await runAgent(kind, payload);
+    await grace();
+    return notices.length && result && typeof result === "object" ? { ...result, notices } : result;
+  } catch (e) {
+    // A failure's raw text is MusicKit's ("One or more items could not be resolved: 0");
+    // the toasts say it plainly, so they ride the error string (agent_json's status
+    // mapping reads the prefix only).
+    await grace();
+    if (!notices.length) throw e;
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`${msg} — ${notices.map((n) => n.text).join(" · ")}`);
+  } finally {
+    off();
+  }
+}
+
 export function initNpBus(): void {
   listen<AgentRequest>("agent-request", (e) => {
     const { id, kind, payload } = e.payload;
     log("np-bus:agent", { id, kind });
-    runAgent(kind, payload).then(
+    runAgentWithNotices(kind, payload).then(
       (result) => invoke("agent_reply", { id, ok: true, result }),
       (err) => invoke("agent_reply", { id, ok: false, error: err instanceof Error ? err.message : String(err) }),
     ).catch((err) => console.error("[np-bus] agent reply failed", err));

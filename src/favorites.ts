@@ -14,6 +14,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
 import type { MenuItem } from "./context-menu";
 import { libraryAddEnabled } from "./library-add";
+import { toast } from "./toast";
 
 const loved = new Set<string>();
 const known = new Set<string>(); // every id the mirror holds a row for (loved or not)
@@ -65,6 +66,8 @@ export async function setLoved(t: Track, on: boolean): Promise<void> {
     if (was) loved.add(id);
     else loved.delete(id);
     emit();
+    // The ♥ just flipped back; say why (TOASTS.md). Every ♥ path (menus, Now Playing) lands here.
+    toast({ kind: "warn", text: `Couldn't update Favorites for “${t.title}”.` });
     throw e;
   }
 }

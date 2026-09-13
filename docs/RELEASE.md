@@ -148,6 +148,9 @@ repo). The user wants a design session on it. The forks to bring:
 - **The publish step:** extend `npm run release` to sign, upload, and write `latest.json`.
 - **The kill switch:** the worker's `KILL` var must not also block updates, or a bad token
   release could not be fixed by an update.
+- **The remote notice (parked here 2026-09-13):** the mint's config already carries a notice
+  and a minimum version, but no front-end code reads them. Decide with the updater how they
+  surface: a notice toast and an "update available" toast (TOASTS.md §5).
 
 ## 7. Distributing a usable build — the developer token
 

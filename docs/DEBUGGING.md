@@ -122,6 +122,28 @@ Player events (`src/player.ts`):
 - `player:desync` — **model's `current` ≠ MusicKit's now-playing item** (the bug class
   that froze Up Next). If you see these, model-follow is drifting.
 
+## Driving the webview — `scripts/webview-eval.mjs` (dev only)
+The MCP and CLI reach the player through the bridge. They cannot run console calls such
+as `__toast.demo()` or `__diag.dump()`. For those, `npm run dev:app` opens a WebView2
+remote-debugging (CDP) port on the main window. The port is the first free one from 9222
+up. The runner prints it (`webview CDP on 9222`) and appends it to the main window's
+`additionalBrowserArgs` in the generated `src-tauri/.tauri.dev.gen.json`. It does not
+use the `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` env var, because that would replace the
+window's own args, the autoplay flag included.
+
+```
+node scripts/webview-eval.mjs "__toast.demo()"
+node scripts/webview-eval.mjs "__diag.dump(); __diag.flush()"   # or return a value:
+node scripts/webview-eval.mjs "JSON.parse(localStorage.getItem('deets.settings')).toasts"
+```
+
+- The expression runs in the main window as a console line, with a user gesture (so a
+  clipboard write works). Promises are awaited. The value prints as JSON.
+- Exit 1: the expression threw (the message prints). Exit 2: no dev config, no port, or
+  no main-window page.
+- The port binds to loopback and exists only under `dev:app`. `npm run tauri dev` and the
+  release build have no port. A change to the port setup needs a runner restart.
+
 ## Toasts — the `__toast` console handle + the morning test script
 The toast primitive ([TOASTS.md](TOASTS.md)) exposes `window.__toast` in every build:
 
@@ -141,12 +163,13 @@ can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
 **Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
 setting is Settings › Window › **Show notices**, default *Failures*.
 
-1. **Look.** `__toast.demo()` in midi: a bottom-centred stack of at most 3 (the stack is
-   capped, so `demo()`'s four toasts show the last three — the oldest timed one yields;
-   the sticky error survives). Hover a timed one: its bar stops draining; leave: it
-   resumes. Press Dismiss on the error. Repeat on **max** (Settings menu › Surface): the
-   stack is top-right under the titlebar, newest on top, flying in from the right. Repeat
-   on **mini**: the strip clamps to the window width. Then cycle a few themes (the stripe
+1. **Look.** `__toast.demo()` in midi: a top-right stack under the Now Playing card,
+   newest on top, at most 3 (the stack is capped, so `demo()`'s four toasts show the last
+   three — the oldest timed one yields; the sticky error survives). The song title stays
+   visible. Resize the window: the stack follows the card's bottom edge. Hover a timed
+   one: its bar stops draining; leave: it resumes. Press Dismiss on the error. Repeat on
+   **max** (Settings menu › Surface): the stack is under the titlebar. Repeat on **mini**:
+   under the card, and the strip clamps to the window width. Then cycle a few themes (the stripe
    follows the traffic lights — Moonlight/Noir/Siren stay in-family) and skins (Glass
    frosts the strip; Press squares it). Set Windows' *Show animations* off and `demo()`
    again: no slide.
@@ -178,10 +201,27 @@ setting is Settings › Window › **Show notices**, default *Failures*.
    crash/close) puts the `toast` line beside it in the log. There is no bridge route to
    raise a toast; the console handle is the driver.
 
-Not testable from your desk: the no-subscription hint (needs an Apple ID without a
-subscription; the log's `player:playbackError` `msg` after such a sign-in is the thing
-to read), and the Replay / Rewind-unlock confirmations (they fire on their own schedule —
-they are one `toast()` line each, kind `success` / `info`, `all` tier).
+10. **Replay, Rewind unlock, no subscription — the dev hooks.** These fire on their own
+    schedule or need an account you do not have, so dev builds (`import.meta.env.DEV`;
+    the release bundle has none of it) add `__toast.sim`. Each hook runs the real code
+    path, not only the toast. Replay and Rewind are `success` / `info`, so set
+    **Everything** first; the no-subscription hint is a `warn` and shows under *Failures*.
+
+    | Call | Does | Side effect |
+    |---|---|---|
+    | `__toast.sim.replay()` | `runWeeklyReplay(true)`: skips the `replayAuto` setting and the due-day check → "Replay updated: N songs from this week." | **Real run.** It rewrites the rolling "Replay" playlist (or adds a dated one with `replayKeep`) and stamps `deets.replay.lastRun`. Fewer than 5 songs played in the past 7 days: no toast, and `__diag.dump()` has `weekly skipped`. |
+    | `__toast.sim.rewind()` | clears `rewindAutoShown`, lifts the in-memory start count to 50, runs the unlock → "Rewind unlocked…" | Sets `rewindCard` on and `rewindAutoShown` back to true, as the real unlock does. The play count on disk does not change. |
+    | `__toast.sim.noSub()` | marks a fresh sign-in, then feeds `onPlaybackError` a synthetic non-"unavailable" error → "Playback failed after sign-in…" (8 s) | A `player:playbackError` line with `msg: "sim: …"` in diag. **Play a song from a list first**: the handler ignores errors outside queue mode, and the hook warns in the console in that case. |
+    | `__toast.sim.armNoSub()` | marks a fresh sign-in only | The next real playback error that is not a dead song raises the hint. Use it to test the real MusicKit error text. |
+
+    Checks: each call once → one toast. `noSub()` twice → two toasts, because each call
+    arms again. After `armNoSub()`, a dead-song error does not use up the arm. Under
+    *Off*, each call gives `toast:muted` in `__diag.dump()`.
+
+Still not testable from your desk: the real MusicKit error text for an Apple ID with no
+subscription. After a sign-in with such an account, read `msg` in `player:playbackError`.
+If that text matches `/unavailable/i`, the hint never fires. Then `isUnavailable` in
+`player.ts` needs a narrower test.
 
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.

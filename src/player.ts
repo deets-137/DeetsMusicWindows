@@ -322,6 +322,9 @@ function emitProgress(): void {
   const duration = music?.currentPlaybackDuration ?? 0;
   const currentTime = music?.currentPlaybackTime ?? 0;
   const progress = duration > 0 ? currentTime / duration : 0;
+  // Audio really played since the sign-in, so a later playback error is not the
+  // subscription (TOASTS.md). Not at the song-start: MusicKit sets now-playing first.
+  if (freshSignIn && currentTime > 0.5) freshSignIn = false;
   progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
   // Credit a "full" once past the threshold — but only when the model's current IS the
   // song MusicKit is playing. During a context switch the model flips to the new song
@@ -802,6 +805,9 @@ function markDead(ids: string[], reason: "not-found" | "unavailable"): void {
 // so it must not be named: only handles with no play target left count.
 const DEAD_TOAST_GAP_MS = 1000;
 const deadNames = new Set<string>();
+/** Titles the dead-song toast has named, read once by playTracks' failure toast so a
+ *  dead song is not reported twice ("Couldn't play" + "Skipped"). */
+const deadToasted = new Set<string>();
 let deadToastTimer: number | undefined;
 function noteDeadSongs(fresh: string[]): void {
   for (const id of fresh) {
@@ -815,6 +821,7 @@ function noteDeadSongs(fresh: string[]): void {
   deadToastTimer = window.setTimeout(() => {
     const names = [...deadNames];
     deadNames.clear();
+    names.forEach((n) => deadToasted.add(n));
     const text =
       names.length === 1
         ? `Skipped “${names[0]}” — Apple Music no longer offers it.`
@@ -1088,6 +1095,14 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
     return;
   }
 
+  // Every song from the start is already known dead: loadFromModel would find an empty
+  // window and return quietly, leaving a dead song as `current` with nothing playing and
+  // the click reported as a success. Refuse before the model changes (TOASTS.md).
+  if (!handles.slice(startIndex).some((h) => playId(h))) {
+    perf.abandon("nothingPlayable");
+    throw new Error("nothing to play: Apple Music no longer offers these songs");
+  }
+
   resumeStation = null; // a deliberate new context ends any queued station return
   perf.span("setContext", () => queue.setContext(handles, startIndex));
   perf.target(playId(queue.getCurrent() ?? {}));
@@ -1108,7 +1123,26 @@ export async function jumpToUpcoming(index: number): Promise<void> {
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
 export function playTracks(tracks: Track[], startIndex: number, context = "library"): Promise<void> {
   perf.click(context, tracks.length); // BEFORE the ingest — stage A includes it
-  return playContext(handlesFrom(tracks, context), startIndex);
+  return playContext(handlesFrom(tracks, context), startIndex).catch((e) => {
+    // Every play click (every card, the agent) lands here; the callers only log (TOASTS.md).
+    // A dead song gets the named dead-song toast about a second later (the feed rejects,
+    // dead_ids_mark answers, the names collect for DEAD_TOAST_GAP_MS): wait past that and
+    // stay quiet if it named this song.
+    const title = tracks[startIndex]?.title;
+    const gone = String(e instanceof Error ? e.message : e).startsWith("nothing to play");
+    window.setTimeout(() => {
+      if (title && deadToasted.delete(title)) return;
+      const text = gone
+        ? tracks.length - startIndex > 1 || !title
+          ? "Apple Music no longer offers these songs."
+          : `Apple Music no longer offers “${title}”.`
+        : title
+          ? `Couldn't play “${title}”.`
+          : "Couldn't play that.";
+      toast({ kind: "warn", text });
+    }, DEAD_TOAST_GAP_MS + 400);
+    throw e;
+  });
 }
 
 // ── Radio playback (STATIONS.md §2) ──────────────────────────────────────────
@@ -1170,6 +1204,8 @@ export async function playStation(s: Station): Promise<void> {
     exitRadio();
     diag.log("player:stationError", { id: s.id, e: String(e) });
     console.warn("[player] station failed:", e);
+    // Every station play (Radio, Search, Start Station, the agent, the launch resume) lands here (TOASTS.md).
+    toast({ kind: "warn", text: `Couldn't start ${s.name}.` });
     throw e;
   } finally {
     loadingContext = false;
@@ -1261,10 +1297,14 @@ export const enqueueLater = (handles: TrackHandle[]): Promise<void> => enqueue(h
 
 /** Play-Next a list of library Tracks (e.g. a song, or an album in track order). */
 export const queueTracksNext = (tracks: Track[], context = "library"): Promise<void> =>
-  enqueueNext(handlesFrom(tracks, context));
+  enqueueNext(handlesFrom(tracks, context)).catch(queueFailed);
 /** Add-to-Queue a list of library Tracks. */
 export const queueTracksLater = (tracks: Track[], context = "library"): Promise<void> =>
-  enqueueLater(handlesFrom(tracks, context));
+  enqueueLater(handlesFrom(tracks, context)).catch(queueFailed);
+function queueFailed(e: unknown): never {
+  toast({ kind: "warn", text: "Couldn't add to the queue." });
+  throw e;
+}
 
 // ── Queue editing (Up Next context menu: Remove / Move to Top / Move to Bottom) ──
 //
@@ -1552,6 +1592,24 @@ function onPlaybackError(e: any): void {
     return;
   }
   healDeadNext(music, msg, true).catch((err) => console.warn("[player] dead-next heal:", err));
+}
+
+// Dev-only: the no-subscription hint (DEBUGGING.md §Toasts). `armNoSub` marks a fresh
+// sign-in and waits for a real playback error; `noSub` also feeds onPlaybackError a
+// synthetic one. Both go through the real guards, so a song must be playing from a queue.
+if (import.meta.env.DEV) {
+  (window as any).__toast.sim = {
+    ...(window as any).__toast.sim,
+    armNoSub: noteSignedIn,
+    noSub: () => {
+      if (loadingContext || mode !== "queue" || !music) {
+        console.warn("[toast sim] play a song from a list first — onPlaybackError ignores this state");
+        return;
+      }
+      noteSignedIn();
+      onPlaybackError(new Error("sim: playback failed (no subscription)"));
+    },
+  };
 }
 
 /** Restart the song if we're past the intro, otherwise skip back. */

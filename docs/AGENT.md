@@ -70,6 +70,19 @@ All need the token (or an extension `Origin`). Errors: `400` bad body / bad id /
 | `GET /playlists` | `{playlists:[Playlist…]}` — Apple mirror + local, zero Apple calls |
 | `POST /search` | `{term, types:["songs","albums","artists","playlists"]}` → `SearchResults`. Without `types` it's the extension's popup shape |
 
+**Notices (2026-09-13).** A successful `/command`, `/play` or `/queue` reply can carry
+`notices: [{kind, text}]`. These are the app's `warn` and `error` toasts
+([TOASTS.md](TOASTS.md)) raised while the request ran — for example, "Skipped “Title” —
+Apple Music no longer offers it." They are included whatever the user's *Show notices*
+tier is, so the agent learns that the command went wrong and can correct it. The window
+still shows them under the tier. A request that starts playback (`play`, `queue`, a
+station, `next`, `previous`, `play`, `play-pause`) waits 1.5 s after it finishes to
+catch late toasts. The key is absent when nothing was raised. A failed request keeps the
+`{error}` reply, and the notice texts are appended to it after " — ", because MusicKit's
+raw error ("One or more items could not be resolved: 0") does not say what went wrong
+(for example: `… — Skipped “Title” — Apple Music no longer offers it.`). The CLI and the
+MCP print each success notice under the result line as `! warn: <text>`.
+
 ```bash
 T=$(jq -r .bridgeToken "$APPDATA/com.deetsmusic.app/settings.json")
 curl -s -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
@@ -133,6 +146,9 @@ Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp
   `DeetsMusic.exe` would collide on Windows). **Not yet:** the installer adding that
   folder to PATH — add `%LOCALAPPDATA%\DeetsMusic\cli` yourself for now.
 - Dev: `cargo run --manifest-path cli/Cargo.toml -- np`, or put `cli/dist` on PATH.
+- **A debug build reads only the dev token** (`com.deetsmusic.dev`, 2026-09-13), so it
+  reaches `npm run dev:app` and never the installed app, even when both are open. Only the
+  release build (`npm run cli:build`) reads both tokens.
 
 ## 5. Later
 - Installer PATH entry (NSIS hook).

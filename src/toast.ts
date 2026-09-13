@@ -68,11 +68,24 @@ const INERT: ToastHandle = { dismiss() {}, update() {}, shown: false };
 let host: HTMLElement | null = null;
 function ensureHost(): HTMLElement {
   if (host) return host;
-  host = document.createElement("div");
-  host.className = "toast-host";
-  host.setAttribute("aria-live", "polite");
-  document.body.appendChild(host);
-  return host;
+  const h = document.createElement("div");
+  h.className = "toast-host";
+  h.setAttribute("aria-live", "polite");
+  document.body.appendChild(h);
+  host = h;
+  // mini/midi: the stack hangs under the Now Playing card so the song stays readable.
+  // Its bottom edge moves with the surface and the window, so it is measured, not a
+  // token; CSS falls back to the titlebar when there is no card (and max ignores it).
+  const np = document.querySelector<HTMLElement>('[data-slot="np"]');
+  const place = (): void => {
+    const r = np?.getBoundingClientRect();
+    if (r && r.height > 0) h.style.setProperty("--toast-top", `${Math.round(r.bottom)}px`);
+    else h.style.removeProperty("--toast-top");
+  };
+  place();
+  if (np) new ResizeObserver(place).observe(np);
+  window.addEventListener("resize", place);
+  return h;
 }
 
 const KINDS: readonly ToastKind[] = ["info", "success", "warn", "error"];
@@ -94,6 +107,16 @@ function silenceNotice(key: string): void {
   }
 }
 
+// Observers see EVERY call — before the tier and notice gates — so a consumer that is
+// not the user (the agent reply, np-bus.ts) learns of a failure the user has muted.
+type ToastObserver = (t: { kind: ToastKind; text: string }) => void;
+const observers = new Set<ToastObserver>();
+/** Watch every toast call (muted ones too). Returns the unsubscribe. */
+export function onToast(fn: ToastObserver): () => void {
+  observers.add(fn);
+  return () => observers.delete(fn);
+}
+
 /** Does the current tier let this call through? */
 function admitted(kind: ToastKind, notice: boolean): boolean {
   const tier = setting("toasts");
@@ -108,6 +131,13 @@ export function toast(opts: ToastOptions): ToastHandle {
   const notice = !!opts.dismissKey;
   const sticky = notice || (opts.sticky ?? kind === "error");
   const text = String(opts.text ?? "");
+  observers.forEach((fn) => {
+    try {
+      fn({ kind, text });
+    } catch (e) {
+      console.error("[toast] observer", e);
+    }
+  });
 
   if (notice && noticeOff(opts.dismissKey!)) {
     diag.log("toast:muted", { kind, text, why: "notice-off", key: opts.dismissKey });

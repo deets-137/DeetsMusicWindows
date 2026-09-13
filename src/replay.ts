@@ -95,11 +95,13 @@ function lastDue(day: string, now = Date.now()): number {
  * top 25 by minutes listened become the rolling "Replay" playlist (replaced), or a
  * dated one when `replayKeep` is on. Fewer than 5 songs: skip, log, try next launch.
  */
-export async function runWeeklyReplay(): Promise<void> {
-  if (!setting("replayAuto")) return;
+export async function runWeeklyReplay(force = false): Promise<void> {
   const due = lastDue(setting("replayDay"));
-  const last = Number(localStorage.getItem(LAST_RUN_KEY) ?? 0);
-  if (last >= due) return;
+  if (!force) {
+    if (!setting("replayAuto")) return;
+    const last = Number(localStorage.getItem(LAST_RUN_KEY) ?? 0);
+    if (last >= due) return;
+  }
 
   const rows = await topBy("songs", "week");
   const tracks = tracksOf(rows, REPLAY_SIZE);
@@ -121,4 +123,13 @@ export async function runWeeklyReplay(): Promise<void> {
   try { localStorage.setItem(LAST_RUN_KEY, String(Date.now())); } catch { /* session-only */ }
   diag.log("replay", `weekly made (${tracks.length} songs, keep=${setting("replayKeep")})`);
   toast({ kind: "success", text: `Replay updated: ${tracks.length} songs from this week.` });
+}
+
+// Dev-only: run the weekly make now, past the setting and the due-day gate (DEBUGGING.md
+// §Toasts). It is the real run — it rewrites the Replay playlist in the dev data dir.
+if (import.meta.env.DEV) {
+  (window as any).__toast.sim = {
+    ...(window as any).__toast.sim,
+    replay: () => runWeeklyReplay(true),
+  };
 }

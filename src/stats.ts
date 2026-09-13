@@ -53,6 +53,19 @@ void invoke<number>("play_event_count")
   })
   .catch((e) => diag.log("stats:err", { kind: "event-count", e: String(e) }));
 
+// Dev-only: replay the one-shot unlock (DEBUGGING.md §Toasts). Clears the "already fired"
+// flag and lifts the in-memory start count to the gate; the real count on disk is untouched.
+if (import.meta.env.DEV) {
+  (window as any).__toast.sim = {
+    ...(window as any).__toast.sim,
+    rewind: () => {
+      setSetting("rewindAutoShown", false);
+      startCount = Math.max(startCount ?? 0, REWIND_UNLOCK_STARTS);
+      maybeUnlockRewind();
+    },
+  };
+}
+
 /** Stable per-song key for the dedup latches (mirrors player.ts's playId). */
 const playId = (h: TrackHandle): string | undefined => h.catalogId ?? h.libraryId;
 

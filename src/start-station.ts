@@ -24,7 +24,8 @@ export function startStationItem(kind: SeedKind, catalogId?: string | null): Men
         .then((s) => {
           // No station for this seed (rare) — nothing to play; the negative result is
           // cached so repeat picks stay free. A timed warn (TOASTS.md).
-          if (s) return playStation(s);
+          // playStation toasts its own failure; this chain's catch is for the seed lookup.
+          if (s) return playStation(s).catch((e) => console.error("[station] play", e));
           console.warn(`[station] no station for ${kind} seed`, catalogId);
           toast({ kind: "warn", text: `Apple Music has no station for this ${SEED_NOUN[kind]}.` });
         })
@@ -64,7 +65,7 @@ export function startArtistStationItem(
           return;
         }
         const s = await seedStation("artists", artistId);
-        if (s) return playStation(s);
+        if (s) return playStation(s).catch((e) => console.error("[station] artist play", e));
         console.warn("[station] no station for artist", name);
         toast({ kind: "warn", text: `Apple Music has no station for ${name}.` });
       })().catch((e) => {

@@ -8,7 +8,11 @@
 //      a bare {label, title} list used to strip both windows to defaults (decorations
 //      back on, the tray panel loading index.html as a second full app window);
 //   3. run `tauri dev --config <generated>` with VITE_PORT set so vite.config.ts binds
-//      the same port.
+//      the same port;
+//   4. open a WebView2 remote-debugging (CDP) port on the main window, from 9222 up, so
+//      `node scripts/webview-eval.mjs "<js>"` can run console calls from outside the app
+//      (DEBUGGING.md §Driving the webview). It is appended to the window's own
+//      additionalBrowserArgs — the env var would replace them, autoplay flag included.
 import { createServer } from "node:net";
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -18,7 +22,6 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const base = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.dev.conf.json"), "utf8"));
 const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
-const windows = conf.app.windows.map((w) => ({ ...w, title: `${w.title} (dev)` }));
 
 // Vite binds `localhost`, which on this Windows box resolves to ::1 first — so probe
 // both families, or an orphaned vite on ::1 reads as free and the launch fails.
@@ -32,10 +35,18 @@ const free = async (port) => (await freeOn(port, "127.0.0.1")) && (await freeOn(
 
 let port = 1420;
 while (!(await free(port))) port += 1;
+let cdp = 9222;
+while (!(await free(cdp))) cdp += 1;
+
+const windows = conf.app.windows.map((w) => ({
+  ...w,
+  title: `${w.title} (dev)`,
+  ...(w.label === "main" ? { additionalBrowserArgs: `${w.additionalBrowserArgs ?? ""} --remote-debugging-port=${cdp}`.trim() } : {}),
+}));
 
 const gen = join(root, "src-tauri", ".tauri.dev.gen.json");
 writeFileSync(gen, JSON.stringify({ ...base, app: { windows }, build: { devUrl: `http://localhost:${port}` } }, null, 2));
-console.log(`[dev:app] vite on ${port} · identifier ${base.identifier}`);
+console.log(`[dev:app] vite on ${port} · webview CDP on ${cdp} · identifier ${base.identifier}`);
 
 // Run the local tauri CLI directly (no npx/shell) so a space in the path — this user
 // dir has one — can't split an argument; the config is passed relative to the repo root.

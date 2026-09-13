@@ -1,7 +1,8 @@
 /* ── Toasts (src/toast.ts; docs/TOASTS.md) ───────────────────────────────
-   A fixed host that moves with the surface: mini/midi grow a bottom-centred
-   stack (newest nearest the bottom edge), max a top-right column under the
-   titlebar (newest on top). The strip wears the menu material (Glass frosts
+   A fixed top-right column, newest on top, flying in from the right. In mini
+   and midi it hangs under the Now Playing card (--toast-top, measured by
+   toast.ts) so the song stays readable; in max, whose stage is on the left,
+   it sits under the titlebar. The strip wears the menu material (Glass frosts
    it); the kind wears the theme's traffic lights as a stripe on the leading
    edge — success --go, warn --pause, error --stop, info --panel-border — so
    every theme, the monochrome ones included, expresses severity in-family.
@@ -10,24 +11,19 @@
    menus and pickers (100) — a menu is the user's live intent; a toast waits. */
 .toast-host {
   position: fixed;
-  left: var(--space-4);
+  top: calc(var(--toast-top, var(--titlebar-h)) + var(--space-2));
+  left: var(--space-4); /* only clamps the strip in a narrow window; align-items keeps it right */
   right: var(--space-4);
-  bottom: var(--space-4);
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: column-reverse;
+  align-items: flex-end;
   gap: var(--space-2);
   z-index: 90;
   pointer-events: none;
-  --toast-in: translateY(var(--toast-shift));
+  --toast-in: translateX(var(--toast-shift));
 }
 [data-surface="max"] .toast-host {
-  left: auto;
-  bottom: auto;
   top: calc(var(--titlebar-h) + var(--space-2));
-  flex-direction: column-reverse;
-  align-items: flex-end;
-  --toast-in: translateX(var(--toast-shift));
 }
 .toast {
   pointer-events: auto;

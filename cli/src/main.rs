@@ -14,7 +14,9 @@ use std::io::{BufRead, Write};
 use std::time::Duration;
 
 const PORTS: [u16; 4] = [47825, 47826, 47827, 47828];
-const IDS: [&str; 2] = ["com.deetsmusic.app", "com.deetsmusic.dev"];
+// A debug build (`cargo build` / `cargo run` in cli/) reads the DEV token only, so it can
+// never pair with the installed app's bridge while both run (AGENT.md §4). Release reads both.
+const IDS: &[&str] = if cfg!(debug_assertions) { &["com.deetsmusic.dev"] } else { &["com.deetsmusic.app", "com.deetsmusic.dev"] };
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // ── CLI surface ───────────────────────────────────────────────────────────────
@@ -362,6 +364,13 @@ fn is_id(t: &str) -> bool {
     ["song:", "album:", "playlist:", "station:"].iter().any(|p| t.starts_with(p))
 }
 
+/// The app's warn/error toasts raised by this command (`notices`, AGENT.md §3), one line
+/// each under the result — so a model sees that the command went wrong and can fix it.
+fn with_notices(line: String, v: &Value) -> String {
+    let notes: Vec<String> = arr(v, "notices").iter().map(|n| format!("! {}: {}", s(n, "kind"), s(n, "text"))).collect();
+    if notes.is_empty() { line } else { format!("{line}\n{}", notes.join("\n")) }
+}
+
 fn op_play(c: &Client, target: &str) -> Result<(String, Value), Failure> {
     let body = if is_id(target) { json!({ "id": target }) } else { json!({ "term": target }) };
     let v = c.post("/play", body)?;
@@ -375,7 +384,7 @@ fn op_play(c: &Client, target: &str) -> Result<(String, Value), Failure> {
             n => format!("Playing {n} songs, starting with: {}", track_line(tracks[0])),
         }
     };
-    Ok((line, v))
+    Ok((with_notices(line, &v), v))
 }
 
 fn op_queue_add(c: &Client, id: &str, later: bool) -> Result<(String, Value), Failure> {
@@ -386,7 +395,7 @@ fn op_queue_add(c: &Client, id: &str, later: bool) -> Result<(String, Value), Fa
         1 => track_line(tracks[0]),
         n => format!("{n} songs, starting with {}", track_line(tracks[0])),
     };
-    Ok((format!("Queued {}: {what}", if later { "later" } else { "next" }), v))
+    Ok((with_notices(format!("Queued {}: {what}", if later { "later" } else { "next" }), &v), v))
 }
 
 fn op_queue_list(c: &Client) -> Result<(String, Value), Failure> {
@@ -411,7 +420,7 @@ fn op_history(c: &Client, limit: usize) -> Result<(String, Value), Failure> {
 
 fn op_control(c: &Client, action: &str, value: Option<f64>) -> Result<(String, Value), Failure> {
     let v = c.post("/command", json!({ "kind": action, "value": value }))?;
-    Ok((np_line(&v), v))
+    Ok((with_notices(np_line(&v), &v), v))
 }
 
 fn op_np(c: &Client) -> Result<(String, Value), Failure> {
