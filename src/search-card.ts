@@ -12,6 +12,7 @@ import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
 import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
+import { copySongLinkItem, copyAlbumLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
 import { onDrillRequest } from "./go-to";
 import { esc } from "./collection-card";
@@ -445,6 +446,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       t.catalogId && t.albumName
         ? { label: "Go to Album", run: () => goToAlbum(t.catalogId!, t.albumName!) }
         : null,
+      copySongLinkItem(t.catalogId),
       startStationItem("songs", t.catalogId),
       addSongToLibraryItem(t), // null unless the Library Add toggle is on
       favoriteItem(t), // same consent
@@ -468,6 +470,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       kind === "albums" && artistName
         ? { label: "Go to Artist", run: () => goToArtist("albums", id, artistName) }
         : null,
+      kind === "albums" ? copyAlbumLinkItem(id) : null,
       // Albums add as a library resource (fork A: graduates the album's tracks so they
       // appear right away). Playlists have no add-to-library path here.
       kind === "albums" ? addAlbumToLibraryItem(id, () => collectionTracks(kind, id)) : null,

@@ -18,6 +18,7 @@ import { addSongToLibraryItem } from "./library-add";
 import { favoriteItem } from "./favorites";
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { copySongLinkItem } from "./copy-link";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
@@ -166,6 +167,8 @@ function mountQueue(host: HTMLElement): CardInstance {
       if (goA) items.push(goA);
       const goAl = goToAlbumItem(entry.catalogId, t?.albumName);
       if (goAl) items.push(goAl);
+      const link = copySongLinkItem(entry.catalogId);
+      if (link) items.push(link);
       const start = startStationItem("songs", entry.catalogId);
       if (start) items.push(start);
       const add = t ? addSongToLibraryItem(t) : null;
@@ -183,6 +186,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const items = [
       goToArtistItem("songs", cur?.catalogId, t?.artistName),
       goToAlbumItem(cur?.catalogId, t?.albumName),
+      copySongLinkItem(cur?.catalogId),
       startStationItem("songs", cur?.catalogId), // "more like what's playing"
       t ? addSongToLibraryItem(t) : null,
       favoriteItem(t),

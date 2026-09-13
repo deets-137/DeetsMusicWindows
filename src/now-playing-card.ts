@@ -22,6 +22,7 @@ import { favoriteItem, favoriteOffered, isLoved, toggleLoved, onFavoritesChange 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
 import { startStationItem } from "./start-station";
+import { copySongLinkItem } from "./copy-link";
 import { explicitBadge } from "./library-card";
 import { esc } from "./collection-card";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
@@ -307,6 +308,7 @@ export const nowPlayingCard: CardDef = {
       const items = [
         goToArtistItem("songs", cur.catalogId, t?.artistName),
         goToAlbumItem(cur.catalogId, t?.albumName),
+        copySongLinkItem(cur.catalogId),
         startStationItem("songs", cur.catalogId),
         t ? addSongToLibraryItem(t) : null,
         favoriteItem(t),

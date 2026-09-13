@@ -21,6 +21,7 @@ import { addToPlaylistItem } from "./playlists";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
@@ -306,6 +307,11 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
     { label: "Add to Queue", run: () => void queueTracksLater(items, context).catch(err("add to queue")) },
     addToPlaylistItem(() => items),
     ...goToItems(items, nav),
+    // One song → its own link; a longer list is an album tile → the album's link,
+    // resolved from any of its songs that has a catalog id.
+    items.length === 1
+      ? copySongLinkItem(items[0].catalogId)
+      : copyAlbumLinkFromSongItem(items.find((t) => t.catalogId)?.catalogId),
     // A station seeds from ONE song — a longer list is an album, which has no station.
     ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
     // ♥ — one song only (an album has no favorite here); null without consent/catalog id.
