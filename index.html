@@ -175,45 +175,43 @@
     </header>
 
     <main class="app-body">
-      <!-- Ocean layer — three seamless wave trains rolling BEHIND the cards;
-           inert (display:none) unless a skin opts in via --ocean-display
-           (Ocean). Each <pattern> tile is ONE full sine period (Q + T
-           reflection), so the curve's value AND tangent match at the tile
-           edge — no seam, no crossings. Each train is an opaque --canvas
-           fill under a hairline crest, so a nearer swell occludes the ones
-           behind it. Farthest (3) paints first; the crest inks fade with
-           distance via --ocean-ink-1..3. Roll (on the <rect>) and bob (on
-           the wrapping <g>) are separate elements so the two transform
-           animations compose — see .ocean in src/styles.css. -->
-      <svg class="ocean" aria-hidden="true">
-        <defs>
-          <pattern id="ocean-swell-3" width="80" height="46" patternUnits="userSpaceOnUse">
-            <path class="ocean__fill"  d="M0 26 Q20 22 40 26 T80 26 L80 46 L0 46 Z" />
-            <path class="ocean__crest ocean__crest--3" d="M0 26 Q20 22 40 26 T80 26" />
-          </pattern>
-          <pattern id="ocean-swell-2" width="64" height="38" patternUnits="userSpaceOnUse">
-            <path class="ocean__fill"  d="M0 22 Q16 17 32 22 T64 22 L64 38 L0 38 Z" />
-            <path class="ocean__crest ocean__crest--2" d="M0 22 Q16 17 32 22 T64 22" />
-          </pattern>
-          <pattern id="ocean-swell-1" width="48" height="30" patternUnits="userSpaceOnUse">
-            <path class="ocean__fill"  d="M0 17 Q12 11 24 17 T48 17 L48 30 L0 30 Z" />
-            <path class="ocean__crest ocean__crest--1" d="M0 17 Q12 11 24 17 T48 17" />
-          </pattern>
-        </defs>
-        <g class="ocean__bob ocean__bob--3"><rect class="ocean__roll ocean__roll--3" fill="url(#ocean-swell-3)" /></g>
-        <g class="ocean__bob ocean__bob--2"><rect class="ocean__roll ocean__roll--2" fill="url(#ocean-swell-2)" /></g>
-        <g class="ocean__bob ocean__bob--1"><rect class="ocean__roll ocean__roll--1" fill="url(#ocean-swell-1)" /></g>
-      </svg>
+      <!-- Ambient layers (Ocean swell / Glass aurora / Retro-Future storm) sit BEHIND the
+           cards and are inert (display:none) unless a skin opts in via its display token.
+           All three animate ONLY transform and opacity on plain boxes, so the compositor
+           moves finished layers and the main thread paints nothing per frame (an SVG child
+           transform or a background-position repaints every frame: ~25–45% of a core idle).
+           src/ambient.ts pauses them while the window cannot be seen. -->
 
-      <!-- Storm layer — decorative strokes drawn BEHIND the cards; inert
-           (display:none) unless a skin opts in via --storm-display (Retro-Future).
-           The paths carry no `d` — geometry is a skin token applied via CSS
-           d: path(...); pathLength="1" normalizes every path so the draw-down
-           is a plain dashoffset 1→0. Position is runtime (src/storm.ts). -->
-      <svg class="storm" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path class="storm__bolt" pathLength="1"></path>
-        <path class="storm__bolt" pathLength="1"></path>
-      </svg>
+      <!-- Ocean — three seamless wave trains. Each train is a bob <div> (rise and fall)
+           around a roll <div> (drift), so the two transforms compose. The tile shapes
+           (one full sine period each, so no seam) are SVG masks in src/styles.css: an
+           opaque --canvas fill under a hairline crest, so a nearer swell occludes the ones
+           behind it. Farthest (3) paints first. -->
+      <div class="ocean" aria-hidden="true">
+        <div class="ocean__bob ocean__bob--3"><div class="ocean__roll ocean__roll--3"></div></div>
+        <div class="ocean__bob ocean__bob--2"><div class="ocean__roll ocean__roll--2"></div></div>
+        <div class="ocean__bob ocean__bob--1"><div class="ocean__roll ocean__roll--1"></div></div>
+      </div>
+
+      <!-- Aurora — one <div> per blob, so each drifts on its own transform. -->
+      <div class="aurora" aria-hidden="true">
+        <div class="aurora__blob aurora__blob--1"></div>
+        <div class="aurora__blob aurora__blob--2"></div>
+        <div class="aurora__blob aurora__blob--3"></div>
+      </div>
+
+      <!-- Storm — each strike is a top→bottom wipe: the strike box slides down and clips,
+           the hold box slides up by the same amount, so the bolt stays put while the clip
+           reveals it. The paths carry no `d` — geometry is a skin token (CSS d: path(...)).
+           Position is runtime (src/storm.ts). -->
+      <div class="storm" aria-hidden="true">
+        <div class="storm__strike storm__strike--1"><div class="storm__hold">
+          <svg class="storm__svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="storm__bolt"></path></svg>
+        </div></div>
+        <div class="storm__strike storm__strike--2"><div class="storm__hold">
+          <svg class="storm__svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="storm__bolt"></path></svg>
+        </div></div>
+      </div>
 
       <!-- Each .panel is a mount HOST. The layout manager (src/layout.ts) mounts a card into
            each slot from the persisted assignment; the two content slots are swappable via

@@ -377,59 +377,117 @@ body {
   overflow: hidden;             /* the columns scroll, not the whole body */
   position: relative;           /* anchors the ocean + storm layers */
 
-  /* Canvas pattern behind the cards (Press halftone / Retro-Future grid /
-     Glass aurora). All four resolve to nothing under Vanilla. */
-  background-image:  var(--canvas-bg);
+  /* Canvas pattern behind the cards (Press halftone / Retro-Future grid). A skin
+     whose canvas MOVES paints it on an ambient layer instead and sets
+     --app-canvas-bg: none (Glass → .aurora). Vanilla paints nothing. */
+  background-image:  var(--app-canvas-bg);
   background-size:   var(--canvas-bg-size);
   background-repeat: var(--canvas-bg-repeat);
-  animation:         var(--canvas-anim);
 }
 
 /* ── Ocean layer (rolling swell behind the cards) ───────────── */
-/* Inert unless a skin opts in (--ocean-display; Ocean). Tile geometry is
-   static markup in index.html; the fill is the theme's --canvas and the
-   crest inks are skin tokens that fade with distance. The roll and bob
-   keyframes (skin.css) read per-layer distances from the --roll-dist /
-   --bob-amp custom properties set here. */
+/* Inert unless a skin opts in (--ocean-display; Ocean). The fill is the theme's
+   --canvas and the crest inks are skin tokens that fade with distance. The roll and
+   bob keyframes (skin.css) read per-layer distances from the --roll-dist / --bob-amp
+   custom properties set here. Only transform animates: the compositor moves the
+   rasterized trains, so an idle sea costs no main-thread paint. */
 .ocean {
   display: var(--ocean-display, none);
   position: absolute;
   inset: 0;
-  /* explicit: an <svg> is a replaced element, so inset alone leaves it at
-     its 300×150 intrinsic default instead of stretching to the body */
-  width: 100%;
-  height: 100%;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
+.ocean__bob {
+  position: absolute;
+  inset: 0;
+  /* stepped at --ambient-fps; 5 keyframe segments of 1.8s each (the ease lives in
+     the sine-sampled keyframes, since steps() replaces the easing) */
+  animation: ocean-bob 9s steps(round(9 * var(--ambient-fps) / 5)) infinite alternate;
+  will-change: transform;
+}
 /* Oversized and left-shifted so a full roll cycle (≤144px) never drags the
-   rect's own edge into view; the pattern just tiles across the slack. */
+   box's own edge into view; the tiles just repeat across the slack. */
 .ocean__roll {
-  x: -160px;
-  y: -8px;
+  position: absolute;
+  left: -160px;
+  top: -8px;
   width: calc(100% + 320px);
   height: calc(100% + 16px);
-  animation: ocean-roll 16s linear infinite;
+  animation: ocean-roll 16s steps(round(16 * var(--ambient-fps))) infinite;
+  will-change: transform;
 }
-.ocean__bob  { animation: ocean-bob 9s ease-in-out infinite alternate; }
-.ocean__fill { fill: var(--canvas); }
-.ocean__crest {
-  fill: none;
-  stroke-width: 1px;
+/* Fill and crest are two masked pseudo-boxes (a mask on the roll itself would
+   also clip the crest to the fill shape). The mask origin offsets the roll's
+   own shift, so the tile grid starts at the body corner. */
+.ocean__roll::before,
+.ocean__roll::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  mask-size: var(--swell-tile);
+  mask-repeat: repeat;
+  mask-position: 160px 8px;
 }
-.ocean__crest--1 { stroke: var(--ocean-ink-1); }
-.ocean__crest--2 { stroke: var(--ocean-ink-2); }
-.ocean__crest--3 { stroke: var(--ocean-ink-3); }
-/* Roll: each train drifts an INTEGER number of its own tile width per 16s
+.ocean__roll::before { background: var(--canvas);    mask-image: var(--swell-fill); }
+.ocean__roll::after  { background: var(--swell-ink); mask-image: var(--swell-crest); }
+/* Tiles: each is ONE full sine period (Q + T reflection), so the curve's value AND
+   tangent match at the tile edge. Crest = the same curve, 1px stroke.
+   Roll: each train drifts an INTEGER number of its own tile width per 16s
    loop (144=3×48, 128=2×64, 80=1×80) so the wrap is invisible, the nearest
    moving fastest. Bob: amplitudes shrink with distance; the middle train is
    counter-phase (negative) so the sea breathes rather than pumps. */
-.ocean__roll--1 { --roll-dist: 144px; }
-.ocean__roll--2 { --roll-dist: 128px; }
-.ocean__roll--3 { --roll-dist:  80px; }
+.ocean__roll--1 {
+  --roll-dist: 144px;
+  --swell-tile: 48px 30px;
+  --swell-ink: var(--ocean-ink-1);
+  --swell-fill:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='30'%3E%3Cpath d='M0 17 Q12 11 24 17 T48 17 L48 30 L0 30 Z'/%3E%3C/svg%3E");
+  --swell-crest: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='30'%3E%3Cpath d='M0 17 Q12 11 24 17 T48 17' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+}
+.ocean__roll--2 {
+  --roll-dist: 128px;
+  --swell-tile: 64px 38px;
+  --swell-ink: var(--ocean-ink-2);
+  --swell-fill:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='38'%3E%3Cpath d='M0 22 Q16 17 32 22 T64 22 L64 38 L0 38 Z'/%3E%3C/svg%3E");
+  --swell-crest: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='38'%3E%3Cpath d='M0 22 Q16 17 32 22 T64 22' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+}
+.ocean__roll--3 {
+  --roll-dist: 80px;
+  --swell-tile: 80px 46px;
+  --swell-ink: var(--ocean-ink-3);
+  --swell-fill:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='46'%3E%3Cpath d='M0 26 Q20 22 40 26 T80 26 L80 46 L0 46 Z'/%3E%3C/svg%3E");
+  --swell-crest: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='46'%3E%3Cpath d='M0 26 Q20 22 40 26 T80 26' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+}
 .ocean__bob--1  { --bob-amp:  3px; }
 .ocean__bob--2  { --bob-amp: -2px; }
 .ocean__bob--3  { --bob-amp:  1px; }
+
+/* ── Aurora layer (drifting blobs behind the cards) ─────────── */
+/* Inert unless a skin opts in (--aurora-display; Glass). The blob gradients and
+   drift vectors are skin tokens. Each blob is oversized by --aurora-slack on every
+   side so the drift never drags a gradient's cut edge into view. transform only —
+   the compositor moves it (the old background-position drift repainted the whole
+   body, and every frost above it, on every frame). */
+.aurora {
+  display: var(--aurora-display, none);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora__blob {
+  position: absolute;
+  inset: calc(-1 * var(--aurora-slack));
+  background-repeat: no-repeat;
+  /* stepped at --ambient-fps; 10 sine-sampled keyframe segments per loop */
+  animation: aurora-drift var(--aurora-dur) steps(round(var(--aurora-dur) * var(--ambient-fps) / 10 / 1s)) infinite;
+  will-change: transform;
+}
+.aurora__blob--1 { background-image: var(--aurora-1); --drift-x: var(--aurora-drift-1-x); --drift-y: var(--aurora-drift-1-y); }
+.aurora__blob--2 { background-image: var(--aurora-2); --drift-x: var(--aurora-drift-2-x); --drift-y: var(--aurora-drift-2-y); }
+.aurora__blob--3 { background-image: var(--aurora-3); --drift-x: var(--aurora-drift-3-x); --drift-y: var(--aurora-drift-3-y); }
 
 /* ── Storm layer (decorative strokes behind the cards) ──────── */
 /* Inert unless a skin opts in (--storm-display; Retro-Future). Everything
@@ -439,38 +497,53 @@ body {
    around x=0 and positioned by --storm-x (user units ≈ % of width; CSS px
    on an SVG transform are user units), which src/storm.ts re-rolls per
    strike along with a --storm-flip mirror. non-scaling-stroke keeps the
-   stroke width in real px despite the stretched viewBox. */
+   stroke width in real px despite the stretched viewBox.
+   Motion is a WIPE, not a stroke draw: the bolt (glow included) is painted once;
+   the strike box slides down from above and clips it, the hold box counter-slides
+   by the same amount so the bolt stays still. Both run the same cycle, so they stay
+   locked. transform + opacity only → no per-frame paint (a dashoffset draw under a
+   drop-shadow re-rendered the glow every frame). */
 .storm {
   display: var(--storm-display);
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
-.bento { position: relative; z-index: 1; }  /* cards ride above the storm */
+.bento { position: relative; z-index: 1; }  /* cards ride above the ambient layers */
+.storm__strike,
+.storm__hold {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.storm__strike {
+  overflow: hidden;
+  opacity: 0;                   /* dark unless the animation says otherwise */
+  animation: storm-strike var(--strike-cycle) var(--strike-steps) infinite;
+}
+.storm__hold { animation: storm-hold var(--strike-cycle) var(--strike-steps) infinite; }
+/* Stepped at --ambient-fps across the wipe (the 0→60% keyframe segment). Strike and
+   hold share the count, so the clip and the counter-slide stay locked. */
+.storm__strike { --strike-steps: steps(round(var(--strike-cycle) * 0.6 * var(--ambient-fps) / 1s)); }
+.storm__strike--1 { --strike-cycle: var(--storm-cycle-1); --strike-path: var(--storm-path-1); --storm-x: 30px; }
+.storm__strike--2 { --strike-cycle: var(--storm-cycle-2); --strike-path: var(--storm-path-2); --storm-x: 70px; }
+.storm__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
 .storm__bolt {
+  d: var(--strike-path);
   fill: none;
   stroke: var(--storm-ink);
   stroke-width: var(--storm-w);
   stroke-linejoin: miter;       /* sharp elbows — it's lightning */
   vector-effect: non-scaling-stroke;
   filter: var(--storm-glow);
-  stroke-dasharray: 1;          /* against pathLength="1" in the markup */
-  stroke-dashoffset: 1;
-  opacity: 0;                   /* dark unless the animation says otherwise */
   transform: translateX(var(--storm-x, 50px)) scaleX(var(--storm-flip, 1));
-}
-.storm__bolt:nth-child(1) {
-  d: var(--storm-path-1);
-  animation: storm-strike var(--storm-cycle-1) linear infinite;
-  --storm-x: 30px;
-}
-.storm__bolt:nth-child(2) {
-  d: var(--storm-path-2);
-  animation: storm-strike var(--storm-cycle-2) linear infinite;
-  --storm-x: 70px;
 }
 
 /* ── Bento grid (a "screen" is a composition of panels) ─────── */
@@ -640,13 +713,21 @@ body {
 .coll-pane:not([data-pos="center"]) { pointer-events: none; } /* only the on-screen pane is interactive */
 @media (prefers-reduced-motion: reduce) {
   .coll-pane { transition: none; }
-  .app-body { animation: none; }   /* freeze the canvas anim (Glass drift) */
+  .aurora__blob { animation: none; }  /* freeze the Glass aurora drift */
   /* Ocean stays VISIBLE, just still: a motionless sea is still a sea (unlike
      a half-drawn bolt), so the skin keeps its surface instead of going blank. */
   .ocean__roll, .ocean__bob { animation: none; }
   .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
   /* no hover-lift jump when motion is reduced */
   .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }
+}
+
+/* Ambient pause (src/ambient.ts): while the window cannot be seen, the endless
+   decorative loops hold still. play-state keeps each loop's position, so they resume
+   in place with no jump and no restart cost. */
+:root[data-ambient="paused"] :is(.ocean__bob, .ocean__roll, .aurora__blob, .storm__strike, .storm__hold),
+:root[data-ambient="paused"] .np__aurora::before {
+  animation-play-state: paused;
 }
 
 /* Our own scrollbar for the Library list/grid and any plain panel body that scrolls
@@ -1126,6 +1207,7 @@ body {
 /* Explicit: a filled square with the letter cut out in the surface color. Inline
    inside a title (Search rows, Now Playing) it sits on the text line. */
 .lib-src-badge--explicit .lib-src-badge__letter { fill: var(--surface); }
+.lib-src-badge--apple-music { fill: var(--apple-music-mark); }   /* official asset: black or white only */
 .search__song-title .lib-src-badge, .np__title .lib-src-badge {
   display: inline-block; vertical-align: -0.15em; margin-left: var(--space-1);
 }
@@ -1428,7 +1510,9 @@ body {
     radial-gradient(circle calc(var(--np-cover) * 0.9) at 71% 29%,
       color-mix(in srgb, var(--album-c2) calc(var(--album-aurora-strength) * 0.8), transparent) 0%,
       transparent 100%);
-  animation: np-aurora-spin var(--album-spin-dur) linear infinite;
+  /* stepped at --ambient-fps: a full-rate spin under Glass's frost keeps the whole
+     window compositing at the display rate */
+  animation: np-aurora-spin var(--album-spin-dur) steps(round(var(--album-spin-dur) * var(--ambient-fps) / 1s)) infinite;
 }
 @keyframes np-aurora-spin {
   to { transform: translate(-50%, -50%) rotate(1turn); }

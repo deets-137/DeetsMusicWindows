@@ -202,10 +202,31 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   Not fixed: `decoding="async"` (kept, harmless), `content-visibility: auto` alone,
   `overflow-anchor: none`, containment on the `<img>` only. Grid densities (tiles) still
   re-lay out on cover arrival — untested, the tile height is not fixed.
-- **The installed app on Ocean idled at about half a core** (main 15%, renderer 20%, GPU
-  14%) while the dev app on Press idled at 0%. Hypothesis: Ocean's SVG wave animation
-  repaints the whole window every frame (SVG child transforms are not composited). Not
-  yet proven — the comparison needs the same app paused on two skins.
+- **Ambient skin loops cost up to two cores at idle — fixed.** The installed app idled at
+  0.6% on Press and 21–27% on Ocean, same uptime, only the skin changed. Dev A/B (total
+  CPU, 100 = one core, gpu + renderer processes, 10 s each):
+
+  | skin | old | compositor-only layers | + stepped at 30 fps |
+  |---|---|---|---|
+  | Press | 5 | 6 | 4 |
+  | Ocean | 46 | 46 | 12 |
+  | Glass | 205 | 95 | 20 |
+  | Retro-Future | 200 | 46 | 17 |
+
+  Causes: Ocean moved SVG `<rect>`/`<g>` children, Glass animated `background-position`,
+  Retro-Future animated `stroke-dashoffset` under a `drop-shadow` — all main-thread
+  repaints every frame. Now each layer is plain boxes animating transform/opacity only
+  (Ocean = masked tile boxes, Glass = one box per blob, storm = a clip wipe), traced at
+  ~0 main-thread paint. The rest was compositing at the display rate: Ocean's fill masks
+  roughly double GPU work per frame, and any motion under translucent cards redraws the
+  window. `--ambient-fps` (skin token, 30) steps every loop, which cut that by ~⅔.
+  Probe that found it (injected `<style>`): masks off 36→21, motion stopped →0,
+  `steps()` at 30 fps →15.
+- **WebView2 keeps drawing when the window is minimized or hidden to the tray.**
+  `document.visibilityState` stays `visible` and rAF runs at 60/s. `src/ambient.ts` asks
+  the window instead (resize / focus events + a `main-visibility` event from tray.rs's hide
+  and show paths) and sets `data-ambient="paused"`, which pauses the loops in place.
+  Not covered: a window left open behind a full-screen game (not minimized) — untested.
 - **The appearance publish bug** (bridge `/health` reported the OLD skin after a switch):
   `publishAppearance()` ran outside the view transition, before the attribute flipped.
   Moved into the transition's `after` callback; verified by clicking through Press/Glass.

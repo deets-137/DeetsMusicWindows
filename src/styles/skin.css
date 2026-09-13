@@ -107,20 +107,46 @@
   --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
 
   /* -- canvas pattern (Press halftone / Retro-Future grid) --- */
-  /* A background-image painted on .app-body, BEHIND the cards. Its
-     color comes from a theme role (--border); the pattern + motion
-     are skin. Vanilla paints nothing. */
+  /* A background-image BEHIND the cards. Its color comes from a theme
+     role (--border); the pattern is skin. Vanilla paints nothing. The
+     extension pages paint --canvas-bg as-is (static). In the app,
+     .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it
+     to none and draws on an ambient layer instead (Glass → aurora),
+     because a moving background repaints every frame. */
   --canvas-bg:        none;
   --canvas-bg-size:   auto;
   --canvas-bg-repeat: repeat;
-  --canvas-anim:      none;
+  --app-canvas-bg:    var(--canvas-bg);
+
+  /* -- aurora layer (drifting blobs behind the cards) --------- */
+  /* Three <div>s in .app-body that a skin opts into; each carries one
+     gradient and drifts by its own vector (transform only). Base is inert. */
+  --aurora-display: none;            /* glass opts in */
+  --aurora-1:       none;
+  --aurora-2:       none;
+  --aurora-3:       none;
+  --aurora-drift-1-x: 0px;           /* offset at the loop's midpoint */
+  --aurora-drift-1-y: 0px;
+  --aurora-drift-2-x: 0px;
+  --aurora-drift-2-y: 0px;
+  --aurora-drift-3-x: 0px;
+  --aurora-drift-3-y: 0px;
+  --aurora-slack:   0px;             /* oversize per side; ≥ the largest drift */
+  --aurora-dur:     60s;
+
+  /* -- ambient motion rate ------------------------------------ */
+  /* The endless decorative loops (ocean / aurora / storm / NP aurora)
+     step at this rate instead of the display's, so the compositor draws
+     a new frame only when a layer moves. Measured 2026-09-13: Ocean
+     36% → 15% of a core at 30 vs 60 fps. The loops move ≤ ~10 px/s
+     (the storm wipe excepted), so 30 reads smooth. A unitless integer. */
+  --ambient-fps: 30;
 
   /* -- ocean layer (rolling swell behind the cards) ----------- */
-  /* An inline-SVG layer in .app-body (three seamless wave-train
-     <pattern>s) that a skin opts into — same doctrine as --storm-*.
-     Unlike the storm the geometry is fully static, so it lives as
-     markup in index.html; the ink fades with distance via these
-     roles, so far swells recede into haze. Base is inert. */
+  /* Three masked wave-train <div>s in .app-body that a skin opts into —
+     same doctrine as --storm-*. The tile geometry is fixed (styles.css);
+     the ink fades with distance via these roles, so far swells recede
+     into haze. Base is inert. */
   --ocean-display: none;             /* ocean opts in */
   --ocean-ink-1:   var(--border);
   --ocean-ink-2:   var(--border);
@@ -164,7 +190,7 @@
   --album-fade-dur:        600ms;   /* crossfade on track change */
 
   /* -- storm layer (decorative strokes behind the cards) ------ */
-  /* An inline-SVG layer in .app-body (two <path pathLength="1"> bolts)
+  /* A layer in .app-body (two wiped strikes, each an SVG bolt)
      that a skin opts into — same doctrine as --panel-backdrop. The
      GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can
      reuse the layer for rain / streaks / scan lines; the ink is a theme
@@ -422,9 +448,10 @@
 /* Ocean's swell — motion for the injected layer. All trains roll the SAME
    direction, nearest fastest, each by an INTEGER number of its own tile
    width over one loop (144=3×48, 128=2×64, 80=1×80), so the seam is
-   invisible. Roll owns the horizontal drift (linear, on the <rect>s), bob
-   the rise-and-fall (ease-in-out alternate ≈ a sine, on the wrapping
-   <g>s) — separate elements, so the two transforms compose instead of
+   invisible. Roll owns the horizontal drift (linear, on the inner
+   .ocean__roll), bob the rise-and-fall (sine-sampled keyframes, alternate,
+   on the wrapping .ocean__bob — the ease is in the keyframes because the
+   stepped timing, see --ambient-fps, replaces any easing) — separate elements, so the two transforms compose instead of
    overwriting each other. Per-layer distances come from --roll-dist /
    --bob-amp, set on the elements in styles.css and resolved inside these
    keyframes per element. 9s·2 vs 16s never sync (LCM 144s) — the pattern
@@ -432,8 +459,14 @@
 @keyframes ocean-roll {
   to { transform: translateX(var(--roll-dist, 0px)); }
 }
+/* (1 − cos πt) / 2 sampled at fifths ≈ the old ease-in-out */
 @keyframes ocean-bob {
-  to { transform: translateY(var(--bob-amp, 0px)); }
+  0%   { transform: translateY(0); }
+  20%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.0955)); }
+  40%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.3455)); }
+  60%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.6545)); }
+  80%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.9045)); }
+  100% { transform: translateY(var(--bob-amp, 0px)); }
 }
 
 /* ============================================================
@@ -508,19 +541,31 @@
        layer shows a crisp straight boundary where a bleeding blob is cut off;
      · each fade gets a mid stop and runs to a farther terminus, so there's
        no abrupt slope change (Mach band) rimming the hotter blobs. */
-  --canvas-bg:
+  --aurora-1:
     radial-gradient(42% 52% at 16% 10%,
       color-mix(in srgb, var(--go) 50%, transparent),
-      color-mix(in srgb, var(--go) 20%, transparent) 45%, transparent 80%),
+      color-mix(in srgb, var(--go) 20%, transparent) 45%, transparent 80%);
+  --aurora-2:
     radial-gradient(46% 56% at 86% 22%,
       color-mix(in srgb, var(--stop) 44%, transparent),
-      color-mix(in srgb, var(--stop) 18%, transparent) 45%, transparent 80%),
+      color-mix(in srgb, var(--stop) 18%, transparent) 45%, transparent 80%);
+  --aurora-3:
     radial-gradient(52% 52% at 60% 96%,
       color-mix(in srgb, var(--pause) 38%, transparent),
       color-mix(in srgb, var(--pause) 15%, transparent) 45%, transparent 82%);
+  --aurora-display: block;
+  --aurora-slack:   64px;            /* blobs 128px oversized; every drift stays within ±64 */
+  /* each blob wanders a different way and returns */
+  --aurora-drift-1-x:  48px;  --aurora-drift-1-y:  32px;
+  --aurora-drift-2-x: -56px;  --aurora-drift-2-y:  24px;
+  --aurora-drift-3-x:  36px;  --aurora-drift-3-y: -44px;
+  --aurora-dur:     60s;
+  /* the app paints the blobs on the moving .aurora layer; the extension pages
+     read the same stack from --canvas-bg, still */
+  --app-canvas-bg:    none;
+  --canvas-bg:        var(--aurora-1), var(--aurora-2), var(--aurora-3);
   --canvas-bg-size:   calc(100% + 128px) calc(100% + 128px);
   --canvas-bg-repeat: no-repeat;
-  --canvas-anim:      aurora-drift 60s ease-in-out infinite;
 
   /* nav — panes fade/scale through one another rather than slide */
   --nav-dur:  0.34s;
@@ -619,30 +664,40 @@
   --scrubber-handle-size: 14px;
 }
 
-/* Retro-Future's strike cycle: the bolt draws top→bottom over ~60% of its
-   period (dashoffset 1→0 against pathLength=1), flickers once at full
-   reach, cuts to dark, and rests until the next strike. Both bolts run
-   THESE keyframes at different --storm-cycle-* durations — that alone
-   yields "two visible at once, drawing at different rates". storm.ts
-   re-rolls each bolt's position during the dark window (opacity 0 at
-   the loop seam, so the jump is never visible). Defined once; only
-   Retro-Future references it (via the .storm__bolt animation). */
+/* Retro-Future's strike cycle: the bolt is wiped in top→bottom over ~60% of
+   its period (the strike box slides 0→full reach while storm-hold counter-slides,
+   so the bolt itself never moves), flickers once at full reach, cuts to dark,
+   and rests until the next strike. Both bolts run THESE keyframes at different
+   --storm-cycle-* durations — that alone yields "two visible at once, drawing
+   at different rates". storm.ts re-rolls each bolt's position during the dark
+   window (opacity 0 at the loop seam, so the jump is never visible). Defined
+   once; only Retro-Future references them (via the .storm__strike / __hold
+   animations). transform + opacity only, so the compositor runs them. */
 @keyframes storm-strike {
-  0%        { stroke-dashoffset: 1; opacity: 0; }
+  0%        { transform: translateY(-100%); opacity: 0; }
   2%        { opacity: 1; }
-  60%       { stroke-dashoffset: 0; opacity: 1; }
+  60%       { transform: translateY(0); opacity: 1; }
   64%       { opacity: 0.4; }   /* flicker at full reach */
   68%       { opacity: 1; }
-  74%, 100% { stroke-dashoffset: 0; opacity: 0; }
+  74%, 100% { transform: translateY(0); opacity: 0; }
+}
+@keyframes storm-hold {
+  0%        { transform: translateY(100%); }
+  60%, 100% { transform: translateY(0); }
 }
 
-/* Glass's aurora blobs wander and return: each layer drifts a different
-   direction, out of phase, with symmetric 0/50/100 keyframes so the loop is
-   seamless. Rest position is −64px (the oversized layer's center); every
-   offset stays within −128..0 on both axes, so the image edge — the hard
-   cut line — can never enter the viewport. Defined once; only Glass
-   references it (via --canvas-anim). */
+/* Glass's aurora blobs wander and return: each blob drifts by its own
+   --drift-x / --drift-y (--aurora-drift-N-*) at the midpoint and comes back, so
+   the loop is seamless; the vectors point different ways, so the blobs move apart
+   and together. Every vector stays within --aurora-slack, so a blob's cut edge can
+   never enter the viewport. The ease is sampled into the keyframes —
+   (1 − cos 2πt) / 2 at tenths — because the stepped timing (--ambient-fps)
+   replaces any easing. Defined once; only Glass opts in (--aurora-display). */
 @keyframes aurora-drift {
-  0%, 100% { background-position: -64px -64px, -64px -64px, -64px -64px; }
-  50%      { background-position: -16px -32px, -120px -40px, -28px -108px; }
+  0%, 100% { transform: translate(0, 0); }
+  10%, 90% { transform: translate(calc(var(--drift-x) * 0.0955), calc(var(--drift-y) * 0.0955)); }
+  20%, 80% { transform: translate(calc(var(--drift-x) * 0.3455), calc(var(--drift-y) * 0.3455)); }
+  30%, 70% { transform: translate(calc(var(--drift-x) * 0.6545), calc(var(--drift-y) * 0.6545)); }
+  40%, 60% { transform: translate(calc(var(--drift-x) * 0.9045), calc(var(--drift-y) * 0.9045)); }
+  50%      { transform: translate(var(--drift-x), var(--drift-y)); }
 }

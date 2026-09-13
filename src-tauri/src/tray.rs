@@ -144,6 +144,14 @@ pub fn start_hidden(app: &AppHandle) {
         w.hide().ok();
     }
     state(app).main_hidden_at = Some(Instant::now());
+    note_main_visibility(app);
+}
+
+/// A hide gives the page no window event (and WebView2 keeps the page "visible", drawing
+/// at full rate), so the page is told to re-check: src/ambient.ts pauses the decorative
+/// loops while the window cannot be seen.
+fn note_main_visibility(app: &AppHandle) {
+    let _ = tauri::Emitter::emit_to(app, MAIN, "main-visibility", ());
 }
 
 fn hide_main(app: &AppHandle) {
@@ -160,6 +168,7 @@ fn hide_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(MAIN) {
         w.hide().ok();
     }
+    note_main_visibility(app);
 }
 
 /// Left-click: a popped, visible window hides; otherwise ask the page to go mini
@@ -340,6 +349,7 @@ pub fn tray_place_main(app: AppHandle) {
     w.show().ok();
     w.unminimize().ok();
     w.set_focus().ok();
+    note_main_visibility(&app);
 }
 
 /// The user made the popped window theirs (picked a surface, …): stop hiding on blur.

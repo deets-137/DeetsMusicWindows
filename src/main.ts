@@ -3,6 +3,7 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
+import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
@@ -34,6 +35,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSkin();
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
+  initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
   initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
