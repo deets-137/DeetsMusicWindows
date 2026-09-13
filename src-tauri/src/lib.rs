@@ -2,6 +2,7 @@ mod airplay;
 mod apple;
 mod bridge;
 mod enrich;
+mod favorites;
 mod library;
 mod log;
 mod model;
@@ -97,6 +98,7 @@ pub fn run() {
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
             }
+            library::migrate_v3(&conn).expect("v3 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
@@ -168,6 +170,10 @@ pub fn run() {
             library::play_events_since,
             library::play_event_count,
             library::materialize_track,
+            favorites::favorite_set,
+            favorites::favorites_cached,
+            favorites::favorites_known,
+            favorites::favorites_reconcile,
             enrich::catalog_enrich,
             enrich::album_palette,
             playlists::playlists_cached,
@@ -176,6 +182,7 @@ pub fn run() {
             playlists::apple_playlist_tracks,
             playlists::playlist_create,
             playlists::playlist_rename,
+            playlists::playlist_set_cover,
             playlists::playlist_delete,
             playlists::playlist_add_tracks,
             playlists::playlist_remove_track,

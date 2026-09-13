@@ -19,6 +19,7 @@ import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
 import * as stats from "./stats";
+import * as perf from "./perf";
 
 declare global {
   interface Window {
@@ -308,6 +309,9 @@ function maybeFinishQueue(): void {
 }
 
 function onPlaybackStateChange(): void {
+  // Dev telemetry: the clicked song is audible once MusicKit reports `playing` for it.
+  const S = window.MusicKit?.PlaybackStates;
+  if (S && music?.playbackState === S.playing) perf.sound(music.nowPlayingItem?.id);
   maybeFinishQueue();
   emit();
   maybeResumeStation();
@@ -595,7 +599,9 @@ const handlesFrom = (list: Track[], context: string): TrackHandle[] => {
   // metadata in FUTURE sessions — the Rewind card reads history across restarts.
   // Synced library tracks skip (the sync owns their rows); materialize_track is a
   // local DO-NOTHING-on-conflict upsert, so re-plays are cheap and idempotent.
-  for (const t of list) if (!inLibrary(t.catalogId ?? t.libraryId)) materializeTrack(t);
+  perf.span("materialize", () => {
+    for (const t of list) if (!inLibrary(t.catalogId ?? t.libraryId)) materializeTrack(t);
+  });
   return list.map((t) => toHandle(t, context));
 };
 
@@ -773,6 +779,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     }
     windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
     diag.log("player:loadWindow", { ids: ids.length, pos });
+    perf.mark("window", { ids: ids.length, pos });
     // pos=0 deliberately SKIPS changeToMediaAtIndex: setQueue already leaves the queue
     // at index 0, and changeToMediaAtIndex(0) races MusicKit's internal play (its event
     // handler fires play() on top of the in-flight one → the uncaught "play() without a
@@ -784,10 +791,12 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     }
     if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
     stats.recordStart(queue.getCurrent()); // settled start (intermediate rebuild changes were suppressed)
+    perf.mark("resolve");
   } catch (e) {
     // Surface and rethrow — but NEVER leave `loadingContext` stuck (the finally): a
     // rejection here used to suppress model-follow for the rest of the session.
     diag.log("player:loadError", { e: String(e) });
+    perf.abandon("loadError");
     console.warn("[player] load failed:", e);
     throw e;
   } finally {
@@ -802,8 +811,10 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
  * `handles` is the full list; the queue model keeps all of it, MusicKit gets a window.
  */
 export async function playContext(handles: TrackHandle[], startIndex: number): Promise<void> {
+  perf.mark("model"); // ingest + re-renders done; what follows up to `context` is MusicKit init
   const m = await initPlayer();
   diag.log("player:playContext", { startIndex, len: handles.length });
+  perf.mark("context", { len: handles.length });
 
   // Idempotent re-click: clicking the song that's already current shouldn't tear down
   // and rebuild MusicKit's queue (a needless buffer/gap, and the path that used to
@@ -812,6 +823,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   const cur = queue.getCurrent();
   if (target && cur && playId(target) && playId(target) === playId(cur) && m.nowPlayingItem) {
     diag.log("player:reclick", { id: playId(target) });
+    perf.abandon("reclick"); // no rebuild, no `playing` transition to time
     await m.seekToTime(0);
     if (!m.isPlaying) await m.play();
     stats.recordRestart(cur); // a deliberate restart is a fresh play (no np-change fires here)
@@ -819,20 +831,25 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   }
 
   resumeStation = null; // a deliberate new context ends any queued station return
-  queue.setContext(handles, startIndex);
+  perf.span("setContext", () => queue.setContext(handles, startIndex));
+  perf.target(playId(queue.getCurrent() ?? {}));
   await loadFromModel(m);
 }
 
 /** Jump to an Up Next entry by index (skipped songs are dropped). Re-windows → buffers. */
 export async function jumpToUpcoming(index: number): Promise<void> {
+  perf.click("jump", index + 1);
   const m = await initPlayer();
   diag.log("player:jump", { index });
-  if (!queue.jumpTo(index)) return;
+  if (!queue.jumpTo(index)) return perf.abandon("noJump");
+  perf.mark("context");
+  perf.target(playId(queue.getCurrent() ?? {}));
   await loadFromModel(m);
 }
 
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
 export function playTracks(tracks: Track[], startIndex: number, context = "library"): Promise<void> {
+  perf.click(context, tracks.length); // BEFORE the ingest — stage A includes it
   return playContext(handlesFrom(tracks, context), startIndex);
 }
 

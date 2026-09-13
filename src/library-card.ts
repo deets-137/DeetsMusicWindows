@@ -19,6 +19,7 @@ import { tracks, onTracksChange } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addToPlaylistItem } from "./playlists";
 import { startStationItem, startArtistStationItem } from "./start-station";
+import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density } from "./collection-card";
 import type { MenuItem } from "./context-menu";
@@ -115,6 +116,18 @@ function artURL(art: Artwork | undefined, px: number): string | null {
   return art.urlTemplate.replace("{w}", s).replace("{h}", s).replace("{f}", "jpg");
 }
 const trackId = (t: Track) => t.libraryId ?? t.catalogId ?? `${t.title} ${t.artistName}`;
+
+/** The explicit mark (Apple's `contentRating: "explicit"`): a filled square with an E,
+ *  the same badge slot and size as the Apple sigil on playlist rows. Theme roles only. */
+export const EXPLICIT_SIGIL =
+  `<svg class="lib-src-badge lib-src-badge--explicit" viewBox="0 0 24 24" role="img" aria-label="Explicit">` +
+  `<rect x="3" y="3" width="18" height="18" rx="3"/>` +
+  `<path class="lib-src-badge__letter" d="M9 7h6v2h-4v2h3.5v2H11v2h4v2H9z"/></svg>`;
+export const explicitBadge = (t: { contentRating?: string }): string =>
+  t.contentRating === "explicit" ? EXPLICIT_SIGIL : "";
+
+const ICON_HEART =
+  '<svg class="lib-pill__icon lib-pill__icon--heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>';
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -123,16 +136,28 @@ function initials(name: string): string {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 }
-function rowThumb(art: Artwork | undefined, round: boolean, name: string): string {
+/** The derived cover (NEXT-VERSION §2): four distinct track covers as a 2×2 mosaic,
+ *  or the first one alone when fewer than four are known. `cls` is the slot class. */
+function mosaicHTML(cls: string, urls: string[], px: number): string {
+  const tiles = urls.length >= 4 ? urls.slice(0, 4) : urls.slice(0, 1);
+  const size = tiles.length === 4 ? Math.ceil(px / 2) : px;
+  const imgs = tiles
+    .map((u) => `<img src="${esc(u.replace("{w}", String(size)).replace("{h}", String(size)).replace("{f}", "jpg"))}" alt="" loading="lazy" data-art />`)
+    .join("");
+  return `<div class="${cls} ${cls}--mosaic${tiles.length === 4 ? "" : ` ${cls}--mosaic-one`}" aria-hidden="true">${imgs}</div>`;
+}
+function rowThumb(art: Artwork | undefined, round: boolean, name: string, mosaic?: string[]): string {
   const r = round ? " lib-row__art--round" : "";
   const url = artURL(art, 72);
   if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" data-art />`;
+  if (mosaic?.length) return mosaicHTML("lib-row__art", mosaic, 72);
   return `<div class="lib-row__art${r} lib-row__art--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
-function tileCover(art: Artwork | undefined, px: number, round: boolean, name: string): string {
+function tileCover(art: Artwork | undefined, px: number, round: boolean, name: string, mosaic?: string[]): string {
   const r = round ? " lib-tile__cover--round" : "";
   const url = artURL(art, px);
   if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" data-art />`;
+  if (mosaic?.length) return mosaicHTML("lib-tile__cover", mosaic, px);
   return `<div class="lib-tile__cover${r} lib-tile__cover--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 const px = (density: Density) => (density === "large" ? 300 : 160);
@@ -168,12 +193,12 @@ export function musicCell(
   art: Artwork | undefined,
   primary: string,
   sub: string,
-  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string } = {},
+  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[] } = {},
 ): string {
-  const { round = false, hideCover = false, selected = false, badge = "" } = opts;
+  const { round = false, hideCover = false, selected = false, badge = "", mosaic } = opts;
   return density === "lines"
-    ? rowHTML(idx, primary, sub, hideCover ? undefined : rowThumb(art, round, primary), selected, badge)
-    : tileHTML(idx, tileCover(art, px(density), round, primary), primary, sub, selected, badge);
+    ? rowHTML(idx, primary, sub, hideCover ? undefined : rowThumb(art, round, primary, mosaic), selected, badge)
+    : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic), primary, sub, selected, badge);
 }
 
 // ── sort specs (per grouping) ────────────────────────────────────────────────────
@@ -283,6 +308,8 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
     ...goToItems(items, nav),
     // A station seeds from ONE song — a longer list is an album, which has no station.
     ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
+    // ♥ — one song only (an album has no favorite here); null without consent/catalog id.
+    ...(items.length === 1 ? [favoriteItem(items[0])] : []),
   ].filter(Boolean) as MenuItem[];
 }
 
@@ -308,6 +335,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
       musicCell(density, idx, t.artwork, t.title, t.artistName, {
         hideCover: o.hideCover,
         selected: !!o.selectedId && trackId(t) === o.selectedId,
+        badge: explicitBadge(t),
       }),
     // Click a song → play it and queue the rest of THIS list from here, in the
     // current sort order (the engine hands us the live sorted view).
@@ -432,15 +460,20 @@ export const libraryCard: CardDef = {
         ),
     };
 
+    // ♥ filter (the toolbar pill): narrows the SOURCE list, so songs, albums and artists
+    // all reduce to what holds a favorite. Session state; the engine draws the pill.
+    let favOnly = false;
+    const source = (): Track[] => (favOnly ? tracks().filter(isLoved) : tracks());
     const rootContext = (): Context => ({
       title: "Library",
       density: true,
       groupings: [
-        songsGrouping(tracks, { context: "library", nav: libNav }),
-        albumsGrouping(tracks, albumDetail, libNav),
-        artistsGrouping(tracks, artistDetail),
+        songsGrouping(source, { context: "library", nav: libNav }),
+        albumsGrouping(source, albumDetail, libNav),
+        artistsGrouping(source, artistDetail),
       ],
       defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
+      filter: { label: "Favorites only", icon: ICON_HEART, active: () => favOnly, toggle: () => { favOnly = !favOnly; } },
     });
 
     // Header state for the slot picker: track root/title and replay it to late subscribers.
@@ -459,7 +492,8 @@ export const libraryCard: CardDef = {
     // ── render from the shared store + refresh-button state ──
     // The store owns loading/reloading (incl. on sync-done); we just re-render when it
     // changes. The collection card starts empty and fills when the first load lands.
-    const unsubTracks = onTracksChange(() => card.reload());
+    const unsubTracks = onTracksChange(() => card.reload(), "library.reload");
+    const unsubFavs = onFavoritesChange(() => card.reload()); // the ♥ filter follows the mirror
 
     const syncUnlisten = onSyncEvent((e) => {
       if (e.phase === "start") refreshBtn?.classList.add("is-busy");
@@ -481,6 +515,7 @@ export const libraryCard: CardDef = {
     return {
       destroy() {
         unsubTracks();
+        unsubFavs();
         syncUnlisten.then((un) => un()).catch(() => {});
         card.destroy();
         host.innerHTML = "";

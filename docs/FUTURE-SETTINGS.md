@@ -557,6 +557,21 @@ console logging regardless (diag stays the debugging source of truth). Until bui
 ledger rule for new features: quiet failures log to console and get a pointer to this
 entry (see STATIONS.md §2).
 
+**Two one-time notices (added 2026-09-12, own session).** Besides failures, the primitive
+owes the user two facts the UI cannot show any other way. Each is an `info` toast with a
+**Don't show again** button that writes `"off"` to its own key, so silencing one does not
+silence the other:
+
+| When | Text (draft) | Key |
+|---|---|---|
+| The user sets a local playlist cover (NEXT-VERSION §2) | Covers stay in DeetsMusic. Apple Music makes its own. | `deets.notice.coverLocal` |
+| The first Add to Library in a session (`#np-add` or a menu item) | Added. Apple has no undo from here; remove it in the Music app. | `deets.notice.addOneWay` |
+
+Shape when built: `toast(msg, { kind, action?, dismissKey? })` in a new `src/toast.ts`; one
+strip, newest replaces the previous, auto-dismiss after a skin-token duration (`--toast-dur`,
+`--toast-pad`, `--toast-radius`, `--toast-w`, `--toast-motion`; reduced motion snaps). Main
+window only; the tray panel and the extension popup keep the console.
+
 **Candidate added 2026-09-11 — no developer token at startup.** A first run with no local
 MusicKit key and no reachable mint (offline, or the worker's `KILL` switch — desk-tested via
 `KILL`, RELEASE.md §7) opens the window normally, and the user only learns something is wrong

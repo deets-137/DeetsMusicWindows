@@ -53,12 +53,16 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
 | Agents | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) · status line · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · Open guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md) |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
+| Window | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`; OS reduced motion still snaps) |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
 | Playback | Previous rewinds (§4) — *The list* / *Played songs* | `previousReach` | lookback / heard | `queue.ts` `setContext` (heard = no parked lookback) |
 | Playback | Shuffle keeps picks (§5a) — *First* / *In place* / *Mixed* | `shuffleManual` | top / hold / mix | `queue.ts` `shuffleUpcoming` |
 | Playback | Idle shuffle plays (§5b) — *Library* / *Nothing* | `shuffleIdle` | library / noop | `player.ts` `shuffleQueue` |
 | Playback | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
-| Library | Add to Library (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square) |
+| Playback | Make a Replay each week (A playlist of the past week's most-played songs, made for you) | `replayAuto` | on / off | `replay.ts` `runWeeklyReplay` (boot) |
+| Playback | Replay day (The day the weekly Replay is made) — *Mon … Sun* | `replayDay` | mon / … | `replay.ts` `lastDue` |
+| Playback | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
+| Library | Add to Library (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square); the ♥ (`favorites.ts`) rides the same consent |
 | Library | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
 | Library | New playlist opens Search (§16) | `playlistCreateSummon` | on / off | `playlists-card.ts` `createAndEnter` |
 | Cards | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |

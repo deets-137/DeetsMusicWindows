@@ -107,7 +107,7 @@ function mountHistory(host: HTMLElement): CardInstance {
 
   // Re-render on plays (queue change) and when the track store (re)loads so entries
   // resolve instead of showing "Unknown".
-  const unsubTracks = onTracksChange(render);
+  const unsubTracks = onTracksChange(render, "history");
   const unsubQueue = queue.onQueueChange(render);
   render();
 

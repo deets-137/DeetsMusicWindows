@@ -18,7 +18,7 @@
         "title": "DeetsMusic",
         "width": 480,
         "height": 864,
-        "minWidth": 320,
+        "minWidth": 340,
         "minHeight": 560,
         "decorations": false,
         "resizable": true,

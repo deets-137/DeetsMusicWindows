@@ -14,23 +14,28 @@ import { onTracksChange } from "./track-store";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
 import * as queue from "./queue";
-import { resolveEntry } from "./queue-rows";
+import { resolveEntry, artURL } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem, addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
+import { favoriteItem, favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
 import { startStationItem } from "./start-station";
+import { explicitBadge } from "./library-card";
+import { esc } from "./collection-card";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef } from "./cards";
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
+// The cover placeholder: the ♪ glyph in a one-line box (styles.css .np__art-glyph).
+const GLYPH_NOTE = '<span class="np__art-glyph" aria-hidden="true">♪</span>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
 
 const TEMPLATE = `
-  <div class="np">
+  <div class="np np--idle">
     <div class="np__aurora" aria-hidden="true"></div>
-    <div class="np__art" id="np-art" aria-hidden="true">♪</div>
+    <div class="np__art" id="np-art" aria-hidden="true">${GLYPH_NOTE}</div>
     <div class="np__center">
       <div class="np__meta">
         <span class="np__title" id="np-title">Not playing</span>
@@ -44,15 +49,28 @@ const TEMPLATE = `
       </div>
       <div class="np__times" aria-hidden="true"><span id="np-elapsed">0:00</span><span id="np-remaining">0:00</span></div>
       <div class="np__bottom">
-        <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <polyline points="16 3 21 3 21 8"></polyline>
-            <line x1="4" y1="20" x2="21" y2="3"></line>
-            <polyline points="21 16 21 21 16 21"></polyline>
-            <line x1="15" y1="15" x2="21" y2="21"></line>
-            <line x1="4" y1="4" x2="9" y2="9"></line>
-          </svg>
-        </button>
+        <div class="np__left">
+          <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
+          </button>
+          <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="3" y1="6" x2="13" y2="6"></line>
+              <line x1="3" y1="12" x2="13" y2="12"></line>
+              <line x1="3" y1="18" x2="13" y2="18"></line>
+              <path d="M17 8.5 22 12 17 15.5z" fill="none"></path>
+            </svg>
+          </button>
+          <button class="panel__action np__search" id="np-search" type="button" aria-label="Show search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg>
+          </button>
+        </div>
         <div class="np__controls">
           <button class="np__btn" type="button" aria-label="Previous">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg>
@@ -65,16 +83,11 @@ const TEMPLATE = `
           </button>
         </div>
         <div class="np__right">
-          <button class="panel__action np__add" id="np-add" type="button" aria-label="Add to Library" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <button class="panel__action np__fav" id="np-fav" type="button" aria-label="Favorite" aria-pressed="false" disabled hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"></path></svg>
           </button>
-          <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <line x1="3" y1="6" x2="13" y2="6"></line>
-              <line x1="3" y1="12" x2="13" y2="12"></line>
-              <line x1="3" y1="18" x2="13" y2="18"></line>
-              <path d="M17 8.5 22 12 17 15.5z" fill="none"></path>
-            </svg>
+          <button class="panel__action np__add" id="np-add" type="button" aria-label="Add to Library" disabled hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
       </div>
@@ -116,15 +129,32 @@ export const nowPlayingCard: CardDef = {
     // state. A LIVE station has no seek and no skip (STATIONS.md §1): `.np--live`
     // swaps the scrubber for a LIVE marker and the prev/next buttons disable.
     let onStation = false; // radio mode → the menu offers Stop Station
+    let artKey = ""; // what the cover box currently shows — rebuilt only on change
     const unsubState = onPlayerState((s) => {
       onStation = !!s.station;
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
-      if (npTitle) npTitle.textContent = s.title ?? "Not playing";
-      if (npArtist) npArtist.textContent = s.artist ?? (s.station ? s.station.name : "");
-      if (npAlbum) npAlbum.textContent = s.album ?? "";
-      if (npArt) {
-        npArt.innerHTML = s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪";
+      // Between songs MusicKit reports no item for a beat. The queue already knows what
+      // is about to play, so fill the gap from its current entry instead of showing the
+      // placeholder and the "Not playing" text for a frame (the between-songs jitter).
+      const cur = queue.getCurrent();
+      const next = !s.station && cur ? resolveEntry(cur) : undefined;
+      const title = s.title ?? next?.title;
+      const artist = s.artist ?? next?.artistName;
+      const album = s.album ?? next?.albumName;
+      const artwork = s.artworkUrl ?? artURL(next, 480) ?? undefined;
+      if (npTitle) npTitle.innerHTML = esc(title ?? "Not playing") + (next ? explicitBadge(next) : "");
+      if (npArtist) npArtist.textContent = artist ?? (s.station ? s.station.name : "");
+      if (npAlbum) npAlbum.textContent = album ?? "";
+      // The cover is rebuilt ONLY when the artwork or station changes: state fires on
+      // every play/pause/loading tick, and re-creating the <img> each time flashed the
+      // placeholder between identical covers.
+      const key = `${artwork ?? ""}|${s.station?.name ?? ""}`;
+      if (npArt && key !== artKey) {
+        artKey = key;
+        npArt.innerHTML = artwork
+          ? `<img src="${artwork}" alt="" data-art />`
+          : GLYPH_NOTE;
         // Radio: the station's name rides the cover as a hover chip (STATIONS.md §3b).
         if (s.station) {
           const chip = document.createElement("span");
@@ -135,6 +165,9 @@ export const nowPlayingCard: CardDef = {
       }
       const live = !!s.station?.live;
       npEl2?.classList.toggle("np--live", live);
+      // Idle (nothing queued, no station): the aurora goes dark so the card matches its
+      // neighbors instead of glowing over an empty placeholder (Glass).
+      npEl2?.classList.toggle("np--idle", !title && !s.station);
       if (prevBtn) prevBtn.disabled = live;
       if (nextBtn) nextBtn.disabled = live;
     });
@@ -161,7 +194,7 @@ export const nowPlayingCard: CardDef = {
       return cur ? resolveEntry(cur) : undefined;
     };
     let adding = false;
-    const setAdd = (state: "hidden" | "add" | "added" | "busy") => {
+    const setAdd = (state: "hidden" | "idle" | "add" | "added" | "busy") => {
       if (!addBtn) return;
       addBtn.hidden = state === "hidden";
       addBtn.disabled = state !== "add";
@@ -171,8 +204,9 @@ export const nowPlayingCard: CardDef = {
       addBtn.title = state === "added" ? "In your library" : "Add to Library";
     };
     const refreshAdd = () => {
+      if (!libraryAddEnabled()) return setAdd("hidden"); // the toggle is the only thing that removes it
       const t = currentTrack();
-      if (!t?.catalogId || !libraryAddEnabled()) return setAdd("hidden");
+      if (!t?.catalogId) return setAdd("idle"); // nothing playing / no catalog id: greyed, in place
       if (adding) return setAdd("busy");
       setAdd(libraryAddOffered(t) ? "add" : "added");
     };
@@ -189,9 +223,40 @@ export const nowPlayingCard: CardDef = {
         });
     });
     const unsubAddState = onPlayerState(refreshAdd);
-    const unsubAddTracks = onTracksChange(refreshAdd);
+    const unsubAddTracks = onTracksChange(refreshAdd, "np.add");
     const unsubAddToggle = onLibraryAddChange(refreshAdd);
     refreshAdd();
+
+    // ♥ square (NEXT-VERSION §3): hidden without consent or a catalog id; filled
+    // when loved. Optimistic — favorites.ts flips the state and rolls back on error.
+    const favBtn = host.querySelector<HTMLButtonElement>("#np-fav");
+    const refreshFav = () => {
+      if (!favBtn) return;
+      favBtn.hidden = !libraryAddEnabled(); // same consent as the "+"; only the toggle removes it
+      const t = currentTrack();
+      if (!favoriteOffered(t)) { // nothing playing / no catalog id: greyed, in place
+        favBtn.disabled = true;
+        favBtn.setAttribute("aria-pressed", "false");
+        favBtn.dataset.state = "off";
+        return;
+      }
+      favBtn.disabled = false;
+      const on = isLoved(t);
+      favBtn.setAttribute("aria-pressed", String(on));
+      favBtn.dataset.state = on ? "on" : "off";
+      favBtn.setAttribute("aria-label", on ? "Unfavorite" : "Favorite");
+      favBtn.title = on ? "Unfavorite" : "Favorite";
+    };
+    favBtn?.addEventListener("click", () => {
+      const t = currentTrack();
+      if (!favoriteOffered(t)) return;
+      toggleLoved(t).catch((e) => console.error("[np] favorite", e));
+    });
+    const unsubFavState = onPlayerState(refreshFav);
+    const unsubFavChange = onFavoritesChange(refreshFav);
+    const unsubFavToggle = onLibraryAddChange(refreshFav);
+    const unsubFavTracks = onTracksChange(refreshFav, "np.fav");
+    refreshFav();
 
     // Stage volume row (max only, CSS-gated): the same app gain the titlebar pill
     // drives, on the horizontal scrubber primitive. onVolumeChange keeps every
@@ -229,6 +294,8 @@ export const nowPlayingCard: CardDef = {
     // Queue summon — bring the Queue card into the least-recently-touched slot
     // (flips if it's already on-screen in the other slot; see layout.ts).
     host.querySelector<HTMLElement>("#np-summon")?.addEventListener("click", () => requestCard("queue"));
+    // Search square (NEXT-VERSION §5): same bus, the Search card.
+    host.querySelector<HTMLElement>("#np-search")?.addEventListener("click", () => requestCard("search"));
 
     // Right-click the song identity (cover / title / artist) → drill or seed from the
     // CURRENT track. Mirrors the Queue now-hero menu, but always reachable since NP is
@@ -242,6 +309,7 @@ export const nowPlayingCard: CardDef = {
         goToAlbumItem(cur.catalogId, t?.albumName),
         startStationItem("songs", cur.catalogId),
         t ? addSongToLibraryItem(t) : null,
+        favoriteItem(t),
         onStation
           ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
           : null,
@@ -258,14 +326,14 @@ export const nowPlayingCard: CardDef = {
     // from the rendered buttons (their widths don't change when stacked, so the
     // threshold can't oscillate) and the grid's own column-gap, so it follows the skin.
     const bottom = host.querySelector<HTMLElement>(".np__bottom");
-    const shuffleBtn = host.querySelector<HTMLElement>("#np-shuffle");
+    const leftCluster = host.querySelector<HTMLElement>(".np__left"); // shuffle · queue · search
     const controls = host.querySelector<HTMLElement>(".np__controls");
-    const rightCluster = host.querySelector<HTMLElement>(".np__right"); // "+" and summon
+    const rightCluster = host.querySelector<HTMLElement>(".np__right"); // ♥ · "+"
     let stackObserver: ResizeObserver | undefined;
-    if (bottom && shuffleBtn && controls && rightCluster) {
+    if (bottom && leftCluster && controls && rightCluster) {
       const fit = () => {
         const gap = parseFloat(getComputedStyle(bottom).columnGap) || 0;
-        const needed = shuffleBtn.offsetWidth + controls.offsetWidth + rightCluster.offsetWidth + gap * 2;
+        const needed = leftCluster.offsetWidth + controls.offsetWidth + rightCluster.offsetWidth + gap * 2;
         bottom.classList.toggle("np__bottom--stacked", bottom.clientWidth < needed);
       };
       stackObserver = new ResizeObserver(fit);
@@ -300,6 +368,10 @@ export const nowPlayingCard: CardDef = {
         unsubAddState();
         unsubAddTracks();
         unsubAddToggle();
+        unsubFavState();
+        unsubFavChange();
+        unsubFavToggle();
+        unsubFavTracks();
         unsubVolume();
         airplay?.destroy();
         stackObserver?.disconnect();

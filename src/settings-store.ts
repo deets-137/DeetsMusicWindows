@@ -15,6 +15,8 @@ export interface Settings {
   menuMode: "click" | "hover";
   /** Free resize flips the surface past its band (FUTURE-SETTINGS §8). Off = clamp only. */
   surfaceAutoFlip: boolean;
+  /** Theme/skin switches animate (NEXT-VERSION §6). The OS reduced-motion preference still wins. */
+  appearanceMotion: boolean;
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
@@ -26,6 +28,12 @@ export interface Settings {
   shuffleIdle: "library" | "noop";
   /** When a play counts as listened-through (§7). */
   fullPlayRule: "fraction" | "end" | "scrobble";
+  /** Make the weekly Replay playlist automatically (NEXT-VERSION §4). */
+  replayAuto: boolean;
+  /** The weekday the weekly Replay is made (first launch on/after it). */
+  replayDay: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+  /** Each week gets its own dated Replay (off = one rolling playlist, replaced weekly). */
+  replayKeep: boolean;
   // ── library & playlists ──
   /** Backfill missing playlist song counts on the overview (§14). */
   playlistEagerCounts: boolean;
@@ -44,11 +52,15 @@ export const DEFAULTS: Settings = {
   alwaysOnTop: false,
   menuMode: "click",
   surfaceAutoFlip: true,
+  appearanceMotion: true,
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   previousReach: "lookback",
   shuffleManual: "top",
   shuffleIdle: "library",
   fullPlayRule: "fraction",
+  replayAuto: true,
+  replayDay: "mon",
+  replayKeep: false,
   playlistEagerCounts: true,
   playlistCreateSummon: true,
   rewindCard: false,

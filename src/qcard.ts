@@ -15,6 +15,7 @@ import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
+import { favoriteItem } from "./favorites";
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef, CardInstance } from "./cards";
@@ -169,6 +170,8 @@ function mountQueue(host: HTMLElement): CardInstance {
       if (start) items.push(start);
       const add = t ? addSongToLibraryItem(t) : null;
       if (add) items.push(add);
+      const fav = favoriteItem(t);
+      if (fav) items.push(fav);
       openContextMenu(e.clientX, e.clientY, items, () => row.classList.remove("is-context"));
       return;
     }
@@ -182,6 +185,7 @@ function mountQueue(host: HTMLElement): CardInstance {
       goToAlbumItem(cur?.catalogId, t?.albumName),
       startStationItem("songs", cur?.catalogId), // "more like what's playing"
       t ? addSongToLibraryItem(t) : null,
+      favoriteItem(t),
       lastState?.station
         ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[qcard] stop station", err)) }
         : null,
@@ -313,7 +317,7 @@ function mountQueue(host: HTMLElement): CardInstance {
 
   // Metadata comes from the shared track store; re-render when it (re)loads so newly
   // synced songs resolve instead of showing "Unknown".
-  const unsubTracks = onTracksChange(render);
+  const unsubTracks = onTracksChange(render, "qcard");
   const unsubQueue = queue.onQueueChange(render);
   const unsubState = onPlayerState((s) => {
     lastState = s;

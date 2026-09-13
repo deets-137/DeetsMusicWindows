@@ -25,10 +25,10 @@ const DEFAULT_SURFACE: SurfaceName = "midi";
 // app window below 340 px flips it to mini in place, widening past 350 flips it back (the
 // window's minWidth in tauri.conf is 320 so that point is reachable); the tray flyout is
 // the other entrance (TRAY.md §1). Being evaluated by the user, 2026-09-09.
-const MINI_CEIL = 345;
+const MINI_CEIL = 360;
 const MIDI_CEIL = 820;
 const HYST = 40; // must drag this far past the midi/max threshold before the surface flips
-const MINI_HYST = 5; // the mini edge is tight on purpose: in below 340, out above 350
+const MINI_HYST = 5; // the mini edge is tight on purpose: in below 355, out above 365; the window minimum is 340
 
 // Fallback sizes until a surface has a remembered one. midi = today's window.
 const DEFAULT_SIZES: Record<SurfaceName, { w: number; h: number }> = {
@@ -117,6 +117,7 @@ async function applySize(s: SurfaceName, useDefault = false): Promise<void> {
     }, 100);
   }
 }
+
 
 // Reflect the active surface onto the settings flyout's radio items.
 function markActive(s: SurfaceName): void {

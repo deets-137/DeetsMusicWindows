@@ -72,7 +72,7 @@ pub fn init_db(conn: &Connection) -> rusqlite::Result<()> {
 /// The canonical track key: catalog-first (FAVORITES.md). `catalog_id` is a stable
 /// cross-source identity (99.8% of the library carries one); `library_id` is the
 /// fallback for catalog-less items (uploads).
-fn track_key(t: &Track) -> Option<String> {
+pub(crate) fn track_key(t: &Track) -> Option<String> {
     t.catalog_id
         .clone()
         .or_else(|| t.library_id.clone())
@@ -161,6 +161,42 @@ pub fn migrate_v2(conn: &mut Connection) -> Result<(), String> {
 
     tx.commit().map_err(|e| e.to_string())?;
     crate::log::info(&format!("migration: v2 complete, {rekeyed} row(s) re-keyed to catalog-first"));
+    Ok(())
+}
+
+// ── v3: favorites mirror + local playlist covers (NEXT-VERSION §2, §3) ─────────
+
+/// Additive, idempotent, runs after every table init: a `favorites` table (the ♥
+/// mirror, FAVORITES.md) and a `cover` column on `local_playlists` (a user-set cover,
+/// stored as a data URL — local only, Apple's API cannot receive one). No backup:
+/// nothing is rewritten, and `IF NOT EXISTS` / the column probe make a re-run a no-op.
+pub fn migrate_v3(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS favorites (
+            track_id  TEXT PRIMARY KEY,
+            loved     INTEGER NOT NULL DEFAULT 1,
+            synced_at INTEGER
+        );",
+    )
+    .map_err(|e| format!("favorites table: {e}"))?;
+    let has_cover: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('local_playlists') WHERE name = 'cover'",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    if has_cover == 0 {
+        conn.execute_batch("ALTER TABLE local_playlists ADD COLUMN cover TEXT;")
+            .map_err(|e| format!("add cover column: {e}"))?;
+        crate::log::info("migration: v3 added local_playlists.cover");
+    }
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES('schema_version', '3')
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 

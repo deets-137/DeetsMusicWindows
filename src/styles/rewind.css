@@ -5,6 +5,7 @@
 /* Two equal pills; .lib-pills (styles.css) supplies flex + gap, .lib-ctrl the cell. */
 .rewind__pills { flex: 0 0 auto; }
 .rewind__pills .lib-ctrl { flex: 1 1 0; }
+.rewind__make { flex: 0 0 auto; white-space: nowrap; }
 
 /* The board owns the scroll so the pills stay pinned while the list moves. */
 .rewind__board {

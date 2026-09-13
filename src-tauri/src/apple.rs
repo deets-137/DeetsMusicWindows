@@ -718,6 +718,52 @@ async fn api_post_once(
     Ok((status, body))
 }
 
+/// PUT (with a JSON body) or DELETE an Apple Music API URL, returning
+/// (http_status, parsed_body). Same auth + 401 heal as `api_get`; used by the ♥
+/// ratings writes (favorites.rs). `body: None` sends no body (DELETE).
+pub(crate) async fn api_send(
+    client: &reqwest::Client,
+    method: reqwest::Method,
+    dev: &str,
+    mut_tok: &str,
+    url: &str,
+    body: Option<&serde_json::Value>,
+) -> Result<(u16, serde_json::Value), String> {
+    let r = api_send_once(client, method.clone(), dev, mut_tok, url, body).await?;
+    if r.0 != 401 {
+        return Ok(r);
+    }
+    match refetch_after_401().await {
+        Some(fresh) => api_send_once(client, method, &fresh, mut_tok, url, body).await,
+        None => Ok(r),
+    }
+}
+
+async fn api_send_once(
+    client: &reqwest::Client,
+    method: reqwest::Method,
+    dev: &str,
+    mut_tok: &str,
+    url: &str,
+    body: Option<&serde_json::Value>,
+) -> Result<(u16, serde_json::Value), String> {
+    let mut req = client
+        .request(method, url)
+        .header("Authorization", format!("Bearer {dev}"))
+        .header("Music-User-Token", mut_tok);
+    req = match body {
+        Some(b) => req.json(b),
+        None => req.header("Content-Length", "0"),
+    };
+    let resp = req.send().await.map_err(|e| e.to_string())?;
+    let status = resp.status().as_u16();
+    log_failure(status, url);
+    let text = resp.text().await.unwrap_or_default();
+    let body = serde_json::from_str::<serde_json::Value>(&text)
+        .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
+    Ok((status, body))
+}
+
 /// Pull a representative sample of the user's library + a catalog lookup and
 /// write the raw JSON to `dev-dumps/`. Returns a human-readable summary.
 #[tauri::command]
@@ -942,6 +988,7 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         source: None,      // a catalog search hit is neither local nor a library mirror
         kind: None,
         folder_id: None, // folders are local metadata, stamped by playlists_cached
+        cover_urls: None,
     }
 }
 
@@ -1002,6 +1049,7 @@ fn playlist_from_library(v: &serde_json::Value) -> Playlist {
         source: Some("apple".into()),
         kind: Some(kind.into()),
         folder_id: None, // folders are local metadata, stamped by playlists_cached
+        cover_urls: None,
     }
 }
 

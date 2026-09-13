@@ -304,6 +304,15 @@ get large).
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
+  search pins · playlist covers (user / Apple / mosaic; schema v3 `cover`) · ♥ favorites
+  (`favorites.rs` + `favorites.ts`, seeded from Apple's Favorite Songs; the Library ♥
+  filter) · weekly Replay (`replay.ts`, three Playback rows) · Search square + Ctrl
+  shortcuts · theme/skin View Transitions (`appearance.ts`) · album-colored NP text with
+  the contrast guard (Glass) · Glass menus at 90% · explicit badge. Surface-change motion
+  (fork B) was tried and walked back the same day (NEXT-VERSION §10). **Next talk: the
+  playlist creation flow** (NEXT-VERSION §11).
+
 ### Not built yet ⬜
 - **Next-version feature notes (2026-09-11)** — pinned search terms · playlist artwork ·
   favorite songs · weekly replay playlists from Rewind · a Search/quick-access shortcut.

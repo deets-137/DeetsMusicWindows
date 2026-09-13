@@ -229,7 +229,7 @@ export function initNpBus(): void {
     publish();
   });
   // Library membership changes (sync, an add from the tray/extension) flip the "+".
-  onTracksChange(() => publish(true));
+  onTracksChange(() => publish(true), "np-bus.publish");
 
   listen<NpCommand>("np-command", (e) => {
     run(e.payload).catch((err) => console.error("[np-bus] command failed:", e.payload, err));

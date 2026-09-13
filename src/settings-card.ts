@@ -96,6 +96,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           set: (on) => setSetting("menuMode", on ? "hover" : "click"),
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
         {
           kind: "toggle",
           id: "autostart",
@@ -139,6 +140,16 @@ function mountSettings(host: HTMLElement): CardInstance {
           hint: "When a song counts as played through, for Rewind",
           options: [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }],
         },
+        storeToggle("replayauto", "Make a Replay each week", "replayAuto", () => "A playlist of the past week's most-played songs, made for you"),
+        {
+          kind: "choice", id: "replayday", label: "Replay day", key: "replayDay",
+          hint: "The day the weekly Replay is made",
+          options: [
+            { value: "mon", label: "Mon" }, { value: "tue", label: "Tue" }, { value: "wed", label: "Wed" }, { value: "thu", label: "Thu" },
+            { value: "fri", label: "Fri" }, { value: "sat", label: "Sat" }, { value: "sun", label: "Sun" },
+          ],
+        },
+        storeToggle("replaykeep", "Keep every Replay", "replayKeep", () => "Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly"),
       ],
     },
     {

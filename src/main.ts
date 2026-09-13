@@ -17,6 +17,10 @@ import { listen } from "@tauri-apps/api/event";
 import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
+import { withAppearanceTransition } from "./appearance";
+import { initFavorites } from "./favorites";
+import { runWeeklyReplay } from "./replay";
+import type { CardId } from "./cards";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -64,22 +68,35 @@ window.addEventListener("DOMContentLoaded", () => {
     close();
   });
 
-  // Theme choices.
+  // Theme choices — a color crossfade (appearance.ts); the menu closes inside the
+  // transition so the old snapshot never catches it half-closed.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      applyTheme(el.dataset.themeChoice as ThemeName);
-      publishAppearance(); // tray panel + extension popup follow
-      close();
+      withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), { after: close });
+      publishAppearance(); // tray panel + extension popup follow (they snap)
     });
   });
 
-  // Skin choices (same pattern as Theme).
+  // Skin choices (same pattern as Theme) — the incoming skin's own entrance.
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      applySkin(el.dataset.skinChoice as SkinName);
+      const skin = el.dataset.skinChoice as SkinName;
+      withAppearanceTransition("skin", () => applySkin(skin), { skin, after: close });
       publishAppearance();
-      close();
     });
+  });
+
+  // Keyboard shortcuts (NEXT-VERSION §5): summon a card. Fixed set; ignored while a
+  // text field has focus. Rebinding is deferred (FUTURE-SETTINGS).
+  const SHORTCUTS: Record<string, CardId> = { k: "search", q: "queue", l: "library", p: "playlists", ",": "settings" };
+  document.addEventListener("keydown", (e) => {
+    if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("input, textarea, [contenteditable]")) return;
+    const id = SHORTCUTS[e.key.toLowerCase()];
+    if (!id) return;
+    e.preventDefault();
+    requestCard(id);
   });
 
   // Surface choices (same pattern). A deliberate pick also pins a tray-popped window
@@ -149,6 +166,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ── Shared library store: one load, read by every card ──
   initTrackStore();
+  void initFavorites(); // the ♥ mirror (favorites.ts) — local, zero Apple calls
+
+  // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
+  // store has had a moment to load so the ranking can resolve titles.
+  window.setTimeout(() => void runWeeklyReplay().catch((e) => console.warn("[replay] weekly", e)), 8000);
 
   // ── Cards + layout: mount Now Playing (anchored top) + the two swappable content slots
   //    from the persisted assignment, and wire each slot's title picker. ──

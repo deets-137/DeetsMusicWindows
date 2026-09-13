@@ -39,6 +39,20 @@ Auto-captured (no flag needed):
 - `window:error`, `window:unhandledrejection` — uncaught errors land in the buffer
   automatically (e.g. the *"play() without a previous stop()/pause()"* rejection).
 
+**Dev-only click-to-sound marks** (`src/perf.ts`, gated on Vite's `DEV` flag — the
+installed build ships none of it). Every song click stamps `perf:*` lines, each `{ ms }`
+since the click: `click` (before the transient ingest and its re-renders) → `model`
+(playContext entered) → `context` (MusicKit configured; differs from `model` only on the
+first play) → `window` (`setQueue` resolved) → `sound` (MusicKit reported `playing` for
+the clicked id) → `resolve` (`changeToMediaAtIndex`/`play` resolved — lands after sound).
+`perf:span` lines time the synchronous steps inside the first stage: `ingest`,
+`materialize`, `setContext`, and every track-store subscriber by its label
+(`library.reload`, `qcard`, `history`, `rewind`, `np.add`, `np.fav`, `np-bus.publish`).
+`sound` prints two console lines: `[perf] click→sound N ms · model+render · [init ·]
+setQueue · stream` and `[perf]   spans: …` (spans ≥ 5 ms). A click that never gets there
+logs `perf:abandon` (`superseded` = a second click landed on top, `loadError`, `reclick`,
+`stale`).
+
 Player events (`src/player.ts`):
 - `player:configured` — MusicKit configured (+ authorized?)
 - `player:playContext` — `{ startIndex, len }` a context started

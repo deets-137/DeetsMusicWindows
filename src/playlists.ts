@@ -74,6 +74,16 @@ export function playlistRemoveTrack(p: Playlist, position: number): Promise<void
   return invoke<void>("playlist_remove_track", { id, position }).then(() => emitChange(id));
 }
 
+/**
+ * Set (an image data URL, already resized by the picker) or clear a LOCAL playlist's
+ * own cover (NEXT-VERSION §2). Local only — Apple's API cannot receive a cover.
+ */
+export function playlistSetCover(p: Playlist, cover: string | null): Promise<void> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<void>("playlist_set_cover", { id, cover }).then(() => emitChange(id));
+}
+
 /** Delete a LOCAL playlist. Mirrors can't be deleted — there's no Apple write path. */
 export function playlistDelete(p: Playlist): Promise<void> {
   const id = localId(p);

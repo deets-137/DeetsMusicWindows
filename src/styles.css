@@ -627,7 +627,9 @@ body {
   min-height: 0;
   transition: transform var(--nav-dur) var(--nav-ease),
               opacity   var(--nav-dur) var(--nav-ease);
-  will-change: transform, opacity;
+  /* no will-change: a permanent compositor layer rasterizes text with grayscale
+     antialiasing (the pane read fuzzier than its neighbors); the transition promotes
+     the layer only while it runs */
 }
 /* The motion lives in skin tokens: Vanilla slides (translateX), Press
    stamps (a hard-eased slide), Ocean sinks (translateY). z-index keeps the active
@@ -647,16 +649,16 @@ body {
   .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }
 }
 
-/* Our own scrollbar for the Library list/grid — replaces the OS bar.
-   WebView2 is Chromium, so the ::-webkit-scrollbar pseudo-elements apply;
-   color is a theme role, width/radius are skin tokens. */
-.lib-view::-webkit-scrollbar { width: var(--scrollbar-w); }
-.lib-view::-webkit-scrollbar-track { background: transparent; }
-.lib-view::-webkit-scrollbar-thumb {
+/* Our own scrollbar for the Library list/grid and any plain panel body that scrolls
+   (Settings) — replaces the OS bar. WebView2 is Chromium, so the ::-webkit-scrollbar
+   pseudo-elements apply; color is a theme role, width/radius are skin tokens. */
+.lib-view::-webkit-scrollbar, .panel__body::-webkit-scrollbar { width: var(--scrollbar-w); }
+.lib-view::-webkit-scrollbar-track, .panel__body::-webkit-scrollbar-track { background: transparent; }
+.lib-view::-webkit-scrollbar-thumb, .panel__body::-webkit-scrollbar-thumb {
   background: var(--scrollbar);
   border-radius: var(--scrollbar-radius);
 }
-.lib-view::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+.lib-view::-webkit-scrollbar-thumb:hover, .panel__body::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* Back chevron in the card header — shown only in a drilled-in context. */
 .panel__back {
@@ -692,7 +694,11 @@ body {
    (the flex item) so the width it reserves matches the width it occupies — height comes
    from the row stretch, aspect-ratio transfers it to width. (Putting aspect-ratio on the
    inner pill instead lets it render wider than the cell reserved → clipped off the row.) */
-.lib-ctrl[data-ctrl="search"] { flex: 0 0 auto; aspect-ratio: 1; }
+.lib-ctrl[data-ctrl="search"],
+.lib-ctrl[data-ctrl="filter"] { flex: 0 0 auto; aspect-ratio: 1; }
+/* The ♥ filter pill: outline heart, filled while the filter is on. */
+.lib-pill__icon--heart { stroke-width: 1.8; }
+.lib-pill.is-active .lib-pill__icon--heart { fill: currentColor; }
 
 .lib-pill {
   width: 100%;
@@ -1026,6 +1032,12 @@ body {
   display: block;
 }
 .lib-tile__cover--round { border-radius: 50%; }
+/* The derived playlist cover (NEXT-VERSION §2): four track covers in a 2×2 grid, or one. */
+.lib-tile__cover--mosaic, .lib-row__art--mosaic {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--lib-mosaic-gap); overflow: hidden;
+}
+.lib-tile__cover--mosaic-one, .lib-row__art--mosaic-one { grid-template-columns: 1fr; }
+.lib-tile__cover--mosaic img, .lib-row__art--mosaic img { display: block; width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
 .lib-tile__cover--empty {
   display: grid;
   place-items: center;
@@ -1058,6 +1070,12 @@ body {
 .lib-tile__subrow { display: flex; align-items: center; gap: var(--space-1); min-width: 0; line-height: 1; }
 .lib-tile__subrow .lib-tile__sub { flex: 1 1 auto; }   /* count takes the space, sigil sits right */
 .lib-tile__subrow .lib-src-badge { margin-top: -0.08em; } /* optical lift: glyph mass reads a hair low */
+/* Explicit: a filled square with the letter cut out in the surface color. Inline
+   inside a title (Search rows, Now Playing) it sits on the text line. */
+.lib-src-badge--explicit .lib-src-badge__letter { fill: var(--surface); }
+.search__song-title .lib-src-badge, .np__title .lib-src-badge {
+  display: inline-block; vertical-align: -0.15em; margin-left: var(--space-1);
+}
 .lib-row > .lib-src-badge { margin-left: auto; }        /* trailing accessory on list rows */
 
 /* empty state */
@@ -1250,12 +1268,25 @@ body {
 /* empty state */
 .search__prompt { font-family: var(--font-body); font-size: var(--fs-text); color: var(--subtext); padding: var(--space-2) 0; }
 .search__recents { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+/* One pill cut in two by a divider: the term (re-runs it) | the pin glyph (NEXT-VERSION §1). */
 .search__recent {
-  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--text);
+  display: inline-flex; align-items: stretch; max-width: 100%;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--lib-pill-radius); padding: var(--space-1) var(--space-2); cursor: pointer;
+  border-radius: var(--lib-pill-radius); overflow: hidden;
 }
-.search__recent:hover { background: var(--surface-hover); color: var(--title); }
+.search__recent-term, .search__recent-pin {
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--text);
+  background: none; border: none; cursor: pointer;
+}
+.search__recent-term { padding: var(--space-1) var(--space-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search__recent-pin {
+  display: grid; place-items: center; padding: 0 var(--space-2);
+  border-left: 1px solid var(--border); color: var(--subtext);
+}
+.search__recent-pin svg { width: var(--search-pin-size); height: var(--search-pin-size); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.search__recent-pin[aria-pressed="true"] { color: var(--title); }
+.search__recent-pin[aria-pressed="true"] svg path:first-child { fill: currentColor; }
+.search__recent-term:hover, .search__recent-pin:hover { background: var(--surface-hover); color: var(--title); }
 
 @media (prefers-reduced-motion: reduce) {
   .spane { transition: none; }
@@ -1280,14 +1311,28 @@ body {
 @property --album-bg { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --album-c1 { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --album-c2 { syntax: "<color>"; inherits: true; initial-value: transparent; }
+/* The guarded text roles (NEXT-VERSION §7) share the crossfade. */
+@property --np-title   { syntax: "<color>"; inherits: true; initial-value: black; }
+@property --np-subtext { syntax: "<color>"; inherits: true; initial-value: black; }
+@property --np-accent  { syntax: "<color>"; inherits: true; initial-value: black; }
 
 .np {
   position: relative;
   transition:
     --album-bg var(--album-fade-dur),
     --album-c1 var(--album-fade-dur),
-    --album-c2 var(--album-fade-dur);
+    --album-c2 var(--album-fade-dur),
+    --np-title var(--album-fade-dur),
+    --np-subtext var(--album-fade-dur),
+    --np-accent var(--album-fade-dur);
 }
+/* Album-colored accents: the scrub fill and the "on" squares follow --np-accent
+   (theme --title / --go until a skin opts in and JS sets a guarded album color). */
+.np .np__scrub .scrub__fill { background: var(--np-accent); }
+.np .ap-square[data-state="on"] { color: var(--np-accent); }
+.np__fav svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.np__fav[data-state="on"] { color: var(--np-accent); }
+.np__fav[data-state="on"] svg { fill: currentColor; }
 .np__aurora {
   display: var(--album-aurora-display); /* glass-first: skins opt in via the token */
   position: absolute;
@@ -1386,17 +1431,29 @@ body {
   pointer-events: none;
 }
 
+/* The cover: a square as tall as the card's text column (stretched cross axis →
+   aspect-ratio), never smaller than --np-cover. The image and the ♪ placeholder are
+   both taken OUT of flow (absolute), so the box is the same size whichever is inside —
+   swapping them can't nudge the layout (the old placeholder-vs-cover jitter). */
 .np__art {
+  position: relative;
   flex: 0 0 auto;
-  width: var(--np-cover); height: var(--np-cover);
+  align-self: stretch;
+  width: auto; height: auto;
+  aspect-ratio: 1 / 1;
+  min-width: var(--np-cover); min-height: var(--np-cover);
   border-radius: var(--radius-control);
   background: var(--surface-hover);
-  display: grid; place-items: center;
   color: var(--subtext);
   font-size: var(--np-cover-glyph);
   overflow: hidden;
 }
-.np__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.np__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.np__art-glyph {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1; /* the inherited 1.45 line box is what sat the 96px glyph low of center */
+}
 /* Radio: the station's name as a chip over the cover's bottom edge, revealed on hover
    (the artist line already carries it when the track has no artist of its own). */
 .np__station {
@@ -1417,18 +1474,26 @@ body {
    counterweight. The summon button wears .panel__action so it mirrors the Library
    Sync button exactly — no geometry of its own beyond grid placement. */
 .np__bottom { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: var(--space-2); row-gap: var(--space-2); align-items: center; }
-.np__bottom .np__controls { grid-column: 2; }
-.np__shuffle { grid-column: 1; justify-self: start; }
-/* Right cluster: the Add-to-Library "+" square (option B, 2026-09-10) then the summon.
-   Both are .panel__action squares; the "+" hides unless the song can be added. */
-.np__right { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: var(--space-2); }
+.np__bottom .np__controls { grid-column: 2; justify-self: center; } /* never stretches: its measured width must not depend on the stacked state (see fit()) */
+ /* Left cluster: shuffle · queue summon · search. Right cluster: ♥ · Add-to-Library "+"
+   (2026-09-12 order). All .panel__action squares. The two right squares stay in place
+   and grey out (disabled) when nothing is playing, so the row never changes shape;
+   only their consent toggle removes them. */
+.np__left  { grid-column: 1; justify-self: start; display: flex; align-items: center; gap: var(--space-2); }
+.np__right { grid-column: 3; justify-self: end;   display: flex; align-items: center; gap: var(--space-2); }
 /* Overflow fallback (mini at minimum width): when shuffle + transport + summon can't
    share one row, the card (now-playing-card.ts, a ResizeObserver) sets --stacked and
    the two side buttons drop to a second row, still flush left/right, so the transport
    keeps its optical center. Width math is done in JS from the rendered buttons, so
    the threshold follows the skin's tokens rather than a hardcoded px. */
+.np__bottom--stacked { grid-template-columns: auto 1fr auto; column-gap: 0; } /* row 2: the clusters take what they need, the middle track absorbs the rest */
 .np__bottom--stacked .np__controls { grid-column: 1 / -1; grid-row: 1; }
-.np__bottom--stacked .np__shuffle { grid-row: 2; }
+/* Idle: no aurora at all — the card reads like its neighbors until something plays. */
+.np--idle .np__aurora { display: none; }
+/* Mini: the cover stays at its token size instead of growing with the text column —
+   every px of width there belongs to the (stacked) button row. */
+[data-surface="mini"] .np__art { align-self: flex-start; width: var(--np-cover); height: var(--np-cover); }
+.np__bottom--stacked .np__left { grid-row: 2; }
 .np__bottom--stacked .np__right { grid-row: 2; }
 
 /* The stage volume row (max only): mute square · full-width slider · AirPlay square.
@@ -1453,15 +1518,17 @@ body {
   font-family: var(--font-title);
   font-weight: var(--fw-title);
   font-size: var(--fs-text);
-  color: var(--title);
+  color: var(--np-title);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .np__artist {
   font-size: var(--fs-subtext);
-  color: var(--subtext);
+  color: var(--np-subtext);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* An empty line keeps its height (a song with no artist, or the beat between songs),
+     so the scrubber and the button row never slide — and in max the cover never resizes. */
+  min-height: calc(var(--fs-subtext) * var(--lh-text));
 }
-.np__artist:empty { display: none; }
 
 /* Radio transport caps (STATIONS.md §1): a LIVE station has no seek and no skip.
    `.np--live` swaps the scrubber for the LIVE marker (same slot, so the strip keeps
@@ -1483,9 +1550,8 @@ body {
 
 /* Album name + elapsed/remaining readout — markup is always present, only the max
    stage shows them (the strip stays title/artist/scrubber). */
-.np__album { display: none; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.np__album:empty { display: none; }
-.np__times { display: none; justify-content: space-between; font-size: var(--fs-subtext); color: var(--subtext); font-variant-numeric: tabular-nums; }
+.np__album { display: none; font-size: var(--fs-subtext); color: var(--np-subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: calc(var(--fs-subtext) * var(--lh-text)); }
+.np__times { display: none; justify-content: space-between; font-size: var(--fs-subtext); color: var(--np-subtext); font-variant-numeric: tabular-nums; }
 .np--live .np__times { visibility: hidden; }
 
 /* ── The max stage: the same card, composed as a column ─────── */
@@ -1550,3 +1616,26 @@ body.tray { height: auto; overflow: hidden; }
 }
 .tray__mute svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; display: block; }
 
+
+/* ── Appearance switch (NEXT-VERSION §6; appearance.ts) ─────────────────────
+   A View Transition on the whole page. Theme: the UA crossfade on the skin's
+   clock. Skin: <html> already wears the NEW skin while it runs, so the incoming
+   skin's --appearance-* tokens pick the entrance. Reduced motion never gets here
+   (appearance.ts snaps), and so does the setting when off. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--appearance-dur);
+  animation-timing-function: var(--appearance-ease);
+}
+:root[data-appearance="skin"]::view-transition-old(root) { animation-name: var(--appearance-anim-old); mix-blend-mode: normal; }
+:root[data-appearance="skin"]::view-transition-new(root) { animation-name: var(--appearance-anim-new); mix-blend-mode: normal; }
+@keyframes appear-fade-in  { from { opacity: 0; } }
+@keyframes appear-fade-out { to   { opacity: 0; } }
+/* Press: the new sheet slaps down onto the stack */
+@keyframes appear-stamp { from { opacity: 0; transform: scale(1.04); } 55% { opacity: 1; transform: scale(1); } }
+/* Ocean: rises from beneath the surface */
+@keyframes appear-rise  { from { opacity: 0; transform: translateY(6%) scale(0.98); } }
+/* Glass: blurs into focus */
+@keyframes appear-focus { from { opacity: 0; filter: blur(16px); } }
+/* Retro-Future: jolts in with a skew that straightens */
+@keyframes appear-snap  { from { opacity: 0; transform: translateX(3%) skewX(-6deg); } 70% { transform: none; } }

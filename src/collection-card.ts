@@ -55,6 +55,10 @@ export interface Context {
   title: string;
   groupings: Grouping[]; // >= 1; >1 → View shows a grouping column
   density: boolean; // whether the density column applies
+  /** An optional icon toggle between View and Search (Library: ♥ favorites only). The
+   *  card owns the state and narrows its own lists; the engine draws the pill, flips
+   *  it, and re-renders. */
+  filter?: { label: string; icon: string; active: () => boolean; toggle: () => void };
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
 }
@@ -239,6 +243,13 @@ export function initCollectionCard(opts: CardOptions) {
               <span class="lib-pill__label">View</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
+          </div>`
+              : ""
+          }
+          ${
+            f.ctx.filter
+              ? `<div class="lib-ctrl" data-ctrl="filter">
+            <button class="lib-pill lib-pill--icon${f.ctx.filter.active() ? " is-active" : ""}" data-pop="filter" type="button" aria-pressed="${f.ctx.filter.active()}" aria-label="${esc(f.ctx.filter.label)}" title="${esc(f.ctx.filter.label)}">${f.ctx.filter.icon}</button>
           </div>`
               : ""
           }
@@ -488,6 +499,17 @@ export function initCollectionCard(opts: CardOptions) {
     if (pop) {
       e.stopPropagation();
       const which = pop.dataset.pop!;
+      if (which === "filter") {
+        const filter = cur().ctx.filter;
+        if (!filter) return;
+        closePops();
+        filter.toggle();
+        const on = filter.active();
+        pop.classList.toggle("is-active", on);
+        pop.setAttribute("aria-pressed", String(on));
+        renderViewInto(pane, cur());
+        return;
+      }
       if (which === "search") {
         const open = !cur().searchOpen;
         closePops();
