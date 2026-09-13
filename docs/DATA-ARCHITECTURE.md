@@ -86,8 +86,10 @@ The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on start
 5. Windows starts a second `DeetsMusic.exe` with the URL. The single-instance plugin
    (`lib.rs`, first plugin) forwards it to the running app. The second process exits.
 6. Rust checks the nonce (match, not expired, not used), then stores the MUT with the
-   existing capture code (`register_secret` → memory → `persist_user_token`). The
-   `apple.ts` poll on `apple_connection_status` sees it. **No front-end change.**
+   existing capture code (`register_secret` → memory → `persist_user_token`) and sets
+   `AuthStatus::Captured`. Since 2026-09-13 `apple.ts` polls `apple_auth_status` (not
+   `apple_connection_status`), so the deep-link handler must set that status, and a rejected
+   or expired link should set `Failed { reason }` so the Apple health toasts explain it.
 
 **Decisions**
 
@@ -122,6 +124,16 @@ The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on start
   the Worker.
 - The browser stays signed in: MusicKit keeps the MUT in the hosted page's localStorage.
   `apple_disconnect` does not clear it. This already happens with the fixed loopback ports.
+
+**Apple's Access Request screen: name and icon (found 2026-09-13)**
+- Apple's "Access Request" screen shows the sign-in page's **host** as the app name
+  (`musickit.js` reads `location.host`) — today "127.0.0.1:47831". MusicKit has no name
+  setting, so only the hosted page fixes it: it will read `music-api.deets.solutions`.
+- The **icon** is a setting: MusicKit reads `app.icon` from `configure()` (passed on as
+  `iconURL`), else `<link rel="apple-music-app-icon">`, else `apple-touch-icon-precomposed`.
+  Our pages set none, so Apple shows a blank placeholder. With the hosted page, serve the DM
+  icon (`app-icon.png`) over HTTPS from the Worker and pass it as `app.icon`. Not built; an
+  icon from a `127.0.0.1` page was never tried (Apple's page is HTTPS and may block it).
 
 **Check in the first desk test**
 1. A MUT from the hosted page (Worker key `63Y9S9P5Z8`) works with the dev key
