@@ -64,10 +64,29 @@ resource-timing buffer (account check, `webPlayback`, `widevineCert`,
 `misalign`, `desync`, `itemsPlayFailed`, `playbackError`, `stateNoItem`, `abandon`
 (`superseded` = a second click landed on top, `loadError`, `reclick`, `stale`).
 
-**Driving it from outside:** `deetsmusic` MCP `play` returns after the play resolves, so
-`grep "\[perf\]" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail -1` right after it is
-that play's line. The MCP always plays a list from its first song; a 3,895-row library
-click stays a hand test.
+**Driving it from outside — the recipes (2026-09-12).** `deetsmusic` MCP `play` returns
+after the play resolves, so `grep "\[perf\]" %APPDATA%\com.deetsmusic.dev\deetsmusic.log
+| tail -1` right after it is that play's line (the `audible` mark can land ~1 s later —
+poll for the newest line). Only the dev app should be running, so the MCP finds its
+bridge (the CLI probes the port list; the installed app would win).
+- **Warm series:** `play` a few playlists in a row (`list playlists` for ids). The first
+  play after a page reload is a *cool* one (fresh connections, the account check).
+- **Song-to-song advance:** `play`, wait for the `grow` line, `control seek 97`, wait
+  ~10 s, then `now_playing` + the log. A healthy advance logs nothing; `deadNext`,
+  `windowDry`, `desync` or `misalign` are findings.
+- **Dead ids:** the "Sad Collection" playlist (`list playlists`) has one; expect
+  `reconcile: N unresolvable id(s) dropped` from the grow, never a skip at play time.
+- **Cold start:** stop the dev exe (`Get-Process deetsmusic | ? Path -like '*target\debug*'
+  | Stop-Process`; the `dev:app` runner exits with it), relaunch `npm run dev:app` in the
+  background, wait for the `start:` line in the log, give the idle warm-up ~5 s, then
+  `play`. A click inside the first 1.5 s pays the old init cost by design.
+- **Queue restore:** `play`, `control next`, wait >1 s for the debounce, stop + relaunch,
+  `list queue` should show the same Now + Up Next; `control play` resumes it.
+Limits: the MCP always plays a list from its first song (a 3,895-row library click stays
+a hand test), and its round trip is ~1 s, so Previous within 3 s of a click (the
+re-window path) can't be reached from here. Vite reloads the page on every `src/` save,
+which resets `deadIds` and MusicKit — useful for a fresh state, fatal for a test in
+progress.
 
 Player events (`src/player.ts`):
 - `player:configured` — MusicKit configured (+ authorized?)

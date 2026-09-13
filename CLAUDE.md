@@ -23,6 +23,18 @@ front-end, Rust back-end).
   `npx vite build` to catch type/compile/bundle errors before handing off.
 - If something genuinely can't be reasoned through and the user is away, ask them to
   test rather than scaffolding a harness.
+- **Playback can be driven and measured from the session (2026-09-12).** Start the dev
+  app (`npm run dev:app`, in the background), then use the `deetsmusic` MCP tools
+  (`search` / `list` → `play`, `queue`, `control`, `now_playing`). A `play` call returns
+  after the song has started, and every play writes one `[perf] click→sound …` line to
+  `%APPDATA%\com.deetsmusic.dev\deetsmusic.log` with the stage split, MusicKit's own
+  requests, and out-of-click events (`grow`, `deadNext`, `desync`, `misalign`) — read it
+  with a `grep "\[perf\]" … | tail -1`. Song-end behaviour: `control seek 97` and wait.
+  Cold start: stop the dev exe (the runner exits with it), relaunch, wait for the
+  `start:` log line. Limits: the MCP plays a list from its first song (the 3,895-row
+  library click is a hand test) and its round trip is ~1 s (Previous within 3 s of a
+  click can't be reached). Full reference: `docs/DEBUGGING.md`. This is dev-only
+  telemetry (`src/perf.ts`, Vite `DEV` flag) — the release bundle carries none of it.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the

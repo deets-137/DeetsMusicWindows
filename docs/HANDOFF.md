@@ -52,6 +52,17 @@ Devtools **auto-open in dev** (`lib.rs` setup). Debug the player in the console:
 auto-captures uncaught errors), `__music` (live instance), `__player.snap()`. Full reference:
 [DEBUGGING.md](DEBUGGING.md).
 
+**Dev telemetry + driving the app from a session (2026-09-12).** In dev every song click
+(and Next) prints `[perf] click→sound N ms · model+render · setQueue · stream` to the
+console and writes the same line, plus MusicKit's own request list, to the dev log
+(`%APPDATA%\com.deetsmusic.dev\deetsmusic.log`). The `deetsmusic` MCP drives playback
+(`play` returns after the song starts), so a session can run a play, tail the log, and
+read the stage split without the devtools — that is how the click-to-sound pass was
+measured and verified (cold vs warm, natural advance via `control seek 97`, dead ids,
+the queue restore via a restart). Recipe and limits: [DEBUGGING.md](DEBUGGING.md)
+"Driving it from outside" and `CLAUDE.md` "How to verify your work". None of it ships:
+`src/perf.ts` is gated on Vite's `DEV` flag.
+
 ## Ship it (installable Windows app)
 
 Full procedure — version sync, the three build stages, the NSIS hooks, install, uninstall,
