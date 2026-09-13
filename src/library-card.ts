@@ -492,7 +492,9 @@ export const libraryCard: CardDef = {
     // ── render from the shared store + refresh-button state ──
     // The store owns loading/reloading (incl. on sync-done); we just re-render when it
     // changes. The collection card starts empty and fills when the first load lands.
-    const unsubTracks = onTracksChange(() => card.reload(), "library.reload");
+    // Library rows come from the synced store only — a transient ingest (a catalog-only
+    // playlist/search play) changes nothing this card shows, so it must not re-render.
+    const unsubTracks = onTracksChange((why) => why === "library" && card.reload(), "library.reload");
     const unsubFavs = onFavoritesChange(() => card.reload()); // the ♥ filter follows the mirror
 
     const syncUnlisten = onSyncEvent((e) => {

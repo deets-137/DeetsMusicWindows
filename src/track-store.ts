@@ -9,10 +9,13 @@ import * as perf from "./perf";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
+/** Why subscribers are being told: the synced library reloaded, or catalog-only
+ *  tracks were ingested as transients (a first play/queue from Search, a playlist…). */
+export type TracksChange = "library" | "transient";
 // cb → label; the label names the subscriber in the dev perf spans (perf.ts).
-const listeners = new Map<() => void, string>();
-function notify(): void {
-  listeners.forEach((label, cb) => perf.span(label, cb));
+const listeners = new Map<(why: TracksChange) => void, string>();
+function notify(why: TracksChange): void {
+  listeners.forEach((label, cb) => perf.span(label, () => cb(why)));
 }
 
 function index(): void {
@@ -37,7 +40,7 @@ export async function loadTracks(): Promise<void> {
       if (t.libraryId) transient.set(t.libraryId, t);
       if (t.catalogId) transient.set(t.catalogId, t);
     }
-    notify();
+    notify("library");
   } catch (e) {
     console.error("[track-store] load", e);
   }
@@ -54,13 +57,21 @@ const transient = new Map<string, Track>();
 
 /** Ingest catalog tracks so queue handles pointing at them resolve. */
 export function addTransientTracks(list: Track[]): void {
+  let added = 0;
   perf.span("ingest", () => {
     for (const t of list) {
+      // A synced library song resolves through byId (which wins) — nothing to ingest.
+      if ((t.catalogId && byId.has(t.catalogId)) || (t.libraryId && byId.has(t.libraryId))) continue;
+      const known = (t.catalogId && transient.has(t.catalogId)) || (t.libraryId && transient.has(t.libraryId));
       if (t.libraryId) transient.set(t.libraryId, t);
       if (t.catalogId) transient.set(t.catalogId, t);
+      if (!known) added++;
     }
   });
-  notify();
+  // Only a genuinely new track can change what a subscriber shows. A library click (or
+  // a re-play of an already-ingested playlist) used to fan out a full re-render of
+  // every mounted card for nothing — 100–330 ms on the click-to-sound path (perf.ts).
+  if (added) notify("transient");
 }
 
 /** Resolve a queue handle id (catalog or library) → Track, for display.
@@ -73,7 +84,7 @@ export const trackById = (id?: string): Track | undefined =>
 export const inLibrary = (id?: string): boolean => (id ? byId.has(id) : false);
 
 /** Subscribe to load/reload. Returns an unsubscribe fn. */
-export function onTracksChange(cb: () => void, label = "tracks-listener"): () => void {
+export function onTracksChange(cb: (why: TracksChange) => void, label = "tracks-listener"): () => void {
   listeners.set(cb, label);
   return () => listeners.delete(cb);
 }

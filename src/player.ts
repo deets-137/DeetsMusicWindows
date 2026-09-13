@@ -115,6 +115,7 @@ export function initPlayer(): Promise<any> {
       app: { name: "DeetsMusic", build: "0.1.0" },
     });
     music = window.MusicKit.getInstance();
+    perf.bind(() => music?.nowPlayingItem?.id);
     await injectUserToken();
     installMusicKitRejectionFilter();
     wireEvents();
@@ -126,6 +127,56 @@ export function initPlayer(): Promise<any> {
     return music;
   })();
   return initPromise;
+}
+
+// Probed and rejected 2026-09-12 (UX-COVERUPS.md §4): pre-feeding the restored song to
+// MusicKit at idle. `setQueue` alone fetches nothing — no lookup, license or bytes — and
+// this MusicKit build has no `prepareToPlay`. The only preload is a muted play-then-pause,
+// which reports a play to Apple and flickers the transport; not built without a decision.
+
+/**
+ * Warm the playback engine off the click path (main.ts calls this at idle after launch;
+ * perf.ts, 2026-09-12). Two costs used to sit on the session's first click: MusicKit's
+ * configure + token injection (~1 s) and the spawn of the browser's DRM module
+ * (~0.6–1.3 s inside the first stream). Neither needs a play to happen. No Apple calls
+ * beyond what the first play would have made anyway.
+ */
+export function warmPlayer(): void {
+  observeEme();
+  initPlayer().catch((e) => console.warn("[player] warm-up:", e));
+  void warmDrm();
+}
+
+// Keep the MediaKeys alive: the CDM process lives as long as something holds it.
+let warmKeys: MediaKeys | null = null;
+async function warmDrm(): Promise<void> {
+  if (warmKeys || typeof navigator.requestMediaKeySystemAccess !== "function") return;
+  const config: MediaKeySystemConfiguration[] = [
+    { initDataTypes: ["cenc"], audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] },
+  ];
+  try {
+    const access = await navigator.requestMediaKeySystemAccess("com.widevine.alpha", config);
+    warmKeys = await access.createMediaKeys();
+    diag.log("player:drmWarm", { keySystem: access.keySystem });
+    perf.note("drm", "warm");
+  } catch (e) {
+    diag.log("player:drmWarmFailed", { e: String(e) });
+    perf.note("drm", `failed: ${String(e)}`);
+  }
+}
+
+// Dev-only: record which key system MusicKit actually asks for, so warmDrm targets the
+// right one (Widevine is the assumption; WebView2 also offers PlayReady).
+let emeObserved = false;
+function observeEme(): void {
+  if (!import.meta.env.DEV || emeObserved || typeof navigator.requestMediaKeySystemAccess !== "function") return;
+  emeObserved = true;
+  const original = navigator.requestMediaKeySystemAccess.bind(navigator);
+  navigator.requestMediaKeySystemAccess = (keySystem, configs) => {
+    diag.log("player:eme", { keySystem });
+    perf.note("eme", keySystem);
+    return original(keySystem, configs);
+  };
 }
 
 /**
@@ -178,15 +229,29 @@ async function injectUserToken(): Promise<void> {
 const BENIGN_PLAYBACK =
   /play\(\) (?:method was called without a previous stop\(\) or pause\(\)|request was interrupted by (?:a new load request|a call to pause\(\)))/i;
 
+const LOAD_SERVER_ERROR = /^SERVER_ERROR: An unknown error has occurred/i;
+const LOAD_ERROR_GRACE_MS = 3000;
+let lastLoadEndAt = -Infinity; // stamped by doLoadFromModel's finally (a load in flight counts too)
+
 let rejectionFilterInstalled = false;
 function installMusicKitRejectionFilter(): void {
   if (rejectionFilterInstalled) return;
   rejectionFilterInstalled = true;
   window.addEventListener("unhandledrejection", (e) => {
-    const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? "");
+    // MusicKit's MKError carries `message` without always being an Error instance —
+    // read the field directly (an instanceof check let a benign race through, 2026-09-12).
+    const reason: any = e.reason;
+    const msg = String(reason?.message ?? reason ?? "");
     if (BENIGN_PLAYBACK.test(msg)) {
       diag.log("player:mkRaceSwallowed", { via: "rejection", msg });
       e.preventDefault(); // benign MusicKit transport race — keep it out of the console
+    } else if (LOAD_SERVER_ERROR.test(msg) && performance.now() - lastLoadEndAt < LOAD_ERROR_GRACE_MS) {
+      // The abandoned first setQueue of a dead-id retry rejects late with a generic
+      // SERVER_ERROR (observed 2026-09-12: "7 unresolvable ids dropped; retrying" →
+      // the retry played fine → this surfaced anyway). Only swallowed around a load;
+      // the same message at any other time propagates.
+      diag.log("player:mkRaceSwallowed", { via: "rejection", msg, during: "load" });
+      e.preventDefault();
     }
   });
 }
@@ -260,6 +325,12 @@ function emitProgress(): void {
   }
 }
 
+/** Re-broadcast the player state (queue-persist.ts: Now Playing reads the model's
+ *  current when MusicKit holds no item, so a restore must trigger a paint). */
+export function refreshPlayerState(): void {
+  emit();
+}
+
 function emit(): void {
   const item = music?.nowPlayingItem;
   const s: PlayerState = {
@@ -312,6 +383,11 @@ function onPlaybackStateChange(): void {
   // Dev telemetry: the clicked song is audible once MusicKit reports `playing` for it.
   const S = window.MusicKit?.PlaybackStates;
   if (S && music?.playbackState === S.playing) perf.sound(music.nowPlayingItem?.id);
+  // Dev telemetry: a state change with NO now-playing item outside a load is the shape of
+  // a failed auto-advance (a dead id) — log what MusicKit reports so the heal can key on it.
+  if (!loadingContext && music && !music.nowPlayingItem && S)
+    perf.event("stateNoItem", { state: S[music.playbackState], up: queue.getUpcoming().length, cur: playId(queue.getCurrent() ?? {}) });
+  onEndedWithoutItem();
   maybeFinishQueue();
   emit();
   maybeResumeStation();
@@ -325,6 +401,8 @@ function wireEvents(): void {
   music.addEventListener(E.playbackStateDidChange, onPlaybackStateChange);
   music.addEventListener(E.nowPlayingItemDidChange, onNowPlayingChange);
   music.addEventListener(E.playbackTimeDidChange, emitProgress);
+  if (E.mediaPlaybackError) music.addEventListener(E.mediaPlaybackError, onPlaybackError);
+  perf.note("mkErrorEvent", E.mediaPlaybackError ?? null);
 }
 
 function onNowPlayingChange(): void {
@@ -341,14 +419,14 @@ function onNowPlayingChange(): void {
         resumeStation = interrupted;
         queue.advance(); // finished station song → trail; block's first song → current
         // Defer the rebuild OUT of this nowPlayingItemDidChange handler (a macrotask lets
-        // MusicKit settle its in-flight station advance first), and load with stopFirst +
-        // noBack: fully stop the station controller, then start the block at index 0. This
+        // MusicKit settle its in-flight station advance first), and load with `stopFirst`:
+        // fully stop the station controller, then start the block at index 0. This
         // is what stops MusicKit's next station song from continuing to play under a model
         // that has already moved to the block. Model-follow stays suppressed across the gap.
         loadingContext = true;
         const m = music;
         setTimeout(() => {
-          loadFromModel(m, true, { stopFirst: true, noBack: true }).catch((e) => {
+          loadFromModel(m, true, { stopFirst: true }).catch((e) => {
             loadingContext = false; // never leave follow wedged if the load bailed
             console.warn("[player] breakout load:", e);
           });
@@ -431,10 +509,12 @@ function stationFollow(): void {
 // insert exists — so prevTrack re-windows with the documented buffer instead.
 
 const REWINDOW_LOW = 50;
-let toppingUp = false; // reconcile is async — don't stack a second top-up on an in-flight one
+// The in-flight top-up (reconcile is async): never stack a second one on it, and a fresh
+// load awaits it (doLoadFromModel) so its playLater can't land in the replaced queue.
+let topUp: Promise<void> | null = null;
 
-function maybeTopUpWindow(): void {
-  if (toppingUp || !music || mode === "radio") return; // stations refill themselves
+function maybeTopUpWindow(cap = WINDOW_FWD): void {
+  if (topUp || !music || mode === "radio") return; // stations refill themselves
   const items: any[] = music.queue?.items ?? [];
   const np = typeof music.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
   if (np < 0) return;
@@ -443,12 +523,15 @@ function maybeTopUpWindow(): void {
   // Model has nothing beyond what MusicKit already holds → natural end of the plan.
   // (Extras that dedup/dead-drop to nothing make reconcile a cheap early return.)
   if (queue.getUpcoming().length <= mkRemaining) return;
-  toppingUp = true;
   diag.log("player:topUp", { mkRemaining, modelUp: queue.getUpcoming().length, mkLen: items.length });
-  reconcileUpcoming()
-    .catch((e) => console.warn("[player] window top-up failed:", e))
+  const t0 = performance.now();
+  topUp = reconcileUpcoming(cap)
+    .then(
+      () => perf.event("grow", { ms: Math.round(performance.now() - t0), from: items.length, to: music?.queue?.items?.length }),
+      (e) => console.warn("[player] window top-up failed:", e),
+    )
     .finally(() => {
-      toppingUp = false;
+      topUp = null;
     });
 }
 
@@ -471,13 +554,9 @@ function checkDesync(): void {
   const npId = music?.nowPlayingItem?.id;
   if (!cur || !npId) return;
   if (npId !== cur.catalogId && npId !== cur.libraryId) {
-    diag.log("player:desync", {
-      npId,
-      curCat: cur.catalogId,
-      curLib: cur.libraryId,
-      windowPos,
-      npIndex: music?.nowPlayingItemIndex,
-    });
+    const data = { npId, curCat: cur.catalogId, curLib: cur.libraryId, windowPos, npIndex: music?.nowPlayingItemIndex };
+    diag.log("player:desync", data);
+    perf.event("desync", data);
   }
 }
 
@@ -513,7 +592,10 @@ function alignmentReport() {
 function checkAlignment(where: string): void {
   if (loadingContext) return; // mid-(re)build — expected to differ
   const r = alignmentReport();
-  if (!r.aligned) diag.log("player:misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
+  if (!r.aligned) {
+    diag.log("player:misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
+    perf.event("misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
+  }
 }
 
 /** `window.__player.queue()` — model vs MusicKit upcoming, side by side, with the verdict. */
@@ -571,12 +653,79 @@ function syncModelToMusicKit(): void {
 // ── Context playback ───────────────────────────────────────────────────────────
 
 // We feed MusicKit a bounded window around the start point rather than the whole
-// context, so setQueue stays cheap even on a 10k-song library. The full plan lives in
-// the queue model; the window gives native gapless + Previous-into-backlog around the
-// click. (Re-windowing at the edges + syncing the model to MusicKit's live position
-// land with the queue UI — see queue.ts.)
-const WINDOW_BACK = 50;
+// context. The full plan lives in the queue model; the window gives native gapless +
+// Previous-into-backlog around the click.
+//
+// The window is fed in three steps (2026-09-12, the click-to-sound pass — perf.ts):
+//  1. The CLICK feed is the clicked song ALONE, as a MediaItem descriptor (`describe`),
+//     so setQueue costs ~5 ms instead of a network resolve (8 ids ≈ 130–250 ms, 200 ids
+//     ≈ 500–1300 ms measured). No back window: Previous re-windows instead, which costs
+//     the same ~1 s as MusicKit's own native skip (it preloads no license or bytes).
+//  2. The moment play resolves, growNow() appends the next GROW_NOW ids BY ID (one
+//     playLater, ~130 ms, off the click path). This is what natural song-to-song advance
+//     needs: MusicKit's auto-advance cannot load a descriptor-fed item (measured: it ends
+//     with no item), but it advances fine from a descriptor current into an id-resolved
+//     next. Dead ids are caught here by the NOT_FOUND retry, so none enter the queue.
+//  3. GROW_DELAY_MS later, scheduleGrow() tops the forward side up to WINDOW_FWD (the
+//     same low-water top-up, one batched playLater).
+// A second click inside the delay cancels the pending grow; one that lands mid-grow
+// awaits it (≤ ~130 ms for stage 2), so a stale playLater can never append into a queue
+// that setQueue has since replaced. The id-form fallback feeds ID_FALLBACK_FWD ahead so
+// a dead clicked song still yields something to play.
+const GROW_NOW = 8;
 const WINDOW_FWD = 200;
+const GROW_DELAY_MS = 1500;
+const ID_FALLBACK_FWD = 5;
+
+let growTimer: number | undefined;
+function growNow(): void {
+  maybeTopUpWindow(GROW_NOW);
+}
+function scheduleGrow(): void {
+  cancelGrow();
+  growTimer = window.setTimeout(() => {
+    growTimer = undefined;
+    maybeTopUpWindow();
+  }, GROW_DELAY_MS);
+}
+function cancelGrow(): void {
+  if (growTimer !== undefined) window.clearTimeout(growTimer);
+  growTimer = undefined;
+}
+
+// Descriptor-fed windows (2026-09-12): every cached Track carries what MusicKit needs to
+// play it, so `setQueue({ items })` with MediaItem descriptors skips the network resolve
+// that `setQueue({ songs: ids })` performs first. The id form stays as the fallback — for
+// a window with an id the store can't describe, when this MusicKit build rejects the
+// descriptor form (remembered for the session), and for a descriptor-fed play that fails
+// (a dead id surfaces at play time in this form, at resolve time in the id form — the
+// id re-feed then banks it in deadIds as before).
+let itemsMode: "try" | "off" = "try";
+
+function describe(id: string): any | undefined {
+  const t = trackById(id);
+  if (!t) return undefined;
+  const byLibrary = t.catalogId !== id; // the fallback path: a library id (dead catalog id)
+  const playParams = byLibrary
+    ? { id, kind: "song", isLibrary: true, catalogId: t.catalogId }
+    : { id, kind: "song" };
+  const artwork = t.artwork ? { url: t.artwork.urlTemplate, width: t.artwork.width, height: t.artwork.height } : undefined;
+  const descriptor = {
+    id,
+    type: byLibrary ? "library-songs" : "songs",
+    attributes: {
+      playParams,
+      name: t.title,
+      artistName: t.artistName,
+      albumName: t.albumName ?? "",
+      durationInMillis: t.durationMs,
+      artwork,
+      contentRating: t.contentRating,
+    },
+  };
+  const MediaItem = window.MusicKit?.MediaItem;
+  return typeof MediaItem === "function" ? new MediaItem(descriptor) : descriptor;
+}
 
 const toHandle = (t: Track, context = "library"): TrackHandle => ({
   catalogId: t.catalogId,
@@ -668,18 +817,17 @@ let loadChain: Promise<void> = Promise.resolve();
 
 /**
  * (Re)feed MusicKit a bounded window centered on the model's current entry: up to
- * WINDOW_BACK behind it (so Previous works) + WINDOW_FWD ahead. Used for a fresh
+ * the song alone at index 0, grown by id right after it starts (growNow) and to
+ * WINDOW_FWD shortly after (scheduleGrow). Used for a fresh
  * context and for any jump that lands outside the live window — the latter buffers
  * (the documented latency; `loading` is surfaced for the cover-up).
  */
-// Load options. Break-out from a station sets both: `stopFirst` fully stops MusicKit's
+// Load options. Break-out from a station sets `stopFirst`: fully stop MusicKit's
 // continuous (station) controller before the swap — a mere pause() leaves it primed to
-// advance, and its next-track load then interrupts our setQueue/play (AbortError);
-// `noBack` omits the history back-chain so `current` sits at index 0, taking the plain
-// pos=0 play path and skipping the changeToMediaAtIndex that races the station transition.
+// advance, and its next-track load then interrupts our setQueue/play (AbortError).
+// (Every load now feeds `current` at index 0 — the former `noBack` is the only shape.)
 interface LoadOpts {
   stopFirst?: boolean;
-  noBack?: boolean;
 }
 
 function loadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Promise<void> {
@@ -704,55 +852,46 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
   exitRadio();
   const current = queue.getCurrent();
   if (!current) return;
-  const back = opts.noBack ? [] : queue.getHistory().slice(-WINDOW_BACK);
-  const fwd = queue.getUpcoming().slice(0, WINDOW_FWD);
-
-  // Build a DUPLICATE-FREE window. MusicKit's setQueue collapses repeated song ids, so
-  // a window with dupes makes its real queue shorter than ours and throws off the index
-  // changeToMediaAtIndex jumps to — landing on the wrong song. We dedupe here (first id
-  // wins) and insert `current` first-class, so its index `pos` is always exact. The
-  // queue model avoids most dupes already; this is the belt-and-suspenders for the case
-  // a heard song reappears later in the forward context. See docs/QUEUE.md.
+  // A pending grow is moot (this load re-windows); an in-flight one must finish first.
+  cancelGrow();
+  if (topUp) {
+    perf.mark("waitTopUp");
+    await topUp;
+  }
+  // Build a DUPLICATE-FREE window: `current` at index 0 (pos is always 0 now), then up to
+  // `fwdN` upcoming ids. MusicKit's setQueue collapses repeated song ids, which would
+  // throw off the index changeToMediaAtIndex jumps to — so dedupe (first id wins). The
+  // descriptor feed asks for fwdN = 0 (the song alone; growNow appends the rest by id);
+  // the id-form fallback asks for ID_FALLBACK_FWD so a dead current still yields a song.
   //
   // Re-runnable because playId is deadIds-aware: after a NOT_FOUND rejection banks the
   // unresolvable ids, a rebuild swaps them for library-id fallbacks (or drops them).
-  const buildWindow = (): { ids: string[]; pos: number } => {
+  const buildWindow = (fwdN: number): { ids: string[]; pos: number } => {
     const curId = playId(current);
     const seen = new Set<string>();
     const ids: string[] = [];
-    for (const h of back) {
-      const id = playId(h);
-      if (!id || id === curId || seen.has(id)) continue;
-      seen.add(id);
-      ids.push(id);
-    }
-    const pos = ids.length; // current sits immediately after the deduped back-chain
-    if (curId && !seen.has(curId)) {
+    if (curId) {
       seen.add(curId);
       ids.push(curId);
     }
-    for (const h of fwd) {
+    for (const h of queue.getUpcoming().slice(0, fwdN)) {
       const id = playId(h);
       if (!id || seen.has(id)) continue;
       seen.add(id);
       ids.push(id);
     }
-    return { ids, pos };
+    return { ids, pos: 0 };
   };
-  let { ids, pos } = buildWindow();
+  let { ids, pos } = buildWindow(ID_FALLBACK_FWD);
   if (!ids.length) {
     console.warn("[player] nothing playable in window");
     return;
   }
-
-  // Fallback watch: library-only songs (no catalogId) ride along as library ids. Whether
-  // MusicKit plays those — and accepts a mixed list — is the thing to confirm on first run.
-  const fallbacks = [...back, current, ...fwd].filter((h) => !h.catalogId && h.libraryId).length;
-  if (fallbacks) console.log(`[player] window includes ${fallbacks} library-only song(s) via id fallback`);
+  if (!current.catalogId && current.libraryId) console.log("[player] current is library-only — playing via library id");
 
   isLoading = true;
   loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
-  emit(); // surface the loading state for the cover-up
+  perf.span("emit.loading", emit); // surface the loading state for the cover-up
   try {
     // Clean the transport before the swap. MusicKit refuses a play() "without a previous
     // stop()/pause()" while already playing. Normally pause() is enough; leaving a STATION
@@ -760,38 +899,84 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     // to advance, and that advance interrupts our setQueue/play (AbortError).
     if (opts.stopFirst && typeof m.stop === "function") await m.stop();
     else if (m.isPlaying && typeof m.pause === "function") await m.pause();
-    // setQueue is all-or-nothing: ONE unresolvable id rejects the whole window
-    // (NOT_FOUND — stale catalog ids). The rejection names the offenders, so bank
-    // them in deadIds, rebuild the window (library-id fallback / drop), and retry.
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await m.setQueue({ songs: ids });
-        break;
-      } catch (e) {
-        const bad = unresolvedIds(e);
-        if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
-        bad.forEach((id) => deadIds.add(id));
-        diag.log("player:deadIds", { n: bad.length, attempt, bad: bad.slice(0, 10) });
-        console.warn(`[player] ${bad.length} unresolvable id(s) dropped from window; retrying`);
-        ({ ids, pos } = buildWindow());
-        if (!ids.length) throw e; // everything in the window was dead
+    perf.mark("quiet");
+    // Feed the window. Descriptors first (no resolve round trip — see `describe`), the id
+    // form as the fallback. The id form's setQueue is all-or-nothing: ONE unresolvable id
+    // rejects the whole window (NOT_FOUND — stale catalog ids). The rejection names the
+    // offenders, so bank them in deadIds, rebuild the window (library-id fallback /
+    // drop), and retry. Returns the form that took.
+    const feed = async (allowItems: boolean): Promise<"items" | "ids"> => {
+      if (allowItems && itemsMode === "try" && playId(current)) {
+        ({ ids, pos } = buildWindow(0)); // the clicked song alone
+        const items = perf.span("describe", () => ids.map(describe));
+        if (items.every(Boolean)) {
+          try {
+            await m.setQueue({ items });
+            const got: number = m.queue?.items?.length ?? 0;
+            if (got === ids.length) return "items";
+            throw new Error(`descriptor form fed ${got} of ${ids.length}`);
+          } catch (e) {
+            itemsMode = "off"; // this MusicKit build doesn't take descriptors — ids for the session
+            diag.log("player:itemsOff", { e: String(e) });
+            perf.note("itemsOff", String(e));
+            console.warn("[player] setQueue({items}) rejected — id form for the rest of the session:", e);
+          }
+        } else {
+          diag.log("player:itemsSkip", { missing: items.filter((x) => !x).length, of: ids.length });
+        }
       }
-    }
-    windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
-    diag.log("player:loadWindow", { ids: ids.length, pos });
-    perf.mark("window", { ids: ids.length, pos });
+      ({ ids, pos } = buildWindow(ID_FALLBACK_FWD));
+      if (!ids.length) throw new Error("nothing playable in window");
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await m.setQueue({ songs: ids });
+          return "ids";
+        } catch (e) {
+          const bad = unresolvedIds(e);
+          if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
+          bad.forEach((id) => deadIds.add(id));
+          diag.log("player:deadIds", { n: bad.length, attempt, bad: bad.slice(0, 10) });
+          console.warn(`[player] ${bad.length} unresolvable id(s) dropped from window; retrying`);
+          ({ ids, pos } = buildWindow(ID_FALLBACK_FWD));
+          if (!ids.length) throw e; // everything in the window was dead
+        }
+      }
+    };
     // pos=0 deliberately SKIPS changeToMediaAtIndex: setQueue already leaves the queue
     // at index 0, and changeToMediaAtIndex(0) races MusicKit's internal play (its event
     // handler fires play() on top of the in-flight one → the uncaught "play() without a
-    // previous stop()/pause()" rejection). Plain play() below is sufficient there —
-    // the historical "pos=0 doesn't start" symptom was really the dead-id NOT_FOUND
+    // previous stop()/pause()" rejection). Plain play() is sufficient there — the
+    // historical "pos=0 doesn't start" symptom was really the dead-id NOT_FOUND
     // rejection (see the retry loop above), not a selection problem.
-    if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
-      await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
+    const start = async (): Promise<void> => {
+      if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
+        await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
+      }
+      if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
+    };
+    let fed = await feed(true);
+    windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
+    diag.log("player:loadWindow", { ids: ids.length, pos, fed });
+    perf.mark("window", { ids: ids.length, pos, fed });
+    try {
+      await start();
+    } catch (e) {
+      if (fed !== "items") throw e;
+      // A descriptor-fed play failed — most likely a dead id, which the id form catches
+      // at resolve time. Re-feed the same window by ids (dead-id retry included) once.
+      diag.log("player:itemsPlayFailed", { e: String(e) });
+      perf.event("itemsPlayFailed", { e: String(e) });
+      console.warn("[player] descriptor-fed play failed; re-feeding by ids:", e);
+      if (m.isPlaying && typeof m.pause === "function") await m.pause();
+      fed = await feed(false);
+      windowPos = pos;
+      diag.log("player:loadWindow", { ids: ids.length, pos, fed });
+      await start();
     }
-    if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
     stats.recordStart(queue.getCurrent()); // settled start (intermediate rebuild changes were suppressed)
     perf.mark("resolve");
+    growNow(); // the next few songs, by id, at once — what natural advance needs
+    scheduleGrow(); // the rest of the plan grows in gaplessly once the song is under way
   } catch (e) {
     // Surface and rethrow — but NEVER leave `loadingContext` stuck (the finally): a
     // rejection here used to suppress model-follow for the rest of the session.
@@ -802,6 +987,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
   } finally {
     loadingContext = false;
     isLoading = false;
+    lastLoadEndAt = performance.now();
     emit();
   }
 }
@@ -1077,7 +1263,7 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
  * Bounded by `WINDOW_FWD` (MusicKit only ever holds the forward window). This is the general
  * sync primitive — drag-reorder uses it, and re-windowing (roadmap) will too. See docs/QUEUE.md.
  */
-export async function reconcileUpcoming(): Promise<void> {
+export async function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
   // Radio: MusicKit's queue is station-owned; a break-out block edit is model-only.
   if (!music || mode === "radio") return;
   const m = music;
@@ -1096,7 +1282,7 @@ export async function reconcileUpcoming(): Promise<void> {
     }
     const expected: string[] = [];
     for (const e of queue.getUpcoming()) {
-      if (expected.length >= WINDOW_FWD) break;
+      if (expected.length >= cap) break;
       const id = playId(e);
       if (!id || seen.has(id)) continue;
       seen.add(id);
@@ -1159,7 +1345,24 @@ export async function playPause(): Promise<void> {
     return;
   }
   if (m.nowPlayingItem) {
+    // Dev telemetry: a resume is timed like a click (a preloaded restore lands here).
+    perf.click("resume", 1);
+    perf.target(m.nowPlayingItem?.id);
+    perf.mark("model");
+    perf.mark("context");
+    perf.mark("window");
     await m.play();
+    scheduleGrow(); // a preloaded window is the small click window — grow it like any click
+    return;
+  }
+  // Nothing loaded in MusicKit but the model has a plan — a restored session
+  // (queue-persist.ts): Play resumes where you left off.
+  if (queue.getCurrent()) {
+    await loadFromModel(m);
+    return;
+  }
+  if (queue.getUpcoming().length) {
+    await jumpToUpcoming(0);
     return;
   }
   const page = await libraryTracks(0, 200);
@@ -1176,7 +1379,97 @@ export async function playPause(): Promise<void> {
 export async function nextTrack(): Promise<void> {
   const m = await initPlayer();
   diag.log("player:next", snap());
-  if (typeof m.skipToNextItem === "function") await m.skipToNextItem();
+  // Dev telemetry: a native skip is the preloaded path — time it like a click so the
+  // two can be compared (no model/setQueue stages; those marks are stamped at once).
+  const nx = queue.peekNext();
+  perf.click("next", 1);
+  perf.target(nx ? playId(nx) : undefined);
+  perf.mark("model");
+  perf.mark("context");
+  perf.mark("window");
+  if (typeof m.skipToNextItem !== "function") return;
+  try {
+    await m.skipToNextItem();
+  } catch (e) {
+    if (!isUnavailable(e) || !(await healDeadNext(m, String(e), true))) throw e;
+  }
+}
+
+const isUnavailable = (e: unknown): boolean =>
+  /unavailable/i.test(e instanceof Error ? e.message : String((e as any)?.message ?? e ?? ""));
+
+/**
+ * The song MusicKit was asked to advance into is dead (a stale catalog id). The
+ * descriptor-fed window doesn't resolve ids up front, so this is where a dead one now
+ * surfaces: MusicKit refuses the skip ("This song is currently unavailable.") or errors
+ * the auto-advance, and stays put on the old song. Bank the id, jump the model to the
+ * first upcoming entry that still has a live id (playId offers a library-id fallback
+ * for the banked one, else the entries in between are discarded, as any jump does) and
+ * re-window from there — the same load every click takes, so windowPos and model-follow
+ * stay exact. (Reconciling MusicKit's upcoming in place and skipping again was tried
+ * first and left the index-based follow one song off.) False = nothing left to play.
+ */
+async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean> {
+  const nx = queue.peekNext();
+  const id = nx ? playId(nx) : undefined;
+  if (!id) return false;
+  // Bank only on MusicKit's own word (the skip rejection). The end-of-song shape also
+  // follows a transient failure (a MEDIA_LICENSE hiccup), and banking there skipped
+  // LIVE songs for the session (observed 2026-09-12); an unbanked re-window onto a truly
+  // dead song fails into the id re-feed, whose NOT_FOUND retry banks it properly.
+  if (bank) deadIds.add(id);
+  diag.log("player:deadNext", { id, why, bank });
+  perf.event("deadNext", { id, why, bank });
+  console.warn(`[player] next song ${bank ? "unavailable" : "failed to start"} (${id}); ${bank ? "moving on" : "re-windowing onto it"}`);
+  const k = queue.getUpcoming().findIndex((h) => !!playId(h));
+  if (k < 0 || !queue.jumpTo(k)) return false;
+  await loadFromModel(m);
+  return true;
+}
+
+/**
+ * The auto-advance twin of the skip rejection: when a song ends and the NEXT item in
+ * MusicKit's queue is unplayable, MusicKit emits no error at all — it just goes to
+ * `ended` with no now-playing item while the model still holds upcoming songs
+ * (observed 2026-09-12; `mediaPlaybackError` never fired). Two causes share that shape:
+ *  - MusicKit still had items ahead → the one it tried is dead → healDeadNext.
+ *  - MusicKit's window ran dry (the song ended inside GROW_DELAY_MS, before the grow) →
+ *    nothing is dead; advance the model and re-window.
+ * A true queue end (model has nothing upcoming) is maybeFinishQueue's, not ours.
+ */
+let endHealing = false;
+function onEndedWithoutItem(): void {
+  const m = music;
+  const S = window.MusicKit?.PlaybackStates;
+  if (!m || !S || endHealing || loadingContext || isLoading || mode !== "queue") return;
+  const st = m.playbackState;
+  if ((st !== S.ended && st !== S.completed) || m.nowPlayingItem || !queue.getUpcoming().length) return;
+  const items: any[] = m.queue?.items ?? [];
+  const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
+  const mkRemaining = np >= 0 ? items.length - np - 1 : 0;
+  endHealing = true;
+  const run = mkRemaining > 0
+    ? healDeadNext(m, `ended: next item did not start (mk ${np}/${items.length})`, false)
+    : (async () => {
+        diag.log("player:windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
+        perf.event("windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
+        if (!queue.advance()) return false;
+        await loadFromModel(m);
+        return true;
+      })();
+  run.catch((e) => console.warn("[player] end-of-song heal:", e)).finally(() => {
+    endHealing = false;
+  });
+}
+
+/** MusicKit's own playback error — the auto-advance twin of the skip rejection above. */
+function onPlaybackError(e: any): void {
+  if (loadingContext || mode !== "queue" || !music) return;
+  const msg = String(e?.message ?? e?.error?.message ?? e ?? "");
+  diag.log("player:playbackError", { msg });
+  perf.event("playbackError", { msg, keys: e && typeof e === "object" ? Object.keys(e).slice(0, 8) : typeof e });
+  if (!isUnavailable(msg)) return;
+  healDeadNext(music, msg, true).catch((err) => console.warn("[player] dead-next heal:", err));
 }
 
 /** Restart the song if we're past the intro, otherwise skip back. */

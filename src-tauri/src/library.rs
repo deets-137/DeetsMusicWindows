@@ -624,6 +624,23 @@ fn meta_set(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
     .map(|_| ())
     .map_err(|e| e.to_string())
 }
+// The queue model's persisted snapshot (QUEUE.md "Restore across sessions", 2026-09-12):
+// one JSON blob the front end rewrites (debounced) on every queue change and reads back
+// once at launch. Opaque here — the shape is the front end's. Purely local.
+const META_QUEUE_STATE: &str = "queue_state";
+
+#[tauri::command]
+pub fn queue_state_get(db: State<'_, Db>) -> Result<Option<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    Ok(meta_get(&conn, META_QUEUE_STATE))
+}
+
+#[tauri::command]
+pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    meta_set(&conn, META_QUEUE_STATE, &json)
+}
+
 fn now_secs() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }

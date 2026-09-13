@@ -22,6 +22,9 @@ export interface Settings {
   playNowScope: "song" | "list";
   /** What Previous may rewind into: the parked list above the click, or only heard songs (§4). */
   previousReach: "lookback" | "heard";
+  /** At launch: bring back last session's song as Now Playing (paused) + Up Next + Previous,
+   *  only the queue (song parked at the top of Up Next, Now Playing idle), or nothing. */
+  restoreQueue: "song" | "queue" | "off";
   /** Where manual picks land on a one-shot shuffle (§5a). */
   shuffleManual: "top" | "hold" | "mix";
   /** Shuffle with nothing playing: play the whole library shuffled, or do nothing (§5b). */
@@ -55,6 +58,7 @@ export const DEFAULTS: Settings = {
   appearanceMotion: true,
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   previousReach: "lookback",
+  restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   shuffleManual: "top",
   shuffleIdle: "library",
   fullPlayRule: "fraction",

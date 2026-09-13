@@ -135,7 +135,9 @@
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
   --set-pill-pad:    var(--space-1) var(--space-2);
-  --set-pill-radius: 999px;
+  --set-pill-radius: 999px;          /* the split pill's outer radius */
+  --set-menu-min-w:  120px;          /* the small menu behind a menu half */
+  --set-menu-max-h:  280px;          /* 7 weekdays fit; longer lists scroll */
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */

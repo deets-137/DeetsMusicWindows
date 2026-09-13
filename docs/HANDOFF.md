@@ -148,6 +148,28 @@ repo's CLAUDE.md "Never" list before touching wire code). Decisions are locked i
 prompt shown, speaker plays.** Open: the firewall prompt frightens a first-time user — preface
 it with an in-app confirmation or a toast (AIRPLAY.md §9 item 5; waits on toasts, §18).
 
+**2026-09-12 — the click-to-sound pass (branch `polish`, desk-tested via the MCP).**
+Dev-only telemetry (`src/perf.ts`, [DEBUGGING.md](DEBUGGING.md)) measured every stage
+from click to the media element's `playing` event, then five changes landed
+([QUEUE.md](QUEUE.md) windowing, [UX-COVERUPS.md](UX-COVERUPS.md) §4–5): the track
+store notifies only when a transient ingest added something and the Library card ignores
+transient ingests (a full 3,895-row re-render on every click, 100–370 ms, gone); the click
+click feeds the clicked song alone as a MediaItem descriptor from the cached play
+parameters (`setQueue` ~5 ms; its network resolve, 130–1300 ms, gone), then grows by id
+at once (8) and to 200 after 1.5 s — **MusicKit's auto-advance cannot load a descriptor
+item** (found and fixed the same day: it ends with no item), so everything after the
+clicked song is id-resolved; MusicKit + the Widevine module warm at idle 1.5 s after
+launch; a song that fails to start heals by re-window (explicit Next, auto-advance, and a
+dead id in the grow all verified). Our part of a click is now ~10 ms; what remains is MusicKit's own
+teardown/lookup/license/buffering, 1.0–1.7 s warm and 1.7–1.9 s cold to audible. The
+next levers (hover pre-insert, paused restore at launch) are design items, not built.
+**Same day, built and verified:** the queue **restores across sessions** — one JSON blob
+in the cache db's `meta` (`queue-persist.ts`, QUEUE.md "Restore across sessions"), the
+**Restore on launch** settings row (*Last song* default / *Up Next* / *Nothing*), Play
+with nothing loaded resumes the restored plan. It restores the plan only: pre-feeding
+MusicKit was probed and rejected (`setQueue` fetches nothing, no `prepareToPlay`;
+UX-COVERUPS.md §4), so the first Play still pays the cold cost.
+
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
 1. ✅ **Settings card** — built 2026-09-10 as the **hybrid** ([SETTINGS.md](SETTINGS.md)):

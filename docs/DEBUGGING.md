@@ -39,19 +39,35 @@ Auto-captured (no flag needed):
 - `window:error`, `window:unhandledrejection` — uncaught errors land in the buffer
   automatically (e.g. the *"play() without a previous stop()/pause()"* rejection).
 
-**Dev-only click-to-sound marks** (`src/perf.ts`, gated on Vite's `DEV` flag — the
-installed build ships none of it). Every song click stamps `perf:*` lines, each `{ ms }`
-since the click: `click` (before the transient ingest and its re-renders) → `model`
-(playContext entered) → `context` (MusicKit configured; differs from `model` only on the
-first play) → `window` (`setQueue` resolved) → `sound` (MusicKit reported `playing` for
-the clicked id) → `resolve` (`changeToMediaAtIndex`/`play` resolved — lands after sound).
-`perf:span` lines time the synchronous steps inside the first stage: `ingest`,
-`materialize`, `setContext`, and every track-store subscriber by its label
-(`library.reload`, `qcard`, `history`, `rewind`, `np.add`, `np.fav`, `np-bus.publish`).
-`sound` prints two console lines: `[perf] click→sound N ms · model+render · [init ·]
-setQueue · stream` and `[perf]   spans: …` (spans ≥ 5 ms). A click that never gets there
-logs `perf:abandon` (`superseded` = a second click landed on top, `loadError`, `reclick`,
-`stale`).
+**Dev-only click-to-sound telemetry** (`src/perf.ts`, gated on Vite's `DEV` flag — the
+installed build ships none of it; `npx vite build` + grep for `perf:` confirms). Every
+song click (and every Next) stamps `perf:*` marks, each `{ ms }` since the click: `click`
+(before the transient ingest) → `model` (playContext entered) → `context` (MusicKit
+configured; differs from `model` only if the idle warm-up hadn't run) → `quiet` (the
+pre-swap pause resolved) → `window` (`setQueue` resolved) → `sound` (MusicKit's
+playbackState said `playing`) → **`audible`** (the media element's own `playing` event —
+the honest end; MusicKit says `playing` 0.5–0.9 s before audio flows) → `resolve`.
+`perf:span` lines time synchronous steps (`ingest`, `materialize`, `describe`,
+`setContext`, `emit.loading`, and every track-store subscriber by label —
+`library.reload`, `qcard`, `history`, `rewind`, `np.add`, `np.fav`, `np-bus.publish`).
+
+Each play also writes **one line to the dev log** (`diag_flush` with a single line) so a
+driver outside the webview — the CLI/MCP, a tail on `deetsmusic.log` — can read results:
+`[perf] click→sound N ms (MusicKit said playing at S) · model+render · [init ·] pause ·
+setQueue · stream {meta} | spans: … | net: @start+duration host/path …`. `meta` carries
+the click (`where`, `n`, `ids`, `pos`, `fed` = descriptor or id form) plus session notes
+(`eme` = the key system MusicKit asked for, `drm` = warm-up outcome, `itemsOff`,
+`mkErrorEvent`). `net` is every request MusicKit made during the click, read from the
+resource-timing buffer (account check, `webPlayback`, `widevineCert`,
+`acquireWebPlaybackLicense`, the audio byte ranges). Out-of-click facts land as
+`[perf] <event> {…}`: `grow` (the window top-up after a click), `deadNext`, `windowDry`,
+`misalign`, `desync`, `itemsPlayFailed`, `playbackError`, `stateNoItem`, `abandon`
+(`superseded` = a second click landed on top, `loadError`, `reclick`, `stale`).
+
+**Driving it from outside:** `deetsmusic` MCP `play` returns after the play resolves, so
+`grep "\[perf\]" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail -1` right after it is
+that play's line. The MCP always plays a list from its first song; a 3,895-row library
+click stays a hand test.
 
 Player events (`src/player.ts`):
 - `player:configured` — MusicKit configured (+ authorized?)

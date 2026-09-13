@@ -9,7 +9,7 @@ import { requestCard } from "./layout-bus";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer } from "./player";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
@@ -19,6 +19,7 @@ import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initFavorites } from "./favorites";
+import { initQueuePersist } from "./queue-persist";
 import { runWeeklyReplay } from "./replay";
 import type { CardId } from "./cards";
 
@@ -167,6 +168,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Shared library store: one load, read by every card ──
   initTrackStore();
   void initFavorites(); // the ♥ mirror (favorites.ts) — local, zero Apple calls
+  void initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch
+  // Warm MusicKit + the DRM module at idle so the session's first click pays neither
+  // (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the click before this).
+  window.setTimeout(warmPlayer, 1500);
 
   // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
   // store has had a moment to load so the ranking can resolve titles.

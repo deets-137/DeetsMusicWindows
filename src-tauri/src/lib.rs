@@ -216,6 +216,8 @@ pub fn run() {
             bridge::bridge_info,
             bridge::bridge_log,
             log::diag_flush,
+            library::queue_state_get,
+            library::queue_state_set,
             log::log_open_folder,
             bridge::bridge_open_install_page,
             bridge::bridge_resolve,

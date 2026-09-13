@@ -44,21 +44,79 @@
 .set__row--toggle { min-height: var(--set-row-h); }
 .set__row--toggle[aria-checked="true"] .set__dot::after { content: "•"; }
 
-/* Segmented choice: pills share one border; the pressed one takes the hover wash + title ink. */
-.set__seg { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); margin-left: auto; }
-.set__pill {
+/* Split pill (the search pin idiom, NEXT-VERSION §1): one border, halves cut by a
+   hairline. A half is a choice option, an action, an on/off, or a menu trigger. The
+   pressed / on half takes the hover wash + title ink. */
+.set__split {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--set-pill-radius);
+  overflow: hidden;
+}
+.set__split > * + * { border-left: 1px solid var(--border); }
+.set__menu-wrap { display: flex; min-width: 0; }
+.set__half {
+  min-width: 0;
   font-family: var(--font-body);
   font-size: var(--fs-subtext);
   color: var(--subtext);
   background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--set-pill-radius);
+  border: none;
   padding: var(--set-pill-pad);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
-.set__pill:hover { background: var(--surface-hover); }
-.set__pill[aria-pressed="true"] { color: var(--title); border-color: var(--title); background: var(--surface-hover); }
-.set__pill:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.set__half:hover { background: var(--surface-hover); color: var(--title); }
+.set__half[aria-pressed="true"],
+.set__half--toggle[aria-checked="true"] { color: var(--title); background: var(--surface-hover); }
+.set__half[aria-expanded="true"] { background: var(--surface-hover); }
+/* Inset ring: the pill's overflow clip would cut an outside one. */
+.set__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+.set__caret { margin-left: var(--space-1); }
+
+/* The small menu behind a menu half — portaled to <body>, JS sets top/left (settings-card.ts). */
+.set__menu {
+  position: fixed;
+  margin-top: var(--space-1);       /* the gap under the trigger — JS reads it back */
+  min-width: var(--set-menu-min-w);
+  max-height: var(--set-menu-max-h);
+  overflow-y: auto;
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-1);
+  z-index: 100;
+}
+.set__menu[hidden] { display: none; }
+.set__menu-row {
+  width: 100%;
+  min-height: var(--set-row-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: none;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.set__menu-row:hover { background: var(--surface-hover); }
+.set__menu-row:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.set__menu-row[aria-checked="true"] .set__dot::after { content: "•"; }
 
 /* Extension block: a status line then two action rows. */
 .set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
