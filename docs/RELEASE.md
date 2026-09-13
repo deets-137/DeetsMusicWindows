@@ -136,6 +136,19 @@ shipped setup exe — is already automatic (§1). Revisit when someone else inst
 One thing an updater would not escape: it runs the same NSIS installer, so it meets the same
 open-file rules, and the `PREINSTALL` hook is what makes that survivable.
 
+**To revisit (2026-09-12) — the hosting blocker has an answer now.** `DeetsSupport` (§7)
+already serves `music-api.deets.solutions` unauthenticated. One more route can serve
+`latest.json`, and the installer can sit in Cloudflare R2 (or a public release-only GitHub
+repo). The user wants a design session on it. The forks to bring:
+- **Host:** a route on `DeetsSupport` + R2, or a public release-only repo.
+- **Behavior:** update silently at next launch, or ask first (and where: a launch prompt, a
+  Settings row).
+- **The signing key:** where the Tauri updater's private key lives, and who signs (a local
+  step in `npm run release`, or CI).
+- **The publish step:** extend `npm run release` to sign, upload, and write `latest.json`.
+- **The kill switch:** the worker's `KILL` var must not also block updates, or a bad token
+  release could not be fixed by an update.
+
 ## 7. Distributing a usable build — the developer token
 
 > Decided 2026-09-09: **long token lifetime · open endpoint, rate-limited by IP · the dev
