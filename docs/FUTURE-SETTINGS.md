@@ -572,6 +572,58 @@ strip, newest replaces the previous, auto-dismiss after a skin-token duration (`
 `--toast-pad`, `--toast-radius`, `--toast-w`, `--toast-motion`; reduced motion snaps). Main
 window only; the tray panel and the extension popup keep the console.
 
+**Reference build: the Deets.Solutions toast (read 2026-09-12).** The site already ships
+a toast system with the same token model as this app. Read these before the build session:
+[`DeetsSolutions/js/toast.js`](../../DeetsSolutions/js/toast.js) (the API is in the file
+header), the `/* ── Toasts` block in
+[`DeetsSolutions/styles/chrome.css`](../../DeetsSolutions/styles/chrome.css), and
+[`DeetsSolutions/docs/ui.md`](../../DeetsSolutions/docs/ui.md) §Toasts.
+
+*What to take (checked against this app's tokens — every role and token it uses already
+exists here, so the port is close to 1:1):*
+- **API:** `push({ kind, text, sticky, timeout, actions })` → `{ dismiss, update }`. The
+  handle lets a caller retire its own toast (for example, "Reconnecting…" dies on reconnect)
+  or rewrite the text in place (a countdown or a sync progress line).
+- **Four kinds:** `info` | `success` | `warn` | `error`. The kind colors a 3 px left stripe
+  from the theme's traffic-light roles: success `--go`, warn `--pause`, error `--stop`, info
+  `--panel-border`. `themes.css` defines all three lights for every theme, including the
+  monochrome Moonlight, Hazard and Siren themes, so each theme gets its own in-family look
+  for free.
+- **Surface:** `--menu-surface` + `--menu-backdrop` (so the Glass skin frosts the toast),
+  `--radius-panel`, `--shadow-panel`, border `--border`. Motion: `--dur-med` / `--ease-ui`.
+  All already exist in `skin.css`.
+- **Timed by default (3.2 s)** with a 2 px countdown bar in the stripe color. **Hover pauses**
+  the bar and the dismiss timer together.
+- **Sticky** toasts have no timer and must carry an action. **Dismiss is an ordinary action
+  button** on sticky toasts; timed toasts have no buttons unless the caller adds some. Any
+  button press runs its `onPick`, then dismisses.
+- **Accessibility:** the host is `aria-live="polite"`; an `error` toast is `role="alert"`,
+  the rest `role="status"`. Reduced motion removes the slide.
+- **No copy in the module.** Callers own their strings.
+
+*How "behavior per level" actually works there:* the module changes only the color and the
+ARIA role per kind. Sticky-or-timed is the **caller's** choice, with a convention seen in
+`cities/cities.js`: a thing done TO the user is a sticky `error` with Dismiss; a routine
+failure is a timed `error`; a result that invites a next step is a sticky `success` with
+that action; a gain is a timed `success`; a loss is a timed `warn`. **Fork for the session:**
+copy that (callers decide) or build the defaults into the kind here (for example, `error`
+sticky by default).
+
+*What must differ here — forks to settle in the session:*
+- **Position.** The site uses a top-right column under the header. This window is 480 px
+  wide and has mini and max modes. The plan above says a bottom strip.
+- **Stack or single.** The site stacks up to 4 (the oldest timed toast goes first; sticky
+  ones go last). The plan above says one strip, and the newest replaces the previous.
+- **The `deets.toasts` tiers against the kinds.** For example: failures = `warn` + `error`;
+  all = every kind; off = none. Also decide whether the one-time notices (`info` with a
+  `dismissKey`) obey "off". The site has no setting and no `dismissKey`. Both are new here.
+- **Tokens.** Replace the draft `--toast-dur/-pad/-radius/-w/-motion` above with the
+  site's split: reuse the existing panel/menu/motion tokens, and add only a width and a
+  default duration to the skin.
+
+(Side note: `DeetsSolutions/docs/css-split.md` says `--toast-accent` "is set nowhere". That
+is stale. `chrome.css` sets it on `.toast--success/--warn/--error`.)
+
 **Candidate added 2026-09-11 — no developer token at startup.** A first run with no local
 MusicKit key and no reachable mint (offline, or the worker's `KILL` switch — desk-tested via
 `KILL`, RELEASE.md §7) opens the window normally, and the user only learns something is wrong
