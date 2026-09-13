@@ -35,7 +35,7 @@
 - **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
   §16 New-Playlist Search summon
 - **Radio** — §17 Resume station after break-out
-- **Feedback & notices** — §18 Quiet-failure feedback (toast system)
+- **Feedback & notices** — §18 Quiet-failure feedback (toast system) — **built, [TOASTS.md](TOASTS.md)**
 
 ---
 
@@ -526,6 +526,12 @@ Radio settings tenant.
 ---
 
 ## 18. Quiet-failure feedback — the toast system
+
+> **BUILT 2026-09-13 — see [TOASTS.md](TOASTS.md)** (the spec, the sticky rule, every call
+> site, and what was investigated and not built). Setting: `toasts` = `failures` (default)
+> · `all` · `off`, Settings › Window › Show notices. Decisions taken that day: mini/midi
+> bottom-centred, max top-right; a stack of 3; `error` sticky by default; notices show under
+> `failures`. The text below is the design history, kept for the "why".
 
 **Behavior.** How the app tells the user a menu action quietly did nothing. Today every
 "couldn't do it" lands in the console only — the user just sees nothing happen. The

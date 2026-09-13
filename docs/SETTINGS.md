@@ -54,6 +54,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Agents | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) · status line · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · Open guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md) |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
 | Window | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`; OS reduced motion still snaps) |
+| Window | Show notices ([TOASTS.md](TOASTS.md)) — *Failures* / *Everything* / *Off* | `toasts` | failures / all / off | `toast.ts` `admitted()` at every call |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
 | Playback | Previous rewinds (§4) — *The list* / *Played songs* | `previousReach` | lookback / heard | `queue.ts` `setContext` (heard = no parked lookback) |
 | Playback | Restore on launch (2026-09-12) — *Last song* / *Up Next* / *Nothing* | `restoreQueue` | song / queue / off | `queue-persist.ts` (blob in the cache db's `meta`; song = Now Playing paused + Up Next + Previous, queue = song parked atop Up Next, Now Playing idle) |
@@ -79,9 +80,10 @@ original split.)
 The Rewind card is **hidden until it has something to show**: `rewindCard` defaults off,
 and `stats.ts` flips it on **once**, at **50 play starts** (seeded from the durable
 `play_event_count` at boot, then counted per `recordStart`). `rewindAutoShown` records
-that the one-shot fired, so a later manual "off" sticks. The flip is silent (toasts are
-parked — FUTURE-SETTINGS §18); the card simply appears in the pickers, and the row's hint
-changes from "Appears by itself after 50 plays" to a description.
+that the one-shot fired, so a later manual "off" sticks. The flip raises an `info` toast
+under the *Everything* tier ([TOASTS.md](TOASTS.md)); the card appears in the pickers
+either way, and the row's hint changes from "Appears by itself after 50 plays" to a
+description.
 
 `layout.ts` filters Rewind out of the picker pool while the setting is off. If the
 setting goes off while a slot shows Rewind, that slot falls back to an unplaced card (or

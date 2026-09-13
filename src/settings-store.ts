@@ -17,6 +17,9 @@ export interface Settings {
   surfaceAutoFlip: boolean;
   /** Theme/skin switches animate (NEXT-VERSION §6). The OS reduced-motion preference still wins. */
   appearanceMotion: boolean;
+  /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
+   *  all = every kind, confirmations included; off = none (the console keeps logging). */
+  toasts: "failures" | "all" | "off";
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
@@ -56,6 +59,7 @@ export const DEFAULTS: Settings = {
   menuMode: "click",
   surfaceAutoFlip: true,
   appearanceMotion: true,
+  toasts: "failures",
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue

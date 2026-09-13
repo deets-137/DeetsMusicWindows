@@ -11,6 +11,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { seedStation, type SeedKind } from "./radio";
 import { playStation } from "./player";
 import type { MenuItem } from "./context-menu";
+import { toast } from "./toast";
+
+const SEED_NOUN: Record<SeedKind, string> = { songs: "song", artists: "artist" };
 
 export function startStationItem(kind: SeedKind, catalogId?: string | null): MenuItem | null {
   if (!catalogId) return null;
@@ -20,12 +23,15 @@ export function startStationItem(kind: SeedKind, catalogId?: string | null): Men
       void seedStation(kind, catalogId)
         .then((s) => {
           // No station for this seed (rare) — nothing to play; the negative result is
-          // cached so repeat picks stay free. No toast system yet, so a quiet warn
-          // (FUTURE-SETTINGS §18).
+          // cached so repeat picks stay free. A timed warn (TOASTS.md).
           if (s) return playStation(s);
           console.warn(`[station] no station for ${kind} seed`, catalogId);
+          toast({ kind: "warn", text: `Apple Music has no station for this ${SEED_NOUN[kind]}.` });
         })
-        .catch((e) => console.error("[station] start", e)),
+        .catch((e) => {
+          console.error("[station] start", e);
+          toast({ kind: "warn", text: "Couldn't start the station." });
+        }),
   };
 }
 
@@ -53,12 +59,17 @@ export function startArtistStationItem(
           artistIdCache.set(name, artistId);
         }
         if (!artistId) {
-          console.warn("[station] no artist id resolvable for", name); // FUTURE-SETTINGS §18
+          console.warn("[station] no artist id resolvable for", name);
+          toast({ kind: "warn", text: `Couldn't find ${name} on Apple Music.` });
           return;
         }
         const s = await seedStation("artists", artistId);
         if (s) return playStation(s);
         console.warn("[station] no station for artist", name);
-      })().catch((e) => console.error("[station] artist start", e)),
+        toast({ kind: "warn", text: `Apple Music has no station for ${name}.` });
+      })().catch((e) => {
+        console.error("[station] artist start", e);
+        toast({ kind: "warn", text: "Couldn't start the station." });
+      }),
   };
 }

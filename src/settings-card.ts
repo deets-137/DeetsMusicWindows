@@ -133,6 +133,11 @@ function mountSettings(host: HTMLElement): CardInstance {
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
         storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
         {
+          kind: "choice", id: "toasts", label: "Show notices", key: "toasts",
+          hint: "Failures: only when an action couldn't do what it said. Everything: confirmations too. Off: nothing (the log still records)",
+          options: [{ value: "failures", label: "Failures" }, { value: "all", label: "Everything" }, { value: "off", label: "Off" }],
+        },
+        {
           kind: "toggle",
           id: "autostart",
           label: "Start with Windows",

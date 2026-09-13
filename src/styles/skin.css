@@ -76,6 +76,15 @@
   --menu-surface:  var(--surface);
   --menu-backdrop: none;
 
+  /* -- toasts (src/toast.ts, styles/toast.css; docs/TOASTS.md) -------- */
+  /* The strip wears the menu material above; these are its own geometry.
+     Color comes from the theme's traffic lights (success --go, warn --pause,
+     error --stop; info --panel-border). */
+  --toast-w:      304px;   /* max strip width; narrower windows clamp it */
+  --toast-stripe: 3px;     /* the kind stripe on the leading edge */
+  --toast-bar:    2px;     /* the countdown bar on timed toasts */
+  --toast-shift:  30%;     /* fly-in / fly-out travel; a skin may zero it */
+
   /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
      base paints the panel material — an opaque slide masks the pane beneath.
      Translucent skins (Glass, Retro-Future) drop this to transparent: they FADE

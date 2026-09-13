@@ -13,6 +13,7 @@ import { setting, setSetting } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import type { TrackHandle } from "./queue";
 import * as diag from "./diag";
+import { toast } from "./toast";
 
 /** Fraction of a track that must play for it to count as a "full" listen under the
  *  default rule. The rule itself is a setting (SETTINGS.md / FUTURE-SETTINGS §7). */
@@ -43,6 +44,7 @@ function maybeUnlockRewind(): void {
   setSetting("rewindAutoShown", true);
   setSetting("rewindCard", true);
   diag.log("stats:rewind-unlock", { starts: startCount });
+  toast({ kind: "info", text: "Rewind unlocked: your listening, ranked. Pick it from any slot's title." });
 }
 void invoke<number>("play_event_count")
   .then((n) => {

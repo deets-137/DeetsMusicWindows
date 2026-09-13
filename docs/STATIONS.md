@@ -155,9 +155,8 @@ so a `playStation` call inside radio.ts would cycle) → `playStation`.
 
 **Behavior calls:** resolution is **lazy** (on pick, never at menu-open — no per-right-click
 Apple call; ~1 call per new seed, then cached). No consent gate (read-only + playback, not an
-account write). A seed with no station (rare) is a quiet console warn — no toast system yet
-([FUTURE-SETTINGS §18](FUTURE-SETTINGS.md)). Menu position: after Add to Playlist, before Add
-to Library.
+account write). A seed with no station (rare) is a console warn plus a timed `warn` toast
+([TOASTS.md](TOASTS.md) §5). Menu position: after Add to Playlist, before Add to Library.
 
 ---
 

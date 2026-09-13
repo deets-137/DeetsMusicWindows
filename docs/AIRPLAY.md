@@ -183,7 +183,7 @@ latency change.
 5. **The firewall prompt scares people (open, user's note 2026-09-10).** Today the only
    warning is one line in the panel's state area, then Windows' UAC dialog appears with
    `netsh` as the program. A first-time user has no reason to trust that. Two shapes to
-   pick from, both after toasts land (FUTURE-SETTINGS §18 is parked): (a) a confirmation
+   pick from, both now possible (toasts landed 2026-09-13, [TOASTS.md](TOASTS.md)): (a) a confirmation
    inside the app before the dialog — "Windows will ask for permission so the speaker can
    answer DeetsMusic. Continue?" with a Not now that leaves the speaker list usable; (b) a
    toast that stays until the dialog closes, naming what to click. Either way the sentence

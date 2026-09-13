@@ -19,7 +19,7 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
 [DeetsWeather.md](DeetsWeather.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
-[RELEASE.md](RELEASE.md) (build / install / uninstall).
+[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build / install / uninstall).
 
 ---
 
@@ -95,6 +95,19 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-13 — toasts, built overnight, NOT yet desk-tested** (branch
+`claude/deetsmusic-toast-impl-rfw6ch`). The one transient-notice primitive from
+FUTURE-SETTINGS §18, ported from the Deets.Solutions toast: `src/toast.ts` +
+`src/styles/toast.css`, the `toasts` setting (Settings › Window › **Show notices**:
+Failures / Everything / Off), and every call site wired — Start Station with no station,
+Copy Link, Add to Library (+ the one-time "no undo" notice), songs first found dead
+(named, coalesced), no developer token at launch, the sign-in timeout, the post-sign-in
+subscription hint, the weekly Replay and the Rewind unlock. No Rust change. Decisions:
+mini/midi bottom-centred, max top-right; stack of 3; `error` sticky by default. Spec:
+**[TOASTS.md](TOASTS.md)**. **Morning: run the test script in [DEBUGGING.md
+§Toasts](DEBUGGING.md#toasts)** (`__toast.demo()` first), then commit. Typecheck and
+`vite build` are clean; the tray bundle carries none of it.
+
 > **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
 > anything already committed works unless this file says otherwise. Confirmed in use
 > 2026-09-11: the extension, the mini/midi/max layouts, stations, and the CLI. Do not
@@ -157,7 +170,7 @@ shared `deets-airplay` crate (git dependency on DeetsAirplay, pinned by `rev`; r
 repo's CLAUDE.md "Never" list before touching wire code). Decisions are locked in §5; v1 =
 "All PC sound", the per-process path is parked for v2 (§10). **0.2.1 is desk-tested installed:
 prompt shown, speaker plays.** Open: the firewall prompt frightens a first-time user — preface
-it with an in-app confirmation or a toast (AIRPLAY.md §9 item 5; waits on toasts, §18).
+it with an in-app confirmation or a toast (AIRPLAY.md §9 item 5; toasts exist now, TOASTS.md).
 
 **2026-09-12 — the click-to-sound pass (branch `polish`, desk-tested via the MCP).**
 Dev-only telemetry (`src/perf.ts`, [DEBUGGING.md](DEBUGGING.md)) measured every stage
@@ -337,6 +350,8 @@ get large).
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-13 — toasts** ([TOASTS.md](TOASTS.md)): the primitive, the `toasts` tier
+  setting, and the ten call sites above. **Awaiting the first desk test.**
 - **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
   search pins · playlist covers (user / Apple / mosaic; schema v3 `cover`) · ♥ favorites
   (`favorites.rs` + `favorites.ts`, seeded from Apple's Favorite Songs; the Library ♥
@@ -476,9 +491,11 @@ src/dropdown.ts             shared dropdown primitive + menu-mode fan-out
 src/theme.ts / skin.ts / surface.ts / storm.ts    token-tier switches + surface bands + storm layer
 src/slider.ts               shared slider primitive (scrubber, volume)
 src/diag.ts                 diagnostics ring buffer + window.__diag
+src/toast.ts                the transient-notice primitive + window.__toast (TOASTS.md)
 src/artwork-heal.ts         cover-<img> self-healing (data-art marker; capture-phase retry)
 src/styles.css              app rules (imports token sheets first)
 src/styles/qcard.css        Queue/History/Rewind card styling
+src/styles/toast.css        the toast host (per-surface position) + strip
 src/styles/{palette,themes,skin,fonts}.css + fonts/    the three token tiers + bundled fonts
 src-tauri/src/lib.rs        Tauri builder: state, DB open, command registry, devtools
 src-tauri/src/apple.rs      dev-token signing, loopback auth, AppleProvider, catalog + radio cmds

@@ -20,6 +20,7 @@ import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
 import * as stats from "./stats";
 import * as perf from "./perf";
+import { toast } from "./toast";
 
 declare global {
   interface Window {
@@ -782,14 +783,53 @@ function loadDeadIds(): Promise<void> {
 }
 
 /** Bank ids in the session denylist and on disk. `fresh` = first found dead on this
- *  install — the future toast's trigger (FUTURE-SETTINGS §18). */
+ *  install — the dead-song toast's trigger (TOASTS.md). */
 function markDead(ids: string[], reason: "not-found" | "unavailable"): void {
   ids.forEach((id) => deadIds.add(id));
   invoke<string[]>("dead_ids_mark", { ids, reason })
     .then((fresh) => {
-      if (fresh.length) diag.log("player:deadFresh", { reason, fresh: fresh.slice(0, 10) });
+      if (!fresh.length) return;
+      diag.log("player:deadFresh", { reason, fresh: fresh.slice(0, 10) });
+      noteDeadSongs(fresh);
     })
     .catch((e) => console.warn("[player] dead ids save:", e));
+}
+
+// The dead-song toast (TOASTS.md): one timed warn per burst, naming SONGS, not ids.
+// A feed rejection marks a batch in one call, but the retry and healDeadNext can mark
+// more within a second, so fresh names collect for DEAD_TOAST_GAP_MS and raise once.
+// A dead catalog id whose library id still plays is not skipped (playId falls back),
+// so it must not be named: only handles with no play target left count.
+const DEAD_TOAST_GAP_MS = 1000;
+const deadNames = new Set<string>();
+let deadToastTimer: number | undefined;
+function noteDeadSongs(fresh: string[]): void {
+  for (const id of fresh) {
+    const t = trackById(id);
+    if (!t) continue; // an id the store can't name (a transient that never resolved) — no toast
+    if (playId({ catalogId: t.catalogId, libraryId: t.libraryId })) continue; // still plays via the other id
+    deadNames.add(t.title);
+  }
+  if (!deadNames.size) return;
+  window.clearTimeout(deadToastTimer);
+  deadToastTimer = window.setTimeout(() => {
+    const names = [...deadNames];
+    deadNames.clear();
+    const text =
+      names.length === 1
+        ? `Skipped “${names[0]}” — Apple Music no longer offers it.`
+        : `Skipped ${names.length} songs Apple Music no longer offers: ${names.slice(0, 2).map((n) => `“${n}”`).join(", ")}${names.length > 2 ? ` and ${names.length - 2} more` : ""}.`;
+    toast({ kind: "warn", text, timeout: 6000 });
+  }, DEAD_TOAST_GAP_MS);
+}
+
+// A sign-in that completed THIS session (main.ts tells us). The first playback failure
+// after it that is not a dead-song rejection gets the "no subscription?" hint
+// (TOASTS.md): MusicKit reports a missing Apple Music subscription only as a
+// playback error, never at sign-in, and this is the one moment the cause is likely.
+let freshSignIn = false;
+export function noteSignedIn(): void {
+  freshSignIn = true;
 }
 
 /** Best play target for a handle — catalog id preferred, library id as fallback;
@@ -1500,7 +1540,17 @@ function onPlaybackError(e: any): void {
   const msg = String(e?.message ?? e?.error?.message ?? e ?? "");
   diag.log("player:playbackError", { msg });
   perf.event("playbackError", { msg, keys: e && typeof e === "object" ? Object.keys(e).slice(0, 8) : typeof e });
-  if (!isUnavailable(msg)) return;
+  if (!isUnavailable(msg)) {
+    if (freshSignIn) {
+      freshSignIn = false;
+      toast({
+        kind: "warn",
+        text: "Playback failed after sign-in. DeetsMusic needs an Apple Music subscription on this Apple ID.",
+        timeout: 8000,
+      });
+    }
+    return;
+  }
   healDeadNext(music, msg, true).catch((err) => console.warn("[player] dead-next heal:", err));
 }
 

@@ -9,7 +9,8 @@ import { requestCard } from "./layout-bus";
 import { connect, disconnect, isConnected } from "./apple";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn } from "./player";
+import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
@@ -157,12 +158,29 @@ window.addEventListener("DOMContentLoaded", () => {
     setAccount("loading", wasIn ? "Disconnecting…" : "Continue sign-in in your browser…");
     try {
       if (wasIn) await disconnect();
-      else await connect();
+      else {
+        await connect();
+        noteSignedIn(); // the first playback failure after this gets the subscription hint
+      }
       setAccount((await isConnected()) ? "in" : "out");
     } catch (e) {
       console.error("[account] auth error", e);
-      setAccount((await isConnected()) ? "in" : "out", `Error: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      setAccount((await isConnected()) ? "in" : "out", `Error: ${msg}`);
+      // The Account flyout is closed by the time a 5-min sign-in times out, so the row's
+      // error text is invisible; the toast is the visible half (TOASTS.md).
+      if (/timed out/i.test(msg)) toast({ kind: "error", text: "Sign-in did not complete. Open Account and try again." });
+      else toast({ kind: "warn", text: `Account: ${msg}` });
     }
+  });
+
+  // No developer token at all (a first run offline, or the mint's KILL switch —
+  // RELEASE.md §7): Rust logged it at setup and every Apple call will fail with the
+  // same text, but the window looks fine. Say so once, at launch (TOASTS.md). Local,
+  // zero-cost: the command reads the static the setup step resolved.
+  invoke<string>("apple_developer_token").catch((e) => {
+    console.warn("[boot] no developer token:", e);
+    toast({ kind: "error", text: "Can't reach the token service. Check your connection and restart DeetsMusic." });
   });
 
   // ── Shared library store: one load, read by every card ──

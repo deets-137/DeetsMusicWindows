@@ -16,6 +16,7 @@ import {
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import * as diag from "./diag";
+import { toast } from "./toast";
 
 export const REPLAY_SIZE = 25;
 const REPLAY_MIN = 5; // a quieter week than this skips (the button never skips)
@@ -119,4 +120,5 @@ export async function runWeeklyReplay(): Promise<void> {
   }
   try { localStorage.setItem(LAST_RUN_KEY, String(Date.now())); } catch { /* session-only */ }
   diag.log("replay", `weekly made (${tracks.length} songs, keep=${setting("replayKeep")})`);
+  toast({ kind: "success", text: `Replay updated: ${tracks.length} songs from this week.` });
 }

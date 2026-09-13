@@ -165,7 +165,8 @@ repo). The user wants a design session on it. The forks to bring:
 > `developer-token-changed` reconfigure). **The dead first run is desk-tested via `KILL`:** no key,
 > no cache, mint 503 → the window opens, the log reads `no developer token: no local MusicKit key
 > and mint switched off (503)`, and a search shows the same text. The offline case shares that
-> branch (only the string differs). Wanted later: a launch toast for it (FUTURE-SETTINGS §18).
+> branch (only the string differs). The launch toast for it is built ([TOASTS.md](TOASTS.md) §5,
+> 2026-09-13; not yet desk-tested against `KILL`).
 > Steps 1–4 done; step 5 (the release) remains.
 
 ### The problem

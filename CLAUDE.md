@@ -11,6 +11,8 @@ front-end, Rust back-end).
 - `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
   extension + the loopback bridge (`extension/` is the MV3 source); `docs/AGENT.md` —
   the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, install, uninstall.
+- `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
+  call site; `__toast.demo()` in the console shows one of each kind.
 - `docs/LOGGING.md` — the rolling log file + `diag.ts` (scoped, not built); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 

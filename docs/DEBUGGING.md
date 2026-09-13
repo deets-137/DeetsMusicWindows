@@ -122,6 +122,67 @@ Player events (`src/player.ts`):
 - `player:desync` — **model's `current` ≠ MusicKit's now-playing item** (the bug class
   that froze Up Next). If you see these, model-follow is drifting.
 
+## Toasts — the `__toast` console handle + the morning test script
+The toast primitive ([TOASTS.md](TOASTS.md)) exposes `window.__toast` in every build:
+
+| Call | Does |
+|---|---|
+| `__toast.demo()` | one toast of each kind at once — info, success, warn, error (the error stays until Dismiss) |
+| `__toast.push({ kind, text, sticky, timeout, actions, dismissKey })` | the raw API, returns `{ dismiss, update, shown }` |
+| `__toast.notice()` | a one-time notice under the throwaway key `deets.notice.demo` |
+| `__toast.reset()` | forgets that demo key, so the notice shows again |
+
+Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` or
+`toast:muted` `{ why: "tier-off" \| "tier-failures" \| "notice-off" }`, so
+`__diag.dump()` (or `__diag.echo(true)`) shows what fired and what the tier swallowed.
+`__diag.flush()` writes the buffer to `deetsmusic.log`, so a driver outside the webview
+can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
+
+**Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
+setting is Settings › Window › **Show notices**, default *Failures*.
+
+1. **Look.** `__toast.demo()` in midi: a bottom-centred stack of at most 3 (the stack is
+   capped, so `demo()`'s four toasts show the last three — the oldest timed one yields;
+   the sticky error survives). Hover a timed one: its bar stops draining; leave: it
+   resumes. Press Dismiss on the error. Repeat on **max** (Settings menu › Surface): the
+   stack is top-right under the titlebar, newest on top, flying in from the right. Repeat
+   on **mini**: the strip clamps to the window width. Then cycle a few themes (the stripe
+   follows the traffic lights — Moonlight/Noir/Siren stay in-family) and skins (Glass
+   frosts the strip; Press squares it). Set Windows' *Show animations* off and `demo()`
+   again: no slide.
+2. **Tier.** Set *Off*: `__toast.demo()` shows nothing; `__diag.dump()` has four
+   `toast:muted`. Set *Failures*: `demo()` shows warn + error only. Set *Everything*: all.
+3. **Notice.** `__toast.notice()` → press *Don't show again* → `__toast.notice()` again
+   shows nothing (`toast:muted`, `notice-off`) → `__toast.reset()` → shows again. Then
+   the real one: right-click a catalog song not in your library › **Add to Library** →
+   the "Added. Apple has no undo…" notice. A second add in the same session: silent under
+   *Failures*, "Added to your library." under *Everything*. Restart: the notice returns
+   once per session until you press Don't show again (`localStorage["deets.notice.addOneWay"]`).
+4. **Copy Link.** Under *Everything*: right-click a song › Copy Link → "Link copied."
+   Under *Failures*: silent. (A failure needs a denied clipboard — skip.)
+5. **Start Station.** Hard to force; a seed with no station is rare. If you know one,
+   use it. Otherwise trust the unit: the branch that used to `console.warn` now toasts.
+6. **Dead songs.** Play a song whose catalog id Apple dropped (the log's
+   `player:deadFresh` from a past session names candidates, or `__music` search for a
+   pulled release). Expect one warn "Skipped “Title” — Apple Music no longer offers it."
+   Play it again: silent (the mark is on disk). A cache reset (Settings › Library)
+   makes it fresh again.
+7. **Sign-in timeout.** Account › Disconnect, then Sign in, and close the browser tab.
+   Five minutes later: the sticky "Sign-in did not complete." error, with the flyout
+   closed. (Reconnect afterwards.)
+8. **No token.** Only with the mint's `KILL` switch and no cached token (RELEASE.md §7),
+   or move `src-tauri/secrets/*.p8` away and the token cache with it: the window opens
+   with the sticky "Can't reach the token service." error.
+9. **From the CLI/MCP** (`deetsmusic` tools, AGENT.md): a play that lands on a dead id
+   still writes its `[perf]` line, and `__diag.flush()` from the console (or the next
+   crash/close) puts the `toast` line beside it in the log. There is no bridge route to
+   raise a toast; the console handle is the driver.
+
+Not testable from your desk: the no-subscription hint (needs an Apple ID without a
+subscription; the log's `player:playbackError` `msg` after such a sign-in is the thing
+to read), and the Replay / Rewind-unlock confirmations (they fire on their own schedule —
+they are one `toast()` line each, kind `success` / `info`, `all` tier).
+
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.
 2. `__diag.dump()` (or `__diag.copy()` to paste it somewhere).
