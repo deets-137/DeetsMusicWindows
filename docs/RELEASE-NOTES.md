@@ -2,6 +2,30 @@
 
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 
+## 0.3.1 — 2026-09-13
+
+**DeetsMusic says what went wrong.** If Apple Music stops working, a notice names the cause
+and gives the one button that fixes it: **Sign in**, **Try again**, or **Try now**. If the
+problem is on Apple's side, DeetsMusic says your account is fine and keeps trying on its own.
+The old "Unable to prepare for playback" box is gone.
+
+**Sign-in is clearer.** Playing a song while signed out asks you to sign in. An expired
+sign-in shows as "Sign-in expired" under Account. A sign-in that does not finish says so at
+once, with a Try again button.
+
+**Notices.** Short messages confirm or explain actions (Settings › Window › Show notices).
+
+**Also new:** smoother scrolling through a large Library, calmer moving backgrounds with a
+Settings › Window › Animate backgrounds choice, an Add to Library square on Search songs,
+the official Apple Music icon on Apple playlists, and Settings › About.
+
+### Installing
+
+- **Windows SmartScreen will warn you.** The installer is not code-signed yet. Click
+  **More info**, then **Run anyway**.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.3.0 — 2026-09-12
 
 **Favorites.** Right-click a song › Favorite. The ♥ syncs with Apple Music. The Library has
