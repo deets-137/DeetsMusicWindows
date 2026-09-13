@@ -305,6 +305,9 @@ get large).
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
 ### Not built yet ⬜
+- **Next-version feature notes (2026-09-11)** — pinned search terms · playlist artwork ·
+  favorite songs · weekly replay playlists from Rewind · a Search/quick-access shortcut.
+  Scoped with the real forks in **[NEXT-VERSION.md](NEXT-VERSION.md)**. None designed yet.
 - **♥ Favorites** — the love-only ♥ (Apple `PUT +1`) + local mirror + ♥ on Now Playing / menus.
   Parked, explicitly not the next step (user's call). **Ratings / 👎 are off the roadmap.**
 - **Real album/artist data + artist photos in the Library card** — Library's Albums/Artists are

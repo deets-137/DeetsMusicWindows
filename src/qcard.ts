@@ -77,17 +77,12 @@ function mountQueue(host: HTMLElement): CardInstance {
     const st = lastState?.station ?? lastState?.resume;
     let stationRow = "";
     if (st) {
-      const sub = lastState?.resume
-        ? "Resumes after the queue"
-        : st.live
-          ? "LIVE · Apple Music picks what's next"
-          : "Apple Music picks what's next";
       const art = st.artworkUrl
         ? `<img class="qrow__art" src="${esc(st.artworkUrl)}" alt="" loading="lazy" data-art />`
         : `<div class="qrow__art qrow__art--empty" aria-hidden="true">📻</div>`;
-      stationRow = `<li class="qrow qrow--station" data-station="${esc(st.id)}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
-        st.name,
-      )}</span><span class="qrow__artist">${esc(sub)}</span></div></li>`;
+      stationRow = `<li class="qrow qrow--station" data-station="${esc(st.id)}">${art}<div class="qrow__text"><span class="qrow__title">${esc(st.name)}</span>${
+        lastState?.resume ? `<span class="qrow__artist">Will resume after</span>` : ""
+      }</div></li>`;
     }
     const list = rows || stationRow
       ? `<ol class="qcard__list">${rows}${more}${stationRow}</ol>`

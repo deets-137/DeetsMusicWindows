@@ -188,7 +188,26 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
   panel.hidden = true;
   panel.setAttribute("role", "menu");
   panel.setAttribute("aria-label", "Play on");
-  root.appendChild(panel);
+  // Portaled to <body>: a card's backdrop-filter (Glass) makes the card a stacking context,
+  // so a panel inside it was painted under the next card and its frost saw only its own card.
+  document.body.appendChild(panel);
+
+  // Hang the fixed panel under the square, right edges aligned; flip above when it would
+  // run off the bottom. The gap is the panel's own margin (a skin token), read back here.
+  const place = () => {
+    if (panel.hidden) return;
+    const r = square.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const gap = parseFloat(getComputedStyle(panel).marginTop) || 0;
+    const w = panel.offsetWidth;
+    const h = panel.offsetHeight;
+    const left = Math.max(gap, Math.min(r.right - w, vw - w - gap));
+    const below = r.bottom;
+    const top = below + gap + h > vh ? Math.max(0, r.top - h - 2 * gap) : below;
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+  };
 
   const render = () => {
     const c = status.connected;
@@ -230,6 +249,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
       <div class="ap__state"${note && !c ? ' data-tone="note"' : ""}>${esc(state)}</div>
       <button class="ap__row ap__row--scan" type="button" data-scan${scanning ? " disabled" : ""}><span class="ap__name">${scanning ? "Scanning…" : "Scan again"}</span></button>`;
     (panel as HTMLElement & { _rows?: typeof rows })._rows = rows;
+    place(); // the row count changes the height (a scan result, a flip above)
   };
   panels.add(render);
   render();
@@ -266,6 +286,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     wasOpen = open;
     openPanels += open ? 1 : -1;
     if (open) {
+      place();
       note = null;
       void refresh();
       void scan();
@@ -274,10 +295,13 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     }
   });
   observer.observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  window.addEventListener("resize", place);
 
   return {
     destroy() {
       observer.disconnect();
+      window.removeEventListener("resize", place);
+      panel.remove(); // it lives on <body>, so it does not leave with the card's host
       if (wasOpen) openPanels -= 1;
       panels.delete(render);
       dropdown.destroy();

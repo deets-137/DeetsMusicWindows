@@ -291,7 +291,24 @@ function maybeResumeStation(): void {
   playStation(s).catch((e) => console.warn("[player] resume station:", e));
 }
 
+/**
+ * Queue end: when MusicKit finishes the last song, it reports no now-playing index, so
+ * model-follow (syncModelToMusicKit) bails and the finished song stayed `current` — the
+ * Qcard kept showing it under "Not playing". Move it to the heard trail instead. Only when
+ * the model has nothing upcoming: a window that ran out early is a top-up problem, not an end.
+ */
+function maybeFinishQueue(): void {
+  if (!music || mode !== "queue" || loadingContext || isLoading) return;
+  const S = window.MusicKit?.PlaybackStates;
+  const st = music.playbackState;
+  const finished = !!S && (st === S.completed || st === S.ended);
+  if (!finished || music.nowPlayingItem || queue.getUpcoming().length || !queue.getCurrent()) return;
+  diag.log("player:queueEnd", snap());
+  queue.advance();
+}
+
 function onPlaybackStateChange(): void {
+  maybeFinishQueue();
   emit();
   maybeResumeStation();
 }

@@ -292,8 +292,8 @@ body {
 @keyframes ap-pulse { 50% { opacity: 0.35; } }
 
 .ap {
-  position: absolute; top: 100%; right: 0;
-  margin-top: var(--space-1);
+  position: fixed;                  /* portaled to <body>; JS sets top/left (airplay.ts) */
+  margin-top: var(--space-1);       /* the gap under the square — JS reads it back */
   width: var(--ap-panel-w);
   background: var(--menu-surface);
   -webkit-backdrop-filter: var(--menu-backdrop);
@@ -302,7 +302,7 @@ body {
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
   padding: var(--space-1);
-  z-index: 30;                      /* above the vol panel it can sit inside */
+  z-index: 100;                     /* same tier as the context menu; above the vol panel */
   text-align: left;
 }
 .ap[hidden] { display: none; }

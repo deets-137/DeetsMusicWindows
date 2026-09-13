@@ -11,7 +11,9 @@
 //
 // `root` is the hover region: it must contain BOTH the trigger and the panel so moving the
 // cursor from the trigger into the panel never counts as "leaving". The panel is shown/hidden
-// via its `hidden` attribute (CSS hides `[hidden]`).
+// via its `hidden` attribute (CSS hides `[hidden]`). A panel portaled OUT of `root` (to
+// escape a card's stacking context — the AirPlay "Play on" panel) is its own hover region
+// and counts as "inside" for dismissal.
 
 export type DropdownMode = "click" | "hover";
 
@@ -82,7 +84,8 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     isOpen() ? close() : open();
   };
   const onDocClick = (e: MouseEvent) => {
-    if (isOpen() && !root.contains(e.target as Node)) close();
+    const t = e.target as Node;
+    if (isOpen() && !root.contains(t) && !panel.contains(t)) close();
   };
   const onDocKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") close();
@@ -91,6 +94,10 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   // Hover acts only in hover mode; click toggles in BOTH (lets a hover user pin the panel).
   root.addEventListener("pointerenter", onEnter);
   root.addEventListener("pointerleave", onLeave);
+  if (!root.contains(panel)) {
+    panel.addEventListener("pointerenter", onEnter);
+    panel.addEventListener("pointerleave", onLeave);
+  }
   trigger.addEventListener("click", onClick);
   document.addEventListener("click", onDocClick);
   document.addEventListener("keydown", onDocKey);
