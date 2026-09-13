@@ -108,6 +108,7 @@ void listen("developer-token-changed", async () => {
 export function initPlayer(): Promise<any> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
+    void loadDeadIds(); // a click before the idle warm-up still gets the saved denylist
     await whenMusicKitLoaded();
     const developerToken = await invoke<string>("apple_developer_token");
     await window.MusicKit.configure({
@@ -143,6 +144,7 @@ export function initPlayer(): Promise<any> {
  */
 export function warmPlayer(): void {
   observeEme();
+  void loadDeadIds();
   initPlayer().catch((e) => console.warn("[player] warm-up:", e));
   void warmDrm();
 }
@@ -152,7 +154,13 @@ let warmKeys: MediaKeys | null = null;
 async function warmDrm(): Promise<void> {
   if (warmKeys || typeof navigator.requestMediaKeySystemAccess !== "function") return;
   const config: MediaKeySystemConfiguration[] = [
-    { initDataTypes: ["cenc"], audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] },
+    // SW_SECURE_CRYPTO is Widevine's lowest (software) tier — what an unset level already
+    // meant; naming it silences Chromium's "robustness level be specified" warning for this call.
+    // MusicKit's own request still omits it — that warning is MusicKit's and stays.
+    {
+      initDataTypes: ["cenc"],
+      audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: "SW_SECURE_CRYPTO" }],
+    },
   ];
   try {
     const access = await navigator.requestMediaKeySystemAccess("com.widevine.alpha", config);
@@ -754,11 +762,35 @@ const handlesFrom = (list: Track[], context: string): TrackHandle[] => {
   return list.map((t) => toHandle(t, context));
 };
 
-// Session denylist of ids MusicKit reported as unresolvable (NOT_FOUND from setQueue —
-// catalog ids gone stale since the library cached them: region pulls, takedowns). A dead
-// catalog id makes the handle fall back to its LIBRARY id (the user's copy usually still
-// plays); a handle with no live id left is skipped by the window builders entirely.
+// Denylist of ids MusicKit refused (NOT_FOUND from a feed, or "currently unavailable" on
+// a skip — catalog ids gone stale since the library cached them: region pulls, takedowns).
+// A dead catalog id makes the handle fall back to its LIBRARY id (the user's copy usually
+// still plays); a handle with no live id left is skipped by the window builders entirely.
+// Persisted in the cache db (`dead_ids`, 7-day expiry — QUEUE.md §Dead ids) and loaded at
+// launch, so a known dead id never costs a failed MusicKit request again.
 const deadIds = new Set<string>();
+
+let deadLoad: Promise<void> | null = null;
+function loadDeadIds(): Promise<void> {
+  deadLoad ??= invoke<string[]>("dead_ids_cached")
+    .then((ids) => {
+      ids.forEach((id) => deadIds.add(id));
+      diag.log("player:deadLoaded", { n: ids.length });
+    })
+    .catch((e) => console.warn("[player] dead ids load:", e));
+  return deadLoad;
+}
+
+/** Bank ids in the session denylist and on disk. `fresh` = first found dead on this
+ *  install — the future toast's trigger (FUTURE-SETTINGS §18). */
+function markDead(ids: string[], reason: "not-found" | "unavailable"): void {
+  ids.forEach((id) => deadIds.add(id));
+  invoke<string[]>("dead_ids_mark", { ids, reason })
+    .then((fresh) => {
+      if (fresh.length) diag.log("player:deadFresh", { reason, fresh: fresh.slice(0, 10) });
+    })
+    .catch((e) => console.warn("[player] dead ids save:", e));
+}
 
 /** Best play target for a handle — catalog id preferred, library id as fallback;
  *  ids MusicKit has declared dead this session are passed over. */
@@ -799,7 +831,7 @@ async function insertWithRetry(
     } catch (e) {
       const bad = unresolvedIds(e);
       if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
-      bad.forEach((id) => deadIds.add(id));
+      markDead(bad, "not-found");
       diag.log("player:deadIds", { where, n: bad.length, attempt, bad: bad.slice(0, 10) });
       console.warn(`[player] ${where}: ${bad.length} unresolvable id(s) dropped; retrying`);
       ids = rebuild();
@@ -934,7 +966,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
         } catch (e) {
           const bad = unresolvedIds(e);
           if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
-          bad.forEach((id) => deadIds.add(id));
+          markDead(bad, "not-found");
           diag.log("player:deadIds", { n: bad.length, attempt, bad: bad.slice(0, 10) });
           console.warn(`[player] ${bad.length} unresolvable id(s) dropped from window; retrying`);
           ({ ids, pos } = buildWindow(ID_FALLBACK_FWD));
@@ -1417,7 +1449,7 @@ async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean
   // follows a transient failure (a MEDIA_LICENSE hiccup), and banking there skipped
   // LIVE songs for the session (observed 2026-09-12); an unbanked re-window onto a truly
   // dead song fails into the id re-feed, whose NOT_FOUND retry banks it properly.
-  if (bank) deadIds.add(id);
+  if (bank) markDead([id], "unavailable");
   diag.log("player:deadNext", { id, why, bank });
   perf.event("deadNext", { id, why, bank });
   console.warn(`[player] next song ${bank ? "unavailable" : "failed to start"} (${id}); ${bank ? "moving on" : "re-windowing onto it"}`);

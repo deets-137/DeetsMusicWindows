@@ -296,8 +296,15 @@ is silently absent from what MusicKit is fed (it reconciles as model-only, same 
 beyond-window entry — the alignment invariant treats MK as a subsequence, so no
 `player:misalign`).
 
-**Future work:** persist the denylist (SQLite) so it survives restarts, and let catalog
-hydrate repair or clear stale `catalogId`s at the source.
+**Persisted (2026-09-12).** `markDead` writes every banked id to the cache db's `dead_ids`
+table (`dead_ids_mark`: `reason` = `not-found` | `unavailable`, `first_seen`, `marked_at`);
+`loadDeadIds` reads the marks from the last 7 days (`dead_ids_cached`) at the idle
+warm-up and at `initPlayer`. After 7 days a mark is ignored, so a song Apple restores is
+tried once more; a new rejection refreshes `marked_at` but keeps `first_seen`.
+`dead_ids_mark` returns the ids with no earlier row (logged as `player:deadFresh`) — the
+trigger for the future toast (FUTURE-SETTINGS §18). Deleting the cache clears the marks.
+
+**Future work:** let catalog hydrate repair or clear stale `catalogId`s at the source.
 
 ---
 

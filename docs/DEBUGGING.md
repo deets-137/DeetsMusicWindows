@@ -85,8 +85,8 @@ bridge (the CLI probes the port list; the installed app would win).
 Limits: the MCP always plays a list from its first song (a 3,895-row library click stays
 a hand test), and its round trip is ~1 s, so Previous within 3 s of a click (the
 re-window path) can't be reached from here. Vite reloads the page on every `src/` save,
-which resets `deadIds` and MusicKit — useful for a fresh state, fatal for a test in
-progress.
+which resets MusicKit and reloads `deadIds` from the db — useful for a fresh state, fatal
+for a test in progress. To forget the saved dead ids, delete the rows in `dead_ids`.
 
 Player events (`src/player.ts`):
 - `player:configured` — MusicKit configured (+ authorized?)
@@ -109,8 +109,11 @@ Player events (`src/player.ts`):
 - `player:deadIds` — `{ where, n, attempt, bad }` MusicKit rejected a feed with
   `NOT_FOUND` and the named ids were banked in the session denylist, then the op rebuilt +
   retried (`where` = which path: the window load, `enqueue:*`, `move-*`, `reconcile`). See
-  [QUEUE.md §Dead ids](QUEUE.md). Routine after a fresh launch; a *flood* of these means the
-  sync is producing stale catalog ids.
+  [QUEUE.md §Dead ids](QUEUE.md). Rare after the first contact (the denylist is saved); a
+  *flood* of these means the sync is producing stale catalog ids.
+- `player:deadLoaded` — `{ n }` the saved dead ids (last 7 days) loaded at launch
+- `player:deadFresh` — `{ reason, fresh }` ids found dead for the first time on this install
+  (the future toast's trigger)
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
 - `player:loadError` / `player:loadSkip` — a window load failed (error rethrown to the
   caller) / was superseded by a newer click before it ran (loads are serialized + coalesced)

@@ -99,6 +99,7 @@ pub fn run() {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
             }
             library::migrate_v3(&conn).expect("v3 migration failed");
+            library::migrate_v4(&conn).expect("v4 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
@@ -218,6 +219,8 @@ pub fn run() {
             log::diag_flush,
             library::queue_state_get,
             library::queue_state_set,
+            library::dead_ids_cached,
+            library::dead_ids_mark,
             log::log_open_folder,
             bridge::bridge_open_install_page,
             bridge::bridge_resolve,

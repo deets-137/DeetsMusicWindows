@@ -593,6 +593,35 @@ subscription". (3) **A library playlist Apple no longer has** — the count back
 must **name the playlist** so the user can deal with it, and the backfill should remember the
 404 instead of asking again each launch.
 
+**Candidate added 2026-09-12 — songs Apple Music no longer offers.** The player marks a song
+ID as dead when MusicKit rejects it: "could not be resolved" on a queue feed or insert
+(`insertWithRetry` / `doLoadFromModel` in [player.ts](../src/player.ts)), or "currently
+unavailable" on a skip (`healDeadNext`, `bank = true`). The song-end failure is never marked
+(it also follows short-lived license errors). Today the marks are in memory only
+(`deadIds`, via `markDead`). **The disk half is BUILT (2026-09-12); only the toast waits.**
+- **Built — marks saved to disk**: both MusicKit rejections, in the cache db's `dead_ids`
+  table (a cache reset clears them), loaded at launch (`loadDeadIds`), so the first play
+  skips them without a failed request. A mark **expires after 7 days**; then the app tries the
+  ID once more, and a new rejection refreshes the mark. See QUEUE.md §Dead ids.
+- **Not built — toast only when an ID is first found dead**, naming the song(s): "Skipped 2
+  songs Apple Music no longer offers." Known dead IDs skip silently. Failures-only tier.
+- **List rows are not dimmed** for now (a separate UI change with its own theme role).
+
+**Toast wiring shape (ready for the toast session).**
+- **Trigger:** `markDead` in [player.ts](../src/player.ts). `dead_ids_mark` already returns
+  `fresh` — the ids with no earlier row on this install (`first_seen` survives the 7-day
+  expiry, so a re-mark does not toast again). Today that branch only logs
+  `player:deadFresh`; the toast call goes there.
+- **Name songs, not ids.** A dead catalog ID whose library ID still plays is not skipped
+  (`playId` falls back), so it must not toast. Toast only for handles where `playId(h)` is
+  now `undefined`; name them with `trackById(id)?.title`.
+- **Coalesce.** One feed rejection marks a batch in one call, but the retry and
+  `healDeadNext` can mark more within a second. Collect the fresh names for ~1 s, then raise
+  ONE toast: one song → "Skipped “<title>” — Apple Music no longer offers it."; more →
+  "Skipped N songs Apple Music no longer offers." (first 2 titles + "and N more").
+- **Kind:** `failure` (tier (a)). No **Don't show again** key: it is a failure, not a notice.
+  Main window only, like the rest of §18.
+
 ## 19. Artist grouping — collab/feature placement
 
 **Behavior.** Where a multi-artist song lands in the Library's Artists view. Since the

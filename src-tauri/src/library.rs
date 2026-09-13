@@ -641,6 +641,74 @@ pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
     meta_set(&conn, META_QUEUE_STATE, &json)
 }
 
+// ── Dead play ids (QUEUE.md §Dead ids) ────────────────────────────────────────
+
+/// A mark older than this is ignored, so a song Apple restores gets tried again.
+const DEAD_ID_TTL_SECS: i64 = 7 * 24 * 60 * 60;
+
+/// Additive, idempotent (like `migrate_v3`): the `dead_ids` table. One row per play id
+/// (catalog OR library id) MusicKit refused. `first_seen` never changes, so "first time
+/// found dead" (the future toast, FUTURE-SETTINGS §18) survives an expiry and re-mark;
+/// `marked_at` is refreshed by every rejection and drives the 7-day expiry.
+pub fn migrate_v4(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS dead_ids (
+            id         TEXT PRIMARY KEY,
+            reason     TEXT NOT NULL,
+            first_seen INTEGER NOT NULL,
+            marked_at  INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| format!("dead_ids table: {e}"))?;
+    meta_set(conn, "schema_version", "4")
+}
+
+/// The ids marked dead within the last 7 days — the player's denylist at launch.
+#[tauri::command]
+pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id FROM dead_ids WHERE marked_at >= ?1")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([now_secs() - DEAD_ID_TTL_SECS], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// Mark ids dead (`reason`: "not-found" | "unavailable"). Returns the ids that had no
+/// row before — first found dead on this install.
+#[tauri::command]
+pub fn dead_ids_mark(ids: Vec<String>, reason: String, db: State<'_, Db>) -> Result<Vec<String>, String> {
+    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let now = now_secs();
+    let mut fresh = Vec::new();
+    for id in ids.iter().filter(|s| !s.is_empty()) {
+        let n = tx
+            .execute(
+                "INSERT INTO dead_ids(id, reason, first_seen, marked_at) VALUES(?1, ?2, ?3, ?3)
+                 ON CONFLICT(id) DO NOTHING",
+                rusqlite::params![id, reason, now],
+            )
+            .map_err(|e| e.to_string())?;
+        if n > 0 {
+            fresh.push(id.clone());
+        } else {
+            tx.execute(
+                "UPDATE dead_ids SET reason = ?1, marked_at = ?2 WHERE id = ?3",
+                rusqlite::params![reason, now, id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    if !fresh.is_empty() {
+        crate::log::info(&format!("dead ids: {} new ({reason})", fresh.len()));
+    }
+    Ok(fresh)
+}
+
 fn now_secs() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
