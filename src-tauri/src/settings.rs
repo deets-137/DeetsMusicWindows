@@ -169,7 +169,7 @@ pub fn settings_set_agent_control(on: bool, settings: tauri::State<'_, Settings>
 const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
 const RUN_VALUE: &str = "DeetsMusic";
 
-fn reg(args: &[&str]) -> Result<String, String> {
+pub(crate) fn reg(args: &[&str]) -> Result<String, String> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let out = std::process::Command::new("reg").args(args).creation_flags(CREATE_NO_WINDOW).output().map_err(|e| format!("reg.exe: {e}"))?;

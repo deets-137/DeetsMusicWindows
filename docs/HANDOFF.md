@@ -52,6 +52,17 @@ Devtools **auto-open in dev** (`lib.rs` setup). Debug the player in the console:
 auto-captures uncaught errors), `__music` (live instance), `__player.snap()`. Full reference:
 [DEBUGGING.md](DEBUGGING.md).
 
+**Dev telemetry + driving the app from a session (2026-09-12).** In dev every song click
+(and Next) prints `[perf] click→sound N ms · model+render · setQueue · stream` to the
+console and writes the same line, plus MusicKit's own request list, to the dev log
+(`%APPDATA%\com.deetsmusic.dev\deetsmusic.log`). The `deetsmusic` MCP drives playback
+(`play` returns after the song starts), so a session can run a play, tail the log, and
+read the stage split without the devtools — that is how the click-to-sound pass was
+measured and verified (cold vs warm, natural advance via `control seek 97`, dead ids,
+the queue restore via a restart). Recipe and limits: [DEBUGGING.md](DEBUGGING.md)
+"Driving it from outside" and `CLAUDE.md` "How to verify your work". None of it ships:
+`src/perf.ts` is gated on Vite's `DEV` flag.
+
 ## Ship it (installable Windows app)
 
 Full procedure — version sync, the three build stages, the NSIS hooks, install, uninstall,
@@ -84,6 +95,11 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+> **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
+> anything already committed works unless this file says otherwise. Confirmed in use
+> 2026-09-11: the extension, the mini/midi/max layouts, stations, and the CLI. Do not
+> label committed work "untested" or add a test step for it to a roadmap.
+
 **Public release (decided 2026-09-09, next session)** — the repo is already public and the
 secret audit is clean (the `.p8`/MUT/`dev-dumps` were never committed in any branch). The
 blocker is that a MusicKit key needs a **paid Apple membership**, so no ordinary subscriber can
@@ -93,10 +109,48 @@ order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still n
 posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
 attached (none exist), and a plain note about SmartScreen on the unsigned installer.
 
-**Build day 2026-09-11:** step 1 (Worker repo) and step 2 (the cache + dev seam in
-`apple.rs`) of RELEASE.md §7, in that order. All forks are decided there — read §7 top to
-bottom and build; the only inputs still the user's are the repo name and host (proposed
-`DeetsMusicToken` / `music-api.deets.solutions`).
+**2026-09-11 — the Worker grew into a support back end.** The mint is now one route on
+**`DeetsSupport`**, which also holds the status / suggestions / issues boards, anonymous
+report intake and **remote config** for every Deets app. Scope:
+**`DeetsSolutions/docs/support.md`** (source of truth for the repo, hosts and schema);
+RELEASE.md §7 stays the source of truth for the mint itself, and now says: **60-day token,
+15-day margin, one refetch on a 401, 30 req/60 s per IP**. The app compiles in
+`music-api.deets.solutions/token`, never the `support.` host.
+
+**The worker is built and deployed (2026-09-11)** — `../DeetsSupport`, both hosts live, `/token`
+smoke-tested against Apple; the repo has no commits yet. Decided the same day: config rides
+`/token` from a `CONFIG` **var** (no D1 on the mint path); the app re-runs MusicKit configure
+after a 401 refetch (an event from Rust); `/health` signs a throwaway token. **Step 2 is built
+and desk-tested (same day: `apple.json` moved away → `source=worker`, playback fine; a dead
+cached token → one 401 refetch heals search AND an already-configured MusicKit):** `apple.rs` resolves the token once in `setup()` — local key,
+else `developer-token.json`, else the mint — and `api_get`/`api_post` retry once after a 401.
+To test the stranger's path: move `src-tauri/secrets/apple.json` away and start the app; the
+log line `token: source=worker` confirms it. **Rate-limit finding (same day):** the
+`unsafe.bindings` ratelimit form is inert; use the top-level `ratelimits` key (done here and
+in all five sibling workers, redeployed and pushed the same day). Then,
+on this side: the rolling log file, the report form, and **My reports** in Settings. The page
+design and the report fields are the user's own pass.
+
+**0.2.2 installer built 2026-09-11 late (`installers/`), for a desk pilot the next day:** the
+log, the incremental sync, deets-airplay 0.2.1 (its log rotates too; DeetsAirplay 0.1.2 was
+built the same night). Branch `polish`, not yet merged to `main`.
+
+**Logging: steps 1–4 of [LOGGING.md](LOGGING.md) built 2026-09-11, all four desk-verified
+(the flush blocks, the unload flush, the incremental line `1 new in 1 page(s)`).**
+`src-tauri/src/log.rs` is the rolling `<app_data>/deetsmusic.log` (512 KB × 2, dated lines,
+three levels, a panic hook, JWT / `Bearer` scrubbed at the write boundary); the old
+`bridge.log` is adopted as `deetsmusic.1.log` on first run and `bridge::log` is an alias.
+Startup, token source, every Apple ≥ 400 (status + path), library sync, enrich batches,
+AirPlay, sign-in outcomes, migration and the bridge now write to it. `diag.flush()` appends the
+front-end ring on an uncaught error, on unload and from **Settings › Bugs › Open log folder**.
+Still to do: step 5, the report form + My reports (support.md). **The log's first catch:** the
+startup library sync was a full ~40-request pass on every launch; it is now **incremental**
+inside a six-hour window (newest-first, stop at the first cached song, upsert only; the
+refresh button and a stale cache still run the full pass, which stamps `meta.full_sync_at`
+in the cache db) — FUTURE-SETTINGS.md §21 holds the window as a later Settings row. Also fixed that day: `npm run
+dev:app` opened TWO full windows — the dev overlay's bare `windows` array replaced the real one
+(JSON merge patch), so the tray label lost `tray.html` and loaded the app; the launcher now
+stamps "(dev)" onto the full window objects.
 
 **AirPlay: in v0.2.0, desk-tested in dev.** See [AIRPLAY.md](AIRPLAY.md): the sender is the
 shared `deets-airplay` crate (git dependency on DeetsAirplay, pinned by `rev`; read that
@@ -105,6 +159,28 @@ repo's CLAUDE.md "Never" list before touching wire code). Decisions are locked i
 prompt shown, speaker plays.** Open: the firewall prompt frightens a first-time user — preface
 it with an in-app confirmation or a toast (AIRPLAY.md §9 item 5; waits on toasts, §18).
 
+**2026-09-12 — the click-to-sound pass (branch `polish`, desk-tested via the MCP).**
+Dev-only telemetry (`src/perf.ts`, [DEBUGGING.md](DEBUGGING.md)) measured every stage
+from click to the media element's `playing` event, then five changes landed
+([QUEUE.md](QUEUE.md) windowing, [UX-COVERUPS.md](UX-COVERUPS.md) §4–5): the track
+store notifies only when a transient ingest added something and the Library card ignores
+transient ingests (a full 3,895-row re-render on every click, 100–370 ms, gone); the click
+click feeds the clicked song alone as a MediaItem descriptor from the cached play
+parameters (`setQueue` ~5 ms; its network resolve, 130–1300 ms, gone), then grows by id
+at once (8) and to 200 after 1.5 s — **MusicKit's auto-advance cannot load a descriptor
+item** (found and fixed the same day: it ends with no item), so everything after the
+clicked song is id-resolved; MusicKit + the Widevine module warm at idle 1.5 s after
+launch; a song that fails to start heals by re-window (explicit Next, auto-advance, and a
+dead id in the grow all verified). Our part of a click is now ~10 ms; what remains is MusicKit's own
+teardown/lookup/license/buffering, 1.0–1.7 s warm and 1.7–1.9 s cold to audible. The
+next levers (hover pre-insert, paused restore at launch) are design items, not built.
+**Same day, built and verified:** the queue **restores across sessions** — one JSON blob
+in the cache db's `meta` (`queue-persist.ts`, QUEUE.md "Restore across sessions"), the
+**Restore on launch** settings row (*Last song* default / *Up Next* / *Nothing*), Play
+with nothing loaded resumes the restored plan. It restores the plan only: pre-feeding
+MusicKit was probed and rejected (`setQueue` fetches nothing, no `prepareToPlay`;
+UX-COVERUPS.md §4), so the first Play still pays the cold cost.
+
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
 1. ✅ **Settings card** — built 2026-09-10 as the **hybrid** ([SETTINGS.md](SETTINGS.md)):
@@ -112,7 +188,7 @@ pass before building; the user directs):
    summons the card; the card hosts the rehomed toggles (Always on Top, Minimize to Tray,
    hover menus, Library Add, the Extension block), eight FUTURE-SETTINGS rows (§1 §4 §5a
    §5b §7 §8 §14 §16) and the **Rewind gate** (hidden until 50 play starts). One typed
-   store, `deets.settings`. Awaiting the first user test.
+   store, `deets.settings`. In use.
 2. **Release packaging** — secrets/cache out of `CARGO_MANIFEST_DIR` into proper app dirs,
    MUT into Windows Credential Manager, an installable build (the one true v1 blocker).
 3. ✅ **SMTC / global hotkeys** — built 2026-09-10 as a **native session** (`src-tauri/src/smtc.rs`,
@@ -121,14 +197,14 @@ pass before building; the user directs):
    session, so the Win11 overlay stayed blank. The probe (`media-session.ts`) is deleted and
    Chromium's `HardwareMediaKeyHandling` is disabled in `tauri.conf.json` so a key press is
    handled once. Overlay buttons / keys / the overlay scrubber arrive as the same `np-command`
-   events the tray panel sends. Awaiting the first user test.
+   events the tray panel sends. In use.
 
-**Built 2026-09-08, awaiting the first user test** (each has its own doc — read it before
+**Built 2026-09-08, in use** (each has its own doc — read it before
 touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](TRAY.md));
 the **browser extension + loopback bridge** ([EXTENSION.md](EXTENSION.md), source in
 `extension/`, shipped inside the NSIS installer with a post-install prompt). The app icon is
 now the DM mark (`app-icon.png` → `npx tauri icon`). The Web Store listing is the user's step.
-**2026-09-09 polish (untested):** tray left-click now pops the *app* as mini at the cursor
+**2026-09-09 polish:** tray left-click now pops the *app* as mini at the cursor
 (TRAY.md §1; the panel moved to the right-click menu); the extension's status line
 slides/crossfades instead of jumping; "Not it?" opens a mini Search card (songs +
 albums, `/search`); the popup re-reads the tab every 2 s. **Pairing code dropped**: the
@@ -138,7 +214,7 @@ card under Now Playing (user-led from here). **Surfaces:** all three width cutof
 (mini: in < 340 / out > 350 · midi ↔ max at 820 ± 40; `minWidth` lowered to 320 so the
 flip into mini is actually reachable) — the user is evaluating resize-into-mini alongside
 the tray flyout and the menu pick. **Next:** the mini composition, piece by piece.
-**2026-09-09, branch `maxmaxxing` (untested):** the **max composition** (stage + anchored
+**2026-09-09, branch `maxmaxxing` (merged):** the **max composition** (stage + anchored
 queue + 2×2 bento, [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) build order #4); the
 mini transport row stacks its side buttons when they'd overflow; and the **agent/CLI
 routes** on the bridge (`/command` `/play` `/queue` `/history`, [AGENT.md](AGENT.md)) —
@@ -151,7 +227,7 @@ restart (`settings.json` → `windowPos`); and the NSIS installer **stops the bu
 before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
 ([RELEASE.md](RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
 
-**2026-09-10, branch `release-prep` (untested):** **stations in Search** (a fifth search type,
+**2026-09-10, branch `release-prep` (merged):** **stations in Search** (a fifth search type,
 [SEARCH.md](SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
 **radio UX pass** ([STATIONS.md](STATIONS.md) §3b — the station is Up Next's last row, Stop
 Station in three right-click menus, the station resumes after a break-out block, Stop leaves
@@ -261,7 +337,19 @@ get large).
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
+  search pins · playlist covers (user / Apple / mosaic; schema v3 `cover`) · ♥ favorites
+  (`favorites.rs` + `favorites.ts`, seeded from Apple's Favorite Songs; the Library ♥
+  filter) · weekly Replay (`replay.ts`, three Playback rows) · Search square + Ctrl
+  shortcuts · theme/skin View Transitions (`appearance.ts`) · album-colored NP text with
+  the contrast guard (Glass) · Glass menus at 90% · explicit badge. Surface-change motion
+  (fork B) was tried and walked back the same day (NEXT-VERSION §10). **Next talk: the
+  playlist creation flow** (NEXT-VERSION §11).
+
 ### Not built yet ⬜
+- **Next-version feature notes (2026-09-11)** — pinned search terms · playlist artwork ·
+  favorite songs · weekly replay playlists from Rewind · a Search/quick-access shortcut.
+  Scoped with the real forks in **[NEXT-VERSION.md](NEXT-VERSION.md)**. None designed yet.
 - **♥ Favorites** — the love-only ♥ (Apple `PUT +1`) + local mirror + ♥ on Now Playing / menus.
   Parked, explicitly not the next step (user's call). **Ratings / 👎 are off the roadmap.**
 - **Real album/artist data + artist photos in the Library card** — Library's Albums/Artists are

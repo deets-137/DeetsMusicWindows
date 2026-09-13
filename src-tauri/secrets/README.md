@@ -27,6 +27,13 @@ launches start already signed in. You never create it by hand, and it's gitignor
 like the rest. It now lives in app data rather than this folder (see below); delete
 it to force a fresh sign-in.
 
+## The key is optional now
+
+Since 2026-09-11 an install with **no** `apple.json` fetches its developer token from
+the mint (`music-api.deets.solutions/token`, [RELEASE.md](../../docs/RELEASE.md) §7) and
+caches it in `<app_data>/developer-token.json`. A local key, when present, still wins:
+it is checked first and the network is never touched. Keep yours here for offline dev.
+
 ## Dev vs. installed builds
 
 `secrets_dir()` (`src/apple.rs`) checks **two** locations, in order:

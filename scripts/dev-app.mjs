@@ -1,8 +1,12 @@
 // `npm run dev:app` — tauri dev, isolated from the installed app AND from any other
 // dev server on the machine (HANDOFF.md → Run it):
 //   1. find a free port from 1420 up (another Deets* project may hold 1420);
-//   2. merge src-tauri/tauri.dev.conf.json (dev identifier + window titles) with a
-//      build.devUrl on that port into a generated, gitignored config;
+//   2. merge src-tauri/tauri.dev.conf.json (the dev identifier) with a build.devUrl on
+//      that port and "(dev)" window titles into a generated, gitignored config. The
+//      titles are stamped onto the FULL window objects from tauri.conf.json: Tauri
+//      merges an overlay as a JSON merge patch, so an array replaces the whole array —
+//      a bare {label, title} list used to strip both windows to defaults (decorations
+//      back on, the tray panel loading index.html as a second full app window);
 //   3. run `tauri dev --config <generated>` with VITE_PORT set so vite.config.ts binds
 //      the same port.
 import { createServer } from "node:net";
@@ -13,19 +17,24 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const base = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.dev.conf.json"), "utf8"));
+const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+const windows = conf.app.windows.map((w) => ({ ...w, title: `${w.title} (dev)` }));
 
-const free = (port) =>
+// Vite binds `localhost`, which on this Windows box resolves to ::1 first — so probe
+// both families, or an orphaned vite on ::1 reads as free and the launch fails.
+const freeOn = (port, host) =>
   new Promise((resolve) => {
     const s = createServer();
     s.once("error", () => resolve(false));
-    s.listen(port, "127.0.0.1", () => s.close(() => resolve(true)));
+    s.listen(port, host, () => s.close(() => resolve(true)));
   });
+const free = async (port) => (await freeOn(port, "127.0.0.1")) && (await freeOn(port, "::1"));
 
 let port = 1420;
 while (!(await free(port))) port += 1;
 
 const gen = join(root, "src-tauri", ".tauri.dev.gen.json");
-writeFileSync(gen, JSON.stringify({ ...base, build: { devUrl: `http://localhost:${port}` } }, null, 2));
+writeFileSync(gen, JSON.stringify({ ...base, app: { windows }, build: { devUrl: `http://localhost:${port}` } }, null, 2));
 console.log(`[dev:app] vite on ${port} · identifier ${base.identifier}`);
 
 // Run the local tauri CLI directly (no npx/shell) so a space in the path — this user

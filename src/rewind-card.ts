@@ -24,6 +24,7 @@ import {
   type RewindRow, type RewindStat, type RewindWindow,
 } from "./rewind";
 import type { CardDef, CardInstance } from "./cards";
+import { makeReplayPlaylist } from "./replay";
 
 const LIST_CAP = 20; // hero + 19 runners-up; a leaderboard's tail is noise
 const STORE_KEY = "deets.rewind";
@@ -60,6 +61,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     <div class="panel__body qcard rewind">
       <div class="lib-pills rewind__pills">
         ${pillHTML("stat", STAT_LABELS[pick.stat])}${pillHTML("window", WINDOW_LABELS[pick.window])}
+        <button class="lib-pill rewind__make" type="button" title="A playlist of this window's top songs, filed under Replay">Make playlist</button>
       </div>
       <div class="rewind__board"></div>
     </div>`;
@@ -148,6 +150,19 @@ function mountRewind(host: HTMLElement): CardInstance {
     openPicker(pillOf("window"), WINDOW_LABELS, (window) => setPick({ window }));
   });
 
+  // Make playlist (NEXT-VERSION §4): the window's top songs by minutes listened → a
+  // dated local playlist under the Replay folder. Zero Apple calls.
+  const makeBtn = host.querySelector<HTMLButtonElement>(".rewind__make");
+  makeBtn?.addEventListener("click", () => {
+    if (!makeBtn || makeBtn.disabled) return;
+    makeBtn.disabled = true;
+    const label = makeBtn.textContent;
+    makeReplayPlaylist(pick.window)
+      .then(() => { makeBtn.textContent = "Made"; })
+      .catch((e) => { console.error("[rewind] make playlist", e); makeBtn.textContent = "Nothing to add"; })
+      .finally(() => window.setTimeout(() => { makeBtn.textContent = label; makeBtn.disabled = false; }, 1500));
+  });
+
   // ── right-click menus (Play Now / Play Next / Add to Queue / Add to Playlist) ──
   // Songs + albums ride the library card's shared trackMenu over a concrete Track[];
   // a playlist row's list is fetched LAZILY (only a picked action pays the mirror
@@ -199,7 +214,7 @@ function mountRewind(host: HTMLElement): CardInstance {
   // when the track store (re)loads (joins resolve instead of "Unknown"), and when
   // playlists change (names for the playlist stat).
   const unsubQueue = queue.onQueueChange(render);
-  const unsubTracks = onTracksChange(render);
+  const unsubTracks = onTracksChange(render, "rewind");
   const unsubPlaylists = onPlaylistsChange(() => { if (pick.stat === "playlists") render(); });
   render();
 

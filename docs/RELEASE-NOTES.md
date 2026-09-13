@@ -2,6 +2,28 @@
 
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 
+## 0.3.0 — 2026-09-12
+
+**Favorites.** Right-click a song › Favorite. The ♥ syncs with Apple Music. The Library has
+a "Favorites only" filter.
+
+**Faster start.** A song starts sooner after a click. The queue comes back after a restart.
+
+**Songs Apple Music no longer offers are skipped.** DeetsMusic remembers them for 7 days,
+then tries them again.
+
+**Copy Link.** Right-click a song or an album › Copy Link. The link opens in Apple Music.
+
+**Also new:** local playlist covers, pinned searches, a weekly Replay, smooth theme and
+skin changes, Now Playing text in the album's colors, and a Glass "Play on" panel.
+
+### Installing
+
+- **Windows SmartScreen will warn you.** The installer is not code-signed yet. Click
+  **More info**, then **Run anyway**. The installer is per-user and asks for no admin rights.
+- Quit any AI app that is connected to DeetsMusic before you install an update; it keeps a
+  file open that the installer must replace.
+
 ## 0.2.1 — 2026-09-10
 
 A fix for 0.2.0: the first speaker connect on an installed build now asks for the Windows

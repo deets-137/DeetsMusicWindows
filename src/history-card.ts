@@ -15,6 +15,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { copySongLinkItem } from "./copy-link";
 import type { CardDef, CardInstance } from "./cards";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
@@ -89,6 +90,8 @@ function mountHistory(host: HTMLElement): CardInstance {
     if (goA) items.push(goA);
     const goAl = goToAlbumItem(e.catalogId, t?.albumName);
     if (goAl) items.push(goAl);
+    const link = copySongLinkItem(e.catalogId);
+    if (link) items.push(link);
     const start = startStationItem("songs", e.catalogId);
     if (start) items.push(start);
     const add = t ? addSongToLibraryItem(t) : null;
@@ -107,7 +110,7 @@ function mountHistory(host: HTMLElement): CardInstance {
 
   // Re-render on plays (queue change) and when the track store (re)loads so entries
   // resolve instead of showing "Unknown".
-  const unsubTracks = onTracksChange(render);
+  const unsubTracks = onTracksChange(render, "history");
   const unsubQueue = queue.onQueueChange(render);
   render();
 

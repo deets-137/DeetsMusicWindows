@@ -103,8 +103,10 @@ fn remember_volume(app: &AppHandle, speaker: &str, pct: f64) {
     }
 }
 
+/// The app log (LOGGING.md) carries the connect / drop / error lines; the crate's
+/// own `airplay.log` keeps the wire-level session trace.
 fn log(line: &str) {
-    deets_airplay::airplay::log(&format!("[airplay] {line}"));
+    crate::log::info(&format!("airplay: {line}"));
 }
 
 pub fn setup(app_data: &std::path::Path) {

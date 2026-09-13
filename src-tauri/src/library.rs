@@ -33,6 +33,12 @@ pub fn init_db(conn: &Connection) -> rusqlite::Result<()> {
             sort_key TEXT,
             json     TEXT NOT NULL
         );
+        -- Cache bookkeeping that must die WITH the cache (a deleted db must full-sync):
+        -- 'full_sync_at' = unix seconds of the last COMPLETE library pass.
+        CREATE TABLE IF NOT EXISTS meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS idx_tracks_sort ON tracks(sort_key);
 
         -- Per-track listening tallies, for a future data-vis. Keyed by the same
@@ -66,7 +72,7 @@ pub fn init_db(conn: &Connection) -> rusqlite::Result<()> {
 /// The canonical track key: catalog-first (FAVORITES.md). `catalog_id` is a stable
 /// cross-source identity (99.8% of the library carries one); `library_id` is the
 /// fallback for catalog-less items (uploads).
-fn track_key(t: &Track) -> Option<String> {
+pub(crate) fn track_key(t: &Track) -> Option<String> {
     t.catalog_id
         .clone()
         .or_else(|| t.library_id.clone())
@@ -154,7 +160,43 @@ pub fn migrate_v2(conn: &mut Connection) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     tx.commit().map_err(|e| e.to_string())?;
-    println!("[library] v2 migration complete — {rekeyed} row(s) re-keyed to catalog-first");
+    crate::log::info(&format!("migration: v2 complete, {rekeyed} row(s) re-keyed to catalog-first"));
+    Ok(())
+}
+
+// ── v3: favorites mirror + local playlist covers (NEXT-VERSION §2, §3) ─────────
+
+/// Additive, idempotent, runs after every table init: a `favorites` table (the ♥
+/// mirror, FAVORITES.md) and a `cover` column on `local_playlists` (a user-set cover,
+/// stored as a data URL — local only, Apple's API cannot receive one). No backup:
+/// nothing is rewritten, and `IF NOT EXISTS` / the column probe make a re-run a no-op.
+pub fn migrate_v3(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS favorites (
+            track_id  TEXT PRIMARY KEY,
+            loved     INTEGER NOT NULL DEFAULT 1,
+            synced_at INTEGER
+        );",
+    )
+    .map_err(|e| format!("favorites table: {e}"))?;
+    let has_cover: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('local_playlists') WHERE name = 'cover'",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    if has_cover == 0 {
+        conn.execute_batch("ALTER TABLE local_playlists ADD COLUMN cover TEXT;")
+            .map_err(|e| format!("add cover column: {e}"))?;
+        crate::log::info("migration: v3 added local_playlists.cover");
+    }
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES('schema_version', '3')
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -566,13 +608,124 @@ impl Drop for SyncFlagGuard {
     }
 }
 
-/// Full sync of library songs into the cache. Pages are fetched in parallel
-/// (≤5 concurrent); failed pages are retried once, sequentially. Emits `library-sync`
-/// progress events per page. A complete sync also prunes cache rows no longer in the
-/// library; an incomplete one upserts what it got, emits `{phase:"error"}`, and fails —
-/// silently dropping pages would mean songs quietly missing from the cache.
+/// A full pass is only due this often on its own; in between, a launch runs the
+/// incremental pass (FUTURE-SETTINGS.md §21 — a Settings row later, not now).
+const FULL_SYNC_EVERY_SECS: i64 = 6 * 60 * 60;
+const META_FULL_SYNC_AT: &str = "full_sync_at";
+
+fn meta_get(conn: &Connection, key: &str) -> Option<String> {
+    conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get(0)).ok()
+}
+fn meta_set(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [key, value],
+    )
+    .map(|_| ())
+    .map_err(|e| e.to_string())
+}
+// The queue model's persisted snapshot (QUEUE.md "Restore across sessions", 2026-09-12):
+// one JSON blob the front end rewrites (debounced) on every queue change and reads back
+// once at launch. Opaque here — the shape is the front end's. Purely local.
+const META_QUEUE_STATE: &str = "queue_state";
+
+#[tauri::command]
+pub fn queue_state_get(db: State<'_, Db>) -> Result<Option<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    Ok(meta_get(&conn, META_QUEUE_STATE))
+}
+
+#[tauri::command]
+pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    meta_set(&conn, META_QUEUE_STATE, &json)
+}
+
+// ── Dead play ids (QUEUE.md §Dead ids) ────────────────────────────────────────
+
+/// A mark older than this is ignored, so a song Apple restores gets tried again.
+const DEAD_ID_TTL_SECS: i64 = 7 * 24 * 60 * 60;
+
+/// Additive, idempotent (like `migrate_v3`): the `dead_ids` table. One row per play id
+/// (catalog OR library id) MusicKit refused. `first_seen` never changes, so "first time
+/// found dead" (the future toast, FUTURE-SETTINGS §18) survives an expiry and re-mark;
+/// `marked_at` is refreshed by every rejection and drives the 7-day expiry.
+pub fn migrate_v4(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS dead_ids (
+            id         TEXT PRIMARY KEY,
+            reason     TEXT NOT NULL,
+            first_seen INTEGER NOT NULL,
+            marked_at  INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| format!("dead_ids table: {e}"))?;
+    meta_set(conn, "schema_version", "4")
+}
+
+/// The ids marked dead within the last 7 days — the player's denylist at launch.
+#[tauri::command]
+pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id FROM dead_ids WHERE marked_at >= ?1")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([now_secs() - DEAD_ID_TTL_SECS], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// Mark ids dead (`reason`: "not-found" | "unavailable"). Returns the ids that had no
+/// row before — first found dead on this install.
+#[tauri::command]
+pub fn dead_ids_mark(ids: Vec<String>, reason: String, db: State<'_, Db>) -> Result<Vec<String>, String> {
+    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let now = now_secs();
+    let mut fresh = Vec::new();
+    for id in ids.iter().filter(|s| !s.is_empty()) {
+        let n = tx
+            .execute(
+                "INSERT INTO dead_ids(id, reason, first_seen, marked_at) VALUES(?1, ?2, ?3, ?3)
+                 ON CONFLICT(id) DO NOTHING",
+                rusqlite::params![id, reason, now],
+            )
+            .map_err(|e| e.to_string())?;
+        if n > 0 {
+            fresh.push(id.clone());
+        } else {
+            tx.execute(
+                "UPDATE dead_ids SET reason = ?1, marked_at = ?2 WHERE id = ?3",
+                rusqlite::params![reason, now, id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    if !fresh.is_empty() {
+        crate::log::info(&format!("dead ids: {} new ({reason})", fresh.len()));
+    }
+    Ok(fresh)
+}
+
+fn now_secs() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+}
+
+/// Sync library songs into the cache. `full: false` (the startup call) runs the
+/// **incremental** pass when the last complete pass is under six hours old — newest
+/// first, stop at the first page that holds a song we already have, upsert, never
+/// prune — so an album added on the phone this morning is one or two requests, not
+/// forty. `full: true` (the refresh button, or a stale cache) is the complete pass:
+/// pages fetched in parallel (≤5 concurrent), failed pages retried once sequentially,
+/// and on completion the rows no longer in the library are pruned and the timestamp
+/// written. An incomplete full pass upserts what it got, emits `{phase:"error"}`, and
+/// fails — silently dropping pages would mean songs quietly missing from the cache.
+/// Emits `library-sync` progress events per page either way.
 #[tauri::command]
 pub async fn library_sync(
+    full: Option<bool>,
     app: AppHandle,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
@@ -591,7 +744,24 @@ pub async fn library_sync(
         .ok_or("not connected to Apple Music")?;
     let provider = std::sync::Arc::new(AppleProvider::new(dev, user));
 
+    let last_full: Option<i64> = {
+        let conn = db.0.lock().unwrap();
+        meta_get(&conn, META_FULL_SYNC_AT).and_then(|v| v.parse().ok())
+    };
+    let age = last_full.map(|t| now_secs() - t);
+    let incremental = !full.unwrap_or(true) && age.map(|a| a >= 0 && a < FULL_SYNC_EVERY_SECS).unwrap_or(false);
+
     app.emit("library-sync", serde_json::json!({ "phase": "start" })).ok();
+    if incremental {
+        return sync_incremental(&app, provider, &db, age.unwrap_or(0)).await;
+    }
+    crate::log::info(&format!(
+        "library: full sync start ({})",
+        match age {
+            Some(a) => format!("last full pass {}h ago", a / 3600),
+            None => "no full pass on record".into(),
+        }
+    ));
 
     let progress = |fetched: usize, total: u32| {
         app.emit(
@@ -602,7 +772,7 @@ pub async fn library_sync(
     };
 
     // First page tells us the total; fan out the rest.
-    let first = provider.songs_page(0, 100).await?;
+    let first = provider.songs_page(0, 100, false).await?;
     let total = first.total;
     let mut all = first.items;
     progress(all.len(), total);
@@ -610,7 +780,7 @@ pub async fn library_sync(
     let offsets: Vec<u32> = (100..total).step_by(100).collect();
     let mut pages = futures::stream::iter(offsets.into_iter().map(|off| {
         let p = provider.clone();
-        async move { (off, p.songs_page(off, 100).await) }
+        async move { (off, p.songs_page(off, 100, false).await) }
     }))
     .buffer_unordered(5);
 
@@ -630,7 +800,7 @@ pub async fn library_sync(
     // burst is over, so retry stragglers one at a time.
     let mut errors: Vec<String> = Vec::new();
     for (off, first_err) in failed {
-        match provider.songs_page(off, 100).await {
+        match provider.songs_page(off, 100, false).await {
             Ok(page) => {
                 all.extend(page.items);
                 progress(all.len(), total);
@@ -647,6 +817,7 @@ pub async fn library_sync(
 
     if !complete {
         let message = format!("{} page(s) failed: {}", errors.len(), errors.join(" | "));
+        crate::log::error(&format!("library: sync aborted at {}/{total}, {message}", all.len()));
         app.emit(
             "library-sync",
             serde_json::json!({ "phase": "error", "message": message, "count": all.len(), "total": total }),
@@ -655,10 +826,77 @@ pub async fn library_sync(
         return Err(format!("library sync incomplete — {message}"));
     }
 
+    {
+        let conn = db.0.lock().unwrap();
+        if let Err(e) = meta_set(&conn, META_FULL_SYNC_AT, &now_secs().to_string()) {
+            crate::log::warn(&format!("library: full sync timestamp not written: {e}"));
+        }
+    }
+    crate::log::info(&format!("library: full sync done, {} of {total} song(s)", all.len()));
     app.emit(
         "library-sync",
         serde_json::json!({ "phase": "done", "count": all.len(), "total": total }),
     )
     .ok();
     Ok(all.len() as u32)
+}
+
+/// The incremental pass: newest-added first, one page at a time, stop at the first
+/// page that holds a song already cached (everything older is known too). Upserts
+/// only — a removal on another device waits for the next full pass. The guard is a
+/// page cap at the library total, so an unexpectedly all-new library ends anyway.
+async fn sync_incremental(
+    app: &AppHandle,
+    provider: std::sync::Arc<AppleProvider>,
+    db: &State<'_, Db>,
+    age_secs: i64,
+) -> Result<u32, String> {
+    let mut offset = 0u32;
+    let mut new_total = 0u32;
+    let mut pages = 0u32;
+    let mut total = 0u32;
+    loop {
+        let page = match provider.songs_page(offset, 100, true).await {
+            Ok(p) => p,
+            Err(e) => {
+                crate::log::warn(&format!("library: incremental sync failed at offset {offset}: {e}"));
+                app.emit("library-sync", serde_json::json!({ "phase": "error", "message": e, "count": new_total, "total": total })).ok();
+                return Err(format!("library sync incomplete — {e}"));
+            }
+        };
+        pages += 1;
+        total = page.total;
+        let (known, fresh) = {
+            let mut conn = db.0.lock().unwrap();
+            let known = {
+                let mut stmt = conn
+                    .prepare("SELECT 1 FROM tracks WHERE track_id = ?1 AND source = 'library'")
+                    .map_err(|e| e.to_string())?;
+                page.items
+                    .iter()
+                    .filter_map(track_key)
+                    .filter(|id| stmt.exists([id.as_str()]).unwrap_or(false))
+                    .count()
+            };
+            write_tracks(&mut conn, &page.items, false)?;
+            (known, page.items.len() - known)
+        };
+        new_total += fresh as u32;
+        app.emit("library-sync", serde_json::json!({ "phase": "progress", "fetched": new_total, "total": total })).ok();
+        let next = page.next_offset;
+        if known > 0 || next.is_none() || offset + 100 >= total {
+            break;
+        }
+        offset = next.unwrap_or(offset + 100);
+    }
+    let count: u32 = {
+        let conn = db.0.lock().unwrap();
+        conn.query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0)).unwrap_or(0)
+    };
+    crate::log::info(&format!(
+        "library: incremental sync done, {new_total} new in {pages} page(s); apple total {total}, cached {count} (last full pass {}h ago)",
+        age_secs / 3600
+    ));
+    app.emit("library-sync", serde_json::json!({ "phase": "done", "count": count, "total": total })).ok();
+    Ok(new_total)
 }

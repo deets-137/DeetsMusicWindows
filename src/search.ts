@@ -43,6 +43,8 @@ export interface Playlist {
   kind?: string;
   /** Manual folder membership (Playlists card sections); absent = unfiled. */
   folderId?: number;
+  /** Up to four track-cover templates for the derived mosaic (no `artwork`). */
+  coverUrls?: string[];
 }
 
 export interface SearchResults {

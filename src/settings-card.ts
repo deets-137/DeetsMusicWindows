@@ -5,17 +5,25 @@
 // Library Add, the Extension block) and the v1 cut of FUTURE-SETTINGS (§1 §4 §5a §5b
 // §7 §8 §14 §16) plus the Rewind gate. A control lives in exactly one place.
 //
-// Two row kinds: TOGGLE (label + dot) and CHOICE (label over segmented pills). Rows
-// read the settings store (or the module that owns the value) and re-paint on change.
+// Three row kinds: TOGGLE (label + dot), CHOICE (label + one split pill of up to three
+// options; more than three becomes a small menu), and SPLIT (label + one pill cut into
+// halves — an action, an on/off, or a menu — the search pin idiom, NEXT-VERSION §1).
+// Rows read the settings store (or the module that owns the value) and re-paint on change.
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
+import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
+import * as diag from "./diag";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
+type Option = { value: string; label: string };
+
+/** More options than this and a choice becomes a small menu instead of a split pill. */
+const SPLIT_MAX = 3;
 
 interface ToggleRow {
   kind: "toggle";
@@ -34,9 +42,21 @@ interface ChoiceRow {
   key?: keyof Settings;
   get?: () => string;
   set?: (v: string) => void;
-  options: { value: string; label: string }[];
+  options: Option[];
 }
-type Row = ToggleRow | ChoiceRow;
+/** One half of a split pill. */
+type Half =
+  | { type: "action"; label: string; hint?: string; run: (el: HTMLElement) => void }
+  | { type: "toggle"; get: () => boolean; set: (on: boolean) => void }
+  | { type: "menu"; options: Option[]; get: () => string; set: (v: string) => void };
+interface SplitRow {
+  kind: "split";
+  id: string;
+  label: string;
+  hint?: () => string | undefined;
+  halves: Half[];
+}
+type Row = ToggleRow | ChoiceRow | SplitRow;
 interface Section {
   title: string;
   rows: Row[];
@@ -53,6 +73,13 @@ const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => strin
   set: (on) => setSetting(key, on),
 });
 
+const SETUP_CLIENTS: Option[] = [
+  { value: "claude-desktop", label: "Claude Desktop" },
+  { value: "claude-code", label: "Claude Code" },
+  { value: "cursor", label: "Cursor" },
+  { value: "other", label: "Other" },
+];
+
 export const settingsCard: CardDef = {
   id: "settings",
   title: "Settings",
@@ -68,6 +95,15 @@ function mountSettings(host: HTMLElement): CardInstance {
   let minimizeToTray = true;
   let autostart = false;
   let agentControl = true;
+  let setupClient = "claude-code"; // the app "Copy setup for" copies for
+
+  const flash = (el: HTMLElement, text: string) => {
+    const was = el.textContent;
+    el.textContent = text;
+    window.setTimeout(() => (el.textContent = was), 1200);
+  };
+  const copyFrom = (el: HTMLElement, text: Promise<string>) =>
+    text.then((t) => navigator.clipboard.writeText(t).then(() => flash(el, "Copied"), () => console.log(t)));
 
   const sections: Section[] = [
     // Labels: one short active statement each; the hint (hover) only where a word is
@@ -95,6 +131,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           set: (on) => setSetting("menuMode", on ? "hover" : "click"),
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
         {
           kind: "toggle",
           id: "autostart",
@@ -124,6 +161,11 @@ function mountSettings(host: HTMLElement): CardInstance {
           options: [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }],
         },
         {
+          kind: "choice", id: "restorequeue", label: "Restore on launch", key: "restoreQueue",
+          hint: "Last song shows in Now Playing, paused; Up Next parks it at the top of the queue",
+          options: [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }],
+        },
+        {
           kind: "choice", id: "shufflemanual", label: "Shuffle keeps picks", key: "shuffleManual",
           hint: "Where songs you queued by hand land",
           options: [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }],
@@ -138,6 +180,23 @@ function mountSettings(host: HTMLElement): CardInstance {
           hint: "When a song counts as played through, for Rewind",
           options: [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }],
         },
+        {
+          kind: "split", id: "replay", label: "Weekly Replay",
+          hint: () => "A playlist of the past week's most-played songs, made on this day",
+          halves: [
+            {
+              type: "menu",
+              options: [
+                { value: "mon", label: "Mon" }, { value: "tue", label: "Tue" }, { value: "wed", label: "Wed" }, { value: "thu", label: "Thu" },
+                { value: "fri", label: "Fri" }, { value: "sat", label: "Sat" }, { value: "sun", label: "Sun" },
+              ],
+              get: () => setting("replayDay"),
+              set: (v) => setSetting("replayDay", v as Settings["replayDay"]),
+            },
+            { type: "toggle", get: () => setting("replayAuto"), set: (on) => setSetting("replayAuto", on) },
+          ],
+        },
+        storeToggle("replaykeep", "Keep every Replay", "replayKeep", () => "Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly"),
       ],
     },
     {
@@ -166,63 +225,176 @@ function mountSettings(host: HTMLElement): CardInstance {
     {
       title: "Extension",
       rows: [],
-      // EXTENSION.md: bridge status + the two actions.
+      // EXTENSION.md: bridge status + the install page.
       tail: `<div class="set__status" id="set-ext-status">Bridge off</div>
-        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>
-        <button class="set__row set__action" type="button" data-action="ext-log" title="Copies the bridge log to the clipboard"><span class="set__label">Copy log</span></button>`,
+        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>`,
     },
     {
       title: "Agents",
       rows: [
         {
-          kind: "toggle",
-          id: "agent",
-          label: "Agent control",
+          kind: "split", id: "agent", label: "Agent control",
           hint: () => "Lets a CLI or an AI app drive DeetsMusic on this PC",
-          get: () => agentControl,
-          set: (on) => {
-            agentControl = on;
-            invoke("settings_set_agent_control", { on }).catch((e) => console.error("[settings] agent", e));
-            refreshExtension();
-          },
+          halves: [
+            {
+              type: "action", label: "Guide", hint: "Opens the setup guide in your browser",
+              run: () => { invoke("agent_open_guide").catch((err) => console.error("[agent] guide", err)); },
+            },
+            {
+              type: "toggle",
+              get: () => agentControl,
+              set: (on) => {
+                agentControl = on;
+                invoke("settings_set_agent_control", { on }).catch((e) => console.error("[settings] agent", e));
+                render();
+              },
+            },
+          ],
+        },
+        // AGENT-SETUP.md: pick the app, then copy its exact setup text.
+        {
+          kind: "split", id: "setup", label: "Copy setup for",
+          hint: () => "Copies the exact text for that app",
+          halves: [
+            { type: "menu", options: SETUP_CLIENTS, get: () => setupClient, set: (v) => { setupClient = v; render(); } },
+            { type: "action", label: "Copy", run: (el) => copyFrom(el, invoke<string>("agent_setup_text", { client: setupClient })) },
+          ],
         },
       ],
-      // AGENT-SETUP.md: the live line, the per-client setup copy, the guide.
-      tail: `<div class="set__status" id="set-agent-status">…</div>
-        <div class="set__row set__row--choice" title="Copies the exact text for that app"><span class="set__label">Copy setup for</span><div class="set__seg">
-          <button class="set__pill" type="button" data-setup="claude-desktop">Claude Desktop</button>
-          <button class="set__pill" type="button" data-setup="claude-code">Claude Code</button>
-          <button class="set__pill" type="button" data-setup="cursor">Cursor</button>
-          <button class="set__pill" type="button" data-setup="other">Other</button>
-        </div></div>
-        <button class="set__row set__action" type="button" data-action="agent-guide" title="Opens the setup guide in your browser"><span class="set__label">Open guide</span></button>`,
+      tail: `<div class="set__status" id="set-agent-status">…</div>`,
+    },
+    {
+      title: "Bugs",
+      rows: [
+        // LOGGING.md: the rolling log file the app always writes; the report form and
+        // "My reports" (support.md) join this section next.
+        {
+          kind: "split", id: "log", label: "App log",
+          hint: () => "The log file the app writes on this PC",
+          halves: [
+            {
+              type: "action", label: "Open folder",
+              run: () => {
+                diag.flush(); // so the file the user is about to read has the front end's last events
+                invoke("log_open_folder").catch((err) => console.error("[log] folder", err));
+              },
+            },
+            { type: "action", label: "Copy", hint: "Copies the recent log to the clipboard", run: (el) => copyFrom(el, invoke<string>("bridge_log")) },
+          ],
+        },
+      ],
     },
   ];
 
+  const byId = (id: string): Row | undefined => sections.flatMap((s) => s.rows).find((r) => r.id === id);
+
+  // A choice with more than SPLIT_MAX options is a one-half split: a menu.
+  const menuOf = (r: ChoiceRow): Half => ({
+    type: "menu",
+    options: r.options,
+    get: () => (r.get ? r.get() : String(setting(r.key!))),
+    set: (v) => (r.set ? (r.set(v), render()) : setSetting(r.key!, v as never)),
+  });
+  const halvesOf = (r: Row): Half[] | undefined =>
+    r.kind === "split" ? r.halves : r.kind === "choice" && r.options.length > SPLIT_MAX ? [menuOf(r)] : undefined;
+
+  const halfHTML = (id: string, h: Half, i: number): string => {
+    const at = `data-row="${id}" data-half="${i}"`;
+    if (h.type === "action") {
+      const tip = h.hint ? ` title="${esc(h.hint)}"` : "";
+      return `<button class="set__half" type="button" ${at}${tip}>${esc(h.label)}</button>`;
+    }
+    if (h.type === "toggle") {
+      const on = h.get();
+      return `<button class="set__half set__half--toggle" type="button" role="switch" ${at} aria-checked="${on}">${on ? "On" : "Off"}</button>`;
+    }
+    const cur = h.options.find((o) => o.value === h.get())?.label ?? "";
+    return `<span class="set__menu-wrap"><button class="set__half set__half--menu" type="button" ${at} aria-haspopup="menu" aria-expanded="false">${esc(cur)}<span class="set__caret" aria-hidden="true">▾</span></button></span>`;
+  };
+
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
   const rowHTML = (r: Row): string => {
-    const hint = r.kind === "toggle" ? r.hint?.() : r.hint;
+    const hint = r.kind === "choice" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const label = `<span class="set__label">${esc(r.label)}</span>`;
     if (r.kind === "toggle") {
       return `<button class="set__row set__row--toggle" type="button" role="switch" data-row="${r.id}" aria-checked="${r.get()}"${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
     }
-    const cur = r.get ? r.get() : String(setting(r.key!));
-    const pills = r.options
-      .map((o) => `<button class="set__pill" type="button" data-row="${r.id}" data-value="${esc(o.value)}" aria-pressed="${o.value === cur}">${esc(o.label)}</button>`)
+    const halves = halvesOf(r);
+    if (halves) {
+      return `<div class="set__row set__row--choice"${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
+    }
+    const choice = r as ChoiceRow;
+    const cur = choice.get ? choice.get() : String(setting(choice.key!));
+    const opts = choice.options
+      .map((o) => `<button class="set__half" type="button" data-row="${choice.id}" data-value="${esc(o.value)}" aria-pressed="${o.value === cur}">${esc(o.label)}</button>`)
       .join("");
-    return `<div class="set__row set__row--choice"${tip}>${label}<div class="set__seg" role="radiogroup" aria-label="${esc(r.label)}">${pills}</div></div>`;
+    return `<div class="set__row set__row--choice"${tip}>${label}<div class="set__split" role="radiogroup" aria-label="${esc(choice.label)}">${opts}</div></div>`;
   };
 
+  // ── menu halves: a small menu portaled to <body> (a card's backdrop-filter under
+  //    Glass would trap a fixed panel, and the scrolling body would clip an absolute
+  //    one — the AirPlay panel's reasons). Rebuilt on every render. ──
+  let menus: { dd: DropdownHandle; panel: HTMLElement; obs: MutationObserver }[] = [];
+  const dropMenus = () => {
+    menus.forEach((m) => { m.dd.destroy(); m.obs.disconnect(); m.panel.remove(); });
+    menus = [];
+  };
+  const wireMenus = () => {
+    body.querySelectorAll<HTMLElement>(".set__half--menu").forEach((trigger) => {
+      const half = halvesOf(byId(trigger.dataset.row!)!)?.[Number(trigger.dataset.half)];
+      if (half?.type !== "menu") return;
+      const cur = half.get();
+      const panel = document.createElement("div");
+      panel.className = "set__menu";
+      panel.hidden = true;
+      panel.setAttribute("role", "menu");
+      panel.innerHTML = half.options
+        .map((o) => `<button class="set__menu-row" type="button" role="menuitemradio" data-value="${esc(o.value)}" aria-checked="${o.value === cur}"><span>${esc(o.label)}</span><span class="set__dot" aria-hidden="true"></span></button>`)
+        .join("");
+      document.body.appendChild(panel);
+
+      // Hang under the trigger, right edges aligned; flip above near the bottom.
+      const place = () => {
+        if (panel.hidden) return;
+        const r = trigger.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const vh = document.documentElement.clientHeight;
+        const gap = parseFloat(getComputedStyle(panel).marginTop) || 0;
+        const w = panel.offsetWidth;
+        const h = panel.offsetHeight;
+        panel.style.left = `${Math.max(gap, Math.min(r.right - w, vw - w - gap))}px`;
+        panel.style.top = `${r.bottom + gap + h > vh ? Math.max(0, r.top - h - 2 * gap) : r.bottom}px`;
+      };
+      const obs = new MutationObserver(place);
+      obs.observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+
+      const dd = makeDropdown({ root: trigger.parentElement!, trigger, panel });
+      panel.addEventListener("click", (e) => {
+        const row = (e.target as HTMLElement).closest<HTMLElement>("[data-value]");
+        if (!row) return;
+        dd.close();
+        half.set(row.dataset.value!);
+      });
+      menus.push({ dd, panel, obs });
+    });
+  };
+  // The panel is fixed; a scroll of the card would leave it behind — close instead.
+  const closeMenus = () => menus.forEach((m) => m.dd.close());
+  body.addEventListener("scroll", closeMenus, { passive: true });
+  window.addEventListener("resize", closeMenus);
+
   const render = () => {
+    dropMenus();
     body.innerHTML =
       sections
         .map((s) => `<section class="set__section"><h3 class="set__head">${esc(s.title)}</h3>${s.rows.map(rowHTML).join("")}${s.tail ?? ""}</section>`)
         .join("");
+    wireMenus();
     refreshExtension();
   };
 
-  // ── extension block (EXTENSION.md): bridge status + the two actions ──
+  // ── extension block (EXTENSION.md): bridge status + the agent status line ──
   interface BridgeInfo { port: number | null }
   const refreshExtension = () => {
     const el = body.querySelector<HTMLElement>("#set-ext-status");
@@ -235,13 +407,6 @@ function mountSettings(host: HTMLElement): CardInstance {
       })
       .catch((e) => console.warn("[bridge] info", e));
   };
-  const flash = (el: HTMLElement, text: string) => {
-    const was = el.textContent;
-    el.textContent = text;
-    window.setTimeout(() => (el.textContent = was), 1200);
-  };
-
-  const byId = (id: string): Row | undefined => sections.flatMap((s) => s.rows).find((r) => r.id === id);
 
   body.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
@@ -250,30 +415,20 @@ function mountSettings(host: HTMLElement): CardInstance {
       invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
       return;
     }
-    if (action === "agent-guide") {
-      invoke("agent_open_guide").catch((err) => console.error("[agent] guide", err));
+    // A split half (menu halves open through their dropdown, which stops the click).
+    const halfEl = t.closest<HTMLElement>("[data-half]");
+    if (halfEl?.dataset.row) {
+      const half = halvesOf(byId(halfEl.dataset.row)!)?.[Number(halfEl.dataset.half)];
+      if (half?.type === "action") half.run(halfEl);
+      else if (half?.type === "toggle") half.set(!half.get());
       return;
     }
-    const setup = t.closest<HTMLElement>("[data-setup]");
-    if (setup?.dataset.setup) {
-      invoke<string>("agent_setup_text", { client: setup.dataset.setup }).then((text) =>
-        navigator.clipboard.writeText(text).then(() => flash(setup, "Copied"), () => console.log(text)),
-      );
-      return;
-    }
-    if (action === "ext-log") {
-      const label = t.closest<HTMLElement>("[data-action]")!.querySelector<HTMLElement>(".set__label")!;
-      invoke<string>("bridge_log").then((text) =>
-        navigator.clipboard.writeText(text).then(() => flash(label, "Copied"), () => console.log(text)),
-      );
-      return;
-    }
-    const pill = t.closest<HTMLElement>(".set__pill");
-    if (pill?.dataset.row && pill.dataset.value !== undefined) {
-      const r = byId(pill.dataset.row);
+    const opt = t.closest<HTMLElement>("[data-value]");
+    if (opt?.dataset.row && opt.dataset.value !== undefined) {
+      const r = byId(opt.dataset.row);
       if (r?.kind === "choice") {
-        if (r.set) { r.set(pill.dataset.value); render(); }
-        else setSetting(r.key!, pill.dataset.value as never);
+        if (r.set) { r.set(opt.dataset.value); render(); }
+        else setSetting(r.key!, opt.dataset.value as never);
       }
       return;
     }
@@ -301,6 +456,8 @@ function mountSettings(host: HTMLElement): CardInstance {
     destroy() {
       unsubStore();
       unsubLibAdd();
+      dropMenus();
+      window.removeEventListener("resize", closeMenus);
       host.innerHTML = "";
     },
   };

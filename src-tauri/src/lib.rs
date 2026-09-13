@@ -2,7 +2,9 @@ mod airplay;
 mod apple;
 mod bridge;
 mod enrich;
+mod favorites;
 mod library;
+mod log;
 mod model;
 mod media;
 mod playlists;
@@ -34,6 +36,8 @@ pub fn run() {
             // Open the local library cache (SQLite) in the app data dir.
             let dir = app.path().app_data_dir().expect("app data dir");
             std::fs::create_dir_all(&dir).ok();
+            // The rolling log first (LOGGING.md): everything below may need to write.
+            log::init(&dir);
             let db_path = dir.join("deetsmusic.db");
 
             // First launch of the DEV identifier (`npm run dev:app`, HANDOFF → Run it): seed
@@ -42,12 +46,12 @@ pub fn run() {
             // ever copies INTO an empty dev dir; the release dir is never written.
             if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev") && !db_path.exists() {
                 let release = dir.with_file_name("com.deetsmusic.app");
-                for name in ["deetsmusic.db", "user-token.txt"] {
+                for name in ["deetsmusic.db", "user-token.txt", "developer-token.json"] {
                     let from = release.join(name);
                     if from.is_file() {
                         match std::fs::copy(&from, dir.join(name)) {
-                            Ok(_) => println!("[dev] seeded {name} from {}", release.display()),
-                            Err(e) => eprintln!("[dev] seed {name} failed: {e}"),
+                            Ok(_) => log::info(&format!("dev: seeded {name} from {}", release.display())),
+                            Err(e) => log::warn(&format!("dev: seed {name} failed: {e}")),
                         }
                     }
                 }
@@ -58,6 +62,15 @@ pub fn run() {
             // is read below — hence the seeding moved in here from run()'s top,
             // where it ran before Tauri could tell us where app data lives.
             apple::set_app_data_dir(dir.clone());
+            apple::set_app_handle(app.handle().clone());
+
+            // Resolve the developer token ONCE, before the webview can ask for it:
+            // local .p8 if present (the dev seam), else the cache, else one fetch
+            // from the mint (RELEASE.md §7). A failure is logged, never fatal —
+            // a first run with no network is a real state, and the message names it.
+            if let Err(e) = apple::ensure_developer_token() {
+                log::error(&format!("token: {e}"));
+            }
 
             // Seed the user-token store so a prior sign-in survives restarts.
             if let Some(tok) = apple::load_persisted_user_token() {
@@ -75,7 +88,7 @@ pub fn run() {
                     .unwrap_or(0);
                 let bak = dir.join(format!("deetsmusic.v1.{stamp}.bak.db"));
                 std::fs::copy(&db_path, &bak).expect("backup db before v2 migration");
-                println!("[library] v1 DB backed up to {}", bak.display());
+                log::info(&format!("migration: v1 db detected; backed up to {}", bak.display()));
             }
 
             let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
@@ -85,6 +98,8 @@ pub fn run() {
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
             }
+            library::migrate_v3(&conn).expect("v3 migration failed");
+            library::migrate_v4(&conn).expect("v4 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
@@ -105,7 +120,7 @@ pub fn run() {
                 let s = app.state::<settings::Settings>();
                 if !s.get().autostart_seeded {
                     if let Err(e) = settings::autostart_write(true) {
-                        bridge::log(&format!("autostart: {e}"));
+                        log::warn(&format!("autostart: {e}"));
                     }
                     s.update(|d| d.autostart_seeded = true).ok();
                 }
@@ -115,7 +130,7 @@ pub fn run() {
             // Our Windows media session (overlay + media keys) on the main HWND.
             if let Some(win) = app.get_webview_window("main") {
                 if let Err(e) = smtc::init(app.handle().clone(), &win) {
-                    bridge::log(&format!("smtc init failed: {e}"));
+                    log::warn(&format!("smtc: init failed: {e}"));
                 }
             }
 
@@ -129,6 +144,7 @@ pub fn run() {
         .on_window_event(|win, ev| tray::on_window_event(win, ev))
         .invoke_handler(tauri::generate_handler![
             apple::apple_developer_token,
+            apple::apple_remote_config,
             apple::apple_begin_auth,
             apple::apple_connection_status,
             apple::apple_user_token,
@@ -155,6 +171,10 @@ pub fn run() {
             library::play_events_since,
             library::play_event_count,
             library::materialize_track,
+            favorites::favorite_set,
+            favorites::favorites_cached,
+            favorites::favorites_known,
+            favorites::favorites_reconcile,
             enrich::catalog_enrich,
             enrich::album_palette,
             playlists::playlists_cached,
@@ -163,6 +183,7 @@ pub fn run() {
             playlists::apple_playlist_tracks,
             playlists::playlist_create,
             playlists::playlist_rename,
+            playlists::playlist_set_cover,
             playlists::playlist_delete,
             playlists::playlist_add_tracks,
             playlists::playlist_remove_track,
@@ -195,6 +216,12 @@ pub fn run() {
             bridge::appearance_publish,
             bridge::bridge_info,
             bridge::bridge_log,
+            log::diag_flush,
+            library::queue_state_get,
+            library::queue_state_set,
+            library::dead_ids_cached,
+            library::dead_ids_mark,
+            log::log_open_folder,
             bridge::bridge_open_install_page,
             bridge::bridge_resolve,
             bridge::agent_reply,

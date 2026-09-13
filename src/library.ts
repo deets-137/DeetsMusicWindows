@@ -58,9 +58,11 @@ export function seenTracks(): Promise<Track[]> {
   return invoke<Track[]>("seen_tracks");
 }
 
-/** Trigger a full background sync of library songs into the cache. */
-export function librarySync(): Promise<number> {
-  return invoke<number>("library_sync");
+/** Trigger a background sync of library songs into the cache. `full: true` (the
+ *  refresh button) is the complete pass; `false` (startup) lets Rust pick — the cheap
+ *  newest-first pass when the last full pass is under six hours old. */
+export function librarySync(full = true): Promise<number> {
+  return invoke<number>("library_sync", { full });
 }
 
 /** Subscribe to sync progress. Returns an unlisten fn. */

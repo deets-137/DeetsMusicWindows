@@ -293,7 +293,10 @@ pub async fn catalog_enrich(
 
     let mut fetched = 0usize;
     for chunk in misses.chunks(BATCH) {
-        let songs = fetch_catalog_songs(&client, &dev, &user, &sf, chunk).await?;
+        let songs = fetch_catalog_songs(&client, &dev, &user, &sf, chunk).await.map_err(|e| {
+            crate::log::warn(&format!("enrich: batch of {} failed: {e}", chunk.len()));
+            e
+        })?;
         fetched += songs.len();
         let conn = db.0.lock().unwrap();
         for s in &songs {

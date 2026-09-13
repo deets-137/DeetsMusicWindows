@@ -5,10 +5,18 @@
 
 import { libraryTracks, librarySync, onSyncEvent, seenTracks, type Track } from "./library";
 import { isConnected } from "./apple";
+import * as perf from "./perf";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
-const listeners = new Set<() => void>();
+/** Why subscribers are being told: the synced library reloaded, or catalog-only
+ *  tracks were ingested as transients (a first play/queue from Search, a playlist…). */
+export type TracksChange = "library" | "transient";
+// cb → label; the label names the subscriber in the dev perf spans (perf.ts).
+const listeners = new Map<(why: TracksChange) => void, string>();
+function notify(why: TracksChange): void {
+  listeners.forEach((label, cb) => perf.span(label, () => cb(why)));
+}
 
 function index(): void {
   const m = new Map<string, Track>();
@@ -32,7 +40,7 @@ export async function loadTracks(): Promise<void> {
       if (t.libraryId) transient.set(t.libraryId, t);
       if (t.catalogId) transient.set(t.catalogId, t);
     }
-    listeners.forEach((cb) => cb());
+    notify("library");
   } catch (e) {
     console.error("[track-store] load", e);
   }
@@ -49,11 +57,21 @@ const transient = new Map<string, Track>();
 
 /** Ingest catalog tracks so queue handles pointing at them resolve. */
 export function addTransientTracks(list: Track[]): void {
-  for (const t of list) {
-    if (t.libraryId) transient.set(t.libraryId, t);
-    if (t.catalogId) transient.set(t.catalogId, t);
-  }
-  listeners.forEach((cb) => cb());
+  let added = 0;
+  perf.span("ingest", () => {
+    for (const t of list) {
+      // A synced library song resolves through byId (which wins) — nothing to ingest.
+      if ((t.catalogId && byId.has(t.catalogId)) || (t.libraryId && byId.has(t.libraryId))) continue;
+      const known = (t.catalogId && transient.has(t.catalogId)) || (t.libraryId && transient.has(t.libraryId));
+      if (t.libraryId) transient.set(t.libraryId, t);
+      if (t.catalogId) transient.set(t.catalogId, t);
+      if (!known) added++;
+    }
+  });
+  // Only a genuinely new track can change what a subscriber shows. A library click (or
+  // a re-play of an already-ingested playlist) used to fan out a full re-render of
+  // every mounted card for nothing — 100–330 ms on the click-to-sound path (perf.ts).
+  if (added) notify("transient");
 }
 
 /** Resolve a queue handle id (catalog or library) → Track, for display.
@@ -66,8 +84,8 @@ export const trackById = (id?: string): Track | undefined =>
 export const inLibrary = (id?: string): boolean => (id ? byId.has(id) : false);
 
 /** Subscribe to load/reload. Returns an unsubscribe fn. */
-export function onTracksChange(cb: () => void): () => void {
-  listeners.add(cb);
+export function onTracksChange(cb: (why: TracksChange) => void, label = "tracks-listener"): () => void {
+  listeners.set(cb, label);
   return () => listeners.delete(cb);
 }
 
@@ -84,9 +102,10 @@ export function initTrackStore(): void {
   // Stale-while-revalidate, ONCE per session (not per card mount): kick a background
   // re-sync at startup if signed in. Lives here — not in the Library card — so swapping
   // the card in and out of a slot doesn't re-trigger a full Apple sync each time.
+  // `false` = Rust picks the incremental pass inside the six-hour window.
   isConnected().then((c) => {
     if (c)
-      librarySync().catch((e) => {
+      librarySync(false).catch((e) => {
         // A concurrent sync (the Library card auto-syncs on open too) is deduped by
         // the Rust SYNC_IN_FLIGHT guard — expected, not a failure. Only surface real errors.
         const msg = e instanceof Error ? e.message : String(e);

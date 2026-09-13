@@ -135,7 +135,9 @@
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
   --set-pill-pad:    var(--space-1) var(--space-2);
-  --set-pill-radius: 999px;
+  --set-pill-radius: 999px;          /* the split pill's outer radius */
+  --set-menu-min-w:  120px;          /* the small menu behind a menu half */
+  --set-menu-max-h:  280px;          /* 7 weekdays fit; longer lists scroll */
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */
@@ -199,6 +201,26 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+
+  /* -- appearance switch (theme / skin change; NEXT-VERSION §6) -- */
+  /* A View Transition (appearance.ts). A THEME switch is always the color
+     crossfade, on this clock. A SKIN switch plays the INCOMING skin's own
+     entrance: each skin names its keyframes here (styles.css defines them). */
+  --appearance-dur:      0.32s;
+  --appearance-ease:     ease;
+  --appearance-anim-new: appear-fade-in;
+  --appearance-anim-old: appear-fade-out;
+
+  /* -- album-colored Now Playing text (NEXT-VERSION §7) -- */
+  /* 1 = the NP title/subtext/accents take the album's guarded colors; 0 = theme
+     roles. Glass opts in (only Glass has the aurora under the text). */
+  --np-album-text: 0;
+
+  /* -- search card: the recent/pinned split pill -- */
+  --search-pin-size: var(--icon-sm);
+
+  /* -- derived playlist cover (2×2 mosaic) -- */
+  --lib-mosaic-gap: 0px;
 
   /* -- micro-motion (hover/expand/spin; nav has its own --nav-*) -- */
   --dur-fast: 0.12s;
@@ -304,6 +326,11 @@
   --drag-lift:   translate(-2px, -2px) scale(1.01);
   --drop-line-w: 3px;
 
+  /* appearance — the new sheet stamped down: a firm settle, not a slap */
+  --appearance-dur:      0.34s;
+  --appearance-ease:     cubic-bezier(0.3, 0, 0.1, 1);
+  --appearance-anim-new: appear-stamp;
+
   /* nav — a sheet pulled off the stack and the next one stamped down:
      the classic horizontal push, but fast and hard-eased at both ends,
      and the stock is opaque so the outgoing pane needs no fade. */
@@ -357,6 +384,11 @@
 
   /* micro-motion — cards float on the surface; a touch buoys them up */
   --hover-lift: translateY(-1px);
+
+  /* appearance — the new look rises from beneath the surface */
+  --appearance-dur:      0.5s;
+  --appearance-ease:     cubic-bezier(0.37, 0, 0.63, 1);
+  --appearance-anim-new: appear-rise;
 
   /* nav — outgoing sinks, incoming rises from beneath the surface */
   --nav-dur:  0.42s;
@@ -428,10 +460,19 @@
   --album-aurora-reach:    3.5;
   --album-spin-dur:        30s;
 
-  /* menus — frosted like the panels, but milkier (65% vs 55%): menus carry
-     dense text over arbitrary backdrops, so legibility buys more opacity */
-  --menu-surface:  color-mix(in srgb, var(--surface) 65%, transparent);
+  /* menus — frosted like the panels, but much milkier (90% vs 55%): menus carry
+     dense text over arbitrary backdrops (the Play-on panel over a card's title
+     and rows), so legibility buys most of the opacity back (2026-09-12) */
+  --menu-surface:  color-mix(in srgb, var(--surface) 90%, transparent);
   --menu-backdrop: blur(16px) saturate(1.4);
+
+  /* album-colored NP text — the aurora sits under the text only here */
+  --np-album-text: 1;
+
+  /* appearance — the new look blurs into focus */
+  --appearance-dur:      0.45s;
+  --appearance-ease:     cubic-bezier(0.4, 0, 0.2, 1);
+  --appearance-anim-new: appear-focus;
 
   /* single frost = the card itself; panes fade (no mask needed), so don't
      re-paint --panel and double the tint into a rectangle below the bar. */
@@ -535,6 +576,11 @@
     linear-gradient(90deg, var(--border) 1px, transparent 1px);
   --canvas-bg-size:   28px 28px;
   --canvas-bg-repeat: repeat;
+
+  /* appearance — an electric snap, the new look jolts in skewed */
+  --appearance-dur:      0.3s;
+  --appearance-ease:     cubic-bezier(0.4, 0, 0.2, 1);
+  --appearance-anim-new: appear-snap;
 
   /* nav — an electric snap: fast, hard ease, the pane jolts in with a
      skew that straightens at center */

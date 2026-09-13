@@ -147,6 +147,11 @@ pub struct Playlist {
     /// `playlists_cached` on every read, never persisted into cached json.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_id: Option<i64>,
+    /// Up to four distinct track-cover templates for the derived 2×2 mosaic
+    /// (NEXT-VERSION §2), stamped by `playlists_cached` when `artwork` is absent and
+    /// the tracks are cached locally. Never persisted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_urls: Option<Vec<String>>,
 }
 
 /// An Apple radio station (STATIONS.md §2 — live / Discovery / genre / seeded).

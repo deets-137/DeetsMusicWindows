@@ -109,7 +109,8 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
         let mut stmt = conn
             .prepare(
                 "SELECT p.id, p.name, p.description, p.created_at,
-                        (SELECT COUNT(*) FROM local_playlist_tracks t WHERE t.playlist_id = p.id)
+                        (SELECT COUNT(*) FROM local_playlist_tracks t WHERE t.playlist_id = p.id),
+                        p.cover
                  FROM local_playlists p",
             )
             .map_err(err)?;
@@ -121,17 +122,30 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                     r.get::<_, Option<String>>(2)?,
                     r.get::<_, i64>(3)?,
                     r.get::<_, u32>(4)?,
+                    r.get::<_, Option<String>>(5)?,
                 ))
             })
             .map_err(err)?;
-        for row in rows {
-            let (id, name, description, created_at, n) = row.map_err(err)?;
+        let rows: Vec<_> = rows.collect::<Result<_, _>>().map_err(err)?;
+        for (id, name, description, created_at, n, cover) in rows {
             let key = format!("local:{id}");
+            // Cover precedence (NEXT-VERSION §2): the user's own image (a data URL,
+            // no {w}/{h} — `artURL` leaves it alone), else the mosaic of the first
+            // distinct track covers.
+            let (artwork, cover_urls) = match cover {
+                Some(data) if !data.is_empty() => (
+                    Some(crate::model::Artwork { url_template: data, width: 0, height: 0, ..Default::default() }),
+                    None,
+                ),
+                _ => (None, mosaic_urls(&conn, "local_playlist_tracks", &id.to_string())?),
+            };
             out.push(Playlist {
                 folder_id: folder_of.get(&key).copied(),
                 library_id: Some(key),
                 name,
                 description,
+                artwork,
+                cover_urls,
                 can_edit: true,
                 track_count: Some(n),
                 source: Some("local".into()),
@@ -155,10 +169,60 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
             let s = row.map_err(err)?;
             let mut p: Playlist = serde_json::from_str(&s).map_err(err)?;
             p.folder_id = p.library_id.as_ref().and_then(|id| folder_of.get(id)).copied();
+            // Apple often omits a playlist's artwork; the mosaic fills in from the
+            // content cache once the playlist has been opened (no fetch here).
+            if p.artwork.is_none() {
+                if let Some(id) = p.library_id.as_deref() {
+                    p.cover_urls = mosaic_urls(&conn, "apple_playlist_tracks", id)?;
+                }
+            }
             out.push(p);
         }
     }
     Ok(out)
+}
+
+/// The first four DISTINCT track-cover templates of a playlist, in authored order,
+/// for the derived mosaic (NEXT-VERSION §2). Reads the local snapshot rows only —
+/// zero Apple calls; None when the playlist is empty or its contents are not cached.
+fn mosaic_urls(conn: &Connection, table: &str, playlist_id: &str) -> Result<Option<Vec<String>>, String> {
+    let sql = format!("SELECT json FROM {table} WHERE playlist_id = ?1 ORDER BY position LIMIT 40");
+    let mut stmt = conn.prepare(&sql).map_err(err)?;
+    let rows = stmt.query_map([playlist_id], |r| r.get::<_, String>(0)).map_err(err)?;
+    let mut urls: Vec<String> = Vec::new();
+    for row in rows {
+        let t: Track = match serde_json::from_str(&row.map_err(err)?) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        if let Some(u) = t.artwork.map(|a| a.url_template) {
+            if !urls.contains(&u) {
+                urls.push(u);
+                if urls.len() == 4 {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(if urls.is_empty() { None } else { Some(urls) })
+}
+
+/// Set (a data URL the front-end already resized) or clear (`None`) a local
+/// playlist's own cover. Local only: Apple's API cannot receive a playlist cover.
+#[tauri::command]
+pub fn playlist_set_cover(id: i64, cover: Option<String>, db: State<'_, Db>) -> Result<(), String> {
+    if let Some(c) = &cover {
+        if !c.starts_with("data:image/") || c.len() > 2_000_000 {
+            return Err("playlist_set_cover: expected an image data URL under 2 MB".into());
+        }
+    }
+    let conn = db.0.lock().unwrap();
+    conn.execute(
+        "UPDATE local_playlists SET cover = ?2, updated_at = ?3 WHERE id = ?1",
+        rusqlite::params![id, cover, now_ms()],
+    )
+    .map_err(err)?;
+    Ok(())
 }
 
 // ── Apple mirror sync (read-in; stale-while-revalidate like songs) ─────────────
@@ -255,7 +319,7 @@ pub async fn apple_playlists_sync(
         }
     }
     tx.commit().map_err(err)?;
-    println!("[playlists] mirror synced — {} playlist(s)", all.len());
+    crate::log::info(&format!("playlists: mirror synced, {} playlist(s)", all.len()));
     Ok(all.len() as u32)
 }
 
@@ -319,7 +383,7 @@ pub async fn apple_playlist_counts(
     while let Some((id, res)) = stream.next().await {
         match res {
             Ok(total) => learned.push((id, total)),
-            Err(e) => eprintln!("[playlists] count backfill {id}: {e}"),
+            Err(e) => crate::log::warn(&format!("playlists: count backfill {id}: {e}")),
         }
     }
     drop(stream);
@@ -432,6 +496,12 @@ pub async fn apple_playlist_tracks(
             rusqlite::params![id, serde_json::to_string(&p).map_err(err)?],
         )
         .map_err(err)?;
+        // Apple's generated Favorite Songs list is the only list-all of ♥ we get:
+        // seed the favorites mirror from it (favorites.rs), same transaction.
+        if crate::favorites::is_favorite_songs(&p) {
+            let n = crate::favorites::seed_from_playlist(&tx, &all)?;
+            crate::log::info(&format!("favorites: seeded {n} from Favorite Songs"));
+        }
     }
     tx.commit().map_err(err)?;
     Ok(all)

@@ -277,6 +277,42 @@ export function clear(): void {
   emit();
 }
 
+// ── Persistence (QUEUE.md "Restore across sessions") ─────────────────────────
+// The three zones as one JSON-able blob. queue-persist.ts writes it on every change and
+// reads it back at launch; the model itself stays ignorant of where it lives.
+export interface QueueSnapshot {
+  v: 1;
+  history: QueueEntry[];
+  current: QueueEntry | null;
+  upcoming: QueueEntry[];
+  savedAt: number;
+}
+export function snapshot(): QueueSnapshot {
+  return { v: 1, history: state.history.slice(), current: state.current, upcoming: state.upcoming.slice(), savedAt: Date.now() };
+}
+/**
+ * Replace the model with a saved snapshot. Launch only — nothing is playing, and nothing
+ * is fed to MusicKit here (the first Play/click loads it through the normal path).
+ * `asCurrent` = false parks the saved current at the head of upcoming instead, so Now
+ * Playing stays idle. Deliberately NOT setCurrent: restoring is not playing, so `played`
+ * flags and the play log stay as saved. Malformed entries are dropped.
+ */
+export function restore(s: QueueSnapshot, asCurrent: boolean): void {
+  const ok = (e: unknown): e is QueueEntry =>
+    !!e && typeof e === "object" && (typeof (e as any).catalogId === "string" || typeof (e as any).libraryId === "string");
+  const norm = (e: QueueEntry): QueueEntry => ({ ...e, origin: e.origin === "manual" ? "manual" : "auto" });
+  state.history = (Array.isArray(s.history) ? s.history : []).filter(ok).map(norm).slice(-HISTORY_CAP);
+  state.upcoming = (Array.isArray(s.upcoming) ? s.upcoming : []).filter(ok).map(norm);
+  const cur = ok(s.current) ? norm(s.current) : null;
+  if (cur && !asCurrent) {
+    state.upcoming.unshift(cur);
+    state.current = null;
+  } else {
+    state.current = cur;
+  }
+  emit();
+}
+
 function pushHistory(entry: QueueEntry): void {
   logPlay(entry); // joining the heard trail = it played
   state.history.push(entry);

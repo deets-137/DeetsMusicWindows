@@ -10,10 +10,13 @@ import { addTransientTracks } from "./track-store";
 import { addToPlaylistItem } from "./playlists";
 import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
+import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
+import { copySongLinkItem, copyAlbumLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
 import { onDrillRequest } from "./go-to";
 import { esc } from "./collection-card";
+import { explicitBadge } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
   ALL_TYPES, type SearchType, type SearchResults, type Artist,
@@ -23,6 +26,8 @@ import type { CardDef, CardInstance } from "./cards";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
+const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
+const ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
@@ -58,6 +63,19 @@ function loadRecents(): string[] {
 function pushRecent(term: string): void {
   const r = [term, ...loadRecents().filter((t) => t !== term)].slice(0, RECENTS_CAP);
   try { localStorage.setItem(RECENTS_KEY, JSON.stringify(r)); } catch { /* session-only */ }
+}
+interface Pin { term: string; types: SearchType[] }
+function loadPins(): Pin[] {
+  try {
+    const r = JSON.parse(localStorage.getItem(PINS_KEY) ?? "[]");
+    if (!Array.isArray(r)) return [];
+    return r
+      .filter((x): x is Pin => !!x && typeof x.term === "string" && Array.isArray(x.types))
+      .map((x) => ({ term: x.term, types: x.types.filter((t: string): t is SearchType => (ALL_TYPES as string[]).includes(t)) }));
+  } catch { return []; }
+}
+function savePins(pins: Pin[]): void {
+  try { localStorage.setItem(PINS_KEY, JSON.stringify(pins)); } catch { /* session-only */ }
 }
 
 export const searchCard: CardDef = {
@@ -112,21 +130,41 @@ function mountSearch(host: HTMLElement): CardInstance {
   let songsById = new Map<string, Track>();
 
   // ── root rendering ──
+  // Empty state: a Pinned block above Recent (NEXT-VERSION §1). Each row is one pill
+  // cut in two — the term (re-runs it) | a pin glyph (pins or unpins). A pinned term
+  // leaves the recents ring; unpinning puts it back on top.
+  const pillHTML = (term: string, pinned: boolean) =>
+    `<div class="search__recent${pinned ? " is-pinned" : ""}">` +
+    `<button class="search__recent-term" type="button" data-recent="${esc(term)}">${esc(term)}</button>` +
+    `<button class="search__recent-pin" type="button" data-pin="${esc(term)}" aria-pressed="${pinned}" aria-label="${pinned ? "Unpin" : "Pin"}" title="${pinned ? "Unpin" : "Pin"}">${ICON_PIN}</button>` +
+    `</div>`;
   const renderEmpty = () => {
-    const recents = loadRecents();
-    const rows = recents
-      .map((t) => `<button class="search__recent" type="button" data-recent="${esc(t)}">${esc(t)}</button>`)
-      .join("");
-    root.innerHTML = recents.length
-      ? `<div class="search__label">Recent</div><div class="search__recents">${rows}</div>`
-      : "";
+    const pins = loadPins();
+    const recents = loadRecents().filter((t) => !pins.some((p) => p.term === t));
+    const pinned = pins.map((p) => pillHTML(p.term, true)).join("");
+    const recent = recents.map((t) => pillHTML(t, false)).join("");
+    root.innerHTML =
+      (pinned ? `<div class="search__label">Pinned</div><div class="search__recents">${pinned}</div>` : "") +
+      (recent ? `<div class="search__label">Recent</div><div class="search__recents">${recent}</div>` : "");
+  };
+  const togglePin = (term: string) => {
+    const pins = loadPins();
+    const i = pins.findIndex((p) => p.term === term);
+    if (i >= 0) {
+      pins.splice(i, 1);
+      pushRecent(term); // back to the top of the ring
+    } else {
+      pins.unshift({ term, types: [...types] }); // the filter as it is right now
+    }
+    savePins(pins);
+    renderEmpty();
   };
 
   const songCell = (t: Track): string => {
     const id = t.catalogId ?? "";
     return `<div class="search__song" data-song="${esc(id)}" role="button" tabindex="0">
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
-      <div class="search__song-text"><span class="search__song-title">${esc(t.title)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
+      <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
     </div>`;
   };
 
@@ -186,7 +224,8 @@ function mountSearch(host: HTMLElement): CardInstance {
         if (token !== queryToken) return; // stale — a newer term is in flight
         results = r;
         lastTerm = term;
-        pushRecent(term);
+        if (!loadPins().some((p) => p.term === term)) pushRecent(term); // pins stay out of the ring
+        reconcile(r.songs); // ♥ state for hits the mirror has never seen (batched, once)
         renderResults();
       })
       .catch((e) => {
@@ -201,6 +240,10 @@ function mountSearch(host: HTMLElement): CardInstance {
   const onInput = () => {
     window.clearTimeout(debounceTimer);
     clearBtn.hidden = !input.value;
+    // The search bar owns the card: any keystroke (or a clear, or a recents tap)
+    // returns to the root results. Otherwise a drill pane stays on top and hides
+    // the new results rendered into `root` below it.
+    resetToRoot();
     const term = input.value.trim();
     if (term.length < MIN_CHARS) {
       queryToken++; // cancel any in-flight response
@@ -273,11 +316,13 @@ function mountSearch(host: HTMLElement): CardInstance {
     window.setTimeout(() => pane.remove(), 400); // past --nav-dur; cheap cleanup
     notifyHeader();
   };
+  /** Drop every drill pane at once, so `root` is the visible pane again. */
+  const resetToRoot = () => { while (paneStack.length) popPane(); };
 
   const listRow = (t: Track, i: number): string =>
     `<div class="search__row" data-row="${i}" role="button" tabindex="0">
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
-      <div class="search__song-text"><span class="search__song-title">${esc(t.title)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
+      <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
     </div>`;
 
   /** A detail pane's track list: tap plays the list from that row (Library semantics). */
@@ -401,8 +446,10 @@ function mountSearch(host: HTMLElement): CardInstance {
       t.catalogId && t.albumName
         ? { label: "Go to Album", run: () => goToAlbum(t.catalogId!, t.albumName!) }
         : null,
+      copySongLinkItem(t.catalogId),
       startStationItem("songs", t.catalogId),
       addSongToLibraryItem(t), // null unless the Library Add toggle is on
+      favoriteItem(t), // same consent
     ].filter(Boolean) as MenuItem[]);
   };
   // `artistName` is supplied only where the album's artist isn't already on screen
@@ -423,6 +470,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       kind === "albums" && artistName
         ? { label: "Go to Artist", run: () => goToArtist("albums", id, artistName) }
         : null,
+      kind === "albums" ? copyAlbumLinkItem(id) : null,
       // Albums add as a library resource (fork A: graduates the album's tracks so they
       // appear right away). Playlists have no add-to-library path here.
       kind === "albums" ? addAlbumToLibraryItem(id, () => collectionTracks(kind, id)) : null,
@@ -432,9 +480,22 @@ function mountSearch(host: HTMLElement): CardInstance {
   // ── root interactions (delegated; survive re-renders) ──
   root.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
+    const pin = t.closest<HTMLElement>("[data-pin]");
+    if (pin) {
+      togglePin(pin.dataset.pin!);
+      return;
+    }
     const recent = t.closest<HTMLElement>("[data-recent]");
     if (recent) {
-      input.value = recent.dataset.recent!;
+      const term = recent.dataset.recent!;
+      // A pinned term brings its category filter back with it.
+      const p = loadPins().find((x) => x.term === term);
+      if (p && p.types.length) {
+        types = [...p.types];
+        try { localStorage.setItem(TYPES_KEY, JSON.stringify(types)); } catch { /* ok */ }
+        renderFilter();
+      }
+      input.value = term;
       onInput();
       return;
     }

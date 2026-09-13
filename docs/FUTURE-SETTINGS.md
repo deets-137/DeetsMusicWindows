@@ -28,6 +28,7 @@
 - **Playback** — §4 "Previous" reach · §5 Shuffle behavior
 - **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
 - **Stats** — §7 Listened-through threshold
+- **Library** — §21 Sync cadence (full pass every 6 h; incremental at startup)
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
   §13 Retro-Future storm dials (skin-specific)
@@ -556,6 +557,71 @@ console logging regardless (diag stays the debugging source of truth). Until bui
 ledger rule for new features: quiet failures log to console and get a pointer to this
 entry (see STATIONS.md §2).
 
+**Two one-time notices (added 2026-09-12, own session).** Besides failures, the primitive
+owes the user two facts the UI cannot show any other way. Each is an `info` toast with a
+**Don't show again** button that writes `"off"` to its own key, so silencing one does not
+silence the other:
+
+| When | Text (draft) | Key |
+|---|---|---|
+| The user sets a local playlist cover (NEXT-VERSION §2) | Covers stay in DeetsMusic. Apple Music makes its own. | `deets.notice.coverLocal` |
+| The first Add to Library in a session (`#np-add` or a menu item) | Added. Apple has no undo from here; remove it in the Music app. | `deets.notice.addOneWay` |
+
+Shape when built: `toast(msg, { kind, action?, dismissKey? })` in a new `src/toast.ts`; one
+strip, newest replaces the previous, auto-dismiss after a skin-token duration (`--toast-dur`,
+`--toast-pad`, `--toast-radius`, `--toast-w`, `--toast-motion`; reduced motion snaps). Main
+window only; the tray panel and the extension popup keep the console.
+
+**Candidate added 2026-09-11 — no developer token at startup.** A first run with no local
+MusicKit key and no reachable mint (offline, or the worker's `KILL` switch — desk-tested via
+`KILL`, RELEASE.md §7) opens the window normally, and the user only learns something is wrong
+when a search fails with "Search failed: no developer token: no local MusicKit key and mint
+switched off (503)". The message is right; the *timing* is the confusion — a stranger sees a
+working-looking app that cannot do anything. Once toasts exist, `ensure_developer_token()`'s
+`Err` (surfaced from `lib.rs` `setup()`, or read by the front end at boot via
+`apple_developer_token`) should raise one toast at launch: "Can't reach the token service —
+check your connection and restart." Same species as the rest of this entry: failures-only tier.
+
+**Three more candidates, 2026-09-11 (the log's first day).** (1) **Sign-in did not
+complete** — the browser sign-in times out after 5 min or the callback is rejected;
+`apple.rs` logs `sign-in: …` and the Account row just goes back to "Sign in". (2) **Signed
+in, no Apple Music subscription** — sign-in succeeds, playback fails, nothing says why; the
+first playback failure after a fresh sign-in should say "This Apple ID has no Apple Music
+subscription". (3) **A library playlist Apple no longer has** — the count backfill
+(`playlists.rs`) gets a 404 for one playlist every launch (`apple: 404
+/v1/me/library/playlists/<id>/tracks`; on the desk it was "Tamil Amma Songs"). The toast
+must **name the playlist** so the user can deal with it, and the backfill should remember the
+404 instead of asking again each launch.
+
+**Candidate added 2026-09-12 — songs Apple Music no longer offers.** The player marks a song
+ID as dead when MusicKit rejects it: "could not be resolved" on a queue feed or insert
+(`insertWithRetry` / `doLoadFromModel` in [player.ts](../src/player.ts)), or "currently
+unavailable" on a skip (`healDeadNext`, `bank = true`). The song-end failure is never marked
+(it also follows short-lived license errors). Today the marks are in memory only
+(`deadIds`, via `markDead`). **The disk half is BUILT (2026-09-12); only the toast waits.**
+- **Built — marks saved to disk**: both MusicKit rejections, in the cache db's `dead_ids`
+  table (a cache reset clears them), loaded at launch (`loadDeadIds`), so the first play
+  skips them without a failed request. A mark **expires after 7 days**; then the app tries the
+  ID once more, and a new rejection refreshes the mark. See QUEUE.md §Dead ids.
+- **Not built — toast only when an ID is first found dead**, naming the song(s): "Skipped 2
+  songs Apple Music no longer offers." Known dead IDs skip silently. Failures-only tier.
+- **List rows are not dimmed** for now (a separate UI change with its own theme role).
+
+**Toast wiring shape (ready for the toast session).**
+- **Trigger:** `markDead` in [player.ts](../src/player.ts). `dead_ids_mark` already returns
+  `fresh` — the ids with no earlier row on this install (`first_seen` survives the 7-day
+  expiry, so a re-mark does not toast again). Today that branch only logs
+  `player:deadFresh`; the toast call goes there.
+- **Name songs, not ids.** A dead catalog ID whose library ID still plays is not skipped
+  (`playId` falls back), so it must not toast. Toast only for handles where `playId(h)` is
+  now `undefined`; name them with `trackById(id)?.title`.
+- **Coalesce.** One feed rejection marks a batch in one call, but the retry and
+  `healDeadNext` can mark more within a second. Collect the fresh names for ~1 s, then raise
+  ONE toast: one song → "Skipped “<title>” — Apple Music no longer offers it."; more →
+  "Skipped N songs Apple Music no longer offers." (first 2 titles + "and N more").
+- **Kind:** `failure` (tier (a)). No **Don't show again** key: it is a failure, not a notice.
+  Main window only, like the rest of §18.
+
 ## 19. Artist grouping — collab/feature placement
 
 **Behavior.** Where a multi-artist song lands in the Library's Artists view. Since the
@@ -631,3 +697,22 @@ the Library builds `libNav` (pass `undefined` for `"search"`). Option (c) is a l
 — a new intent that targets the Library card via `requestCard("library")` + a programmatic
 `card.drill`, gated on a library-membership lookup. If (c) lands, this key grows a third
 value (`"library"`). A **Menus** settings subsection tenant alongside §1/§2.
+
+## 21. Library sync cadence — how often the full pass runs
+
+**Behavior.** At startup the app re-syncs the library (stale-while-revalidate,
+`track-store.ts`). Since 2026-09-11 that startup call is **incremental** when the last
+complete pass is under **six hours** old: `library.rs` fetches newest-added first, one page
+of 100 at a time, and stops at the first page holding a song already cached — so an album
+added on the phone is one or two Apple requests, not ~40. Upsert only; a song removed on
+another device disappears at the next full pass. The refresh button in the Library card is
+always a full pass, and a full pass writes `meta.full_sync_at` in the cache db (it dies with
+the cache, so a fresh db always full-syncs).
+
+**Options.** The window: 1 h · 6 h *(current default)* · 24 h · only on refresh (never
+automatic). Possibly a second switch: incremental at startup on/off.
+
+**Where.** Settings › Library, one CHOICE row ("Check library fully every"). **Wiring.** A
+`librarySyncWindowHours` key in `deets.settings`, passed to `library_sync` as an argument
+(the constant `FULL_SYNC_EVERY_SECS` becomes the default). The log line
+`library: incremental sync done, N new in P page(s)` shows what a launch cost.

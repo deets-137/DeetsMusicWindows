@@ -38,6 +38,13 @@
   --album-c1: var(--go);
   --album-c2: var(--stop);
 
+  /* Album-colored NP text (NEXT-VERSION §7): JS sets guarded per-track values inline
+     on the card in skins that opt in (--np-album-text); these fallbacks ARE today's
+     look, so no palette (or no opt-in) means the plain theme roles. */
+  --np-title:   var(--title);
+  --np-subtext: var(--subtext);
+  --np-accent:  var(--title);
+
   /* Second-plate fallback: a theme that never names --ink-2 still prints
      Press's offset in its own "go" accent. */
   --ink-2: var(--go);

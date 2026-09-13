@@ -15,8 +15,10 @@ import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
+import { favoriteItem } from "./favorites";
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { copySongLinkItem } from "./copy-link";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
@@ -77,17 +79,12 @@ function mountQueue(host: HTMLElement): CardInstance {
     const st = lastState?.station ?? lastState?.resume;
     let stationRow = "";
     if (st) {
-      const sub = lastState?.resume
-        ? "Resumes after the queue"
-        : st.live
-          ? "LIVE · Apple Music picks what's next"
-          : "Apple Music picks what's next";
       const art = st.artworkUrl
         ? `<img class="qrow__art" src="${esc(st.artworkUrl)}" alt="" loading="lazy" data-art />`
         : `<div class="qrow__art qrow__art--empty" aria-hidden="true">📻</div>`;
-      stationRow = `<li class="qrow qrow--station" data-station="${esc(st.id)}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
-        st.name,
-      )}</span><span class="qrow__artist">${esc(sub)}</span></div></li>`;
+      stationRow = `<li class="qrow qrow--station" data-station="${esc(st.id)}">${art}<div class="qrow__text"><span class="qrow__title">${esc(st.name)}</span>${
+        lastState?.resume ? `<span class="qrow__artist">Will resume after</span>` : ""
+      }</div></li>`;
     }
     const list = rows || stationRow
       ? `<ol class="qcard__list">${rows}${more}${stationRow}</ol>`
@@ -170,10 +167,14 @@ function mountQueue(host: HTMLElement): CardInstance {
       if (goA) items.push(goA);
       const goAl = goToAlbumItem(entry.catalogId, t?.albumName);
       if (goAl) items.push(goAl);
+      const link = copySongLinkItem(entry.catalogId);
+      if (link) items.push(link);
       const start = startStationItem("songs", entry.catalogId);
       if (start) items.push(start);
       const add = t ? addSongToLibraryItem(t) : null;
       if (add) items.push(add);
+      const fav = favoriteItem(t);
+      if (fav) items.push(fav);
       openContextMenu(e.clientX, e.clientY, items, () => row.classList.remove("is-context"));
       return;
     }
@@ -185,8 +186,10 @@ function mountQueue(host: HTMLElement): CardInstance {
     const items = [
       goToArtistItem("songs", cur?.catalogId, t?.artistName),
       goToAlbumItem(cur?.catalogId, t?.albumName),
+      copySongLinkItem(cur?.catalogId),
       startStationItem("songs", cur?.catalogId), // "more like what's playing"
       t ? addSongToLibraryItem(t) : null,
+      favoriteItem(t),
       lastState?.station
         ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[qcard] stop station", err)) }
         : null,
@@ -318,7 +321,7 @@ function mountQueue(host: HTMLElement): CardInstance {
 
   // Metadata comes from the shared track store; re-render when it (re)loads so newly
   // synced songs resolve instead of showing "Unknown".
-  const unsubTracks = onTracksChange(render);
+  const unsubTracks = onTracksChange(render, "qcard");
   const unsubQueue = queue.onQueueChange(render);
   const unsubState = onPlayerState((s) => {
     lastState = s;

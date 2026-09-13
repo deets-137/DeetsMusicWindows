@@ -6,8 +6,10 @@ use crate::model::{Page, Playlist, SearchResults, Track};
 
 #[allow(async_fn_in_trait)]
 pub trait MusicProvider {
-    /// One page of the user's library songs, normalized to our `Track`.
-    async fn songs_page(&self, offset: u32, limit: u32) -> Result<Page<Track>, String>;
+    /// One page of the user's library songs, normalized to our `Track`. Ordered by
+    /// date added — oldest first for a full pass (the row position IS `added_rank`),
+    /// newest first for the incremental pass (rank derived from the total).
+    async fn songs_page(&self, offset: u32, limit: u32, newest_first: bool) -> Result<Page<Track>, String>;
 
     /// One page of the user's library playlists (the flat list — folders are
     /// deliberately flattened, PLAYLISTS.md §2), normalized to our `Playlist`.

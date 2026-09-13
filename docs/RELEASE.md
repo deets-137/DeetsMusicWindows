@@ -50,7 +50,7 @@ The archive earns its keep because `src-tauri/target/` is the only other copy, a
 
 Install root is `%LOCALAPPDATA%\DeetsMusic` (`installMode: currentUser`). User data lives
 elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
-`user-token.txt`, `settings.json`, `bridge.log`.
+`user-token.txt`, `settings.json`, `deetsmusic.log`.
 
 ## 3. The NSIS hooks
 
@@ -139,7 +139,21 @@ open-file rules, and the `PREINSTALL` hook is what makes that survivable.
 ## 7. Distributing a usable build — the developer token
 
 > Decided 2026-09-09: **long token lifetime · open endpoint, rate-limited by IP · the dev
-> seam keeps local signing.** Not built yet; this section is the build order.
+> seam keeps local signing.** **The worker is live (2026-09-11):** `DeetsSupport` is deployed on
+> both hosts, `/token` mints a 60-day ES256 token that Apple accepts (search → 200, corrupted
+> signature → 401), wrong `User-Agent` → 403. **Repo 2 is built the same day**: the cache, the
+> dev seam, the 429/offline fallback and the once-per-process 401 refetch in `apple.rs`;
+> `player.ts` re-runs `configure` on `developer-token-changed`. **Desk-tested 2026-09-11** with
+> `apple.json` moved away: one `GET /token` 200 in the Cloudflare tail, `source=worker` in the
+> log, playback fine (Order step 4 done). **The 401 refetch is desk-tested too:** a cached token
+> with a dead signature → search hits 401 → `refetching once` in the log, one `/token` in the
+> Cloudflare tail, the search succeeds on the retry; and with MusicKit already configured on
+> the dead token, playback works after the refetch without a restart (the
+> `developer-token-changed` reconfigure). **The dead first run is desk-tested via `KILL`:** no key,
+> no cache, mint 503 → the window opens, the log reads `no developer token: no local MusicKit key
+> and mint switched off (503)`, and a search shows the same text. The offline case shares that
+> branch (only the string differs). Wanted later: a launch toast for it (FUTURE-SETTINGS §18).
+> Steps 1–4 done; step 5 (the release) remains.
 
 ### The problem
 
@@ -181,15 +195,31 @@ untouched**. Anything else turns a small change into an async refactor of the wh
 
 ### Repo 1 — the Worker (new sibling repo)
 
-Mirrors **DeetsAccounts** exactly, which is the house pattern for a Worker: its own repo, **no
+> **Superseded 2026-09-11.** The mint is no longer its own repo. It is one route on
+> **`DeetsSupport`**, the support worker for every Deets app — status, suggestions, issues,
+> anonymous report intake and remote config. Scoped in
+> **`DeetsSolutions/docs/support.md`**, which is now the source of truth for the repo, the
+> hosts and the schema. What stays true below: the zero-dependency house pattern, the
+> WebCrypto signing notes, the secrets, and the rate-limit binding.
+>
+> Two things that repo's scope pins down, and that this repo depends on:
+>
+> - The app compiles in **`music-api.deets.solutions/token`** — a second custom-domain route
+>   on that one worker, never the `support.` host. That keeps a future split a route move
+>   rather than a release.
+> - **`/token` returns before any D1 call**, so the boards cannot take down app startup.
+
+Mirrors **DeetsAccounts** exactly, which is the house pattern for a Worker: **no
 `package.json` and no dependencies**, plain `src/index.js`, a commented `wrangler.jsonc`, and a
 subdomain route. The static site repo holds no Worker code.
 
 ```
-DeetsMusicToken/           (proposed 2026-09-10; host music-api.deets.solutions — the
+DeetsSupport/              (renamed 2026-09-11 from the proposed DeetsMusicToken; hosts
+                           support.deets.solutions + music-api.deets.solutions — the
                            siblings are api / radio-api / cities-api / mahjong-api / id)
-  wrangler.jsonc           name, main, compatibility_date, KILL var, ratelimit binding, route
-  src/index.js             one GET route, plain WebCrypto
+  wrangler.jsonc           name, main, compatibility_date, KILL var, ratelimit binding, routes
+  src/index.js             /token via plain WebCrypto, plus the support routes
+  schema.sql               D1 — see support.md
   README.md                setup + deploy, in the accounts-setup.md style
 ```
 
@@ -200,11 +230,19 @@ DeetsMusicToken/           (proposed 2026-09-10; host music-api.deets.solutions 
   a per-request signature avoids handing every client one shared token with one shared expiry.
 - **Secrets** — `npx wrangler secret put APPLE_P8`, `… TEAM_ID`, `… KEY_ID`. The `.p8` is
   pasted as a secret; it is never committed, exactly as in this repo.
-- **Rate limiting by IP** is a `ratelimit` binding under `unsafe.bindings` in
-  `wrangler.jsonc` — the house pattern (DeetsAccounts `AUTH_RL` 20/60 s, DeetsRadio
-  `PEEK_RL` 30/60 s), **not** a dashboard rule (revised 2026-09-10: the binding is versioned
-  with the code). **10 per 60 s**, fail OPEN if the binding is absent. An honest install
-  fetches once every ~4 months, so this only stops a scraper loop.
+- **Rate limiting by IP** is a rate-limit binding in `wrangler.jsonc`, **not** a dashboard
+  rule (revised 2026-09-10: the binding is versioned with the code). **30 per 60 s**, fail
+  OPEN if the binding is absent (raised from 10 on 2026-09-11 — see "What the rate limit is
+  actually for" below).
+  **Measured 2026-09-11, two corrections to the house pattern:** (1) declare it under the
+  top-level **`ratelimits`** key — the older `unsafe.bindings` form deploys as "Unsafe
+  Metadata" and never trips (DeetsAccounts, DeetsRadio, DeetsCities, DeetsMahjong and DeetsPoker
+  carried that form and were inert — all five moved to `ratelimits` and redeployed the same
+  day; DeetsCities also moved off namespace 2001, which it shared with DeetsAccounts, since
+  bindings on one namespace share a counter); (2) the binding counts per
+  isolate and syncs lazily, so a burst over fresh connections passes while one reused
+  connection trips at ~26/30 and holds at 429. Enough for a runaway client loop (reqwest
+  pools its connection); not a wall against a scan, which was never claimed.
 - **Kill switch**: a `KILL` var; when set, every request gets 503. Flipping it is a
   `wrangler deploy` of the Worker, never a release of the app.
 - **No Origin check.** A desktop app sends no browser Origin; the endpoint is open by design.
@@ -243,19 +281,68 @@ Only if the Worker gets a page. The DNS record is created by `wrangler` on first
 
 1. Worker repo: sign, deploy to the subdomain, confirm with `curl` that the JWT verifies and
    that Apple accepts it.
-2. Add the Cloudflare rate-limiting rule.
+2. Add the Cloudflare rate-limiting rule (the `ratelimit` binding, not a dashboard rule).
 3. This repo: the cache + the dev seam, behind the local-key fallback so nothing breaks first.
 4. Test a build with `apple.json` **moved away**, which is the state a stranger installs into.
 5. Cut the release, attach the installer, then publish.
 
 ### Decided 2026-09-10 (build day is 2026-09-11)
 
-- **Lifetime 150 days** (what `developer_token()` signs today; Apple's ceiling is ~182),
-  **refresh margin 30 days**. One startup fetch per install every ~4 months.
-- **Startup-only refresh.** A 401 from Apple can only mean a revoked key, and a refresh would
-  mint from the same key. Revisit only if a real 401 ever shows up.
-- **Name / host:** `DeetsMusicToken` on `music-api.deets.solutions` (proposed; confirm at
-  build time). Add the row to DeetsSolutions' `CLAUDE.md` Backends table.
+- ~~**Lifetime 150 days**~~ / ~~**startup-only refresh**~~ — both revised 2026-09-11, below.
+- ~~**Name / host:** `DeetsMusicToken`~~ — **settled 2026-09-11:** the route
+  `music-api.deets.solutions/token` on the **`DeetsSupport`** worker
+  (`DeetsSolutions/docs/support.md`). The Backends row is added.
+
+### Revised 2026-09-11 — recovery, not the door
+
+The endpoint stays **open and rate-limited by IP**; that fork is closed (three alternatives
+were re-tested against the code and all three are dead: client attestation is impossible in a
+public binary; a Turnstile-style human check cannot run, because `ensure_developer_token()`
+runs in `setup()` before any webview exists; per-install registration in KV/D1 stops no script
+and would put user data in the Worker, which breaks the privacy claim above).
+
+The control that actually matters is **how fast the key can be rotated and how fast every
+install recovers**. Two earlier decisions worked against that, so both change:
+
+- **Lifetime 60 days, refresh margin 15 days** (was 150/30). A scraped token cannot be
+  revoked, so its lifetime *is* the blast radius. Cost: ~6 startup fetches per install per
+  year instead of ~2. Still one fetch at startup, still zero network per Apple call.
+- **Refetch once on a 401 from Apple** (was startup-only). The old reasoning — "a refresh
+  would mint from the same key" — held while `apple.rs` signed locally. Once the **Worker**
+  signs, a rotated key means the Worker mints from a *different* key, so one refetch heals the
+  install. Without it, rotating the key leaves honest users broken until the margin passes.
+  Guard it with a local cooldown (one refetch per process, or per hour) so an Apple outage
+  cannot loop.
+
+Free hardening, no further decision needed:
+
+- Require `User-Agent: DeetsMusic/<version>`; answer anything else **403**. Not security —
+  it sheds drive-by scanners and keeps the logs readable.
+- Respond `Cache-Control: no-store`. **Never log the token or the client IP.**
+- `KEY_ID` is a secret, not a var, so the key can be swapped without a code change.
+- The cached token is a bearer credential: it must reach only Rust and the webview
+  (`apple_developer_token`). It must **never** appear on the loopback bridge or the agent
+  routes. That invariant holds today — keep it.
+
+### What the rate limit is actually for (2026-09-11)
+
+Two things it is **not**. It does not sit in front of Apple: `developer_token()` is called
+once per operation and the string is then passed down (`library.rs:585` hands it to
+`AppleProvider` for a whole sync; `enrich.rs:284` per batch), so after the cache lands those
+are pure memory reads. **A 10,000-track library pull makes zero Worker requests.** And it is
+weak anti-theft: a thief needs **one** token and then holds it for 60 days, which no per-IP
+limit prevents.
+
+Its real job is to stop a runaway client loop and keep the bill at zero. Judged that way a
+tight number is all cost, so:
+
+- **30 per 60 s per IP.** An honest install fetches ~8 times a **year** (one startup fetch,
+  only inside the 15-day margin). The headroom is for shared addresses — office NAT, CGNAT,
+  a campus, a busy VPN exit — where many installs can leave by one IP.
+- **The client must survive a 429.** If the cached token is still inside its expiry, keep
+  using it and retry at the next launch. A 429 must never block startup or sign the user out.
+- **Cool down the 401 refetch: one per process.** That path is the only way a client can
+  generate Worker requests in a tight loop.
 
 ### The cost to name
 

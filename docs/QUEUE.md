@@ -89,7 +89,34 @@ never heard, so it's disposable). Anything you *did* hear stays in the trail.
 
 ## Windowing — `loadFromModel`
 
-`WINDOW_BACK = 50` behind + `current` + `WINDOW_FWD = 200` ahead are fed to MusicKit.
+The window is fed in **three steps** (2026-09-12, the click-to-sound pass — `src/perf.ts`):
+
+1. **The click feed is the clicked song alone**, as a MediaItem **descriptor** built by
+   `describe()` from the cached Track's play parameters (`setQueue({ items })`). MusicKit
+   skips its resolve round trip entirely: ~5 ms, against 130–250 ms for 8 ids and
+   500–1300 ms for 200 ids by id. **No back window**: Previous from a freshly clicked song
+   re-windows (`prevRewindow`), which costs the same ~1 s as MusicKit's native skip, since
+   MusicKit preloads no license or bytes for neighbours anyway. Previous after a natural
+   advance or a Next is still native — MusicKit keeps its played items.
+2. **`growNow()`** — the moment play resolves, the next `GROW_NOW = 8` upcoming ids are
+   appended **by id** (one `playLater`, ~130 ms, off the click path). This is what natural
+   song-to-song advance needs: **MusicKit's auto-advance cannot load a descriptor-fed
+   item** (measured: it goes to `ended` with no now-playing item), but it advances fine
+   from a descriptor current into an id-resolved next. Dead ids are caught here by the
+   NOT_FOUND retry, so none ever enter the queue.
+3. **`scheduleGrow()`** — `GROW_DELAY_MS = 1500` later, the same low-water top-up
+   (`maybeTopUpWindow` → one batched `playLater`) brings the forward side up to
+   `WINDOW_FWD = 200`. A second click inside the delay cancels the pending grow; one
+   that lands mid-grow awaits the in-flight `topUp` promise (≤ ~130 ms for step 2), so a
+   stale `playLater` can never append into a queue that `setQueue` has since replaced.
+
+The id form (`setQueue({ songs: ids })`, `current` + `ID_FALLBACK_FWD = 5` ahead) stays as
+the fallback: when the current has no Track in the store, when the MusicKit build rejects
+the descriptor form (`itemsMode` remembers that for the session), and when a
+descriptor-fed *play* fails — the window is re-fed by ids once, which runs the NOT_FOUND
+dead-id retry below, so a dead clicked song still yields the next live one.
+`player:loadWindow` logs which form took (`fed`).
+
 The full plan stays in the model; the window gives native gapless + Previous-into-backlog
 around the click. Jumps/seeks that land *outside* the live window force a fresh `setQueue`
 and **buffer** (the documented latency; `isLoading`/`PlayerState.loading` is the cover-up
@@ -269,10 +296,61 @@ is silently absent from what MusicKit is fed (it reconciles as model-only, same 
 beyond-window entry — the alignment invariant treats MK as a subsequence, so no
 `player:misalign`).
 
-**Future work:** persist the denylist (SQLite) so it survives restarts, and let catalog
-hydrate repair or clear stale `catalogId`s at the source.
+**Persisted (2026-09-12).** `markDead` writes every banked id to the cache db's `dead_ids`
+table (`dead_ids_mark`: `reason` = `not-found` | `unavailable`, `first_seen`, `marked_at`);
+`loadDeadIds` reads the marks from the last 7 days (`dead_ids_cached`) at the idle
+warm-up and at `initPlayer`. After 7 days a mark is ignored, so a song Apple restores is
+tried once more; a new rejection refreshes `marked_at` but keeps `first_seen`.
+`dead_ids_mark` returns the ids with no earlier row (logged as `player:deadFresh`) — the
+trigger for the future toast (FUTURE-SETTINGS §18). Deleting the cache clears the marks.
+
+**Future work:** let catalog hydrate repair or clear stale `catalogId`s at the source.
 
 ---
+
+### Dead ids surface at play time in the descriptor form (2026-09-12)
+
+The descriptor-fed window is never resolved up front, so a stale catalog id is not caught
+by `setQueue` — it is caught when MusicKit reaches it. Two shapes, one heal:
+
+- **Explicit Next** into a dead item: `skipToNextItem` rejects with
+  `CONTENT_UNAVAILABLE: This song is currently unavailable.` and MusicKit stays on the
+  old song.
+- **Auto-advance** into a dead item: MusicKit emits **no error at all** — `playbackState`
+  goes to `ended` with **no now-playing item** while the model still has upcoming songs
+  (`mediaPlaybackError` never fired). `onEndedWithoutItem` keys on exactly that shape. The
+  same shape with MusicKit's own queue exhausted means the song ended inside the grow
+  delay (nothing is dead): the model advances and re-windows (`player:windowDry`).
+
+`healDeadNext` jumps the model to the first upcoming entry that still has a live play id
+(entries in between are discarded like any jump) and **re-windows through
+`loadFromModel`** — the same load every click takes, so `windowPos` and model-follow stay
+exact. (Reconciling MusicKit's upcoming in place and skipping again was tried first and
+left the index-based follow one song off.) It **banks the id in `deadIds` only on
+MusicKit's own word** — the skip rejection or a `mediaPlaybackError`. The end-of-song
+shape also follows a transient failure (a `MEDIA_LICENSE` hiccup was observed), and banking
+there skipped *live* songs for the session; an unbanked re-window onto a truly dead song
+fails into the id re-feed, whose NOT_FOUND retry banks it properly. Since the grow feeds
+by id, dead ids no longer reach MusicKit's queue at all in normal play — these paths are
+the belt-and-suspenders. Logged as `player:deadNext` (`bank` says which).
+
+## Restore across sessions (2026-09-12)
+
+`src/queue-persist.ts`. The three zones are saved as **one JSON blob** in the cache db's
+`meta` table (`queue_state`, Rust `queue_state_get/set`) — debounced 500 ms on every
+`onQueueChange` and flushed on `beforeunload` — and read back once at launch per the
+`restoreQueue` setting: **song** (default) = last session's current comes back as the
+model's `current`, so Now Playing shows it *paused* with its cover, Up Next and the
+Previous chain intact; **queue** = the song is parked at the head of upcoming and Now
+Playing stays idle (the placeholder cover); **off** = start empty (still written).
+`queue.restore` deliberately does NOT go through `setCurrent`: restoring is not playing,
+so `played` flags and the play log stay as saved. **Nothing is fed to MusicKit at
+launch** — the first Play (`playPause` with no MusicKit item but a model current →
+`loadFromModel`; with only upcoming → `jumpToUpcoming(0)`) or any click loads through the
+normal path, so windowing and model-follow gain no new cases. Radio mode has no plan to
+restore; a station is not remembered. Names and art resolve through the track store (the
+durable `seen` rows cover catalog-only songs), and Now Playing repaints once the store's
+first load lands.
 
 ## The session play log — the History card's source
 

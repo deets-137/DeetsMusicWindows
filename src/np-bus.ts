@@ -67,13 +67,16 @@ function snapshot(): NpState {
   const cur = queue.getCurrent();
   const t = cur ? resolveEntry(cur) : undefined;
   const catalogId = cur?.catalogId ?? t?.catalogId;
+  // MusicKit's item first; the model's current fills in when MusicKit holds nothing (a
+  // restored session before the first Play) — the same gap-fill the Now Playing card does.
+  const title = lastState.title ?? t?.title;
   return {
-    active: !!lastState.title,
+    active: !!title,
     playing: lastState.playing,
     station: lastState.station?.name,
-    title: lastState.title,
-    artist: lastState.artist ?? lastState.station?.name,
-    album: lastState.album,
+    title,
+    artist: lastState.artist ?? t?.artistName ?? lastState.station?.name,
+    album: lastState.album ?? t?.albumName,
     artworkUrl: lastState.artworkUrl,
     artworkTemplate: t?.artwork?.urlTemplate,
     catalogId,
@@ -229,7 +232,7 @@ export function initNpBus(): void {
     publish();
   });
   // Library membership changes (sync, an add from the tray/extension) flip the "+".
-  onTracksChange(() => publish(true));
+  onTracksChange(() => publish(true), "np-bus.publish");
 
   listen<NpCommand>("np-command", (e) => {
     run(e.payload).catch((err) => console.error("[np-bus] command failed:", e.payload, err));

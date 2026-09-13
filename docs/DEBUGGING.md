@@ -39,6 +39,55 @@ Auto-captured (no flag needed):
 - `window:error`, `window:unhandledrejection` — uncaught errors land in the buffer
   automatically (e.g. the *"play() without a previous stop()/pause()"* rejection).
 
+**Dev-only click-to-sound telemetry** (`src/perf.ts`, gated on Vite's `DEV` flag — the
+installed build ships none of it; `npx vite build` + grep for `perf:` confirms). Every
+song click (and every Next) stamps `perf:*` marks, each `{ ms }` since the click: `click`
+(before the transient ingest) → `model` (playContext entered) → `context` (MusicKit
+configured; differs from `model` only if the idle warm-up hadn't run) → `quiet` (the
+pre-swap pause resolved) → `window` (`setQueue` resolved) → `sound` (MusicKit's
+playbackState said `playing`) → **`audible`** (the media element's own `playing` event —
+the honest end; MusicKit says `playing` 0.5–0.9 s before audio flows) → `resolve`.
+`perf:span` lines time synchronous steps (`ingest`, `materialize`, `describe`,
+`setContext`, `emit.loading`, and every track-store subscriber by label —
+`library.reload`, `qcard`, `history`, `rewind`, `np.add`, `np.fav`, `np-bus.publish`).
+
+Each play also writes **one line to the dev log** (`diag_flush` with a single line) so a
+driver outside the webview — the CLI/MCP, a tail on `deetsmusic.log` — can read results:
+`[perf] click→sound N ms (MusicKit said playing at S) · model+render · [init ·] pause ·
+setQueue · stream {meta} | spans: … | net: @start+duration host/path …`. `meta` carries
+the click (`where`, `n`, `ids`, `pos`, `fed` = descriptor or id form) plus session notes
+(`eme` = the key system MusicKit asked for, `drm` = warm-up outcome, `itemsOff`,
+`mkErrorEvent`). `net` is every request MusicKit made during the click, read from the
+resource-timing buffer (account check, `webPlayback`, `widevineCert`,
+`acquireWebPlaybackLicense`, the audio byte ranges). Out-of-click facts land as
+`[perf] <event> {…}`: `grow` (the window top-up after a click), `deadNext`, `windowDry`,
+`misalign`, `desync`, `itemsPlayFailed`, `playbackError`, `stateNoItem`, `abandon`
+(`superseded` = a second click landed on top, `loadError`, `reclick`, `stale`).
+
+**Driving it from outside — the recipes (2026-09-12).** `deetsmusic` MCP `play` returns
+after the play resolves, so `grep "\[perf\]" %APPDATA%\com.deetsmusic.dev\deetsmusic.log
+| tail -1` right after it is that play's line (the `audible` mark can land ~1 s later —
+poll for the newest line). Only the dev app should be running, so the MCP finds its
+bridge (the CLI probes the port list; the installed app would win).
+- **Warm series:** `play` a few playlists in a row (`list playlists` for ids). The first
+  play after a page reload is a *cool* one (fresh connections, the account check).
+- **Song-to-song advance:** `play`, wait for the `grow` line, `control seek 97`, wait
+  ~10 s, then `now_playing` + the log. A healthy advance logs nothing; `deadNext`,
+  `windowDry`, `desync` or `misalign` are findings.
+- **Dead ids:** the "Sad Collection" playlist (`list playlists`) has one; expect
+  `reconcile: N unresolvable id(s) dropped` from the grow, never a skip at play time.
+- **Cold start:** stop the dev exe (`Get-Process deetsmusic | ? Path -like '*target\debug*'
+  | Stop-Process`; the `dev:app` runner exits with it), relaunch `npm run dev:app` in the
+  background, wait for the `start:` line in the log, give the idle warm-up ~5 s, then
+  `play`. A click inside the first 1.5 s pays the old init cost by design.
+- **Queue restore:** `play`, `control next`, wait >1 s for the debounce, stop + relaunch,
+  `list queue` should show the same Now + Up Next; `control play` resumes it.
+Limits: the MCP always plays a list from its first song (a 3,895-row library click stays
+a hand test), and its round trip is ~1 s, so Previous within 3 s of a click (the
+re-window path) can't be reached from here. Vite reloads the page on every `src/` save,
+which resets MusicKit and reloads `deadIds` from the db — useful for a fresh state, fatal
+for a test in progress. To forget the saved dead ids, delete the rows in `dead_ids`.
+
 Player events (`src/player.ts`):
 - `player:configured` — MusicKit configured (+ authorized?)
 - `player:playContext` — `{ startIndex, len }` a context started
@@ -60,8 +109,11 @@ Player events (`src/player.ts`):
 - `player:deadIds` — `{ where, n, attempt, bad }` MusicKit rejected a feed with
   `NOT_FOUND` and the named ids were banked in the session denylist, then the op rebuilt +
   retried (`where` = which path: the window load, `enqueue:*`, `move-*`, `reconcile`). See
-  [QUEUE.md §Dead ids](QUEUE.md). Routine after a fresh launch; a *flood* of these means the
-  sync is producing stale catalog ids.
+  [QUEUE.md §Dead ids](QUEUE.md). Rare after the first contact (the denylist is saved); a
+  *flood* of these means the sync is producing stale catalog ids.
+- `player:deadLoaded` — `{ n }` the saved dead ids (last 7 days) loaded at launch
+- `player:deadFresh` — `{ reason, fresh }` ids found dead for the first time on this install
+  (the future toast's trigger)
 - `player:loadWindow` — `{ ids, pos }` a window (re)fed to MusicKit
 - `player:loadError` / `player:loadSkip` — a window load failed (error rethrown to the
   caller) / was superseded by a newer click before it ran (loads are serialized + coalesced)

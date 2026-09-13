@@ -9,13 +9,14 @@
 // explicit mirror re-sync that also drops content caches.
 
 import { setting } from "./settings-store";
-import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, addToPlaylistItem, onPlaylistsChange, foldersList, folderCreate, folderRename, folderDelete, folderAssign, type PlaylistFolder } from "./playlists";
+import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, playlistSetCover, addToPlaylistItem, onPlaylistsChange, foldersList, folderCreate, folderRename, folderDelete, folderAssign, type PlaylistFolder } from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addSongToLibraryItem } from "./library-add";
+import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
-import { musicCell, trackMenu } from "./library-card";
+import { musicCell, trackMenu, explicitBadge } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { requestCard } from "./layout-bus";
 import type { CardDef } from "./cards";
@@ -34,6 +35,39 @@ const APPLE_SIGIL =
 
 // Auto-sync the mirror once per session — a slot remount must not re-hit Apple.
 let sessionSynced = false;
+// Apple's generated Favorite Songs list seeds the ♥ mirror (favorites.rs) when its
+// tracks are fetched — once per session, right after the mirror sync.
+let favoritesSeeded = false;
+
+/** Pick an image file, shrink it to a square JPEG data URL, and set it as the cover.
+ *  Resized here so the stored cover is small (≈50 KB), whatever the source file. */
+function pickCover(p: Playlist): void {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const SIDE = 512;
+      const c = document.createElement("canvas");
+      c.width = SIDE;
+      c.height = SIDE;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      // Center-crop to a square, like every other cover.
+      const s = Math.min(img.naturalWidth, img.naturalHeight);
+      ctx.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, SIDE, SIDE);
+      playlistSetCover(p, c.toDataURL("image/jpeg", 0.85)).catch((e) => console.error("[playlists] set cover", e));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); console.warn("[playlists] cover: not an image"); };
+    img.src = url;
+  });
+  input.click();
+}
 
 // ── sections (PLAYLISTS.md §Folders) ────────────────────────────────────────────
 // The overview is a heterogeneous pos-pinned "shelf list" (the Radio grammar):
@@ -152,7 +186,7 @@ export const playlistsCard: CardDef = {
       if (trackCache.has(id) || pending.has(id)) return;
       pending.add(id);
       tracksOf(p)
-        .then(() => card.reload())
+        .then((ts) => { reconcile(ts); card.reload(); }) // ♥ state for rows the mirror hasn't seen
         .catch((e) => console.error("[playlists] tracks", e))
         .finally(() => pending.delete(id));
     };
@@ -196,7 +230,7 @@ export const playlistsCard: CardDef = {
           t.title.toLowerCase().includes(q) ||
           t.artistName.toLowerCase().includes(q) ||
           (t.albumName?.toLowerCase().includes(q) ?? false),
-        render: (t, density, idx) => musicCell(density, idx, t.artwork, t.title, t.artistName),
+        render: (t, density, idx) => musicCell(density, idx, t.artwork, t.title, t.artistName, { badge: explicitBadge(t) }),
         // Click a song → play the playlist from here, in the current sort order.
         activate: (_t, idx, items) =>
           void playTracks(items, idx, ctxTag).catch((e) => console.error("[playlists] play", e)),
@@ -302,6 +336,10 @@ export const playlistsCard: CardDef = {
       // Greyed while it has songs: the non-empty delete UX is a decided-later slice.
       // The change bus (below) handles the cache eviction + list reload.
       if (p.source === "local") {
+        // A cover of the user's own (NEXT-VERSION §2). Local only: Apple's API cannot
+        // receive one, so an exported playlist keeps whatever Apple generates.
+        items.push({ label: p.artwork ? "Change Cover…" : "Set Cover…", run: () => pickCover(p) });
+        if (p.artwork) items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch(err("remove cover")) });
         const n = trackCache.get(pid(p))?.length ?? p.trackCount ?? 0;
         items.push({
           label: "Delete Playlist",
@@ -392,6 +430,7 @@ export const playlistsCard: CardDef = {
             x.kind === "playlist"
               ? musicCell(density, idx, x.p.artwork, x.p.name, subOf(x.p), {
                   badge: x.p.source === "apple" ? APPLE_SIGIL : "",
+                  mosaic: x.p.coverUrls, // the derived cover when there's no artwork
                 })
               : shelfCell(x, idx),
           activate: (x) => {
@@ -459,6 +498,15 @@ export const playlistsCard: CardDef = {
           return load();
         })
         .then(backfillCounts) // new playlists from the sync get their counts too
+        .then(() => {
+          // Seed the ♥ mirror from Apple's generated Favorite Songs list (the only
+          // list-all of favorites Apple offers). One fetch per session; cache-first.
+          if (favoritesSeeded) return;
+          const fav = lists.find((p) => p.source === "apple" && p.name === "Favorite Songs" && !p.canEdit);
+          if (!fav) return;
+          favoritesSeeded = true;
+          return playlistTracks(fav).then(() => initFavorites());
+        })
         .catch((e) => console.error("[playlists] sync", e))
         .finally(() => refreshBtn?.classList.remove("is-busy"));
     };
