@@ -3,13 +3,16 @@ import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
 import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
+import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
-import { connect, disconnect, isConnected } from "./apple";
+import { connect, disconnect, isConnected, SignInError } from "./apple";
+import * as health from "./apple-health";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn } from "./player";
+import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,6 +21,7 @@ import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
+import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
 import { runWeeklyReplay } from "./replay";
@@ -32,6 +36,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSkin();
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
+  initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
   initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
@@ -73,8 +78,14 @@ window.addEventListener("DOMContentLoaded", () => {
   // transition so the old snapshot never catches it half-closed.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), { after: close });
-      publishAppearance(); // tray panel + extension popup follow (they snap)
+      // `after` runs inside the transition's update callback, AFTER applyTheme — a publish
+      // outside it would read the attributes before they flip and report the OLD theme.
+      withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), {
+        after: () => {
+          close();
+          publishAppearance(); // tray panel + extension popup follow (they snap)
+        },
+      });
     });
   });
 
@@ -82,8 +93,13 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       const skin = el.dataset.skinChoice as SkinName;
-      withAppearanceTransition("skin", () => applySkin(skin), { skin, after: close });
-      publishAppearance();
+      withAppearanceTransition("skin", () => applySkin(skin), {
+        skin,
+        after: () => {
+          close();
+          publishAppearance();
+        },
+      });
     });
   });
 
@@ -150,20 +166,97 @@ window.addEventListener("DOMContentLoaded", () => {
         note ?? (state === "in" ? "Connected" : state === "out" ? "Not connected" : "Working…");
     }
   };
-  isConnected().then((c) => setAccount(c ? "in" : "out"));
+  // The row follows Apple health too (apple-health.ts): a token on disk only means the
+  // user signed in once, not that Apple still accepts it. An expired sign-in reads as
+  // signed out (the button signs in); an Apple-side problem keeps "Connected" and says so.
+  let acctTrouble: health.Trouble = "none";
+  const paintAccount = async (note?: string) => {
+    const hasToken = await isConnected();
+    if (!hasToken) return setAccount("out", note);
+    if (acctTrouble === "signin") return setAccount("out", note ?? "Sign-in expired");
+    const troubleNote =
+      acctTrouble === "app" ? "Connected · Apple Music isn't responding" : acctTrouble === "offline" ? "Connected · Offline" : undefined;
+    setAccount("in", note ?? troubleNote);
+  };
+  health.onTrouble((t) => {
+    acctTrouble = t;
+    void paintAccount();
+  });
+
+  // Sign-in failures in plain words, each with the button that helps (TOASTS.md §Apple
+  // health). The flyout is usually closed by the time a sign-in ends, so the toast is
+  // the visible half; the raw reason stays in the console and the log.
+  const signInFailed = (e: unknown) => {
+    const retry = [{ label: "Try again", run: () => void signIn() }];
+    const code = e instanceof SignInError ? e.code : "other";
+    if (code === "unavailable") health.show("app", true, "signin");
+    else if (code === "offline") health.show("offline", true, "signin");
+    else if (code === "timeout") toast({ kind: "error", text: "Sign-in didn't finish in time.", actions: retry });
+    else if (code === "ports") toast({ kind: "warn", text: "Another sign-in page is still open. Close it, then try again.", actions: retry });
+    else if (code === "rejected")
+      // Apple said Unauthorized: an Apple-side problem gets its own toast; otherwise say it plainly.
+      void health.check(true, true, "signin", true).then((r) => {
+        if (r.trouble !== "app" && r.trouble !== "offline")
+          toast({ kind: "warn", text: "Apple Music didn't accept the sign-in. Try again in a few minutes.", actions: retry });
+      });
+    else toast({ kind: "warn", text: "Sign-in didn't finish. Try again.", actions: retry });
+  };
+
+  const signIn = async () => {
+    setAccount("loading", "Continue sign-in in your browser…");
+    try {
+      await connect();
+      noteSignedIn(); // the first playback failure after this gets the subscription hint
+      health.reset();
+      await paintAccount();
+    } catch (e) {
+      console.error("[account] sign-in failed", e);
+      await paintAccount("Sign-in didn't finish");
+      signInFailed(e);
+    }
+  };
+
+  const signOut = async () => {
+    setAccount("loading", "Disconnecting…");
+    try {
+      await disconnect();
+      health.reset();
+      await paintAccount();
+    } catch (e) {
+      console.error("[account] sign-out failed", e);
+      await paintAccount();
+      toast({ kind: "warn", text: "Couldn't sign out. Try again." });
+    }
+  };
 
   acctBtn?.addEventListener("click", async () => {
-    const wasIn = await isConnected();
-    setAccount("loading", wasIn ? "Disconnecting…" : "Continue sign-in in your browser…");
-    try {
-      if (wasIn) await disconnect();
-      else await connect();
-      setAccount((await isConnected()) ? "in" : "out");
-    } catch (e) {
-      console.error("[account] auth error", e);
-      setAccount((await isConnected()) ? "in" : "out", `Error: ${e instanceof Error ? e.message : String(e)}`);
-    }
+    const signedIn = (await isConnected()) && acctTrouble !== "signin";
+    void (signedIn ? signOut() : signIn());
   });
+  window.addEventListener("deets:sign-in", () => void signIn()); // the "Sign in" toast button
+  void paintAccount();
+
+  // No developer token at all (a first run offline, or the mint's KILL switch —
+  // RELEASE.md §7): Rust logged it at setup and every Apple call will fail with the
+  // same text, but the window looks fine. Say so once, at launch (TOASTS.md). Local,
+  // zero-cost: the command reads the static the setup step resolved.
+  invoke<string>("apple_developer_token").catch((e) => {
+    console.warn("[boot] no developer token:", e);
+    toast({ kind: "error", text: "Can't reach the token service. Check your connection and restart DeetsMusic." });
+  });
+
+  // Remote notice (support.md): the Worker's CONFIG `notice` rides the /token response,
+  // so an outage message reaches installs without a release. It refreshes when the token
+  // does (about weekly). Shown once per distinct text; "Don't show again" silences that text.
+  invoke<{ notice?: unknown }>("apple_remote_config")
+    .then((cfg) => {
+      const text = typeof cfg?.notice === "string" ? cfg.notice.trim() : "";
+      if (!text) return;
+      let h = 5381;
+      for (const ch of text) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+      toast({ kind: "info", text, dismissKey: `deets.notice.remote.${h.toString(36)}` });
+    })
+    .catch((e) => console.warn("[boot] remote config:", e));
 
   // ── Shared library store: one load, read by every card ──
   initTrackStore();
@@ -172,6 +265,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Warm MusicKit + the DRM module at idle so the session's first click pays neither
   // (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the click before this).
   window.setTimeout(warmPlayer, 1500);
+  frames.init(); // dev-only frame telemetry (frames.ts): scroll / scrub / slide / drag windows
 
   // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
   // store has had a moment to load so the ranking can resolve titles.

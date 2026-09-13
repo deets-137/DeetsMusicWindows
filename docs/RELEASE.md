@@ -148,6 +148,9 @@ repo). The user wants a design session on it. The forks to bring:
 - **The publish step:** extend `npm run release` to sign, upload, and write `latest.json`.
 - **The kill switch:** the worker's `KILL` var must not also block updates, or a bad token
   release could not be fixed by an update.
+- **The remote notice (parked here 2026-09-13):** the mint's config already carries a notice
+  and a minimum version, but no front-end code reads them. Decide with the updater how they
+  surface: a notice toast and an "update available" toast (TOASTS.md §5).
 
 ## 7. Distributing a usable build — the developer token
 
@@ -165,7 +168,8 @@ repo). The user wants a design session on it. The forks to bring:
 > `developer-token-changed` reconfigure). **The dead first run is desk-tested via `KILL`:** no key,
 > no cache, mint 503 → the window opens, the log reads `no developer token: no local MusicKit key
 > and mint switched off (503)`, and a search shows the same text. The offline case shares that
-> branch (only the string differs). Wanted later: a launch toast for it (FUTURE-SETTINGS §18).
+> branch (only the string differs). The launch toast for it is built ([TOASTS.md](TOASTS.md) §5,
+> 2026-09-13; not yet desk-tested against `KILL`).
 > Steps 1–4 done; step 5 (the release) remains.
 
 ### The problem
@@ -356,6 +360,39 @@ tight number is all cost, so:
   using it and retry at the next launch. A 429 must never block startup or sign the user out.
 - **Cool down the 401 refetch: one per process.** That path is the only way a client can
   generate Worker requests in a tight loop.
+
+### Revised 2026-09-13 — D.7 hardening (Apple terms pass)
+
+Read against the Apple Developer Program License Agreement §3.3.6.D.7 ("not use developer
+tokens or private keys … in any manner not expressly authorized") and §2.8 (no sharing access
+to Apple services). Decided and built:
+
+- **Lifetime 14 days, one shared token per 7-day window** (was 60 days, a new token per
+  request). Every token in a window expires at the same instant, so the Worker hands out one
+  token rather than an unlimited supply. Held per isolate and in the colo's Cache API, keyed by
+  window + `KEY_ID` + origins; no KV, no D1. `iat` is never back-dated. The app's refresh
+  margin drops to **3 days** (it must stay below the window). ~50 fetches per install per year.
+- **Mint counter:** D1 `mint_counts` (day, served, limited), written with `waitUntil` after the
+  response, errors dropped. No IP, token or UA. Read:
+  `npx wrangler d1 execute deets-support --remote --command "SELECT * FROM mint_counts ORDER BY day DESC LIMIT 14"`.
+- **`origin` claim — built, switched OFF** (`TOKEN_ORIGINS` var, empty). Probed 2026-09-13
+  against `api.music.apple.com`: with a claim, Apple answers **401** to a request whose
+  Origin is missing or unlisted (every reqwest call sent none), accepts **no wildcard and no
+  bare host**, and matches host + port exactly. So the app now sends
+  `Origin: http://tauri.localhost` on every Rust call to Apple, and the sign-in page binds a
+  fixed port (47831–47833) instead of an ephemeral one. **Turn it on only once installs older
+  than this change are gone** — an old install would get 401 on everything. There is no
+  auto-updater, so that is a judgement call, not a date. Value: a lifted token stops working
+  on anyone else's web page. It does not stop curl or a native client, which can fake Origin.
+  The value to set: `http://tauri.localhost,http://127.0.0.1:47831,http://127.0.0.1:47832,http://127.0.0.1:47833`.
+  A contributor without a local key running `npm run dev:app` (origin `localhost:<port>`)
+  would also get 401s from MusicKit once it is on; the dev seam (a local `.p8`) is unaffected.
+- **Separate key for the live mint (item 4)** — the user's portal step; see HANDOFF.
+
+Compliance items shipped with it: the Apple Music icon replaces the Apple logo on the playlist
+badge (Identity Guidelines); a trademark and non-affiliation notice (Settings › About, README);
+a privacy section (README); MusicKit `app.build` reports the real version; the log redacts the
+Music User Token by value (`log::register_secret`), since it is not JWT-shaped.
 
 ### The cost to name
 

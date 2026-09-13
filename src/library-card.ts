@@ -22,7 +22,7 @@ import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
-import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density } from "./collection-card";
+import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, formatTotal } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
 
@@ -143,25 +143,42 @@ function mosaicHTML(cls: string, urls: string[], px: number): string {
   const tiles = urls.length >= 4 ? urls.slice(0, 4) : urls.slice(0, 1);
   const size = tiles.length === 4 ? Math.ceil(px / 2) : px;
   const imgs = tiles
-    .map((u) => `<img src="${esc(u.replace("{w}", String(size)).replace("{h}", String(size)).replace("{f}", "jpg"))}" alt="" loading="lazy" data-art />`)
+    .map((u) => `<img src="${esc(u.replace("{w}", String(size)).replace("{h}", String(size)).replace("{f}", "jpg"))}" alt="" loading="lazy" decoding="async" data-art />`)
     .join("");
   return `<div class="${cls} ${cls}--mosaic${tiles.length === 4 ? "" : ` ${cls}--mosaic-one`}" aria-hidden="true">${imgs}</div>`;
 }
 function rowThumb(art: Artwork | undefined, round: boolean, name: string, mosaic?: string[]): string {
   const r = round ? " lib-row__art--round" : "";
   const url = artURL(art, 72);
-  if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" data-art />`;
+  if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
   if (mosaic?.length) return mosaicHTML("lib-row__art", mosaic, 72);
   return `<div class="lib-row__art${r} lib-row__art--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 function tileCover(art: Artwork | undefined, px: number, round: boolean, name: string, mosaic?: string[]): string {
   const r = round ? " lib-tile__cover--round" : "";
   const url = artURL(art, px);
-  if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" data-art />`;
+  if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
   if (mosaic?.length) return mosaicHTML("lib-tile__cover", mosaic, px);
   return `<div class="lib-tile__cover${r} lib-tile__cover--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 const px = (density: Density) => (density === "large" ? 300 : 160);
+
+/** The detail hero's cover (a real cover, a mosaic, or the ♪ placeholder). Fetched at
+ *  2× the token size so it stays crisp on a HiDPI panel. */
+const HERO_PX = 360;
+export function heroCover(art: Artwork | undefined, name: string, mosaic?: string[]): string {
+  const url = artURL(art, HERO_PX);
+  if (url) return `<img class="lib-hero__cover" src="${esc(url)}" alt="${esc(name)}" decoding="async" data-art />`;
+  if (mosaic?.length) return mosaicHTML("lib-hero__cover", mosaic, HERO_PX);
+  return `<div class="lib-hero__cover lib-hero__cover--empty" aria-hidden="true">♪</div>`;
+}
+
+/** "3:41" for a track length; "" when unknown. */
+export const fmtClock = (ms: number | undefined): string => {
+  if (!ms) return "";
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
 
 function rowHTML(idx: number, title: string, sub: string, thumb?: string, selected = false, badge = ""): string {
   const art = thumb ? thumb : "";
@@ -194,11 +211,13 @@ export function musicCell(
   art: Artwork | undefined,
   primary: string,
   sub: string,
-  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[] } = {},
+  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; num?: number } = {},
 ): string {
-  const { round = false, hideCover = false, selected = false, badge = "", mosaic } = opts;
+  const { round = false, hideCover = false, selected = false, badge = "", mosaic, num } = opts;
+  // `num` (an album's track number) takes the cover's slot on a line row.
+  const slot = num !== undefined ? `<span class="lib-row__num">${num}</span>` : hideCover ? undefined : rowThumb(art, round, primary, mosaic);
   return density === "lines"
-    ? rowHTML(idx, primary, sub, hideCover ? undefined : rowThumb(art, round, primary, mosaic), selected, badge)
+    ? rowHTML(idx, primary, sub, slot, selected, badge)
     : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic), primary, sub, selected, badge);
 }
 
@@ -210,6 +229,11 @@ const songSorts: SortSpec<Track>[] = [
   { key: "az", label: "A–Z", type: "str", get: (t) => t.title },
   { key: "release", label: "Release Date", type: "str", get: (t) => t.releaseDate },
   { key: "added", label: "Added Date", type: "num", get: (t) => recency(t.addedRank) },
+];
+// An album detail leads with disc/track order; the shared song sorts follow.
+const trackSorts: SortSpec<Track>[] = [
+  { key: "track", label: "Track Order", type: "num", get: (t) => (t.discNumber ?? 1) * 1000 + (t.trackNumber ?? 0) },
+  ...songSorts,
 ];
 const albumSorts: SortSpec<AlbumGroup>[] = [
   { key: "az", label: "A–Z", type: "str", get: (a) => a.name },
@@ -322,6 +346,7 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
 // ── groupings ─────────────────────────────────────────────────────────────────
 interface SongOpts {
   hideCover?: boolean; // album detail: every track shares the cover, so omit it
+  numbered?: boolean; // album detail: track number in the cover's slot, length as the subline
   selectedId?: string; // highlight this track (e.g. drilled-in)
   context?: string; // queue-origin tag for entries played from this list
   nav?: LibNav; // in-place "Go to Artist/Album" (Library only)
@@ -330,7 +355,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {
     key: "songs",
     label: "Songs",
-    sorts: songSorts,
+    sorts: o.numbered ? trackSorts : songSorts,
     list,
     name: (t) => t.title,
     match: (t, q) =>
@@ -338,8 +363,9 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
       t.artistName.toLowerCase().includes(q) ||
       (t.albumName?.toLowerCase().includes(q) ?? false),
     render: (t, density, idx) =>
-      musicCell(density, idx, t.artwork, t.title, t.artistName, {
+      musicCell(density, idx, t.artwork, t.title, o.numbered && density === "lines" ? fmtClock(t.durationMs) : t.artistName, {
         hideCover: o.hideCover,
+        num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
         selected: !!o.selectedId && trackId(t) === o.selectedId,
         badge: explicitBadge(t),
       }),
@@ -426,19 +452,38 @@ export const libraryCard: CardDef = {
     // `tracks` is the shared store's live accessor — no per-card copy of the library.
     // detail contexts (filter live over the current cache via closures)
     // album detail: track number order feels right for an album, so default to it
-    const albumDetail = (a: AlbumGroup, highlight?: Track): Context => ({
-      title: a.name,
-      density: true,
-      groupings: [
-        songsGrouping(() => tracks().filter((t) => albumKey(t) === a.key), {
-          hideCover: true,
-          selectedId: highlight ? trackId(highlight) : undefined,
-          context: `album:${a.key}`,
-          nav: libNav,
-        }),
-      ],
-      defaults: { density: "lines", sortKey: "az" },
-    });
+    const albumDetail = (a: AlbumGroup, highlight?: Track): Context => {
+      const list = () => tracks().filter((t) => albumKey(t) === a.key);
+      return {
+        title: a.name,
+        headerLabel: "Album",
+        // The hero: cover, name, the artist as a tappable subtitle (→ artist detail), and
+        // year · songs · length. Read live so a sync that adds a track updates the line.
+        hero: () => {
+          const ts = list();
+          const artist = a.artist || ts[0]?.artistName || "";
+          const year = (a.releaseDate ?? ts.find((t) => t.releaseDate)?.releaseDate)?.slice(0, 4);
+          const total = formatTotal(ts.reduce((n, t) => n + (t.durationMs ?? 0), 0));
+          return {
+            cover: heroCover(a.artwork ?? ts[0]?.artwork, a.name),
+            title: a.name,
+            sub: artist ? { text: artist, run: () => libNav.drillArtist(artist) } : undefined,
+            meta: [year, `${ts.length} song${ts.length === 1 ? "" : "s"}`, total].filter(Boolean).join(" · "),
+          };
+        },
+        density: true,
+        groupings: [
+          songsGrouping(list, {
+            hideCover: true,
+            numbered: true,
+            selectedId: highlight ? trackId(highlight) : undefined,
+            context: `album:${a.key}`,
+            nav: libNav,
+          }),
+        ],
+        defaults: { density: "lines", sortKey: "track" },
+      };
+    };
 
     const artistDetail = (a: ArtistGroup): Context => {
       const sub = () => creditIndex(tracks()).tracksFor(a.name);

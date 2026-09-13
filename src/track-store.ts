@@ -6,6 +6,7 @@
 import { libraryTracks, librarySync, onSyncEvent, seenTracks, type Track } from "./library";
 import { isConnected } from "./apple";
 import * as perf from "./perf";
+import { toast } from "./toast";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -98,6 +99,18 @@ export function initTrackStore(): void {
   onSyncEvent((e) => {
     // Reload on error too: an incomplete sync still upserted the pages that DID fetch.
     if (e.phase === "done" || e.phase === "error") loadTracks();
+    // One listener for every sync (startup, the Library ⟳), so one toast per failed pass.
+    // The spinner alone just stops, which reads as done (TOASTS.md).
+    if (e.phase === "error") {
+      const n = (x: number) => x.toLocaleString();
+      toast({
+        kind: "warn",
+        text: e.total
+          ? `Library sync stopped at ${n(e.count ?? 0)} of ${n(e.total)} songs. Try Refresh in Library.`
+          : "Couldn't sync your library. Check your connection.",
+        timeout: 6000,
+      });
+    }
   });
   // Stale-while-revalidate, ONCE per session (not per card mount): kick a background
   // re-sync at startup if signed in. Lives here — not in the Library card — so swapping

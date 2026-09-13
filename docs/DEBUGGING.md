@@ -122,6 +122,258 @@ Player events (`src/player.ts`):
 - `player:desync` — **model's `current` ≠ MusicKit's now-playing item** (the bug class
   that froze Up Next). If you see these, model-follow is drifting.
 
+## Frame telemetry — `src/frames.ts` (dev only, 2026-09-13)
+
+The smoothness counterpart of the click-to-sound telemetry, gated on the same `DEV`
+flag (the release bundle carries none of it). It measures whether the main thread
+produces a frame every display period during the gestures that have to feel buttery.
+
+**Windows.** One per interaction, each closing with a single line in the console and
+the dev log:
+`[perf] frames <name> [<detail>] <elapsed> ms · N frames @<hz> Hz · dropped D (P%) ·
+worst W ms [· first F ms] [· longtasks K (max M ms)]`. A dropped frame is a gap over 1.5× the display
+period; `longtasks` are the browser's >50 ms main-thread tasks that overlapped the window
+(the usual cause); `first` appears when the gap from the gesture's own start to its first
+frame — the synchronous build (a pane render, a folder re-render) — is itself over budget. Names: `scroll <container>` (opens itself on any scroll event, closes
+150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
+seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
+`fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
+menu opening), `appearance theme|skin` (the view transition), `sample` (manual).
+
+**The display.** At launch + 3 s the module samples 40 idle frames and logs
+`[perf] display <hz> Hz (period <ms>)`; every window is judged against that period, so a
+144 Hz panel is held to 6.9 ms, not 16.7.
+
+**Inputs.** The Event Timing API reports any press / click / key / wheel (hover traffic is
+skipped, and the press-up-click trio painted in one frame logs once) whose input→paint took
+over two periods: `[perf] input <event> <element-class> <ms> ms (delay <ms>)` — `delay` is
+the wait before the handler ran (a busy main thread), the rest is the handler + paint.
+
+**Driving it from the session.** `__frames` on the console: `__frames.hz`,
+`__frames.begin("x")` (returns the closer), and `__frames.sample(ms)` — a window of the
+given length whose summary line resolves the promise, so
+`node scripts/webview-eval.mjs "document.querySelector('.lib-view').scrollBy({top:3000,behavior:'smooth'}); __frames.sample(1500)"`
+scrolls the Library and returns the frame line (the auto `scroll` window logs its own
+line too). Gestures with a pointer (scrub, drag) are hand tests.
+
+**What it cannot see.** A compositor-only stall (a heavy GPU backdrop blur under the
+Glass skin) delays rAF only once the frame pipeline backs up; a mild one slips through.
+Pair a suspicious skin with devtools → Rendering → *Frame Rendering Stats* and *Paint
+flashing*.
+
+## Reviewing the telemetry — the recipe (2026-09-13)
+
+Where each signal lives and what "bad" looks like. All paths are the DEV app unless said.
+
+1. **Frames.** `grep "\[perf\] frames" %APPDATA%\com.deetsmusic.dev\deetsmusic.log`. Read
+   `dropped N (P%)`, `worst`, `first`, `longtasks`. A `worst` of 2× the period with no
+   `longtasks` is a paint-heavy frame (Glass blur, cover decode); `longtasks` of 100 ms+ is
+   the main thread — style, layout, or our JS. A line with `first` names a synchronous build
+   (pane render, folder re-render) that alone blew the budget.
+2. **Inputs.** `grep "\[perf\] input"`: press→paint over two frames, with the input delay
+   split out. `delay` > 0 means the main thread was busy when the press arrived.
+3. **Heaviness.** `scripts/heaviness-samples.log`, one line per app per sample
+   (`installed` = the live app, `dev`, `dev-page` = the dev page's JS heap / DOM / img
+   count). Written by `scripts/heaviness-sample.ps1 -Loop 3600` (a detached terminal
+   loop; run it again after a reboot). A leak = `renderer` / `heap` / `dom` that only ever
+   climbs across hours of use; a step up that then holds is a cache filling.
+4. **Profile a suspect.** `node scripts/webview-profile.mjs "<expr>"` samples the main
+   thread's JS while `<expr>` runs (a promise is awaited); `--trace` swaps in Chromium's
+   timeline events (Layout, Paint, FunctionCall…) summed by name — the view that says what
+   the engine did. The cold-scroll expression used on 2026-09-13 (a scrollbar-thumb drag
+   through the whole Library in 120 frames, with the frame line as the result):
+   ```
+   (async () => { const w = (ms) => new Promise(r => setTimeout(r, ms)); const lib = [...document.querySelectorAll('.panel')].find(p => p.querySelector('.panel__title')?.textContent?.trim() === 'Library'); const v = lib.querySelector('[data-view]'); v.scrollTo({ top: 0 }); await w(300); const max = v.scrollHeight - v.clientHeight; let y = 0; const step = max / 120; const p = __frames.sample(2200, 'drag'); const f = () => { y += step; v.scrollTop = Math.min(y, max); if (y < max) requestAnimationFrame(f); }; requestAnimationFrame(f); return (await p).replace('[perf] frames ', ''); })()
+   ```
+   **Cold vs warm:** once a cover is in the renderer's memory cache the same pass is
+   perfectly smooth, so a scroll measurement is only meaningful cold. `location.reload()`
+   usually drops the memory cache (the disk cache stays — no Apple traffic) but not always:
+   count `img.complete && img.naturalWidth` before the pass and retry if it is high.
+   **Target the right list:** `document.querySelector('.lib-view')` is whichever card comes
+   first — an 8-row Playlists view once passed for the Library.
+
+### What the 2026-09-13 pass found
+- **Cold Library scroll dropped ~80% of frames, on every skin.** The trace: 16 forced
+  layouts of 140–200 ms, one per frame. Each batch of lazy covers loading dirtied layout,
+  and the list was a flex column, so one dirty row re-laid out all 3,895. Fixed in
+  `styles.css`: the list is a block stack and every art row is a relayout boundary
+  (`contain: size layout` + a pinned `--lib-row-h`). After: no long tasks, worst 34 ms,
+  Press 5% dropped, Glass ~50% two-frame gaps (its blur) with thousands of covers streaming.
+  Not fixed: `decoding="async"` (kept, harmless), `content-visibility: auto` alone,
+  `overflow-anchor: none`, containment on the `<img>` only. Grid densities (tiles) still
+  re-lay out on cover arrival — untested, the tile height is not fixed.
+- **Ambient skin loops cost up to two cores at idle — fixed.** The installed app idled at
+  0.6% on Press and 21–27% on Ocean, same uptime, only the skin changed. Dev A/B (total
+  CPU, 100 = one core, gpu + renderer processes, 10 s each):
+
+  | skin | old | compositor-only layers | + stepped at 30 fps |
+  |---|---|---|---|
+  | Press | 5 | 6 | 4 |
+  | Ocean | 46 | 46 | 12 |
+  | Glass | 205 | 95 | 20 |
+  | Retro-Future | 200 | 46 | 17 |
+
+  Causes: Ocean moved SVG `<rect>`/`<g>` children, Glass animated `background-position`,
+  Retro-Future animated `stroke-dashoffset` under a `drop-shadow` — all main-thread
+  repaints every frame. Now each layer is plain boxes animating transform/opacity only
+  (Ocean = masked tile boxes, Glass = one box per blob, storm = a clip wipe), traced at
+  ~0 main-thread paint. The rest was compositing at the display rate: Ocean's fill masks
+  roughly double GPU work per frame, and any motion under translucent cards redraws the
+  window. `--ambient-fps` (skin token, 30) steps every loop, which cut that by ~⅔.
+  Probe that found it (injected `<style>`): masks off 36→21, motion stopped →0,
+  `steps()` at 30 fps →15.
+- **Skin switch and grid scroll are whole-Library costs (tested, NOT fixed).** Dev app,
+  Retro-Future, 3,897-row Library, styles injected at runtime (no file changes):
+  - *Skin switch* (direct attribute flip, to the 2nd frame): 353–488 ms. Trace: one Layout
+    172–192 ms + style 81–90 ms over ~23k nodes; the View Transition adds ~150–200 ms on top.
+    `album-color.ts`'s rAF `getPropertyValue` (93 ms) only pulls that same style pass forward.
+    `content-visibility: auto; contain-intrinsic-size: auto var(--lib-row-h)` on list rows →
+    **112–145 ms**.
+  - *Cold Small/Large grid scroll*: 83–91% dropped, 7–8 long tasks of ~345 ms. Trace: 8
+    forced Layouts = 1,698 ms — the CSS Grid algorithm re-running over all 3,893 tiles.
+    No tile-level fix helps: `contain: size` on the cover (344 ms), `content-visibility` on
+    tiles (436 ms), a fixed-height `contain: size layout` tile (443 ms). Wrapping the tiles in
+    blocks of 60 (each its own grid, the view a block stack): `contain: layout` blocks still
+    281 ms; **`content-visibility: auto` blocks → 23% dropped, worst 54 ms, no long tasks.**
+  - *Cold list scroll*: no long tasks, worst 42–54 ms, the same on Press and Retro-Future —
+    paint/decode of ~2,000 covers in a 2 s scripted pass, not layout. Low priority.
+- **WebView2 keeps drawing when the window is minimized or hidden to the tray.**
+  `document.visibilityState` stays `visible` and rAF runs at 60/s. `src/ambient.ts` asks
+  the window instead (resize / focus events + a `main-visibility` event from tray.rs's hide
+  and show paths) and sets `data-ambient="paused"`, which pauses the loops in place.
+  Not covered: a window left open behind a full-screen game (not minimized) — untested.
+- **The appearance publish bug** (bridge `/health` reported the OLD skin after a switch):
+  `publishAppearance()` ran outside the view transition, before the attribute flipped.
+  Moved into the transition's `after` callback; verified by clicking through Press/Glass.
+- **On disk:** installer 6.2 MB, exe 19 MB, web bundle 1.3 MB (745 KB of it two Liberation
+  Serif TTFs — WOFF2 would halve the bundle). WebView2 profile ~400 MB per identifier,
+  almost all Chromium's HTTP cache, self-capped.
+
+## Heaviness sampler — `scripts/heaviness-sample.ps1`
+
+One line per running app (installed + dev) per sample: summed working set, the largest
+renderer, the GPU process, and a 5 s CPU rate (100 = one core), then the dev page's heap /
+DOM / img counts when the dev app answers on its CDP port. `-Loop N` repeats every N
+seconds and appends to `scripts/heaviness-samples.log` (gitignored) until the terminal
+closes. Bare `deetsmusic.exe` processes with no WebView2 children (the CLI / MCP bridges)
+are skipped. The tree walk keys on the exe name, so both apps report even when the installed
+one has no CDP port.
+
+## Profiling the webview — `scripts/webview-profile.mjs` (dev only)
+
+Same CDP discovery as webview-eval. Without flags: V8's sampling profiler over the
+expression, top functions and files by self time — `(program)` is the engine outside JS.
+`--trace`: the `devtools.timeline` categories, complete events summed by name with count
+and max on the renderer's main thread (picked as the thread with the most Layout / style /
+paint / script time). Inclusive times: `RunTask` contains everything under it.
+
+## Driving the webview — `scripts/webview-eval.mjs` (dev only)
+The MCP and CLI reach the player through the bridge. They cannot run console calls such
+as `__toast.demo()` or `__diag.dump()`. For those, `npm run dev:app` opens a WebView2
+remote-debugging (CDP) port on the main window. The port is the first free one from 9222
+up. The runner prints it (`webview CDP on 9222`) and appends it to the main window's
+`additionalBrowserArgs` in the generated `src-tauri/.tauri.dev.gen.json`. It does not
+use the `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` env var, because that would replace the
+window's own args, the autoplay flag included.
+
+```
+node scripts/webview-eval.mjs "__toast.demo()"
+node scripts/webview-eval.mjs "__diag.dump(); __diag.flush()"   # or return a value:
+node scripts/webview-eval.mjs "JSON.parse(localStorage.getItem('deets.settings')).toasts"
+```
+
+- The expression runs in the main window as a console line, with a user gesture (so a
+  clipboard write works). Promises are awaited. The value prints as JSON.
+- Exit 1: the expression threw (the message prints). Exit 2: no dev config, no port, or
+  no main-window page.
+- The port binds to loopback and exists only under `dev:app`. `npm run tauri dev` and the
+  release build have no port. A change to the port setup needs a runner restart.
+
+## Toasts — the `__toast` console handle + the morning test script
+The toast primitive ([TOASTS.md](TOASTS.md)) exposes `window.__toast` in every build:
+
+| Call | Does |
+|---|---|
+| `__toast.demo()` | one toast of each kind at once — info, success, warn, error (the error stays until Dismiss) |
+| `__toast.push({ kind, text, sticky, timeout, actions, dismissKey })` | the raw API, returns `{ dismiss, update, shown }` |
+| `__toast.notice()` | a one-time notice under the throwaway key `deets.notice.demo` |
+| `__toast.reset()` | forgets that demo key, so the notice shows again |
+
+Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` or
+`toast:muted` `{ why: "tier-off" \| "tier-failures" \| "notice-off" }`, so
+`__diag.dump()` (or `__diag.echo(true)`) shows what fired and what the tier swallowed.
+`__diag.flush()` writes the buffer to `deetsmusic.log`, so a driver outside the webview
+can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
+
+**Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
+setting is Settings › Window › **Show notices**, default *Failures*.
+
+1. **Look.** `__toast.demo()` in midi: a top-right stack under the Now Playing card,
+   newest on top, at most 3 (the stack is capped, so `demo()`'s four toasts show the last
+   three — the oldest timed one yields; the sticky error survives). The song title stays
+   visible. Resize the window: the stack follows the card's bottom edge. Hover a timed
+   one: its bar stops draining; leave: it resumes. Press Dismiss on the error. Repeat on
+   **max** (Settings menu › Surface): the stack is under the titlebar. Repeat on **mini**:
+   under the card, and the strip clamps to the window width. Then cycle a few themes (the stripe
+   follows the traffic lights — Moonlight/Noir/Siren stay in-family) and skins (Glass
+   frosts the strip; Press squares it). Set Windows' *Show animations* off and `demo()`
+   again: no slide.
+2. **Tier.** Set *Off*: `__toast.demo()` shows nothing; `__diag.dump()` has four
+   `toast:muted`. Set *Failures*: `demo()` shows warn + error only. Set *Everything*: all.
+3. **Notice.** `__toast.notice()` → press *Don't show again* → `__toast.notice()` again
+   shows nothing (`toast:muted`, `notice-off`) → `__toast.reset()` → shows again. Then
+   the real one: right-click a catalog song not in your library › **Add to Library** →
+   the "Added. Apple has no undo…" notice. A second add in the same session: silent under
+   *Failures*, "Added to your library." under *Everything*. Restart: the notice returns
+   once per session until you press Don't show again (`localStorage["deets.notice.addOneWay"]`).
+4. **Copy Link.** Under *Everything*: right-click a song › Copy Link → "Link copied."
+   Under *Failures*: silent. (A failure needs a denied clipboard — skip.)
+5. **Start Station.** Hard to force; a seed with no station is rare. If you know one,
+   use it. Otherwise trust the unit: the branch that used to `console.warn` now toasts.
+6. **Dead songs.** Play a song whose catalog id Apple dropped (the log's
+   `player:deadFresh` from a past session names candidates, or `__music` search for a
+   pulled release). Expect one warn "Skipped “Title” — Apple Music no longer offers it."
+   Play it again: silent (the mark is on disk). A cache reset (Settings › Library)
+   makes it fresh again.
+7. **Sign-in timeout.** Dev builds read `localStorage["deets.dev.signInTimeoutMs"]`
+   (`apple.ts`) to shorten the 5-minute wait. First back up
+   `%APPDATA%\com.deetsmusic.dev\user-token.txt`, because Disconnect deletes it. Set the key
+   to `15000`, press Account › Disconnect, then Sign in, and ignore the browser tab. After
+   15 s: the sticky "Sign-in did not complete." error. Then remove the key, stop the dev
+   app, put the token file back, and relaunch: the dev app is signed in again, with no
+   browser sign-in. The release build ignores the key.
+8. **No token.** `DEETS_DEV_NO_TOKEN=1 npm run dev:app` (debug builds only; `apple.rs`
+   `ensure_developer_token`) acts as if the local key, the token cache and the mint all
+   failed. The log has `token: no developer token: forced by DEETS_DEV_NO_TOKEN`, and the
+   window opens with the sticky "Can't reach the token service." error (`role="alert"`,
+   Dismiss). Relaunch without the variable to recover. Desk-tested 2026-09-13.
+9. **From the CLI/MCP** (`deetsmusic` tools, AGENT.md): a play that lands on a dead id
+   still writes its `[perf]` line, and `__diag.flush()` from the console (or the next
+   crash/close) puts the `toast` line beside it in the log. There is no bridge route to
+   raise a toast; the console handle is the driver.
+
+10. **Replay, Rewind unlock, no subscription — the dev hooks.** These fire on their own
+    schedule or need an account you do not have, so dev builds (`import.meta.env.DEV`;
+    the release bundle has none of it) add `__toast.sim`. Each hook runs the real code
+    path, not only the toast. Replay and Rewind are `success` / `info`, so set
+    **Everything** first; the no-subscription hint is a `warn` and shows under *Failures*.
+
+    | Call | Does | Side effect |
+    |---|---|---|
+    | `__toast.sim.replay()` | `runWeeklyReplay(true)`: skips the `replayAuto` setting and the due-day check → "Replay updated: N songs from this week." | **Real run.** It rewrites the rolling "Replay" playlist (or adds a dated one with `replayKeep`) and stamps `deets.replay.lastRun`. Fewer than 5 songs played in the past 7 days: no toast, and `__diag.dump()` has `weekly skipped`. |
+    | `__toast.sim.rewind()` | clears `rewindAutoShown`, lifts the in-memory start count to 50, runs the unlock → "Rewind unlocked…" | Sets `rewindCard` on and `rewindAutoShown` back to true, as the real unlock does. The play count on disk does not change. |
+    | `__toast.sim.noSub()` | marks a fresh sign-in, then feeds `onPlaybackError` a synthetic non-"unavailable" error → "Playback failed after sign-in…" (8 s) | A `player:playbackError` line with `msg: "sim: …"` in diag. **Play a song from a list first**: the handler ignores errors outside queue mode, and the hook warns in the console in that case. |
+    | `__toast.sim.armNoSub()` | marks a fresh sign-in only | The next real playback error that is not a dead song raises the hint. Use it to test the real MusicKit error text. |
+
+    Checks: each call once → one toast. `noSub()` twice → two toasts, because each call
+    arms again. After `armNoSub()`, a dead-song error does not use up the arm. Under
+    *Off*, each call gives `toast:muted` in `__diag.dump()`.
+
+Still not testable from your desk: the real MusicKit error text for an Apple ID with no
+subscription. After a sign-in with such an account, read `msg` in `player:playbackError`.
+If that text matches `/unavailable/i`, the hint never fires. Then `isUnavailable` in
+`player.ts` needs a narrower test.
+
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.
 2. `__diag.dump()` (or `__diag.copy()` to paste it somewhere).

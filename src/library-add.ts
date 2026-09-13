@@ -8,11 +8,21 @@
 // builders (siblings of `addToPlaylistItem` in playlists.ts). Callers spread a builder
 // into their menu array; it returns `null` when it shouldn't offer (toggle off, already
 // in the library, or no catalog id), and the caller drops nulls with `.filter(Boolean)`.
+//
+// Feedback (TOASTS.md): a failed add is a timed warn. A successful add is silent by
+// doctrine (the song appears in the Library card) — except the FIRST add in a session,
+// which raises the one-time "no undo" notice (`deets.notice.addOneWay`, FUTURE-SETTINGS
+// §18) until the user presses Don't show again; under the Everything tier the other
+// adds confirm with a timed success.
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
 import type { MenuItem } from "./context-menu";
 import { inLibrary, loadTracks } from "./track-store";
+import { toast, noticeOff } from "./toast";
+
+const NOTICE_KEY = "deets.notice.addOneWay";
+let noticedThisSession = false;
 
 // ── the "Library Add" setting (mirrors deets.alwaysOnTop / deets.menuMode) ──
 const KEY = "deets.libraryAdd";
@@ -45,7 +55,19 @@ export function libraryAddOffered(t: Track): boolean {
 // (the graduated rows now query as source='library'). `tracks` are the rows to reflect
 // locally: the one song, or an album's fetched tracks (fork A).
 async function addToLibrary(kind: "songs" | "albums", ids: string[], tracks: Track[]): Promise<void> {
-  await invoke("apple_add_to_library", { kind, ids, tracks });
+  try {
+    await invoke("apple_add_to_library", { kind, ids, tracks });
+  } catch (e) {
+    toast({ kind: "warn", text: `Couldn't add the ${kind === "albums" ? "album" : "song"} to your library.` });
+    throw e;
+  }
+  const what = kind === "albums" ? "Album added" : "Added";
+  if (!noticedThisSession && !noticeOff(NOTICE_KEY)) {
+    noticedThisSession = true;
+    toast({ kind: "info", text: `${what}. Apple has no undo from here; remove it in the Music app.`, dismissKey: NOTICE_KEY });
+  } else {
+    toast({ kind: "success", text: `${what} to your library.` });
+  }
   await loadTracks();
 }
 

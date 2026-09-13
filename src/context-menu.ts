@@ -20,6 +20,8 @@
 //
 // One instance at a time: opening a new menu (or right-clicking elsewhere) replaces it.
 
+import * as frames from "./frames";
+
 export interface ActionItem {
   label: string;
   run: () => void;
@@ -53,6 +55,7 @@ type Place = (w: number, h: number, vw: number, vh: number) => { left: number; t
 function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
   closeContextMenu(); // never stack two
   if (!items.length) return;
+  frames.during("menu", 300);
 
   const menu = document.createElement("div");
   menu.className = "ctx-menu";

@@ -1,0 +1,102 @@
+/* ── Toasts (src/toast.ts; docs/TOASTS.md) ───────────────────────────────
+   A fixed top-right column, newest on top, flying in from the right. In mini
+   and midi it hangs under the Now Playing card (--toast-top, measured by
+   toast.ts) so the song stays readable; in max, whose stage is on the left,
+   it sits under the titlebar. The strip wears the menu material (Glass frosts
+   it); the kind wears the theme's traffic lights as a stripe on the leading
+   edge — success --go, warn --pause, error --stop, info --panel-border — so
+   every theme, the monochrome ones included, expresses severity in-family.
+   Geometry through skin tokens (--toast-*), motion through --dur-med/--ease-ui.
+   z 90: above every card and flyout (20/30), BELOW the context menu, settings
+   menus and pickers (100) — a menu is the user's live intent; a toast waits. */
+.toast-host {
+  position: fixed;
+  top: calc(var(--toast-top, var(--titlebar-h)) + var(--space-2));
+  left: var(--space-4); /* only clamps the strip in a narrow window; align-items keeps it right */
+  right: var(--space-4);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: var(--space-2);
+  z-index: 90;
+  pointer-events: none;
+  --toast-in: translateX(var(--toast-shift));
+}
+[data-surface="max"] .toast-host {
+  top: calc(var(--titlebar-h) + var(--space-2));
+}
+.toast {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--toast-w);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-left: var(--toast-stripe) solid var(--toast-accent, var(--panel-border));
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  font-weight: var(--fw-text);
+  line-height: var(--lh-text);
+  animation: toast-in var(--dur-med) var(--ease-ui) both;
+}
+.toast--success { --toast-accent: var(--go); }
+.toast--warn    { --toast-accent: var(--pause); }
+.toast--error   { --toast-accent: var(--stop); }
+.toast--out {
+  opacity: 0;
+  transform: var(--toast-in);
+  transition: opacity var(--dur-med) var(--ease-ui), transform var(--dur-med) var(--ease-ui);
+  pointer-events: none;
+}
+.toast__text { margin: 0; overflow-wrap: anywhere; }
+.toast__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+/* The buttons follow the context-menu row idiom (styles.css .ctx-menu__item):
+   flat, the theme's text, hover = --surface-hover, the shared focus ring. */
+.toast__btn {
+  padding: var(--space-1) var(--space-2);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-subtext);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui);
+}
+.toast__btn:hover { background: var(--surface-hover); }
+.toast__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* The countdown drains over the toast's life; hover holds it (toast.ts holds
+   the reap timer in step). */
+.toast__bar {
+  height: var(--toast-bar);
+  margin-top: var(--space-2);
+  background: var(--toast-accent, var(--subtext));
+  transform-origin: left;
+  animation-name: toast-bar;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+.toast:hover .toast__bar { animation-play-state: paused; }
+@keyframes toast-in {
+  from { opacity: 0; transform: var(--toast-in); }
+}
+@keyframes toast-bar {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .toast--out { transform: none; transition: none; }
+}

@@ -111,7 +111,10 @@ The base defines, among others:
 - **Menu material:** `--menu-surface` / `--menu-backdrop` — the same pair for the
   *floating* tier (menus, flyouts, popovers, ctx-menu, pickers); base = opaque
   `var(--surface)` + no frost, Glass opts in
-- **Canvas pattern:** `--canvas-bg` / `--canvas-bg-size` / `--canvas-bg-repeat` / `--canvas-anim`
+- **Canvas pattern:** `--canvas-bg` / `--canvas-bg-size` / `--canvas-bg-repeat`, and
+  `--app-canvas-bg` (what `.app-body` paints; `none` when the skin draws a moving layer)
+- **Ambient layers:** `--ocean-*`, `--aurora-*`, `--storm-*`, and `--ambient-fps` (the step
+  rate of every endless decorative loop) — see *Ambient layers: the cost rules* below
 - **Nav motion:** `--nav-dur`, `--nav-ease`, `--nav-at-center / -left / -right`, `--nav-off-opacity`
 - **Micro-motion:** `--dur-fast / -med / -spin`, `--ease-ui`, and `--hover-lift` —
   the transform interactive rows/tiles take on hover (base `none`; a skin opts in)
@@ -170,8 +173,10 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   per-theme `--surface-sunken` role is the documented upgrade if Ocean needs true depth there).
 - **`glass`** — frosted glassmorphism: translucent panels (`color-mix` alpha of `--surface`)
   with a real `backdrop-filter` blur (`--panel-backdrop`) over a per-theme accent "aurora"
-  whose blobs **drift** (`aurora-drift`, px offsets on layers **oversized +128px** so the
-  drift never drags a gradient's cut edge into view — see the skin.css comment),
+  whose blobs **drift** (the **aurora layer**: one `.aurora__blob` box per gradient, each
+  moved by `transform` along its own `--aurora-drift-N-x/-y`, oversized by `--aurora-slack`
+  so the drift never drags a gradient's cut edge into view; the extension pages paint the
+  same stack still, from `--canvas-bg`),
   **frosted menus** (the `--menu-surface` / `--menu-backdrop` pair — milkier than panels, 65%
   vs 55%, for text legibility), a glass-ring scrubber handle (evenodd hollow), rounded glass
   chips, a fade/scale nav, light sans title. See the doctrine note above for how it stays
@@ -186,10 +191,28 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   [FUTURE-SETTINGS §13](FUTURE-SETTINGS.md) (skin-specific). Pairs best with dark themes
   (moonlight / black-yellow / black-red), where the bolts read as light.
 
+### Ambient layers: the cost rules (2026-09-13)
+The ocean, aurora, and storm layers (and the Now Playing aurora spin) loop forever, so their
+per-frame cost is the app's idle CPU. Measured before these rules: Ocean 46%, Glass 205%,
+Retro-Future 200% of one core at idle; after: 12 / 20 / 17 (DEBUGGING.md has the table).
+1. **Animate only `transform` and `opacity`, on plain boxes.** Then the compositor moves
+   finished layers and the main thread paints nothing. SVG child transforms,
+   `background-position`, and `stroke-dashoffset` all repaint every frame.
+2. **Step every loop at `--ambient-fps`** (`steps(round(<dur> * var(--ambient-fps) / 1s))`,
+   divided by the keyframe segment count). The compositor otherwise draws at the display
+   rate, and everything under a translucent card redraws with it. `steps()` replaces the
+   easing, so an eased loop samples its curve into keyframes (`ocean-bob`, `aurora-drift`).
+3. **Pause while the window cannot be seen.** `src/ambient.ts` sets `data-ambient="paused"`
+   when the window is minimized or hidden; a new loop joins the selector in `styles.css`.
+   WebView2 does not fire `visibilitychange` for either state.
+
 ### The ocean layer (opt-in rolling swell)
-The same opt-in doctrine as the storm layer, for a *surface* rather than strokes: an
-inline `<svg class="ocean">` in `.app-body` behind the bento, holding three
-`<pattern>` wave trains. Inert unless a skin flips `--ocean-display` (only Ocean does).
+The same opt-in doctrine as the storm layer, for a *surface* rather than strokes: a
+`<div class="ocean">` in `.app-body` behind the bento, holding three wave trains. Inert
+unless a skin flips `--ocean-display` (only Ocean does). Each train is a `.ocean__bob` box
+around a `.ocean__roll` box; the roll's `::before` (fill) and `::after` (crest) are masked by
+SVG tile data URLs (`--swell-fill` / `--swell-crest` in `styles.css`). The fill masks
+roughly double the GPU cost per frame (measured), so avoid adding more masked trains.
 
 Each tile is **one full sine period** — `M0 c Q W/4 (c−a) W/2 c T W c`, the `T`
 mirroring the `Q` — so the curve's **value and tangent** both match at the tile edge and
@@ -200,43 +223,46 @@ is full `--border`, `-2` / `-3` mix it toward `--canvas` (70% / 45%), so far wav
 into haze.
 
 Motion is split across **two elements** so the transforms compose rather than overwrite:
-`ocean-roll` translates the `<rect>` (linear), `ocean-bob` the wrapping `<g>` (ease-in-out
-alternate ≈ a sine). Per-layer distances come from `--roll-dist` / `--bob-amp`, resolved
+`ocean-roll` translates the roll box (linear), `ocean-bob` the wrapping bob box (a sine
+sampled into keyframes, alternate). Per-layer distances come from `--roll-dist` / `--bob-amp`, resolved
 *inside* the shared keyframes per element. Each train rolls an **integer number of its own
 tile width** per 16s loop (144 = 3×48, 128 = 2×64, 80 = 1×80), nearest fastest, so the wrap
 never shows; the middle train bobs counter-phase so the sea breathes rather than pumps, and
-9s·2 vs 16s never sync (LCM 144s). The `<rect>` is oversized +320px and shifted −160px so a
-full roll never drags its own edge into view.
+9s·2 vs 16s never sync (LCM 144s). The roll box is oversized +320px and shifted −160px so a
+full roll never drags its own edge into view; the mask origin (`160px 8px`) puts the tile
+grid back at the body corner.
 
 This **replaced** a radial-gradient version, where the scallop arcs crossed at tile corners
-and scattered chevron artifacts across the canvas — the reason the layer is SVG at all.
+and scattered chevron artifacts across the canvas — the reason the tiles are SVG paths. It
+then replaced an inline `<svg>` with `<pattern>` fills, whose moving children repainted
+every frame (rule 1 above).
 Under `prefers-reduced-motion` the ocean stays *visible* and merely stops (unlike the storm,
 which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
 
 ### The storm layer (opt-in decorative strokes)
-A reusable primitive, same opt-in doctrine as `--panel-backdrop`: an inline
-`<svg class="storm">` in `.app-body` behind the bento, holding two bare
-`<path class="storm__bolt" pathLength="1">` elements. Everything about it is tokens:
+A reusable primitive, same opt-in doctrine as `--panel-backdrop`: a `<div class="storm">`
+in `.app-body` behind the bento, holding two strikes. Each strike is
+`.storm__strike > .storm__hold > svg > path.storm__bolt`. Everything about it is tokens:
 `--storm-display` (base `none` — the layer is inert, its animation never runs),
 `--storm-ink` (a theme **role**, so bolts recolor per theme), `--storm-glow`, `--storm-w`,
 `--storm-cycle-1/-2`, and — the trick that keeps geometry in the skin tier —
 **`--storm-path-1/-2` applied via CSS `d: path(...)`** (Chromium supports it), so a future
 skin could reuse the layer for rain / falling stars / scan lines with no markup change.
-`pathLength="1"` normalizes every path, so the top-to-bottom draw is a plain
-`stroke-dashoffset: 1→0` in the shared `storm-strike` keyframes; unequal per-bolt cycle
-durations make the two strikes drift out of phase forever. Each bolt is a **forked
-channel** — a main trunk plus one or two branches — but authored as a *single continuous
-subpath*: at each fork the path darts out to the branch tip and **retraces the same line
-back** to the trunk before continuing down, so the branches appear to grow out mid-strike.
-This is deliberate, not fussiness: a branch **can't** be a separate `M` subpath, because
-`stroke-dasharray` restarts at every subpath, so each fork would reveal on its own schedule
-and the bolt would draw as disconnected fragments instead of one clean top-down wipe. The
-retrace keeps the whole bolt one path, so the draw-on stays clean (branches inherit the
-trunk's stroke width — tapered forks would need separate `<path>` children). The one
-non-CSS piece is
-**position randomness**: `src/storm.ts` re-rolls each bolt's `--storm-x` (+ a `scaleX`
-mirror) on `animationiteration` — the loop seam, where opacity is 0, so the jump is never
-seen. `prefers-reduced-motion` hides the layer outright (a frozen half-drawn bolt reads
+The reveal is a **wipe** (since 2026-09-13; it was a `stroke-dashoffset` draw, which
+re-rendered the `drop-shadow` glow every frame — rule 1 above). The bolt is painted once;
+`storm-strike` slides the clipping strike box down from above while `storm-hold` slides the
+inner box up by the same amount, so the bolt stays still and the clip edge reveals it top to
+bottom. Both run the same cycle and step count, so they stay locked. The visible difference:
+the leading edge is straight, and a fork appears as the wipe passes it instead of growing out.
+To restore the path draw, revert this layer (git history before 2026-09-13's ambient change).
+Unequal per-bolt cycle durations make the two strikes drift out of phase forever. Each bolt
+is a **forked channel** — a main trunk plus one or two branches — authored as a *single
+continuous subpath*: at each fork the path darts out to the branch tip and **retraces the
+same line back** to the trunk. That mattered for the old dash draw (`stroke-dasharray`
+restarts at every subpath); the wipe does not need it, but the geometry is kept. The one
+non-CSS piece is **position randomness**: `src/storm.ts` re-rolls each strike's `--storm-x`
+(+ a `scaleX` mirror) on the strike box's `animationiteration` — the loop seam, where
+opacity is 0, so the jump is never seen. `prefers-reduced-motion` hides the layer outright (a frozen half-drawn bolt reads
 as a bug).
 
 ### Add a skin
@@ -467,6 +493,44 @@ via the `::-webkit-scrollbar` pseudo-elements (WebView2 is Chromium). Its **colo
 a theme role** (`--scrollbar` / `--scrollbar-hover` in `themes.css`) and its
 width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Scoped to the
 scrolling `.lib-view`; widen the selector to theme every scroll region the same way.
+
+### Long lists: rows are relayout boundaries
+
+`.lib-list` is a **block** stack (not a flex column) and every art row (`.lib-row--art`)
+carries `contain: size layout` with a pinned height, `--lib-row-h` — a skin token because the
+natural height is the skin's title + artist stack (46px base, 49px on Press / Retro-Future).
+Measured 2026-09-13 (DEBUGGING.md §Reviewing the telemetry): a cold pass through the
+3,895-row Library dropped ~80% of frames because each batch of lazy covers loading dirtied
+layout, and a flex column re-lays out every child when one is dirty (140–200 ms a frame).
+With the boundary, layout stops at the row. Keep it when restyling rows: a row's height must
+stay pinned by the token, and a new row voice that changes the type stack needs its own
+`--lib-row-h`. Rows without art keep their natural height.
+
+### Detail hero (album / playlist)
+
+A drilled album or playlist opens on a **hero**: the cover big (`--hero-cover`, 180px
+base), the name in the title face, an optional subtitle and a muted meta line
+("2016 · 17 songs · 1 hr 2 min" / "24 songs · 1 hr 32 min · Yours"). Decided 2026-09-13:
+
+- **It rides inside the scrolling view**, as the first block above the rows (in grid
+  densities it spans every column like a shelf), so it scrolls away — a bento card body is
+  ~350px tall and a pinned hero would leave three rows.
+- **The card header shows the kind** ("Album", "Playlist") while drilled, via
+  `Context.headerLabel`; the hero owns the name. Without a hero the header shows the title
+  as before.
+- **An album's artist is the subtitle**, tappable with a › glyph (`data-hero-sub` → the
+  hero's `sub.run`, which drills the Library's artist detail in place). Playlists have no
+  subtitle; their source ("Yours" / the curator) ends the meta line.
+- **Album rows drop the mini cover** (every row shares it) and show the track number in the
+  cover's slot (`.lib-row__num`) with the length as the subline; a "Track Order" sort leads
+  and is the default. **Playlist rows keep the cover** — each song is from a different album.
+
+The contract is `Context.hero?: () => Hero` (`{ cover, title, sub?, meta? }`), a function so
+async facts (a playlist's tracks landing, then `card.reload()`) fill the meta line on the
+next render. `heroCover()` in `library-card.ts` builds the cover slot (real cover, the 2×2
+mosaic, or ♪) at 2× the token size. The Search card's catalog album / playlist panes render
+the same `.lib-hero` markup themselves (they don't use the engine); the artist subtitle
+there hops via the album's own `artists` relationship.
 
 ### 4b. The Queue card (Qcard) & drag-to-reorder
 The Qcard (`src/qcard.ts`) is a small **standalone** renderer (not the collection-card

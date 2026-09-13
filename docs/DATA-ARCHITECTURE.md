@@ -43,7 +43,8 @@ The in-app webview **cannot open OAuth popups** (a known Tauri/WebView2 limitati
 
 Flow (`apple_begin_auth`):
 1. Rust signs an Apple **developer token** (ES256 JWT from the `.p8`, ~150-day exp).
-2. Rust starts a **one-shot loopback HTTP server** on `127.0.0.1:<ephemeral>` and
+2. Rust starts a **one-shot loopback HTTP server** on `127.0.0.1`, on the first free
+   fixed port of 47831–47833 (the `origin` claim needs exact ports), and
    opens the user's default browser at it (via `tauri-plugin-opener` —
    cross-platform: Windows/macOS/Linux, no `cmd`/`xdg-open` shell-out).
 3. The served page is the app's own themed sign-in page (see §6) — it loads
@@ -53,8 +54,8 @@ Flow (`apple_begin_auth`):
 
 ### Security guards (all implemented)
 - Binds **`127.0.0.1` only** (never `0.0.0.0`) — unreachable off-machine.
-- **Ephemeral random port + one-shot**: server lives only during sign-in, exits on
-  capture or 5-min timeout.
+- **Fixed port + one-shot**: server lives only during sign-in, exits on capture or
+  5-min timeout. (Was an ephemeral port until 2026-09-13; see `AUTH_PORTS` in apple.rs.)
 - **Nonce**: Rust embeds a random nonce in the page; the callback must echo it, so a
   stray local page/process can't inject a token. Page and callback are same-origin.
 - **MUT never reaches the renderer** — it lives in Rust memory + a gitignored file.
@@ -64,6 +65,70 @@ Flow (`apple_begin_auth`):
 
 The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on startup
 (`load_persisted_user_token`), so sign-in survives restarts.
+
+### 2a. Planned: hosted sign-in page + deep link (decided 2026-09-13, NOT built)
+
+> Replaces the `http://127.0.0.1:4783x` address in the browser with a real HTTPS domain.
+> Apple sign-in is not OAuth: `authorize()` works on any page that has a valid developer
+> token, so Apple needs no redirect URL. The design problem is only the return path.
+
+**Terms**
+- **Hosted page**: `https://music-api.deets.solutions/signin`, served by the DeetsSupport Worker.
+- **Deep link**: a `deetsmusic://…` URL. Windows gives it to our exe.
+- **Nonce**: a random one-time value. It proves that the link belongs to a sign-in the app started.
+
+**Flow**
+1. The user clicks Sign in. Rust makes a nonce and keeps it in memory for 5 minutes.
+2. Rust opens `https://music-api.deets.solutions/signin?n=<nonce>&theme=<t>&skin=<s>&s=deetsmusic`.
+3. The page fetches a developer token from `/token` (same origin, no CORS), then runs `authorize()`.
+4. The page opens `deetsmusic://auth?n=<nonce>&mut=<MUT>` automatically, and also shows a
+   **Return to DeetsMusic** button. The browser asks "Open DeetsMusic?"
+5. Windows starts a second `DeetsMusic.exe` with the URL. The single-instance plugin
+   (`lib.rs`, first plugin) forwards it to the running app. The second process exits.
+6. Rust checks the nonce (match, not expired, not used), then stores the MUT with the
+   existing capture code (`register_secret` → memory → `persist_user_token`). The
+   `apple.ts` poll on `apple_connection_status` sees it. **No front-end change.**
+
+**Decisions**
+
+| # | Fork | Decision | Why |
+|---|---|---|---|
+| 1 | Page host | `music-api.deets.solutions/signin` | Same origin as `/token`, so no CORS. Adds one exact origin to `TOKEN_ORIGINS`, not three ports. The page is static, so the mint host stays D1-free (`index.js` router rule). |
+| 2 | Page look | Themed | At Worker deploy, copy `src/styles/{palette,themes,skin,fonts}.css` + the two Liberation Serif fonts into the Worker. The page reads `theme`/`skin` from the query. An unknown value falls back to `lilac`/`press`. **Risk:** the copy is stale when the app adds a theme, so the copy step belongs in the release checklist. |
+| 3 | Return trigger | Automatic link + **Return to DeetsMusic** button | After the Apple popup closes, the page can lose user activation. Chrome can then block the automatic link without a message. The button always works. |
+| 4 | Dev build | Own scheme `deetsmusic-dev://` | The scheme is one HKCU registry entry that points to one exe. If `dev:app` registered `deetsmusic://`, it would take the scheme from the installed app. The page accepts only the two values `s=deetsmusic` and `s=deetsmusic-dev`. |
+| 5 | Loopback page after ship | Keep for one release as a fallback | The app shows a link: "Browser page didn't load? Use local sign-in". This covers a Worker outage or a blocked domain. Remove it in the next release if nothing uses it. |
+
+**Security**
+- **Any web page can open a `deetsmusic://` link.** Without the nonce, a hostile page could
+  sign the user in to *its* Apple account. So: reject a link when there is no pending
+  sign-in, when the nonce does not match, after 5 minutes, and after the first use.
+- **Cold start:** if the app is closed, the link starts a fresh app with no pending nonce.
+  That link is rejected. This is correct behavior, not a bug.
+- **MUT in the URL:** it is briefly in the second process's command line. Programs that run
+  as the same user can read that. They can already read `user-token.txt`, so the risk is not new.
+- **The MUT never passes through the Worker.** The About/README privacy notice stays true.
+
+**Implementation notes**
+- `tauri-plugin-single-instance` needs its `deep-link` feature. Its callback ignores `argv`
+  today and must parse the URL. Add `tauri-plugin-deep-link` with the scheme under
+  `plugins.deep-link.desktop.schemes`: `deetsmusic` in `tauri.conf.json`, `deetsmusic-dev`
+  in `tauri.dev.conf.json`. The dev build registers its scheme at runtime.
+- Tauri's NSIS installer writes and removes the scheme's registry entry. `nsis/hooks.nsh`
+  needs no change.
+- `TOKEN_ORIGINS` (when it is turned on) = `http://tauri.localhost`,
+  `https://music-api.deets.solutions`, and the three loopback ports until old installs are gone.
+- Cost: no new Apple API calls. Each sign-in adds one page load and one `/token` fetch on
+  the Worker.
+- The browser stays signed in: MusicKit keeps the MUT in the hosted page's localStorage.
+  `apple_disconnect` does not clear it. This already happens with the fixed loopback ports.
+
+**Check in the first desk test**
+1. A MUT from the hosted page (Worker key `63Y9S9P5Z8`) works with the dev key
+   `WPYRNBYCRT`. Expected, because Apple ties a MUT to the team, not the key. If Apple
+   rejects it, the dev build must take its developer token from the Worker for sign-in.
+2. Chrome and Edge do not save the `deetsmusic://auth?…mut=` link in history.
+3. The automatic link works after `authorize()` in Chrome and Edge. If not, the button is the path.
 
 ---
 

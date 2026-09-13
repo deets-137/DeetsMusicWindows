@@ -11,6 +11,8 @@ front-end, Rust back-end).
 - `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
   extension + the loopback bridge (`extension/` is the MV3 source); `docs/AGENT.md` —
   the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, install, uninstall.
+- `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
+  call site; `__toast.demo()` in the console shows one of each kind.
 - `docs/LOGGING.md` — the rolling log file + `diag.ts` (scoped, not built); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 
@@ -35,6 +37,14 @@ front-end, Rust back-end).
   library click is a hand test) and its round trip is ~1 s (Previous within 3 s of a
   click can't be reached). Full reference: `docs/DEBUGGING.md`. This is dev-only
   telemetry (`src/perf.ts`, Vite `DEV` flag) — the release bundle carries none of it.
+- **Frame smoothness is measured the same way (2026-09-13).** `src/frames.ts` logs one
+  `[perf] frames …` line per scroll / scrub / pane slide / folder open / queue drag / menu /
+  appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`
+  for any slow press→paint. `__frames.sample(ms)` from `scripts/webview-eval.mjs` measures a
+  scripted scroll. DEBUGGING.md §Frame telemetry.
+- **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
+  and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
+  to read all of it: DEBUGGING.md §Reviewing the telemetry.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the

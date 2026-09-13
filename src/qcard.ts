@@ -4,6 +4,7 @@
 // to Bottom / Remove, + Start Station / Add to Library) — the queue-edit ops live in
 // player.ts (gapless; see docs/QUEUE.md).
 
+import * as frames from "./frames";
 import "./styles/qcard.css";
 import * as queue from "./queue";
 import {
@@ -247,6 +248,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     drag.raf = requestAnimationFrame(autoScroll);
   };
 
+  let endDragFrames = () => {}; // dev-only: the drag's frame window (frames.ts)
   const beginDrag = () => {
     if (!pending) return;
     const { entry, row, idx, startY } = pending;
@@ -256,6 +258,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     line.className = "qcard__drop-line";
     list.appendChild(line);
     dragging = true;
+    endDragFrames = frames.begin("drag", "queue");
     row.classList.add("qrow--dragging");
     drag = {
       entry, row, list, line, startY, lastY: startY, startScroll: list.scrollTop, fromIdx: idx, toIdx: idx,
@@ -274,6 +277,7 @@ function mountQueue(host: HTMLElement): CardInstance {
       return; // never crossed the threshold → it was a click (let it jump)
     }
     cancelAnimationFrame(drag.raf);
+    endDragFrames();
     const { entry, row, line, fromIdx, toIdx } = drag;
     row.classList.remove("qrow--dragging");
     row.style.removeProperty("--drag-dy");

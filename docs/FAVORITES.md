@@ -36,7 +36,10 @@ the [Playlists export decision](PLAYLISTS.md)):
   square on Now Playing** (right cluster, before the queue summon; `#np-add`) with the tray
   panel's four states: hidden (toggle off / no catalog id) · **+** to add · spinner while adding ·
   **✓ "In your library"** once it is (disabled, mirrors the extension). Menus and the square
-  share one visibility rule, `libraryAddOffered(t)` in `library-add.ts`.
+  share one visibility rule, `libraryAddOffered(t)` in `library-add.ts`. **Since 2026-09-13 also a
+  hover square on Search song rows** (the root Songs grid and the track rows in album / playlist /
+  artist drill panes) — see [SEARCH.md § Add-to-Library square](SEARCH.md#add-to-library-square-2026-09-13-on-trial).
+  *On trial: the user may revert it after living with it.*
 - **♥ Favorite** (later step) — a dedicated **♥** on Now Playing (filled if loved) + a right-click
   item across Library / Search / Queue. Surfaces TBD when that step is built.
 - All are icon/theme-tokened glyphs — no hardcoded colors/sizes.

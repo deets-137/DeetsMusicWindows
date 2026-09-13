@@ -37,3 +37,6 @@ cli/target/
 # way DeetsAirplay keeps its installers/ — handy to re-install an older build, too big
 # to carry in git (~6 MB each).
 installers/
+
+# heaviness sampler output (scripts/heaviness-sample.ps1 -Loop)
+scripts/heaviness-samples.log

@@ -11,6 +11,7 @@
 // for reduced motion, or the API is missing. Startup never comes through here.
 
 import { setting } from "./settings-store";
+import * as frames from "./frames";
 import type { SkinName } from "./skin";
 
 type Kind = "theme" | "skin";
@@ -60,6 +61,7 @@ export function withAppearanceTransition(kind: Kind, fn: () => void, opts: { ski
 
   const root = document.documentElement;
   root.dataset.appearance = kind;
+  const endFrames = frames.begin("appearance", kind);
   const vt = start.call(document, async () => {
     fn();
     if (opts.skin) {
@@ -70,6 +72,7 @@ export function withAppearanceTransition(kind: Kind, fn: () => void, opts: { ski
   });
   running = vt;
   const done = () => {
+    endFrames();
     if (running === vt) running = null;
     if (root.dataset.appearance === kind) delete root.dataset.appearance;
   };

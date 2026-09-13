@@ -147,6 +147,8 @@ pub fn run() {
             apple::apple_remote_config,
             apple::apple_begin_auth,
             apple::apple_connection_status,
+            apple::apple_auth_status,
+            apple::apple_check,
             apple::apple_user_token,
             apple::apple_disconnect,
             apple::apple_dump_library,

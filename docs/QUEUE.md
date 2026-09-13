@@ -302,7 +302,8 @@ table (`dead_ids_mark`: `reason` = `not-found` | `unavailable`, `first_seen`, `m
 warm-up and at `initPlayer`. After 7 days a mark is ignored, so a song Apple restores is
 tried once more; a new rejection refreshes `marked_at` but keeps `first_seen`.
 `dead_ids_mark` returns the ids with no earlier row (logged as `player:deadFresh`) — the
-trigger for the future toast (FUTURE-SETTINGS §18). Deleting the cache clears the marks.
+trigger for the dead-song toast (`noteDeadSongs`, [TOASTS.md](TOASTS.md) §5). Deleting
+the cache clears the marks.
 
 **Future work:** let catalog hydrate repair or clear stale `catalogId`s at the source.
 

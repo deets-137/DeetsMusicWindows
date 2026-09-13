@@ -11,8 +11,8 @@
 > and desk-verified 2026-09-12** (user: "look good"). Same day, on top: the extras in §9;
 > the surface-change motion (fork B) was built, judged janky, and walked back (§10).
 > **To talk through next session: the playlist creation flow** (§11). The toast
-> primitive and its two one-time notices are parked in [FUTURE-SETTINGS §18](FUTURE-SETTINGS.md)
-> for their own session.
+> primitive is built ([TOASTS.md](TOASTS.md), 2026-09-13) with the Add-to-Library notice;
+> the playlist-cover notice (§2) waits on the cover flow itself.
 
 | # | Feature | Cost to Apple | Needs new schema |
 |---|---|---|---|

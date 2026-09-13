@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import type { MenuItem } from "./context-menu";
+import { toast } from "./toast";
 
 // ── change bus (same subscribe idiom as layout-bus / onPlayerState) ────────────
 // Fires after any LOCAL-store mutation (create / add tracks / delete), with the
@@ -103,11 +104,14 @@ export function addToPlaylistItem(
   getTracks: () => Track[] | Promise<Track[]>,
   excludeLibraryId?: string,
 ): MenuItem {
-  const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
+  const err = (what: string, text: string) => (e: unknown) => {
+    console.error(`[playlists] ${what}`, e);
+    toast({ kind: "warn", text });
+  };
   const addTo = (id: number) =>
     Promise.resolve(getTracks())
       .then((ts) => (ts.length ? playlistAddTracks(id, ts) : undefined))
-      .catch(err("add to playlist"));
+      .catch(err("add to playlist", "Couldn't add to the playlist."));
   return {
     label: "Add to Playlist",
     sub: () =>
@@ -121,7 +125,7 @@ export function addToPlaylistItem(
           {
             input: {
               placeholder: "New Playlist…",
-              onSubmit: (name) => void playlistCreate(name).then(addTo).catch(err("create")),
+              onSubmit: (name) => void playlistCreate(name).then(addTo).catch(err("create", "Couldn't create the playlist.")),
             },
           },
           ...locals.map((p) => ({ label: p.name, run: () => void addTo(localId(p)!) })),

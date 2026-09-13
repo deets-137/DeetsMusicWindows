@@ -7,17 +7,25 @@
 // /album/<id>) and opens in the viewer's own region — so no storefront lookup, and a
 // song or catalog album costs no Apple call. A library album tile carries only its
 // tracks, so its album id comes from one song→album hop (catalogRelated, memoized) on
-// pick. No toast system yet (FUTURE-SETTINGS §18), so failures are a quiet log.
+// pick. Feedback is a toast (TOASTS.md): "Link copied" under the Everything tier (the
+// clipboard shows nothing otherwise), a timed warn on any failure.
 
 import { catalogRelated } from "./search";
 import type { MenuItem } from "./context-menu";
+import { toast } from "./toast";
 
 const LABEL = "Copy Link";
 
 const url = (kind: "song" | "album", id: string) => `https://music.apple.com/${kind}/${id}`;
 
 const copy = (text: string) =>
-  navigator.clipboard.writeText(text).catch((e) => console.error("[copy-link] clipboard", e));
+  navigator.clipboard.writeText(text).then(
+    () => void toast({ kind: "success", text: "Link copied." }),
+    (e) => {
+      console.error("[copy-link] clipboard", e);
+      toast({ kind: "warn", text: "Couldn't copy the link." });
+    },
+  );
 
 /** A song's link, from its catalog id. */
 export function copySongLinkItem(catalogId?: string | null): MenuItem | null {
@@ -41,7 +49,11 @@ export function copyAlbumLinkFromSongItem(songCatalogId?: string | null): MenuIt
         .then((ref) => {
           if (ref) return copy(url("album", ref.id));
           console.warn("[copy-link] no catalog album for song", songCatalogId);
+          toast({ kind: "warn", text: "This album has no Apple Music page to link." });
         })
-        .catch((e) => console.error("[copy-link] album resolve", e)),
+        .catch((e) => {
+          console.error("[copy-link] album resolve", e);
+          toast({ kind: "warn", text: "Couldn't copy the link." });
+        }),
   };
 }

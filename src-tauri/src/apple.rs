@@ -8,7 +8,6 @@
 //! so it matches the app exactly. The `.p8` and MUT never reach the app renderer.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -46,6 +45,20 @@ struct Claims {
 #[derive(Clone, Default)]
 pub struct AppleState {
     pub user_token: Arc<Mutex<Option<String>>>,
+    /// The browser sign-in in progress. `connect()` polls this rather than "is a token
+    /// present", so a re-sign-in over an expired token waits for the NEW capture, and a
+    /// failure the page reports reaches the app at once instead of after the timeout.
+    pub auth: Arc<Mutex<AuthStatus>>,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(tag = "state", rename_all = "lowercase")]
+pub enum AuthStatus {
+    #[default]
+    Idle,
+    Pending,
+    Captured,
+    Failed { reason: String },
 }
 
 // The app's real token sheets + fonts, embedded so the auth page matches exactly.
@@ -116,7 +129,7 @@ fn load_config() -> Result<AppleConfig, String> {
 //
 //   1. a local `apple.json` + `.p8` → sign here, exactly as before (the dev seam;
 //      a contributor with their own MusicKit key never touches the network)
-//   2. else `<app_data>/developer-token.json` with > 15 days left → use it
+//   2. else `<app_data>/developer-token.json` with > 3 days left → use it
 //   3. else one fetch from the mint, ~8 s budget, and persist the answer
 //
 // A fetch failure (offline, 429, 503) keeps any still-valid cached token, so
@@ -130,8 +143,19 @@ fn load_config() -> Result<AppleConfig, String> {
 /// Compiled in. Never the `support.` host (support.md: a future split of the mint
 /// must stay a route move, not an app release).
 const TOKEN_URL: &str = "https://music-api.deets.solutions/token";
-/// Refetch at startup once fewer than this many seconds remain.
-const REFRESH_MARGIN_SECS: u64 = 15 * 24 * 60 * 60;
+/// The Origin every Rust call to Apple sends: the release webview's own origin. A
+/// token with an `origin` claim gets a 401 for a missing or unlisted Origin (probed
+/// 2026-09-13), and reqwest sends none, so this keeps Rust calls valid once the
+/// Worker turns the claim on (`TOKEN_ORIGINS`, RELEASE.md §7). Harmless before that.
+const APPLE_ORIGIN: &str = "http://tauri.localhost";
+/// The sign-in page's loopback ports, tried in order. Fixed, not ephemeral: Apple
+/// matches the `origin` claim by exact host AND port (no wildcards), so the Worker
+/// lists these three. All busy → sign-in reports it instead of using another port.
+const AUTH_PORTS: [u16; 3] = [47831, 47832, 47833];
+/// Refetch at startup once fewer than this many seconds remain. Must stay below the
+/// Worker's rotation window (7 days): a shared token is handed out with 7–14 days left,
+/// so a larger margin would refetch on every launch.
+const REFRESH_MARGIN_SECS: u64 = 3 * 24 * 60 * 60;
 /// The startup fetch runs inside `setup()`; it must not stall the window.
 const MINT_TIMEOUT: Duration = Duration::from_secs(8);
 
@@ -159,8 +183,12 @@ static DEV_TOKEN: Mutex<Option<DevToken>> = Mutex::new(None);
 /// Why there is no token, when there is none — so `developer_token()` can name
 /// the real cause ("no local key and no network") instead of a file path.
 static DEV_TOKEN_ERROR: Mutex<Option<String>> = Mutex::new(None);
-/// The 401 refetch is the only path that can hit the mint in a loop: once per process.
-static REFETCHED_ON_401: AtomicBool = AtomicBool::new(false);
+/// The 401 refetch is the only path that can hit the mint in a loop, and failures can
+/// arrive without bound (every Apple call, every MusicKit error, every retry). So it is
+/// bounded here, not at the call sites: at most one mint fetch per cooldown per process,
+/// and none when the token that failed is no longer the live one (someone already healed).
+static LAST_REFETCH: Mutex<Option<Instant>> = Mutex::new(None);
+const REFETCH_COOLDOWN: Duration = Duration::from_secs(10 * 60);
 /// For the `developer-token-changed` event after a 401 refetch.
 static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
 
@@ -260,6 +288,15 @@ fn install(t: DevToken) {
 /// `setup()` after `set_app_data_dir`. An `Err` means there is NO token at all;
 /// startup still continues (Apple calls fail with that message until a restart).
 pub fn ensure_developer_token() -> Result<(), String> {
+    // 0. Test seam (debug builds only): `DEETS_DEV_NO_TOKEN=1 npm run dev:app` behaves as if
+    //    every source failed, to exercise the launch-time "no token" toast (DEBUGGING.md §Toasts).
+    if cfg!(debug_assertions) && std::env::var_os("DEETS_DEV_NO_TOKEN").is_some() {
+        let msg = "no developer token: forced by DEETS_DEV_NO_TOKEN".to_string();
+        crate::log::warn(&format!("token: {msg}"));
+        *DEV_TOKEN_ERROR.lock().unwrap() = Some(msg.clone());
+        return Err(msg);
+    }
+
     // 1. The dev seam.
     if local_key_present() {
         return match sign_local() {
@@ -330,16 +367,37 @@ pub fn remote_config() -> serde_json::Value {
 }
 
 /// A 401 from Apple with a worker-minted token means the key was rotated (or the
-/// token revoked). Refetch ONCE per process; on success swap the cache, persist,
-/// and tell the webview so MusicKit re-configures. Returns the new token.
+/// token revoked). `failed` is the token Apple rejected. Returns the token to retry
+/// with, or `None` when there is nothing better to try:
+/// - the live token already differs from `failed` → return it (no fetch);
+/// - a fetch ran within `REFETCH_COOLDOWN` → `None`;
+/// - the mint hands back the same token (its shared token is the rejected one) → `None`.
+/// On a real swap: persist, install, and tell the webview so MusicKit re-configures.
 /// Local-key installs skip this: a re-sign from the same key changes nothing.
-async fn refetch_after_401() -> Option<String> {
-    let minted = matches!(DEV_TOKEN.lock().unwrap().as_ref(), Some(t) if t.source == "worker");
-    if !minted || REFETCHED_ON_401.swap(true, Ordering::SeqCst) {
+async fn refetch_after_401(failed: &str) -> Option<String> {
+    let (minted, current) = match DEV_TOKEN.lock().unwrap().as_ref() {
+        Some(t) => (t.source == "worker", t.token.clone()),
+        None => (false, String::new()),
+    };
+    if !minted {
         return None;
     }
-    crate::log::warn("token: 401 from Apple; refetching once");
+    if current != failed {
+        return Some(current);
+    }
+    {
+        let mut last = LAST_REFETCH.lock().unwrap();
+        if last.is_some_and(|at| at.elapsed() < REFETCH_COOLDOWN) {
+            return None;
+        }
+        *last = Some(Instant::now());
+    }
+    crate::log::warn("token: 401 from Apple; refetching (at most once per 10 min)");
     match fetch_from_mint().await {
+        Ok(t) if t.token == failed => {
+            crate::log::warn("token: the mint still serves the rejected token");
+            None
+        }
         Ok(t) => {
             let tok = t.token.clone();
             persist(&t);
@@ -375,9 +433,11 @@ pub fn load_persisted_user_token() -> Option<String> {
             .filter(|s| !s.is_empty())
     };
     if let Some(tok) = read(user_token_path()) {
+        crate::log::register_secret(&tok);
         return Some(tok);
     }
     let legacy = read(repo_secrets_dir().join("user-token.txt"))?;
+    crate::log::register_secret(&legacy);
     let _ = persist_user_token(&legacy);
     Some(legacy)
 }
@@ -438,7 +498,7 @@ const DEV_TOKEN="__DEV_TOKEN__", NONCE="__NONCE__";
 const status=document.getElementById("status");
 async function ready(){
   if(!window.MusicKit){ await new Promise(r=>document.addEventListener("musickitloaded",r,{once:true})); }
-  await MusicKit.configure({developerToken:DEV_TOKEN, app:{name:"DeetsMusic",build:"0.1.0"}});
+  await MusicKit.configure({developerToken:DEV_TOKEN, app:{name:"DeetsMusic",build:"__VERSION__"}});
   return MusicKit.getInstance();
 }
 document.getElementById("go").onclick=async()=>{
@@ -447,10 +507,18 @@ document.getElementById("go").onclick=async()=>{
     const music=await ready();
     const mut=await music.authorize();
     status.textContent="Authorized — returning to DeetsMusic…";
-    await fetch("/callback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,mut})});
+    // An old tab (a sign-in that already ended) holds a stale nonce: the app answers 400
+    // or nothing at all. Never say "Done" unless the app actually took the token.
+    const r=await fetch("/callback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,mut})});
+    if(!r.ok) throw new Error("stale sign-in page");
     status.textContent="Done! You can close this tab and return to DeetsMusic.";
     status.className="done";
-  }catch(e){ status.textContent="Error: "+((e&&e.message)||e); }
+  }catch(e){
+    // Plain words here; the raw reason goes back to the app, which says what happened.
+    status.textContent="Sign-in didn't finish. Close this tab and try again from DeetsMusic.";
+    const reason=String((e&&(e.errorCode||e.message))||e);
+    fetch("/callback-error",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,error:reason})}).catch(()=>{});
+  }
 };
 </script>
 </body></html>"#;
@@ -458,11 +526,18 @@ document.getElementById("go").onclick=async()=>{
 const DONE_RESPONSE: &str = "ok";
 
 /// One-shot loopback server: serves the themed page + assets, captures the MUT.
-fn serve(server: tiny_http::Server, page: String, nonce: String, store: Arc<Mutex<Option<String>>>) {
+fn serve(
+    server: tiny_http::Server,
+    page: String,
+    nonce: String,
+    store: Arc<Mutex<Option<String>>>,
+    auth: Arc<Mutex<AuthStatus>>,
+) {
     let deadline = Instant::now() + Duration::from_secs(300);
     loop {
         let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
             crate::log::warn("sign-in: no callback within 5 min; browser sign-in abandoned");
+            *auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
             break;
         };
         match server.recv_timeout(remaining) {
@@ -470,7 +545,24 @@ fn serve(server: tiny_http::Server, page: String, nonce: String, store: Arc<Mute
                 let path = req.url().split('?').next().unwrap_or("/").to_string();
                 let is_post = *req.method() == tiny_http::Method::Post;
 
-                if is_post && path == "/callback" {
+                if is_post && path == "/callback-error" {
+                    // The page's own failure (Apple said Unauthorized, the user closed
+                    // Apple's window, …). Record it for `connect()` and free the port.
+                    let mut body = String::new();
+                    let _ = std::io::Read::read_to_string(&mut std::io::Read::take(req.as_reader(), 4096), &mut body);
+                    let reason = serde_json::from_str::<serde_json::Value>(&body).ok().and_then(|v| {
+                        (v.get("state")?.as_str()? == nonce).then(|| {
+                            v.get("error").and_then(|e| e.as_str()).unwrap_or("unknown").chars().take(120).collect::<String>()
+                        })
+                    });
+                    if let Some(reason) = reason {
+                        crate::log::warn(&format!("sign-in: the page reported a failure: {reason}"));
+                        *auth.lock().unwrap() = AuthStatus::Failed { reason };
+                        let _ = req.respond(tiny_http::Response::from_string(DONE_RESPONSE));
+                        break;
+                    }
+                    let _ = req.respond(tiny_http::Response::from_string("bad request").with_status_code(400));
+                } else if is_post && path == "/callback" {
                     let mut body = String::new();
                     let _ = req.as_reader().read_to_string(&mut body);
                     let token = serde_json::from_str::<serde_json::Value>(&body)
@@ -481,7 +573,9 @@ fn serve(server: tiny_http::Server, page: String, nonce: String, store: Arc<Mute
                             (state == nonce && !mut_tok.is_empty()).then(|| mut_tok.to_string())
                         });
                     if let Some(tok) = token {
+                        crate::log::register_secret(&tok);
                         *store.lock().unwrap() = Some(tok.clone());
+                        *auth.lock().unwrap() = AuthStatus::Captured;
                         if let Err(e) = persist_user_token(&tok) {
                             crate::log::warn(&format!("sign-in: token captured but not persisted: {e}"));
                         }
@@ -550,20 +644,33 @@ pub fn apple_remote_config() -> serde_json::Value {
 
 /// Start the loopback sign-in: serve the themed page, open the default browser.
 /// `theme`/`skin` mirror the app's active selection so the page matches.
+///
+/// Checks the developer token first (one catalog call, with the same bounded heal as
+/// every Rust call): a page configured with a dead token can only say "Unauthorized".
+/// Errors the front end maps to plain words: `apple-unavailable`, `offline`.
 #[tauri::command]
-pub fn apple_begin_auth(
+pub async fn apple_begin_auth(
     app: tauri::AppHandle,
     theme: String,
     skin: String,
     state: tauri::State<'_, AppleState>,
 ) -> Result<(), String> {
+    let client = check_client()?;
+    match app_status(&client).await.0 {
+        "ok" => {}
+        "unreachable" => return Err("offline".into()),
+        _ => return Err("apple-unavailable".into()),
+    }
     let dev = developer_token()?;
     let nonce = random_nonce();
 
     let theme = sanitize_ident(&theme);
     let skin = sanitize_ident(&skin);
 
-    let server = tiny_http::Server::http("127.0.0.1:0").map_err(|e| e.to_string())?;
+    let server = AUTH_PORTS
+        .iter()
+        .find_map(|p| tiny_http::Server::http(("127.0.0.1", *p)).ok())
+        .ok_or("sign-in ports 47831–47833 are all in use; close the other app and try again")?;
     let port = server
         .server_addr()
         .to_ip()
@@ -573,16 +680,116 @@ pub fn apple_begin_auth(
     let page = AUTH_PAGE
         .replace("__DEV_TOKEN__", &dev)
         .replace("__NONCE__", &nonce)
+        .replace("__VERSION__", env!("CARGO_PKG_VERSION"))
         .replace("__THEME__", if theme.is_empty() { "lilac" } else { &theme })
         .replace("__SKIN__", if skin.is_empty() { "press" } else { &skin });
 
     let store = state.user_token.clone();
-    std::thread::spawn(move || serve(server, page, nonce, store));
+    let auth = state.auth.clone();
+    *auth.lock().unwrap() = AuthStatus::Pending;
+    std::thread::spawn(move || serve(server, page, nonce, store, auth));
 
     app.opener()
         .open_url(format!("http://127.0.0.1:{port}/"), None::<&str>)
         .map_err(|e| format!("could not open browser: {e}"))?;
     Ok(())
+}
+
+/// The browser sign-in's progress, polled by `connect()`.
+#[tauri::command]
+pub fn apple_auth_status(state: tauri::State<'_, AppleState>) -> AuthStatus {
+    state.auth.lock().unwrap().clone()
+}
+
+// ── Health check: which token is Apple rejecting? ─────────────────────────────
+//
+// Called only after something failed (a play, MusicKit's own error, a sign-in) and by
+// the front end's slow recheck while a problem lasts — never on a timer while healthy.
+// Failures arrive without bound, so the check is bounded here: a cached answer for
+// CHECK_TTL, forced checks at most every CHECK_FRESH_MIN, and the heal inside is
+// `refetch_after_401`'s own cooldown. Two cheap GETs at most.
+
+const STOREFRONT_URL: &str = "https://api.music.apple.com/v1/storefronts/us";
+const ME_STOREFRONT_URL: &str = "https://api.music.apple.com/v1/me/storefront";
+const CHECK_TIMEOUT: Duration = Duration::from_secs(8);
+const CHECK_TTL: Duration = Duration::from_secs(60);
+const CHECK_FRESH_MIN: Duration = Duration::from_secs(10);
+
+#[derive(Clone, Serialize)]
+pub struct AppleHealth {
+    /// The developer token: "ok" | "rejected" (Apple refuses it, even after a heal) |
+    /// "unreachable" (no answer) | "missing" (none resolved at startup).
+    app: &'static str,
+    /// The Music User Token: "ok" | "expired" | "none" (signed out) | "unknown".
+    signin: &'static str,
+    /// This call swapped in a new developer token (MusicKit must re-configure).
+    healed: bool,
+}
+
+static LAST_CHECK: Mutex<Option<(Instant, AppleHealth)>> = Mutex::new(None);
+
+fn check_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder().timeout(CHECK_TIMEOUT).build().map_err(|e| e.to_string())
+}
+
+async fn status_only(client: &reqwest::Client, dev: &str, mut_tok: Option<&str>, url: &str) -> Result<u16, String> {
+    let mut req = client.get(url).header("Authorization", format!("Bearer {dev}")).header("Origin", APPLE_ORIGIN);
+    if let Some(m) = mut_tok {
+        req = req.header("Music-User-Token", m);
+    }
+    let status = req.send().await.map_err(|e| e.to_string())?.status().as_u16();
+    log_failure(status, url);
+    Ok(status)
+}
+
+/// The developer token's state after at most one (bounded) heal, and whether it healed.
+async fn app_status(client: &reqwest::Client) -> (&'static str, bool) {
+    let Ok(dev) = developer_token() else { return ("missing", false) };
+    match status_only(client, &dev, None, STOREFRONT_URL).await {
+        Ok(200) => ("ok", false),
+        Err(_) => ("unreachable", false),
+        Ok(401) => match refetch_after_401(&dev).await {
+            Some(fresh) if fresh != dev => match status_only(client, &fresh, None, STOREFRONT_URL).await {
+                Ok(200) => ("ok", true),
+                Err(_) => ("unreachable", true),
+                Ok(_) => ("rejected", true),
+            },
+            _ => ("rejected", false),
+        },
+        Ok(_) => ("rejected", false),
+    }
+}
+
+#[tauri::command]
+pub async fn apple_check(fresh: Option<bool>, state: tauri::State<'_, AppleState>) -> Result<AppleHealth, String> {
+    {
+        let last = LAST_CHECK.lock().unwrap();
+        if let Some((at, h)) = last.as_ref() {
+            let ttl = if fresh.unwrap_or(false) { CHECK_FRESH_MIN } else { CHECK_TTL };
+            if at.elapsed() < ttl {
+                return Ok(AppleHealth { healed: false, ..h.clone() });
+            }
+        }
+    }
+    let mut_tok = state.user_token.lock().unwrap().clone();
+    let client = check_client()?;
+    let (app, healed) = app_status(&client).await;
+    let signin = match (mut_tok.as_deref(), app) {
+        (None, _) => "none",
+        (Some(_), a) if a != "ok" => "unknown",
+        (Some(m), _) => {
+            let dev = developer_token().unwrap_or_default();
+            match status_only(&client, &dev, Some(m), ME_STOREFRONT_URL).await {
+                Ok(200) => "ok",
+                Ok(401) | Ok(403) => "expired",
+                _ => "unknown",
+            }
+        }
+    };
+    crate::log::info(&format!("apple check: app={app} signin={signin} healed={healed}"));
+    let h = AppleHealth { app, signin, healed };
+    *LAST_CHECK.lock().unwrap() = Some((Instant::now(), h.clone()));
+    Ok(h)
 }
 
 #[tauri::command]
@@ -641,7 +848,7 @@ pub(crate) async fn api_get(
     if r.0 != 401 {
         return Ok(r);
     }
-    match refetch_after_401().await {
+    match refetch_after_401(dev).await {
         Some(fresh) => api_get_once(client, &fresh, mut_tok, url).await,
         None => Ok(r),
     }
@@ -656,6 +863,7 @@ async fn api_get_once(
     let resp = client
         .get(url)
         .header("Authorization", format!("Bearer {dev}"))
+        .header("Origin", APPLE_ORIGIN)
         .header("Music-User-Token", mut_tok)
         .send()
         .await
@@ -690,7 +898,7 @@ pub(crate) async fn api_post(
     if r.0 != 401 {
         return Ok(r);
     }
-    match refetch_after_401().await {
+    match refetch_after_401(dev).await {
         Some(fresh) => api_post_once(client, &fresh, mut_tok, url).await,
         None => Ok(r),
     }
@@ -705,6 +913,7 @@ async fn api_post_once(
     let resp = client
         .post(url)
         .header("Authorization", format!("Bearer {dev}"))
+        .header("Origin", APPLE_ORIGIN)
         .header("Music-User-Token", mut_tok)
         .header("Content-Length", "0")
         .send()
@@ -733,7 +942,7 @@ pub(crate) async fn api_send(
     if r.0 != 401 {
         return Ok(r);
     }
-    match refetch_after_401().await {
+    match refetch_after_401(dev).await {
         Some(fresh) => api_send_once(client, method, &fresh, mut_tok, url, body).await,
         None => Ok(r),
     }
@@ -750,6 +959,7 @@ async fn api_send_once(
     let mut req = client
         .request(method, url)
         .header("Authorization", format!("Bearer {dev}"))
+        .header("Origin", APPLE_ORIGIN)
         .header("Music-User-Token", mut_tok);
     req = match body {
         Some(b) => req.json(b),
