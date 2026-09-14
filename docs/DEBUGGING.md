@@ -383,6 +383,27 @@ launch, HKCU); the installed app owns `deetsmusic://`. Log lines to look for, al
 progress; ignored`, `link nonce does not match …; ignored`, `the hosted page reported a
 failure: <reason>`, `user token captured`.
 
+- **From a Claude desktop session, the scheme may not be really registered** (2026-09-13,
+  DATA-ARCHITECTURE §2a "RESOLVED"). The Claude app is an MSIX package, and Windows puts
+  `HKCU\Software\Classes` writes from its child processes (its shells, a `dev:app` started
+  from them) into a private hive. Symptom: Edge's console says *"the scheme does not have a
+  registered handler"* and shows no dialog, while `reg query` from the same session finds
+  the key and `cmd /c start` of the link reaches the app. **Check the real registry** with a
+  process started outside the package (WMI):
+  ```powershell
+  Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{ CommandLine =
+    'cmd /c reg query HKCU\Software\Classes\deetsmusic-dev /ve > C:\Users\Public\scheme.txt' }
+  Get-Content C:\Users\Public\scheme.txt
+  ```
+  "unable to find" there = not registered. **Fix:** start `npm run dev:app` from your own
+  terminal once (it registers at launch), or write the same four values through WMI
+  (`powershell -EncodedCommand …` as the command line). Keep a shell `start` test as a
+  test of Windows → app only: it cannot prove what a browser sees.
+- **Seeing what Edge looks up:** Process Monitor (`winget install
+  Microsoft.Sysinternals.ProcessMonitor`), filter *Path contains* the scheme, click the link
+  from a page console (`location.href = "<scheme>://x"`). `/Runtime` did not stop an
+  unfiltered headless capture here (2.8 GB in 90 s); use the GUI with a filter.
+
 - **Point the app at a Worker preview** instead of the live page: in `../DeetsSupport`,
   `npx wrangler dev --remote --port 8790` (remote, so the deployed secrets sign), then
   `DEETS_SIGNIN_BASE=http://localhost:8790 npm run dev:app`. The release build has no override.

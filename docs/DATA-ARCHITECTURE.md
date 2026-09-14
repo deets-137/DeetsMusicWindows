@@ -185,21 +185,29 @@ from the plan below, each for a reason found while building:
   icon (`app-icon.png`) over HTTPS from the Worker and pass it as `app.icon`. Not built; an
   icon from a `127.0.0.1` page was never tried (Apple's page is HTTPS and may block it).
 
-**OPEN — Edge drops the link (found in the desk test, 2026-09-13 evening).** Apple's step
-works through the hosted page (the page reaches "Signed in"), but Edge on this PC never
-launches `deetsmusic-dev://…`: no "Open DeetsMusic?" dialog, nothing in the log, for the
-automatic link, the Return button, a plain `<a>` click, and the address bar (which searches
-it). Ruled out, each by test: the registry (identical shape to `vscode`, `zoommtg`,
-`docker-desktop`, which Edge does open; `AssocQueryString` resolves our exe and name); Edge
-policy and preference blocks (none); an Edge restart (processes confirmed new); a scheme
-without a hyphen and one pointing at `cmd.exe` (both silent, both registered while testing);
-the second process itself (a shell launch of the same link reaches the app). Firefox, given
-the link on its command line, passed nothing on either. Not yet tested: the RELEASE scheme
-`deetsmusic://` as the NSIS installer writes it, and any other PC. What ships meanwhile: the
-page's "Signed in" copy tells the user to use the app's local sign-in link if the Return
-button does nothing, and the app's timeout toast offers "Use local sign-in". Next step when
-picked up again: install a release build on this PC and try `deetsmusic://` from Edge; if
-that also fails, capture Edge's `--enable-logging --v=1` output around the click.
+**RESOLVED — "Edge drops the link" was a dev-environment artifact (2026-09-13).** In the
+first desk test Edge never opened `deetsmusic-dev://…` (no dialog; the console says *"the
+scheme does not have a registered handler"*). **Cause: the key was never in the real
+registry.** The dev app had been started from a Claude desktop session. The Claude app is
+an MSIX package, and Windows redirects `HKCU\Software\Classes` writes from every process it
+starts (its shells, and a `npm run dev:app` launched from them) into the package's private
+hive (`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\SystemAppData\Helium\UserClasses.dat`).
+Those processes read the key back, so `reg query`, `AssocQueryString` and a shell launch of
+the link all "worked"; Edge reads the real hive and gets NAME NOT FOUND. Found with Process
+Monitor (Edge's `RegOpenKey HKCU\Software\Classes\deetsprobe` → NAME NOT FOUND, the same
+lookup for `vscode` → SUCCESS), confirmed with a `reg query` started through WMI (outside the
+package): `vscode` present, our schemes absent. After the key was written from outside the
+package, the full hosted sign-in in Edge reached Connected.
+- **The app code is correct.** An installer the user runs, and a `dev:app` started from the
+  user's own terminal, register for real. Only processes under the Claude desktop app are
+  redirected. DEBUGGING.md §Sign-in has the check and the WMI workaround.
+- Ruled out on the way (do not re-test): URL length (the link is ~320 chars); the registry
+  shape and ACLs; Edge policies, preferences, excluded schemes and its AutoLaunch Protocols
+  component (it blocks only `applescript`); the Edge 133 non-special-scheme URL parsing
+  change; `UserChoice` hashes and `RegisteredApplications` (`vscode` has neither and works);
+  `SHChangeNotify`.
+- The loopback fallback stays for one release as decided (fork 5). The page's "Signed in"
+  copy no longer blames the browser; the timeout toast still offers "Use local sign-in".
 
 **Check in the first desk test** (2026-09-13: every link case, the fallbacks and a real
 token over the link are verified in the dev app — HANDOFF.md; the three below need Apple's
@@ -207,8 +215,11 @@ own window and stay the user's step)
 1. A MUT from the hosted page (Worker key `63Y9S9P5Z8`) works with the dev key
    `WPYRNBYCRT`. Expected, because Apple ties a MUT to the team, not the key. If Apple
    rejects it, the dev build must take its developer token from the Worker for sign-in.
+   **Passed 2026-09-13:** a hosted-page MUT reached Connected in the dev app.
 2. Chrome and Edge do not save the `deetsmusic://auth?…mut=` link in history.
 3. The automatic link works after `authorize()` in Chrome and Edge. If not, the button is the path.
+   **Passed in Edge 2026-09-13** (dialog → Open → Connected), once the scheme was really
+   registered (RESOLVED above). Chrome not tested (not installed on this PC).
 
 ---
 

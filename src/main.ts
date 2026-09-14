@@ -204,8 +204,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (code === "unavailable") health.show("app", true, "signin");
     else if (code === "offline") health.show("offline", true, "signin");
     else if (code === "timeout")
-      // A hosted sign-in that never returned (a browser that drops the link, DATA-ARCHITECTURE
-      // §2a "Edge") ends here too, so the local page is offered next to Try again.
+      // A hosted sign-in that never returned (the link was not followed, or the scheme is not
+      // registered — DATA-ARCHITECTURE §2a) ends here too, so the local page is offered next to Try again.
       toast({ kind: "error", text: "Sign-in didn't finish in time.", actions: [...retry, { label: "Use local sign-in", run: () => void signIn(true) }] });
     else if (code === "ports") toast({ kind: "warn", text: "Another sign-in page is still open. Close it, then try again.", actions: retry });
     else if (code === "rejected")
@@ -234,6 +234,9 @@ window.addEventListener("DOMContentLoaded", () => {
       noteSignedIn(); // the first playback failure after this gets the subscription hint
       health.reset();
       await paintAccount();
+      // The user is usually still in the browser; this says the app took the token
+      // (`all` tier, TOASTS.md §5).
+      toast({ kind: "success", text: "Sign-in complete! Enjoy!" });
     } catch (e) {
       if (mine !== signInSeq) return;
       signInPending = false;

@@ -163,7 +163,7 @@ blocks), measured in DEBUGGING.md. Also shipped that day: the ambient skin layer
 backgrounds** — both need a fresh installer to reach the installed app.
 
 **2026-09-13 — Hosted sign-in page + deep link: BUILT, Worker DEPLOYED (version
-`0ef715d2`, 18:40), Apple step not yet desk-tested** (branch `optimus-deets`). The browser sign-in now opens
+`0ef715d2`, 18:40), desk-tested end to end in Edge the same night** (branch `optimus-deets`). The browser sign-in now opens
 `https://music-api.deets.solutions/signin` (the Worker's `/health` answering), else the
 loopback page. The page returns the MUT with a `deetsmusic://auth?n=<nonce>&mut=…` link
 (a debug build: `deetsmusic-dev://`), so the MUT never passes through the Worker. As built,
@@ -185,12 +185,14 @@ Worker-page MUT (PRD key) working with the DEV key (§2a desk-test list). **Depl
 that repo's changes are not committed yet). The live page answers at
 `music-api.deets.solutions/signin`; a build falls back to the loopback page only when that
 GET fails. Same evening: the Account button cancels a waiting sign-in on a second click,
-and the local page reports its own close (§2a "Cancel"). **Desk test result: Apple's step
-works through the hosted page, but Edge on this PC never launches the `deetsmusic-dev://`
-link** (no dialog, nothing logged; every obvious cause ruled out — §2a "OPEN — Edge drops
-the link", with the next steps). Parked on the user's word: the page tells the user to use
-the app's local sign-in link if Return does nothing, and the timeout toast offers it too. The
-loopback page is therefore still the working path on this PC; do not remove it.
+and the local page reports its own close (§2a "Cancel"). **Desk test result (2026-09-13,
+late): the full hosted sign-in works in Edge** — dialog → Open → Connected. The earlier
+"Edge drops the link" was not a browser or app bug: the dev app had been launched from a
+Claude desktop session, whose MSIX package redirects registry writes into a private hive,
+so the scheme was never really registered (§2a "RESOLVED"; Known gotchas below). A
+successful sign-in now shows "Sign-in complete! Enjoy!" (`success`, `all` tier). The
+DeetsSupport page's "Signed in" copy was shortened to match; **it needs `npx wrangler deploy`
+in `../DeetsSupport`**. Keep the loopback page for one release as decided (§2a fork 5).
 
 > **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
 > anything already committed works unless this file says otherwise. Confirmed in use
@@ -474,6 +476,13 @@ get large).
 ---
 
 ## Known gotchas
+- **Registry writes from a Claude desktop session are not real (2026-09-13).** The Claude
+  app is an MSIX package: every process it starts — its shells, and `npm run dev:app` run
+  from them — writes `HKCU\Software\Classes` into a private hive. Those processes read the
+  keys back; Edge and every other program do not. This hid the `deetsmusic-dev://` scheme
+  for a whole session of "Edge drops the link". Anything that must reach the real registry
+  (the deep-link scheme, file associations) has to be written, and checked, from a process
+  started outside the package — the user's own terminal, or WMI (DEBUGGING.md §Sign-in).
 - **The tray flyout hides the taskbar button, and that used to spawn a second process** —
   `set_skip_taskbar(true)` on a pop (and a hidden window after × to tray) leaves Windows
   nothing to match the pinned shortcut against, so a click on the pin *launched* the exe

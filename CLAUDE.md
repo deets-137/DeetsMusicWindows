@@ -45,6 +45,11 @@ front-end, Rust back-end).
 - **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
   and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
   to read all of it: DEBUGGING.md §Reviewing the telemetry.
+- **Registry writes from this session are not real.** The Claude desktop app is an MSIX
+  package: your shells, and a `dev:app` you launch, write `HKCU\Software\Classes` into a
+  private hive that Edge and other programs cannot see (the deep-link scheme hid this way,
+  2026-09-13). Check or write the real registry through a WMI-started process. DEBUGGING.md
+  §Sign-in.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
