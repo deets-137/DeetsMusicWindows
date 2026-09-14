@@ -84,6 +84,7 @@ body {
   z-index: 20;
 }
 .menu[hidden] { display: none; }
+.menu { --pop-origin: top left; } /* it hangs from the title's left edge (main.ts adds .pop) */
 
 .menu__row {
   position: relative;
@@ -128,8 +129,27 @@ body {
   display: none;
   flex-direction: column;
   gap: var(--space-1);
+  /* The pop motion, driven by the row's :hover (no hidden attribute here): it slides out
+     from the menu edge, and fades away when the pointer moves to another row. */
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--pop-shift))) scale(var(--pop-scale));
+  transform-origin: top left;
+  pointer-events: none; /* a fading flyout must not catch the pointer and reopen */
+  transition:
+    opacity var(--pop-out) var(--pop-ease),
+    transform var(--pop-out) var(--pop-ease),
+    display var(--pop-out) allow-discrete;
 }
-.menu__row:hover .flyout { display: flex; }
+.menu__row:hover .flyout {
+  display: flex;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-duration: var(--pop-in);
+}
+@starting-style {
+  .menu__row:hover .flyout { opacity: 0; transform: translateX(calc(-1 * var(--pop-shift))) scale(var(--pop-scale)); }
+}
 
 /* Each item carries its own data-theme, so --canvas / --title / --border
    resolve to THAT theme — the chip is a live taste of the theme it selects. */
@@ -320,12 +340,46 @@ body {
   text-align: left;
 }
 .ap[hidden] { display: none; }
-.ap__head {
-  padding: var(--space-1) var(--space-2);
-  color: var(--subtext);
-  font-family: var(--font-body);
-  font-size: var(--fs-subtext);
+.ap.is-growing { overflow: hidden; } /* airplay.ts animates the height; a new row is revealed, not overlapping */
+
+/* ── Pop: a dropdown panel that arrives and leaves (AirPlay, Vol.) ──────────
+   The panel's `hidden` attribute drives it (the dropdown primitive): @starting-style
+   animates the arrival, and display allow-discrete keeps it painted through the fade
+   out. It grows from the corner it hangs from: --pop-origin (default top right).
+   A panel flipped above its trigger (data-above) grows from its bottom edge. */
+.pop {
+  transform-origin: var(--pop-origin, top right);
+  --pop-from: translateY(calc(-1 * var(--pop-shift))) scale(var(--pop-scale));
+  transition:
+    opacity var(--pop-in) var(--pop-ease),
+    transform var(--pop-in) var(--pop-ease),
+    display var(--pop-in) allow-discrete;
 }
+.pop[data-above] { --pop-origin: bottom right; --pop-from: translateY(var(--pop-shift)) scale(var(--pop-scale)); }
+.pop[hidden] {
+  display: none;
+  opacity: 0;
+  transform: var(--pop-from);
+  pointer-events: none;
+  transition-duration: var(--pop-out);
+}
+@starting-style { .pop:not([hidden]) { opacity: 0; transform: var(--pop-from); } }
+/* A row sliding in (src/pop.ts): a panel's rows on open, the rows a section fold opened. */
+.pop-enter { animation: pop-row-in var(--pop-in) var(--pop-ease) calc(var(--pop-i, 0) * var(--pop-stagger)) both; }
+@keyframes pop-row-in { from { opacity: 0; transform: translateY(calc(-1 * var(--pop-shift))); } }
+@media (prefers-reduced-motion: reduce) {
+  .pop, .flyout { transition: none; }
+  .pop-enter { animation: none; }
+}
+.ap__head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); /* the square sits near the corner */
+  color: var(--title);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  font-weight: var(--fw-title);
+}
+.ap__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ap__row {
   width: 100%; min-height: var(--ap-row-h);
   display: flex; align-items: center; gap: var(--space-2);
@@ -348,7 +402,6 @@ body {
 }
 .ap__state:empty { display: none; }
 .ap__state[data-tone="note"] { color: var(--text); }
-.ap__row--scan { color: var(--subtext); font-size: var(--fs-subtext); min-height: 0; }
 
 /* ── Traffic lights ─────────────────────────────────────────── */
 .lights { display: flex; gap: var(--traffic-gap); }
@@ -978,6 +1031,33 @@ body {
 /* clickable affordance + drilled-in highlight (border around the rectangle) */
 .lib-view[data-openable="1"] .lib-row,
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
+/* ── Row drag (src/row-drag.ts: Up Next + a local playlist's detail) ──
+   The dragged row lifts and follows the pointer 1:1 (--drag-dy set in JS), no transition
+   lag. The doubled class outranks `.lib-row:hover`, whose hover lift would snap it back. */
+.is-dragging.is-dragging {
+  transform: translateY(var(--drag-dy, 0px)) var(--drag-lift);
+  box-shadow: var(--shadow-panel);
+  background: var(--surface-hover);
+  position: relative;
+  z-index: 2;
+  opacity: 0.96;
+  transition: none;
+  cursor: grabbing;
+}
+/* The list while a drag runs: the positioned reference for the line and row offsets. */
+.is-reordering { position: relative; }
+/* Insertion indicator — where the dragged row will land (top set in JS). */
+.drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--drop-line-w);
+  border-radius: var(--drop-line-w);
+  background: var(--title);
+  pointer-events: none;
+  z-index: 3;
+}
+
 .lib-row.is-selected,
 .lib-tile.is-selected,
 .lib-row.is-context,        /* right-clicked row while its menu is open */
@@ -1056,7 +1136,8 @@ body {
    survives typing; side-flip (.is-left) + vertical clamp are measured there too. */
 .ctx-menu__sub { position: relative; }
 .ctx-menu__chev { color: var(--subtext); }
-.ctx-menu__item--sub {
+.ctx-menu__item--sub,
+.ctx-menu__item--badged { /* a trailing accessory: the flyout chevron, or the Apple Music sigil */
   display: flex;
   align-items: center;
   justify-content: space-between;

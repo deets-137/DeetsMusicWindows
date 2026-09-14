@@ -137,9 +137,11 @@ export function toast(opts: ToastOptions): ToastHandle {
   const sticky = notice || (opts.sticky ?? kind === "error");
   const text = String(opts.text ?? "");
   // A failure the user was told about (or would have been, under a muted tier) belongs in
-  // the log file too — it is the line a bug report starts from.
-  if (kind === "error") diag.error("toast", { text });
-  else if (kind === "warn") diag.warn("toast", { text });
+  // the log file too — it is the line a bug report starts from. A question (sticky with the
+  // caller's actions: the red delete confirm) is not a failure; its `toast` line below is enough.
+  const asks = sticky && !!opts.actions?.length;
+  if (!asks && kind === "error") diag.error("toast", { text });
+  else if (!asks && kind === "warn") diag.warn("toast", { text });
   observers.forEach((fn) => {
     try {
       fn({ kind, text });
@@ -152,7 +154,7 @@ export function toast(opts: ToastOptions): ToastHandle {
     diag.log("toast:muted", { kind, text, why: "notice-off", key: noticeKey });
     return INERT;
   }
-  if (!admitted(kind, notice, sticky && !!opts.actions?.length)) {
+  if (!admitted(kind, notice, asks)) {
     diag.log("toast:muted", { kind, text, why: `tier-${setting("toasts")}` });
     return INERT;
   }
@@ -191,7 +193,8 @@ export function toast(opts: ToastOptions): ToastHandle {
   const buttons: ToastAction[] = [...(opts.actions ?? [])];
   if (opts.onceKey) buttons.push({ label: "Got it" });
   else if (notice) buttons.push({ label: "Don't show again", run: () => silenceNotice(noticeKey!) });
-  if (sticky && !opts.onceKey && !buttons.some((b) => b.label === "Dismiss")) buttons.push({ label: "Dismiss" });
+  // A question that brings its own Cancel (the delete confirm) needs no Dismiss beside it.
+  if (sticky && !opts.onceKey && !buttons.some((b) => b.label === "Dismiss" || b.label === "Cancel")) buttons.push({ label: "Dismiss" });
   if (buttons.length) {
     const row = document.createElement("div");
     row.className = "toast__actions";

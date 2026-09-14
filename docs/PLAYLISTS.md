@@ -47,8 +47,14 @@
 > **Built since:** mosaic + custom covers (NEXT-VERSION §2; the hero cover button 2026-09-14)
 > and **Export to Apple Music** (§6, 2026-09-14).
 >
-> **Still deferred:** rename/reorder, Import-to-edit, non-empty delete, and the parked
-> **direct-append-to-editable-Apple-playlists** idea (§6).
+> **Built 2026-09-14 (§10.1–10.8, not desk-tested):** drag to reorder, rename, the
+> *Apple Music ▸* menu (Send / Get New Songs, Make a New Copy), the red delete confirm, named
+> skipped uploads, covers served as links, the README note, and the Replay guard.
+>
+> **Built 2026-09-14 (§10.9, not desk-tested):** Import to Edit, adding straight to your own
+> Apple playlists, and the Local Playlists section.
+>
+> **Still deferred:** the backup file (§10.7, an idea only).
 > This doc still fixes *what* and *why* for those parts.
 
 ---
@@ -268,6 +274,13 @@ live Apple copy carries the Apple Music sigil; its detail hero adds "Exported on
 With no cover of its own, it shows the artwork Apple gave its copy (the mirror row — zero
 calls), before the song mosaic. The first-export notice adds "Your cover stays in
 DeetsMusic; Apple Music makes its own." only when the playlist has its own cover.
+**Apple lists a new playlist late (found 2026-09-14).** The library list showed the "jank"
+copy about 15 s after the create; the card's sync 0.8 s later still returned the old list, so
+the copy looked gone (no sigil, Export offered again). Fix: the export seeds the mirror row
+from the create reply (`seed_created_copy`, zero extra calls), and `apple_playlists_sync`
+keeps a copy exported in the last 30 seconds (`EXPORT_LIST_LAG_MS`) that Apple's list
+doesn't show yet (log: `kept just-exported …`). A delay before the sync was rejected: the
+lag is not a fixed time.
 **The create reply is gzip-compressed** whatever the request asks: `reqwest` needs its
 `gzip` feature, or the new playlist's id is unreadable (found 2026-09-14 — two empty copies
 were made before the fix).
@@ -340,6 +353,148 @@ Phases 1–3 deliver the whole make-and-manage experience with **no API risk**; 
 on top. The collection-card second-instance check passed at Phase 2 (engine holds no module state).
 
 ---
+
+## 10. The wrap-up — decided 2026-09-14, BUILT the same day (10.1–10.9), not desk-tested
+
+Talked through with the user after the export desk test. The toast rows are in TOASTS.md §5.
+
+**As built (read this before the plan below):**
+- **10.1 drag** — `src/row-drag.ts` is the one primitive; `qcard.ts` and the collection
+  engine both use it. The engine offers it through `Grouping.reorder = { sortKey, move }`:
+  lines density, that sort ascending, no search. Rows are found by `data-idx`, and the drop
+  index is `offsetTop` math from the pressed row, so a windowed list works. A reload that
+  arrives mid-drag waits for the drop. The card moves its cached tracks at once, then calls
+  `playlist_reorder`. The change bus now **revalidates** an edited playlist over its cache (no
+  blank pane between the eviction and the refetch). The shared CSS is `styles.css` §Row drag
+  (`.is-dragging`, `.is-reordering`, `.drop-line`).
+- **10.2** — the Rename field (`InputItem.value`, new: the field opens holding the name) heads
+  the local items shared by the row menu and the hero cover menu. `Make a New Copy (named
+  “X”)` shows when the local name differs from the mirror row's name (no new column).
+- **10.3** — `toast.ts`: a question with a **Cancel** gets no Dismiss, and a question writes no
+  `warn`/`error` diag line.
+- **10.4** — `playlist_get_apple_songs` (Rust) reads the copy, runs `export_diff` swapped, and
+  appends the Apple `Track`s locally in one command.
+- **10.5** — `ExportPlan` / `ExportResult` carry `skippedTitles` instead of a count.
+- **10.6** — lib.rs registers the `cover` scheme (asynchronous, off the webview thread);
+  `playlists_cached` sends `http://cover.localhost/<rowid>?v=<cover_at>`. **Schema v5** adds
+  `cover_at` (so a song add doesn't refetch the image) and `role`.
+- **10.8** — `local_playlists.role = 'replay'`, set by `playlist_create(…, role)` from
+  `replay.ts`; v5 backfills name + Replay-folder matches. `isReplay` excludes them from Add to
+  Playlist targets, Remove, Rename, drag, and Get New Songs. The rolling Replay is found by
+  role + name, so a hand-made "Replay" is never deleted.
+
+### 10.1 Drag to reorder (like the queue)
+- **Extract** the queue's drag (`qcard.ts` "Drag-to-reorder", ~140 lines: whole-row
+  press-and-hold, 6 px threshold, an insertion LINE, edge auto-scroll, render suspended mid-drag,
+  click suppressed after a drop) into one shared module; the queue and playlists both use it.
+- **Where:** a LOCAL playlist's detail, only in **Playlist Order** with no search active (a drop
+  position means nothing in A–Z / Artist order or a filtered list). Mirrors never drag.
+- **Windowed lists** (> `WINDOW_MIN` = 200 songs, `collection-window.ts`): rows have one fixed
+  height, so the drop index is row math on the list's scroll position, not on rendered rows.
+- **Commit:** `playlist_reorder(id, from, to)` already exists in Rust (no UI caller yet), then
+  the change bus. Identity is the authored position (duplicates are legal).
+
+### 10.2 Rename + the "Apple Music ▸" wording
+- **Rename:** an `InputItem` field in the row's right-click menu AND the hero cover menu (the
+  "New Playlist…" field idiom). `playlist_rename` exists in Rust (no UI caller yet).
+- **"Export ▸" becomes "Apple Music ▸"**, its rows worded from local state only (zero calls):
+  - not exported → *Export to Apple Music*;
+  - exported (live copy) → *Send New Songs* · *Get New Songs* (10.4) · *Make a New Copy*;
+  - renamed since the export → the copy keeps its old name (Apple can't rename), so say it,
+    e.g. *Make a New Copy (named "Road Trip")*. Store the exported name (a column, or compare
+    with the mirror row's name).
+
+### 10.3 Delete a playlist that has songs
+- Today **Delete Playlist** is greyed while the playlist has songs.
+- New: a **red sticky question** (`kind: "error"`, sticky with actions → shows under every tier):
+  *Delete "Road Trip" and its 24 songs? This can't be undone.* **[Delete] [Cancel]**.
+- **Exported playlist:** the same toast adds *Its copy on Apple Music stays and will show in
+  your list.* (Deleting the local row un-hides the linked copy — §6 "one row".)
+
+### 10.4 Get New Songs (Apple copy → local)
+- Fork **A** (user's pick): add the songs that are on the Apple copy but not in the local
+  playlist, **at the end**. Nothing is lost, so no confirm.
+- Cost: one Apple read per 100 songs (reuse `export_diff` with the sides swapped — the extra
+  Apple occurrences). Match by catalog id; rows without one can't be matched.
+- Toast: *Added 3 songs from Apple Music to "Road Trip".* / *"Road Trip" already has every song
+  from its Apple copy.*
+
+### 10.5 Name the skipped uploads
+- Uploaded songs DO work in DeetsMusic (Library, playback by library id, local playlists); only
+  catalog actions hide (Copy Link, Go To, ♥, Add to Library, export).
+- Export's skipped count names them the dead-song way instead of a Details button (toast
+  buttons can't open a list): *2 songs skipped: "A" and "B" aren't in the Apple Music catalog.*
+  Rust returns the skipped titles with the count.
+
+### 10.6 Covers as links, not text (the Library's way)
+- **Why:** a custom cover is a ≈50 KB data URL inside EVERY `playlists_cached` reply. Library
+  covers are short Apple links, loaded by `<img loading="lazy">` only for rows near the screen
+  (windowing) and cached by the browser.
+- **Do the same:** Rust serves each cover from the db at its own link (a custom URI scheme,
+  e.g. `http://cover.localhost/<rowid>?v=<updated_at>`); the model carries only that link. The
+  `v` changes when the cover changes, so the cache never shows a stale image. Zero Apple calls.
+
+### 10.7 Backup: export/import file
+- Local playlists live only in this PC's SQLite (`app_data_dir`). A reinstall or a new PC loses
+  them; Export to Apple Music is the only backup today.
+- **Idea (documented, not decided further):** Settings › Playlists › *Save playlists to a file* /
+  *Load playlists from a file* — one JSON file (names, descriptions, folder, covers, the Track
+  snapshots in order). Load adds; it never overwrites.
+- **Now:** a README note — *Playlists you make in DeetsMusic are stored on this PC only.*
+
+### 10.8 Replay playlists are not add targets (bug)
+- Replay playlists are ordinary local playlists (`replay.ts`: the rolling one is named
+  "Replay", dated ones "Replay — <window>, <date>", both filed in the Replay folder). Nothing
+  marks them, so **Add to Playlist ▸** offers them and accepts songs. It must not: a Replay is
+  made from listening, not by hand.
+- **Fix:** mark them at creation (a `kind`/role on `local_playlists`, e.g. `replay`) — not a
+  name match, which a user's own "Replay trip" would hit. Then exclude them from Add to Playlist
+  targets, Remove from Playlist, rename, drag, and Get New Songs. Existing Replays need a one-time
+  backfill (name + Replay folder).
+
+### 10.9 Import to edit (§5) and adding straight to Apple playlists (§6, parked idea)
+
+**Decided + built 2026-09-14 (not desk-tested).** The user's picks:
+- **Import link — linked, one row.** `playlist_import(apple_id)` (Rust) copies a mirror into a
+  new local playlist (songs from the content cache when cached, else one read per 100) and
+  files it in the original's folder. A `canEdit` original becomes the copy's
+  `exported_apple_id`, so the original hides and Send / Get New Songs work at once. The
+  `exported_at` stays empty (the hero doesn't say "Exported on" for an import). An Apple-made
+  playlist (mix, editorial, smart) imports unlinked. Entry: **Import to Edit** on a mirror
+  row's right-click and on a mirror's hero cover (the cover is a button there too). It drills
+  into the copy.
+- **Add menu — one mixed list.** `addToPlaylistItem` lists hand-made locals AND `canEdit`
+  mirrors that are not a linked copy, recent first; an Apple row carries the sigil
+  (`ActionItem.badge`, new; the sigil moved to `src/apple-sigil.ts`). A linked local lists
+  without the sigil: the add is local. The first Apple add asks once
+  (`deets.notice.appleAdd`, [Add] silences it). `apple_playlist_add(apple_id, tracks)`
+  (Rust) refuses a non-`canEdit` row, appends 100 per call, drops the content cache, and
+  raises a known count. The change bus carries the Apple id (`(rowid?, appleId?)`).
+- **Section — auto.** `CLUSTERS` gains `local` → **Local Playlists** (first); `yours` is now
+  **Your Apple Playlists** (`kind: "user"` mirrors). A collapsed "yours" key now collapses the
+  Apple half only.
+- **Setting — the same row.** Export playlists off hides the Apple targets. Import to Edit
+  always shows (a local write).
+
+The plan as written before the build:
+- **Import to edit:** copy an Apple playlist into a new local playlist the user can edit. The
+  Apple original stays.
+- **Add straight to Apple playlists:** **Add to Playlist ▸** also lists Apple playlists the user
+  may add to — `canEdit: true` only (their own). Apple's Replay, mixes, editorial and smart
+  playlists are `canEdit: false` and never show.
+- **First add to an Apple playlist:** a confirmation toast before the write, once
+  (a sticky question, then a key remembers it): *Add to "Road Trip" on Apple Music? DeetsMusic
+  can't remove songs from it afterwards.* **[Add] [Cancel]**.
+- **A "Local Playlists" section:** today "Your Playlists" mixes local playlists with the user's
+  own Apple playlists (`clusterOf`: `source === "local" || kind === "user"`). Split it into
+  **Local Playlists** (made in DeetsMusic) and **Your Apple Playlists**, so the two write paths
+  never look alike. Open detail for that session: an auto section (a `CLUSTERS` entry, as now)
+  vs a real folder the user can rename.
+
+### Order
+1. 10.1 drag (shared module) · 2. 10.2 rename + Apple Music ▸ wording · 3. 10.3 delete confirm ·
+4. 10.4 Get New Songs · 5. 10.5 named skips · 6. 10.6 cover links · 7. 10.7 README note + backup
+doc · 8. 10.8 Replay guard (small; can go first if it bites) · later 10.9.
 
 ## Decisions (closed)
 

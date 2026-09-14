@@ -95,6 +95,26 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-14 — playlists §10.9, BUILT, not desk-tested: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
+Import to Edit (a mirror row's right-click or its hero cover; your own Apple playlist stays
+linked as one row), Add to Playlist ▸ lists your own Apple playlists with the sigil (the
+first add asks once), and the list splits into Local Playlists / Your Apple Playlists. New
+Rust commands `playlist_import` + `apple_playlist_add`: **restart the dev runner.** Desk
+test: import one of your own playlists (one row, Send New Songs), import an Apple mix
+(unlinked), add a song to a throwaway Apple playlist (a REAL Apple write, the question
+first), turn Export playlists off (the Apple rows leave the menu).
+
+**2026-09-14 — the playlists wrap-up, BUILT, not desk-tested: [PLAYLISTS.md §10](PLAYLISTS.md)
+"As built".** Drag to reorder (`src/row-drag.ts`, now shared with the queue), rename, the
+*Apple Music ▸* menu (Send New Songs · Get New Songs · Make a New Copy), a red delete confirm,
+named skipped uploads, covers served as `http://cover.localhost/` links, the README note, and
+the Replay guard (`role`). **Schema v5; Rust changed: restart the dev runner.** Desk test: drag
+in a short and a >200-song local playlist, drag the queue (it moved to the shared module),
+rename, delete with songs, a Replay's menus, Get New Songs on an exported playlist (a real
+Apple READ). Later: Import to edit, adding straight to Apple playlists (first-add confirm), a
+separate Local Playlists section (§10.9). Idea raised: drag songs from any card into the Queue
+(not designed).
+
 **2026-09-14 — Playlist covers + Export to Apple Music: BUILT, not desk-tested** (branch
 `optimus-deets`). The hero cover of a local playlist is a button (Choose Image… / Remove
 Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](NEXT-VERSION.md)). Export ▸

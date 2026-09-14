@@ -39,6 +39,14 @@ pub fn run() {
         .manage(apple::AppleState::default())
         .manage(bridge::Hub::default())
         .manage(airplay::AirplayState::default())
+        // A local playlist's own cover, served as a link (`http://cover.localhost/<id>`)
+        // instead of a data URL inside every playlists_cached reply (PLAYLISTS.md §10.6).
+        // Off the webview thread: the read takes the db lock.
+        .register_asynchronous_uri_scheme_protocol("cover", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            let path = request.uri().path().to_string();
+            std::thread::spawn(move || responder.respond(playlists::cover_response(&app, &path)));
+        })
         .setup(|app| {
             use tauri::Manager;
 
@@ -129,6 +137,7 @@ pub fn run() {
             }
             library::migrate_v3(&conn).expect("v3 migration failed");
             library::migrate_v4(&conn).expect("v4 migration failed");
+            library::migrate_v5(&conn).expect("v5 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
@@ -218,6 +227,9 @@ pub fn run() {
             playlists::playlist_set_cover,
             playlists::playlist_export_plan,
             playlists::playlist_export_apple,
+            playlists::playlist_get_apple_songs,
+            playlists::playlist_import,
+            playlists::apple_playlist_add,
             playlists::playlist_delete,
             playlists::playlist_add_tracks,
             playlists::playlist_remove_track,

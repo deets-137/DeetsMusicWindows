@@ -26,11 +26,19 @@ export interface ActionItem {
   label: string;
   run: () => void;
   disabled?: boolean;
+  /** Trusted markup shown at the row's end (the Apple Music sigil on an Apple playlist). */
+  badge?: string;
 }
 export interface InputItem {
   /** `label` is an optional non-interactive title rendered above the field (e.g. the
    *  New (+) dropdown's "Playlist" / "Folder" pair of labelled create fields). */
-  input: { label?: string; placeholder: string; onSubmit: (value: string) => void };
+  input: {
+    label?: string;
+    placeholder: string;
+    /** Text the field opens with (Rename: the current name). */
+    value?: string;
+    onSubmit: (value: string) => void;
+  };
 }
 export interface SubmenuItem {
   label: string;
@@ -149,6 +157,7 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
         inp.type = "text";
         inp.className = "ctx-menu__input";
         inp.placeholder = item.input.placeholder;
+        if (item.input.value) inp.value = item.input.value;
         inp.addEventListener("keydown", (e) => {
           if (e.key !== "Enter") return;
           e.preventDefault();
@@ -166,7 +175,13 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
       btn.type = "button";
       btn.className = "ctx-menu__item";
       btn.setAttribute("role", "menuitem");
-      btn.textContent = item.label;
+      if (item.badge) {
+        btn.classList.add("ctx-menu__item--badged");
+        const lbl = document.createElement("span");
+        lbl.textContent = item.label;
+        btn.append(lbl);
+        btn.insertAdjacentHTML("beforeend", item.badge);
+      } else btn.textContent = item.label;
       if (item.disabled) btn.disabled = true;
       else
         btn.addEventListener("click", () => {

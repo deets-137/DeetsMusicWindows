@@ -48,6 +48,8 @@ export interface Playlist {
   /** A local playlist's latest Apple Music copy (PLAYLISTS.md §6) and its last write (ms). */
   exportedAppleId?: string;
   exportedAt?: number;
+  /** A local playlist's role: "replay" = made from listening, not editable by hand (PLAYLISTS.md §10.8). */
+  role?: string;
 }
 
 export interface SearchResults {

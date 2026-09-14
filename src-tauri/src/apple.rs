@@ -1537,6 +1537,7 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         cover_urls: None,
         exported_apple_id: None, // export stamps are local playlists only
         exported_at: None,
+        role: None,
     }
 }
 
@@ -1569,7 +1570,7 @@ fn station_from_catalog(v: &serde_json::Value) -> Station {
 /// PLAYLISTS.md §2). Apple sends every kind with the same shape; the kind is inferred:
 /// `canEdit` → user-authored; else a `globalId` → catalog list added to the library;
 /// else a smart playlist (rule-based — the API only ever returns materialized tracks).
-fn playlist_from_library(v: &serde_json::Value) -> Playlist {
+pub(crate) fn playlist_from_library(v: &serde_json::Value) -> Playlist {
     let a = &v["attributes"];
     let pp = &a["playParams"];
     let can_edit = a["canEdit"].as_bool().unwrap_or(false);
@@ -1600,6 +1601,7 @@ fn playlist_from_library(v: &serde_json::Value) -> Playlist {
         cover_urls: None,
         exported_apple_id: None, // export stamps are local playlists only
         exported_at: None,
+        role: None,
     }
 }
 

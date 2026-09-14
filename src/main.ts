@@ -74,6 +74,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const menu = document.getElementById("settings-menu");
   if (!settingsRoot || !trigger || !menu) return;
 
+  menu.classList.add("pop"); // arrives and leaves like the Vol. and "Play on" panels
+  menu.dataset.frames = "settings";
   const settingsDropdown = makeDropdown({ root: settingsRoot, trigger, panel: menu });
   const close = () => settingsDropdown.close();
 
@@ -350,14 +352,20 @@ window.addEventListener("DOMContentLoaded", () => {
     reflect(getVolume()); // seed from the persisted level
     onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes
 
-    // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag —
-    // or while the nested "Play on" panel is open.
+    // Shared dropdown mechanism. A slider drag keeps it up, and so does the pointer leaving
+    // for the nested "Play on" panel (portaled outside this root). A click away or Escape
+    // closes both panels; a click inside "Play on" counts as inside this one.
     const volAirplay = document.getElementById("vol-airplay");
+    let playOn: ReturnType<typeof mountAirplay> | null = null;
+    volPanel.classList.add("pop"); // arrives and leaves like the "Play on" panel
+    volPanel.dataset.frames = "volume";
     makeDropdown({
       root: volRoot, trigger: volPill, panel: volPanel,
-      shouldStayOpen: () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true",
+      shouldStayOpen: (why) =>
+        slider.dragging || (why === "leave" && volAirplay?.getAttribute("aria-expanded") === "true"),
+      alsoInside: () => [playOn?.panel],
     });
-    if (volAirplay) mountAirplay(volAirplay);
+    if (volAirplay) playOn = mountAirplay(volAirplay);
     initAirplay();
 
     volMute.addEventListener("click", (e) => {

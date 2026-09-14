@@ -14,6 +14,7 @@
 import * as frames from "./frames";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
+import { rowDrag } from "./row-drag";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -56,6 +57,10 @@ export interface Grouping<T = any> {
   isSelected?: (x: T) => boolean;
   /** Items of unequal height (shelf headers among rows): never windowed. */
   mixed?: boolean;
+  /** Drag-to-reorder (row-drag.ts), offered only in lines density, in THIS sort ascending,
+   *  with no search — a drop position means nothing in another order or a filtered list.
+   *  `move` gets splice indexes (remove at `from`, insert at `to`) into that order. */
+  reorder?: { sortKey: string; move: (from: number, to: number) => void };
 }
 
 /**
@@ -576,7 +581,32 @@ export function initCollectionCard(opts: CardOptions) {
     curPane?.querySelector('[data-pop="search"]')?.classList.toggle("is-active", !!cur().query);
   };
 
+  // Drag-to-reorder for a grouping that offers it (`reorder`). A data reload that arrives
+  // mid-drag waits for the drop, so the dragged row is never rebuilt under the pointer.
+  let reloadPending = false;
+  const drag = rowDrag({
+    root: viewport,
+    label: "collection",
+    rowAt: (target) => {
+      if (animating) return null;
+      const pane = target.closest<HTMLElement>(".coll-pane");
+      if (!pane || pane !== curPane) return null;
+      const f = cur();
+      const r = groupingOf(f).reorder;
+      if (!r || f.sortKey !== r.sortKey || f.sortDir !== "asc" || f.query.trim() || f.density !== "lines") return null;
+      const row = target.closest<HTMLElement>("[data-idx]");
+      const list = pane.querySelector<HTMLElement>("[data-view]");
+      if (!row || !list) return null;
+      return { row, index: Number(row.dataset.idx), list, count: f.items.length };
+    },
+    onEnd: (from, to) => {
+      if (to != null) groupingOf(cur()).reorder?.move(from, to); // the card reloads with its new order
+      if (reloadPending) reload();
+    },
+  });
+
   viewport.addEventListener("click", (e) => {
+    if (drag.consumeClick()) return; // the tail of a drag, not a play
     const t = e.target as HTMLElement;
     const pane = t.closest<HTMLElement>(".coll-pane");
     if (!pane || pane !== curPane || animating) return; // ignore off-screen / mid-transition panes
@@ -732,33 +762,41 @@ export function initCollectionCard(opts: CardOptions) {
   curPane.dataset.pos = "center";
   viewport.appendChild(curPane);
 
+  // Refresh data without losing the user's place. Live grouping closures pick up
+  // new data; we just re-render the visible pane (deeper frames re-render on back).
+  function reload() {
+    if (drag.active()) {
+      reloadPending = true; // after the drop (onEnd above)
+      return;
+    }
+    reloadPending = false;
+    if (stack.length === 1) {
+      stack[0].ctx = opts.rootContext();
+      if (!groupingOf(stack[0])) stack[0].grouping = stack[0].ctx.groupings[0].key;
+    }
+    if (!curPane) return;
+    // a background sync shouldn't yank the user to the top
+    const v = curPane.querySelector<HTMLElement>("[data-view]");
+    const keep = v ? v.scrollTop : 0;
+    renderViewInto(curPane, cur());
+    const v2 = curPane.querySelector<HTMLElement>("[data-view]");
+    if (!v2) return;
+    const w = windowers.get(v2);
+    if (w) w.scrollTo(keep);
+    else v2.scrollTop = keep;
+  }
+
   return {
     // Push a child context programmatically — same slide/header path as clicking a
     // tile (e.g. Playlists drills straight into a just-created playlist).
     drill(ctx: Context) {
       drill(ctx);
     },
-    // Refresh data without losing the user's place. Live grouping closures pick up
-    // new data; we just re-render the visible pane (deeper frames re-render on back).
-    reload() {
-      if (stack.length === 1) {
-        stack[0].ctx = opts.rootContext();
-        if (!groupingOf(stack[0])) stack[0].grouping = stack[0].ctx.groupings[0].key;
-      }
-      if (!curPane) return;
-      // a background sync shouldn't yank the user to the top
-      const v = curPane.querySelector<HTMLElement>("[data-view]");
-      const keep = v ? v.scrollTop : 0;
-      renderViewInto(curPane, cur());
-      const v2 = curPane.querySelector<HTMLElement>("[data-view]");
-      if (!v2) return;
-      const w = windowers.get(v2);
-      if (w) w.scrollTo(keep);
-      else v2.scrollTop = keep;
-    },
+    reload,
     // Remove the engine's document-level listeners. The viewport/back listeners live on
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {
+      drag.destroy(); // a drag's document listeners would outlive the card
       dropWindower(curPane); // its observers outlive the subtree otherwise
       closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
       document.removeEventListener("click", onDocClick);

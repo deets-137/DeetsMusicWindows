@@ -15,7 +15,14 @@
 // escape a card's stacking context — the AirPlay "Play on" panel) is its own hover region
 // and counts as "inside" for dismissal.
 
+import * as frames from "./frames";
+
 export type DropdownMode = "click" | "hover";
+
+/** Why a dropdown is closing, so `shouldStayOpen` can veto only some closes:
+ *  "toggle" the trigger was clicked · "away" a click outside · "escape" the Escape key ·
+ *  "leave" the pointer left, in hover mode · "api" a caller's handle.close(). */
+export type CloseReason = "toggle" | "away" | "escape" | "leave" | "api";
 
 export interface DropdownOptions {
   /** Hover region — contains the trigger and the (absolutely-positioned) panel. */
@@ -29,7 +36,9 @@ export interface DropdownOptions {
   /** Close delay after the cursor leaves, in hover mode (default 150ms). */
   hoverGraceMs?: number;
   /** Veto closing while true (e.g. a slider mid-drag inside the panel). */
-  shouldStayOpen?: () => boolean;
+  shouldStayOpen?: (why: CloseReason) => boolean;
+  /** More elements a click counts as inside (a nested panel portaled out of `root`). */
+  alsoInside?: () => (Element | null | undefined)[];
   /** Veto OPENING while true (e.g. a slot picker that's only live at a card's root). */
   disabled?: () => boolean;
 }
@@ -55,7 +64,7 @@ export function setDropdownMode(mode: DropdownMode): void {
 
 /** Wire open/close/dismiss for a trigger+panel pair. Returns a runtime handle. */
 export function makeDropdown(opts: DropdownOptions): DropdownHandle {
-  const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, disabled } = opts;
+  const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled } = opts;
   let mode: DropdownMode = opts.mode ?? globalMode;
   let graceTimer: number | undefined;
 
@@ -63,32 +72,35 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   const open = () => {
     if (disabled?.()) return; // e.g. a picker that isn't at its card's root
     window.clearTimeout(graceTimer);
+    // A panel that animates (the .pop style) logs its arrival's frames (DEBUGGING.md §Frame telemetry).
+    if (panel.hidden && panel.dataset.frames) frames.during("menu", 300, panel.dataset.frames);
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
   };
-  const close = () => {
-    if (shouldStayOpen?.()) return; // e.g. don't close out from under a drag
+  const close = (why: CloseReason = "api") => {
+    if (shouldStayOpen?.(why)) return; // e.g. don't close out from under a drag
     window.clearTimeout(graceTimer);
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
   };
   const scheduleClose = () => {
     window.clearTimeout(graceTimer);
-    graceTimer = window.setTimeout(close, hoverGraceMs);
+    graceTimer = window.setTimeout(() => close("leave"), hoverGraceMs);
   };
 
   const onEnter = () => { if (mode === "hover") open(); };
   const onLeave = () => { if (mode === "hover") scheduleClose(); };
   const onClick = (e: Event) => {
     e.stopPropagation(); // don't let the document handler immediately re-close it
-    isOpen() ? close() : open();
+    isOpen() ? close("toggle") : open();
   };
   const onDocClick = (e: MouseEvent) => {
     const t = e.target as Node;
-    if (isOpen() && !root.contains(t) && !panel.contains(t)) close();
+    const inside = root.contains(t) || panel.contains(t) || !!alsoInside?.().some((el) => el?.contains(t));
+    if (isOpen() && !inside) close("away");
   };
   const onDocKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") close();
+    if (e.key === "Escape") close("escape");
   };
 
   // Hover acts only in hover mode; click toggles in BOTH (lets a hover user pin the panel).
@@ -104,7 +116,7 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
 
   const handle: DropdownHandle = {
     open,
-    close,
+    close: () => close("api"),
     setMode(m: DropdownMode) { mode = m; },
     destroy() {
       live.delete(handle);

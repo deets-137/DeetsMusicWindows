@@ -43,6 +43,9 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4b3980b5b8c4265663319ca21da7568106f9dad3" }
 tauri-plugin-deep-link = "2"
 url = "2"
+# Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).
+# Already in the tree transitively, so no new crate download.
+base64 = "0.22"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

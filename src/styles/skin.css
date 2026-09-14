@@ -166,6 +166,14 @@
   --ap-row-h:       var(--icon-lg);
   --ap-dot:         0.9em;          /* the ✓ gutter on a row */
   --ap-pulse:       1.2s;           /* the square's breathing while connecting */
+  /* dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in */
+  --pop-in:         var(--dur-med); /* a panel and new rows arriving */
+  --pop-out:        var(--dur-fast);/* a panel leaving */
+  --pop-grow:       var(--dur-med); /* a panel's height following a new row */
+  --pop-stagger:    0.03s;          /* one arriving row after the next */
+  --pop-shift:      var(--space-1); /* how far a panel and a new row travel in */
+  --pop-scale:      0.97;           /* a panel's size as it starts to arrive */
+  --pop-ease:       cubic-bezier(0.2, 0.8, 0.2, 1); /* fast start, soft stop */
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */

@@ -10,7 +10,11 @@
 
 import * as frames from "./frames";
 import { setting } from "./settings-store";
-import { playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistRemoveTrack, playlistSetCover, addToPlaylistItem, onPlaylistsChange, foldersList, folderCreate, folderRename, folderDelete, folderAssign, type PlaylistFolder } from "./playlists";
+import {
+  playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete,
+  playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, addToPlaylistItem, onPlaylistsChange,
+  foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
+} from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
@@ -19,42 +23,16 @@ import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
-import { exportItem } from "./playlist-export";
+import { appleMusicItem } from "./playlist-export";
+import { APPLE_SIGIL } from "./apple-sigil";
+import { enterRows, rowsAfter } from "./pop";
 import { requestCard } from "./layout-bus";
 import { toast } from "./toast";
 import type { CardDef } from "./cards";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
-/** The user's own cover (a data URL) — not the artwork of its Apple copy, which can't be removed here. */
-const ownCover = (p: Playlist) => !!p.artwork?.urlTemplate.startsWith("data:");
-
-// Source sigil for playlists that live on Apple Music (`source: "apple"`), shown
-// right-aligned on the count row. The shape is Apple's official monochrome Apple Music
-// icon (Apple_Music_Icon_blk_sm_073120.svg), path unmodified — the Identity Guidelines
-// forbid the Apple logo for Apple Music. Fill is --apple-music-mark: the black or white
-// file by theme, never a theme tint. Local playlists carry no badge.
-const APPLE_SIGIL =
-  `<svg class="lib-src-badge lib-src-badge--apple-music" viewBox="0 0 73 73" role="img" aria-label="Apple Music">` +
-  `<path fill-rule="evenodd" clip-rule="evenodd" d="M72,19.94c0-0.72-0.01-1.45-0.03-2.17c-0.04-1.58-0.14-3.17-0.42-4.73c-0.28-1.58-0.75-3.06-1.48-4.5` +
-  `c-0.72-1.41-1.66-2.71-2.78-3.83c-1.12-1.12-2.42-2.06-3.83-2.78c-1.44-0.73-2.91-1.2-4.49-1.48c-1.56-0.28-3.15-0.37-4.73-0.42` +
-  `C53.51,0.02,52.78,0.01,52.06,0c-0.86,0-1.72,0-2.58,0H22.52c-0.86,0-1.72,0-2.58,0c-0.72,0-1.45,0.01-2.17,0.03` +
-  `c-1.58,0.04-3.17,0.14-4.73,0.42C11.46,0.74,9.98,1.2,8.55,1.94C7.13,2.66,5.84,3.6,4.72,4.72S2.65,7.13,1.93,8.55` +
-  `c-0.73,1.44-1.2,2.91-1.48,4.5c-0.28,1.56-0.37,3.15-0.42,4.73C0.02,18.5,0.01,19.22,0,19.94c0,0.86,0,1.72,0,2.58v26.95` +
-  `c0,0.86,0,1.72,0,2.58c0,0.72,0.01,1.45,0.03,2.17c0.04,1.58,0.14,3.17,0.42,4.73c0.28,1.58,0.75,3.06,1.48,4.5` +
-  `c0.72,1.41,1.66,2.71,2.78,3.83s2.42,2.06,3.83,2.78c1.44,0.73,2.91,1.2,4.49,1.48c1.56,0.28,3.15,0.37,4.73,0.42` +
-  `c0.72,0.02,1.45,0.03,2.17,0.03c0.86,0.01,1.72,0,2.58,0h26.95c0.86,0,1.72,0,2.58,0c0.72,0,1.45-0.01,2.17-0.03` +
-  `c1.58-0.04,3.17-0.14,4.73-0.42c1.58-0.28,3.06-0.75,4.49-1.48c1.41-0.72,2.71-1.66,3.83-2.78c1.12-1.12,2.06-2.41,2.78-3.83` +
-  `c0.73-1.44,1.2-2.91,1.48-4.5c0.28-1.56,0.37-3.15,0.42-4.73c0.02-0.72,0.03-1.45,0.03-2.17c0.01-0.86,0-1.72,0-2.58V22.52` +
-  `C72,21.66,72,20.8,72,19.94z M52.71,46.85c0,0.91-0.01,1.74-0.2,2.65c-0.19,0.89-0.53,1.72-1.05,2.47` +
-  `c-0.52,0.75-1.19,1.36-1.97,1.82c-0.79,0.47-1.62,0.73-2.5,0.91c-1.66,0.33-2.79,0.41-3.86,0.2c-1.03-0.21-1.9-0.68-2.6-1.32` +
-  `c-1.03-0.95-1.68-2.23-1.82-3.56c-0.16-1.57,0.36-3.24,1.53-4.48c0.59-0.62,1.34-1.11,2.34-1.5c1.04-0.4,2.19-0.65,3.96-1` +
-  `c0.47-0.09,0.93-0.19,1.4-0.28c0.61-0.12,1.14-0.28,1.56-0.8c0.43-0.52,0.43-1.16,0.43-1.78V24.32c0-1.21-0.54-1.54-1.7-1.32` +
-  `c-0.83,0.16-18.62,3.75-18.62,3.75c-1,0.24-1.36,0.57-1.36,1.82v23.23c0,0.91-0.05,1.74-0.24,2.65c-0.19,0.89-0.53,1.72-1.05,2.47` +
-  `c-0.52,0.75-1.19,1.36-1.97,1.82c-0.79,0.47-1.62,0.74-2.5,0.92c-1.66,0.33-2.79,0.41-3.86,0.2c-1.03-0.21-1.9-0.69-2.6-1.33` +
-  `c-1.03-0.95-1.63-2.23-1.78-3.56c-0.16-1.57,0.31-3.24,1.49-4.48c0.59-0.62,1.34-1.11,2.34-1.5c1.04-0.4,2.19-0.65,3.96-1` +
-  `c0.47-0.09,0.93-0.19,1.4-0.28c0.61-0.12,1.14-0.28,1.56-0.8c0.42-0.52,0.47-1.13,0.47-1.75c0-4.92,0-26.78,0-26.78` +
-  `c0-0.36,0.03-0.6,0.05-0.72c0.09-0.56,0.31-1.05,0.72-1.39c0.34-0.28,0.78-0.48,1.33-0.6l0.01,0L49,11.33` +
-  `c0.19-0.04,1.73-0.31,1.91-0.33c1.16-0.1,1.81,0.66,1.81,1.89L52.71,46.85L52.71,46.85z"/></svg>`;
+/** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
+const handMade = (p: Playlist) => p.source === "local" && !isReplay(p);
 
 // Auto-sync the mirror once per session — a slot remount must not re-hit Apple.
 let sessionSynced = false;
@@ -120,20 +98,25 @@ const sectionKey = (x: PlRow) => (x.kind === "folder" ? `folder:${x.id}` : x.kin
 const byName = <T extends { name: string }>(a: T, b: T) =>
   a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 
-// Unfiled auto-clusters, fixed order. "Apple Mixes" is the weeklies shelf: Apple's
+// Unfiled auto-clusters, fixed order. "Local Playlists" are made in DeetsMusic; "Your
+// Apple Playlists" are the user's own on Apple Music — split so the two write paths never
+// look alike (PLAYLISTS.md §10.9). "Apple Mixes" is the weeklies shelf: Apple's
 // personalised mixes all end in "Mix" (New Music Mix, Favourites Mix, …); "Replays"
 // collects the yearly Replay playlists ("Replay 2024", …).
-type ClusterKey = "yours" | "mixes" | "replays" | "apple";
+type ClusterKey = "local" | "yours" | "mixes" | "replays" | "apple";
 const clusterOf = (p: Playlist): ClusterKey =>
-  p.source === "local" || p.kind === "user"
-    ? "yours"
-    : /\bmix$/i.test(p.name)
-      ? "mixes"
-      : /^replay\b/i.test(p.name)
-        ? "replays"
-        : "apple";
+  p.source === "local"
+    ? "local"
+    : p.kind === "user"
+      ? "yours"
+      : /\bmix$/i.test(p.name)
+        ? "mixes"
+        : /^replay\b/i.test(p.name)
+          ? "replays"
+          : "apple";
 const CLUSTERS: { key: ClusterKey; label: string }[] = [
-  { key: "yours", label: "Your Playlists" },
+  { key: "local", label: "Local Playlists" },
+  { key: "yours", label: "Your Apple Playlists" },
   { key: "mixes", label: "Apple Mixes" },
   { key: "replays", label: "Replays" },
   { key: "apple", label: "From Apple Music" },
@@ -201,6 +184,7 @@ export const playlistsCard: CardDef = {
     const trackCache = new Map<string, Track[]>(); // pid → authored-order tracks
     const posOf = new WeakMap<Track, number>(); // authored position (Playlist-Order sort)
     const pending = new Set<string>();
+    const refetchAgain = new Set<string>(); // a change landed while a revalidate was in flight
 
     const tracksOf = (p: Playlist): Promise<Track[]> => {
       const id = pid(p);
@@ -249,18 +233,28 @@ export const playlistsCard: CardDef = {
     // (the fresh ⟳ while its detail pane is open). Unlike ensureTracks it force-fetches
     // over the existing entry, so the pane keeps showing the current tracks until the
     // new ones land — then reload swaps them in with no blank flash.
+    // The change bus rides this too, so an edit (a drop, a rename) never blanks the pane
+    // between the eviction and the refetch. A second change while one fetch is in flight
+    // discards that fetch's (older) result and fetches again.
     const revalidate = (p: Playlist) => {
       const id = pid(p);
-      if (pending.has(id)) return;
+      if (pending.has(id)) {
+        refetchAgain.add(id);
+        return;
+      }
       pending.add(id);
       playlistTracks(p)
         .then((ts) => {
+          if (refetchAgain.has(id)) return;
           ts.forEach((t, i) => posOf.set(t, i));
           trackCache.set(id, ts);
           card.reload();
         })
         .catch((e) => console.error("[playlists] revalidate", e))
-        .finally(() => pending.delete(id));
+        .finally(() => {
+          pending.delete(id);
+          if (refetchAgain.delete(id)) revalidate(p);
+        });
     };
 
     // ── detail: a playlist's tracks, authored order ──
@@ -294,11 +288,31 @@ export const playlistsCard: CardDef = {
         // the cached array is authored order and every row is a distinct object, so
         // indexOf pinpoints the right duplicate; -1 = the list shifted under the
         // open menu → no-op rather than remove the wrong row).
+        // Drag a song to a new place (PLAYLISTS.md §10.1): a hand-made local playlist, in
+        // Playlist Order (the engine also requires lines density and no search). The new
+        // order shows at once; the store write follows, and the change bus refetches it.
+        reorder: handMade(p)
+          ? {
+              sortKey: "order",
+              move: (from, to) => {
+                const ts = trackCache.get(id);
+                if (!ts) return;
+                ts.splice(to, 0, ...ts.splice(from, 1));
+                ts.forEach((t, i) => posOf.set(t, i));
+                card.reload();
+                playlistReorder(p, from, to).catch((e) => {
+                  console.error("[playlists] reorder", e);
+                  toast({ kind: "warn", text: `Couldn't move the song in “${p.name}”.` });
+                  revalidate(p); // put the stored order back
+                });
+              },
+            }
+          : undefined,
         menu: (t) => {
           // Add-to-Library rides after the shared actions (null unless the toggle is on
           // and the track is catalog-only); Remove stays destructive-last on locals.
           const base = [...trackMenu([t], ctxTag), addSongToLibraryItem(t)].filter(Boolean) as MenuItem[];
-          if (p.source !== "local") return base;
+          if (!handMade(p)) return base; // mirrors have no remove path; a Replay isn't edited by hand
           return [
             ...base,
             {
@@ -338,7 +352,8 @@ export const playlistsCard: CardDef = {
                 : "",
             ].filter(Boolean).join(" · "),
             // A local playlist's cover is a button (1B) and takes a dropped image file (3B).
-            coverMenu: local ? () => coverItems(q, "Choose Image…") : undefined,
+            // An Apple playlist's cover offers Import to Edit, its one way to an editable copy.
+            coverMenu: local ? () => coverItems(q, "Choose Image…") : q.source === "apple" ? () => [importItem(q)] : undefined,
             coverDrop: local ? (file: File) => setCoverFromFile(q, file) : undefined,
           };
         },
@@ -407,22 +422,87 @@ export const playlistsCard: CardDef = {
       { label: "Delete Folder", run: () => void folderDelete(id).catch((e) => console.error("[playlists] delete folder", e)) },
     ];
 
-    // The cover items (NEXT-VERSION §2, PLAYLISTS.md §6), shared by the hero cover button
-    // and a local row's right-click. Covers are local only: Apple's API cannot receive
-    // one, so an exported playlist keeps whatever Apple generates.
-    const coverItems = (p: Playlist, pickLabel: string): MenuItem[] => {
-      const items: MenuItem[] = [{ label: pickLabel, run: () => pickCover(p) }];
+    // The local playlist items (NEXT-VERSION §2, PLAYLISTS.md §6, §10.2), shared by the hero
+    // cover button and a local row's right-click: Rename (a field holding the current
+    // name), the cover, and Apple Music ▸. Covers are local only: Apple's API cannot
+    // receive one, so an exported playlist keeps whatever Apple generates.
+    // Rename: a field holding the current name. It heads both menus (a hand-made playlist only).
+    const renameItem = (p: Playlist): MenuItem => ({
+      input: {
+        placeholder: "Playlist name",
+        value: p.name,
+        onSubmit: (name) => {
+          if (name === p.name) return;
+          playlistRename(p, name).catch((e) => {
+            console.error("[playlists] rename", e);
+            toast({ kind: "warn", text: `Couldn't rename “${p.name}”.` });
+          });
+        },
+      },
+    });
+
+    // `withRename: false` — the row menu already put Rename at its top.
+    const coverItems = (p: Playlist, pickLabel: string, withRename = true): MenuItem[] => {
+      const items: MenuItem[] = [];
+      if (withRename && handMade(p)) items.push(renameItem(p));
+      items.push({ label: pickLabel, run: () => pickCover(p) });
       if (ownCover(p))
         items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] remove cover", e)) });
-      const ex = exportItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
-      if (ex) items.push(ex);
+      const apple = appleMusicItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
+      if (apple) items.push(apple);
       return items;
+    };
+
+    // Import to Edit (PLAYLISTS.md §10.9): copy an Apple playlist into a new local one and
+    // open it. The user's own playlist stays linked as the copy's Apple copy (one row).
+    const importItem = (p: Playlist): MenuItem => ({
+      label: "Import to Edit",
+      run: () =>
+        void playlistImport(p)
+          .then(async (r) => {
+            await load(); // the copy joins the list (and a linked original hides)
+            const q = lists.find((x) => x.libraryId === `local:${r.id}`);
+            if (q) card.drill(detail(q));
+            toast({
+              kind: "success",
+              text: r.linked
+                ? `Imported “${p.name}”. You can edit it here.` +
+                  (setting("playlistExport") ? " Apple Music ▸ Send New Songs adds its new songs to the original." : "")
+                : `Imported “${p.name}” as a copy you can edit. The copy doesn't change when Apple Music changes the original.`,
+            });
+          })
+          .catch((e) => {
+            console.error("[playlists] import", e);
+            toast({ kind: "warn", text: `Couldn't import “${p.name}”.` });
+          }),
+    });
+
+    // Delete (PLAYLISTS.md §10.3): an empty playlist goes at once; one with songs asks first
+    // in a red sticky question. An exported playlist's Apple copy stays, and deleting the
+    // local row un-hides it (§6 "one row"), so the question says so.
+    const confirmDelete = (p: Playlist) => {
+      const del = () =>
+        void playlistDelete(p).catch((e) => {
+          console.error("[playlists] delete", e);
+          toast({ kind: "warn", text: `Couldn't delete “${p.name}”.` });
+        });
+      const n = trackCache.get(pid(p))?.length ?? p.trackCount ?? 0;
+      if (!n) return del();
+      toast({
+        kind: "error",
+        sticky: true,
+        text:
+          `Delete “${p.name}” and its ${n} song${n === 1 ? "" : "s"}? This can't be undone.` +
+          (onApple(p) ? " Its copy on Apple Music stays and will show in your list." : ""),
+        actions: [{ label: "Delete", run: del }, { label: "Cancel" }],
+      });
     };
 
     const listMenu = (p: Playlist): MenuItem[] => {
       const ctxTag = `playlist:${pid(p)}`;
       const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
       const items: MenuItem[] = [
+        ...(handMade(p) ? [renameItem(p)] : []), // the field first, ready to type
         { label: "Play Now", run: () => void tracksOf(p).then((ts) => { if (ts.length) return playTracks(ts, 0, ctxTag); }).catch(err("play now")) },
         { label: "Play Next", run: () => void tracksOf(p).then((ts) => { if (ts.length) return queueTracksNext(ts, ctxTag); }).catch(err("play next")) },
         { label: "Add to Queue", run: () => void tracksOf(p).then((ts) => { if (ts.length) return queueTracksLater(ts, ctxTag); }).catch(err("add to queue")) },
@@ -431,17 +511,12 @@ export const playlistsCard: CardDef = {
         addToPlaylistItem(() => tracksOf(p), p.libraryId),
         moveToFolderItem(p),
       ];
+      if (p.source === "apple") items.push(importItem(p));
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
-      // Greyed while it has songs: the non-empty delete UX is a decided-later slice.
       // The change bus (below) handles the cache eviction + list reload.
       if (p.source === "local") {
-        items.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…"));
-        const n = trackCache.get(pid(p))?.length ?? p.trackCount ?? 0;
-        items.push({
-          label: "Delete Playlist",
-          disabled: n > 0,
-          run: () => void playlistDelete(p).catch(err("delete")),
-        });
+        items.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…", false));
+        items.push({ label: "Delete Playlist", run: () => confirmDelete(p) });
       }
       return items;
     };
@@ -491,20 +566,23 @@ export const playlistsCard: CardDef = {
     };
 
     const toggleSection = (key: string) => {
-      frames.during("fold", 250, collapsed.has(key) ? "open" : "close");
-      if (collapsed.has(key)) collapsed.delete(key);
+      const opening = collapsed.has(key);
+      frames.during("fold", 250, opening ? "open" : "close");
+      if (opening) collapsed.delete(key);
       else collapsed.add(key);
       try {
         localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
       } catch {
         /* storage unavailable — collapse still works for the session */
       }
-      card.reload();
+      card.reload(); // synchronous: the section's rows exist after this
+      // The opened section's rows slide in under their header; a close stays instant.
+      if (opening) enterRows(rowsAfter(host.querySelector(`[data-section="${CSS.escape(key)}"]`)));
     };
 
     // Section header cell: the Radio .lib-shelf voice + a collapse chevron and count.
     const shelfCell = (x: PlRow & { label: string; count: number }, idx: number) =>
-      `<div class="lib-shelf lib-shelf--toggle${collapsed.has(sectionKey(x)) ? " is-collapsed" : ""}" data-idx="${idx}">` +
+      `<div class="lib-shelf lib-shelf--toggle${collapsed.has(sectionKey(x)) ? " is-collapsed" : ""}" data-idx="${idx}" data-section="${esc(sectionKey(x))}">` +
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
       `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`;
 
@@ -624,12 +702,20 @@ export const playlistsCard: CardDef = {
     // Library, Search, or here) refreshes the list and, when a specific playlist
     // was touched, evicts + refetches its content cache so an open detail pane
     // live-updates instead of going stale.
-    const unsubChanges = onPlaylistsChange((rowid) => {
+    const unsubChanges = onPlaylistsChange((rowid, appleId) => {
+      // Songs added straight to an Apple playlist (§10.9): Rust dropped its content cache.
+      // Refetch only when its detail is open; otherwise the next open reads it.
+      if (appleId) {
+        if (openPlaylist?.libraryId === appleId) revalidate(openPlaylist);
+        else trackCache.delete(appleId);
+      }
       if (rowid != null) {
         const key = `local:${rowid}`;
-        trackCache.delete(key);
         const p = lists.find((x) => x.libraryId === key);
-        if (p) ensureTracks(p);
+        // Refetch over the cached entry (no blank pane in between); a playlist this card
+        // hasn't listed yet (just created, just deleted) simply drops its entry.
+        if (p) revalidate(p);
+        else trackCache.delete(key);
       }
       void load();
     });

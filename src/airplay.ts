@@ -12,7 +12,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setVolumeSink, reflectExternalVolume } from "./player";
-import { esc } from "./collection-card";
+import { enterRows } from "./pop";
 
 export interface Speaker {
   name: string;
@@ -167,6 +167,8 @@ export function initAirplay(): void {
 // ── a panel on one square ──
 
 export interface AirplayMount {
+  /** The "Play on" panel (portaled to <body>): a parent dropdown counts clicks in it as inside. */
+  readonly panel: HTMLElement;
   destroy(): void;
 }
 
@@ -184,7 +186,8 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
   square.setAttribute("aria-expanded", "false");
 
   const panel = document.createElement("div");
-  panel.className = "ap";
+  panel.className = "ap pop";
+  panel.dataset.frames = "airplay"; // the dropdown's [perf] frames menu line
   panel.hidden = true;
   panel.setAttribute("role", "menu");
   panel.setAttribute("aria-label", "Play on");
@@ -192,24 +195,85 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
   // so a panel inside it was painted under the next card and its frost saw only its own card.
   document.body.appendChild(panel);
 
+  // The fixed parts are built once. Speaker rows are kept by key and updated in place, so a
+  // repaint (the 1 s poll, a scan result) never rebuilds the panel under the pointer, and a
+  // new speaker slides in while the height follows it.
+  // The title row carries the scan as a refresh square (the Library / Playlists Sync button).
+  panel.innerHTML =
+    `<div class="ap__head"><span class="ap__title">Play on</span>` +
+    `<button class="panel__action ap__scan" type="button" data-scan aria-label="Scan for speakers" title="Scan for speakers">` +
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline>` +
+    `<polyline points="1 20 1 14 7 14"></polyline>` +
+    `<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button></div>` +
+    `<div class="ap__list"></div><div class="ap__state"></div>`;
+  const list = panel.querySelector<HTMLElement>(".ap__list")!;
+  const stateEl = panel.querySelector<HTMLElement>(".ap__state")!;
+  const scanBtn = panel.querySelector<HTMLButtonElement>("[data-scan]")!;
+  const rowEls = new Map<string, HTMLButtonElement>();
+  const speakerOf = new Map<string, Speaker | null>();
+  const keyOf = (sp: Speaker | null) => (sp ? `${sp.ip}:${sp.port}` : "this");
+  const setText = (el: Element, text: string) => {
+    if (el.textContent !== text) el.textContent = text;
+  };
+
+  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const token = (name: string) => getComputedStyle(panel).getPropertyValue(name).trim();
+  const tokenMs = (name: string) => {
+    const v = token(name);
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? (v.endsWith("ms") ? n : n * 1000) : 0;
+  };
+
+  // The height moves from `from` to the new content's height instead of jumping.
+  let grow: Animation | null = null;
+  const animateHeight = (from: number) => {
+    grow?.cancel();
+    grow = null;
+    panel.classList.remove("is-growing");
+    if (panel.hidden || !from || reduced()) return;
+    const to = panel.offsetHeight;
+    if (Math.abs(to - from) < 1) return;
+    panel.classList.add("is-growing");
+    const a = panel.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+      duration: tokenMs("--pop-grow"),
+      easing: token("--pop-ease") || "ease",
+    });
+    grow = a;
+    a.onfinish = () => {
+      if (grow !== a) return;
+      grow = null;
+      panel.classList.remove("is-growing");
+    };
+  };
+
   // Hang the fixed panel under the square, right edges aligned; flip above when it would
-  // run off the bottom. The gap is the panel's own margin (a skin token), read back here.
-  const place = () => {
+  // run off the bottom. The side is chosen on open and only changes when the panel no longer
+  // fits below, so it doesn't jump between sides while it grows. Above, it is anchored by its
+  // bottom edge, so the growth goes up. The gap is the panel's own margin (a skin token).
+  let above = false;
+  const place = (decide = false) => {
     if (panel.hidden) return;
     const r = square.getBoundingClientRect();
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
     const gap = parseFloat(getComputedStyle(panel).marginTop) || 0;
     const w = panel.offsetWidth;
-    const h = panel.offsetHeight;
-    const left = Math.max(gap, Math.min(r.right - w, vw - w - gap));
-    const below = r.bottom;
-    const top = below + gap + h > vh ? Math.max(0, r.top - h - 2 * gap) : below;
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
+    const h = panel.scrollHeight + (panel.offsetHeight - panel.clientHeight); // the final height, even mid-grow
+    const fitsBelow = r.bottom + gap + h <= vh;
+    if (decide || (!above && !fitsBelow)) above = !fitsBelow;
+    panel.toggleAttribute("data-above", above);
+    panel.style.left = `${Math.max(gap, Math.min(r.right - w, vw - w - gap))}px`;
+    if (above) {
+      panel.style.top = "auto";
+      panel.style.bottom = `${Math.max(0, vh - r.top + gap)}px`;
+    } else {
+      panel.style.bottom = "auto";
+      panel.style.top = `${r.bottom}px`;
+    }
   };
 
   const render = () => {
+    const from = panel.hidden ? 0 : panel.offsetHeight; // before the rows change (mid-grow: the current height)
     const c = status.connected;
     square.dataset.state = c ? "on" : status.connecting ? "connecting" : "idle";
     square.title = c ? `Playing on ${c.speaker.name}` : "AirPlay";
@@ -226,16 +290,37 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
       rows.splice(1, 0, { sp: status.lastSpeaker, model: "Last used" });
     }
     const current = c?.speaker ?? null;
-    const rowHTML = rows
-      .map(({ sp, model }, i) => {
-        const on = sp ? sameSpeaker(sp, current) : !current && !status.connecting;
-        const pending = sp ? status.connecting === sp.name : false;
-        const name = sp ? sp.name : "This computer";
-        return `<button class="ap__row" type="button" role="menuitemradio" data-i="${i}" aria-checked="${on}" data-pending="${pending}">
-          <span class="ap__name">${esc(name)}</span>${model ? `<span class="ap__model">${esc(model)}</span>` : ""}<span class="ap__dot" aria-hidden="true"></span>
-        </button>`;
-      })
-      .join("");
+    const keys = new Set(rows.map((r) => keyOf(r.sp)));
+    for (const [k, el] of rowEls) {
+      if (keys.has(k)) continue;
+      el.remove();
+      rowEls.delete(k);
+      speakerOf.delete(k);
+    }
+    const fresh: HTMLElement[] = [];
+    rows.forEach(({ sp, model }, i) => {
+      const k = keyOf(sp);
+      let el = rowEls.get(k);
+      if (!el) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "ap__row";
+        row.setAttribute("role", "menuitemradio");
+        row.dataset.key = k;
+        row.innerHTML = `<span class="ap__name"></span><span class="ap__model"></span><span class="ap__dot" aria-hidden="true"></span>`;
+        rowEls.set(k, row);
+        fresh.push(row);
+        el = row;
+      }
+      speakerOf.set(k, sp);
+      el.setAttribute("aria-checked", String(sp ? sameSpeaker(sp, current) : !current && !status.connecting));
+      el.dataset.pending = String(sp ? status.connecting === sp.name : false);
+      setText(el.querySelector(".ap__name")!, sp ? sp.name : "This computer");
+      const modelEl = el.querySelector<HTMLElement>(".ap__model")!;
+      setText(modelEl, model);
+      modelEl.hidden = !model;
+      if (list.children[i] !== el) list.insertBefore(el, list.children[i] ?? null);
+    });
 
     let state: string;
     if (note) state = note;
@@ -245,11 +330,16 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     else if (status.speakers.length === 0) state = "No speakers found";
     else state = "";
 
-    panel.innerHTML = `<div class="ap__head">Play on</div>${rowHTML}
-      <div class="ap__state"${note && !c ? ' data-tone="note"' : ""}>${esc(state)}</div>
-      <button class="ap__row ap__row--scan" type="button" data-scan${scanning ? " disabled" : ""}><span class="ap__name">${scanning ? "Scanning…" : "Scan again"}</span></button>`;
-    (panel as HTMLElement & { _rows?: typeof rows })._rows = rows;
-    place(); // the row count changes the height (a scan result, a flip above)
+    setText(stateEl, state);
+    if (note && !c) stateEl.dataset.tone = "note";
+    else delete stateEl.dataset.tone;
+    scanBtn.disabled = scanning;
+    scanBtn.classList.toggle("is-busy", scanning); // spins while a scan runs
+
+    if (panel.hidden) return;
+    enterRows(fresh); // a speaker found while the panel shows slides in
+    animateHeight(from);
+    place(); // the height changed (a scan result, a note) — and it may no longer fit below
   };
   panels.add(render);
   render();
@@ -260,13 +350,11 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
       void scan();
       return;
     }
-    const row = t.closest<HTMLElement>(".ap__row[data-i]");
-    if (!row) return;
-    const rows = (panel as HTMLElement & { _rows?: { sp: Speaker | null }[] })._rows ?? [];
-    const pick = rows[Number(row.dataset.i)];
-    if (!pick) return;
-    if (pick.sp) {
-      if (!sameSpeaker(pick.sp, status.connected?.speaker)) void connect(pick.sp);
+    const k = t.closest<HTMLElement>(".ap__row[data-key]")?.dataset.key;
+    if (!k || !speakerOf.has(k)) return;
+    const sp = speakerOf.get(k)!;
+    if (sp) {
+      if (!sameSpeaker(sp, status.connected?.speaker)) void connect(sp);
     } else if (status.connected || status.connecting) {
       void disconnect();
     }
@@ -286,7 +374,8 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     wasOpen = open;
     openPanels += open ? 1 : -1;
     if (open) {
-      place();
+      place(true);
+      enterRows(list.children); // every row, one after another
       note = null;
       void refresh();
       void scan();
@@ -295,12 +384,15 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     }
   });
   observer.observe(panel, { attributes: true, attributeFilter: ["hidden"] });
-  window.addEventListener("resize", place);
+  const onResize = () => place(true);
+  window.addEventListener("resize", onResize);
 
   return {
+    panel,
     destroy() {
       observer.disconnect();
-      window.removeEventListener("resize", place);
+      grow?.cancel();
+      window.removeEventListener("resize", onResize);
       panel.remove(); // it lives on <body>, so it does not leave with the card's host
       if (wasOpen) openPanels -= 1;
       panels.delete(render);

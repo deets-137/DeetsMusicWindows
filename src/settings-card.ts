@@ -18,6 +18,7 @@ import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
 import * as diag from "./diag";
 import * as frames from "./frames";
+import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import type { CardDef, CardInstance } from "./cards";
 
@@ -463,6 +464,8 @@ function mountSettings(host: HTMLElement): CardInstance {
     folds[title] = !was;
     saveFolds();
     render();
+    // The opened section's rows slide in under its header (src/pop.ts); a close stays instant.
+    if (!was) enterRows([...(body.querySelectorAll(".set__section")[sections.indexOf(s)]?.children ?? [])].slice(1));
   };
   const headHTML = (s: Section): string => {
     const open = isOpen(s);

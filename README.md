@@ -99,6 +99,9 @@ no auto-updater — each release is a fresh installer, archived locally
 - **The log.** The app writes a log file on your PC (Settings › Bugs › App log). It
   redacts tokens, names catalog ids instead of song titles, and is never sent anywhere
   unless you copy it yourself.
+- **Your playlists.** Playlists you make in DeetsMusic are stored on this PC only. A new
+  PC or a reinstalled Windows starts without them. To keep a copy, use Apple Music ▸
+  Export to Apple Music on the playlist.
 - **Nothing else.** No analytics, no listening history leaves your PC.
 
 ## Trademarks
