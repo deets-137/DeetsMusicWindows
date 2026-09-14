@@ -84,6 +84,7 @@ body {
   z-index: 20;
 }
 .menu[hidden] { display: none; }
+.menu { --pop-origin: top left; } /* it hangs from the title's left edge (main.ts adds .pop) */
 
 .menu__row {
   position: relative;
@@ -128,8 +129,27 @@ body {
   display: none;
   flex-direction: column;
   gap: var(--space-1);
+  /* The pop motion, driven by the row's :hover (no hidden attribute here): it slides out
+     from the menu edge, and fades away when the pointer moves to another row. */
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--pop-shift))) scale(var(--pop-scale));
+  transform-origin: top left;
+  pointer-events: none; /* a fading flyout must not catch the pointer and reopen */
+  transition:
+    opacity var(--pop-out) var(--pop-ease),
+    transform var(--pop-out) var(--pop-ease),
+    display var(--pop-out) allow-discrete;
 }
-.menu__row:hover .flyout { display: flex; }
+.menu__row:hover .flyout {
+  display: flex;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-duration: var(--pop-in);
+}
+@starting-style {
+  .menu__row:hover .flyout { opacity: 0; transform: translateX(calc(-1 * var(--pop-shift))) scale(var(--pop-scale)); }
+}
 
 /* Each item carries its own data-theme, so --canvas / --title / --border
    resolve to THAT theme — the chip is a live taste of the theme it selects. */
@@ -320,12 +340,46 @@ body {
   text-align: left;
 }
 .ap[hidden] { display: none; }
-.ap__head {
-  padding: var(--space-1) var(--space-2);
-  color: var(--subtext);
-  font-family: var(--font-body);
-  font-size: var(--fs-subtext);
+.ap.is-growing { overflow: hidden; } /* airplay.ts animates the height; a new row is revealed, not overlapping */
+
+/* ── Pop: a dropdown panel that arrives and leaves (AirPlay, Vol.) ──────────
+   The panel's `hidden` attribute drives it (the dropdown primitive): @starting-style
+   animates the arrival, and display allow-discrete keeps it painted through the fade
+   out. It grows from the corner it hangs from: --pop-origin (default top right).
+   A panel flipped above its trigger (data-above) grows from its bottom edge. */
+.pop {
+  transform-origin: var(--pop-origin, top right);
+  --pop-from: translateY(calc(-1 * var(--pop-shift))) scale(var(--pop-scale));
+  transition:
+    opacity var(--pop-in) var(--pop-ease),
+    transform var(--pop-in) var(--pop-ease),
+    display var(--pop-in) allow-discrete;
 }
+.pop[data-above] { --pop-origin: bottom right; --pop-from: translateY(var(--pop-shift)) scale(var(--pop-scale)); }
+.pop[hidden] {
+  display: none;
+  opacity: 0;
+  transform: var(--pop-from);
+  pointer-events: none;
+  transition-duration: var(--pop-out);
+}
+@starting-style { .pop:not([hidden]) { opacity: 0; transform: var(--pop-from); } }
+/* A row sliding in (src/pop.ts): a panel's rows on open, the rows a section fold opened. */
+.pop-enter { animation: pop-row-in var(--pop-in) var(--pop-ease) calc(var(--pop-i, 0) * var(--pop-stagger)) both; }
+@keyframes pop-row-in { from { opacity: 0; transform: translateY(calc(-1 * var(--pop-shift))); } }
+@media (prefers-reduced-motion: reduce) {
+  .pop, .flyout { transition: none; }
+  .pop-enter { animation: none; }
+}
+.ap__head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); /* the square sits near the corner */
+  color: var(--title);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  font-weight: var(--fw-title);
+}
+.ap__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ap__row {
   width: 100%; min-height: var(--ap-row-h);
   display: flex; align-items: center; gap: var(--space-2);
@@ -348,7 +402,6 @@ body {
 }
 .ap__state:empty { display: none; }
 .ap__state[data-tone="note"] { color: var(--text); }
-.ap__row--scan { color: var(--subtext); font-size: var(--fs-subtext); min-height: 0; }
 
 /* ── Traffic lights ─────────────────────────────────────────── */
 .lights { display: flex; gap: var(--traffic-gap); }
@@ -649,6 +702,16 @@ body {
   box-shadow: var(--shadow-panel);
 }
 .slot-picker__menu[hidden] { display: none; }
+/* A window too short for one column (layout.ts `fit`): two columns; it scrolls only if even
+   that doesn't fit (JS sets max-height then). */
+.slot-picker__menu { overflow-y: auto; }
+.slot-picker__menu--cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(var(--menu-min-w), 1fr));
+}
+.slot-picker__menu::-webkit-scrollbar { width: var(--scrollbar-w); }
+.slot-picker__menu::-webkit-scrollbar-track { background: transparent; }
+.slot-picker__menu::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
 
 /* Card stub placeholder (e.g. Playlists before it's built out). */
 .card-stub { display: grid; place-items: center; }
@@ -978,6 +1041,61 @@ body {
 /* clickable affordance + drilled-in highlight (border around the rectangle) */
 .lib-view[data-openable="1"] .lib-row,
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
+/* ── Row drag (src/row-drag.ts, DRAG-DROP.md §4) ──
+   The ghost is a copy of the pressed row on <body> (inside display:contents shells, so the
+   row's card styles still match). It follows the pointer 1:1 (--ghost-x/y set in JS) with
+   no transition lag, and it is translucent so the list under it stays readable. */
+.drag-ghost.drag-ghost {
+  position: fixed;
+  margin: 0;
+  box-sizing: border-box;
+  transform: translate(var(--ghost-x, 0px), var(--ghost-y, 0px)) var(--drag-lift);
+  box-shadow: var(--shadow-panel);
+  background: var(--surface-hover);
+  opacity: var(--drag-ghost-opacity);
+  transition: none;
+  pointer-events: none;
+  z-index: 200;                     /* above menus and toasts' tier: it rides the pointer */
+}
+.drag-ghost.is-nodrop { opacity: var(--drag-nodrop-opacity); }
+/* A collection's song count, pinned to the copy's corner. */
+.drag-ghost__count {
+  position: absolute;
+  right: var(--space-1);
+  bottom: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--title);
+  color: var(--canvas);
+  font-size: var(--fs-subtext);
+  white-space: nowrap;
+}
+/* The pressed row stays in place and dims while its copy moves. */
+.is-drag-source.is-drag-source { opacity: var(--drag-source-opacity); }
+/* Whole page while a drag runs: no text selection, the grab cursor everywhere. */
+html.is-row-dragging,
+html.is-row-dragging * { user-select: none; cursor: grabbing !important; }
+html.is-drag-nodrop,
+html.is-drag-nodrop * { cursor: no-drop !important; }
+/* A drop target under the pointer: a playlist row, a card, a list. */
+.is-drop-target.is-drop-target {
+  outline: var(--drop-line-w) solid var(--title);
+  outline-offset: calc(-1 * var(--drop-line-w));
+}
+/* A list while a line shows in it: the positioned reference for the line. */
+.is-reordering { position: relative; }
+/* Insertion indicator — where the dragged row will land (top set in JS). */
+.drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--drop-line-w);
+  border-radius: var(--drop-line-w);
+  background: var(--title);
+  pointer-events: none;
+  z-index: 3;
+}
+
 .lib-row.is-selected,
 .lib-tile.is-selected,
 .lib-row.is-context,        /* right-clicked row while its menu is open */
@@ -1056,7 +1174,8 @@ body {
    survives typing; side-flip (.is-left) + vertical clamp are measured there too. */
 .ctx-menu__sub { position: relative; }
 .ctx-menu__chev { color: var(--subtext); }
-.ctx-menu__item--sub {
+.ctx-menu__item--sub,
+.ctx-menu__item--badged { /* a trailing accessory: the flyout chevron, or the Apple Music sigil */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1177,6 +1296,18 @@ body {
   margin-bottom: var(--space-1);
 }
 .lib-hero__cover--empty { display: grid; place-items: center; color: var(--subtext); font-size: var(--fs-title); }
+/* A local playlist's cover is a button (the cover menu: image, remove, export) and a file
+   drop target. Children ignore the pointer so a drag never leaves the button for its img. */
+.lib-hero__cover-btn {
+  appearance: none; background: none; border: none; padding: 0;
+  margin: 0 0 var(--space-1); border-radius: var(--lib-tile-radius);
+  cursor: pointer; transition: filter var(--dur-fast) var(--ease-ui);
+}
+.lib-hero__cover-btn > * { pointer-events: none; }
+.lib-hero__cover-btn .lib-hero__cover { margin-bottom: 0; }
+.lib-hero__cover-btn:hover { filter: brightness(var(--hero-cover-hover)); }
+.lib-hero__cover-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.lib-hero__cover-btn.is-drop { outline: var(--focus-ring-w) dashed var(--title); outline-offset: var(--focus-ring-off); filter: brightness(var(--hero-cover-hover)); }
 .lib-hero__title {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-title);
   color: var(--title); line-height: 1.2; overflow-wrap: anywhere;

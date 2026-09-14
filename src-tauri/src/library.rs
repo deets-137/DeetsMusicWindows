@@ -663,6 +663,50 @@ pub fn migrate_v4(conn: &Connection) -> Result<(), String> {
     meta_set(conn, "schema_version", "4")
 }
 
+/// Additive, idempotent (PLAYLISTS.md §10.6, §10.8): two columns on `local_playlists`.
+/// - `role`: `replay` marks a playlist made from listening (replay.ts), so the menus never
+///   treat it as a hand-made one. The backfill marks the Replays made before the column: a
+///   "Replay" or "Replay — …" name that is filed in the folder named Replay. A name match
+///   alone would catch a user's own "Replay trip".
+/// - `cover_at`: when the cover last changed (ms). It versions the cover link, so a song
+///   add or a reorder does not make the webview fetch the image again.
+pub fn migrate_v5(conn: &Connection) -> Result<(), String> {
+    let has = |col: &str| -> Result<bool, String> {
+        conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('local_playlists') WHERE name = ?1",
+            [col],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|n| n > 0)
+        .map_err(|e| e.to_string())
+    };
+    if !has("role")? {
+        conn.execute_batch("ALTER TABLE local_playlists ADD COLUMN role TEXT;")
+            .map_err(|e| format!("add role column: {e}"))?;
+        let n = conn
+            .execute(
+                "UPDATE local_playlists SET role = 'replay'
+                 WHERE (name = 'Replay' OR name LIKE 'Replay — %')
+                   AND ('local:' || id) IN (
+                       SELECT m.playlist_key FROM playlist_folder_members m
+                       JOIN playlist_folders f ON f.id = m.folder_id
+                       WHERE f.name = 'Replay')",
+                [],
+            )
+            .map_err(|e| format!("backfill replay role: {e}"))?;
+        crate::log::info(&format!("migration: v5 added local_playlists.role, marked {n} replay(s)"));
+    }
+    if !has("cover_at")? {
+        conn.execute_batch(
+            "ALTER TABLE local_playlists ADD COLUMN cover_at INTEGER;
+             UPDATE local_playlists SET cover_at = updated_at WHERE cover IS NOT NULL;",
+        )
+        .map_err(|e| format!("add cover_at column: {e}"))?;
+        crate::log::info("migration: v5 added local_playlists.cover_at");
+    }
+    meta_set(conn, "schema_version", "5")
+}
+
 /// The ids marked dead within the last 7 days — the player's denylist at launch.
 #[tauri::command]
 pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {

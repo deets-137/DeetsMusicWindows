@@ -5,6 +5,26 @@
 
 .set { display: flex; flex-direction: column; gap: var(--set-section-gap); }
 
+/* The scrollbar's space is always kept, so opening a section never narrows the rows. The
+   thumb fades in when the rows outgrow the card (`is-scrollable`, set in settings-card.ts)
+   and fades out when they fit again. A registered color, so the thumb's color can transition. */
+@property --set-thumb {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+.panel__body.set {
+  scrollbar-gutter: stable;
+  --set-thumb: transparent;
+  transition: --set-thumb var(--dur-med) var(--ease-ui);
+}
+.panel__body.set.is-scrollable { --set-thumb: var(--scrollbar); }
+.panel__body.set::-webkit-scrollbar-thumb { background: var(--set-thumb); }
+.panel__body.set.is-scrollable::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+@media (prefers-reduced-motion: reduce) {
+  .panel__body.set { transition: none; }
+}
+
 .set__section { display: flex; flex-direction: column; gap: var(--space-1); }
 .set__head {
   font-family: var(--font-title);
@@ -137,6 +157,18 @@
 .set__menu-row:hover { background: var(--surface-hover); }
 .set__menu-row:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .set__menu-row[aria-checked="true"] .set__dot::after { content: "•"; }
+
+/* A row opened from elsewhere (a toast's [Settings] button, requestSetting): one wash
+   and ring that fade out. settings-card.ts keeps the clock across re-renders with a
+   negative animation-delay. Reduced motion: the wash holds, then snaps off. */
+.set__row.is-flash { animation: set-flash var(--set-flash-dur) var(--ease-ui); }
+@keyframes set-flash {
+  from { background: var(--surface-hover); box-shadow: inset 0 0 0 var(--focus-ring-w) var(--title); }
+  to { background: transparent; box-shadow: inset 0 0 0 var(--focus-ring-w) transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .set__row.is-flash { animation-timing-function: steps(1, end); }
+}
 
 /* Extension block: a status line then two action rows. */
 .set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }

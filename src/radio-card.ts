@@ -31,6 +31,7 @@ import {
 import { initCollectionCard, esc, type Context, type Density, type Grouping, type ViewState } from "./collection-card";
 import { musicCell } from "./library-card";
 import { playStation } from "./player";
+import { enterRows, rowsAfter } from "./pop";
 import type { CardDef } from "./cards";
 
 type ShelfItem = { pos: number } & (
@@ -98,14 +99,17 @@ export const radioCard: CardDef = {
 
     // Fold/unfold a shelf, persist, re-render the root pane.
     const toggleSection = (label: string) => {
-      if (collapsed.has(label)) collapsed.delete(label);
+      const opening = collapsed.has(label);
+      if (opening) collapsed.delete(label);
       else collapsed.add(label);
       try {
         localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
       } catch {
         /* storage unavailable — collapse still works for the session */
       }
-      card.reload();
+      card.reload(); // synchronous: the shelf's rows exist after this
+      // The opened shelf's rows slide in under their header (src/pop.ts); a close stays instant.
+      if (opening) enterRows(rowsAfter(host.querySelector(`[data-section="${CSS.escape(label)}"]`)));
     };
 
     // Start a station (radio mode — player.ts owns the probe + guards). On success
@@ -213,7 +217,7 @@ export const radioCard: CardDef = {
                 : false,
           render: (x, density, idx) =>
             x.kind === "header"
-              ? `<div class="lib-shelf lib-shelf--toggle${collapsed.has(x.label) ? " is-collapsed" : ""}" data-idx="${idx}">` +
+              ? `<div class="lib-shelf lib-shelf--toggle${collapsed.has(x.label) ? " is-collapsed" : ""}" data-idx="${idx}" data-section="${esc(x.label)}">` +
                 `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
                 `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`
               : x.kind === "station"

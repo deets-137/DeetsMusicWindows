@@ -18,6 +18,8 @@ import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
 import * as diag from "./diag";
 import * as frames from "./frames";
+import { enterRows } from "./pop";
+import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -141,25 +143,6 @@ function mountSettings(host: HTMLElement): CardInstance {
         },
         {
           kind: "toggle",
-          id: "hover",
-          label: "Open menus on hover",
-          get: () => setting("menuMode") === "hover",
-          set: (on) => setSetting("menuMode", on ? "hover" : "click"),
-        },
-        storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
-        storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
-        {
-          kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
-          hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
-          options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
-        },
-        {
-          kind: "choice", id: "toasts", label: "Show notices", key: "toasts",
-          hint: "Everything: confirmations too. Failures: only when an action couldn't do what it said. Off: nothing (the log still records)",
-          options: [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }, { value: "off", label: "Off" }],
-        },
-        {
-          kind: "toggle",
           id: "autostart",
           label: "Start with Windows",
           hint: () => "Starts in the tray at sign-in",
@@ -171,6 +154,30 @@ function mountSettings(host: HTMLElement): CardInstance {
               .catch((e) => console.error("[settings] autostart", e));
           },
         },
+        storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+      ],
+    },
+    {
+      title: "Look and feel",
+      rows: [
+        storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
+        {
+          kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
+          hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
+          options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
+        },
+        {
+          kind: "toggle",
+          id: "hover",
+          label: "Open menus on hover",
+          get: () => setting("menuMode") === "hover",
+          set: (on) => setSetting("menuMode", on ? "hover" : "click"),
+        },
+        {
+          kind: "choice", id: "toasts", label: "Show notices", key: "toasts",
+          hint: "Everything: confirmations too. Failures: only when an action couldn't do what it said",
+          options: [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }],
+        },
       ],
     },
     {
@@ -180,6 +187,11 @@ function mountSettings(host: HTMLElement): CardInstance {
           kind: "choice", id: "playnow", label: "Play Now plays", key: "playNowScope",
           hint: "The right-click action",
           options: [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }],
+        },
+        {
+          kind: "choice", id: "dropplay", label: "Drop on Now Playing", key: "dropPlayQueue",
+          hint: "Songs dragged onto Now Playing play at once; Up Next can stay after them",
+          options: [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }],
         },
         {
           kind: "choice", id: "previous", label: "Previous rewinds", key: "previousReach",
@@ -201,6 +213,38 @@ function mountSettings(host: HTMLElement): CardInstance {
           hint: "Shuffle with nothing playing",
           options: [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }],
         },
+      ],
+    },
+    {
+      // The two actions that write to the user's Apple account; Apple has no undo from here.
+      // The one-time notices point here (requestSetting). The ♥ rides Add to Library's consent.
+      title: "Apple Music",
+      rows: [
+        {
+          kind: "toggle",
+          id: "libraryadd",
+          label: "Add to Library and ♥",
+          hint: () => "Can't remove from library via DeetsMusic",
+          get: () => libraryAddEnabled(),
+          set: (on) => setLibraryAddEnabled(on),
+        },
+        storeToggle("playlistexport", "Export playlists", "playlistExport", () => "Can't rename, reorder, or delete on Apple Music via DeetsMusic"),
+      ],
+    },
+    {
+      title: "Playlists",
+      rows: [
+        storeToggle("eagercounts", "Show playlist counts", "playlistEagerCounts", () => "One small request per playlist, once"),
+        storeToggle("createsummon", "New playlist opens Search", "playlistCreateSummon"),
+      ],
+    },
+    {
+      // What you played: the Rewind card, what counts as a play, and the weekly Replay (1B).
+      title: "Rewind",
+      rows: [
+        storeToggle("rewind", "Rewind card", "rewindCard", () =>
+          setting("rewindAutoShown") ? "Your listening, ranked" : "Shows after 50 plays",
+        ),
         {
           kind: "choice", id: "fullplay", label: "Count a play at", key: "fullPlayRule",
           hint: "When a song counts as played through, for Rewind",
@@ -226,38 +270,13 @@ function mountSettings(host: HTMLElement): CardInstance {
       ],
     },
     {
-      title: "Library",
-      rows: [
-        {
-          kind: "toggle",
-          id: "libraryadd",
-          label: "Add to Library",
-          hint: () => "Can't remove from library via DeetsMusic",
-          get: () => libraryAddEnabled(),
-          set: (on) => setLibraryAddEnabled(on),
-        },
-        storeToggle("eagercounts", "Show playlist counts", "playlistEagerCounts", () => "One small request per playlist, once"),
-        storeToggle("createsummon", "New playlist opens Search", "playlistCreateSummon"),
-      ],
-    },
-    {
-      title: "Cards",
-      rows: [
-        storeToggle("rewind", "Rewind card", "rewindCard", () =>
-          setting("rewindAutoShown") ? "Your listening, ranked" : "Shows after 50 plays",
-        ),
-      ],
-    },
-    {
-      title: "Extension",
-      rows: [],
-      count: 1,
-      // EXTENSION.md: bridge status + the install page.
-      tail: `<div class="set__status" id="set-ext-status">Bridge off</div>
-        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>`,
-    },
-    {
-      title: "Agents",
+      // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md), then the browser
+      // extension's bridge status and install page (EXTENSION.md).
+      title: "Connections",
+      count: 3,
+      tail: `<div class="set__status" id="set-agent-status">…</div>
+        <div class="set__status" id="set-ext-status">Extension bridge off</div>
+        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Extension install guide</span></button>`,
       rows: [
         {
           kind: "split", id: "agent", label: "Agent control",
@@ -288,7 +307,6 @@ function mountSettings(host: HTMLElement): CardInstance {
           ],
         },
       ],
-      tail: `<div class="set__status" id="set-agent-status">…</div>`,
     },
     {
       title: "Bugs",
@@ -350,24 +368,35 @@ function mountSettings(host: HTMLElement): CardInstance {
     return `<span class="set__menu-wrap"><button class="set__half set__half--menu" type="button" ${at} aria-haspopup="menu" aria-expanded="false">${esc(cur)}<span class="set__caret" aria-hidden="true">▾</span></button></span>`;
   };
 
+  // The row requestSetting opened (a toast's [Settings] button) carries `is-flash`. A
+  // negative animation-delay keeps the fade's clock when a later render rebuilds the row.
+  let flashId: string | null = null;
+  let flashAt = 0;
+  const flashOf = (id: string): { cls: string; style: string } =>
+    id === flashId
+      ? { cls: " is-flash", style: ` style="animation-delay: -${Math.round(performance.now() - flashAt)}ms"` }
+      : { cls: "", style: "" };
+
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
   const rowHTML = (r: Row): string => {
     const hint = r.kind === "choice" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const label = `<span class="set__label">${esc(r.label)}</span>`;
+    const fx = flashOf(r.id);
+    const mark = ` data-set-row="${r.id}"${fx.style}`;
     if (r.kind === "toggle") {
-      return `<button class="set__row set__row--toggle" type="button" role="switch" data-row="${r.id}" aria-checked="${r.get()}"${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
+      return `<button class="set__row set__row--toggle${fx.cls}" type="button" role="switch" data-row="${r.id}"${mark} aria-checked="${r.get()}"${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
     }
     const halves = halvesOf(r);
     if (halves) {
-      return `<div class="set__row set__row--choice"${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
+      return `<div class="set__row set__row--choice${fx.cls}"${mark}${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
     }
     const choice = r as ChoiceRow;
     const cur = choice.get ? choice.get() : String(setting(choice.key!));
     const opts = choice.options
       .map((o) => `<button class="set__half" type="button" data-row="${choice.id}" data-value="${esc(o.value)}" aria-pressed="${o.value === cur}">${esc(o.label)}</button>`)
       .join("");
-    return `<div class="set__row set__row--choice"${tip}>${label}<div class="set__split" role="radiogroup" aria-label="${esc(choice.label)}">${opts}</div></div>`;
+    return `<div class="set__row set__row--choice${fx.cls}"${mark}${tip}>${label}<div class="set__split" role="radiogroup" aria-label="${esc(choice.label)}">${opts}</div></div>`;
   };
 
   // ── menu halves: a small menu portaled to <body> (a card's backdrop-filter under
@@ -425,18 +454,23 @@ function mountSettings(host: HTMLElement): CardInstance {
   // ── section folds: the header is a button; a collapsed section renders no rows ──
   const folds = loadFolds();
   const isOpen = (s: Section) => folds[s.title] ?? !!s.defaultOpen;
+  const saveFolds = () => {
+    try {
+      localStorage.setItem(FOLDS_KEY, JSON.stringify(folds));
+    } catch {
+      /* storage unavailable — the fold still works for the session */
+    }
+  };
   const toggleSection = (title: string) => {
     const s = sections.find((x) => x.title === title);
     if (!s) return;
     const was = isOpen(s);
     frames.during("fold", 250, was ? "close" : "open");
     folds[title] = !was;
-    try {
-      localStorage.setItem(FOLDS_KEY, JSON.stringify(folds));
-    } catch {
-      /* storage unavailable — the fold still works for the session */
-    }
+    saveFolds();
     render();
+    // The opened section's rows slide in under its header (src/pop.ts); a close stays instant.
+    if (!was) enterRows([...(body.querySelectorAll(".set__section")[sections.indexOf(s)]?.children ?? [])].slice(1));
   };
   const headHTML = (s: Section): string => {
     const open = isOpen(s);
@@ -456,7 +490,12 @@ function mountSettings(host: HTMLElement): CardInstance {
         .join("");
     wireMenus();
     refreshExtension();
+    markScrollable();
   };
+  // The scrollbar thumb fades in only while the rows outgrow the card (settings.css).
+  const markScrollable = () => body.classList.toggle("is-scrollable", body.scrollHeight > body.clientHeight + 1);
+  const scrollObserver = new ResizeObserver(markScrollable); // a window resize or surface switch
+  scrollObserver.observe(body);
 
   // ── extension block (EXTENSION.md): bridge status + the agent status line ──
   interface BridgeInfo { port: number | null }
@@ -466,7 +505,7 @@ function mountSettings(host: HTMLElement): CardInstance {
     if (!el && !ag) return;
     invoke<BridgeInfo>("bridge_info")
       .then((b) => {
-        if (el) el.textContent = b.port ? `Bridge on 127.0.0.1:${b.port}` : "Bridge off (no free port)";
+        if (el) el.textContent = b.port ? `Extension bridge on 127.0.0.1:${b.port}` : "Extension bridge off (no free port)";
         if (ag) ag.textContent = !agentControl ? "Off" : b.port ? `Ready at 127.0.0.1:${b.port}` : "Off (no free port)";
       })
       .catch((e) => console.warn("[bridge] info", e));
@@ -519,14 +558,37 @@ function mountSettings(host: HTMLElement): CardInstance {
     .then((v) => { autostart = v; render(); })
     .catch((e) => console.warn("[settings] autostart", e));
 
+  // ── requestSetting (layout-bus.ts): unfold the row's section, scroll to the row, highlight it ──
+  const focusRow = (id: string) => {
+    const s = sections.find((x) => x.rows.some((r) => r.id === id));
+    if (!s) return;
+    if (!isOpen(s)) {
+      folds[s.title] = true; // an unfold like the user's own: it persists
+      saveFolds();
+    }
+    flashId = id;
+    flashAt = performance.now();
+    render();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    body.querySelector<HTMLElement>(`[data-set-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  };
+  const takeRequest = () => {
+    const id = takeSettingRequest();
+    if (id) focusRow(id);
+  };
+  const unsubRequest = onSettingRequest(takeRequest); // a request while this card is on-screen
+
   render();
+  takeRequest(); // this card was mounted BY a request
 
   return {
     destroy() {
       unsubStore();
       unsubLibAdd();
+      unsubRequest();
       dropMenus();
       window.removeEventListener("resize", closeMenus);
+      scrollObserver.disconnect();
       host.innerHTML = "";
     },
   };

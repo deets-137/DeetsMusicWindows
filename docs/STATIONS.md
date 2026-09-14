@@ -36,7 +36,7 @@ are the quick win and the source of *seeded* radio ("start a station from this s
 > stations are the whole radio story ("Apple curated is perfect"). The right column of the
 > table above, §4 (Deezer enrichment, generator, scope, thumbs), and the "My Stations" shelf
 > are retired; §4's text stays below purely as research record (Deezer findings, the ISRC
-> probe). **Ripple:** [DeetsWeather.md](DeetsWeather.md) was premised on the own-station
+> probe). **Ripple:** [DeetsWeather.md](ideas/DeetsWeather.md) was premised on the own-station
 > engine — its recipe needs a rethink (Apple-station/playlist-picking instead of generation)
 > if it's ever picked up.
 
@@ -336,7 +336,7 @@ Add-to-Library decisions.)
 
 Related taste signals already in the app — `play_stats` (behavioural), **♥/👎 [ratings](FAVORITES.md)**
 (explicit — and the app's **dedicated Favorite/Dislike buttons** *are* the thumbs), and
-[Song of the Day](DeetsOTD.md) (curated) — feed the *same* weighting; thumbs is the **in-station
+[Song of the Day](ideas/DeetsOTD.md) (an idea, not built; curated) — feed the *same* weighting; thumbs is the **in-station
 expression** of one shared taste model.
 
 ---

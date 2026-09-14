@@ -25,6 +25,7 @@ import {
 } from "./rewind";
 import type { CardDef, CardInstance } from "./cards";
 import { makeReplayPlaylist } from "./replay";
+import { rowDrag } from "./row-drag";
 
 const LIST_CAP = 20; // hero + 19 runners-up; a leaderboard's tail is noise
 const STORE_KEY = "deets.rewind";
@@ -176,14 +177,17 @@ function mountRewind(host: HTMLElement): CardInstance {
     return albumOrder(lib.length ? lib : row.tracks);
   };
 
+  // A playlist row's songs, fetched lazily (a menu pick or a drop).
+  const playlistTracksOf = (row: RewindRow): Promise<Track[]> =>
+    playlistsCached().then((all) => {
+      const p = all.find((x) => pid(x) === row.key);
+      if (!p) { console.warn("[rewind] playlist gone:", row.key); return []; }
+      return playlistTracks(p);
+    });
+
   const playlistMenuFor = (row: RewindRow): MenuItem[] => {
     const ctx = `playlist:${row.key}`; // plays keep attributing to this playlist
-    const getTracks = () =>
-      playlistsCached().then((all) => {
-        const p = all.find((x) => pid(x) === row.key);
-        if (!p) { console.warn("[rewind] playlist gone:", row.key); return []; }
-        return playlistTracks(p);
-      });
+    const getTracks = () => playlistTracksOf(row);
     const err = (what: string) => (x: unknown) => console.error(`[rewind] ${what}`, x);
     const run = (what: string, go: (ts: Track[]) => Promise<void>) => () =>
       void getTracks().then((ts) => (ts.length ? go(ts) : undefined)).catch(err(what));
@@ -210,6 +214,31 @@ function mountRewind(host: HTMLElement): CardInstance {
     openContextMenu(e.clientX, e.clientY, items, () => el.classList.remove("is-context"));
   });
 
+  // Drag a row to another card (DRAG-DROP.md §2) — the same lists as its right-click menu.
+  // Artists stay out: "play an artist" has no obvious order here.
+  const drag = rowDrag({
+    root: board,
+    label: "rewind",
+    rowAt: (target) => {
+      const el = target.closest<HTMLElement>("[data-idx]");
+      const row = el ? view[Number(el.dataset.idx)] : undefined;
+      if (!el || !row) return null;
+      const index = Number(el.dataset.idx);
+      if (pick.stat === "songs" && row.tracks.length)
+        return { row: el, index, payload: { source: "rewind", kind: "song", tracks: () => row.tracks, context: "rewind" } };
+      if (pick.stat === "albums" && row.tracks.length) {
+        const ts = albumTracksOf(row);
+        return { row: el, index, payload: { source: "rewind", kind: "album", count: ts.length, tracks: () => ts, context: `album:${row.key}` } };
+      }
+      if (pick.stat === "playlists")
+        return {
+          row: el, index,
+          payload: { source: "rewind", kind: "playlist", tracks: () => playlistTracksOf(row), context: `playlist:${row.key}`, playlistId: row.key },
+        };
+      return null;
+    },
+  });
+
   // Refresh when a play lands (queue change finalizes the outgoing song's event),
   // when the track store (re)loads (joins resolve instead of "Unknown"), and when
   // playlists change (names for the playlist stat).
@@ -224,6 +253,7 @@ function mountRewind(host: HTMLElement): CardInstance {
       unsubQueue();
       unsubTracks();
       unsubPlaylists();
+      drag.destroy();
       host.innerHTML = "";
     },
   };

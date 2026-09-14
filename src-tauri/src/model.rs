@@ -152,6 +152,16 @@ pub struct Playlist {
     /// the tracks are cached locally. Never persisted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover_urls: Option<Vec<String>>,
+    /// A LOCAL playlist's latest Apple Music copy (PLAYLISTS.md §6) and when it was
+    /// last written (ms). Stamped by `playlists_cached`; never persisted in mirror json.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exported_apple_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exported_at: Option<i64>,
+    /// A LOCAL playlist's role: `"replay"` = made from listening (PLAYLISTS.md §10.8), not
+    /// an add target and not editable by hand. None = a hand-made playlist.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
 }
 
 /// An Apple radio station (STATIONS.md §2 — live / Discovery / genre / seeded).

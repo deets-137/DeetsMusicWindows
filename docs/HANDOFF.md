@@ -17,9 +17,9 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](SETTINGS.md) (the settings store + card) ·
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
-[ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
-[DeetsWeather.md](DeetsWeather.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
-[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build / install / uninstall).
+[ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
+[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build / install / uninstall). Ideas, not built:
+[ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
 
 ---
 
@@ -94,6 +94,48 @@ extension's icons are LANCZOS resizes of the same file.
 ---
 
 ## Next up
+
+**2026-09-14 — playlists §10.9, BUILT, not desk-tested: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
+Import to Edit (a mirror row's right-click or its hero cover; your own Apple playlist stays
+linked as one row), Add to Playlist ▸ lists your own Apple playlists with the sigil (the
+first add asks once), and the list splits into Local Playlists / Your Apple Playlists. New
+Rust commands `playlist_import` + `apple_playlist_add`: **restart the dev runner.** Desk
+test: import one of your own playlists (one row, Send New Songs), import an Apple mix
+(unlinked), add a song to a throwaway Apple playlist (a REAL Apple write, the question
+first), turn Export playlists off (the Apple rows leave the menu).
+
+**2026-09-14 — the playlists wrap-up, BUILT, not desk-tested: [PLAYLISTS.md §10](PLAYLISTS.md)
+"As built".** Drag to reorder (`src/row-drag.ts`, now shared with the queue), rename, the
+*Apple Music ▸* menu (Send New Songs · Get New Songs · Make a New Copy), a red delete confirm,
+named skipped uploads, covers served as `http://cover.localhost/` links, the README note, and
+the Replay guard (`role`). **Schema v5; Rust changed: restart the dev runner.** Desk test: drag
+in a short and a >200-song local playlist, drag the queue (it moved to the shared module),
+rename, delete with songs, a Replay's menus, Get New Songs on an exported playlist (a real
+Apple READ). Later: Import to edit, adding straight to Apple playlists (first-add confirm), a
+separate Local Playlists section (§10.9). Idea raised: drag songs from any card into the Queue
+(not designed).
+
+**2026-09-14 — Playlist covers + Export to Apple Music: BUILT, not desk-tested** (branch
+`optimus-deets`). The hero cover of a local playlist is a button (Choose Image… / Remove
+Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](NEXT-VERSION.md)). Export ▸
+makes an Apple copy or adds new songs to it, and asks before a write Apple can't fully copy
+([PLAYLISTS.md §6](PLAYLISTS.md)). Settings › Apple Music › **Export playlists** (default on).
+Settings › Show notices lost **Off**; a toast that asks always shows ([TOASTS.md §4](TOASTS.md)).
+Same session: **Settings regrouped** (Window / Look and feel / Playback / Apple Music / Playlists /
+Rewind / Connections / Bugs / About) and **`requestSetting(rowId)`** opens the card at a row
+(unfold, scroll, highlight); the Add to Library and Export notices are once-notices with a
+**[Settings]** button ([SETTINGS.md §3](SETTINGS.md), TOASTS.md `onceKey`).
+Also: **a network drop** showed MusicKit's own in-page error box ("loadSegmentError", `MKDialog`,
+not an `alert()`) beside our offline toast. Fixed with `suppressErrorDialog: true` in both
+`MusicKit.configure` calls, and the stopped song now **resumes where it stopped** when Apple
+health next finds the network back ([TOASTS.md](TOASTS.md) §Apple health, offline row). Not yet
+tested against a real Wi-Fi drop.
+**Rust + `tauri.conf.json` changed: restart the dev runner.** An export is a REAL Apple
+write — test with a throwaway playlist and delete its copies in the Music app.
+**Export desk-tested the same night:** the first tries made empty copies because Apple's create
+reply is gzip-compressed (fixed: `reqwest` `gzip` feature). An exported playlist now lists as
+one row (the local one; the linked Apple copy is hidden), with the Apple Music sigil, the
+copy's Apple artwork when it has no cover of its own, and "Exported on <date>" in its hero.
 
 **2026-09-13 — Apple terms + D.7 pass, built, NOT yet desk-tested or deployed** (branch
 `toast-time`; decisions and the origin probe in [RELEASE.md §7](RELEASE.md) "Revised
@@ -364,7 +406,7 @@ Claude Code / Cursor / Other; the plain-words [AGENT-SETUP.md](AGENT-SETUP.md)),
 **Start with Windows** (HKCU Run key, `--tray` launch starts hidden; seeded once on the first
 installed run, DeetsAirplay pattern).
 
-**Deferred, when prioritized:** **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
+**Deferred, when prioritized:** **DeetsWeather** ([ideas/DeetsWeather.md](ideas/DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent
 control** · **mini/max surface compositions** · **virtualized scrolling** (only once libraries
 get large).

@@ -137,7 +137,8 @@ period; `longtasks` are the browser's >50 ms main-thread tasks that overlapped t
 frame — the synchronous build (a pane render, a folder re-render) — is itself over budget. Names: `scroll <container>` (opens itself on any scroll event, closes
 150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
 seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
-`fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
+`fold open|close` (a Playlists folder), `drag queue|collection` (a reorder: an Up Next row, a
+local playlist row), `drag cross` (a copy to another card, DRAG-DROP.md), `menu` (a context
 menu opening), `appearance theme|skin` (the view transition), `sample` (manual),
 `window a-b` (a windowed pane's edge patch that cost ≥ 4 ms — collection-window.ts; the
 detail is the rendered item range after the pass).
@@ -332,7 +333,7 @@ Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` 
 can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
 
 **Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
-setting is Settings › Window › **Show notices**, default *Everything* (was *Failures* before 2026-09-13).
+setting is Settings › Look and feel › **Show notices**, default *Everything* (was *Failures* before 2026-09-13).
 
 1. **Look.** `__toast.demo()` in midi: a top-right stack under the Now Playing card,
    newest on top, at most 3 (the stack is capped, so `demo()`'s four toasts show the last
@@ -359,8 +360,8 @@ setting is Settings › Window › **Show notices**, default *Everything* (was *
 6. **Dead songs.** Play a song whose catalog id Apple dropped (the log's
    `player:deadFresh` from a past session names candidates, or `__music` search for a
    pulled release). Expect one warn "Skipped “Title” — Apple Music no longer offers it."
-   Play it again: silent (the mark is on disk). A cache reset (Settings › Library)
-   makes it fresh again.
+   Play it again: silent (the mark is on disk). The mark expires after 7 days,
+   and then the id is tried again.
 7. **Sign-in timeout.** Dev builds read `localStorage["deets.dev.signInTimeoutMs"]`
    (`apple.ts`) to shorten the 5-minute wait. First back up
    `%APPDATA%\com.deetsmusic.dev\user-token.txt`, because Disconnect deletes it. Set the key

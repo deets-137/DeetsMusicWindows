@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic"
-version = "0.4.0"
+version = "0.4.1"
 description = "A lightweight Apple Music player for Windows 11."
 authors = ["Aditya Sundaram"]
 edition = "2021"
@@ -27,7 +27,7 @@ tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 jsonwebtoken = "9"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] } # gzip: Apple compresses some replies (the playlist create) whatever we ask for
 tiny_http = "0.12"
 getrandom = "0.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
@@ -43,6 +43,12 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4b3980b5b8c4265663319ca21da7568106f9dad3" }
 tauri-plugin-deep-link = "2"
 url = "2"
+# Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).
+# Already in the tree transitively, so no new crate download.
+base64 = "0.22"
+# The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6). The version
+# Tauri's wry already uses, so no new crate download.
+webview2-com = "0.38"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

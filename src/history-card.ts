@@ -17,6 +17,7 @@ import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { copySongLinkItem } from "./copy-link";
 import type { CardDef, CardInstance } from "./cards";
+import { rowDrag, isDragging, onDragEnd } from "./row-drag";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
 
@@ -34,8 +35,14 @@ function mountHistory(host: HTMLElement): CardInstance {
   // resolves data-idx against this snapshot — render() reassigns it, and both run off
   // the same queue-change emits, so the indices always match the DOM.
   let view: readonly queue.QueueEntry[] = [];
+  let pendingRender = false;
 
   const render = () => {
+    if (isDragging()) {
+      pendingRender = true; // a play landed mid-drag — keep the pressed row until the drop
+      return;
+    }
+    pendingRender = false;
     view = [...queue.getPlayLog()].reverse();
     const latest = view[0];
 
@@ -108,6 +115,23 @@ function mountHistory(host: HTMLElement): CardInstance {
     openContextMenu(e.clientX, e.clientY, menuFor(entry), () => el.classList.remove("is-context"));
   });
 
+  // Drag a play (the hero or a row) to another card (DRAG-DROP.md §2).
+  const drag = rowDrag({
+    root: body,
+    label: "history",
+    rowAt: (target) => {
+      const el = target.closest<HTMLElement>("[data-idx]");
+      const entry = el ? view[Number(el.dataset.idx)] : undefined;
+      const t = entry ? resolveEntry(entry) : undefined;
+      return el && t
+        ? { row: el, index: Number(el.dataset.idx), payload: { source: "history", kind: "song", tracks: () => [t], context: "history" } }
+        : null;
+    },
+  });
+  const unsubDragEnd = onDragEnd(() => {
+    if (pendingRender) render();
+  });
+
   // Re-render on plays (queue change) and when the track store (re)loads so entries
   // resolve instead of showing "Unknown".
   const unsubTracks = onTracksChange(render, "history");
@@ -118,6 +142,8 @@ function mountHistory(host: HTMLElement): CardInstance {
     destroy() {
       unsubTracks();
       unsubQueue();
+      drag.destroy();
+      unsubDragEnd();
       host.innerHTML = "";
     },
   };

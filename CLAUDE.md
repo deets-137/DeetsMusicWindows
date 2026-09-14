@@ -13,7 +13,7 @@ front-end, Rust back-end).
   the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, install, uninstall.
 - `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
   call site; `__toast.demo()` in the console shows one of each kind.
-- `docs/LOGGING.md` — the rolling log file + `diag.ts` (scoped, not built); the support
+- `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 
 ## How to verify your work
@@ -86,5 +86,6 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 ## Conventions
 - Front-end only ever sees the normalized model (`Track`/`Album`/…), never raw Apple
   shapes — normalization lives in Rust.
-- Commit only when the user asks. Co-author trailer:
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+- Commit only when the user asks. Co-author trailer — name the model that did the work
+  (today `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`); update this line when
+  the model changes.

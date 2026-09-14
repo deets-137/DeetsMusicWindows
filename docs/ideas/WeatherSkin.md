@@ -4,8 +4,8 @@
 > layer — falling rain, tumbling snow, a real moon), **fonts and motion that shift per
 > condition**, and a companion **Weather theme** that recolors the roles to match. Rides the
 > same `WeatherSnapshot` as [DeetsWeather](DeetsWeather.md) — **zero new API surface**; this
-> is a *second consumer* of `weather.rs`. Read with [UI-ARCHITECTURE](UI-ARCHITECTURE.md)
-> (token tiers, skin doctrine) and [ALBUM-COLOR.md](ALBUM-COLOR.md) (the runtime-value
+> is a *second consumer* of `weather.rs`. Read with [UI-ARCHITECTURE](../UI-ARCHITECTURE.md)
+> (token tiers, skin doctrine) and [ALBUM-COLOR.md](../ALBUM-COLOR.md) (the runtime-value
 > precedent this extends). Status: ✅ decided · 🔵 open · ⬜ later.
 
 ---
@@ -64,7 +64,7 @@ Two new attributes on `<html>`, sibling to `data-theme` / `data-skin`, **owned b
   daylight — the skin degrades to a handsome day/night skin, never a broken one.
 - **Dev override / vibe lock** ✅ — `localStorage` `deets.weather.force` (e.g. `"storm/night"`)
   short-circuits the driver. Ships as the dev tool for building scenes; graduates to a user
-  "lock the vibe" setting later ([FUTURE-SETTINGS](FUTURE-SETTINGS.md) candidate).
+  "lock the vibe" setting later ([FUTURE-SETTINGS](../FUTURE-SETTINGS.md) candidate).
 
 ### Continuous runtime props (the album-color pattern)
 Buckets pick the **scene**; these **tune** it. JS sets them on `<html>`; themes declare

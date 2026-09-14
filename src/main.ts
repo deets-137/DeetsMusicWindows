@@ -5,6 +5,7 @@ import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surf
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
+import { initBrowserDefaults } from "./browser-defaults";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
@@ -39,6 +40,15 @@ window.addEventListener("DOMContentLoaded", () => {
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
+  // File drops belong to the page (tauri.conf.json `dragDropEnabled: false`, for the playlist
+  // cover). A drop no element took must not navigate the webview to the file.
+  window.addEventListener("dragover", (e) => {
+    if (e.defaultPrevented) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+  });
+  window.addEventListener("drop", (e) => e.preventDefault());
+  initBrowserDefaults(); // no native drag or right-click menu; text fields get our own (DRAG-DROP.md §6)
   initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
@@ -66,6 +76,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const menu = document.getElementById("settings-menu");
   if (!settingsRoot || !trigger || !menu) return;
 
+  menu.classList.add("pop"); // arrives and leaves like the Vol. and "Play on" panels
+  menu.dataset.frames = "settings";
   const settingsDropdown = makeDropdown({ root: settingsRoot, trigger, panel: menu });
   const close = () => settingsDropdown.close();
 
@@ -342,14 +354,20 @@ window.addEventListener("DOMContentLoaded", () => {
     reflect(getVolume()); // seed from the persisted level
     onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes
 
-    // Shared dropdown mechanism; shouldStayOpen keeps it up through a drag —
-    // or while the nested "Play on" panel is open.
+    // Shared dropdown mechanism. A slider drag keeps it up, and so does the pointer leaving
+    // for the nested "Play on" panel (portaled outside this root). A click away or Escape
+    // closes both panels; a click inside "Play on" counts as inside this one.
     const volAirplay = document.getElementById("vol-airplay");
+    let playOn: ReturnType<typeof mountAirplay> | null = null;
+    volPanel.classList.add("pop"); // arrives and leaves like the "Play on" panel
+    volPanel.dataset.frames = "volume";
     makeDropdown({
       root: volRoot, trigger: volPill, panel: volPanel,
-      shouldStayOpen: () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true",
+      shouldStayOpen: (why) =>
+        slider.dragging || (why === "leave" && volAirplay?.getAttribute("aria-expanded") === "true"),
+      alsoInside: () => [playOn?.panel],
     });
-    if (volAirplay) mountAirplay(volAirplay);
+    if (volAirplay) playOn = mountAirplay(volAirplay);
     initAirplay();
 
     volMute.addEventListener("click", (e) => {

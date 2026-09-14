@@ -26,6 +26,8 @@ import { copySongLinkItem } from "./copy-link";
 import { explicitBadge } from "./library-card";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef } from "./cards";
+import { rowDrag, registerDropTarget } from "./row-drag";
+import { dropToPlay } from "./drop-actions";
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
 // The cover placeholder: the ♪ glyph in a one-line box (styles.css .np__art-glyph).
@@ -346,6 +348,28 @@ export const nowPlayingCard: CardDef = {
     host.querySelector<HTMLElement>(".np__art")?.addEventListener("contextmenu", npMenu);
     host.querySelector<HTMLElement>(".np__meta")?.addEventListener("contextmenu", npMenu);
 
+    // Drag the cover (the current song) to another card; a drop on this card plays at once
+    // (DRAG-DROP.md §2–3, fork 2). It is also mini's one drop target.
+    const artEl = host.querySelector<HTMLElement>(".np__art");
+    const drag = artEl
+      ? rowDrag({
+          root: artEl,
+          label: "now-playing",
+          rowAt: () => {
+            const cur = queue.getCurrent();
+            const t = cur ? resolveEntry(cur) : undefined;
+            return cur && t
+              ? { row: artEl, index: 0, payload: { source: "now-playing", kind: "song", tracks: () => [t], context: cur.context } }
+              : null;
+          },
+        })
+      : null;
+    const unregisterDrop = registerDropTarget({
+      el: host,
+      over: (_under, _x, _y, p) =>
+        p.source === "now-playing" || p.source === "queue-now" ? null : { highlight: host, drop: () => dropToPlay(p) },
+    });
+
     // Transport row overflow (mini at minimum width): when shuffle + prev/play/next +
     // summon can't fit one row, drop the two side buttons to a second row. Measured
     // from the rendered buttons (their widths don't change when stacked, so the
@@ -406,6 +430,8 @@ export const nowPlayingCard: CardDef = {
         airplay?.destroy();
         stackObserver?.disconnect();
         badgeObserver.disconnect();
+        drag?.destroy();
+        unregisterDrop();
         host.innerHTML = "";
       },
     };

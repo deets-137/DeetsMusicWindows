@@ -59,7 +59,7 @@ async function fileUnderReplay(rowid: number): Promise<void> {
 
 /** Create a dated local playlist from `tracks`, filed under Replay. Returns its rowid. */
 async function createReplay(name: string, tracks: Track[]): Promise<number> {
-  const id = await playlistCreate(name);
+  const id = await playlistCreate(name, "replay");
   await playlistAddTracks(id, tracks);
   await fileUnderReplay(id);
   return id;
@@ -113,10 +113,11 @@ export async function runWeeklyReplay(force = false): Promise<void> {
   if (setting("replayKeep")) {
     await createReplay(`Replay — ${fmtDate(due)}`, tracks);
   } else {
-    // Rolling: drop the previous "Replay" (local, under the Replay folder) and remake it,
-    // so the rowid changes but the name and the folder stay put.
+    // Rolling: drop the previous "Replay" (local, marked replay) and remake it, so the rowid
+    // changes but the name and the folder stay put. The role check keeps a playlist the user
+    // named "Replay" by hand safe.
     const all = await playlistsCached();
-    const old: Playlist | undefined = all.find((p) => p.source === "local" && p.name === ROLLING_NAME);
+    const old: Playlist | undefined = all.find((p) => p.source === "local" && p.role === "replay" && p.name === ROLLING_NAME);
     if (old) await playlistDelete(old);
     await createReplay(ROLLING_NAME, tracks);
   }

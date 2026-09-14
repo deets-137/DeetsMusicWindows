@@ -166,6 +166,14 @@
   --ap-row-h:       var(--icon-lg);
   --ap-dot:         0.9em;          /* the ✓ gutter on a row */
   --ap-pulse:       1.2s;           /* the square's breathing while connecting */
+  /* dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in */
+  --pop-in:         var(--dur-med); /* a panel and new rows arriving */
+  --pop-out:        var(--dur-fast);/* a panel leaving */
+  --pop-grow:       var(--dur-med); /* a panel's height following a new row */
+  --pop-stagger:    0.03s;          /* one arriving row after the next */
+  --pop-shift:      var(--space-1); /* how far a panel and a new row travel in */
+  --pop-scale:      0.97;           /* a panel's size as it starts to arrive */
+  --pop-ease:       cubic-bezier(0.2, 0.8, 0.2, 1); /* fast start, soft stop */
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
@@ -173,6 +181,7 @@
   --set-pill-radius: 999px;          /* the split pill's outer radius */
   --set-menu-min-w:  120px;          /* the small menu behind a menu half */
   --set-menu-max-h:  280px;          /* 7 weekdays fit; longer lists scroll */
+  --set-flash-dur:   1600ms;         /* a row opened from a toast: its highlight fades over this */
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */
@@ -227,6 +236,7 @@
                                        row can be a relayout boundary (UI-ARCHITECTURE.md §4a) */
   --hero-cover:         180px;      /* the detail hero's cover square (album / playlist) */
   --hero-gap:           var(--space-1); /* title ↔ subtitle ↔ meta stack spacing */
+  --hero-cover-hover:   0.85;       /* brightness of a clickable hero cover on hover / file drag */
   --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */
 
   /* -- scrollbar (our own; color is a theme role) ------------ */
@@ -270,8 +280,11 @@
   --dur-spin: 0.7s;
   --ease-ui:  ease;
   --hover-lift: none;               /* interactive rows/tiles rise on hover; a skin opts in */
-  --drag-lift:  scale(1.02);        /* lift of a row being dragged (Qcard reorder) */
-  --drop-line-w: 2px;               /* insertion-indicator thickness */
+  --drag-lift:  scale(1.02);        /* lift of a dragged row's copy (row-drag.ts) */
+  --drag-ghost-opacity: 0.85;       /* the copy stays see-through so the list under it reads */
+  --drag-nodrop-opacity: 0.5;       /* the copy over a place that takes no drop */
+  --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
+  --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
 
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;

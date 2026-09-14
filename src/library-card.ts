@@ -25,6 +25,9 @@ import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, formatTotal } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
+import { registerDropTarget } from "./row-drag";
+import { dropToLibrary } from "./drop-actions";
+import { libraryAddEnabled } from "./library-add";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -251,6 +254,15 @@ const artistSorts: SortSpec<ArtistGroup>[] = [
 // an album → the whole album as the new context). Next/Later insert without a rebuild.
 export const albumOrder = (ts: Track[]): Track[] =>
   [...ts].sort((a, b) => (a.discNumber ?? 1) - (b.discNumber ?? 1) || (a.trackNumber ?? 0) - (b.trackNumber ?? 0));
+/** An artist's songs in album order: albums oldest first, each in disc/track order (a drag). */
+const artistOrder = (ts: Track[]): Track[] =>
+  [...ts].sort(
+    (a, b) =>
+      (a.releaseDate ?? "").localeCompare(b.releaseDate ?? "") ||
+      (a.albumName ?? "").localeCompare(b.albumName ?? "") ||
+      (a.discNumber ?? 1) - (b.discNumber ?? 1) ||
+      (a.trackNumber ?? 0) - (b.trackNumber ?? 0),
+  );
 
 /**
  * In-place drill navigation for a card's right-click menus. When passed to `trackMenu`
@@ -377,6 +389,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     // Right-click → act on this song; Play Now's scope (just it, or it then the list)
     // is the setting (SETTINGS.md / FUTURE-SETTINGS §1).
     menu: (t, idx, items) => trackMenu([t], o.context, o.nav, { items, idx }),
+    drag: (t) => ({ source: "library", kind: "song", tracks: () => [t], context: o.context }),
   };
 }
 
@@ -396,6 +409,13 @@ function albumsGrouping(
     open: openDetail,
     // Right-click → act on the whole album, tracks in disc/track order.
     menu: (a) => trackMenu(albumOrder(list().filter((t) => albumKey(t) === a.key)), `album:${a.key}`, nav),
+    drag: (a) => ({
+      source: "library",
+      kind: "album",
+      count: a.count,
+      tracks: () => albumOrder(list().filter((t) => albumKey(t) === a.key)),
+      context: `album:${a.key}`,
+    }),
   };
 }
 
@@ -421,6 +441,13 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
             .map((t) => t.catalogId),
         ),
       ].filter(Boolean) as MenuItem[],
+    drag: (a) => ({
+      source: "library",
+      kind: "artist",
+      count: a.songCount,
+      tracks: () => artistOrder(creditIndex(list()).tracksFor(a.name)),
+      context: `artist:${a.name}`,
+    }),
   };
 }
 
@@ -561,6 +588,15 @@ export const libraryCard: CardDef = {
       }
     });
 
+    // A drop on the Library card adds the songs to the library, as Add to Library does
+    // (DRAG-DROP.md §3, fork 1). Not a target while the Library Add setting is off; the
+    // Library's own drags don't land here.
+    const unregisterDrop = registerDropTarget({
+      el: host,
+      over: (_under, _x, _y, p) =>
+        libraryAddEnabled() && p.source !== "library" ? { highlight: host, drop: () => dropToLibrary(p) } : null,
+    });
+
     const triggerSync = () => librarySync().catch((e) => console.error("[sync]", e));
     refreshBtn?.addEventListener("click", triggerSync);
     // (The startup stale-while-revalidate sync lives in initTrackStore now — once per
@@ -570,6 +606,7 @@ export const libraryCard: CardDef = {
       destroy() {
         unsubTracks();
         unsubFavs();
+        unregisterDrop();
         syncUnlisten.then((un) => un()).catch(() => {});
         card.destroy();
         host.innerHTML = "";

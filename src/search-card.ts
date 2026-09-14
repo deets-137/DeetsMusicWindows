@@ -26,6 +26,7 @@ import {
 } from "./search";
 import type { Track, Artwork } from "./library";
 import type { CardDef, CardInstance } from "./cards";
+import { rowDrag } from "./row-drag";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
@@ -133,6 +134,8 @@ function mountSearch(host: HTMLElement): CardInstance {
 
   // Track lookup for delegated handlers: keyed maps refreshed per render.
   let songsById = new Map<string, Track>();
+  // A drill pane's track list and its queue-origin tag, for a drag from one of its rows.
+  const paneTracks = new WeakMap<HTMLElement, { tracks: Track[]; context: string }>();
 
   // ── Add-to-Library square on song rows (root Songs grid + drill-pane track lists) ──
   // Mirrors the Now Playing "+": a press IS the consent (addTrackToLibrary), the Library
@@ -387,6 +390,7 @@ function mountSearch(host: HTMLElement): CardInstance {
 
   /** A detail pane's track list: tap plays the list from that row (Library semantics). */
   const wireTrackList = (body: HTMLElement, tracks: Track[], context: string) => {
+    paneTracks.set(body, { tracks, context });
     body.addEventListener("click", (e) => {
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
       if (!row) return;
@@ -645,11 +649,51 @@ function mountSearch(host: HTMLElement): CardInstance {
     }
   });
 
+  // ── drag sources (DRAG-DROP.md §2): songs, albums, playlists — on the root and in every
+  // drill pane. A collection's songs are fetched only at the drop. Artists and stations
+  // aren't song lists. ──
+  const drag = rowDrag({
+    root: panes,
+    label: "search",
+    rowAt: (target) => {
+      const song = target.closest<HTMLElement>("[data-song]");
+      if (song) {
+        const t = songsById.get(song.dataset.song!);
+        return t ? { row: song, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: "search" } } : null;
+      }
+      const row = target.closest<HTMLElement>("[data-row]");
+      if (row) {
+        const scroll = row.closest<HTMLElement>(".spane__scroll");
+        const list = scroll ? paneTracks.get(scroll) : undefined;
+        const t = list?.tracks[Number(row.dataset.row)];
+        return t && list ? { row, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: list.context } } : null;
+      }
+      const album = target.closest<HTMLElement>("[data-album]");
+      if (album?.dataset.album) {
+        const id = album.dataset.album;
+        return {
+          row: album, index: 0,
+          payload: { source: "search", kind: "album", tracks: () => collectionTracks("albums", id), context: `search-albums:${id}`, albumId: id },
+        };
+      }
+      const pl = target.closest<HTMLElement>("[data-playlist]");
+      if (pl?.dataset.playlist) {
+        const id = pl.dataset.playlist;
+        return {
+          row: pl, index: 0,
+          payload: { source: "search", kind: "playlist", tracks: () => collectionTracks("playlists", id), context: `search-playlists:${id}` },
+        };
+      }
+      return null;
+    },
+  });
+
   renderEmpty();
   notifyHeader();
 
   return {
     destroy() {
+      drag.destroy();
       window.clearTimeout(debounceTimer);
       queryToken++; // orphan any in-flight response
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out

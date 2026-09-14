@@ -22,3 +22,29 @@ export function onCardRequest(cb: RequestCb): () => void {
   subs.add(cb);
   return () => subs.delete(cb);
 }
+
+// ── Settings at one row (a toast's [Settings] button, SETTINGS.md) ──
+// The request is held until a Settings card takes it: a card mounted by this request
+// takes it on mount, a card already on-screen takes it through the subscription.
+let pendingRow: string | null = null;
+const rowSubs = new Set<() => void>();
+
+/** Bring the Settings card on-screen, unfold the section holding `rowId`, scroll to the row, highlight it. */
+export function requestSetting(rowId: string): void {
+  pendingRow = rowId;
+  requestCard("settings");
+  rowSubs.forEach((cb) => cb());
+}
+
+/** Settings-card side: take the waiting row id (null when none). */
+export function takeSettingRequest(): string | null {
+  const id = pendingRow;
+  pendingRow = null;
+  return id;
+}
+
+/** Settings-card side: be told when a row request arrives. Returns an unsubscribe fn. */
+export function onSettingRequest(cb: () => void): () => void {
+  rowSubs.add(cb);
+  return () => rowSubs.delete(cb);
+}

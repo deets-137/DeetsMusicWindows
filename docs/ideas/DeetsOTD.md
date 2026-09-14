@@ -2,10 +2,10 @@
 
 > Mark one song per day; over time it becomes a **music diary** — a reverse-chronological record
 > of the song that defined each day, optionally with a note on *why*. Fully **local, zero API
-> cost**, and it rides systems we already have (the [card registry](SURFACES-AND-CARDS.md), the
-> [context-menu primitive](UI-ARCHITECTURE.md#4a-the-collection-card-navigable-browser-engine),
-> the `play_stats` sibling table in [library.rs](../src-tauri/src/library.rs)). Cross-links:
-> [DEETS-REWIND.md](DEETS-REWIND.md) (stats surface it complements), [PLAYLISTS.md](PLAYLISTS.md)
+> cost**, and it rides systems we already have (the [card registry](../SURFACES-AND-CARDS.md), the
+> [context-menu primitive](../UI-ARCHITECTURE.md#4a-the-collection-card-navigable-browser-engine),
+> the `play_stats` sibling table in [library.rs](../../src-tauri/src/library.rs)). Cross-links:
+> [DEETS-REWIND.md](../DEETS-REWIND.md) (stats surface it complements), [PLAYLISTS.md](../PLAYLISTS.md)
 > (the store the auto-playlist would ride). Status: ✅ decided · 🔵 open (my default unless you
 > red-line) · ⬜ later.
 
@@ -16,7 +16,7 @@
 The *marking* is one small action; the **history is the feature**. A single slot per day, filled
 with the song that mattered that day, accumulating into a scrollable diary you can replay and read
 back. It is deliberately **not** a play-count or a favorites list — those are *behavioural*
-signals ([play_stats](../src-tauri/src/library.rs) / [Rewind](DEETS-REWIND.md)). Song of the Day
+signals ([play_stats](../../src-tauri/src/library.rs) / [Rewind](../DEETS-REWIND.md)). Song of the Day
 is a **conscious, curated** signal: "*I* chose this, today." That distinction is the whole point,
 and it's why it lives beside the stats, not inside them.
 
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS song_of_day (
 - **PK on `date` ⇒ one per day**, and a re-mark is a plain **upsert** (last-write-wins). No extra
   conflict logic in the schema.
 - **`track_id`** uses the **catalog-first canonical key** (`catalog_id ?? library_id`) decided in
-  [FAVORITES.md](FAVORITES.md) — the rule `tracks` + `play_stats` adopt after that migration — so
+  [FAVORITES.md](../FAVORITES.md) — the rule `tracks` + `play_stats` adopt after that migration — so
   a diary row **joins to track metadata for free** (cover/title/artist via the track store). (If
   this ships *before* the migration lands, use catalog-first anyway; the track store indexes both
   ids, so the join works either way and the row needs no re-keying later.)
@@ -55,7 +55,7 @@ card. All **purely local — no Apple calls** (same shape/ethos as `record_play`
 
 Two entry points, both riding existing surfaces — no new primitive:
 
-- **Now Playing affordance (the hero).** A small **star** on the [Now Playing card](../src/now-playing-card.ts):
+- **Now Playing affordance (the hero).** A small **star** on the [Now Playing card](../../src/now-playing-card.ts):
   most songs *become* the one while you're listening. State:
   - hollow → today's slot is empty **or** holds a different song; click sets the current song as
     today's.
@@ -63,7 +63,7 @@ Two entry points, both riding existing surfaces — no new primitive:
   - The star is skin/theme-tokened like every other glyph (a `--icon-*` wrapper + a theme role),
     never a hardcoded color/size.
 - **Right-click → "Mark as Song of the Day"** on any library / queue row — rides the existing
-  `menu()` grouping accessor → [context-menu.ts](../src/context-menu.ts). The label reflects state:
+  `menu()` grouping accessor → [context-menu.ts](../../src/context-menu.ts). The label reflects state:
   *"Mark as Song of the Day"* · *"★ Today's Song of the Day"* (already this song) · *"Replace
   today's Song of the Day"* (a different song is set).
 
@@ -86,7 +86,7 @@ rendering the diary **reverse-chronologically**, grouped by month:
   with the chosen `date`.
 - **Today's row is pinned at top** with an empty-state prompt if unset ("Pick today's song").
 
-**Card engine choice** 🔵 — a **lightweight standalone renderer** (like the [Qcard](../src/qcard.ts))
+**Card engine choice** 🔵 — a **lightweight standalone renderer** (like the [Qcard](../../src/qcard.ts))
 is enough for MVP (a flat, month-grouped list). Reuse the **collection-card engine** instead *if*
 we want search ("which day did I pick X?") + sort — a clean upgrade later, since the engine already
 does play-on-click + scroll-restore. Recommend standalone for v1.
@@ -96,13 +96,13 @@ does play-on-click + scroll-restore. Recommend standalone for v1.
 ## Payoff hooks (extensions, not MVP)
 
 - **"Songs of the Day" auto-collection** ⬜ — append each pick to a local **"Songs of the Day
-  {year}"** playlist in the [local-first playlist store](PLAYLISTS.md); **Apple export stays gated
+  {year}"** playlist in the [local-first playlist store](../PLAYLISTS.md); **Apple export stays gated
   + create/append-only**, exactly like every other playlist write (no special path). Or seed a
   **station** from the diary ("play my songs of the day"). Rides existing engines.
 - **Rewind cross-link** ⬜ — a "**your songs of the day this month**" panel in
-  [Deets-Rewind](DEETS-REWIND.md); the diary is a natural data source for the stats surface.
+  [Deets-Rewind](../DEETS-REWIND.md); the diary is a natural data source for the stats surface.
 - **Streaks + a gentle daily nudge** ⬜ — "you've marked N days running" and an optional "pick
-  today's song?" prompt, **off by default**, exposed as a [FUTURE-SETTINGS](FUTURE-SETTINGS.md)
+  today's song?" prompt, **off by default**, exposed as a [FUTURE-SETTINGS](../FUTURE-SETTINGS.md)
   toggle. Deliberately opt-in — a music app shouldn't nag.
 
 ---

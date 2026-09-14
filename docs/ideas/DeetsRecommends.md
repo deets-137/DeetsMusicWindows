@@ -3,9 +3,9 @@
 > **Status: roadmap idea, not scheduled.** A possible way for DeetsRadio / DeetsMusic to make
 > its own recommendations from *who made the music*, not from listening behaviour.
 > Status legend: ✅ decided · 🔵 open · ⬜ later.
-> Siblings: [STATIONS](STATIONS.md) (Apple stations; the old own-station engine was dropped —
+> Siblings: [STATIONS](../STATIONS.md) (Apple stations; the old own-station engine was dropped —
 > this doc is a different engine, fed by credits, not audio features),
-> [DATA-ARCHITECTURE](DATA-ARCHITECTURE.md) (provider + SQLite cache).
+> [DATA-ARCHITECTURE](../DATA-ARCHITECTURE.md) (provider + SQLite cache).
 
 ---
 
@@ -28,7 +28,7 @@
   `artists` relationship, and `composerName` (one flat string).
 - It gives **no producer credits and no typed roles**.
 - The Apple Music app shows full credits through the private `amp-api`. **Rejected** — it
-  needs the web player's privileged token and cookies (see [PLAYLISTS](PLAYLISTS.md) and the
+  needs the web player's privileged token and cookies (see [PLAYLISTS](../PLAYLISTS.md) and the
   2026-07-01 decision). Same reasons apply here.
 
 ### 2.2 The credits come from outside; ISRC is the join key ✅
