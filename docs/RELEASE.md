@@ -235,6 +235,19 @@ that blocker.
   route checks `KILL_UPDATE` (its own var) instead.
 - This is a file channel for **signed installers only**. It never serves code the app loads
   (support.md "config yes, code no").
+- **The website reads the same index** (decided 2026-09-14, not built):
+  `GET /update/<channel>/releases` is the public release list behind
+  `deets.solutions/deetsmusic/` (DeetsSolutions `docs/support.md`, "The page"). No `?v=`;
+  newest first; `latest` is the newest live non-pre-release. Each row carries version, date,
+  notes, and — only when it has an installer and is not withdrawn — size and a download URL
+  on `music-api.`. Signature and group stay off it. `Cache-Control: public, max-age=300`.
+  Same rules as the rest of the route: R2 only, before `KILL`, behind `KILL_UPDATE`.
+  Two kinds of row the updater never sees, because `readIndex` keeps only entries with a
+  `file` and a `signature`:
+  - **History rows** — 0.1.3 to 0.4.1 shipped before the updater, so they have no `.sig`.
+    They go into the index as notes only (§6.7), so the page's history does not start at 0.4.3.
+  - **Withdrawn releases stay listed**, notes and all, marked withdrawn and with no download.
+    What went wrong is part of the record. An optional `withdrawn_reason` says why.
 
 ### 6.3 Behavior — download in background, ask to restart (decided)
 
@@ -331,6 +344,17 @@ The vault lets a Claude session run a full release; a prompt would not.
 `npm run release` gains stages after `release-check`: sign (via the env vars above), upload
 the installer and `.sig` to R2, and update the manifest (version, size, signature, channel
 group). The local `installers/` archive stays.
+
+**Additions for the website (decided 2026-09-14, not built)** — `scripts/publish-update.mjs`:
+
+- `--history` writes a **notes-only row** for every `## <version>` in RELEASE-NOTES.md that the
+  index lacks: `{ version, notes, pub_date, history: true }`, with the date taken from the
+  heading. No `file`, no `signature`, so the updater and rollback skip it. Run once for
+  0.1.3–0.4.1; safe to re-run.
+- `--withdraw <v> --reason "<text>"` stores `withdrawn_reason` beside `withdrawn: true`. The
+  reason is shown on the public page, so it is written in plain words for a user.
+- `--notes-only <v>` refreshes one row's `notes` from RELEASE-NOTES.md without re-uploading
+  the installer. Today a typo fix needs `--replace`, which uploads ~6 MB again.
 
 ### 6.8 Test first (spike before the build)
 

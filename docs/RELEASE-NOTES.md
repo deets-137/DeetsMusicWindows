@@ -3,6 +3,11 @@
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 Settings paths are the current names (Settings sections were regrouped after 0.4.0).
 
+Each entry, up to its first `###`, is copied into the update index by `release:publish` and
+shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md §6.2, §6.7).
+So keep the body to paragraphs and **bold**, and use absolute links only: a relative link
+works on GitHub and breaks on the site.
+
 ## 0.4.3 — 2026-09-14
 
 **DeetsMusic updates itself.** When a new version is out, DeetsMusic downloads it in the
