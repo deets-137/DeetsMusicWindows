@@ -3,6 +3,28 @@
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 Settings paths are the current names (Settings sections were regrouped after 0.4.0).
 
+## 0.4.3 — 2026-09-14
+
+**DeetsMusic updates itself.** When a new version is out, DeetsMusic downloads it in the
+background and asks you to restart. The restart takes a few seconds, and the song you were on
+comes back where it stopped. Press Later to finish what you are doing, or Skip this version to
+wait for the next one. Choose Automatic, Ask, or Off in Settings › Updates.
+
+**Go back to an earlier version.** Settings › Updates › Roll back installs an earlier version
+if a new one gives you trouble. Your library, playlists, and settings stay. (Roll back lists
+versions from 0.4.3 on.)
+
+**The extension question shows once.** The installer asks about the browser extension only
+the first time. It does not ask again after you say No, after the extension is set up, or
+during an update.
+
+### Installing
+
+- **Windows SmartScreen will warn you.** The installer is not code-signed yet. Click
+  **More info**, then **Run anyway**. Updates after this one install without that warning.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.4.1 — 2026-09-14
 
 **Drag songs between cards.** Press and drag a song, album, artist, or playlist from any card.
