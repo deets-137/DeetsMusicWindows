@@ -6,6 +6,13 @@
 //   npm run release:publish -- --channel deetsmusic-test  a test build (§6.8)
 //   npm run release:publish -- --replace                 overwrite an entry already in the index
 //   npm run release:publish -- --withdraw 0.5.1          hide a release; the Worker stops offering it
+//   npm run release:publish -- --withdraw 0.5.1 --reason "…"   …and say why, on the website
+//   npm run release:publish -- --notes-only 0.5.1        refresh one row's notes, no re-upload
+//   npm run release:publish -- --history                 notes-only rows for versions the index lacks
+//
+// The website lists every row (DeetsSupport /update/<channel>/releases, RELEASE.md §6.2):
+// withdrawn releases keep their notes, and `history` rows (versions from before the updater,
+// with no installer or .sig) carry notes and a date only. The updater never sees either.
 //
 // Uploads installers/DeetsMusic_<v>_x64-setup.exe to R2 (deetsmusic-releases/<channel>/), then
 // rewrites <channel>/index.json with { version, group, notes, pub_date, size, signature, file }.
@@ -30,6 +37,9 @@ const flag = (name) => {
 };
 const channel = flag("--channel") ?? "deetsmusic";
 const withdraw = flag("--withdraw");
+const reason = flag("--reason");
+const notesOnly = flag("--notes-only");
+const history = argv.includes("--history");
 const replace = argv.includes("--replace");
 
 function die(msg) {
@@ -76,7 +86,7 @@ function writeIndex(index) {
 }
 
 function releaseNotes(version) {
-  const md = readFileSync(join(root, "docs", "RELEASE-NOTES.md"), "utf8");
+  const md = readFileSync(join(root, "docs", "RELEASE-NOTES.md"), "utf8").replace(/\r\n/g, "\n");
   const start = md.search(new RegExp(`^## ${version.replace(/\./g, "\\.")}\\b`, "m"));
   if (start === -1) return "";
   const body = md.slice(start).split("\n").slice(1).join("\n");
@@ -84,18 +94,52 @@ function releaseNotes(version) {
   return (end === -1 ? body : body.slice(0, end)).trim();
 }
 
+const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const index = readIndex();
+
+if (reason !== null && withdraw === null) die("--reason goes with --withdraw <version>");
 
 if (withdraw !== null) {
   const entry = index.releases.find((r) => r.version === withdraw);
   if (!entry) die(`${withdraw} is not in ${channel}/index.json`);
   entry.withdrawn = true;
+  if (reason) entry.withdrawn_reason = reason;
   writeIndex(index);
-  console.log(`[publish] ${withdraw} withdrawn from ${channel}`);
+  console.log(`[publish] ${withdraw} withdrawn from ${channel}${reason ? " (with a reason)" : ""}`);
   process.exit(0);
 }
 
-const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+if (notesOnly !== null) {
+  const entry = index.releases.find((r) => r.version === notesOnly);
+  if (!entry) die(`${notesOnly} is not in ${channel}/index.json`);
+  const notes = releaseNotes(notesOnly);
+  if (!notes) die(`no "## ${notesOnly}" entry in docs/RELEASE-NOTES.md`);
+  entry.notes = notes;
+  writeIndex(index);
+  console.log(`[publish] ${notesOnly} notes refreshed on ${channel}`);
+  process.exit(0);
+}
+
+if (history) {
+  // Every "## <version> — <date>" heading the index lacks, except the version being built:
+  // that one is published for real, with its installer.
+  const md = readFileSync(join(root, "docs", "RELEASE-NOTES.md"), "utf8");
+  const heads = [...md.matchAll(/^## (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\s+\S+\s+(\d{4}-\d{2}-\d{2})\s*$/gm)];
+  const added = [];
+  for (const [, v, date] of heads) {
+    if (v === pkg.version || index.releases.some((r) => r.version === v)) continue;
+    index.releases.push({ version: v, notes: releaseNotes(v), pub_date: `${date}T00:00:00.000Z`, history: true });
+    added.push(v);
+  }
+  if (!added.length) {
+    console.log(`[publish] no history rows to add on ${channel}`);
+    process.exit(0);
+  }
+  writeIndex(index);
+  console.log(`[publish] history rows added on ${channel}: ${added.join(", ")}`);
+  process.exit(0);
+}
+
 const version = pkg.version;
 const group = pkg.deetsmusic?.updateGroup;
 if (!Number.isInteger(group)) die("package.json deetsmusic.updateGroup must be an integer (RELEASE.md §6.5)");
@@ -103,7 +147,7 @@ const file = `DeetsMusic_${version}_x64-setup.exe`;
 const sub = version.includes("-") ? "installers/dev" : "installers"; // archive-installer.mjs's rule
 const exe = join(root, sub, file);
 if (!existsSync(exe) || !existsSync(`${exe}.sig`)) die(`need ${sub}/${file} and its .sig (run npm run release first)`);
-if (index.releases.some((r) => r.version === version) && !replace) {
+if (index.releases.some((r) => r.version === version && !r.history) && !replace) {
   die(`${version} is already in ${channel}/index.json (pass --replace to overwrite)`);
 }
 

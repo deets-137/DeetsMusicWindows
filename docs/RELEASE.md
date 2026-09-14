@@ -235,7 +235,7 @@ that blocker.
   route checks `KILL_UPDATE` (its own var) instead.
 - This is a file channel for **signed installers only**. It never serves code the app loads
   (support.md "config yes, code no").
-- **The website reads the same index** (decided 2026-09-14, not built):
+- **The website reads the same index** (built and deployed 2026-09-14; 0.1.3–0.4.1 backfilled):
   `GET /update/<channel>/releases` is the public release list behind
   `deets.solutions/deetsmusic/` (DeetsSolutions `docs/support.md`, "The page"). No `?v=`;
   newest first; `latest` is the newest live non-pre-release. Each row carries version, date,
@@ -345,7 +345,8 @@ The vault lets a Claude session run a full release; a prompt would not.
 the installer and `.sig` to R2, and update the manifest (version, size, signature, channel
 group). The local `installers/` archive stays.
 
-**Additions for the website (decided 2026-09-14, not built)** — `scripts/publish-update.mjs`:
+**Additions for the website (built 2026-09-14)** — `scripts/publish-update.mjs`. Notes are
+stored with `\n` line endings whatever the checkout uses:
 
 - `--history` writes a **notes-only row** for every `## <version>` in RELEASE-NOTES.md that the
   index lacks: `{ version, notes, pub_date, history: true }`, with the date taken from the
