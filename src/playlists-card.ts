@@ -29,6 +29,8 @@ import { enterRows, rowsAfter } from "./pop";
 import { requestCard } from "./layout-bus";
 import { toast } from "./toast";
 import type { CardDef } from "./cards";
+import type { DragPayload } from "./row-drag";
+import { dropToPlaylist, dropToApplePlaylist } from "./drop-actions";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 /** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
@@ -257,6 +259,16 @@ export const playlistsCard: CardDef = {
         });
     };
 
+    // A drop on a playlist (DRAG-DROP.md §3): a hand-made local playlist (at `at`, or the
+    // end), or — while Export playlists is on — the user's own Apple playlist (the end, its
+    // question first). Never a drop back on the playlist the songs came from.
+    const dropFor = (p: Playlist, pay: DragPayload): ((at: number | null) => void) | null => {
+      if (pay.playlistId && pay.playlistId === p.libraryId) return null;
+      if (handMade(p)) return (at) => dropToPlaylist(p, pay, at);
+      if (p.source === "apple" && p.canEdit && setting("playlistExport")) return () => dropToApplePlaylist(p, pay);
+      return null;
+    };
+
     // ── detail: a playlist's tracks, authored order ──
     const detail = (p: Playlist): Context => {
       openPlaylist = p; // track the open playlist so a fresh sync can revalidate it in place
@@ -308,6 +320,7 @@ export const playlistsCard: CardDef = {
               },
             }
           : undefined,
+        drag: (t) => ({ source: "playlists", kind: "song", tracks: () => [t], context: ctxTag, playlistId: p.libraryId }),
         menu: (t) => {
           // Add-to-Library rides after the shared actions (null unless the toggle is on
           // and the track is catalog-only); Remove stays destructive-last on locals.
@@ -359,6 +372,7 @@ export const playlistsCard: CardDef = {
         },
         density: true,
         groupings: [grouping],
+        dropInto: (pay) => dropFor(p, pay),
         defaults: { density: "lines", sortKey: "order" },
         emptyText: "Add songs from your Library or Search.",
       };
@@ -619,6 +633,23 @@ export const playlistsCard: CardDef = {
           },
           menu: (x) =>
             x.kind === "playlist" ? listMenu(x.p) : x.kind === "folder" ? folderMenu(x.id) : [],
+          // A playlist row carries its songs (fetched at the drop when not cached) and takes
+          // dropped songs at its end. Headers do neither.
+          drag: (x) =>
+            x.kind === "playlist"
+              ? {
+                  source: "playlists",
+                  kind: "playlist",
+                  count: trackCache.get(pid(x.p))?.length ?? x.p.trackCount,
+                  tracks: () => tracksOf(x.p),
+                  context: `playlist:${pid(x.p)}`,
+                  playlistId: x.p.libraryId,
+                }
+              : null,
+          dropOn: (x, pay) => {
+            const run = x.kind === "playlist" ? dropFor(x.p, pay) : null;
+            return run ? () => run(null) : null;
+          },
         } satisfies Grouping<PlRow>,
       ],
       defaults: { grouping: "playlists", density: "lines", sortKey: "folders", sortDir: "asc" },

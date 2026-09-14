@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic"
-version = "0.4.0"
+version = "0.4.1"
 description = "A lightweight Apple Music player for Windows 11."
 authors = ["Aditya Sundaram"]
 edition = "2021"
@@ -46,6 +46,9 @@ url = "2"
 # Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).
 # Already in the tree transitively, so no new crate download.
 base64 = "0.22"
+# The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6). The version
+# Tauri's wry already uses, so no new crate download.
+webview2-com = "0.38"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

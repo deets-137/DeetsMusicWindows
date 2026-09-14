@@ -261,9 +261,19 @@ The divergent suffix is contiguous, so it's one `splice(np+1+d, count)` (a singl
 is the **general sync primitive**: drag-reorder and the forward window top-up
 (§Re-windowing above) both ride it. The `player:misalign` canary validates every reconcile.
 
-The drag UI itself lives in `qcard.ts` (whole-row press-and-drag, insertion-line feedback,
-render suspended mid-drag so a queue/track change can't yank the row — see
-[UI-ARCHITECTURE §4b](UI-ARCHITECTURE.md)).
+The drag UI itself lives in `qcard.ts` over the shared `row-drag.ts` (whole-row
+press-and-drag, insertion-line feedback, render suspended mid-drag so a queue/track change
+can't yank the row — see [UI-ARCHITECTURE §4b](UI-ARCHITECTURE.md) and
+[DRAG-DROP.md](DRAG-DROP.md)).
+
+### Insert at a position — a drop from another card (2026-09-14)
+
+A song or collection dropped on the Queue card lands at the insertion line
+(`insertInQueue(at, handles)` / `queueTracksAt` in `player.ts`). The model takes the block
+with `queue.insertManyAt(at, …)` (`origin: "manual"`), then `reconcileUpcoming()` mirrors the
+new order into MusicKit — the same gapless suffix rebuild as a reorder. Radio mode: model
+only, with the break-out flag (as Play Next). Nothing playing: `playContext(block, 0)`.
+Logged as `player:insert { at, n }`.
 
 ---
 

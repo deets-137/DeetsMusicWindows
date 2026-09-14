@@ -189,6 +189,11 @@ function mountSettings(host: HTMLElement): CardInstance {
           options: [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }],
         },
         {
+          kind: "choice", id: "dropplay", label: "Drop on Now Playing", key: "dropPlayQueue",
+          hint: "Songs dragged onto Now Playing play at once; Up Next can stay after them",
+          options: [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }],
+        },
+        {
           kind: "choice", id: "previous", label: "Previous rewinds", key: "previousReach",
           hint: "The list: the songs above the one you clicked",
           options: [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }],
@@ -485,7 +490,12 @@ function mountSettings(host: HTMLElement): CardInstance {
         .join("");
     wireMenus();
     refreshExtension();
+    markScrollable();
   };
+  // The scrollbar thumb fades in only while the rows outgrow the card (settings.css).
+  const markScrollable = () => body.classList.toggle("is-scrollable", body.scrollHeight > body.clientHeight + 1);
+  const scrollObserver = new ResizeObserver(markScrollable); // a window resize or surface switch
+  scrollObserver.observe(body);
 
   // ── extension block (EXTENSION.md): bridge status + the agent status line ──
   interface BridgeInfo { port: number | null }
@@ -578,6 +588,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       unsubRequest();
       dropMenus();
       window.removeEventListener("resize", closeMenus);
+      scrollObserver.disconnect();
       host.innerHTML = "";
     },
   };

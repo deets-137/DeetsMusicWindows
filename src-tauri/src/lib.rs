@@ -172,6 +172,27 @@ pub fn run() {
                 }
             }
 
+            // No browser keys in the installed app (DRAG-DROP.md §6): Ctrl+F find, Ctrl+P
+            // print, Ctrl+R / F5 reload, zoom, F7 caret browsing, Alt+Left back. The page
+            // still gets the keydown, so the app's own Ctrl shortcuts keep working. Release
+            // only, so F12 devtools stay in dev.
+            #[cfg(not(debug_assertions))]
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.with_webview(|wv| {
+                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+                    use windows::core::Interface;
+                    let off = || -> windows::core::Result<()> {
+                        unsafe {
+                            let settings = wv.controller().CoreWebView2()?.Settings()?;
+                            settings.cast::<ICoreWebView2Settings3>()?.SetAreBrowserAcceleratorKeysEnabled(false)
+                        }
+                    };
+                    if let Err(e) = off() {
+                        log::warn(&format!("webview: browser keys stay on: {e}"));
+                    }
+                });
+            }
+
             // Auto-open devtools in dev so the webview console is visible.
             #[cfg(debug_assertions)]
             if let Some(win) = app.get_webview_window("main") {
@@ -234,6 +255,7 @@ pub fn run() {
             playlists::playlist_add_tracks,
             playlists::playlist_remove_track,
             playlists::playlist_reorder,
+            playlists::playlist_insert_tracks,
             playlists::local_playlist_tracks,
             playlists::playlist_folders_list,
             playlists::playlist_folder_create,

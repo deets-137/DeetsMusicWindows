@@ -88,9 +88,7 @@
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
 }
-/* :not(.is-dragging) — a hovered dragged row would otherwise win on specificity and
-   override the drag transform, snapping the row back (visual rubber-banding). */
-.qrow:hover:not(.is-dragging) { background: var(--surface-hover); transform: var(--hover-lift); }
+.qrow:hover { background: var(--surface-hover); transform: var(--hover-lift); }
 /* The station row (radio): the "next song" is the station itself — informative, not a
    jump target, so no lift; right-click still offers Stop Station / Don't resume. */
 .qrow--station { cursor: default; }

@@ -5,6 +5,7 @@ import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surf
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
+import { initBrowserDefaults } from "./browser-defaults";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
@@ -47,6 +48,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
   });
   window.addEventListener("drop", (e) => e.preventDefault());
+  initBrowserDefaults(); // no native drag or right-click menu; text fields get our own (DRAG-DROP.md §6)
   initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown

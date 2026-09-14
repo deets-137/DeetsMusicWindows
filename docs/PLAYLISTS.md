@@ -359,7 +359,9 @@ on top. The collection-card second-instance check passed at Phase 2 (engine hold
 Talked through with the user after the export desk test. The toast rows are in TOASTS.md §5.
 
 **As built (read this before the plan below):**
-- **10.1 drag** — `src/row-drag.ts` is the one primitive; `qcard.ts` and the collection
+- **10.1 drag** — (2026-09-14: the primitive now also carries songs between cards, and an
+  open local playlist takes drops at the line via `playlist_insert_tracks` — DRAG-DROP.md.)
+  `src/row-drag.ts` is the one primitive; `qcard.ts` and the collection
   engine both use it. The engine offers it through `Grouping.reorder = { sortKey, move }`:
   lines density, that sort ascending, no search. Rows are found by `data-idx`, and the drop
   index is `offsetTop` math from the pressed row, so a windowed list works. A reload that

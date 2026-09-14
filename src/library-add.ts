@@ -52,10 +52,15 @@ export function libraryAddOffered(t: Track): boolean {
 // ── the write ──
 // POST to Apple, then reload the shared store so the Library card reflects the add
 // (the graduated rows now query as source='library'). `tracks` are the rows to reflect
-// locally: the one song, or an album's fetched tracks (fork A).
+// locally: the one song, or an album's fetched tracks (fork A). Ids ride the URL, so a
+// dropped playlist's songs go 100 at a time.
+const ADD_BATCH = 100;
 async function addToLibrary(kind: "songs" | "albums", ids: string[], tracks: Track[]): Promise<void> {
   try {
-    await invoke("apple_add_to_library", { kind, ids, tracks });
+    if (kind === "albums" || ids.length <= ADD_BATCH) await invoke("apple_add_to_library", { kind, ids, tracks });
+    else
+      for (let i = 0; i < ids.length; i += ADD_BATCH)
+        await invoke("apple_add_to_library", { kind, ids: ids.slice(i, i + ADD_BATCH), tracks: tracks.slice(i, i + ADD_BATCH) });
   } catch (e) {
     toast({ kind: "warn", text: `Couldn't add the ${kind === "albums" ? "album" : "song"} to your library.` });
     throw e;
@@ -91,6 +96,24 @@ export async function addTrackToLibrary(t: Track): Promise<void> {
 // user's library (e.g. an added editorial playlist), so keying off libraryId alone wrongly
 // hid the action inside those playlists.
 const alreadyInLibrary = (t: Track): boolean => inLibrary(t.catalogId) || inLibrary(t.libraryId);
+
+/**
+ * A drop on the Library card (DRAG-DROP.md §3) — the menu's behavior: gated by the toggle,
+ * no question, the one-time notice after the first add. `albumId` adds a catalog album as
+ * the album; otherwise songs already in the library and uploads are skipped. Resolves
+ * false when there was nothing to add.
+ */
+export async function addDroppedToLibrary(tracks: Track[], albumId?: string): Promise<boolean> {
+  if (!enabled) return false;
+  if (albumId) {
+    await addToLibrary("albums", [albumId], tracks);
+    return true;
+  }
+  const fresh = tracks.filter((t) => t.catalogId && !alreadyInLibrary(t));
+  if (!fresh.length) return false;
+  await addToLibrary("songs", fresh.map((t) => t.catalogId!), fresh);
+  return true;
+}
 
 /**
  * "Add to Library" for one song. Returns `null` when the toggle is off, the track is

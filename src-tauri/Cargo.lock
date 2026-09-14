@@ -806,7 +806,7 @@ dependencies = [
 
 [[package]]
 name = "deetsmusic"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -825,6 +825,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tiny_http",
  "url",
+ "webview2-com",
  "windows",
 ]
 

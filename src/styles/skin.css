@@ -280,8 +280,11 @@
   --dur-spin: 0.7s;
   --ease-ui:  ease;
   --hover-lift: none;               /* interactive rows/tiles rise on hover; a skin opts in */
-  --drag-lift:  scale(1.02);        /* lift of a row being dragged (Qcard reorder) */
-  --drop-line-w: 2px;               /* insertion-indicator thickness */
+  --drag-lift:  scale(1.02);        /* lift of a dragged row's copy (row-drag.ts) */
+  --drag-ghost-opacity: 0.85;       /* the copy stays see-through so the list under it reads */
+  --drag-nodrop-opacity: 0.5;       /* the copy over a place that takes no drop */
+  --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
+  --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
 
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;

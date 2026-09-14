@@ -5,7 +5,7 @@ TypeScript front end, and a Rust back end, with full DRM playback and a token-dr
 theming system.
 
 **Status:** installable — playback, sign-in, and library sync all work; shipping as a
-per-user NSIS installer (0.4.0) · **Platform:** Windows 11 desktop (Tauri v2)
+per-user NSIS installer (0.4.1) · **Platform:** Windows 11 desktop (Tauri v2)
 
 Not to be confused with [DeetsMusic](https://github.com/deets-137/DeetsMusic), the
 separate SwiftUI iOS app. This is the Windows port, and it shares no code with it.

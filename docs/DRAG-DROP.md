@@ -1,9 +1,9 @@
 # DeetsMusic — Drag and drop between cards
 
-> **Status (2026-09-14): designed, forks decided, not built.** Everything below was checked
+> **Status (2026-09-14): BUILT the same day, not desk-tested.** Everything below was checked
 > against the code on this date. The user's picks: Library drop = the menu's behavior;
 > a drop on Now Playing plays now, a drop on the Queue card queues; the ghost is a row copy;
-> text fields get our own Cut/Copy/Paste menu.
+> text fields get our own Cut/Copy/Paste menu. "As built" notes are in §7.
 
 **Terms.** A *source* is a row or tile you can press and drag. A *target* is a place that
 takes songs when you release over it. The *ghost* is the small floating copy that follows
@@ -144,3 +144,48 @@ target until the drop, `frames.begin("drag", label)` telemetry (label `cross` fo
   F7 caret browsing, Alt+Left back): WebView2 `AreBrowserAcceleratorKeysEnabled = false` on
   the main window (Rust, `with_webview`). Release only, so F12 devtools stay in dev. The
   app's own Ctrl shortcuts (`main.ts`) are page listeners and keep working.
+
+---
+
+## 7. As built (2026-09-14)
+
+**Files.** `row-drag.ts` (primitive + registry + ghost), `drop-actions.ts` (the writes and
+toasts behind each target), `browser-defaults.ts` (§6 page half), `queue.insertManyAt` +
+`player.insertInQueue` / `queueTracksAt`, `playlists.playlistInsertTracks` (Rust
+`playlist_insert_tracks`), `library-add.addDroppedToLibrary`, `webview2-com` in Cargo.toml.
+
+**Engine hooks** (`collection-card.ts`): `Grouping.drag(x) → DragPayload | null` (a source),
+`Grouping.dropOn(x, p) → action | null` (a row target: a playlist row), and
+`Context.dropInto(p) → action(at) | null` (a pane target: an open playlist). The engine
+registers one target on its viewport; with no hook it returns null and an outer target
+answers (the Library card registers on its whole panel).
+
+**The registry.** `registerDropTarget({ el, over(under, x, y, payload) → DropHit | null })`.
+The pointer's element is found with `elementFromPoint`; targets whose `el` contains it are
+asked innermost first. A `DropHit` has `highlight` (outlined, `.is-drop-target`), `slots`
+(an insertion line among a list's `[data-idx]` rows; the drop gets the index), `scroll`
+(auto-scrolled near its edges), and `drop`. A hit without `drop` scrolls but shows the
+*can't drop* ghost. A mini surface needs nothing special: the hidden slot is never under
+the pointer.
+
+**Differences from the plan above.**
+- The ghost keeps the row's card styling by sitting inside `display: contents` shells that
+  repeat the row's ancestor chain (same tags, classes, `data-*`) — the shells draw no box.
+- Every card holds its re-renders during ANY drag (`isDragging()` / `onDragEnd`), not only
+  the source and the hovered target. Drags are short; this is simpler and covers a queue
+  change landing while a History row is pressed.
+- The trailing click is swallowed for every card by one capture listener, also after an
+  Escape (the release comes later).
+- **Drop on Now Playing keeps Up Next by default** (user's call after the first build,
+  2026-09-14): Settings › Playback › Drop on Now Playing, `dropPlayQueue` *keep* / *replace*.
+  Keep: the dropped songs go to the top of Up Next and the player jumps to the first; the
+  song that was playing joins History; everything that was queued plays after them
+  (`player.playTracksKeepQueue`). An Up Next row moves to the top, then plays. Replace: the
+  plan above (`playTracks`; an Up Next row jumps, as its menu's Play Now). The Queue card refuses its own Up Next rows outside the list; its Now
+  Playing hero (`queue-now`) can be dropped into Up Next as a copy.
+- An open **Apple** playlist you can edit (Export playlists on) also takes a drop at the
+  end, like its row.
+- Add to Library from a drop sends at most 100 song ids per Apple call (the ids ride the URL).
+- A drop that finds every song already in the library says so (`info`).
+- The accelerator-keys switch is `cfg(not(debug_assertions))`: it can only be tested in an
+  installed build.

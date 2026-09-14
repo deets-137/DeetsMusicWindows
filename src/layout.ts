@@ -131,7 +131,24 @@ function makePicker(
   };
   setActive(true);
 
-  const dd = makeDropdown({ root: head, trigger: title, panel: menu, disabled: () => !atRoot });
+  // Fit the menu to the window on every open (the window may have changed size since): a list
+  // taller than the room under the title goes to two columns; if even that doesn't fit (a
+  // very short window) it scrolls; a menu past the right edge shifts left.
+  const FIT_PAD = 6; // px kept clear of the window edge, as the context menu keeps
+  const fit = () => {
+    menu.classList.remove("slot-picker__menu--cols");
+    menu.style.maxHeight = "";
+    menu.style.left = "";
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const room = () => vh - menu.getBoundingClientRect().top - FIT_PAD;
+    if (menu.offsetHeight > room()) menu.classList.add("slot-picker__menu--cols");
+    if (menu.offsetHeight > room()) menu.style.maxHeight = `${Math.max(0, room())}px`;
+    const over = menu.getBoundingClientRect().right - (vw - FIT_PAD);
+    if (over > 0) menu.style.left = `${-over}px`;
+  };
+
+  const dd = makeDropdown({ root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen: fit });
 
   // Drilling cards report root/title state; off-root the picker goes inert and the title
   // reverts to the drilled context title (with the back chevron). Non-drilling cards never

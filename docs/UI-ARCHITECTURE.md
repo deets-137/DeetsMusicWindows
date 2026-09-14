@@ -314,8 +314,11 @@ middle `.drag-region`** between the title and the lights, not the whole bar.
 **One dropdown primitive for every menu** (`src/dropdown.ts`, `makeDropdown`): the settings
 menu, the volume flyout, and the **slot-card pickers** share a single open/close/dismiss
 mechanism (outside-click + Escape, `aria-expanded`, an optional `shouldStayOpen` veto so a
-volume drag can't close the panel under itself, and a `disabled` veto the picker uses to go
-inert off-root). Each call takes a `root` (the hover region — must contain both trigger and
+volume drag can't close the panel under itself, a `disabled` veto the picker uses to go
+inert off-root, and an `onOpen` hook). The slot picker's `onOpen` fits the menu to the window
+on every open (2026-09-14, `layout.ts` `fit`): a list taller than the room under the title
+goes to two columns (`.slot-picker__menu--cols`), scrolls if even that doesn't fit, and
+shifts left past the right edge. Each call takes a `root` (the hover region — must contain both trigger and
 panel), a `trigger`, and a `panel`. **Menu mode lives in the primitive:** every live dropdown
 registers in a module-level set, and `setDropdownMode("click"|"hover")` fans a change out to
 all of them — so the **Hover-Menu** toggle (in `main.ts`, which owns the persistence) flips
@@ -493,6 +496,12 @@ via the `::-webkit-scrollbar` pseudo-elements (WebView2 is Chromium). Its **colo
 a theme role** (`--scrollbar` / `--scrollbar-hover` in `themes.css`) and its
 width/radius are skin tokens (`--scrollbar-w` / `--scrollbar-radius`). Scoped to the
 scrolling `.lib-view`; widen the selector to theme every scroll region the same way.
+
+**Settings card (2026-09-14):** `scrollbar-gutter: stable` keeps the bar's space, so opening a
+section never narrows the rows (it jittered). The thumb fades in only while the rows outgrow
+the card: `settings-card.ts` sets `is-scrollable` after each render and on resize, and the
+thumb color is a registered `@property --set-thumb` that transitions on `--dur-med`
+(`settings.css`; snaps under reduced motion). Copy the pattern to another card if it jitters.
 
 ### Long lists: rows are relayout boundaries
 

@@ -85,6 +85,15 @@ const localId = (p: Playlist): number | null => {
   return m ? Number(m[1]) : null;
 };
 
+/** Put tracks into a LOCAL playlist at authored position `at`, or at the end when `at` is
+ *  null — a drop (DRAG-DROP.md §3). One transaction; zero Apple calls. */
+export function playlistInsertTracks(p: Playlist, at: number | null, tracks: Track[]): Promise<void> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  if (at == null) return playlistAddTracks(id, tracks);
+  return invoke<void>("playlist_insert_tracks", { id, at, tracks }).then(() => emitChange(id));
+}
+
 /** Made from listening (replay.ts): never an add target, and never renamed, reordered, or
  *  edited by hand (PLAYLISTS.md §10.8). */
 export const isReplay = (p: Playlist): boolean => p.role === "replay";
@@ -225,7 +234,9 @@ export function applePlaylistAdd(p: Playlist, tracks: Track[]): Promise<AppleAdd
 /** The first add to an Apple playlist asks once (§10.9); [Add] turns the question off. */
 const APPLE_ADD_KEY = "deets.notice.appleAdd";
 
-function addToApple(p: Playlist, getTracks: () => Track[] | Promise<Track[]>): void {
+/** Add to the user's own Apple playlist with its question and notices — the menu's path,
+ *  shared by a drop on the playlist (DRAG-DROP.md §3). */
+export function addToApple(p: Playlist, getTracks: () => Track[] | Promise<Track[]>): void {
   const go = () =>
     Promise.resolve(getTracks())
       .then((ts) => (ts.length ? applePlaylistAdd(p, ts) : null))

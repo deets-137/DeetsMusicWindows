@@ -5,6 +5,26 @@
 
 .set { display: flex; flex-direction: column; gap: var(--set-section-gap); }
 
+/* The scrollbar's space is always kept, so opening a section never narrows the rows. The
+   thumb fades in when the rows outgrow the card (`is-scrollable`, set in settings-card.ts)
+   and fades out when they fit again. A registered color, so the thumb's color can transition. */
+@property --set-thumb {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+.panel__body.set {
+  scrollbar-gutter: stable;
+  --set-thumb: transparent;
+  transition: --set-thumb var(--dur-med) var(--ease-ui);
+}
+.panel__body.set.is-scrollable { --set-thumb: var(--scrollbar); }
+.panel__body.set::-webkit-scrollbar-thumb { background: var(--set-thumb); }
+.panel__body.set.is-scrollable::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+@media (prefers-reduced-motion: reduce) {
+  .panel__body.set { transition: none; }
+}
+
 .set__section { display: flex; flex-direction: column; gap: var(--space-1); }
 .set__head {
   font-family: var(--font-title);

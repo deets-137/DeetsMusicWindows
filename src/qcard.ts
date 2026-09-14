@@ -5,7 +5,9 @@
 // player.ts (gapless; see docs/QUEUE.md).
 
 import "./styles/qcard.css";
-import { rowDrag } from "./row-drag";
+import { rowDrag, registerDropTarget, isDragging, onDragEnd } from "./row-drag";
+import { dropToQueue } from "./drop-actions";
+import { setting } from "./settings-store";
 import * as queue from "./queue";
 import {
   onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming,
@@ -42,8 +44,8 @@ function mountQueue(host: HTMLElement): CardInstance {
   let pendingRender = false;
 
   const render = () => {
-    if (dragging) {
-      pendingRender = true; // a queue/track change arrived mid-drag — defer the rebuild
+    if (dragging || isDragging()) {
+      pendingRender = true; // a queue/track change arrived mid-drag (any card's) — defer the rebuild
       return;
     }
     pendingRender = false;
@@ -197,21 +199,46 @@ function mountQueue(host: HTMLElement): CardInstance {
     openContextMenu(e.clientX, e.clientY, items, () => hero.classList.remove("is-context"));
   });
 
-  // ── Drag-to-reorder (Up Next) — the shared primitive, row-drag.ts ──────────────
-  // render() is suspended mid-drag (above) so a queue/track change can't yank the row. On
-  // drop we move the MODEL, then `reconcileUpcoming()` (gapless MusicKit sync). The entry is
-  // taken when the drag starts and re-resolved at the drop (playback may have advanced).
+  // ── Row drag — the shared primitive, row-drag.ts ──────────────────────────────
+  // Inside Up Next a row reorders: render() is suspended mid-drag (above) so a queue/track
+  // change can't yank the row; on drop we move the MODEL, then `reconcileUpcoming()`
+  // (gapless MusicKit sync). The entry is taken when the drag starts and re-resolved at the
+  // drop (playback may have advanced). Out of the list, a row — or the Now Playing hero —
+  // carries its song to another card (DRAG-DROP.md §2).
   let dragEntry: queue.QueueEntry | null = null;
   const drag = rowDrag({
     root: body,
     label: "queue",
     rowAt: (target) => {
+      const hero = target.closest<HTMLElement>(".qnow");
+      if (hero) {
+        const cur = queue.getCurrent();
+        const t = cur ? resolve(cur) : undefined;
+        if (!cur || !t) return null;
+        return { row: hero, index: -1, payload: { source: "queue-now", kind: "song", tracks: () => [t], context: cur.context } };
+      }
       const row = target.closest<HTMLElement>(".qrow[data-idx]");
       const list = row?.parentElement;
       if (!row || !list) return null;
       const index = Number(row.dataset.idx);
-      if (!queue.getUpcoming()[index]) return null;
-      return { row, index, list, count: list.querySelectorAll(".qrow[data-idx]").length }; // not the station row
+      const entry = queue.getUpcoming()[index];
+      if (!entry) return null;
+      const t = resolve(entry);
+      // On Now Playing, an Up Next row plays at once. Keep Up Next (Settings › Playback):
+      // it moves to the top first, so the rows above it stay. Replace: its menu's Play Now,
+      // a jump that drops the rows above it.
+      const play = () => {
+        const i = queue.getUpcoming().indexOf(entry);
+        if (i < 0) return Promise.resolve();
+        if (setting("dropPlayQueue") !== "keep") return jumpToUpcoming(i);
+        queue.move(i, 0);
+        return jumpToUpcoming(0);
+      };
+      return {
+        row, index, list,
+        count: list.querySelectorAll(".qrow[data-idx]").length, // not the station row
+        payload: t ? { source: "queue", kind: "song", tracks: () => [t], context: entry.context, play } : undefined,
+      };
     },
     onStart: (from) => {
       dragging = true;
@@ -232,6 +259,27 @@ function mountQueue(host: HTMLElement): CardInstance {
       if (pendingRender) render(); // aborted / no-op, but a render was deferred
     },
   });
+  const unsubDragEnd = onDragEnd(() => {
+    if (pendingRender && !dragging) render(); // another card's drag held a render
+  });
+
+  // Drops from other cards (DRAG-DROP.md §3, fork 2: the Queue card queues). Over Up Next's
+  // rows: at the insertion line. Below the last row: the end. Anywhere else on the card
+  // (the Now Playing hero, the label, an empty queue): the top of Up Next.
+  const unregisterDrop = registerDropTarget({
+    el: host,
+    over: (under, _x, y, p) => {
+      if (p.source === "queue") return null; // an Up Next row: its own list reorders
+      const list = body.querySelector<HTMLElement>(".qcard__list") ?? undefined;
+      const rows = list?.querySelectorAll<HTMLElement>(".qrow[data-idx]");
+      const top = { highlight: host, scroll: list, drop: () => dropToQueue(p, 0) };
+      if (!list || !rows?.length) return top;
+      if (y > rows[rows.length - 1].getBoundingClientRect().bottom)
+        return { highlight: host, scroll: list, drop: () => dropToQueue(p, queue.getUpcoming().length) };
+      if (list.contains(under)) return { slots: { list, count: rows.length }, scroll: list, drop: (at: number | null) => dropToQueue(p, at ?? 0) };
+      return top;
+    },
+  });
 
   // Metadata comes from the shared track store; re-render when it (re)loads so newly
   // synced songs resolve instead of showing "Unknown".
@@ -249,6 +297,8 @@ function mountQueue(host: HTMLElement): CardInstance {
       unsubQueue();
       unsubState();
       drag.destroy(); // a drag's document listeners would outlive the card
+      unsubDragEnd();
+      unregisterDrop();
       host.innerHTML = "";
     },
   };

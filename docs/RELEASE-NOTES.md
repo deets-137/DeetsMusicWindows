@@ -3,6 +3,33 @@
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 Settings paths are the current names (Settings sections were regrouped after 0.4.0).
 
+## 0.4.1 — 2026-09-14
+
+**Drag songs between cards.** Press and drag a song, album, artist, or playlist from any card.
+Drop it on the Queue card to queue it where the line shows. Drop it on a playlist to add it.
+Drop it on the Library card to add it to your library. Drop it on Now Playing to play it at
+once; what you had queued plays after it (Settings › Playback › Drop on Now Playing). Press
+Escape to cancel a drag.
+
+**Edit your playlists.** Drag songs to reorder a playlist, rename it, give it your own cover,
+and delete it (a playlist with songs asks first). Export a playlist to Apple Music, send it
+new songs later, or import an Apple playlist to edit it here.
+
+**Playback comes back after a network drop.** When the connection returns, the song you were
+on reloads at the place it stopped.
+
+**Smaller fixes.** The Settings scrollbar no longer shifts the rows when a section opens. A
+card's title menu uses two columns when the window is too short. Right-click shows DeetsMusic
+menus only; a text field gets Cut, Copy, Paste, and Select All. Browser keys such as Ctrl+F and
+F5 do nothing in the app.
+
+### Installing
+
+- **Windows SmartScreen will warn you.** The installer is not code-signed yet. Click
+  **More info**, then **Run anyway**.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.4.0 — 2026-09-13
 
 **Sign in from a clear page.** The browser sign-in now opens a DeetsMusic sign-in page. When

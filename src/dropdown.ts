@@ -41,6 +41,8 @@ export interface DropdownOptions {
   alsoInside?: () => (Element | null | undefined)[];
   /** Veto OPENING while true (e.g. a slot picker that's only live at a card's root). */
   disabled?: () => boolean;
+  /** Runs each time the panel appears, after it is shown (a slot picker fits itself to the window). */
+  onOpen?: () => void;
 }
 
 export interface DropdownHandle {
@@ -64,7 +66,7 @@ export function setDropdownMode(mode: DropdownMode): void {
 
 /** Wire open/close/dismiss for a trigger+panel pair. Returns a runtime handle. */
 export function makeDropdown(opts: DropdownOptions): DropdownHandle {
-  const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled } = opts;
+  const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled, onOpen } = opts;
   let mode: DropdownMode = opts.mode ?? globalMode;
   let graceTimer: number | undefined;
 
@@ -74,8 +76,10 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     window.clearTimeout(graceTimer);
     // A panel that animates (the .pop style) logs its arrival's frames (DEBUGGING.md §Frame telemetry).
     if (panel.hidden && panel.dataset.frames) frames.during("menu", 300, panel.dataset.frames);
+    const appearing = panel.hidden;
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
+    if (appearing) onOpen?.();
   };
   const close = (why: CloseReason = "api") => {
     if (shouldStayOpen?.(why)) return; // e.g. don't close out from under a drag

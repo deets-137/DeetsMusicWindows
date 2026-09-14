@@ -702,6 +702,16 @@ body {
   box-shadow: var(--shadow-panel);
 }
 .slot-picker__menu[hidden] { display: none; }
+/* A window too short for one column (layout.ts `fit`): two columns; it scrolls only if even
+   that doesn't fit (JS sets max-height then). */
+.slot-picker__menu { overflow-y: auto; }
+.slot-picker__menu--cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(var(--menu-min-w), 1fr));
+}
+.slot-picker__menu::-webkit-scrollbar { width: var(--scrollbar-w); }
+.slot-picker__menu::-webkit-scrollbar-track { background: transparent; }
+.slot-picker__menu::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
 
 /* Card stub placeholder (e.g. Playlists before it's built out). */
 .card-stub { display: grid; place-items: center; }
@@ -1031,20 +1041,48 @@ body {
 /* clickable affordance + drilled-in highlight (border around the rectangle) */
 .lib-view[data-openable="1"] .lib-row,
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
-/* ── Row drag (src/row-drag.ts: Up Next + a local playlist's detail) ──
-   The dragged row lifts and follows the pointer 1:1 (--drag-dy set in JS), no transition
-   lag. The doubled class outranks `.lib-row:hover`, whose hover lift would snap it back. */
-.is-dragging.is-dragging {
-  transform: translateY(var(--drag-dy, 0px)) var(--drag-lift);
+/* ── Row drag (src/row-drag.ts, DRAG-DROP.md §4) ──
+   The ghost is a copy of the pressed row on <body> (inside display:contents shells, so the
+   row's card styles still match). It follows the pointer 1:1 (--ghost-x/y set in JS) with
+   no transition lag, and it is translucent so the list under it stays readable. */
+.drag-ghost.drag-ghost {
+  position: fixed;
+  margin: 0;
+  box-sizing: border-box;
+  transform: translate(var(--ghost-x, 0px), var(--ghost-y, 0px)) var(--drag-lift);
   box-shadow: var(--shadow-panel);
   background: var(--surface-hover);
-  position: relative;
-  z-index: 2;
-  opacity: 0.96;
+  opacity: var(--drag-ghost-opacity);
   transition: none;
-  cursor: grabbing;
+  pointer-events: none;
+  z-index: 200;                     /* above menus and toasts' tier: it rides the pointer */
 }
-/* The list while a drag runs: the positioned reference for the line and row offsets. */
+.drag-ghost.is-nodrop { opacity: var(--drag-nodrop-opacity); }
+/* A collection's song count, pinned to the copy's corner. */
+.drag-ghost__count {
+  position: absolute;
+  right: var(--space-1);
+  bottom: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--title);
+  color: var(--canvas);
+  font-size: var(--fs-subtext);
+  white-space: nowrap;
+}
+/* The pressed row stays in place and dims while its copy moves. */
+.is-drag-source.is-drag-source { opacity: var(--drag-source-opacity); }
+/* Whole page while a drag runs: no text selection, the grab cursor everywhere. */
+html.is-row-dragging,
+html.is-row-dragging * { user-select: none; cursor: grabbing !important; }
+html.is-drag-nodrop,
+html.is-drag-nodrop * { cursor: no-drop !important; }
+/* A drop target under the pointer: a playlist row, a card, a list. */
+.is-drop-target.is-drop-target {
+  outline: var(--drop-line-w) solid var(--title);
+  outline-offset: calc(-1 * var(--drop-line-w));
+}
+/* A list while a line shows in it: the positioned reference for the line. */
 .is-reordering { position: relative; }
 /* Insertion indicator — where the dragged row will land (top set in JS). */
 .drop-line {

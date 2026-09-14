@@ -14,7 +14,7 @@
 import * as frames from "./frames";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
-import { rowDrag } from "./row-drag";
+import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload } from "./row-drag";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -61,6 +61,12 @@ export interface Grouping<T = any> {
    *  with no search — a drop position means nothing in another order or a filtered list.
    *  `move` gets splice indexes (remove at `from`, insert at `to`) into that order. */
   reorder?: { sortKey: string; move: (from: number, to: number) => void };
+  /** Drag source (DRAG-DROP.md §2): the songs a press-and-drag on this item carries, or null
+   *  when it carries none (a shelf header). */
+  drag?: (x: T, index: number, items: T[]) => DragPayload | null;
+  /** Drop target on an item (a playlist row, §3): the drop's action, or null when this item
+   *  doesn't take the payload. */
+  dropOn?: (x: T, p: DragPayload) => (() => void) | null;
 }
 
 /**
@@ -95,6 +101,10 @@ export interface Context {
   filter?: { label: string; icon: string; active: () => boolean; toggle: () => void };
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
+  /** The pane takes dropped songs (an open playlist, DRAG-DROP.md §3). The action gets the
+   *  insertion index while the grouping's reorder order shows, else null (the end). Null
+   *  when the pane doesn't take the payload. */
+  dropInto?: (p: DragPayload) => ((at: number | null) => void) | null;
 }
 
 /** "1 hr 2 min" / "48 min" for a summed duration; "" below a minute or unknown. */
@@ -581,9 +591,16 @@ export function initCollectionCard(opts: CardOptions) {
     curPane?.querySelector('[data-pop="search"]')?.classList.toggle("is-active", !!cur().query);
   };
 
-  // Drag-to-reorder for a grouping that offers it (`reorder`). A data reload that arrives
-  // mid-drag waits for the drop, so the dragged row is never rebuilt under the pointer.
+  // Row drag (row-drag.ts, DRAG-DROP.md §4): a reorder where the grouping offers one
+  // (`reorder`, in lines density, its sort ascending, no search — a drop position means
+  // nothing in another order or a filtered list), else a copy of the item's songs (`drag`).
+  // A data reload that arrives during ANY card's drag waits for its end, so no row or
+  // insertion line is rebuilt under the pointer.
   let reloadPending = false;
+  const reorderable = (f: Frame) => {
+    const r = groupingOf(f).reorder;
+    return !!r && f.sortKey === r.sortKey && f.sortDir === "asc" && !f.query.trim() && f.density === "lines";
+  };
   const drag = rowDrag({
     root: viewport,
     label: "collection",
@@ -591,17 +608,49 @@ export function initCollectionCard(opts: CardOptions) {
       if (animating) return null;
       const pane = target.closest<HTMLElement>(".coll-pane");
       if (!pane || pane !== curPane) return null;
-      const f = cur();
-      const r = groupingOf(f).reorder;
-      if (!r || f.sortKey !== r.sortKey || f.sortDir !== "asc" || f.query.trim() || f.density !== "lines") return null;
       const row = target.closest<HTMLElement>("[data-idx]");
       const list = pane.querySelector<HTMLElement>("[data-view]");
       if (!row || !list) return null;
-      return { row, index: Number(row.dataset.idx), list, count: f.items.length };
+      const f = cur();
+      const index = Number(row.dataset.idx);
+      const x = f.items[index];
+      if (x === undefined) return null;
+      const payload = groupingOf(f).drag?.(x, index, f.items) ?? undefined;
+      if (reorderable(f)) return { row, index, list, count: f.items.length, payload };
+      return payload ? { row, index, payload } : null;
     },
     onEnd: (from, to) => {
       if (to != null) groupingOf(cur()).reorder?.move(from, to); // the card reloads with its new order
-      if (reloadPending) reload();
+    },
+  });
+  const unsubDragEnd = onDragEnd(() => {
+    if (reloadPending) reload();
+  });
+
+  // Drops (DRAG-DROP.md §3): an item that takes songs (`dropOn`, a playlist row), or the
+  // whole pane (`dropInto`, an open playlist) — at the insertion line while the reorder
+  // order shows, else at the end. A card with neither lets an outer target answer (the
+  // Library card's own).
+  const unregisterDrop = registerDropTarget({
+    el: viewport,
+    over: (under, _x, _y, p) => {
+      if (animating || !curPane || under.closest(".coll-pane") !== curPane) return null;
+      const f = cur();
+      const g = groupingOf(f);
+      const view = curPane.querySelector<HTMLElement>("[data-view]") ?? undefined;
+      const item = under.closest<HTMLElement>("[data-idx]");
+      if (g.dropOn && item) {
+        const x = f.items[Number(item.dataset.idx)];
+        const run = x === undefined ? null : g.dropOn(x, p);
+        if (run) return { highlight: item, scroll: view, drop: run };
+      }
+      const into = f.ctx.dropInto?.(p);
+      if (into) {
+        if (view && reorderable(f) && f.items.length)
+          return { slots: { list: view, count: f.items.length }, scroll: view, drop: into };
+        return { highlight: view ?? curPane, scroll: view, drop: () => into(null) };
+      }
+      return g.dropOn || f.ctx.dropInto ? { scroll: view } : null; // no drop here, but the list still scrolls
     },
   });
 
@@ -765,8 +814,8 @@ export function initCollectionCard(opts: CardOptions) {
   // Refresh data without losing the user's place. Live grouping closures pick up
   // new data; we just re-render the visible pane (deeper frames re-render on back).
   function reload() {
-    if (drag.active()) {
-      reloadPending = true; // after the drop (onEnd above)
+    if (isDragging()) {
+      reloadPending = true; // after the drag (onDragEnd above)
       return;
     }
     reloadPending = false;
@@ -797,6 +846,8 @@ export function initCollectionCard(opts: CardOptions) {
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {
       drag.destroy(); // a drag's document listeners would outlive the card
+      unsubDragEnd();
+      unregisterDrop();
       dropWindower(curPane); // its observers outlive the subtree otherwise
       closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
       document.removeEventListener("click", onDocClick);

@@ -27,6 +27,9 @@ export interface Settings {
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
+  /** A drop on the Now Playing card: play it and keep Up Next after it, or replace Up Next
+   *  as Play Now does (DRAG-DROP.md §3). */
+  dropPlayQueue: "keep" | "replace";
   /** What Previous may rewind into: the parked list above the click, or only heard songs (§4). */
   previousReach: "lookback" | "heard";
   /** At launch: bring back last session's song as Now Playing (paused) + Up Next + Previous,
@@ -68,6 +71,7 @@ export const DEFAULTS: Settings = {
   backgroundMotion: "on",
   toasts: "all", // user's call 2026-09-13: Everything by default
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
+  dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   shuffleManual: "top",

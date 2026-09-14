@@ -173,6 +173,14 @@ export function playNext(handle: TrackHandle): void {
 export function addToQueue(handle: TrackHandle): void {
   addToQueueMany([handle]);
 }
+/** Insert a block into upcoming at `at` (0 = right after the current song), in order —
+ *  a drop on the Queue card's insertion line (DRAG-DROP.md §3). */
+export function insertManyAt(at: number, handles: TrackHandle[]): void {
+  if (!handles.length) return;
+  const i = Math.max(0, Math.min(state.upcoming.length, at));
+  state.upcoming.splice(i, 0, ...handles.map((h) => ({ ...h, origin: "manual" as const })));
+  emit();
+}
 export function removeAt(index: number): void {
   if (index >= 0 && index < state.upcoming.length) {
     state.upcoming.splice(index, 1);

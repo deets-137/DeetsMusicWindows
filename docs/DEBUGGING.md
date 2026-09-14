@@ -137,7 +137,8 @@ period; `longtasks` are the browser's >50 ms main-thread tasks that overlapped t
 frame — the synchronous build (a pane render, a folder re-render) — is itself over budget. Names: `scroll <container>` (opens itself on any scroll event, closes
 150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
 seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
-`fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
+`fold open|close` (a Playlists folder), `drag queue|collection` (a reorder: an Up Next row, a
+local playlist row), `drag cross` (a copy to another card, DRAG-DROP.md), `menu` (a context
 menu opening), `appearance theme|skin` (the view transition), `sample` (manual),
 `window a-b` (a windowed pane's edge patch that cost ≥ 4 ms — collection-window.ts; the
 detail is the rendered item range after the pass).

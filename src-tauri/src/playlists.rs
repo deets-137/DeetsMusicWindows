@@ -1212,6 +1212,25 @@ pub fn playlist_reorder(id: i64, from: i64, to: i64, db: State<'_, Db>) -> Resul
     tx.commit().map_err(err)
 }
 
+/// Insert tracks (denormalised snapshots) at authored position `at`, in order — a drop on
+/// an open local playlist (DRAG-DROP.md §3). `at` past the end appends. One transaction.
+#[tauri::command]
+pub fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, db: State<'_, Db>) -> Result<(), String> {
+    let mut conn = db.0.lock().unwrap();
+    let mut jsons = read_local_tracks(&conn, id)?;
+    let at = (at.max(0) as usize).min(jsons.len());
+    let new = tracks
+        .iter()
+        .map(|t| serde_json::to_string(t).map_err(err))
+        .collect::<Result<Vec<_>, _>>()?;
+    jsons.splice(at..at, new);
+    let tx = conn.transaction().map_err(err)?;
+    write_local_tracks(&tx, id, &jsons)?;
+    tx.execute("UPDATE local_playlists SET updated_at = ?2 WHERE id = ?1", rusqlite::params![id, now_ms()])
+        .map_err(err)?;
+    tx.commit().map_err(err)
+}
+
 #[tauri::command]
 pub fn local_playlist_tracks(id: i64, db: State<'_, Db>) -> Result<Vec<Track>, String> {
     let conn = db.0.lock().unwrap();

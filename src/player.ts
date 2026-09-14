@@ -1449,6 +1449,47 @@ export const queueTracksNext = (tracks: Track[], context = "library"): Promise<v
 /** Add-to-Queue a list of library Tracks. */
 export const queueTracksLater = (tracks: Track[], context = "library"): Promise<void> =>
   enqueueLater(handlesFrom(tracks, context)).catch(queueFailed);
+/**
+ * Insert handles into Up Next at model index `at` — a drop on the Queue card (DRAG-DROP.md
+ * §3). The model takes the block, then `reconcileUpcoming()` mirrors the new order into
+ * MusicKit gaplessly (current never moves). Radio: model only, the break-out rule. Nothing
+ * playing: start the block.
+ */
+export async function insertInQueue(at: number, handles: TrackHandle[]): Promise<void> {
+  const playable = handles.filter((h) => playId(h));
+  if (!playable.length) return;
+  await initPlayer();
+  diag.log("player:insert", { at, n: playable.length });
+  if (!queue.getCurrent()) {
+    await playContext(playable, 0);
+    return;
+  }
+  queue.insertManyAt(at, playable);
+  if (mode === "radio") {
+    pendingBreakout = true;
+    return;
+  }
+  await reconcileUpcoming();
+}
+/**
+ * Play Tracks at once and keep Up Next after them — a drop on Now Playing with Settings ›
+ * Playback › Drop on Now Playing = Keep Up Next. The block goes to the top of Up Next and
+ * the player jumps to its first song: the song that was playing joins History, and the
+ * rest of Up Next is untouched. Nothing playing: an ordinary play.
+ */
+export async function playTracksKeepQueue(tracks: Track[], context = "library"): Promise<void> {
+  if (!queue.getCurrent()) return playTracks(tracks, 0, context);
+  const playable = handlesFrom(tracks, context).filter((h) => playId(h));
+  if (!playable.length) return;
+  queue.insertManyAt(0, playable);
+  await jumpToUpcoming(0).catch((e) => {
+    toast({ kind: "warn", text: tracks[0]?.title ? `Couldn't play “${tracks[0].title}”.` : "Couldn't play that." });
+    throw e;
+  });
+}
+/** Insert library Tracks into Up Next at `at`. */
+export const queueTracksAt = (at: number, tracks: Track[], context = "library"): Promise<void> =>
+  insertInQueue(at, handlesFrom(tracks, context)).catch(queueFailed);
 function queueFailed(e: unknown): never {
   toast({ kind: "warn", text: "Couldn't add to the queue." });
   throw e;
