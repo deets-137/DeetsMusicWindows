@@ -7,6 +7,7 @@ import { libraryTracks, librarySync, onSyncEvent, seenTracks, type Track } from 
 import { isConnected } from "./apple";
 import * as perf from "./perf";
 import { toast } from "./toast";
+import * as health from "./apple-health";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -102,13 +103,18 @@ export function initTrackStore(): void {
     // One listener for every sync (startup, the Library ⟳), so one toast per failed pass.
     // The spinner alone just stops, which reads as done (TOASTS.md).
     if (e.phase === "error") {
-      const n = (x: number) => x.toLocaleString();
-      toast({
-        kind: "warn",
-        text: e.total
-          ? `Library sync stopped at ${n(e.count ?? 0)} of ${n(e.total)} songs. Try Refresh in Library.`
-          : "Couldn't sync your library. Check your connection.",
-        timeout: 6000,
+      // A named cause (signed out at Apple, Apple refusing the app, offline) has its own
+      // toast with the button that fixes it; a sync toast on top would blame the connection.
+      void health.check(false, false, "sync").then(({ trouble }) => {
+        if (trouble !== "none") return;
+        const n = (x: number) => x.toLocaleString();
+        toast({
+          kind: "warn",
+          text: e.total
+            ? `Library sync stopped at ${n(e.count ?? 0)} of ${n(e.total)} songs. Try Refresh in Library.`
+            : "Couldn't sync your library. Check your connection.",
+          timeout: 6000,
+        });
       });
     }
   });

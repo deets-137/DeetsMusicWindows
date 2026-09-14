@@ -9,9 +9,10 @@ import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { connect, disconnect, isConnected, SignInError } from "./apple";
 import * as health from "./apple-health";
+import * as diag from "./diag";
 import { initTrackStore } from "./track-store";
 import { initLayout } from "./layout";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn, clearMusicKitSignIn } from "./player";
 import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
@@ -189,6 +190,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const signInFailed = (e: unknown) => {
     const retry = [{ label: "Try again", run: () => void signIn() }];
     const code = e instanceof SignInError ? e.code : "other";
+    diag.warn("account:signInFailed", { code, reason: e instanceof Error ? e.message : String(e) });
     if (code === "unavailable") health.show("app", true, "signin");
     else if (code === "offline") health.show("offline", true, "signin");
     else if (code === "timeout") toast({ kind: "error", text: "Sign-in didn't finish in time.", actions: retry });
@@ -220,6 +222,7 @@ window.addEventListener("DOMContentLoaded", () => {
     setAccount("loading", "Disconnecting…");
     try {
       await disconnect();
+      clearMusicKitSignIn(); // MusicKit's own copy too (no Apple logout call)
       health.reset();
       await paintAccount();
     } catch (e) {

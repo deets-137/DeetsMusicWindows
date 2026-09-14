@@ -219,6 +219,7 @@ pub fn run() {
             bridge::bridge_info,
             bridge::bridge_log,
             log::diag_flush,
+            log::log_event,
             library::queue_state_get,
             library::queue_state_set,
             library::dead_ids_cached,

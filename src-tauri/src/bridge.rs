@@ -216,15 +216,16 @@ pub fn bridge_log() -> String {
 }
 
 /// Where the unpacked extension lives: the bundled resource dir in an installed
-/// build, the repo checkout in dev (resources aren't staged for `tauri dev`).
+/// build, the repo checkout in dev (resources aren't staged for `tauri dev`). The repo
+/// fallback is compiled out of release builds (RELEASE.md §1a: a release exe carries no
+/// path into the source tree).
 pub fn extension_dir(app: &AppHandle) -> std::path::PathBuf {
-    if let Ok(res) = app.path().resource_dir() {
-        let installed = res.join("extension");
-        if installed.join("manifest.json").is_file() {
-            return installed;
-        }
+    let bundled = app.path().resource_dir().map(|res| res.join("extension")).unwrap_or_default();
+    #[cfg(debug_assertions)]
+    if !bundled.join("manifest.json").is_file() {
+        return std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("extension");
     }
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("extension")
+    bundled
 }
 
 /// Open the load-unpacked walkthrough (extension/install.html) in the default browser.

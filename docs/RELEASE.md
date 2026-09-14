@@ -32,6 +32,56 @@ Three stages, and the order matters:
    `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~5.6 MB at 0.1.3).
 3. **`scripts/archive-installer.mjs`** — copies that exe into `installers/`.
 
+## 1a. Stranger parity — the live app must behave like a stranger's install (2026-09-13)
+
+**What slipped.** The installed 0.3.1 on the dev PC logged `token: source=local`: it read the
+repo's MusicKit key through a compile-time source path, never used the Worker or its 401 heal,
+and broke when that key was rotated. The fallback was documented as intended, so no code
+review or diff-based release check would have flagged it. Only runtime evidence from the
+installed build showed it. Three layers now guard this:
+
+1. **Structural.** Anything that reads the source tree is compiled out of release builds with
+   `#[cfg(debug_assertions)]` — not a runtime `cfg!` check — so the path string is not in
+   the exe at all (`apple.rs` `repo_secrets_dir`, the bridge's dev extension path).
+2. **Automated gate.** `npm run release` runs `scripts/release-check.mjs` after `tauri build`
+   and before archiving. It fails when the exe contains an absolute path into the repo (build
+   output under `src-tauri\target\` is allowed) or when the four version files disagree.
+   Run it alone with `npm run release:check`.
+3. **Checklist on the INSTALLED build**, before announcing a release and before any key
+   change. Read the installed log (Settings › Bugs › App log):
+   - [ ] the `start:` line shows the new version, and the next line is `token: source=worker`;
+   - [ ] sign in from zero (Account › sign out, then sign in) — the page loads, Apple accepts;
+   - [ ] signed out, press play → "Sign in to Apple Music to play songs." with **Sign in**;
+   - [ ] launch offline → the offline toast, and recovery when the network returns;
+   - [ ] **Do NOT force a revoke with `__music.unauthorize()`.** It calls MusicKit's
+     `_webPlayerLogout`, which logs the sign-in token out AT APPLE (2026-09-13: the token went
+     from 200 to 403 on `/v1/me/storefront`, and it was the same token the installed app used,
+     so the live app was signed out too). A revoke test needs a method that clears only
+     MusicKit's local copy, and never a token copied from the installed app. Not built yet.
+
+   A second Windows user account (no repo, no app data) is the cheapest real stranger; not
+   set up yet.
+
+### Key changes (rotation, revoke) — runbook
+
+Written after the 2026-09-13 rotation, where the revoke broke the installed app because its
+token source had not been checked first.
+
+1. **Before anything:** read every live app's log for its token source (`token: source=…`).
+   A `local` line in an installed build is a bug — stop and fix it first (§1a).
+2. Create the new key in the Apple portal. Copy the `.p8` to `Documents\Deets' Secrets` and
+   note its id and purpose in that folder's README. **Never delete a `.p8`.**
+3. Put it in the Worker without echoing it: `npx wrangler secret bulk <temp json file>`
+   (sends `APPLE_P8` + `KEY_ID` together, so the Worker never pairs a new key with an old id;
+   delete the temp file in a `finally`). A PowerShell pipe into `secret bulk` does not work.
+4. Verify with status codes only: `/health` ok; a fresh `/token` has the new `kid`; Apple
+   answers 200 to it several times in a row.
+5. **Only then** revoke the old key. Expect Apple to answer inconsistently for 15+ minutes
+   after a revoke (seen 2026-09-13: 200/401 flipping for every key on the team, including a
+   brand-new one). Watch with a status-only loop before declaring it done.
+6. Re-check each live app: the log shows a `token: 401 … refetching` line followed by a
+   successful play, with no restart.
+
 `installers/` is **gitignored** (~6 MB each), exactly as DeetsAirplay does it. The difference
 is that DeetsAirplay fills it by hand and its archive drifted — 0.1.0 sitting in the folder
 while the app said 0.1.1 — so here the copy is a build stage instead of a habit.

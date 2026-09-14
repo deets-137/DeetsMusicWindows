@@ -80,27 +80,37 @@ pub fn set_app_data_dir(dir: PathBuf) {
     let _ = APP_DATA_DIR.set(dir);
 }
 
-/// Where the credentials you authored live: `apple.json` + the `.p8` key.
+/// Where a LOCAL MusicKit key may live (`apple.json` + the `.p8`) — **debug builds only**.
 ///
-/// An INSTALLED build must not depend on the source tree, so the app data dir
-/// wins — but only if it actually holds an `apple.json`, so a dev run with an
-/// empty app data dir keeps working off the repo exactly as before. Copy
-/// `src-tauri/secrets/` into the app data dir to make an install self-contained
-/// (see `secrets/README.md`).
-fn secrets_dir() -> PathBuf {
+/// A release build never signs its own token: it always takes one from the mint, exactly
+/// like a stranger's install. Found 2026-09-13: the installed app on the dev PC read the
+/// repo's key through the compile-time path below, skipped the Worker and its 401 heal, and
+/// broke when that key was rotated — so the live app was testing a path no user runs.
+/// In a debug build the app data dir wins when it holds an `apple.json`, else the repo.
+fn secrets_dir() -> Option<PathBuf> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
     if let Some(dir) = APP_DATA_DIR.get() {
-        let installed = dir.join("secrets");
-        if installed.join("apple.json").is_file() {
-            return installed;
+        let local = dir.join("secrets");
+        if local.join("apple.json").is_file() {
+            return Some(local);
         }
     }
     repo_secrets_dir()
 }
 
-/// The compile-time source-tree path. Dev fallback only — in an installed
-/// build this points at wherever the machine that COMPILED it kept the repo.
-fn repo_secrets_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("secrets")
+/// The compile-time source-tree path, debug builds only. In a release build it would
+/// point at wherever the machine that COMPILED it kept the repo — so it is compiled OUT
+/// (`#[cfg]`, not a runtime check): the release exe must not even contain the string.
+/// `scripts/release-check.mjs` fails `npm run release` if it does (RELEASE.md §1a).
+#[cfg(debug_assertions)]
+fn repo_secrets_dir() -> Option<PathBuf> {
+    Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("secrets"))
+}
+#[cfg(not(debug_assertions))]
+fn repo_secrets_dir() -> Option<PathBuf> {
+    None
 }
 
 /// Where the captured user token is WRITTEN. Always app data when we have it:
@@ -110,12 +120,13 @@ fn repo_secrets_dir() -> PathBuf {
 fn user_token_path() -> PathBuf {
     match APP_DATA_DIR.get() {
         Some(dir) => dir.join("user-token.txt"),
-        None => repo_secrets_dir().join("user-token.txt"),
+        // Only before setup() seeds the data dir; nothing reads the token that early.
+        None => repo_secrets_dir().unwrap_or_default().join("user-token.txt"),
     }
 }
 
 fn load_config() -> Result<AppleConfig, String> {
-    let path = secrets_dir().join("apple.json");
+    let path = secrets_dir().ok_or("a release build uses no local MusicKit key")?.join("apple.json");
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| format!("could not read {}: {e}", path.display()))?;
     serde_json::from_str(&raw).map_err(|e| format!("invalid apple.json: {e}"))
@@ -206,14 +217,14 @@ fn dev_token_path() -> Option<PathBuf> {
 }
 
 fn local_key_present() -> bool {
-    secrets_dir().join("apple.json").is_file()
+    secrets_dir().is_some_and(|d| d.join("apple.json").is_file())
 }
 
 /// The dev seam: sign an ES256 JWT from the local `.p8` (150-day expiry).
 fn sign_local() -> Result<DevToken, String> {
     let cfg = load_config()?;
 
-    let key_path = secrets_dir().join(&cfg.private_key_file);
+    let key_path = secrets_dir().unwrap_or_default().join(&cfg.private_key_file);
     let pem = std::fs::read(&key_path)
         .map_err(|e| format!("could not read private key {}: {e}", key_path.display()))?;
     let encoding_key =
@@ -436,7 +447,7 @@ pub fn load_persisted_user_token() -> Option<String> {
         crate::log::register_secret(&tok);
         return Some(tok);
     }
-    let legacy = read(repo_secrets_dir().join("user-token.txt"))?;
+    let legacy = read(repo_secrets_dir()?.join("user-token.txt"))?;
     crate::log::register_secret(&legacy);
     let _ = persist_user_token(&legacy);
     Some(legacy)
@@ -472,6 +483,14 @@ const AUTH_PAGE: &str = r#"<!doctype html>
 <link rel="stylesheet" href="/styles/palette.css">
 <link rel="stylesheet" href="/styles/themes.css">
 <link rel="stylesheet" href="/styles/skin.css">
+<script>
+// Never reuse a sign-in: MusicKit keeps the user token in THIS page's storage
+// ("media-user-token"), and the page's address is fixed (47831–47833), so a token from an
+// earlier sign-in survives and authorize() returns it without asking Apple — even after
+// Apple has logged it out (2026-09-13). This page stores nothing of its own, so clear all
+// of it before MusicKit loads.
+try{localStorage.clear();sessionStorage.clear();}catch(e){}
+</script>
 <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" async></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -574,8 +593,26 @@ fn serve(
                         });
                     if let Some(tok) = token {
                         crate::log::register_secret(&tok);
+                        // Never save a token Apple already refuses (a stale page, a token
+                        // logged out at Apple). 403 on /v1/me = the sign-in token itself;
+                        // a 401 or no answer is about the developer token or the network
+                        // and does not block the sign-in.
+                        if capture_rejected_by_apple(&tok) {
+                            crate::log::warn("sign-in: Apple refused the delivered token (403); not saved");
+                            *auth.lock().unwrap() = AuthStatus::Failed { reason: "forbidden: Apple refused the new sign-in".into() };
+                            let _ = req.respond(tiny_http::Response::from_string("rejected").with_status_code(400));
+                            break;
+                        }
                         *store.lock().unwrap() = Some(tok.clone());
                         *auth.lock().unwrap() = AuthStatus::Captured;
+                        // A new sign-in: forget the cached health answer (it may still say
+                        // "expired") and hand the token to MusicKit in the running page —
+                        // MusicKit otherwise only reads it when the player first starts
+                        // (found 2026-09-13: signed in, MusicKit still unauthorized).
+                        *LAST_CHECK.lock().unwrap() = None;
+                        if let Some(app) = APP_HANDLE.get() {
+                            let _ = app.emit("user-token-changed", ());
+                        }
                         if let Err(e) = persist_user_token(&tok) {
                             crate::log::warn(&format!("sign-in: token captured but not persisted: {e}"));
                         }
@@ -815,16 +852,25 @@ pub fn apple_disconnect(state: tauri::State<'_, AppleState>) {
     let _ = std::fs::remove_file(user_token_path());
     // Also clear the pre-app-data copy, or the next launch's fallback in
     // load_persisted_user_token() would quietly sign you back in.
-    let _ = std::fs::remove_file(repo_secrets_dir().join("user-token.txt"));
+    if let Some(dir) = repo_secrets_dir() {
+        let _ = std::fs::remove_file(dir.join("user-token.txt"));
+    }
 }
 
 // ── Phase 2: raw data dump (for designing the model) ─────────────────────────
 
+/// The repo's `dev-dumps/` in a debug build; the app data dir in a release build, which
+/// carries no path into the source tree (RELEASE.md §1a).
+#[cfg(debug_assertions)]
 fn dump_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .map(|p| p.join("dev-dumps"))
         .unwrap_or_else(|| PathBuf::from("dev-dumps"))
+}
+#[cfg(not(debug_assertions))]
+fn dump_dir() -> PathBuf {
+    APP_DATA_DIR.get().map(|d| d.join("dev-dumps")).unwrap_or_else(|| PathBuf::from("dev-dumps"))
 }
 
 fn write_dump(name: &str, value: &serde_json::Value) -> Result<(), String> {
@@ -878,12 +924,58 @@ async fn api_get_once(
 
 /// Apple failures only, status + path (LOGGING.md): the host is always the same
 /// and the query holds nothing but ids and limits.
+///
+/// A 403 on a `/v1/me` path means Apple refuses the user's sign-in token. Tell the front
+/// end (`apple-signin-rejected`), so the launch-time library sync says "signed you out"
+/// instead of failing quietly. At most once per SIGNIN_REJECTED_GAP: every `/me` call can
+/// fail the same way, and the front end's check is cached anyway.
 fn log_failure(status: u16, url: &str) {
     if status < 400 {
         return;
     }
     let path = url.split_once("api.music.apple.com").map(|(_, p)| p).unwrap_or(url);
     crate::log::warn(&format!("apple: {status} {path}"));
+    if status == 403 && path.starts_with("/v1/me") {
+        let mut last = SIGNIN_REJECTED_AT.lock().unwrap();
+        if !last.is_some_and(|at| at.elapsed() < SIGNIN_REJECTED_GAP) {
+            *last = Some(Instant::now());
+            if let Some(app) = APP_HANDLE.get() {
+                let _ = app.emit("apple-signin-rejected", ());
+            }
+        }
+    }
+}
+
+static SIGNIN_REJECTED_AT: Mutex<Option<Instant>> = Mutex::new(None);
+const SIGNIN_REJECTED_GAP: Duration = Duration::from_secs(60);
+
+/// Fix 2 (2026-09-13): does Apple refuse a token the sign-in page just delivered?
+/// True only on a 403 from `/v1/me/storefront`, seen twice a second apart (Apple's answers
+/// were unreliable for a while after a key revoke). Runs on the loopback server thread.
+fn capture_rejected_by_apple(mut_tok: &str) -> bool {
+    let Ok(dev) = developer_token() else { return false };
+    let Ok(client) = check_client() else { return false };
+    tauri::async_runtime::block_on(async {
+        for attempt in 0..2 {
+            if attempt > 0 {
+                tokio_sleep_1s().await;
+            }
+            match status_only(&client, &dev, Some(mut_tok), ME_STOREFRONT_URL).await {
+                Ok(403) => continue,
+                _ => return false,
+            }
+        }
+        true
+    })
+}
+
+async fn tokio_sleep_1s() {
+    let (tx, rx) = futures::channel::oneshot::channel::<()>();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(1));
+        let _ = tx.send(());
+    });
+    let _ = rx.await;
 }
 
 /// POST an Apple Music API URL with no body, returning (http_status, parsed_body).

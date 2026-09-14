@@ -36,6 +36,42 @@ export function log(tag: string, data?: unknown): void {
   if (echo) console.debug(`[diag] ${tag}`, data ?? "");
 }
 
+// ── Warnings and errors reach the log file as they happen ─────────────────────────
+// `log()` only fills the ring. `warn()` / `error()` also write one line through the Rust
+// `log_event` command (rate-limited there), so a release log shows a failure without a
+// crash or an unload. Same tag + data within DEDUPE_MS is sent once.
+type Level = "warn" | "error";
+const DEDUPE_MS = 2000;
+let lastSent = { key: "", at: -Infinity };
+let dirty = false; // a warn/error since the last flush: the unload flush is worth writing
+
+function send(level: Level, tag: string, data?: unknown): void {
+  dirty = true;
+  let text: string | undefined;
+  try {
+    text = data === undefined ? undefined : JSON.stringify(data);
+  } catch {
+    text = String(data);
+  }
+  const key = `${level}|${tag}|${text ?? ""}`;
+  const now = performance.now();
+  if (key === lastSent.key && now - lastSent.at < DEDUPE_MS) return;
+  lastSent = { key, at: now };
+  invoke("log_event", { level, tag, data: text }).catch(() => {
+    /* not under Tauri */
+  });
+}
+
+export function warn(tag: string, data?: unknown): void {
+  log(tag, data);
+  send("warn", tag, data);
+}
+
+export function error(tag: string, data?: unknown): void {
+  log(tag, data);
+  send("error", tag, data);
+}
+
 export function events(): DiagEvent[] {
   return buffer.slice();
 }
@@ -61,6 +97,7 @@ export function report(): string {
 /** Append the report to the app log file. Fire-and-forget; never throws. An empty
  *  buffer still writes its header line — "0 events" is itself a finding. */
 export function flush(): void {
+  dirty = false;
   invoke("diag_flush", { text: report() }).catch((e) => {
     console.warn("[diag] flush failed", e); // not under Tauri, or the command is missing
   });
@@ -85,18 +122,29 @@ async function copyReport(): Promise<void> {
   }
 }
 
-// Auto-capture uncaught errors and promise rejections into the same log.
+// Auto-capture uncaught errors and promise rejections. Checked on the next task so a later
+// listener that swallows a KNOWN benign case (player.ts's MusicKit race filter calls
+// preventDefault) keeps it out of the file.
 window.addEventListener("error", (e) => {
-  log("window:error", { msg: e.message, src: e.filename, line: e.lineno });
-  flushOnError();
+  setTimeout(() => {
+    if (e.defaultPrevented) return log("window:error", { msg: e.message, swallowed: true });
+    error("window:error", { msg: e.message, src: e.filename, line: e.lineno });
+    flushOnError();
+  }, 0);
 });
 window.addEventListener("unhandledrejection", (e) => {
-  log("window:unhandledrejection", {
-    reason: e.reason instanceof Error ? e.reason.message : String(e.reason),
-  });
-  flushOnError();
+  setTimeout(() => {
+    const reason = e.reason instanceof Error ? e.reason.message : String(e.reason?.message ?? e.reason);
+    if (e.defaultPrevented) return log("window:unhandledrejection", { reason, swallowed: true });
+    error("window:unhandledrejection", { reason });
+    flushOnError();
+  }, 0);
 });
-window.addEventListener("beforeunload", flush);
+// The buffered block on unload only when something went wrong this session: writing all
+// 300 events on every reload filled the 512 KB file and rotated it (2026-09-13).
+window.addEventListener("beforeunload", () => {
+  if (dirty) flush();
+});
 
 // Console handle (available in prod too, so bug reports can be gathered anywhere).
 (window as any).__diag = {

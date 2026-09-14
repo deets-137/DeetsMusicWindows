@@ -125,6 +125,34 @@ after a heal; the Worker `notice` shown at launch. Bounds and copy: [TOASTS.md](
 §Apple health rows. **Rust changed: restart the dev runner.** Test: sign out → play (toast +
 Sign in button); sign in; the installed 0.3.0 stays as it is until a new installer. The
 hosted sign-in (DATA-ARCHITECTURE §2a, another session) can reuse `apple_auth_status`.
+**Sign-in error routes closed (2026-09-13, same day).** Found live: MusicKit revokes its token
+after one auth error and its `_webPlayerLogout` can log the token out AT APPLE; the loopback
+page then returned that dead token from its own storage and said "Done!". Built: the page
+clears its storage before MusicKit loads; Rust checks a delivered token (`/v1/me/storefront`
+403 → failed sign-in, not saved); a `/v1/me` 403 anywhere emits `apple-signin-rejected` →
+"Apple Music signed you out" (the launch-time sync no longer fails quietly); the restore
+re-injects only when the health check says the sign-in still works; sign-out clears
+MusicKit's in-memory token (`musicUserToken = ""`, no logout call). Decided: keep MusicKit's
+own logout (option B); disabling it would modify MusicKit JS internals (Apple DPLA §3.3.6.D.1).
+**Never call `__music.unauthorize()` in a test** (RELEASE.md §1a).
+Then, found in the desk test: a sign-in after MusicKit had dropped its token left MusicKit
+unauthorized until a restart (only `initPlayer` injected the token, and the failed plays
+raised no error — MusicKit showed only its own dialog). Built: Rust emits
+`user-token-changed` on capture (and clears the cached health answer), player.ts injects the
+new token at once, and `requireSignIn` restores MusicKit before a play when it is signed in
+but unauthorized. **Desk-verified 2026-09-13 in the dev app:** launch with a dead token →
+"Apple Music signed you out"; Sign out → play → sign-in toast; Sign in → Apple's real screen
+→ a song played with no restart. Shipped as **0.3.2**.
+
+**Next version — the hosted sign-in page (DATA-ARCHITECTURE §2a) must handle these odd
+cases, not only the happy path.** Carry every lesson from today into its design and desk test:
+(1) never reuse a stored token (clear storage before MusicKit loads); (2) the app checks a
+delivered token (`/v1/me/storefront`) before saving it; (3) a failure the page sees reaches the
+app at once (`AuthStatus::Failed`), including Apple's `AUTHORIZATION_ERROR` on a closed window;
+(4) a stale or second tab never says "Done"; (5) a token Apple logged out (MusicKit's own
+`_webPlayerLogout`) leads to a working re-sign-in, not a loop; (6) the page says in plain words
+what happened and what to do, for each of these; (7) Apple's post-rotation flapping (200/401
+for 15+ min) does not end in a saved dead token. Test each one on purpose before shipping it.
 
 **2026-09-13 — Library virtualization (option A, windowing): decided to explore, not
 started.** Fresh branch + session. Cold start: **[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)**

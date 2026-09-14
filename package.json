@@ -1,7 +1,7 @@
 {
   "name": "deetsmusic",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "dev:app": "node scripts/dev-app.mjs",
     "cli:build": "cargo build --release --manifest-path cli/Cargo.toml && node scripts/cli-dist.mjs",
-    "release": "npm run cli:build && tauri build && node scripts/archive-installer.mjs"
+    "release": "npm run cli:build && tauri build && node scripts/release-check.mjs && node scripts/archive-installer.mjs",
+    "release:check": "node scripts/release-check.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

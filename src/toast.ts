@@ -131,6 +131,10 @@ export function toast(opts: ToastOptions): ToastHandle {
   const notice = !!opts.dismissKey;
   const sticky = notice || (opts.sticky ?? kind === "error");
   const text = String(opts.text ?? "");
+  // A failure the user was told about (or would have been, under a muted tier) belongs in
+  // the log file too — it is the line a bug report starts from.
+  if (kind === "error") diag.error("toast", { text });
+  else if (kind === "warn") diag.warn("toast", { text });
   observers.forEach((fn) => {
     try {
       fn({ kind, text });

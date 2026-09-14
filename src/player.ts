@@ -110,7 +110,7 @@ function syncDeveloperToken(): Promise<void> {
       await injectUserToken();
       diag.log("player:reconfigured", { authorized: !!music.isAuthorized });
     } catch (e) {
-      diag.log("player:reconfigureFailed", { err: String(e) });
+      diag.error("player:reconfigureFailed", { err: String(e) });
     } finally {
       reconfiguring = null;
     }
@@ -119,11 +119,28 @@ function syncDeveloperToken(): Promise<void> {
 }
 void listen("developer-token-changed", () => void syncDeveloperToken());
 
+/** A new sign-in was captured (Rust emits `user-token-changed`): give MusicKit the new token
+ *  now. Before 2026-09-13 only `initPlayer` injected it, so a sign-in after MusicKit had
+ *  dropped its token left the player unauthorized until a restart. */
+void listen("user-token-changed", () => void applyNewUserToken());
+async function applyNewUserToken(): Promise<void> {
+  if (!initPromise) return; // not started yet: initPlayer injects the token itself
+  await initPromise;
+  reauthAt = []; // a fresh sign-in resets the restore limit
+  await injectUserToken();
+  diag.log("player:userTokenApplied", { authorized: !!music?.isAuthorized });
+}
+
 /** A play with no Apple sign-in: say so (one toast, a Sign in button) instead of letting
  *  MusicKit fail with "Unable to prepare for playback." */
 const SIGNED_OUT = "signed out of Apple Music";
 async function requireSignIn(): Promise<void> {
-  if (await isConnected()) return;
+  if (await isConnected()) {
+    // Signed in, but MusicKit may have dropped its copy of the token. That raises no play
+    // error we can see (MusicKit shows only its own dialog), so restore BEFORE the load.
+    if (music && !music.isAuthorized) await restoreAuthorization("play", true);
+    return;
+  }
   health.show("signedOut", true, "play");
   throw new Error(SIGNED_OUT);
 }
@@ -236,6 +253,83 @@ async function injectUserToken(): Promise<void> {
       "[player] still not authorized after token inject — MusicKit localStorage keys:",
       Object.keys(localStorage),
     );
+  }
+}
+
+// ── Keep MusicKit authorized (root cause found 2026-09-13) ───────────────────────
+// MusicKit throws away ITS copy of the user token after one authorization failure while
+// preparing a song (musickit.js `prepareForEncryptedPlayback` → `storekit.revokeUserToken`)
+// and then fails every later play with "Unable to prepare for playback." until a restart
+// re-injects the token. Seen on the installed 0.3.1 during Apple's post-rotation 401s, while
+// the saved token still got 200 from /v1/me/storefront. Rust still holds the token, so give
+// it back. Bounded, because a token Apple really rejects would be revoked again at once:
+// at most once per REAUTH_GAP_MS and REAUTH_MAX per REAUTH_WINDOW_MS; past that, the health
+// check names the cause ("Apple Music signed you out").
+const REAUTH_GAP_MS = 30_000;
+const REAUTH_USER_GAP_MS = 3_000; // a play click may retry sooner; still bounded by clicks
+const REAUTH_MAX = 3;
+const REAUTH_WINDOW_MS = 10 * 60_000;
+let reauthAt: number[] = [];
+
+async function restoreAuthorization(via: string, userAction = false): Promise<boolean> {
+  if (!music) return false;
+  if (music.isAuthorized) return true;
+  if (!(await isConnected())) return false; // signed out in the app: nothing to restore
+  // MusicKit's revoke may have logged the token out AT APPLE (its _webPlayerLogout does,
+  // when it succeeds). Giving a dead token back only fails the next play, so ask first:
+  // the check is cached (60 s) and shows the "signed you out" toast when that is the cause.
+  const { trouble } = await health.check(false, false, via);
+  if (trouble !== "none") {
+    diag.warn("player:reauthSkipped", { via, trouble });
+    return false;
+  }
+  const now = performance.now();
+  reauthAt = reauthAt.filter((t) => now - t < REAUTH_WINDOW_MS);
+  const last = reauthAt[reauthAt.length - 1] ?? -Infinity;
+  if ((!userAction && reauthAt.length >= REAUTH_MAX) || now - last < (userAction ? REAUTH_USER_GAP_MS : REAUTH_GAP_MS)) {
+    diag.warn("player:reauthLimited", { via, recent: reauthAt.length });
+    return false;
+  }
+  reauthAt.push(now);
+  await injectUserToken();
+  const ok = !!music.isAuthorized;
+  diag.warn("player:reauth", { via, ok });
+  return ok;
+}
+
+function onAuthorizationChange(): void {
+  const authorized = !!music?.isAuthorized;
+  (authorized ? diag.log : diag.warn)("player:authorization", { authorized, status: music?.authorizationStatus });
+  if (authorized) return;
+  void (async () => {
+    // A sign-out in the app (clearMusicKitSignIn) also lands here: nothing to do, and no
+    // toast — the next play asks the user to sign in.
+    if (!(await isConnected())) return;
+    if (!(await restoreAuthorization("revoked"))) return; // the check inside said why
+    // The revoke happens inside a load: when one just ended, finish what the user asked for.
+    const now = performance.now();
+    if (music && mode === "queue" && queue.getCurrent() && !music.isPlaying && now - lastLoadEndAt < 3000 && now - lastRetryAt > RETRY_GAP_MS) {
+      lastRetryAt = now;
+      try {
+        await loadFromModel(music);
+      } catch (e) {
+        diag.warn("player:reauthRetryFailed", { err: String(e) });
+      }
+    }
+  })();
+}
+
+/** Account › sign out: drop MusicKit's in-memory copy of the user token too, so MusicKit is
+ *  no longer authorized after a sign-out (found 2026-09-13). Assigning `musicUserToken`
+ *  only sets the token; it does NOT call MusicKit's `unauthorize()`, whose web-player logout
+ *  would also log the token out at Apple. */
+export function clearMusicKitSignIn(): void {
+  if (!music) return;
+  try {
+    music.musicUserToken = "";
+    diag.log("player:signInCleared", { authorized: !!music.isAuthorized });
+  } catch (e) {
+    diag.warn("player:signInClearFailed", { err: String(e) });
   }
 }
 
@@ -438,6 +532,7 @@ function wireEvents(): void {
   music.addEventListener(E.nowPlayingItemDidChange, onNowPlayingChange);
   music.addEventListener(E.playbackTimeDidChange, emitProgress);
   if (E.mediaPlaybackError) music.addEventListener(E.mediaPlaybackError, onPlaybackError);
+  if (E.authorizationStatusDidChange) music.addEventListener(E.authorizationStatusDidChange, onAuthorizationChange);
   perf.note("mkErrorEvent", E.mediaPlaybackError ?? null);
 }
 
@@ -1155,6 +1250,7 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
     // Every play click (every card, the agent) lands here; the callers only log (TOASTS.md).
     const msg = String(e instanceof Error ? e.message : e);
     if (msg === SIGNED_OUT) throw e; // requireSignIn's toast already says why
+    diag.warn("player:playFailed", { msg, context });
     const gone = msg.startsWith("nothing to play");
     if (!gone) {
       // Maybe Apple rejected a token: find the cause, heal, retry once (bounded in
@@ -1168,6 +1264,8 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
           e = e2;
         }
       }
+      // The authorization listener may already have restored MusicKit and re-run this load.
+      if (!r.retry && performance.now() - lastRetryAt < 5000) return;
       if (r.trouble !== "none" || performance.now() - lastTroubleAt < 5000) throw e;
     }
     // A dead song gets the named dead-song toast about a second later (the feed rejects,
@@ -1624,7 +1722,7 @@ function onEndedWithoutItem(): void {
 function onPlaybackError(e: any): void {
   if (loadingContext || mode !== "queue" || !music) return;
   const msg = String(e?.message ?? e?.error?.message ?? e ?? "");
-  diag.log("player:playbackError", { msg });
+  diag.warn("player:playbackError", { msg });
   perf.event("playbackError", { msg, keys: e && typeof e === "object" ? Object.keys(e).slice(0, 8) : typeof e });
   if (!isUnavailable(msg)) {
     if (freshSignIn) {
@@ -1662,6 +1760,11 @@ async function recoverFromFailure(source: string): Promise<{ trouble: health.Tro
     return { trouble: r.trouble, retry: false };
   }
   recovering = (async () => {
+    // MusicKit revoked its own copy of the user token (see restoreAuthorization): giving it
+    // back IS the fix, with no Apple call. `healed` here means "worth one retry".
+    if (music && !music.isAuthorized && (await restoreAuthorization(source))) {
+      return { trouble: "none" as health.Trouble, healed: true };
+    }
     const r = await health.check(false, true, source);
     if (r.healed) await syncDeveloperToken();
     return r;
@@ -1679,7 +1782,7 @@ async function recoverFromFailure(source: string): Promise<{ trouble: health.Tro
 /** MusicKit failed on its own (its alert dialog, or a playback error that is not a dead
  *  song): no native dialog, find the cause, retry the current song once after a heal. */
 function onMusicKitTrouble(msg: string, via: string): void {
-  diag.log("player:mkTrouble", { msg, via });
+  diag.warn("player:mkTrouble", { msg, via });
   const now = performance.now();
   if (now - lastTroubleAt < RETRY_GAP_MS) return;
   lastTroubleAt = now;

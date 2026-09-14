@@ -27,29 +27,28 @@ launches start already signed in. You never create it by hand, and it's gitignor
 like the rest. It now lives in app data rather than this folder (see below); delete
 it to force a fresh sign-in.
 
-## The key is optional now
+## Dev builds only
 
-Since 2026-09-11 an install with **no** `apple.json` fetches its developer token from
-the mint (`music-api.deets.solutions/token`, [RELEASE.md](../../docs/RELEASE.md) §7) and
-caches it in `<app_data>/developer-token.json`. A local key, when present, still wins:
-it is checked first and the network is never touched. Keep yours here for offline dev.
+**A release build never uses a local key** (changed 2026-09-13). It always fetches its
+developer token from the mint (`music-api.deets.solutions/token`,
+[RELEASE.md](../../docs/RELEASE.md) §7) and caches it in `<app_data>/developer-token.json` —
+exactly like a stranger's install. The repo path below is compiled out of release builds,
+and `npm run release` fails if the exe still contains it (`scripts/release-check.mjs`).
 
-## Dev vs. installed builds
+Why: the installed app on the dev PC used to fall back to this folder through a path frozen
+at compile time. It signed with the repo's key, skipped the Worker and its 401 heal, and
+broke when that key was rotated — a path no user runs.
 
-`secrets_dir()` (`src/apple.rs`) checks **two** locations, in order:
+In a **debug** build (`npm run tauri dev`, `npm run dev:app`), `secrets_dir()`
+(`src/apple.rs`) checks, in order:
 
-1. `%APPDATA%\com.deetsmusic.app\secrets\` — used if it contains an `apple.json`.
+1. `%APPDATA%\com.deetsmusic.dev\secrets\` (or `com.deetsmusic.app` for `tauri dev`) — used
+   if it contains an `apple.json`.
 2. **This folder**, baked in at compile time via `CARGO_MANIFEST_DIR`.
 
-So `npm run tauri dev` works off this folder with no setup, exactly as before. An
-**installed** build (`npm run tauri build`) falls back to a path frozen at compile
-time pointing at whoever's machine built it — fine while the repo stays put,
-useless anywhere else. To make an install self-contained, copy this folder to
-location 1:
-
-```powershell
-Copy-Item -Recurse src-tauri\secrets "$env:APPDATA\com.deetsmusic.app\secrets"
-```
+With neither, a dev build takes its token from the mint too. Current keys: dev signs with
+the "DeetsMusic DEV" key; the Worker with "DeetsMusic PRD" (copies of every `.p8` are in
+`Documents\Deets' Secrets`; never delete one).
 
 The captured **user token** is different: it's runtime state, not something you
 authored, so it is always written to `%APPDATA%\com.deetsmusic.app\user-token.txt`

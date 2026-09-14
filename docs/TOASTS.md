@@ -105,6 +105,14 @@ rejected token is no longer the live one; `apple_check` answers from a 60 s cach
 retry per 30 s; `onMusicKitTrouble` starts one recovery per 30 s. A play click that fails runs
 the check, re-configures MusicKit if the token was swapped (`syncDeveloperToken`, once per new
 token), and retries once; a named cause suppresses "Couldn't play".
+
+**Sign-in routes closed the same day.** A `/v1/me` 403 in Rust emits `apple-signin-rejected`
+(once a minute) → `apple-health` runs the cached check → "Apple Music signed you out", and the
+library sync's own toast stays quiet whenever the check names a cause. A token the sign-in page
+delivers is checked before it is saved (403 twice → "Apple Music didn't accept the sign-in";
+the page clears its storage first, so a retry really signs in). The authorization restore
+re-injects only when the check says the sign-in works. Sign-out clears MusicKit's in-memory
+token without MusicKit's logout call.
 | `player.ts` `playTracks` — a play click fails | warn | Couldn't play “Title”. / Apple Music no longer offers “Title”. (or "these songs") | Every card and the agent go through it; the callers only log. Raised 1.4 s after the failure, and skipped when the dead-song toast has named the same song (desk-forced 2026-09-13: a dead id used to show both). The second text is for a play whose songs are all **already known dead**: `playContext` now refuses it before the model changes (`nothing to play: …`, a 400 for the agent). Before, it returned quietly, left the dead song as Now, and reported success. |
 | `player.ts` `queueTracksNext` / `Later` | warn | Couldn't add to the queue. | |
 | `favorites.ts` `setLoved` — the Apple write fails | warn | Couldn't update Favorites for “Title”. | The ♥ has already flipped back; the toast says why. |

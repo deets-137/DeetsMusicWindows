@@ -125,6 +125,16 @@ The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on start
 - The browser stays signed in: MusicKit keeps the MUT in the hosted page's localStorage.
   `apple_disconnect` does not clear it. This already happens with the fixed loopback ports.
 
+**Never reuse a stored sign-in (required, found 2026-09-13)**
+- MusicKit stores the user token in the page's own localStorage (`media-user-token`). A page
+  at a fixed address therefore keeps a token between sign-ins, and `authorize()` returns it
+  without asking Apple — even after Apple has logged it out. On 2026-09-13 the loopback page
+  handed back a dead token and said "Done!". The hosted page has a fixed address too, so it
+  must clear its storage BEFORE `musickit.js` loads (the loopback page does:
+  `localStorage.clear()` in `<head>`), and the app must check a delivered token with
+  `/v1/me/storefront` before saving it (a 403 → `AuthStatus::Failed`), as the loopback
+  capture now does.
+
 **Apple's Access Request screen: name and icon (found 2026-09-13)**
 - Apple's "Access Request" screen shows the sign-in page's **host** as the app name
   (`musickit.js` reads `location.host`) — today "127.0.0.1:47831". MusicKit has no name

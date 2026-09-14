@@ -9,6 +9,21 @@ the "What already exists" section below describes the state before it).
 Step 5, the report form, is open. Two halves already existed and were not rebuilt; this
 doc bounds them, joins them, and says what starts writing.
 
+> **Revised 2026-09-13 — front-end warnings and errors are written AS THEY HAPPEN.** Before,
+> the front end reached the file only through `diag_flush` (an uncaught error, unload, Open
+> folder), so the installed 0.3.1's "Unable to prepare for playback." left no trace at all.
+> Now `diag.warn(tag, data)` / `diag.error(tag, data)` fill the ring AND write one line
+> through the Rust `log_event` command: `WARN  fe: <tag> <json>`, scrubbed by `write`,
+> data capped at 600 chars, same tag+data within 2 s sent once, and at most 60 lines per
+> minute (the overflow is counted in one line). Callers: every `warn`/`error` toast
+> (`fe: toast`, muted ones too), `player:playFailed` / `playbackError` / `mkTrouble` /
+> `authorization` / `reauth` / `reauthLimited` / `reconfigureFailed`, `apple:trouble`,
+> `apple:checkFailed`, `account:signInFailed`, and uncaught errors and rejections — unless a
+> later listener swallowed a known benign MusicKit race (`defaultPrevented`).
+> The unload flush now writes the 300-event block **only when a warn/error happened** since
+> the last flush; writing it on every reload rotated the 512 KB file within a day. The
+> `start:` line now carries the UTC offset (line times are local; the Worker's are UTC).
+
 ---
 
 ## What already exists

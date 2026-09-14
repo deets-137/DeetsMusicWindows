@@ -8,6 +8,7 @@
 // module keeps one toast per cause and rechecks every 5 min only while an Apple-side
 // problem lasts, then stops.
 
+import { listen } from "@tauri-apps/api/event";
 import { toast, type ToastAction, type ToastHandle, type ToastKind } from "./toast";
 import { checkApple, requestSignIn, type AppleHealth } from "./apple";
 import * as diag from "./diag";
@@ -90,10 +91,15 @@ export function show(t: Trouble, force = false, source = "show", quiet = false):
   window.clearTimeout(recheck);
   if (t === "app" || t === "offline") recheck = window.setTimeout(() => void check(true, false, "recheck"), RECHECK_MS);
   if (t !== was) {
-    diag.log("apple:trouble", { t, was, source });
+    (t === "none" ? diag.log : diag.warn)("apple:trouble", { t, was, source });
     listeners.forEach((fn) => fn(t));
   }
 }
+
+// Rust saw a 403 on a /v1/me call (apple.rs log_failure, at most once a minute): the saved
+// sign-in token is refused — typically a dead token at launch, found by the library sync.
+// Name it now instead of letting the sync fail quietly.
+void listen("apple-signin-rejected", () => void check(false, false, "rust403"));
 
 /** Forget any trouble without a toast (after a deliberate sign-out). */
 export function reset(): void {
@@ -116,7 +122,7 @@ export async function check(
     show(t, force, source, quiet);
     return { trouble: t, healed: h.healed };
   } catch (e) {
-    diag.log("apple:checkFailed", { err: String(e), source });
+    diag.warn("apple:checkFailed", { err: String(e), source });
     return { trouble: current, healed: false };
   }
 }

@@ -2,6 +2,29 @@
 
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 
+## 0.3.2 — 2026-09-13
+
+**Signing in works every time.** A sign-in now always asks Apple for a fresh sign-in, and
+DeetsMusic checks it before saving it. Before, the sign-in page could reuse an old sign-in
+that Apple no longer accepted and still say "Done".
+
+**No restart after a sign-in.** Songs play as soon as you sign in again.
+
+**Playback recovers by itself.** If Apple Music drops the connection for a moment, DeetsMusic
+reconnects it before the next song. If Apple has really signed you out, a notice says so and
+gives you a Sign in button. At launch, an expired sign-in is named at once instead of a
+library sync failing quietly.
+
+**Better bug reports.** The log now records playback and sign-in problems as they happen
+(Settings › Bugs › App log).
+
+### Installing
+
+- **Windows SmartScreen will warn you.** The installer is not code-signed yet. Click
+  **More info**, then **Run anyway**.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.3.1 — 2026-09-13
 
 **DeetsMusic says what went wrong.** If Apple Music stops working, a notice names the cause

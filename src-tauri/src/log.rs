@@ -22,6 +22,7 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 const FILE: &str = "deetsmusic.log";
 const PREV: &str = "deetsmusic.1.log";
@@ -60,9 +61,11 @@ pub fn init(dir: &Path) {
 
     let which = if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev") { "dev" } else { "release" };
     info(&format!(
-        "start: DeetsMusic {} · Windows {} · data dir {which}",
+        // The UTC offset: line times are local, the Worker's are UTC.
+        "start: DeetsMusic {} · Windows {} · data dir {which} · UTC{}",
         env!("CARGO_PKG_VERSION"),
-        windows_build()
+        windows_build(),
+        chrono::Local::now().format("%:z")
     ));
 }
 
@@ -95,6 +98,50 @@ pub fn diag_flush(text: String) {
         for l in body {
             let _ = writeln!(f, "    {}", scrub(l));
         }
+    }
+}
+
+/// Front-end events arrive without bound (a broken page can call in a loop), so the file
+/// takes at most FE_BURST of them per FE_WINDOW; the overflow is counted and reported.
+const FE_BURST: u32 = 60;
+const FE_WINDOW: Duration = Duration::from_secs(60);
+/// (window start, lines written in it, lines dropped in it)
+static FE_RATE: Mutex<(Option<Instant>, u32, u32)> = Mutex::new((None, 0, 0));
+
+/// One front-end warning or error, written AS IT HAPPENS (`diag.warn` / `diag.error`),
+/// unlike `diag_flush`'s buffered block — so a release log shows MusicKit failures,
+/// authorization changes and failure toasts even when the window never closes or crashes.
+/// Line: `WARN  fe: <tag> <json>`. Scrubbed by `write` like every other line.
+#[tauri::command]
+pub fn log_event(level: String, tag: String, data: Option<String>) {
+    let dropped = {
+        let Ok(mut rate) = FE_RATE.lock() else { return };
+        let mut reported = 0;
+        if rate.0.map_or(true, |start| start.elapsed() > FE_WINDOW) {
+            reported = rate.2;
+            *rate = (Some(Instant::now()), 0, 0);
+        }
+        if rate.1 >= FE_BURST {
+            rate.2 += 1;
+            return;
+        }
+        rate.1 += 1;
+        reported
+    };
+    if dropped > 0 {
+        warn(&format!("fe: {dropped} front-end event(s) dropped by the rate limit"));
+    }
+    let tag: String = tag
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, ':' | '_' | '-' | '.'))
+        .take(48)
+        .collect();
+    let data: String = data.unwrap_or_default().chars().take(600).collect();
+    let msg = if data.is_empty() { format!("fe: {tag}") } else { format!("fe: {tag} {data}") };
+    match level.as_str() {
+        "error" => error(&msg),
+        "warn" => warn(&msg),
+        _ => info(&msg),
     }
 }
 
