@@ -22,6 +22,9 @@ export function onPlaylistsChange(cb: ChangeCb): () => void {
   return () => changeSubs.delete(cb);
 }
 const emitChange = (rowid?: number, appleId?: string) => changeSubs.forEach((cb) => cb(rowid, appleId));
+/** Tell the mounted cards the list changed outside a store call (an agent's export re-synced
+ *  the mirror, agent-writes.ts). */
+export const notifyPlaylistsChanged = (): void => emitChange();
 
 // ── toast wording shared by the Apple writes (export, add to an Apple playlist) ──
 
@@ -232,7 +235,7 @@ export function applePlaylistAdd(p: Playlist, tracks: Track[]): Promise<AppleAdd
 }
 
 /** The first add to an Apple playlist asks once (§10.9); [Add] turns the question off. */
-const APPLE_ADD_KEY = "deets.notice.appleAdd";
+export const APPLE_ADD_KEY = "deets.notice.appleAdd";
 
 /** Add to the user's own Apple playlist with its question and notices — the menu's path,
  *  shared by a drop on the playlist (DRAG-DROP.md §3). */

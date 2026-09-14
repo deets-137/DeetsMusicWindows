@@ -26,9 +26,10 @@ Enter. Start a new Claude Code session.
 **Cursor.** Click **Cursor**. Open Cursor › Settings › MCP › Add, or paste into
 `.cursor/mcp.json` in your project, then reload.
 
-**Other apps.** Click **Other**. Any app that can run a local MCP server over standard
-input and output takes the same two values: the command is the path to `deetsmusic.exe`,
-the one argument is `mcp`.
+**Other apps.** Any app that can run a local MCP server over standard input and output
+takes the same values: the command is the path to `deetsmusic.exe`, and the argument is `mcp`.
+Choose **Other (Full)** for a large model; it gets every tool. Choose **Other (Sm)** for a small
+local model (LM Studio, Ollama); it gets ten simpler tools, with the arguments `mcp --small`.
 
 ChatGPT's desktop app does not run local MCP servers, so it cannot control DeetsMusic.
 
@@ -36,7 +37,14 @@ ChatGPT's desktop app does not run local MCP servers, so it cannot control Deets
 
 Once connected, ask in plain words: "play Rumours by Fleetwood Mac", "what is playing",
 "skip this", "queue the album after this one", "start a station from this song", "turn it
-down to 20". The AI searches first, then plays by the result it found.
+down to 20", "love this song", "add this to my Road Trip playlist", "is there an update".
+The AI searches first, then acts on the result it found.
+
+**When DeetsMusic asks you.** The first time an AI app adds to your Apple Music library, adds to
+an Apple Music playlist, or exports a playlist, DeetsMusic shows a question. Press **Allow** to
+let it, then ask the AI again. DeetsMusic asks before every playlist delete. An update never
+installs until you press **Restart now**. To stop library or Apple Music playlist changes, turn
+off **Add to Library** or **Export playlists** in Settings › Apple Music.
 
 ## 4. The command line
 
@@ -60,6 +68,8 @@ deetsmusic queue
 | You see | Do this |
 |---|---|
 | "Agent control is off" | DeetsMusic › Settings › Connections › turn **Agent control** on. |
+| "Waiting for the user" | Answer the question in DeetsMusic, then ask the AI again. |
+| "… is off in DeetsMusic › Settings › Apple Music" | Turn that setting on if you want the AI to make the change. |
 | "no bridge running" or a connection error | Start DeetsMusic. It must be running, in the tray is fine. |
 | "not connected to Apple Music" | Sign in from the title menu › Account. |
 | The AI app says the server failed to start | The path in its config points at a file that is not there. Reinstall DeetsMusic, or click **Copy setup for** again and paste the fresh text. |

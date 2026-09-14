@@ -24,10 +24,11 @@ import {
   type ExportPlan, type ExportResult, type GetSongsResult,
 } from "./playlists";
 
-const NOTICE_KEY = "deets.notice.exportOneWay";
+export const EXPORT_NOTICE_KEY = "deets.notice.exportOneWay";
+const NOTICE_KEY = EXPORT_NOTICE_KEY;
 
 /** Make a fresh Apple copy. `again`: an older copy exists and stays on Apple. */
-async function makeNew(p: Playlist, again: boolean, after: () => void): Promise<void> {
+export async function makeNew(p: Playlist, again: boolean, after: () => void): Promise<void> {
   let r: ExportResult;
   try {
     r = await playlistExportApple(p, "new");
@@ -92,7 +93,7 @@ async function sendAdds(p: Playlist, plan: ExportPlan, after: () => void): Promi
 }
 
 /** Send New Songs: compare first, confirm what Apple can't copy, then write. */
-async function sendNew(p: Playlist, after: () => void): Promise<void> {
+export async function sendNew(p: Playlist, after: () => void): Promise<void> {
   let plan: ExportPlan;
   try {
     plan = await playlistExportPlan(p);
@@ -135,7 +136,7 @@ async function sendNew(p: Playlist, after: () => void): Promise<void> {
 }
 
 /** Get New Songs: the Apple copy's extra songs → the end of the local playlist (§10.4). */
-async function getNew(p: Playlist, after: () => void): Promise<void> {
+export async function getNew(p: Playlist, after: () => void): Promise<void> {
   let r: GetSongsResult;
   try {
     r = await playlistGetAppleSongs(p);

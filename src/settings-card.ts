@@ -96,7 +96,8 @@ const SETUP_CLIENTS: Option[] = [
   { value: "claude-desktop", label: "Claude Desktop" },
   { value: "claude-code", label: "Claude Code" },
   { value: "cursor", label: "Cursor" },
-  { value: "other", label: "Other" },
+  { value: "other-full", label: "Other (Full)" },
+  { value: "other-small", label: "Other (Sm)" },
 ];
 
 export const settingsCard: CardDef = {

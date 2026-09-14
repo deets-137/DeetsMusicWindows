@@ -36,6 +36,15 @@
 //!   GET  /playlists      the user's playlists (Apple mirror + local), zero Apple calls
 //!   POST /search         {term, types?:[…]} — with `types`, the raw catalog results
 //!                        (song hits are materialized so a later play-by-id is local)
+//!   POST /queue/edit     {action: remove|move|jump, index, to?} → the fresh queue
+//!   POST /library        {action: add|favorite|unfavorite, id} — the app's consent rules
+//!   POST /playlist       {action, playlist?, id?, index?, to?, value?} — show · create · add ·
+//!                        remove · move · rename · delete · cover · export · new_copy · get_songs ·
+//!                        import · folder
+//!   POST /folder         {action: list|create|rename|delete, name, value?}
+//!   GET|POST /update     status · {action: check|install|rollback|mode|skip, value?}
+//! The writes (AGENT.md §5) run in the window (agent-writes.ts). A write that needs the user's
+//! answer replies at once with `{pending: "user", message}`.
 //!
 //! Debug: `log()` is an alias onto the app log (log.rs, LOGGING.md): the 400-line ring
 //! served at `/log` plus the rolling `<app_data>/deetsmusic.log`.
@@ -164,8 +173,19 @@ type Pending = Mutex<HashMap<u64, oneshot::Sender<Result<serde_json::Value, Stri
 static PENDING: std::sync::LazyLock<Pending> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 const AGENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+/// An export, Get New Songs, or an import makes one Apple call per 100 songs.
+const AGENT_LONG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
 
 async fn ask(app: &AppHandle, kind: &str, payload: serde_json::Value) -> Result<serde_json::Value, String> {
+    ask_for(app, kind, payload, AGENT_TIMEOUT).await
+}
+
+async fn ask_for(
+    app: &AppHandle,
+    kind: &str,
+    payload: serde_json::Value,
+    timeout: std::time::Duration,
+) -> Result<serde_json::Value, String> {
     let id = NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let (tx, rx) = oneshot::channel();
     PENDING.lock().unwrap().insert(id, tx);
@@ -173,7 +193,7 @@ async fn ask(app: &AppHandle, kind: &str, payload: serde_json::Value) -> Result<
     app.emit_to("main", "agent-request", AgentRequest { id, kind: kind.into(), payload: payload.clone() })
         .map_err(|e| e.to_string())?;
     std::thread::spawn(move || {
-        std::thread::sleep(AGENT_TIMEOUT);
+        std::thread::sleep(timeout);
         if let Some(tx) = PENDING.lock().unwrap().remove(&id) {
             let _ = tx.send(Err("the app window did not answer".into()));
         }
@@ -345,6 +365,96 @@ struct TracksReq {
     tracks: Option<Vec<Track>>,
     /// /queue only: "next" (default) | "later"
     mode: Option<String>,
+    /// /queue only: a row of Up Next to insert at (1 = the top); wins over `mode`.
+    at: Option<u32>,
+    /// /play only: play at once and keep Up Next after it (playTracksKeepQueue).
+    keep_queue: Option<bool>,
+}
+
+/// The write routes (AGENT.md §5): /library, /playlist, /folder, /queue/edit, /update.
+/// Flat on purpose — each route reads the fields its action needs.
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct WriteReq {
+    action: String,
+    /// song:… album:… playlist:… or `current` (the playing song).
+    id: Option<String>,
+    /// playlist:… — the playlist acted on.
+    playlist: Option<String>,
+    /// 1-based rows, as the listings number them.
+    index: Option<u32>,
+    to: Option<u32>,
+    /// A name, a folder, a cover source, an update mode or version.
+    value: Option<String>,
+    /// /folder: the folder's name.
+    name: Option<String>,
+}
+
+/// The songs an `id` names, as the window's payload: `{tracks}`, `{tracks, albumId}` for an
+/// album, or `{current: true}` (the window reads its own queue).
+async fn tracks_payload(app: &AppHandle, id: Option<&str>) -> Result<serde_json::Value, String> {
+    let id = id.map(str::trim).filter(|s| !s.is_empty()).ok_or("unknown: give id: song:… album:… playlist:… or current")?;
+    if id == "current" {
+        return Ok(serde_json::json!({ "current": true }));
+    }
+    match resolve_id(app, id).await? {
+        Target::Tracks(t) if t.is_empty() => Err("unknown: that has no songs".into()),
+        Target::Tracks(t) => {
+            let album = id.strip_prefix("album:").map(str::trim);
+            Ok(serde_json::json!({ "tracks": t, "albumId": album }))
+        }
+        Target::Station(_) => Err("unknown: a station has no songs to add".into()),
+    }
+}
+
+/// A cover source → an image data URL (the window crops and shrinks it), or None to remove the
+/// cover. `value`: an image file path, `song:…` / `album:…` / `current` (that artwork), or `none`.
+async fn cover_image(app: &AppHandle, value: &str) -> Result<Option<String>, String> {
+    use base64::Engine;
+    let v = value.trim().trim_matches('"');
+    if v.is_empty() {
+        return Err("unknown: give value: an image file path, song:…, album:…, current, or none".into());
+    }
+    if v.eq_ignore_ascii_case("none") {
+        return Ok(None);
+    }
+    let (bytes, mime) = if v == "current" || v.starts_with("song:") || v.starts_with("album:") {
+        let template = if v == "current" {
+            app.state::<Hub>().np.lock().unwrap().artwork_template.clone()
+        } else {
+            match resolve_id(app, v).await? {
+                Target::Tracks(ts) => ts.iter().find_map(|t| t.artwork.as_ref().map(|a| a.url_template.clone())),
+                Target::Station(_) => None,
+            }
+        };
+        let url = template
+            .ok_or("unknown: no artwork for that")?
+            .replace("{w}", "1024")
+            .replace("{h}", "1024")
+            .replace("{f}", "jpg");
+        let resp = reqwest::get(&url).await.map_err(|e| format!("artwork fetch: {e}"))?;
+        if !resp.status().is_success() {
+            return Err(format!("artwork fetch: HTTP {}", resp.status()));
+        }
+        (resp.bytes().await.map_err(|e| format!("artwork fetch: {e}"))?.to_vec(), "image/jpeg")
+    } else {
+        let path = std::path::Path::new(v);
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        let mime = match ext.as_str() {
+            "png" => "image/png",
+            "jpg" | "jpeg" => "image/jpeg",
+            "webp" => "image/webp",
+            "gif" => "image/gif",
+            "bmp" => "image/bmp",
+            _ => return Err("unknown: the cover must be a .png, .jpg, .webp, .gif, or .bmp file".into()),
+        };
+        let len = std::fs::metadata(path).map_err(|e| format!("unknown: can't read {v:?}: {e}"))?.len();
+        if len > 10_000_000 {
+            return Err("unknown: the image is over 10 MB".into());
+        }
+        (std::fs::read(path).map_err(|e| format!("unknown: can't read {v:?}: {e}"))?, mime)
+    };
+    Ok(Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes))))
 }
 
 enum Target {
@@ -525,7 +635,10 @@ async fn handle(app: AppHandle, mut req: Request) {
     let paired = origin.is_some() || auth.strip_prefix("Bearer ").map(|t| t.trim() == token).unwrap_or(false);
     // The agent routes (AGENT.md §3) obey the Settings › Connections › Agent control switch. The browser
     // extension (an Origin) is a different feature and is never gated by it.
-    const AGENT_ROUTES: [&str; 6] = ["/command", "/play", "/queue", "/history", "/stations", "/playlists"];
+    const AGENT_ROUTES: &[&str] = &[
+        "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
+        "/playlist", "/library", "/folder", "/update",
+    ];
     let agent_off = !settings.agent_control && origin.is_none() && AGENT_ROUTES.contains(&path.as_str());
 
     if method == Method::Options {
@@ -580,6 +693,14 @@ async fn handle(app: AppHandle, mut req: Request) {
                 }
             }
         }
+        // /add is the extension's. A token caller uses /library, which obeys Agent control and the
+        // app's Add to Library consent (AGENT.md §5).
+        (Method::Post, "/add") if origin.is_none() => json(
+            req,
+            403,
+            serde_json::json!({ "error": "Use POST /library {action: \"add\", id} (AGENT.md §5)." }),
+            origin,
+        ),
         (Method::Post, "/add") => {
             let r: AddReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
@@ -660,10 +781,13 @@ async fn handle(app: AppHandle, mut req: Request) {
                 Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
             };
             let mode = r.mode.clone().unwrap_or_else(|| "next".into());
+            let (at, keep_queue) = (r.at, r.keep_queue.unwrap_or(false));
             let kind = if path == "/play" { "play" } else { "queue" };
             let res = match resolve_target(&app, r).await {
                 Ok(Target::Tracks(tracks)) if tracks.is_empty() => Err("nothing to play: empty collection".into()),
-                Ok(Target::Tracks(tracks)) => ask(&app, kind, serde_json::json!({ "tracks": tracks, "mode": mode })).await,
+                Ok(Target::Tracks(tracks)) => {
+                    ask(&app, kind, serde_json::json!({ "tracks": tracks, "mode": mode, "at": at, "keepQueue": keep_queue })).await
+                }
                 Ok(Target::Station(s)) if kind == "play" => ask(&app, "play-station", serde_json::json!({ "station": s })).await,
                 Ok(Target::Station(_)) => Err("unknown: a station can't be queued, only played".into()),
                 Err(e) => Err(e),
@@ -690,17 +814,75 @@ async fn handle(app: AppHandle, mut req: Request) {
             let limit = query_param(&url, "limit").and_then(|v| v.parse::<u32>().ok()).unwrap_or(50);
             agent_json(req, ask(&app, "history-get", serde_json::json!({ "limit": limit })).await, origin)
         }
+        // ── agent writes (AGENT.md §5) — the window runs them (agent-writes.ts) ──
+        (Method::Post, "/library") | (Method::Post, "/playlist") | (Method::Post, "/folder")
+        | (Method::Post, "/queue/edit") | (Method::Post, "/update") => {
+            let r: WriteReq = match serde_json::from_str(&body) {
+                Ok(r) => r,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            let res = write(&app, path.as_str(), r).await;
+            agent_json(req, res, origin)
+        }
+        (Method::Get, "/update") => agent_json(req, ask(&app, "update-get", serde_json::Value::Null).await, origin),
         _ => json(req, 404, serde_json::json!({ "error": "no such route" }), origin),
     }
 }
 
+/// One write route → the window. `show` is a read the bridge answers itself; `add` and
+/// `cover` resolve their songs or image here first.
+async fn write(app: &AppHandle, path: &str, r: WriteReq) -> Result<serde_json::Value, String> {
+    let merge = |mut base: serde_json::Value, extra: serde_json::Value| {
+        if let (Some(b), Some(e)) = (base.as_object_mut(), extra.as_object()) {
+            b.extend(e.iter().map(|(k, v)| (k.clone(), v.clone())));
+        }
+        base
+    };
+    match path {
+        "/library" => {
+            let tracks = tracks_payload(app, r.id.as_deref()).await?;
+            ask(app, "library", merge(serde_json::json!({ "action": r.action }), tracks)).await
+        }
+        "/playlist" if r.action == "show" => {
+            let id = r.playlist.as_deref().map(str::trim).unwrap_or("");
+            if !id.starts_with("playlist:") {
+                return Err("unknown: give playlist: a playlist:… id (list playlists first)".into());
+            }
+            match resolve_id(app, id).await? {
+                Target::Tracks(t) => Ok(serde_json::json!({ "tracks": t })),
+                Target::Station(_) => Err("unknown: not a playlist".into()),
+            }
+        }
+        "/playlist" => {
+            let mut payload = serde_json::json!({
+                "action": r.action, "playlist": r.playlist, "index": r.index, "to": r.to, "value": r.value,
+            });
+            if r.action == "add" {
+                payload = merge(payload, tracks_payload(app, r.id.as_deref()).await?);
+            }
+            if r.action == "cover" {
+                payload["image"] = cover_image(app, r.value.as_deref().unwrap_or("")).await?.into();
+            }
+            let long = matches!(r.action.as_str(), "export" | "new_copy" | "get_songs" | "import");
+            ask_for(app, "playlist", payload, if long { AGENT_LONG_TIMEOUT } else { AGENT_TIMEOUT }).await
+        }
+        "/folder" => ask(app, "folder", serde_json::json!({ "action": r.action, "name": r.name, "value": r.value })).await,
+        "/queue/edit" => ask(app, "queue-edit", serde_json::json!({ "action": r.action, "index": r.index, "to": r.to })).await,
+        _ => ask(app, "update", serde_json::json!({ "action": r.action, "value": r.value })).await,
+    }
+}
+
 /// Reply for an agent route: the window's result, or the error with a status that
-/// mirrors the other routes (409 not connected · 504 no answer · 502 anything else).
+/// mirrors the other routes (403 a setting blocks it · 409 not connected · 504 no answer ·
+/// 400 bad input · 502 anything else).
 fn agent_json(req: Request, res: Result<serde_json::Value, String>, origin: Option<String>) {
     match res {
         Ok(v) => json(req, 200, if v.is_null() { serde_json::json!({ "ok": true }) } else { v }, origin),
         Err(e) => {
             log(&format!("agent failed: {e}"));
+            if let Some(why) = e.strip_prefix("blocked: ") {
+                return json(req, 403, serde_json::json!({ "error": why }), origin);
+            }
             let status = if e.contains("not connected") {
                 409
             } else if e.contains("did not answer") {

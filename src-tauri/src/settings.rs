@@ -220,17 +220,21 @@ fn cli_path(app: &tauri::AppHandle) -> String {
 }
 
 /// The text the Settings card copies for one client: `claude-desktop`, `claude-code`,
-/// `cursor`, or `other`.
+/// `cursor`, `other-full`, or `other-small` (AGENT.md §4: `mcp` serves every tool, `mcp
+/// --small` the ten a small local model handles well).
 #[tauri::command]
 pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
     let path = cli_path(&app);
+    let small = client == "other-small";
     let json = format!(
-        "{{\n  \"mcpServers\": {{\n    \"deetsmusic\": {{\n      \"command\": \"{}\",\n      \"args\": [\"mcp\"]\n    }}\n  }}\n}}",
-        path.replace('\\', "\\\\")
+        "{{\n  \"mcpServers\": {{\n    \"deetsmusic\": {{\n      \"command\": \"{}\",\n      \"args\": [{}]\n    }}\n  }}\n}}",
+        path.replace('\\', "\\\\"),
+        if small { "\"mcp\", \"--small\"" } else { "\"mcp\"" }
     );
     match client.as_str() {
         "claude-code" => format!("claude mcp add deetsmusic -- \"{path}\" mcp"),
         "claude-desktop" | "cursor" => json,
+        _ if small => format!("Command: {path}\nArguments: mcp --small\n\nAs JSON for an MCP config file:\n{json}"),
         _ => format!("Command: {path}\nArgument: mcp\n\nAs JSON for an MCP config file:\n{json}"),
     }
 }

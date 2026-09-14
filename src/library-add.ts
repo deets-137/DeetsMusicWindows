@@ -21,7 +21,8 @@ import { inLibrary, loadTracks } from "./track-store";
 import { toast, noticeOff } from "./toast";
 import { requestSetting } from "./layout-bus";
 
-const NOTICE_KEY = "deets.notice.addOneWay";
+export const ADD_NOTICE_KEY = "deets.notice.addOneWay";
+const NOTICE_KEY = ADD_NOTICE_KEY;
 
 // ── the "Library Add" setting (mirrors deets.alwaysOnTop / deets.menuMode) ──
 const KEY = "deets.libraryAdd";
@@ -55,7 +56,7 @@ export function libraryAddOffered(t: Track): boolean {
 // locally: the one song, or an album's fetched tracks (fork A). Ids ride the URL, so a
 // dropped playlist's songs go 100 at a time.
 const ADD_BATCH = 100;
-async function addToLibrary(kind: "songs" | "albums", ids: string[], tracks: Track[]): Promise<void> {
+export async function addToLibrary(kind: "songs" | "albums", ids: string[], tracks: Track[]): Promise<void> {
   try {
     if (kind === "albums" || ids.length <= ADD_BATCH) await invoke("apple_add_to_library", { kind, ids, tracks });
     else
@@ -95,7 +96,7 @@ export async function addTrackToLibrary(t: Track): Promise<void> {
 // playlist's tracks all carry a library-relationship id even when the song isn't in the
 // user's library (e.g. an added editorial playlist), so keying off libraryId alone wrongly
 // hid the action inside those playlists.
-const alreadyInLibrary = (t: Track): boolean => inLibrary(t.catalogId) || inLibrary(t.libraryId);
+export const alreadyInLibrary = (t: Track): boolean => inLibrary(t.catalogId) || inLibrary(t.libraryId);
 
 /**
  * A drop on the Library card (DRAG-DROP.md §3) — the menu's behavior: gated by the toggle,

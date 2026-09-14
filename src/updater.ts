@@ -120,7 +120,11 @@ function offerDownload(s: UpdateStatus): void {
   ]);
 }
 
-async function download(): Promise<void> {
+/** The last status Rust reported (null before the first answer). */
+export const updateStatus = (): UpdateStatus | null => status;
+
+/** Download the offered version, then ask to restart (also the agent's `update install`). */
+export async function download(): Promise<void> {
   let s: UpdateStatus;
   try {
     s = take(await invoke<UpdateStatus>("update_download"));
@@ -139,7 +143,7 @@ async function download(): Promise<void> {
   }
 }
 
-function offerRestart(s: UpdateStatus): void {
+export function offerRestart(s: UpdateStatus): void {
   const v = s.version!;
   const required = isRequired(s);
   const text = s.rollback

@@ -29,7 +29,8 @@ import * as queue from "./queue";
 import { resolveEntry } from "./queue-rows";
 import { addTrackToLibrary } from "./library-add";
 import { inLibrary, loadTracks, onTracksChange } from "./track-store";
-import { playTracks, queueTracksNext, queueTracksLater, shuffleQueue, playStation, reconcileUpcoming } from "./player";
+import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, shuffleQueue, playStation, reconcileUpcoming } from "./player";
+import { runAgentWrite } from "./agent-writes";
 import { materializeTrack } from "./search";
 import type { Track } from "./library";
 import type { Station } from "./radio";
@@ -192,7 +193,9 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
       const tracks = (payload?.tracks ?? []) as Track[];
       if (!tracks.length) throw new Error("nothing to play");
       tracks.forEach(materializeTrack);
-      if (kind === "play") await playTracks(tracks, 0, "agent");
+      const at = Number(payload?.at);
+      if (kind === "play") await (payload?.keepQueue ? playTracksKeepQueue(tracks, "agent") : playTracks(tracks, 0, "agent"));
+      else if (Number.isInteger(at) && at >= 1) await queueTracksAt(at - 1, tracks, "agent"); // 1 = top of Up Next
       else if (payload?.mode === "later") await queueTracksLater(tracks, "agent");
       else await queueTracksNext(tracks, "agent");
       return { ok: true, tracks };
@@ -209,8 +212,15 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
       const limit = Math.max(1, Math.min(200, Number(payload?.limit) || 50));
       return { plays: [...queue.getPlayLog()].reverse().slice(0, limit).map(trackOf) };
     }
-    default:
+    case "queue-edit": {
+      await runAgentWrite(kind, payload);
+      return runAgent("queue-get", null); // the fresh numbering, so the next edit's row is right
+    }
+    default: {
+      const write = runAgentWrite(kind, payload); // library · playlist · folder · update (agent-writes.ts)
+      if (write) return write;
       throw new Error(`unknown request ${JSON.stringify(kind)}`);
+    }
   }
 }
 
@@ -223,10 +233,11 @@ const NOTICE_GRACE_MS = 1500;
 const NOTICE_KINDS: ReadonlySet<ToastKind> = new Set(["warn", "error"]);
 const startsPlayback = (kind: string, payload: any): boolean =>
   kind === "play" || kind === "queue" || kind === "play-station" ||
+  (kind === "queue-edit" && payload?.action === "jump") ||
   (kind === "command" && ["next", "previous", "play", "play-pause"].includes(String(payload?.kind)));
 
 async function runAgentWithNotices(kind: string, payload: any): Promise<unknown> {
-  if (kind === "queue-get" || kind === "history-get") return runAgent(kind, payload);
+  if (kind === "queue-get" || kind === "history-get" || kind === "update-get") return runAgent(kind, payload);
   const notices: { kind: ToastKind; text: string }[] = [];
   const off = onToast((t) => {
     if (NOTICE_KINDS.has(t.kind)) notices.push(t);
