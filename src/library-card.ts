@@ -369,6 +369,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
         selected: !!o.selectedId && trackId(t) === o.selectedId,
         badge: explicitBadge(t),
       }),
+    isSelected: o.selectedId ? (t) => trackId(t) === o.selectedId : undefined,
     // Click a song → play it and queue the rest of THIS list from here, in the
     // current sort order (the engine hands us the live sorted view).
     activate: (_t, idx, items) =>

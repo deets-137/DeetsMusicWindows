@@ -138,7 +138,9 @@ frame — the synchronous build (a pane render, a folder re-render) — is itsel
 150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
 seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
 `fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
-menu opening), `appearance theme|skin` (the view transition), `sample` (manual).
+menu opening), `appearance theme|skin` (the view transition), `sample` (manual),
+`window a-b` (a windowed pane's edge patch that cost ≥ 4 ms — collection-window.ts; the
+detail is the rendered item range after the pass).
 
 **The display.** At launch + 3 s the module samples 40 idle frames and logs
 `[perf] display <hz> Hz (period <ms>)`; every window is judged against that period, so a
@@ -245,6 +247,14 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
 - **The appearance publish bug** (bridge `/health` reported the OLD skin after a switch):
   `publishAppearance()` ran outside the view transition, before the attribute flipped.
   Moved into the transition's `after` callback; verified by clicking through Press/Glass.
+- **Library windowing (option A) built and measured the same evening — see
+  [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md) §Results for the before/after table.**
+  The skin-switch and grid-scroll costs above are fixed: skin flip 395–558 → 16–40 ms; cold
+  grid drag 75–82% dropped with ~345 ms long tasks → 1–4% dropped, worst 8–21 ms, no long
+  tasks; DOM 23,093 → ~850 nodes with the Library open. **A caveat for the drag recipe:** a
+  windowing bug that collapses the scroll height makes the drag scroll nothing and report a
+  perfect 0% — print `v.scrollHeight` with the result and distrust a 0% whose `worst` is
+  under one frame.
 - **On disk:** installer 6.2 MB, exe 19 MB, web bundle 1.3 MB (745 KB of it two Liberation
   Serif TTFs — WOFF2 would halve the bundle). WebView2 profile ~400 MB per identifier,
   almost all Chromium's HTTP cache, self-capped.
@@ -306,7 +316,7 @@ Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` 
 can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
 
 **Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
-setting is Settings › Window › **Show notices**, default *Failures*.
+setting is Settings › Window › **Show notices**, default *Everything* (was *Failures* before 2026-09-13).
 
 1. **Look.** `__toast.demo()` in midi: a top-right stack under the Now Playing card,
    newest on top, at most 3 (the stack is capped, so `demo()`'s four toasts show the last

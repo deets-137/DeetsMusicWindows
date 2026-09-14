@@ -25,7 +25,7 @@
 - **Menus & context-menu actions** — §1 "Play Now" scope · §2 Queue menu actions & order ·
   §6 Menu caret affordance (click vs hover) · §9 Per-menu open mode (hover vs click) ·
   §20 Drill-in target (in-place vs Search card)
-- **Playback** — §4 "Previous" reach · §5 Shuffle behavior
+- **Playback** — §4 "Previous" reach · §5 Shuffle behavior · §22 Play on launch (what starts playing)
 - **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
 - **Stats** — §7 Listened-through threshold
 - **Library** — §21 Sync cadence (full pass every 6 h; incremental at startup)
@@ -528,8 +528,8 @@ Radio settings tenant.
 ## 18. Quiet-failure feedback — the toast system
 
 > **BUILT 2026-09-13 — see [TOASTS.md](TOASTS.md)** (the spec, the sticky rule, every call
-> site, and what was investigated and not built). Setting: `toasts` = `failures` (default)
-> · `all` · `off`, Settings › Window › Show notices. Decisions taken that day: mini/midi
+> site, and what was investigated and not built). Setting: `toasts` = `all` (default since 2026-09-13)
+> · `failures` · `off`, Settings › Window › Show notices. Decisions taken that day: mini/midi
 > bottom-centred, max top-right; a stack of 3; `error` sticky by default; notices show under
 > `failures`. The text below is the design history, kept for the "why".
 
@@ -774,3 +774,62 @@ automatic). Possibly a second switch: incremental at startup on/off.
 `librarySyncWindowHours` key in `deets.settings`, passed to `library_sync` as an argument
 (the constant `FULL_SYNC_EVERY_SECS` becomes the default). The log line
 `library: incremental sync done, N new in P page(s)` shows what a launch cost.
+
+## 22. Play on launch — what starts playing when the app opens
+
+**Status (2026-09-13): documented, not built.** Decided in the click-to-sound follow-up: the
+hover pre-insert lever is skipped; the launch story is a setting instead. Build in a later
+session after [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md).
+
+**Behavior today.** *Restore on launch* (`restoreQueue`, SETTINGS.md) puts last session's
+song back in Now Playing **paused**, with Up Next and Previous intact. Nothing is fed to
+MusicKit at launch (pre-feeding was probed and rejected — UX-COVERUPS.md §4), so the first
+Play pays the cold cost: 1.7–1.9 s to audible. The user always presses Play.
+
+**The setting.** One CHOICE row, Settings › Playback, **"At launch, play"**, plus a picker
+that appears for the choices that need a source:
+
+| Pill | What happens at launch | Source picker |
+|---|---|---|
+| *Nothing* (default) | today's behavior — restore per `restoreQueue`, wait for Play | — |
+| *Last song* | restore, then Play at once (resume where the last session stopped, from the top of that song) | — |
+| *A station* | `playStation(s)` | one station (the Radio card's list: Apple's featured + the user's recents) |
+| *A playlist* | `playTracks(tracks, 0, "playlist:<id>")`; a second pill *In order* / *Shuffled* | one playlist, or **Favorites** (below) |
+| *A song or album* | `playTracks` with that song, or the album in disc/track order | one song or album from the library |
+
+The picker is the Search card's summon pattern (§16): the row shows the chosen name; clicking
+it opens a mini Search card scoped to the kind (stations / playlists / songs + albums); pick
+→ the row updates. Stored as `launchPlay: { mode, id?, name?, order?: "top" | "shuffle" }`
+in `deets.settings`. Store the **name** too so the row can show it offline; resolve the id at
+launch and fall back to *Nothing* with a failure toast if the item is gone.
+
+**Favorite playlists (the pool).** A playlist can be starred (right-click → *Favorite for
+launch*; the Playlists card shows a small star on the row). With *A playlist* and the source
+set to **Favorites**, launch picks **one starred playlist at random** — not the same one as
+last launch when there are two or more (remember the last pick in the settings blob). *In
+order* / *Shuffled* applies to the pick. The star is local state (the playlists store, not an
+Apple write). Zero stars → treat as *Nothing* with a one-line hint in the row.
+
+**Rules.**
+- A tray launch (*Start with Windows*, `--tray`) **never** auto-plays. Sound from a hidden
+  window at sign-in is a bug, not a feature. Auto-play runs only for a launch that shows the
+  window; opening the window later from the tray does not trigger it either (once per
+  process, and only at a visible start).
+- The mode replaces the restored queue when it plays a source (the source becomes the
+  context). *Last song* keeps the restored queue as is. The blob is still written every
+  session, so *Restore on launch* keeps working when the user switches back to *Nothing*.
+- Wait for the library sync's first page and MusicKit's idle warm-up (the 1.5 s warm,
+  HANDOFF "click-to-sound") before the play call; a play that fails heals by re-window like
+  any other (UX-COVERUPS.md §5).
+- Cost: one Apple play, same as a click. No polling, no extra fetches beyond what the
+  chosen source needs (a station = the station call; a playlist = its tracks if not cached).
+
+**Open questions for the design talk.**
+1. Does WebView2 allow audio without a gesture at launch? MusicKit's play from `setup` is
+   a programmatic start; Chromium's autoplay policy is relaxed in WebView2 but must be
+   checked in the dev app first (a `[player] play` failure with `NotAllowedError` is the
+   sign). If blocked, the mode degrades to *Last song* semantics: loaded, paused, one Play.
+2. Should *Last song* resume mid-song (seek to the saved position) or start it over? The
+   blob does not save the position today; resuming would add one field.
+3. Does *A station* belong in Favorites too (a pool of stations and playlists)? Suggest
+   no for v1 — one pool of playlists keeps the row readable.

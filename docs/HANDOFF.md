@@ -154,10 +154,12 @@ app at once (`AuthStatus::Failed`), including Apple's `AUTHORIZATION_ERROR` on a
 what happened and what to do, for each of these; (7) Apple's post-rotation flapping (200/401
 for 15+ min) does not end in a saved dead token. Test each one on purpose before shipping it.
 
-**2026-09-13 — Library virtualization (option A, windowing): decided to explore, not
-started.** Fresh branch + session. Cold start: **[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)**
-(measurements, how the collection engine renders, what must not break, the forks to settle
-first). Proven fallback if A stalls: option B (`content-visibility: auto` on rows / 60-tile
+**2026-09-13 — Library virtualization (option A, windowing): BUILT on `optimus-deets`,
+measured, scripted checks pass, awaiting the desk test.** `src/collection-window.ts`; how it
+works: UI-ARCHITECTURE.md §"Long lists: windowing"; before/after and the hand-test list:
+**[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)** §Results (skin flip 395–558 →
+16–40 ms; cold grid drag 75–82% dropped with 345 ms long tasks → 1–4%, worst 8–21 ms; DOM
+23k → ~1k nodes). Proven fallback if A stalls: option B (`content-visibility: auto` on rows / 60-tile
 blocks), measured in DEBUGGING.md. Also shipped that day: the ambient skin layers
 (compositor-only, `--ambient-fps`, paused when hidden) and Settings › Window › **Animate
 backgrounds** — both need a fresh installer to reach the installed app.
@@ -280,7 +282,11 @@ clicked song is id-resolved; MusicKit + the Widevine module warm at idle 1.5 s a
 launch; a song that fails to start heals by re-window (explicit Next, auto-advance, and a
 dead id in the grow all verified). Our part of a click is now ~10 ms; what remains is MusicKit's own
 teardown/lookup/license/buffering, 1.0–1.7 s warm and 1.7–1.9 s cold to audible. The
-next levers (hover pre-insert, paused restore at launch) are design items, not built.
+next levers were settled 2026-09-13: hover pre-insert **skipped**; the launch story is a
+setting, [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) §22 *Play on launch* (last song / a
+station / a playlist in order or shuffled / a song or album, plus starred playlists as a
+random pool), documented, not built. Library windowing (option A) is **built** — see the
+2026-09-13 entry above and [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md) §Results.
 **Same day, built and verified:** the queue **restores across sessions** — one JSON blob
 in the cache db's `meta` (`queue-persist.ts`, QUEUE.md "Restore across sessions"), the
 **Restore on launch** settings row (*Last song* default / *Up Next* / *Nothing*), Play

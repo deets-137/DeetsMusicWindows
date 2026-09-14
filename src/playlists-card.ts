@@ -205,6 +205,25 @@ export const playlistsCard: CardDef = {
       });
     };
 
+    // The derived cover (NEXT-VERSION §2), computed HERE from the tracks in hand: the first
+    // four distinct track-cover templates among the first 40 rows — the same rule as Rust's
+    // `mosaic_urls`, which only sees the content cache and so is empty on a playlist's
+    // first open (and partial while a paged fetch is still landing). With the tracks
+    // cached, this is the truth; the playlist row's own `coverUrls` is the fallback.
+    const mosaicOf = (ts: Track[] | undefined): string[] | undefined => {
+      if (!ts?.length) return undefined;
+      const urls: string[] = [];
+      for (const t of ts.slice(0, 40)) {
+        const u = t.artwork?.urlTemplate;
+        if (u && !urls.includes(u)) {
+          urls.push(u);
+          if (urls.length === 4) break;
+        }
+      }
+      return urls.length ? urls : undefined;
+    };
+    const coverOf = (p: Playlist): string[] | undefined => mosaicOf(trackCache.get(pid(p))) ?? p.coverUrls;
+
     // Drill-in loader: `open` is synchronous, so the detail context reads from the
     // cache and this kicks the fetch; the reload re-renders the (detail) pane when
     // the tracks land. Overview subtitles pick the count up on the way back.
@@ -296,7 +315,7 @@ export const playlistsCard: CardDef = {
           const total = ts ? formatTotal(ts.reduce((acc, t) => acc + (t.durationMs ?? 0), 0)) : "";
           const source = p.source === "local" ? "Yours" : p.curatorName ?? "Apple Music";
           return {
-            cover: heroCover(p.artwork, p.name, p.coverUrls),
+            cover: heroCover(p.artwork, p.name, coverOf(p)), // live: fills in when the tracks land
             title: p.name,
             meta: [n != null ? `${n} song${n === 1 ? "" : "s"}` : "", total, source].filter(Boolean).join(" · "),
           };
@@ -463,6 +482,7 @@ export const playlistsCard: CardDef = {
             { key: "added", label: "Added Date", type: "num", get: (x) => (x.kind === "playlist" ? recency(x.p.dateAdded) : undefined) },
           ],
           list: shelf,
+          mixed: true, // shelf headers among rows — never windowed (collection-window.ts)
           name: (x) => (x.kind === "playlist" ? x.p.name : x.label),
           // Headers never match — a query flattens to plain playlist hits.
           match: (x, q) =>
@@ -472,7 +492,7 @@ export const playlistsCard: CardDef = {
             x.kind === "playlist"
               ? musicCell(density, idx, x.p.artwork, x.p.name, subOf(x.p), {
                   badge: x.p.source === "apple" ? APPLE_SIGIL : "",
-                  mosaic: x.p.coverUrls, // the derived cover when there's no artwork
+                  mosaic: coverOf(x.p), // the derived cover when there's no artwork
                 })
               : shelfCell(x, idx),
           activate: (x) => {

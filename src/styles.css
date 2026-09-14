@@ -947,6 +947,12 @@ body {
 /* .lib-view fills the body and scrolls; the modifier class (.lib-list /
    .lib-grid / .lib-empty) set by the controller decides the layout. */
 .lib-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* Windowed (collection-window.ts): only the rows near the viewport exist, between two
+   spacers that hold the true scroll height. overflow-anchor off — the windower moves
+   scrollTop itself when rows are inserted above; Chromium's anchoring would double it. */
+.lib-view--windowed { overflow-anchor: none; }
+.lib-spacer { display: block; }
+.lib-grid .lib-spacer { grid-column: 1 / -1; }
 
 /* lines */
 /* A BLOCK stack, not a flex column, and every art row is a RELAYOUT BOUNDARY (size +
@@ -1197,7 +1203,15 @@ body {
   color: var(--subtext);
   font-size: var(--fs-title);
 }
-.lib-tile__meta { display: flex; flex-direction: column; min-width: 0; }
+/* Pinned to two lines (a skin token) so every tile in a row has one height — a tile with
+   a badge subrow used to run a pixel or two taller; the windower needs one row pitch. */
+.lib-tile__meta {
+  display: flex; flex-direction: column; min-width: 0;
+  font-size: var(--fs-subtext);
+  line-height: var(--lib-tile-lh);
+  height: calc(2 * var(--lib-tile-lh));
+  overflow: hidden;
+}
 .lib-tile__name {
   color: var(--text);
   font-size: var(--fs-subtext);
@@ -1220,7 +1234,7 @@ body {
 }
 /* line-height:1 collapses the count's tall line box to its glyph, so center-align
    lands the sigil on the text's optical center instead of dipping below it. */
-.lib-tile__subrow { display: flex; align-items: center; gap: var(--space-1); min-width: 0; line-height: 1; }
+.lib-tile__subrow { display: flex; align-items: center; gap: var(--space-1); min-width: 0; line-height: 1; height: var(--lib-tile-lh); }
 .lib-tile__subrow .lib-tile__sub { flex: 1 1 auto; }   /* count takes the space, sigil sits right */
 .lib-tile__subrow .lib-src-badge { margin-top: -0.08em; } /* optical lift: glyph mass reads a hair low */
 /* Explicit: a filled square with the letter cut out in the surface color. Inline

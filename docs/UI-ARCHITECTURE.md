@@ -506,6 +506,44 @@ With the boundary, layout stops at the row. Keep it when restyling rows: a row's
 stay pinned by the token, and a new row voice that changes the type stack needs its own
 `--lib-row-h`. Rows without art keep their natural height.
 
+### Long lists: windowing (`src/collection-window.ts`, 2026-09-13)
+
+A pane whose list is longer than `WINDOW_MIN` (200) and whose grouping is not `mixed`
+(shelf headers among rows — Playlists overview, Radio root) renders only the rows near the
+viewport. The engine hands the view to `windowView()`; smaller panes render whole, exactly
+as before. Design record + measurements: [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md).
+
+- **Shape:** `[hero?] [top spacer] rows… [bottom spacer]`. The spacers (`.lib-spacer`,
+  `grid-column: 1 / -1` in grids) hold the true scroll height; a zero-height spacer is
+  `display: none` so a grid adds no gap for it. The slice starts and ends on a whole grid
+  row, so auto-placement lines up under the spacer.
+- **Geometry is measured, never tokened:** row pitch (distance between two rendered rows),
+  column count (`gridTemplateColumns` of the computed style), and the hero's extent (the
+  first item's offset when the slice starts at 0). A skin switch or a column-count change
+  re-measures on the next frame (a `MutationObserver` on `<html>`'s `data-skin` /
+  `data-theme` / `data-surface` + a `ResizeObserver` on the view) and restores the place by
+  **row + fraction**, so the same first row stays visible when 46 px rows become 49 px.
+- **Edge patch:** a pass removes rows that left the range and inserts the missing edge as
+  one HTML string. Visible nodes are never re-created — hover, `is-context`, loaded covers
+  survive, and an `<img>` is never reused for another item. A plain scroll frame renders
+  only the visible rows + 2 (`URGENT_ROWS`) synchronously (scroll events fire before paint,
+  so no blank frame even on End) and fills the buffer — one viewport, min `MIN_BUFFER_PX`
+  1200 px each side — `FILL_PAUSE_MS` after the scroll pauses.
+- **Rebuild** (sort, search, density, sync): the current height is folded into the bottom
+  spacer *before* any node is removed, so scrollTop never clamps and no scroll event fires
+  (one would dismiss the open Sort/View pop). Programmatic scrolls (`scrollTo`, `reveal`)
+  `prime()` the geometry first for the same reason.
+- **`overflow-anchor: none`** (`.lib-view--windowed`) is mandatory and the engine resets
+  `className` per render, so the windower re-adds the class before every mutation —
+  with anchoring on, one forced layout let Chromium move scrollTop by ~2.7k px.
+- **Every finder searches the model and reveals by index** — `reveal(i, block)` — never
+  the DOM (`Grouping.isSelected` feeds the selected-row reveal). WebView2's native Ctrl+F
+  bar sees only rendered rows of a windowed list; the Search pill is the app's find.
+- **Tiles are one height per row:** `.lib-tile__meta` is pinned to two `--lib-tile-lh`
+  lines (a tile with a badge subrow used to run a pixel or two taller).
+- Debug readout: `view.dataset.win` = `cols×pitch+hero`; `[perf] frames window a-b` logs a
+  pass that cost ≥ 4 ms.
+
 ### Detail hero (album / playlist)
 
 A drilled album or playlist opens on a **hero**: the cover big (`--hero-cover`, 180px

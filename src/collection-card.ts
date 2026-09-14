@@ -13,6 +13,7 @@
 
 import * as frames from "./frames";
 import { openContextMenu, type MenuItem } from "./context-menu";
+import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -50,6 +51,11 @@ export interface Grouping<T = any> {
   // Right-click actions for an item (Play Now / Play Next / Add to Queue …). Omit for
   // groupings with no menu (e.g. Artists for now). Gets the sorted view + index too.
   menu?: (x: T, index: number, items: T[]) => MenuItem[];
+  /** The highlighted item (a drilled-in song). Lets the engine find its index and reveal
+   *  it when the pane is windowed and the element may not exist yet. */
+  isSelected?: (x: T) => boolean;
+  /** Items of unequal height (shelf headers among rows): never windowed. */
+  mixed?: boolean;
 }
 
 /**
@@ -156,6 +162,14 @@ export function initCollectionCard(opts: CardOptions) {
 
   const stack: Frame[] = [];
   let curPane: HTMLElement | null = null;
+  // one windower per pane view while its list is above WINDOW_MIN (collection-window.ts)
+  const windowers = new WeakMap<HTMLElement, Windower>();
+  const dropWindower = (pane: HTMLElement | null) => {
+    const v = pane?.querySelector<HTMLElement>("[data-view]");
+    if (!v) return;
+    windowers.get(v)?.destroy();
+    windowers.delete(v);
+  };
   let animating = false;
 
   const cur = () => stack[stack.length - 1];
@@ -337,11 +351,22 @@ export function initCollectionCard(opts: CardOptions) {
     view.dataset.openable = g.open || g.activate ? "1" : "";
     const hero = heroHTML(f.ctx.hero?.()); // rides inside the scroll, above the rows (1A)
     if (!items.length) {
+      dropWindower(pane);
       view.className = "lib-view lib-empty";
       view.innerHTML = `${hero}<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`;
       return;
     }
     view.className = f.density === "lines" ? "lib-view lib-list" : "lib-view lib-grid";
+    // Long homogeneous lists are windowed (only the rows near the viewport exist); the
+    // rest render whole, exactly as before. The gate keeps every small pane untouched.
+    if (items.length > WINDOW_MIN && !g.mixed) {
+      const spec = { count: items.length, render: (i: number) => g.render(items[i], f.density, i), hero };
+      const w = windowers.get(view);
+      if (w) w.update(spec);
+      else windowers.set(view, windowView(view, spec));
+      return;
+    }
+    dropWindower(pane);
     view.innerHTML = hero + items.map((x, i) => g.render(x, f.density, i)).join("");
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
@@ -359,6 +384,15 @@ export function initCollectionCard(opts: CardOptions) {
   const applyScroll = (pane: HTMLElement, f: Frame) => {
     const v = pane.querySelector<HTMLElement>("[data-view]");
     if (!v) return;
+    const w = windowers.get(v);
+    if (w) {
+      // windowed: the selected element may not exist — find its index in the model
+      const g = groupingOf(f);
+      const i = g.isSelected ? f.items.findIndex(g.isSelected) : -1;
+      if (i >= 0) w.reveal(i, "center");
+      else w.scrollTo(f.scroll);
+      return;
+    }
     const sel = v.querySelector(".is-selected");
     if (sel) sel.scrollIntoView({ block: "center" });
     else v.scrollTop = f.scroll;
@@ -383,7 +417,10 @@ export function initCollectionCard(opts: CardOptions) {
       if (done) return;
       done = true;
       incoming.removeEventListener("transitionend", finish);
-      if (outgoing) outgoing.remove();
+      if (outgoing) {
+        dropWindower(outgoing);
+        outgoing.remove();
+      }
       animating = false;
       endFrames();
       onDone?.();
@@ -665,11 +702,15 @@ export function initCollectionCard(opts: CardOptions) {
       const keep = v ? v.scrollTop : 0;
       renderViewInto(curPane, cur());
       const v2 = curPane.querySelector<HTMLElement>("[data-view]");
-      if (v2) v2.scrollTop = keep;
+      if (!v2) return;
+      const w = windowers.get(v2);
+      if (w) w.scrollTo(keep);
+      else v2.scrollTop = keep;
     },
     // Remove the engine's document-level listeners. The viewport/back listeners live on
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {
+      dropWindower(curPane); // its observers outlive the subtree otherwise
       closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
