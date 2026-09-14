@@ -359,8 +359,8 @@ setting is Settings › Look and feel › **Show notices**, default *Everything*
 6. **Dead songs.** Play a song whose catalog id Apple dropped (the log's
    `player:deadFresh` from a past session names candidates, or `__music` search for a
    pulled release). Expect one warn "Skipped “Title” — Apple Music no longer offers it."
-   Play it again: silent (the mark is on disk). A cache reset (Settings › Library)
-   makes it fresh again.
+   Play it again: silent (the mark is on disk). The mark expires after 7 days,
+   and then the id is tried again.
 7. **Sign-in timeout.** Dev builds read `localStorage["deets.dev.signInTimeoutMs"]`
    (`apple.ts`) to shorten the 5-minute wait. First back up
    `%APPDATA%\com.deetsmusic.dev\user-token.txt`, because Disconnect deletes it. Set the key

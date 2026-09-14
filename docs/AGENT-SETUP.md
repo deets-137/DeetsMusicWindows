@@ -7,7 +7,7 @@ connection is local only.
 
 ## 1. Turn it on
 
-Open DeetsMusic › the title menu › **Settings…** › **Agents**. **Agent control** is on by
+Open DeetsMusic › the title menu › **Settings…** › **Connections**. **Agent control** is on by
 default. The line under it reads "Ready at 127.0.0.1:47825" (the port can differ). Turn the
 switch off and every AI app and the command line get one reply: "Agent control is off."
 

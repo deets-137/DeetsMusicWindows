@@ -5,7 +5,7 @@ TypeScript front end, and a Rust back end, with full DRM playback and a token-dr
 theming system.
 
 **Status:** installable — playback, sign-in, and library sync all work; shipping as a
-per-user NSIS installer (0.1.3) · **Platform:** Windows 11 desktop (Tauri v2)
+per-user NSIS installer (0.4.0) · **Platform:** Windows 11 desktop (Tauri v2)
 
 Not to be confused with [DeetsMusic](https://github.com/deets-137/DeetsMusic), the
 separate SwiftUI iOS app. This is the Windows port, and it shares no code with it.
@@ -46,8 +46,12 @@ reads/writes go to `api.music.apple.com` over `reqwest`.
 - Rust (`x86_64-pc-windows-msvc`) + **Visual Studio 2022 Build Tools** (Desktop
   development with C++ — provides `link.exe`)
 - Node + npm
-- An **Apple Developer** MusicKit key — see
-  [`src-tauri/secrets/README.md`](src-tauri/secrets/README.md)
+- Optional: an **Apple Developer** MusicKit key, to sign tokens locally in a dev build —
+  see [`src-tauri/secrets/README.md`](src-tauri/secrets/README.md). Without one, a dev build
+  fetches its token the same way the installed app does.
+
+To use the app, you do not need any of this. You need Windows 11, an Apple Music
+subscription, and the installer ([docs/RELEASE-NOTES.md](docs/RELEASE-NOTES.md)).
 
 ## Running it
 
@@ -66,8 +70,9 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 [docs/RELEASE-NOTES.md](docs/RELEASE-NOTES.md) — what each version brings, and how to install ·
 [docs/RELEASE.md](docs/RELEASE.md) — build, install, uninstall ·
 [docs/TRAY.md](docs/TRAY.md) — tray, panel, window lifecycle ·
-[docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) — connect Claude Desktop, Claude Code, Cursor, or a terminal (plain words)
-[docs/AGENT.md](docs/AGENT.md) — the CLI / MCP surface
+[docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) — connect Claude Desktop, Claude Code, Cursor, or a terminal (plain words) ·
+[docs/AGENT.md](docs/AGENT.md) — the CLI / MCP surface ·
+[docs/ideas/](docs/ideas/) — feature ideas that are **not built**
 
 ## Layout
 
@@ -79,8 +84,7 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 
 ## Notes
 
-Toward v1: a settings surface, SMTC/media-key integration, and the mini/maximized window
-compositions. The installer is **unsigned**, so SmartScreen warns on first run, and there is
+The roadmap is in [docs/HANDOFF.md](docs/HANDOFF.md). The installer is **unsigned**, so SmartScreen warns on first run, and there is
 no auto-updater — each release is a fresh installer, archived locally
 ([docs/RELEASE.md](docs/RELEASE.md)).
 

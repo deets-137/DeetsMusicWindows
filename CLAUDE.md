@@ -13,7 +13,7 @@ front-end, Rust back-end).
   the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, install, uninstall.
 - `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
   call site; `__toast.demo()` in the console shows one of each kind.
-- `docs/LOGGING.md` — the rolling log file + `diag.ts` (scoped, not built); the support
+- `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 
 ## How to verify your work

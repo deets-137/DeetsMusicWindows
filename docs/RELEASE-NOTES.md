@@ -1,6 +1,26 @@
 # Release notes
 
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
+Settings paths are the current names (Settings sections were regrouped after 0.4.0).
+
+## 0.4.0 — 2026-09-13
+
+**Sign in from a clear page.** The browser sign-in now opens a DeetsMusic sign-in page. When
+you finish, the page sends you back to DeetsMusic and a notice confirms the sign-in. Click the
+Account button again to cancel a sign-in that is still waiting.
+
+**A large Library scrolls smoothly.** DeetsMusic draws only the rows near the screen, so a
+library of thousands of songs scrolls smoothly and uses less memory.
+
+**Settings are easier to scan.** Each section folds and remembers whether you left it open.
+Notices now show for every action by default (Settings › Look and feel › Show notices).
+
+### Installing
+
+- **Windows SmartScreen will warn you.** The installer is not code-signed yet. Click
+  **More info**, then **Run anyway**.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
 
 ## 0.3.2 — 2026-09-13
 
@@ -36,10 +56,10 @@ The old "Unable to prepare for playback" box is gone.
 sign-in shows as "Sign-in expired" under Account. A sign-in that does not finish says so at
 once, with a Try again button.
 
-**Notices.** Short messages confirm or explain actions (Settings › Window › Show notices).
+**Notices.** Short messages confirm or explain actions (Settings › Look and feel › Show notices).
 
 **Also new:** smoother scrolling through a large Library, calmer moving backgrounds with a
-Settings › Window › Animate backgrounds choice, an Add to Library square on Search songs,
+Settings › Look and feel › Animate backgrounds choice, an Add to Library square on Search songs,
 the official Apple Music icon on Apple playlists, and Settings › About.
 
 ### Installing
@@ -84,7 +104,7 @@ The volume slider then controls the speaker, and the speaker starts at 20 % the 
 The HomePod's touch surface and Siri control playback. The Home app on an iPhone shows the
 song and its cover. The PC keeps playing too in this version.
 
-**Control from an AI app or the command line.** Settings › Agents. Claude Desktop, Claude
+**Control from an AI app or the command line.** Settings › Connections. Claude Desktop, Claude
 Code, Cursor and any local MCP app can play, pause, search, queue and read what is playing.
 "Copy setup for" gives you the exact text to paste. The guide is
 [docs/AGENT-SETUP.md](AGENT-SETUP.md). Turn it off with one switch.

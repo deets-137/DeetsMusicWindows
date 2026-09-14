@@ -17,9 +17,9 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](SETTINGS.md) (the settings store + card) ·
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
-[ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [DeetsOTD.md](DeetsOTD.md) ·
-[DeetsWeather.md](DeetsWeather.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
-[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build / install / uninstall).
+[ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
+[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build / install / uninstall). Ideas, not built:
+[ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
 
 ---
 
@@ -386,7 +386,7 @@ Claude Code / Cursor / Other; the plain-words [AGENT-SETUP.md](AGENT-SETUP.md)),
 **Start with Windows** (HKCU Run key, `--tray` launch starts hidden; seeded once on the first
 installed run, DeetsAirplay pattern).
 
-**Deferred, when prioritized:** **DeetsWeather** ([DeetsWeather.md](DeetsWeather.md);
+**Deferred, when prioritized:** **DeetsWeather** ([ideas/DeetsWeather.md](ideas/DeetsWeather.md);
 its own-station premise needs a rethink — that engine was dropped) · **CLI / local-agent
 control** · **mini/max surface compositions** · **virtualized scrolling** (only once libraries
 get large).

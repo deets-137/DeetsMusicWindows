@@ -12,6 +12,10 @@ front-end, Rust back-end).
   `docs/EXTENSION.md` — browser extension + the loopback bridge (`extension/` is the MV3
   source); `docs/AGENT.md` — the agent/CLI routes on that bridge; `docs/RELEASE.md` — build,
   install, uninstall.
+- `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
+  call site; `__toast.demo()` in the console shows one of each kind.
+- `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11).
+- `docs/ideas/` — feature ideas that are **not built**.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -22,6 +26,9 @@ front-end, Rust back-end).
   `npx vite build` to catch type/compile/bundle errors before handing off.
 - If something genuinely can't be reasoned through and the user is away, ask them to
   test rather than scaffolding a harness.
+- Playback, frame smoothness, and heaviness can be measured from a session (dev-only
+  telemetry, `[perf]` lines in `%APPDATA%\com.deetsmusic.dev\deetsmusic.log`). Recipes:
+  `docs/DEBUGGING.md`.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
@@ -31,9 +38,9 @@ front-end, Rust back-end).
   geometry/type/spacing/motion → skin token.
 - He values polish and good stewardship (e.g. minimize Apple API calls; ask cost before
   committing to a fetch-heavy approach).
-- **Do NOT delegate to subagents (the `Agent` tool) for this codebase.** It's small
-  enough to hold in context directly — explore, read, and edit files yourself so you
-  keep the full picture while building. Only exception: if he explicitly asks for one.
+- **Do NOT delegate to subagents for this codebase.** It's small enough to hold in context
+  directly — explore, read, and edit files yourself so you keep the full picture while
+  building. Only exception: if he explicitly asks for one.
 
 ## How to explain things to me
 - Write in ASD-STE100 (Simplified Technical English): short sentences, active voice, one
@@ -58,5 +65,4 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 ## Conventions
 - Front-end only ever sees the normalized model (`Track`/`Album`/…), never raw Apple
   shapes — normalization lives in Rust.
-- Commit only when the user asks. Co-author trailer:
-  `Co-Authored-By: Codex Opus 4.8 <noreply@anthropic.com>`.
+- Commit only when the user asks.

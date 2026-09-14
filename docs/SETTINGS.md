@@ -40,8 +40,6 @@ Rust-owned too — [AIRPLAY.md](AIRPLAY.md) §7.) A
 
 ## 3. The rows (v1 cut)
 
-| Section | Row | Key | Values (default first) | Read site |
-|---|---|---|---|---|
 Labels are one short active statement; a choice row reads as a sentence completed by the
 chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
