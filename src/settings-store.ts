@@ -64,7 +64,7 @@ export const DEFAULTS: Settings = {
   surfaceAutoFlip: true,
   appearanceMotion: true,
   backgroundMotion: "on",
-  toasts: "failures",
+  toasts: "all", // user's call 2026-09-13: Everything by default
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue

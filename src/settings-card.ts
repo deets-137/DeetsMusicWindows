@@ -17,6 +17,7 @@ import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./l
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
 import * as diag from "./diag";
+import * as frames from "./frames";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -62,7 +63,22 @@ interface Section {
   rows: Row[];
   /** Extra markup after the rows (a status line, action rows); events are wired by data attributes. */
   tail?: string;
+  /** The header's row count, when the tail holds rows of its own; default `rows.length`. */
+  count?: number;
+  /** Open until the user folds it (About). Every other section starts collapsed. */
+  defaultOpen?: boolean;
 }
+
+// Section folds (the Playlists card's fold idiom). Only a user's own fold persists, as
+// title → open; a section with no entry takes its `defaultOpen`.
+const FOLDS_KEY = "deets.settings.folds";
+const loadFolds = (): Record<string, boolean> => {
+  try {
+    return JSON.parse(localStorage.getItem(FOLDS_KEY) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+};
 
 const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
   kind: "toggle",
@@ -139,8 +155,8 @@ function mountSettings(host: HTMLElement): CardInstance {
         },
         {
           kind: "choice", id: "toasts", label: "Show notices", key: "toasts",
-          hint: "Failures: only when an action couldn't do what it said. Everything: confirmations too. Off: nothing (the log still records)",
-          options: [{ value: "failures", label: "Failures" }, { value: "all", label: "Everything" }, { value: "off", label: "Off" }],
+          hint: "Everything: confirmations too. Failures: only when an action couldn't do what it said. Off: nothing (the log still records)",
+          options: [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }, { value: "off", label: "Off" }],
         },
         {
           kind: "toggle",
@@ -235,6 +251,7 @@ function mountSettings(host: HTMLElement): CardInstance {
     {
       title: "Extension",
       rows: [],
+      count: 1,
       // EXTENSION.md: bridge status + the install page.
       tail: `<div class="set__status" id="set-ext-status">Bridge off</div>
         <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Install guide</span></button>`,
@@ -298,6 +315,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       // Trademark + non-affiliation notice (RELEASE.md §7, Apple's third-party guidelines).
       title: "About",
       rows: [],
+      defaultOpen: true,
       tail:
         `<div class="set__status">Apple Music is a trademark of Apple Inc. ` +
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
@@ -404,11 +422,37 @@ function mountSettings(host: HTMLElement): CardInstance {
   body.addEventListener("scroll", closeMenus, { passive: true });
   window.addEventListener("resize", closeMenus);
 
+  // ── section folds: the header is a button; a collapsed section renders no rows ──
+  const folds = loadFolds();
+  const isOpen = (s: Section) => folds[s.title] ?? !!s.defaultOpen;
+  const toggleSection = (title: string) => {
+    const s = sections.find((x) => x.title === title);
+    if (!s) return;
+    const was = isOpen(s);
+    frames.during("fold", 250, was ? "close" : "open");
+    folds[title] = !was;
+    try {
+      localStorage.setItem(FOLDS_KEY, JSON.stringify(folds));
+    } catch {
+      /* storage unavailable — the fold still works for the session */
+    }
+    render();
+  };
+  const headHTML = (s: Section): string => {
+    const open = isOpen(s);
+    const count = s.count ?? s.rows.length;
+    return (
+      `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-fold="${esc(s.title)}" aria-expanded="${open}">` +
+      `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+      `<span>${esc(s.title)}</span>${count ? `<span class="lib-shelf__count">${count}</span>` : ""}</button></h3>`
+    );
+  };
+
   const render = () => {
     dropMenus();
     body.innerHTML =
       sections
-        .map((s) => `<section class="set__section"><h3 class="set__head">${esc(s.title)}</h3>${s.rows.map(rowHTML).join("")}${s.tail ?? ""}</section>`)
+        .map((s) => `<section class="set__section">${headHTML(s)}${isOpen(s) ? s.rows.map(rowHTML).join("") + (s.tail ?? "") : ""}</section>`)
         .join("");
     wireMenus();
     refreshExtension();
@@ -430,6 +474,11 @@ function mountSettings(host: HTMLElement): CardInstance {
 
   body.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
+    const fold = t.closest<HTMLElement>("[data-fold]")?.dataset.fold;
+    if (fold !== undefined) {
+      toggleSection(fold);
+      return;
+    }
     const action = t.closest<HTMLElement>("[data-action]")?.dataset.action;
     if (action === "ext-install") {
       invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
