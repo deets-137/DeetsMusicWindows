@@ -100,6 +100,13 @@ the schema and can ship alone.
 
 **Cost.** Zero Apple calls; (1) and (3) are local, (2) rides the mirror sync.
 
+**As built (differs from step 1 above).** The image is not copied as a file: the front end
+center-crops it to a 512 px JPEG data URL (≈50 KB) and `playlist_set_cover` stores it in
+`local_playlists.cover`. **2026-09-14:** on a local playlist's detail page the hero cover is a
+button — **Choose Image…** · **Remove Cover** · **Export ▸** (fork 1B) — and takes a dropped
+image file (fork 3B; `dragDropEnabled: false` on the main window hands file drops to the page,
+and `main.ts` stops a stray drop from navigating). Apple playlists get no cover (fork 2A).
+
 ---
 
 ## 3. Integration with favorite songs

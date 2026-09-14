@@ -95,6 +95,24 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-14 — Playlist covers + Export to Apple Music: BUILT, not desk-tested** (branch
+`optimus-deets`). The hero cover of a local playlist is a button (Choose Image… / Remove
+Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](NEXT-VERSION.md)). Export ▸
+makes an Apple copy or adds new songs to it, and asks before a write Apple can't fully copy
+([PLAYLISTS.md §6](PLAYLISTS.md)). Settings › Apple Music › **Export playlists** (default on).
+Settings › Show notices lost **Off**; a toast that asks always shows ([TOASTS.md §4](TOASTS.md)).
+Same session: **Settings regrouped** (Window / Look and feel / Playback / Apple Music / Playlists /
+Rewind / Connections / Bugs / About) and **`requestSetting(rowId)`** opens the card at a row
+(unfold, scroll, highlight); the Add to Library and Export notices are once-notices with a
+**[Settings]** button ([SETTINGS.md §3](SETTINGS.md), TOASTS.md `onceKey`).
+Also: **a network drop** showed MusicKit's own in-page error box ("loadSegmentError", `MKDialog`,
+not an `alert()`) beside our offline toast. Fixed with `suppressErrorDialog: true` in both
+`MusicKit.configure` calls, and the stopped song now **resumes where it stopped** when Apple
+health next finds the network back ([TOASTS.md](TOASTS.md) §Apple health, offline row). Not yet
+tested against a real Wi-Fi drop.
+**Rust + `tauri.conf.json` changed: restart the dev runner.** An export is a REAL Apple
+write — test with a throwaway playlist and delete its copies in the Music app.
+
 **2026-09-13 — Apple terms + D.7 pass, built, NOT yet desk-tested or deployed** (branch
 `toast-time`; decisions and the origin probe in [RELEASE.md §7](RELEASE.md) "Revised
 2026-09-13"). App: Apple Music icon on the playlist badge, Settings › About notice, README

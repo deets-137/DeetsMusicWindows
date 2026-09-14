@@ -45,6 +45,9 @@ export interface Playlist {
   folderId?: number;
   /** Up to four track-cover templates for the derived mosaic (no `artwork`). */
   coverUrls?: string[];
+  /** A local playlist's latest Apple Music copy (PLAYLISTS.md §6) and its last write (ms). */
+  exportedAppleId?: string;
+  exportedAt?: number;
 }
 
 export interface SearchResults {

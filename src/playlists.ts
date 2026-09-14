@@ -85,6 +85,47 @@ export function playlistSetCover(p: Playlist, cover: string | null): Promise<voi
   return invoke<void>("playlist_set_cover", { id, cover }).then(() => emitChange(id));
 }
 
+/** What an export would do (PLAYLISTS.md §6), computed before any Apple write. */
+export interface ExportPlan {
+  /** The Apple copy compared against; null when there is none (it was deleted on Apple). */
+  appleId: string | null;
+  /** Catalog ids the append would send, in local order, and their titles. */
+  addIds: string[];
+  addTitles: string[];
+  /** Songs on the Apple copy that the local playlist no longer has (Apple can't remove them). */
+  removedTitles: string[];
+  /** After the append, Apple's order would differ from the local order. */
+  reordered: boolean;
+  /** Local songs with no catalog id (uploads): Apple can't receive them. */
+  skipped: number;
+}
+
+export interface ExportResult {
+  appleId: string;
+  added: number;
+  /** Songs the append calls could not add (a partial failure after the create). */
+  failed: number;
+  skipped: number;
+}
+
+/** Compare a LOCAL playlist with its Apple copy. One Apple read per 100 songs; no writes. */
+export function playlistExportPlan(p: Playlist): Promise<ExportPlan> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<ExportPlan>("playlist_export_plan", { id });
+}
+
+/** Write to Apple Music: `new` makes a fresh copy with every song; `append` sends `ids`
+ *  (from a plan) to the current copy. Emits a change so the row's export stamp refreshes. */
+export function playlistExportApple(p: Playlist, mode: "new" | "append", ids?: string[]): Promise<ExportResult> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<ExportResult>("playlist_export_apple", { id, mode, ids: ids ?? null }).then((r) => {
+    emitChange(id);
+    return r;
+  });
+}
+
 /** Delete a LOCAL playlist. Mirrors can't be deleted — there's no Apple write path. */
 export function playlistDelete(p: Playlist): Promise<void> {
   const id = localId(p);

@@ -39,6 +39,14 @@ window.addEventListener("DOMContentLoaded", () => {
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
+  // File drops belong to the page (tauri.conf.json `dragDropEnabled: false`, for the playlist
+  // cover). A drop no element took must not navigate the webview to the file.
+  window.addEventListener("dragover", (e) => {
+    if (e.defaultPrevented) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+  });
+  window.addEventListener("drop", (e) => e.preventDefault());
   initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown

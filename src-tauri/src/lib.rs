@@ -216,6 +216,8 @@ pub fn run() {
             playlists::playlist_create,
             playlists::playlist_rename,
             playlists::playlist_set_cover,
+            playlists::playlist_export_plan,
+            playlists::playlist_export_apple,
             playlists::playlist_delete,
             playlists::playlist_add_tracks,
             playlists::playlist_remove_track,

@@ -59,7 +59,7 @@ deetsmusic queue
 
 | You see | Do this |
 |---|---|
-| "Agent control is off" | DeetsMusic › Settings › Agents › turn **Agent control** on. |
+| "Agent control is off" | DeetsMusic › Settings › Connections › turn **Agent control** on. |
 | "no bridge running" or a connection error | Start DeetsMusic. It must be running, in the tray is fine. |
 | "not connected to Apple Music" | Sign in from the title menu › Account. |
 | The AI app says the server failed to start | The path in its config points at a file that is not there. Reinstall DeetsMusic, or click **Copy setup for** again and paste the fresh text. |

@@ -12,7 +12,7 @@
 // Everything is client-side over data the card already holds in memory.
 
 import * as frames from "./frames";
-import { openContextMenu, type MenuItem } from "./context-menu";
+import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 
 export type Density = "lines" | "small" | "large";
@@ -70,6 +70,10 @@ export interface Hero {
   title: string;
   sub?: { text: string; run?: () => void };
   meta?: string;
+  /** Makes the cover a button that opens this menu (a local playlist: image, remove, export). */
+  coverMenu?: () => MenuItem[];
+  /** Makes the cover a file drop target (needs `coverMenu`, which renders the button). */
+  coverDrop?: (file: File) => void;
 }
 
 export interface Context {
@@ -105,7 +109,10 @@ function heroHTML(h: Hero | undefined): string {
       : `<span class="lib-hero__sub">${esc(h.sub.text)}</span>`
     : "";
   const meta = h.meta ? `<span class="lib-hero__meta">${esc(h.meta)}</span>` : "";
-  return `<div class="lib-hero">${h.cover}<span class="lib-hero__title">${esc(h.title)}</span>${sub}${meta}</div>`;
+  const cover = h.coverMenu
+    ? `<button class="lib-hero__cover-btn" type="button" data-hero-cover${h.coverDrop ? " data-hero-drop" : ""} aria-haspopup="menu" aria-label="Cover options">${h.cover}</button>`
+    : h.cover;
+  return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(h.title)}</span>${sub}${meta}</div>`;
 }
 
 export interface CardOptions {
@@ -611,6 +618,14 @@ export function initCollectionCard(opts: CardOptions) {
       return;
     }
 
+    // the hero's cover button (a local playlist) → its cover menu, under the cover
+    const coverBtn = t.closest<HTMLElement>("[data-hero-cover]");
+    if (coverBtn) {
+      const items = cur().ctx.hero?.()?.coverMenu?.();
+      if (items?.length) openContextMenuUnder(coverBtn, items);
+      return;
+    }
+
     // a tile/row → activate the leaf (play) if it offers one, else drill in
     const item = t.closest<HTMLElement>("[data-idx]");
     if (item) {
@@ -627,6 +642,32 @@ export function initCollectionCard(opts: CardOptions) {
         if (child) drill(child);
       }
     }
+  });
+
+  // An image file dragged onto a hero cover that takes drops (`data-hero-drop`). The cover's
+  // children ignore the pointer (styles.css), so the target is always the button itself.
+  const dropTarget = (e: DragEvent): HTMLElement | null => {
+    if (!e.dataTransfer?.types.includes("Files") || animating) return null;
+    const el = (e.target as HTMLElement).closest<HTMLElement>("[data-hero-drop]");
+    return el && el.closest(".coll-pane") === curPane ? el : null;
+  };
+  viewport.addEventListener("dragover", (e) => {
+    const el = dropTarget(e);
+    if (!el) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = "copy";
+    el.classList.add("is-drop");
+  });
+  viewport.addEventListener("dragleave", (e) => {
+    (e.target as HTMLElement).closest?.("[data-hero-drop]")?.classList.remove("is-drop");
+  });
+  viewport.addEventListener("drop", (e) => {
+    const el = dropTarget(e);
+    if (!el) return;
+    e.preventDefault();
+    el.classList.remove("is-drop");
+    const file = e.dataTransfer!.files[0];
+    if (file) cur().ctx.hero?.()?.coverDrop?.(file);
   });
 
   viewport.addEventListener("input", (e) => {

@@ -173,6 +173,7 @@
   --set-pill-radius: 999px;          /* the split pill's outer radius */
   --set-menu-min-w:  120px;          /* the small menu behind a menu half */
   --set-menu-max-h:  280px;          /* 7 weekdays fit; longer lists scroll */
+  --set-flash-dur:   1600ms;         /* a row opened from a toast: its highlight fades over this */
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */
@@ -227,6 +228,7 @@
                                        row can be a relayout boundary (UI-ARCHITECTURE.md §4a) */
   --hero-cover:         180px;      /* the detail hero's cover square (album / playlist) */
   --hero-gap:           var(--space-1); /* title ↔ subtitle ↔ meta stack spacing */
+  --hero-cover-hover:   0.85;       /* brightness of a clickable hero cover on hover / file drag */
   --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */
 
   /* -- scrollbar (our own; color is a theme role) ------------ */

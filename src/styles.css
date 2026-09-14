@@ -1177,6 +1177,18 @@ body {
   margin-bottom: var(--space-1);
 }
 .lib-hero__cover--empty { display: grid; place-items: center; color: var(--subtext); font-size: var(--fs-title); }
+/* A local playlist's cover is a button (the cover menu: image, remove, export) and a file
+   drop target. Children ignore the pointer so a drag never leaves the button for its img. */
+.lib-hero__cover-btn {
+  appearance: none; background: none; border: none; padding: 0;
+  margin: 0 0 var(--space-1); border-radius: var(--lib-tile-radius);
+  cursor: pointer; transition: filter var(--dur-fast) var(--ease-ui);
+}
+.lib-hero__cover-btn > * { pointer-events: none; }
+.lib-hero__cover-btn .lib-hero__cover { margin-bottom: 0; }
+.lib-hero__cover-btn:hover { filter: brightness(var(--hero-cover-hover)); }
+.lib-hero__cover-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.lib-hero__cover-btn.is-drop { outline: var(--focus-ring-w) dashed var(--title); outline-offset: var(--focus-ring-off); filter: brightness(var(--hero-cover-hover)); }
 .lib-hero__title {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-title);
   color: var(--title); line-height: 1.2; overflow-wrap: anywhere;

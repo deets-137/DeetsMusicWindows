@@ -138,6 +138,18 @@
 .set__menu-row:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .set__menu-row[aria-checked="true"] .set__dot::after { content: "•"; }
 
+/* A row opened from elsewhere (a toast's [Settings] button, requestSetting): one wash
+   and ring that fade out. settings-card.ts keeps the clock across re-renders with a
+   negative animation-delay. Reduced motion: the wash holds, then snaps off. */
+.set__row.is-flash { animation: set-flash var(--set-flash-dur) var(--ease-ui); }
+@keyframes set-flash {
+  from { background: var(--surface-hover); box-shadow: inset 0 0 0 var(--focus-ring-w) var(--title); }
+  to { background: transparent; box-shadow: inset 0 0 0 var(--focus-ring-w) transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .set__row.is-flash { animation-timing-function: steps(1, end); }
+}
+
 /* Extension block: a status line then two action rows. */
 .set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
 .set__action { cursor: pointer; }

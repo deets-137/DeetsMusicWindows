@@ -44,9 +44,11 @@
 > **collapsible sections** in the overview (§3a). Local metadata over the unified
 > list — mirrors are filable too, zero Apple calls.
 >
-> **Still deferred:** rename/reorder, Import-to-edit, non-empty delete, mosaic covers,
-> export (§6 — the **Export ▸ menu is now spec'd** there, parked with the gating
-> decision, alongside the parked **direct-append-to-editable-Apple-playlists** idea).
+> **Built since:** mosaic + custom covers (NEXT-VERSION §2; the hero cover button 2026-09-14)
+> and **Export to Apple Music** (§6, 2026-09-14).
+>
+> **Still deferred:** rename/reorder, Import-to-edit, non-empty delete, and the parked
+> **direct-append-to-editable-Apple-playlists** idea (§6).
 > This doc still fixes *what* and *why* for those parts.
 
 ---
@@ -218,44 +220,49 @@ exists on Apple; we can't and shouldn't delete it) — optionally dimmed/"import
 
 ---
 
-## 6. Export — the gated one-way bridge
+## 6. Export — the one-way bridge (BUILT 2026-09-14)
 
-Lives behind an **"Apple Music sync" settings section** (see
-[FUTURE-SETTINGS](FUTURE-SETTINGS.md)):
+Decided 2026-09-14 (supersedes the 2026-07-02 spec: the off-by-default section, the
+re-export setting, and "no toast"). Code: `src/playlist-export.ts`, `playlist_export_plan`
++ `playlist_export_apple` in `playlists.rs`.
 
-- **Enable Export to Apple Music** — **off by default**. Turning it on reveals the caveat
-  copy; the **first** export also shows a one-time confirm.
-- **On re-export** — a user setting: **Fresh copy** *(default)* · Append new songs only.
-  Fresh copy makes a new Apple playlist each time; append adds only newly-added songs to the
-  existing Apple copy (the one edit Apple allows) and notes that reorders/removals won't sync.
-- **Caveat copy** (plainly stated): *DeetsMusic can create and add to Apple playlists, but
-  can't rename, reorder, remove tracks, or delete them afterwards — manage those here.*
+**The limit.** Apple's public API can create a library playlist (name + description — no
+cover) and add songs to it. It cannot rename, reorder, remove songs, or delete. The user can
+do all of those in the Music app.
 
-**Flow:** `POST` create playlist (name + description) → add tracks (catalog/library song ids);
-unresolvable tracks (music videos) skipped with a count; store the resulting Apple id + date on
-the local playlist (`exportedAppleId`) so the row can show **"Exported ✓ (Jun 30)."**
+**The setting.** Settings › Apple Music › **Export playlists** (`playlistExport`, **default on**,
+hint "Can't rename, reorder, or delete on Apple Music via DeetsMusic"). Off hides Export ▸.
 
-**Menu entry — spec'd 2026-07-02 (design chat), parked with the gating decision.**
-- **Shape:** an **`Export ▸`** `SubmenuItem` on LOCAL playlist rows only, between
-  Add to Playlist ▸ and Delete; its flyout lists destinations — "Apple Music" (with the
-  source sigil) today, Spotify slots in later. **Greyed while the playlist is empty**
-  (same disabled-with-reason pattern as Delete).
-- **Click flow (2 API calls):** create (local name + description) → one tracks-append
-  POST with all ids, mapped `catalogId → "songs"` else `libraryId → "library-songs"` →
-  store `exported_apple_id` + `exported_at` (columns already in `local_playlists`) →
-  kick a non-fresh `apple_playlists_sync` so the Apple copy **appears in the unified
-  list with its sigil** — that appearance IS the success feedback (no toast needed).
-- **v1 hardcodes §6's decided defaults:** re-export = **fresh copy** (append-new-only is
-  the future setting); repeated exports accumulate same-named Apple copies — documented
-  trade. **Partial failure:** create-succeeded/append-failed still stores the Apple id
-  (the playlist genuinely exists there) + logs; fresh-copy re-export is the recovery.
-  No rollback pretense — we can't delete it anyway.
-- **Rust to build:** `playlist_export_apple(local_id)` (§7 lists it; ~80 lines: provider
-  create + append). The schema is ready.
-- **Gating (the open fork):** the settings toggle above, or ship earlier with a one-time
-  in-menu confirm (`deets.playlists.exportConfirmed`) — export is *less* dangerous than
-  direct append (it only ever creates new things on Apple), so confirm-only is
-  proportionate; parked alongside the append idea below until decided.
+**The entry.** **Export ▸** on a LOCAL playlist — its row's right-click and the hero cover
+menu. The flyout:
+- **No live Apple copy** → one row, **Apple Music**: make a copy.
+- **A live copy** (`exported_apple_id` is still in the `apple_playlists` mirror — fork 6A, no
+  Apple call to learn it) → **Add New Songs to Apple Copy** · **Make a New Apple Copy**.
+
+**Make a copy** (`mode: "new"`): create → stamp `exported_apple_id` + `exported_at` at once (a
+partial failure still leaves a real Apple playlist) → append every song with a catalog id,
+100 per call, in order → the card re-syncs the mirror (non-fresh) so the copy shows with its
+sigil. Toasts: the first time, a once-notice (`deets.notice.exportOneWay`, **[Settings] [Got it]**, the
+[Settings] button opens this row) — *Made "X" on Apple
+Music. DeetsMusic can't rename, reorder, or delete it there; use the Music app.* After that a
+`success` (a re-export adds "The old copy is still there."). Songs with no catalog id
+(uploads) are skipped with a count, which turns the toast into a `warn`.
+
+**Add New Songs** (fork 4A — compare with the real Apple copy, one read per 100 songs):
+`playlist_export_plan` diffs catalog ids as multisets (duplicates are legal). The first
+min(local, apple) occurrences are on both sides; extra local ones are additions, extra Apple
+ones are removals Apple can't make; `reordered` = the Apple order after the append (kept +
+added at the end) differs from the local order. Then:
+- only additions → send them, `success` toast;
+- nothing to do → "The Apple copy of "X" is up to date.";
+- additions + removals/order → a **sticky question before any write**: what can be added (a
+  few titles), what can't carry over, **[Add N songs] [Make a New Copy] [Dismiss]**;
+- removals/order only → sticky warn with **[Make a New Copy]**;
+- the copy is gone from the mirror, or the append fails → sticky warn with **[Make a New Copy]**.
+An append drops that copy's content cache so its next open shows the new songs.
+
+**Why no confirm before the first write** (fork 5C): it is the Add to Library pattern — the
+flyout row already names Apple Music, and everything it makes can be removed in the Music app.
 
 **Direct append to editable Apple playlists (idea parked 2026-07-02 — build when the
 settings toggle above exists).** Append isn't limited to playlists we created:

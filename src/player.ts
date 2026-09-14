@@ -104,7 +104,7 @@ function syncDeveloperToken(): Promise<void> {
       await initPromise;
       const developerToken = await invoke<string>("apple_developer_token");
       if (developerToken === configuredToken) return;
-      await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: await getVersion() } });
+      await window.MusicKit.configure({ developerToken, app: { name: "DeetsMusic", build: await getVersion() }, suppressErrorDialog: true });
       configuredToken = developerToken;
       music = window.MusicKit.getInstance();
       await injectUserToken();
@@ -155,6 +155,10 @@ export function initPlayer(): Promise<any> {
     await window.MusicKit.configure({
       developerToken,
       app: { name: "DeetsMusic", build: await getVersion() },
+      // MusicKit's own error box (#musickit-dialog, e.g. "loadSegmentError" on a network
+      // drop) never shows: every playback error already reaches onPlaybackError and one of
+      // our toasts (TOASTS.md §Apple health). A configure option, not a MusicKit change.
+      suppressErrorDialog: true,
     });
     configuredToken = developerToken;
     music = window.MusicKit.getInstance();
@@ -443,6 +447,7 @@ function emitProgress(): void {
   // Audio really played since the sign-in, so a later playback error is not the
   // subscription (TOASTS.md). Not at the song-start: MusicKit sets now-playing first.
   if (freshSignIn && currentTime > 0.5) freshSignIn = false;
+  if (currentTime > 0) lastHeardAt = currentTime; // MusicKit's clock resets when its player dies
   progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
   // Credit a "full" once past the threshold — but only when the model's current IS the
   // song MusicKit is playing. During a context switch the model flips to the new song
@@ -1786,9 +1791,16 @@ function onMusicKitTrouble(msg: string, via: string): void {
   const now = performance.now();
   if (now - lastTroubleAt < RETRY_GAP_MS) return;
   lastTroubleAt = now;
+  // The song and spot this failure stopped, read before any await (the clock is ours).
+  const stopped = mode === "queue" ? queue.getCurrent() : undefined;
+  const stoppedAt = lastHeardAt;
   void (async () => {
     if (!(await isConnected())) return health.show("signedOut", true, via);
     const r = await recoverFromFailure(via);
+    if (r.trouble === "offline" && stopped) {
+      resumeAfterReconnect = { entry: stopped, at: stoppedAt };
+      diag.log("player:resumeArmed", { at: Math.round(stoppedAt), via });
+    }
     if (r.retry && music && mode === "queue" && queue.getCurrent()) {
       try {
         await loadFromModel(music);
@@ -1800,6 +1812,27 @@ function onMusicKitTrouble(msg: string, via: string): void {
     if (r.trouble === "none") toast({ kind: "warn", text: "Playback stopped. Try the song again." });
   })();
 }
+
+// A network drop stopped the song (MusicKit's audio player destroys itself on a
+// loadSegmentError). When Apple health sees the network back — its 5-min recheck, Try
+// again, or any other check — pick the song up where it stopped: once, queue mode only,
+// and only if nothing has played or changed since (2026-09-14).
+let lastHeardAt = 0;
+let resumeAfterReconnect: { entry: ReturnType<typeof queue.getCurrent>; at: number } | null = null;
+health.onTrouble((t) => {
+  if (t !== "none" || !resumeAfterReconnect) return;
+  const { entry, at } = resumeAfterReconnect;
+  resumeAfterReconnect = null;
+  const m = music;
+  if (!m || mode !== "queue" || m.isPlaying || queue.getCurrent() !== entry) {
+    diag.log("player:resumeSkip", { mode, playing: !!m?.isPlaying, same: queue.getCurrent() === entry });
+    return;
+  }
+  diag.log("player:resumeAfterReconnect", { at: Math.round(at) });
+  void loadFromModel(m)
+    .then(() => (at > 3 ? m.seekToTime(at) : undefined))
+    .catch((e) => console.warn("[player] resume after reconnect:", e));
+});
 
 // index.html routes every non-benign MusicKit alert() here; drain what arrived first.
 (window as any).__deetsMkAlert = (msg: string) => onMusicKitTrouble(String(msg), "alert");

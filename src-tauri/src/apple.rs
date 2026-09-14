@@ -1535,6 +1535,8 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         kind: None,
         folder_id: None, // folders are local metadata, stamped by playlists_cached
         cover_urls: None,
+        exported_apple_id: None, // export stamps are local playlists only
+        exported_at: None,
     }
 }
 
@@ -1596,6 +1598,8 @@ fn playlist_from_library(v: &serde_json::Value) -> Playlist {
         kind: Some(kind.into()),
         folder_id: None, // folders are local metadata, stamped by playlists_cached
         cover_urls: None,
+        exported_apple_id: None, // export stamps are local playlists only
+        exported_at: None,
     }
 }
 

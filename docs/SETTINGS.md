@@ -49,28 +49,37 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 |---|---|---|---|---|
 | Window | Keep on top (The window stays above other windows) | `alwaysOnTop` | off / on | `main.ts` (subscribes) |
 | Window | Close to tray (× hides the window. The tray icon opens it again) | Rust | on / off | `tray.rs` close policy |
-| Window | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
-| Agents | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) · status line · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · Open guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md) |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
-| Window | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`; OS reduced motion still snaps) |
-| Window | Animate backgrounds (The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
-| Window | Show notices ([TOASTS.md](TOASTS.md)) — *Failures* / *Everything* / *Off* | `toasts` | failures / all / off | `toast.ts` `admitted()` at every call |
+| Look and feel | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`; OS reduced motion still snaps) |
+| Look and feel | Animate backgrounds (The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
+| Look and feel | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
+| Look and feel | Show notices ([TOASTS.md](TOASTS.md)) — *Everything* / *Failures* (Off removed 2026-09-14) | `toasts` | all / failures | `toast.ts` `admitted()` at every call; a question toast always shows |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
 | Playback | Previous rewinds (§4) — *The list* / *Played songs* | `previousReach` | lookback / heard | `queue.ts` `setContext` (heard = no parked lookback) |
 | Playback | Restore on launch (2026-09-12) — *Last song* / *Up Next* / *Nothing* | `restoreQueue` | song / queue / off | `queue-persist.ts` (blob in the cache db's `meta`; song = Now Playing paused + Up Next + Previous, queue = song parked atop Up Next, Now Playing idle) |
 | Playback | Shuffle keeps picks (§5a) — *First* / *In place* / *Mixed* | `shuffleManual` | top / hold / mix | `queue.ts` `shuffleUpcoming` |
 | Playback | Idle shuffle plays (§5b) — *Library* / *Nothing* | `shuffleIdle` | library / noop | `player.ts` `shuffleQueue` |
-| Playback | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
-| Playback | Make a Replay each week (A playlist of the past week's most-played songs, made for you) | `replayAuto` | on / off | `replay.ts` `runWeeklyReplay` (boot) |
-| Playback | Replay day (The day the weekly Replay is made) — *Mon … Sun* | `replayDay` | mon / … | `replay.ts` `lastDue` |
-| Playback | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
-| Library | Add to Library (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square + the Search row squares); the ♥ (`favorites.ts`) rides the same consent |
-| Library | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
-| Library | New playlist opens Search (§16) | `playlistCreateSummon` | on / off | `playlists-card.ts` `createAndEnter` |
-| Cards | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
-| Extension | status · Install guide · Copy log | — | — | `bridge_info` / `bridge_open_install_page` / `bridge_log` |
-| Bugs | Open log folder | — | — | `log_open_folder` (+ `diag_flush` first; LOGGING.md) |
+| Apple Music | Add to Library and ♥ (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square + the Search row squares); the ♥ (`favorites.ts`) rides the same consent, hence the label (2026-09-14) |
+| Apple Music | Export playlists (Can't rename, reorder, or delete on Apple Music via DeetsMusic) — 2026-09-14 | `playlistExport` | on / off | `playlist-export.ts` `exportItem` (hides Export ▸) — [PLAYLISTS.md §6](PLAYLISTS.md) |
+| Playlists | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
+| Playlists | New playlist opens Search (§16) | `playlistCreateSummon` | on / off | `playlists-card.ts` `createAndEnter` |
+| Rewind | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
+| Rewind | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
+| Rewind | Weekly Replay — day menu (*Mon … Sun*) + on/off (A playlist of the past week's most-played songs, made on this day) | `replayDay` + `replayAuto` | mon / … · on / off | `replay.ts` `lastDue` / `runWeeklyReplay` (boot) |
+| Rewind | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
+| Connections | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) — Guide + on/off · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · agent status · extension bridge status · Extension install guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md); `bridge_info` / `bridge_open_install_page` ([EXTENSION.md](EXTENSION.md)) |
+| Bugs | App log — Open folder · Copy | — | — | `log_open_folder` (+ `diag.flush()` first; LOGGING.md) / `bridge_log` |
+| About | Apple trademark notice · privacy notice (open by default) | — | — | — |
+
+**Sections regrouped 2026-09-14** (Window / Look and feel / Playback / Apple Music / Playlists /
+Rewind / Connections / Bugs / About). Every section but About starts folded; a fold persists
+by section title (`deets.settings.folds`), so renamed sections start folded once.
+
+**Open Settings at a row** (`requestSetting(rowId)`, `layout-bus.ts`): summons the card,
+unfolds the row's section, scrolls the row to the middle, and highlights it (`is-flash`,
+`--set-flash-dur`; reduced motion holds the wash, then snaps off). The one-time notices of
+Add to Library and Export use it through their **[Settings]** button.
 
 **Play Now default changed 2026-09-10 to "Song and rest of list"** — the same play a
 left-click does; "Song only" is the opt-in interjection. (FUTURE-SETTINGS §1 records the

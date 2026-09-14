@@ -22,6 +22,7 @@
         "minHeight": 560,
         "decorations": false,
         "resizable": true,
+        "dragDropEnabled": false,
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,HardwareMediaKeyHandling --autoplay-policy=no-user-gesture-required"
       },
       {

@@ -19,9 +19,13 @@
 //   dismissKey  a localStorage key → a one-time NOTICE: sticky, shows under the
 //               `failures` tier whatever its kind, adds a "Don't show again" button
 //               that writes "off" to the key, and never shows once that is written.
+//   onceKey     a notice that shows ONCE (2026-09-14): sticky, shows under every tier,
+//               ends with "Got it", and ANY button press writes "off" to the key.
 //
 // Tiers (`setting("toasts")`): "failures" = warn + error + notices · "all" = every
-// kind · "off" = nothing. A gated call returns an inert handle (`shown: false`), and
+// kind. There is no "off" (removed 2026-09-14): a failure must always reach the user.
+// A toast that ASKS — sticky with the caller's own actions — shows under every tier,
+// because a muted question would stop the action it gates. A gated call returns an inert handle (`shown: false`), and
 // the console/diag logging at the call site is untouched — diag stays the source of
 // truth for what happened (every call logs `toast` or `toast:muted`).
 //
@@ -47,6 +51,8 @@ export interface ToastOptions {
   timeout?: number;
   actions?: ToastAction[];
   dismissKey?: string;
+  /** A notice that shows ONCE: any button press silences the key. Ends with "Got it". */
+  onceKey?: string;
 }
 
 export interface ToastHandle {
@@ -117,18 +123,17 @@ export function onToast(fn: ToastObserver): () => void {
   return () => observers.delete(fn);
 }
 
-/** Does the current tier let this call through? */
-function admitted(kind: ToastKind, notice: boolean): boolean {
-  const tier = setting("toasts");
-  if (tier === "off") return false;
-  if (tier === "all") return true;
+/** Does the current tier let this call through? A question (`asks`) always does. */
+function admitted(kind: ToastKind, notice: boolean, asks: boolean): boolean {
+  if (asks || setting("toasts") === "all") return true;
   return notice || kind === "warn" || kind === "error";
 }
 
 /** Show a toast. See the header for the contract. */
 export function toast(opts: ToastOptions): ToastHandle {
   const kind: ToastKind = opts.kind && KINDS.includes(opts.kind) ? opts.kind : "info";
-  const notice = !!opts.dismissKey;
+  const noticeKey = opts.onceKey ?? opts.dismissKey;
+  const notice = !!noticeKey;
   const sticky = notice || (opts.sticky ?? kind === "error");
   const text = String(opts.text ?? "");
   // A failure the user was told about (or would have been, under a muted tier) belongs in
@@ -143,11 +148,11 @@ export function toast(opts: ToastOptions): ToastHandle {
     }
   });
 
-  if (notice && noticeOff(opts.dismissKey!)) {
-    diag.log("toast:muted", { kind, text, why: "notice-off", key: opts.dismissKey });
+  if (notice && noticeOff(noticeKey!)) {
+    diag.log("toast:muted", { kind, text, why: "notice-off", key: noticeKey });
     return INERT;
   }
-  if (!admitted(kind, notice)) {
+  if (!admitted(kind, notice, sticky && !!opts.actions?.length)) {
     diag.log("toast:muted", { kind, text, why: `tier-${setting("toasts")}` });
     return INERT;
   }
@@ -181,10 +186,12 @@ export function toast(opts: ToastOptions): ToastHandle {
     window.setTimeout(reap, REAP_FALLBACK_MS);
   };
 
-  // Buttons: the caller's actions, then Don't show again (notices), then Dismiss (sticky).
+  // Buttons: the caller's actions, then the notice's own close ("Got it" for a once-notice,
+  // "Don't show again" for a dismissKey notice), then Dismiss (any other sticky toast).
   const buttons: ToastAction[] = [...(opts.actions ?? [])];
-  if (notice) buttons.push({ label: "Don't show again", run: () => silenceNotice(opts.dismissKey!) });
-  if (sticky && !buttons.some((b) => b.label === "Dismiss")) buttons.push({ label: "Dismiss" });
+  if (opts.onceKey) buttons.push({ label: "Got it" });
+  else if (notice) buttons.push({ label: "Don't show again", run: () => silenceNotice(noticeKey!) });
+  if (sticky && !opts.onceKey && !buttons.some((b) => b.label === "Dismiss")) buttons.push({ label: "Dismiss" });
   if (buttons.length) {
     const row = document.createElement("div");
     row.className = "toast__actions";
@@ -200,6 +207,7 @@ export function toast(opts: ToastOptions): ToastHandle {
         } catch (e) {
           console.error("[toast] action", e);
         }
+        if (opts.onceKey) silenceNotice(opts.onceKey); // any press: it has been seen
         dismiss();
       });
       row.appendChild(b);

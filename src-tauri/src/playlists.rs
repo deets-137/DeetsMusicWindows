@@ -110,24 +110,27 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
             .prepare(
                 "SELECT p.id, p.name, p.description, p.created_at,
                         (SELECT COUNT(*) FROM local_playlist_tracks t WHERE t.playlist_id = p.id),
-                        p.cover
+                        p.cover, p.exported_apple_id, p.exported_at
                  FROM local_playlists p",
             )
             .map_err(err)?;
         let rows = stmt
             .query_map([], |r| {
                 Ok((
-                    r.get::<_, i64>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, Option<String>>(2)?,
-                    r.get::<_, i64>(3)?,
-                    r.get::<_, u32>(4)?,
-                    r.get::<_, Option<String>>(5)?,
+                    (
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                        r.get::<_, i64>(3)?,
+                        r.get::<_, u32>(4)?,
+                        r.get::<_, Option<String>>(5)?,
+                    ),
+                    (r.get::<_, Option<String>>(6)?, r.get::<_, Option<i64>>(7)?),
                 ))
             })
             .map_err(err)?;
         let rows: Vec<_> = rows.collect::<Result<_, _>>().map_err(err)?;
-        for (id, name, description, created_at, n, cover) in rows {
+        for ((id, name, description, created_at, n, cover), (exported_apple_id, exported_at)) in rows {
             let key = format!("local:{id}");
             // Cover precedence (NEXT-VERSION §2): the user's own image (a data URL,
             // no {w}/{h} — `artURL` leaves it alone), else the mosaic of the first
@@ -152,6 +155,8 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                 kind: Some("user".into()),
                 date_added: chrono::DateTime::from_timestamp_millis(created_at)
                     .map(|d| d.to_rfc3339()),
+                exported_apple_id,
+                exported_at,
                 ..Default::default()
             });
         }
@@ -223,6 +228,262 @@ pub fn playlist_set_cover(id: i64, cover: Option<String>, db: State<'_, Db>) -> 
     )
     .map_err(err)?;
     Ok(())
+}
+
+// ── Export to Apple Music (PLAYLISTS.md §6) — create + append, the only Apple writes ──
+
+/// One local or Apple-copy song as export sees it: the catalog id Apple accepts, and
+/// the title the front-end names in its toasts.
+struct ExportRow {
+    catalog_id: String,
+    title: String,
+}
+
+/// What an export would do, computed before any write so the front-end can ask first
+/// when Apple can't copy a removal or an order.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportPlan {
+    /// The Apple copy compared against; None when it is gone from the mirror.
+    apple_id: Option<String>,
+    add_ids: Vec<String>,
+    add_titles: Vec<String>,
+    removed_titles: Vec<String>,
+    reordered: bool,
+    /// Local songs with no catalog id (uploads) — Apple can't receive them.
+    skipped: u32,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportResult {
+    apple_id: String,
+    added: u32,
+    failed: u32,
+    skipped: u32,
+}
+
+/// A local playlist's name, description, and latest Apple copy id.
+fn export_head(conn: &Connection, id: i64) -> Result<(String, Option<String>, Option<String>), String> {
+    conn.query_row(
+        "SELECT name, description, exported_apple_id FROM local_playlists WHERE id = ?1",
+        [id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )
+    .map_err(err)
+}
+
+/// The local songs Apple can receive, in authored order, and how many it can't.
+fn export_rows(conn: &Connection, id: i64) -> Result<(Vec<ExportRow>, u32), String> {
+    let mut stmt = conn
+        .prepare("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
+        .map_err(err)?;
+    let rows = stmt.query_map([id], |r| r.get::<_, String>(0)).map_err(err)?;
+    let (mut out, mut skipped) = (Vec::new(), 0u32);
+    for row in rows {
+        match serde_json::from_str::<Track>(&row.map_err(err)?) {
+            Ok(Track { catalog_id: Some(c), title, .. }) if !c.is_empty() => out.push(ExportRow { catalog_id: c, title }),
+            _ => skipped += 1,
+        }
+    }
+    Ok((out, skipped))
+}
+
+/// Compare the local order with the Apple copy. Duplicates are legal, so ids count as
+/// multisets: the first min(local, apple) occurrences of an id are on both sides, the
+/// rest of the local ones are additions, the rest of the Apple ones are removals.
+/// Returns (local indexes to add, titles only Apple has, whether the order would differ
+/// after the append — Apple puts added songs at the end).
+fn export_diff<'a>(local: &'a [ExportRow], apple: &'a [ExportRow]) -> (Vec<usize>, Vec<String>, bool) {
+    use std::collections::HashMap;
+    let count = |rows: &'a [ExportRow]| {
+        let mut n: HashMap<&'a str, usize> = HashMap::new();
+        for r in rows {
+            *n.entry(r.catalog_id.as_str()).or_default() += 1;
+        }
+        n
+    };
+    let (local_n, apple_n) = (count(local), count(apple));
+
+    let mut seen: HashMap<&'a str, usize> = HashMap::new();
+    let mut add = Vec::new();
+    for (i, r) in local.iter().enumerate() {
+        let k = seen.entry(r.catalog_id.as_str()).or_default();
+        *k += 1;
+        if *k > apple_n.get(r.catalog_id.as_str()).copied().unwrap_or(0) {
+            add.push(i);
+        }
+    }
+    seen.clear();
+    let (mut kept, mut removed): (Vec<&'a str>, Vec<String>) = (Vec::new(), Vec::new());
+    for r in apple {
+        let k = seen.entry(r.catalog_id.as_str()).or_default();
+        *k += 1;
+        if *k > local_n.get(r.catalog_id.as_str()).copied().unwrap_or(0) {
+            removed.push(r.title.clone());
+        } else {
+            kept.push(r.catalog_id.as_str());
+        }
+    }
+    let after = kept.into_iter().chain(add.iter().map(|&i| local[i].catalog_id.as_str()));
+    let reordered = after.zip(local).any(|(a, l)| a != l.catalog_id);
+    (add, removed, reordered)
+}
+
+/// POST catalog ids to an Apple library playlist, 100 per call, in order. Returns
+/// (added, failed); a failed call is logged and counted, and the rest still go.
+async fn append_to_apple(client: &reqwest::Client, dev: &str, user: &str, apple_id: &str, ids: &[String]) -> (u32, u32) {
+    let url = format!("https://api.music.apple.com/v1/me/library/playlists/{apple_id}/tracks");
+    let (mut added, mut failed) = (0u32, 0u32);
+    for chunk in ids.chunks(100) {
+        let data: Vec<serde_json::Value> = chunk.iter().map(|c| serde_json::json!({ "id": c, "type": "songs" })).collect();
+        let body = serde_json::json!({ "data": data });
+        match apple::api_send(client, reqwest::Method::POST, dev, user, &url, Some(&body)).await {
+            Ok((s, _)) if (200..300).contains(&s) => added += chunk.len() as u32,
+            Ok((s, _)) => {
+                failed += chunk.len() as u32;
+                crate::log::warn(&format!("playlists: export append {apple_id} HTTP {s}"));
+            }
+            Err(e) => {
+                failed += chunk.len() as u32;
+                crate::log::warn(&format!("playlists: export append {apple_id}: {e}"));
+            }
+        }
+    }
+    (added, failed)
+}
+
+/// Compare a local playlist with its Apple copy (PLAYLISTS.md §6, fork 4A: read the
+/// copy, one call per 100 songs). A copy no longer in the mirror is gone (fork 6A —
+/// no Apple call to learn it). No writes.
+#[tauri::command]
+pub async fn playlist_export_plan(
+    id: i64,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<ExportPlan, String> {
+    let (local, skipped, apple_id) = {
+        let conn = db.0.lock().unwrap();
+        let (_, _, exported) = export_head(&conn, id)?;
+        let (rows, skipped) = export_rows(&conn, id)?;
+        let live = exported.filter(|a| {
+            conn.query_row("SELECT 1 FROM apple_playlists WHERE playlist_id = ?1", [a.as_str()], |_| Ok(()))
+                .is_ok()
+        });
+        (rows, skipped, live)
+    };
+    let Some(apple_id) = apple_id else {
+        return Ok(ExportPlan { apple_id: None, add_ids: vec![], add_titles: vec![], removed_titles: vec![], reordered: false, skipped });
+    };
+
+    let dev = apple::developer_token()?;
+    let user = apple_state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let provider = AppleProvider::new(dev, user);
+    let mut apple_rows: Vec<ExportRow> = Vec::new();
+    let mut offset = 0u32;
+    for _ in 0..100 {
+        let page = provider.playlist_tracks_page(&apple_id, offset, 100).await?;
+        apple_rows.extend(page.items.into_iter().filter_map(|t| match t {
+            Track { catalog_id: Some(c), title, .. } if !c.is_empty() => Some(ExportRow { catalog_id: c, title }),
+            _ => None, // no catalog id: can't match it, and Apple can't remove it anyway
+        }));
+        match page.next_offset {
+            Some(next) if next > offset => offset = next,
+            _ => break,
+        }
+    }
+
+    let (add, removed_titles, reordered) = export_diff(&local, &apple_rows);
+    Ok(ExportPlan {
+        add_ids: add.iter().map(|&i| local[i].catalog_id.clone()).collect(),
+        add_titles: add.iter().map(|&i| local[i].title.clone()).collect(),
+        apple_id: Some(apple_id),
+        removed_titles,
+        reordered,
+        skipped,
+    })
+}
+
+/// Write a local playlist to Apple Music. `mode`:
+/// - `"new"`: create a library playlist (name + description — Apple takes no cover),
+///   stamp its id at once (a partial failure still leaves a real Apple playlist), then
+///   append every song with a catalog id.
+/// - `"append"`: send `ids` (from a plan) to the current copy; drop that copy's content
+///   cache so its next open shows the new songs.
+#[tauri::command]
+pub async fn playlist_export_apple(
+    id: i64,
+    mode: String,
+    ids: Option<Vec<String>>,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<ExportResult, String> {
+    let (name, description, exported, rows, skipped) = {
+        let conn = db.0.lock().unwrap();
+        let (name, description, exported) = export_head(&conn, id)?;
+        let (rows, skipped) = export_rows(&conn, id)?;
+        (name, description, exported, rows, skipped)
+    };
+    let dev = apple::developer_token()?;
+    let user = apple_state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+
+    match mode.as_str() {
+        "new" => {
+            let mut attributes = serde_json::json!({ "name": name });
+            if let Some(d) = description.filter(|d| !d.is_empty()) {
+                attributes["description"] = d.into();
+            }
+            let (status, body) = apple::api_send(
+                &client,
+                reqwest::Method::POST,
+                &dev,
+                &user,
+                "https://api.music.apple.com/v1/me/library/playlists",
+                Some(&serde_json::json!({ "attributes": attributes })),
+            )
+            .await?;
+            if !(200..300).contains(&status) {
+                return Err(format!("export: create HTTP {status}"));
+            }
+            let apple_id = body["data"][0]["id"].as_str().ok_or("export: create returned no id")?.to_string();
+            {
+                let conn = db.0.lock().unwrap();
+                conn.execute(
+                    "UPDATE local_playlists SET exported_apple_id = ?2, exported_at = ?3 WHERE id = ?1",
+                    rusqlite::params![id, apple_id, now_ms()],
+                )
+                .map_err(err)?;
+            }
+            let ids: Vec<String> = rows.into_iter().map(|r| r.catalog_id).collect();
+            let (added, failed) = append_to_apple(&client, &dev, &user, &apple_id, &ids).await;
+            crate::log::info(&format!(
+                "playlists: exported local:{id} → {apple_id}, {added} added, {failed} failed, {skipped} skipped"
+            ));
+            Ok(ExportResult { apple_id, added, failed, skipped })
+        }
+        "append" => {
+            let apple_id = exported.ok_or("export: this playlist has no Apple copy")?;
+            let ids = ids.unwrap_or_default();
+            let (added, failed) = append_to_apple(&client, &dev, &user, &apple_id, &ids).await;
+            if added == 0 && failed > 0 {
+                return Err(format!("export: append to {apple_id} failed"));
+            }
+            {
+                let conn = db.0.lock().unwrap();
+                conn.execute(
+                    "UPDATE local_playlists SET exported_at = ?2 WHERE id = ?1",
+                    rusqlite::params![id, now_ms()],
+                )
+                .map_err(err)?;
+                conn.execute("DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1", [apple_id.as_str()])
+                    .map_err(err)?;
+            }
+            crate::log::info(&format!("playlists: appended local:{id} → {apple_id}, {added} added, {failed} failed"));
+            Ok(ExportResult { apple_id, added, failed, skipped: 0 })
+        }
+        _ => Err(format!("playlist_export_apple: bad mode '{mode}'")),
+    }
 }
 
 // ── Apple mirror sync (read-in; stale-while-revalidate like songs) ─────────────

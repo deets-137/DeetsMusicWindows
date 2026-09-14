@@ -22,8 +22,8 @@ export interface Settings {
    *  reduced-motion preference still wins. src/ambient.ts applies it. */
   backgroundMotion: "on" | "reduced" | "off";
   /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
-   *  all = every kind, confirmations included; off = none (the console keeps logging). */
-  toasts: "failures" | "all" | "off";
+   *  all = every kind, confirmations included. No "off": a failure always shows. */
+  toasts: "failures" | "all";
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
@@ -49,6 +49,8 @@ export interface Settings {
   playlistEagerCounts: boolean;
   /** New Playlist summons the Search card beside it (§16). */
   playlistCreateSummon: boolean;
+  /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
+  playlistExport: boolean;
   // ── cards ──
   /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
   rewindCard: boolean;
@@ -76,6 +78,7 @@ export const DEFAULTS: Settings = {
   replayKeep: false,
   playlistEagerCounts: true,
   playlistCreateSummon: true,
+  playlistExport: true, // user's call 2026-09-14: on, like Add to Library
   rewindCard: false,
   rewindAutoShown: false,
 };
@@ -88,6 +91,8 @@ function migrate(into: Partial<Settings>): void {
   if (mode !== null && into.menuMode === undefined) into.menuMode = mode === "hover" ? "hover" : "click";
   const eager = localStorage.getItem("deets.playlists.eagerCounts");
   if (eager !== null && into.playlistEagerCounts === undefined) into.playlistEagerCounts = eager !== "off";
+  // Show notices lost its "off" choice (2026-09-14): a failure must always show.
+  if ((into.toasts as string | undefined) === "off") into.toasts = "failures";
 }
 
 function load(): Settings {

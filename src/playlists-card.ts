@@ -19,6 +19,7 @@ import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
+import { exportItem } from "./playlist-export";
 import { requestCard } from "./layout-bus";
 import { toast } from "./toast";
 import type { CardDef } from "./cards";
@@ -59,39 +60,44 @@ let sessionSynced = false;
 // tracks are fetched — once per session, right after the mirror sync.
 let favoritesSeeded = false;
 
-/** Pick an image file, shrink it to a square JPEG data URL, and set it as the cover.
- *  Resized here so the stored cover is small (≈50 KB), whatever the source file. */
+/** Shrink an image file to a square JPEG data URL and set it as the cover. Resized here
+ *  so the stored cover is small (≈50 KB), whatever the source file. The file picker and
+ *  a file dropped on the hero cover both land here. */
+function setCoverFromFile(p: Playlist, file: File): void {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const SIDE = 512;
+    const c = document.createElement("canvas");
+    c.width = SIDE;
+    c.height = SIDE;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    // Center-crop to a square, like every other cover.
+    const s = Math.min(img.naturalWidth, img.naturalHeight);
+    ctx.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, SIDE, SIDE);
+    playlistSetCover(p, c.toDataURL("image/jpeg", 0.85)).catch((e) => {
+      console.error("[playlists] set cover", e);
+      toast({ kind: "warn", text: "Couldn't save the cover." });
+    });
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    console.warn("[playlists] cover: not an image");
+    toast({ kind: "warn", text: `“${file.name}” is not an image DeetsMusic can read.` });
+  };
+  img.src = url;
+}
+
+/** Pick an image file for the cover. */
 function pickCover(p: Playlist): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
   input.addEventListener("change", () => {
     const file = input.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const SIDE = 512;
-      const c = document.createElement("canvas");
-      c.width = SIDE;
-      c.height = SIDE;
-      const ctx = c.getContext("2d");
-      if (!ctx) return;
-      // Center-crop to a square, like every other cover.
-      const s = Math.min(img.naturalWidth, img.naturalHeight);
-      ctx.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, SIDE, SIDE);
-      playlistSetCover(p, c.toDataURL("image/jpeg", 0.85)).catch((e) => {
-        console.error("[playlists] set cover", e);
-        toast({ kind: "warn", text: "Couldn't save the cover." });
-      });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      console.warn("[playlists] cover: not an image");
-      toast({ kind: "warn", text: `“${file.name}” is not an image DeetsMusic can read.` });
-    };
-    img.src = url;
+    if (file) setCoverFromFile(p, file);
   });
   input.click();
 }
@@ -310,14 +316,20 @@ export const playlistsCard: CardDef = {
         // The hero: the playlist's own cover (or the mosaic), its name, and songs · length ·
         // source. Tracks land async — the reload after ensureTracks re-renders the line.
         hero: () => {
+          // The live row, not the drill-time snapshot: a new cover or export stamp shows at once.
+          const q = lists.find((x) => x.libraryId === p.libraryId) ?? p;
           const ts = trackCache.get(id);
-          const n = ts?.length ?? p.trackCount;
+          const n = ts?.length ?? q.trackCount;
           const total = ts ? formatTotal(ts.reduce((acc, t) => acc + (t.durationMs ?? 0), 0)) : "";
-          const source = p.source === "local" ? "Yours" : p.curatorName ?? "Apple Music";
+          const source = q.source === "local" ? "Yours" : q.curatorName ?? "Apple Music";
+          const local = q.source === "local";
           return {
-            cover: heroCover(p.artwork, p.name, coverOf(p)), // live: fills in when the tracks land
-            title: p.name,
+            cover: heroCover(q.artwork, q.name, coverOf(q)), // live: fills in when the tracks land
+            title: q.name,
             meta: [n != null ? `${n} song${n === 1 ? "" : "s"}` : "", total, source].filter(Boolean).join(" · "),
+            // A local playlist's cover is a button (1B) and takes a dropped image file (3B).
+            coverMenu: local ? () => coverItems(q, "Choose Image…") : undefined,
+            coverDrop: local ? (file: File) => setCoverFromFile(q, file) : undefined,
           };
         },
         density: true,
@@ -380,6 +392,18 @@ export const playlistsCard: CardDef = {
       { label: "Delete Folder", run: () => void folderDelete(id).catch((e) => console.error("[playlists] delete folder", e)) },
     ];
 
+    // The cover items (NEXT-VERSION §2, PLAYLISTS.md §6), shared by the hero cover button
+    // and a local row's right-click. Covers are local only: Apple's API cannot receive
+    // one, so an exported playlist keeps whatever Apple generates.
+    const coverItems = (p: Playlist, pickLabel: string): MenuItem[] => {
+      const items: MenuItem[] = [{ label: pickLabel, run: () => pickCover(p) }];
+      if (p.artwork)
+        items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] remove cover", e)) });
+      const ex = exportItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
+      if (ex) items.push(ex);
+      return items;
+    };
+
     const listMenu = (p: Playlist): MenuItem[] => {
       const ctxTag = `playlist:${pid(p)}`;
       const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
@@ -396,10 +420,7 @@ export const playlistsCard: CardDef = {
       // Greyed while it has songs: the non-empty delete UX is a decided-later slice.
       // The change bus (below) handles the cache eviction + list reload.
       if (p.source === "local") {
-        // A cover of the user's own (NEXT-VERSION §2). Local only: Apple's API cannot
-        // receive one, so an exported playlist keeps whatever Apple generates.
-        items.push({ label: p.artwork ? "Change Cover…" : "Set Cover…", run: () => pickCover(p) });
-        if (p.artwork) items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch(err("remove cover")) });
+        items.push(...coverItems(p, p.artwork ? "Change Cover…" : "Set Cover…"));
         const n = trackCache.get(pid(p))?.length ?? p.trackCount ?? 0;
         items.push({
           label: "Delete Playlist",
