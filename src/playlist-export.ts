@@ -38,7 +38,15 @@ async function makeNew(p: Playlist, again: boolean, after: () => void): Promise<
     r = await playlistExportApple(p, "new");
   } catch (e) {
     console.error("[export] new", e);
-    toast({ kind: "warn", text: `Couldn't export “${p.name}” to Apple Music.` });
+    // The create can succeed and the lookup of the new copy still fail: say what exists.
+    const created = String(e).includes("created on Apple Music");
+    toast({
+      kind: "warn",
+      text: created
+        ? `Made “${p.name}” on Apple Music, but couldn't add its songs. Try Export again; you can delete the empty copy in the Music app.`
+        : `Couldn't export “${p.name}” to Apple Music.`,
+    });
+    if (created) after();
     return;
   }
   after();
@@ -49,7 +57,11 @@ async function makeNew(p: Playlist, again: boolean, after: () => void): Promise<
   if (!noticeOff(NOTICE_KEY)) {
     toast({
       kind: "info",
-      text: `Made “${p.name}” on Apple Music. DeetsMusic can't rename, reorder, or delete it there; use the Music app. Turn this off in Settings › Apple Music.${skippedLine(r.skipped)}`,
+      text:
+        `Made “${p.name}” on Apple Music. DeetsMusic can't rename, reorder, or delete it there; use the Music app.` +
+        // Only a cover the user set (a data URL) is worth the sentence: it never reaches Apple.
+        (p.artwork?.urlTemplate.startsWith("data:") ? " Your cover stays in DeetsMusic; Apple Music makes its own." : "") +
+        ` Turn this off in Settings › Apple Music.${skippedLine(r.skipped)}`,
       onceKey: NOTICE_KEY,
       actions: [{ label: "Settings", run: () => requestSetting("playlistexport") }],
     });

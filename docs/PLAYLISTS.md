@@ -261,6 +261,17 @@ added at the end) differs from the local order. Then:
 - the copy is gone from the mirror, or the append fails → sticky warn with **[Make a New Copy]**.
 An append drops that copy's content cache so its next open shows the new songs.
 
+**After an export (2026-09-14).** A playlist made in DeetsMusic is one row: the list hides
+its linked Apple copy (`exported_apple_id`) and favors the local version. An older copy from
+Make a New Apple Copy is unlinked, so it lists as its own Apple row. The local playlist with a
+live Apple copy carries the Apple Music sigil; its detail hero adds "Exported on <date>" (`exported_at`).
+With no cover of its own, it shows the artwork Apple gave its copy (the mirror row — zero
+calls), before the song mosaic. The first-export notice adds "Your cover stays in
+DeetsMusic; Apple Music makes its own." only when the playlist has its own cover.
+**The create reply is gzip-compressed** whatever the request asks: `reqwest` needs its
+`gzip` feature, or the new playlist's id is unreadable (found 2026-09-14 — two empty copies
+were made before the fix).
+
 **Why no confirm before the first write** (fork 5C): it is the Add to Library pattern — the
 flyout row already names Apple Music, and everything it makes can be removed in the Music app.
 

@@ -112,6 +112,10 @@ health next finds the network back ([TOASTS.md](TOASTS.md) §Apple health, offli
 tested against a real Wi-Fi drop.
 **Rust + `tauri.conf.json` changed: restart the dev runner.** An export is a REAL Apple
 write — test with a throwaway playlist and delete its copies in the Music app.
+**Export desk-tested the same night:** the first tries made empty copies because Apple's create
+reply is gzip-compressed (fixed: `reqwest` `gzip` feature). An exported playlist now lists as
+one row (the local one; the linked Apple copy is hidden), with the Apple Music sigil, the
+copy's Apple artwork when it has no cover of its own, and "Exported on <date>" in its hero.
 
 **2026-09-13 — Apple terms + D.7 pass, built, NOT yet desk-tested or deployed** (branch
 `toast-time`; decisions and the origin probe in [RELEASE.md §7](RELEASE.md) "Revised

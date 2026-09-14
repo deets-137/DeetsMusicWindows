@@ -106,6 +106,8 @@ center-crops it to a 512 px JPEG data URL (≈50 KB) and `playlist_set_cover` st
 button — **Choose Image…** · **Remove Cover** · **Export ▸** (fork 1B) — and takes a dropped
 image file (fork 3B; `dragDropEnabled: false` on the main window hands file drops to the page,
 and `main.ts` stops a stray drop from navigating). Apple playlists get no cover (fork 2A).
+A local playlist with no image of its own but an exported Apple copy shows that copy's Apple
+artwork, ahead of the mosaic (2026-09-14; PLAYLISTS.md §6).
 
 ---
 

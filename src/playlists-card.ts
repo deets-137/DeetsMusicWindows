@@ -25,6 +25,8 @@ import { toast } from "./toast";
 import type { CardDef } from "./cards";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
+/** The user's own cover (a data URL) — not the artwork of its Apple copy, which can't be removed here. */
+const ownCover = (p: Playlist) => !!p.artwork?.urlTemplate.startsWith("data:");
 
 // Source sigil for playlists that live on Apple Music (`source: "apple"`), shown
 // right-aligned on the count row. The shape is Apple's official monochrome Apple Music
@@ -326,7 +328,15 @@ export const playlistsCard: CardDef = {
           return {
             cover: heroCover(q.artwork, q.name, coverOf(q)), // live: fills in when the tracks land
             title: q.name,
-            meta: [n != null ? `${n} song${n === 1 ? "" : "s"}` : "", total, source].filter(Boolean).join(" · "),
+            meta: [
+              n != null ? `${n} song${n === 1 ? "" : "s"}` : "",
+              total,
+              source,
+              // A local playlist with a live Apple copy: when it was last written there.
+              local && q.exportedAt && onApple(q)
+                ? `Exported on ${new Date(q.exportedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+                : "",
+            ].filter(Boolean).join(" · "),
             // A local playlist's cover is a button (1B) and takes a dropped image file (3B).
             coverMenu: local ? () => coverItems(q, "Choose Image…") : undefined,
             coverDrop: local ? (file: File) => setCoverFromFile(q, file) : undefined,
@@ -338,6 +348,11 @@ export const playlistsCard: CardDef = {
         emptyText: "Add songs from your Library or Search.",
       };
     };
+
+    // On Apple Music: a mirror, or a local playlist whose exported copy is still in the mirror
+    // (PLAYLISTS.md §6) — both carry the Apple Music sigil in the list.
+    const onApple = (p: Playlist) =>
+      p.source === "apple" || (!!p.exportedAppleId && lists.some((m) => m.source === "apple" && m.libraryId === p.exportedAppleId));
 
     // ── overview: the unified list ──
     const subOf = (p: Playlist) => {
@@ -397,7 +412,7 @@ export const playlistsCard: CardDef = {
     // one, so an exported playlist keeps whatever Apple generates.
     const coverItems = (p: Playlist, pickLabel: string): MenuItem[] => {
       const items: MenuItem[] = [{ label: pickLabel, run: () => pickCover(p) }];
-      if (p.artwork)
+      if (ownCover(p))
         items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] remove cover", e)) });
       const ex = exportItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
       if (ex) items.push(ex);
@@ -420,7 +435,7 @@ export const playlistsCard: CardDef = {
       // Greyed while it has songs: the non-empty delete UX is a decided-later slice.
       // The change bus (below) handles the cache eviction + list reload.
       if (p.source === "local") {
-        items.push(...coverItems(p, p.artwork ? "Change Cover…" : "Set Cover…"));
+        items.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…"));
         const n = trackCache.get(pid(p))?.length ?? p.trackCount ?? 0;
         items.push({
           label: "Delete Playlist",
@@ -447,7 +462,11 @@ export const playlistsCard: CardDef = {
       const shelved = !view || (view.sortKey === "folders" && view.sortDir === "asc" && !view.query.trim());
       const rows: PlRow[] = [];
       let pos = 0;
-      const sorted = [...lists].sort(byName);
+      // A playlist made in DeetsMusic and exported is ONE playlist: favor the local row (it
+      // carries the Apple Music sigil + "Exported on") and hide its linked Apple copy. An
+      // older copy (Make a New Apple Copy) is no longer linked, so it still lists (PLAYLISTS.md §6).
+      const linked = new Set(lists.map((p) => p.exportedAppleId).filter(Boolean));
+      const sorted = lists.filter((p) => !(p.source === "apple" && linked.has(p.libraryId))).sort(byName);
       if (!shelved) {
         for (const p of sorted) rows.push({ pos: pos++, kind: "playlist", p });
         return rows;
@@ -512,7 +531,7 @@ export const playlistsCard: CardDef = {
           render: (x, density, idx) =>
             x.kind === "playlist"
               ? musicCell(density, idx, x.p.artwork, x.p.name, subOf(x.p), {
-                  badge: x.p.source === "apple" ? APPLE_SIGIL : "",
+                  badge: onApple(x.p) ? APPLE_SIGIL : "",
                   mosaic: coverOf(x.p), // the derived cover when there's no artwork
                 })
               : shelfCell(x, idx),

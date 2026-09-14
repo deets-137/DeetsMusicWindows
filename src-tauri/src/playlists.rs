@@ -133,14 +133,18 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
         for ((id, name, description, created_at, n, cover), (exported_apple_id, exported_at)) in rows {
             let key = format!("local:{id}");
             // Cover precedence (NEXT-VERSION §2): the user's own image (a data URL,
-            // no {w}/{h} — `artURL` leaves it alone), else the mosaic of the first
-            // distinct track covers.
+            // no {w}/{h} — `artURL` leaves it alone), else the artwork Apple gave the
+            // playlist's exported copy (its mirror row, 2026-09-14), else the mosaic of
+            // the first distinct track covers.
             let (artwork, cover_urls) = match cover {
                 Some(data) if !data.is_empty() => (
                     Some(crate::model::Artwork { url_template: data, width: 0, height: 0, ..Default::default() }),
                     None,
                 ),
-                _ => (None, mosaic_urls(&conn, "local_playlist_tracks", &id.to_string())?),
+                _ => match exported_apple_id.as_deref().and_then(|a| apple_copy_artwork(&conn, a)) {
+                    Some(art) => (Some(art), None),
+                    None => (None, mosaic_urls(&conn, "local_playlist_tracks", &id.to_string())?),
+                },
             };
             out.push(Playlist {
                 folder_id: folder_of.get(&key).copied(),
@@ -185,6 +189,15 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
         }
     }
     Ok(out)
+}
+
+/// The artwork Apple gave a local playlist's exported copy, read from its mirror row —
+/// zero Apple calls. None when the copy is gone from the mirror or Apple sent no artwork.
+fn apple_copy_artwork(conn: &Connection, apple_id: &str) -> Option<crate::model::Artwork> {
+    let json: String = conn
+        .query_row("SELECT json FROM apple_playlists WHERE playlist_id = ?1", [apple_id], |r| r.get(0))
+        .ok()?;
+    serde_json::from_str::<Playlist>(&json).ok()?.artwork
 }
 
 /// The first four DISTINCT track-cover templates of a playlist, in authored order,
@@ -446,7 +459,13 @@ pub async fn playlist_export_apple(
             if !(200..300).contains(&status) {
                 return Err(format!("export: create HTTP {status}"));
             }
-            let apple_id = body["data"][0]["id"].as_str().ok_or("export: create returned no id")?.to_string();
+            // Apple sends this reply gzip-compressed whatever the request asks for; reqwest's
+            // `gzip` feature decodes it (2026-09-14 — without it the id was unreadable).
+            let Some(apple_id) = body["data"][0]["id"].as_str().map(String::from) else {
+                let snippet: String = body.to_string().chars().take(300).collect();
+                crate::log::warn(&format!("playlists: export create HTTP {status} returned no id; body {snippet}"));
+                return Err("export: created on Apple Music, but its reply had no playlist id".into());
+            };
             {
                 let conn = db.0.lock().unwrap();
                 conn.execute(

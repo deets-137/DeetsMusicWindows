@@ -687,6 +687,14 @@ export function initCollectionCard(opts: CardOptions) {
     const t = e.target as HTMLElement;
     const pane = t.closest<HTMLElement>(".coll-pane");
     if (!pane || pane !== curPane || animating) return;
+    // The hero cover button: right-click opens the same cover menu as a left-click, at the cursor.
+    if (t.closest("[data-hero-cover]")) {
+      const items = cur().ctx.hero?.()?.coverMenu?.();
+      if (!items?.length) return;
+      e.preventDefault();
+      openContextMenu(e.clientX, e.clientY, items);
+      return;
+    }
     const el = t.closest<HTMLElement>("[data-idx]");
     if (!el) return;
     const g = groupingOf(cur());
