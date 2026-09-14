@@ -7,7 +7,7 @@ import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
-import { connect, disconnect, isConnected, SignInError } from "./apple";
+import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import * as health from "./apple-health";
 import * as diag from "./diag";
 import { initTrackStore } from "./track-store";
@@ -156,7 +156,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const ICON_SPINNER = '<span class="account__spinner"></span>';
 
   type AcctState = "in" | "out" | "loading";
-  const setAccount = (state: AcctState, note?: string) => {
+  // `fallback`: the hosted sign-in is waiting in the browser; offer the loopback page
+  // under the note (DATA-ARCHITECTURE §2a fork 5 — a Worker outage or a blocked domain).
+  const setAccount = (state: AcctState, note?: string, fallback?: () => void) => {
     if (acctIcon) acctIcon.innerHTML = state === "in" ? ICON_CHECK : state === "out" ? ICON_X : ICON_SPINNER;
     if (acctBtn) {
       acctBtn.dataset.state = state === "loading" ? acctBtn.dataset.state ?? "out" : state;
@@ -165,6 +167,14 @@ window.addEventListener("DOMContentLoaded", () => {
     if (acctStatus) {
       acctStatus.textContent =
         note ?? (state === "in" ? "Connected" : state === "out" ? "Not connected" : "Working…");
+      if (fallback) {
+        const link = document.createElement("button");
+        link.type = "button";
+        link.className = "account__link";
+        link.textContent = "Browser page didn't load? Use local sign-in";
+        link.addEventListener("click", fallback);
+        acctStatus.append(link);
+      }
     }
   };
   // The row follows Apple health too (apple-health.ts): a token on disk only means the
@@ -193,7 +203,10 @@ window.addEventListener("DOMContentLoaded", () => {
     diag.warn("account:signInFailed", { code, reason: e instanceof Error ? e.message : String(e) });
     if (code === "unavailable") health.show("app", true, "signin");
     else if (code === "offline") health.show("offline", true, "signin");
-    else if (code === "timeout") toast({ kind: "error", text: "Sign-in didn't finish in time.", actions: retry });
+    else if (code === "timeout")
+      // A hosted sign-in that never returned (the link was not followed, or the scheme is not
+      // registered — DATA-ARCHITECTURE §2a) ends here too, so the local page is offered next to Try again.
+      toast({ kind: "error", text: "Sign-in didn't finish in time.", actions: [...retry, { label: "Use local sign-in", run: () => void signIn(true) }] });
     else if (code === "ports") toast({ kind: "warn", text: "Another sign-in page is still open. Close it, then try again.", actions: retry });
     else if (code === "rejected")
       // Apple said Unauthorized: an Apple-side problem gets its own toast; otherwise say it plainly.
@@ -204,17 +217,42 @@ window.addEventListener("DOMContentLoaded", () => {
     else toast({ kind: "warn", text: "Sign-in didn't finish. Try again.", actions: retry });
   };
 
-  const signIn = async () => {
-    setAccount("loading", "Continue sign-in in your browser…");
+  // One sign-in at a time owns the row: the fallback link starts a second `connect()`
+  // while the first still polls, and both resolve on the same capture. Only the newest
+  // paints, resets health, or toasts; the older one returns quietly.
+  let signInSeq = 0;
+  let signInPending = false;
+  const signIn = async (local = false) => {
+    const mine = ++signInSeq;
+    signInPending = true;
+    setAccount("loading", "Continue in your browser, or click again to cancel.", local ? undefined : () => void signIn(true));
+    acctBtn?.removeAttribute("disabled"); // the second click cancels (below)
     try {
-      await connect();
+      await connect(local);
+      if (mine !== signInSeq) return;
+      signInPending = false;
       noteSignedIn(); // the first playback failure after this gets the subscription hint
       health.reset();
       await paintAccount();
+      // The user is usually still in the browser; this says the app took the token
+      // (`all` tier, TOASTS.md §5).
+      toast({ kind: "success", text: "Sign-in complete! Enjoy!" });
     } catch (e) {
+      if (mine !== signInSeq) return;
+      signInPending = false;
+      // The user's own cancel: back to the row as it was, no toast.
+      if (e instanceof SignInError && e.message === "cancelled") return void (await paintAccount());
       console.error("[account] sign-in failed", e);
       await paintAccount("Sign-in didn't finish");
       signInFailed(e);
+    }
+  };
+  const cancelPending = async () => {
+    signInPending = false;
+    try {
+      await cancelSignIn();
+    } catch (e) {
+      console.error("[account] cancel failed", e);
     }
   };
 
@@ -233,6 +271,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   acctBtn?.addEventListener("click", async () => {
+    if (signInPending) return void cancelPending();
     const signedIn = (await isConnected()) && acctTrouble !== "signin";
     void (signedIn ? signOut() : signIn());
   });

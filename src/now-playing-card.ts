@@ -24,7 +24,6 @@ const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5
 import { startStationItem } from "./start-station";
 import { copySongLinkItem } from "./copy-link";
 import { explicitBadge } from "./library-card";
-import { esc } from "./collection-card";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef } from "./cards";
 
@@ -39,8 +38,13 @@ const TEMPLATE = `
     <div class="np__art" id="np-art" aria-hidden="true">${GLYPH_NOTE}</div>
     <div class="np__center">
       <div class="np__meta">
-        <span class="np__title" id="np-title">Not playing</span>
-        <span class="np__artist" id="np-artist"></span>
+        <div class="np__line">
+          <span class="np__title" id="np-title">Not playing</span>
+          <span class="np__explicit" id="np-explicit"></span>
+        </div>
+        <div class="np__line">
+          <span class="np__artist" id="np-artist"></span>
+        </div>
         <span class="np__album" id="np-album"></span>
       </div>
       <div class="np__scrub scrub">
@@ -116,6 +120,18 @@ export const nowPlayingCard: CardDef = {
     const npTitle = host.querySelector<HTMLElement>("#np-title");
     const npArtist = host.querySelector<HTMLElement>("#np-artist");
     const npAlbum = host.querySelector<HTMLElement>("#np-album");
+    const npBadge = host.querySelector<HTMLElement>("#np-explicit");
+    // The explicit badge sits after the title while the title fits. When the title is
+    // cut off, the badge moves to the right end of the artist line. The badge is always
+    // measured in the title line first, so the choice can't oscillate. The title's
+    // native tooltip carries the full text only when it is cut off.
+    const placeBadge = () => {
+      if (!npTitle || !npBadge || !npArtist) return;
+      npTitle.after(npBadge);
+      if (npTitle.scrollWidth > npTitle.clientWidth) npArtist.after(npBadge);
+      npTitle.title = npTitle.scrollWidth > npTitle.clientWidth ? npTitle.textContent ?? "" : "";
+    };
+    let titleKey = ""; // title + badge last placed — re-measured only on change
     const npElapsed = host.querySelector<HTMLElement>("#np-elapsed");
     const npRemaining = host.querySelector<HTMLElement>("#np-remaining");
     const fmt = (s: number) => {
@@ -144,8 +160,15 @@ export const nowPlayingCard: CardDef = {
       const artist = s.artist ?? next?.artistName;
       const album = s.album ?? next?.albumName;
       const artwork = s.artworkUrl ?? artURL(next, 480) ?? undefined;
-      if (npTitle) npTitle.innerHTML = esc(title ?? "Not playing") + (next ? explicitBadge(next) : "");
+      const text = title ?? "Not playing";
+      const badge = next ? explicitBadge(next) : "";
       if (npArtist) npArtist.textContent = artist ?? (s.station ? s.station.name : "");
+      if (npTitle && `${text}|${badge}` !== titleKey) {
+        titleKey = `${text}|${badge}`;
+        npTitle.textContent = text;
+        if (npBadge) npBadge.innerHTML = badge;
+        placeBadge();
+      }
       if (npAlbum) npAlbum.textContent = album ?? "";
       // The cover is rebuilt ONLY when the artwork or station changes: state fires on
       // every play/pause/loading tick, and re-creating the <img> each time flashed the
@@ -342,6 +365,11 @@ export const nowPlayingCard: CardDef = {
       stackObserver.observe(bottom);
       fit();
     }
+    // A width change (window resize, surface switch, skin font) can cut the title off
+    // or free it, so the badge is placed again.
+    const meta = host.querySelector<HTMLElement>(".np__meta");
+    const badgeObserver = new ResizeObserver(placeBadge);
+    if (meta) badgeObserver.observe(meta);
 
     // Album Color — tint the card's aurora with the current album's real palette.
     const npEl = host.querySelector<HTMLElement>(".np")!;
@@ -377,6 +405,7 @@ export const nowPlayingCard: CardDef = {
         unsubVolume();
         airplay?.destroy();
         stackObserver?.disconnect();
+        badgeObserver.disconnect();
         host.innerHTML = "";
       },
     };

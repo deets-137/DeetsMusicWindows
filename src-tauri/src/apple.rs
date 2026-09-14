@@ -49,6 +49,41 @@ pub struct AppleState {
     /// present", so a re-sign-in over an expired token waits for the NEW capture, and a
     /// failure the page reports reaches the app at once instead of after the timeout.
     pub auth: Arc<Mutex<AuthStatus>>,
+    /// The hosted sign-in waiting for its deep link (DATA-ARCHITECTURE §2a). `None`
+    /// when no hosted sign-in is in progress: a link that arrives then is ignored.
+    pub link: Arc<Mutex<Option<PendingLink>>>,
+    /// The sign-in in progress can be stopped: a second click on the Account button
+    /// (`apple_cancel_auth`) or a newer sign-in raises this flag, the loopback server
+    /// thread sees it within a second and frees its port.
+    pub abort: Arc<Mutex<Option<Arc<std::sync::atomic::AtomicBool>>>>,
+}
+
+/// A new sign-in starts: stop the previous one (its loopback server frees the port,
+/// its link is forgotten) and hand back the flag for this one.
+fn arm_abort(state: &AppleState) -> Arc<std::sync::atomic::AtomicBool> {
+    let flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    if let Some(old) = state.abort.lock().unwrap().replace(flag.clone()) {
+        old.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    *state.link.lock().unwrap() = None;
+    flag
+}
+
+/// Stop the sign-in in progress: the Account button clicked again while it waits
+/// (main.ts), or nothing to stop. The loopback server exits within a second; a later
+/// hosted link finds no pending sign-in. `connect()` sees `Failed { "cancelled" }` and
+/// paints the row back without a toast — the user asked for this one.
+#[tauri::command]
+pub fn apple_cancel_auth(state: tauri::State<'_, AppleState>) {
+    if let Some(flag) = state.abort.lock().unwrap().take() {
+        flag.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    *state.link.lock().unwrap() = None;
+    let mut auth = state.auth.lock().unwrap();
+    if matches!(*auth, AuthStatus::Pending) {
+        *auth = AuthStatus::Failed { reason: "cancelled".into() };
+        crate::log::info("sign-in: cancelled from the Account row");
+    }
 }
 
 #[derive(Clone, Default, Serialize)]
@@ -59,6 +94,183 @@ pub enum AuthStatus {
     Pending,
     Captured,
     Failed { reason: String },
+}
+
+/// One hosted sign-in: its nonce and when it started. Taken (single use) by the first
+/// matching link; dropped by the local sign-in and by the 5-minute expiry.
+pub struct PendingLink {
+    nonce: String,
+    started: Instant,
+}
+
+// ── Hosted sign-in page + deep link (DATA-ARCHITECTURE §2a) ─────────────────
+
+/// The hosted sign-in page's origin: the mint host, so the page reads its developer
+/// token from the same Worker with no CORS. Debug builds may point it elsewhere with
+/// `DEETS_SIGNIN_BASE` (a `wrangler dev` session); the release build has no override.
+const SIGNIN_BASE: &str = "https://music-api.deets.solutions";
+/// A hosted sign-in waits this long for its link, like the loopback page's 5 minutes.
+const LINK_TTL: Duration = Duration::from_secs(300);
+
+/// The deep-link scheme this build answers to. A debug build owns its own scheme, so
+/// `dev:app` never takes `deetsmusic://` from the installed app (§2a fork 4). Windows
+/// keeps one exe per scheme (HKCU\Software\Classes\<scheme>): the release installer
+/// writes `deetsmusic`, and `lib.rs` registers `deetsmusic-dev` at every debug launch.
+pub fn link_scheme() -> &'static str {
+    if cfg!(debug_assertions) {
+        "deetsmusic-dev"
+    } else {
+        "deetsmusic"
+    }
+}
+
+fn signin_base() -> String {
+    #[cfg(debug_assertions)]
+    if let Ok(v) = std::env::var("DEETS_SIGNIN_BASE") {
+        let v = v.trim().trim_end_matches('/');
+        if !v.is_empty() {
+            return v.to_string();
+        }
+    }
+    SIGNIN_BASE.to_string()
+}
+
+/// The first `<scheme>://…` argument, if any — how a link reaches a launch.
+pub fn link_in_args<'a>(args: impl IntoIterator<Item = &'a String>) -> Option<&'a String> {
+    let prefix = format!("{}://", link_scheme());
+    args.into_iter().find(|a| a.to_ascii_lowercase().starts_with(&prefix))
+}
+
+/// A `<scheme>://auth?n=<nonce>&mut=<token>` or `…&error=<reason>` link from the
+/// browser, forwarded by the single-instance plugin (`lib.rs`). Any web page can open
+/// such a link, so nothing is accepted without a pending sign-in whose nonce matches,
+/// within its 5 minutes, once. A mismatch is ignored (the real link may still come);
+/// no pending sign-in is ignored (a cold start, or a stray page). The Apple check on
+/// the token runs off the caller's thread — it is the main thread.
+pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
+    use tauri::Manager;
+    let Ok(url) = url::Url::parse(raw) else {
+        crate::log::warn("sign-in: link did not parse; ignored");
+        return;
+    };
+    let route = url.host_str().unwrap_or("").to_string() + url.path().trim_end_matches('/');
+    if !url.scheme().eq_ignore_ascii_case(link_scheme()) || route != "auth" {
+        crate::log::warn(&format!("sign-in: link to an unknown route ({}); ignored", url.scheme()));
+        return;
+    }
+    let mut nonce = None;
+    let mut token = None;
+    let mut error = None;
+    for (k, v) in url.query_pairs() {
+        match &*k {
+            "n" => nonce = Some(v.into_owned()),
+            "mut" => token = Some(v.into_owned()),
+            "error" => error = Some(v.chars().take(120).collect::<String>()),
+            _ => {}
+        }
+    }
+    if let Some(t) = token.as_deref() {
+        crate::log::register_secret(t);
+    }
+
+    let state = app.state::<AppleState>();
+    {
+        let mut pending = state.link.lock().unwrap();
+        let Some(p) = pending.as_ref() else {
+            crate::log::warn("sign-in: link arrived with no sign-in in progress; ignored (start the sign-in from DeetsMusic)");
+            return;
+        };
+        if nonce.as_deref() != Some(p.nonce.as_str()) {
+            crate::log::warn("sign-in: link nonce does not match the sign-in in progress; ignored");
+            return;
+        }
+        let expired = p.started.elapsed() > LINK_TTL;
+        *pending = None; // single use, matched or expired
+        if expired {
+            crate::log::warn("sign-in: link arrived after 5 min; sign-in abandoned");
+            *state.auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
+            return;
+        }
+    }
+
+    if let Some(reason) = error {
+        crate::log::warn(&format!("sign-in: the hosted page reported a failure: {reason}"));
+        *state.auth.lock().unwrap() = AuthStatus::Failed { reason };
+        return;
+    }
+    let Some(tok) = token.filter(|t| !t.is_empty()) else {
+        crate::log::warn("sign-in: link carried no token; sign-in abandoned");
+        *state.auth.lock().unwrap() = AuthStatus::Failed { reason: "link carried no token".into() };
+        return;
+    };
+    let store = state.user_token.clone();
+    let auth = state.auth.clone();
+    std::thread::spawn(move || {
+        accept_token(&tok, &store, &auth);
+    });
+}
+
+/// Start a hosted sign-in: remember the nonce, open the page, arm the expiry.
+fn begin_hosted(app: &tauri::AppHandle, state: &AppleState, theme: &str, skin: &str) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let nonce = random_nonce();
+    arm_abort(state);
+    *state.link.lock().unwrap() = Some(PendingLink { nonce: nonce.clone(), started: Instant::now() });
+    *state.auth.lock().unwrap() = AuthStatus::Pending;
+
+    let link = state.link.clone();
+    let auth = state.auth.clone();
+    let armed = nonce.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(LINK_TTL);
+        let mut pending = link.lock().unwrap();
+        if pending.as_ref().map(|p| p.nonce == armed).unwrap_or(false) {
+            *pending = None;
+            crate::log::warn("sign-in: no link within 5 min; browser sign-in abandoned");
+            *auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
+        }
+    });
+
+    let url = format!(
+        "{}/signin?n={nonce}&s={}&theme={}&skin={}&v={}",
+        signin_base(),
+        link_scheme(),
+        if theme.is_empty() { "lilac" } else { theme },
+        if skin.is_empty() { "press" } else { skin },
+        env!("CARGO_PKG_VERSION")
+    );
+    // The address is logged whole: the nonce is worth nothing after 5 minutes or one
+    // use, and a support log that shows WHICH page opened is the point of the line.
+    app.opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| format!("could not open browser: {e}"))?;
+    crate::log::info(&format!("sign-in: hosted page opened in the browser: {url}"));
+    Ok(())
+}
+
+/// Is the hosted page there? One GET of `/signin` with no query — that renders the
+/// "start from DeetsMusic" page, no mint work — bounded by the check client's timeout.
+/// The page itself, not `/health`: a Worker that is up without the page (deployed
+/// before the page existed) must fall back too. A miss uses the loopback page (§2a
+/// fork 5) and is logged.
+async fn hosted_reachable(client: &reqwest::Client) -> bool {
+    let url = format!("{}/signin", signin_base());
+    // Shorter than the client's 8 s: this wait sits between the click and the browser.
+    match client.get(&url).timeout(Duration::from_secs(4)).send().await {
+        Ok(r) if r.status().is_success()
+            && r.headers().get("content-type").and_then(|v| v.to_str().ok()).map(|v| v.starts_with("text/html")).unwrap_or(false) =>
+        {
+            true
+        }
+        Ok(r) => {
+            crate::log::warn(&format!("sign-in: hosted page answered {}; using the local page", r.status().as_u16()));
+            false
+        }
+        Err(e) => {
+            crate::log::warn(&format!("sign-in: hosted page unreachable ({e}); using the local page"));
+            false
+        }
+    }
 }
 
 // The app's real token sheets + fonts, embedded so the auth page matches exactly.
@@ -515,6 +727,13 @@ button:hover{filter:brightness(0.98)}
 <script>
 const DEV_TOKEN="__DEV_TOKEN__", NONCE="__NONCE__";
 const status=document.getElementById("status");
+// The tab closed (or left) before the app took a token: tell the app now, so the
+// Account row does not wait five minutes for the timeout. A beacon survives unload.
+let settled=false;
+addEventListener("pagehide",()=>{
+  if(settled) return;
+  try{ navigator.sendBeacon("/callback-error", new Blob([JSON.stringify({state:NONCE,error:"page closed"})],{type:"application/json"})); }catch(e){}
+});
 async function ready(){
   if(!window.MusicKit){ await new Promise(r=>document.addEventListener("musickitloaded",r,{once:true})); }
   await MusicKit.configure({developerToken:DEV_TOKEN, app:{name:"DeetsMusic",build:"__VERSION__"}});
@@ -530,10 +749,12 @@ document.getElementById("go").onclick=async()=>{
     // or nothing at all. Never say "Done" unless the app actually took the token.
     const r=await fetch("/callback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,mut})});
     if(!r.ok) throw new Error("stale sign-in page");
+    settled=true;
     status.textContent="Done! You can close this tab and return to DeetsMusic.";
     status.className="done";
   }catch(e){
     // Plain words here; the raw reason goes back to the app, which says what happened.
+    settled=true;
     status.textContent="Sign-in didn't finish. Close this tab and try again from DeetsMusic.";
     const reason=String((e&&(e.errorCode||e.message))||e);
     fetch("/callback-error",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,error:reason})}).catch(()=>{});
@@ -551,15 +772,21 @@ fn serve(
     nonce: String,
     store: Arc<Mutex<Option<String>>>,
     auth: Arc<Mutex<AuthStatus>>,
+    abort: Arc<std::sync::atomic::AtomicBool>,
 ) {
     let deadline = Instant::now() + Duration::from_secs(300);
     loop {
+        // Stopped from the app (a cancel, or a newer sign-in): leave quietly — whoever
+        // raised the flag has already set the status. One-second ticks keep it prompt.
+        if abort.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
         let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
             crate::log::warn("sign-in: no callback within 5 min; browser sign-in abandoned");
             *auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
             break;
         };
-        match server.recv_timeout(remaining) {
+        match server.recv_timeout(remaining.min(Duration::from_secs(1))) {
             Ok(Some(mut req)) => {
                 let path = req.url().split('?').next().unwrap_or("/").to_string();
                 let is_post = *req.method() == tiny_http::Method::Post;
@@ -592,33 +819,12 @@ fn serve(
                             (state == nonce && !mut_tok.is_empty()).then(|| mut_tok.to_string())
                         });
                     if let Some(tok) = token {
-                        crate::log::register_secret(&tok);
-                        // Never save a token Apple already refuses (a stale page, a token
-                        // logged out at Apple). 403 on /v1/me = the sign-in token itself;
-                        // a 401 or no answer is about the developer token or the network
-                        // and does not block the sign-in.
-                        if capture_rejected_by_apple(&tok) {
-                            crate::log::warn("sign-in: Apple refused the delivered token (403); not saved");
-                            *auth.lock().unwrap() = AuthStatus::Failed { reason: "forbidden: Apple refused the new sign-in".into() };
+                        if accept_token(&tok, &store, &auth) {
+                            let _ = req.respond(tiny_http::Response::from_string(DONE_RESPONSE));
+                        } else {
                             let _ = req.respond(tiny_http::Response::from_string("rejected").with_status_code(400));
-                            break;
                         }
-                        *store.lock().unwrap() = Some(tok.clone());
-                        *auth.lock().unwrap() = AuthStatus::Captured;
-                        // A new sign-in: forget the cached health answer (it may still say
-                        // "expired") and hand the token to MusicKit in the running page —
-                        // MusicKit otherwise only reads it when the player first starts
-                        // (found 2026-09-13: signed in, MusicKit still unauthorized).
-                        *LAST_CHECK.lock().unwrap() = None;
-                        if let Some(app) = APP_HANDLE.get() {
-                            let _ = app.emit("user-token-changed", ());
-                        }
-                        if let Err(e) = persist_user_token(&tok) {
-                            crate::log::warn(&format!("sign-in: token captured but not persisted: {e}"));
-                        }
-                        crate::log::info("sign-in: user token captured");
-                        let _ = req.respond(tiny_http::Response::from_string(DONE_RESPONSE));
-                        break; // captured — shut down
+                        break; // captured or refused — shut down
                     }
                     crate::log::warn("sign-in: callback rejected (nonce mismatch or empty token)");
                     let _ = req
@@ -654,6 +860,34 @@ fn serve(
     }
 }
 
+/// The delivered token, from either page (loopback callback or deep link). Checks it
+/// with Apple, then stores, persists and announces it. False when Apple refuses it.
+fn accept_token(tok: &str, store: &Arc<Mutex<Option<String>>>, auth: &Arc<Mutex<AuthStatus>>) -> bool {
+    crate::log::register_secret(tok);
+    // Never save a token Apple already refuses (a stale page, a token logged out at
+    // Apple). 403 on /v1/me = the sign-in token itself; a 401 or no answer is about
+    // the developer token or the network and does not block the sign-in.
+    if capture_rejected_by_apple(tok) {
+        crate::log::warn("sign-in: Apple refused the delivered token (403); not saved");
+        *auth.lock().unwrap() = AuthStatus::Failed { reason: "forbidden: Apple refused the new sign-in".into() };
+        return false;
+    }
+    *store.lock().unwrap() = Some(tok.to_string());
+    *auth.lock().unwrap() = AuthStatus::Captured;
+    // A new sign-in: forget the cached health answer (it may still say "expired") and
+    // hand the token to MusicKit in the running page — MusicKit otherwise only reads it
+    // when the player first starts (found 2026-09-13: signed in, MusicKit still unauthorized).
+    *LAST_CHECK.lock().unwrap() = None;
+    if let Some(app) = APP_HANDLE.get() {
+        let _ = app.emit("user-token-changed", ());
+    }
+    if let Err(e) = persist_user_token(tok) {
+        crate::log::warn(&format!("sign-in: token captured but not persisted: {e}"));
+    }
+    crate::log::info("sign-in: user token captured");
+    true
+}
+
 fn respond_css(req: tiny_http::Request, body: &'static str) {
     let _ = req.respond(
         tiny_http::Response::from_string(body).with_header(content_type("text/css; charset=utf-8")),
@@ -679,8 +913,9 @@ pub fn apple_remote_config() -> serde_json::Value {
     remote_config()
 }
 
-/// Start the loopback sign-in: serve the themed page, open the default browser.
-/// `theme`/`skin` mirror the app's active selection so the page matches.
+/// Start the browser sign-in: the hosted page (§2a) when its Worker answers, else the
+/// loopback page; `local` asks for the loopback page outright (the fallback link in the
+/// Account row). `theme`/`skin` mirror the app's active selection so the page matches.
 ///
 /// Checks the developer token first (one catalog call, with the same bounded heal as
 /// every Rust call): a page configured with a dead token can only say "Unauthorized".
@@ -690,6 +925,7 @@ pub async fn apple_begin_auth(
     app: tauri::AppHandle,
     theme: String,
     skin: String,
+    local: Option<bool>,
     state: tauri::State<'_, AppleState>,
 ) -> Result<(), String> {
     let client = check_client()?;
@@ -698,11 +934,17 @@ pub async fn apple_begin_auth(
         "unreachable" => return Err("offline".into()),
         _ => return Err("apple-unavailable".into()),
     }
-    let dev = developer_token()?;
-    let nonce = random_nonce();
-
     let theme = sanitize_ident(&theme);
     let skin = sanitize_ident(&skin);
+
+    if !local.unwrap_or(false) && hosted_reachable(&client).await {
+        return begin_hosted(&app, &state, &theme, &skin);
+    }
+    // The local page: a hosted sign-in still waiting for its link is dropped (a late
+    // link cannot land on top of this one) and an older loopback server is stopped.
+    let abort = arm_abort(&state);
+    let dev = developer_token()?;
+    let nonce = random_nonce();
 
     let server = AUTH_PORTS
         .iter()
@@ -724,11 +966,13 @@ pub async fn apple_begin_auth(
     let store = state.user_token.clone();
     let auth = state.auth.clone();
     *auth.lock().unwrap() = AuthStatus::Pending;
-    std::thread::spawn(move || serve(server, page, nonce, store, auth));
+    std::thread::spawn(move || serve(server, page, nonce, store, auth, abort));
 
+    let url = format!("http://127.0.0.1:{port}/");
     app.opener()
-        .open_url(format!("http://127.0.0.1:{port}/"), None::<&str>)
+        .open_url(&url, None::<&str>)
         .map_err(|e| format!("could not open browser: {e}"))?;
+    crate::log::info(&format!("sign-in: local page opened in the browser: {url}"));
     Ok(())
 }
 

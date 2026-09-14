@@ -44,7 +44,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "publisher": "Aditya Sundaram",
     "copyright": "© 2026 Aditya Sundaram",
     "category": "Music",
@@ -72,6 +74,15 @@
       "nsis": {
         "installMode": "currentUser",
         "installerHooks": "./nsis/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "deetsmusic"
+        ]
       }
     }
   }

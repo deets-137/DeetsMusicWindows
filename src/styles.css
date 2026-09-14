@@ -179,6 +179,20 @@ body {
   color: var(--subtext);
   padding: 0 var(--space-1);
 }
+/* The fallback under the note while a hosted sign-in waits in the browser
+   (DATA-ARCHITECTURE §2a fork 5): a text link that opens the local page instead. */
+.account__link {
+  display: block;
+  margin-top: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--subtext);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.account__link:hover { color: var(--title); }
 .account__btn {
   display: flex;
   align-items: center;
@@ -1213,7 +1227,7 @@ body {
    inside a title (Search rows, Now Playing) it sits on the text line. */
 .lib-src-badge--explicit .lib-src-badge__letter { fill: var(--surface); }
 .lib-src-badge--apple-music { fill: var(--apple-music-mark); }   /* official asset: black or white only */
-.search__song-title .lib-src-badge, .np__title .lib-src-badge {
+.search__song-title .lib-src-badge {
   display: inline-block; vertical-align: -0.15em; margin-left: var(--space-1);
 }
 .lib-row > .lib-src-badge { margin-left: auto; }        /* trailing accessory on list rows */
@@ -1664,6 +1678,13 @@ body {
 .np__btn--play svg { width: calc(var(--transport-size) * 1.25); height: calc(var(--transport-size) * 1.25); }
 /* Now-playing title + artist, stacked above the scrubber. */
 .np__meta { min-width: 0; display: flex; flex-direction: column; gap: var(--np-meta-gap); }
+/* A meta line: its text plus the explicit badge. The title line hugs its text, so the
+   badge follows the title; the artist line fills, so the badge sits at its right end. */
+.np__line { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.np__line > .np__title { flex: 0 1 auto; min-width: 0; }
+.np__line > .np__artist { flex: 1 1 auto; min-width: 0; }
+.np__explicit { flex: 0 0 auto; display: flex; }
+.np__explicit:empty { display: none; }
 .np__title {
   font-family: var(--font-title);
   font-weight: var(--fw-title);
@@ -1716,7 +1737,7 @@ body {
   font-size: var(--np-stage-glyph);
 }
 [data-surface="max"] .np__center { flex: 0 0 auto; }
-[data-surface="max"] .np__title { font-size: var(--fs-title); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+[data-surface="max"] .np__title { font-size: var(--fs-title); }
 [data-surface="max"] .np__album { display: block; }
 [data-surface="max"] .np__times { display: flex; }
 [data-surface="max"] .np__summon { display: none; }

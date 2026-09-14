@@ -1,4 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "identifier": "com.deetsmusic.dev"
+  "identifier": "com.deetsmusic.dev",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "deetsmusic-dev"
+        ]
+      }
+    }
+  }
 }

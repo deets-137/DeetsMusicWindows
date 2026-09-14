@@ -11,7 +11,8 @@
     "dev:app": "node scripts/dev-app.mjs",
     "cli:build": "cargo build --release --manifest-path cli/Cargo.toml && node scripts/cli-dist.mjs",
     "release": "npm run cli:build && tauri build && node scripts/release-check.mjs && node scripts/archive-installer.mjs",
-    "release:check": "node scripts/release-check.mjs"
+    "release:check": "node scripts/release-check.mjs",
+    "signin:assets": "node scripts/signin-assets.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
