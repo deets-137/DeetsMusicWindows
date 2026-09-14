@@ -374,6 +374,34 @@ subscription. After a sign-in with such an account, read `msg` in `player:playba
 If that text matches `/unavailable/i`, the hint never fires. Then `isUnavailable` in
 `player.ts` needs a narrower test.
 
+## Sign-in — the hosted page + deep link (dev only, 2026-09-13)
+
+DATA-ARCHITECTURE.md §2a. A debug build answers `deetsmusic-dev://` (registered at every
+launch, HKCU); the installed app owns `deetsmusic://`. Log lines to look for, all under
+`sign-in:`: `hosted page opened in the browser: <url>` (the nonce is in that url),
+`hosted page unreachable … using the local page`, `link arrived with no sign-in in
+progress; ignored`, `link nonce does not match …; ignored`, `the hosted page reported a
+failure: <reason>`, `user token captured`.
+
+- **Point the app at a Worker preview** instead of the live page: in `../DeetsSupport`,
+  `npx wrangler dev --remote --port 8790` (remote, so the deployed secrets sign), then
+  `DEETS_SIGNIN_BASE=http://localhost:8790 npm run dev:app`. The release build has no override.
+- **Start a sign-in from outside the app:** `node scripts/webview-eval.mjs
+  "window.dispatchEvent(new Event('deets:sign-in'))"` — the same event the "Sign in"
+  toast button sends. Then read the url from the log line and open it yourself.
+- **A stray link** (no sign-in pending) must be ignored: from a shell,
+  `cmd /c start "" "deetsmusic-dev://auth?n=deadbeef"` → the ignored line above. Quote it:
+  `cmd` splits an unquoted `&`.
+- **Cancel:** click the Account button again while it waits → `sign-in: cancelled from
+  the Account row`, the row paints back, no toast, the loopback port (47831) closes within
+  a second. Closing the LOCAL page's tab instead → `the page reported a failure: page
+  closed` and the "didn't finish" toast. Closing the hosted page's tab tells the app
+  nothing (a browser cannot open a deep link on unload): cancel from the row.
+- **A refused token** end to end: start a sign-in, read the nonce from the log, open
+  `deetsmusic-dev://auth?n=<nonce>&mut=nothing` → `Apple refused the delivered token
+  (403); not saved` and the app's "didn't accept the sign-in" toast. A `&error=x` link
+  instead → `the hosted page reported a failure: x` and the "didn't finish" toast.
+
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.
 2. `__diag.dump()` (or `__diag.copy()` to paste it somewhere).

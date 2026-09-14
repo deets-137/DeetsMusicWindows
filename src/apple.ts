@@ -38,13 +38,16 @@ type AuthStatus = { state: "idle" | "pending" | "captured" } | { state: "failed"
  * Open the system browser to sign in, then poll Rust's sign-in status until the page
  * delivers a NEW token or reports a failure. Polling the status (not "is a token
  * present") matters for a re-sign-in over an expired token, which is still present.
+ *
+ * The page is the hosted one (DATA-ARCHITECTURE §2a) when its Worker answers, else the
+ * loopback page; `local` asks for the loopback page outright (the Account row's link).
  */
-export async function connect(timeoutMs = devSignInTimeout() ?? 5 * 60 * 1000): Promise<void> {
+export async function connect(local = false, timeoutMs = devSignInTimeout() ?? 5 * 60 * 1000): Promise<void> {
   // Pass the active theme/skin so the browser sign-in page matches the app.
   const theme = document.documentElement.dataset.theme ?? "lilac";
   const skin = document.documentElement.dataset.skin ?? "press";
   try {
-    await invoke("apple_begin_auth", { theme, skin }); // checks the app token, serves the page, opens the browser
+    await invoke("apple_begin_auth", { theme, skin, local }); // checks the app token, opens the browser
   } catch (e) {
     const msg = String(e);
     const code: SignInFailure =
@@ -69,6 +72,10 @@ export async function connect(timeoutMs = devSignInTimeout() ?? 5 * 60 * 1000): 
   }
   throw new SignInError("timeout", "Timed out waiting for browser sign-in");
 }
+
+/** Stop the sign-in in progress (the Account button clicked again while it waits). The
+ *  pending `connect()` then rejects with code "cancelled" and reason "cancelled". */
+export const cancelSignIn = (): Promise<void> => invoke("apple_cancel_auth");
 
 /** Rust's bounded health check (apple.rs `apple_check`): which token Apple rejects. */
 export interface AppleHealth {

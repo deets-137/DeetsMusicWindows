@@ -41,6 +41,8 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 # gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
 # works, but it churns Cargo.lock — prefer push + bump.)
 deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4b3980b5b8c4265663319ca21da7568106f9dad3" }
+tauri-plugin-deep-link = "2"
+url = "2"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

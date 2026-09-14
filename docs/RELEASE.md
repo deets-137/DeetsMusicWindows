@@ -32,6 +32,12 @@ Three stages, and the order matters:
    `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~5.6 MB at 0.1.3).
 3. **`scripts/archive-installer.mjs`** — copies that exe into `installers/`.
 
+**Before a Worker deploy that follows a theme, skin, palette or font change:** run
+`npm run signin:assets` here, then `npx wrangler deploy` in `../DeetsSupport`. The hosted
+sign-in page (DATA-ARCHITECTURE.md §2a) serves a COPY of the app's look, and the copy is
+only as fresh as the last run. The app never needs the Worker for a release; the Worker
+needs the app's look.
+
 ## 1a. Stranger parity — the live app must behave like a stranger's install (2026-09-13)
 
 **What slipped.** The installed 0.3.1 on the dev PC logged `token: source=local`: it read the

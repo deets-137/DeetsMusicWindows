@@ -162,16 +162,35 @@ blocks), measured in DEBUGGING.md. Also shipped that day: the ambient skin layer
 (compositor-only, `--ambient-fps`, paused when hidden) and Settings › Window › **Animate
 backgrounds** — both need a fresh installer to reach the installed app.
 
-**2026-09-13 — Hosted sign-in page + deep link: designed, NOT built.** The browser sign-in
-moves from `http://127.0.0.1:4783x` to `https://music-api.deets.solutions/signin`. The page
-returns the MUT to the app with a `deetsmusic://auth?n=<nonce>&mut=…` link, so the MUT never
-passes through the Worker. All forks are settled (1A–5A): page on the mint host · themed
-(app CSS copied into the Worker at deploy) · automatic link **and** a Return button · dev
-build uses `deetsmusic-dev://` · loopback page kept one release as a fallback link. Do not
-re-open the forks. Cold start: **[DATA-ARCHITECTURE.md §2a](DATA-ARCHITECTURE.md)** (flow,
-nonce rules, plugin + config notes, three desk-test checks). Work spans this repo
-(single-instance `deep-link` feature, `tauri-plugin-deep-link`, `apple.rs`) and
-`../DeetsSupport` (static `/signin` route). A Worker deploy needs the user's OK first.
+**2026-09-13 — Hosted sign-in page + deep link: BUILT, Worker DEPLOYED (version
+`0ef715d2`, 18:40), Apple step not yet desk-tested** (branch `optimus-deets`). The browser sign-in now opens
+`https://music-api.deets.solutions/signin` (the Worker's `/health` answering), else the
+loopback page. The page returns the MUT with a `deetsmusic://auth?n=<nonce>&mut=…` link
+(a debug build: `deetsmusic-dev://`), so the MUT never passes through the Worker. As built,
+with the differences from the plan: **[DATA-ARCHITECTURE.md §2a](DATA-ARCHITECTURE.md)**;
+test seams: DEBUGGING.md §Sign-in. Files: `apple.rs` (`begin_hosted`, `handle_link`,
+`accept_token`), `lib.rs` (single-instance argv → `handle_link`; debug registers its
+scheme), `plugins.deep-link` in both Tauri configs, `apple.ts`/`main.ts` (`connect(local)`,
+the "Use local sign-in" link under the Account note), `scripts/signin-assets.mjs`
+(`npm run signin:assets` copies the app's look into `../DeetsSupport/src/signin/`), and in
+`../DeetsSupport`: `src/signin.js`, `wrangler.jsonc` rules, the router (uncommitted there).
+**Verified in the dev app against a `wrangler dev --remote` preview:** the page renders
+themed; every link case (stray, wrong nonce, replay, `error=`, refused token, real token
+→ Connected, a hosted link after the local page took over); the Worker-down fallback; the
+Account-row link. **Not yet verified (needs Apple's own window, the user's step):** Apple's
+popup → the automatic `deetsmusic-dev://` return in Chrome and Edge, the Return button, the
+Access Request screen's host name + icon, browser history not keeping the link, and a
+Worker-page MUT (PRD key) working with the DEV key (§2a desk-test list). **Deployed
+2026-09-13 evening** (`npm run signin:assets`, then `npx wrangler deploy` in `../DeetsSupport`;
+that repo's changes are not committed yet). The live page answers at
+`music-api.deets.solutions/signin`; a build falls back to the loopback page only when that
+GET fails. Same evening: the Account button cancels a waiting sign-in on a second click,
+and the local page reports its own close (§2a "Cancel"). **Desk test result: Apple's step
+works through the hosted page, but Edge on this PC never launches the `deetsmusic-dev://`
+link** (no dialog, nothing logged; every obvious cause ruled out — §2a "OPEN — Edge drops
+the link", with the next steps). Parked on the user's word: the page tells the user to use
+the app's local sign-in link if Return does nothing, and the timeout toast offers it too. The
+loopback page is therefore still the working path on this PC; do not remove it.
 
 > **Committed means tested.** Aditya runs the app constantly and tests as he goes, so
 > anything already committed works unless this file says otherwise. Confirmed in use

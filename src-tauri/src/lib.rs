@@ -20,12 +20,21 @@ pub fn run() {
     // callback activates the window we already have — the same path as the tray menu's
     // "Open DeetsMusic", so a tray flyout un-pops to the full surface, back on the
     // taskbar, and a window hidden to the tray comes back.
-    let single_instance = tauri_plugin_single_instance::init(|app: &tauri::AppHandle, _argv, _cwd| {
+    // The same second process is how a `deetsmusic://auth?…` link reaches the app: the
+    // browser starts the exe with the link as its argument, and it lands here as argv
+    // (DATA-ARCHITECTURE §2a). The nonce check inside decides whether it is accepted.
+    let single_instance = tauri_plugin_single_instance::init(|app: &tauri::AppHandle, argv, _cwd| {
+        if let Some(link) = apple::link_in_args(argv.iter()) {
+            apple::handle_link(app, link);
+        }
         tray::show_main(app);
     });
 
     tauri::Builder::default()
         .plugin(single_instance)
+        // Registers the scheme (the installer for a release, `register()` below for a
+        // debug build). Link delivery itself is the single-instance callback above.
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .manage(apple::AppleState::default())
         .manage(bridge::Hub::default())
@@ -75,6 +84,26 @@ pub fn run() {
             // Seed the user-token store so a prior sign-in survives restarts.
             if let Some(tok) = apple::load_persisted_user_token() {
                 *app.state::<apple::AppleState>().user_token.lock().unwrap() = Some(tok);
+            }
+
+            // The deep-link scheme (DATA-ARCHITECTURE §2a). A debug build owns
+            // `deetsmusic-dev://` and points it at this exe on every launch — one HKCU
+            // key, never the installed app's `deetsmusic://`, which the installer wrote.
+            // A link that STARTS the app has no sign-in to match: say so and move on.
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                #[cfg(debug_assertions)]
+                if let Err(e) = app.deep_link().register(apple::link_scheme()) {
+                    log::warn(&format!("sign-in: could not register {}://: {e}", apple::link_scheme()));
+                }
+                #[cfg(not(debug_assertions))]
+                if let Err(e) = app.deep_link().register_all() {
+                    log::warn(&format!("sign-in: could not register {}://: {e}", apple::link_scheme()));
+                }
+            }
+            let args: Vec<String> = std::env::args().collect();
+            if apple::link_in_args(args.iter()).is_some() {
+                log::warn("sign-in: a link started the app, but no sign-in was in progress; ignored (start the sign-in from DeetsMusic)");
             }
 
             // v2 migration (catalog-first keys): detect BEFORE opening the main
@@ -148,6 +177,7 @@ pub fn run() {
             apple::apple_begin_auth,
             apple::apple_connection_status,
             apple::apple_auth_status,
+            apple::apple_cancel_auth,
             apple::apple_check,
             apple::apple_user_token,
             apple::apple_disconnect,

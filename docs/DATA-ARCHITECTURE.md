@@ -66,11 +66,51 @@ Flow (`apple_begin_auth`):
 The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on startup
 (`load_persisted_user_token`), so sign-in survives restarts.
 
-### 2a. Planned: hosted sign-in page + deep link (decided 2026-09-13, NOT built)
+### 2a. Hosted sign-in page + deep link (decided 2026-09-13, built the same day)
 
 > Replaces the `http://127.0.0.1:4783x` address in the browser with a real HTTPS domain.
 > Apple sign-in is not OAuth: `authorize()` works on any page that has a valid developer
 > token, so Apple needs no redirect URL. The design problem is only the return path.
+
+**As built (2026-09-13).** The page is `../DeetsSupport/src/signin.js`; its look is
+`src/signin/` there, a COPY of `src/styles/{palette,themes,skin,fonts}.css`, every font and
+`app-icon.png`, made by **`npm run signin:assets`** here (RELEASE.md §1 lists it). The app
+side is `apple.rs` (`begin_hosted`, `handle_link`, `accept_token`, `link_scheme`) and
+`lib.rs` (the single-instance callback hands a `<scheme>://…` argv to `handle_link`; a debug
+build registers `deetsmusic-dev://` on every launch; the release scheme comes from
+`plugins.deep-link` in `tauri.conf.json`, which the NSIS installer writes). Differences
+from the plan below, each for a reason found while building:
+- The page does not fetch `/token`: that route refuses any User-Agent that is not
+  `DeetsMusic/…`. The Worker embeds the shared token in the page instead — one request,
+  same rate limit and mint counter as `/token`. A page address with a bad or missing nonce
+  renders "Start from DeetsMusic" with no token inside and costs no mint work.
+- `apple_begin_auth` probes the page first: one GET of `/signin` with no query (the
+  "start from DeetsMusic" page, no mint work), 8 s. Anything but a 200 HTML answer → the
+  loopback page, logged as `sign-in: hosted page unreachable` — so a Worker that is up
+  without the page (before its deploy) falls back too. So fork 5's fallback is
+  automatic for a Worker outage; the Account-row link ("Browser page didn't load? Use local
+  sign-in") covers a domain the browser cannot reach. `connect(local)` passes it through.
+- A failure the page sees goes back as `<scheme>://auth?n=…&error=<reason>` (same
+  automatic link + Return button), so the app's toast appears at once, not at the timeout.
+- The page never says "Done". It says the app confirms the sign-in, because a stale tab,
+  a second tab or a link after 5 minutes are all rejected by the app and the page cannot know.
+- A link whose nonce does not match is IGNORED (the real link may still come); a link with
+  no sign-in in progress is ignored and logged; a matching link is single-use (matched or
+  expired, the pending sign-in is dropped). Starting the local page drops a pending hosted one.
+- `handle_link` runs on the main thread (the single-instance callback); the Apple check
+  on the delivered token runs on its own thread.
+- **Cancel (added the same evening, after the first desk test).** While a sign-in waits,
+  the Account button stays enabled and reads "Continue in your browser, or click again to
+  cancel." A second click calls `apple_cancel_auth`: the pending link is dropped, the
+  loopback server sees an abort flag within a second and frees its port, and `connect()`
+  gets `Failed { "cancelled" }`, which paints the row back with no toast. A newer sign-in
+  stops the older one the same way (`arm_abort`). The loopback page also reports its own
+  close (a `pagehide` beacon to `/callback-error`, reason `page closed`) so the row does not
+  wait five minutes; the hosted page cannot reach the app on close — the cancel click is
+  the answer there.
+- Debug seam: `DEETS_SIGNIN_BASE=http://localhost:<port>` points a debug build at a
+  `npx wrangler dev --remote --port <port>` session (remote, so the deployed secrets sign).
+  The release build has no override. DEBUGGING.md §Sign-in.
 
 **Terms**
 - **Hosted page**: `https://music-api.deets.solutions/signin`, served by the DeetsSupport Worker.
@@ -145,7 +185,25 @@ The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on start
   icon (`app-icon.png`) over HTTPS from the Worker and pass it as `app.icon`. Not built; an
   icon from a `127.0.0.1` page was never tried (Apple's page is HTTPS and may block it).
 
-**Check in the first desk test**
+**OPEN — Edge drops the link (found in the desk test, 2026-09-13 evening).** Apple's step
+works through the hosted page (the page reaches "Signed in"), but Edge on this PC never
+launches `deetsmusic-dev://…`: no "Open DeetsMusic?" dialog, nothing in the log, for the
+automatic link, the Return button, a plain `<a>` click, and the address bar (which searches
+it). Ruled out, each by test: the registry (identical shape to `vscode`, `zoommtg`,
+`docker-desktop`, which Edge does open; `AssocQueryString` resolves our exe and name); Edge
+policy and preference blocks (none); an Edge restart (processes confirmed new); a scheme
+without a hyphen and one pointing at `cmd.exe` (both silent, both registered while testing);
+the second process itself (a shell launch of the same link reaches the app). Firefox, given
+the link on its command line, passed nothing on either. Not yet tested: the RELEASE scheme
+`deetsmusic://` as the NSIS installer writes it, and any other PC. What ships meanwhile: the
+page's "Signed in" copy tells the user to use the app's local sign-in link if the Return
+button does nothing, and the app's timeout toast offers "Use local sign-in". Next step when
+picked up again: install a release build on this PC and try `deetsmusic://` from Edge; if
+that also fails, capture Edge's `--enable-logging --v=1` output around the click.
+
+**Check in the first desk test** (2026-09-13: every link case, the fallbacks and a real
+token over the link are verified in the dev app — HANDOFF.md; the three below need Apple's
+own window and stay the user's step)
 1. A MUT from the hosted page (Worker key `63Y9S9P5Z8`) works with the dev key
    `WPYRNBYCRT`. Expected, because Apple ties a MUT to the team, not the key. If Apple
    rejects it, the dev build must take its developer token from the Worker for sign-in.
