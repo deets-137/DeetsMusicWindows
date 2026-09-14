@@ -155,8 +155,8 @@ text if desk testing shows users expect the cover on the Apple copy.
 remote config from the token response (`remote_config()`, `apple_remote_config`), and it
 can carry a notice and a minimum version (support.md). No front-end code reads it, so a
 server notice never reaches the user. It becomes a notice toast (a `dismissKey` per
-notice) and an "update available" toast. Design it with RELEASE.md §6, because both read
-the same config. Check the field names against `DeetsSolutions/docs/support.md` first.
+notice) and an "update available" toast. The updater design is written (RELEASE.md §6.3,
+2026-09-14): Restart now / Later / Skip this version, and `minVersion` makes it required. Check the field names against `DeetsSolutions/docs/support.md` first.
 
 ## 6. Rules for new call sites
 

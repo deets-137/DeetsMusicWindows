@@ -66,7 +66,7 @@ the queue restore via a restart). Recipe and limits: [DEBUGGING.md](DEBUGGING.md
 ## Ship it (installable Windows app)
 
 Full procedure — version sync, the three build stages, the NSIS hooks, install, uninstall,
-and why there's no updater — is in **[RELEASE.md](RELEASE.md)**. The short version:
+and the updater design (§6, designed 2026-09-14, not built) — is in **[RELEASE.md](RELEASE.md)**. The short version:
 
 ```bash
 npm run release     # cli:build → tauri build → archive-installer; ~3 min cold

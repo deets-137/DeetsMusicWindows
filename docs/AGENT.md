@@ -154,3 +154,23 @@ Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp
 - Installer PATH entry (NSIS hook).
 - Durable history (`play_events` + the track store) as a second history source.
 - `artist:` ids for `play` (artist top songs) — search returns them, play doesn't take them yet.
+
+### The comprehensive CLI pass (parked 2026-09-14)
+
+Checked 2026-09-14: the CLI/MCP only plays, queues, controls, and reads. None of the 0.4.x
+playlist, library, or drag-and-drop work reaches it. Do these together in one design-first pass:
+
+- **Local playlists** (no Apple calls): create, add songs (end or position —
+  `playlist_insert_tracks`), remove a song, reorder, rename, delete, set/remove the cover,
+  folders.
+- **Apple playlist writes** (Apple has no undo): add to your own Apple playlist
+  (`apple_playlist_add`), Export / Send New Songs, Import to Edit, Get New Songs.
+- **Library writes** (Apple has no undo): Add to Library (song, album), ♥ Favorite.
+- **Queue:** insert at a position (`queue.insertManyAt` / `insertInQueue`), remove, move,
+  jump to an Up Next entry; play-and-keep-Up-Next (`playTracksKeepQueue`).
+- **Open design questions:**
+  - A consent gate for the Apple-account writes, beyond the existing Agent control setting
+    (per action? the app's own one-time questions?).
+  - UI refresh after an agent edit: the playlist change bus (`onPlaylistsChange`) is
+    front-end only, so the bridge must emit an event the front end listens to.
+  - Toasts for agent-made changes (show them, or stay quiet?).

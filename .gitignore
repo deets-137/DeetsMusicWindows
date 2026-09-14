@@ -22,6 +22,7 @@ dev-dumps/
 .vscode/*
 !.vscode/extensions.json
 .idea
+.obsidian/
 .DS_Store
 *.suo
 *.ntvs*

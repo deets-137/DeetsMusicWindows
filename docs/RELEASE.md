@@ -6,7 +6,7 @@
 > `src-tauri/tauri.conf.json` (`bundle`).
 
 House pattern, shared with DeetsAirplay / DeetsRGB: a hand-built **NSIS** installer, per-user,
-no admin prompt, no auto-updater. Each shipped setup exe is kept in a local `installers/`
+no admin prompt, no auto-updater yet (designed in §6). Each shipped setup exe is kept in a local `installers/`
 archive.
 
 ## 1. Cut a build
@@ -53,8 +53,14 @@ installed build showed it. Three layers now guard this:
    and before archiving. It fails when the exe contains an absolute path into the repo (build
    output under `src-tauri\target\` is allowed) or when the four version files disagree.
    Run it alone with `npm run release:check`.
-3. **Checklist on the INSTALLED build**, before announcing a release and before any key
-   change. Read the installed log (Settings › Bugs › App log):
+3. **Checklist on the INSTALLED build — when relevant, not on every release.** Run it before
+   any key change, and before a release whose changes touch these paths or the code next to
+   them: sign-in and sign-out (`apple.rs` auth, `main.ts` Account, the hosted sign-in page),
+   the developer token and the Worker (`ensure_developer_token`, the 401 heal), MusicKit
+   configure and authorization, Apple health and the offline or reconnect handling, and
+   anything that reads the source tree or secrets. A release of UI-only work (drag and drop,
+   cards, settings rows) can skip it; the automated gate above still runs. When in doubt, run
+   it. Read the installed log (Settings › Bugs › App log):
    - [ ] the `start:` line shows the new version, and the next line is `token: source=worker`;
    - [ ] sign in from zero (Account › sign out, then sign in) — the page loads, Apple accepts;
    - [ ] signed out, press play → "Sign in to Apple Music to play songs." with **Sign in**;
@@ -180,33 +186,117 @@ first-run path.
 If a half-uninstall ever happens again — no registry entry, files still present — the
 uninstaller is still on disk and can be re-run, or the folder deleted directly.
 
-## 6. Why there is no updater
+## 6. The updater
 
-`tauri-plugin-updater` would need a signing key pair, a hosted `latest.json`, a public host
-for the installer, a capability entry, and a check in the app. The blocker is hosting: the
-updater fetches its manifest unauthenticated, so a private GitHub repo cannot serve it.
+> Status: **designed 2026-09-14, not built.** Decisions below are the user's; the "Test
+> first" list is what a spike must confirm before the build leans on it.
 
-Deferred on cost/benefit while the user is the only installer. The cheap half — keeping every
-shipped setup exe — is already automatic (§1). Revisit when someone else installs the app.
+History: `tauri-plugin-updater` was deferred because it fetches its manifest
+unauthenticated, so the private GitHub repo could not serve it. `DeetsSupport` (§7) removes
+that blocker.
 
-One thing an updater would not escape: it runs the same NSIS installer, so it meets the same
-open-file rules, and the `PREINSTALL` hook is what makes that survivable.
+### 6.1 Terms
 
-**To revisit (2026-09-12) — the hosting blocker has an answer now.** `DeetsSupport` (§7)
-already serves `music-api.deets.solutions` unauthenticated. One more route can serve
-`latest.json`, and the installer can sit in Cloudflare R2 (or a public release-only GitHub
-repo). The user wants a design session on it. The forks to bring:
-- **Host:** a route on `DeetsSupport` + R2, or a public release-only repo.
-- **Behavior:** update silently at next launch, or ask first (and where: a launch prompt, a
-  Settings row).
-- **The signing key:** where the Tauri updater's private key lives, and who signs (a local
-  step in `npm run release`, or CI).
-- **The publish step:** extend `npm run release` to sign, upload, and write `latest.json`.
-- **The kill switch:** the worker's `KILL` var must not also block updates, or a bad token
-  release could not be fixed by an update.
-- **The remote notice (parked here 2026-09-13):** the mint's config already carries a notice
-  and a minimum version, but no front-end code reads them. Decide with the updater how they
-  surface: a notice toast and an "update available" toast (TOASTS.md §5).
+- **Updater** — `tauri-plugin-updater`. It reads the manifest, downloads the installer,
+  checks its signature, and runs it.
+- **Manifest** — the JSON that names the newest version, its URL, its size and its signature.
+- **Channel group** — a set of versions that share a compatible cache database (§6.5).
+
+### 6.2 Host — a Worker route + R2 (decided)
+
+- `GET music-api.deets.solutions/update/deetsmusic?v=<current>` returns the manifest. It
+  answers from a var or R2 metadata, **never D1**, the same rule as `/token`.
+- Installers and their `.sig` files live in an R2 bucket, one object per version. ~6 MB
+  each; R2 storage is free to 10 GB and egress is free, so every version is kept.
+- The route reads `?v=`, so the Worker can hold back a bad release or offer a rollback
+  target per request.
+- **`KILL` must not block this route.** Today `KILL` returns 503 on every route
+  (`DeetsSupport/src/index.js`). A bad release must stay fixable by an update, so the update
+  route checks `KILL_UPDATE` (its own var) instead.
+- This is a file channel for **signed installers only**. It never serves code the app loads
+  (support.md "config yes, code no").
+
+### 6.3 Behavior — download in background, ask to restart (decided)
+
+Settings row, verb-first per the label style: **Updates — Automatic / Ask / Off**.
+
+- **Automatic** — check at launch and every few hours; download in the background; a toast
+  offers **Restart now** / **Later**. Later re-offers at the next launch. The app often lives
+  in the tray and never quits, so "install on quit" alone is not enough.
+- **Ask** — the toast offers **Download** first, then the restart toast.
+- **Off** — no check. The Settings row still has **Check now**.
+- Every offer has **Skip this version**; the skipped version is stored in `settings.json`.
+- An update cannot apply while the app runs: Windows will not replace a running exe, and the
+  front end is inside it. A restart takes a few seconds. `restoreQueue` brings the song and
+  queue back; **the playback position is not saved today** — add it with the build.
+- The install closes the bundled CLI (`PREINSTALL` hook), so an open MCP session ends.
+- `minVersion` from the remote config (already in the `/token` response) turns the offer into
+  a required update. The `notice` string becomes a notice toast (TOASTS.md §5).
+
+### 6.4 Download rules — one at a time (decided)
+
+- **One download in flight.** Rust holds one lock; a check while a download runs does nothing.
+- **One staged installer on disk,** in a fixed folder. A newer version replaces it. It is
+  deleted after the install, or when the running version already matches.
+- **Size cap.** The manifest states the size. The app refuses a manifest above a fixed cap
+  (~50 MB) and aborts a download that grows past the stated size.
+- The updater buffers the download in memory before writing it; the cap bounds that too.
+
+### 6.5 Rollback — previous version, plus a list (decided)
+
+- Settings shows **Roll back to <previous>** — one press.
+- Under it, **Other versions…** lists older versions **in the same channel group** only.
+- A rollback marks the version it left as skipped, or Automatic would re-install it at once.
+- **Why the group rule:** the cache db migrates forward (`library.rs` v2–v5). v3–v5 only add
+  tables and columns, so an older build still reads the newer db. v2 re-keyed rows, so a build
+  from before v2 would break on it. **Release rule:** a destructive migration starts a new
+  channel group, and the manifest carries the group per version.
+- The updater needs a custom version comparator to accept an older version.
+
+### 6.6 Signing — local, password in Credential Manager (decided)
+
+- `npx tauri signer generate` makes the key pair. The **public key** goes in
+  `tauri.conf.json` (compiled into every install). The **private key** signs each installer
+  at build time (`bundle.createUpdaterArtifacts`, env `TAURI_SIGNING_PRIVATE_KEY` +
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`).
+- **Why it matters:** the signature is the defence if the Worker, R2 or DNS is taken. The
+  private key **never goes into Cloudflare** or the repo.
+- **Lost key = no install can update again.** Every install trusts only its compiled public
+  key, and a new key can only ship in a release signed by the old one.
+- **Not Authenticode.** This key does not silence SmartScreen on a first install (that needs
+  a paid code-signing certificate).
+
+**Where things live — two copies of each, in two places:**
+
+| Item | Copy 1 (this PC) | Copy 2 (off this PC) |
+|---|---|---|
+| Key password | Windows Credential Manager — the release script reads it | iCloud Passwords (end-to-end encrypted, two-factor) |
+| Private key file (encrypted form only) | `Documents\Deets' Secrets`, noted in its README | USB drive or OneDrive — **never iCloud Drive** |
+
+1. The key file and its password never share an account.
+2. The key file is only ever stored encrypted.
+3. On the day the key is made, sign a test file using **copy 2 of both** to prove the backup.
+4. The release script passes the password only to `tauri build`; it never prints or writes it.
+
+Why Credential Manager over a typed prompt: the password protects a copied key file, and
+both options protect that equally. Neither protects against malware running as the user.
+The vault lets a Claude session run a full release; a prompt would not.
+
+### 6.7 Publish step
+
+`npm run release` gains stages after `release-check`: sign (via the env vars above), upload
+the installer and `.sig` to R2, and update the manifest (version, size, signature, channel
+group). The local `installers/` archive stays.
+
+### 6.8 Test first (spike before the build)
+
+- [ ] The release script reads the **real** Credential Manager vault from this session (the
+  Claude app's MSIX package virtualized the registry before; the vault is a separate store).
+- [ ] NSIS in the updater's mode installs an **older** version over a newer one without a prompt.
+- [ ] The app relaunches after the update, the **pinned taskbar button keeps its icon**, and
+  the relaunched window groups under it. The pin holds only while `mainBinaryName`,
+  `productName` and the install folder stay fixed — add all three to `release-check.mjs`.
+- [ ] An updater download shows no SmartScreen warning (expected: no browser mark on the file).
 
 ## 7. Distributing a usable build — the developer token
 
