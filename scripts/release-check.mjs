@@ -13,6 +13,9 @@
 //     `src-tauri\target\` is allowed: generated code carries those paths in panic
 //     locations, and they never point at secrets or sources.
 //  2. The four version files agree (the archive step checks two; this checks all four).
+//  3. The pin and the updater: the product name, exe name and per-user install are unchanged
+//     (a pinned taskbar button points at them), the updater public key is set, and the
+//     installer has its signature.
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,6 +60,23 @@ const versions = {
 };
 if (new Set(Object.values(versions)).size !== 1) {
   failures.push("version files disagree:\n" + Object.entries(versions).map(([f, v]) => `      ${f}: ${v}`).join("\n"));
+}
+
+// ── 3. The pin and the updater (RELEASE.md §6.8) ──────────────────────────────────────
+// A pinned taskbar button points at %LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe. An update keeps
+// the pin only while the product name, the exe name and the per-user install stay the same.
+const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+const installMode = conf.bundle?.windows?.nsis?.installMode;
+if (conf.productName !== "DeetsMusic" || conf.mainBinaryName !== "DeetsMusic" || installMode !== "currentUser") {
+  failures.push(
+    `productName / mainBinaryName / installMode changed (${conf.productName} / ${conf.mainBinaryName} / ${installMode}): ` +
+      "every pinned taskbar button would break on the update",
+  );
+}
+if (!conf.plugins?.updater?.pubkey) failures.push("plugins.updater.pubkey is empty: no install could verify an update");
+const setup = join(root, "src-tauri", "target", "release", "bundle", "nsis", `DeetsMusic_${versions["package.json"]}_x64-setup.exe`);
+if (existsSync(setup) && !existsSync(`${setup}.sig`)) {
+  failures.push("the installer has no .sig next to it (build with npm run release, which signs it)");
 }
 
 if (failures.length) {

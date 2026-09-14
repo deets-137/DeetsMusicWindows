@@ -45,6 +45,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "nsis"
     ],
@@ -79,6 +80,12 @@
     }
   },
   "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ5Mjc4MzI3RTVFRjUxNzMKUldSelVlL2xKNE1uU2JCVG12VFczOFg1c3Zvdk9wa3ZOOHFZcXp3TmVkbnlxS0Vla3k4WXVYVkgK",
+      "windows": {
+        "installMode": "passive"
+      }
+    },
     "deep-link": {
       "desktop": {
         "schemes": [

@@ -193,8 +193,9 @@ export function toast(opts: ToastOptions): ToastHandle {
   const buttons: ToastAction[] = [...(opts.actions ?? [])];
   if (opts.onceKey) buttons.push({ label: "Got it" });
   else if (notice) buttons.push({ label: "Don't show again", run: () => silenceNotice(noticeKey!) });
-  // A question that brings its own Cancel (the delete confirm) needs no Dismiss beside it.
-  if (sticky && !opts.onceKey && !buttons.some((b) => b.label === "Dismiss" || b.label === "Cancel")) buttons.push({ label: "Dismiss" });
+  // A question that brings its own Cancel (the delete confirm) or Later (the update offer)
+  // needs no Dismiss beside it.
+  if (sticky && !opts.onceKey && !buttons.some((b) => b.label === "Dismiss" || b.label === "Cancel" || b.label === "Later")) buttons.push({ label: "Dismiss" });
   if (buttons.length) {
     const row = document.createElement("div");
     row.className = "toast__actions";

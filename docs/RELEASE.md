@@ -94,7 +94,10 @@ token source had not been checked first.
 6. Re-check each live app: the log shows a `token: 401 … refetching` line followed by a
    successful play, with no restart.
 
-`installers/` is **gitignored** (~6 MB each), exactly as DeetsAirplay does it. The difference
+`installers/` is **gitignored** (~6 MB each), exactly as DeetsAirplay does it. Since 0.4.3
+each installer has its updater `.sig` beside it (`release:publish` needs it, so keep the pair).
+A pre-release version (`0.4.2-t1`, a spike build) archives to `installers/dev/` instead, so the
+top folder holds only real releases. The difference
 is that DeetsAirplay fills it by hand and its archive drifted — 0.1.0 sitting in the folder
 while the app said 0.1.1 — so here the copy is a build stage instead of a habit.
 
@@ -121,7 +124,10 @@ installer:
 
 - **`NSIS_HOOK_PREINSTALL`** and **`NSIS_HOOK_PREUNINSTALL`** — stop the bundled CLI.
 - **`NSIS_HOOK_POSTINSTALL`** — offer the browser extension walkthrough
-  ([EXTENSION.md](EXTENSION.md) §6).
+  ([EXTENSION.md](EXTENSION.md) §6). Asked at most once per PC (2026-09-14): never on an
+  updater or silent install (`$UpdateMode = 1`, `IfSilent`), never once the extension has
+  reached the app (`extension-connected`, written by `bridge.rs`), never after a No
+  (`extension-declined`, written by the hook). Both files sit in `%APPDATA%\com.deetsmusic.app`.
 
 ### Why the CLI has to be stopped (2026-09-09)
 
@@ -161,8 +167,10 @@ then offers the extension walkthrough.
 - **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
   falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the install
   self-contained — see `src-tauri/secrets/README.md`.
-- A dev build may keep running through an install; it lives in `target/debug` and nothing
-  touches it. It does share the installed build's identifier and data dir, though — see
+- **An install closes a running dev build too** (seen 2026-09-14, an updater install of
+  0.4.2-t2): Tauri's installer closes processes by the name `DeetsMusic.exe`, and Windows
+  matches `target\debug\deetsmusic.exe` without case. The dev runner then exits with code 1.
+  Restart it after the install; nothing is damaged. It does share the installed build's identifier and data dir, though — see
   [TRAY.md](TRAY.md) §6 on the single-instance guard, and use `npm run dev:app` to separate them.
 
 ## 5. Uninstall
@@ -188,8 +196,20 @@ uninstaller is still on disk and can be re-run, or the folder deleted directly.
 
 ## 6. The updater
 
-> Status: **designed 2026-09-14, not built.** Decisions below are the user's; the "Test
-> first" list is what a spike must confirm before the build leans on it.
+> Status: **built on branch `yupdates` 2026-09-14, not yet tested.** Decisions below are the
+> user's; the "Test first" list (§6.8) is what the spike must confirm. Code: `src-tauri/src/update.rs`,
+> `src/updater.ts`, Settings › Updates (`settings-card.ts`), `scripts/release.mjs`,
+> `scripts/publish-update.mjs`, `scripts/cred-read.ps1`, and `DeetsSupport/src/update.js`.
+>
+> **As built — where it differs from the plan below:**
+> - The verified installer is held **in memory**, not staged on disk (§6.4). A file read back
+>   later would skip the signature check, which the plugin runs only at download time.
+> - Two channels: `deetsmusic` and `deetsmusic-test`, fixed at compile time by
+>   `DEETSMUSIC_UPDATE_CHANNEL`. Spike builds never reach a real install.
+> - Publishing is its own command, `npm run release:publish`, not a stage of `npm run release`.
+>   Test the installed build first; publishing is what makes installs update.
+> - The Windows install mode is **passive**: NSIS shows only a progress bar, then relaunches the app.
+> - An update restart restores the song, paused, at its position, even when Restore on launch is off.
 
 History: `tauri-plugin-updater` was deferred because it fetches its manifest
 unauthenticated, so the private GitHub repo could not serve it. `DeetsSupport` (§7) removes
@@ -278,6 +298,30 @@ Settings row, verb-first per the label style: **Updates — Automatic / Ask / Of
 3. On the day the key is made, sign a test file using **copy 2 of both** to prove the backup.
 4. The release script passes the password only to `tauri build`; it never prints or writes it.
 
+**Runbook — the key file is copied, but the password is not known to anyone else.** The file is
+encrypted, so it is not usable. Make a new key when convenient and rotate (below). Not urgent.
+
+**Runbook — the key AND its password are exposed.** An attacker also needs the update route
+(the Worker, R2 or the DNS record) to push a fake installer. So:
+1. Secure Cloudflare first: change the password, check two-factor sign-in, revoke API tokens.
+2. Set `KILL_UPDATE` until step 4 ships, if the route itself is in doubt.
+3. `npx tauri signer generate` a new key; store it and back it up as above.
+4. Ship a release **signed with the OLD key** that carries the **NEW** public key. Installs
+   that take it trust only the new key from then on.
+5. Raise `minVersion` to that release, so every install is pushed to take it.
+6. Installs that never update keep trusting the old key. That gap cannot be closed from here.
+
+**Runbook — the key is LOST (both copies).** No install can verify an update again. There is
+no fix inside the updater. The recovery is the config channel, which does not use the key:
+1. Make a new key and a release with the new public key.
+2. Put it where a person can download it by hand (the GitHub Release, the support page).
+3. Set the remote `notice` to say so, with the download link. Every install reads it on the
+   `/token` fetch. **So the notice toast must show a link button — build that with the updater.**
+
+**Possible second lock (not decided):** if Artifact Signing is bought, the app can also require
+the downloaded installer to carry a valid Authenticode signature with our publisher name before
+it runs. Then a stolen updater key plus a taken Worker is still not enough.
+
 Why Credential Manager over a typed prompt: the password protects a copied key file, and
 both options protect that equally. Neither protects against malware running as the user.
 The vault lets a Claude session run a full release; a prompt would not.
@@ -290,13 +334,42 @@ group). The local `installers/` archive stays.
 
 ### 6.8 Test first (spike before the build)
 
-- [ ] The release script reads the **real** Credential Manager vault from this session (the
+- [x] The release script reads the **real** Credential Manager vault from this session (the
   Claude app's MSIX package virtualized the registry before; the vault is a separate store).
-- [ ] NSIS in the updater's mode installs an **older** version over a newer one without a prompt.
-- [ ] The app relaunches after the update, the **pinned taskbar button keeps its icon**, and
+  **Confirmed 2026-09-14:** `CredReadW` on target `DeetsMusicUpdaterKey` (made by the user
+  with `cmdkey /generic:DeetsMusicUpdaterKey /user:updater /pass`) returned the password,
+  and `tauri signer sign -f <key>` signed a test file with it. Trap: the env var
+  `TAURI_SIGNING_PRIVATE_KEY` takes the key's CONTENT, not its path ("Invalid symbol 58").
+- [x] NSIS in the updater's mode installs an **older** version over a newer one without a prompt.
+- [x] The app relaunches after the update, the **pinned taskbar button keeps its icon**, and
   the relaunched window groups under it. The pin holds only while `mainBinaryName`,
-  `productName` and the install folder stay fixed — add all three to `release-check.mjs`.
-- [ ] An updater download shows no SmartScreen warning (expected: no browser mark on the file).
+  `productName` and the install folder stay fixed — all three are in `release-check.mjs`.
+- [x] An updater download shows no SmartScreen warning (expected: no browser mark on the file).
+
+**Spike result (2026-09-14, installed 0.4.2-t1 ⇄ t2 on `deetsmusic-test`): all pass.**
+- Update t1 → t2: offered, downloaded and verified in ~2 s, installed with a progress bar, and
+  t2 started by itself 8 s later. The song came back paused and resumed at its position. The pin
+  kept its icon. No SmartScreen.
+- Rollback t2 → t1: offered only inside group 1, no downgrade prompt, t1 started 8 s later.
+- Skip after rollback: `updateSkip` survived the installer's exit. The automatic check 30 s
+  after start found t2 and showed no toast; only the two manual **Check now** presses did.
+- Found: the install closes a running dev build (§4), and the updater install showed the
+  extension question (fixed in `hooks.nsh`, §3; not yet verified in a build).
+- The dev PC's installed app is now a **test-channel** build. It will only see test releases,
+  so the next real release must be installed by hand once.
+
+**How to run the spike (test channel, never reaches a real install):**
+1. Deploy the Worker (`npx wrangler deploy` in DeetsSupport); smoke `/token`, then
+   `GET /update/deetsmusic-test?v=0.0.1` → 204 (empty index).
+2. Set the version to a test number (e.g. `0.4.2-t1`) in the four files.
+   `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release`, then
+   `npm run release:publish -- --channel deetsmusic-test`. Install that setup exe by hand; pin it.
+3. Bump to `0.4.2-t2`, build and publish the same way. Do not install it.
+4. In the installed t1: Settings › Updates › Check now → the restart question → **Restart now**.
+   Expect a progress bar, then t2 opens by itself, the song back at its position, the pin intact.
+5. In t2: Roll back → `0.4.2-t1` → Install → Restart now. Expect t1, and t2 marked skipped.
+6. Set the version back to the real one. A test build stays on `deetsmusic-test` until the
+   installed copy is replaced by a normal release.
 
 ## 7. Distributing a usable build — the developer token
 

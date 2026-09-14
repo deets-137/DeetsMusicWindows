@@ -102,7 +102,10 @@ delete confirm). A question with its own **Cancel** button gets no extra Dismiss
 | `apple-health.ts` | error | Apple Music signed you out. Sign in again to keep listening. **[Sign in]** | The Music User Token is refused (`/v1/me/storefront` 401/403). The Account row reads signed out ("Sign-in expired") and its button signs in. **Sign in** starts the browser sign-in directly (`deets:sign-in`). |
 | `player.ts` `requireSignIn` → `apple-health.ts` | warn | Sign in to Apple Music to play songs. **[Sign in]** | Any play with no sign-in (a list click, Up Next jump, a station, the play button) — before MusicKit is touched, so its "Unable to prepare for playback." dialog never appears. No Apple call. |
 | `player.ts` `onMusicKitTrouble` | warn | Playback stopped. Try the song again. | MusicKit's own dialog (`index.html` now routes EVERY non-benign `alert()` to player.ts, never a native dialog) or a non-dead playback error, when the health check finds no cause. One recovery per 30 s however many dialogs arrive. **MusicKit's in-page error box** (`#musickit-dialog`, `MKDialog.presentError` on every playback error — it showed "loadSegmentError" on a network drop, 2026-09-13) is off since 2026-09-14: `suppressErrorDialog: true` in both `MusicKit.configure` calls. |
-| `main.ts` — boot, remote notice | notice `info` | The Worker's `CONFIG.deetsmusic.notice` text | Rides `/token` (refreshes with the token, about weekly). `dismissKey` is `deets.notice.remote.<hash of the text>`, so a new text shows even after "Don't show again" on an old one. |
+| `main.ts` — boot, remote notice | notice `info` | The Worker's `CONFIG.deetsmusic.notice` text **[Open]** | Rides `/token` (refreshes with the token, about weekly). `dismissKey` is `deets.notice.remote.<hash of the text>`, so a new text shows even after "Don't show again" on an old one. **Open** only when `CONFIG.deetsmusic.noticeUrl` is an https link (2026-09-14) — the lost-updater-key runbook (RELEASE.md §6.6). |
+| `updater.ts` — Ask mode, a newer version | sticky info **question** | DeetsMusic X is available. **[Download] [Later] [Skip this version]** | RELEASE.md §6.3. One offer on screen at a time. Later = until the next launch; Skip = `updateSkip` until a newer version. |
+| `updater.ts` — an update or rollback is downloaded | sticky info **question** | DeetsMusic X is ready. Restart to update. / …Restart to roll back. / This version of DeetsMusic is no longer supported. Restart to update to X. **[Restart now] [Later] [Skip this version]** | Automatic mode lands here directly. No Skip for a rollback or a required version (under `minVersion`). "Later" counts as the close, so no Dismiss (toast.ts). |
+| `updater.ts` — download or install fails | warn | Couldn't download the update. DeetsMusic will try again later. / Couldn't download that version. Try again later. / Couldn't get DeetsMusic X. Try again later. / Couldn't start the installer. Try again. / A dev build doesn't install updates. | A failed scheduled **check** has no toast: the log and the Settings › Updates status line carry it. |
 
 **Recovery bounds (2026-09-13).** Failures arrive without bound, so every layer caps itself:
 Rust `refetch_after_401` fetches from the mint at most once per 10 min and never when the
@@ -151,12 +154,10 @@ The planned playlist-cover notice (`deets.notice.coverLocal`) is dropped (2026-0
 custom cover never reaches Apple, and PLAYLISTS.md §6 says so. Add it to the export notice
 text if desk testing shows users expect the cover on the Apple copy.
 
-**Parked with the auto-updater (2026-09-13) — the mint's remote notice.** Rust keeps the
-remote config from the token response (`remote_config()`, `apple_remote_config`), and it
-can carry a notice and a minimum version (support.md). No front-end code reads it, so a
-server notice never reaches the user. It becomes a notice toast (a `dismissKey` per
-notice) and an "update available" toast. The updater design is written (RELEASE.md §6.3,
-2026-09-14): Restart now / Later / Skip this version, and `minVersion` makes it required. Check the field names against `DeetsSolutions/docs/support.md` first.
+**The mint's remote config (built).** Rust keeps the config from the token response
+(`remote_config()`, `apple_remote_config`). `main.ts` shows its `notice` (row above, with
+`noticeUrl` as an Open button), and `updater.ts` reads `minVersion` to make an update required
+(the updater rows above, 2026-09-14).
 
 ## 6. Rules for new call sites
 

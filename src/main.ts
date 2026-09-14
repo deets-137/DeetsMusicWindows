@@ -26,6 +26,8 @@ import { withAppearanceTransition } from "./appearance";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
+import { initUpdater } from "./updater";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import type { CardId } from "./cards";
 
@@ -302,13 +304,21 @@ window.addEventListener("DOMContentLoaded", () => {
   // Remote notice (support.md): the Worker's CONFIG `notice` rides the /token response,
   // so an outage message reaches installs without a release. It refreshes when the token
   // does (about weekly). Shown once per distinct text; "Don't show again" silences that text.
-  invoke<{ notice?: unknown }>("apple_remote_config")
+  // `noticeUrl` (optional, https only) adds an Open button: the lost-updater-key runbook
+  // (RELEASE.md §6.6) points every install at a hand download this way.
+  invoke<{ notice?: unknown; noticeUrl?: unknown }>("apple_remote_config")
     .then((cfg) => {
       const text = typeof cfg?.notice === "string" ? cfg.notice.trim() : "";
       if (!text) return;
       let h = 5381;
       for (const ch of text) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
-      toast({ kind: "info", text, dismissKey: `deets.notice.remote.${h.toString(36)}` });
+      const link = typeof cfg?.noticeUrl === "string" && cfg.noticeUrl.startsWith("https://") ? cfg.noticeUrl : "";
+      toast({
+        kind: "info",
+        text,
+        dismissKey: `deets.notice.remote.${h.toString(36)}`,
+        actions: link ? [{ label: "Open", run: () => void openUrl(link) }] : undefined,
+      });
     })
     .catch((e) => console.warn("[boot] remote config:", e));
 
@@ -316,6 +326,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initTrackStore();
   void initFavorites(); // the ♥ mirror (favorites.ts) — local, zero Apple calls
   void initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch
+  initUpdater(); // RELEASE.md §6: scheduled checks per Settings › Updates
   // Warm MusicKit + the DRM module at idle so the session's first click pays neither
   // (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the click before this).
   window.setTimeout(warmPlayer, 1500);

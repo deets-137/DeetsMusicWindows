@@ -466,6 +466,18 @@ export function refreshPlayerState(): void {
   emit();
 }
 
+/** Where the song is, in seconds (queue-persist's update restart). */
+export function playbackPosition(): number {
+  return music?.currentPlaybackTime || 0;
+}
+
+// The update restart's saved position (queue-persist.ts): applied once, by the first Play of
+// the restored song (playPause), and only while that song is still the model's current.
+let resumeAt: { sec: number; id: string } | null = null;
+export function setResumeAt(sec: number, id: string): void {
+  resumeAt = { sec, id };
+}
+
 function emit(): void {
   const item = music?.nowPlayingItem;
   const s: PlayerState = {
@@ -1661,6 +1673,12 @@ export async function playPause(): Promise<void> {
   // (queue-persist.ts): Play resumes where you left off.
   if (queue.getCurrent()) {
     await loadFromModel(m);
+    // An update restart saved the position (queue-persist.ts): resume there, once, and only
+    // while the restored song is still the model's current.
+    const r = resumeAt;
+    resumeAt = null;
+    const cur = queue.getCurrent();
+    if (r && cur && (cur.catalogId ?? cur.libraryId) === r.id) await m.seekToTime(r.sec);
     return;
   }
   if (queue.getUpcoming().length) {

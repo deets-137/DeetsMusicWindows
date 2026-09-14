@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.4.1",
   "type": "module",
+  "deetsmusic": {
+    "updateGroup": 1
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -10,7 +13,8 @@
     "tauri": "tauri",
     "dev:app": "node scripts/dev-app.mjs",
     "cli:build": "cargo build --release --manifest-path cli/Cargo.toml && node scripts/cli-dist.mjs",
-    "release": "npm run cli:build && tauri build && node scripts/release-check.mjs && node scripts/archive-installer.mjs",
+    "release": "node scripts/release.mjs",
+    "release:publish": "node scripts/publish-update.mjs",
     "release:check": "node scripts/release-check.mjs",
     "signin:assets": "node scripts/signin-assets.mjs"
   },

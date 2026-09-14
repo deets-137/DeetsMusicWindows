@@ -49,6 +49,8 @@ base64 = "0.22"
 # The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6). The version
 # Tauri's wry already uses, so no new crate download.
 webview2-com = "0.38"
+# The updater (RELEASE.md §6, update.rs): signed installers from music-api.deets.solutions/update.
+tauri-plugin-updater = "2"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

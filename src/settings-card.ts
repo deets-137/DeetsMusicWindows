@@ -20,6 +20,7 @@ import * as diag from "./diag";
 import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
+import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, type OlderVersion } from "./updater";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -114,6 +115,9 @@ function mountSettings(host: HTMLElement): CardInstance {
   let autostart = false;
   let agentControl = true;
   let setupClient = "claude-code"; // the app "Copy setup for" copies for
+  let older: OlderVersion[] = []; // Roll back's menu (updater.ts, one request per session)
+  let rollTarget = "";
+  let alive = true; // the versions request can answer after the card is gone
 
   const flash = (el: HTMLElement, text: string) => {
     const was = el.textContent;
@@ -309,6 +313,50 @@ function mountSettings(host: HTMLElement): CardInstance {
       ],
     },
     {
+      // The updater (RELEASE.md §6.3–6.5): when to update, a manual check, and a rollback.
+      title: "Updates",
+      tail: `<div class="set__status" id="set-update-status"></div>`,
+      rows: [
+        {
+          kind: "choice", id: "updatemode", label: "Get updates", key: "updateMode",
+          hint: "Automatic: downloads in the background, then asks to restart. Ask: asks before the download",
+          options: [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }],
+        },
+        {
+          kind: "split", id: "updatecheck", label: "Check for updates",
+          hint: () => "Asks music-api.deets.solutions for a newer version",
+          halves: [
+            {
+              type: "action", label: "Check now",
+              run: (el) => { flash(el, "Checking"); void checkForUpdate(true); },
+            },
+          ],
+        },
+        {
+          kind: "split", id: "rollback", label: "Roll back",
+          hint: () => (older.length ? "Installs an earlier version. Your library and settings stay" : "No earlier version to roll back to yet"),
+          halves: [
+            {
+              type: "menu",
+              get options() {
+                return older.length ? older.map((v) => ({ value: v.version, label: v.version })) : [{ value: "", label: "None" }];
+              },
+              get: () => rollTarget,
+              set: (v) => { rollTarget = v; render(); },
+            },
+            {
+              type: "action", label: "Install", hint: "Downloads that version, then asks to restart",
+              run: (el) => {
+                if (!rollTarget) return flash(el, "None");
+                flash(el, "Getting");
+                void rollbackTo(rollTarget);
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
       title: "Bugs",
       rows: [
         // LOGGING.md: the rolling log file the app always writes; the report form and
@@ -338,7 +386,7 @@ function mountSettings(host: HTMLElement): CardInstance {
         `<div class="set__status">Apple Music is a trademark of Apple Inc. ` +
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
         `<div class="set__status">The log stays on this PC. The app contacts Apple, and ` +
-        `music-api.deets.solutions for its access key. It sends no listening history.</div>`,
+        `music-api.deets.solutions for its access key and updates. It sends no listening history.</div>`,
     },
   ];
 
@@ -490,7 +538,14 @@ function mountSettings(host: HTMLElement): CardInstance {
         .join("");
     wireMenus();
     refreshExtension();
+    paintUpdate();
     markScrollable();
+  };
+  // Settings › Updates status line: repainted in place on every update-state change, so a
+  // download's progress never rebuilds the rows (or closes an open menu).
+  const paintUpdate = () => {
+    const el = body.querySelector<HTMLElement>("#set-update-status");
+    if (el) el.textContent = updateStatusText();
   };
   // The scrollbar thumb fades in only while the rows outgrow the card (settings.css).
   const markScrollable = () => body.classList.toggle("is-scrollable", body.scrollHeight > body.clientHeight + 1);
@@ -551,6 +606,13 @@ function mountSettings(host: HTMLElement): CardInstance {
   // Rust setting we cached). A full re-render is cheap here — a dozen rows.
   const unsubStore = onSettingsChange(render);
   const unsubLibAdd = onLibraryAddChange(render);
+  const unsubUpdate = onUpdateStatus(paintUpdate);
+  void olderVersions().then((v) => {
+    if (!alive) return;
+    older = v;
+    rollTarget = v[0]?.version ?? "";
+    render();
+  });
   invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get")
     .then((s) => { minimizeToTray = s.minimizeToTray; agentControl = s.agentControl; render(); })
     .catch((e) => console.warn("[settings] get", e));
@@ -583,8 +645,10 @@ function mountSettings(host: HTMLElement): CardInstance {
 
   return {
     destroy() {
+      alive = false;
       unsubStore();
       unsubLibAdd();
+      unsubUpdate();
       unsubRequest();
       dropMenus();
       window.removeEventListener("resize", closeMenus);

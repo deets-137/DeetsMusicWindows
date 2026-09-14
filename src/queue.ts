@@ -294,6 +294,10 @@ export interface QueueSnapshot {
   current: QueueEntry | null;
   upcoming: QueueEntry[];
   savedAt: number;
+  /** Written only by the update restart (queue-persist `flushForRestart`, RELEASE.md §6.3):
+   *  the song comes back whatever Restore on launch says, and resumes at `at` seconds. */
+  updateRestart?: boolean;
+  at?: number;
 }
 export function snapshot(): QueueSnapshot {
   return { v: 1, history: state.history.slice(), current: state.current, upcoming: state.upcoming.slice(), savedAt: Date.now() };

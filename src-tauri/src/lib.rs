@@ -12,6 +12,7 @@ mod provider;
 mod settings;
 mod smtc;
 mod tray;
+mod update;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -36,7 +37,11 @@ pub fn run() {
         // debug build). Link delivery itself is the single-instance callback above.
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
+        // The updater (RELEASE.md §6): transport, signature check, install. update.rs adds
+        // the rules — one download at a time, the size cap, rollback, no install in dev.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(apple::AppleState::default())
+        .manage(update::UpdateState::default())
         .manage(bridge::Hub::default())
         .manage(airplay::AirplayState::default())
         // A local playlist's own cover, served as a link (`http://cover.localhost/<id>`)
@@ -307,6 +312,11 @@ pub fn run() {
             tray::tray_pin_main,
             tray::tray_panel_resize,
             tray::app_quit,
+            update::update_status,
+            update::update_check,
+            update::update_download,
+            update::update_install,
+            update::update_versions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

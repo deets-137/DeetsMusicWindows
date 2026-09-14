@@ -59,6 +59,12 @@ export interface Settings {
   rewindCard: boolean;
   /** The one-shot auto-enable already fired (so a later "off" sticks). */
   rewindAutoShown: boolean;
+  // ── updates ──
+  /** When to get updates (RELEASE.md §6.3): download in the background and then ask to
+   *  restart, ask before the download, or no scheduled check. updater.ts reads it. */
+  updateMode: "auto" | "ask" | "off";
+  /** The version "Skip this version" (or a rollback) set aside; "" = none. A newer one is offered. */
+  updateSkip: string;
 }
 
 const KEY = "deets.settings";
@@ -85,6 +91,8 @@ export const DEFAULTS: Settings = {
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
   rewindCard: false,
   rewindAutoShown: false,
+  updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
+  updateSkip: "",
 };
 
 /** Keys that lived on their own before the store (2026-09-10); read once, then owned here. */

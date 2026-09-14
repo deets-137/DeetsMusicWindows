@@ -174,3 +174,33 @@ playlist, library, or drag-and-drop work reaches it. Do these together in one de
   - UI refresh after an agent edit: the playlist change bus (`onPlaylistsChange`) is
     front-end only, so the bridge must emit an event the front end listens to.
   - Toasts for agent-made changes (show them, or stay quiet?).
+
+### Update control (written 2026-09-14, not built)
+
+The updater (RELEASE.md §6) is Settings-only today. What an agent or script would need, on
+the same bridge and token, with the same `update.rs` commands behind each route:
+
+| Route | Body → Reply | Behind it |
+|---|---|---|
+| `GET /update` | `{state, current, channel, version, notes, size, got, rollback, error, mode, skip}` | `update_status` + `updateMode` / `updateSkip` |
+| `POST /update/check` | `{target?}` → the status | `update_check` (a `target` = a rollback offer) |
+| `POST /update/download` | — → the status (returns at once while one runs) | `update_download` |
+| `POST /update/install` | — → `{ok, awaiting: "user"}` | shows the app's **Restart now** question; never installs by itself |
+| `GET /update/versions` | `{current, versions:[…]}` | `update_versions` |
+| `POST /update/mode` | `{mode: "auto" \| "ask" \| "off"}` or `{skip: "<version>" \| ""}` → the status | the settings store |
+
+CLI: `deetsmusic update` (status) · `update check` · `update download` · `update install` ·
+`update versions` · `update rollback <version>` (check with target + download + the question) ·
+`update mode auto|ask|off` · `update skip <version>|none`. MCP: one `update` tool,
+`action: status|check|download|install|versions|rollback|mode`, `value?`.
+
+Rules to keep when it is built:
+- **The install needs a person.** `install` and `rollback` end in the app's own question
+  toast, not a restart. An agent must not restart the user's music app on its own.
+- **The install ends the agent's own session.** The installer stops `cli\deetsmusic.exe`
+  (`PREINSTALL` hook, RELEASE.md §3), so an MCP client loses the tools until it restarts the
+  server. The `install` reply should say so, and the CLI should print it.
+- **Check and download are free to call.** They cost one request each, and the one-download
+  rule already lives in Rust.
+- The window must answer these (the toasts and the settings store are front-end), so they ride
+  `ask()` like `/play`. A new exit code is not needed: `4` covers a window that did not answer.

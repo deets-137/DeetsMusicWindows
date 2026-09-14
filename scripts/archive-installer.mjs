@@ -20,8 +20,13 @@ if (!existsSync(from)) {
   process.exit(1);
 }
 
-const dir = join(root, "installers");
+// A pre-release version (0.4.2-t1, the update spike) goes to installers/dev/, so the top
+// folder holds only real releases.
+const sub = version.includes("-") ? "installers/dev" : "installers";
+const dir = join(root, sub);
 mkdirSync(dir, { recursive: true });
 copyFileSync(from, join(dir, name));
+// The updater signature (RELEASE.md §6.6) travels with its installer; publish-update.mjs reads it here.
+if (existsSync(`${from}.sig`)) copyFileSync(`${from}.sig`, join(dir, `${name}.sig`));
 const mb = (statSync(from).size / 1024 / 1024).toFixed(1);
-console.log(`[archive] installers/${name} (${mb} MB)`);
+console.log(`[archive] ${sub}/${name} (${mb} MB)`);

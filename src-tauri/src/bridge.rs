@@ -498,6 +498,22 @@ fn art_url(a: &Option<crate::model::Artwork>, px: u32) -> Option<String> {
     })
 }
 
+/// The installer asks about the extension only until the extension has reached this app once
+/// (src-tauri/nsis/hooks.nsh reads this file). Written once per run, and only when missing.
+fn mark_extension_connected(app: &AppHandle) {
+    static MARKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if MARKED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    let Ok(dir) = app.path().app_data_dir() else { return };
+    let file = dir.join("extension-connected");
+    if !file.exists() {
+        if let Err(e) = std::fs::write(&file, "The browser extension reached the bridge. The installer reads this (hooks.nsh).") {
+            log(&format!("extension mark: {e}"));
+        }
+    }
+}
+
 async fn handle(app: AppHandle, mut req: Request) {
     let method = req.method().clone();
     let url = req.url().to_string();
@@ -521,6 +537,9 @@ async fn handle(app: AppHandle, mut req: Request) {
         let _ = req.as_reader().take(64 * 1024).read_to_string(&mut body);
     }
     log(&format!("{method} {path} paired={paired} body={}b", body.len()));
+    if origin.is_some() {
+        mark_extension_connected(&app);
+    }
 
     match (method, path.as_str()) {
         (Method::Get, "/health") => {
