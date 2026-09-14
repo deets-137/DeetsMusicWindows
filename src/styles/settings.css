@@ -17,6 +17,26 @@
   border-bottom: 1px solid var(--border); /* a hairline groups the section; no boxes */
   margin-bottom: var(--space-1);
 }
+/* The header is a fold button (the Playlists shelf idiom): chevron, title, count right.
+   The chevron + count reuse .lib-shelf__chev / .lib-shelf__count (styles.css). */
+.set__fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.set__fold:hover { color: var(--text); }
+.set__fold:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.set__head.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
 
 .set__row {
   display: flex;

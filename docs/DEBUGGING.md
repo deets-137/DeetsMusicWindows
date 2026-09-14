@@ -138,7 +138,9 @@ frame — the synchronous build (a pane render, a folder re-render) — is itsel
 150 ms after the last one — `lib-view`, `panel__body`, `spane__scroll`…), `scrub
 seek|volume` (a slider drag), `slide push|pop|search-push|search-pop` (a pane slide),
 `fold open|close` (a Playlists folder), `drag queue` (a queue row), `menu` (a context
-menu opening), `appearance theme|skin` (the view transition), `sample` (manual).
+menu opening), `appearance theme|skin` (the view transition), `sample` (manual),
+`window a-b` (a windowed pane's edge patch that cost ≥ 4 ms — collection-window.ts; the
+detail is the rendered item range after the pass).
 
 **The display.** At launch + 3 s the module samples 40 idle frames and logs
 `[perf] display <hz> Hz (period <ms>)`; every window is judged against that period, so a
@@ -245,6 +247,30 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
 - **The appearance publish bug** (bridge `/health` reported the OLD skin after a switch):
   `publishAppearance()` ran outside the view transition, before the attribute flipped.
   Moved into the transition's `after` callback; verified by clicking through Press/Glass.
+- **Library windowing (option A) built and measured the same evening — see
+  [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md) §Results for the before/after table.**
+  The skin-switch and grid-scroll costs above are fixed: skin flip 395–558 → 16–40 ms; cold
+  grid drag 75–82% dropped with ~345 ms long tasks → 1–4% dropped, worst 8–21 ms, no long
+  tasks; DOM 23,093 → ~850 nodes with the Library open. **A caveat for the drag recipe:** a
+  windowing bug that collapses the scroll height makes the drag scroll nothing and report a
+  perfect 0% — print `v.scrollHeight` with the result and distrust a 0% whose `worst` is
+  under one frame.
+- **Memory: where the installed app's ~386 MB goes, and the one build path left (2026-09-13
+  late, process list after 3.7 h):** our Rust exe ~54 MB · WebView2 browser process ~100 MB
+  (Chromium's in-memory HTTP cache, blobs, cache index) · renderer ~69 MB (the page; windowing
+  keeps it there) · GPU process ~55 MB (compositor, ambient layers; *Animate backgrounds* Off
+  trims it) · utilities ~105 MB (network, audio, storage services). The caches we own
+  (`track-store`, the playlists' per-playlist track cache) are a few MB of JSON — clearing
+  them saves nothing measurable and costs Apple calls. **Possible build path, not built:**
+  WebView2's `MemoryUsageTargetLevel` (ICoreWebView2_19, webview2-com 0.38 has it) set to
+  **Low** on the hide / minimize paths (tray.rs) and back to **Normal** on show — Chromium sheds
+  its in-memory caches across the browser and renderer processes, expected ~50–100 MB while the
+  app sits in the tray, refilled lazily on show; ~30 lines of Rust via `with_webview`, a
+  runner restart, before/after from the sampler with the app in the tray. **Not** `TrySuspend`:
+  it stops JS timers and MusicKit plays from inside the page — only safe when nothing plays,
+  and the gain over Low is small. Caveat for a flat process listing: it lumps in other
+  WebView2 hosts on the PC (four unrelated ~100 MB rows showed as "installed"); trust the
+  sampler's per-tree sum.
 - **On disk:** installer 6.2 MB, exe 19 MB, web bundle 1.3 MB (745 KB of it two Liberation
   Serif TTFs — WOFF2 would halve the bundle). WebView2 profile ~400 MB per identifier,
   almost all Chromium's HTTP cache, self-capped.
@@ -306,7 +332,7 @@ Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` 
 can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
 
 **Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
-setting is Settings › Window › **Show notices**, default *Failures*.
+setting is Settings › Window › **Show notices**, default *Everything* (was *Failures* before 2026-09-13).
 
 1. **Look.** `__toast.demo()` in midi: a top-right stack under the Now Playing card,
    newest on top, at most 3 (the stack is capped, so `demo()`'s four toasts show the last

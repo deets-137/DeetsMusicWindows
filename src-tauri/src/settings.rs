@@ -240,7 +240,7 @@ pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
 pub fn agent_open_guide(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     app.opener()
-        .open_url("https://github.com/deets-137/DeetsMusic/blob/main/docs/AGENT-SETUP.md", None::<String>)
+        .open_url("https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/AGENT-SETUP.md", None::<String>)
         .map_err(|e| e.to_string())
 }
 

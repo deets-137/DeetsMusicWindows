@@ -219,6 +219,8 @@
   --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
+  --lib-tile-lh:       1.3em;       /* a tile's text line; its meta block is pinned to two of
+                                       these so every tile in a grid row is one height */
   --lib-row-art:        36px;       /* mini-cover size on density lines */
   --lib-row-h:          46px;       /* a line row's fixed height — its natural height under this
                                        skin's type (title + artist stack + padding); pinned so the

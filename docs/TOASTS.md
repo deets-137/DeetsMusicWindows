@@ -54,7 +54,7 @@ A caller may override `sticky` either way; none does today.
 | Position | top-right column under the header | **top-right, newest on top**, on every surface. **mini/midi:** under the Now Playing card, so the song stays readable (`--toast-top`, the card's bottom edge measured by `toast.ts`) · **max:** under the titlebar, since the stage is on the left. Changed 2026-09-13 from bottom-centred in mini/midi. |
 | Fly-in | from the right | from the right (`--toast-shift`) |
 | Cap | 4 | **3** — the oldest *timed* toast yields first; sticky ones only when nothing timed is left |
-| Setting | none | `toasts`: `failures` (default) · `all` · `off` — Settings › Window › **Show notices** |
+| Setting | none | `toasts`: `all` (default, 2026-09-13) · `failures` · `off` — Settings › Window › **Show notices** |
 | Notices | none | `dismissKey` + `noticeOff()` |
 | Sticky default | caller's choice | `error` sticky by default (§2) |
 | z-index | 50, above menus | **90, below** the context menu / pickers (100): an open menu is live intent, a toast waits |
@@ -72,8 +72,8 @@ the app, it does not decide how long a message stays.
 
 | Tier | Shows |
 |---|---|
-| `failures` (default) | `warn` + `error` + every notice |
-| `all` | every kind — confirmations (`success`) and unlocks (`info`) too |
+| `all` (default) | every kind — confirmations (`success`) and unlocks (`info`) too |
+| `failures` | `warn` + `error` + every notice |
 | `off` | nothing. The console and the log still record every call (`toast:muted`). |
 
 `off` silences the launch-time token error too; that is the user's choice.
@@ -91,7 +91,7 @@ the app, it does not decide how long a message stays.
 | `player.ts` `onPlaybackError` — the first non-dead-song playback error after a sign-in, before any audio has played | warn, 8 s | Playback failed after sign-in. DeetsMusic needs an Apple Music subscription on this Apple ID. | `noteSignedIn()` from `main.ts` arms it once. MusicKit reports a missing subscription only as a playback error, never at sign-in — this is the one moment the cause is likely. **Unverified against a real no-subscription account**; the log's `player:playbackError` msg will say what MusicKit actually sent. |
 | `main.ts` — boot | error (sticky) | Can't reach the token service. Check your connection and restart DeetsMusic. | `apple_developer_token` rejects when `ensure_developer_token()` failed at setup (offline first run, or the mint's `KILL` — RELEASE.md §7). Zero-cost: it reads the static. |
 | `main.ts` — Account sign-in (`signInFailed`) | error / warn, each with **Try again** | Sign-in didn't finish in time. / Apple Music didn't accept the sign-in. Try again in a few minutes. / Another sign-in page is still open. Close it, then try again. / Sign-in didn't finish. Try again. · sign-out: Couldn't sign out. Try again. | Revised 2026-09-13. `connect()` now polls `apple_auth_status`, so a failure the browser page reports (Apple's "Unauthorized", a closed Apple window) arrives at once as a `SignInError` code instead of after the 5-min timeout. `unavailable` / `offline` (the pre-check in `apple_begin_auth`) hand over to Apple health below. The raw reason stays in the console and the log; the row shows "Sign-in didn't finish". Revised again that evening (hosted page, DATA-ARCHITECTURE §2a): the timeout toast adds **Use local sign-in** (a link that never comes back — not followed, or a scheme that is not really registered, DATA-ARCHITECTURE §2a "RESOLVED" — ends in a timeout); the user's own cancel (a second click on the Account button) shows NO toast; the local page's own close arrives as `page closed` → the "didn't finish" toast. |
-| `main.ts` — Account sign-in succeeds | success | Sign-in complete! Enjoy! | Added 2026-09-13 on the user's request. `all` tier (the user's choice): the user is usually still in the browser, but the Account row shows Connected, so the default `failures` tier stays quiet per §6. Only the newest sign-in toasts (`signInSeq`). |
+| `main.ts` — Account sign-in succeeds | success | Sign-in complete! Enjoy! | Added 2026-09-13 on the user's request. `all` tier (the user's choice): the user is usually still in the browser, but the Account row shows Connected, so the `failures` tier stays quiet per §6 (the default is `all` since 2026-09-13, so it shows by default). Only the newest sign-in toasts (`signInSeq`). |
 | `apple-health.ts` — **Apple health** (one toast per cause, sticky) | error | Apple Music isn't responding to DeetsMusic right now. Your account is fine. DeetsMusic keeps trying. **[Try now]** | The developer token is refused even after the bounded heal (`apple_check` app=`rejected`/`missing`). Not the user's to fix, so the copy says so. Rechecks every 5 min while it lasts; on recovery the toast goes and "Apple Music is working again." shows (`all` tier). Account row: "Connected · Apple Music isn't responding". |
 | `apple-health.ts` | warn | DeetsMusic can't reach Apple Music. Check your internet connection. **[Try again]** | app=`unreachable`. Same 5-min recheck. Row: "Connected · Offline". |
 | `apple-health.ts` | error | Apple Music signed you out. Sign in again to keep listening. **[Sign in]** | The Music User Token is refused (`/v1/me/storefront` 401/403). The Account row reads signed out ("Sign-in expired") and its button signs in. **Sign in** starts the browser sign-in directly (`deets:sign-in`). |

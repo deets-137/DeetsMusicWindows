@@ -201,6 +201,7 @@ export const radioCard: CardDef = {
             { key: "az", label: "A–Z", type: "str", get: (x) => (x.kind === "header" ? undefined : x.kind === "station" ? x.station.name : x.genre.name) },
           ],
           list: shelf,
+          mixed: true, // shelf headers among rows — never windowed (collection-window.ts)
           name: (x) => (x.kind === "header" ? x.label : x.kind === "station" ? x.station.name : x.genre.name),
           // Headers never match — a search query flattens to plain hits.
           match: (x, q) =>
