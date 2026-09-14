@@ -159,7 +159,8 @@ measured, scripted checks pass, awaiting the desk test.** `src/collection-window
 works: UI-ARCHITECTURE.md §"Long lists: windowing"; before/after and the hand-test list:
 **[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)** §Results (skin flip 395–558 →
 16–40 ms; cold grid drag 75–82% dropped with 345 ms long tasks → 1–4%, worst 8–21 ms; DOM
-23k → ~1k nodes). Proven fallback if A stalls: option B (`content-visibility: auto` on rows / 60-tile
+23k → ~1k nodes). **Next RAM lever, documented not built:** WebView2 `MemoryUsageTargetLevel`
+Low while hidden / minimized — DEBUGGING.md §"Memory: where the installed app's ~386 MB goes". Proven fallback if A stalls: option B (`content-visibility: auto` on rows / 60-tile
 blocks), measured in DEBUGGING.md. Also shipped that day: the ambient skin layers
 (compositor-only, `--ambient-fps`, paused when hidden) and Settings › Window › **Animate
 backgrounds** — both need a fresh installer to reach the installed app.

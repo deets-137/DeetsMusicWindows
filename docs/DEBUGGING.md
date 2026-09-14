@@ -255,6 +255,22 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   windowing bug that collapses the scroll height makes the drag scroll nothing and report a
   perfect 0% — print `v.scrollHeight` with the result and distrust a 0% whose `worst` is
   under one frame.
+- **Memory: where the installed app's ~386 MB goes, and the one build path left (2026-09-13
+  late, process list after 3.7 h):** our Rust exe ~54 MB · WebView2 browser process ~100 MB
+  (Chromium's in-memory HTTP cache, blobs, cache index) · renderer ~69 MB (the page; windowing
+  keeps it there) · GPU process ~55 MB (compositor, ambient layers; *Animate backgrounds* Off
+  trims it) · utilities ~105 MB (network, audio, storage services). The caches we own
+  (`track-store`, the playlists' per-playlist track cache) are a few MB of JSON — clearing
+  them saves nothing measurable and costs Apple calls. **Possible build path, not built:**
+  WebView2's `MemoryUsageTargetLevel` (ICoreWebView2_19, webview2-com 0.38 has it) set to
+  **Low** on the hide / minimize paths (tray.rs) and back to **Normal** on show — Chromium sheds
+  its in-memory caches across the browser and renderer processes, expected ~50–100 MB while the
+  app sits in the tray, refilled lazily on show; ~30 lines of Rust via `with_webview`, a
+  runner restart, before/after from the sampler with the app in the tray. **Not** `TrySuspend`:
+  it stops JS timers and MusicKit plays from inside the page — only safe when nothing plays,
+  and the gain over Low is small. Caveat for a flat process listing: it lumps in other
+  WebView2 hosts on the PC (four unrelated ~100 MB rows showed as "installed"); trust the
+  sampler's per-tree sum.
 - **On disk:** installer 6.2 MB, exe 19 MB, web bundle 1.3 MB (745 KB of it two Liberation
   Serif TTFs — WOFF2 would halve the bundle). WebView2 profile ~400 MB per identifier,
   almost all Chromium's HTTP cache, self-capped.
