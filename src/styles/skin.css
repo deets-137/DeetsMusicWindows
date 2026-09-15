@@ -272,6 +272,25 @@
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
 
+  /* -- card swap (Settings › Animate card swaps; card-swap.ts, ideas/CardSwapMotion.md) --
+     Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to /
+     --swap-out-fade before the remount. In step: each new card plays from the slot it
+     left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place.
+     --swap-from / --swap-mid shape it at the start and the midpoint (use the same
+     transform functions in both); --swap-fade is its starting opacity; --swap-stagger
+     delays the second card. The base = a straight slide, no out step (Glass uses it).
+     A replace rises in (the pop tokens). */
+  --swap-dur:      var(--nav-dur);
+  --swap-ease:     var(--nav-ease);
+  --swap-out-dur:  0s;
+  --swap-out-to:   scale(1);
+  --swap-out-fade: 1;
+  --swap-travel:   1;
+  --swap-from:     scale(1);
+  --swap-mid:      scale(1);
+  --swap-fade:     1;
+  --swap-stagger:  0s;
+
   /* -- launch cover + look change (boot-cover.ts, appearance.ts; UX-COVERUPS.md §6) -- */
   /* The window shows under an opaque --canvas cover. The cover fades and the cards
      rise into place, one slot after the next. A theme or skin change plays the same
@@ -287,6 +306,7 @@
   --boot-safety:   4s;
   --cover-in-dur:  0.22s;
   --cover-in-ease: cubic-bezier(0.4, 0, 1, 1);      /* eases in, so the cover lands softly */
+  --agent-motion:  1.6;                             /* an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) */
 
   /* -- album-colored Now Playing text (NEXT-VERSION §7) -- */
   /* 1 = the NP title/subtext/accents take the album's guarded colors; 0 = theme
@@ -420,6 +440,11 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;
+  /* swap — no slide: each slot stamps its new sheet down, one after the other */
+  --swap-travel:  0;
+  --swap-from:    scale(1.03);
+  --swap-mid:     scale(1.01);
+  --swap-stagger: 0.06s;
 
   /* scrubber handle — a trimmed block riding the rail, corners square */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='2' width='12' height='20' fill='%23000'/%3E%3C/svg%3E");
@@ -480,6 +505,8 @@
   --nav-at-left:     translateY(45%) scale(0.92);
   --nav-at-right:    translateY(45%) scale(0.92);
   --nav-off-opacity: 0;
+  /* swap — the card dips under the surface on its way and rises at its new slot */
+  --swap-mid:     scale(0.94);
 
   /* scrubber handle — a lens swell: the bar appears to bulge to a fat middle
      and taper back to track height at the pointed tips. Same --title fill as
@@ -676,6 +703,7 @@
   --nav-at-left:     scale(0.96);
   --nav-at-right:    scale(0.96);
   --nav-off-opacity: 0;
+  /* swap — the base straight slide (a cross-fade read as a glitch through the frost, 2026-09-15) */
 
   /* scrubber handle — a glass ring (evenodd hollow): the --title fill draws
      only the rim, so the track shows THROUGH the handle like a little lens */
@@ -757,6 +785,14 @@
   --nav-at-left:     translateX(-100%) skewX(6deg);
   --nav-at-right:    translateX(100%) skewX(-6deg);
   --nav-off-opacity: 0;
+  /* swap — no slide: the old card skews out, then the new one skews in and straightens */
+  --swap-out-dur:  var(--nav-dur);
+  --swap-out-to:   skewX(-10deg);
+  --swap-out-fade: 0;
+  --swap-travel:   0;
+  --swap-from:     skewX(10deg);
+  --swap-mid:      skewX(4deg);
+  --swap-fade:     0;
 
   /* micro-motion — twitch-fast; a dragged queue row banks like a blade */
   --dur-fast:    0.08s;

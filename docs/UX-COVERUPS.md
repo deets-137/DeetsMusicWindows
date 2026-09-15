@@ -120,7 +120,7 @@ schedule, runs the launch cover (`src/appearance.ts`) with one more stage:
   cover back in. Snaps when Animate look changes is off, under reduced motion, or while the
   launch cover is still up. `[perf] frames appearance` measures it.
 
-## 6b. Agent changes — **a slower cover, and the surface change goes under it too** (planned 2026-09-15, NOT built)
+## 6b. Agent changes — **a slower cover, and the surface change goes under it too** (planned and BUILT 2026-09-15)
 **Why agents only:** a change the user clicks is expected, so it stays as fast as §6a. A change
 an agent makes (AGENT.md §6: `settings set theme | skin | surface`) arrives with no click, often
 while the user looks elsewhere. It must read as a calm, deliberate change, not a flash.
@@ -151,14 +151,36 @@ relays out in view.
 - **Snaps**, as §6a: Animate look changes off, reduced motion, or the launch cover still up.
 - **Measure:** `[perf] frames appearance` gains the kind `surface` and a `by=agent` tag.
 
-**Forks to settle before building (morning):**
-1. **Surface under the cover for user picks too?** (A) Agents only, as planned. (B) Every
-   deliberate surface pick (title menu, tray open): the cover also hides today's jump.
-   Recommended: A first, desk-test it, then decide B.
-2. **How much slower?** (A) One scale token, `--agent-motion` (1.6). (B) A full set of
-   `--agent-*` duration tokens per skin. Recommended: A — one number to tune at the desk.
-3. **Say who changed it?** (A) No text; the info toast "An agent set …" already says it.
-   (B) A short label on the opaque cover ("Changed by an agent"). Recommended: A.
+**As built (2026-09-15):** as the plan above, with one change: the agent `set` does **not**
+wait for the cover. `withAppearanceTransition` returns at once, so a theme, skin or surface set
+sent next can still join the veil/wait of the first. A job that throws is logged and the cover
+still lifts. `--boot-safety` scales too, so a slow agent cover is never cut off by the safety.
+Files: `appearance.ts` (kind `surface`, async jobs, `by`), `boot-cover.ts` `tokenMs` (× the
+scale), `styles.css` §Launch cover (`calc(… * var(--motion-scale, 1))`), `skin.css`
+`--agent-motion`, `agent-settings.ts` (`pickLook`, the `surface` spec).
+
+**Driven test (2026-09-15, dev app, CLI on the dev bridge, 238 Hz display):** every skin × Midi /
+Max / Mini, single changes and theme + surface back to back. Every change gave one cover; every
+batch gave one line (joined). No warnings or errors. New dev line `[perf] frames appearance-lift
+<detail>` times only the rise (the whole-cover line also counts the opaque wait: the Max remount
+long task, 57–80 ms, sits there, unseen). Lift drop into Max: Glass 52–60%, Ocean 43–55%,
+Retro-Future 13–16% without a resize and 30% right after one, Press 1% / 7.6%. Worst frame
+≤ 21 ms. **The Max rise on Glass and Ocean is the cost of Max itself** (six frosted or effect
+panels rising); an agent skin change on Max without a resize drops the same. The resize adds a
+few points. Midi and Mini lifts: 0–11% (Glass → Mini 24% once).
+
+**Forks — settled 2026-09-15 (user): 1A, 2A, 3A.**
+1. **Surface under the cover for user picks too?** **(A) Agents only first**; desk-test it,
+   then decide B. (B) Every deliberate surface pick (title menu, tray open).
+2. **How much slower?** **(A) One scale token, `--agent-motion` (1.6)**, a skin may override.
+   (B) A full set of `--agent-*` duration tokens per skin.
+3. **Say who changed it?** **(A) No text**; the info toast "An agent set …" already says it.
+   (B) A short label on the opaque cover.
+
+**Link to card swap motion (2026-09-15):** a surface change under this cover also covers the
+recompose that [ideas/CardSwapMotion.md](ideas/CardSwapMotion.md) left out: the cards rise in
+their new slots. The swap classes cannot collide with it: `html[data-boot] .bento > .panel`
+outranks `.bento > .panel.swap-in`, and a recompose never calls `playSwap`.
 
 **Test in the morning:** dev app, debug CLI (`--port` of the dev bridge), Agent changes settings
 = Allow. `settings set theme "Black & Red"`, then `settings set surface mini`, then theme, skin

@@ -841,7 +841,12 @@ Apple write). Zero stars → treat as *Nothing* with a one-line hint in the row.
 3. Does *A station* belong in Favorites too (a pool of stations and playlists)? Suggest
    no for v1 — one pool of playlists keeps the row readable.
 
-## 23. App version in Settings › Bugs — noted 2026-09-15, not built
+## 23. App version in Settings › Bugs — BUILT 2026-09-15 (1A, 2B, 3 yes)
+
+**As built:** `versionText()` (updater.ts) feeds a **Version** row at the top of Settings › Bugs
+with a **Copy** half, and the first line of the About notice. `paintUpdate` repaints both when
+the status arrives from Rust. A test build is already named by its number (`0.4.4-t1`); a dev
+build adds "· Dev build"; a build off the main channel with a plain number adds the channel name.
 
 **The problem (user, 2026-09-15):** "we don't have a way to check app version in app". The
 version is in the app, but hidden: Settings › Updates has a status line (`updateStatusText`,

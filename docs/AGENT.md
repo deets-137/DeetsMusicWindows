@@ -332,8 +332,9 @@ A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass i
    permission row on top of 2.
 
 ## 7. Later
-- **Agent look and surface changes under a slower cover** — planned 2026-09-15, build and test
-  next session: [UX-COVERUPS.md §6b](UX-COVERUPS.md) (three forks listed there).
+- **Agent look and surface changes under a slower cover** — planned 2026-09-15, forks settled
+  the same day (1A agents only, 2A one `--agent-motion` scale, 3A no label), BUILT the same day:
+  [UX-COVERUPS.md §6b](UX-COVERUPS.md).
 - Installer PATH entry (NSIS hook).
 - A small-model test of `mcp --small` (LM Studio / Ollama) with the AGENT-SETUP §3 phrases.
 - Durable history (`play_events` + the track store) as a second history source.

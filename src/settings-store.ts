@@ -24,6 +24,9 @@ export interface Settings {
   surfaceAutoFlip: boolean;
   /** Theme/skin switches animate (NEXT-VERSION §6). The OS reduced-motion preference still wins. */
   appearanceMotion: boolean;
+  /** A card swap, summon or replace plays the skin's swap motion (card-swap.ts). The OS
+   *  reduced-motion preference still wins. */
+  cardSwapMotion: boolean;
   /** The skins' moving backgrounds (Ocean swell, Glass aurora, Retro-Future storm, the NP
    *  aurora): on = 30 fps, reduced = 15 fps, off = still (the storm hides). The OS
    *  reduced-motion preference still wins. src/ambient.ts applies it. */
@@ -124,6 +127,7 @@ export const DEFAULTS: Settings = {
   menuMode: "click",
   surfaceAutoFlip: true,
   appearanceMotion: true,
+  cardSwapMotion: false, // user's call 2026-09-15: off by default
   backgroundMotion: "on",
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on

@@ -29,7 +29,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
-import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, type OlderVersion } from "./updater";
+import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, versionText, type OlderVersion } from "./updater";
 import { scheduleStatus, onScheduleChange, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance } from "./cards";
 
@@ -178,6 +178,7 @@ function mountSettings(host: HTMLElement): CardInstance {
     el.textContent = text;
     window.setTimeout(() => (el.textContent = was), 1200);
   };
+  const versionLabel = () => `Version ${versionText()}`.trim();
   const copyFrom = (el: HTMLElement, text: Promise<string>) =>
     text.then((t) => navigator.clipboard.writeText(t).then(() => flash(el, "Copied"), () => console.log(t)));
 
@@ -391,6 +392,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           options: [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }],
         },
         storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin changes play the launch animation. Off: they change at once"),
+        storeToggle("cardswap", "Animate card swaps", "cardSwapMotion", () => "Cards move to their new places in the skin's own motion. Off: they change at once"),
         {
           kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
           hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
@@ -640,9 +642,21 @@ function mountSettings(host: HTMLElement): CardInstance {
       title: "Bugs",
       // The labelled rows, plus one per saved report.
       get count() {
-        return 4 + reports.length;
+        return 5 + reports.length;
       },
       rows: [
+        // The number a report sends (report.rs `meta.version`), where a user looks when
+        // something goes wrong (FUTURE-SETTINGS §23). paintUpdate keeps the label current.
+        {
+          kind: "split", id: "version",
+          get label() {
+            return versionLabel();
+          },
+          hint: () => "The version a bug report sends",
+          halves: [
+            { type: "action", label: "Copy", hint: "Copies the version to the clipboard", run: (el) => copyFrom(el, Promise.resolve(versionText())) },
+          ],
+        },
         // The report form (report.rs): title, details, the bug type that picks the log cut,
         // Attach log + its preview, then Send as a bug or a suggestion.
         {
@@ -767,7 +781,8 @@ function mountSettings(host: HTMLElement): CardInstance {
       title: "About",
       rows: [],
       defaultOpen: true,
-      tail:
+      tail: () =>
+        `<div class="set__status" id="set-about-version">${esc(versionLabel())}</div>` +
         `<div class="set__status">Apple Music is a trademark of Apple Inc. ` +
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
         `<div class="set__status">The log stays on this PC unless you send a bug with Attach log on. ` +
@@ -988,6 +1003,11 @@ function mountSettings(host: HTMLElement): CardInstance {
   const paintUpdate = () => {
     const el = body.querySelector<HTMLElement>("#set-update-status");
     if (el) el.textContent = updateStatusText();
+    // The version arrives from Rust after boot; the Bugs row and the About line follow it.
+    const row = body.querySelector<HTMLElement>(`[data-set-row="version"] .set__label`);
+    if (row) row.textContent = versionLabel();
+    const about = body.querySelector<HTMLElement>("#set-about-version");
+    if (about) about.textContent = versionLabel();
   };
   // The scrollbar thumb fades in only while the rows outgrow the card (settings.css).
   const markScrollable = () => body.classList.toggle("is-scrollable", body.scrollHeight > body.clientHeight + 1);

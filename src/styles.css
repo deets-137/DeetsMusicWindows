@@ -390,6 +390,35 @@ body {
   .pop, .flyout { transition: none; }
   .pop-enter { animation: none; }
 }
+/* Card swap (src/card-swap.ts; skin.css §card swap). JS sets --swap-dx / --swap-dy, the
+   offset from the slot the card left. The travel rides `translate` and the skin's shape
+   rides `transform`, so a midpoint shape never splits the travel's ease. A replace rises in. */
+.bento > .panel.swap-in {
+  animation:
+    card-swap-travel var(--swap-dur) var(--swap-ease) calc(var(--swap-i, 0) * var(--swap-stagger)) both,
+    card-swap-shape  var(--swap-dur) var(--swap-ease) calc(var(--swap-i, 0) * var(--swap-stagger)) both;
+}
+.bento > .panel.swap-top { z-index: 1; } /* the card the user picked passes over the other */
+/* The out step (a skin with --swap-out-dur > 0): the leaving card plays out, then the remount. */
+.bento > .panel.swap-out { animation: card-swap-out var(--swap-out-dur) var(--swap-ease) both; pointer-events: none; }
+@keyframes card-swap-out {
+  to { transform: var(--swap-out-to); opacity: var(--swap-out-fade); }
+}
+.bento > .panel.swap-rise { animation: card-swap-rise var(--swap-dur) var(--pop-ease) both; }
+@keyframes card-swap-travel {
+  from { translate: calc(var(--swap-dx, 0px) * var(--swap-travel)) calc(var(--swap-dy, 0px) * var(--swap-travel)); }
+}
+@keyframes card-swap-shape {
+  from { transform: var(--swap-from); opacity: var(--swap-fade); }
+  50%  { transform: var(--swap-mid); }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes card-swap-rise {
+  from { opacity: 0; transform: translateY(var(--pop-shift)) scale(var(--pop-scale)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento > .panel.swap-out, .bento > .panel.swap-in, .bento > .panel.swap-rise { animation: none; }
+}
 .ap__head {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); /* the square sits near the corner */
@@ -2022,7 +2051,10 @@ body.tray { height: auto; overflow: hidden; }
      lift = the cover fades and the cards rise; boot-cover.ts removes the attribute after.
    A theme or skin change (appearance.ts, §6a) adds one stage before wait:
      veil = the cover fades in over the old look; the cards stay in place.
-   The safety animation ends the cover by CSS alone at --boot-safety (a page error). */
+   The safety animation ends the cover by CSS alone at --boot-safety (a page error).
+   Every time here is × --motion-scale: 1, or the skin's --agent-motion under an agent's
+   change (data-boot-by="agent", §6b). tokenMs() in boot-cover.ts applies the same scale. */
+html[data-boot-by="agent"] { --motion-scale: var(--agent-motion); }
 .boot-cover {
   position: fixed;
   inset: 0;
@@ -2033,36 +2065,40 @@ body.tray { height: auto; overflow: hidden; }
 }
 html[data-boot] .boot-cover {
   opacity: 1;
-  animation: boot-safety-cover 0s var(--boot-safety) forwards;
+  animation: boot-safety-cover 0s calc(var(--boot-safety) * var(--motion-scale, 1)) forwards;
 }
 html[data-boot="hold"] .boot-cover { pointer-events: auto; }
 html[data-boot] .bento > .panel {
   opacity: 0;
   transform: var(--boot-rise);
-  animation: boot-safety-panel 0s var(--boot-safety) forwards;
+  animation: boot-safety-panel 0s calc(var(--boot-safety) * var(--motion-scale, 1)) forwards;
 }
 html[data-boot="veil"] .boot-cover {
-  transition: opacity var(--cover-in-dur) var(--cover-in-ease);
+  transition: opacity calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--cover-in-ease);
 }
 html[data-boot="veil"] .bento > .panel { opacity: 1; transform: none; animation: none; }
 /* A look change swaps --canvas under the opaque cover: its color glides, never jumps. */
 html[data-boot="wait"] .boot-cover {
-  transition: background-color var(--cover-in-dur) var(--boot-ease);
+  transition: background-color calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--boot-ease);
 }
 html[data-boot="lift"] .boot-cover {
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--boot-cover-out) var(--boot-ease), background-color var(--cover-in-dur) var(--boot-ease);
+  transition:
+    opacity calc(var(--boot-cover-out) * var(--motion-scale, 1)) var(--boot-ease),
+    background-color calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--boot-ease);
 }
 html[data-boot="lift"] .bento > .panel {
   opacity: 1;
   transform: none;
-  transition: opacity var(--boot-dur) var(--boot-ease), transform var(--boot-dur) var(--boot-ease);
+  transition:
+    opacity calc(var(--boot-dur) * var(--motion-scale, 1)) var(--boot-ease),
+    transform calc(var(--boot-dur) * var(--motion-scale, 1)) var(--boot-ease);
 }
-html[data-boot="lift"] .bento > .panel:nth-child(2) { transition-delay: var(--boot-stagger); }
-html[data-boot="lift"] .bento > .panel:nth-child(3) { transition-delay: calc(var(--boot-stagger) * 2); }
-html[data-boot="lift"] .bento > .panel:nth-child(4) { transition-delay: calc(var(--boot-stagger) * 3); }
-html[data-boot="lift"] .bento > .panel:nth-child(5) { transition-delay: calc(var(--boot-stagger) * 4); }
-html[data-boot="lift"] .bento > .panel:nth-child(6) { transition-delay: calc(var(--boot-stagger) * 5); }
+html[data-boot="lift"] .bento > .panel:nth-child(2) { transition-delay: calc(var(--boot-stagger) * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento > .panel:nth-child(3) { transition-delay: calc(var(--boot-stagger) * 2 * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento > .panel:nth-child(4) { transition-delay: calc(var(--boot-stagger) * 3 * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento > .panel:nth-child(5) { transition-delay: calc(var(--boot-stagger) * 4 * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento > .panel:nth-child(6) { transition-delay: calc(var(--boot-stagger) * 5 * var(--motion-scale, 1)); }
 @keyframes boot-safety-cover { to { opacity: 0; visibility: hidden; } } /* hidden takes no clicks; pointer-events can't animate */
 @keyframes boot-safety-panel { to { opacity: 1; transform: none; } }

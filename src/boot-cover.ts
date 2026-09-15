@@ -28,12 +28,16 @@ const reducedMotion = (): boolean => {
   }
 };
 
-/** A time token ("0.8s" / "70ms") in ms. appearance.ts reads the same tokens. */
+/** A time token ("0.8s" / "70ms") in ms, times --motion-scale (set only under an agent's
+ *  slower cover, UX-COVERUPS §6b; 1 elsewhere), so the JS timers match the CSS.
+ *  appearance.ts and card-swap.ts read the same tokens. */
 export function tokenMs(name: string): number {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const cs = getComputedStyle(document.documentElement);
+  const v = cs.getPropertyValue(name).trim();
   const n = parseFloat(v);
   if (!Number.isFinite(n)) return 0;
-  return v.endsWith("ms") ? n : n * 1000;
+  const scale = parseFloat(cs.getPropertyValue("--motion-scale")) || 1;
+  return (v.endsWith("ms") ? n : n * 1000) * scale;
 }
 
 /** The page ground as [r, g, b], for the window's own background. */

@@ -206,6 +206,17 @@ export async function rollbackTo(version: string): Promise<void> {
   else await download();
 }
 
+/** The version a user reads and copies (Settings › Bugs, About; FUTURE-SETTINGS §23). A test
+ *  build already says so in its number (`-t1`); a dev build and a build off the main channel
+ *  with a plain number are named, so neither passes for a release. */
+export function versionText(): string {
+  const s = status;
+  if (!s?.current) return "";
+  if (import.meta.env.DEV) return `${s.current} · Dev build`;
+  if (s.channel !== "deetsmusic" && !s.current.includes("-")) return `${s.current} · ${s.channel}`;
+  return s.current;
+}
+
 /** The Settings › Updates status line. */
 export function updateStatusText(): string {
   const s = status;

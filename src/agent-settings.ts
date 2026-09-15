@@ -96,6 +96,7 @@ function pickLook(kind: "theme" | "skin", v: string): void {
   noteHandPick();
   withAppearanceTransition(kind, () => (kind === "theme" ? applyTheme(v as ThemeName) : applySkin(v as SkinName)), {
     skin: kind === "skin" ? (v as SkinName) : undefined,
+    by: "agent", // the slower cover (UX-COVERUPS §6b)
     // np-bus imports this module (through agent-writes); load it lazily, not at the top.
     after: () => void import("./np-bus").then((m) => m.publishAppearance()),
   });
@@ -117,11 +118,18 @@ const SPECS: Spec[] = [
     key: "surface", label: "Surface", section: "Window", kind: "choice",
     options: [{ value: "mini", label: "Mini" }, { value: "player", label: "Mini player" }, { value: "midi", label: "Midi" }, { value: "max", label: "Max" }],
     get: () => (currentSurface() === "mini" && document.documentElement.dataset.mini === "player" ? "player" : currentSurface()),
-    set: async (v) => {
-      if (v === "player") await applySurface("mini", false, "player");
-      else await applySurface(v as SurfaceName, false, v === "mini" ? "cards" : undefined);
-      invoke("tray_pin_main").catch(() => {}); // a deliberate pick pins a tray-popped window, as the menu does
-    },
+    // Under the agent's slower cover (UX-COVERUPS §6b): the resize and the card recompose run
+    // while it is opaque. Returns at once, so a theme or skin sent next joins the same cover.
+    set: (v) =>
+      withAppearanceTransition(
+        "surface",
+        async () => {
+          if (v === "player") await applySurface("mini", false, "player");
+          else await applySurface(v as SurfaceName, false, v === "mini" ? "cards" : undefined);
+          invoke("tray_pin_main").catch(() => {}); // a deliberate pick pins a tray-popped window, as the menu does
+        },
+        { by: "agent" },
+      ),
   },
   // ── Look and feel ──
   {
@@ -153,6 +161,7 @@ const SPECS: Spec[] = [
   },
   storeChoice("Look and feel", "lookHold", "Menu pick lasts", [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }]),
   storeToggle("Look and feel", "appearanceMotion", "Animate look changes"),
+  storeToggle("Look and feel", "cardSwapMotion", "Animate card swaps"),
   storeChoice("Look and feel", "backgroundMotion", "Animate backgrounds", [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }]),
   storeChoice("Look and feel", "oceanEdges", "Draw card edges", [{ value: "sand", label: "Sand" }, { value: "soft", label: "Soft" }], { only: "Ocean only", note: skinNote("ocean", "Ocean") }),
   storeRange("Look and feel", "oceanSand", "Sand width", { only: "Ocean only, with Sand edges", note: skinNote("ocean", "Ocean") }),

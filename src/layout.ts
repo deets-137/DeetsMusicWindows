@@ -17,6 +17,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { onCardRequest } from "./layout-bus";
 import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
+import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
 
 type Slot = "left" | "right" | "c" | "d";
 type Assignment = Partial<Record<Slot, CardId>>;
@@ -237,24 +238,38 @@ export function initLayout(): void {
   };
 
   function setSlot(slot: Slot, id: CardId): void {
+    flushSwapOut(); // a remount still waiting on its out step lands first, so `layout` is current
     if (!comp.slots.includes(slot) || layout[slot] === id) return; // not in this composition / already here
     const other = comp.slots.find((s) => layout[s] === id);
-    if (other) {
-      // chosen card is in another slot → exchange the two
-      const prev = layout[slot];
-      unmountSlot(slot);
-      unmountSlot(other);
-      layout = { ...layout, [slot]: id, [other]: prev };
-      mountSlot(slot);
-      mountSlot(other);
-    } else {
-      // bring an unplaced card into this slot (the displaced card goes unplaced)
-      unmountSlot(slot);
-      layout = { ...layout, [slot]: id };
-      mountSlot(slot);
-    }
-    saveLayout(comp, layout);
-    touch(slot); // acting on a slot (picker or summon) makes it the freshest
+    // Motion (card-swap.ts): a skin with an out step plays the leaving cards out before the
+    // remount; then each new card plays from the slot it left. A slot off screen (mini's
+    // right) has no start: the card coming out of it rises in, the one going into it is unseen.
+    const a = hosts[slot];
+    const b = other ? hosts[other] : null;
+    const detail = other ? `swap ${slot}↔${other}` : `replace ${slot}`;
+    playOut([a, b].filter(onScreen), () => {
+      if (other) {
+        // chosen card is in another slot → exchange the two
+        const prev = layout[slot];
+        unmountSlot(slot);
+        unmountSlot(other);
+        layout = { ...layout, [slot]: id, [other]: prev };
+        mountSlot(slot);
+        mountSlot(other);
+        const moves: SwapMove[] = [];
+        if (onScreen(a)) moves.push({ el: a, from: onScreen(b) ? b : undefined });
+        if (onScreen(b)) moves.push({ el: b, from: onScreen(a) ? a : undefined });
+        playSwap(moves, detail);
+      } else {
+        // bring an unplaced card into this slot (the displaced card goes unplaced)
+        unmountSlot(slot);
+        layout = { ...layout, [slot]: id };
+        mountSlot(slot);
+        playSwap(onScreen(a) ? [{ el: a }] : [], detail);
+      }
+      saveLayout(comp, layout);
+      touch(slot); // acting on a slot (picker or summon) makes it the freshest
+    }, detail);
   }
 
   const compose = () => {
@@ -274,6 +289,7 @@ export function initLayout(): void {
   onSurfaceChange((s) => {
     const next = compositionFor(s);
     if (next === comp) return;
+    flushSwapOut(); // a pick still in its out step lands in the old map before it is torn down
     decompose();
     comp = next;
     layout = loadLayout(comp);
@@ -300,6 +316,7 @@ export function initLayout(): void {
   // Rewind while it went off falls back to an unplaced card (or the slot's default).
   onSettingsChange((k) => {
     if (k !== "rewindCard") return;
+    flushSwapOut();
     if (!setting("rewindCard")) {
       const slot = comp.slots.find((s) => layout[s] === "rewind");
       if (slot) {

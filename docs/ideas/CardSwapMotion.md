@@ -1,60 +1,83 @@
-# Card swap motion — idea, not built
+# Card swap motion — designed and built 2026-09-15
 
-Recorded 2026-09-15. Nothing here is designed in detail or scheduled.
+Recorded as an idea 2026-09-15; designed and built the same day. Settings › Look and feel ›
+**Animate card swaps** (`cardSwapMotion`, default **off**). The OS reduced-motion
+preference always snaps.
 
 ## Terms
 - **Slot**: a place on a surface that holds one card (`left`, `right`, `c`, `d` in
   `src/layout.ts`). Now Playing and the max Queue card are anchored and never move.
-- **Swap**: two visible cards exchange slots.
+- **Swap**: two visible cards exchange slots (the title picker).
+- **Summon**: the Now Playing queue button brings the Queue card to the least recently
+  used slot. If the Queue card is in the other slot, this is a swap.
 - **Replace**: a card that is not on screen takes a slot. The old card leaves.
-- **Recompose**: a surface flip between compositions (midi/mini ↔ max) rebuilds every
-  content slot.
+- **Recompose**: a surface flip between compositions (midi/mini ↔ max).
 
-## The problem
-Cards change position or content with no motion. The change is instant, so the eye
-cannot follow where a card went. Today these events snap:
+## Scope
+Swap, summon and replace animate. **Recompose does not** (user's call): the window also
+changes size in that flip, so the start positions are not reliable. Out of scope: the
+collection-card pane slide, the queue drag, the theme/skin switch animation.
 
-1. **Swap from the title picker.** Pick a card that is in another slot. `setSlot`
-   unmounts both slots and mounts them again (`src/layout.ts`, `setSlot`).
-2. **Summon flip.** The Now Playing queue button brings the Queue card to the least
-   recently used slot. If the Queue card is visible in the other slot, the two cards swap.
-3. **Replace from the title picker.** An unplaced card takes the slot. The old card
-   disappears.
-4. **Recompose.** midi/mini ↔ max tears down every content slot and mounts the new map.
+## Decisions (tested against the code)
+1. **Animate the new panels, not a clone and not the live nodes.** `setSlot` remounts as
+   before. Each card writes `host.innerHTML` and clears it on `destroy()`, and the picker
+   and observers bind to the host, so moving live nodes breaks that contract. A clone loses
+   the list's scroll position and paints canvases blank. The `.panel` host is a fixed grid
+   cell, so the new card's panel plays from the slot its card left.
+2. **Travel only, no scale between slots.** Every content slot on a surface is the same
+   size (midi: two equal columns; max: a 2×2 grid of equal cells).
+3. **The shape is skin tokens** (the `--nav-at-*` pattern): one set of keyframes, each skin
+   supplies the values. JS measures only the pixel offset.
+4. **Timing aliases the nav tokens**: `--swap-dur: var(--nav-dur)`,
+   `--swap-ease: var(--nav-ease)`. A skin can override them.
+5. **Replace rises in** with the pop tokens (fade, up by `--pop-shift`, from `--pop-scale`),
+   on every skin. The old card's DOM is gone, so it cannot visibly leave.
+6. **mini**: the right slot is `display:none`. A card that comes out of it rises in; the
+   card that goes into it is not animated.
+7. **A pick during a run** snaps every moving panel home, then plays the new moves.
+8. **Telemetry**: one `[perf] frames swap <kind> <slots> <skin>` line per run (`frames.begin`).
 
-Motion that already exists and is out of scope: the collection-card push/pop pane slide
-inside one card, the queue drag-to-reorder, and the theme/skin switch animation
-(NEXT-VERSION §6).
+## Per skin
 
-## The idea
-Animate each event so the user sees the result:
+The user skins are Press, Ocean, Glass and Retro-Future. Vanilla is hidden from the picker
+(UI-ARCHITECTURE.md): its values are the base tokens, which a skin without overrides uses.
 
-- **Swap / summon flip**: each card moves from its old slot to its new slot (a FLIP
-  move: measure the old rect, mount, measure the new rect, animate the difference).
-- **Replace**: the old card fades or slides out. The new card fades or slides in, in the
-  same slot.
-- **Recompose**: a card that is in both maps moves to its new slot. Other cards fade in.
+| Skin | Its nav motion | Swap | Tokens |
+|---|---|---|---|
+| Press | a sheet pulled off, the next stamped down | **Stamp in place**, the second slot 0.06 s after the first | travel 0, from `scale(1.03)`, mid `scale(1.01)`, stagger 0.06s |
+| Ocean | sinks out, rises from beneath | **Dip and travel** | travel 1, mid `scale(0.94)` |
+| Glass | panes fade and scale through | **Straight slide** (the base) | none |
+| Retro-Future | electric snap, skew straightens | **Skew out, then skew in**, in place | out `skewX(-10deg)` + fade 0 over `--nav-dur`; travel 0, from `skewX(10deg)`, mid `skewX(4deg)`, fade 0 |
 
-## Constraints
-- **Mechanism.** A swap is destroy + remount, so the old DOM does not survive. The
-  motion needs one of these: a snapshot (clone) of the old card that animates over the
-  new card, or a change to move the live card nodes between hosts. The clone is cheaper
-  to build. Moving live nodes keeps drill state but changes the swap contract (today a
-  swap always lands at the card root).
-- **Tokens.** Duration and easing come from skin tokens (`--dur-*`, `--ease-*`, or a new
-  `--dur-swap`). No hardcoded values in `layout.ts`.
-- **Reduced motion.** The OS preference snaps. Decide if the `appearanceMotion` setting
-  also controls this, or if it needs its own row.
-- **Windowed lists.** A long collection-card list renders only the rows near the
-  viewport. A clone must copy only the visible rows. It must not force a full render.
-- **Frames.** Log each run through `src/frames.ts` (a new `swap` kind), so the smoothness
-  telemetry covers it.
-- **Input during motion.** A second pick during the animation must finish or cancel the
-  first one cleanly.
-- **mini.** The right slot is `display:none`. A summon into it has no visible start rect.
+**Revised at the desk (2026-09-15):** Glass first cross-faded in place; through the frost it
+read as a glitch, so Glass takes the base slide. Retro-Future first had a skewed snap slide;
+the user asked for a skew out and a skew in, which added the out step below.
 
-## Open forks (for the design pass)
-1. Clone snapshot, or move the live card nodes?
-2. Swap path: straight move, or cross-fade in place?
-3. Which setting controls it: `appearanceMotion`, a new row, or the OS preference only?
-4. Include recompose (surface flip) in the first slice, or swap + replace only?
+## Tokens (skin.css §card swap, on `[data-skin]`)
+| Token | Default | Meaning |
+|---|---|---|
+| `--swap-dur` | `var(--nav-dur)` | length of one card's run |
+| `--swap-ease` | `var(--nav-ease)` | its easing |
+| `--swap-out-dur` | `0s` | the out step's length; 0 = no out step |
+| `--swap-out-to` | `scale(1)` | the leaving card's shape at the end of the out step |
+| `--swap-out-fade` | `1` | the leaving card's opacity at the end of the out step |
+| `--swap-travel` | `1` | 1 = start at the old slot and move; 0 = play in place |
+| `--swap-from` | `scale(1)` | shape at the start |
+| `--swap-mid` | `scale(1)` | shape at the midpoint (same functions as `--swap-from`) |
+| `--swap-fade` | `1` | opacity at the start |
+| `--swap-stagger` | `0s` | delay of the second card |
+
+## How it runs
+- **Out step.** `layout.ts` `setSlot` passes the remount to `playOut(els, run, detail)`. With
+  `--swap-out-dur` > 0 the leaving panels get `swap-out`; `run` waits for `card-swap-out` to
+  end (a timer at the duration + 100 ms backs it up). Otherwise `run` runs at once.
+  `flushSwapOut()` runs a waiting remount now: at the start of every `setSlot`, and before a
+  surface recompose or the Rewind rebuild, so the layout they read is current.
+- **In step.** `run` remounts, then calls `playSwap(moves, detail)`.
+  The first move is the picked slot; it gets `swap-top` and passes over the other card.
+- `card-swap.ts` sets `--swap-dx` / `--swap-dy` on the panel (old slot − new slot) and adds
+  `swap-in`, or `swap-rise` for a replace.
+- `styles.css` §Card swap: `swap-in` runs two animations of the same length. The travel
+  animates the `translate` property; the skin's shape animates `transform` with a 50% key.
+  Two properties, so the midpoint key never splits the travel's easing into two eases.
+- `animationend` of `card-swap-shape` / `card-swap-rise` clears the classes and variables.
