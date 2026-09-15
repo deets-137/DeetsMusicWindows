@@ -18,6 +18,43 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.6.1 — 2026-09-15
+
+**Repeat and shuffle.** Now Playing has a Repeat button next to Shuffle: press it for the whole
+list, again for one song, again for off. Shuffle now stays on until you turn it off. Every album,
+playlist and artist page has a Play and a Shuffle button above its songs.
+
+**The cover as a record.** Under the Press skin, Settings › Look and feel › Record player turns
+the cover into a record that spins while the music plays. Show record on picks where: the big
+cover only, or the tray panel too.
+
+**Hover for help.** Hold the pointer on any button for a moment and a short note says what it
+does: the theme and skin names, the window sizes, every player button, Sort and View. Settings
+has a new Tips section at the top with the six habits that open up the rest of the app.
+
+**Stations do more.** Right-click a station in Radio or Search to play it, add it to the queue,
+or copy its link. Drag a station onto the Queue card and it plays after your songs finish; drag
+it onto Now Playing and it plays now.
+
+**The tray panel.** Right-click the song in the tray panel to add it to your library, favorite
+it, or copy its link.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.6.0 — 2026-09-15
 
 **Artist pages.** Click an artist in the Library or in Search to open its page: a round photo of
