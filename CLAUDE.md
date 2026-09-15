@@ -16,6 +16,8 @@ front-end, Rust back-end).
   call site; `__toast.demo()` in the console shows one of each kind.
 - `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
+- `docs/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
+  set times, Windows mode) and its pre-paint in `index.html`.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

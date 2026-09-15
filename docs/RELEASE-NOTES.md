@@ -14,6 +14,11 @@ browser download until reputation builds, so check what a browser download of th
 shows before writing the Installing section. Older entries stay as written: they were true for
 their version.
 
+**Also for the next entry:** skins get their own settings. Under Glass, Settings › Look and
+feel has Canvas glow, Dim canvas, Backlight, and Tint cards (the cards glow over a darker
+background). Under Ocean, Draw card edges can turn the card edges to sand, with a Sand width
+slider. The rows show only while that skin is on.
+
 ## 0.4.3 — 2026-09-14
 
 **DeetsMusic updates itself.** When a new version is out, DeetsMusic downloads it in the

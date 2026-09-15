@@ -5,14 +5,20 @@
 // Library Add, the Extension block) and the v1 cut of FUTURE-SETTINGS (§1 §4 §5a §5b
 // §7 §8 §14 §16) plus the Rewind gate. A control lives in exactly one place.
 //
-// Three row kinds: TOGGLE (label + dot), CHOICE (label + one split pill of up to three
-// options; more than three becomes a small menu), and SPLIT (label + one pill cut into
-// halves — an action, an on/off, or a menu — the search pin idiom, NEXT-VERSION §1).
+// Row kinds: TOGGLE (label + dot), CHOICE (label + one split pill of up to three
+// options; more than three becomes a small menu), SPLIT (label + one pill cut into
+// halves — an action, an on/off, or a menu — the search pin idiom, NEXT-VERSION §1),
+// RANGE (label + a slider; a drag previews, the release writes), and HTML. Any row may
+// carry `when`: it shows only while that holds (the look schedule's rows, and the
+// skin-only rows — UI-ARCHITECTURE.md §Skin-only settings).
 // Rows read the settings store (or the module that owns the value) and re-paint on change.
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
+import { currentSkin, onSkinChange } from "./skin";
+import { makeSlider } from "./slider";
+import { previewSkin } from "./skin-settings";
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
@@ -24,6 +30,7 @@ import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, type OlderVersion } from "./updater";
+import { scheduleStatus, onScheduleChange, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -69,7 +76,23 @@ interface HtmlRow {
   id: string;
   html: () => string;
 }
-type Row = ToggleRow | ChoiceRow | SplitRow | HtmlRow;
+/** `when`: the row shows only while this is true (the look schedule's rows follow its mode). */
+type NumKey = { [K in keyof Settings]: Settings[K] extends number ? K : never }[keyof Settings];
+/** A slider (Glass's Tint / Frost). A drag calls `preview` only — a store write would
+ *  re-render the card under the pointer — and the release writes the store. */
+interface RangeRow {
+  kind: "range";
+  id: string;
+  label: string;
+  hint?: string;
+  key: NumKey;
+  min: number;
+  max: number;
+  unit: string;
+  preview: (v: number) => void;
+}
+type Row = (ToggleRow | ChoiceRow | SplitRow | HtmlRow | RangeRow) & { when?: () => boolean };
+const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
 interface Section {
   title: string;
   rows: Row[];
@@ -100,6 +123,27 @@ const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => strin
   get: () => setting(key),
   set: (on) => setSetting(key, on),
 });
+
+// ── the look schedule's rows (LOOK-SCHEDULE.md) ──
+type LookKey = "dayTheme" | "daySkin" | "nightTheme" | "nightSkin" | "dayStart" | "nightStart";
+const storeMenu = (key: LookKey, options: Option[]): Half => ({
+  type: "menu",
+  options,
+  get: () => setting(key),
+  set: (v) => setSetting(key, v as never),
+});
+/** Half-hour steps from `from` to `to` (local minutes), labelled in the user's clock format. */
+const timeOptions = (from: number, to: number): Option[] => {
+  const out: Option[] = [];
+  for (let m = from; m <= to; m += 30) {
+    const hh = String(Math.floor(m / 60)).padStart(2, "0");
+    const mm = String(m % 60).padStart(2, "0");
+    const label = new Date(2000, 0, 1, 0, m).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    out.push({ value: `${hh}:${mm}`, label });
+  }
+  return out;
+};
+const scheduled = () => setting("lookSchedule") !== "off";
 
 const SETUP_CLIENTS: Option[] = [
   { value: "claude-desktop", label: "Claude Desktop" },
@@ -306,12 +350,89 @@ function mountSettings(host: HTMLElement): CardInstance {
     },
     {
       title: "Look and feel",
+      tail: () => (scheduled() ? `<div class="set__status" id="set-look-status" aria-live="polite"></div>` : ""),
       rows: [
-        storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin switches fade into each other. Off: they change at once"),
+        {
+          kind: "choice", id: "lookschedule", label: "Change look at", key: "lookSchedule",
+          hint: "Changes between a day look and a night look. Sun times come from your time zone, not your location",
+          options: [
+            { value: "sun", label: "Sunrise and sunset" }, { value: "clock", label: "Set times" },
+            { value: "windows", label: "Windows mode" }, { value: "off", label: "Off" },
+          ],
+        },
+        {
+          kind: "split", id: "lookday", label: "Day look", when: scheduled,
+          hint: () => "The theme and skin for the day",
+          halves: [storeMenu("dayTheme", THEME_OPTIONS), storeMenu("daySkin", SKIN_OPTIONS)],
+        },
+        {
+          kind: "split", id: "looknight", label: "Night look", when: scheduled,
+          hint: () => "The theme and skin for the night",
+          halves: [storeMenu("nightTheme", THEME_OPTIONS), storeMenu("nightSkin", SKIN_OPTIONS)],
+        },
+        {
+          kind: "split", id: "looktimes", label: "Day runs", when: () => setting("lookSchedule") === "clock",
+          hint: () => "From the first time to the second. The night look shows at all other times",
+          halves: [storeMenu("dayStart", timeOptions(4 * 60, 12 * 60)), storeMenu("nightStart", timeOptions(15 * 60, 23 * 60 + 30))],
+        },
+        {
+          kind: "choice", id: "sunshift", label: "Shift sun times", when: () => setting("lookSchedule") === "sun",
+          hint: "Moves sunrise and sunset. Use it when the look changes too early or too late where you are",
+          get: () => String(setting("sunShift")),
+          set: (v) => setSetting("sunShift", Number(v)),
+          options: [-60, -45, -30, -15, 0, 15, 30, 45, 60].map((v) => ({
+            value: String(v),
+            label: v === 0 ? "None" : `${v > 0 ? "+" : "−"}${Math.abs(v)} min`,
+          })),
+        },
+        {
+          kind: "choice", id: "lookhold", label: "Menu pick lasts", key: "lookHold", when: scheduled,
+          hint: "A theme or skin you pick from the title menu while the schedule is on. For good: the schedule turns off",
+          options: [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }],
+        },
+        storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin changes play the launch animation. Off: they change at once"),
         {
           kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
           hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
           options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
+        },
+        {
+          kind: "choice", id: "oceanedges", label: "Draw card edges", key: "oceanEdges",
+          hint: "Ocean only. Sand: the card edges break into grains, like a dark beach",
+          options: [{ value: "sand", label: "Sand" }, { value: "soft", label: "Soft" }],
+          when: () => currentSkin() === "ocean",
+        },
+        {
+          kind: "range", id: "oceansand", label: "Sand width", key: "oceanSand", min: 0, max: 100, unit: "%",
+          hint: "Ocean only. How far the sand reaches into each card",
+          preview: (v) => previewSkin("oceanSand", v),
+          when: () => currentSkin() === "ocean" && setting("oceanEdges") === "sand",
+        },
+        // Glass: the layers in paint order, back to front — the background (glow, then its
+        // dim), then the card (its backlight, then the tint over it).
+        {
+          kind: "range", id: "glasscanvas", label: "Canvas glow", key: "glassCanvasGlow", min: 0, max: 100, unit: "%",
+          hint: "Glass only. How brightly the colors glow on the background. The cards do not change",
+          preview: (v) => previewSkin("glassCanvasGlow", v),
+          when: () => currentSkin() === "glass",
+        },
+        {
+          kind: "range", id: "glassdim", label: "Dim canvas", key: "glassCanvasDim", min: 0, max: 100, unit: "%",
+          hint: "Glass only. Darkens the space between the cards. The cards stay as bright",
+          preview: (v) => previewSkin("glassCanvasDim", v),
+          when: () => currentSkin() === "glass",
+        },
+        {
+          kind: "range", id: "glassbacklight", label: "Backlight", key: "glassBacklight", min: 0, max: 100, unit: "%",
+          hint: "Glass only. A light behind each card, under its tint",
+          preview: (v) => previewSkin("glassBacklight", v),
+          when: () => currentSkin() === "glass",
+        },
+        {
+          kind: "range", id: "glasstint", label: "Tint cards", key: "glassTint", min: 0, max: 100, unit: "%",
+          hint: "Glass only. The card color over the backlight. Less tint: more glow",
+          preview: (v) => previewSkin("glassTint", v),
+          when: () => currentSkin() === "glass",
         },
         {
           kind: "toggle",
@@ -677,11 +798,22 @@ function mountSettings(host: HTMLElement): CardInstance {
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
   const rowHTML = (r: Row): string => {
     if (r.kind === "html") return r.html();
-    const hint = r.kind === "choice" ? r.hint : r.hint?.();
+    const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const label = `<span class="set__label">${esc(r.label)}</span>`;
     const fx = flashOf(r.id);
     const mark = ` data-set-row="${r.id}"${fx.style}`;
+    if (r.kind === "range") {
+      const v = setting(r.key);
+      const fill = ((v - r.min) / (r.max - r.min)) * 100;
+      return (
+        `<div class="set__row set__row--range${fx.cls}"${mark}${tip}>${label}` +
+        `<div class="set__range scrub" role="slider" tabindex="0" data-range="${r.id}" aria-label="${esc(r.label)}" ` +
+        `aria-valuemin="${r.min}" aria-valuemax="${r.max}" aria-valuenow="${v}" style="--slider-fill: ${fill}%">` +
+        `<div class="scrub__track"><div class="scrub__fill"></div></div><span class="scrub__handle" aria-hidden="true"></span></div>` +
+        `<span class="set__range-val">${v}${esc(r.unit)}</span></div>`
+      );
+    }
     if (r.kind === "toggle") {
       return `<button class="set__row set__row--toggle${fx.cls}" type="button" role="switch" data-row="${r.id}"${mark} aria-checked="${r.get()}"${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
     }
@@ -744,6 +876,30 @@ function mountSettings(host: HTMLElement): CardInstance {
       menus.push({ dd, panel, obs });
     });
   };
+  // ── range rows: rebuilt on every render; a drag previews, the release writes the store ──
+  const rangeOf = (el: HTMLElement): RangeRow | undefined => {
+    const r = byId(el.dataset.range ?? "");
+    return r?.kind === "range" ? r : undefined;
+  };
+  const wireRanges = () => {
+    body.querySelectorAll<HTMLElement>(".set__range").forEach((el) => {
+      const r = rangeOf(el);
+      if (!r) return;
+      const out = el.nextElementSibling;
+      const valueAt = (frac: number) => Math.round(r.min + frac * (r.max - r.min));
+      makeSlider(el, {
+        axis: "x",
+        onDrag: (frac) => {
+          const v = valueAt(frac);
+          r.preview(v);
+          el.setAttribute("aria-valuenow", String(v));
+          if (out) out.textContent = `${v}${r.unit}`;
+        },
+        onCommit: (frac) => setSetting(r.key, valueAt(frac)),
+      });
+    });
+  };
+
   // The panel is fixed; a scroll of the card would leave it behind — close instead.
   const closeMenus = () => menus.forEach((m) => m.dd.close());
   body.addEventListener("scroll", closeMenus, { passive: true });
@@ -772,7 +928,7 @@ function mountSettings(host: HTMLElement): CardInstance {
   };
   const headHTML = (s: Section): string => {
     const open = isOpen(s);
-    const count = s.count ?? s.rows.length;
+    const count = s.count ?? shown(s.rows).length;
     return (
       `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-fold="${esc(s.title)}" aria-expanded="${open}">` +
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
@@ -786,21 +942,30 @@ function mountSettings(host: HTMLElement): CardInstance {
     const active = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
     const field = active && body.contains(active) ? active.dataset.report : undefined;
     const caret = field ? [active!.selectionStart ?? 0, active!.selectionEnd ?? 0] : null;
+    const rangeFocus = active && body.contains(active) ? active.dataset.range : undefined; // a key step keeps focus
     const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
     body.innerHTML =
       sections
-        .map((s) => `<section class="set__section">${headHTML(s)}${isOpen(s) ? s.rows.map(rowHTML).join("") + tailOf(s) : ""}</section>`)
+        .map((s) => `<section class="set__section">${headHTML(s)}${isOpen(s) ? shown(s.rows).map(rowHTML).join("") + tailOf(s) : ""}</section>`)
         .join("");
     if (field && caret) {
       const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-report="${field}"]`);
       el?.focus({ preventScroll: true });
       el?.setSelectionRange(caret[0], caret[1]);
     }
+    if (rangeFocus) body.querySelector<HTMLElement>(`[data-range="${rangeFocus}"]`)?.focus({ preventScroll: true });
     paintReport();
     wireMenus();
+    wireRanges();
     refreshExtension();
     paintUpdate();
+    paintLook();
     markScrollable();
+  };
+  // Settings › Look and feel status line: which look shows and until when (look-schedule.ts).
+  const paintLook = () => {
+    const el = body.querySelector<HTMLElement>("#set-look-status");
+    if (el) el.textContent = scheduleStatus();
   };
   // Settings › Updates status line: repainted in place on every update-state change, so a
   // download's progress never rebuilds the rows (or closes an open menu).
@@ -925,6 +1090,18 @@ function mountSettings(host: HTMLElement): CardInstance {
   });
 
   // The report fields write to the draft as the user types (render rebuilds them from it).
+  // A focused slider: arrows step 1 (Shift: 10), Home / End jump to the ends.
+  body.addEventListener("keydown", (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>(".set__range");
+    const r = el ? rangeOf(el) : undefined;
+    if (!r) return;
+    const step = e.shiftKey ? 10 : 1;
+    const delta = ({ ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step } as Record<string, number>)[e.key];
+    const to = e.key === "Home" ? r.min : e.key === "End" ? r.max : delta === undefined ? null : setting(r.key) + delta;
+    if (to === null) return;
+    e.preventDefault();
+    setSetting(r.key, Math.max(r.min, Math.min(r.max, to)));
+  });
   body.addEventListener("input", (e) => {
     const f = e.target as HTMLInputElement | HTMLTextAreaElement;
     if (f.dataset.report === "title") draft.title = f.value;
@@ -945,8 +1122,10 @@ function mountSettings(host: HTMLElement): CardInstance {
   // Re-paint on any change, whoever made it (the store, the Library Add module, the
   // Rust setting we cached). A full re-render is cheap here — a dozen rows.
   const unsubStore = onSettingsChange(render);
+  const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
   const unsubLibAdd = onLibraryAddChange(render);
   const unsubUpdate = onUpdateStatus(paintUpdate);
+  const unsubLook = onScheduleChange(paintLook);
   void olderVersions().then((v) => {
     if (!alive) return;
     older = v;
@@ -987,8 +1166,10 @@ function mountSettings(host: HTMLElement): CardInstance {
     destroy() {
       alive = false;
       unsubStore();
+      unsubSkin();
       unsubLibAdd();
       unsubUpdate();
+      unsubLook();
       unsubRequest();
       dropMenus();
       window.removeEventListener("resize", closeMenus);

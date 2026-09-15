@@ -12,10 +12,13 @@
   plus one row, **Settings…**, that summons the Settings card into a content slot
   (`requestCard("settings")` — the same least-recently-touched/flip mechanics as the
   queue button; in mini it lands in the left slot).
-- **The Settings card hosts every preference.** One scroll, section headers, two row
-  kinds: a **toggle** (label + dot, the title-menu idiom) and a **choice** (label over a
-  segmented row of pills). It is a normal registry card (`CardId "settings"`), so it can
-  also be picked from any slot's title picker.
+- **The Settings card hosts every preference.** One scroll, section headers, and these row
+  kinds: a **toggle** (label + dot, the title-menu idiom), a **choice** (label + a split pill;
+  more than three options becomes a small menu), a **split** (one pill cut into halves: an
+  action, an on/off, or a menu), a **range** (label + a slider + its value, 2026-09-15), and
+  **html** (markup of its own). Any row can carry **`when`**, so it shows only while a
+  condition holds (§3 *Skin rows and range rows*). It is a normal registry card
+  (`CardId "settings"`), so it can also be picked from any slot's title picker.
 - **Rule: a control lives in exactly one place.** Nothing is duplicated between the menu
   and the card; the AirPlay dropdown (when built) keeps only live actions.
 
@@ -50,8 +53,19 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
 | Window | Keep on top (The window stays above other windows. Player: only while it shows the player) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always); last row of Window | `alwaysOnTop` | **off** / always / player | `main.ts` (subscribes to the setting and to `onSurfaceChange`; `isPlayerView()`) |
-| Look and feel | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`; OS reduced motion still snaps) |
+| Look and feel | Change look at (Changes between a day look and a night look. Sun times come from your time zone, not your location) — menu *Sunrise and sunset* / *Set times* / *Windows mode* / *Off* (2026-09-15) | `lookSchedule` | **off** / sun / clock / windows | `look-schedule.ts` ([LOOK-SCHEDULE.md](LOOK-SCHEDULE.md)); the rows below show only while it is on |
+| Look and feel | Day look · Night look — split: theme menu \| skin menu | `dayTheme` `daySkin` · `nightTheme` `nightSkin` | **lilac press** · **black-red retro-future** | `look-schedule.ts` `applyLook` |
+| Look and feel | Day runs (set times only) — split: start menu \| end menu, half-hour steps | `dayStart` · `nightStart` | **07:00** · **19:00** | `look-schedule.ts` `planClock` |
+| Look and feel | Shift sun times (sun only) — menu −60…+60 min | `sunShift` | **0** | `look-schedule.ts` `planSun` |
+| Look and feel | Menu pick lasts — pills *Until next change* / *For good* | `lookHold` | **next** / always | `look-schedule.ts` `noteHandPick` (main.ts Theme/Skin clicks) |
+| Look and feel | Animate look changes (Theme and skin changes play the launch animation. Off: they change at once) — also the launch fade | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`, the launch cover's veil → wait → lift, UX-COVERUPS.md §6a) and `boot-cover.ts`; OS reduced motion still snaps |
 | Look and feel | Animate backgrounds (The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
+| Look and feel | Draw card edges (Ocean only. Sand: the card edges break into grains, like a dark beach) — pills *Sand* / *Soft*; shows only while Ocean is the skin (2026-09-15; a stored `waves` or `fade` from the dropped versions migrates to soft) | `oceanEdges` | **soft** / sand | `skin-settings.ts` → `data-ocean-edges` on `<html>`; UI-ARCHITECTURE.md §Sand edges |
+| Look and feel | Sand width (Ocean only. How far the sand reaches into each card) — slider 0–100% (2026-09-15); shows only while Ocean is the skin and Draw card edges is Sand | `oceanSand` | **15** / 0–100 | `skin-settings.ts` → `--ocean-sand` on `<html>` → Ocean `--sand-reach` = 4px…40px |
+| Look and feel | Canvas glow (Glass only. How brightly the colors glow on the background. The cards do not change) — slider 0–100% (2026-09-15; was named Backlight for an hour — a stored `glassBacklight` migrates here; a Frost cards blur slider was dropped the same day) | `glassCanvasGlow` | **50** / 0–100 | `skin-settings.ts` → `--glass-canvas` → Glass `--glass-glow` scales the `--aurora-*` stops (50 = as written, 100 = double, capped at 100%) |
+| Look and feel | Dim canvas (Glass only. Darkens the space between the cards. The cards stay as bright) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassCanvasDim` | **0** / 0–100 | `skin-settings.ts` → `--glass-canvas-dim` → Glass `--canvas-dim` (100 → 0.9) paints `.app-body::after`; the frost's `brightness(1 / (1 − dim))` undoes it inside the cards |
+| Look and feel | Backlight (Glass only. A light behind each card, under its tint) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassBacklight` | **50** / 0–100 | `skin-settings.ts` → `--glass-backlight` → Glass `--glass-light` → the card's `--panel-paint` glow + the outer halo in `--shadow-card` |
+| Look and feel | Tint cards (Glass only. The card color over the backlight. Less tint: more glow) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassTint` | **55** / 0–100 | `skin-settings.ts` → `--glass-tint` on `<html>` → Glass `--panel` mix, painted as the last inset shadow over the backlight (skin.css) |
 | Look and feel | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
 | Look and feel | Show notices ([TOASTS.md](TOASTS.md)) — *Everything* / *Failures* (Off removed 2026-09-14) | `toasts` | all / failures | `toast.ts` `admitted()` at every call; a question toast always shows |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
@@ -77,6 +91,17 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 **Sections regrouped 2026-09-14** (Window / Look and feel / Playback / Apple Music / Playlists /
 Rewind / Connections / Bugs / About). Every section but About starts folded; a fold persists
 by section title (`deets.settings.folds`), so renamed sections start folded once.
+
+**Skin rows and range rows** (2026-09-15): a row with `when` shows only while it holds; the
+skin rows test `currentSkin()` and the card re-renders on `onSkinChange`. A skin row's hint
+starts with "<Skin> only." The skin rows sit at the end of the skin-neutral Look and feel
+rows, grouped per skin; a skin's sliders are ordered as their layers paint, back to front
+(Glass: Canvas glow, Dim canvas, Backlight, Tint cards), so the list reads top to bottom as
+the picture builds up. The range kind (a slider) reuses `slider.ts` and the `.scrub` markup.
+A drag calls the row's `preview` only (a store write re-renders the card under the pointer);
+the release writes the store. A focused slider steps with the arrow keys (Shift: 10) and
+jumps with Home / End. **To add a skin-only setting**, follow the checklist in
+[UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only settings*.
 
 **Open Settings at a row** (`requestSetting(rowId)`, `layout-bus.ts`): summons the card,
 unfolds the row's section, scrolls the row to the middle, and highlights it (`is-flash`,

@@ -160,6 +160,9 @@ pub fn run() {
             if std::env::args().any(|a| a == "--tray") {
                 tray::start_hidden(app.handle());
             }
+            // Any other launch shows the window when the page is ready (`main_ready`);
+            // this shows it after 3 s if the page never says so (UX-COVERUPS.md §6).
+            tray::reveal_fallback(app.handle());
             // First run of an INSTALLED build enrols in start-with-Windows once
             // (DeetsAirplay / DeetsRGB pattern); the Settings toggle owns it after.
             // A dev build never touches the registry.
@@ -314,6 +317,7 @@ pub fn run() {
             tray::tray_panel_hide,
             tray::tray_open_main,
             tray::tray_place_main,
+            tray::main_ready,
             tray::tray_pin_main,
             tray::tray_panel_resize,
             tray::app_quit,

@@ -464,6 +464,21 @@ function emitProgress(): void {
  *  current when MusicKit holds no item, so a restore must trigger a paint). */
 export function refreshPlayerState(): void {
   emit();
+  emitRestoredProgress();
+}
+
+/** Now Playing's scrubber while MusicKit holds no song (a restore): the song's length, and
+ *  the saved position when an update restart left one (resumeAt). MusicKit's own ticks
+ *  take over from the first Play. */
+function emitRestoredProgress(): void {
+  if (music?.nowPlayingItem) return;
+  const cur = queue.getCurrent();
+  const id = cur?.catalogId ?? cur?.libraryId;
+  const durationMs = (trackById(cur?.catalogId) ?? trackById(cur?.libraryId))?.durationMs;
+  if (!id || !durationMs) return;
+  const duration = durationMs / 1000;
+  const currentTime = resumeAt?.id === id ? Math.min(resumeAt.sec, duration) : 0;
+  progressListeners.forEach((cb) => cb({ progress: currentTime / duration, currentTime, duration }));
 }
 
 /** Where the song is, in seconds (queue-persist's update restart). */

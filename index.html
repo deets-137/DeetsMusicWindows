@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="lilac" data-skin="press" data-surface="midi">
+<html lang="en" data-theme="lilac" data-skin="press" data-surface="midi" data-boot="hold">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,11 +17,24 @@
         };
         var dark = false;
         try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
+        // Look schedule (LOOK-SCHEDULE.md): the look for this minute, unless a hand pick
+        // still holds. look-schedule.ts writes both keys; keep the two in step.
+        var look = null;
+        try {
+          var P = JSON.parse(localStorage.getItem("deets.look.prepaint"));
+          var H = JSON.parse(localStorage.getItem("deets.look.hold"));
+          if (P) {
+            var t = new Date(), m = t.getHours() * 60 + t.getMinutes(), w = P.window;
+            var day = w ? (w[0] <= w[1] ? m >= w[0] && m < w[1] : m >= w[0] || m < w[1]) : !dark;
+            var held = H && H.period === (day ? "day" : "night") && (H.until === null || Date.now() < H.until);
+            if (!held) look = day ? P.day : P.night;
+          }
+        } catch (e) {}
         [["deets.theme", "data-theme", dark ? "black-red" : "lilac"],
-         ["deets.skin",  "data-skin",  dark ? "retro-future" : "press"]].forEach(function (a) {
+         ["deets.skin",  "data-skin",  dark ? "retro-future" : "press"]].forEach(function (a, i) {
           var saved = null;
           try { saved = localStorage.getItem(a[0]); } catch (e) {}
-          document.documentElement.setAttribute(a[1], saved ? (R[saved] || saved) : a[2]);
+          document.documentElement.setAttribute(a[1], look ? look[i] : saved ? (R[saved] || saved) : a[2]);
         });
       })();
     </script>
@@ -61,6 +74,9 @@
   </head>
 
   <body>
+    <!-- Launch cover (src/boot-cover.ts, UX-COVERUPS.md §6): opaque --canvas over the page
+         while <html data-boot> is set, so the window shows a finished ground, then fades. -->
+    <div class="boot-cover" aria-hidden="true"></div>
     <!-- Custom frameless chrome. The middle .drag-region is the OS drag handle;
          the title (settings trigger) and lights opt out by not carrying it. -->
     <header class="titlebar">

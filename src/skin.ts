@@ -28,8 +28,22 @@ function prefersDark(): boolean {
   }
 }
 
+const listeners = new Set<(name: SkinName) => void>();
+
+/** Subscribe to skin switches (the Settings card shows skin-only rows). Returns an unsubscribe fn. */
+export function onSkinChange(cb: (name: SkinName) => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+export function currentSkin(): SkinName {
+  return document.documentElement.dataset.skin as SkinName;
+}
+
 export function applySkin(name: SkinName): void {
+  const changed = document.documentElement.dataset.skin !== name;
   document.documentElement.dataset.skin = name;
+  if (changed) listeners.forEach((cb) => cb(name));
   try {
     localStorage.setItem(STORAGE_KEY, name);
   } catch {

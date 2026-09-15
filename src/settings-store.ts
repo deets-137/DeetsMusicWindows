@@ -8,6 +8,9 @@
 // that must react live (the window's always-on-top, the dropdown mode, the Rewind
 // gate in the layout) subscribe with `onSettingsChange`.
 
+import type { ThemeName } from "./theme";
+import type { SkinName } from "./skin";
+
 export interface Settings {
   // ── window ──
   /** Keep the window above others: always, only while it shows the player, or never.
@@ -25,9 +28,41 @@ export interface Settings {
    *  aurora): on = 30 fps, reduced = 15 fps, off = still (the storm hides). The OS
    *  reduced-motion preference still wins. src/ambient.ts applies it. */
   backgroundMotion: "on" | "reduced" | "off";
+  /** Ocean only: the card edges break into grains of sand (a dark beach), or the plain soft
+   *  glow. skin-settings.ts applies it as `data-ocean-edges` on <html>. */
+  oceanEdges: "sand" | "soft";
+  /** Ocean sand only, 0–100: how far the sand band reaches into a card (--sand-reach-min…max). */
+  oceanSand: number;
+  /** Glass only, 0–100: how much theme color fills a card (0 = clear, the background glows
+   *  through; 100 = solid). skin-settings.ts publishes it as --glass-tint. */
+  glassTint: number;
+  /** Glass only, 0–100: the light behind each card, under its tint (50 = the default glow).
+   *  skin-settings.ts publishes it as --glass-backlight. */
+  glassBacklight: number;
+  /** Glass only, 0–100: how brightly the aurora glows on the background (50 = the skin's own
+   *  strength, 100 = double). skin-settings.ts publishes it as --glass-canvas. */
+  glassCanvasGlow: number;
+  /** Glass only, 0–100: darkens the canvas between the cards; the cards keep their brightness
+   *  (their frost undoes the dim). skin-settings.ts publishes it as --glass-canvas-dim. */
+  glassCanvasDim: number;
   /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
    *  all = every kind, confirmations included. No "off": a failure always shows. */
   toasts: "failures" | "all";
+  // ── look schedule (LOOK-SCHEDULE.md; look-schedule.ts applies it) ──
+  /** What changes the look between day and night: sun times from the time zone, set times,
+   *  the Windows light/dark mode, or nothing. */
+  lookSchedule: "off" | "sun" | "clock" | "windows";
+  dayTheme: ThemeName;
+  daySkin: SkinName;
+  nightTheme: ThemeName;
+  nightSkin: SkinName;
+  /** Set times ("HH:MM", local): the day look starts at dayStart, the night look at nightStart. */
+  dayStart: string;
+  nightStart: string;
+  /** Minutes added to sunrise and sunset (negative = earlier). */
+  sunShift: number;
+  /** A theme or skin picked by hand: holds until the next change, or turns the schedule off. */
+  lookHold: "next" | "always";
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
@@ -80,7 +115,22 @@ export const DEFAULTS: Settings = {
   surfaceAutoFlip: true,
   appearanceMotion: true,
   backgroundMotion: "on",
+  oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
+  oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
+  glassTint: 55, // today's Glass look (55% surface)
+  glassBacklight: 50, // user's call 2026-09-15: a cool 50%, a glow that is not garish
+  glassCanvasGlow: 50, // the aurora as the skin writes it
+  glassCanvasDim: 0, // no dim: today's look
   toasts: "all", // user's call 2026-09-13: Everything by default
+  lookSchedule: "off",
+  dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
+  daySkin: "press",
+  nightTheme: "black-red",
+  nightSkin: "retro-future",
+  dayStart: "07:00",
+  nightStart: "19:00",
+  sunShift: 0,
+  lookHold: "next", // user's call 2026-09-15: a hand pick holds until the next change
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
@@ -113,6 +163,16 @@ function migrate(into: Partial<Settings>): void {
   if (eager !== null && into.playlistEagerCounts === undefined) into.playlistEagerCounts = eager !== "off";
   // Show notices lost its "off" choice (2026-09-14): a failure must always show.
   if ((into.toasts as string | undefined) === "off") into.toasts = "failures";
+  // Draw card edges: the wave edge and the smooth fade were both dropped (2026-09-15); they
+  // were defaults, not picks, so they fall back to the skin's own Soft.
+  const edges = into.oceanEdges as string | undefined;
+  if (edges === "waves" || edges === "fade") into.oceanEdges = "soft";
+  // Glass: "Backlight" first scaled the aurora; that slider became Canvas glow and Backlight
+  // is now the light behind each card (2026-09-15). A stored value moves with its meaning.
+  if (into.glassBacklight !== undefined && into.glassCanvasGlow === undefined) {
+    into.glassCanvasGlow = into.glassBacklight;
+    delete into.glassBacklight;
+  }
 }
 
 function load(): Settings {

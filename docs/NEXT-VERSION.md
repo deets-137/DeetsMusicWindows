@@ -263,6 +263,12 @@ are not `@property`-registered; gradients, `font-family` and `display` do not in
 The browser snapshots the old state, applies the switch, then animates snapshot → live new
 state. Transition types (`:active-view-transition-type(theme | skin)`) tell the two apart.
 
+> **Superseded 2026-09-15 (user's call: 1A, 2A, 3B).** Every theme and skin change now plays
+> the launch animation: the cover fades in over the old look, the look changes under it, and
+> the cards rise. Each skin tunes the rise with `--boot-*` tokens. The View Transition, the
+> `--appearance-*` tokens and the five skin entrances below are removed. See
+> [UX-COVERUPS.md §6a](UX-COVERUPS.md).
+
 **Decisions.**
 - **(A) Look — theme and skin animate differently.** A theme switch is a color crossfade. A
   skin switch arrives in the *incoming* skin's idiom (during the animation `<html>` already

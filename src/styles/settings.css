@@ -1,7 +1,8 @@
 /* ── Settings card (SETTINGS.md) ──────────────────────────────────────────────
-   One scroll, section headers, two row kinds: a TOGGLE (label + dot, the title-menu
-   idiom) and a CHOICE (label over a segmented row of pills). Color through theme
-   roles, geometry through skin tokens — the card must survive every theme × skin. */
+   One scroll, section headers. Row kinds: a TOGGLE (label + dot, the title-menu idiom),
+   a CHOICE / SPLIT (label + a split pill), a RANGE (label + a .scrub slider + its value),
+   and HTML (markup of its own). Color through theme roles, geometry through skin
+   tokens — the card must survive every theme × skin. */
 
 .set { display: flex; flex-direction: column; gap: var(--set-section-gap); }
 
@@ -80,6 +81,18 @@
    label only when the slot is too narrow (flex-wrap on the row, pills pushed right). */
 .set__row--choice { flex-wrap: wrap; min-height: var(--set-row-h); }
 .set__label { min-width: 0; flex: 1 1 auto; }
+/* A range row (Glass's Tint / Frost): the shared .scrub slider, then its value. The
+   handle shape is the skin's --scrubber-handle, like the Now Playing bar. */
+.set__row--range { min-height: var(--set-row-h); }
+.set__range { flex: 0 1 var(--set-range-w); min-width: 0; }
+.set__range:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); border-radius: var(--set-pill-radius); }
+.set__range-val {
+  flex: 0 0 var(--set-range-val-w);
+  text-align: right;
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+}
 .set__dot { width: 1em; text-align: center; color: var(--title); }
 .set__row--toggle { min-height: var(--set-row-h); }
 .set__row--toggle[aria-checked="true"] .set__dot::after { content: "•"; }

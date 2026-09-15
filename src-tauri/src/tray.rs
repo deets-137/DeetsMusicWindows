@@ -154,6 +154,54 @@ fn note_main_visibility(app: &AppHandle) {
     let _ = tauri::Emitter::emit_to(app, MAIN, "main-visibility", ());
 }
 
+// ── the launch show (UX-COVERUPS.md §6) ──────────────────────────────────────
+// The main window starts hidden (tauri.conf.json `visible: false`). The page paints behind
+// its launch cover (src/boot-cover.ts), then calls `main_ready`. A tray pop or Open that
+// shows the window first wins; a `--tray` launch never shows it here.
+
+static MAIN_SHOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+const READY_FALLBACK: Duration = Duration::from_secs(3);
+
+fn tray_launch() -> bool {
+    std::env::args().any(|a| a == "--tray")
+}
+
+/// The first show of a normal launch, in place (setup applied `windowPos`) and focused.
+/// `color` is the page's canvas: the window's own background, so the first shown frame
+/// is never WebView2's white.
+fn reveal_main(app: &AppHandle, color: Option<[u8; 3]>) {
+    if tray_launch() || MAIN_SHOWN.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let Some(w) = app.get_webview_window(MAIN) else { return };
+    if let Some([r, g, b]) = color {
+        w.set_background_color(Some(tauri::window::Color(r, g, b, 255))).ok();
+    }
+    state(app).shown_at = Some(Instant::now());
+    w.show().ok();
+    w.set_focus().ok();
+    note_main_visibility(app);
+}
+
+/// The page has painted behind its cover (boot-cover.ts): show the window.
+#[tauri::command]
+pub fn main_ready(app: AppHandle, color: Option<[u8; 3]>) {
+    reveal_main(&app, color);
+}
+
+/// Setup: show the window after READY_FALLBACK if the page never reported ready, so a
+/// page error cannot leave the app running with no window.
+pub fn reveal_fallback(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(READY_FALLBACK);
+        if !tray_launch() && !MAIN_SHOWN.load(std::sync::atomic::Ordering::SeqCst) {
+            crate::log::warn("launch: the page did not report ready; showing the window");
+        }
+        reveal_main(&app, None);
+    });
+}
+
 fn hide_main(app: &AppHandle) {
     let mut s = state(app);
     // A × close of the real window is the other way its position is lost. Capture it
@@ -346,6 +394,7 @@ pub fn tray_place_main(app: AppHandle) {
     } else if let Some(p) = restore {
         w.set_position(p).ok();
     }
+    MAIN_SHOWN.store(true, std::sync::atomic::Ordering::SeqCst); // the launch show is moot now
     w.show().ok();
     w.unminimize().ok();
     w.set_focus().ok();

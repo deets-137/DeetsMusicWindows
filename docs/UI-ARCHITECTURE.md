@@ -106,8 +106,13 @@ The base defines, among others:
   `--icon-sm / -md / -lg` (SVG-glyph wrappers)
 - **Shape:** `--radius-panel`, `--radius-control`, `--panel-radius`
 - **Spacing:** `--space-1 … --space-5`
-- **Card fill:** `--panel` (which theme surface the cards use) + `--shadow-card`;
-  `--panel-backdrop` is the frosted-glass blur behind a panel (base `none`; Glass opts in)
+- **Card fill:** `--panel` (which theme surface the cards use; always a plain color) +
+  `--shadow-card`; `--panel-paint` is what the card box actually paints (base `var(--panel)`;
+  Glass paints its backlight, Ocean's sand paints nothing); `--panel-backdrop` is the
+  frosted-glass blur behind a panel (base `none`; Glass opts in)
+- **Skin-only settings layers:** `--canvas-dim` (black over the canvas, under the cards) and
+  `--sand-display` / `--sand-reach` / `--sand-ink` (the card's `::before` / `::after`) — see
+  *Skin-only settings* below
 - **Menu material:** `--menu-surface` / `--menu-backdrop` — the same pair for the
   *floating* tier (menus, flyouts, popovers, ctx-menu, pickers); base = opaque
   `var(--surface)` + no frost, Glass opts in
@@ -168,7 +173,7 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   `desk` id migrates via `RETIRED` in `skin.ts`.
 - **`ocean`** — deep/abyssal: recessed soft-edged cards (`color-mix`) on a surface of three
   rolling **SVG wave trains** (the ocean layer, below), a sink/rise nav, Cinzel (title) +
-  Spectral (body).
+  Spectral (body). Optional **sand card edges** with a width slider (§Sand edges; off by default).
   Pairs best with light themes (its black-mix cards + shadows are faint on dark canvases — a
   per-theme `--surface-sunken` role is the documented upgrade if Ocean needs true depth there).
 - **`glass`** — frosted glassmorphism: translucent panels (`color-mix` alpha of `--surface`)
@@ -180,8 +185,9 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   **frosted menus** (the `--menu-surface` / `--menu-backdrop` pair — milkier than panels, 65%
   vs 55%, for text legibility), a glass-ring scrubber handle (evenodd hollow), rounded glass
   chips, a fade/scale nav, light sans title. See the doctrine note above for how it stays
-  hex-free. Intensity numbers are catalogued in [FUTURE-SETTINGS §12](FUTURE-SETTINGS.md)
-  (skin-specific). Open upgrade: a `--highlight` theme role for a true white sheen.
+  hex-free. Four Settings sliders tune it — Canvas glow, Dim canvas, Backlight (a glow inside
+  each card), Tint cards (§Glass's sliders); the other intensity numbers are catalogued in
+  [FUTURE-SETTINGS §12](FUTURE-SETTINGS.md) (skin-specific). Open upgrade: a `--highlight` theme role for a true white sheen.
 - **`retro-future`** — electric/futuristic: two lightning bolts slow-draw down the canvas
   behind the cards (the **storm layer**, below), smoked-glass panels (86% `--canvas` mix —
   a bolt passing behind a card glows through dimly) with a hard 1px edge and no soft shadow,
@@ -238,6 +244,99 @@ then replaced an inline `<svg>` with `<pattern>` fills, whose moving children re
 every frame (rule 1 above).
 Under `prefers-reduced-motion` the ocean stays *visible* and merely stops (unlike the storm,
 which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
+
+### Skin-only settings (2026-09-15)
+A skin can expose its own knobs as Settings rows. They sit in Settings › Look and feel and
+show **only while that skin is active**. Today: Ocean's *Draw card edges* + *Sand width*
+(§Sand edges) and Glass's *Canvas glow*, *Dim canvas*, *Backlight*, *Tint cards* (§Glass's
+sliders). This supersedes the "future skin options surface" in FUTURE-SETTINGS §12–13.
+
+**The path of one value:** the store (`settings-store.ts`) → `src/skin-settings.ts` writes it
+onto `<html>` (a choice as a `data-` attribute, a 0–100 slider as a custom property) → the
+skin's block in `skin.css` reads it. Other skins never read it, so the value can stay stored
+while another skin is on. `initSkinSettings()` runs in `main.ts` right after `initSkin()`,
+before the first paint, so a card never flashes the default look.
+
+**Rules**
+- **The CSS fallback is the default.** Every read is `var(--prop, <default>)`, with the same
+  value as `DEFAULTS` in the store. So the tray panel and the extension pages, which load the
+  skin tokens but not the store, show the default look.
+- **Base stays inert.** A new capability gets a no-op token in the `[data-skin]` base block
+  (`--panel-paint: var(--panel)`, `--canvas-dim: 0`, `--sand-display: none`); only the skin
+  block or a `:root[data-skin="x"][data-attr="v"]` rule turns it on.
+- **Keep `--panel` a plain color.** `album-color.ts` resolves it for the NP contrast guard. A
+  skin that paints something else as the card background uses `--panel-paint`.
+- **Static, not animated.** Masks, gradients, and shadows that do not move cost only a
+  composite over the ambient layers. A moving addition follows the ambient cost rules above.
+- **Rows in paint order.** A skin's rows go back to front (background first, then the card),
+  so the list reads as the picture builds up. Hint text starts with "<Skin> only."
+
+**Checklist: add a skin-only setting**
+1. `settings-store.ts` — a typed key (a union for a choice, `number` 0–100 for a slider) with a
+   comment naming the skin; a default in `DEFAULTS`; a `migrate()` line when a value is renamed
+   or dropped.
+2. `skin-settings.ts` — a choice: set `data-…` in `initSkinSettings`. A slider: one `PROPS`
+   entry (`key: ["--prop", unit]`); `previewSkin` and the launch/change wiring then cover it.
+3. `skin.css` — the base token (inert) and the skin's read with its fallback. A 0–100 value is
+   mapped in CSS (`calc(var(--prop, 50) / 50)`, a min…max range, a cap), never in TS.
+4. `settings-card.ts` — the row in Look and feel with `when: () => currentSkin() === "x"`
+   (add `&& setting(…)` for a row that depends on another). A range row passes
+   `preview: (v) => previewSkin(key, v)`. Label style: DEETS settings-label rules.
+5. Docs — a row in SETTINGS.md §3, the key in AGENT.md (*Values* and the skin-only list), and
+   the skin's section in this doc.
+
+### Sand edges (Ocean, 2026-09-15)
+Settings › Look and feel › **Draw card edges** (`oceanEdges`: **soft** / sand; Soft is the skin's own look). The row shows
+only while Ocean is the skin (the settings card's `when` rule + `onSkinChange` in `skin.ts`).
+`src/skin-settings.ts` sets `data-ocean-edges` on `<html>`. The idea: a dark beach — the
+card's edge breaks into grains of sand over the swell.
+- **How:** `.panel` paints `--panel-paint` (base: `var(--panel)`); under Sand it is
+  `transparent`. Two static pseudo layers sit under the card content (`z-index: -1`;
+  `position: relative` on `.panel` anchors them):
+  - `::before` paints `--panel` through a 4-layer mask. Bottom up: x and y edge ramps
+    intersect into a rim fade; a dense grain tile (~90% dots) intersects it; a solid core rect
+    (inset `--sand-reach`) is added. The grains thin and fade toward the edge.
+  - `::after` paints `--sand-ink` specks: a full box minus the core rect gives the rim band;
+    a sparse speck tile (~12% dots, another seed) intersects it.
+- **Grain tiles:** 128px SVG `feTurbulence` noise, alpha thresholded by a discrete
+  `feFuncA`, so each grain is a crisp dot. Density is the `tableValues` count (styles.css): grains ~90% dots, specks ~12% (made denser
+  at the desk, same day).
+- **Width:** Settings › **Sand width** (`oceanSand` 0–100, default 15 ≈ 9px; shown only while Sand
+  is on) → `--ocean-sand` → `--sand-reach` between `--sand-reach-min` 4px and `--sand-reach-max`
+  40px (skin.css). A wide band reaches past the 12px card padding, so text can sit on sand.
+- **Kept opaque:** `--panel` itself, because `album-color.ts` resolves it for the contrast guard.
+- **Dropped under Sand:** `--shadow-card` (an outer shadow traces the hard box edge) and the
+  pane fill (`--spane-bg: transparent`; Ocean panes fade on nav, so no mask is needed).
+- **Cost:** static masks over the moving swell; the compositor blends, nothing repaints.
+- **History (same day, at the desk):** a rolling wave line on the top edge ("I don't like
+  waves"), then a smooth transparent fade; both dropped. Saved `waves` / `fade` migrate to `soft`.
+
+### Glass's sliders (2026-09-15)
+Settings › Look and feel › **Canvas glow**, **Dim canvas**, **Backlight**, **Tint cards**
+(`glassCanvasGlow` / `glassCanvasDim` / `glassBacklight` / `glassTint`, 0–100, range rows shown
+only under Glass). The goal: radiant
+cards over a deep background. `src/skin-settings.ts` writes `--glass-backlight`, `--glass-tint`
+(a %), `--glass-canvas`, and `--glass-canvas-dim` as inline custom properties on `<html>`, at launch and on change; a
+slider drag previews them without a store write. The Glass block reads them in one
+"layers, back to front" section, and the rows and this list use the same order:
+- **Canvas glow:** `--glass-glow: calc(var(--glass-canvas, 50) / 50)` multiplies every
+  `--aurora-*` color stop (`min(100%, 50% * var(--glass-glow))`): 0 = a plain deep canvas,
+  100 = double. The cards do not change.
+- **Dim canvas** (`glassCanvasDim`, default 0): `.app-body::after` (last child, z 0: over the
+  aurora, under the bento) paints black at `--canvas-dim` = 0–0.9. The cards' frost samples
+  that dim too, so `--panel-backdrop` adds `brightness(calc(1 / (1 - var(--glass-dim))))`,
+  which multiplies it back out: only the space between the cards darkens. The card halo is
+  painted with the card (above the dim), so it stays bright. The 0.9 cap bounds the restore
+  at ×10.
+- **Backlight:** `--glass-light` (0–1). The card box's `--panel-paint` (its background) is a
+  radial glow of `--go` / `--stop` / `--pause` at up to 60 / 40 / 30% × light, and
+  `--shadow-card` adds an outer halo of `--go`.
+- **Tint cards:** `--panel: color-mix(… var(--surface) var(--glass-tint, 55%), transparent)`,
+  painted as the LAST `--shadow-card` entry, `inset 0 0 0 100vmax var(--panel)`. A box paints
+  background, then inset shadows (last listed lowest), then content — so the tint is an opacity
+  layer over the backlight, under the top sheen. `--panel` stays a plain color for album-color.ts.
+Other skins never read these properties. Menus keep their own 90% `--menu-surface`. A Frost
+cards (blur) slider was built first and dropped the same day; the blur is a fixed 14px again.
 
 ### The storm layer (opt-in decorative strokes)
 A reusable primitive, same opt-in doctrine as `--panel-backdrop`: a `<div class="storm">`
@@ -349,7 +448,7 @@ rows — Now Playing is a short wide strip up top, the two content slots are tal
 **Panels under Vanilla** are invisible groupers: `--panel` = `--canvas` (fill matches the
 background) and `--panel-border-width` = `0` — no edge, no shadow; the bento gap, panel
 padding, and card titles do the structuring (Glass is the one skin that opts back into a
-`1px` edge). The fill is a **skin** token now
+`1px` edge). Ocean's sand edges below are the first such layer. The fill is a **skin** token now
 (`--panel` points at a theme role — Press `--surface`, Ocean a `color-mix` of it), the
 edge color (`--panel-border`) stays **theme**, and `--panel-border-width` / `--panel-radius`
 / `--panel-pad` / `--shadow-card` are **skin** — so Press/Ocean restyle panels into real

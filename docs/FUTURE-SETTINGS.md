@@ -31,7 +31,8 @@
 - **Library** — §21 Sync cadence (full pass every 6 h; incremental at startup)
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
-  §13 Retro-Future storm dials (skin-specific)
+  §13 Retro-Future storm dials (skin-specific). **The skin-only settings surface exists
+  (2026-09-15)**: [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only settings*.
 - **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
   §16 New-Playlist Search summon
 - **Radio** — §17 Resume station after break-out
@@ -352,6 +353,12 @@ in gets the toggle for free.
 intensity knobs of one skin*, hardcoded in the `[data-skin="glass"]` block. If a
 "skin options" settings surface ever exists, these are its first tenants; they'd apply
 only while Glass is active.
+
+> **Partly built 2026-09-15.** The surface exists: skin-only rows in Settings › Look and
+> feel ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only settings*). Glass got four
+> sliders instead of the preset below: **Canvas glow** (the aurora heat knob, as a 0–100
+> scale), **Dim canvas**, **Backlight**, and **Tint cards** (the panel alpha). Still
+> hardcoded: frost saturation, drift, the album aurora, menu frost.
 
 **The knobs (2026-07-02 "pop" batch values):**
 - **Frost saturation** — `--panel-backdrop: blur(14px) saturate(1.5)` (was 1.3).

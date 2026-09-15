@@ -217,12 +217,17 @@ export function currentSurface(): SurfaceName {
   return active;
 }
 
+// The launch resize (initSurface): the launch cover (boot-cover.ts) waits for it, so the
+// window shows already at its size.
+let sized: Promise<void> = Promise.resolve();
+export const surfaceSized = (): Promise<void> => sized;
+
 export function initSurface(): void {
   const saved = (localStorage.getItem(STORAGE_KEY) as SurfaceName | null) ?? DEFAULT_SURFACE;
   activate(saved);
   // Honor the deliberate choice across restarts: the window opens at tauri.conf's size,
   // so restore the chosen surface's remembered size (no-op when they already match).
-  void applySize(saved);
+  sized = applySize(saved);
 
   // The resize allowance: free within the band, flip past threshold + hysteresis.
   const observer = new ResizeObserver(() => {

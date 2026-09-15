@@ -471,6 +471,18 @@ body {
   background-repeat: var(--canvas-bg-repeat);
 }
 
+/* Canvas dim (skin.css --canvas-dim; Glass › Dim canvas). The last child of .app-body at
+   z-index 0, so it paints over the ambient layers (also z 0, earlier) and under the bento
+   (z 1). Static: it never repaints on its own. */
+.app-body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: rgb(0 0 0 / var(--canvas-dim));
+}
+
 /* ── Ocean layer (rolling swell behind the cards) ───────────── */
 /* Inert unless a skin opts in (--ocean-display; Ocean). The fill is the theme's
    --canvas and the crest inks are skin tokens that fade with distance. The roll and
@@ -681,10 +693,11 @@ body {
 
 /* ── Panel primitive ────────────────────────────────────────── */
 .panel {
+  position: relative;               /* anchors the ::before / ::after sand layers (Ocean) */
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--panel);
+  background: var(--panel-paint);   /* --panel, unless a skin moves the fill to the rim layer */
   -webkit-backdrop-filter: var(--panel-backdrop);  /* none under most skins; Glass frosts */
   backdrop-filter: var(--panel-backdrop);
   border: var(--panel-border-width) solid var(--panel-border);
@@ -693,6 +706,52 @@ body {
   padding: var(--panel-pad);
 }
 .panel[data-span="wide"] { grid-column: 1 / -1; }
+
+/* ── Sand edges (Ocean "Draw card edges: Sand"; skin.css --sand-*) ── */
+/* Inert unless --sand-display opts in (the box then paints --panel-paint: transparent).
+   Two static layers under the card's content (z-index −1, inside the bento's stacking
+   context). Nothing animates: the swell moves beneath, the compositor only blends.
+   The grain tiles are SVG noise thresholded to hard 0/1 alpha (feFuncA discrete), so
+   each grain is a crisp ~1px dot. Mask layers are listed top first; each composites
+   onto the result of the layers below it.
+   ::before — the card fill. Bottom up: the x and y edge ramps intersect into a rim
+     fade (G); the dense grain tile (~90% dots) intersects it, so the grains thin and
+     fade toward the edge; the solid core rect (inset --sand-reach) is added on top.
+   ::after — light sand specks. Bottom up: the core rect; a full box subtracts it into
+     the rim band; the sparse speck tile (~12% dots, own seed) intersects the band. */
+.panel::before,
+.panel::after {
+  content: "";
+  display: var(--sand-display, none);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  --sand-core: calc(100% - 2 * var(--sand-reach)) calc(100% - 2 * var(--sand-reach));
+  --sand-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1 1 1 1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)'/%3E%3C/svg%3E");
+  --sand-speck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='s' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23s)'/%3E%3C/svg%3E");
+}
+.panel::before {
+  background: var(--panel);
+  mask-image:
+    linear-gradient(#000 0 0),
+    var(--sand-grain),
+    linear-gradient(to right, transparent, #000 var(--sand-reach), #000 calc(100% - var(--sand-reach)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--sand-reach), #000 calc(100% - var(--sand-reach)), transparent);
+  mask-size: var(--sand-core), 128px 128px, 100% 100%, 100% 100%;
+  mask-position: center, 0 0, 0 0, 0 0;
+  mask-repeat: no-repeat, repeat, no-repeat, no-repeat;
+  mask-composite: add, intersect, intersect, add;
+}
+.panel::after {
+  background: var(--sand-ink);
+  mask-image: var(--sand-speck), linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-size: 128px 128px, 100% 100%, var(--sand-core);
+  mask-position: 0 0, 0 0, center;
+  mask-repeat: repeat, no-repeat, no-repeat;
+  mask-composite: intersect, subtract, add;
+}
 
 .panel__head {
   position: relative;            /* anchor for the slot picker menu */
@@ -1958,25 +2017,54 @@ body.tray { height: auto; overflow: hidden; }
 .tray__mute svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; display: block; }
 
 
-/* ── Appearance switch (NEXT-VERSION §6; appearance.ts) ─────────────────────
-   A View Transition on the whole page. Theme: the UA crossfade on the skin's
-   clock. Skin: <html> already wears the NEW skin while it runs, so the incoming
-   skin's --appearance-* tokens pick the entrance. Reduced motion never gets here
-   (appearance.ts snaps), and so does the setting when off. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--appearance-dur);
-  animation-timing-function: var(--appearance-ease);
+/* ── Launch cover (boot-cover.ts, UX-COVERUPS.md §6) ─────────────
+   <html data-boot> is in the markup, so the first frame is covered:
+     hold = opaque, takes clicks (the queue is not restored yet)
+     wait = opaque, clicks pass (restored; the rest is still loading)
+     lift = the cover fades and the cards rise; boot-cover.ts removes the attribute after.
+   A theme or skin change (appearance.ts, §6a) adds one stage before wait:
+     veil = the cover fades in over the old look; the cards stay in place.
+   The safety animation ends the cover by CSS alone at --boot-safety (a page error). */
+.boot-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 300;                     /* above everything, the drag ghost (200) included */
+  background: var(--canvas);
+  opacity: 0;
+  pointer-events: none;
 }
-:root[data-appearance="skin"]::view-transition-old(root) { animation-name: var(--appearance-anim-old); mix-blend-mode: normal; }
-:root[data-appearance="skin"]::view-transition-new(root) { animation-name: var(--appearance-anim-new); mix-blend-mode: normal; }
-@keyframes appear-fade-in  { from { opacity: 0; } }
-@keyframes appear-fade-out { to   { opacity: 0; } }
-/* Press: the new sheet slaps down onto the stack */
-@keyframes appear-stamp { from { opacity: 0; transform: scale(1.04); } 55% { opacity: 1; transform: scale(1); } }
-/* Ocean: rises from beneath the surface */
-@keyframes appear-rise  { from { opacity: 0; transform: translateY(6%) scale(0.98); } }
-/* Glass: blurs into focus */
-@keyframes appear-focus { from { opacity: 0; filter: blur(16px); } }
-/* Retro-Future: jolts in with a skew that straightens */
-@keyframes appear-snap  { from { opacity: 0; transform: translateX(3%) skewX(-6deg); } 70% { transform: none; } }
+html[data-boot] .boot-cover {
+  opacity: 1;
+  animation: boot-safety-cover 0s var(--boot-safety) forwards;
+}
+html[data-boot="hold"] .boot-cover { pointer-events: auto; }
+html[data-boot] .bento > .panel {
+  opacity: 0;
+  transform: var(--boot-rise);
+  animation: boot-safety-panel 0s var(--boot-safety) forwards;
+}
+html[data-boot="veil"] .boot-cover {
+  transition: opacity var(--cover-in-dur) var(--cover-in-ease);
+}
+html[data-boot="veil"] .bento > .panel { opacity: 1; transform: none; animation: none; }
+/* A look change swaps --canvas under the opaque cover: its color glides, never jumps. */
+html[data-boot="wait"] .boot-cover {
+  transition: background-color var(--cover-in-dur) var(--boot-ease);
+}
+html[data-boot="lift"] .boot-cover {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--boot-cover-out) var(--boot-ease), background-color var(--cover-in-dur) var(--boot-ease);
+}
+html[data-boot="lift"] .bento > .panel {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--boot-dur) var(--boot-ease), transform var(--boot-dur) var(--boot-ease);
+}
+html[data-boot="lift"] .bento > .panel:nth-child(2) { transition-delay: var(--boot-stagger); }
+html[data-boot="lift"] .bento > .panel:nth-child(3) { transition-delay: calc(var(--boot-stagger) * 2); }
+html[data-boot="lift"] .bento > .panel:nth-child(4) { transition-delay: calc(var(--boot-stagger) * 3); }
+html[data-boot="lift"] .bento > .panel:nth-child(5) { transition-delay: calc(var(--boot-stagger) * 4); }
+html[data-boot="lift"] .bento > .panel:nth-child(6) { transition-delay: calc(var(--boot-stagger) * 5); }
+@keyframes boot-safety-cover { to { opacity: 0; visibility: hidden; } } /* hidden takes no clicks; pointer-events can't animate */
+@keyframes boot-safety-panel { to { opacity: 1; transform: none; } }

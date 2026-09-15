@@ -523,6 +523,12 @@ get large).
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-15 — skin-only settings** ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only
+  settings*, [SETTINGS.md](SETTINGS.md) §3): Look and feel rows that show only under their
+  skin (`when` + `onSkinChange`), a new **range** (slider) row kind, and `src/skin-settings.ts`.
+  **Glass** (user: "perfect"): Canvas glow · Dim canvas · Backlight · Tint cards. **Ocean**: Draw
+  card edges Soft / Sand (grainy card edges, off by default) + Sand width. Awaiting a full desk
+  pass on Ocean.
 - **2026-09-14/15 — self-update + signed releases** ([RELEASE.md](RELEASE.md) §0, §6, §6.9):
   `tauri-plugin-updater` behind the DeetsSupport Worker + R2 (`deetsmusic` and `deetsmusic-test`
   channels; Settings › Updates Automatic / Ask / Off, Skip, Roll back within a channel group,

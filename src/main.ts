@@ -11,8 +11,11 @@ import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import * as health from "./apple-health";
 import * as diag from "./diag";
-import { initTrackStore } from "./track-store";
+import { initTrackStore, tracksLoaded } from "./track-store";
+import { surfaceSized } from "./surface";
+import { runBootCover } from "./boot-cover";
 import { initLayout } from "./layout";
+import { initSkinSettings } from "./skin-settings";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn, clearMusicKitSignIn } from "./player";
 import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
@@ -23,6 +26,7 @@ import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
+import { initLookSchedule, noteHandPick } from "./look-schedule";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
@@ -38,6 +42,8 @@ const appWindow = getCurrentWindow();
 window.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initSkin();
+  initSkinSettings(); // before the first paint, so a card never flashes the default look
+  initLookSchedule(); // a day/night schedule overrides the saved look (LOOK-SCHEDULE.md)
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
@@ -99,10 +105,11 @@ window.addEventListener("DOMContentLoaded", () => {
     close();
   });
 
-  // Theme choices — a color crossfade (appearance.ts); the menu closes inside the
-  // transition so the old snapshot never catches it half-closed.
+  // Theme choices — the launch animation (appearance.ts); the menu closes under the
+  // opaque cover, so the rise never shows it half-closed.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     el.addEventListener("click", () => {
+      noteHandPick(); // a running schedule holds this pick (LOOK-SCHEDULE.md §2)
       // `after` runs inside the transition's update callback, AFTER applyTheme — a publish
       // outside it would read the attributes before they flip and report the OLD theme.
       withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), {
@@ -118,6 +125,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => {
       const skin = el.dataset.skinChoice as SkinName;
+      noteHandPick();
       withAppearanceTransition("skin", () => applySkin(skin), {
         skin,
         after: () => {
@@ -337,7 +345,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Shared library store: one load, read by every card ──
   initTrackStore();
   void initFavorites(); // the ♥ mirror (favorites.ts) — local, zero Apple calls
-  void initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch
+  const restored = initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch
   initUpdater(); // RELEASE.md §6: scheduled checks per Settings › Updates
   // Warm MusicKit + the DRM module at idle so the session's first click pays neither
   // (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the click before this).
@@ -350,7 +358,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ── Cards + layout: mount Now Playing (anchored top) + the two swappable content slots
   //    from the persisted assignment, and wire each slot's title picker. ──
-  initLayout();
+  initLayout();  // The launch cover (boot-cover.ts, UX-COVERUPS.md §6): the window shows once the queue is
+  // restored, the library loaded and the window at its size, then the cards rise into place.
+  runBootCover(restored, [tracksLoaded(), surfaceSized()]);
 
   // ── Volume: titlebar pill (level meter) + hover flyout + vertical slider ──
   const volRoot = document.getElementById("vol");

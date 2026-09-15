@@ -92,11 +92,15 @@ export function onTracksChange(cb: (why: TracksChange) => void, label = "tracks-
 }
 
 let started = false;
+let firstLoad: Promise<void> = Promise.resolve();
+/** The startup load (the launch cover waits for it; boot-cover.ts). */
+export const tracksLoaded = (): Promise<void> => firstLoad;
+
 /** Load once at startup and reload whenever a sync completes. Idempotent. */
 export function initTrackStore(): void {
   if (started) return;
   started = true;
-  loadTracks();
+  firstLoad = loadTracks();
   onSyncEvent((e) => {
     // Reload on error too: an incomplete sync still upserted the pages that DID fetch.
     if (e.phase === "done" || e.phase === "error") loadTracks();

@@ -23,6 +23,7 @@
         "decorations": false,
         "resizable": true,
         "dragDropEnabled": false,
+        "visible": false,
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,HardwareMediaKeyHandling --autoplay-policy=no-user-gesture-required"
       },
       {

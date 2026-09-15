@@ -77,6 +77,49 @@ pre-insert (`playNext` the hovered row's descriptor so MusicKit's next-item prel
 then `skipToNextItem` on click) is the only lever below the ~1 s floor; the paused restore
 at launch covers cold.
 
+## 6. Launch — **the window forms instead of assembling** (built 2026-09-15, desk test pending)
+**What showed before:** the main window appeared at creation, before the page existed:
+WebView2's white, then the theme's canvas, then a resize to the saved surface size
+(`initSurface`), then the cards filling in one by one.
+**Now:** the main window starts hidden (`tauri.conf.json` `visible: false`). The page paints
+behind an opaque `--canvas` cover (`<html data-boot>`, index.html), then calls `main_ready`
+(tray.rs), which gives the window the canvas color and shows it. The cover fades and the
+cards rise into place, one slot after the next (`src/boot-cover.ts`).
+- **Ready** = queue restored + library loaded + window at its size, capped at 2.5 s.
+- **Clicks:** blocked until the queue is restored (a Play press before that played the
+  library from the top), then they pass while the rest finishes and the fade runs.
+- **Tokens** (skin tier): `--boot-dur`, `--boot-ease`, `--boot-rise`, `--boot-stagger`,
+  `--boot-safety`. Snaps under reduced motion or with Animate look changes off.
+- **Fail-safes:** Rust shows the window after 3 s whatever happens (`reveal_fallback`, logs
+  a warn); a CSS animation lifts the cover at `--boot-safety`. A `--tray` launch never
+  shows the window here. `[perf] frames boot` measures the fade; `boot:ready` in the diag
+  log gives the wait and whether the cap fired.
+- **Restored scrubber:** while MusicKit holds no song, Now Playing shows the restored song's
+  length, and after an update restart its saved position (`emitRestoredProgress`).
+
+## 6a. Look change — **the launch animation, not a snap** (built 2026-09-15, desk test pending)
+**Before:** a View Transition. A theme crossfaded; a skin played its own entrance (Press stamp,
+Ocean rise, Glass focus, Retro-Future snap). A skin switch dropped 37% of its frames at 238 Hz,
+because the new skin painted during the animation.
+**Now (user's call: 1A, 2A, 3B):** every theme and skin change, from the title menu or the look
+schedule, runs the launch cover (`src/appearance.ts`) with one more stage:
+- **veil** — the cover fades in over the old look (`--cover-in-dur` / `--cover-in-ease`, the
+  OUTGOING skin's); the cards stay in place.
+- **wait** — the cover is opaque. The look changes, the new skin's fonts load, and two frames
+  paint under the cover. The cover's color glides from the old `--canvas` to the new one.
+- **lift** — the launch rise, on the INCOMING skin's `--boot-*` tokens.
+- **Per skin (3B):** each skin sets `--boot-dur`, `--boot-ease`, `--boot-rise`, `--boot-stagger`
+  and `--cover-in-dur`, which also tunes its launch: Press short and firm, Ocean long and deep,
+  Glass soft with a slight scale, Retro-Future a hard skew that straightens.
+  `--boot-cover-out` (default `var(--boot-dur)`) times the cover's fade apart from the cards:
+  Retro-Future clears the cover in 0.18 s, then the cards finish their 0.6 s skew (desk
+  feedback 2026-09-15: the first cut was too short, with too much black screen).
+- **Playback and clicks:** only the `<html>` attributes change; the player is not touched.
+  Clicks pass in every stage.
+- **Several changes:** one during veil or wait joins the same cover; one during lift fades the
+  cover back in. Snaps when Animate look changes is off, under reduced motion, or while the
+  launch cover is still up. `[perf] frames appearance` measures it.
+
 ---
 
 ## Holistic pass — guiding ideas (when fundamentals are done)

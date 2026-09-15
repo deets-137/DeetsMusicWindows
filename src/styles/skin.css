@@ -117,6 +117,9 @@
   --canvas-bg-size:   auto;
   --canvas-bg-repeat: repeat;
   --app-canvas-bg:    var(--canvas-bg);
+  /* A black layer over the canvas and ambient layers, under the cards (.app-body::after),
+     as an alpha 0–1. Base 0. Glass drives it (Dim canvas) and undoes it in its frost. */
+  --canvas-dim:       0;
 
   /* -- aurora layer (drifting blobs behind the cards) --------- */
   /* Three <div>s in .app-body that a skin opts into; each carries one
@@ -152,6 +155,16 @@
   --ocean-ink-2:   var(--border);
   --ocean-ink-3:   var(--border);
 
+  /* -- sand edges (Ocean "Draw card edges: Sand") ------------- */
+  /* .panel paints --panel-paint. A skin with sand edges sets it transparent
+     and shows --panel on .panel::before instead, broken into grains over
+     --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep
+     --panel itself opaque: album-color.ts reads it for the contrast guard. */
+  --panel-paint:  var(--panel);
+  --sand-display: none;
+  --sand-reach:   0px;
+  --sand-ink:     transparent;
+
   /* -- transport (now playing) ------------------------------- */
   --transport-size: 22px;
   --transport-gap:  var(--space-3);
@@ -177,6 +190,8 @@
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
+  --set-range-w:     120px;            /* a range row's slider (Glass's Tint / Frost) */
+  --set-range-val-w: 3.5em;            /* its value, "100%" fits */
   --set-pill-pad:    var(--space-1) var(--space-2);
   --set-pill-radius: 999px;          /* the split pill's outer radius */
   --set-menu-min-w:  120px;          /* the small menu behind a menu half */
@@ -257,14 +272,21 @@
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
 
-  /* -- appearance switch (theme / skin change; NEXT-VERSION §6) -- */
-  /* A View Transition (appearance.ts). A THEME switch is always the color
-     crossfade, on this clock. A SKIN switch plays the INCOMING skin's own
-     entrance: each skin names its keyframes here (styles.css defines them). */
-  --appearance-dur:      0.32s;
-  --appearance-ease:     ease;
-  --appearance-anim-new: appear-fade-in;
-  --appearance-anim-old: appear-fade-out;
+  /* -- launch cover + look change (boot-cover.ts, appearance.ts; UX-COVERUPS.md §6) -- */
+  /* The window shows under an opaque --canvas cover. The cover fades and the cards
+     rise into place, one slot after the next. A theme or skin change plays the same
+     rise: first the cover fades in over the old look (--cover-in-*, the OUTGOING
+     skin's), then the look changes under it, then the INCOMING skin's rise runs.
+     Each skin tunes the rise below. --boot-safety lifts the cover by CSS alone if
+     the script never does (a page error must not leave a blank window). */
+  --boot-dur:      0.8s;
+  --boot-cover-out: var(--boot-dur);                /* the cover's fade; a skin may clear it sooner than the cards settle */
+  --boot-ease:     cubic-bezier(0.22, 1, 0.36, 1);  /* a long, soft settle */
+  --boot-rise:     translateY(12px);
+  --boot-stagger:  70ms;
+  --boot-safety:   4s;
+  --cover-in-dur:  0.22s;
+  --cover-in-ease: cubic-bezier(0.4, 0, 1, 1);      /* eases in, so the cover lands softly */
 
   /* -- album-colored Now Playing text (NEXT-VERSION §7) -- */
   /* 1 = the NP title/subtext/accents take the album's guarded colors; 0 = theme
@@ -385,10 +407,12 @@
   --drag-lift:   translate(-2px, -2px) scale(1.01);
   --drop-line-w: 3px;
 
-  /* appearance — the new sheet stamped down: a firm settle, not a slap */
-  --appearance-dur:      0.34s;
-  --appearance-ease:     cubic-bezier(0.3, 0, 0.1, 1);
-  --appearance-anim-new: appear-stamp;
+  /* launch + look change — sheets set down firmly: short, a small rise, tight order */
+  --boot-dur:     0.5s;
+  --boot-ease:    cubic-bezier(0.3, 0, 0.1, 1);
+  --boot-rise:    translateY(6px);
+  --boot-stagger: 40ms;
+  --cover-in-dur: 0.16s;
 
   /* nav — a sheet pulled off the stack and the next one stamped down:
      the classic horizontal push, but fast and hard-eased at both ends,
@@ -444,10 +468,13 @@
   /* micro-motion — cards float on the surface; a touch buoys them up */
   --hover-lift: translateY(-1px);
 
-  /* appearance — the new look rises from beneath the surface */
-  --appearance-dur:      0.5s;
-  --appearance-ease:     cubic-bezier(0.37, 0, 0.63, 1);
-  --appearance-anim-new: appear-rise;
+  /* launch + look change — cards come up from beneath the surface: long, deep, unhurried */
+  --boot-dur:      1.05s;
+  --boot-ease:     cubic-bezier(0.25, 0.8, 0.35, 1);
+  --boot-rise:     translateY(22px) scale(0.99);
+  --boot-stagger:  95ms;
+  --cover-in-dur:  0.3s;
+  --cover-in-ease: cubic-bezier(0.37, 0, 0.63, 1);
 
   /* nav — outgoing sinks, incoming rises from beneath the surface */
   --nav-dur:  0.42s;
@@ -461,6 +488,26 @@
      and taper back to track height at the pointed tips. Same --title fill as
      the bar, so it reads as the rail itself swelling at the playhead. */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 12Q12 5 23 12Q12 19 1 12Z' fill='%23000'/%3E%3C/svg%3E");
+}
+
+/* Ocean's sand edges (Settings › Draw card edges: Sand; src/skin-settings.ts sets
+   data-ocean-edges) — a dark beach: the card's edge breaks into grains over
+   --sand-reach, and light specks (--border ink) scatter through that band. The box
+   paints nothing; the fill moves to .panel::before. No glow ring or drop shadow: an
+   outer shadow would trace the hard box edge the grains remove. Ocean panes fade on
+   nav (--nav-off-opacity: 0), so they need no fill (a filled pane would print a hard
+   rectangle inside the grainy rim). */
+:root[data-skin="ocean"][data-ocean-edges="sand"] {
+  --panel-paint:  transparent;
+  --sand-display: block;
+  /* Settings › Sand width (src/skin-settings.ts) sets --ocean-sand (0–100) on
+     <html>; the fallback is the default. It maps onto the min…max reach. */
+  --sand-reach-min: 4px;
+  --sand-reach-max: 40px;
+  --sand-reach:   calc(var(--sand-reach-min) + (var(--sand-reach-max) - var(--sand-reach-min)) * var(--ocean-sand, 15) / 100);
+  --sand-ink:     color-mix(in srgb, var(--border) 70%, transparent);
+  --shadow-card:  none;
+  --spane-bg:     transparent;
 }
 
 /* Ocean's swell — motion for the injected layer. All trains roll the SAME
@@ -499,17 +546,55 @@
   --fw-title:   600;
   --fs-title:   19px;
 
-  /* frosted panels — a translucent surface + a real backdrop blur, a
-     hairline edge, soft depth, and a top inner sheen. The 55%/70% mixes
-     thin the theme's --surface to glass; saturate() makes the aurora pop
-     through. No hex is named — translucency is an alpha of a theme role. */
-  --panel:              color-mix(in srgb, var(--surface) 55%, transparent);
-  --panel-backdrop:     blur(14px) saturate(1.5);
+  /* ── the layers, back to front ──────────────────────────────
+     Four Settings sliders (Look and feel, shown only under Glass; src/skin-settings.ts
+     writes each as a custom property on <html>, and each fallback below is its default).
+     They read in the same order as the rows:
+       1. Canvas glow  --glass-canvas      the aurora's strength (the --aurora-* stops)
+       2. Dim canvas   --glass-canvas-dim  black over the background, undone inside cards
+       3. Backlight    --glass-backlight   a light inside each card, under its tint
+       4. Tint cards   --glass-tint        the card color, over the backlight
+     No hex is named anywhere: every color is a theme role or an alpha of one. */
+
+  /* 1. canvas glow — scales every aurora stop (the --aurora-* block below): 50 = the
+     values as written, 0 = no glow (a plain, deep canvas), 100 = double, each stop
+     capped at 100%. */
+  --glass-glow: calc(var(--glass-canvas, 50) / 50);
+
+  /* 2. dim canvas — 0–100 maps to a 0–0.9 dim. .app-body::after lays black at
+     --canvas-dim over the canvas and aurora, under the cards. The frost sees that dim
+     too, so its brightness() multiplies it back out (1 / (1 − dim)): only the gaps get
+     darker. The 0.9 cap keeps the ×10 restore inside 8-bit precision. The frost itself
+     is a real 14px blur; saturate() makes the aurora pop through. */
+  --glass-dim:          calc(var(--glass-canvas-dim, 0) / 100 * 0.9);
+  --canvas-dim:         var(--glass-dim);
+  --panel-backdrop:     blur(14px) saturate(1.5) brightness(calc(1 / (1 - var(--glass-dim))));
+
+  /* 3. backlight — the card box paints a soft glow of the theme's accent roles as its
+     background (--panel-paint); a faint halo of the same light leaks past the edge (the
+     first --shadow-card entry, painted with the card, so the dim never reaches it). */
+  --glass-light: calc(var(--glass-backlight, 50) / 100);
+  --panel-paint:
+    radial-gradient(140% 100% at 50% 0%,
+      color-mix(in srgb, var(--go) calc(60% * var(--glass-light)), transparent),
+      color-mix(in srgb, var(--stop) calc(40% * var(--glass-light)), transparent) 55%,
+      color-mix(in srgb, var(--pause) calc(30% * var(--glass-light)), transparent));
+
+  /* 4. tint — an alpha of --surface, laid OVER the backlight as a full-size inset
+     shadow (the last --shadow-card entry: a box paints its background, then its inset
+     shadows with the last listed lowest, then its content). At 0 the backlight shows
+     fully. --panel stays a plain color: album-color.ts reads it for the contrast guard. */
+  --panel:              color-mix(in srgb, var(--surface) var(--glass-tint, 55%), transparent);
+
+  /* the card's shape and depth: a hairline edge, round corners, the halo, a soft drop
+     shadow, a top inner sheen (over the tint), then the tint itself */
   --panel-border-width: 1px;
   --panel-radius:       18px;
   --shadow-card:
+    0 0 28px color-mix(in srgb, var(--go) calc(30% * var(--glass-light)), transparent),
     0 8px 32px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent),
+    inset 0 0 0 100vmax var(--panel);
 
   /* controls — rounded glass chips (not the capsule, not the Press trim) */
   --lib-pill-radius:    12px;
@@ -535,10 +620,12 @@
   /* album-colored NP text — the aurora sits under the text only here */
   --np-album-text: 1;
 
-  /* appearance — the new look blurs into focus */
-  --appearance-dur:      0.45s;
-  --appearance-ease:     cubic-bezier(0.4, 0, 0.2, 1);
-  --appearance-anim-new: appear-focus;
+  /* launch + look change — panes settle forward into place: soft and slow, a slight scale */
+  --boot-dur:     0.9s;
+  --boot-ease:    cubic-bezier(0.4, 0, 0.2, 1);
+  --boot-rise:    translateY(6px) scale(0.985);
+  --boot-stagger: 60ms;
+  --cover-in-dur: 0.26s;
 
   /* single frost = the card itself; panes fade (no mask needed), so don't
      re-paint --panel and double the tint into a rectangle below the bar. */
@@ -561,16 +648,16 @@
        no abrupt slope change (Mach band) rimming the hotter blobs. */
   --aurora-1:
     radial-gradient(42% 52% at 16% 10%,
-      color-mix(in srgb, var(--go) 50%, transparent),
-      color-mix(in srgb, var(--go) 20%, transparent) 45%, transparent 80%);
+      color-mix(in srgb, var(--go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%);
   --aurora-2:
     radial-gradient(46% 56% at 86% 22%,
-      color-mix(in srgb, var(--stop) 44%, transparent),
-      color-mix(in srgb, var(--stop) 18%, transparent) 45%, transparent 80%);
+      color-mix(in srgb, var(--stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%);
   --aurora-3:
     radial-gradient(52% 52% at 60% 96%,
-      color-mix(in srgb, var(--pause) 38%, transparent),
-      color-mix(in srgb, var(--pause) 15%, transparent) 45%, transparent 82%);
+      color-mix(in srgb, var(--pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%);
   --aurora-display: block;
   --aurora-slack:   64px;            /* blobs 128px oversized; every drift stays within ±64 */
   /* each blob wanders a different way and returns */
@@ -656,10 +743,14 @@
   --canvas-bg-size:   28px 28px;
   --canvas-bg-repeat: repeat;
 
-  /* appearance — an electric snap, the new look jolts in skewed */
-  --appearance-dur:      0.3s;
-  --appearance-ease:     cubic-bezier(0.4, 0, 0.2, 1);
-  --appearance-anim-new: appear-snap;
+  /* launch + look change — an electric snap: the cover clears almost at once, then the
+     cards jolt in hard-skewed and straighten, one after the next */
+  --boot-dur:       0.6s;
+  --boot-cover-out: 0.18s;
+  --boot-ease:      cubic-bezier(0.2, 0.9, 0.3, 1);
+  --boot-rise:      translateX(18px) skewX(-10deg);
+  --boot-stagger:   50ms;
+  --cover-in-dur:   0.1s;
 
   /* nav — an electric snap: fast, hard ease, the pane jolts in with a
      skew that straightens at center */
