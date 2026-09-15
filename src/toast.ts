@@ -136,12 +136,15 @@ export function toast(opts: ToastOptions): ToastHandle {
   const notice = !!noticeKey;
   const sticky = notice || (opts.sticky ?? kind === "error");
   const text = String(opts.text ?? "");
+  // The log copy drops every “quoted” name — playlists, songs, artists, stations, speakers
+  // (LOGGING.md §Ids, never titles; a bug report sends these lines). Callers quote names.
+  const logged = text.replace(/“[^”]*”/g, "“…”");
   // A failure the user was told about (or would have been, under a muted tier) belongs in
   // the log file too — it is the line a bug report starts from. A question (sticky with the
   // caller's actions: the red delete confirm) is not a failure; its `toast` line below is enough.
   const asks = sticky && !!opts.actions?.length;
-  if (!asks && kind === "error") diag.error("toast", { text });
-  else if (!asks && kind === "warn") diag.warn("toast", { text });
+  if (!asks && kind === "error") diag.error("toast", { text: logged });
+  else if (!asks && kind === "warn") diag.warn("toast", { text: logged });
   observers.forEach((fn) => {
     try {
       fn({ kind, text });

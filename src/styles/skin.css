@@ -182,6 +182,9 @@
   --set-menu-min-w:  120px;          /* the small menu behind a menu half */
   --set-menu-max-h:  280px;          /* 7 weekdays fit; longer lists scroll */
   --set-flash-dur:   1600ms;         /* a row opened from a toast: its highlight fades over this */
+  --set-textarea-min-h: 96px;        /* Bugs › the details field: about five lines */
+  --set-preview-max-h:  180px;       /* Bugs › the log text a report sends; longer scrolls */
+  --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace; /* log text */
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */

@@ -25,7 +25,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 const FILE: &str = "deetsmusic.log";
-const PREV: &str = "deetsmusic.1.log";
+pub(crate) const PREV: &str = "deetsmusic.1.log";
 const LEGACY: &str = "bridge.log";
 const ROTATE_AT: u64 = 512 * 1024;
 const RING_CAP: usize = 400;
@@ -184,6 +184,12 @@ fn write(level: &str, msg: &str) {
 /// Credentials that no pattern can catch, redacted by exact value.
 static SECRETS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
+/// `C:\Users\<name>`: `scrub` writes it as `%USERPROFILE%`. None if unset or too short to be safe.
+static PROFILE: OnceLock<Option<String>> = OnceLock::new();
+fn profile_dir() -> Option<String> {
+    std::env::var("USERPROFILE").ok().map(|p| p.trim_end_matches('\\').to_string()).filter(|p| p.len() >= 8)
+}
+
 /// Redact `secret` from every later log line. Call it wherever a non-JWT
 /// credential enters the process (the MUT: loaded from disk, or captured at sign-in).
 pub fn register_secret(secret: &str) {
@@ -198,14 +204,27 @@ pub fn register_secret(secret: &str) {
     }
 }
 
+/// The current log file (`report.rs` reads its tail).
+pub fn path() -> Option<&'static PathBuf> {
+    PATH.get()
+}
+
 /// Replace every registered secret, anything shaped like a JWT (`eyJ` + base64url
 /// with dots), and anything following `Bearer ` up to the next whitespace.
-fn scrub(msg: &str) -> String {
+pub(crate) fn scrub(msg: &str) -> String {
     let mut owned = msg.to_string();
     if let Ok(v) = SECRETS.lock() {
         for s in v.iter() {
             if owned.contains(s.as_str()) {
                 owned = owned.replace(s.as_str(), "[redacted]");
+            }
+        }
+    }
+    // A path under the user's folder names the Windows account: keep the rest of the path.
+    if let Some(home) = PROFILE.get_or_init(profile_dir) {
+        for form in [home.clone(), home.replace('\\', "/")] {
+            if owned.contains(form.as_str()) {
+                owned = owned.replace(form.as_str(), "%USERPROFILE%");
             }
         }
     }

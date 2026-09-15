@@ -17,6 +17,9 @@ import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./l
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
 import * as diag from "./diag";
+import { toast } from "./toast";
+import { copyLink } from "./copy-link";
+import { openContextMenu, type MenuItem } from "./context-menu";
 import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
@@ -60,12 +63,18 @@ interface SplitRow {
   hint?: () => string | undefined;
   halves: Half[];
 }
-type Row = ToggleRow | ChoiceRow | SplitRow;
+/** Markup of its own (Bugs › the report fields); events are wired by data attributes. */
+interface HtmlRow {
+  kind: "html";
+  id: string;
+  html: () => string;
+}
+type Row = ToggleRow | ChoiceRow | SplitRow | HtmlRow;
 interface Section {
   title: string;
   rows: Row[];
   /** Extra markup after the rows (a status line, action rows); events are wired by data attributes. */
-  tail?: string;
+  tail?: string | (() => string);
   /** The header's row count, when the tail holds rows of its own; default `rows.length`. */
   count?: number;
   /** Open until the user folds it (About). Every other section starts collapsed. */
@@ -127,6 +136,130 @@ function mountSettings(host: HTMLElement): CardInstance {
   };
   const copyFrom = (el: HTMLElement, text: Promise<string>) =>
     text.then((t) => navigator.clipboard.writeText(t).then(() => flash(el, "Copied"), () => console.log(t)));
+
+  // ── Bugs › the report form (src-tauri/src/report.rs, LOGGING.md §The report form) ──
+  // The card re-renders on any setting change, so the typed text lives here, not in the DOM.
+  interface ReportView {
+    code: string;
+    kind: string;
+    title: string;
+    at: number;
+    url: string;
+    state?: string | null; // at the last Refresh
+    newReply?: boolean;
+  }
+  // The worker's post states as My reports shows them ("gone": the post no longer exists).
+  const STATE_LABEL: Record<string, string> = {
+    new: "New", open: "Open", planned: "Planned", fixed: "Fixed", wontfix: "Won't fix", closed: "Closed", gone: "Removed",
+  };
+  let refreshing = false;
+  let closeArmed: string | null = null; // Close → "Sure?" → sends; disarms after CLOSE_ARM_MS
+  let closeTimer = 0;
+  const CLOSE_ARM_MS = 3000;
+  // Refresh is the only request My reports makes (TOASTS.md §5: its failures are warn toasts).
+  const refreshReports = async () => {
+    if (refreshing) return;
+    refreshing = true;
+    render();
+    try {
+      reports = await invoke<ReportView[]>("report_refresh");
+    } catch (e) {
+      toast({ kind: "warn", text: String(e) });
+    } finally {
+      refreshing = false;
+      if (alive) render();
+    }
+  };
+  const closeReport = async (code: string) => {
+    window.clearTimeout(closeTimer);
+    if (closeArmed !== code) {
+      closeArmed = code;
+      closeTimer = window.setTimeout(() => {
+        closeArmed = null;
+        if (alive) render();
+      }, CLOSE_ARM_MS);
+      render();
+      return;
+    }
+    closeArmed = null;
+    try {
+      reports = await invoke<ReportView[]>("report_close", { code });
+    } catch (e) {
+      toast({ kind: "warn", text: String(e) });
+    }
+    if (alive) render();
+  };
+  const REPORT_AREAS: Option[] = [
+    { value: "playback", label: "Playback" },
+    { value: "signin", label: "Sign-in" },
+    { value: "library", label: "Library or playlists" },
+    { value: "airplay", label: "AirPlay" },
+    { value: "updates", label: "Updates" },
+    { value: "other", label: "Something else" },
+  ];
+  const TITLE_WORDS = 10; // the worker's cap
+  const draft = { title: "", body: "", area: "other", attach: true };
+  let preview: string | null = null; // the log text on show — and the text a bug sends — while open
+  let reportStatus = "";
+  let sentUrl = "";
+  let sending = false;
+  let reports: ReportView[] = []; // My reports: report.rs keeps them in reports.json
+  const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+
+  // Flush first, so the front end's last events are in the file the tail is cut from.
+  const logFor = async (area: string): Promise<string> => {
+    await diag.flush();
+    return invoke<string>("report_log", { area });
+  };
+  const loadPreview = async () => {
+    preview = await logFor(draft.area).catch(() => "");
+    if (alive) render();
+  };
+  // Repainted in place, so a message never rebuilds the fields under the cursor.
+  const paintReport = () => {
+    const el = body.querySelector<HTMLElement>("#set-report-status");
+    if (!el) return;
+    el.hidden = !reportStatus;
+    el.innerHTML = esc(reportStatus) + (sentUrl ? ` <span class="set__link">${esc(sentUrl)}</span>` : "");
+  };
+  const say = (text: string, url = "") => {
+    reportStatus = text;
+    sentUrl = url;
+    paintReport();
+  };
+
+  const sendReport = async (kind: "issue" | "suggestion") => {
+    if (sending) return;
+    if (!draft.title.trim()) return say("Add a title.");
+    if (words(draft.title) > TITLE_WORDS) return say(`Keep the title to ${TITLE_WORDS} words or fewer.`);
+    if (!draft.body.trim()) return say("Add the details.");
+    sending = true;
+    say(kind === "issue" ? "Sending the bug…" : "Sending the suggestion…");
+    try {
+      // The text the user saw in Preview; without Preview, the same cut taken now.
+      const log = kind === "issue" && draft.attach ? (preview ?? (await logFor(draft.area))) : null;
+      const r = await invoke<ReportView>("report_send", { kind, title: draft.title, body: draft.body, log });
+      reports = [r, ...reports.filter((x) => x.code !== r.code)];
+      draft.title = "";
+      draft.body = "";
+      preview = null;
+      reportStatus = "Sent. Keep this link. It is the only way back to your report:";
+      sentUrl = r.url;
+      if (alive) render();
+      // TOASTS.md §5: sticky with an action, so it shows under every tier. Never the link in
+      // the text: toast text reaches the log, and the code is a credential.
+      toast({
+        kind: "success",
+        sticky: true,
+        text: `${kind === "issue" ? "Bug" : "Suggestion"} sent. Copy the link to find it again.`,
+        actions: [{ label: "Copy link", run: () => void copyLink(r.url) }],
+      });
+    } catch (e) {
+      say(String(e));
+    } finally {
+      sending = false;
+    }
+  };
 
   const sections: Section[] = [
     // Labels: one short active statement each; the hint (hover) only where a word is
@@ -368,9 +501,82 @@ function mountSettings(host: HTMLElement): CardInstance {
     },
     {
       title: "Bugs",
+      // The labelled rows, plus one per saved report.
+      get count() {
+        return 4 + reports.length;
+      },
       rows: [
-        // LOGGING.md: the rolling log file the app always writes; the report form and
-        // "My reports" (support.md) join this section next.
+        // The report form (report.rs): title, details, the bug type that picks the log cut,
+        // Attach log + its preview, then Send as a bug or a suggestion.
+        {
+          kind: "html", id: "report-title",
+          html: () =>
+            `<label class="set__field"><input class="set__input" data-report="title" type="text" maxlength="120" ` +
+            `placeholder="Title, in ${TITLE_WORDS} words or fewer" value="${esc(draft.title)}" /></label>`,
+        },
+        {
+          kind: "html", id: "report-body",
+          html: () =>
+            `<label class="set__field"><textarea class="set__input set__textarea" data-report="body" maxlength="4000" ` +
+            `placeholder="What happened, and what did you expect?">${esc(draft.body)}</textarea></label>`,
+        },
+        {
+          kind: "split", id: "reportarea", label: "What went wrong",
+          hint: () => "Picks the part of the log a bug report sends",
+          halves: [
+            {
+              type: "menu", options: REPORT_AREAS,
+              get: () => draft.area,
+              set: (v) => {
+                draft.area = v;
+                if (preview !== null) void loadPreview();
+                else render();
+              },
+            },
+          ],
+        },
+        {
+          kind: "split", id: "reportlog", label: "Attach log",
+          hint: () => "Bug reports only. Preview shows the exact text that is sent",
+          halves: [
+            {
+              type: "toggle",
+              get: () => draft.attach,
+              set: (on) => {
+                draft.attach = on;
+                if (!on) preview = null;
+                render();
+              },
+            },
+            {
+              type: "action",
+              get label() {
+                return preview === null ? "Preview" : "Hide";
+              },
+              run: () => {
+                if (preview === null) void loadPreview();
+                else { preview = null; render(); }
+              },
+            },
+          ],
+        },
+        {
+          kind: "html", id: "report-preview",
+          html: () => (preview === null ? "" : `<pre class="set__preview">${esc(preview || "The log is empty.")}</pre>`),
+        },
+        {
+          kind: "split", id: "reportsend", label: "Send",
+          hint: () => "Sends the title and details to support.deets.solutions with the app version",
+          halves: [
+            { type: "action", label: "Bug", hint: "Sends a bug report, with the log if Attach log is on", run: () => void sendReport("issue") },
+            { type: "action", label: "Suggestion", hint: "Sends a suggestion. It never carries the log", run: () => void sendReport("suggestion") },
+          ],
+        },
+        {
+          kind: "html", id: "report-status",
+          html: () => `<div class="set__status" id="set-report-status" aria-live="polite" hidden></div>`,
+        },
+        // LOGGING.md: the rolling log file the app always writes.
         {
           kind: "split", id: "log", label: "App log",
           hint: () => "The log file the app writes on this PC",
@@ -385,6 +591,38 @@ function mountSettings(host: HTMLElement): CardInstance {
             { type: "action", label: "Copy", hint: "Copies the recent log to the clipboard", run: (el) => copyFrom(el, invoke<string>("bridge_log")) },
           ],
         },
+        // My reports: the codes this install sent (support.md: no contact details, so a lost
+        // code is a lost thread).
+        {
+          kind: "html", id: "myreports",
+          html: () =>
+            reports.length === 0
+              ? ""
+              : // One bordered group: a heading (the card headers' refresh square) over its report rows.
+                `<div class="set__group"><div class="set__group-head"><span>My reports</span>` +
+                `<button class="panel__action${refreshing ? " is-busy" : ""}" type="button" data-report-refresh${refreshing ? " disabled" : ""} ` +
+                `aria-label="Refresh my reports" title="Asks support.deets.solutions for each report's status">` +
+                `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline>` +
+                `<polyline points="1 20 1 14 7 14"></polyline>` +
+                `<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button></div>` +
+                reports
+                  .map((r) => {
+                    const tip = `${r.kind === "issue" ? "Bug" : "Suggestion"} · ${new Date(r.at * 1000).toLocaleDateString()}`;
+                    const tag = r.state ? `<span class="set__tag">${esc(STATE_LABEL[r.state] ?? r.state)}</span>` : "";
+                    const dot = r.newReply ? `<span class="set__new" title="New reply">•</span>` : "";
+                    const done = r.state === "closed" || r.state === "gone";
+                    const close = done
+                      ? ""
+                      : `<button class="set__half" type="button" data-report-close="${esc(r.code)}" title="Closes the post on the support page">${closeArmed === r.code ? "Sure?" : "Close"}</button>`;
+                    return (
+                      `<div class="set__row set__row--choice" data-report-row="${esc(r.code)}" title="${esc(tip)}"><span class="set__label">${esc(r.title)}${tag}${dot}</span>` +
+                      `<div class="set__split"><button class="set__half" type="button" data-report-open="${esc(r.code)}">Open</button>` +
+                      `<button class="set__half" type="button" data-report-copy="${esc(r.url)}">Copy link</button>${close}</div></div>`
+                    );
+                  })
+                  .join("") +
+                `</div>`,
+        },
       ],
     },
     {
@@ -395,8 +633,9 @@ function mountSettings(host: HTMLElement): CardInstance {
       tail:
         `<div class="set__status">Apple Music is a trademark of Apple Inc. ` +
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
-        `<div class="set__status">The log stays on this PC. The app contacts Apple, and ` +
-        `music-api.deets.solutions for its access key and updates. It sends no listening history.</div>`,
+        `<div class="set__status">The log stays on this PC unless you send a bug with Attach log on. ` +
+        `The app contacts Apple, music-api.deets.solutions for its access key and updates, and ` +
+        `support.deets.solutions when you send a report. It sends no listening history.</div>`,
     },
   ];
 
@@ -437,6 +676,7 @@ function mountSettings(host: HTMLElement): CardInstance {
 
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
   const rowHTML = (r: Row): string => {
+    if (r.kind === "html") return r.html();
     const hint = r.kind === "choice" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const label = `<span class="set__label">${esc(r.label)}</span>`;
@@ -542,10 +782,21 @@ function mountSettings(host: HTMLElement): CardInstance {
 
   const render = () => {
     dropMenus();
+    // A report field being typed in survives the rebuild: its focus and caret come back.
+    const active = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+    const field = active && body.contains(active) ? active.dataset.report : undefined;
+    const caret = field ? [active!.selectionStart ?? 0, active!.selectionEnd ?? 0] : null;
+    const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
     body.innerHTML =
       sections
-        .map((s) => `<section class="set__section">${headHTML(s)}${isOpen(s) ? s.rows.map(rowHTML).join("") + (s.tail ?? "") : ""}</section>`)
+        .map((s) => `<section class="set__section">${headHTML(s)}${isOpen(s) ? s.rows.map(rowHTML).join("") + tailOf(s) : ""}</section>`)
         .join("");
+    if (field && caret) {
+      const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-report="${field}"]`);
+      el?.focus({ preventScroll: true });
+      el?.setSelectionRange(caret[0], caret[1]);
+    }
+    paintReport();
     wireMenus();
     refreshExtension();
     paintUpdate();
@@ -588,6 +839,32 @@ function mountSettings(host: HTMLElement): CardInstance {
       invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
       return;
     }
+    // My reports: Open (the browser, report.rs checks the code is one it saved) / Copy link.
+    const openCode = t.closest<HTMLElement>("[data-report-open]")?.dataset.reportOpen;
+    if (openCode) {
+      invoke("report_open", { code: openCode })
+        .then(() => {
+          // Open marks the owner replies seen (report.rs): the dot goes.
+          const r = reports.find((x) => x.code === openCode);
+          if (r?.newReply && alive) { r.newReply = false; render(); }
+        })
+        .catch((err) => console.error("[report] open", err));
+      return;
+    }
+    if (t.closest("[data-report-refresh]")) {
+      void refreshReports();
+      return;
+    }
+    const closeCode = t.closest<HTMLElement>("[data-report-close]")?.dataset.reportClose;
+    if (closeCode) {
+      void closeReport(closeCode);
+      return;
+    }
+    const copyBtn = t.closest<HTMLElement>("[data-report-copy]");
+    if (copyBtn) {
+      void copyFrom(copyBtn, Promise.resolve(copyBtn.dataset.reportCopy ?? ""));
+      return;
+    }
     // A split half (menu halves open through their dropdown, which stops the click).
     const halfEl = t.closest<HTMLElement>("[data-half]");
     if (halfEl?.dataset.row) {
@@ -611,6 +888,59 @@ function mountSettings(host: HTMLElement): CardInstance {
       if (r?.kind === "toggle") r.set(!r.get());
     }
   });
+
+  // My reports › right-click: the row's buttons, plus Clear (this PC only; the post stays).
+  // Close sends at once: picking it from the menu is the confirming step.
+  body.addEventListener("contextmenu", (e) => {
+    const code = (e.target as HTMLElement).closest<HTMLElement>("[data-report-row]")?.dataset.reportRow;
+    const r = code ? reports.find((x) => x.code === code) : undefined;
+    if (!code || !r) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const done = r.state === "closed" || r.state === "gone";
+    const items: MenuItem[] = [
+      {
+        label: "Open",
+        run: () =>
+          void invoke("report_open", { code })
+            .then(() => {
+              if (r.newReply && alive) { r.newReply = false; render(); }
+            })
+            .catch((err) => console.error("[report] open", err)),
+      },
+      { label: "Copy link", run: () => void copyLink(r.url) },
+      ...(done ? [] : [{ label: "Close", run: () => { closeArmed = code; void closeReport(code); } }]),
+      {
+        label: "Clear",
+        run: () =>
+          void invoke<ReportView[]>("report_clear", { code })
+            .then((list) => {
+              reports = list;
+              if (alive) render();
+            })
+            .catch((err) => console.error("[report] clear", err)),
+      },
+    ];
+    openContextMenu(e.clientX, e.clientY, items);
+  });
+
+  // The report fields write to the draft as the user types (render rebuilds them from it).
+  body.addEventListener("input", (e) => {
+    const f = e.target as HTMLInputElement | HTMLTextAreaElement;
+    if (f.dataset.report === "title") draft.title = f.value;
+    else if (f.dataset.report === "body") draft.body = f.value;
+    else return;
+    if (sending) return;
+    if (f.dataset.report === "title" && words(draft.title) > TITLE_WORDS) say(`Keep the title to ${TITLE_WORDS} words or fewer.`);
+    else if (reportStatus && !sentUrl) say("");
+  });
+  invoke<ReportView[]>("report_list")
+    .then((r) => {
+      if (!alive) return;
+      reports = r;
+      render();
+    })
+    .catch((e) => console.warn("[report] list", e));
 
   // Re-paint on any change, whoever made it (the store, the Library Add module, the
   // Rust setting we cached). A full re-render is cheap here — a dozen rows.

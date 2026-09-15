@@ -61,13 +61,13 @@ export function startArtistStationItem(
         }
         if (!artistId) {
           console.warn("[station] no artist id resolvable for", name);
-          toast({ kind: "warn", text: `Couldn't find ${name} on Apple Music.` });
+          toast({ kind: "warn", text: `Couldn't find “${name}” on Apple Music.` });
           return;
         }
         const s = await seedStation("artists", artistId);
         if (s) return playStation(s).catch((e) => console.error("[station] artist play", e));
         console.warn("[station] no station for artist", name);
-        toast({ kind: "warn", text: `Apple Music has no station for ${name}.` });
+        toast({ kind: "warn", text: `Apple Music has no station for “${name}”.` });
       })().catch((e) => {
         console.error("[station] artist start", e);
         toast({ kind: "warn", text: "Couldn't start the station." });

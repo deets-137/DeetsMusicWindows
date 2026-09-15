@@ -174,3 +174,77 @@
 .set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
 .set__action { cursor: pointer; }
 .set__action:hover { background: var(--surface-hover); }
+
+/* Bugs › the report form (report.rs): the search field's box, a title line and a details
+   area, then the log text the report would send. */
+.set__field {
+  display: flex;
+  margin: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.set__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+}
+.set__input::placeholder { color: var(--subtext); }
+.set__textarea { min-height: var(--set-textarea-min-h); resize: vertical; }
+.set__preview {
+  margin: var(--space-1) var(--space-2);
+  max-height: var(--set-preview-max-h);
+  overflow: auto;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.set__link { color: var(--title); user-select: text; word-break: break-all; }
+/* My reports: one bordered group, so the heading reads as belonging to the rows under it.
+   The heading takes the shelf-header voice (.ctx-menu__label) and the card headers'
+   refresh square (.panel__action), with a hairline under it. */
+.set__group {
+  margin: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.set__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.set__group .set__row { border-radius: 0; }
+.set__group .set__row + .set__row { border-top: 1px solid var(--border); }
+/* The worker's state at the last Refresh, and a dot for an unseen owner reply. */
+.set__tag {
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--set-pill-radius);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap;
+}
+.set__new { margin-left: var(--space-1); color: var(--title); }

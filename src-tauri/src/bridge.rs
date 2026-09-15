@@ -1087,7 +1087,7 @@ pub async fn search(app: &AppHandle, term: &str) -> Result<(Vec<Candidate>, Vec<
 /// tracks so they graduate locally, then POST the album resource.
 pub async fn add_album(app: &AppHandle, album: Album) -> Result<(), String> {
     let id = album.catalog_id.clone().filter(|s| !s.is_empty()).ok_or("album has no catalog id")?;
-    log(&format!("add album {} — {} ({id})", album.title, album.artist_name));
+    log(&format!("add album {id}")); // ids, never titles (LOGGING.md)
     let tracks = crate::apple::catalog_collection_tracks(
         "albums".into(),
         id.clone(),
@@ -1110,7 +1110,7 @@ pub async fn add_album(app: &AppHandle, album: Album) -> Result<(), String> {
 /// Add one catalog song and tell the main window so its Library card refreshes.
 pub async fn add(app: &AppHandle, track: Track) -> Result<(), String> {
     let id = track.catalog_id.clone().filter(|s| !s.is_empty()).ok_or("track has no catalog id")?;
-    log(&format!("add {} — {} ({id})", track.title, track.artist_name));
+    log(&format!("add song {id}")); // ids, never titles (LOGGING.md)
     crate::apple::apple_add_to_library(
         "songs".into(),
         vec![id],

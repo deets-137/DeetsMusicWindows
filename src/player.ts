@@ -1365,7 +1365,7 @@ export async function playStation(s: Station): Promise<void> {
     diag.log("player:stationError", { id: s.id, e: String(e) });
     console.warn("[player] station failed:", e);
     // Every station play (Radio, Search, Start Station, the agent, the launch resume) lands here (TOASTS.md).
-    toast({ kind: "warn", text: `Couldn't start ${s.name}.` });
+    toast({ kind: "warn", text: `Couldn't start “${s.name}”.` });
     throw e;
   } finally {
     loadingContext = false;

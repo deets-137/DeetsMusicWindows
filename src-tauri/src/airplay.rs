@@ -106,7 +106,38 @@ fn remember_volume(app: &AppHandle, speaker: &str, pct: f64) {
 /// The app log (LOGGING.md) carries the connect / drop / error lines; the crate's
 /// own `airplay.log` keeps the wire-level session trace.
 fn log(line: &str) {
-    crate::log::info(&format!("airplay: {line}"));
+    crate::log::info(&format!("airplay: {}", mask_ipv4(line)));
+}
+
+/// The crate's error text can name the speaker's LAN address; a bug report sends these lines.
+fn mask_ipv4(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut run = String::new();
+    let flush = |run: &mut String, out: &mut String| {
+        let parts: Vec<&str> = run.split('.').collect();
+        let is_ip = parts.len() == 4 && parts.iter().all(|p| !p.is_empty() && p.len() <= 3 && p.parse::<u16>().map_or(false, |n| n <= 255));
+        out.push_str(if is_ip { "[ip]" } else { run.as_str() });
+        run.clear();
+    };
+    for c in s.chars() {
+        if c.is_ascii_digit() || c == '.' {
+            run.push(c);
+        } else {
+            flush(&mut run, &mut out);
+            out.push(c);
+        }
+    }
+    flush(&mut run, &mut out);
+    out
+}
+
+#[cfg(test)]
+mod mask_tests {
+    #[test]
+    fn masks_ipv4_only() {
+        assert_eq!(super::mask_ipv4("refused 192.168.1.20:7000 after 2.5 s"), "refused [ip]:7000 after 2.5 s");
+        assert_eq!(super::mask_ipv4("version 0.4.3"), "version 0.4.3");
+    }
 }
 
 pub fn setup(app_data: &std::path::Path) {
@@ -130,9 +161,10 @@ fn latency_frames(rtt_p95_ms: Option<f64>) -> u32 {
 fn plain_error(speaker: &str, e: &str) -> String {
     let e_l = e.to_ascii_lowercase();
     if e_l.contains("timed out") || e_l.contains("connection") || e_l.contains("refused") || e_l.contains("unreachable") {
-        format!("Couldn't reach {speaker}. Check that it is on the same Wi-Fi.")
+        // The name is quoted: toast.ts drops quoted names from the log (a speaker is often "<Name>'s HomePod").
+        format!("Couldn't reach “{speaker}”. Check that it is on the same Wi-Fi.")
     } else if e_l.contains("pair") || e_l.contains("srp") || e_l.contains("auth") {
-        format!("{speaker} didn't accept the connection. Try again in a moment.")
+        format!("“{speaker}” didn't accept the connection. Try again in a moment.")
     } else if e_l.contains("loopback") || e_l.contains("capture") || e_l.contains("wasapi") {
         "Couldn't capture this app's sound. Is a song playing?".to_string()
     } else {
@@ -171,7 +203,8 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
             let _ = handle.emit_to("main", "np-command", NpCommand { kind: kind.to_string(), value: None });
         })),
     };
-    log(&format!("connect {} at {}:{} (capture: {})", speaker.name, speaker.ip, speaker.port, capture.format_note));
+    // Not the name ("<Name>'s HomePod") or the LAN address: a bug report sends this line.
+    log(&format!("connect port {} (capture: {})", speaker.port, capture.format_note));
     let session = session::connect(ip, speaker.port, &speaker.name, config, capture.source()).map_err(|e| {
         log(&format!("connect FAILED: {e}"));
         e

@@ -18,7 +18,10 @@ const LABEL = "Copy Link";
 
 const url = (kind: "song" | "album", id: string) => `https://music.apple.com/${kind}/${id}`;
 
-const copy = (text: string) =>
+/** Copy any link, with the "Link copied." toast (also Settings › Bugs' sent-report toast). */
+export const copyLink = (text: string) => copy(text);
+
+const copy = (text: string): Promise<void> =>
   navigator.clipboard.writeText(text).then(
     () => void toast({ kind: "success", text: "Link copied." }),
     (e) => {

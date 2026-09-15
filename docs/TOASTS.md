@@ -139,6 +139,8 @@ token without MusicKit's logout call.
 | `drop-actions.ts` — a drop on the Library card | info | Those songs are already in your library. | Only when nothing was left to add. The add itself uses the `library-add.ts` rows above. |
 | `drop-actions.ts` — a drop on Now Playing | — | (none) | The song starting is the feedback; a failed play is `playTracks`'s toast. |
 | `replay.ts` — the weekly make | success | Replay updated: N songs from this week. | `all` tier. |
+| `settings-card.ts` — Settings › Bugs › Send | sticky success **with an action** | Bug sent. Copy the link to find it again. / Suggestion sent. Copy the link to find it again. **[Copy link] [Dismiss]** | Added 2026-09-15 (LOGGING.md §The report form). Sticky with its own action, so it shows under every tier and never times out: the link is the only way back to the post. **The link is never in the text** — toast text reaches the diag ring and the log, and the code is a credential. [Copy link] uses `copy-link.ts` ("Link copied."). The report also appears under My reports. |
+| `settings-card.ts` — My reports › Refresh / Close | warn | Couldn't reach the support server. Check the connection and try again. / Too many requests in a short time. Wait a minute and try again. / Reports are switched off for now. Try again later. / The support server didn't close the report. Try again later. | Added 2026-09-15. The text is `report.rs`'s error. Refresh warns only when no report could be checked; a partial failure keeps the last known tags. |
 | `stats.ts` — Rewind unlock at 50 starts | info | Rewind unlocked: your listening, ranked. Pick it from any slot's title. | `all` tier (the card also just appears in the pickers, as before). |
 
 **Investigated, not built — a library playlist Apple no longer has** (FUTURE-SETTINGS §18
@@ -166,6 +168,9 @@ text if desk testing shows users expect the cover on the Apple copy.
 - Silent success stays the doctrine (FAVORITES.md); a `success` toast is for actions with
   **no other visible result** (a clipboard write) and rides the `all` tier.
 - Name things, never ids. Resolve through `trackById` / the playlist name before calling.
+- **Put every name in curly quotes** (`“${p.name}”`). `toast.ts` logs the text with each
+  quoted span replaced by `“…”`, because a bug report sends the log (LOGGING.md §The report
+  form, privacy pass). An unquoted name reaches the log. Never put a link or a code in the text.
 - Main window only. The tray panel and the extension popup keep the console.
 - No copy in `toast.ts`. If a string will be reused, it lives with its caller.
 - Write the text so an agent can act on it too. Every `warn` / `error` raised during an

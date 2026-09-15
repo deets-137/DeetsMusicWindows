@@ -9,6 +9,7 @@ mod model;
 mod media;
 mod playlists;
 mod provider;
+mod report;
 mod settings;
 mod smtc;
 mod tray;
@@ -130,7 +131,11 @@ pub fn run() {
                     .unwrap_or(0);
                 let bak = dir.join(format!("deetsmusic.v1.{stamp}.bak.db"));
                 std::fs::copy(&db_path, &bak).expect("backup db before v2 migration");
-                log::info(&format!("migration: v1 db detected; backed up to {}", bak.display()));
+                // The file name only: it sits in the data dir, and a full path carries the Windows user name.
+                log::info(&format!(
+                    "migration: v1 db detected; backed up to {}",
+                    bak.file_name().map(|n| n.to_string_lossy()).unwrap_or_default()
+                ));
             }
 
             let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
@@ -317,6 +322,13 @@ pub fn run() {
             update::update_download,
             update::update_install,
             update::update_versions,
+            report::report_log,
+            report::report_send,
+            report::report_list,
+            report::report_open,
+            report::report_refresh,
+            report::report_close,
+            report::report_clear,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

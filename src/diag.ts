@@ -96,9 +96,9 @@ export function report(): string {
 
 /** Append the report to the app log file. Fire-and-forget; never throws. An empty
  *  buffer still writes its header line — "0 events" is itself a finding. */
-export function flush(): void {
+export function flush(): Promise<void> {
   dirty = false;
-  invoke("diag_flush", { text: report() }).catch((e) => {
+  return invoke<void>("diag_flush", { text: report() }).catch((e) => {
     console.warn("[diag] flush failed", e); // not under Tauri, or the command is missing
   });
 }

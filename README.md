@@ -97,8 +97,10 @@ no auto-updater — each release is a fresh installer, archived locally
   version only. The server keeps a daily count of tokens it gives out. It does not store
   your IP address, the token, or anything about you.
 - **The log.** The app writes a log file on your PC (Settings › Bugs › App log). It
-  redacts tokens, names catalog ids instead of song titles, and is never sent anywhere
-  unless you copy it yourself.
+  redacts tokens, and names catalog ids instead of song titles. It leaves your PC only
+  when you send a bug report with Attach log on (Settings › Bugs). The app shows the
+  exact text before it sends, and a report goes to `support.deets.solutions` with the
+  app version. A suggestion never carries the log.
 - **Your playlists.** Playlists you make in DeetsMusic are stored on this PC only. A new
   PC or a reinstalled Windows starts without them. To keep a copy, use Apple Music ▸
   Export to Apple Music on the playlist.

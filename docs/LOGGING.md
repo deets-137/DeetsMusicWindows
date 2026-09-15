@@ -6,8 +6,8 @@ attaches (`DeetsSolutions/docs/support.md`).
 
 **Scoped 2026-09-11. Steps 1–4 built the same day** (`src-tauri/src/log.rs`, `diag.flush()`, Settings › Bugs;
 the "What already exists" section below describes the state before it).
-Step 5, the report form, is open. Two halves already existed and were not rebuilt; this
-doc bounds them, joins them, and says what starts writing.
+Step 5, the report form, built 2026-09-14 (§The report form, at the end). Two halves already
+existed and were not rebuilt; this doc bounds them, joins them, and says what starts writing.
 
 > **Revised 2026-09-13 — front-end warnings and errors are written AS THEY HAPPEN.** Before,
 > the front end reached the file only through `diag_flush` (an uncaught error, unload, Open
@@ -164,3 +164,92 @@ style.
 Steps 1 and 2 are worth doing on their own merits. The unbounded
 `bridge.log` is a defect today, and a silent panic is a fault you cannot
 diagnose at all.
+
+---
+
+## The report form
+
+**Built 2026-09-14.** `src-tauri/src/report.rs` and Settings › Bugs
+(`settings-card.ts`). The worker contract is `DeetsSolutions/docs/support.md`
+§Intake.
+
+**Rows, top to bottom:** a title field, a details field, **What went wrong**
+(a menu), **Attach log** (on/off + Preview), the preview text, **Send**
+(Bug | Suggestion), a status line, **App log**, then **My reports**.
+
+**Who sends.** Rust, not the page. The worker's CORS lists only the
+`deets.solutions` pages, so a `fetch` from the app page could send the post
+but could not read the code back. `report_send` posts with
+`User-Agent: DeetsMusic/<v>` and `source: "app"`.
+
+**What a post carries.** `app`, `kind` (`issue` | `suggestion`), `title`
+(10 words, whitespace collapsed first), `body` (4,000), and
+`meta: {version, log?}`. A suggestion never carries `log`.
+
+**The log cut.** *What went wrong* picks tags, so the 8 KB `meta` holds the
+lines that matter:
+
+| Menu | Tags kept |
+|---|---|
+| Playback | `player:` `apple:` `token:` `smtc:` `airplay:` `toast` `window:` |
+| Sign-in | `sign-in:` `token:` `account:` `apple:` `webview:` |
+| Library or playlists | `library:` `playlists:` `favorites:` `enrich:` `migration:` `apple:` |
+| AirPlay | `airplay:` `player:` |
+| Updates | `update:` |
+| Something else | every line |
+
+Every choice also keeps `start:`, `panic:` and every `ERROR` line. A tag is
+read after the level, after `fe: `, or after a diag block line's `1234ms  `.
+Both log generations are read; the newest lines that fit are kept.
+
+**The user sees what is sent.** Preview shows `report_log`'s text, and a bug
+sends that same text. Without Preview, the same cut is taken at Send.
+`report_send` scrubs it again, trims the oldest lines if `meta` (8 KB) or
+the request (16 KB) would overflow, and refuses a JWT-shaped payload before
+it leaves the PC (the worker refuses it too, with a bare 400).
+
+**The code.** The reply's `code` is the only way back to the thread, and it
+is a credential. So it is **never logged** (the log rides later reports),
+the app saves `{code, kind, title, at}` to `<app_data>/reports.json` (write
+beside, then rename; newest 100), and My reports shows each with Open (the
+browser, only a saved code) and Copy link. The link is
+`https://deets.solutions/deetsmusic/#t=<code>` — a fragment, never a query.
+
+**Privacy pass (2026-09-15).** A report sends log lines, so four leaks were
+closed where they start, not in the report code:
+
+- `scrub` writes the user's folder (`USERPROFILE`, both slash forms) as
+  `%USERPROFILE%`. A path no longer names the Windows account.
+- The migration line logs the backup's file name only.
+- The bridge's add lines log ids (`add song <id>`), never titles or artists.
+- The AirPlay connect line logs the port only. Every `airplay:` line masks
+  IPv4 addresses as `[ip]`, because the crate's error text can hold one.
+- **Toast rule:** `toast.ts` logs its text with every “quoted” span replaced by
+  `“…”`. **Callers must quote names** (playlists, songs, artists, stations,
+  speakers); an unquoted name reaches the log. The station and AirPlay
+  messages were changed to quote theirs.
+- `report_send` runs the title and details through `scrub` as well, so a
+  pasted music-user token (not JWT-shaped) is caught.
+
+**Errors** are plain sentences: no network, 429 (wait a minute), 503 `off`
+(switched off for now), 413 / `meta` (turn off Attach log), `title_words`.
+The fields keep their text on any failure.
+
+**Tracking (2026-09-15).** My reports has a **Refresh** row and, per report, a
+state tag, a dot for an unseen owner reply, and Open | Copy link | Close.
+
+- **Refresh is the only request** (the user's call: nothing at launch or on
+  unfold). `report_refresh` sends one `GET /t/<code>` per saved report, in turn,
+  and stores `state` and the owner-reply count in `reports.json`, so the tags
+  survive a restart. A 404 stores `gone` ("Removed"). A failed request keeps the
+  last known values.
+- **New reply:** `owner_replies > seen_replies`. **Open** marks them seen
+  (reading happens on the web page; the app shows no thread).
+- **Close** is two clicks (Close → Sure?), then `POST /t/<code>/close`. It shares
+  the worker's 5-per-minute limit. Closed and removed reports hide the button.
+- **Right-click a report:** Open, Copy link, Close (sends at once: picking it from
+  the menu is the second step), and **Clear**, which removes it from this PC only.
+  The post stays on the worker; without its link it cannot be found again.
+- **One day for closed posts.** `save` stamps `closed_at` the first time a report
+  is stored `closed` or `gone`; `load` drops it 24 hours later. Open reports are
+  kept (newest 100). The file stays small without a cleanup job.
