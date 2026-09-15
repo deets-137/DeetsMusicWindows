@@ -180,7 +180,7 @@ function heroHTML(h: Hero | undefined): string {
     : "";
   const meta = h.meta ? `<span class="lib-hero__meta">${esc(h.meta)}</span>` : "";
   const cover = h.coverMenu
-    ? `<button class="lib-hero__cover-btn" type="button" data-hero-cover${h.coverDrop ? " data-hero-drop" : ""} aria-haspopup="menu" aria-label="Cover options">${h.cover}</button>`
+    ? `<button class="lib-hero__cover-btn" type="button" data-hero-cover${h.coverDrop ? " data-hero-drop" : ""} aria-haspopup="menu" aria-label="Cover options" title="Opens the menu for this cover">${h.cover}</button>`
     : h.cover;
   return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(h.title)}</span>${sub}${meta}</div>`;
 }
@@ -313,7 +313,7 @@ export function initCollectionCard(opts: CardOptions) {
         (d) =>
           `<button class="lib-pop__dir${d === f.sortDir ? " is-active" : ""}" type="button" data-sort-dir="${d}" aria-label="${
             d === "asc" ? "Ascending" : "Descending"
-          }"><svg viewBox="0 0 12 12" aria-hidden="true">${
+          }" title="${d === "asc" ? "First to last: A to Z, newest first" : "Last to first: Z to A, oldest first"}"><svg viewBox="0 0 12 12" aria-hidden="true">${
             d === "asc" ? '<path d="M6 10V2M3 5l3-3 3 3" />' : '<path d="M6 2v8M3 7l3 3 3-3" />'
           }</svg></button>`,
       )
@@ -344,7 +344,9 @@ export function initCollectionCard(opts: CardOptions) {
       ? `<div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Density">${(["lines", "small", "large"] as Density[])
           .map(
             (d) =>
-              `<button class="lib-pop__dir${d === f.density ? " is-active" : ""}" type="button" data-density="${d}" aria-label="${d}"><svg viewBox="0 0 16 16" aria-hidden="true">${dIcon[d]}</svg></button>`,
+              `<button class="lib-pop__dir${d === f.density ? " is-active" : ""}" type="button" data-density="${d}" aria-label="${d}" title="${
+                d === "lines" ? "Rows: one line each" : d === "small" ? "Small tiles" : "Large tiles"
+              }"><svg viewBox="0 0 16 16" aria-hidden="true">${dIcon[d]}</svg></button>`,
           )
           .join("")}</div>`
       : "";
@@ -362,7 +364,7 @@ export function initCollectionCard(opts: CardOptions) {
           ${
             showSort
               ? `<div class="lib-ctrl" data-ctrl="sort">
-            <button class="lib-pill" data-pop="sort" type="button" aria-haspopup="true" aria-expanded="false">
+            <button class="lib-pill" data-pop="sort" type="button" aria-haspopup="true" aria-expanded="false" title="Changes the order of this list">
               <span class="lib-pill__label">Sort</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
@@ -372,7 +374,7 @@ export function initCollectionCard(opts: CardOptions) {
           ${
             showView
               ? `<div class="lib-ctrl" data-ctrl="view">
-            <button class="lib-pill" data-pop="view" type="button" aria-haspopup="true" aria-expanded="false">
+            <button class="lib-pill" data-pop="view" type="button" aria-haspopup="true" aria-expanded="false" title="Changes what the list groups by and how big the rows are">
               <span class="lib-pill__label">View</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
@@ -387,7 +389,7 @@ export function initCollectionCard(opts: CardOptions) {
               : ""
           }
           <div class="lib-ctrl" data-ctrl="search">
-            <button class="lib-pill lib-pill--icon${f.query ? " is-active" : ""}" data-pop="search" type="button" aria-expanded="${f.searchOpen}" aria-label="Search">
+            <button class="lib-pill lib-pill--icon${f.query ? " is-active" : ""}" data-pop="search" type="button" aria-expanded="${f.searchOpen}" aria-label="Search" title="Finds a name in this list">
               <svg class="lib-pill__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
             </button>
           </div>

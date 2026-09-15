@@ -170,14 +170,14 @@ const migrateSortPref = () => {
 
 const HEAD = `
   <header class="panel__head">
-    <button class="panel__back" id="playlists-back" type="button" aria-label="Back" hidden>
+    <button class="panel__back" id="playlists-back" type="button" aria-label="Back" title="Goes back one step" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
     </button>
     <h2 class="panel__title">Playlists</h2>
-    <button class="panel__action" id="playlists-add" type="button" aria-label="New playlist">
+    <button class="panel__action" id="playlists-add" type="button" aria-label="New playlist" title="Makes a new playlist or a new folder">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg>
     </button>
-    <button class="panel__action" id="playlists-refresh" type="button" aria-label="Sync playlists">
+    <button class="panel__action" id="playlists-refresh" type="button" aria-label="Sync playlists" title="Reads your playlists from Apple Music again">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
@@ -279,6 +279,7 @@ export const playlistsCard: CardDef = {
     // question first). Never a drop back on the playlist the songs came from.
     const dropFor = (p: Playlist, pay: DragPayload): ((at: number | null) => void) | null => {
       if (pay.playlistId && pay.playlistId === p.libraryId) return null;
+      if (pay.kind === "station") return null; // a stream has no songs to add
       if (handMade(p)) return (at) => dropToPlaylist(p, pay, at);
       if (p.source === "apple" && p.canEdit && setting("playlistExport")) return () => dropToApplePlaylist(p, pay);
       return null;

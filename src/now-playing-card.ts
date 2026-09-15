@@ -9,6 +9,7 @@ import {
 } from "./player";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 import { makeSlider } from "./slider";
+import { mountVinyl } from "./vinyl";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { mountAirplay, type AirplayMount } from "./airplay";
 import { onTracksChange } from "./track-store";
@@ -58,7 +59,7 @@ const TEMPLATE = `
       <div class="np__times" aria-hidden="true"><span id="np-elapsed">0:00</span><span id="np-remaining">0:00</span></div>
       <div class="np__bottom">
         <div class="np__left">
-          <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle" aria-pressed="false">
+          <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle" aria-pressed="false" title="Shuffles the songs after this one">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <polyline points="16 3 21 3 21 8"></polyline>
               <line x1="4" y1="20" x2="21" y2="3"></line>
@@ -67,7 +68,7 @@ const TEMPLATE = `
               <line x1="4" y1="4" x2="9" y2="9"></line>
             </svg>
           </button>
-          <button class="panel__action np__repeat" id="np-repeat" type="button" aria-label="Repeat" aria-pressed="false" data-state="off">
+          <button class="panel__action np__repeat" id="np-repeat" type="button" aria-label="Repeat" aria-pressed="false" data-state="off" title="Repeats the list, then one song, then off">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <polyline points="17 1 21 5 17 9"></polyline>
               <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
@@ -76,7 +77,7 @@ const TEMPLATE = `
             </svg>
             <span class="np__repeat-one" aria-hidden="true">1</span>
           </button>
-          <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue">
+          <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue" title="Shows the Queue card: what plays next">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <line x1="3" y1="6" x2="13" y2="6"></line>
               <line x1="3" y1="12" x2="13" y2="12"></line>
@@ -84,37 +85,37 @@ const TEMPLATE = `
               <path d="M17 8.5 22 12 17 15.5z" fill="none"></path>
             </svg>
           </button>
-          <button class="panel__action np__search" id="np-search" type="button" aria-label="Show search">
+          <button class="panel__action np__search" id="np-search" type="button" aria-label="Show search" title="Shows the Search card: all of Apple Music">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg>
           </button>
         </div>
         <div class="np__controls">
-          <button class="np__btn" type="button" aria-label="Previous">
+          <button class="np__btn" type="button" aria-label="Previous" title="Plays the song before this one">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg>
           </button>
-          <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play">
+          <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play" title="Play">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
           </button>
-          <button class="np__btn" type="button" aria-label="Next">
+          <button class="np__btn" type="button" aria-label="Next" title="Plays the next song">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg>
           </button>
         </div>
         <div class="np__right">
-          <button class="panel__action np__fav" id="np-fav" type="button" aria-label="Favorite" aria-pressed="false" disabled hidden>
+          <button class="panel__action np__fav" id="np-fav" type="button" aria-label="Favorite" aria-pressed="false" title="Favorite" disabled hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"></path></svg>
           </button>
-          <button class="panel__action np__add" id="np-add" type="button" aria-label="Add to Library" disabled hidden>
+          <button class="panel__action np__add" id="np-add" type="button" aria-label="Add to Library" title="Add to Library" disabled hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
       </div>
       <div class="np__vol">
-        <button class="panel__action np__vol-mute" id="np-vol-mute" type="button" aria-label="Mute" aria-pressed="false"></button>
+        <button class="panel__action np__vol-mute" id="np-vol-mute" type="button" aria-label="Mute" aria-pressed="false" title="Turns the sound off and on"></button>
         <div class="scrub np__vol-scrub" id="np-vol-scrub">
           <div class="scrub__track"><div class="scrub__fill"></div></div>
           <span class="scrub__handle" aria-hidden="true"></span>
         </div>
-        <button class="panel__action np__airplay ap-square" id="np-airplay" type="button" aria-label="AirPlay" data-state="idle">
+        <button class="panel__action np__airplay ap-square" id="np-airplay" type="button" aria-label="AirPlay" data-state="idle" title="Plays on a speaker or TV on your network">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17a8 8 0 1 1 14 0" fill="none"></path><path d="M8 21l4-5 4 5z" fill="none"></path></svg>
         </button>
       </div>
@@ -160,18 +161,28 @@ export const nowPlayingCard: CardDef = {
     let onStation = false; // radio mode → the menu offers Stop Station
     let artKey = ""; // what the cover box currently shows — rebuilt only on change
     let lastState: PlayerState | undefined;
+    // The cover box's art slot: the Press record player where it is on (docs/VINYL.md),
+    // the plain cover everywhere else.
+    const vinyl = npArt ? mountVinyl(npArt, GLYPH_NOTE) : null;
+    let liveNow = false;
+    let lastDuration = 0;
     // The two mode squares (NEXT-VERSION §12, §14): Repeat cycles off → all → one and hides
     // in radio mode (a station never repeats); Shuffle shows pressed while the mode is on.
     const repeatBtn = host.querySelector<HTMLButtonElement>("#np-repeat");
     const shuffleBtn = host.querySelector<HTMLButtonElement>("#np-shuffle");
     let refit = () => {}; // the transport-row stack check (below) — a hidden square changes the row's need
     const REPEAT_LABEL = { off: "Repeat", all: "Repeat all", one: "Repeat one" } as const;
+    const REPEAT_HINT = {
+      off: "Repeats the list, then one song, then off",
+      all: "Repeats the list. Press again: one song",
+      one: "Repeats this song. Press again: off",
+    } as const;
     const paintModes = (repeat: PlayerState["repeat"], shuffle: boolean, station: boolean) => {
       if (repeatBtn) {
         repeatBtn.dataset.state = repeat;
         repeatBtn.setAttribute("aria-pressed", String(repeat !== "off"));
         repeatBtn.setAttribute("aria-label", REPEAT_LABEL[repeat]);
-        repeatBtn.title = REPEAT_LABEL[repeat];
+        repeatBtn.title = REPEAT_HINT[repeat];
         if (repeatBtn.hidden !== station) {
           repeatBtn.hidden = station;
           refit();
@@ -179,7 +190,7 @@ export const nowPlayingCard: CardDef = {
       }
       if (shuffleBtn) {
         shuffleBtn.setAttribute("aria-pressed", String(shuffle));
-        shuffleBtn.title = shuffle ? "Shuffle on" : "Shuffle";
+        shuffleBtn.title = shuffle ? "Shuffle is on. Press again to turn it off" : "Shuffles the songs after this one";
       }
     };
     paintModes(getRepeat(), isShuffleOn(), false); // the persisted modes, before the first state event
@@ -188,6 +199,7 @@ export const nowPlayingCard: CardDef = {
       paintModes(s.repeat, s.shuffle, onStation);
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+      playBtn.title = s.playing ? "Pause" : "Play";
       // Between songs MusicKit reports no item for a beat. The queue already knows what
       // is about to play, so fill the gap from its current entry instead of showing the
       // placeholder and the "Not playing" text for a frame (the between-songs jitter).
@@ -212,12 +224,20 @@ export const nowPlayingCard: CardDef = {
       // The cover is rebuilt ONLY when the artwork or station changes: state fires on
       // every play/pause/loading tick, and re-creating the <img> each time flashed the
       // placeholder between identical covers.
-      const key = `${artwork ?? ""}|${s.station?.name ?? ""}`;
-      if (npArt && key !== artKey) {
+      // The song's identity, not its cover, decides a record's slide: two songs from one
+      // album share a cover but are still two records.
+      // The queue entry alone names a song: MusicKit's title lags a beat behind a song change,
+      // and a key built from both slid the record twice.
+      const song = s.station ? `station:${s.station.id}|${title ?? ""}` : `song:${cur?.catalogId ?? cur?.libraryId ?? title ?? ""}`;
+      const key = `${artwork ?? ""}|${s.station?.name ?? ""}|${song}`;
+      // Radio: between two station songs MusicKit reports the station with no title and no
+      // cover for a moment. That is a gap, not a song: keep the record that is up (the log
+      // showed record → ♪ → record, 143 ms apart, at the start of a station).
+      const radioGap = !!s.station && !title;
+      if (npArt && vinyl && key !== artKey && !(radioGap && artKey)) {
         artKey = key;
-        npArt.innerHTML = artwork
-          ? `<img src="${artwork}" alt="" data-art />`
-          : GLYPH_NOTE;
+        vinyl.show(song, artwork);
+        npArt.querySelector(".np__station")?.remove();
         // Radio: the station's name rides the cover as a hover chip (STATIONS.md §3b).
         if (s.station) {
           const chip = document.createElement("span");
@@ -227,6 +247,8 @@ export const nowPlayingCard: CardDef = {
         }
       }
       const live = !!s.station?.live;
+      liveNow = live;
+      vinyl?.playing(s.playing);
       npEl2?.classList.toggle("np--live", live);
       // Idle (nothing queued, no station): the aurora goes dark so the card matches its
       // neighbors instead of glowing over an empty placeholder (Glass).
@@ -449,13 +471,44 @@ export const nowPlayingCard: CardDef = {
 
     // Scrubber — live progress + drag-to-seek (shared slider primitive).
     let unsubProgress = () => {};
+    // The record's angle follows the play position (VINYL.md §4). MusicKit's count is whole
+    // seconds, rounded down (measured 2026-09-15: 3 while its <audio> read 3.145), which made
+    // the disc snap about a second in. Its audio element keeps the exact time; use that, and
+    // the count only when the element is missing or disagrees (a stream swap mid-read).
+    const audio = () => document.getElementById("apple-music-player") as HTMLAudioElement | null;
+    const unsubVinyl = onPlayerProgress((p) => {
+      lastDuration = p.duration;
+      // MusicKit makes the element only while a song plays, so it can be missing at a start.
+      // While it exists its clock wins, even against MusicKit's count: at a song change the
+      // count lags, and falling back to it started the new disc on the play flag, which
+      // flickers on before the stream loads (the disc turned 7°, stopped, then started).
+      // The old song's time on the element is ignored by vinyl.ts (a stale reading).
+      const t = audio()?.currentTime;
+      const exact = t !== undefined && isFinite(t);
+      vinyl?.position(exact ? t : p.currentTime, liveNow ? 0 : p.duration, exact);
+    });
     const npScrub = host.querySelector<HTMLElement>(".np__scrub");
     if (npScrub) {
       const seek = makeSlider(npScrub, {
         axis: "x",
-        onCommit: (frac) => seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err)),
+        onDrag: (frac) => vinyl?.scrub(frac * lastDuration), // the record follows the hand
+        onCommit: (frac) => {
+          vinyl?.scrub(frac * lastDuration, true);
+          seekHold = frac;
+          seekHoldUntil = performance.now() + 1500;
+          seekToFraction(frac).catch((err) => console.error("[player] seek failed:", err));
+        },
       });
+      // After a seek is let go, MusicKit reports the old position for a moment; those reports
+      // pulled the handle back before it jumped forward again (a flicker). Hold the handle
+      // where it was let go until a report lands within a second of it, for up to 1.5 s.
+      let seekHold = -1;
+      let seekHoldUntil = 0;
       unsubProgress = onPlayerProgress((p) => {
+        if (seekHold >= 0) {
+          if (performance.now() < seekHoldUntil && Math.abs(p.progress - seekHold) * p.duration > 1) return;
+          seekHold = -1;
+        }
         seek.setValue(p.progress); // no-op while dragging
         if (npElapsed) npElapsed.textContent = fmt(p.currentTime);
         if (npRemaining) npRemaining.textContent = p.duration ? `-${fmt(p.duration - p.currentTime)}` : "0:00";
@@ -467,6 +520,8 @@ export const nowPlayingCard: CardDef = {
         unsubState();
         unsubCover();
         unsubProgress();
+        unsubVinyl();
+        vinyl?.destroy();
         unsubAlbumColor();
         unsubAddState();
         unsubAddTracks();

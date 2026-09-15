@@ -189,6 +189,11 @@
 
 /* Extension block: a status line then two action rows. */
 .set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
+
+/* Tips (SETTINGS.md §3, 2026-09-15): the gesture in the text color, what it does under it
+   in the subtext color — the same two-line shape as a list row, no control. */
+.set__tip { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.set__tip-what { font-size: var(--fs-subtext); color: var(--subtext); }
 .set__action { cursor: pointer; }
 .set__action:hover { background: var(--surface-hover); }
 

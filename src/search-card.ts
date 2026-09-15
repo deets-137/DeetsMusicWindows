@@ -5,7 +5,7 @@
 // as the empty state; drill-in panes riding the same --nav-* motion tokens as the
 // engine (shared idiom, not shared code).
 
-import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
+import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter } from "./player";
 import { addTransientTracks, onTracksChange } from "./track-store";
 import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
 import * as frames from "./frames";
@@ -15,7 +15,7 @@ import {
 import { startStationItem } from "./start-station";
 import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
-import { copySongLinkItem, copyAlbumLinkItem } from "./copy-link";
+import { copySongLinkItem, copyAlbumLinkItem, copyStationLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
 import { onDrillRequest, onPlaylistPaneRequest } from "./go-to";
 import { esc, formatTotal, actionsRowHTML, runListAction } from "./collection-card";
@@ -103,12 +103,12 @@ function mountSearch(host: HTMLElement): CardInstance {
           <svg class="search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
           <input class="search__input" type="search" placeholder="Search Apple Music" spellcheck="false" />
           <span class="search__busy" aria-hidden="true"></span>
-          <button class="search__clear" type="button" aria-label="Clear search" hidden>
+          <button class="search__clear" type="button" aria-label="Clear search" title="Clears the search" hidden>
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
         </div>
         <div class="search__filter-wrap">
-          <button class="search__filter" type="button" aria-label="Filter categories" aria-haspopup="true" aria-expanded="false">
+          <button class="search__filter" type="button" aria-label="Filter categories" aria-haspopup="true" aria-expanded="false" title="Picks which kinds of results show: songs, albums, artists, playlists, stations">
             <svg class="search__filter-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5h12M4 8h8M6 11h4"/></svg>
           </button>
           <div class="search__filter-pop" role="menu" aria-label="Filter categories" hidden></div>
@@ -356,7 +356,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     pane.className = "spane";
     pane.dataset.pos = "right";
     pane.innerHTML = `
-      <div class="spane__head"><button class="spane__back" type="button" aria-label="Back">‹</button><span class="spane__title">${esc(title)}</span></div>
+      <div class="spane__head"><button class="spane__back" type="button" aria-label="Back" title="Goes back one step">‹</button><span class="spane__title">${esc(title)}</span></div>
       <div class="spane__scroll"></div>`;
     panes.appendChild(pane);
     // setTitle lets a drill-in relabel the pane once the target resolves (fallback
@@ -719,12 +719,25 @@ function mountSearch(host: HTMLElement): CardInstance {
         { label: "Go to Artist", run: () => openArtist(artist.dataset.artist!, a?.name ?? "Artist") },
         startStationItem("artists", artist.dataset.artist),
       ].filter(Boolean) as MenuItem[]);
+      return;
+    }
+    // A station tile (2026-09-15): the Radio card's menu — play, follow the queue, copy the link.
+    const st = t.closest<HTMLElement>("[data-station]");
+    if (st?.dataset.station) {
+      const s = results?.stations.find((x) => x.id === st.dataset.station);
+      if (!s) return;
+      e.preventDefault();
+      openContextMenu(e.clientX, e.clientY, [
+        { label: "Play Now", run: () => void playStation(s).catch((err) => console.error("[search] play station", err)) },
+        { label: "Add to Queue", run: () => void queueStationAfter(s).catch((err) => console.error("[search] queue station", err)) },
+        copyStationLinkItem(s.url),
+      ].filter(Boolean) as MenuItem[]);
     }
   });
 
-  // ── drag sources (DRAG-DROP.md §2): songs, albums, playlists — on the root and in every
-  // drill pane. A collection's songs are fetched only at the drop. Artists and stations
-  // aren't song lists. ──
+  // ── drag sources (DRAG-DROP.md §2): songs, albums, playlists, stations — on the root and
+  // in every drill pane. A collection's songs are fetched only at the drop. Artists aren't
+  // song lists. ──
   const drag = rowDrag({
     root: panes,
     label: "search",
@@ -756,6 +769,12 @@ function mountSearch(host: HTMLElement): CardInstance {
           row: pl, index: 0,
           payload: { source: "search", kind: "playlist", tracks: () => collectionTracks("playlists", id), context: `search-playlists:${id}` },
         };
+      }
+      // A station tile (2026-09-15): the Queue card plays it after the queue, Now Playing now.
+      const st = target.closest<HTMLElement>("[data-station]");
+      if (st?.dataset.station) {
+        const s = results?.stations.find((x) => x.id === st.dataset.station);
+        return s ? { row: st, index: 0, payload: { source: "search", kind: "station", station: s, tracks: () => [], play: () => playStation(s) } } : null;
       }
       return null;
     },

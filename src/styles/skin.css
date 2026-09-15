@@ -174,6 +174,33 @@
   --np-chip-pad:    var(--space-1) var(--space-2); /* station-name chip over the cover (radio) */
   --np-chip-strength: 82%;          /* how opaque that chip's panel wash is */
   --np-vol-gap:     var(--space-2); /* transport row ↔ the stage volume row (max) */
+
+  /* -- record player (Press "Record player"; docs/VINYL.md) -- */
+  /* Whether each place draws the cover as a record: 1 or 0. A skin turns them on from
+     the two rows' attributes (see the Press rules below). Base: off everywhere. The
+     geometry is written here once; radii are a % of the disc's radius. */
+  --vinyl-stage: 0;
+  --vinyl-strip: 0;
+  --vinyl-tray:  0;
+  --vinyl-inset:        0px;          /* room around the disc for the plate's shadow */
+  --vinyl-plate-shadow: none;
+  --vinyl-hole:         5%;           /* the spindle hole */
+  --vinyl-label:        33%;          /* the label edge (a real LP: 100 of 300 mm) */
+  --vinyl-ring-w:       1px;
+  --vinyl-ring-ink:     var(--title);
+  --vinyl-ring-alpha:   30%;
+  --vinyl-groove-pitch: 3px;
+  --vinyl-groove-w:     1px;
+  --vinyl-groove-ink:   var(--title);
+  --vinyl-groove-alpha: 9%;
+  --vinyl-sheen-ink:    var(--surface);
+  --vinyl-sheen-alpha:  35%;
+  --vinyl-sheen-from:   300deg;       /* where the light sits */
+  --vinyl-sheen-spread: 28deg;        /* each of its two lobes */
+  --vinyl-swap-dur:     0.4s;
+  --vinyl-swap-ease:    ease-in-out;
+  --vinyl-swap-travel:  110%;         /* of the disc: far enough to leave the cover box */
+  --vinyl-swap-fade:    0;            /* opacity at the far end of the slide */
   /* AirPlay "Play on" panel (AIRPLAY.md) */
   --ap-panel-w:     220px;
   --ap-row-h:       var(--icon-lg);
@@ -445,6 +472,13 @@
   --boot-stagger: 40ms;
   --cover-in-dur: 0.16s;
 
+  /* record player — the disc sits on the press plate (the card's own offset ink), and a
+     song change pulls one sheet off and stamps the next down: the nav ease, a longer run */
+  --vinyl-inset:        5px;
+  --vinyl-plate-shadow: 4px 4px 0 var(--ink-2);
+  --vinyl-swap-dur:     0.42s;
+  --vinyl-swap-ease:    cubic-bezier(0.85, 0, 0.15, 1);
+
   /* nav — a sheet pulled off the stack and the next one stamped down:
      the classic horizontal push, but fast and hard-eased at both ends,
      and the stock is opaque so the outgoing pane needs no fade. */
@@ -537,6 +571,15 @@
      the bar, so it reads as the rail itself swelling at the playhead. */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 12Q12 5 23 12Q12 19 1 12Z' fill='%23000'/%3E%3C/svg%3E");
 }
+
+/* Press "Record player" (Settings; src/skin-settings.ts sets data-press-vinyl and
+   data-press-vinyl-where on <html>). Spin and Still both draw the record; the stage always
+   shows it, the card strip unless "Stage", the tray panel only with "Everywhere". */
+[data-skin="press"]:is([data-press-vinyl="spin"], [data-press-vinyl="still"]) { --vinyl-stage: 1; }
+[data-skin="press"]:is([data-press-vinyl="spin"], [data-press-vinyl="still"]):is([data-press-vinyl-where="card"], [data-press-vinyl-where="everywhere"]) { --vinyl-strip: 1; }
+[data-skin="press"]:is([data-press-vinyl="spin"], [data-press-vinyl="still"])[data-press-vinyl-where="everywhere"] { --vinyl-tray: 1; }
+/* Show record plate: Off — no offset ink behind the record, and the record fills the box. */
+[data-skin="press"][data-press-vinyl-plate="off"] { --vinyl-plate-shadow: none; --vinyl-inset: 0px; }
 
 /* Ocean's sand edges (Settings › Draw card edges: Sand; src/skin-settings.ts sets
    data-ocean-edges) — a dark beach: the card's edge breaks into grains over

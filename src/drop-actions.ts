@@ -7,7 +7,7 @@
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import type { DragPayload } from "./row-drag";
-import { playTracks, playTracksKeepQueue, queueTracksAt } from "./player";
+import { playTracks, playTracksKeepQueue, queueTracksAt, queueStationAfter } from "./player";
 import { setting } from "./settings-store";
 import * as queue from "./queue";
 import { playlistInsertTracks, addToApple, names, songs } from "./playlists";
@@ -19,9 +19,21 @@ const what = (ts: Track[]) => (ts.length === 1 ? names([ts[0].title]) : songs(ts
 
 const resolve = (p: DragPayload): Promise<Track[]> => Promise.resolve(p.tracks());
 
-/** The Queue card: into Up Next at `at` (0 = next). Nothing playing → the songs start. */
+/** The Queue card: into Up Next at `at` (0 = next). Nothing playing → the songs start.
+ *  A station (2026-09-15) has no place among the songs: wherever it lands it becomes the
+ *  station return and plays once the queue runs dry (player.ts queueStationAfter). */
 export function dropToQueue(p: DragPayload, at: number): void {
   const wasPlaying = !!queue.getCurrent();
+  if (p.kind === "station") {
+    const s = p.station;
+    if (!s) return;
+    queueStationAfter(s)
+      .then(() => {
+        if (wasPlaying) toast({ kind: "success", text: `“${s.name}” plays after the queue.` });
+      })
+      .catch((e) => console.error("[drop] queue station", e)); // playStation raises its own toast
+    return;
+  }
   resolve(p)
     .catch((e) => {
       toast({ kind: "warn", text: "Couldn't add to the queue." }); // the fetch failed; queueTracksAt says its own

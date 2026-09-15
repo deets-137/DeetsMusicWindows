@@ -36,6 +36,12 @@ export function copySongLinkItem(catalogId?: string | null): MenuItem | null {
   return { label: LABEL, run: () => void copy(url("song", catalogId)) };
 }
 
+/** A station's link — Apple's own share URL on the station (Radio / Search tiles). */
+export function copyStationLinkItem(url?: string | null): MenuItem | null {
+  if (!url) return null;
+  return { label: LABEL, run: () => void copy(url) };
+}
+
 /** An album's link, from the album's own catalog id (Search results). */
 export function copyAlbumLinkItem(catalogId?: string | null): MenuItem | null {
   if (!catalogId) return null;

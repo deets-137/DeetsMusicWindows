@@ -459,11 +459,11 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
 // .coll-body mount point, so it can be mounted into any slot.
 const HEAD = `
   <header class="panel__head">
-    <button class="panel__back" id="library-back" type="button" aria-label="Back" hidden>
+    <button class="panel__back" id="library-back" type="button" aria-label="Back" title="Goes back one step" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
     </button>
     <h2 class="panel__title">Library</h2>
-    <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library">
+    <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library" title="Reads your library from Apple Music again">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
@@ -753,7 +753,7 @@ export const libraryCard: CardDef = {
     const unregisterDrop = registerDropTarget({
       el: host,
       over: (_under, _x, _y, p) =>
-        libraryAddEnabled() && p.source !== "library" ? { highlight: host, drop: () => dropToLibrary(p) } : null,
+        libraryAddEnabled() && p.source !== "library" && p.kind !== "station" ? { highlight: host, drop: () => dropToLibrary(p) } : null,
     });
 
     const triggerSync = () => librarySync().catch((e) => console.error("[sync]", e));

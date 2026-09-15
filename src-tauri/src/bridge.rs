@@ -99,6 +99,9 @@ pub struct NpState {
     pub cover_url: Option<String>,
     pub catalog_id: Option<String>,
     pub in_library: bool,
+    /// ♥ state for the tray panel's right-click: None = not offered (no consent / no
+    /// catalog id), Some(true) = loved (2026-09-15).
+    pub loved: Option<bool>,
     pub live: bool,
     pub progress: f64,
     pub current_time: f64,

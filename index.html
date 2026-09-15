@@ -87,6 +87,7 @@
           type="button"
           aria-haspopup="true"
           aria-expanded="false"
+          title="Opens the menu: theme, skin, window size, account, and Settings"
         >DeetsMusic</button>
 
         <div class="menu" id="settings-menu" role="menu" hidden>
@@ -94,12 +95,12 @@
             <span class="menu__label">Theme</span>
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout" role="menu" aria-label="Theme">
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="lilac"        data-theme-choice="lilac">Lilac</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="green"        data-theme-choice="green">Green</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="sepia"        data-theme-choice="sepia">Sepia</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="moonlight"    data-theme-choice="moonlight">Moonlight</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="black-yellow" data-theme-choice="black-yellow">Black &amp; Yellow</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-theme="black-red"    data-theme-choice="black-red">Black &amp; Red</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="lilac"        data-theme-choice="lilac"        title="Light. Purple and mint">Lilac</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="green"        data-theme-choice="green"        title="Light. Green and fern">Green</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="sepia"        data-theme-choice="sepia"        title="Light. Parchment and terracotta">Sepia</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="moonlight"    data-theme-choice="moonlight"    title="Dark. Slate and moon white">Moonlight</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="black-yellow" data-theme-choice="black-yellow" title="Dark. Yellow on black">Black &amp; Yellow</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-theme="black-red"    data-theme-choice="black-red"    title="Dark. Red on black">Black &amp; Red</button>
             </div>
           </div>
 
@@ -109,10 +110,10 @@
             <div class="flyout" role="menu" aria-label="Skin">
               <!-- Vanilla is hidden from the picker (2026-09-10): its block is still the
                    [data-skin] base in skin.css and a saved "vanilla" still applies. -->
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="press"        data-skin-choice="press">Press</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"        data-skin-choice="ocean">Ocean</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"        data-skin-choice="glass">Glass</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="retro-future" data-skin-choice="retro-future">Retro-Future</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="press"        data-skin-choice="press"        title="A print shop: ink on paper, square corners. The cover can be a record">Press</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"        data-skin-choice="ocean"        title="Cards on rolling waves, with a serif">Ocean</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"        data-skin-choice="glass"        title="Frosted panels over a soft glow">Glass</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="retro-future" data-skin-choice="retro-future" title="Lightning behind the cards, machined type">Retro-Future</button>
             </div>
           </div>
 
@@ -123,18 +124,18 @@
               <!-- Mini | NP (2026-09-14): one pill cut in two, the search pin idiom. Mini =
                    Now Playing + one card; NP = the player (Now Playing alone). -->
               <div class="flyout__item flyout__split" data-surface-choice-row="mini">
-                <button class="flyout__half" type="button" role="menuitemradio" data-surface-choice="mini" data-mini-choice="cards">Mini</button>
-                <button class="flyout__half" type="button" role="menuitemradio" data-surface-choice="mini" data-mini-choice="player" title="Now Playing only">NP</button>
+                <button class="flyout__half" type="button" role="menuitemradio" data-surface-choice="mini" data-mini-choice="cards" title="A small window: Now Playing and one card">Mini</button>
+                <button class="flyout__half" type="button" role="menuitemradio" data-surface-choice="mini" data-mini-choice="player" title="The player alone: Now Playing only">NP</button>
               </div>
-              <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="midi">Midi</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="max">Max</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="midi" title="The tall window: Now Playing and two cards">Midi</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="max" title="The wide window: the stage, the queue, and four cards">Max</button>
             </div>
           </div>
 
           <!-- Everything else (Always on Top, Minimize to Tray, hover menus, Library Add,
                the Extension block, the playback/playlist preferences) lives in the
                Settings card (SETTINGS.md); this row summons it into a slot. -->
-          <button class="menu__row menu__row--toggle" id="settings-open" type="button" role="menuitem" data-row="settings">
+          <button class="menu__row menu__row--toggle" id="settings-open" type="button" role="menuitem" data-row="settings" title="Shows the Settings card">
             <span class="menu__label">Settings…</span>
           </button>
 
@@ -168,33 +169,34 @@
             aria-haspopup="true"
             aria-expanded="false"
             aria-label="Volume"
+            title="The volume. Hover for the slider"
           >
             <span class="vol__pill-fill" aria-hidden="true"></span>
             <span class="vol__pill-label">Vol.</span>
           </button>
 
           <div class="vol__panel" id="vol-panel" role="group" aria-label="Volume" hidden>
-            <button class="vol__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false"></button>
+            <button class="vol__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false" title="Turns the sound off and on"></button>
             <div class="scrub scrub--v" id="vol-scrub">
               <div class="scrub__track"><div class="scrub__fill"></div></div>
               <span class="scrub__handle" aria-hidden="true"></span>
             </div>
             <!-- AirPlay (AIRPLAY.md): the "Play on" panel for mini/midi; max has the
                  same square on the stage volume row. CSS shows one per surface. -->
-            <button class="vol__airplay ap-square" id="vol-airplay" type="button" aria-label="AirPlay" data-state="idle">
+            <button class="vol__airplay ap-square" id="vol-airplay" type="button" aria-label="AirPlay" data-state="idle" title="Plays on a speaker or TV on your network">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17a8 8 0 1 1 14 0" fill="none"></path><path d="M8 21l4-5 4 5z" fill="none"></path></svg>
             </button>
           </div>
         </div>
 
         <div class="lights">
-          <button class="light light--max" id="tl-max" type="button" aria-label="Maximize">
+          <button class="light light--max" id="tl-max" type="button" aria-label="Maximize" title="Fills the screen. Press again to go back">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.6V8.4M1.6 5H8.4" /></svg>
         </button>
-        <button class="light light--min" id="tl-min" type="button" aria-label="Minimize">
+        <button class="light light--min" id="tl-min" type="button" aria-label="Minimize" title="Puts the window on the taskbar">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.6 5H8.4" /></svg>
         </button>
-        <button class="light light--close" id="tl-close" type="button" aria-label="Close">
+        <button class="light light--close" id="tl-close" type="button" aria-label="Close" title="Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 2.3L7.7 7.7M7.7 2.3L2.3 7.7" /></svg>
         </button>
         </div>

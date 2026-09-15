@@ -161,6 +161,20 @@ interface ResetGroup {
   /** The theme and skin, which live outside the store (theme.ts, skin.ts). */
   look?: boolean;
 }
+// Settings › Tips (2026-09-15): [the gesture, why to try it]. Not a manual — the few
+// habits that let a person find everything else on their own. Hover and right-click
+// first; they unlock the rest. Same voice as the row hints: short, active, no jargon.
+// The last note is true only while Close to tray is on (its default); the tail drops it otherwise.
+const TIP_CLOSE = "Close is not quit";
+const TIPS: [string, string][] = [
+  ["Hover anything", "Hold the pointer on a button for a moment. A note says what it does. Every button has one."],
+  ["Right-click anything", "A song, an album, a playlist, a station, the cover in Now Playing. The menu holds what you can do with it. Nothing in it can break."],
+  ["Drag anything", "Songs, albums, and playlists move. Drop one on Now Playing, on the Queue, or on a playlist and see."],
+  ["Click your way in", "A tile opens. The arrow at the top goes back. Sort, View, and the magnifier above a list are safe to try."],
+  ["Click DeetsMusic at the top left", "The look and the size of the window live there. Try a theme, a skin, and Mini or Max. Nothing is permanent."],
+  [TIP_CLOSE, "The × hides DeetsMusic to the tray and the music keeps playing. The tray icon brings it back."],
+];
+
 const RESET_GROUPS: ResetGroup[] = [
   { id: "look", label: "Theme and skin", hint: "The first-launch pair for your Windows light or dark mode", keys: [], look: true },
   {
@@ -169,8 +183,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "The three Animate rows", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, and the four Glass sliders",
-    keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, the four Glass sliders, and the Press record player",
+    keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate"],
   },
   { id: "menus", label: "Menus and notices", hint: "Open menus on hover and Show notices", keys: ["menuMode", "toasts"] },
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "alwaysOnTop"] },
@@ -423,6 +437,16 @@ function mountSettings(host: HTMLElement): CardInstance {
     // Labels: one short active statement each; the hint (hover) only where a word is
     // missing. Section names are the shortest noun that groups the rows.
     {
+      // Tips (2026-09-15): the gestures nothing on screen announces — right-click, drag,
+      // the title menu, hover. Static text in the row shape; no controls, no count badge.
+      title: "Tips",
+      rows: [],
+      tail: () =>
+        TIPS.filter(([what]) => what !== TIP_CLOSE || minimizeToTray)
+          .map(([what, how]) => `<div class="set__tip"><span class="set__label">${esc(what)}</span><span class="set__tip-what">${esc(how)}</span></div>`)
+          .join(""),
+    },
+    {
       title: "Window",
       rows: [
         {
@@ -548,6 +572,25 @@ function mountSettings(host: HTMLElement): CardInstance {
           hint: "Glass only. The card color over the backlight. Less tint: more glow",
           preview: (v) => previewSkin("glassTint", v),
           when: () => currentSkin() === "glass",
+        },
+        {
+          kind: "choice", id: "pressvinyl", label: "Record player", key: "pressVinyl",
+          hint: "Press only. The cover becomes a record. Spin: it turns while music plays",
+          options: [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }],
+          when: () => currentSkin() === "press",
+        },
+        {
+          kind: "choice", id: "pressvinylwhere", label: "Show record on", key: "pressVinylWhere",
+          hint: "Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel",
+          options: [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }],
+          when: () => currentSkin() === "press" && setting("pressVinyl") !== "off",
+        },
+        {
+          kind: "toggle", id: "pressvinylplate", label: "Show record plate",
+          hint: () => "Press only. The offset ink behind the record. Off: only the record, a little larger",
+          get: () => setting("pressVinylPlate"),
+          set: (on) => setSetting("pressVinylPlate", on),
+          when: () => currentSkin() === "press" && setting("pressVinyl") !== "off",
         },
         {
           kind: "toggle",

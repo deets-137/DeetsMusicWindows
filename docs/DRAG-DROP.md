@@ -58,8 +58,10 @@ lazy `tracks()` that runs only at the drop (so a Search album costs no fetch unt
 | Rewind | songs · albums · playlists | as its right-click menu (`trackMenu` lists, lazy playlist fetch) |
 | Now Playing | the cover | the current song |
 
-**Not sources:** Radio stations and genres (not song lists), folder and shelf headers, the
-Up Next station row. One item per drag (there is no multi-select in the app).
+| Radio · Search | a **station** row / tile (2026-09-15) | none — `kind: "station"`, `station` set, `play` = `playStation`. The Queue card makes it the station return (`queueStationAfter`: plays once the queue runs dry, the Qcard row says *Will resume after*); Now Playing plays it now; playlists and the Library refuse it (the *can't drop* ghost) |
+
+**Not sources:** Radio genres (not song lists), folder and shelf headers, the Up Next
+station row. One item per drag (there is no multi-select in the app).
 
 ---
 

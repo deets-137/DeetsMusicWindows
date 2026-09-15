@@ -48,6 +48,15 @@ export interface Settings {
   /** Glass only, 0–100: darkens the canvas between the cards; the cards keep their brightness
    *  (their frost undoes the dim). skin-settings.ts publishes it as --glass-canvas-dim. */
   glassCanvasDim: number;
+  /** Press only: the cover becomes a record that turns while music plays, a record that holds
+   *  still, or the plain cover (docs/VINYL.md). skin-settings.ts applies it as `data-press-vinyl`. */
+  pressVinyl: "spin" | "still" | "off";
+  /** Press record only: where it shows — the stage (max, mini player view), the stage and the
+   *  Now Playing card, or those and the tray panel. `data-press-vinyl-where` on <html>. */
+  pressVinylWhere: "stage" | "card" | "everywhere";
+  /** Press record only: the offset plate (the Press ink shadow) behind the record. Off: the record
+   *  alone, as large as the box allows. `data-press-vinyl-plate` on <html>. */
+  pressVinylPlate: boolean;
   /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
    *  all = every kind, confirmations included. No "off": a failure always shows. */
   toasts: "failures" | "all";
@@ -143,6 +152,9 @@ export const DEFAULTS: Settings = {
   glassBacklight: 50, // user's call 2026-09-15: a cool 50%, a glow that is not garish
   glassCanvasGlow: 50, // the aurora as the skin writes it
   glassCanvasDim: 0, // no dim: today's look
+  pressVinyl: "off", // opt-in, like Sand
+  pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
+  pressVinylPlate: true,
   toasts: "all", // user's call 2026-09-13: Everything by default
   lookSchedule: "off",
   dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
@@ -240,6 +252,17 @@ export function onSettingsChange(cb: (changed: keyof Settings) => void): () => v
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
+
+// The tray panel reads this store too (same origin, same localStorage). A save in the main
+// window reaches it as a `storage` event: reload, and notify each key that changed.
+window.addEventListener("storage", (e) => {
+  if (e.key !== KEY) return;
+  const prev = state;
+  state = load();
+  (Object.keys(state) as (keyof Settings)[]).forEach((k) => {
+    if (prev[k] !== state[k]) listeners.forEach((cb) => cb(k));
+  });
+});
 
 // Values the store does not own (Rust's Close to tray, Start with Windows, Agent control)
 // changed outside the Settings card — an agent set them (agent-settings.ts). The card caches

@@ -89,7 +89,7 @@ a song appears (`trackMenu`, library-card.ts).
 | Now Playing | cover · title · artist | the Queue now-hero menu |
 | History · Rewind | row | Play Now · Play Next · Add to Queue (+ Go to Artist / Album, links where a catalog id exists) |
 | Search | song · album · playlist · artist | the song menu · the album menu (+ Add to Library) · the playlist menu · Go to Artist · Start Station |
-| Search · Radio | **station** (2026-09-15) | Play Now · Add to Queue (plays when the queue runs dry) · Copy Link |
+| Search · Radio | **station** (2026-09-15) | Play Now · Add to Queue (plays when the queue runs dry) · Copy Link. A station also drags: to the Queue card (after the queue) or Now Playing (now) |
 | Artist view | shelf playlist | Play Now · Play Next · Add to Queue · Add to Playlist ▸ |
 | Settings | My reports row | Open · Copy link · Close · Clear |
 | **Tray panel** | song (2026-09-15) | Add to Library · Favorite / Unfavorite · Copy Link |
@@ -104,8 +104,8 @@ The first Settings section, collapsed by default, six two-line notes: the gestur
 text color, why to try it in the subtext color (`TIPS` in settings-card.ts, `.set__tip` in
 settings.css). **It is not a manual.** It teaches the habits that let a person find the rest
 alone — *hover anything*, *right-click anything*, *drag anything*, *click your way in*, the
-title menu, and *close is not quit* — and tells them it is safe ("Nothing in it can break",
-"Nothing is permanent"). The menu verbs are not listed there; the menus show them. When a
+title menu, and *close is not quit* (shown only while Close to tray is on, its default) —
+and tells them it is safe ("Nothing in it can break", "Nothing is permanent"). The menu verbs are not listed there; the menus show them. When a
 gesture is added to the app (not a verb), add a note.
 
 ## 4. The first-run walk — designed, not built

@@ -63,6 +63,20 @@ function exitRadio(): void {
   pendingBreakout = false;
 }
 
+/**
+ * A station's "Add to Queue" (Radio / Search right-click, 2026-09-15): a station is a
+ * stream, so it cannot sit among the songs — it plays once the finite queue runs dry,
+ * the same return path a break-out uses (maybeResumeStation). With nothing to wait for
+ * (idle, or already on a station) it simply starts now.
+ */
+export function queueStationAfter(s: Station): Promise<void> {
+  if (mode === "radio" || (!queue.getCurrent() && !queue.getUpcoming().length)) return playStation(s);
+  diag.log("player:queueStation", { id: s.id });
+  resumeStation = s;
+  emit(); // the Qcard's station row: "Will resume after"
+  return Promise.resolve();
+}
+
 /** Drop the queued station return (the Qcard's "Don't resume"). */
 export function dropResumeStation(): void {
   if (!resumeStation) return;

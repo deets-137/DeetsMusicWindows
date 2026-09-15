@@ -276,7 +276,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     const from = panel.hidden ? 0 : panel.offsetHeight; // before the rows change (mid-grow: the current height)
     const c = status.connected;
     square.dataset.state = c ? "on" : status.connecting ? "connecting" : "idle";
-    square.title = c ? `Playing on ${c.speaker.name}` : "AirPlay";
+    square.title = c ? `Playing on ${c.speaker.name}` : "Plays on a speaker or TV on your network";
 
     // The list: This computer, then every speaker found; the last-used speaker
     // shows even before a scan finds it.

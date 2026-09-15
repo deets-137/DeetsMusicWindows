@@ -17,6 +17,10 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { makeSlider } from "./slider";
 import { log } from "./diag";
+import { mountVinyl } from "./vinyl";
+import { applyVinylAttrs, isVinylKey } from "./skin-settings";
+import { onSettingsChange } from "./settings-store";
+import { openContextMenu, type MenuItem } from "./context-menu";
 import type { NpState } from "./np-bus";
 import type { Track } from "./library";
 
@@ -105,8 +109,19 @@ window.addEventListener("DOMContentLoaded", () => {
   let win: WinNowPlaying | null = null;
   let settings: Settings = { minimizeToTray: true, readWindowsMedia: true };
   let visible = false;
-  let lastArtKey = "";
   let paletteKey = "";
+  let seekHold = -1; // where a seek was let go, until the position reaches it
+  let seekHoldUntil = 0;
+
+  // The cover box (docs/VINYL.md): the Press record when "Show record on" is Everywhere.
+  // The two rows come from the shared settings store; a change in the main window arrives
+  // as a `storage` event (settings-store.ts).
+  applyVinylAttrs();
+  onSettingsChange((k) => {
+    if (isVinylKey(k)) applyVinylAttrs();
+  });
+  const vinyl = mountVinyl(art, '<span class="np__art-glyph" aria-hidden="true">♪</span>');
+  vinyl.suspend(true); // the panel starts hidden
 
   // ── palette (ALBUM-COLOR.md) — same runtime roles the NP card uses ──
   const PROPS = ["--album-bg", "--album-c1", "--album-c2"] as const;
@@ -133,7 +148,13 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── sliders ──
   const seek = makeSlider($("np-scrub"), {
     axis: "x",
+    onDrag: (frac) => {
+      if (source === "deets" && deets) vinyl.scrub(frac * deets.duration);
+    },
     onCommit: (frac) => {
+      seekHold = frac;
+      seekHoldUntil = performance.now() + 1500;
+      if (source === "deets" && deets) vinyl.scrub(frac * deets.duration, true);
       if (source === "deets") invoke("np_command", { cmd: { kind: "seek", value: frac } }).catch(console.error);
       else if (source === "windows" && win?.canSeek && win.durationSecs > 0)
         invoke("win_media_seek", { secs: frac * win.durationSecs }).catch(console.error);
@@ -236,11 +257,8 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // ── render ──
-  const setArt = (key: string, html: string) => {
-    if (key === lastArtKey) return;
-    lastArtKey = key;
-    art.innerHTML = html;
-  };
+  /** `song` names the track (a new one slides the record); no `src` = the ♪ placeholder. */
+  const setArt = (song: string, src: string | undefined) => vinyl.show(song, src || undefined);
 
   const renderDeets = (s: NpState) => {
     source = "deets";
@@ -248,15 +266,28 @@ window.addEventListener("DOMContentLoaded", () => {
     sourceEl.hidden = false;
     playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
     playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+    playBtn.title = s.playing ? "Pause" : "Play";
     title.textContent = s.title ?? "Not playing";
     artist.textContent = s.artist ?? "";
     // The playlist's cover under "Show cover: Playlist" (PLAYLISTS.md §11); the tint stays on the album.
     const cover = s.coverUrl ?? s.artworkUrl;
-    setArt(cover ?? "", cover ? `<img src="${cover}" alt="" data-art />` : "♪");
+    // The song's id alone names it: the title can lag a beat behind a song change.
+    // A station with no title is the gap between two station songs: keep the record (card twin).
+    if (!(s.station && !s.title)) {
+      setArt(s.catalogId ? `deets:${s.catalogId}` : `deets:${s.station ?? ""}|${s.title ?? ""}`, cover);
+    }
+    vinyl.playing(s.playing);
+    vinyl.position(s.currentTime, s.live ? 0 : s.duration, false); // MusicKit's whole-second count
     npEl.classList.toggle("np--live", s.live);
     prevBtn.disabled = s.live;
     nextBtn.disabled = s.live;
-    seek.setValue(s.progress);
+    // After a seek is let go, the old position arrives for a moment: hold the handle (card twin).
+    if (seekHold >= 0 && performance.now() < seekHoldUntil && Math.abs(s.progress - seekHold) * s.duration > 1) {
+      // still the old position
+    } else {
+      seekHold = -1;
+      seek.setValue(s.progress);
+    }
     timeEl.textContent = s.live ? "" : `${fmtTime(s.currentTime)} / ${fmtTime(s.duration)}`;
     reflectVolume(s.volume, s.muted);
     tintFrom(s.artworkTemplate, s.catalogId);
@@ -272,9 +303,14 @@ window.addEventListener("DOMContentLoaded", () => {
     sourceEl.hidden = false;
     playBtn.innerHTML = w.playing ? ICON_PAUSE : ICON_PLAY;
     playBtn.setAttribute("aria-label", w.playing ? "Pause" : "Play");
+    playBtn.title = w.playing ? "Pause" : "Play";
     title.textContent = w.title || "Playing";
     artist.textContent = [w.artist, w.album].filter(Boolean).join(" · ");
-    setArt(w.artDataUrl ?? "", w.artDataUrl ? `<img src="${w.artDataUrl}" alt="" data-art />` : "♪");
+    setArt(`win:${w.appId}|${w.title}|${w.artist}`, w.artDataUrl);
+    // Another app's position arrives only once a second and can lag, so its record turns
+    // freely at 33⅓ rpm while it plays (no end to land upright on).
+    vinyl.playing(w.playing);
+    vinyl.position(0, 0, false);
     npEl.classList.remove("np--live");
     prevBtn.disabled = false;
     nextBtn.disabled = false;
@@ -291,7 +327,8 @@ window.addEventListener("DOMContentLoaded", () => {
     playBtn.innerHTML = ICON_PLAY;
     title.textContent = "Not playing";
     artist.textContent = settings.readWindowsMedia ? "" : "Windows media off";
-    setArt("", "♪");
+    setArt("", undefined);
+    vinyl.playing(false);
     npEl.classList.remove("np--live");
     seek.setValue(0);
     timeEl.textContent = "";
@@ -352,6 +389,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   listen("panel-shown", () => {
     visible = true;
+    vinyl.suspend(false);
     log("tray:shown");
     invoke<NpState>("np_snapshot").then((s) => {
       deets = s;
@@ -364,12 +402,14 @@ window.addEventListener("DOMContentLoaded", () => {
     // Release builds hide on blur (tray.rs); either way, stop polling until shown.
     visible = false;
     stopPolling();
+    vinyl.suspend(true);
   });
 
   // ── chrome ──
   $("tray-hide").addEventListener("click", () => {
     visible = false;
     stopPolling();
+    vinyl.suspend(true);
     invoke("tray_panel_hide").catch(() => appWindow.hide());
   });
   $("tray-open").addEventListener("click", () => invoke("tray_open_main").catch(console.error));
@@ -382,6 +422,27 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   };
   new ResizeObserver(fit).observe(document.body);
+
+  // ── right-click the song (cover / title / artist), DeetsMusic source only (2026-09-15):
+  //    the Now Playing card's menu minus the drills (no cards here). Add and ♥ go to the
+  //    main window as np_command kinds; the link is copied here (no toast on this window).
+  //    Go to Artist / Album need the main window, so they are not offered. ──
+  const songMenu = (e: MouseEvent) => {
+    if (source !== "deets" || !deets?.active) return; // another app's song: nothing to offer
+    const s = deets;
+    const items: MenuItem[] = [];
+    if (s.catalogId && !s.inLibrary)
+      items.push({ label: "Add to Library", run: () => void invoke("np_command", { cmd: { kind: "add-to-library" } }).catch((err) => log("tray:add-failed", String(err))) });
+    if (s.loved !== null && s.loved !== undefined)
+      items.push({ label: s.loved ? "Unfavorite" : "Favorite", run: () => void invoke("np_command", { cmd: { kind: "favorite" } }).catch((err) => log("tray:favorite-failed", String(err))) });
+    if (s.catalogId)
+      items.push({ label: "Copy Link", run: () => void navigator.clipboard.writeText(`https://music.apple.com/song/${s.catalogId}`).catch((err) => log("tray:copy-failed", String(err))) });
+    if (!items.length) return;
+    e.preventDefault();
+    openContextMenu(e.clientX, e.clientY, items);
+  };
+  art.addEventListener("contextmenu", songMenu);
+  title.parentElement?.addEventListener("contextmenu", songMenu);
 
   // ── boot ──
   invoke<Settings>("settings_get").then((s) => (settings = s)).catch(() => {});

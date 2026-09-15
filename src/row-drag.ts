@@ -14,6 +14,7 @@
 
 import * as frames from "./frames";
 import type { Track } from "./library";
+import type { Station } from "./radio";
 
 const DRAG_THRESHOLD = 6;
 const EDGE = 28; // px from a list's top/bottom edge where auto-scroll starts
@@ -25,10 +26,14 @@ export interface DragPayload {
   /** The card it came from ("library", "playlists", "search", "queue", "queue-now",
    *  "history", "rewind", "now-playing") — a target refuses its own card's drags. */
   source: string;
-  kind: "song" | "album" | "playlist" | "artist";
+  /** `station` (2026-09-15): a stream, not a song list — `tracks()` is empty, `station` is
+   *  set, and only the Queue card (plays after the queue) and Now Playing (plays now) take it. */
+  kind: "song" | "album" | "playlist" | "artist" | "station";
   /** Songs in a collection, when known at press time — shown on the ghost. */
   count?: number;
   tracks: () => Track[] | Promise<Track[]>;
+  /** The station a `station` payload carries. */
+  station?: Station;
   /** The queue-origin tag for songs played or queued from this drag. */
   context?: string;
   /** A catalog album: the Library drop adds it as the album. */

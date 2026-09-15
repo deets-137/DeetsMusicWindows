@@ -28,6 +28,7 @@ import {
 import * as queue from "./queue";
 import { resolveEntry } from "./queue-rows";
 import { addTrackToLibrary } from "./library-add";
+import { favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
 import { inLibrary, loadTracks, onTracksChange } from "./track-store";
 import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, playStation, reconcileUpcoming } from "./player";
 import { toggleShuffle, setShuffleMode, cycleRepeat, setRepeat, getRepeat, isShuffleOn } from "./player";
@@ -54,6 +55,8 @@ export interface NpState {
   coverUrl?: string;
   catalogId?: string;
   inLibrary: boolean;
+  /** ♥ for the tray panel's right-click: null = not offered (no consent / no catalog id). */
+  loved: boolean | null;
   live: boolean;
   progress: number;
   currentTime: number;
@@ -92,6 +95,7 @@ function snapshot(): NpState {
     coverUrl: lastState.station ? undefined : playlistCoverFor(cur?.context, 480),
     catalogId,
     inLibrary: inLibrary(catalogId) || inLibrary(cur?.libraryId),
+    loved: favoriteOffered(t) ? isLoved(t) : null,
     live: !!lastState.station?.live,
     progress: lastProgress.progress,
     currentTime: lastProgress.currentTime,
@@ -146,6 +150,13 @@ async function run(cmd: NpCommand): Promise<void> {
       const t = cur ? resolveEntry(cur) : undefined;
       if (!t) throw new Error("no current track to add");
       await addTrackToLibrary(t);
+      return publish(true);
+    }
+    case "favorite": { // the tray panel's right-click ♥ (toggles; favorites.ts rolls back on error)
+      const cur = queue.getCurrent();
+      const t = cur ? resolveEntry(cur) : undefined;
+      if (!favoriteOffered(t)) throw new Error("no current track to favorite");
+      await toggleLoved(t);
       return publish(true);
     }
     default:
@@ -298,6 +309,7 @@ export function initNpBus(): void {
   });
   // Library membership changes (sync, an add from the tray/extension) flip the "+".
   onTracksChange(() => publish(true), "np-bus.publish");
+  onFavoritesChange(() => publish(true)); // the tray's ♥ label follows a ♥ set anywhere
   // "Show cover" flipped or a playlist's cover changed: the tray panel's cover follows.
   onPlaylistCoverChange(() => publish(true));
 

@@ -1931,7 +1931,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   aspect-ratio: 1 / 1;
   min-width: var(--np-cover); min-height: var(--np-cover);
   border-radius: var(--radius-control);
-  background: var(--surface-hover);
+  /* a record clears the square behind it (the corners show the card) */
+  background: color-mix(in srgb, var(--surface-hover) calc((1 - var(--vinyl)) * 100%), transparent);
   color: var(--subtext);
   font-size: var(--np-cover-glyph);
   overflow: hidden;
@@ -1941,6 +1942,84 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   line-height: 1; /* the inherited 1.45 line box is what sat the 96px glyph low of center */
+}
+
+/* ── Record player (Press "Record player"; docs/VINYL.md, src/vinyl.ts) ──────
+   The cover box holds its art in a slot (.vinyl): a plate, the art that turns
+   (.vinyl__spin, a Web Animation), and a sheen that does not turn. --vinyl on the box
+   says whether this place draws a record (1) or the plain cover (0); the skin sets the
+   three place values (skin.css --vinyl-stage / -strip / -tray). At 0 the slot draws
+   exactly the old square cover. The slide axis (vinyl.ts reads it): sideways on the stage,
+   down elsewhere. The box is a size container: the stage box is not always square (the
+   card's width caps it), so the record is a square of its shorter side, centered. */
+.np__art { --vinyl: var(--vinyl-strip); --vinyl-x: 0; --vinyl-y: 1; container-type: size; }
+:where([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art { --vinyl: var(--vinyl-stage); --vinyl-x: 1; --vinyl-y: 0; }
+[data-window="tray"] .np__art { --vinyl: var(--vinyl-tray); }
+.np__art:has(> .vinyl--glyph) { --vinyl: 0; } /* the ♪ placeholder is never a record */
+
+.vinyl { position: absolute; inset: 0; }
+.vinyl__spin { position: absolute; inset: 0; }
+.vinyl__plate, .vinyl__sheen { display: none; }
+.vinyl--out { pointer-events: none; }
+@container style(--vinyl: 0) {
+  .vinyl__spin { transform: none !important; } /* a plain cover never turns (beats the animation) */
+}
+@container style(--vinyl: 1) {
+  .vinyl {
+    width: calc(100cqmin - 2 * var(--vinyl-inset));
+    height: calc(100cqmin - 2 * var(--vinyl-inset));
+    margin: auto; /* with inset: 0, centers the square in the box */
+  }
+  .vinyl__plate {
+    display: block;
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    box-shadow: var(--vinyl-plate-shadow); /* on a layer that never turns: drawn once */
+  }
+  /* One mask cuts both edges: the spindle hole and the disc's rim. */
+  .vinyl__spin, .vinyl__sheen {
+    -webkit-mask: radial-gradient(circle closest-side, transparent var(--vinyl-hole), #000 calc(var(--vinyl-hole) + 0.5px), #000 calc(100% - 0.5px), transparent 100%);
+    mask: radial-gradient(circle closest-side, transparent var(--vinyl-hole), #000 calc(var(--vinyl-hole) + 0.5px), #000 calc(100% - 0.5px), transparent 100%);
+  }
+  .vinyl__spin::before, .vinyl__spin::after {
+    content: "";
+    position: absolute; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+  /* the label's edge */
+  .vinyl__spin::before {
+    background: radial-gradient(circle closest-side,
+      transparent calc(var(--vinyl-label) - var(--vinyl-ring-w)),
+      color-mix(in srgb, var(--vinyl-ring-ink) var(--vinyl-ring-alpha), transparent) calc(var(--vinyl-label) - var(--vinyl-ring-w)) var(--vinyl-label),
+      transparent var(--vinyl-label));
+  }
+  /* the grooves, from the label out to the rim */
+  .vinyl__spin::after {
+    background: repeating-radial-gradient(circle closest-side,
+      transparent 0 calc(var(--vinyl-groove-pitch) - var(--vinyl-groove-w)),
+      color-mix(in srgb, var(--vinyl-groove-ink) var(--vinyl-groove-alpha), transparent) calc(var(--vinyl-groove-pitch) - var(--vinyl-groove-w)) var(--vinyl-groove-pitch));
+    -webkit-mask: radial-gradient(circle closest-side, transparent var(--vinyl-label), #000 calc(var(--vinyl-label) + 0.5px));
+    mask: radial-gradient(circle closest-side, transparent var(--vinyl-label), #000 calc(var(--vinyl-label) + 0.5px));
+  }
+  /* a fixed light over the turning disc: two lobes, opposite each other */
+  .vinyl__sheen {
+    display: block;
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: conic-gradient(from var(--vinyl-sheen-from),
+      transparent 0deg,
+      color-mix(in srgb, var(--vinyl-sheen-ink) var(--vinyl-sheen-alpha), transparent) var(--vinyl-sheen-spread),
+      transparent calc(var(--vinyl-sheen-spread) * 2),
+      transparent 180deg,
+      color-mix(in srgb, var(--vinyl-sheen-ink) var(--vinyl-sheen-alpha), transparent) calc(180deg + var(--vinyl-sheen-spread)),
+      transparent calc(180deg + var(--vinyl-sheen-spread) * 2),
+      transparent 360deg);
+  }
+}
+/* The slide is a Web Animation (vinyl.ts), skipped under reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .vinyl__spin { transform: none !important; }
 }
 /* Radio: the station's name as a chip over the cover's bottom edge, revealed on hover
    (the artist line already carries it when the track has no artist of its own). */

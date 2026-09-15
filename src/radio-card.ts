@@ -29,8 +29,11 @@ import {
   type StationGenre,
 } from "./radio";
 import { initCollectionCard, esc, type Context, type Density, type Grouping, type ViewState } from "./collection-card";
+import type { DragPayload } from "./row-drag";
 import { musicCell } from "./library-card";
-import { playStation } from "./player";
+import { playStation, queueStationAfter } from "./player";
+import { copyStationLinkItem } from "./copy-link";
+import type { MenuItem } from "./context-menu";
 import { enterRows, rowsAfter } from "./pop";
 import type { CardDef } from "./cards";
 
@@ -67,11 +70,11 @@ const genreCell = (g: StationGenre, density: Density, idx: number) =>
 
 const HEAD = `
   <header class="panel__head">
-    <button class="panel__back" id="radio-back" type="button" aria-label="Back" hidden>
+    <button class="panel__back" id="radio-back" type="button" aria-label="Back" title="Goes back one step" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
     </button>
     <h2 class="panel__title">Radio</h2>
-    <button class="panel__action" id="radio-refresh" type="button" aria-label="Refresh stations">
+    <button class="panel__action" id="radio-refresh" type="button" aria-label="Refresh stations" title="Reads the stations from Apple Music again">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
@@ -118,6 +121,20 @@ export const radioCard: CardDef = {
       void playStation(s)
         .then(() => card.reload())
         .catch((e) => console.error("[radio] play station", e));
+
+    // A station's right-click (2026-09-15): play it, let it follow the queue
+    // (player.ts queueStationAfter), or copy Apple's share link (null without one).
+    const stationMenu = (s: Station): MenuItem[] =>
+      [
+        { label: "Play Now", run: () => startStation(s) },
+        { label: "Add to Queue", run: () => void queueStationAfter(s).catch((e) => console.error("[radio] queue station", e)) },
+        copyStationLinkItem(s.url),
+      ].filter(Boolean) as MenuItem[];
+    // A station drags (DRAG-DROP.md §2, 2026-09-15): to the Queue card it plays after the
+    // queue, to Now Playing it plays now. No songs — the playlist and library targets refuse it.
+    const stationDrag = (s: Station): DragPayload => ({
+      source: "radio", kind: "station", station: s, tracks: () => [], play: () => playStation(s),
+    });
 
     // The heterogeneous root list, rebuilt fresh per render (recents can change
     // under us). `pos` pins the featured order through the engine's sort. Shelf
@@ -180,6 +197,8 @@ export const radioCard: CardDef = {
               s.name.toLowerCase().includes(q) || (s.tagline?.toLowerCase().includes(q) ?? false),
             render: (s, density, idx) => stationCell(s, density, idx),
             activate: (s) => startStation(s),
+            menu: (s) => stationMenu(s),
+            drag: (s) => stationDrag(s),
           } satisfies Grouping<Station>,
         ],
         defaults: { density: "lines", sortKey: "az" },
@@ -223,6 +242,8 @@ export const radioCard: CardDef = {
               : x.kind === "station"
                 ? stationCell(x.station, density, idx)
                 : genreCell(x.genre, density, idx),
+          menu: (x) => (x.kind === "station" ? stationMenu(x.station) : []),
+          drag: (x) => (x.kind === "station" ? stationDrag(x.station) : null),
           activate: (x) => {
             if (x.kind === "header") toggleSection(x.label);
             else if (x.kind === "station") startStation(x.station);

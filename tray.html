@@ -30,11 +30,11 @@
 
   <body class="tray">
     <header class="titlebar tray__head">
-      <button class="app-title" id="tray-open" type="button" title="Open DeetsMusic">DeetsMusic</button>
+      <button class="app-title" id="tray-open" type="button" title="Opens the full DeetsMusic window">DeetsMusic</button>
       <div class="drag-region" data-tauri-drag-region></div>
       <span class="tray__source" id="tray-source" hidden></span>
       <div class="lights">
-        <button class="light light--close" id="tray-hide" type="button" aria-label="Hide">
+        <button class="light light--close" id="tray-hide" type="button" aria-label="Hide" title="Hides this panel">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 2.3L7.7 7.7M7.7 2.3L2.3 7.7" /></svg>
         </button>
       </div>
@@ -63,13 +63,13 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
               </button>
               <div class="np__controls">
-                <button class="np__btn" id="np-prev" type="button" aria-label="Previous">
+                <button class="np__btn" id="np-prev" type="button" aria-label="Previous" title="Plays the song before this one">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg>
                 </button>
-                <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play">
+                <button class="np__btn np__btn--play" id="np-playpause" type="button" aria-label="Play" title="Play">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
                 </button>
-                <button class="np__btn" id="np-next" type="button" aria-label="Next">
+                <button class="np__btn" id="np-next" type="button" aria-label="Next" title="Plays the next song">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg>
                 </button>
               </div>
@@ -81,7 +81,7 @@
         <!-- Volume: the app's software gain when DeetsMusic is the source, the
              Windows master level otherwise. -->
         <div class="tray__vol" id="vol">
-          <button class="vol__mute tray__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false"></button>
+          <button class="vol__mute tray__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false" title="Turns the sound off and on"></button>
           <div class="scrub" id="vol-scrub">
             <div class="scrub__track"><div class="scrub__fill"></div></div>
             <span class="scrub__handle" aria-hidden="true"></span>

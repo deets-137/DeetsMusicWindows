@@ -169,6 +169,9 @@ const SPECS: Spec[] = [
   storeRange("Look and feel", "glassTint", "Tint cards", { only: "Glass only", note: skinNote("glass", "Glass") }),
   storeRange("Look and feel", "glassCanvasGlow", "Canvas glow", { only: "Glass only", note: skinNote("glass", "Glass") }),
   storeRange("Look and feel", "glassCanvasDim", "Dim canvas", { only: "Glass only", note: skinNote("glass", "Glass") }),
+  storeChoice("Look and feel", "pressVinyl", "Record player", [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }], { only: "Press only", note: skinNote("press", "Press") }),
+  storeChoice("Look and feel", "pressVinylWhere", "Show record on", [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }], { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
+  storeToggle("Look and feel", "pressVinylPlate", "Show record plate", { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Look and feel", kind: "toggle", options: ON_OFF,
     get: () => (setting("menuMode") === "hover" ? "on" : "off"),
