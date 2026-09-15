@@ -8,16 +8,52 @@ shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md
 So keep the body to paragraphs and **bold**, and use absolute links only: a relative link
 works on GitHub and breaks on the site.
 
-**For the next entry (2026-09-15):** installers after 0.4.3 are code-signed (RELEASE.md §6.9).
-Do not copy the "not code-signed yet" line from older entries. SmartScreen may still warn on a
-browser download until reputation builds, so check what a browser download of that release
-shows before writing the Installing section. Older entries stay as written: they were true for
-their version.
+**Before `release:publish` of 0.5.0:** installers after 0.4.3 are code-signed (RELEASE.md §6.9),
+but SmartScreen may still warn on a browser download until reputation builds. Check what a
+browser download of the 0.5.0 installer shows, and correct its Installing line to match. Older
+entries stay as written: they were true for their version.
 
-**Also for the next entry:** skins get their own settings. Under Glass, Settings › Look and
-feel has Canvas glow, Dim canvas, Backlight, and Tint cards (the cards glow over a darker
-background). Under Ocean, Draw card edges can turn the card edges to sand, with a Sand width
-slider. The rows show only while that skin is on.
+## 0.5.0 — 2026-09-15
+
+**Day and night looks.** Settings › Look and feel › Change look at switches between a day look
+and a night look (a theme and a skin): at sunrise and sunset, at times you set, or with the
+Windows light or dark mode. Sun times come from your time zone, so DeetsMusic never asks where
+you are.
+
+**A smoother start.** DeetsMusic opens with its cards rising into place instead of drawing in
+one by one. A theme or skin change plays the same animation.
+
+**Skins get their own settings.** Under Glass, Settings › Look and feel has Canvas glow, Dim
+canvas, Backlight, and Tint cards. Under Ocean, Draw card edges can turn the card edges to sand,
+with a Sand width slider. The rows show only while that skin is on.
+
+**Playlist covers.** A new playlist gets a cover with its letters, in the colors of your theme
+(Settings › Playlists › New cover). Right-click a playlist › Generate Cover draws one for an
+older playlist. A playlist with no cover shows a picture made from up to 100 of its song covers.
+To see a playlist's cover in Now Playing and the tray panel while its songs play, choose
+Settings › Playlists › Show cover › Playlist.
+
+**A mini player.** In the Surface menu, NP shows Now Playing alone in the small window.
+Settings › Window › Keep on top can keep only the player on top, and Tray icon opens chooses
+what a click on the tray icon shows.
+
+**Report a bug from the app.** Settings › Bugs sends a bug or a suggestion. A bug can carry the
+part of the log that fits the problem, and you can read that text before you send it. My reports
+shows the state of each report and any new reply.
+
+**More for AI apps.** An AI app connected to DeetsMusic can now add to your library, make and
+edit playlists and folders, edit Up Next, check for updates, and change settings. The first
+library or Apple Music change asks you in DeetsMusic. Settings › Connections › Agent changes
+settings decides whether a settings change asks you each time, applies at once, or is refused.
+An AI app can turn Add to Library and ♥, Export playlists, and Agent control off, but only you
+can turn them on.
+
+### Installing
+
+- **The installer is code-signed**, with the publisher Aditya Sundaram. If Windows SmartScreen
+  still shows a notice on a browser download, click **More info**, then **Run anyway**.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
 
 ## 0.4.3 — 2026-09-14
 
