@@ -107,6 +107,9 @@ pub struct Artist {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub artwork: Option<Artwork>,
+    /// Catalog genre names (the Search artist hero's meta line; ARTIST-VIEW.md §1).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub genres: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -220,6 +223,42 @@ pub struct ArtistDetail {
     pub artist: Artist,
     pub albums: Vec<Album>,
     pub top_songs: Vec<Track>,
+    /// Apple's playlists that feature the artist (`views=featured-playlists`).
+    pub featured_playlists: Vec<Playlist>,
+}
+
+/// What the Library artist view knows about a library artist NAME (ARTIST-VIEW.md §4):
+/// the catalog id + photo (resolved once from one of their songs) and the featured
+/// playlists (refreshed after 7 days or the Library ⟳). Read from `artist_catalog`.
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryArtistInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catalog_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artwork: Option<Artwork>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub featured_playlists: Option<Vec<Playlist>>,
+    /// Apple's top songs for the artist, most popular first (the Library "Popular" sort).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_songs: Option<Vec<Track>>,
+}
+
+/// Every stored playlist's songs, for "Your Playlists" matching — zero Apple calls.
+/// `unchecked` = Apple mirror playlists whose songs were never fetched.
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistSongIndex {
+    pub lists: Vec<PlaylistSongs>,
+    pub unchecked: Vec<String>,
+}
+
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistSongs {
+    /// The playlist's front-end key: `local:{rowid}` or the Apple library id.
+    pub key: String,
+    pub tracks: Vec<Track>,
 }
 
 /// Normalized catalog search results, one bucket per category.

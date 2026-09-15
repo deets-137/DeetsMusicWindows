@@ -22,6 +22,8 @@ export interface Artist {
   catalogId?: string;
   name: string;
   artwork?: Artwork;
+  /** Catalog genre names (absent when Apple sends none). */
+  genres?: string[];
 }
 
 export interface Playlist {
@@ -65,6 +67,8 @@ export interface ArtistDetail {
   artist: Artist;
   albums: Album[];
   topSongs: Track[];
+  /** Apple's playlists that feature the artist (ARTIST-VIEW.md). */
+  featuredPlaylists: Playlist[];
 }
 
 export type SearchType = "songs" | "albums" | "artists" | "playlists" | "stations";

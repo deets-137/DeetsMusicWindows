@@ -17,10 +17,10 @@ import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
-import { addToPlaylistItem } from "./playlists";
+import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
-import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { goToArtistItem, goToAlbumItem, requestPlaylistPane } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, formatTotal } from "./collection-card";
 import type { MenuItem } from "./context-menu";
@@ -29,6 +29,12 @@ import { registerDropTarget } from "./row-drag";
 import { dropToLibrary } from "./drop-actions";
 import { libraryAddEnabled } from "./library-add";
 import { mosaicHTML } from "./mosaic";
+import {
+  libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, playlistShelfMenu,
+  playCounts, type LibraryArtistInfo, type YourPlaylists, type CheckProgress, type PlayCount,
+} from "./artist-view";
+import { handOff } from "./handoff";
+import { collectionTracks } from "./search";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -160,13 +166,14 @@ function tileCover(art: Artwork | undefined, px: number, round: boolean, name: s
 const px = (density: Density) => (density === "large" ? 300 : 160);
 
 /** The detail hero's cover (a real cover, a mosaic, or the ♪ placeholder). Fetched at
- *  2× the token size so it stays crisp on a HiDPI panel. */
+ *  2× the token size so it stays crisp on a HiDPI panel. `round` = an artist's photo. */
 const HERO_PX = 360;
-export function heroCover(art: Artwork | undefined, name: string, mosaic?: string[], seed?: string): string {
+export function heroCover(art: Artwork | undefined, name: string, mosaic?: string[], seed?: string, round = false): string {
+  const cls = round ? "lib-hero__cover lib-hero__cover--round" : "lib-hero__cover";
   const url = artURL(art, HERO_PX);
-  if (url) return `<img class="lib-hero__cover" src="${esc(url)}" alt="${esc(name)}" decoding="async" data-art />`;
-  if (mosaic?.length) return mosaicHTML("lib-hero__cover", mosaic, seed ?? name);
-  return `<div class="lib-hero__cover lib-hero__cover--empty" aria-hidden="true">♪</div>`;
+  if (url) return `<img class="${cls}" src="${esc(url)}" alt="${esc(name)}" decoding="async" data-art />`;
+  if (mosaic?.length) return mosaicHTML(cls, mosaic, seed ?? name);
+  return `<div class="${cls} lib-hero__cover--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 
 /** "3:41" for a track length; "" when unknown. */
@@ -355,12 +362,13 @@ interface SongOpts {
   selectedId?: string; // highlight this track (e.g. drilled-in)
   context?: string; // queue-origin tag for entries played from this list
   nav?: LibNav; // in-place "Go to Artist/Album" (Library only)
+  extraSorts?: SortSpec<Track>[]; // appended to the Sort menu (the artist view's Popular / Most Played)
 }
 function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {
     key: "songs",
     label: "Songs",
-    sorts: o.numbered ? trackSorts : songSorts,
+    sorts: [...(o.numbered ? trackSorts : songSorts), ...(o.extraSorts ?? [])],
     list,
     name: (t) => t.title,
     match: (t, q) =>
@@ -506,13 +514,158 @@ export const libraryCard: CardDef = {
       };
     };
 
+    // artist detail (ARTIST-VIEW.md): the Search artist pane's order — a round hero, then the
+    // Albums, Featured Playlists and Your Playlists shelves, then the artist's Songs as rows.
+    // The playlist shelves fill in as their facts land.
     const artistDetail = (a: ArtistGroup): Context => {
       const sub = () => creditIndex(tracks()).tracksFor(a.name);
+      let info: LibraryArtistInfo | null = null; // photo + featured playlists (0–2 Apple calls, saved)
+      let yours: YourPlaylists | undefined; // the user's playlists with this artist (0 calls)
+      let checking: CheckProgress | null = null;
+      let albumList: AlbumGroup[] = []; // the Albums shelf as last drawn (a tile's index → its album)
+
+      // The Songs rows' extra sorts (ARTIST-VIEW.md §1). Popular = Apple's top-songs order
+      // (call 2 brings it with the featured playlists: no extra call), then the rest newest
+      // first. Most Played = this app's own play counts (zero calls).
+      let plays: Map<string, PlayCount> | undefined;
+      void playCounts()
+        .then((m) => {
+          plays = m;
+          card.reload();
+        })
+        .catch((e) => console.error("[library] play counts", e));
+      // A library song matches a top song by catalog id, then ISRC, then title — library and
+      // catalog ids can differ for the same recording. Rebuilt when the info changes.
+      const matchKeys = (t: Track) => [t.catalogId, t.isrc ? `isrc:${t.isrc}` : undefined, `title:${t.title.toLowerCase()}`];
+      let ranksOf: LibraryArtistInfo | null = null;
+      let ranks = new Map<string, number>();
+      const popularity = (t: Track): number | undefined => {
+        if (ranksOf !== info) {
+          ranksOf = info;
+          ranks = new Map();
+          (info?.topSongs ?? []).forEach((s, i) => {
+            for (const k of matchKeys(s)) if (k && !ranks.has(k)) ranks.set(k, i);
+          });
+        }
+        for (const k of matchKeys(t)) {
+          const r = k ? ranks.get(k) : undefined;
+          if (r !== undefined) return r;
+        }
+        // Not a top song: after every top song, newest first (a later date = a smaller value).
+        const ms = t.releaseDate ? Date.parse(t.releaseDate) : NaN;
+        return Number.isFinite(ms) ? 1e15 - ms : undefined;
+      };
+      const artistSongSorts: SortSpec<Track>[] = [
+        { key: "popular", label: "Popular", type: "num", get: popularity },
+        {
+          key: "plays",
+          label: "Most Played",
+          type: "num",
+          // Full listens lead, starts break a tie; a song never played goes last.
+          get: (t) => {
+            const c = plays?.get(t.libraryId ?? t.catalogId ?? "");
+            return c ? -(c.full * 1e6 + c.partial) : undefined;
+          },
+        },
+      ];
+      // Newest first, as the Search pane lists them; an album with no date goes last.
+      const albumsShelf = (): string => {
+        albumList = groupAlbums(sub()).sort((x, y) => (y.releaseDate ?? "").localeCompare(x.releaseDate ?? ""));
+        const tiles = albumList
+          .map((al, i) => {
+            const url = artURL(al.artwork, 128);
+            const cover = url
+              ? `<img class="search__tile-art" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`
+              : `<div class="search__tile-art search__tile-art--empty" aria-hidden="true">♪</div>`;
+            return (
+              `<div class="search__tile" data-shelf-item="album" data-shelf-idx="${i}" role="button" tabindex="0">${cover}` +
+              `<span class="search__tile-name">${esc(al.name)}</span><span class="search__tile-sub">${esc(al.releaseDate?.slice(0, 4) ?? "")}</span></div>`
+            );
+          })
+          .join("");
+        return tiles ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
+      };
+      void libraryArtistInfo(a.name, sub().map((t) => t.catalogId))
+        .then((i) => {
+          info = i;
+          card.reload();
+        })
+        .catch((e) => console.error("[library] artist info", e));
+      const loadYours = () =>
+        yourPlaylistsFor(a.name)
+          .then((y) => {
+            yours = y;
+            card.reload();
+          })
+          .catch((e) => console.error("[library] your playlists", e));
+      void loadYours();
       return {
         title: a.name,
+        headerLabel: "Artist",
+        // Until the photo is known, a song's album cover stands in (round).
+        hero: () => {
+          const ts = sub();
+          const albums = groupAlbums(ts).length;
+          return {
+            cover: heroCover(info?.artwork ?? ts.find((t) => t.artwork)?.artwork, a.name, undefined, undefined, true),
+            title: a.name,
+            meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
+          };
+        },
+        shelves: () => artistShelvesHTML(info?.featuredPlaylists, yours, checking, albumsShelf()),
+        // Sort / View / Search act only on the Songs rows, so they sit under this label.
+        toolbarBelow: "Songs",
+        // An album drills in place. A featured playlist opens as a Search pane; one of yours in
+        // the Playlists card — each after the chip flight, which fetches the songs first so the
+        // view arrives full (§5). "Check N more" fetches the unopened ones (§3).
+        onShelf: (el) => {
+          const i = Number(el.dataset.shelfIdx);
+          const kind = el.dataset.shelfItem;
+          if (kind === "album") {
+            const al = albumList[i];
+            if (al) card.drill(albumDetail(al));
+          } else if (kind === "featured") {
+            const p = info?.featuredPlaylists?.[i];
+            const id = p?.catalogId;
+            if (p && id) {
+              const intent = { id, name: p.name, artwork: p.artwork, curatorName: p.curatorName };
+              handOff(el, "search", () => collectionTracks("playlists", id), (ts) => requestPlaylistPane({ ...intent, tracks: ts }));
+            }
+          } else if (kind === "yours") {
+            const p = yours?.hits[i]?.p;
+            const lid = p?.libraryId;
+            if (p && lid) handOff(el, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount);
+          } else if (kind === "check" && yours && !checking) {
+            checking = { done: 0, total: yours.unchecked.length };
+            card.reload();
+            void checkPlaylists(yours.unchecked, (pr) => {
+              checking = pr;
+              card.reload();
+            })
+              .then(loadYours)
+              .finally(() => {
+                checking = null;
+                card.reload();
+              });
+          }
+        },
+        shelfMenu: (el) => {
+          const i = Number(el.dataset.shelfIdx);
+          if (el.dataset.shelfItem === "album") {
+            const al = albumList[i];
+            return al ? trackMenu(albumOrder(tracks().filter((t) => albumKey(t) === al.key)), `album:${al.key}`, libNav) : [];
+          }
+          if (el.dataset.shelfItem === "featured") {
+            const id = info?.featuredPlaylists?.[i]?.catalogId;
+            return id ? playlistShelfMenu(() => collectionTracks("playlists", id), `search-playlists:${id}`, true) : [];
+          }
+          const p = el.dataset.shelfItem === "yours" ? yours?.hits[i]?.p : undefined;
+          return p ? playlistShelfMenu(() => playlistTracks(p), `playlist:${p.libraryId}`, false) : [];
+        },
         density: true,
-        groupings: [albumsGrouping(sub, albumDetail, libNav), songsGrouping(sub, { context: `artist:${a.name}`, nav: libNav })],
-        defaults: { grouping: "albums", density: "small", sortKey: "release", sortDir: "desc" },
+        // The Albums shelf replaces the old Albums grouping; the rows are the artist's songs.
+        groupings: [songsGrouping(sub, { context: `artist:${a.name}`, nav: libNav, extraSorts: artistSongSorts })],
+        defaults: { density: "lines", sortKey: "release", sortDir: "desc" },
       };
     };
 
@@ -591,7 +744,11 @@ export const libraryCard: CardDef = {
     });
 
     const triggerSync = () => librarySync().catch((e) => console.error("[sync]", e));
-    refreshBtn?.addEventListener("click", triggerSync);
+    // The ⟳ also marks every saved featured-playlist list as old (ARTIST-VIEW.md §4).
+    refreshBtn?.addEventListener("click", () => {
+      expireArtistInfo();
+      void triggerSync();
+    });
     // (The startup stale-while-revalidate sync lives in initTrackStore now — once per
     // session, so remounting this card on a slot swap never re-triggers a full sync.)
 

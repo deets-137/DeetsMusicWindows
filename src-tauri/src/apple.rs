@@ -1512,6 +1512,10 @@ fn artist_from_catalog(v: &serde_json::Value) -> Artist {
         catalog_id: v["id"].as_str().map(String::from),
         name: a["name"].as_str().unwrap_or_default().to_string(),
         artwork: artwork_from(&a["artwork"]),
+        genres: a["genreNames"]
+            .as_array()
+            .map(|arr| arr.iter().filter_map(|g| g.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
     }
 }
 
@@ -1845,7 +1849,9 @@ pub async fn apple_add_to_library(
     Ok(())
 }
 
-/// A catalog artist's detail: albums + top songs, one fetch (`views=`).
+/// A catalog artist's detail: albums + top songs + featured playlists, one fetch (`views=`).
+/// A refused request (not 200, not 404) retries once with the two original views, so a
+/// view Apple doesn't know can't break the Search artist view (ARTIST-VIEW.md §4).
 #[tauri::command]
 pub async fn catalog_artist(
     id: String,
@@ -1857,9 +1863,12 @@ pub async fn catalog_artist(
     let client = reqwest::Client::new();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
-    let url =
-        format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{id}?views=top-songs,full-albums");
-    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    let base = format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{id}?views=top-songs,full-albums");
+    let (mut status, mut body) = api_get(&client, &dev, &user, &format!("{base},featured-playlists")).await?;
+    if status != 200 && status != 404 {
+        crate::log::warn(&format!("catalog_artist: featured-playlists view refused (HTTP {status}), retrying without it"));
+        (status, body) = api_get(&client, &dev, &user, &base).await?;
+    }
     if status != 200 {
         return Err(format!("catalog/artists/{id} HTTP {status}"));
     }
@@ -1873,6 +1882,10 @@ pub async fn catalog_artist(
         .as_array()
         .map(|arr| arr.iter().map(album_from_catalog).collect())
         .unwrap_or_default();
+    let featured_playlists: Vec<Playlist> = views["featured-playlists"]["data"]
+        .as_array()
+        .map(|arr| arr.iter().map(playlist_from_catalog).collect())
+        .unwrap_or_default();
     {
         let conn = db.0.lock().unwrap();
         crate::enrich::cache_tracks(&conn, &top_songs)?;
@@ -1881,7 +1894,155 @@ pub async fn catalog_artist(
         artist: artist_from_catalog(a),
         albums,
         top_songs,
+        featured_playlists,
     })
+}
+
+/// Featured playlists older than this are fetched again on the next open (ARTIST-VIEW.md §2.4).
+const FEATURED_TTL_MS: i64 = 7 * 24 * 60 * 60 * 1000;
+
+fn epoch_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+/// The Library artist view's catalog facts for a library artist NAME (ARTIST-VIEW.md §4).
+/// Cache-first from `artist_catalog`:
+///  - no row → `songs/{song_id}?include=artists` gives the id and the photo (1 call);
+///  - `featured` and the saved list is missing or older than 7 days (or expired by the
+///    Library ⟳) → `artists/{id}?views=featured-playlists` (1 call), which also refreshes
+///    the photo link.
+/// `featured: false` (Start Station) needs only the id. None when Apple has no match.
+#[tauri::command]
+pub async fn library_artist_info(
+    name: String,
+    song_id: Option<String>,
+    featured: bool,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Option<crate::model::LibraryArtistInfo>, String> {
+    type Row = (String, Option<String>, Option<String>, i64, Option<String>);
+    let row: Option<Row> = {
+        let conn = db.0.lock().unwrap();
+        conn.query_row(
+            "SELECT catalog_id, artwork, featured, featured_at, top_songs FROM artist_catalog WHERE name = ?1",
+            [name.as_str()],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .ok()
+    };
+    let parse_art = |s: Option<String>| s.and_then(|j| serde_json::from_str::<Artwork>(&j).ok());
+    let parse_featured = |s: Option<String>| s.and_then(|j| serde_json::from_str::<Vec<Playlist>>(&j).ok());
+    let parse_top = |s: Option<String>| s.and_then(|j| serde_json::from_str::<Vec<Track>>(&j).ok());
+
+    // Resolved before with no Apple match: never ask again.
+    if matches!(&row, Some((id, ..)) if id.is_empty()) {
+        return Ok(None);
+    }
+    // A row saved before top_songs existed is not fresh: call 2 runs once to fill it.
+    let fresh = |r: &Row| r.2.is_some() && r.4.is_some() && epoch_ms() - r.3 < FEATURED_TTL_MS;
+    if let Some(r) = &row {
+        if !featured || fresh(r) {
+            return Ok(Some(crate::model::LibraryArtistInfo {
+                catalog_id: Some(r.0.clone()),
+                artwork: parse_art(r.1.clone()),
+                featured_playlists: parse_featured(r.2.clone()),
+                top_songs: parse_top(r.4.clone()),
+            }));
+        }
+    }
+
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+
+    // Call 1 (first open only): a song → its primary artist's id + photo.
+    let (catalog_id, mut artwork) = match &row {
+        Some(r) => (r.0.clone(), parse_art(r.1.clone())),
+        None => {
+            let Some(song) = song_id.filter(|s| !s.is_empty()) else { return Ok(None) };
+            let url = format!("https://api.music.apple.com/v1/catalog/{sf}/songs/{song}?include=artists");
+            let (status, body) = api_get(&client, &dev, &user, &url).await?;
+            if status != 200 && status != 404 {
+                return Err(format!("songs/{song} include=artists HTTP {status}"));
+            }
+            let node = &body["data"][0]["relationships"]["artists"]["data"][0];
+            let id = node["id"].as_str().unwrap_or_default().to_string();
+            let art = artwork_from(&node["attributes"]["artwork"]);
+            let conn = db.0.lock().unwrap();
+            conn.execute(
+                "INSERT OR REPLACE INTO artist_catalog(name, catalog_id, artwork, featured, featured_at) VALUES(?1, ?2, ?3, NULL, 0)",
+                rusqlite::params![name, id, art.as_ref().and_then(|a| serde_json::to_string(a).ok())],
+            )
+            .map_err(|e| e.to_string())?;
+            if id.is_empty() {
+                return Ok(None);
+            }
+            (id, art)
+        }
+    };
+    if !featured {
+        return Ok(Some(crate::model::LibraryArtistInfo {
+            catalog_id: Some(catalog_id),
+            artwork,
+            featured_playlists: None,
+            top_songs: None,
+        }));
+    }
+
+    // Call 2: the featured playlists and the top songs, one fetch (and a current photo link).
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{catalog_id}?views=featured-playlists,top-songs");
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status != 200 {
+        // Keep what is saved; the next open tries again.
+        crate::log::warn(&format!("library_artist_info: artists/{catalog_id} featured-playlists HTTP {status}"));
+        let (featured_playlists, top_songs) = row.map(|r| (parse_featured(r.2), parse_top(r.4))).unwrap_or((None, None));
+        return Ok(Some(crate::model::LibraryArtistInfo { catalog_id: Some(catalog_id), artwork, featured_playlists, top_songs }));
+    }
+    let a = &body["data"][0];
+    if let Some(art) = artwork_from(&a["attributes"]["artwork"]) {
+        artwork = Some(art);
+    }
+    let list: Vec<Playlist> = a["views"]["featured-playlists"]["data"]
+        .as_array()
+        .map(|arr| arr.iter().map(playlist_from_catalog).collect())
+        .unwrap_or_default();
+    let top: Vec<Track> = a["views"]["top-songs"]["data"]
+        .as_array()
+        .map(|arr| arr.iter().filter(|v| v["type"].as_str() == Some("songs")).map(track_from_catalog_song).collect())
+        .unwrap_or_default();
+    {
+        let conn = db.0.lock().unwrap();
+        conn.execute(
+            "UPDATE artist_catalog SET artwork = ?2, featured = ?3, featured_at = ?4, top_songs = ?5 WHERE name = ?1",
+            rusqlite::params![
+                name,
+                artwork.as_ref().and_then(|a| serde_json::to_string(a).ok()),
+                serde_json::to_string(&list).map_err(|e| e.to_string())?,
+                epoch_ms(),
+                serde_json::to_string(&top).map_err(|e| e.to_string())?
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(Some(crate::model::LibraryArtistInfo {
+        catalog_id: Some(catalog_id),
+        artwork,
+        featured_playlists: Some(list),
+        top_songs: Some(top),
+    }))
+}
+
+/// The Library ⟳: every saved featured-playlist list counts as old, so the next open of
+/// each artist fetches it again. Ids and photo links stay. Zero Apple calls.
+#[tauri::command]
+pub fn library_artists_expire(db: tauri::State<'_, crate::library::Db>) -> Result<(), String> {
+    let conn = db.0.lock().unwrap();
+    conn.execute("UPDATE artist_catalog SET featured_at = 0", []).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 /// Catalog search command. Normalizes per category and — since catalog songs carry

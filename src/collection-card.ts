@@ -93,6 +93,16 @@ export interface Context {
    *  the title itself. Absent → the header shows `title`, as before. */
   headerLabel?: string;
   hero?: () => Hero;
+  /** Shelves under the hero (ARTIST-VIEW.md §2.2): HTML drawn right after the hero, inside
+   *  the block the windower measures. A function, so async facts fill in on `reload()`.
+   *  Items carry `data-shelf-item`: a click goes to `onShelf`, a right-click to `shelfMenu`. */
+  shelves?: () => string;
+  onShelf?: (item: HTMLElement) => void;
+  shelfMenu?: (item: HTMLElement) => MenuItem[];
+  /** Draw the Sort / View / Search toolbar inside the scroll, under the hero and shelves,
+   *  with this section label — for a context whose toolbar acts only on its rows (the Library
+   *  artist view's Songs). Absent → the toolbar stays at the top of the pane. */
+  toolbarBelow?: string;
   groupings: Grouping[]; // >= 1; >1 → View shows a grouping column
   density: boolean; // whether the density column applies
   /** An optional icon toggle between View and Search (Library: ♥ favorites only). The
@@ -186,6 +196,9 @@ export function initCollectionCard(opts: CardOptions) {
   let curPane: HTMLElement | null = null;
   // one windower per pane view while its list is above WINDOW_MIN (collection-window.ts)
   const windowers = new WeakMap<HTMLElement, Windower>();
+  // per view: the last head block (toolbarBelow) — `top` is its hero + shelves markup, `html`
+  // the whole block as mounted — so a render that changes neither keeps the live head
+  const heads = new WeakMap<HTMLElement, { top: string; html: string }>();
   const dropWindower = (pane: HTMLElement | null) => {
     const v = pane?.querySelector<HTMLElement>("[data-view]");
     if (!v) return;
@@ -349,7 +362,7 @@ export function initCollectionCard(opts: CardOptions) {
     const pane = document.createElement("div");
     pane.className = "coll-pane";
     pane.dataset.pos = "center";
-    pane.innerHTML = `${toolbarHTML(f)}<div class="lib-view" data-view></div>`;
+    pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view></div>`;
     const input = pane.querySelector<HTMLInputElement>("[data-search]");
     if (input) input.value = f.query;
     renderViewInto(pane, f);
@@ -371,11 +384,52 @@ export function initCollectionCard(opts: CardOptions) {
     // that collides with the density buttons). Openable = pointer-cursor affordance:
     // rows that drill OR activate (play a song, toggle a section) are clickable.
     view.dataset.openable = g.open || g.activate ? "1" : "";
-    const hero = heroHTML(f.ctx.hero?.()); // rides inside the scroll, above the rows (1A)
+    // The hero and its shelves ride inside the scroll, above the rows (1A; ARTIST-VIEW.md §2.2).
+    const top = heroHTML(f.ctx.hero?.()) + (f.ctx.shelves?.() ?? "");
+    // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
+    // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
+    // it can stick to the top once the hero and shelves scroll away (a sticky box stops at
+    // its parent's edge). Both are rebuilt only when the hero or shelves change, so a sort, a
+    // filter or a keystroke keeps the live pills (an open pop's anchor) and the search focus.
+    const focused = document.activeElement;
+    const searchHadFocus = focused instanceof HTMLInputElement && focused.matches("[data-search]") && view.contains(focused);
+    let hero = top;
+    let keepHead = false;
+    if (f.ctx.toolbarBelow != null) {
+      const prev = heads.get(view);
+      keepHead = !!prev && prev.top === top && !!view.querySelector(":scope > [data-view-bar]");
+      hero =
+        keepHead && prev
+          ? prev.html
+          : `<div class="lib-view-head" data-view-head>${top}</div>` +
+            `<div class="lib-view-bar" data-view-bar><div class="search__label">${esc(f.ctx.toolbarBelow)}</div>${toolbarHTML(f)}</div>`;
+      heads.set(view, { top, html: hero });
+    }
+    // Put `rows` in the view: after a kept bar, else under a fresh hero.
+    const fill = (rows: string) => {
+      const bar = keepHead ? view.querySelector<HTMLElement>(":scope > [data-view-bar]") : null;
+      if (!bar) {
+        view.innerHTML = hero + rows;
+        return;
+      }
+      while (bar.nextSibling) bar.nextSibling.remove();
+      bar.insertAdjacentHTML("afterend", rows);
+    };
+    // A rebuilt head block has a new search field: give it the query, and the focus it had.
+    const restoreSearch = () => {
+      const input = view.querySelector<HTMLInputElement>("[data-search]");
+      if (!input) return;
+      if (input.value !== f.query) input.value = f.query;
+      if (searchHadFocus && document.activeElement !== input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    };
     if (!items.length) {
       dropWindower(pane);
       view.className = "lib-view lib-empty";
-      view.innerHTML = `${hero}<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`;
+      fill(`<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`);
+      restoreSearch();
       return;
     }
     view.className = f.density === "lines" ? "lib-view lib-list" : "lib-view lib-grid";
@@ -386,10 +440,12 @@ export function initCollectionCard(opts: CardOptions) {
       const w = windowers.get(view);
       if (w) w.update(spec);
       else windowers.set(view, windowView(view, spec));
+      restoreSearch();
       return;
     }
     dropWindower(pane);
-    view.innerHTML = hero + items.map((x, i) => g.render(x, f.density, i)).join("");
+    fill(items.map((x, i) => g.render(x, f.density, i)).join(""));
+    restoreSearch();
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
 
@@ -705,6 +761,13 @@ export function initCollectionCard(opts: CardOptions) {
       return;
     }
 
+    // a shelf tile under the hero → the context's own handler
+    const shelfItem = t.closest<HTMLElement>("[data-shelf-item]");
+    if (shelfItem) {
+      cur().ctx.onShelf?.(shelfItem);
+      return;
+    }
+
     // a tile/row → activate the leaf (play) if it offers one, else drill in
     const item = t.closest<HTMLElement>("[data-idx]");
     if (item) {
@@ -772,6 +835,15 @@ export function initCollectionCard(opts: CardOptions) {
       if (!items?.length) return;
       e.preventDefault();
       openContextMenu(e.clientX, e.clientY, items);
+      return;
+    }
+    const shelfItem = t.closest<HTMLElement>("[data-shelf-item]");
+    if (shelfItem) {
+      const items = cur().ctx.shelfMenu?.(shelfItem);
+      if (!items?.length) return;
+      e.preventDefault();
+      shelfItem.classList.add("is-context");
+      openContextMenu(e.clientX, e.clientY, items, () => shelfItem.classList.remove("is-context"));
       return;
     }
     const el = t.closest<HTMLElement>("[data-idx]");

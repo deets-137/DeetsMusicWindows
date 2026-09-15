@@ -11,6 +11,7 @@
 
 import { requestCard } from "./layout-bus";
 import type { MenuItem } from "./context-menu";
+import type { Artwork, Track } from "./library";
 
 export interface DrillIntent {
   /** The SOURCE resource we hop FROM. */
@@ -54,6 +55,30 @@ export function goToArtistItem(
     label: "Go to Artist",
     run: () => requestDrill({ srcKind: kind, srcId: catalogId, rel: "artists", name: fallbackName || "Artist" }),
   };
+}
+
+/** A catalog playlist to open as a Search pane (a Featured Playlists tile on the Library
+ *  artist view, ARTIST-VIEW.md §5). The tile already knows the playlist: no id hop. */
+export interface PlaylistPaneIntent {
+  id: string;
+  name: string;
+  artwork?: Artwork;
+  curatorName?: string;
+  /** The playlist's songs, when the caller fetched them already (the chip flight). */
+  tracks?: Track[];
+}
+const paneSubs = new Set<(intent: PlaylistPaneIntent) => void>();
+
+/** Search-card side: subscribe to catalog playlist panes. Returns an unsubscribe fn. */
+export function onPlaylistPaneRequest(cb: (intent: PlaylistPaneIntent) => void): () => void {
+  paneSubs.add(cb);
+  return () => paneSubs.delete(cb);
+}
+
+/** Summon the Search card and open a catalog playlist pane there. */
+export function requestPlaylistPane(intent: PlaylistPaneIntent): void {
+  requestCard("search");
+  paneSubs.forEach((cb) => cb(intent));
 }
 
 /** "Go to Album" from a song's catalog id — `null` without one. */

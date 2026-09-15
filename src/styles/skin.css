@@ -255,6 +255,9 @@
   --hero-cover:         180px;      /* the detail hero's cover square (album / playlist) */
   --hero-gap:           var(--space-1); /* title ↔ subtitle ↔ meta stack spacing */
   --hero-cover-hover:   0.85;       /* brightness of a clickable hero cover on hover / file drag */
+  --hero-artist-radius: 50%;        /* an artist hero's photo (ARTIST-VIEW.md §1) */
+  --sticky-bar-surface:  var(--panel);          /* a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box */
+  --sticky-bar-backdrop: var(--panel-backdrop); /* the card's own frost (Glass); a see-through skin without one adds a blur */
   --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */
 
   /* -- scrollbar (our own; color is a theme role) ------------ */
@@ -290,6 +293,17 @@
   --swap-mid:      scale(1);
   --swap-fade:     1;
   --swap-stagger:  0s;
+
+  /* -- chip flight (handoff.ts, ARTIST-VIEW.md §5) --
+     A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease.
+     --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing.
+     Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base =
+     a straight glide that shrinks into the card (Glass uses it). */
+  --fly-dur:       0.42s;
+  --fly-ease:      var(--nav-ease);
+  --fly-mid:       scale(1.04);
+  --fly-land:      scale(0.4);
+  --fly-land-fade: 0;
 
   /* -- launch cover + look change (boot-cover.ts, appearance.ts; UX-COVERUPS.md §6) -- */
   /* The window shows under an opaque --canvas cover. The cover fades and the cards
@@ -445,6 +459,11 @@
   --swap-from:    scale(1.03);
   --swap-mid:     scale(1.01);
   --swap-stagger: 0.06s;
+  /* chip flight: a quick stamp — it swells mid-air and presses down into the card */
+  --fly-dur:      0.34s;
+  --fly-ease:     cubic-bezier(0.2, 0.9, 0.3, 1);
+  --fly-mid:      scale(1.1);
+  --fly-land:     scale(0.85);
 
   /* scrubber handle — a trimmed block riding the rail, corners square */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='2' width='12' height='20' fill='%23000'/%3E%3C/svg%3E");
@@ -507,6 +526,11 @@
   --nav-off-opacity: 0;
   /* swap — the card dips under the surface on its way and rises at its new slot */
   --swap-mid:     scale(0.94);
+  /* chip flight: it dips under the line of travel, then settles into the card */
+  --fly-dur:      0.5s;
+  --fly-ease:     cubic-bezier(0.45, 0, 0.25, 1);
+  --fly-mid:      translateY(18px) scale(0.96);
+  --fly-land:     translateY(8px) scale(0.5);
 
   /* scrubber handle — a lens swell: the bar appears to bulge to a fat middle
      and taper back to track height at the pointed tips. Same --title fill as
@@ -746,6 +770,8 @@
      panels a touch translucent so a bolt passing behind a card glows
      through dimly, full-bright in the gutters. (Dial: FUTURE-SETTINGS §13.) */
   --panel:              color-mix(in srgb, var(--canvas) 86%, transparent);
+  /* the stuck toolbar row matches this see-through card; a blur keeps the rows under it from reading through */
+  --sticky-bar-backdrop: blur(10px);
   --panel-border-width: 1px;
   --shadow-card:        none;
   /* panel is translucent (bolts glow through) — same as Glass, don't re-paint
@@ -793,6 +819,10 @@
   --swap-from:     skewX(10deg);
   --swap-mid:      skewX(4deg);
   --swap-fade:     0;
+  /* chip flight: it skews into the travel and out again as it lands */
+  --fly-ease:      cubic-bezier(0.7, 0, 0.3, 1);
+  --fly-mid:       skewX(-12deg);
+  --fly-land:      skewX(8deg) scale(0.5);
 
   /* micro-motion — twitch-fast; a dragged queue row banks like a blade */
   --dur-fast:    0.08s;

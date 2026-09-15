@@ -92,6 +92,20 @@ export function playOut(els: HTMLElement[], run: () => void, detail: string): vo
   });
 }
 
+/** Resolves once no card is moving — the out step and every in step have ended (the chip
+ *  flight waits on it, handoff.ts). A cap resolves it anyway: a hidden panel sends no
+ *  animationend. */
+export function whenSwapSettled(): Promise<void> {
+  const cap = performance.now() + tokenMs("--swap-out-dur") + tokenMs("--swap-dur") + tokenMs("--swap-stagger") + 300;
+  return new Promise((resolve) => {
+    const check = () => {
+      if ((pending || document.querySelector(MOVING)) && performance.now() < cap) requestAnimationFrame(check);
+      else resolve();
+    };
+    check();
+  });
+}
+
 /** The in step. The first move is the card the user picked: it passes over the other. */
 export function playSwap(moves: SwapMove[], detail: string): void {
   if (!moves.length || !motionOn()) return closeWinNow();

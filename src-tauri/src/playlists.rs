@@ -1228,6 +1228,58 @@ pub fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, db: State<'_
     tx.commit().map_err(err)
 }
 
+/// Every stored playlist's songs, for the artist views' "Your Playlists" (ARTIST-VIEW.md §3):
+/// all local playlists, and each Apple mirror playlist whose songs are cached. `unchecked`
+/// lists the mirror playlists with no cached songs (a known-empty one, count 0, is skipped).
+/// Zero Apple calls.
+#[tauri::command]
+pub fn playlists_song_index(db: State<'_, Db>) -> Result<crate::model::PlaylistSongIndex, String> {
+    use std::collections::BTreeMap;
+    let conn = db.0.lock().unwrap();
+    let mut groups: BTreeMap<String, Vec<Track>> = BTreeMap::new();
+    let mut read = |sql: &str, key: &dyn Fn(String) -> String| -> Result<(), String> {
+        let mut stmt = conn.prepare(sql).map_err(err)?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+            .map_err(err)?;
+        for row in rows {
+            let (id, json) = row.map_err(err)?;
+            // A snapshot that no longer parses is skipped, not fatal: the shelf is a hint.
+            if let Ok(t) = serde_json::from_str::<Track>(&json) {
+                groups.entry(key(id)).or_default().push(t);
+            }
+        }
+        Ok(())
+    };
+    read(
+        "SELECT CAST(playlist_id AS TEXT), json FROM local_playlist_tracks ORDER BY playlist_id, position",
+        &|id| format!("local:{id}"),
+    )?;
+    read("SELECT playlist_id, json FROM apple_playlist_tracks ORDER BY playlist_id, position", &|id| id)?;
+
+    let mut unchecked = Vec::new();
+    {
+        let mut stmt = conn.prepare("SELECT playlist_id, json FROM apple_playlists ORDER BY position").map_err(err)?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+            .map_err(err)?;
+        for row in rows {
+            let (id, json) = row.map_err(err)?;
+            if groups.contains_key(&id) {
+                continue;
+            }
+            let empty = serde_json::from_str::<Playlist>(&json).ok().and_then(|p| p.track_count) == Some(0);
+            if !empty {
+                unchecked.push(id);
+            }
+        }
+    }
+    Ok(crate::model::PlaylistSongIndex {
+        lists: groups.into_iter().map(|(key, tracks)| crate::model::PlaylistSongs { key, tracks }).collect(),
+        unchecked,
+    })
+}
+
 #[tauri::command]
 pub fn local_playlist_tracks(id: i64, db: State<'_, Db>) -> Result<Vec<Track>, String> {
     let conn = db.0.lock().unwrap();

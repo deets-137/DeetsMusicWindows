@@ -38,11 +38,10 @@ export function startStationItem(kind: SeedKind, catalogId?: string | null): Men
 
 // ── Library artist tiles (derived groups: a NAME, no catalog artist id) ────────
 // The artist seed resolves in two lazy hops on pick: one of the artist's songs'
-// catalog ids → its primary artist id (catalog_song_artist) → that artist's station
-// (seedStation → playStation). Both hops are session-cached; the artist-id hop
-// caches under the group's name — the same key the library derives artist groups
-// by, so it stays consistent with the app's own grouping semantics.
-const artistIdCache = new Map<string, string | null>();
+// catalog ids → its primary artist id → that artist's station (seedStation →
+// playStation). The id hop is `library_artist_info` with `featured: false`: saved in
+// SQLite under the group's name, the same row the Library artist view fills
+// (ARTIST-VIEW.md §4), so an artist already opened costs no call here.
 
 export function startArtistStationItem(
   name: string,
@@ -54,11 +53,8 @@ export function startArtistStationItem(
     label: "Start Station",
     run: () =>
       void (async () => {
-        let artistId = artistIdCache.get(name);
-        if (artistId === undefined) {
-          artistId = await invoke<string | null>("catalog_song_artist", { id: seed });
-          artistIdCache.set(name, artistId);
-        }
+        const info = await invoke<{ catalogId?: string } | null>("library_artist_info", { name, songId: seed, featured: false });
+        const artistId = info?.catalogId;
         if (!artistId) {
           console.warn("[station] no artist id resolvable for", name);
           toast({ kind: "warn", text: `Couldn't find “${name}” on Apple Music.` });

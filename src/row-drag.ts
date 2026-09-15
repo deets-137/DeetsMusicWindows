@@ -166,7 +166,7 @@ const songsText = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
  * the row's ancestor chain — same tags, classes and data attributes — with `display: contents`:
  * the selectors and inherited tokens still match, and the shells draw no box.
  */
-function makeGhost(row: HTMLElement, p: DragPayload | undefined): { root: HTMLElement; ghost: HTMLElement } {
+export function makeGhost(row: HTMLElement, p: DragPayload | undefined): { root: HTMLElement; ghost: HTMLElement } {
   const chain: HTMLElement[] = [];
   for (let a = row.parentElement; a && a !== document.body; a = a.parentElement) chain.unshift(a);
   let root: HTMLElement | null = null;

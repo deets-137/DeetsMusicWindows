@@ -10,12 +10,22 @@ const subs = new Set<RequestCb>();
 
 /**
  * Ask the layout to bring `id` on-screen. The layout mounts it into the
- * least-recently-touched content slot; if it's already visible in the other
- * slot, the two slots exchange (see docs/FUTURE-SETTINGS.md §10).
+ * least-recently-touched content slot. A card already on screen stays where it is
+ * (ARTIST-VIEW.md §6); one in a hidden slot (mini's right) comes into the visible one.
  */
 export function requestCard(id: CardId): void {
   subs.forEach((cb) => cb(id));
 }
+
+// The on-screen panel that shows a card (the chip flight's landing, handoff.ts). The layout
+// installs the lookup; before it does, nothing is on screen.
+let hostLookup: (id: CardId) => HTMLElement | null = () => null;
+/** Layout-side: install the lookup. */
+export function setCardHostLookup(fn: (id: CardId) => HTMLElement | null): void {
+  hostLookup = fn;
+}
+/** The panel showing `id` on screen now, or null. */
+export const cardHost = (id: CardId): HTMLElement | null => hostLookup(id);
 
 /** Layout-side: subscribe to summon requests. Returns an unsubscribe fn. */
 export function onCardRequest(cb: RequestCb): () => void {

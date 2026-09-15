@@ -641,6 +641,31 @@ pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
     meta_set(&conn, META_QUEUE_STATE, &json)
 }
 
+// ── Play counts (the Library artist view's "Most Played" sort, ARTIST-VIEW.md §1) ──
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayCount {
+    /// The play_stats key: `library_id ?? catalog_id` (stats.ts).
+    pub id: String,
+    pub full: i64,
+    pub partial: i64,
+}
+
+/// Every song this app has played, with its tallies. Zero Apple calls.
+#[tauri::command]
+pub fn play_counts(db: State<'_, Db>) -> Result<Vec<PlayCount>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT track_id, full_count, partial_count FROM play_stats WHERE partial_count > 0")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok(PlayCount { id: r.get(0)?, full: r.get(1)?, partial: r.get(2)? }))
+        .map_err(|e| e.to_string())?;
+    let out: Result<Vec<PlayCount>, _> = rows.collect();
+    out.map_err(|e| e.to_string())
+}
+
 // ── Dead play ids (QUEUE.md §Dead ids) ────────────────────────────────────────
 
 /// A mark older than this is ignored, so a song Apple restores gets tried again.

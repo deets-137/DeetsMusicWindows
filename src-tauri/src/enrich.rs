@@ -42,8 +42,31 @@ pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
             c1         TEXT,
             c2         TEXT,
             fetched_at INTEGER NOT NULL
+        );
+        -- The Library artist view (ARTIST-VIEW.md §4), keyed by the library artist NAME.
+        -- catalog_id '' = resolved, Apple has no match (never asked again). artwork and
+        -- featured are normalized JSON (links only, never image bytes). featured_at 0 =
+        -- expired (the Library refresh button). top_songs = Apple's top-songs view (the
+        -- Popular sort), fetched and refreshed with featured.
+        CREATE TABLE IF NOT EXISTS artist_catalog (
+            name        TEXT PRIMARY KEY,
+            catalog_id  TEXT NOT NULL,
+            artwork     TEXT,
+            featured    TEXT,
+            featured_at INTEGER NOT NULL DEFAULT 0,
+            top_songs   TEXT
         );",
-    )
+    )?;
+    // artist_catalog first shipped without top_songs (dev databases, 2026-09-15): add it.
+    let has_top: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('artist_catalog') WHERE name = 'top_songs'",
+        [],
+        |r| r.get(0),
+    )?;
+    if has_top == 0 {
+        conn.execute_batch("ALTER TABLE artist_catalog ADD COLUMN top_songs TEXT;")?;
+    }
+    Ok(())
 }
 
 fn now_ms() -> i64 {

@@ -678,6 +678,15 @@ mosaic, or ♪) at 2× the token size. The Search card's catalog album / playlis
 the same `.lib-hero` markup themselves (they don't use the engine); the artist subtitle
 there hops via the album's own `artists` relationship.
 
+**Artist views (2026-09-15, [ARTIST-VIEW.md](ARTIST-VIEW.md))** also open on a hero: a round
+photo (`heroCover(…, round)`, `--hero-artist-radius`), the name, and counts (Library) or the
+genre (Search). Under it, `Context.shelves` draws Featured Playlists / Your Playlists
+scrollers inside the block the windower measures; shelf tiles carry `data-shelf-item` and
+route to `Context.onShelf` / `Context.shelfMenu`. `Context.toolbarBelow` (a section label)
+moves the Sort / View / Search row from the pane top into the scroll, under the shelves; the
+engine keeps that head block's nodes across renders that don't change the hero or shelves, and
+the windower keeps a hero whose HTML is unchanged.
+
 ### 4b. The Queue card (Qcard) & drag-to-reorder
 The Qcard (`src/qcard.ts`) is a small **standalone** renderer (not the collection-card
 engine) in the Playlists slot — Now Playing + Up Next, re-rendered (`body.innerHTML = …`)

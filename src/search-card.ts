@@ -7,7 +7,7 @@
 
 import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
 import { addTransientTracks, onTracksChange } from "./track-store";
-import { addToPlaylistItem } from "./playlists";
+import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
 import * as frames from "./frames";
 import {
   addSongToLibraryItem, addAlbumToLibraryItem, addTrackToLibrary, libraryAddEnabled, libraryAddOffered, onLibraryAddChange,
@@ -17,7 +17,7 @@ import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
-import { onDrillRequest } from "./go-to";
+import { onDrillRequest, onPlaylistPaneRequest } from "./go-to";
 import { esc, formatTotal } from "./collection-card";
 import { explicitBadge, heroCover } from "./library-card";
 import {
@@ -27,6 +27,10 @@ import {
 import type { Track, Artwork } from "./library";
 import type { CardDef, CardInstance } from "./cards";
 import { rowDrag } from "./row-drag";
+import {
+  yourPlaylistsFor, checkPlaylists, artistShelvesHTML, playlistShelfMenu, type YourPlaylists, type CheckProgress,
+} from "./artist-view";
+import { handOff } from "./handoff";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
@@ -429,9 +433,10 @@ function mountSearch(host: HTMLElement): CardInstance {
     const meta = [count, total, m.curatorName ?? "Apple Music"].filter(Boolean).join(" · ");
     return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(m.title)}</span><span class="lib-hero__meta">${esc(meta)}</span></div>`;
   };
-  const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string, meta: CollectionMeta) => {
+  // `preloaded`: songs a chip flight fetched already (ARTIST-VIEW.md §5) — no second fetch.
+  const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[]) => {
     body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-    collectionTracks(kind, id)
+    (preloaded ? Promise.resolve(preloaded) : collectionTracks(kind, id))
       .then((tracks) => {
         body.innerHTML = heroHTML(kind, meta, tracks) + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
         wireTrackList(body, tracks, `search-${kind}:${id}`);
@@ -445,32 +450,81 @@ function mountSearch(host: HTMLElement): CardInstance {
       .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
   };
   // The pane header shows the kind; the hero owns the name.
-  const openCollection = (kind: "albums" | "playlists", id: string, meta: CollectionMeta) =>
-    pushPane(kind === "albums" ? "Album" : "Playlist", (body) => fillCollection(body, kind, id, meta));
+  const openCollection = (kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[]) =>
+    pushPane(kind === "albums" ? "Album" : "Playlist", (body) => fillCollection(body, kind, id, meta, preloaded));
 
+  // The artist pane (ARTIST-VIEW.md): a round hero, Albums, Featured Playlists, Your Playlists,
+  // Top Songs. Your Playlists lands after the pane (zero Apple calls; "Check N more" fetches
+  // each unopened Apple playlist once).
   const fillArtist = (body: HTMLElement, id: string) => {
       body.innerHTML = `<p class="search__prompt">Loading…</p>`;
       artistDetail(id)
         .then((d) => {
+          let yours: YourPlaylists | undefined;
+          let checking: CheckProgress | null = null;
           const albums = d.albums
             .map((a) => tileCell("album", a.catalogId ?? "", a.title, a.releaseDate?.slice(0, 4) ?? "", art(a.artwork?.urlTemplate, 128)))
             .join("");
+          const genre = d.artist.genres?.[0];
           body.innerHTML = `
+            <div class="lib-hero">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div>
             ${albums ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${albums}</div>` : ""}
+            <div data-shelves>${artistShelvesHTML(d.featuredPlaylists, yours, checking)}</div>
             <div class="search__label">Top Songs</div>
             ${d.topSongs.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`}`;
+          const shelves = body.querySelector<HTMLElement>("[data-shelves]")!;
+          const paintShelves = () => { shelves.innerHTML = artistShelvesHTML(d.featuredPlaylists, yours, checking); };
+          const loadYours = () =>
+            yourPlaylistsFor(d.artist.name)
+              .then((y) => { yours = y; paintShelves(); })
+              .catch((err) => console.error("[search] your playlists", err));
+          void loadYours();
           wireTrackList(body, d.topSongs, `search-artist:${id}`);
           refreshAdds();
           body.addEventListener("click", (e) => {
-            const tile = (e.target as HTMLElement).closest<HTMLElement>("[data-album]");
+            const t = e.target as HTMLElement;
+            const shelf = t.closest<HTMLElement>("[data-shelf-item]");
+            if (shelf) {
+              const i = Number(shelf.dataset.shelfIdx);
+              const kind = shelf.dataset.shelfItem;
+              if (kind === "featured") {
+                const p = d.featuredPlaylists[i];
+                if (p?.catalogId) openCollection("playlists", p.catalogId, { title: p.name, artwork: p.artwork, curatorName: p.curatorName });
+              } else if (kind === "yours") {
+                const p = yours?.hits[i]?.p;
+                const lid = p?.libraryId;
+                if (p && lid) handOff(shelf, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount);
+              } else if (kind === "check" && yours && !checking) {
+                checking = { done: 0, total: yours.unchecked.length };
+                paintShelves();
+                void checkPlaylists(yours.unchecked, (pr) => { checking = pr; paintShelves(); })
+                  .then(loadYours)
+                  .finally(() => { checking = null; paintShelves(); });
+              }
+              return;
+            }
+            const tile = t.closest<HTMLElement>("[data-album]");
             if (!tile) return;
             const al = d.albums.find((a) => a.catalogId === tile.dataset.album);
             if (al?.catalogId) openCollection("albums", al.catalogId, { title: al.title, artwork: al.artwork, artistName: d.artist.name, releaseDate: al.releaseDate });
           });
-          // Album tiles live outside `root`, so the root's delegated right-click doesn't
-          // reach them — wire the same fetch-then-enqueue menu here (else native menu shows).
+          // Tiles in a pane live outside `root`, so the root's delegated right-click doesn't
+          // reach them — wire the same menus here (else the native menu shows).
           body.addEventListener("contextmenu", (e) => {
-            const tile = (e.target as HTMLElement).closest<HTMLElement>("[data-album]");
+            const t = e.target as HTMLElement;
+            const shelf = t.closest<HTMLElement>("[data-shelf-item]");
+            if (shelf) {
+              const i = Number(shelf.dataset.shelfIdx);
+              if (shelf.dataset.shelfItem === "featured") {
+                const cid = d.featuredPlaylists[i]?.catalogId;
+                if (cid) { e.preventDefault(); collectionMenu(e, "playlists", cid, `search-playlists:${cid}`); }
+              } else if (shelf.dataset.shelfItem === "yours") {
+                const p = yours?.hits[i]?.p;
+                if (p) { e.preventDefault(); openContextMenu(e.clientX, e.clientY, playlistShelfMenu(() => playlistTracks(p), `playlist:${p.libraryId}`, false)); }
+              }
+              return;
+            }
+            const tile = t.closest<HTMLElement>("[data-album]");
             if (!tile?.dataset.album) return;
             e.preventDefault();
             collectionMenu(e, "albums", tile.dataset.album, `search-albums:${tile.dataset.album}`);
@@ -478,7 +532,8 @@ function mountSearch(host: HTMLElement): CardInstance {
         })
         .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
   };
-  const openArtist = (id: string, name: string) => pushPane(name, (body) => fillArtist(body, id));
+  // The pane header shows the kind; the hero owns the name (as album panes do).
+  const openArtist = (id: string, _name: string) => pushPane("Artist", (body) => fillArtist(body, id));
 
   // ── drill-ins ("Go to Artist" / "Go to Album") ──
   // Open the target pane immediately on the fallback name (the source row's own
@@ -497,8 +552,8 @@ function mountSearch(host: HTMLElement): CardInstance {
       catalogRelated(kind, id, rel)
         .then((ref) => {
           if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
-          // An album pane's header reads "Album" (the hero carries the name); an artist pane keeps the name.
-          setTitle(rel === "albums" ? "Album" : ref.name || fallbackName);
+          // The pane header reads the kind; the hero carries the name.
+          setTitle(rel === "albums" ? "Album" : "Artist");
           fill(body, ref.id, ref.name || fallbackName);
         })
         .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
@@ -515,6 +570,10 @@ function mountSearch(host: HTMLElement): CardInstance {
     if (intent.rel === "artists") goToArtist(intent.srcKind, intent.srcId, intent.name);
     else goToAlbum(intent.srcId, intent.name);
   });
+  // A Featured Playlists tile on the Library artist view opens its playlist here (ARTIST-VIEW.md §5).
+  const unsubPlaylistPane = onPlaylistPaneRequest((i) =>
+    openCollection("playlists", i.id, { title: i.name, artwork: i.artwork, curatorName: i.curatorName }, i.tracks),
+  );
 
   // ── menus ──
   const enqueue = (tracks: Track[], how: "now" | "next" | "later", context: string) => {
@@ -698,6 +757,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       queryToken++; // orphan any in-flight response
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted
+      unsubPlaylistPane();
       unsubAddTracks();
       unsubAddToggle();
       headerCbs.clear();

@@ -21,6 +21,8 @@ front-end, Rust back-end).
 - `docs/PROVIDERS.md` — Apple Music + Spotify at once, one merged library (option B,
   designed 2026-09-15, not built): id namespace, PKCE on the loopback, Account flyout,
   capabilities, the second playback backend, build order.
+- `docs/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
+  Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

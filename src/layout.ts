@@ -15,7 +15,7 @@
 import { registry, type CardDef, type CardId, type CardInstance } from "./cards";
 import { setting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
-import { onCardRequest } from "./layout-bus";
+import { onCardRequest, setCardHostLookup } from "./layout-bus";
 import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
 
@@ -306,10 +306,19 @@ export function initLayout(): void {
   // queue) is already on-screen by construction → no-op.
   // The player has no visible slot: a request first switches mini to its card view
   // (synchronous — the slot is on-screen before setSlot mounts into it).
+  // A slot of this composition that shows `id` on screen (mini's hidden right slot doesn't count).
+  const visibleSlotOf = (id: CardId): Slot | undefined => comp.slots.find((s) => layout[s] === id && onScreen(hosts[s]));
   onCardRequest((id) => {
     if (comp.anchored.includes(id)) return;
     if (isPlayerView()) void applySurface("mini", false, "cards");
+    // Already on screen: leave the layout as it is. It used to exchange the two slots
+    // whenever the least-recently-touched slot was the other one (ARTIST-VIEW.md §6).
+    if (visibleSlotOf(id)) return;
     setSlot(currentSurface() === "mini" ? "left" : lruSlot(), id);
+  });
+  setCardHostLookup((id) => {
+    const s = visibleSlotOf(id);
+    return s ? hosts[s] : null;
   });
 
   // The Rewind gate flipped: pickers re-read the pool, and a slot that was showing

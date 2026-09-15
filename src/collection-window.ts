@@ -263,6 +263,9 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
 
   return {
     update(s) {
+      // The same hero HTML keeps its nodes (the engine's head block: live pills, a focused
+      // search field, loaded covers); a changed one is replaced below.
+      const keepHero = !!s.hero && s.hero === hero;
       count = s.count;
       render = s.render;
       hero = s.hero;
@@ -280,17 +283,19 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
       bot.style.height = `${view.scrollHeight}px`;
       top.style.display = "none";
       top.style.height = "0px";
-      for (let el = view.firstElementChild; el && el !== top; ) {
-        const n = el.nextElementSibling;
-        el.remove();
-        el = n;
+      if (!keepHero) {
+        for (let el = view.firstElementChild; el && el !== top; ) {
+          const n = el.nextElementSibling;
+          el.remove();
+          el = n;
+        }
       }
       for (let el = top.nextElementSibling; el && el !== bot; ) {
         const n = el.nextElementSibling;
         el.remove();
         el = n;
       }
-      if (hero) top.insertAdjacentHTML("beforebegin", hero);
+      if (hero && !keepHero) top.insertAdjacentHTML("beforebegin", hero);
       a = b = 0;
       pitch = 0;
       pass(true);

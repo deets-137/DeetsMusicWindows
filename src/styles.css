@@ -1170,6 +1170,22 @@ body {
   z-index: 200;                     /* above menus and toasts' tier: it rides the pointer */
 }
 .drag-ghost.is-nodrop { opacity: var(--drag-nodrop-opacity); }
+/* Chip flight (src/handoff.ts, ARTIST-VIEW.md §5): the same copy, flown from a shelf tile to
+   the card that opens it. JS sets --fly-dx / --fly-dy (tile centre → card centre). The travel
+   rides `translate`, the skin's shape rides `transform` (skin.css §chip flight). */
+.drag-ghost.drag-ghost.is-flying {
+  animation:
+    handoff-fly-travel var(--fly-dur) var(--fly-ease) both,
+    handoff-fly-shape  var(--fly-dur) var(--fly-ease) both;
+}
+@keyframes handoff-fly-travel {
+  to { translate: var(--fly-dx, 0px) var(--fly-dy, 0px); }
+}
+@keyframes handoff-fly-shape {
+  from { transform: var(--drag-lift); }
+  50%  { transform: var(--fly-mid); }
+  to   { transform: var(--fly-land); opacity: var(--fly-land-fade); }
+}
 /* A collection's song count, pinned to the copy's corner. */
 .drag-ghost__count {
   position: absolute;
@@ -1398,6 +1414,27 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   padding: var(--space-2) var(--space-2) var(--space-3);
 }
 .lib-grid .lib-hero { grid-column: 1 / -1; }
+/* An artist hero's shelves (ARTIST-VIEW.md §2.2): Featured / Your Playlists scrollers
+   between the hero and the rows; a grid-density view spans them like the hero. */
+.lib-shelves { display: flex; flex-direction: column; padding: 0 var(--space-2) var(--space-2); min-width: 0; }
+.lib-grid .lib-shelves { grid-column: 1 / -1; }
+/* A toolbar below the hero (Context.toolbarBelow): the head (hero + shelves), then the bar
+   (section label + Sort / View / Search) right above the rows they act on. The bar sticks to
+   the top of the scroll once the head has scrolled away; it is a direct child of the scroll
+   view for that (a sticky box stops at its parent's edge). It paints the card's own fill and
+   frost (skin tokens --sticky-bar-*), so it reads as no box at all while the rows pass under. */
+.lib-view-head { min-width: 0; }
+.lib-grid .lib-view-head,
+.lib-grid .lib-view-bar { grid-column: 1 / -1; }
+.lib-view-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;                       /* over rows that lift on hover */
+  padding: var(--space-1) var(--space-2) 0;
+  background: var(--sticky-bar-surface);
+  -webkit-backdrop-filter: var(--sticky-bar-backdrop);
+  backdrop-filter: var(--sticky-bar-backdrop);
+}
 .lib-hero__cover {
   width: var(--hero-cover); height: var(--hero-cover);
   border-radius: var(--lib-tile-radius);
@@ -1406,6 +1443,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   margin-bottom: var(--space-1);
 }
 .lib-hero__cover--empty { display: grid; place-items: center; color: var(--subtext); font-size: var(--fs-title); }
+.lib-hero__cover--round { border-radius: var(--hero-artist-radius); }
 /* A local playlist's cover is a button (the cover menu: image, remove, export) and a file
    drop target. Children ignore the pointer so a drag never leaves the button for its img. */
 .lib-hero__cover-btn {
@@ -1672,6 +1710,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; }
 .search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
 .search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
+.search__tile-art--mosaic { overflow: hidden; } /* a playlist with no artwork, on an artist shelf */
+.search__tile-art--mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .search__tile:hover { transform: var(--hover-lift); }
 .search__tile-name { font-size: var(--fs-subtext); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__tile-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

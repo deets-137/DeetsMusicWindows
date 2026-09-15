@@ -14,6 +14,7 @@ import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete,
   playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, addToPlaylistItem, onPlaylistsChange,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
+  onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest,
 } from "./playlists";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
@@ -757,6 +758,30 @@ export const playlistsCard: CardDef = {
     }
     refreshBtn?.addEventListener("click", () => doSync(true));
 
+    // A Your Playlists tile on an artist view opens its playlist here (ARTIST-VIEW.md §5). A
+    // request made while this card mounted waits in the bus; a later one arrives live. A
+    // playlist not in the list yet (the first load still running) opens once it lands.
+    // Songs fetched by the chip flight seed the cache, so the view slides in full.
+    const openRequested = (req: OpenPlaylistRequest | null) => {
+      if (!req) return;
+      const open = (p: Playlist) => {
+        if (req.tracks) {
+          req.tracks.forEach((t, i) => posOf.set(t, i));
+          trackCache.set(pid(p), req.tracks);
+          reconcile(req.tracks);
+        }
+        card.drill(detail(p));
+      };
+      const hit = lists.find((x) => x.libraryId === req.id);
+      if (hit) return open(hit);
+      void load().then(() => {
+        const p = lists.find((x) => x.libraryId === req.id);
+        if (p) open(p);
+      });
+    };
+    const unsubOpen = onOpenPlaylistRequest(() => openRequested(takeOpenPlaylistRequest()));
+    openRequested(takeOpenPlaylistRequest());
+
     // Local-store change bus: any create / add-tracks / delete (from ANY card —
     // Library, Search, or here) refreshes the list and, when a specific playlist
     // was touched, evicts + refetches its content cache so an open detail pane
@@ -820,6 +845,7 @@ export const playlistsCard: CardDef = {
     return {
       destroy() {
         unsubChanges();
+        unsubOpen();
         card.destroy();
         host.innerHTML = "";
       },

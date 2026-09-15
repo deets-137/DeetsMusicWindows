@@ -404,3 +404,44 @@ export function playlistTracks(p: Playlist): Promise<Track[]> {
   if (!p.libraryId) return Promise.reject(new Error(`playlist "${p.name}" has no library id`));
   return invoke<Track[]>("apple_playlist_tracks", { id: p.libraryId });
 }
+
+/** Every stored playlist's songs (`key` = the playlist's libraryId), and the Apple playlists
+ *  whose songs were never fetched. Zero Apple calls (ARTIST-VIEW.md §3). */
+export interface PlaylistSongIndex {
+  lists: { key: string; tracks: Track[] }[];
+  unchecked: string[];
+}
+export function playlistSongIndex(): Promise<PlaylistSongIndex> {
+  return invoke<PlaylistSongIndex>("playlists_song_index");
+}
+
+// ── open a playlist in the Playlists card (ARTIST-VIEW.md §5) ──────────────────
+// The request waits here until a Playlists card takes it: a card mounted by the summon
+// takes it on mount, a card already on screen through the subscription. An old request
+// (the card never came) is dropped, so it can't open a playlist much later.
+const OPEN_TTL_MS = 5000;
+/** An open request: the playlist's libraryId, and its songs when the caller fetched them
+ *  already (the chip flight does), so the view opens full with no second fetch. */
+export interface OpenPlaylistRequest {
+  id: string;
+  tracks?: Track[];
+}
+let pendingOpen: (OpenPlaylistRequest & { at: number }) | null = null;
+const openSubs = new Set<() => void>();
+
+/** Ask the Playlists card to open the playlist with this libraryId. Summon the card first. */
+export function requestOpenPlaylist(libraryId: string, tracks?: Track[]): void {
+  pendingOpen = { id: libraryId, tracks, at: Date.now() };
+  openSubs.forEach((cb) => cb());
+}
+/** Playlists-card side: take the waiting request (null when none, or too old). */
+export function takeOpenPlaylistRequest(): OpenPlaylistRequest | null {
+  const p = pendingOpen;
+  pendingOpen = null;
+  return p && Date.now() - p.at < OPEN_TTL_MS ? { id: p.id, tracks: p.tracks } : null;
+}
+/** Playlists-card side: be told when a request arrives. Returns an unsubscribe fn. */
+export function onOpenPlaylistRequest(cb: () => void): () => void {
+  openSubs.add(cb);
+  return () => openSubs.delete(cb);
+}
