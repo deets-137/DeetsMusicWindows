@@ -165,9 +165,21 @@ batch gave one line (joined). No warnings or errors. New dev line `[perf] frames
 <detail>` times only the rise (the whole-cover line also counts the opaque wait: the Max remount
 long task, 57–80 ms, sits there, unseen). Lift drop into Max: Glass 52–60%, Ocean 43–55%,
 Retro-Future 13–16% without a resize and 30% right after one, Press 1% / 7.6%. Worst frame
-≤ 21 ms. **The Max rise on Glass and Ocean is the cost of Max itself** (six frosted or effect
-panels rising); an agent skin change on Max without a resize drops the same. The resize adds a
-few points. Midi and Mini lifts: 0–11% (Glass → Mini 24% once).
+≤ 21 ms. ~~The Max rise on Glass and Ocean is the cost of Max itself~~ — wrong, see the fix below.
+Midi and Mini lifts: 0–11% (Glass → Mini 24% once).
+
+**Frame fix (2026-09-15, polish session).** Trace (`Animation` events, `compositeFailed` 64
+"incompatible animations"): in the lift every panel still carried `boot-safety-panel`, and any
+animation on an element keeps its transitions on the main thread. Glass re-rastered its frosted
+layers each frame; Ocean repainted six panels into the document. A 1 ms safety does not help;
+`animation: none` in the lift does (the lift's end state is the rest state, so the safety is not
+needed there; hold/wait keep it). Ocean's opt-in Sand edges then still dropped ~30%: the
+four-layer `mask-composite` redraws each frame (PNG tiles instead of the SVG noise: no gain), so
+during the lift the grain tile goes solid and the specks go empty ("Sand B"); they return when
+the lift ends. Ruled out by probes: ambient layers, stagger, frost alone, the rise's `scale()`.
+Re-measured (agent lift dropped %): Glass Max 47 → 0.4–1.5, Ocean Sand Max 47 → 0.7–1.6, Ocean
+Soft Max 0.2, Retro-Future Max 7 → 0, Press Max 6 → 1.2; Midi/Mini skin changes 20–39 → ≤ 1.4;
+surface → Max after a resize 58–60 → 4–7.5; surface → Midi on Ocean 44 → 11–13.
 
 **Forks — settled 2026-09-15 (user): 1A, 2A, 3A.**
 1. **Surface under the cover for user picks too?** **(A) Agents only first**; desk-test it,

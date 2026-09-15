@@ -781,6 +781,11 @@ body {
   mask-repeat: repeat, no-repeat, no-repeat;
   mask-composite: intersect, subtract, add;
 }
+/* During the launch-cover lift the sand draws its rim fade only: the grain tile goes solid
+   and the specks go empty. The grain masks redraw on every frame of the rise (30% of its
+   frames dropped on Max); they return in the frame the lift ends. */
+html[data-boot="lift"] .panel::before { --sand-grain: linear-gradient(#000 0 0); }
+html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparent 0 0); }
 
 .panel__head {
   position: relative;            /* anchor for the slot picker menu */
@@ -2040,7 +2045,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    card while the queue-summon button rides the right edge; the empty left cell is the
    counterweight. The summon button wears .panel__action so it mirrors the Library
    Sync button exactly — no geometry of its own beyond grid placement. */
-.np__bottom { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: var(--space-2); row-gap: var(--space-2); align-items: center; }
+/* --np-bottom-gap is the one-row gap; fit() reads it, not column-gap, which the stacked rule zeroes */
+.np__bottom { --np-bottom-gap: var(--space-2); display: grid; grid-template-columns: 1fr auto 1fr; column-gap: var(--np-bottom-gap); row-gap: var(--space-2); align-items: center; }
 .np__bottom .np__controls { grid-column: 2; justify-self: center; } /* never stretches: its measured width must not depend on the stacked state (see fit()) */
  /* Left cluster: shuffle · queue summon · search. Right cluster: ♥ · Add-to-Library "+"
    (2026-09-12 order). All .panel__action squares. The two right squares stay in place
@@ -2236,9 +2242,13 @@ html[data-boot="lift"] .boot-cover {
     opacity calc(var(--boot-cover-out) * var(--motion-scale, 1)) var(--boot-ease),
     background-color calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--boot-ease);
 }
+/* No safety animation in the lift: the end state here is already the rest state, and any
+   animation on a panel keeps its transitions off the compositor (Chromium "incompatible
+   animations"), so each frame re-rastered Glass's frost and repainted Ocean's cards. */
 html[data-boot="lift"] .bento > .panel {
   opacity: 1;
   transform: none;
+  animation: none;
   transition:
     opacity calc(var(--boot-dur) * var(--motion-scale, 1)) var(--boot-ease),
     transform calc(var(--boot-dur) * var(--motion-scale, 1)) var(--boot-ease);

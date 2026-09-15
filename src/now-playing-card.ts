@@ -441,8 +441,10 @@ export const nowPlayingCard: CardDef = {
 
     // Transport row overflow (mini at minimum width): when shuffle + prev/play/next +
     // summon can't fit one row, drop the two side buttons to a second row. Measured
-    // from the rendered buttons (their widths don't change when stacked, so the
-    // threshold can't oscillate) and the grid's own column-gap, so it follows the skin.
+    // from the rendered buttons (their widths don't change when stacked) and the one-row
+    // gap token --np-bottom-gap. Not the live column-gap: the stacked rule sets it to 0,
+    // so the threshold moved with the state and a width near it flipped the row every
+    // frame (a ResizeObserver loop error on mini → max, 2026-09-15).
     const bottom = host.querySelector<HTMLElement>(".np__bottom");
     const leftCluster = host.querySelector<HTMLElement>(".np__left"); // shuffle · queue · search
     const controls = host.querySelector<HTMLElement>(".np__controls");
@@ -450,7 +452,7 @@ export const nowPlayingCard: CardDef = {
     let stackObserver: ResizeObserver | undefined;
     if (bottom && leftCluster && controls && rightCluster) {
       const fit = () => {
-        const gap = parseFloat(getComputedStyle(bottom).columnGap) || 0;
+        const gap = parseFloat(getComputedStyle(bottom).getPropertyValue("--np-bottom-gap")) || 0;
         const needed = leftCluster.offsetWidth + controls.offsetWidth + rightCluster.offsetWidth + gap * 2;
         bottom.classList.toggle("np__bottom--stacked", bottom.clientWidth < needed);
       };
