@@ -16,6 +16,7 @@
 //  3. The pin and the updater: the product name, exe name and per-user install are unchanged
 //     (a pinned taskbar button points at them), the updater public key is set, and the
 //     installer has its signature.
+import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -77,6 +78,24 @@ if (!conf.plugins?.updater?.pubkey) failures.push("plugins.updater.pubkey is emp
 const setup = join(root, "src-tauri", "target", "release", "bundle", "nsis", `DeetsMusic_${versions["package.json"]}_x64-setup.exe`);
 if (existsSync(setup) && !existsSync(`${setup}.sig`)) {
   failures.push("the installer has no .sig next to it (build with npm run release, which signs it)");
+}
+
+// ── 4. Authenticode (RELEASE.md §6.9) ─────────────────────────────────────────────────
+// A valid, timestamped signature from the publisher on the files we can read here. The name must
+// match bundle.publisher, which the installer shows in Installed apps.
+// Not target\release\DeetsMusic.exe: tauri build signs a patched copy for the installer, then
+// puts the unsigned original back (seen 2026-09-15, the exe rewritten after the setup exe). The
+// installed exe is checked after an install instead (RELEASE.md §6.9).
+const signed = [join(root, "cli", "dist", "deetsmusic.exe"), setup].filter((f) => existsSync(f));
+if (signed.length) {
+  const ps = `$ErrorActionPreference='Stop'; @(${signed.map((f) => `'${f.replaceAll("'", "''")}'`).join(",")}) | ForEach-Object { $s = Get-AuthenticodeSignature -LiteralPath $_; [pscustomobject]@{ file = $_; status = [string]$s.Status; subject = [string]$s.SignerCertificate.Subject; stamped = [bool]$s.TimeStamperCertificate } } | ConvertTo-Json -Compress`;
+  const out = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8" });
+  for (const s of [JSON.parse(out)].flat()) {
+    const cn = /CN=([^,]+)/.exec(s.subject)?.[1];
+    if (s.status !== "Valid" || cn !== conf.bundle.publisher || !s.stamped) {
+      failures.push(`${s.file} is not signed by ${conf.bundle.publisher} (status ${s.status}, CN ${cn ?? "none"}, timestamp ${s.stamped})`);
+    }
+  }
 }
 
 if (failures.length) {
