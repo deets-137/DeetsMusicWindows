@@ -265,6 +265,178 @@ the chosen surface + each surface's last window size (`deets.surface` = `"mini"|
 active surface from size. A **Window / Layout** settings subsection would host the toggle +
 (advanced) the band editor.
 
+### 8a. Open sizes — DECIDED 2026-09-15, not built (1A, 2C, 3 as proposed, 4B)
+
+**Terms.** A **surface button** is a row in the title menu's Surface flyout: *Mini | NP*,
+*Midi*, *Max* (`index.html`, `data-surface-choice`). A **view** is one of the four sized
+things: Mini (mini, card view), NP (mini, player view), Midi, Max — `SizeSlot` in
+`surface.ts` (NP is `"player"`). The **open size** is the window size a view opens at.
+
+**The report (desk, 2026-09-15).** NP opened small, tall and narrow (the default is
+360 × 600, or a smaller size the app remembered). On Press with *Record player: Spin*, the
+record jittered without a stop. A narrow NP also looks bad: the record is a square of the
+shorter side, so a narrow window gives a small record with empty space above and below.
+
+**Decisions.**
+1. **1A — a view always opens at its open size.** A surface button, a tray click, *Open
+   DeetsMusic*, the launch, and an agent's surface set all resize the window to the setting.
+   A resize by hand lasts only until the next open. Nothing is remembered from a resize.
+   Clicking the surface button of the view that already shows resizes it back to its open
+   size (today that click is a no-op).
+2. **2C — one Settings row per view, with a size menu and "Set current".** The menu lists
+   sizes as `W × H` in px (no Small / Medium / Large). *Set current* saves the window's size
+   now as that view's open size.
+3. **Sizes as proposed.** The user tunes them later with *Set current*; their tuned values
+   then become the shipped defaults (a later one-line change to `DEFAULTS`).
+4. **4B — the jitter fix and the sizes are one build pass.** The fix is at the cause (below),
+   not only a larger default.
+
+#### Defaults and menu sizes (logical px, the size `setSize` takes)
+
+| View | Key | Default | Menu sizes | Window minimum (`MIN_SIZES`) |
+|---|---|---|---|---|
+| Mini | `sizeMini` | **360 × 560** | 340 × 560 · 360 × 560 · 360 × 700 | 340 × 560 (no change) |
+| NP | `sizePlayer` | **520 × 560** | 420 × 460 · 520 × 560 · 640 × 680 | **420 × 460** (was 340 × 420) |
+| Midi | `sizeMidi` | **480 × 864** | 420 × 760 · 480 × 864 · 560 × 900 | 340 × 560 (no change) |
+| Max | `sizeMax` | **1100 × 820** | 960 × 700 · 1100 × 820 · 1400 × 900 | 340 × 560 (no change) |
+
+Every menu size sits inside its view's band (Mini ≤ 365 wide; Midi 355–860; Max ≥ 780), so
+applying one cannot flip the surface. NP has its own band rule (see *NP and the band*).
+
+#### Store
+
+- Four new `Settings` keys in `settings-store.ts`, in the `── window ──` group:
+  `sizeMini`, `sizePlayer`, `sizeMidi`, `sizeMax`. Type: a string `"WxH"` (for example
+  `"520x560"`). A string, not an object: `setSetting` compares with `===`, `sameSnapshot`
+  in the Reset code compares JSON, and the agent's `get`/`set` are text — a string fits all
+  three with no new code.
+- `DEFAULTS`: `"360x560"`, `"520x560"`, `"480x864"`, `"1100x820"`. Comment: "user's call
+  2026-09-15: proposed; the user tunes and we adopt theirs".
+- A small parser in `surface.ts`: `parseSize("520x560") → { w, h } | null`. A bad value falls
+  back to the default for that view.
+- **Old keys:** `deets.surface.size.{mini,midi,max}` and `deets.surface.size.mini-player`
+  are not migrated (a remembered size is what made NP small). `migrate()` removes them from
+  localStorage once. The user sets their own sizes again with *Set current*.
+
+#### `surface.ts` changes
+
+- Delete `saveSize`, `saveTimer`, `rememberedSize`, `sizeKey` and the `saveSize()` call in
+  the ResizeObserver. Keep `DEFAULT_SIZES` only as the fallback for a bad stored value (or
+  read `DEFAULTS` from the store and delete it).
+- New `openSize(k: SizeSlot): { w, h }` = the setting, parsed, then **clamped**: not below
+  `MIN_SIZES[k]`, not above the screen's work area (`window.screen.availWidth` /
+  `availHeight`, which are in logical px in WebView2). Round to whole px.
+- `applySize(s)` uses `openSize(slotOf(s))`. Remove the `useDefault` parameter.
+- `applySurface(s, fixed, view)`: remove `fixed` (every open is now the setting). Change the
+  early return: when `s` and the view are the same, skip `activate` but still call
+  `applySize` (decision 1: the button resizes back). Callers to update: `main.ts:157`
+  (flyout), `main.ts:167` (`tray-pop`: drop the `true`), `main.ts:175` (`tray-open`),
+  `layout.ts:313`, `agent-settings.ts:127–128`.
+- `MIN_SIZES.player` → `{ w: 420, h: 460 }`.
+- New export `currentSizeText(): string` → `` `${innerWidth}x${innerHeight}` `` rounded, for
+  *Set current*. `setSize` with `LogicalSize` sets the inner size and the titlebar is ours,
+  so `innerWidth`/`innerHeight` are the same unit (the old `saveSize` relied on this too).
+- New export `activeSizeSlot(): SizeSlot` (= `slotOf(active)`), for the row's check.
+- **Live apply:** subscribe with `onSettingsChange`. When the changed key is the open size of
+  the view that shows, call `applySize(active)`. A menu pick then resizes the window at once.
+  A *Set current* write is the same size, so it is a no-op resize.
+
+#### NP and the band (the one code conflict)
+
+Today mini's band flips to midi above 365 px wide (`flipFor`, `MINI_CEIL + MINI_HYST`). A
+520 px NP would flip to Midi on the first drag of its edge (the 100 ms `applyingSize` guard
+only covers our own resize). **Rule for the build:** while the player view shows, a resize
+never changes the surface. In `flipFor`'s caller, skip the flip when `isPlayerView()`. NP is a
+floating player: there is no smaller surface to go to, and a wide NP is not a Midi. Mini's
+card view keeps today's band. (Recommended; the user can overrule at the desk test.)
+
+#### Settings rows (Settings › Window)
+
+Place them after *Resize changes surface*, before *Keep on top*. Four `split` rows, one per
+view. Label and hint follow the label style (verb-first, one-sentence hint):
+
+| id | Label | Hint |
+|---|---|---|
+| `sizemini` | Mini opens at | The window size for Mini. Set current saves the size it has now |
+| `sizeplayer` | NP opens at | The window size for NP, the player alone. Set current saves the size it has now |
+| `sizemidi` | Midi opens at | The window size for Midi. Set current saves the size it has now |
+| `sizemax` | Max opens at | The window size for Max. Set current saves the size it has now |
+
+Each row's `halves`:
+1. `{ type: "menu" }` — options = the three menu sizes, labels `"520 × 560"` (U+00D7, spaces
+   around it), values `"520x560"`. If the stored value is not one of the three (a *Set current*
+   size), put it first in the options, with the same label form. `get`/`set` read and write the
+   key. Write a helper `sizeRow(id, label, hint, key, presets)` next to `storeMenu`.
+2. `{ type: "action", label: "Set current", hint: "Saves the window's size now as this
+   view's size" }`. `run(el)`: if `activeSizeSlot()` is not this row's view, `flash(el,
+   "Open it first")` and stop. Else `setSetting(key, currentSizeText())`, then `flash(el,
+   "Saved")`. `flash` exists (`settings-card.ts:263`). The card re-renders on the store
+   change, so the menu shows the new size.
+
+**Reset:** add the four keys to the `window` group in `RESET_GROUPS` (`settings-card.ts:190`)
+and add "the four open sizes" to its hint.
+
+#### Agent (AGENT.md §6)
+
+Add four `Spec`s to `SPECS` in `agent-settings.ts`, section `"Window"`, after
+`surfaceAutoFlip`. Add a Spec kind `"size"`: the value is `"WxH"`. The set validates the
+pattern `^\d{3,4}x\d{3,4}$` and the view's minimum, else `unknown: …` (400). Clamp to the
+screen as `openSize` does. The live apply above resizes the window, so there is no extra call.
+List the kind and the four keys in AGENT.md §6. Wrap the resize in `withAppearanceTransition`
+with `{ by: "agent" }` only if the size is for the view that shows (the same slower cover as
+the surface key).
+
+#### The jitter — find the cause, then fix it (same pass)
+
+Not confirmed yet. Reproduce first, in the dev app: skin Press, *Record player: Spin*, NP at
+360 × 600, a song playing. Then check these, in this order (VINYL.md §8 has the tools):
+
+1. **Driver snaps.** `grep "\[perf\] vinyl snap"` in the dev log. Snaps that repeat while
+   playing steadily mean the driver (`sync` in `vinyl.ts`) is the cause, not the layout.
+   `__vinyl.sample(3000)`: steady play reads ±2 ms, rate 1.000.
+2. **A layout loop.** Sample `.np__art` `getBoundingClientRect()` and the `.vinyl` size every
+   50 ms with `scripts/webview-eval.mjs`. A size that changes while nothing else changes is a
+   loop. Suspects: the stage box (`styles.css:2137`: `flex: 1 1 auto; aspect-ratio: 1;
+   max-width: 100%` with `container-type: size`, so the width is capped and the height comes
+   from flex), and the two ResizeObservers in `now-playing-card.ts` (`fit` toggles
+   `np__bottom--stacked`; `placeBadge` on `.np__meta`). Count their calls with a temporary log.
+3. **The angle trace.** The 50 ms `transform` trace (VINYL.md §8). Steps that are not ~10° at
+   steady play mean frames or snaps. Steady steps with visible shake mean a half-pixel center.
+4. **A half-pixel center.** The disc is `calc(100cqmin - 2 * var(--vinyl-inset))`, centered
+   with `margin: auto`. When the box has a fractional width, the turn center sits on a half
+   pixel and the edge moves by a pixel as it turns. Fix: round the disc to whole px
+   (`round(down, calc(100cqmin - 2 * var(--vinyl-inset)), 2px)` — an even size keeps the
+   center on a whole pixel). The token stays in skin.css.
+
+Fix what the checks find, and log the finding in VINYL.md §9 as round 5. The larger NP default
+does not replace the fix: a user can still drag NP down to its minimum.
+
+#### Docs to update in the build
+
+- SETTINGS.md §3: four rows in the Window table; the `trayView` read site loses the `true`.
+- SURFACES-AND-CARDS.md *Mini's player view* › **Size**: open size from `sizePlayer`, minimum
+  420 × 460, no remembered size. Phase 3 note on `deets.surface.size.*`: replaced by §8a.
+- TRAY.md §1: the flyout opens at the view's open size (not "mini's default size").
+- AGENT.md §6: the `size` kind and the four keys.
+- This section: mark BUILT, with the commit.
+
+#### Restart
+
+Front-end only (`src/`). Vite reloads it; no dev-runner restart.
+
+#### Desk test
+
+1. Each surface button opens its view at the setting. Drag the edge, click the same button:
+   the window goes back.
+2. NP: drag it wider than 365 px — it stays NP.
+3. Pick a size in each row's menu while that view shows: the window resizes at once.
+4. *Set current* on the view that shows: the menu then lists that size first. On another
+   view's row: "Open it first".
+5. Tray click with *Tray icon opens: Player*: the flyout opens at the NP size, anchored.
+6. Settings › Reset › Window: the four sizes go back to the defaults.
+7. Press, Spin, NP at its minimum 420 × 460 and at a hand-dragged odd size: no jitter.
+8. Agent: `settings set sizePlayer 600x640` resizes NP; `set sizePlayer 10x10` is refused.
+
 ---
 
 ## 9. Per-menu open mode (hover vs click granularity)

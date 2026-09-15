@@ -601,6 +601,14 @@ song · end of Up Next), what it does at the end (pause vs a fade over 10 s via 
 and the visible countdown (a toast at 1 min, the remaining time in the tray tooltip). No Apple
 calls. Not designed.
 
+## 18. Surface open sizes + the NP record jitter — DECIDED 2026-09-15, not built
+
+Each view (Mini, NP, Midi, Max) opens at a size set in Settings › Window, with a `W × H`
+menu and *Set current*. NP defaults to 520 × 560 and never flips surface on a resize. The
+Press record jitter in a small NP is traced and fixed at its cause in the same pass. The full
+build spec (store keys, `surface.ts` changes, rows, agent kind, jitter checks, desk test) is
+[FUTURE-SETTINGS.md §8a](FUTURE-SETTINGS.md).
+
 ---
 
 ## See also
