@@ -45,10 +45,11 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
 | Section | Row (hint) | Key | Values | Read site |
 |---|---|---|---|---|
-| Window | Keep on top (The window stays above other windows) | `alwaysOnTop` | off / on | `main.ts` (subscribes) |
 | Window | Close to tray (× hides the window. The tray icon opens it again) | Rust | on / off | `tray.rs` close policy |
+| Window | Tray icon opens (A click on the tray icon. Player: Now Playing only) — pills *Mini* / *Player* (2026-09-14) | `trayView` | **cards** / player | `main.ts` `tray-pop` → `applySurface("mini", true, view)` |
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
+| Window | Keep on top (The window stays above other windows. Player: only while it shows the player) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always); last row of Window | `alwaysOnTop` | **off** / always / player | `main.ts` (subscribes to the setting and to `onSurfaceChange`; `isPlayerView()`) |
 | Look and feel | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`; OS reduced motion still snaps) |
 | Look and feel | Animate backgrounds (The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
 | Look and feel | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |

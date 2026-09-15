@@ -134,7 +134,6 @@ function mountSettings(host: HTMLElement): CardInstance {
     {
       title: "Window",
       rows: [
-        storeToggle("aot", "Keep on top", "alwaysOnTop", () => "The window stays above other windows"),
         {
           kind: "toggle",
           id: "tray",
@@ -145,6 +144,11 @@ function mountSettings(host: HTMLElement): CardInstance {
             minimizeToTray = on;
             invoke("settings_set_minimize_to_tray", { on }).catch((e) => console.error("[settings] tray", e));
           },
+        },
+        {
+          kind: "choice", id: "trayview", label: "Tray icon opens", key: "trayView",
+          hint: "A click on the tray icon. Player: Now Playing only",
+          options: [{ value: "cards", label: "Mini" }, { value: "player", label: "Player" }],
         },
         {
           kind: "toggle",
@@ -160,6 +164,11 @@ function mountSettings(host: HTMLElement): CardInstance {
           },
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        {
+          kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
+          hint: "The window stays above other windows. Player: only while it shows the player",
+          options: [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }],
+        },
       ],
     },
     {

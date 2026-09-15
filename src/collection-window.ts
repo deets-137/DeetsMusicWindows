@@ -256,7 +256,7 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
   const ro = typeof ResizeObserver === "function" ? new ResizeObserver(later) : null;
   ro?.observe(view);
   const mo = new MutationObserver(later);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-skin", "data-theme", "data-surface"] });
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-skin", "data-theme", "data-surface", "data-mini"] });
 
   mountShell();
   pass(true);

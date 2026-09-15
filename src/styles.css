@@ -186,9 +186,28 @@ body {
 /* Surface flyout: the label's size IS the preview (Mini < Midi < Max). Sizes come
    from the skin's own type scale, so the preview re-scales with the active skin.
    Every row reserves the tallest label's line box, so the three boxes match. */
-.flyout__item[data-surface-choice]        { line-height: var(--fs-title); }
-.flyout__item[data-surface-choice="mini"] { font-size: var(--fs-subtext); }
+.flyout__item[data-surface-choice], .flyout__split { line-height: var(--fs-title); }
+.flyout__split                            { font-size: var(--fs-subtext); }
 .flyout__item[data-surface-choice="max"]  { font-size: var(--fs-title); }
+/* Mini | NP: one item cut in two (the search pin idiom). Mini takes three quarters, NP
+   one. Both halves wear the same type; each carries its own radio dot, and a hover rings
+   only the half under the pointer. */
+.flyout__split { padding: 0; gap: 0; overflow: hidden; cursor: default; }
+.flyout__split::after { content: none; }
+.flyout__split:hover { box-shadow: none; }
+.flyout__half {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  flex: 3 1 0; min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  background: none; border: none;
+  font: inherit; line-height: inherit; color: inherit; text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-ui);
+}
+.flyout__half + .flyout__half { flex: 1 1 0; border-left: 1px solid var(--border); }
+.flyout__half::after { content: ""; width: 0.9em; text-align: center; line-height: 1; }
+.flyout__half[aria-checked="true"]::after { content: "•"; }
+.flyout__half:hover { background: var(--surface-hover); box-shadow: inset 0 0 0 2px var(--text); }
 
 /* ── Account flyout ─────────────────────────────────────────── */
 .flyout--account { min-width: 200px; }
@@ -654,6 +673,11 @@ body {
   grid-template-rows: auto minmax(0, 1fr);
 }
 [data-surface="mini"] .panel[data-slot="right"] { display: none; }  /* one card: the left slot's */
+/* mini's player view (2026-09-14, "Mini | NP"): Now Playing alone, filling the window, in
+   the max stage composition below. A card request switches back to the card view. */
+[data-surface="mini"][data-mini="player"] .bento { grid-template-rows: minmax(0, 1fr); }
+[data-surface="mini"][data-mini="player"] .panel[data-slot="left"] { display: none; }
+[data-surface="mini"][data-mini="player"] .vol { display: none; } /* the stage volume row replaces the pill */
 
 /* ── Panel primitive ────────────────────────────────────────── */
 .panel {
@@ -1801,7 +1825,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .np--idle .np__aurora { display: none; }
 /* Mini: the cover stays at its token size instead of growing with the text column —
    every px of width there belongs to the (stacked) button row. */
-[data-surface="mini"] .np__art { align-self: flex-start; width: var(--np-cover); height: var(--np-cover); }
+[data-surface="mini"]:not([data-mini="player"]) .np__art { align-self: flex-start; width: var(--np-cover); height: var(--np-cover); }
 .np__bottom--stacked .np__left { grid-row: 2; }
 .np__bottom--stacked .np__right { grid-row: 2; }
 
@@ -1810,7 +1834,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .np__vol { display: none; align-items: center; gap: var(--space-2); margin-top: var(--np-vol-gap); }
 .np__vol .scrub { flex: 1 1 auto; }
 .np__vol-mute svg { fill: currentColor; stroke: none; } /* filled speaker glyphs, unlike the stroked actions */
-[data-surface="max"] .np__vol { display: flex; }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__vol { display: flex; }
 
 .np__controls { display: flex; align-items: center; justify-content: center; gap: var(--transport-gap); }
 .np__btn {
@@ -1873,21 +1897,22 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 /* ── The max stage: the same card, composed as a column ─────── */
 /* Cover on top (flexes to fill the row), then meta / scrubber / transport pinned to
    the bottom. The queue lives in its own anchored panel below, so the summon button
-   has nothing to summon and hides. */
-[data-surface="max"] .panel[data-slot="np"] .np { flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch; }
-[data-surface="max"] .np__art {
+   has nothing to summon and hides. mini's player view uses the same stage; there the
+   summon button stays and switches mini back to its card view (layout.ts). */
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .panel[data-slot="np"] .np { flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch; }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art {
   flex: 1 1 auto; min-height: 0;
   width: auto; height: auto; aspect-ratio: 1;
   align-self: center; max-width: 100%;
   font-size: var(--np-stage-glyph);
 }
-[data-surface="max"] .np__center { flex: 0 0 auto; }
-[data-surface="max"] .np__title { font-size: var(--fs-title); }
-[data-surface="max"] .np__album { display: block; }
-[data-surface="max"] .np__times { display: flex; }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__center { flex: 0 0 auto; }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__title { font-size: var(--fs-title); }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__album { display: block; }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__times { display: flex; }
 [data-surface="max"] .np__summon { display: none; }
 /* Aurora on the stage: the halo is centered on the (now centered, larger) cover. */
-[data-surface="max"] .np__aurora::before {
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__aurora::before {
   left: 50%;
   top: calc(var(--panel-pad) + var(--np-stage-cover) / 2);
   width: calc(var(--np-stage-cover) * var(--album-aurora-reach));

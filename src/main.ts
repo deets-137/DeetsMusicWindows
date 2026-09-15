@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
-import { applySurface, fullSurface, initSurface, type SurfaceName } from "./surface";
+import { applySurface, fullSurface, initSurface, isPlayerView, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
@@ -65,10 +65,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ── Settings that act on the window / the dropdown primitive: applied here on
   //    launch and whenever the Settings card changes them (SETTINGS.md). ──
-  const applyAlwaysOnTop = (on: boolean) => appWindow.setAlwaysOnTop(on).catch((e) => console.error("[aot]", e));
-  applyAlwaysOnTop(setting("alwaysOnTop")); // re-apply on launch
+  // Keep on top: always, only while the window shows the player, or off. Re-checked on
+  // launch, on the setting, and on every surface / mini view change.
+  let onTop: boolean | null = null;
+  const applyAlwaysOnTop = () => {
+    const mode = setting("alwaysOnTop");
+    const on = mode === "always" || (mode === "player" && isPlayerView());
+    if (on === onTop) return;
+    onTop = on;
+    appWindow.setAlwaysOnTop(on).catch((e) => console.error("[aot]", e));
+  };
+  applyAlwaysOnTop();
+  onSurfaceChange(applyAlwaysOnTop);
   onSettingsChange((k) => {
-    if (k === "alwaysOnTop") applyAlwaysOnTop(setting("alwaysOnTop"));
+    if (k === "alwaysOnTop") applyAlwaysOnTop();
     if (k === "menuMode") setDropdownMode(setting("menuMode") as DropdownMode);
   });
 
@@ -132,19 +142,21 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // Surface choices (same pattern). A deliberate pick also pins a tray-popped window
-  // (it stops hiding on blur) — the user has made it theirs.
+  // (it stops hiding on blur) — the user has made it theirs. The "Mini | NP" halves also
+  // name mini's view.
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      void applySurface(el.dataset.surfaceChoice as SurfaceName);
+      void applySurface(el.dataset.surfaceChoice as SurfaceName, false, el.dataset.miniChoice as MiniView | undefined);
       invoke("tray_pin_main").catch(() => {});
       close();
     });
   });
 
-  // Tray left-click (TRAY.md §1): go mini, then let Rust anchor + show the window at
-  // the click. Order matters — the anchor needs the mini size, so we resize first.
+  // Tray left-click (TRAY.md §1): go mini (the view "Tray icon opens" names), then let Rust
+  // anchor + show the window at the click. Order matters — the anchor needs the mini size,
+  // so we resize first.
   void listen("tray-pop", () => {
-    applySurface("mini", true)
+    applySurface("mini", true, setting("trayView"))
       .catch((e) => console.error("[tray] mini", e))
       .then(() => invoke("tray_place_main"))
       .catch((e) => console.error("[tray] place", e));

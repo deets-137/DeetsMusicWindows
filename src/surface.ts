@@ -14,10 +14,16 @@ import { setting } from "./settings-store";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 export type SurfaceName = "mini" | "midi" | "max";
+/** What mini shows (2026-09-14): Now Playing + one card, or the player — the Now Playing
+ *  card alone, styled as max's stage. `data-mini` on <html>; the flyout's "Mini | NP" row. */
+export type MiniView = "cards" | "player";
 
 const STORAGE_KEY = "deets.surface";
 const FULL_KEY = "deets.surface.full"; // last non-mini surface — what "Open DeetsMusic" restores
-const sizeKey = (s: SurfaceName) => `deets.surface.size.${s}`;
+const MINI_VIEW_KEY = "deets.surface.mini";
+/** A window size is remembered per surface, and the player has its own. */
+type SizeSlot = SurfaceName | "player";
+const sizeKey = (k: SizeSlot) => (k === "player" ? "deets.surface.size.mini-player" : `deets.surface.size.${k}`);
 const DEFAULT_SURFACE: SurfaceName = "midi";
 
 // ── Band table (hardcoded this build; the editor UI is a future setting) ──
@@ -31,15 +37,29 @@ const HYST = 40; // must drag this far past the midi/max threshold before the su
 const MINI_HYST = 5; // the mini edge is tight on purpose: in below 355, out above 365; the window minimum is 340
 
 // Fallback sizes until a surface has a remembered one. midi = today's window.
-const DEFAULT_SIZES: Record<SurfaceName, { w: number; h: number }> = {
+const DEFAULT_SIZES: Record<SizeSlot, { w: number; h: number }> = {
   mini: { w: 360, h: 560 },
+  player: { w: 360, h: 600 },
   midi: { w: 480, h: 864 },
   max: { w: 1100, h: 820 },
+};
+// The window's minimum, set per view. tauri.conf holds 340 × 560 for the first paint; the
+// player drops the height so it can sit near a square (its cover shrinks with the window).
+const MIN_SIZES: Record<SizeSlot, { w: number; h: number }> = {
+  mini: { w: 340, h: 560 },
+  player: { w: 340, h: 420 },
+  midi: { w: 340, h: 560 },
+  max: { w: 340, h: 560 },
 };
 
 const appWindow = getCurrentWindow();
 
 let active: SurfaceName = DEFAULT_SURFACE;
+let miniView: MiniView = (() => {
+  try { return localStorage.getItem(MINI_VIEW_KEY) === "player" ? "player" : "cards"; } catch { return "cards"; }
+})();
+const slotOf = (s: SurfaceName): SizeSlot => (s === "mini" && miniView === "player" ? "player" : s);
+let minKey = "";
 let applyingSize = false; // suppress auto-flip while we programmatically resize
 let saveTimer: number | undefined;
 
@@ -64,11 +84,13 @@ function flipFor(width: number, cur: SurfaceName): SurfaceName {
 
 function setAttribute(s: SurfaceName): void {
   document.documentElement.dataset.surface = s;
+  document.documentElement.dataset.mini = miniView;
 }
 
 function persistChoice(s: SurfaceName): void {
   try {
     localStorage.setItem(STORAGE_KEY, s);
+    localStorage.setItem(MINI_VIEW_KEY, miniView);
   } catch {
     /* storage disabled — surface still applies for the session */
   }
@@ -80,7 +102,7 @@ function saveSize(): void {
   saveTimer = window.setTimeout(() => {
     try {
       localStorage.setItem(
-        sizeKey(active),
+        sizeKey(slotOf(active)),
         JSON.stringify({ w: window.innerWidth, h: window.innerHeight }),
       );
     } catch {
@@ -89,9 +111,9 @@ function saveSize(): void {
   }, 250);
 }
 
-function rememberedSize(s: SurfaceName): { w: number; h: number } {
+function rememberedSize(k: SizeSlot): { w: number; h: number } {
   try {
-    const raw = localStorage.getItem(sizeKey(s));
+    const raw = localStorage.getItem(sizeKey(k));
     if (raw) {
       const v = JSON.parse(raw);
       if (typeof v?.w === "number" && typeof v?.h === "number") return v;
@@ -99,14 +121,29 @@ function rememberedSize(s: SurfaceName): { w: number; h: number } {
   } catch {
     /* fall through to default */
   }
-  return DEFAULT_SIZES[s];
+  return DEFAULT_SIZES[k];
+}
+
+/** Set the window's minimum for the active view (only when it changes). */
+async function applyMinSize(): Promise<void> {
+  const k = slotOf(active);
+  if (k === minKey) return;
+  minKey = k;
+  const { w, h } = MIN_SIZES[k];
+  try {
+    await appWindow.setMinSize(new LogicalSize(w, h));
+  } catch (e) {
+    console.error("[surface] setMinSize failed", e);
+  }
 }
 
 /** Resize the OS window to a surface's remembered (or default) size, without triggering a flip. */
 async function applySize(s: SurfaceName, useDefault = false): Promise<void> {
-  const { w, h } = useDefault ? DEFAULT_SIZES[s] : rememberedSize(s);
+  const k = slotOf(s);
+  const { w, h } = useDefault ? DEFAULT_SIZES[k] : rememberedSize(k);
   applyingSize = true;
   try {
+    await applyMinSize(); // first: a smaller player size would be refused under the old minimum
     await appWindow.setSize(new LogicalSize(w, h));
   } catch (e) {
     console.error("[surface] setSize failed", e);
@@ -119,32 +156,43 @@ async function applySize(s: SurfaceName, useDefault = false): Promise<void> {
 }
 
 
-// Reflect the active surface onto the settings flyout's radio items.
+// Reflect the active surface onto the settings flyout's radio items. The "Mini | NP" halves
+// also carry data-mini-choice; only the half for the current view is checked.
 function markActive(s: SurfaceName): void {
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
-    el.setAttribute("aria-checked", String(el.dataset.surfaceChoice === s));
+    const view = el.dataset.miniChoice;
+    const on = el.dataset.surfaceChoice === s && (!view || view === miniView);
+    el.setAttribute("aria-checked", String(on));
   });
 }
 
 // Surface-change subscribers (the layout manager recomposes its slots on a flip).
 type SurfaceListener = (s: SurfaceName, prev: SurfaceName) => void;
 const listeners = new Set<SurfaceListener>();
-/** Subscribe to surface flips (deliberate picks AND band crossings). Returns an unsubscribe fn. */
+/** Subscribe to surface flips (deliberate picks AND band crossings) and to mini's view
+ *  changing (then `s === prev`). Returns an unsubscribe fn. */
 export function onSurfaceChange(cb: SurfaceListener): () => void {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
 
-function activate(s: SurfaceName): void {
+function activate(s: SurfaceName, view: MiniView = miniView): void {
   const prev = active;
+  const prevView = miniView;
   active = s;
+  miniView = view;
   setAttribute(s);
   persistChoice(s);
   markActive(s);
   if (s !== "mini") {
     try { localStorage.setItem(FULL_KEY, s); } catch { /* session-only */ }
   }
-  if (prev !== s) listeners.forEach((cb) => cb(s, prev));
+  if (prev !== s || prevView !== view) listeners.forEach((cb) => cb(s, prev));
+}
+
+/** True while the window shows the player (mini, NP only). */
+export function isPlayerView(): boolean {
+  return active === "mini" && miniView === "player";
 }
 
 /** The surface the real app window uses (midi unless the user chose max). */
@@ -156,10 +204,12 @@ export function fullSurface(): SurfaceName {
 /** Deliberate selection (settings row / tray). Restores the surface's remembered size —
  *  or, with `fixed`, its default (the tray flyout is a fixed panel, DA/DR style, so a
  *  stray remembered mini size can't make it tall). Resolves once the OS window has that
- *  size (the tray anchors after it). */
-export async function applySurface(s: SurfaceName, fixed = false): Promise<void> {
-  if (s === active && !fixed) return;
-  activate(s);
+ *  size (the tray anchors after it). `view` picks what mini shows; omitted, mini keeps
+ *  the last one. The switch itself is synchronous — only the resize is awaited. */
+export async function applySurface(s: SurfaceName, fixed = false, view?: MiniView): Promise<void> {
+  const nextView = s === "mini" && view ? view : miniView;
+  if (s === active && nextView === miniView && !fixed) return;
+  activate(s, nextView);
   await applySize(s, fixed);
 }
 
@@ -181,7 +231,10 @@ export function initSurface(): void {
     // resizes freely and the surface only changes by a deliberate pick.
     if (setting("surfaceAutoFlip")) {
       const next = flipFor(window.innerWidth, active);
-      if (next !== active) activate(next);
+      if (next !== active) {
+        activate(next);
+        void applyMinSize(); // player → midi raises the minimum height again
+      }
     }
     saveSize();
   });

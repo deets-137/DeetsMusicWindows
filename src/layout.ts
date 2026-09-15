@@ -16,7 +16,7 @@ import { registry, type CardDef, type CardId, type CardInstance } from "./cards"
 import { setting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { onCardRequest } from "./layout-bus";
-import { currentSurface, onSurfaceChange, type SurfaceName } from "./surface";
+import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
 
 type Slot = "left" | "right" | "c" | "d";
 type Assignment = Partial<Record<Slot, CardId>>;
@@ -288,8 +288,11 @@ export function initLayout(): void {
   // In mini only the LEFT slot is on-screen (the right one is display:none), so a
   // summon must land there or it lands nowhere visible. An anchored card (max's
   // queue) is already on-screen by construction → no-op.
+  // The player has no visible slot: a request first switches mini to its card view
+  // (synchronous — the slot is on-screen before setSlot mounts into it).
   onCardRequest((id) => {
     if (comp.anchored.includes(id)) return;
+    if (isPlayerView()) void applySurface("mini", false, "cards");
     setSlot(currentSurface() === "mini" ? "left" : lruSlot(), id);
   });
 

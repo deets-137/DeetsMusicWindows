@@ -10,7 +10,11 @@
 
 export interface Settings {
   // ── window ──
-  alwaysOnTop: boolean;
+  /** Keep the window above others: always, only while it shows the player, or never.
+   *  Was a boolean until 2026-09-14 (migrated: true → always). main.ts applies it. */
+  alwaysOnTop: "always" | "player" | "off";
+  /** What a click on the tray icon pops: mini with its card, or the player. main.ts reads it. */
+  trayView: "cards" | "player";
   /** Every dropdown opens on hover instead of click (FUTURE-SETTINGS §9 is the per-menu future). */
   menuMode: "click" | "hover";
   /** Free resize flips the surface past its band (FUTURE-SETTINGS §8). Off = clamp only. */
@@ -70,7 +74,8 @@ export interface Settings {
 const KEY = "deets.settings";
 
 export const DEFAULTS: Settings = {
-  alwaysOnTop: false,
+  alwaysOnTop: "off",
+  trayView: "cards",
   menuMode: "click",
   surfaceAutoFlip: true,
   appearanceMotion: true,
@@ -98,7 +103,10 @@ export const DEFAULTS: Settings = {
 /** Keys that lived on their own before the store (2026-09-10); read once, then owned here. */
 function migrate(into: Partial<Settings>): void {
   const aot = localStorage.getItem("deets.alwaysOnTop");
-  if (aot !== null && into.alwaysOnTop === undefined) into.alwaysOnTop = aot === "true";
+  if (aot !== null && into.alwaysOnTop === undefined) into.alwaysOnTop = aot === "true" ? "always" : "off";
+  // Keep on top became a three-way choice (2026-09-14).
+  const stored = into.alwaysOnTop as unknown;
+  if (typeof stored === "boolean") into.alwaysOnTop = stored ? "always" : "off";
   const mode = localStorage.getItem("deets.menuMode");
   if (mode !== null && into.menuMode === undefined) into.menuMode = mode === "hover" ? "hover" : "click";
   const eager = localStorage.getItem("deets.playlists.eagerCounts");

@@ -104,7 +104,12 @@
             <span class="menu__label">Surface</span>
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout" role="menu" aria-label="Surface">
-              <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="mini">Mini</button>
+              <!-- Mini | NP (2026-09-14): one pill cut in two, the search pin idiom. Mini =
+                   Now Playing + one card; NP = the player (Now Playing alone). -->
+              <div class="flyout__item flyout__split" data-surface-choice-row="mini">
+                <button class="flyout__half" type="button" role="menuitemradio" data-surface-choice="mini" data-mini-choice="cards">Mini</button>
+                <button class="flyout__half" type="button" role="menuitemradio" data-surface-choice="mini" data-mini-choice="player" title="Now Playing only">NP</button>
+              </div>
               <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="midi">Midi</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-surface-choice="max">Max</button>
             </div>

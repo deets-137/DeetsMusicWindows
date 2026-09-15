@@ -22,7 +22,7 @@
   pointer-events: none;
   --toast-in: translateX(var(--toast-shift));
 }
-[data-surface="max"] .toast-host {
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .toast-host {
   top: calc(var(--titlebar-h) + var(--space-2));
 }
 .toast {

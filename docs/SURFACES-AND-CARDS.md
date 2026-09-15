@@ -189,6 +189,21 @@ max).
   The max composition and mini's minimize/always-on-top switch technicals are **deferred to a
   later session** (design each when we build it).
 
+### Mini's player view (2026-09-14)
+- **What:** mini has two views. `data-mini="cards"` is Now Playing + the left slot's card.
+  `data-mini="player"` is the Now Playing card alone, in the max stage composition (the
+  large cover, album line, times, the stage volume row). The titlebar Vol. pill hides there.
+- **Pick:** the Surface flyout's first row is one pill cut in two, **Mini | NP** (the search
+  pin idiom): `data-surface-choice="mini"` + `data-mini-choice="cards|player"`. The view is
+  stored in `deets.surface.mini` and is kept when the window flips to midi and back.
+- **Size:** the player remembers its own size (`deets.surface.size.mini-player`, default
+  360 × 600) and lowers the window minimum to 340 × 420 (`setMinSize`, per view, in
+  `surface.ts`; the capability `core:window:allow-set-min-size`).
+- **Card requests** (queue / search buttons, Go to, Settings…, Ctrl shortcuts) in the player
+  first switch mini to its card view, then mount into the left slot (`layout.ts`).
+- **Settings:** *Tray icon opens* (`trayView`) picks the view a tray click pops; *Keep on top*
+  has a *Player* choice that applies only while `isPlayerView()`.
+
 ---
 
 ## Out of scope (this build)
