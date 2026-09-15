@@ -248,8 +248,9 @@ which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
 ### Skin-only settings (2026-09-15)
 A skin can expose its own knobs as Settings rows. They sit in Settings › Look and feel and
 show **only while that skin is active**. Today: Ocean's *Draw card edges* + *Sand width*
-(§Sand edges) and Glass's *Canvas glow*, *Dim canvas*, *Backlight*, *Tint cards* (§Glass's
-sliders). This supersedes the "future skin options surface" in FUTURE-SETTINGS §12–13.
+(§Sand edges), Glass's *Canvas glow*, *Dim canvas*, *Backlight*, *Tint cards* (§Glass's
+sliders), and Press's *Record player*, *Show record on*, *Show record plate* (§Press's record
+player). This supersedes the "future skin options surface" in FUTURE-SETTINGS §12–13.
 
 **The path of one value:** the store (`settings-store.ts`) → `src/skin-settings.ts` writes it
 onto `<html>` (a choice as a `data-` attribute, a 0–100 slider as a custom property) → the
@@ -337,6 +338,19 @@ slider drag previews them without a store write. The Glass block reads them in o
   layer over the backlight, under the top sheen. `--panel` stays a plain color for album-color.ts.
 Other skins never read these properties. Menus keep their own 90% `--menu-surface`. A Frost
 cards (blur) slider was built first and dropped the same day; the blur is a fixed 14px again.
+
+### Press's record player (2026-09-15)
+Settings › Look and feel › **Record player** (Spin / Still / Off), **Show record on**, **Show record
+plate**. The cover box (`.np__art`, in the Now Playing card and the tray panel) holds its art in a
+slot from `src/vinyl.ts`: a plate that never turns, the art that turns (one Web Animation, the
+compositor's), and a sheen that never turns. The place decides the look: skin.css sets
+`--vinyl-stage` / `--vinyl-strip` / `--vinyl-tray` (1 or 0) from the rows; styles.css hands one to
+`.np__art` as `--vinyl`, and the record rules sit in `@container style(--vinyl: 1)`. At 0 the slot
+draws the old square cover (`transform: none !important` beats the animation). The cover box is a
+size container so the record is a centered square of `100cqmin`. Geometry, ink and slide timing
+are `--vinyl-*` tokens (base inert, Press values). The angle follows the song, each disc starts and
+ends upright, and a song change slides the discs as Web Animations — [VINYL.md](VINYL.md), with its
+dev telemetry (`[perf] vinyl …`, `__vinyl.sample`) in §8.
 
 ### The storm layer (opt-in decorative strokes)
 A reusable primitive, same opt-in doctrine as `--panel-backdrop`: a `<div class="storm">`

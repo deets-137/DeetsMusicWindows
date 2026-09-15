@@ -287,6 +287,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - A choice takes its pill label or its store value, any case: `Always`, `always`. `sunShift`
   takes `+15 min`, `15`, `-15` (−60…60 in 15-minute steps, the card's menu).
 - A toggle takes `on` / `off` (also `true` / `false`, `yes` / `no`).
+- The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
+  (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off) — each `[Press only]`; a set
+  under another skin is stored, and the reply says it shows while Press is the skin.
 - A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
   `glassCanvasGlow`, `glassCanvasDim`), with or without `%`.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range

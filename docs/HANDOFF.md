@@ -18,8 +18,8 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
-[PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once, one library — designed, not built) ·
-[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
+[PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once — parked 2026-09-15, Spotify's dev-mode terms block it) ·
+[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [ONBOARDING.md](ONBOARDING.md) (hover hints, right-click coverage, Settings › Tips, the sprite-led first run) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
 [ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
 
 ---
@@ -137,8 +137,8 @@ the platform sound and the loop thin. Scoped with forks in
 7. **The playlist creation flow** — §11, to design (carried from 2026-09-12).
 8. **A sleep timer** — §17, to design.
 Not possible on this platform, so not planned: lyrics, crossfade, Sound Check, remove from
-library (§12–§17 header). Spotify (PROVIDERS.md) and the vinyl disc (VINYL.md) wait behind
-items 1–3.
+library (§12–§17 header). Spotify (PROVIDERS.md) is parked: Spotify's dev-mode terms block it. The vinyl disc
+(VINYL.md) waits behind items 1–3.
 
 **2026-09-15 — Authenticode signing (Azure Artifact Signing): WORKING, tested —
 [RELEASE.md §6.9](RELEASE.md).** Signed 0.4.4-t1 and t2 were built and published to
@@ -558,6 +558,13 @@ get large).
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-15 — Press record player** ([VINYL.md](VINYL.md)): Record player Spin / Still / Off
+  (default Off), Show record on, Show record plate. The cover (Now Playing + tray panel) turns at
+  33⅓ rpm, locked to the song so each disc starts and ends upright; song changes slide the discs.
+  Four desk-test rounds, each fault found with the new dev telemetry (`[perf] vinyl show / snap /
+  song`, `__vinyl.sample`) and a computed-transform angle trace (VINYL.md §8–§9). Open: the frame
+  cost of a full-rate spin (its own optimization session); Apple artwork-rule reading in §10.
+  Not committed.
 - **2026-09-15 — skin-only settings** ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only
   settings*, [SETTINGS.md](SETTINGS.md) §3): Look and feel rows that show only under their
   skin (`when` + `onSkinChange`), a new **range** (slider) row kind, and `src/skin-settings.ts`.
@@ -582,10 +589,11 @@ get large).
   playlist creation flow** (NEXT-VERSION §11).
 
 ### Not built yet ⬜
-- **Two services, one library (2026-09-15)** — Apple Music + Spotify signed in at once, merged by
-  ISRC, chosen from the Account flyout, bring-your-own Spotify Client ID. Designed with the build
-  order (8 slices, ~8–11 sessions) in **[PROVIDERS.md](PROVIDERS.md)**; §9 lists the Spotify facts
-  to re-check first. Nothing built.
+- **Two services, one library (2026-09-15) — PARKED.** Designed in the morning
+  (**[PROVIDERS.md](PROVIDERS.md)**), stopped the same day after the Spotify facts were checked
+  (its §9): the owner needs Premium, the ISRC is gone so there is no merge key, search is capped
+  at 10, and Developer Policy III.5 forbids mixing another service's content. Reopen only if
+  Spotify's dev-mode terms change.
 - **The listening-loop items (2026-09-15)** — repeat · Play / Shuffle on a collection · a
   shuffle mode (open question) · Space + the keyboard pass · a Home card · a durable History
   card · the playlist creation flow · a sleep timer. **[NEXT-VERSION.md §11–§17](NEXT-VERSION.md)**

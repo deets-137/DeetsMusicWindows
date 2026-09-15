@@ -48,6 +48,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
 | Section | Row (hint) | Key | Values | Read site |
 |---|---|---|---|---|
+| Tips | Six static two-line notes (the gesture, then why to try it): hover anything · right-click anything · drag anything · click your way in · the title menu · close is not quit (2026-09-15). Habits, not a manual — the menus list their own verbs. No controls, no count badge; first section, starts collapsed | `TIPS` in `settings-card.ts` | — | `.set__tip` (settings.css). The in-app half of [ONBOARDING.md](ONBOARDING.md) |
 | Window | Close to tray (× hides the window. The tray icon opens it again) | Rust | on / off | `tray.rs` close policy |
 | Window | Tray icon opens (A click on the tray icon. Player: Now Playing only) — pills *Mini* / *Player* (2026-09-14) | `trayView` | **cards** / player | `main.ts` `tray-pop` → `applySurface("mini", true, view)` |
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
@@ -67,6 +68,9 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Look and feel | Dim canvas (Glass only. Darkens the space between the cards. The cards stay as bright) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassCanvasDim` | **0** / 0–100 | `skin-settings.ts` → `--glass-canvas-dim` → Glass `--canvas-dim` (100 → 0.9) paints `.app-body::after`; the frost's `brightness(1 / (1 − dim))` undoes it inside the cards |
 | Look and feel | Backlight (Glass only. A light behind each card, under its tint) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassBacklight` | **50** / 0–100 | `skin-settings.ts` → `--glass-backlight` → Glass `--glass-light` → the card's `--panel-paint` glow + the outer halo in `--shadow-card` |
 | Look and feel | Tint cards (Glass only. The card color over the backlight. Less tint: more glow) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassTint` | **55** / 0–100 | `skin-settings.ts` → `--glass-tint` on `<html>` → Glass `--panel` mix, painted as the last inset shadow over the backlight (skin.css) |
+| Look and feel | Record player (Press only. The cover becomes a record. Spin: it turns while music plays) — pills *Spin* / *Still* / *Off* (2026-09-15); shows only while Press is the skin | `pressVinyl` | **off** / spin / still | `skin-settings.ts` → `data-press-vinyl` on `<html>`; `vinyl.ts` — [VINYL.md](VINYL.md) |
+| Look and feel | Show record on (Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel) — pills *Stage* / *Stage + card* / *Everywhere* (2026-09-15); shows only under Press with Record player on | `pressVinylWhere` | **everywhere** / stage / card | `skin-settings.ts` → `data-press-vinyl-where` → skin.css `--vinyl-stage` / `-strip` / `-tray`; the tray panel reads the store through a `storage` event |
+| Look and feel | Show record plate (Press only. The offset ink behind the record. Off: only the record, a little larger) — toggle (2026-09-15); shows only under Press with Record player on | `pressVinylPlate` | **on** / off | `skin-settings.ts` → `data-press-vinyl-plate` → `--vinyl-plate-shadow: none`, `--vinyl-inset: 0px` |
 | Look and feel | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
 | Look and feel | Show notices ([TOASTS.md](TOASTS.md)) — *Everything* / *Failures* (Off removed 2026-09-14) | `toasts` | all / failures | `toast.ts` `admitted()` at every call; a question toast always shows |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
@@ -102,7 +106,8 @@ by section title (`deets.settings.folds`), so renamed sections start folded once
 skin rows test `currentSkin()` and the card re-renders on `onSkinChange`. A skin row's hint
 starts with "<Skin> only." The skin rows sit at the end of the skin-neutral Look and feel
 rows, grouped per skin; a skin's sliders are ordered as their layers paint, back to front
-(Glass: Canvas glow, Dim canvas, Backlight, Tint cards), so the list reads top to bottom as
+(Glass: Canvas glow, Dim canvas, Backlight, Tint cards; Press: Record player, then Show record
+on and Show record plate, which need it on), so the list reads top to bottom as
 the picture builds up. The range kind (a slider) reuses `slider.ts` and the `.scrub` markup.
 A drag calls the row's `preview` only (a store write re-renders the card under the pointer);
 the release writes the store. A focused slider steps with the arrow keys (Shift: 10) and

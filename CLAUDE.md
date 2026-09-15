@@ -18,11 +18,15 @@ front-end, Rust back-end).
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 - `docs/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
   set times, Windows mode) and its pre-paint in `index.html`.
-- `docs/PROVIDERS.md` — Apple Music + Spotify at once, one merged library (option B,
-  designed 2026-09-15, not built): id namespace, PKCE on the loopback, Account flyout,
-  capabilities, the second playback backend, build order.
+- `docs/PROVIDERS.md` — Apple Music + Spotify at once, one merged library. **Parked
+  2026-09-15**: Spotify's dev-mode terms block it (§9 has the checked facts). Kept as a record.
+- `docs/VINYL.md` — Press "Record player": the cover as a turning record (`src/vinyl.ts`), the
+  upright-start-and-end angle math, the slide on song change, the Apple artwork-rule reading.
 - `docs/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
+- `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
+  the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
+  led by the Deets and Happy sprites (designed, not built).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -50,6 +54,10 @@ front-end, Rust back-end).
   appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`
   for any slow press→paint. `__frames.sample(ms)` from `scripts/webview-eval.mjs` measures a
   scripted scroll. DEBUGGING.md §Frame telemetry.
+- **The Press record's spin is measured too (2026-09-15).** `src/vinyl.ts` logs `[perf] vinyl show …`
+  per cover change, `[perf] vinyl snap …` per jump and `[perf] vinyl song …` per song;
+  `__vinyl.sample(ms)` returns the disc's error against the song. For what is on screen, trace the
+  computed `transform` angle every 50 ms while clicking the card's own buttons. VINYL.md §8.
 - **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
   and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
   to read all of it: DEBUGGING.md §Reviewing the telemetry.

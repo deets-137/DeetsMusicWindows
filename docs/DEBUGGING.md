@@ -164,6 +164,27 @@ Glass skin) delays rAF only once the frame pipeline backs up; a mild one slips t
 Pair a suspicious skin with devtools → Rendering → *Frame Rendering Stats* and *Paint
 flashing*.
 
+## Record player telemetry — `src/vinyl.ts` (dev only, 2026-09-15)
+
+The Press record ([VINYL.md](VINYL.md)) logs, on the same `DEV` gate, to the console and the dev log:
+- `[perf] vinyl show <old key> → <new key> · new song | cover swap · src <file>` — every change of
+  what the cover box shows. Two lines for one Next = a double slide; `→ station:<id>|` with
+  `src none` = a radio gap; `(start)` = a fresh card mount (reload, surface change), not a slide.
+- `[perf] vinyl snap <seek|count|zero> · err <ms> · at <s>` — every visible jump.
+- `[perf] vinyl song … · start <angle>° exact|count · snaps N · nudge worst <ms>, rate <min>–<max> ·
+  held stale/seek/zero · scrubs · left at <angle>°` — one per song. A natural end leaves near 0°.
+- `__vinyl.sample(ms)` — rows every 100 ms: `[position s, error ms, rate, play state]`; steady play
+  reads ±2 ms.
+
+**The angle trace** (what is on screen, not what the driver believes): sample
+`new DOMMatrix(getComputedStyle(spin).transform)` → `atan2(b, a)` for the newest `.vinyl__spin`
+every 50 ms, next to `#apple-music-player.currentTime` and the slot count, while clicking the card's
+own Next / play buttons through `webview-eval.mjs`. Steady play moves ~10° per 50 ms; a flat angle
+while the audio moves is a late start; slots 2 → 1 → 2 is a double slide. The full snippet and how
+each desk-test fault showed up: VINYL.md §8–§9.
+
+`grep "\[perf\] vinyl" "%APPDATA%\com.deetsmusic.dev\deetsmusic.log" | tail -20`
+
 ## Reviewing the telemetry — the recipe (2026-09-13)
 
 Where each signal lives and what "bad" looks like. All paths are the DEV app unless said.
@@ -315,6 +336,13 @@ node scripts/webview-eval.mjs "JSON.parse(localStorage.getItem('deets.settings')
   no main-window page.
 - The port binds to loopback and exists only under `dev:app`. `npm run tauri dev` and the
   release build have no port. A change to the port setup needs a runner restart.
+- A save to a front-end file (yours or another session's) reloads the page: an eval running
+  then fails with `Execution context was destroyed`, and the reload stops the song. A Rust
+  change takes the port down until the rebuild ends — wait for `netstat -ano | grep ":9222 "`.
+- To drive playback from an eval, click the app's own buttons
+  (`document.querySelector('.np__controls [aria-label="Next"]').click()`,
+  `#np-playpause`), not MusicKit directly, so the queue model stays right. The `deetsmusic`
+  MCP tools reach the INSTALLED app.
 
 ## Toasts — the `__toast` console handle + the morning test script
 The toast primitive ([TOASTS.md](TOASTS.md)) exposes `window.__toast` in every build:
@@ -473,6 +501,14 @@ failure: <reason>`, `user token captured`.
   if even one catalog id has gone stale (region pulls/takedowns). The player self-heals
   (banks the named ids, retries with library-id fallbacks — `player:deadIds` above); see
   [QUEUE.md §Dead ids](QUEUE.md).
+- **`currentPlaybackTime` is whole seconds, rounded down** (measured 2026-09-15: 3 while the
+  audio read 3.145), and `playbackTimeDidChange` fires about every 265 ms. For an exact clock
+  read `document.getElementById('apple-music-player').currentTime` — but that `<audio>`
+  exists only while a song plays (none when stopped).
+- **After a seek, MusicKit reports the old position for a moment** before the new one lands;
+  a UI that follows every report flickers back (the scrubber did — VINYL.md §6).
+- **Radio gaps:** between two station songs the state carries the station with no title and
+  no artwork for a moment (VINYL.md §5).
 - See HANDOFF "Known gotchas" for the canonical list.
 
 ## Future: in-app "Report a problem"

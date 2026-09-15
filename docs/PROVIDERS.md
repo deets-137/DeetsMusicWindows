@@ -1,10 +1,13 @@
 # DeetsMusic — Two services, one library (Apple Music + Spotify)
 
-> **Status (2026-09-15): DESIGNED, not built.** The user chose option **B**: both services
-> signed in at the same time, one merged library, the accounts chosen from the title menu's
-> **Account ›** flyout. Everything in §1 was checked against the code on this date. The
-> service facts in §9 are from memory and must be re-checked against Spotify's current
-> developer pages before the auth slice is built.
+> **Status (2026-09-15): PARKED — not built, not planned.** Designed as option **B** (both
+> services at once, one merged library) earlier the same day; then the Spotify facts in §9
+> were checked and the user stopped it. The blockers are Spotify's, not ours: the app owner
+> must hold Premium; the ISRC is gone, so the merge has no key; search is capped at 10; artist
+> top tracks are removed; Developer Policy III.5 forbids integration with another service's
+> content and II.4 demands Spotify's marks and link-backs; and the Web Playback SDK bars
+> commercial use without written approval. The design below is kept as a record. Reopen only
+> if Spotify's dev-mode terms change.
 
 **Terms.** A *service* is Apple Music or Spotify. A *provider* is the Rust object that
 talks to one service and returns our normalized model (`MusicProvider`, `provider.rs`).
@@ -252,24 +255,71 @@ proof even if 5 is not finished.
 
 ---
 
-## 9. Verify before build (facts from memory, dated 2026-09-15)
+## 9. Service facts (checked 2026-09-15 against Spotify's developer pages)
 
-- Spotify Web Playback SDK still works for **Development-mode** apps with a Premium account.
-- Development mode caps an app at **25 users** and extended quota now needs a business
-  with 250k MAU — this is why bring-your-own Client ID is the only public route. Confirm.
-- Loopback redirect URIs: `http://127.0.0.1:<port>` is allowed; confirm whether the
-  **port must match exactly** (§4).
-- Endpoints removed for new apps (2024-11-27): recommendations, related artists, audio
-  features/analysis, 30 s previews, featured/category playlists, algorithmic/editorial
-  playlists via `GET /playlists/{id}`. Re-check the list; it decides §6.
-- **Spotify Developer Policy**: read it against B specifically — the clauses on combining
-  Spotify content with other services' content, on caching metadata (allowed with periodic
-  refresh; confirm the window), and on required attribution (a "Spotify" name and the
-  brand-guideline badge may be mandatory next to Spotify content — that would override
-  rule 6 for the Spotify badge only).
-- Apple: nothing new. The §7.6 risk already accepted (memory) is unchanged.
+The §9 list of "verify before build" items was checked on 2026-09-15. Several answers
+change §3, §4 and §6. Sources: the Feb 2026 migration guide, the 2026-02-06 and
+2026-07-23 developer blog posts, the Redirect URI and Quota modes concept pages, the
+Web Playback SDK page, and the Developer Policy.
 
----
+**Development Mode (the only mode a DeetsMusic user can be in)**
+
+- The app **owner must hold Spotify Premium**; a lapsed Premium stops the app. Because
+  each DeetsMusic user is the owner of their own app, **Spotify in DeetsMusic needs
+  Premium, full stop** — not only for playback.
+- 5 users per app (irrelevant: the owner is the only user). 25 Client IDs per developer
+  since 2026-07-23; quota is per developer account; a quota hit is a 429 whose body says
+  `"reason": "QUOTA_EXCEEDED"` (distinct from a rate limit).
+- Extended quota is for registered companies with 250k MAU. Bring-your-own Client ID is
+  confirmed as the only public route.
+
+**Endpoints for apps created after 2026-02-11 (ours)**
+
+- `GET /me/tracks` is gone → **`GET /me/library`** (page size unverified). `PUT/DELETE
+  /me/tracks` → `PUT/DELETE /me/library`; `…/contains` → `GET /me/library/contains`.
+- Batch `GET /tracks?ids=` etc. are gone; single-item `GET /tracks/{id}` stays.
+- `GET /artists/{id}/top-tracks` is gone → the artist view's **Popular** sort hides for `sp`.
+- `GET /search`: `limit` max **10** (was 50), default 5.
+- Playlists: `/playlists/{id}/tracks` → `/playlists/{id}/items`; the `tracks` field →
+  `items`. `POST /me/playlists` creates.
+- **Removed response fields:** Track loses `external_ids` (**the ISRC**), `popularity`,
+  `available_markets`; `GET /me` loses `product` (**no Premium check by API** — the Web
+  Playback SDK's `account_error` event is the only signal) and `email`.
+- Player endpoints (`/me/player/*`, devices, transfer) are not in the removed list. The
+  Web Playback SDK page is unchanged: Premium required, Chrome/Edge supported, the SDK
+  "must not be used in commercial projects without Spotify's prior written approval".
+- Apps created before 2026-02-11 keep the old endpoints for now (Spotify postponed that
+  cut). Do not design for them.
+
+**Redirect URI**
+
+- `localhost` is refused; `http://127.0.0.1` is allowed, HTTP is fine for loopback.
+- **A loopback URI may be registered without a port and the request adds the dynamic
+  port.** §4's fixed-port bend is not needed. The guide shows one string to paste:
+  `http://127.0.0.1/spotify` (path allowed per the docs' example; confirm on the first
+  real sign-in; the fallback is the short fixed-port list).
+
+**Developer Policy (the user is the signatory: it is their app)**
+
+- **III.5:** "Do not create any product or service which is integrated with streams or
+  content from another service." This is the clause option B (and A) sits on. Same shape
+  as the accepted Apple §7.6 risk; decide it the same way, on the record.
+- **II.4.1:** Spotify content must be attributed "by using the Spotify Marks" → the `sp`
+  badge must be Spotify's mark, not a theme dot. This closes the first Open item below.
+- **II.4.2:** metadata and cover art "must be accompanied by a link back" to Spotify →
+  an *Open in Spotify* row in the context menu of every `sp` item (`copy-link.ts` already
+  does the Apple equivalent).
+- No cache-duration number in the policy text.
+
+**What this reopens (decide before slice 3)**
+
+1. **The merge key.** No ISRC from Spotify means §3's ISRC join cannot run. Options: (a)
+   no merge — union with badges, a song in both shows twice, "Play matches on" is dropped;
+   (b) an exact normalized key — lowercased title + first artist + duration within 2 s,
+   in Rust, no network; (c) an Apple catalog search per Spotify song — 1 call per song,
+   rejected on cost.
+2. **Popular sort** and **Related** both hide for `sp`; **Radio** stays Apple-only (unchanged).
+3. **Premium detection** moves from `GET /me` to the SDK's `account_error` at first play.
 
 ## Decisions (closed 2026-09-15)
 

@@ -127,6 +127,15 @@ fixed list**. So radio mode is a `PlayerMode = "queue" | "radio"` flag on the pl
   `unhandledrejection` handler swallows **exactly** those two messages (logged to diag);
   everything else propagates, and our own awaited calls still surface normally.
 
+### A station's own right-click — ✅ built 2026-09-15
+Radio (both groupings) and a Search station tile: **Play Now** · **Add to Queue** · **Copy
+Link**. A station is a stream, so *Add to Queue* cannot slot it among the songs: it becomes the
+**station return** (`queueStationAfter` in player.ts sets `resumeStation`, the same path a
+break-out uses) and starts once the finite queue runs dry — the Qcard's station row shows it
+as *Will resume after* with *Don't resume* on its own right-click. Idle, or already on a
+station: it just plays now. *Copy Link* is Apple's share URL on the station (`Station.url`;
+the item is `null` without one — `copyStationLinkItem`, copy-link.ts).
+
 ### Seeded stations = a context-menu action — ✅ built 2026-07-03
 **"Start Station"** rides the shared context-menu builders — zero new UI surface. The chain:
 `radio_seed_station(kind, id)` (Rust, `apple.rs` — `GET /v1/catalog/{sf}/{songs|artists}/{id}/

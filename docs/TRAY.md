@@ -42,6 +42,19 @@
 - **Right-click menu**: *Open DeetsMusic* · *Now Playing panel* · ☑ *Read Windows media* ·
   (dev: *Panel devtools*) · *Quit DeetsMusic*. *Now Playing panel* anchors the panel at the
   last tray click.
+- **The cover as a record** (Press, 2026-09-15, [VINYL.md](VINYL.md)): with Record player on and
+  Show record on = *Everywhere*, the panel's cover is the turning record (`vinyl.ts`, the same
+  slot as the Now Playing card). The panel reads the rows from the shared settings store (a
+  `storage` event carries a change from the main window) and only has MusicKit's whole-second
+  count, so it estimates the exact position (VINYL.md §4). A Windows-media cover turns freely.
+  The disc holds still while the panel is hidden.
+- **Right-click the song in the panel** (cover / title / artist, 2026-09-15): *Add to Library*
+  (a catalog song not yet in the library) · *Favorite* / *Unfavorite* (`NpState.loved`, `null` =
+  not offered: no consent or no catalog id; republished on every ♥ change) · *Copy Link*
+  (Apple's song page, copied on this window — no toast here). Add and ♥ travel as
+  `np_command` kinds `add-to-library` / `favorite`; the main window executes them
+  (np-bus.ts). DeetsMusic source only — another app's song offers nothing. Go to Artist /
+  Album are not offered: they need the cards.
 - **Mini composition so far** (`[data-surface="mini"] .bento`): one wide column — Now
   Playing, then the *left* slot's card; the right slot is hidden. Being built piece by
   piece, user-led.
