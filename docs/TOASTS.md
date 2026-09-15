@@ -82,6 +82,8 @@ with the caller's own `actions` is admitted under every tier, because a muted qu
 stop the action it gates (the export confirm, PLAYLISTS.md §6). A question is not a failure:
 it writes only its `toast` diag line, never the `warn`/`error` line (2026-09-14, for the red
 delete confirm). A question with its own **Cancel** button gets no extra Dismiss.
+**An Undo always shows too (2026-09-15):** a toast with an action labelled *Undo* is admitted
+under every tier, timed or sticky, because a muted one would lose the undo (Settings › Reset).
 
 ## 5. The call sites (all built 2026-09-13)
 
@@ -140,6 +142,7 @@ token without MusicKit's logout call.
 | `drop-actions.ts` — a drop on Now Playing | — | (none) | The song starting is the feedback; a failed play is `playTracks`'s toast. |
 | `replay.ts` — the weekly make | success | Replay updated: N songs from this week. | `all` tier. |
 | `settings-card.ts` — Settings › Bugs › Send | sticky success **with an action** | Bug sent. Copy the link to find it again. / Suggestion sent. Copy the link to find it again. **[Copy link] [Dismiss]** | Added 2026-09-15 (LOGGING.md §The report form). Sticky with its own action, so it shows under every tier and never times out: the link is the only way back to the post. **The link is never in the text** — toast text reaches the diag ring and the log, and the code is a credential. [Copy link] uses `copy-link.ts` ("Link copied."). The report also appears under My reports. |
+| `settings-card.ts` — Reset › any row | info (sticky) → success (6 s) | Reset {group} to the defaults? [Confirm] [Cancel] → {group} reset to the defaults. [Undo] | Added 2026-09-15. Confirm takes the snapshot, then writes `DEFAULTS` (and the first-launch theme and skin); Undo writes the snapshot back. The Undo toast shows under every tier (§4). |
 | `settings-card.ts` — My reports › Refresh / Close | warn | Couldn't reach the support server. Check the connection and try again. / Too many requests in a short time. Wait a minute and try again. / Reports are switched off for now. Try again later. / The support server didn't close the report. Try again later. | Added 2026-09-15. The text is `report.rs`'s error. Refresh warns only when no report could be checked; a partial failure keeps the last known tags. |
 | `stats.ts` — Rewind unlock at 50 starts | info | Rewind unlocked: your listening, ranked. Pick it from any slot's title. | `all` tier (the card also just appears in the pickers, as before). |
 

@@ -16,7 +16,7 @@ const RETIRED: Record<string, SkinName> = {
 // No saved choice: the skin follows the OS light/dark preference too —
 // Press on light (ink on stock wants a light stock), Retro-Future on dark.
 // Pairs with theme.ts's default so a first launch lands on a curated combo.
-function defaultSkin(): SkinName {
+export function defaultSkin(): SkinName {
   return prefersDark() ? "retro-future" : "press";
 }
 

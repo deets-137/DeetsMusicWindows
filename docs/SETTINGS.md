@@ -89,6 +89,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Connections | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) — Guide + on/off · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · agent status · extension bridge status · Extension install guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md); `bridge_info` / `bridge_open_install_page` ([EXTENSION.md](EXTENSION.md)) |
 | Updates | Get updates (Automatic: downloads in the background, then asks to restart. Ask: asks before the download) — *Automatic* / *Ask* / *Off* (2026-09-14) | `updateMode` (+ `updateSkip`) | **auto** / ask / off | `updater.ts` `initUpdater` tick + `checkForUpdate` — [RELEASE.md §6.3](RELEASE.md) |
 | Updates | Check for updates — Check now · Roll back — version menu + Install · the status line (version, progress, ready) | — | — | `update_check` / `update_versions` (one request per session) / `rollbackTo`; `onUpdateStatus` repaints the line |
+| Reset | Look and feel (theme and skin + every Look and feel row) with indented parts: Theme and skin · Look schedule · Motion · Skin settings (`set__row--sub`); then Window · Playback · Playlists · Rewind · Everything — each row a *Reset* button (2026-09-15; Open menus on hover and Show notices reset only with Look and feel or Everything) | `RESET_GROUPS` in `settings-card.ts` (theme and skin: `defaultTheme()` / `defaultSkin()`, the first-launch pair) | `DEFAULTS` | Reset → sticky toast *Confirm* / *Cancel* → a timed toast with *Undo* (the snapshot is taken at Confirm). A group already at its defaults flashes *Default*. Not reset: Close to tray, Start with Windows, the consent gates, Agent changes settings, Updates. Theme and skin change under the look animation as a hand pick (`noteHandPick`) |
 | Bugs | App log — Open folder · Copy | — | — | `log_open_folder` (+ `diag.flush()` first; LOGGING.md) / `bridge_log` |
 | About | Apple trademark notice · privacy notice (open by default) | — | — | — |
 
@@ -137,6 +138,8 @@ its composition default) and the slots remount so every picker re-reads the pool
 3. Add a row to the right section in `settings-card.ts` (`storeToggle(...)` for booleans,
    a `choice` row for enums). Label in sentence case; the hint is optional.
 4. Update the table above and the source entry in FUTURE-SETTINGS.md.
+   Add the key to its group in `RESET_GROUPS` (`settings-card.ts`), unless it is a consent
+   gate or Rust owns it.
 5. Agents ([AGENT.md §6](AGENT.md)): add the row to `SPECS` in `src/agent-settings.ts`, with the
    card's label, section and choices. A consent gate (like Add to Library) takes
    `offOnly: true`; a value agents must never change takes `readOnly: true`.

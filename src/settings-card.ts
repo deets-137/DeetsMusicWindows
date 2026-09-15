@@ -15,22 +15,24 @@
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
-import { setting, setSetting, onSettingsChange, onOwnedSettingChange, type Settings } from "./settings-store";
-import { currentSkin, onSkinChange } from "./skin";
+import { setting, setSetting, onSettingsChange, onOwnedSettingChange, DEFAULTS, type Settings } from "./settings-store";
+import { currentSkin, onSkinChange, applySkin, defaultSkin, type SkinName } from "./skin";
+import { applyTheme, defaultTheme, type ThemeName } from "./theme";
+import { withAppearanceTransition } from "./appearance";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
 import * as diag from "./diag";
-import { toast } from "./toast";
+import { toast, type ToastHandle } from "./toast";
 import { copyLink } from "./copy-link";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, versionText, type OlderVersion } from "./updater";
-import { scheduleStatus, onScheduleChange, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
+import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance } from "./cards";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -69,6 +71,9 @@ interface SplitRow {
   label: string;
   hint?: () => string | undefined;
   halves: Half[];
+  /** Heads the indented `sub` rows under it (its label is underlined); or is one of them. */
+  group?: boolean;
+  sub?: boolean;
 }
 /** Markup of its own (Bugs › the report fields); events are wired by data attributes. */
 interface HtmlRow {
@@ -144,6 +149,74 @@ const timeOptions = (from: number, to: number): Option[] => {
   return out;
 };
 const scheduled = () => setting("lookSchedule") !== "off";
+
+// ── Settings › Reset (SETTINGS.md §3): one row per group of store keys ──
+// Not reset: the Rust-owned rows (Close to tray, Start with Windows), the consent gates
+// (Add to Library, Export playlists, Agent control, Agent changes settings), and Updates.
+interface ResetGroup {
+  id: string;
+  label: string;
+  hint: string;
+  keys: (keyof Settings)[];
+  /** The theme and skin, which live outside the store (theme.ts, skin.ts). */
+  look?: boolean;
+}
+const RESET_GROUPS: ResetGroup[] = [
+  { id: "look", label: "Theme and skin", hint: "The first-launch pair for your Windows light or dark mode", keys: [], look: true },
+  {
+    id: "schedule", label: "Look schedule", hint: "Change look at, the day and night looks, the times, and Menu pick lasts",
+    keys: ["lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "dayStart", "nightStart", "sunShift", "lookHold"],
+  },
+  { id: "motion", label: "Motion", hint: "The three Animate rows", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion"] },
+  {
+    id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, and the four Glass sliders",
+    keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint"],
+  },
+  { id: "menus", label: "Menus and notices", hint: "Open menus on hover and Show notices", keys: ["menuMode", "toasts"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "alwaysOnTop"] },
+  {
+    id: "playback", label: "Playback", hint: "Every Playback row",
+    keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleManual", "shuffleIdle"],
+  },
+  {
+    id: "playlists", label: "Playlists", hint: "Every Playlists row",
+    keys: ["playlistEagerCounts", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover"],
+  },
+  { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
+];
+/** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
+const LOOK_AND_FEEL = ["look", "schedule", "motion", "skinrows", "menus"];
+const LOOK_PARTS = ["look", "schedule", "motion", "skinrows"];
+interface ResetSnapshot {
+  values: Partial<Settings>;
+  look?: { theme: ThemeName; skin: SkinName };
+}
+const snapshotOf = (groups: ResetGroup[]): ResetSnapshot => ({
+  values: Object.fromEntries(groups.flatMap((g) => g.keys).map((k) => [k, setting(k)])) as Partial<Settings>,
+  look: groups.some((g) => g.look)
+    ? { theme: document.documentElement.dataset.theme as ThemeName, skin: currentSkin() }
+    : undefined,
+});
+const defaultsOf = (groups: ResetGroup[]): ResetSnapshot => ({
+  values: Object.fromEntries(groups.flatMap((g) => g.keys).map((k) => [k, DEFAULTS[k]])) as Partial<Settings>,
+  look: groups.some((g) => g.look) ? { theme: defaultTheme(), skin: defaultSkin() } : undefined,
+});
+const sameSnapshot = (a: ResetSnapshot, b: ResetSnapshot): boolean =>
+  JSON.stringify(a.values) === JSON.stringify(b.values) && a.look?.theme === b.look?.theme && a.look?.skin === b.look?.skin;
+/** Write a snapshot: the store keys first (the schedule settles), then the theme and skin as a hand pick. */
+function applySnapshot(s: ResetSnapshot): void {
+  for (const k of Object.keys(s.values) as (keyof Settings)[]) setSetting(k, s.values[k] as never);
+  if (!s.look) return;
+  const { theme, skin } = s.look;
+  const newSkin = currentSkin() !== skin;
+  if (document.documentElement.dataset.theme === theme && !newSkin) return;
+  noteHandPick();
+  withAppearanceTransition(newSkin ? "skin" : "theme", () => { applyTheme(theme); applySkin(skin); }, {
+    skin: newSkin ? skin : undefined,
+    // np-bus imports this module's neighbours (agent-settings.ts does the same); load it lazily.
+    after: () => void import("./np-bus").then((m) => m.publishAppearance()),
+  });
+}
 
 const SETUP_CLIENTS: Option[] = [
   { value: "claude-desktop", label: "Claude Desktop" },
@@ -305,6 +378,46 @@ function mountSettings(host: HTMLElement): CardInstance {
       sending = false;
     }
   };
+
+  // Settings › Reset: Reset asks first (Confirm / Cancel); a confirmed reset offers Undo.
+  // The snapshot is taken at Confirm, so a change made while the question showed is undone too.
+  let resetAsk: ToastHandle | null = null;
+  const RESET_UNDO_MS = 6000;
+  const resetRow = (label: string, hint: string, groups: ResetGroup[], id: string, nest?: "group" | "sub"): Row => ({
+    kind: "split", id, label, group: nest === "group", sub: nest === "sub",
+    hint: () => hint,
+    halves: [
+      {
+        type: "action", label: "Reset", hint: "Asks first. You can undo it after",
+        run: (el) => {
+          if (sameSnapshot(snapshotOf(groups), defaultsOf(groups))) return flash(el, "Default");
+          resetAsk?.dismiss();
+          resetAsk = toast({
+            kind: "info",
+            sticky: true,
+            text: `Reset ${label} to the defaults?`,
+            actions: [
+              {
+                label: "Confirm",
+                run: () => {
+                  resetAsk = null;
+                  const before = snapshotOf(groups);
+                  applySnapshot(defaultsOf(groups));
+                  toast({
+                    kind: "success",
+                    text: `${label} reset to the defaults.`,
+                    timeout: RESET_UNDO_MS,
+                    actions: [{ label: "Undo", run: () => applySnapshot(before) }],
+                  });
+                },
+              },
+              { label: "Cancel", run: () => (resetAsk = null) },
+            ],
+          });
+        },
+      },
+    ],
+  });
 
   const sections: Section[] = [
     // Labels: one short active statement each; the hint (hover) only where a word is
@@ -639,6 +752,17 @@ function mountSettings(host: HTMLElement): CardInstance {
       ],
     },
     {
+      // Back to the defaults: one row per Settings section, Look and feel with its parts
+      // indented under it, then every group at once (RESET_GROUPS).
+      title: "Reset",
+      rows: [
+        resetRow("Look and feel", "The theme and skin, and every Look and feel row", RESET_GROUPS.filter((g) => LOOK_AND_FEEL.includes(g.id)), "reset-lookfeel", "group"),
+        ...RESET_GROUPS.filter((g) => LOOK_PARTS.includes(g.id)).map((g) => resetRow(g.label, g.hint, [g], `reset-${g.id}`, "sub")),
+        ...RESET_GROUPS.filter((g) => !LOOK_AND_FEEL.includes(g.id)).map((g) => resetRow(g.label, g.hint, [g], `reset-${g.id}`)),
+        resetRow("Everything", "Every row in this list, in one step", RESET_GROUPS, "reset-all"),
+      ],
+    },
+    {
       title: "Bugs",
       // The labelled rows, plus one per saved report.
       get count() {
@@ -850,7 +974,8 @@ function mountSettings(host: HTMLElement): CardInstance {
     }
     const halves = halvesOf(r);
     if (halves) {
-      return `<div class="set__row set__row--choice${fx.cls}"${mark}${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
+      const sub = r.kind !== "split" ? "" : r.sub ? " set__row--sub" : r.group ? " set__row--group" : "";
+      return `<div class="set__row set__row--choice${sub}${fx.cls}"${mark}${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
     }
     const choice = r as ChoiceRow;
     const cur = choice.get ? choice.get() : String(setting(choice.key!));
