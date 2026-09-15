@@ -8,6 +8,12 @@ shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md
 So keep the body to paragraphs and **bold**, and use absolute links only: a relative link
 works on GitHub and breaks on the site.
 
+**For the next entry (2026-09-15):** installers after 0.4.3 are code-signed (RELEASE.md §6.9).
+Do not copy the "not code-signed yet" line from older entries. SmartScreen may still warn on a
+browser download until reputation builds, so check what a browser download of that release
+shows before writing the Installing section. Older entries stay as written: they were true for
+their version.
+
 ## 0.4.3 — 2026-09-14
 
 **DeetsMusic updates itself.** When a new version is out, DeetsMusic downloads it in the

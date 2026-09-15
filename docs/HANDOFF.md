@@ -18,7 +18,7 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
-[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build / install / uninstall). Ideas, not built:
+[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
 [ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
 
 ---
@@ -65,18 +65,24 @@ the queue restore via a restart). Recipe and limits: [DEBUGGING.md](DEBUGGING.md
 
 ## Ship it (installable Windows app)
 
-Full procedure — version sync, the three build stages, the NSIS hooks, install, uninstall,
-and the updater design (§6, designed 2026-09-14, not built) — is in **[RELEASE.md](RELEASE.md)**. The short version:
+Full procedure — version sync, the build stages, Authenticode signing (§6.9), the NSIS hooks,
+install, uninstall, publishing and the updater (§6, shipped in 0.4.3) — is in
+**[RELEASE.md](RELEASE.md)**; §0 is the one-page overview of commands, secrets and keys. The
+short version:
 
 ```bash
-npm run release     # cli:build → tauri build → archive-installer; ~3 min cold
+npm run release          # secrets → cli:build → sign → tauri build (signed + .sig) → release-check → archive; ~3 min cold
+npm run release:publish  # after testing the installed build: R2 upload + update index → installs update
 ```
 
-Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~5.6 MB)
-and copies it into `installers/` (gitignored, the DeetsAirplay pattern). Installs per-user to
-`%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**.
+Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` + `.sig`
+(~7 MB) and copies both into `installers/` (gitignored; pre-release versions go to
+`installers/dev/`). Installs per-user to `%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**.
+A release needs two Credential Manager entries (`DeetsMusicUpdaterKey`,
+`DeetsMusicAzureSigning`), the updater key file, and the signing tools in
+`%LOCALAPPDATA%\DeetsTools\artifact-signing` (RELEASE.md §0 table).
 
-Three things that bite:
+Things that bite:
 
 - **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
   stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
@@ -85,6 +91,12 @@ Three things that bite:
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).
+- **`target\release\DeetsMusic.exe` is unsigned after a good signed build.** Tauri signs a
+  patched copy for the installer and writes the original back. Check the installed exe instead
+  (RELEASE.md §6.9).
+- **Save secrets with `scripts/cred-write.ps1`, not `cmdkey /pass`.** A paste into the hidden
+  `cmdkey` prompt stored extra characters on 2026-09-15 (Azure: "Invalid client secret").
+- **A secret expires:** the Azure client secret on **2027-03-14** (runbook RELEASE.md §6.9).
 
 Icon: `app-icon.png` (the DM mark, DeetsAirplay/DeetsRGB lineage — transparent background,
 scarlet `#E8341C` D + burgundy `#7A1A2E` M, 2026-09-09). Regenerate every size + the `.ico`
@@ -94,6 +106,22 @@ extension's icons are LANCZOS resizes of the same file.
 ---
 
 ## Next up
+
+**2026-09-15 — Authenticode signing (Azure Artifact Signing): WORKING, tested —
+[RELEASE.md §6.9](RELEASE.md).** Signed 0.4.4-t1 and t2 were built and published to
+`deetsmusic-test`; t1 was installed by hand and updated to t2 by itself; all installed exes are
+Valid. `release-check` §4 no longer checks `target\release\DeetsMusic.exe` (Tauri writes the
+unsigned original back after bundling). **The installed app on this PC is now t2 on the TEST
+channel** — install the next real release by hand. Version files are back to 0.4.3.
+Earlier notes: Identity validated, profile `deetsmusic` made (CN `Aditya
+Sundaram` = `bundle.publisher`, no change). Auth = app registration `Deets Release Signing`,
+secret in Credential Manager `DeetsMusicAzureSigning` (user chose this over `az login`, so a
+Claude session can run a release; expires 2027-03-14). Built: `scripts/sign.mjs` (signtool +
+Microsoft's dlib from `%LOCALAPPDATA%\DeetsTools\artifact-signing`); `release.mjs` signs the CLI
+after `cli:build` and passes the exe/installer `signCommand` in a temp `--config` file
+(`tauri.conf.json` unchanged); `release-check.mjs` §4 requires a Valid, timestamped signature
+with CN = publisher on all three; `scripts/cred-write.ps1` saves a secret safely.
+`artifact-signing-cli` was rejected (needs the Azure CLI). Not committed.
 
 **2026-09-14 — playlists §10.9, BUILT, not desk-tested: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
 Import to Edit (a mirror row's right-click or its hero cover; your own Apple playlist stays
@@ -251,7 +279,9 @@ run the app. Fix: a **Cloudflare Worker on deets.solutions mints the developer t
 lifetime, open endpoint rate-limited by IP, local signing kept as the dev seam. Full build
 order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still needed before
 posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
-attached (none exist), and a plain note about SmartScreen on the unsigned installer.
+attached (none exist), and a plain note about SmartScreen (installers are signed from the
+first release after 0.4.3, but a browser download can still warn until reputation builds —
+RELEASE.md §6.9).
 
 **Before release: polished keyboard control (added 2026-09-13).** Every action a mouse can do
 must also work from the keyboard, with a visible focus ring. Known gaps: search result rows
@@ -493,6 +523,12 @@ get large).
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-14/15 — self-update + signed releases** ([RELEASE.md](RELEASE.md) §0, §6, §6.9):
+  `tauri-plugin-updater` behind the DeetsSupport Worker + R2 (`deetsmusic` and `deetsmusic-test`
+  channels; Settings › Updates Automatic / Ask / Off, Skip, Roll back within a channel group,
+  `minVersion` for a required update); shipped in 0.4.3. Every build is signed twice: the
+  updater `.sig` (minisign key) and Authenticode via Azure Artifact Signing (`scripts/sign.mjs`).
+  Tested end to end with a signed t1 → t2 update on the test channel.
 - **2026-09-13 — toasts** ([TOASTS.md](TOASTS.md)): the primitive, the `toasts` tier
   setting, and the ten call sites above. **Awaiting the first desk test.**
 - **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
@@ -666,7 +702,15 @@ cli/                        the `deetsmusic` binary: CLI + MCP server (AGENT.md)
 extension/                  MV3 browser extension source (EXTENSION.md)
 scripts/dev-app.mjs         generates the dev identifier config for `npm run dev:app`
 scripts/cli-dist.mjs        stages cli/dist/deetsmusic.exe for bundle.resources
-scripts/archive-installer.mjs   copies each shipped setup exe into installers/
+scripts/release.mjs         `npm run release`: reads secrets, builds, signs, checks, archives (RELEASE.md §1)
+scripts/sign.mjs            Authenticode signing: signtool + Azure Artifact Signing dlib (RELEASE.md §6.9)
+scripts/release-check.mjs   the release gate: repo paths, versions, pin/updater, signatures (§1a)
+scripts/archive-installer.mjs   copies each shipped setup exe + .sig into installers/ (pre-release → dev/)
+scripts/publish-update.mjs  `npm run release:publish`: R2 upload + update index, withdraw, notes (§6.7)
+scripts/cred-read.ps1       reads a Credential Manager secret for release.mjs (never printed)
+scripts/cred-write.ps1      saves a secret to Credential Manager, trimmed and checked
+src-tauri/src/update.rs     the updater: channel, check, in-memory verified download, install
+src/updater.ts              Settings › Updates + the update toasts (RELEASE.md §6.3)
 installers/                 local archive of shipped NSIS installers (gitignored)
 src-tauri/secrets/          Apple key/IDs + captured MUT (gitignored)
 dev-dumps/                  raw API samples used to design the model (gitignored)

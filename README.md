@@ -84,9 +84,11 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 
 ## Notes
 
-The roadmap is in [docs/HANDOFF.md](docs/HANDOFF.md). The installer is **unsigned**, so SmartScreen warns on first run, and there is
-no auto-updater — each release is a fresh installer, archived locally
-([docs/RELEASE.md](docs/RELEASE.md)).
+The roadmap is in [docs/HANDOFF.md](docs/HANDOFF.md). Releases after 0.4.3 are
+**Authenticode-signed** (publisher *Aditya Sundaram*), and since 0.4.3 the app **updates
+itself** from `music-api.deets.solutions`, with each installer checked against a signature
+compiled into the app. How builds are signed, published and updated:
+[docs/RELEASE.md](docs/RELEASE.md) ("The release pipeline at a glance").
 
 ## Privacy
 

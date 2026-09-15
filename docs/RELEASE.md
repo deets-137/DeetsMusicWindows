@@ -1,13 +1,52 @@
 # Release, install, uninstall
 
-> Status: **the installer line is live** — 0.1.0 → 0.1.3 shipped, 0.1.3 is the first build
-> whose installer stops the bundled CLI (below). Code: `package.json` (`release` script),
-> `scripts/cli-dist.mjs`, `scripts/archive-installer.mjs`, `src-tauri/nsis/hooks.nsh`,
-> `src-tauri/tauri.conf.json` (`bundle`).
+> Status (2026-09-15): **installer, updater and Authenticode signing are all live and tested.**
+> 0.4.3 is the first release on the update channel (§6). Signing was tested with 0.4.4-t1 → t2
+> on the test channel (§6.9); the next real release is the first signed one.
+> Code: `package.json` (`release`, `release:check`, `release:publish`), `scripts/release.mjs`,
+> `scripts/sign.mjs`, `scripts/release-check.mjs`, `scripts/archive-installer.mjs`,
+> `scripts/publish-update.mjs`, `scripts/cli-dist.mjs`, `scripts/cred-read.ps1`,
+> `scripts/cred-write.ps1`, `src-tauri/nsis/hooks.nsh`, `src-tauri/tauri.conf.json` (`bundle`,
+> `plugins.updater`), `src-tauri/src/update.rs`, `src/updater.ts`, `DeetsSupport/src/update.js`.
 
 House pattern, shared with DeetsAirplay / DeetsRGB: a hand-built **NSIS** installer, per-user,
-no admin prompt, no auto-updater yet (designed in §6). Each shipped setup exe is kept in a local `installers/`
-archive.
+no admin prompt. Each shipped setup exe is kept in a local `installers/` archive. Unlike those
+apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed (§6.9).
+
+## 0. The release pipeline at a glance (2026-09-15)
+
+**Terms.**
+- **Updater key** — a minisign key pair made by `tauri signer`. Its public half is compiled into
+  every install (`plugins.updater.pubkey`). The updater refuses any download whose `.sig` does
+  not match it. It protects **updates** (§6.6).
+- **Authenticode signature** — the Windows signature that puts a publisher name on an exe. It
+  comes from Azure Artifact Signing. It protects **first installs and trust in Windows** (§6.9).
+- **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (spike builds). Compiled into
+  the build; an install only ever sees its own channel.
+
+**The commands, in order:**
+
+| Step | Command | What it does | Needs |
+|---|---|---|---|
+| 1 | set the version | the same version in the four files (§1) | — |
+| 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
+| 3 | install + test | the installed build, by hand, from `installers/` | — |
+| 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update | `../DeetsSupport` checkout, wrangler login |
+| — | `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release` then `npm run release:publish -- --channel deetsmusic-test` | the same, on the test channel (§6.8) | — |
+
+**The secrets and keys:**
+
+| Item | Where | Used by | If lost / leaked |
+|---|---|---|---|
+| Updater private key (encrypted file) | `Documents\Deets' Secrets\deetsmusic-updater.key` + an off-PC copy | `release.mjs` → `tauri build` | Lost = no install can update again; runbooks §6.6 |
+| Updater key password | Credential Manager `DeetsMusicUpdaterKey` + iCloud Passwords | `release.mjs` | §6.6 |
+| Azure client secret (`Deets Release Signing`) | Credential Manager `DeetsMusicAzureSigning`. **Expires 2027-03-14** | `release.mjs` → `sign.mjs` | Make a new one in a minute; runbook §6.9 |
+| Artifact Signing dlib + `metadata.json` | `%LOCALAPPDATA%\DeetsTools\artifact-signing\` | `sign.mjs` | Download again (§6.9) |
+| Cloudflare account (Worker, R2) | wrangler login in `../DeetsSupport` | `release:publish`, the update route | Secure it first in any key incident (§6.6) |
+
+**Why two signatures.** A stolen updater key alone cannot push an update: the attacker also needs
+the Worker, R2 or the DNS record. Authenticode gives the installer a publisher name that Windows
+and users can check, and it opens a possible second lock (§6.6).
 
 ## 1. Cut a build
 
@@ -19,18 +58,29 @@ archive step with a message that says to check all three — deliberately, becau
 alternative is an installer that silently never gets archived.
 
 ```bash
-npm run release     # cli:build → tauri build → archive-installer
+npm run release     # secrets → cli:build → sign cli → tauri build (signed) → release-check → archive
 ```
 
-Three stages, and the order matters:
+`scripts/release.mjs` runs the stages, and the order matters:
 
+0. **Read the secrets first** — the updater key file and password (§6.6) and the Azure client
+   secret (§6.9). A missing one fails here, before the slow build.
 1. **`npm run cli:build`** — `cargo build --release` on `cli/`, then `scripts/cli-dist.mjs`
    stages the exe at `cli/dist/deetsmusic.exe`, where `bundle.resources` expects it.
    **`tauri build` alone ships the PREVIOUS CLI**, with no warning. Always use `npm run release`.
-2. **`tauri build`** — bundles the front end into the exe, then runs `makensis`.
-   ~3 min cold, ~1 min warm. Output:
-   `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (~5.6 MB at 0.1.3).
-3. **`scripts/archive-installer.mjs`** — copies that exe into `installers/`.
+2. **Sign the CLI** — `scripts/sign.mjs` on `cli/dist/deetsmusic.exe`. Tauri does not sign
+   bundle resources.
+3. **`tauri build`** — bundles the front end into the exe, then runs `makensis`. It gets a
+   `signCommand` from a temporary `--config` file and signs `DeetsMusic.exe`, the NSIS plugin DLLs,
+   the uninstaller and the installer. With the updater env vars it then writes the updater `.sig`
+   (after the Authenticode signature — tested §6.9). ~3 min cold, ~1 min warm. Output:
+   `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (+ `.sig`, ~7 MB).
+4. **`scripts/release-check.mjs`** — the gate (§1a): no repo paths in the exe, versions agree,
+   pin and updater settings intact, the `.sig` present, the CLI and installer signed.
+5. **`scripts/archive-installer.mjs`** — copies the exe and `.sig` into `installers/` (a
+   pre-release version such as `0.4.4-t1` goes to `installers/dev/`).
+
+Publishing is a separate command, run after the installed build is tested (§6.7).
 
 **Before a Worker deploy that follows a theme, skin, palette or font change:** run
 `npm run signin:assets` here, then `npx wrangler deploy` in `../DeetsSupport`. The hosted
@@ -51,7 +101,9 @@ installed build showed it. Three layers now guard this:
    the exe at all (`apple.rs` `repo_secrets_dir`, the bridge's dev extension path).
 2. **Automated gate.** `npm run release` runs `scripts/release-check.mjs` after `tauri build`
    and before archiving. It fails when the exe contains an absolute path into the repo (build
-   output under `src-tauri\target\` is allowed) or when the four version files disagree.
+   output under `src-tauri\target\` is allowed), when the four version files disagree, when the
+   pin or updater settings changed or the `.sig` is missing, or when the CLI or the installer
+   lacks a Valid, timestamped Authenticode signature from `bundle.publisher` (§6.9).
    Run it alone with `npm run release:check`.
 3. **Checklist on the INSTALLED build — when relevant, not on every release.** Run it before
    any key change, and before a release whose changes touch these paths or the code next to
@@ -113,6 +165,10 @@ The archive earns its keep because `src-tauri/target/` is the only other copy, a
 | `extension\` | `extension/` via `bundle.resources` | Unpacked MV3 source + `install.html` ([EXTENSION.md](EXTENSION.md) §6). |
 | `uninstall.exe` | NSIS | Also registered under Installed apps. |
 
+Every exe above (and the setup exe) carries an Authenticode signature from *Aditya Sundaram*,
+from the first release after 0.4.3. Check one with **Properties › Digital Signatures**, or
+`Get-AuthenticodeSignature`.
+
 Install root is `%LOCALAPPDATA%\DeetsMusic` (`installMode: currentUser`). User data lives
 elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
 `user-token.txt`, `settings.json`, `deetsmusic.log`.
@@ -157,13 +213,16 @@ installers/DeetsMusic_<version>_x64-setup.exe
 No admin prompt. Adds a Start Menu entry (right-click → *Pin to taskbar*) and the uninstaller,
 then offers the extension walkthrough.
 
-- The installer is **unsigned**, so SmartScreen warns on first run (*More info → Run anyway*).
+- The installer is **Authenticode-signed** by *Aditya Sundaram* from the first release after
+  0.4.3 (§6.9); 0.4.3 and earlier are unsigned. **SmartScreen checks only files with the web
+  mark** (a browser download). A locally built installer and an updater download carry no mark,
+  so they never show it. A signed installer from a browser can still warn (*More info → Run
+  anyway*) until the publisher builds download reputation.
   The user-facing wording for each release lives in [RELEASE-NOTES.md](RELEASE-NOTES.md);
   paste that entry into the GitHub Release.
 - **`npm run tauri dev` and the installed app share `%APPDATA%\com.deetsmusic.app`** (same
   identifier). Anything a dev run writes to `settings.json` the installed build reads. Use
   `npm run dev:app` (own identifier) when testing anything that seeds a one-shot state.
-  Silencing it needs a code-signing certificate.
 - **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
   falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the install
   self-contained — see `src-tauri/secrets/README.md`.
@@ -196,10 +255,17 @@ uninstaller is still on disk and can be re-run, or the folder deleted directly.
 
 ## 6. The updater
 
-> Status: **built on branch `yupdates` 2026-09-14, not yet tested.** Decisions below are the
-> user's; the "Test first" list (§6.8) is what the spike must confirm. Code: `src-tauri/src/update.rs`,
-> `src/updater.ts`, Settings › Updates (`settings-card.ts`), `scripts/release.mjs`,
-> `scripts/publish-update.mjs`, `scripts/cred-read.ps1`, and `DeetsSupport/src/update.js`.
+> Status: **built on branch `yupdates` 2026-09-14, spike passed (§6.8), shipped in 0.4.3** — the
+> first release on the `deetsmusic` channel. Re-tested with signed installers 2026-09-15 (§6.9).
+> Decisions below are the user's. Code: `src-tauri/src/update.rs`, `src/updater.ts`,
+> Settings › Updates (`settings-card.ts`), `scripts/release.mjs`, `scripts/publish-update.mjs`,
+> `scripts/cred-read.ps1`, `scripts/cred-write.ps1`, and `DeetsSupport/src/update.js`.
+>
+> **How an update travels:** `npm run release` signs the installer twice (Authenticode, then the
+> updater `.sig`) → `release:publish` puts both in R2 and adds a row to `<channel>/index.json` →
+> the app asks `GET music-api.deets.solutions/update/<channel>?v=<current>` → the Worker answers
+> from the index → the plugin downloads the installer into memory and checks the `.sig` against
+> the compiled public key → a restart runs NSIS in passive mode and relaunches the app.
 >
 > **As built — where it differs from the plan below:**
 > - The verified installer is held **in memory**, not staged on disk (§6.4). A file read back
@@ -296,8 +362,8 @@ Settings row, verb-first per the label style: **Updates — Automatic / Ask / Of
   private key **never goes into Cloudflare** or the repo.
 - **Lost key = no install can update again.** Every install trusts only its compiled public
   key, and a new key can only ship in a release signed by the old one.
-- **Not Authenticode.** This key does not silence SmartScreen on a first install (that needs
-  a paid code-signing certificate).
+- **Not Authenticode.** This key does not give the installer a publisher name. Authenticode
+  is a separate signature from Azure Artifact Signing (§6.9).
 
 **Where things live — two copies of each, in two places:**
 
@@ -331,9 +397,11 @@ no fix inside the updater. The recovery is the config channel, which does not us
 3. Set the remote `notice` to say so, with the download link. Every install reads it on the
    `/token` fetch. **So the notice toast must show a link button — build that with the updater.**
 
-**Possible second lock (not decided):** if Artifact Signing is bought, the app can also require
-the downloaded installer to carry a valid Authenticode signature with our publisher name before
-it runs. Then a stolen updater key plus a taken Worker is still not enough.
+**Possible second lock (not decided; now possible, 2026-09-15):** Artifact Signing is set up
+(§6.9), so the app could also require the downloaded installer to carry a valid Authenticode
+signature with CN `Aditya Sundaram` before it runs. Then a stolen updater key plus a taken Worker
+is still not enough. It needs a signed release to reach every install first, or installs that
+still expect unsigned updates would refuse them.
 
 Why Credential Manager over a typed prompt: the password protects a copied key file, and
 both options protect that equally. Neither protects against malware running as the user.
@@ -341,9 +409,11 @@ The vault lets a Claude session run a full release; a prompt would not.
 
 ### 6.7 Publish step
 
-`npm run release` gains stages after `release-check`: sign (via the env vars above), upload
-the installer and `.sig` to R2, and update the manifest (version, size, signature, channel
-group). The local `installers/` archive stays.
+**As built:** publishing is its own command, `npm run release:publish`, run only after the
+installed build passed its checks. It uploads the archived installer from `installers/` (or
+`installers/dev/`) to R2, then rewrites `<channel>/index.json` with `{ version, group, notes,
+pub_date, size, signature, file }`. `npm run release` does the signing; publish never builds.
+The local `installers/` archive stays.
 
 **Additions for the website (built 2026-09-14)** — `scripts/publish-update.mjs`. Notes are
 stored with `\n` line endings whatever the checkout uses:
@@ -395,6 +465,89 @@ stored with `\n` line endings whatever the checkout uses:
 5. In t2: Roll back → `0.4.2-t1` → Install → Restart now. Expect t1, and t2 marked skipped.
 6. Set the version back to the real one. A test build stays on `deetsmusic-test` until the
    installed copy is replaced by a normal release.
+
+### 6.9 Authenticode — Azure Artifact Signing (set up 2026-09-14/15)
+
+> Status: **working, tested 2026-09-15** (0.4.4-t1 → t2 on `deetsmusic-test`). The next real
+> `npm run release` ships signed. Open: what the first-run prompt shows (last "Test first" item).
+
+**Terms.** *Authenticode* is the Windows signature that puts a publisher name on an exe. It is
+separate from the updater key (§6.6). *Artifact Signing* is Azure's service for it (formerly
+Trusted Signing); Azure holds the key and issues a certificate that lasts about 3 days, so every
+signature is timestamped.
+
+**What is set up (Azure portal):**
+
+| Item | Value |
+|---|---|
+| Signing account | `DeetsSolutions` — resource group `DeetsSolutions`, East US, Basic ($9.99/month, 5,000 signatures, 1 profile) |
+| Endpoint | `https://eus.codesigning.azure.net` |
+| Identity | Individual, Public — validated 2026-09-15 |
+| Certificate profile | `deetsmusic`, Public Trust. Subject `CN=Aditya Sundaram, O=Aditya Sundaram, L=San Jose, S=ca, C=US` (street and postal code left out on purpose) |
+| App registration (Entra ID) | `Deets Release Signing` — client `436ce300-2b76-486f-800c-e6207a3e4720`, tenant `7715e97a-6856-491f-9861-c797da0b5288`. One role only: *Artifact Signing Certificate Profile Signer* on the account |
+| Client secret | Windows Credential Manager, target `DeetsMusicAzureSigning` (save it with `scripts/cred-write.ps1 -Target DeetsMusicAzureSigning -Kind azure`; it trims and checks the paste). **Expires 2027-03-14** — renew before then (runbook below). |
+
+The user's own account holds *Artifact Signing Identity Verifier* and *Certificate Profile Signer*.
+Owner alone can neither validate nor sign.
+
+**What signs what (`npm run release`):** every signature goes through `scripts/sign.mjs`.
+1. `release.mjs` reads the secret before the build, so a missing one fails first. The tenant and
+   client IDs and the secret go only into the child processes' environment.
+2. After `cli:build`, it signs `cli/dist/deetsmusic.exe`. The CLI is a bundle **resource**, and
+   Tauri does not sign resources.
+3. `tauri build` gets a `signCommand` (`node scripts/sign.mjs %1`, object form) from a temporary
+   `--config` file, and runs it on `DeetsMusic.exe` and the NSIS installer. The object form is
+   needed because the repo path has a space. **`tauri.conf.json` has no `signCommand`**, so a
+   plain `npx tauri build` makes an unsigned build instead of failing.
+   Tauri also signs the NSIS plugin DLLs and the uninstaller inside the installer (~9 signatures
+   per build in all).
+4. `release-check.mjs` §4 fails the release unless the CLI and the installer have a **Valid**,
+   timestamped signature whose CN equals `bundle.publisher`.
+   **Trap (2026-09-15):** `target\release\DeetsMusic.exe` stays **NotSigned** after a good build.
+   Tauri signs a patched copy for the installer, then writes the unsigned original back (its
+   file time is after the setup exe's). Do not check that file; check the **installed**
+   `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe` after an install.
+
+**Tools on the signing PC (not in the repo):**
+- `signtool.exe` — Windows SDK, x64. `sign.mjs` picks the newest `10.*` SDK.
+- Microsoft's dlib — NuGet `Microsoft.ArtifactSigning.Client` **1.0.128**, the `bin\x64` folder,
+  copied to `%LOCALAPPDATA%\DeetsTools\artifact-signing\1.0.128\`. Needs the .NET 8 runtime.
+  (The download: `https://api.nuget.org/v3-flatcontainer/microsoft.artifactsigning.client/1.0.128/microsoft.artifactsigning.client.1.0.128.nupkg`, a zip.)
+- `%LOCALAPPDATA%\DeetsTools\artifact-signing\metadata.json` — endpoint, `DeetsSolutions`,
+  `deetsmusic`, and `ExcludeCredentials` listing every credential except the environment one,
+  so it never opens a browser or uses an `az login`.
+- Override the folder with `DEETS_SIGNING_TOOLS`. A new dlib version: change the path in `sign.mjs`.
+
+**Rejected (2026-09-15):** `artifact-signing-cli` / `trusted-signing-cli` (cargo). Its help
+lists the client-secret options, but it refuses to run without the Azure CLI installed.
+
+**Test first:**
+- [x] One test file signs from this session with the vault secret. **2026-09-15:** Valid,
+  `CN=Aditya Sundaram`, timestamped, ~2 s per file. Trap: a paste into `cmdkey /pass` stored extra
+  characters → `AADSTS7000215 Invalid client secret`; use `cred-write.ps1`.
+- [x] The first signed release: `release-check` §4 passes. **2026-09-15, 0.4.4-t1 on
+  `deetsmusic-test`:** after a hand install, `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe`,
+  `cli\deetsmusic.exe` and `uninstall.exe` are all Valid, `CN=Aditya Sundaram`, timestamped.
+- [x] The updater `.sig` verifies on that installer (a test-channel update, §6.8). If Tauri made the
+  `.sig` before the Authenticode signature, every update would fail its check. **2026-09-15:**
+  the build log and file times show the `.sig` written after the signed setup exe; installed t1
+  took t2 through Check now → Restart now, and t2 opened by itself. The updated `DeetsMusic.exe`,
+  CLI and uninstaller are Valid, `CN=Aditya Sundaram`, timestamped.
+- [ ] **A browser download** of the first signed real release (from `deets.solutions/deetsmusic/`)
+  shows *Aditya Sundaram* in the SmartScreen or install prompt, not "Unknown publisher". Not
+  testable with a local build: the 2026-09-15 hand install of t1 showed no prompt at all,
+  because a file from a build folder has no web mark and SmartScreen skips it. Download with
+  a browser, then run it.
+
+**Runbook — the secret expires or leaks.** Entra ID › App registrations › Deets Release Signing ›
+Certificates & secrets: add a new secret, run
+`powershell -NoProfile -File scripts/cred-write.ps1 -Target DeetsMusicAzureSigning -Kind azure`
+with it, run a test signature, then delete the old secret.
+A leaked secret can sign files as *Aditya Sundaram* until it is deleted — delete it first, then
+renew. Update the expiry date above.
+
+**Cost:** $9.99/month while the account exists, even with no release. Deleting the account ends
+it; signatures already made stay valid (they are timestamped).
 
 ## 7. Distributing a usable build — the developer token
 

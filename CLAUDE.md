@@ -10,7 +10,8 @@ front-end, Rust back-end).
 - `docs/DESIGN.md` — product intent.
 - `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
   extension + the loopback bridge (`extension/` is the MV3 source); `docs/AGENT.md` —
-  the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, install, uninstall.
+  the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, Authenticode signing,
+  publish, the self-updater, install, uninstall (§0 = commands, secrets and keys on one page).
 - `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
   call site; `__toast.demo()` in the console shows one of each kind.
 - `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
@@ -78,7 +79,8 @@ front-end, Rust back-end).
 npm install
 npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 window
 npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
-npm run release       # build the installer (→ installers/; see docs/RELEASE.md)
+npm run release       # build + sign the installer (→ installers/; see docs/RELEASE.md §0)
+npm run release:publish   # after testing the install: put it on the update channel
 npx tsc --noEmit      # front-end typecheck
 ```
 Devtools auto-open in dev (`src-tauri/src/lib.rs`).
