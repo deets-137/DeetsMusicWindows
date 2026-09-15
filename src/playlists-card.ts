@@ -309,6 +309,7 @@ export const playlistsCard: CardDef = {
         // Click a song → play the playlist from here, in the current sort order.
         activate: (_t, idx, items) =>
           void playTracks(items, idx, ctxTag).catch((e) => console.error("[playlists] play", e)),
+        playAll: true, // the toolbar's Play / Shuffle (NEXT-VERSION §13)
         // Locals append Remove (destructive-last); mirrors keep the shared menu —
         // no Apple remove path. Identity is the row's AUTHORED position (duplicates
         // are legal): re-resolve it live at run time via indexOf (the qcard pattern —

@@ -81,6 +81,14 @@ export interface Settings {
   shuffleManual: "top" | "hold" | "mix";
   /** Shuffle with nothing playing: play the whole library shuffled, or do nothing (§5b). */
   shuffleIdle: "library" | "noop";
+  /** The Shuffle button is a mode that stays on (NEXT-VERSION §14 A) — off: it shuffles Up
+   *  Next once (the 2026-07-02 one-shot). */
+  shuffleStays: boolean;
+  /** The shuffle mode's live state (no Settings row: the Now Playing button and the toolbar
+   *  Shuffle set it). Persisted like Apple's. Only read while `shuffleStays` is on. */
+  shuffleMode: boolean;
+  /** Repeat (NEXT-VERSION §12): the Now Playing button cycles it; no Settings row. */
+  repeatMode: "off" | "all" | "one";
   /** When a play counts as listened-through (§7). */
   fullPlayRule: "fraction" | "end" | "scrobble";
   /** Make the weekly Replay playlist automatically (NEXT-VERSION §4). */
@@ -151,6 +159,9 @@ export const DEFAULTS: Settings = {
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   shuffleManual: "top",
   shuffleIdle: "library",
+  shuffleStays: true, // user's call 2026-09-15: shuffle is a mode (NEXT-VERSION §14 A)
+  shuffleMode: false,
+  repeatMode: "off",
   fullPlayRule: "fraction",
   replayAuto: true,
   replayDay: "mon",

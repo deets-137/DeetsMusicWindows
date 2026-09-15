@@ -176,7 +176,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "alwaysOnTop"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleManual", "shuffleIdle"],
+    keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle"],
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
@@ -585,6 +585,12 @@ function mountSettings(host: HTMLElement): CardInstance {
           kind: "choice", id: "restorequeue", label: "Restore on launch", key: "restoreQueue",
           hint: "Last song shows in Now Playing, paused; Up Next parks it at the top of the queue",
           options: [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }],
+        },
+        {
+          kind: "toggle", id: "shufflestays", label: "Button is perma-shuffle",
+          hint: () => "The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once",
+          get: () => setting("shuffleStays"),
+          set: (on) => setSetting("shuffleStays", on),
         },
         {
           kind: "choice", id: "shufflemanual", label: "Shuffle keeps picks", key: "shuffleManual",

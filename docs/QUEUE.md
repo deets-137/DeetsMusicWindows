@@ -407,6 +407,8 @@ for the already-playing song).
 | change Previous / lookback semantics | `setContext` in [queue.ts](../src/queue.ts) |
 | change window size / dedup / load sequence | `loadFromModel` in [player.ts](../src/player.ts) |
 | change re-click behaviour | `playContext` in [player.ts](../src/player.ts) |
+| change Repeat all (the lap) / Repeat one | `refillFromPlan` in [queue.ts](../src/queue.ts) + `maybeFinishQueue` / `applyRepeatToMusicKit` in [player.ts](../src/player.ts) — NEXT-VERSION §12 |
+| change the shuffle mode (a context starts shuffled) | `setContext(…, shuffle)` in [queue.ts](../src/queue.ts); `isShuffleOn` / `toggleShuffle` in [player.ts](../src/player.ts) — NEXT-VERSION §14 |
 | change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../src/player.ts), `*Many` in [queue.ts](../src/queue.ts) |
 | change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../src/player.ts) |
 | change drag-reorder sync / re-windowing | `reconcileUpcoming` + `maybeTopUpWindow` (+ the `prevTrack` edge) in [player.ts](../src/player.ts) |

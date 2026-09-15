@@ -22,7 +22,7 @@ import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
 import { goToArtistItem, goToAlbumItem, requestPlaylistPane } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
-import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, formatTotal } from "./collection-card";
+import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, type ActionTitles, formatTotal } from "./collection-card";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
 import { registerDropTarget } from "./row-drag";
@@ -363,6 +363,7 @@ interface SongOpts {
   context?: string; // queue-origin tag for entries played from this list
   nav?: LibNav; // in-place "Go to Artist/Album" (Library only)
   extraSorts?: SortSpec<Track>[]; // appended to the Sort menu (the artist view's Popular / Most Played)
+  actionTitles?: ActionTitles; // hover text for the Play / Shuffle row (what the list is)
 }
 function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {
@@ -387,6 +388,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     // current sort order (the engine hands us the live sorted view).
     activate: (_t, idx, items) =>
       playTracks(items, idx, o.context).catch((e) => console.error("[library] play", e)),
+    playAll: o.actionTitles ?? true, // the Play / Shuffle row (NEXT-VERSION §13)
     // Right-click → act on this song; Play Now's scope (just it, or it then the list)
     // is the setting (SETTINGS.md / FUTURE-SETTINGS §1).
     menu: (t, idx, items) => trackMenu([t], o.context, o.nav, { items, idx }),
@@ -664,7 +666,18 @@ export const libraryCard: CardDef = {
         },
         density: true,
         // The Albums shelf replaces the old Albums grouping; the rows are the artist's songs.
-        groupings: [songsGrouping(sub, { context: `artist:${a.name}`, nav: libNav, extraSorts: artistSongSorts })],
+        groupings: [
+          songsGrouping(sub, {
+            context: `artist:${a.name}`,
+            nav: libNav,
+            extraSorts: artistSongSorts,
+            // The rows are every song by the artist in YOUR library (not the catalog discography).
+            actionTitles: {
+              play: `Play every song by ${a.name} in your library, in this order`,
+              shuffle: `Shuffle every song by ${a.name} in your library`,
+            },
+          }),
+        ],
         defaults: { density: "lines", sortKey: "release", sortDir: "desc" },
       };
     };

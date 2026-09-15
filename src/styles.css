@@ -1414,6 +1414,22 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   padding: var(--space-2) var(--space-2) var(--space-3);
 }
 .lib-grid .lib-hero { grid-column: 1 / -1; }
+/* Play / Shuffle (NEXT-VERSION §13): two half-width buttons under the hero (or at the top of
+   a song list with no hero). Play is filled with the title ink, Shuffle is the pill outline. */
+.lib-actions { display: flex; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); min-width: 0; }
+.lib-grid .lib-actions { grid-column: 1 / -1; }
+.lib-action {
+  flex: 1 1 0; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--lib-pill-radius);
+  color: var(--text); font-family: var(--font-body); font-size: var(--fs-text); cursor: pointer;
+}
+.lib-action:hover { background: var(--surface-hover); }
+.lib-action--play { background: var(--title); border-color: var(--title); color: var(--surface); }
+.lib-action--play:hover { background: var(--title); filter: brightness(1.12); }
+.lib-action__icon { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; flex: 0 0 auto; }
+.lib-action__icon--stroke { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 /* An artist hero's shelves (ARTIST-VIEW.md §2.2): Featured / Your Playlists scrollers
    between the hero and the rows; a grid-density view spans them like the hero. */
 .lib-shelves { display: flex; flex-direction: column; padding: 0 var(--space-2) var(--space-2); min-width: 0; }
@@ -1789,6 +1805,19 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .np .ap-square[data-state="on"] { color: var(--np-accent); }
 .np__fav svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .np__fav[data-state="on"] { color: var(--np-accent); }
+/* The mode squares (NEXT-VERSION §12, §14): pressed = the album accent, like ♥. Repeat one
+   draws a small "1" in the loop's middle. */
+.np__shuffle[aria-pressed="true"],
+.np__repeat[data-state="all"],
+.np__repeat[data-state="one"] { color: var(--np-accent); }
+.np__repeat { position: relative; }
+.np__repeat-one {
+  display: none;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-family: var(--font-body); font-weight: 700; line-height: 1;
+  font-size: calc(var(--fs-subtext) * 0.75);
+}
+.np__repeat[data-state="one"] .np__repeat-one { display: block; }
 .np__fav[data-state="on"] svg { fill: currentColor; }
 .np__aurora {
   display: var(--album-aurora-display); /* glass-first: skins opt in via the token */

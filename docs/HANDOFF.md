@@ -108,6 +108,38 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-15 — the listening-loop review: the transport pass is next.** A review of the daily
+listening loop (repeat, shuffle, playing a whole album, the queue's end, the keyboard) found
+the platform sound and the loop thin. Scoped with forks in
+**[NEXT-VERSION.md §12–§17](NEXT-VERSION.md)**, in this order:
+1. ✅ **Repeat button** (off / all / one) — §12, **BUILT 2026-09-15, awaiting the desk test**:
+   after Shuffle, one cycling square, MusicKit `repeatMode` for *one*, a model lap for *all*
+   with one buffering gap per lap, hidden in radio mode, persisted without a Settings row,
+   agent + CLI verbs. **Rust (`bridge.rs`) and the CLI changed: restart the dev runner and
+   `npm run cli:build` for the MCP binary.** Desk test: cycle the square (accent, the "1");
+   *one* loops a song and Rewind counts each loop; *all* laps a short album (the gap at the
+   wrap, then track 1 again); a station hides the square; `deetsmusic repeat all`.
+2. ✅ **Play and Shuffle on a collection** — §13, **BUILT, awaiting the desk test**: a row of
+   two half-width buttons under the hero of every song list (Library Songs root: at the top
+   of the list; an album; the artist view, above its shelves; a playlist); Play = the rows in
+   the current sort and filter; hover text names the list (a Library artist: every song by
+   them in your library). The Search card's album, playlist and artist panes have the row too
+   (the artist's: Apple's Top Songs). Desk test: Play on an album in Track Order; Popular on
+   an artist; a ♥-filtered Songs root; View › Albums at the root drops the row; Shuffle turns
+   the mode on; a Search artist's Shuffle plays its Top Songs shuffled.
+3. ✅ **Shuffle mode** — §14, **DECIDED A + BUILT**: Settings › Playback › *Button is perma-shuffle*
+   (default on) makes the Shuffle square a toggle; off = the one-shot. Desk test: press it
+   (pressed look, Up Next shuffles), click a song in an album (the rest shuffled), press
+   again (off; the next click plays in order); turn the row off and press (one-shot).
+4. **Space for play / pause** — folds into the keyboard pass below (not a separate item).
+5. **A Home card** (Recently Played · Recently Added · one more shelf) — §15, **to design**.
+6. **A durable History card** (read `play_events` at mount) — §16, to do; small.
+7. **The playlist creation flow** — §11, to design (carried from 2026-09-12).
+8. **A sleep timer** — §17, to design.
+Not possible on this platform, so not planned: lyrics, crossfade, Sound Check, remove from
+library (§12–§17 header). Spotify (PROVIDERS.md) and the vinyl disc (VINYL.md) wait behind
+items 1–3.
+
 **2026-09-15 — Authenticode signing (Azure Artifact Signing): WORKING, tested —
 [RELEASE.md §6.9](RELEASE.md).** Signed 0.4.4-t1 and t2 were built and published to
 `deetsmusic-test`; t1 was installed by hand and updated to t2 by itself; all installed exes are
@@ -285,7 +317,9 @@ first release after 0.4.3, but a browser download can still warn until reputatio
 RELEASE.md §6.9).
 
 **Before release: polished keyboard control (added 2026-09-13).** Every action a mouse can do
-must also work from the keyboard, with a visible focus ring. Known gaps: search result rows
+must also work from the keyboard, with a visible focus ring. Known gaps: **Space does not
+play / pause** (the shortcut set is Ctrl+K / Q / L / P / , only; media keys work through SMTC)
+— the first key a new user presses, so it leads the pass; search result rows
 are `role="button" tabindex="0"` but Enter/Space do not play them; hover-only controls (the
 Search Add-to-Library square) only show on `:focus-within`. Scope still to design on paper:
 a Tab order per card, arrow keys inside lists and grids, Enter/Space/Menu-key on rows, Escape
@@ -495,8 +529,8 @@ get large).
     New Playlist, Add to Playlist ▸ submenu, remove-track, empty-only delete. **Folders**
     (2026-07-03, §3a): manual folders + kind auto-clusters (Your Playlists / Apple Mixes /
     From Apple Music) as collapsible sections under the Folders sort; Move to Folder ▸ files
-    locals AND mirrors (local metadata, zero Apple calls). Remaining: rename +
-    drag-reorder (Rust commands exist), non-empty delete, mosaic covers, gated export.
+    locals AND mirrors (local metadata, zero Apple calls). Rename, drag-reorder,
+    delete with songs, mosaic covers and export / import all built 2026-09-14 (PLAYLISTS.md §10).
   - **Queue** (`qcard.ts`) + **History** (`history-card.ts`) — Now Playing + Up Next / session
     play log; shared row markup (`queue-rows.ts`).
   - **Rewind** ([DEETS-REWIND.md](DEETS-REWIND.md)) — listening leaderboard (stat × time-window)
@@ -552,11 +586,11 @@ get large).
   ISRC, chosen from the Account flyout, bring-your-own Spotify Client ID. Designed with the build
   order (8 slices, ~8–11 sessions) in **[PROVIDERS.md](PROVIDERS.md)**; §9 lists the Spotify facts
   to re-check first. Nothing built.
-- **Next-version feature notes (2026-09-11)** — pinned search terms · playlist artwork ·
-  favorite songs · weekly replay playlists from Rewind · a Search/quick-access shortcut.
-  Scoped with the real forks in **[NEXT-VERSION.md](NEXT-VERSION.md)**. None designed yet.
-- **♥ Favorites** — the love-only ♥ (Apple `PUT +1`) + local mirror + ♥ on Now Playing / menus.
-  Parked, explicitly not the next step (user's call). **Ratings / 👎 are off the roadmap.**
+- **The listening-loop items (2026-09-15)** — repeat · Play / Shuffle on a collection · a
+  shuffle mode (open question) · Space + the keyboard pass · a Home card · a durable History
+  card · the playlist creation flow · a sleep timer. **[NEXT-VERSION.md §11–§17](NEXT-VERSION.md)**
+  and "Next up" above. (NEXT-VERSION §1–§8 are built; ♥ favorites shipped there 2026-09-12.
+  **Ratings / 👎 are off the roadmap.**)
 - **Real album/artist data + artist photos in the Library card** — Library's Albums/Artists are
   derived from song artwork + initials (Search's artist drill already shows real photos). Scoped
   2026-07-03: **bigger than it looks** — the Artists overview shows hundreds at once, so lazy
@@ -564,10 +598,10 @@ get large).
   to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
-- **Hosted sign-in page + `deetsmusic://` deep link** — designed 2026-09-13, forks settled.
-  [DATA-ARCHITECTURE.md §2a](DATA-ARCHITECTURE.md).
-- **CLI / local-agent control** · **mini/max surface compositions** ·
-  **virtualized scrolling** · **playlist rename / drag-reorder / export UX**.
+- **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
+- Built since this list was written, so no longer here: the hosted sign-in page + deep link
+  (2026-09-13), the CLI / agent control, the mini and max compositions, library windowing,
+  playlist rename / drag-reorder / export.
 
 ---
 

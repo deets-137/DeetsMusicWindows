@@ -15,6 +15,9 @@ import * as frames from "./frames";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload } from "./row-drag";
+import { shuffleInPlace } from "./queue";
+import { isShuffleOn, setShuffleMode } from "./player";
+import { setting } from "./settings-store";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -49,6 +52,10 @@ export interface Grouping<T = any> {
   // Leaf action on click (e.g. play a song). Takes precedence over `open`, and gets the
   // current sorted view + index so it can act on "everything from here onward".
   activate?: (x: T, index: number, items: T[]) => void;
+  /** The rows are songs: a Play / Shuffle row under the hero (NEXT-VERSION §13) runs
+   *  `activate` on the first row of the current sort + filter (Shuffle: of a shuffled copy).
+   *  An object carries the hover text for each button (what exactly the list is). */
+  playAll?: boolean | ActionTitles;
   // Right-click actions for an item (Play Now / Play Next / Add to Queue …). Omit for
   // groupings with no menu (e.g. Artists for now). Gets the sorted view + index too.
   menu?: (x: T, index: number, items: T[]) => MenuItem[];
@@ -124,6 +131,44 @@ export function formatTotal(ms: number | undefined): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return h ? `${h} hr${m ? ` ${m} min` : ""}` : `${m} min`;
+}
+
+/** Hover text for the Play / Shuffle row: say what the list is. */
+export interface ActionTitles {
+  play?: string;
+  shuffle?: string;
+}
+const DEFAULT_TITLES: Required<ActionTitles> = { play: "Play these songs in this order", shuffle: "Shuffle these songs" };
+
+/** The Play / Shuffle row (NEXT-VERSION §13): two half-width buttons, `data-act` = play | shuffle.
+ *  Shared with the Search card's panes, which are not on this engine. */
+export function actionsRowHTML(titles: ActionTitles = {}): string {
+  const t = { ...DEFAULT_TITLES, ...titles };
+  return `<div class="lib-actions">
+    <button class="lib-action lib-action--play" data-act="play" type="button" title="${esc(t.play)}">
+      <svg class="lib-action__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg><span>Play</span>
+    </button>
+    <button class="lib-action" data-act="shuffle" type="button" title="${esc(t.shuffle)}">
+      <svg class="lib-action__icon lib-action__icon--stroke" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h2.5l6 8H14M14 4h-3.5l-1.5 2M2 12h2.5l1.5-2"/><path d="M12 2l2 2-2 2M12 10l2 2-2 2"/></svg><span>Shuffle</span>
+    </button>
+  </div>`;
+}
+/** The row for a song list (`Grouping.playAll`); "" for anything else. */
+function actionsHTML(g: Grouping): string {
+  if (!g.playAll) return "";
+  return actionsRowHTML(g.playAll === true ? {} : g.playAll);
+}
+
+/**
+ * What a press on the row does: `run` gets the list to play from its first item — the
+ * rows as they are for Play, a shuffled copy for Shuffle (and for Play while the shuffle
+ * mode is on, as Apple does). With "Button is perma-shuffle", Shuffle turns the mode on.
+ */
+export function runListAction<T>(act: string, items: T[], run: (list: T[]) => void): void {
+  if (!items.length) return;
+  const shuffle = act === "shuffle";
+  if (shuffle && setting("shuffleStays")) setShuffleMode(true);
+  run(shuffle || isShuffleOn() ? shuffleInPlace(items.slice()) : items);
 }
 
 function heroHTML(h: Hero | undefined): string {
@@ -385,7 +430,10 @@ export function initCollectionCard(opts: CardOptions) {
     // rows that drill OR activate (play a song, toggle a section) are clickable.
     view.dataset.openable = g.open || g.activate ? "1" : "";
     // The hero and its shelves ride inside the scroll, above the rows (1A; ARTIST-VIEW.md §2.2).
-    const top = heroHTML(f.ctx.hero?.()) + (f.ctx.shelves?.() ?? "");
+    // Play / Shuffle (NEXT-VERSION §13, user's call 2026-09-15): a row of two half-width
+    // buttons under the hero — or at the top of a song list with no hero — inside the head
+    // block, so the windower measures it and a View switch to a non-song grouping drops it.
+    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g) + (f.ctx.shelves?.() ?? "");
     // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
     // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
     // it can stick to the top once the hero and shelves scroll away (a sticky box stops at
@@ -715,6 +763,21 @@ export function initCollectionCard(opts: CardOptions) {
     const t = e.target as HTMLElement;
     const pane = t.closest<HTMLElement>(".coll-pane");
     if (!pane || pane !== curPane || animating) return; // ignore off-screen / mid-transition panes
+
+    // Play / Shuffle (NEXT-VERSION §13): the rows in the current sort and filter, from the
+    // first — through the grouping's own row click, so Play Now scope and the queue rules hold.
+    // Shuffle (or Play while the shuffle mode is on) starts a shuffled copy; with "Shuffle
+    // stays on" the toolbar Shuffle also turns the mode on, as Apple does.
+    const act = t.closest<HTMLElement>("[data-act]");
+    if (act) {
+      e.stopPropagation();
+      closePops();
+      const f = cur();
+      const g = groupingOf(f);
+      if (!g.activate) return;
+      runListAction(act.dataset.act ?? "", f.items, (list) => g.activate!(list[0], 0, list));
+      return;
+    }
 
     const pop = t.closest<HTMLElement>("[data-pop]");
     if (pop) {

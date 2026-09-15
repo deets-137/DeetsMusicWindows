@@ -8,7 +8,7 @@
 // without calling `authorize()` (whose OAuth popup can't open in WebView2 — the
 // reason auth runs through the loopback browser flow). See `injectUserToken`.
 
-import { setting } from "./settings-store";
+import { setting, setSetting, onSettingsChange } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
@@ -404,6 +404,9 @@ export interface PlayerState {
   /** The station that resumes once the finite queue runs dry (after a break-out).
    *  The Qcard shows it as the last Up Next row. */
   resume?: { id: string; name: string; live: boolean; artworkUrl?: string };
+  /** The two modes (NEXT-VERSION §12, §14) — the Now Playing squares draw from these. */
+  repeat: RepeatMode;
+  shuffle: boolean;
 }
 
 /** Build a concrete artwork URL from a MusicKit item's template (mirrors the library). */
@@ -440,6 +443,7 @@ export function onPlayerProgress(cb: ProgressListener): () => void {
   return () => progressListeners.delete(cb);
 }
 
+let lastProgressTick = 0;
 function emitProgress(): void {
   const duration = music?.currentPlaybackDuration ?? 0;
   const currentTime = music?.currentPlaybackTime ?? 0;
@@ -449,6 +453,20 @@ function emitProgress(): void {
   if (freshSignIn && currentTime > 0.5) freshSignIn = false;
   if (currentTime > 0) lastHeardAt = currentTime; // MusicKit's clock resets when its player dies
   progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
+  // Repeat one (NEXT-VERSION §12c): MusicKit loops the song with no item change, so the
+  // play-event log would never see the second listen. A clock that jumps from the last
+  // second and a half back to the start IS that loop — count it as a fresh listen (the
+  // re-click path's rule). A scrub back to 0 from mid-song does not match.
+  const prevTick = lastProgressTick;
+  lastProgressTick = currentTime;
+  if (getRepeat() === "one" && !loadingContext && duration > 0 && prevTick >= duration - 1.5 && currentTime < 1) {
+    const c = queue.getCurrent();
+    const id = music?.nowPlayingItem?.id;
+    if (c && id && (id === c.catalogId || id === c.libraryId)) {
+      diag.log("player:repeatLoop", { id });
+      stats.recordRestart(c);
+    }
+  }
   // Credit a "full" once past the threshold — but only when the model's current IS the
   // song MusicKit is playing. During a context switch the model flips to the new song
   // while the old one is still emitting ticks; without the id check, song A finishing
@@ -504,9 +522,60 @@ function emit(): void {
     loading: isLoading,
     station: mode === "radio" && radioStation ? stationInfo(radioStation) : undefined,
     resume: resumeStation ? stationInfo(resumeStation) : undefined,
+    repeat: getRepeat(),
+    shuffle: isShuffleOn(),
   };
   listeners.forEach((cb) => cb(s));
 }
+
+// ── Repeat + shuffle modes (NEXT-VERSION §12, §14; user's calls 2026-09-15) ─────────────
+// Both live in the settings store (persisted, no Settings row for the state itself), so the
+// agent `settings` tool and Settings › Reset reach them; the listener below re-applies.
+export type RepeatMode = "off" | "all" | "one";
+export const getRepeat = (): RepeatMode => setting("repeatMode");
+/** Shuffle mode is on: the button is a mode (`shuffleStays`) AND it is switched on. */
+export const isShuffleOn = (): boolean => setting("shuffleStays") && setting("shuffleMode");
+
+/**
+ * Repeat ONE is MusicKit's own (`repeatMode`): the fed window collapses repeated ids, so
+ * the model cannot feed the same song twice. Repeat ALL is the model's (a lap refilled at
+ * the queue's end, maybeFinishQueue), so MusicKit never sees "all". A station owns its
+ * queue: no repeat while in radio mode.
+ */
+function applyRepeatToMusicKit(): void {
+  const MK = window.MusicKit;
+  if (!music || !MK) return;
+  const modes = MK.PlayerRepeatMode ?? { none: 0, one: 1 };
+  const want = mode === "queue" && getRepeat() === "one" ? modes.one : modes.none;
+  try {
+    if (music.repeatMode !== want) music.repeatMode = want;
+  } catch (e) {
+    diag.warn("player:repeatApply", { e: String(e) });
+  }
+}
+export function setRepeat(m: RepeatMode): void {
+  diag.log("player:repeat", { mode: m });
+  setSetting("repeatMode", m); // the settings listener applies + emits
+  applyRepeatToMusicKit(); // unchanged value: no notification — still make sure
+}
+/** The Now Playing square: off → all → one → off. */
+export function cycleRepeat(): RepeatMode {
+  const next: Record<RepeatMode, RepeatMode> = { off: "all", all: "one", one: "off" };
+  const m = next[getRepeat()];
+  setRepeat(m);
+  return m;
+}
+/** Turn the shuffle mode on or off (the toolbar Shuffle, the agent). No-op while the button
+ *  is one-shot (`shuffleStays` off) — there is no mode to set then. */
+export function setShuffleMode(on: boolean): void {
+  if (!setting("shuffleStays")) return;
+  diag.log("player:shuffleMode", { on });
+  setSetting("shuffleMode", on);
+}
+onSettingsChange((k) => {
+  if (k === "repeatMode") applyRepeatToMusicKit();
+  if (k === "repeatMode" || k === "shuffleMode" || k === "shuffleStays") emit();
+});
 
 /**
  * Station return: once the break-out block has played out (model upcoming empty and
@@ -537,6 +606,22 @@ function maybeFinishQueue(): void {
   const st = music.playbackState;
   const finished = !!S && (st === S.completed || st === S.ended);
   if (!finished || music.nowPlayingItem || queue.getUpcoming().length || !queue.getCurrent()) return;
+  // Repeat (NEXT-VERSION §12d): ALL refills Up Next with the whole list and plays on — one
+  // buffering gap per lap (no pre-wrap: a list shorter than the window would dedup away).
+  // ONE normally never gets here (MusicKit loops the song itself); if a build ignores
+  // `repeatMode`, replay the current song from the model instead.
+  const r = getRepeat();
+  if (r === "all" && queue.refillFromPlan(isShuffleOn())) {
+    diag.log("player:repeatLap", snap());
+    queue.advance();
+    loadFromModel(music).catch((e) => console.warn("[player] repeat lap:", e));
+    return;
+  }
+  if (r === "one") {
+    diag.log("player:repeatOne", snap());
+    loadFromModel(music).catch((e) => console.warn("[player] repeat one:", e));
+    return;
+  }
   diag.log("player:queueEnd", snap());
   queue.advance();
 }
@@ -1185,6 +1270,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
       if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
     };
     let fed = await feed(true);
+    applyRepeatToMusicKit(); // queue mode again (exitRadio above): repeat one is MusicKit's
     windowPos = pos; // the model's `current` is aligned to this MusicKit index (computed above)
     diag.log("player:loadWindow", { ids: ids.length, pos, fed });
     perf.mark("window", { ids: ids.length, pos, fed });
@@ -1256,7 +1342,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   }
 
   resumeStation = null; // a deliberate new context ends any queued station return
-  perf.span("setContext", () => queue.setContext(handles, startIndex));
+  perf.span("setContext", () => queue.setContext(handles, startIndex, isShuffleOn())); // shuffle mode: the rest shuffled
   perf.target(playId(queue.getCurrent() ?? {}));
   await loadFromModel(m);
 }
@@ -1367,6 +1453,7 @@ export async function playStation(s: Station): Promise<void> {
   radioStation = s;
   resumeStation = null;
   pendingBreakout = false;
+  applyRepeatToMusicKit(); // a station never repeats
   isLoading = true;
   loadingContext = true; // suppress model-follow while the station queue builds
   emit();
@@ -1661,6 +1748,18 @@ export async function shuffleQueue(): Promise<void> {
   diag.log("player:shuffle", { idle: false, up: queue.getUpcoming().length });
   queue.shuffleUpcoming();
   await reconcileUpcoming();
+}
+
+/**
+ * The Shuffle square (NEXT-VERSION §14 A). With "Shuffle stays on" (the default) it is a
+ * mode: press = on (and Up Next shuffles now, the one-shot above), press again = off (Up
+ * Next stays as it is; the next list plays in order). With the row off it is the one-shot.
+ */
+export async function toggleShuffle(): Promise<void> {
+  if (!setting("shuffleStays")) return shuffleQueue();
+  const on = !setting("shuffleMode");
+  setShuffleMode(on);
+  if (on) await shuffleQueue();
 }
 
 // ── Transport ────────────────────────────────────────────────────────────────

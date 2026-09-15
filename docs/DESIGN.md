@@ -26,7 +26,7 @@ A lightweight Apple Music player for Windows with **two surfaces**:
 | Form factor | Two surfaces: full window + mini player on minimize |
 | Process | Design on paper first, then build slowly, piece by piece |
 
-### ⚠️ Open technical risk (to validate before heavy build)
+### ✅ Closed technical risk (full-song DRM playback works in WebView2 — proven, in use since 2026-07)
 Full-song DRM playback via MusicKit JS in **WebView2** is not formally supported by Apple
 and depends on the runtime's EME/DRM components. We will prove this with a throwaway test
 page before investing in the real UI.
@@ -69,29 +69,34 @@ Status: ✅ done · 🔵 designing · ⬜ todo · ❄️ deferred to later
 | P1 | Auth — sign in / sign out (Apple Music) | ✅ (loopback browser flow) |
 | P2 | Transport — play / pause | ✅ (MusicKit JS in WebView2; full-song DRM works) |
 | P3 | Skip next / previous | ✅ (native skip within the fed window) |
-| P4 | Seek / scrub + time display | 🔵 (drag-to-seek scrubber done; time labels TODO) |
-| P5 | Volume | ⬜ |
-| P6 | Shuffle | 🔵 (one-shot queue-shuffle button ✅ 2026-07-02 — manual-to-top, idle plays library shuffled; persistent *mode* TODO — [FUTURE-SETTINGS §5](FUTURE-SETTINGS.md)) |
-| P7 | Repeat (off / all / one) | ⬜ |
-| P8 | Now Playing display (artwork, title, artist, album) | ✅ (cover/title/artist, live) |
-| P9 | Queue — view upcoming, play-next, reorder, remove | 🔵 (Qcard: view + jump-to-item; manual edit TODO) |
+| P4 | Seek / scrub + time display | ✅ (drag-to-seek scrubber; elapsed / remaining labels in max and the mini player view) |
+| P5 | Volume | ✅ (titlebar pill, the max stage row, the tray panel; per-speaker AirPlay volume) |
+| P6 | Shuffle | ✅ the mode (2026-09-15, [NEXT-VERSION §14](NEXT-VERSION.md); Settings › Playback › Button is perma-shuffle, off = the 2026-07-02 one-shot, [FUTURE-SETTINGS §5](FUTURE-SETTINGS.md)) |
+| P7 | Repeat (off / all / one) | ✅ 2026-09-15 — [NEXT-VERSION §12](NEXT-VERSION.md) |
+| P8 | Now Playing display (artwork, title, artist, album) | ✅ (cover / title / artist / album, album-colored text on Glass, ♥ and + squares) |
+| P9 | Queue — view upcoming, play-next, reorder, remove | ✅ (Queue card: jump, drag-reorder, remove, Play Next / Add to Queue, cross-card drag and drop, restore across launches — [QUEUE.md](QUEUE.md)) |
 
 **Library**
 | # | Feature | Status |
 |---|---|---|
-| L1 | Saved songs | 🔵 (synced + listed w/ mini covers, sort/view/search; needs playback) |
-| L2 | Saved albums → open → play | 🔵 (derived from songs; open→tracks works; needs play + real art) |
-| L3 | Saved artists → open | 🔵 (derived; open→albums+songs works; needs real artist photos) |
-| L4 | Playlists — list → open → play | ⬜ (next: reuse collection-card engine) |
-| L5 | Add / remove from library (like) | ⬜ |
+| L1 | Saved songs | ✅ (synced to SQLite, windowed list, sort / view / search, ♥ filter, click to play) |
+| L2 | Saved albums → open → play | ✅ open → Play / Shuffle in the toolbar, or click a song (2026-09-15, [NEXT-VERSION §13](NEXT-VERSION.md)); real album art ✅; artist photos see L3 |
+| L3 | Saved artists → open | ✅ artist page with round photo, Albums, Featured / Your Playlists shelves, Popular / Most Played sorts ([ARTIST-VIEW.md](ARTIST-VIEW.md)); the Artists *overview* still shows initials (HANDOFF "Real album/artist data") |
+| L4 | Playlists — list → open → play | ✅ (Apple mirror + local store, folders, covers, export / import — [PLAYLISTS.md](PLAYLISTS.md)) |
+| L5 | Add / remove from library (like) | ✅ add ([FAVORITES.md](FAVORITES.md)) and ♥ favorites; **remove is not possible** (the Apple Music API is add-only) |
 | L6 | Sort / filter within a view | ✅ (sort keys + asc/desc + substring search, client-side) |
 
 **Cross-cutting (not screens, but real work)**
 | # | Feature | Status |
 |---|---|---|
-| X1 | Mini player surface (on minimize) | ⬜ |
-| X2 | SMTC — Windows media overlay + media keys | ⬜ |
-| X3 | Global hotkeys | ⬜ |
-| X4 | **CLI / local-agent control** — local models & agents can call DeetsMusic to play music (search, queue, play/pause/skip, now-playing). **Wanted before launch.** | ⬜ |
+| X1 | Mini player surface (on minimize) | ✅ mini surface (Mini \| Player views), tray flyout, Keep on top ([TRAY.md](TRAY.md)) |
+| X2 | SMTC — Windows media overlay + media keys | ✅ native session (`smtc.rs`, 2026-09-10) |
+| X3 | Global hotkeys | ✅ media keys via SMTC. In-app keys: Ctrl+K / Q / L / P / , summon cards; **Space for play / pause and the full keyboard pass are ⬜** (HANDOFF "polished keyboard control") |
+| X4 | **CLI / local-agent control** | ✅ the `deetsmusic` CLI + MCP server, 16 tools, Settings › Connections ([AGENT.md](AGENT.md)) |
 
 *Order we design/build these = your call (see chat).*
+
+> **Refreshed 2026-09-15.** The table above is the original v1 backlog with its status brought
+> up to date. The live state of play is [HANDOFF.md](HANDOFF.md); the feature backlog with
+> forks is [NEXT-VERSION.md](NEXT-VERSION.md). Not planned because the platform cannot do
+> them: lyrics, crossfade, Sound Check, remove from library (NEXT-VERSION, the review header).

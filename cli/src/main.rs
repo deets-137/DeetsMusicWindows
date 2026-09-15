@@ -96,7 +96,14 @@ enum Cmd {
     Toggle,
     Next,
     Prev,
-    Shuffle,
+    /// Press the Shuffle button (the mode, or once), or set it: `on` | `off`.
+    Shuffle {
+        mode: Option<String>,
+    },
+    /// Cycle repeat (off → all → one), or set it: `off` | `all` | `one`.
+    Repeat {
+        mode: Option<String>,
+    },
     Mute,
     /// Seek: `1:23`, `83` (seconds), or `45%`.
     Seek { position: String },
@@ -374,7 +381,13 @@ fn np_line(v: &Value) -> String {
     };
     let vol = (v.get("volume").and_then(Value::as_f64).unwrap_or(0.0) * 100.0).round();
     let muted = if v.get("muted").and_then(Value::as_bool).unwrap_or(false) { " muted" } else { "" };
-    format!("{state} {} — {}{album}  [{time}]  vol {vol}%{muted}", s(v, "title"), s(v, "artist"))
+    let shuffle = if v.get("shuffle").and_then(Value::as_bool).unwrap_or(false) { "  ·  shuffle" } else { "" };
+    let repeat = match s(v, "repeat") {
+        "all" => "  ·  repeat all",
+        "one" => "  ·  repeat one",
+        _ => "",
+    };
+    format!("{state} {} — {}{album}  [{time}]  vol {vol}%{muted}{shuffle}{repeat}", s(v, "title"), s(v, "artist"))
 }
 
 fn numbered(lines: Vec<String>) -> String {
@@ -559,6 +572,15 @@ fn op_queue_edit(c: &Client, action: &str, index: Option<u32>, to: Option<u32>) 
 fn op_history(c: &Client, limit: usize) -> Result<(String, Value), Failure> {
     let v = c.get(&format!("/history?limit={limit}"))?;
     Ok((numbered(arr(&v, "plays").iter().map(|t| track_line(t)).collect()), v))
+}
+
+/// `repeat` + `all` → `repeat-all`; `shuffle` + `on` → `shuffle-on`; no mode → the bare kind.
+fn mode_kind(kind: &str, mode: &str) -> String {
+    let mode = mode.trim().to_ascii_lowercase();
+    match (kind, mode.as_str()) {
+        ("repeat", "off" | "all" | "one") | ("shuffle", "on" | "off") => format!("{kind}-{mode}"),
+        _ => kind.to_string(),
+    }
 }
 
 fn op_control(c: &Client, action: &str, value: Option<f64>) -> Result<(String, Value), Failure> {
@@ -762,8 +784,9 @@ fn tools(small: bool) -> Value {
     });
     list.push(json!({ "name": "control", "description": "Transport control. 'seek' and 'volume' take value 0-100 (percent); the others take no value.",
           "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
-              "action": { "type": "string", "enum": ["play", "pause", "next", "previous", "shuffle", "mute", "seek", "volume", "clear_queue"] },
-              "value": { "type": "number", "description": "Percent, for seek and volume only." } } } }));
+              "action": { "type": "string", "enum": ["play", "pause", "next", "previous", "shuffle", "repeat", "mute", "seek", "volume", "clear_queue"] },
+              "value": { "type": "number", "description": "Percent, for seek and volume only." },
+              "mode": { "type": "string", "description": "For repeat: off | all | one (omit to cycle). For shuffle: on | off (omit to press the button)." } } } }));
     list.push(json!({ "name": "list", "description": "List the queue (now playing + numbered Up Next), the play history, or the user's playlists (with ids).",
           "inputSchema": { "type": "object", "required": ["what"], "additionalProperties": false, "properties": {
               "what": { "type": "string", "enum": ["queue", "history", "playlists"] } } } }));
@@ -868,7 +891,9 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
                 "clear_queue" => ("clear", None),
                 other => (other, None),
             };
-            op_control(c, kind, value)?.0
+            let mode = str_arg("mode");
+            let kind = mode_kind(kind, &mode);
+            op_control(c, &kind, value)?.0
         }
         "list" => match str_arg("what").as_str() {
             "history" => op_history(c, 20)?.0,
@@ -1033,7 +1058,8 @@ fn main() {
         Cmd::Toggle => op_control(&c, "play-pause", None),
         Cmd::Next => op_control(&c, "next", None),
         Cmd::Prev => op_control(&c, "previous", None),
-        Cmd::Shuffle => op_control(&c, "shuffle", None),
+        Cmd::Shuffle { mode } => op_control(&c, &mode_kind("shuffle", &mode.unwrap_or_default()), None),
+        Cmd::Repeat { mode } => op_control(&c, &mode_kind("repeat", &mode.unwrap_or_default()), None),
         Cmd::Mute => op_control(&c, "mute", None),
         Cmd::Seek { position } => parse_seek(&c, &position).and_then(|f| op_control(&c, "seek", Some(f))),
         Cmd::Vol { level } => parse_vol(&c, &level).and_then(|f| op_control(&c, "volume", Some(f))),

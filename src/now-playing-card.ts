@@ -4,7 +4,7 @@
 // Volume lives in the titlebar chrome, not here.
 
 import {
-  playPause, nextTrack, prevTrack, shuffleQueue, stopStation, onPlayerState, onPlayerProgress, seekToFraction,
+  playPause, nextTrack, prevTrack, toggleShuffle, cycleRepeat, getRepeat, isShuffleOn, stopStation, onPlayerState, onPlayerProgress, seekToFraction,
   getVolume, setVolume, toggleMute, isMuted, onVolumeChange, type PlayerState,
 } from "./player";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
@@ -58,7 +58,7 @@ const TEMPLATE = `
       <div class="np__times" aria-hidden="true"><span id="np-elapsed">0:00</span><span id="np-remaining">0:00</span></div>
       <div class="np__bottom">
         <div class="np__left">
-          <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle">
+          <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle" aria-pressed="false">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <polyline points="16 3 21 3 21 8"></polyline>
               <line x1="4" y1="20" x2="21" y2="3"></line>
@@ -66,6 +66,15 @@ const TEMPLATE = `
               <line x1="15" y1="15" x2="21" y2="21"></line>
               <line x1="4" y1="4" x2="9" y2="9"></line>
             </svg>
+          </button>
+          <button class="panel__action np__repeat" id="np-repeat" type="button" aria-label="Repeat" aria-pressed="false" data-state="off">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+            <span class="np__repeat-one" aria-hidden="true">1</span>
           </button>
           <button class="panel__action np__summon" id="np-summon" type="button" aria-label="Show queue">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -151,8 +160,32 @@ export const nowPlayingCard: CardDef = {
     let onStation = false; // radio mode → the menu offers Stop Station
     let artKey = ""; // what the cover box currently shows — rebuilt only on change
     let lastState: PlayerState | undefined;
+    // The two mode squares (NEXT-VERSION §12, §14): Repeat cycles off → all → one and hides
+    // in radio mode (a station never repeats); Shuffle shows pressed while the mode is on.
+    const repeatBtn = host.querySelector<HTMLButtonElement>("#np-repeat");
+    const shuffleBtn = host.querySelector<HTMLButtonElement>("#np-shuffle");
+    let refit = () => {}; // the transport-row stack check (below) — a hidden square changes the row's need
+    const REPEAT_LABEL = { off: "Repeat", all: "Repeat all", one: "Repeat one" } as const;
+    const paintModes = (repeat: PlayerState["repeat"], shuffle: boolean, station: boolean) => {
+      if (repeatBtn) {
+        repeatBtn.dataset.state = repeat;
+        repeatBtn.setAttribute("aria-pressed", String(repeat !== "off"));
+        repeatBtn.setAttribute("aria-label", REPEAT_LABEL[repeat]);
+        repeatBtn.title = REPEAT_LABEL[repeat];
+        if (repeatBtn.hidden !== station) {
+          repeatBtn.hidden = station;
+          refit();
+        }
+      }
+      if (shuffleBtn) {
+        shuffleBtn.setAttribute("aria-pressed", String(shuffle));
+        shuffleBtn.title = shuffle ? "Shuffle on" : "Shuffle";
+      }
+    };
+    paintModes(getRepeat(), isShuffleOn(), false); // the persisted modes, before the first state event
     const render = (s: PlayerState) => {
       onStation = !!s.station;
+      paintModes(s.repeat, s.shuffle, onStation);
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
       // Between songs MusicKit reports no item for a beat. The queue already knows what
@@ -323,11 +356,13 @@ export const nowPlayingCard: CardDef = {
       reflectVolume();
     }
 
-    // Shuffle — one-shot: manual picks to the top, auto tail shuffles; idle press
-    // plays the whole library shuffled (see player.shuffleQueue / FUTURE-SETTINGS §5).
-    host.querySelector<HTMLElement>("#np-shuffle")?.addEventListener("click", () => {
-      shuffleQueue().catch((e) => console.error("[player] shuffle failed:", e));
+    // Shuffle — the mode (press = on + Up Next shuffles now, press again = off), or the
+    // one-shot when "Shuffle stays on" is off (player.toggleShuffle / FUTURE-SETTINGS §5).
+    shuffleBtn?.addEventListener("click", () => {
+      toggleShuffle().catch((e) => console.error("[player] shuffle failed:", e));
     });
+    // Repeat — off → all → one (NEXT-VERSION §12).
+    repeatBtn?.addEventListener("click", () => cycleRepeat());
 
     // Queue summon — bring the Queue card into the least-recently-touched slot
     // (flips if it's already on-screen in the other slot; see layout.ts).
@@ -399,6 +434,7 @@ export const nowPlayingCard: CardDef = {
       };
       stackObserver = new ResizeObserver(fit);
       stackObserver.observe(bottom);
+      refit = fit;
       fit();
     }
     // A width change (window resize, surface switch, skin font) can cut the title off

@@ -109,9 +109,10 @@ function setCurrent(entry: QueueEntry | null): QueueEntry | null {
  * recently *heard* song first, then descends into the lookback. The clicked song's id
  * is excluded from both so it can never appear twice in the window.
  */
-export function setContext(handles: TrackHandle[], startIndex: number): QueueEntry | null {
+export function setContext(handles: TrackHandle[], startIndex: number, shuffle = false): QueueEntry | null {
   const manualKept = state.upcoming.filter((e) => e.origin === "manual");
   const startHandle = handles[startIndex];
+  plan = handles.slice(); // what Repeat all replays (refillFromPlan)
   const startId = startHandle ? idOf(startHandle) : undefined;
 
   // Durable heard trail: prior heard songs + the song that was playing (it counts as
@@ -147,9 +148,41 @@ export function setContext(handles: TrackHandle[], startIndex: number): QueueEnt
   const autoTail: QueueEntry[] = handles
     .slice(startIndex + 1)
     .map((h) => ({ ...h, origin: "auto" }));
-  state.upcoming = [...manualKept, ...autoTail];
+  // Shuffle mode (NEXT-VERSION §14): the clicked song first, the rest of its list shuffled.
+  state.upcoming = [...manualKept, ...(shuffle ? shuffleInPlace(autoTail) : autoTail)];
   emit();
   return state.current;
+}
+
+// ── Repeat all (NEXT-VERSION §12d) ────────────────────────────────────────────
+/** The last context's full list, in its order — what a lap of Repeat all replays. Not
+ *  persisted: after a restart the refill falls back to the songs Previous can reach. */
+let plan: TrackHandle[] = [];
+
+/**
+ * Up Next ran dry under Repeat all: refill it with the whole plan (the clicked song's list,
+ * in list order — the song that just finished included, so it plays again in its turn), or,
+ * with no plan (a restored session), with the back-chain + current. All `auto`. `shuffle`
+ * (the shuffle mode) permutes the lap. False when there is nothing to replay.
+ */
+export function refillFromPlan(shuffle = false): boolean {
+  if (state.upcoming.length) return false;
+  let lap: TrackHandle[] = plan;
+  if (!lap.length) {
+    const seen = new Set<string>();
+    lap = [];
+    for (const e of [...state.history, ...(state.current ? [state.current] : [])]) {
+      const id = idOf(e);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      lap.push({ catalogId: e.catalogId, libraryId: e.libraryId, context: e.context });
+    }
+  }
+  if (!lap.length) return false;
+  const entries: QueueEntry[] = lap.map((h) => ({ ...h, origin: "auto" }));
+  state.upcoming = shuffle ? shuffleInPlace(entries) : entries;
+  emit();
+  return true;
 }
 
 // ── Manual edits ─────────────────────────────────────────────────────────────
@@ -249,6 +282,7 @@ export function appendCurrent(handle: TrackHandle): QueueEntry | null {
  * (current joins the trail via the first appendCurrent).
  */
 export function disposePlan(): void {
+  plan = []; // a station is a departure: no lap of the old list after it
   if (!state.upcoming.length) return;
   state.upcoming = [];
   emit();
@@ -282,6 +316,7 @@ export function clear(): void {
   state.history = [];
   state.current = null;
   state.upcoming = [];
+  plan = [];
   emit();
 }
 

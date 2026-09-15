@@ -18,7 +18,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
 import { onDrillRequest, onPlaylistPaneRequest } from "./go-to";
-import { esc, formatTotal } from "./collection-card";
+import { esc, formatTotal, actionsRowHTML, runListAction } from "./collection-card";
 import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
@@ -395,13 +395,22 @@ function mountSearch(host: HTMLElement): CardInstance {
   /** A detail pane's track list: tap plays the list from that row (Library semantics). */
   const wireTrackList = (body: HTMLElement, tracks: Track[], context: string) => {
     paneTracks.set(body, { tracks, context });
+    const start = (list: Track[], idx: number) => {
+      addTransientTracks(list);
+      list.forEach(materializeTrack);
+      playTracks(list, idx, context).catch((err) => console.error("[search] play", err));
+    };
     body.addEventListener("click", (e) => {
+      // The Play / Shuffle row (NEXT-VERSION §13): this pane's list from the top.
+      const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
+      if (act) {
+        e.stopPropagation();
+        runListAction(act.dataset.act ?? "", tracks, (list) => start(list, 0));
+        return;
+      }
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
       if (!row) return;
-      const idx = Number(row.dataset.row);
-      addTransientTracks(tracks);
-      tracks.forEach(materializeTrack);
-      playTracks(tracks, idx, context).catch((err) => console.error("[search] play", err));
+      start(tracks, Number(row.dataset.row));
     });
     body.addEventListener("contextmenu", (e) => {
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
@@ -438,7 +447,11 @@ function mountSearch(host: HTMLElement): CardInstance {
     body.innerHTML = `<p class="search__prompt">Loading…</p>`;
     (preloaded ? Promise.resolve(preloaded) : collectionTracks(kind, id))
       .then((tracks) => {
-        body.innerHTML = heroHTML(kind, meta, tracks) + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
+        const what = kind === "albums" ? "the album" : "the playlist";
+        const actions = tracks.length
+          ? actionsRowHTML({ play: `Play ${what} in order`, shuffle: `Shuffle ${what}` })
+          : "";
+        body.innerHTML = heroHTML(kind, meta, tracks) + actions + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
         wireTrackList(body, tracks, `search-${kind}:${id}`);
         refreshAdds();
         // The album hero's artist subtitle → the artist pane, via the album's own relationship.
@@ -468,6 +481,7 @@ function mountSearch(host: HTMLElement): CardInstance {
           const genre = d.artist.genres?.[0];
           body.innerHTML = `
             <div class="lib-hero">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div>
+            ${d.topSongs.length ? actionsRowHTML({ play: `Play ${d.artist.name}'s Top Songs from Apple Music, in order`, shuffle: `Shuffle ${d.artist.name}'s Top Songs from Apple Music` }) : ""}
             ${albums ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${albums}</div>` : ""}
             <div data-shelves>${artistShelvesHTML(d.featuredPlaylists, yours, checking)}</div>
             <div class="search__label">Top Songs</div>

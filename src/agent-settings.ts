@@ -180,6 +180,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "dropPlayQueue", "Drop on Now Playing", [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }]),
   storeChoice("Playback", "previousReach", "Previous rewinds", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
+  storeToggle("Playback", "shuffleStays", "Button is perma-shuffle"),
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
   storeChoice("Playback", "shuffleIdle", "Idle shuffle plays", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
   // ── Apple Music: the consent gates, off only ──

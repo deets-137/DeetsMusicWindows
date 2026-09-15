@@ -29,7 +29,8 @@ import * as queue from "./queue";
 import { resolveEntry } from "./queue-rows";
 import { addTrackToLibrary } from "./library-add";
 import { inLibrary, loadTracks, onTracksChange } from "./track-store";
-import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, shuffleQueue, playStation, reconcileUpcoming } from "./player";
+import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, playStation, reconcileUpcoming } from "./player";
+import { toggleShuffle, setShuffleMode, cycleRepeat, setRepeat, getRepeat, isShuffleOn } from "./player";
 import { runAgentWrite } from "./agent-writes";
 import { materializeTrack } from "./search";
 import type { Track } from "./library";
@@ -59,6 +60,9 @@ export interface NpState {
   duration: number;
   volume: number;
   muted: boolean;
+  /** The two modes (NEXT-VERSION §12, §14) — for the agent snapshot; the tray panel ignores them. */
+  repeat: "off" | "all" | "one";
+  shuffle: boolean;
 }
 
 interface NpCommand {
@@ -66,7 +70,7 @@ interface NpCommand {
   value?: number;
 }
 
-let lastState: PlayerState = { playing: false };
+let lastState: PlayerState = { playing: false, repeat: "off", shuffle: false };
 let lastProgress: PlayerProgress = { progress: 0, currentTime: 0, duration: 0 };
 
 function snapshot(): NpState {
@@ -94,6 +98,8 @@ function snapshot(): NpState {
     duration: lastProgress.duration,
     volume: getVolume(),
     muted: isMuted(),
+    repeat: getRepeat(),
+    shuffle: isShuffleOn(),
   };
 }
 
@@ -175,7 +181,13 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
         case "seek": await seekToFraction(v ?? 0); break;
         case "volume": setVolume(v ?? 0); break;
         case "mute": toggleMute(); break;
-        case "shuffle": await shuffleQueue(); break;
+        case "shuffle": await toggleShuffle(); break; // as the button: the mode, or once
+        case "shuffle-on": setShuffleMode(true); break;
+        case "shuffle-off": setShuffleMode(false); break;
+        case "repeat": cycleRepeat(); break;
+        case "repeat-off": setRepeat("off"); break;
+        case "repeat-all": setRepeat("all"); break;
+        case "repeat-one": setRepeat("one"); break;
         case "clear": {
           // Drop every upcoming entry (the current song keeps playing), then re-sync MusicKit.
           for (let i = queue.getUpcoming().length - 1; i >= 0; i--) queue.removeAt(i);

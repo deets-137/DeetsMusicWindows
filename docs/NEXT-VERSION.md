@@ -10,7 +10,7 @@
 > schema bump (v3: the `favorites` table and `local_playlists.cover`). **All eight built
 > and desk-verified 2026-09-12** (user: "look good"). Same day, on top: the extras in §9;
 > the surface-change motion (fork B) was built, judged janky, and walked back (§10).
-> **To talk through next session: the playlist creation flow** (§11). The toast
+> **To talk through next session: the playlist creation flow** (§11). **2026-09-15: the listening-loop review added §12–§17** (repeat, Play/Shuffle on a collection, shuffle mode, Home, durable History, sleep timer); **§12–§14 decided and BUILT the same day as the transport pass** (awaiting the desk test). The toast
 > primitive is built ([TOASTS.md](TOASTS.md), 2026-09-13) with the Add-to-Library notice;
 > the playlist-cover notice (§2) waits on the cover flow itself.
 
@@ -437,6 +437,169 @@ Rust-side loop with few large steps, or no window motion and a content crossfade
 Not designed. The user wants to talk through how a playlist gets made (today: the ＋ in
 the Playlists header opens a name field, Enter creates an empty list and summons Search;
 Add to Playlist ▸ New Playlist… creates-and-adds from any row). Bring the real forks.
+
+---
+
+# The listening-loop review (2026-09-15)
+
+A review of the daily listening loop found four transport gaps and three smaller ones. The
+platform (queue model, healing, windowing, tray, SMTC, updater) is not the problem; the loop
+is. Sections 12–17 hold the scope and the forks. Build order agreed: §12 + §13 (+ §14 if
+chosen) as one **transport pass**, then Space with the keyboard pass (HANDOFF "polished
+keyboard control"), then §15.
+
+Not possible, so not planned: **lyrics** (the Apple Music API gives third parties only a
+`hasLyrics` flag), **crossfade** and **Sound Check** (MusicKit JS drives one media element),
+**remove from library** (the API is add-only; the Settings hint already says so).
+
+## 12. Repeat button (off / all / one) — BUILT 2026-09-15 (12a A, 12b–12g as recommended)
+
+**What the code has today.** Nothing. No `repeat` in `player.ts`, `queue.ts` or the settings
+store. When Up Next runs out, `maybeFinishQueue` moves the last song to the heard trail and
+playback stops.
+
+**Where it goes — the space.** The Now Playing bottom row (`now-playing-card.ts`,
+`.np__bottom`) is a `1fr auto 1fr` grid: **left cluster** Shuffle · Queue · Search (three
+`panel__action` squares), **center** Previous · Play · Next, **right cluster** ♥ · + (two
+squares, both hidden until a song with a catalog id plays, and + only while Library Add is
+on). In mini at minimum width a ResizeObserver stacks the two clusters onto a second row
+(`np__bottom--stacked`), so a fourth square never breaks the row: it only moves the stack
+threshold a little earlier. The tray panel has only + and the transport.
+
+| Fork | Option | Verdict |
+|---|---|---|
+| **12a. Where** | **A (recommended): left cluster, after Shuffle** — Shuffle · Repeat · Queue · Search. Modes sit together, on the side that already holds a mode. Left 4 vs right 2 is optical only: the `1fr auto 1fr` grid keeps the transport centered. | Build |
+| | B: right cluster — ♥ · + · Repeat. Symmetric 3 vs 3, but that side means "this song" (♥, +) and Repeat is a mode. And with nothing playing Repeat stands alone on the right. | Possible |
+| | C: replace the Search square with Repeat (Ctrl+K and the title picker still reach Search). | Ruled out: the square was added on purpose 2026-09-12 (§5). |
+| **12b. One button or two** | **One square that cycles** off → all → one (the standard). Icon: the loop arrows; **one** adds a small "1" over the arrows. **Off** draws at the plain action color; **all** / **one** use the same pressed look as the ♥ square (`aria-pressed="true"`, color `--title`). | Build |
+| **12c. Repeat one — engine** | **MusicKit `repeatMode = one`** (its own `PlayerRepeatMode`). The fed window collapses repeated ids (`buildWindow`), so a model-level "insert the same song again" cannot work. Model-follow keys off `queue.position`, which does not change on a repeat, so the model stays correct on its own. **Check before shipping:** the play-event log (`stats.ts`) counts a play from the item change; with repeat one there is none, so a repeat must be counted from the `ended → playing` state change or it never reaches Rewind. | Build; verify the stats path |
+| **12d. Repeat all — engine** | Model level. When `advance()` would find no upcoming and the mode is **all**, refill upcoming from the plan: the heard trail (in order) + current, all as `auto` entries. Manual picks repeat too (Apple does the same). | Build |
+| | Gapless or not: the forward top-up could pre-wrap the window across the end, but the same id collapse means a list shorter than the window (a 3-song EP) dedups to nothing. **Decision: no pre-wrap.** The wrap is one `loadFromModel` at the end, with the `loading` cover from UX-COVERUPS §1. One buffering gap per lap. Pre-wrap only for lists longer than the window is a later polish. | Accept the gap |
+| **12e. Radio mode** | Repeat has no meaning in a station. Hide the square in radio mode, as the transport caps already do, and clear the MusicKit repeat mode on `playStation`. | Build |
+| **12f. Persist** | One settings key `repeatMode: "off" \| "all" \| "one"` in `deets.settings`, **no Settings row** (the button is the control). Survives launch, like Apple. Restore on launch applies it to MusicKit at the first play. | Build |
+| **12g. Other surfaces** | Agent: a `repeat` action on `POST /command` and the `control` tool (`value` = off / all / one, none = cycle), and a `repeat` field in the snapshot (AGENT.md). CLI: `deetsmusic repeat [off\|all\|one]`. Tray panel: none for now. SMTC: the Windows overlay has no repeat button; skip. | Build agent + CLI |
+
+Cost to Apple: none. Schema: none.
+
+**As built (2026-09-15).** The square sits after Shuffle in `now-playing-card.ts` (`#np-repeat`,
+`data-state` off / all / one, the "1" is `.np__repeat-one` centered in the loop; pressed =
+`--np-accent`, the ♥ rule). `player.ts`: `getRepeat` / `setRepeat` / `cycleRepeat`, the mode in
+`settings.repeatMode` (no row; Settings › Reset › Playback clears it; the agent `settings`
+tool can set it — the `onSettingsChange` listener re-applies). **One** = MusicKit
+`repeatMode` (`applyRepeatToMusicKit`, applied after every window feed and cleared on
+`playStation`); the loop is counted for Rewind from the progress clock (`emitProgress`: the
+last 1.5 s → under 1 s, same item → `stats.recordRestart`). **All** = `queue.refillFromPlan`
+in `maybeFinishQueue`: the whole list of the last `setContext` (`plan`, not persisted — after
+a restart the lap is the back-chain + current), shuffled when the shuffle mode is on, then one
+`loadFromModel` (the buffering gap, `loading` cover). A **one** with a MusicKit build that
+ignores `repeatMode` falls back to the same reload of the current song. Hidden in radio mode
+(`paintModes`, which also re-runs the transport-row stack check). Agent: `POST /command`
+kinds `repeat` (cycle) · `repeat-off` · `repeat-all` · `repeat-one`; the snapshot carries
+`repeat` and `shuffle`; the `control` tool takes `mode`; CLI `deetsmusic repeat [off|all|one]`.
+
+## 13. Play and Shuffle on a collection (album, playlist, artist, Songs) — BUILT 2026-09-15 (13a B, 13b–13e as recommended)
+
+**What the code has today.** A collection pane's hero (`heroHTML` in `collection-card.ts`) is
+cover · title · subtitle · meta. No transport verb anywhere on the pane. To play an album the
+user clicks its first song (Play Now = "Song and rest of list"); to shuffle a playlist the
+user clicks a song, then presses Shuffle on Now Playing. Heroes exist on: Library album
+(`library-card.ts` ~491), Library artist (~606, the only context with `toolbarBelow`, whose
+bar sticks to the top of the scroll — ARTIST-VIEW.md §2.2), local and Apple playlist detail
+(`playlists-card.ts` ~362), Search album / artist detail (`search-card.ts` ~429). Every other
+context's toolbar (Sort · View · Search · the ♥ filter) lives in the card head, which never
+scrolls.
+
+| Fork | Option | Verdict |
+|---|---|---|
+| **13a. Where** | **B (recommended): in the toolbar row**, first, before Sort. In every context the toolbar is already always reachable: the head does not scroll, and the artist view's bar is sticky (the reference: `.lib-view-bar`, the `--sticky-bar-*` tokens, kept alive across a sort or a keystroke by `heads`). One place in the engine, zero new sticky work, and the artist view keeps Play / Shuffle in view while 400 songs pass under. | Build |
+| | A: two buttons in the hero, under the meta line (the Apple / Spotify placement). Scrolls away with the hero in the artist view; needs a second copy in the sticky bar to stay reachable. | Ruled out by its own duplicate |
+| **13b. Shape** | **A `Play` pill with a filled ▶ and the word, then a Shuffle icon square** (the `lib-pill--icon` shape the ♥ filter uses). Two text pills plus Sort · View · Search crowd the 480-wide midi head; one word is enough. | Build |
+| **13c. What plays** | The context's rows **in the current sort and filter**, from the first row: an album in Track Order, an artist's songs in Popular when that sort is on, a playlist in its own order, a ♥-filtered list as filtered. Shuffle = the same list through `shuffleInPlace`, then `playContext(handles, 0)`. Both reuse the row-click path (`activate` → `playContext`), so the Play Now scope and drop rules stay as they are. | Build |
+| **13d. Root contexts** | Show on the Library › Songs, Albums, Artists and Playlists roots too? Songs root: Play = all songs in sort order, Shuffle = the idle-shuffle list. Albums / Artists / Playlists roots: their rows are groups, not songs; a Play there would flatten hundreds of groups. **Decision: show only where the rows are songs.** | Build |
+| **13e. Engine hook** | A `Context.actions?: { play(): void; shuffle(): void }` next to `filter`; the toolbar renders them when present. Each card fills it from its own `activate` list. | Build |
+
+Cost to Apple: none (the rows are already in memory).
+
+**As built (2026-09-15; placement changed the same day on the desk: the toolbar square was
+"a weird size", so the pair is now its own row).** `Grouping.playAll` (collection-card.ts)
+marks a song list; `actionsHTML` draws a row of two half-width buttons (`.lib-actions`,
+`data-act`) **under the hero, above the shelves** — or at the top of the list where there is
+no hero — as part of the head block, so the windower measures it and a View switch to Albums
+at the Library root drops it. In the artist view the row scrolls away with the hero (the
+sticky bar keeps only Sort / View / Search). Play runs `g.activate(items[0], 0, items)` on the sorted + filtered rows —
+the row-click path, so Play Now scope and the queue rules hold; Shuffle runs it on a shuffled
+copy and, with "Button is perma-shuffle", turns the mode on first. Play while the mode is on also
+starts shuffled (Apple's behaviour). Set on `songsGrouping` (Library Songs root, album detail,
+the artist view's Songs — whose sticky bar keeps them in view) and the playlist detail
+grouping. **Hover text says what the list is** (`ActionTitles`): the Library artist view's
+row reads "Play every song by X in your library, in this order" / "Shuffle every song by X
+in your library" — the rows are your library's songs by the artist, not the catalog
+discography; the defaults elsewhere are "Play these songs in this order" / "Shuffle these
+songs". **The Search card has the row too** (same day): `actionsRowHTML` + `runListAction`
+are exported from the engine; an album / playlist pane puts the row under its hero ("Play
+the album in order"), and the artist pane puts it under the artist's name, acting on the
+**Top Songs** Apple returned ("Play X's Top Songs from Apple Music, in order"). Styles:
+`.lib-action--play` filled with the title ink (the surface as text), Shuffle the pill
+outline; both `--fs-text`.
+
+## 14. A shuffle mode (the second half of P6) — DECIDED A + BUILT 2026-09-15
+
+**What the code has today.** Shuffle is a one-shot reorder of Up Next (FUTURE-SETTINGS §5).
+Nothing stays on: the next album a user clicks plays in track order.
+
+**What a mode is.** A toggle that stays on, as in Apple Music and Spotify: while it is on,
+every new context starts shuffled (the clicked song first, the rest of its list shuffled
+behind it), the Shuffle square shows pressed, and pressing it again turns it off (whether Up
+Next then returns to list order is a fork of its own).
+
+**Why it comes up now.** §13's Shuffle button on an album says "shuffle this album". If the
+user then clicks a song elsewhere, Apple keeps shuffle on; DeetsMusic would not. Two paths:
+
+| Option | Meaning |
+|---|---|
+| **A (recommended if §13 ships): build the mode with §13.** The Shuffle square on Now Playing becomes the toggle (pressed look as §12b); the one-shot reorder stays as its "turn on" effect. `settings.shuffleMode` persists. §13's Shuffle turns the mode on and starts the list. | One more state in `player.ts` (`setContext` shuffles the tail when on); the manual-pick rule in FUTURE-SETTINGS §5a applies unchanged. |
+| B: keep one-shot only. §13's Shuffle is then "start this list shuffled, once". | Nothing else changes. Already documented as the P6 TODO. |
+
+**Decision (2026-09-15): A, with a Settings row for the toggle.** Settings › Playback ›
+**Button is perma-shuffle** (`shuffleStays`, default on): the Now Playing Shuffle square is a mode —
+press = on (Up Next shuffles at once, the one-shot) and shows pressed (`aria-pressed`,
+`--np-accent`); press again = off (Up Next stays as it is; the next list plays in order —
+the Spotify answer to FUTURE-SETTINGS §5's open question). With the row off the square is
+the 2026-07-02 one-shot again. The state is `settings.shuffleMode` (persisted, no row).
+While on, `playContext` → `queue.setContext(…, shuffle = true)` puts the clicked song first
+and the rest of its list shuffled behind it (manual picks stay in front, §5a unchanged),
+and a Repeat-all lap is shuffled too. Agent: `shuffle` presses the button, `shuffle-on` /
+`shuffle-off` set the mode; the snapshot's `shuffle` says whether it is on.
+
+## 15. A Home card — to design
+
+**Why.** The app opens on the last two cards, not on a landing. There is no "Recently Played"
+or "Recently Added" for songs and albums (Radio has a Recents shelf; the Library has an Added
+Date sort). The play-event log is durable, so the data is here.
+
+**Scope to design.** One card, three shelves: Recently Played (songs or albums, from
+`play_events`), Recently Added (from `addedRank`), and one more (Your Playlists, or Rewind's
+top of the week). Forks to bring: albums vs songs per shelf; a shelf of stations; whether
+Home is the default slot on a fresh install; how many Apple calls a shelf costs (target:
+none). Not designed.
+
+## 16. A durable History card — to do
+
+**What the code has today.** The History card reads `queue.getPlayLog()`, the session log.
+It empties at every launch. Rewind reads the durable `play_events` table, so the data
+survives; only the card does not use it.
+
+**Scope.** Read the last N events from `play_events` at mount (one SQLite read, no Apple
+calls), then keep appending the session's entries as now. Show a day divider. Keep the
+session-only rows' flags (played / skipped). Small; no forks worth a talk.
+
+## 17. Sleep timer — to design
+
+Absent. A tray player on a desk at night wants one. Scope to bring: where (the title menu, a
+Now Playing long-press, or a Settings › Playback row), the choices (15 / 30 / 60 min · end of
+song · end of Up Next), what it does at the end (pause vs a fade over 10 s via `setVolume`),
+and the visible countdown (a toast at 1 min, the remaining time in the tray tooltip). No Apple
+calls. Not designed.
 
 ---
 

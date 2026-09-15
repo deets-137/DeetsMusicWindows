@@ -26,7 +26,8 @@
 //! window (which owns MusicKit + the queue model) through `ask()` and answered by
 //! `agent_reply`:
 //!   POST /command        {kind, value?} — play-pause | play | pause | next | previous |
-//!                        seek (0..1) | volume (0..1) | mute | shuffle
+//!                        seek (0..1) | volume (0..1) | mute | shuffle | shuffle-on | shuffle-off
+//!                        repeat (cycle) | repeat-off | repeat-all | repeat-one
 //!   POST /play           {id} | {term} | {track} | {tracks:[…]} → play now. `id` is PREFIXED:
 //!                        song:… album:… playlist:… station:… (a term searches songs, top hit)
 //!   POST /queue          same body + {mode:"next"|"later"} → enqueue (stations can't queue)
@@ -104,6 +105,9 @@ pub struct NpState {
     pub duration: f64,
     pub volume: f64,
     pub muted: bool,
+    /// "off" | "all" | "one" (NEXT-VERSION §12); the tray panel ignores both.
+    pub repeat: String,
+    pub shuffle: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]

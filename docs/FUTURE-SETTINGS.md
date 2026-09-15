@@ -26,6 +26,7 @@
   §6 Menu caret affordance (click vs hover) · §9 Per-menu open mode (hover vs click) ·
   §20 Drill-in target (in-place vs Search card)
 - **Playback** — §4 "Previous" reach · §5 Shuffle behavior · §22 Play on launch (what starts playing)
+- **Now Playing** — §24 Which transport squares show (the two side clusters)
 - **Queue & layout interaction** — §3 Qcard drag initiation · §10 Queue summon (flip vs no-op)
 - **Stats** — §7 Listened-through threshold
 - **Library** — §21 Sync cadence (full pass every 6 h; incremental at startup)
@@ -171,12 +172,11 @@ rebuild). This is a *one-time reorder action*, **not** the P6 persistent shuffle
 - Wiring: `deets.shuffle.idle` = `"library" | "noop"` (default `"library"`), read in
   `player.shuffleQueue`.
 
-**Still future (P6): the persistent shuffle MODE** (Apple Music/Spotify-style sticky
-toggle — future contexts start shuffled). To pin down when built: whether un-shuffling
-**restores** the original context order (Apple Music) or leaves the shuffled order
-(Spotify); whether toggling it on mid-playback reshuffles the live `auto` tail or only
-affects the *next* context. The one-shot button is the natural host for the mode (press
-becomes toggle) — record the chosen defaults here when P6 lands.
+**The persistent shuffle MODE landed 2026-09-15** ([NEXT-VERSION §14](NEXT-VERSION.md)):
+the button is the toggle (Settings › Playback › *Button is perma-shuffle*, default on; off = this
+one-shot). The answers to the two questions above: un-shuffling **leaves** the shuffled
+order (Spotify); toggling it on mid-playback **reshuffles the live `auto` tail** (this
+one-shot, §5a rule) *and* every later context starts shuffled. 5a and 5b still apply.
 
 ---
 
@@ -868,3 +868,41 @@ sees the same number the report sends.
 
 Source for the number: `update_status` → `current` (Rust `CARGO_PKG_VERSION`), already read by
 updater.ts; no new command needed.
+
+## 24. Now Playing — which squares show in the two side clusters
+
+**Status (2026-09-15): documented, not built.** Raised with the transport pass (NEXT-VERSION
+§12–§14): the left cluster is now four squares.
+
+**Behavior today.** The Now Playing bottom row (`now-playing-card.ts`, `.np__bottom`) has
+two fixed clusters around the transport. **Left:** Shuffle · Repeat · Queue (summons the
+Queue card) · Search (summons the Search card). **Right:** ♥ · + (both appear only for a
+song with a catalog id; + only while Add to Library is on). Queue and Search are also
+reachable by Ctrl+Q / Ctrl+K and from every slot's title picker, so a user who lives on
+the keyboard, or who keeps the Queue card on screen, has two squares they never press. In
+mini at minimum width the clusters already stack onto a second row (`np__bottom--stacked`);
+fewer squares means the stack happens later, or never.
+
+**The setting.** Settings › Playback (or a new Now Playing group) — **"Show on Now Playing"**:
+one pill per optional square, each on/off. Shuffle, Repeat, Queue, Search, ♥, +. Play /
+Previous / Next are not optional. Wiring: one settings key per square (`npShowShuffle` …),
+or one `npSquares: string[]`; `paintModes` / the ♥ and + refreshers set `hidden`, and the
+row's `fit()` re-runs (the hidden square changes the row's need — the Repeat square's radio
+hide already does this through `refit`).
+
+**Forks for the design talk:**
+1. **Shape.** (A) Six toggles in a row of pills. (B) A checklist popover from one row.
+   (C) Right-click a square › Hide, with Settings as the way back. Suggest A + C: C is the
+   discoverable gesture, A is the way back.
+2. **Empty side.** A cluster with every square off: (A) the transport recentres (the
+   `1fr auto 1fr` grid already does this); (B) keep a blank cell so the row never shifts.
+   Suggest A.
+3. **The tray panel and the Player view.** The tray panel mirrors the card but has its own
+   markup (+ only). (A) The setting reaches the main card only. (B) It also hides + in the
+   tray panel. Suggest A for v1.
+4. **Mode squares off while a mode is on.** Hiding Repeat with repeat set to *one* leaves a
+   silent mode. (A) Hiding a mode square also turns its mode off. (B) Leave the mode; the
+   agent snapshot still shows it. Suggest A.
+
+No Apple calls. Files: `settings-store.ts`, `settings-card.ts`, `agent-settings.ts` (SPECS),
+`now-playing-card.ts`, SETTINGS.md.

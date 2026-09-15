@@ -67,8 +67,8 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 
 | Route | Body → Reply |
 |---|---|
-| `GET /now-playing` | `{active, playing, title, artist, album, artworkUrl, catalogId, inLibrary, live, progress, currentTime, duration, volume, muted}` |
-| `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` · `clear` (drops Up Next) → the snapshot after |
+| `GET /now-playing` | `{active, playing, title, artist, album, artworkUrl, catalogId, inLibrary, live, progress, currentTime, duration, volume, muted, repeat, shuffle}` (`repeat` = off / all / one; `shuffle` = the mode is on) |
+| `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next) → the snapshot after |
 | `POST /play` | `{id}` \| `{term}` \| `{track}` \| `{tracks:[…]}`, `keepQueue?` → `{ok, tracks}` or `{ok, station}` |
 | `POST /queue` | same + `{mode: "next" \| "later"}` or `{at: N}` (row of Up Next, 1 = top) → `{ok, tracks}` (a station → `400`) |
 | `GET /queue` | `{current, upcoming:[Track…], history:[Track…]}` |
@@ -119,7 +119,9 @@ deetsmusic play <id> [--keep]           # song:… album:… playlist:… statio
 deetsmusic queue                        # now + numbered up next
 deetsmusic queue <id> [--later | --at N]
 deetsmusic queue clear | remove N | move N TO | jump N
-deetsmusic pause | resume | toggle | next | prev | shuffle | mute
+deetsmusic pause | resume | toggle | next | prev | mute
+deetsmusic shuffle [on | off]           # the button, or set the mode
+deetsmusic repeat [off | all | one]     # cycle, or set
 deetsmusic seek 1:23 | 83 | 45%
 deetsmusic vol 40 | +5 | -5
 deetsmusic history [-n 20]
@@ -151,7 +153,7 @@ subset a tool server needs, no SDK. Tools:
 | `stations` | `group: featured\|genres\|genre:<id>` | both | |
 | `play` | `id` (+ `keep_queue` full) | both | rejects non-ids with "search first" |
 | `queue` | `id`, `position: next\|later` (full: also a row number) | both | |
-| `control` | `action: play\|pause\|next\|previous\|shuffle\|mute\|seek\|volume\|clear_queue`, `value?` (percent) | both | |
+| `control` | `action: play\|pause\|next\|previous\|shuffle\|repeat\|mute\|seek\|volume\|clear_queue`, `value?` (percent), `mode?` (repeat: off / all / one, else cycle; shuffle: on / off, else the button) | both | |
 | `list` | `what: queue\|history\|playlists` | both | playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]` |
 | `library` | `action: add\|favorite\|unfavorite`, `id` (`current` allowed) | both | consent rules, §5 |
 | `playlist_add` | `playlist`, `id` (`current` allowed) | both | local or your own Apple playlist |
