@@ -8,10 +8,12 @@ shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md
 So keep the body to paragraphs and **bold**, and use absolute links only: a relative link
 works on GitHub and breaks on the site.
 
-**For the next entry:** installers after 0.4.3 are code-signed (RELEASE.md §6.9). SmartScreen may
-still warn on a browser download until reputation builds; 0.5.0 was installed from a local file,
-so no browser download has been checked yet. Check one before writing the next Installing line.
-Older entries stay as written: they were true for their version.
+**For the next entry:** installers after 0.4.3 are code-signed (RELEASE.md §6.9), but a signed
+file still starts with no download reputation. Checked 2026-09-15 with 0.5.0: Microsoft Edge
+warned "isn't commonly downloaded" (Keep › Show more › Keep anyway). Copy 0.5.0's Installing
+lines until a browser download of a new version shows no warning. Only the text above the
+first `###` reaches the update offer and the website, so the Installing lines are for a
+download page. Older entries stay as written: they were true for their version.
 
 ## 0.5.0 — 2026-09-15
 
@@ -50,8 +52,13 @@ can turn them on.
 
 ### Installing
 
-- **The installer is code-signed**, with the publisher Aditya Sundaram. If Windows SmartScreen
-  still shows a notice on a browser download, click **More info**, then **Run anyway**.
+- **The installer is code-signed**, with the publisher Aditya Sundaram. A new version has
+  little download history, so Microsoft Edge may say the file "isn't commonly downloaded". In
+  Edge's download list, click **…** › **Keep**, then **Show more** › **Keep anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- If Windows shows "Windows protected your PC" when you open it, click **More info**, then
+  **Run anyway**.
 - Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
   that the installer must replace.
 

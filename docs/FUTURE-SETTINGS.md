@@ -840,3 +840,26 @@ Apple write). Zero stars → treat as *Nothing* with a one-line hint in the row.
    blob does not save the position today; resuming would add one field.
 3. Does *A station* belong in Favorites too (a pool of stations and playlists)? Suggest
    no for v1 — one pool of playlists keeps the row readable.
+
+## 23. App version in Settings › Bugs — noted 2026-09-15, not built
+
+**The problem (user, 2026-09-15):** "we don't have a way to check app version in app". The
+version is in the app, but hidden: Settings › Updates has a status line (`updateStatusText`,
+updater.ts) that reads "Version 0.5.0" or "Version 0.5.0. Up to date". It shows only when the
+Updates section is open, and it reads as plain status text, not as the version.
+
+**Wanted:** the version in **Settings › Bugs**, where a user looks when something goes wrong
+and where a report is sent from. Reports already carry `meta.version` (report.rs), so the user
+sees the same number the report sends.
+
+**Forks for the design talk (morning):**
+1. **Shape.** (A) A read-only row at the top of Bugs: "Version 0.5.0" with a **Copy** half.
+   (B) The version inside the App log row's hint. Suggest A: findable and copyable.
+2. **Also in About?** About is the one section open by default. (A) Bugs only. (B) Bugs and
+   the About notice. Suggest B: it costs one line.
+3. **Channel and build.** Show `deetsmusic-test` (a spike build) or a dev build next to the
+   version? Suggest yes for anything that isn't the main channel, so a test build is never
+   mistaken for a release.
+
+Source for the number: `update_status` → `current` (Rust `CARGO_PKG_VERSION`), already read by
+updater.ts; no new command needed.
