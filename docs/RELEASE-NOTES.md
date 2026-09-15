@@ -10,8 +10,11 @@ works on GitHub and breaks on the site.
 
 **For the next entry:** installers after 0.4.3 are code-signed (RELEASE.md §6.9), but a signed
 file still starts with no download reputation. Checked 2026-09-15 with 0.5.0: Microsoft Edge
-warned "isn't commonly downloaded" (Keep › Show more › Keep anyway). Copy 0.5.0's Installing
-lines until a browser download of a new version shows no warning. Only the text above the
+warned "isn't commonly downloaded" (Keep › Show more › Keep anyway). Checked again 2026-09-15
+with 0.6.0, downloaded from `deets.solutions/deetsmusic/`: the same Edge warning, now naming the
+publisher (Aditya Sundaram); the box offered Cancel and **Delete ▾**, and the path was
+**Delete ▾ › Keep anyway**. Windows showed no "Windows protected your PC", and the install
+worked. Copy 0.6.0's Installing lines until a browser download of a new version shows no warning. Only the text above the
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
@@ -43,13 +46,17 @@ slowly, so you can see it happen.
 
 ### Installing
 
-- **The installer is code-signed**, with the publisher Aditya Sundaram. A new version has
-  little download history, so Microsoft Edge may say the file "isn't commonly downloaded". In
-  Edge's download list, click **…** › **Keep**, then **Show more** › **Keep anyway**.
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
 - To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
   **Aditya Sundaram**, and **Details** says the signature is OK.
-- If Windows shows "Windows protected your PC" when you open it, click **More info**, then
-  **Run anyway**.
 - Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
   that the installer must replace.
 
