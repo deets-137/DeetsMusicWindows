@@ -9,6 +9,8 @@ the app can do any of these things.
 - [WeatherSkin.md](WeatherSkin.md) — a skin and theme that change with the weather.
 - [DeetsOTD.md](DeetsOTD.md) — Song of the Day, a local music diary.
 - [DeetsRecommends.md](DeetsRecommends.md) — recommendations from a music-credit graph.
+- [CardSwapMotion.md](CardSwapMotion.md) — animate cards when they swap slots, replace
+  each other, or move on a surface flip.
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).
