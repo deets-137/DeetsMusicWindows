@@ -15,6 +15,44 @@ lines until a browser download of a new version shows no warning. Only the text 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.6.0 — 2026-09-15
+
+**Artist pages.** Click an artist in the Library or in Search to open its page: a round photo of
+the artist, then Albums, Featured Playlists (Apple Music playlists with the artist), Your
+Playlists (your own playlists that have the artist's songs), and the songs. Your Playlists can
+also check Apple Music playlists you have not opened yet: click Check more on the shelf.
+
+**Sort an artist's songs by popularity.** On a Library artist page, Sort › Popular puts the songs
+in the order Apple Music ranks them, and Sort › Most Played puts the songs you play most in
+DeetsMusic first. Sort, View and Search sit above the songs and stay in view while you scroll.
+
+**Cards that move.** Settings › Look and feel › Animate card swaps (off at first) moves the cards
+when you swap them, in a way that fits your skin. With it on, a playlist you open from an artist
+page flies to the card that opens it. Go to Artist and Go to Album no longer swap two cards that
+are both on screen.
+
+**Reset settings.** Settings › Reset puts one group of settings back to the defaults: Look and
+feel (or only its theme and skin, look schedule, motion, or skin settings), Window, Playback,
+Playlists, Rewind, or Everything. It asks first, and you can undo it for 6 seconds. It does not
+change Close to tray, Start with Windows, Updates, or what you allowed DeetsMusic to do with
+Apple Music and AI apps.
+
+**Find your version.** Settings › Bugs shows the version with a Copy button, and it is the first
+line of About. When an AI app changes your theme, skin or window size, the change now plays more
+slowly, so you can see it happen.
+
+### Installing
+
+- **The installer is code-signed**, with the publisher Aditya Sundaram. A new version has
+  little download history, so Microsoft Edge may say the file "isn't commonly downloaded". In
+  Edge's download list, click **…** › **Keep**, then **Show more** › **Keep anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- If Windows shows "Windows protected your PC" when you open it, click **More info**, then
+  **Run anyway**.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.5.0 — 2026-09-15
 
 **Day and night looks.** Settings › Look and feel › Change look at switches between a day look
