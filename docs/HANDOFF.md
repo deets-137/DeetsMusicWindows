@@ -18,6 +18,7 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
+[PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once, one library — designed, not built) ·
 [TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
 [ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
 
@@ -547,6 +548,10 @@ get large).
   playlist creation flow** (NEXT-VERSION §11).
 
 ### Not built yet ⬜
+- **Two services, one library (2026-09-15)** — Apple Music + Spotify signed in at once, merged by
+  ISRC, chosen from the Account flyout, bring-your-own Spotify Client ID. Designed with the build
+  order (8 slices, ~8–11 sessions) in **[PROVIDERS.md](PROVIDERS.md)**; §9 lists the Spotify facts
+  to re-check first. Nothing built.
 - **Next-version feature notes (2026-09-11)** — pinned search terms · playlist artwork ·
   favorite songs · weekly replay playlists from Rewind · a Search/quick-access shortcut.
   Scoped with the real forks in **[NEXT-VERSION.md](NEXT-VERSION.md)**. None designed yet.

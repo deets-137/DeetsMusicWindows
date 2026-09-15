@@ -23,7 +23,9 @@ model — never a raw Apple (or future Spotify) shape.** Normalization lives in 
 
 - **Rust owns** secrets, network calls, normalization, and the cache.
 - **Frontend** calls commands, renders our model, and listens for sync events.
-- Adding **Spotify** later = a new provider impl + adapter in Rust; **zero UI change**.
+- Adding **Spotify** later = a new provider impl + adapter in Rust; **zero UI change** for the
+  read side. The full plan (ids, merge, auth, the second playback backend, what the ~20
+  direct Apple commands need) is [PROVIDERS.md](PROVIDERS.md), designed 2026-09-15.
 
 ---
 

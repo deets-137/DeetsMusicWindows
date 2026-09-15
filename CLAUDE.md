@@ -18,6 +18,9 @@ front-end, Rust back-end).
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 - `docs/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
   set times, Windows mode) and its pre-paint in `index.html`.
+- `docs/PROVIDERS.md` — Apple Music + Spotify at once, one merged library (option B,
+  designed 2026-09-15, not built): id namespace, PKCE on the loopback, Account flyout,
+  capabilities, the second playback backend, build order.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
