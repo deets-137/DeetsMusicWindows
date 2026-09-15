@@ -93,11 +93,21 @@ export interface Settings {
   playlistCreateSummon: boolean;
   /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
   playlistExport: boolean;
+  /** For a song played from a playlist, the Now Playing card and the tray panel show the
+   *  album cover or the playlist's saved cover (PLAYLISTS.md §11). playlist-cover.ts reads it. */
+  nowPlayingCover: "album" | "playlist";
+  /** How a new playlist's cover starts: its letters or a ♪ drawn in the current theme and
+   *  saved, or the derived mosaic (not saved). playlists.ts `playlistCreate` reads it. */
+  newPlaylistCover: "letters" | "mosaic" | "note";
   // ── cards ──
   /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
   rewindCard: boolean;
   /** The one-shot auto-enable already fired (so a later "off" sticks). */
   rewindAutoShown: boolean;
+  // ── connections ──
+  /** A settings change from an agent (AGENT.md §6): apply it, ask in the window each time,
+   *  or refuse. Agents can never change this one. agent-settings.ts reads it. */
+  agentSettings: "allow" | "ask" | "off";
   // ── updates ──
   /** When to get updates (RELEASE.md §6.3): download in the background and then ask to
    *  restart, ask before the download, or no scheduled check. updater.ts reads it. */
@@ -144,8 +154,11 @@ export const DEFAULTS: Settings = {
   playlistEagerCounts: true,
   playlistCreateSummon: true,
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
+  nowPlayingCover: "album",
+  newPlaylistCover: "letters", // user's call 2026-09-15
   rewindCard: false,
   rewindAutoShown: false,
+  agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
   updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
   updateSkip: "",
 };
@@ -212,3 +225,13 @@ export function onSettingsChange(cb: (changed: keyof Settings) => void): () => v
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
+
+// Values the store does not own (Rust's Close to tray, Start with Windows, Agent control)
+// changed outside the Settings card — an agent set them (agent-settings.ts). The card caches
+// them, so it reads them again.
+const ownedListeners = new Set<() => void>();
+export function onOwnedSettingChange(cb: () => void): () => void {
+  ownedListeners.add(cb);
+  return () => ownedListeners.delete(cb);
+}
+export const notifyOwnedSettingChange = (): void => ownedListeners.forEach((cb) => cb());

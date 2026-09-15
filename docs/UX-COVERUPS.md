@@ -120,6 +120,50 @@ schedule, runs the launch cover (`src/appearance.ts`) with one more stage:
   cover back in. Snaps when Animate look changes is off, under reduced motion, or while the
   launch cover is still up. `[perf] frames appearance` measures it.
 
+## 6b. Agent changes — **a slower cover, and the surface change goes under it too** (planned 2026-09-15, NOT built)
+**Why agents only:** a change the user clicks is expected, so it stays as fast as §6a. A change
+an agent makes (AGENT.md §6: `settings set theme | skin | surface`) arrives with no click, often
+while the user looks elsewhere. It must read as a calm, deliberate change, not a flash.
+**Today:** an agent's theme or skin set runs the §6a cover at the user's speed. An agent's
+surface set calls `applySurface` → `setSize` with no cover: the window jumps, and WebView2
+relays out in view.
+
+**The plan:**
+- **One cover for all three.** `withAppearanceTransition` takes a third kind, `"surface"`. The
+  resize runs in the **wait** stage, while the cover is opaque, so the relayout is never seen.
+  This is the route NEXT-VERSION.md §10 left open ("no window motion and a content crossfade
+  only"). It does not animate the window size: a stepped native resize can't reach frame rate.
+- **Async jobs.** `applySurface` awaits `setSize`, so a job's `fn` may return a promise, and
+  `swap()` awaits every job before the fonts and the two frames.
+- **Slower for agents.** An `{ by: "agent" }` option marks the cover: `<html data-boot-by="agent">`.
+  One skin token, `--agent-motion` (base `1.6`; a skin may change it), scales `--cover-in-dur`,
+  `--boot-dur`, `--boot-cover-out` and `--boot-stagger`. Scale through a separate property to
+  avoid a custom-property cycle: the cover rules in styles.css read
+  `calc(var(--boot-dur) * var(--motion-scale, 1))`, and
+  `html[data-boot-by="agent"] { --motion-scale: var(--agent-motion) }`. `tokenMs()` in
+  boot-cover.ts multiplies by the same scale, so the JS timers match the CSS.
+- **Batched.** An agent often sends theme, skin and surface one after another. They join the
+  same cover through the existing veil/wait join (§6a "Several changes"): one slow cover, not
+  three.
+- **Callers.** `agent-settings.ts`: `pickLook` passes `{ by: "agent" }`; the `surface` spec
+  wraps `applySurface` in `withAppearanceTransition("surface", …, { by: "agent" })`. Title menu
+  and look schedule calls stay unchanged.
+- **Snaps**, as §6a: Animate look changes off, reduced motion, or the launch cover still up.
+- **Measure:** `[perf] frames appearance` gains the kind `surface` and a `by=agent` tag.
+
+**Forks to settle before building (morning):**
+1. **Surface under the cover for user picks too?** (A) Agents only, as planned. (B) Every
+   deliberate surface pick (title menu, tray open): the cover also hides today's jump.
+   Recommended: A first, desk-test it, then decide B.
+2. **How much slower?** (A) One scale token, `--agent-motion` (1.6). (B) A full set of
+   `--agent-*` duration tokens per skin. Recommended: A — one number to tune at the desk.
+3. **Say who changed it?** (A) No text; the info toast "An agent set …" already says it.
+   (B) A short label on the opaque cover ("Changed by an agent"). Recommended: A.
+
+**Test in the morning:** dev app, debug CLI (`--port` of the dev bridge), Agent changes settings
+= Allow. `settings set theme "Black & Red"`, then `settings set surface mini`, then theme, skin
+and surface back to back. Check `[perf] frames appearance` in the dev log for each.
+
 ---
 
 ## Holistic pass — guiding ideas (when fundamentals are done)

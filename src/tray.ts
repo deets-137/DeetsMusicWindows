@@ -250,7 +250,9 @@ window.addEventListener("DOMContentLoaded", () => {
     playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
     title.textContent = s.title ?? "Not playing";
     artist.textContent = s.artist ?? "";
-    setArt(s.artworkUrl ?? "", s.artworkUrl ? `<img src="${s.artworkUrl}" alt="" data-art />` : "♪");
+    // The playlist's cover under "Show cover: Playlist" (PLAYLISTS.md §11); the tint stays on the album.
+    const cover = s.coverUrl ?? s.artworkUrl;
+    setArt(cover ?? "", cover ? `<img src="${cover}" alt="" data-art />` : "♪");
     npEl.classList.toggle("np--live", s.live);
     prevBtn.disabled = s.live;
     nextBtn.disabled = s.live;

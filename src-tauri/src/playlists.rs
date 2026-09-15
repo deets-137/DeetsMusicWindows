@@ -204,28 +204,25 @@ fn apple_copy_artwork(conn: &Connection, apple_id: &str) -> Option<crate::model:
     serde_json::from_str::<Playlist>(&json).ok()?.artwork
 }
 
-/// The first four DISTINCT track-cover templates of a playlist, in authored order,
-/// for the derived mosaic (NEXT-VERSION §2). Reads the local snapshot rows only —
+/// The most covers a derived mosaic draws (mosaic.ts `MOSAIC_MAX`).
+const MOSAIC_MAX: i64 = 100;
+
+/// Up to MOSAIC_MAX DISTINCT track-cover templates of a playlist, by first appearance in
+/// authored order, for the derived mosaic (PLAYLISTS.md §11). SQLite reads the one JSON
+/// field itself, so a long playlist costs no Rust parsing. Local snapshot rows only —
 /// zero Apple calls; None when the playlist is empty or its contents are not cached.
 fn mosaic_urls(conn: &Connection, table: &str, playlist_id: &str) -> Result<Option<Vec<String>>, String> {
-    let sql = format!("SELECT json FROM {table} WHERE playlist_id = ?1 ORDER BY position LIMIT 40");
+    let sql = format!(
+        "SELECT u FROM (SELECT json_extract(json, '$.artwork.urlTemplate') AS u, MIN(position) AS p
+           FROM {table} WHERE playlist_id = ?1 GROUP BY u)
+         WHERE u IS NOT NULL ORDER BY p LIMIT {MOSAIC_MAX}"
+    );
     let mut stmt = conn.prepare(&sql).map_err(err)?;
-    let rows = stmt.query_map([playlist_id], |r| r.get::<_, String>(0)).map_err(err)?;
-    let mut urls: Vec<String> = Vec::new();
-    for row in rows {
-        let t: Track = match serde_json::from_str(&row.map_err(err)?) {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
-        if let Some(u) = t.artwork.map(|a| a.url_template) {
-            if !urls.contains(&u) {
-                urls.push(u);
-                if urls.len() == 4 {
-                    break;
-                }
-            }
-        }
-    }
+    let urls = stmt
+        .query_map([playlist_id], |r| r.get::<_, String>(0))
+        .map_err(err)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(err)?;
     Ok(if urls.is_empty() { None } else { Some(urls) })
 }
 

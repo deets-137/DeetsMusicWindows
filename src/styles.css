@@ -1353,12 +1353,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   display: block;
 }
 .lib-tile__cover--round { border-radius: 50%; }
-/* The derived playlist cover (NEXT-VERSION §2): four track covers in a 2×2 grid, or one. */
-.lib-tile__cover--mosaic, .lib-row__art--mosaic, .lib-hero__cover--mosaic {
-  display: grid; grid-template-columns: 1fr 1fr; gap: var(--lib-mosaic-gap); overflow: hidden;
-}
-.lib-tile__cover--mosaic-one, .lib-row__art--mosaic-one, .lib-hero__cover--mosaic-one { grid-template-columns: 1fr; }
-.lib-tile__cover--mosaic img, .lib-row__art--mosaic img, .lib-hero__cover--mosaic img { display: block; width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+/* The derived playlist cover (PLAYLISTS.md §11): one picture drawn from up to 100 track
+   covers (mosaic.ts). Until it is drawn, the slot is the --empty ♪ placeholder. */
+.lib-tile__cover--mosaic, .lib-row__art--mosaic, .lib-hero__cover--mosaic { overflow: hidden; }
+.lib-tile__cover--mosaic img, .lib-row__art--mosaic img, .lib-hero__cover--mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* ── Detail hero (album / playlist) ──────────────────────────
    The first block inside the scrolling view: a big cover, the bold title, an optional

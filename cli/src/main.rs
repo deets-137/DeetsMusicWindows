@@ -124,6 +124,11 @@ enum Cmd {
         #[command(subcommand)]
         action: Option<UpdateCmd>,
     },
+    /// App settings: list (default, optionally one section), get <key>, set <key> <value>.
+    Settings {
+        #[command(subcommand)]
+        action: Option<SettingsCmd>,
+    },
     /// Serve the operations as MCP tools over stdio (every tool; `--small` for small models).
     Mcp {
         #[arg(long)]
@@ -182,6 +187,20 @@ enum UpdateCmd {
     Mode { mode: String },
     /// A version to skip, or `none`.
     Skip { version: String },
+}
+
+#[derive(Subcommand)]
+enum SettingsCmd {
+    /// Every setting, or one section ("Look and feel").
+    List { section: Vec<String> },
+    /// One setting, by key or label.
+    Get { key: String },
+    /// A choice's label or value, on/off, a number, or HH:MM.
+    Set {
+        key: String,
+        #[arg(num_args = 1.., trailing_var_arg = true)]
+        value: Vec<String>,
+    },
 }
 
 // ── bridge client ─────────────────────────────────────────────────────────────
@@ -632,6 +651,44 @@ fn op_update(c: &Client, action: &str, value: &str) -> Result<(String, Value), F
     Ok((text, v))
 }
 
+/// One setting, key first: `alwaysOnTop  Keep on top: Off  (Always | Player | Off)  · Window`.
+fn setting_line(r: &Value) -> String {
+    let mut tags = Vec::new();
+    for k in ["only", "limit"] {
+        let t = s(r, k);
+        if !t.is_empty() {
+            tags.push(format!("[{t}]"));
+        }
+    }
+    let tags = if tags.is_empty() { String::new() } else { format!("  {}", tags.join(" ")) };
+    format!("{:<20}  {}: {}  ({}){tags}  · {}", s(r, "key"), s(r, "label"), s(r, "valueLabel"), s(r, "accepts"), s(r, "section"))
+}
+
+/// list (optionally one section) · get · set.
+fn op_settings(c: &Client, action: &str, key: &str, value: &str, section: &str) -> Result<(String, Value), Failure> {
+    match action {
+        "get" => {
+            let v = c.post("/settings", json!({ "action": "get", "key": key }))?;
+            let line = v.get("row").map(setting_line).unwrap_or_default();
+            Ok((line, v))
+        }
+        "set" => {
+            let v = c.post("/settings", json!({ "action": "set", "key": key, "value": value }))?;
+            Ok((message_line(&v), v))
+        }
+        _ => {
+            let q = if section.is_empty() {
+                String::new()
+            } else {
+                format!("?section={}", section.replace('%', "%25").replace(' ', "%20").replace('&', "%26"))
+            };
+            let v = c.get(&format!("/settings{q}"))?;
+            let lines: Vec<String> = arr(&v, "settings").iter().map(|r| setting_line(r)).collect();
+            Ok((if lines.is_empty() { "(no settings)".into() } else { lines.join("\n") }, v))
+        }
+    }
+}
+
 // ── seek / volume parsing ─────────────────────────────────────────────────────
 
 fn parse_seek(c: &Client, pos: &str) -> Result<f64, Failure> {
@@ -755,13 +812,19 @@ fn tools(small: bool) -> Value {
               "action": { "type": "string", "enum": ["list", "create", "rename", "delete"] },
               "name": { "type": "string" },
               "new_name": { "type": "string" } } } }));
+    list.push(json!({ "name": "settings", "description": "Read or change DeetsMusic settings. list (optionally one section) shows every key with its label, current value and what it takes. get reads one key. set takes a key (or the label) and a value: a choice's label or value, on/off, a number, or HH:MM. theme, skin and surface are keys too. Add to Library and ♥, Export playlists and Agent control can be turned off, but only the user can turn them on. Depending on the user's setting, DeetsMusic may ask them first; then tell them to answer in DeetsMusic and don't send it again.",
+          "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
+              "action": { "type": "string", "enum": ["list", "get", "set"] },
+              "key": { "type": "string", "description": "get, set: a key from list, e.g. alwaysOnTop, theme, backgroundMotion." },
+              "value": { "type": "string", "description": "set: the new value, e.g. Always, Black & Red, off, 40, 21:00." },
+              "section": { "type": "string", "description": "list: one section, e.g. Look and feel (leave it out for all)." } } } }));
     Value::Array(list)
 }
 
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -836,6 +899,7 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
         .0,
         "queue_edit" => op_queue_edit(c, &str_arg("action"), num_arg("index"), num_arg("to"))?.0,
         "folder" => op_folder(c, &str_arg("action"), &str_arg("name"), &str_arg("new_name"))?.0,
+        "settings" => op_settings(c, &str_arg("action"), &str_arg("key"), &str_arg("value"), &str_arg("section"))?.0,
         other => return Err(Failure { status: 400, message: format!("unknown tool {other:?}") }),
     };
     Ok(text)
@@ -1017,6 +1081,11 @@ fn main() {
             UpdateCmd::Rollback { version } => op_update(&c, "rollback", &version),
             UpdateCmd::Mode { mode } => op_update(&c, "mode", &mode),
             UpdateCmd::Skip { version } => op_update(&c, "skip", &version),
+        },
+        Cmd::Settings { action } => match action.unwrap_or(SettingsCmd::List { section: vec![] }) {
+            SettingsCmd::List { section } => op_settings(&c, "list", "", "", &section.join(" ")),
+            SettingsCmd::Get { key } => op_settings(&c, "get", &key, "", ""),
+            SettingsCmd::Set { key, value } => op_settings(&c, "set", &key, &value.join(" "), ""),
         },
         Cmd::Mcp { .. } => unreachable!(),
     };

@@ -5,8 +5,9 @@
 
 import {
   playPause, nextTrack, prevTrack, shuffleQueue, stopStation, onPlayerState, onPlayerProgress, seekToFraction,
-  getVolume, setVolume, toggleMute, isMuted, onVolumeChange,
+  getVolume, setVolume, toggleMute, isMuted, onVolumeChange, type PlayerState,
 } from "./player";
+import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 import { makeSlider } from "./slider";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { mountAirplay, type AirplayMount } from "./airplay";
@@ -149,7 +150,8 @@ export const nowPlayingCard: CardDef = {
     // swaps the scrubber for a LIVE marker and the prev/next buttons disable.
     let onStation = false; // radio mode → the menu offers Stop Station
     let artKey = ""; // what the cover box currently shows — rebuilt only on change
-    const unsubState = onPlayerState((s) => {
+    let lastState: PlayerState | undefined;
+    const render = (s: PlayerState) => {
       onStation = !!s.station;
       playBtn.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
@@ -161,7 +163,9 @@ export const nowPlayingCard: CardDef = {
       const title = s.title ?? next?.title;
       const artist = s.artist ?? next?.artistName;
       const album = s.album ?? next?.albumName;
-      const artwork = s.artworkUrl ?? artURL(next, 480) ?? undefined;
+      // "Show cover: Playlist" (PLAYLISTS.md §11): a song from a playlist with a saved cover
+      // shows that cover; everything else (and the tint) stays on the album.
+      const artwork = (s.station ? undefined : playlistCoverFor(cur?.context, 480)) ?? s.artworkUrl ?? artURL(next, 480) ?? undefined;
       const text = title ?? "Not playing";
       const badge = next ? explicitBadge(next) : "";
       if (npArtist) npArtist.textContent = artist ?? (s.station ? s.station.name : "");
@@ -196,6 +200,14 @@ export const nowPlayingCard: CardDef = {
       npEl2?.classList.toggle("np--idle", !title && !s.station);
       if (prevBtn) prevBtn.disabled = live;
       if (nextBtn) nextBtn.disabled = live;
+    };
+    const unsubState = onPlayerState((s) => {
+      lastState = s;
+      render(s);
+    });
+    // The setting flipped or a playlist's cover changed: redraw from the last state.
+    const unsubCover = onPlaylistCoverChange(() => {
+      if (lastState) render(lastState);
     });
 
     playBtn.addEventListener("click", () => {
@@ -417,6 +429,7 @@ export const nowPlayingCard: CardDef = {
     return {
       destroy() {
         unsubState();
+        unsubCover();
         unsubProgress();
         unsubAlbumColor();
         unsubAddState();

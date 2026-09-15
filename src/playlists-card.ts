@@ -31,6 +31,8 @@ import { toast } from "./toast";
 import type { CardDef } from "./cards";
 import type { DragPayload } from "./row-drag";
 import { dropToPlaylist, dropToApplePlaylist } from "./drop-actions";
+import { MOSAIC_MAX } from "./mosaic";
+import { drawCover, coverLetters } from "./cover-art";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 /** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
@@ -45,6 +47,20 @@ let favoritesSeeded = false;
 /** Shrink an image file to a square JPEG data URL and set it as the cover. Resized here
  *  so the stored cover is small (≈50 KB), whatever the source file. The file picker and
  *  a file dropped on the hero cover both land here. */
+/** Generate Cover (PLAYLISTS.md §11.2): draw Letters or Note in the current theme and save
+ *  it as the cover — the same drawing a new playlist gets. */
+function generateCover(p: Playlist, kind: "letters" | "note"): void {
+  drawCover(kind, p.name)
+    .then((cover) => {
+      if (!cover) throw new Error("canvas unavailable");
+      return playlistSetCover(p, cover);
+    })
+    .catch((e) => {
+      console.error("[playlists] generate cover", e);
+      toast({ kind: "warn", text: "Couldn't save the cover." });
+    });
+}
+
 function setCoverFromFile(p: Playlist, file: File): void {
   const url = URL.createObjectURL(file);
   const img = new Image();
@@ -199,22 +215,20 @@ export const playlistsCard: CardDef = {
       });
     };
 
-    // The derived cover (NEXT-VERSION §2), computed HERE from the tracks in hand: the first
-    // four distinct track-cover templates among the first 40 rows — the same rule as Rust's
+    // The derived cover (PLAYLISTS.md §11), computed HERE from the tracks in hand: the first
+    // MOSAIC_MAX distinct track-cover templates in song order — the same rule as Rust's
     // `mosaic_urls`, which only sees the content cache and so is empty on a playlist's
     // first open (and partial while a paged fetch is still landing). With the tracks
     // cached, this is the truth; the playlist row's own `coverUrls` is the fallback.
     const mosaicOf = (ts: Track[] | undefined): string[] | undefined => {
       if (!ts?.length) return undefined;
-      const urls: string[] = [];
-      for (const t of ts.slice(0, 40)) {
+      const seen = new Set<string>();
+      for (const t of ts) {
         const u = t.artwork?.urlTemplate;
-        if (u && !urls.includes(u)) {
-          urls.push(u);
-          if (urls.length === 4) break;
-        }
+        if (u) seen.add(u);
+        if (seen.size === MOSAIC_MAX) break;
       }
-      return urls.length ? urls : undefined;
+      return seen.size ? [...seen] : undefined;
     };
     const coverOf = (p: Playlist): string[] | undefined => mosaicOf(trackCache.get(pid(p))) ?? p.coverUrls;
 
@@ -353,7 +367,7 @@ export const playlistsCard: CardDef = {
           const source = q.source === "local" ? "Yours" : q.curatorName ?? "Apple Music";
           const local = q.source === "local";
           return {
-            cover: heroCover(q.artwork, q.name, coverOf(q)), // live: fills in when the tracks land
+            cover: heroCover(q.artwork, q.name, coverOf(q), id), // live: fills in when the tracks land
             title: q.name,
             meta: [
               n != null ? `${n} song${n === 1 ? "" : "s"}` : "",
@@ -460,6 +474,19 @@ export const playlistsCard: CardDef = {
       const items: MenuItem[] = [];
       if (withRename && handMade(p)) items.push(renameItem(p));
       items.push({ label: pickLabel, run: () => pickCover(p) });
+      // Generate Cover (PLAYLISTS.md §11.2): draw Letters or Note now, in the current theme.
+      const letters = coverLetters(p.name);
+      items.push({
+        label: "Generate Cover",
+        sub: () => [
+          ...(letters ? [{ label: `Letters (${letters})`, run: () => generateCover(p, "letters") }] : []),
+          { label: "Note", run: () => generateCover(p, "note") },
+          // Back to the derived cover: the saved one goes (the same write as Remove Cover).
+          ...(ownCover(p)
+            ? [{ label: "Mosaic", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] mosaic cover", e)) }]
+            : []),
+        ],
+      });
       if (ownCover(p))
         items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] remove cover", e)) });
       const apple = appleMusicItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
@@ -625,6 +652,7 @@ export const playlistsCard: CardDef = {
               ? musicCell(density, idx, x.p.artwork, x.p.name, subOf(x.p), {
                   badge: onApple(x.p) ? APPLE_SIGIL : "",
                   mosaic: coverOf(x.p), // the derived cover when there's no artwork
+                  mosaicSeed: pid(x.p),
                 })
               : shelfCell(x, idx),
           activate: (x) => {

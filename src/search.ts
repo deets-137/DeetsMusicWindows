@@ -43,7 +43,7 @@ export interface Playlist {
   kind?: string;
   /** Manual folder membership (Playlists card sections); absent = unfiled. */
   folderId?: number;
-  /** Up to four track-cover templates for the derived mosaic (no `artwork`). */
+  /** Up to 100 distinct track-cover templates for the derived mosaic (no `artwork`; PLAYLISTS.md §11). */
   coverUrls?: string[];
   /** A local playlist's latest Apple Music copy (PLAYLISTS.md §6) and its last write (ms). */
   exportedAppleId?: string;

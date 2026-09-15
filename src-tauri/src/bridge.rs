@@ -93,6 +93,9 @@ pub struct NpState {
     pub album: Option<String>,
     pub artwork_url: Option<String>,
     pub artwork_template: Option<String>,
+    /// "Show cover: Playlist": the playlist's saved cover, for the tray panel only. The
+    /// Windows media overlay and AirPlay keep `artwork_url` / `artwork_template`.
+    pub cover_url: Option<String>,
     pub catalog_id: Option<String>,
     pub in_library: bool,
     pub live: bool,
@@ -637,7 +640,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     // extension (an Origin) is a different feature and is never gated by it.
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
-        "/playlist", "/library", "/folder", "/update",
+        "/playlist", "/library", "/folder", "/update", "/settings",
     ];
     let agent_off = !settings.agent_control && origin.is_none() && AGENT_ROUTES.contains(&path.as_str());
 
@@ -825,6 +828,21 @@ async fn handle(app: AppHandle, mut req: Request) {
             agent_json(req, res, origin)
         }
         (Method::Get, "/update") => agent_json(req, ask(&app, "update-get", serde_json::Value::Null).await, origin),
+        // ── agent settings (AGENT.md §6) — the window lists and sets them (agent-settings.ts) ──
+        (Method::Get, "/settings") => {
+            // `section` is a card section name ("Look and feel"): undo the CLI's small encoding.
+            let section = query_param(&url, "section")
+                .map(|s| s.replace('+', " ").replace("%20", " ").replace("%26", "&").replace("%25", "%"))
+                .unwrap_or_default();
+            agent_json(req, ask(&app, "settings-get", serde_json::json!({ "section": section })).await, origin)
+        }
+        (Method::Post, "/settings") => {
+            let v: serde_json::Value = match serde_json::from_str(&body) {
+                Ok(v) => v,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            agent_json(req, ask(&app, "settings", v).await, origin)
+        }
         _ => json(req, 404, serde_json::json!({ "error": "no such route" }), origin),
     }
 }

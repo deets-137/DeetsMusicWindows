@@ -37,7 +37,8 @@ ChatGPT's desktop app does not run local MCP servers, so it cannot control Deets
 
 Once connected, ask in plain words: "play Rumours by Fleetwood Mac", "what is playing",
 "skip this", "queue the album after this one", "start a station from this song", "turn it
-down to 20", "love this song", "add this to my Road Trip playlist", "is there an update".
+down to 20", "love this song", "add this to my Road Trip playlist", "is there an update",
+"keep DeetsMusic on top", "switch to the night look at 9 pm", "stop the moving backgrounds".
 The AI searches first, then acts on the result it found.
 
 **When DeetsMusic asks you.** The first time an AI app adds to your Apple Music library, adds to
@@ -45,6 +46,12 @@ an Apple Music playlist, or exports a playlist, DeetsMusic shows a question. Pre
 let it, then ask the AI again. DeetsMusic asks before every playlist delete. An update never
 installs until you press **Restart now**. To stop library or Apple Music playlist changes, turn
 off **Add to Library** or **Export playlists** in Settings › Apple Music.
+
+**Settings changes.** An AI app can change DeetsMusic settings too. **Settings › Connections ›
+Agent changes settings** decides how: **Ask** (the default) shows a question each time, and the
+change applies when you press **Allow**. **Allow** applies changes at once. **Off** refuses them.
+An AI app can turn **Add to Library and ♥**, **Export playlists** and **Agent control** off, but
+only you can turn them on.
 
 ## 4. The command line
 
@@ -70,6 +77,8 @@ deetsmusic queue
 | "Agent control is off" | DeetsMusic › Settings › Connections › turn **Agent control** on. |
 | "Waiting for the user" | Answer the question in DeetsMusic, then ask the AI again. |
 | "… is off in DeetsMusic › Settings › Apple Music" | Turn that setting on if you want the AI to make the change. |
+| "Agent changes settings is off" | DeetsMusic › Settings › Connections › set **Agent changes settings** to Ask or Allow. |
+| "Only you can turn on …" | Turn that setting on yourself, at the place the message names. |
 | "no bridge running" or a connection error | Start DeetsMusic. It must be running, in the tray is fine. |
 | "not connected to Apple Music" | Sign in from the title menu › Account. |
 | The AI app says the server failed to start | The path in its config points at a file that is not there. Reinstall DeetsMusic, or click **Copy setup for** again and paste the fresh text. |

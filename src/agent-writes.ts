@@ -31,6 +31,7 @@ import { libraryAddEnabled, addToLibrary, alreadyInLibrary, ADD_NOTICE_KEY } fro
 import { setLoved } from "./favorites";
 import { checkForUpdate, download, offerRestart, olderVersions, rollbackTo, updateStatus, type UpdateStatus } from "./updater";
 import { invoke } from "@tauri-apps/api/core";
+import { settingsList, settingsWrite } from "./agent-settings";
 
 type Reply = Record<string, unknown>;
 
@@ -471,6 +472,8 @@ export function runAgentWrite(kind: string, payload: any): Promise<unknown> | nu
     case "queue-edit": return queueEdit(payload).then(() => null);
     case "update-get": return updateGet();
     case "update": return update(payload);
+    case "settings-get": return settingsList(payload); // AGENT.md §6 (agent-settings.ts)
+    case "settings": return settingsWrite(payload);
     default: return null;
   }
 }

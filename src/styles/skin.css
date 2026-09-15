@@ -296,9 +296,6 @@
   /* -- search card: the recent/pinned split pill -- */
   --search-pin-size: var(--icon-sm);
 
-  /* -- derived playlist cover (2×2 mosaic) -- */
-  --lib-mosaic-gap: 0px;
-
   /* -- micro-motion (hover/expand/spin; nav has its own --nav-*) -- */
   --dur-fast: 0.12s;
   --dur-med:  0.18s;

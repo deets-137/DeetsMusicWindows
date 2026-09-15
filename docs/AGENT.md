@@ -19,7 +19,7 @@ the queue and history. It rides the **same loopback bridge the browser extension
 `<app_data>/settings.json` as `Authorization: Bearer …`. No new server, port, or trust
 surface. Plain `deets` is reserved for other things; this is `deetsmusic`.
 
-**Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 15 tools, for Claude-class
+**Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 16 tools, for Claude-class
 clients. `deetsmusic mcp --small` serves 10, for small tool-calling models (LFM2.5, Gemma
 4B-class): flat string / enum arguments, and no argument whose meaning depends on the action.
 Both use **prefixed ids everywhere** and a two-step flow — search (or list stations) first,
@@ -77,6 +77,7 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `POST /playlist` | `{action, playlist?, id?, index?, to?, value?}` — `show` → `{tracks}`; `create` · `add` · `remove` · `move` · `rename` · `delete` · `cover` · `export` · `new_copy` · `get_songs` · `import` · `folder` → `{ok, message}` / `pending` (§5) |
 | `POST /folder` | `{action: list \| create \| rename \| delete, name, value?}` → `{folders:[{name, playlists}]}` or `{ok, message}` |
 | `GET /update` · `POST /update` | status `{state, current, channel, version, …, mode, skip}` · `{action: check \| install \| rollback \| mode \| skip, value?}` |
+| `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first |
 | `GET /stations?group=` | `featured` (My Station · Discovery · live) · `genres` · `genre:<id>` → `{stations, genres}` |
 | `GET /playlists` | `{playlists:[Playlist…]}` — Apple mirror + local, zero Apple calls |
@@ -126,6 +127,7 @@ deetsmusic add [id] | love [id] | unlove [id]      # default: the playing song
 deetsmusic playlist show|create|add|remove|move|rename|delete|cover|export|new-copy|get-songs|import|file …
 deetsmusic folder list | create <name> | rename <name> <new> | delete <name>
 deetsmusic update [status|check|install|versions|rollback <v>|mode auto|ask|off|skip <v>|none]
+deetsmusic settings [list [section]] | get <key> | set <key> <value>   # §6
 deetsmusic mcp [--small]                # serve the tools over stdio
 --json on anything
 ```
@@ -159,6 +161,7 @@ subset a tool server needs, no SDK. Tools:
 | `playlist_edit` | `action`, `playlist`, `index?`, `to?`, `value?` | full | rename · remove · move · delete · cover · export · new_copy · get_songs · import · folder |
 | `queue_edit` | `action: remove\|move\|jump`, `index`, `to?` | full | replies with the fresh queue |
 | `folder` | `action: list\|create\|rename\|delete`, `name`, `new_name?` | full | by name |
+| `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
 
 Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp`. The
 **Copy setup for** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;
@@ -220,7 +223,117 @@ copy (the reply names its local playlist). Reach `/add` (extension only).
 **Rows.** Every row is the 1-based number the listing printed. `queue_edit` replies with the
 fresh queue, so a second edit uses current numbers.
 
-## 6. Later
+## 6. Settings — BUILT 2026-09-15, awaiting desk test
+
+An agent reads and changes the app's settings with the same setters the Settings card uses.
+**Full pack only** (`deetsmusic mcp`): a frontier model maps "keep DeetsMusic on top" to a
+key by itself; `--small` does not get the tool. Code: `src/agent-settings.ts`.
+
+### Surfaces
+
+| Surface | Shape |
+|---|---|
+| MCP tool `settings` | `action: list \| get \| set`, `key?`, `value?`, `section?` |
+| CLI | `deetsmusic settings [list [section]]` · `settings get <key>` · `settings set <key> <value…>` (the value's words are joined, so `set theme Black & Red` needs quotes only for the shell's `&`) |
+| Routes | `GET /settings[?section=]` → `{settings:[Row…]}` · `POST /settings` `{action: list \| get \| set, key, value?}` → `{row}` (get) · `{ok, message}` or `{ok, pending: "user", message}` (set) |
+
+`/settings` is in `AGENT_ROUTES` (Agent control gates it). The bridge asks the window
+(`settings-get`, `settings`), like `/update`; `agent-writes.ts` `runAgentWrite` hands both kinds
+to `agent-settings.ts`.
+
+Tool description (the model reads this): *"Read or change DeetsMusic settings. list (optionally
+one section) shows every key with its label, current value and what it takes. get reads one key.
+set takes a key (or the label) and a value: a choice's label or value, on/off, a number, or
+HH:MM. theme, skin and surface are keys too. Add to Library and ♥, Export playlists and Agent
+control can be turned off, but only the user can turn them on. Depending on the user's setting,
+DeetsMusic may ask them first; then tell them to answer in DeetsMusic and don't send it again."*
+
+### The permission — Settings › Connections › Agent changes settings
+
+`agentSettings`: **Ask** (default) · Allow · Off. The user's call 2026-09-15: a runtime
+permission on top of the off-only gates.
+
+- **Ask:** a sticky question in the window, "An agent wants to set Keep on top to Always."
+  (**Allow** / **Not now**). The reply is `pending` at once and tells the agent not to resend:
+  **Allow** applies the change itself.
+- **Allow:** the set applies at once, with a quiet info toast (§5, 3A): "An agent set Keep on
+  top to Always."
+- **Off:** `403` "Agent changes settings is off in DeetsMusic › Settings › Connections."
+- Reads (`list`, `get`) always work. A set to the current value answers "… is already …" and
+  asks nothing.
+- Agents can never change `agentSettings` (read-only, `403`).
+
+### A row
+
+One line per setting, **key first**, the Settings card's own words after it (`setting_line`, cli):
+
+```
+alwaysOnTop           Keep on top: Off  (Always | Player | Off)  · Window
+backgroundMotion      Animate backgrounds: On  (On | Reduced | Off)  · Look and feel
+glassTint             Tint cards: 55%  (0–100)  [Glass only]  · Look and feel
+dayStart              Day starts at: 07:00  (HH:MM on :00 or :30, 04:00–12:00)  · Look and feel
+libraryAdd            Add to Library and ♥: On  (On | Off)  [off only]  · Apple Music
+agentSettings         Agent changes settings: Ask  (Allow | Ask | Off)  [read-only]  · Connections
+```
+
+JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "off only" | "read-only"}`.
+
+### Values
+
+- A **key or its label**, any case: `alwaysOnTop`, `Keep on top`. An unknown key → `400` with
+  "did you mean" keys.
+- A choice takes its pill label or its store value, any case: `Always`, `always`. `sunShift`
+  takes `+15 min`, `15`, `-15` (−60…60 in 15-minute steps, the card's menu).
+- A toggle takes `on` / `off` (also `true` / `false`, `yes` / `no`).
+- A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
+  `glassCanvasGlow`, `glassCanvasDim`), with or without `%`.
+- A time takes `HH:MM` on the hour or the half hour, inside the card's menu range
+  (`dayStart` 04:00–12:00, `nightStart` 15:00–23:30).
+- A bad value → `400` that says what the setting takes.
+
+### Which settings
+
+Every value row in SETTINGS.md §3, plus `theme`, `skin`, `surface` (Mini · Mini player · Midi ·
+Max), **except**:
+
+| Left out or limited | Why |
+|---|---|
+| `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
+| `agentSettings` — **read-only** | The permission itself. |
+| `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
+| Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |
+
+Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_tray`,
+`startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`. After one,
+`notifyOwnedSettingChange()` (settings-store.ts) makes an open Settings card read them again.
+A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass is the skin."
+`updateMode` is here and stays on `update action=mode` too (same write).
+
+### Writes
+
+- `agent-settings.ts` `SPECS` calls the card's own setters: `setSetting`, `setLibraryAddEnabled`,
+  the Rust commands. `theme` / `skin` run `noteHandPick` + `withAppearanceTransition` +
+  `publishAppearance`, as the title menu does; `surface` runs `applySurface` + `tray_pin_main`.
+- **The words:** `SPECS` repeats the card's labels, sections and choices (the card builds its rows
+  inside `mountSettings`, with local state, so they can't be shared as-is). A new card row joins
+  `SPECS` too — SETTINGS.md §5 step 5.
+- Reply notes: `closeToTray off` — "The × button now quits DeetsMusic, and that stops these tools
+  until DeetsMusic starts again." `agentControl off` — "Agent control is off. Only you can turn it
+  on again, in DeetsMusic › Settings › Connections." (The request has passed the gate, so this
+  reply still arrives.) `theme` / `skin` while a look schedule runs — the pick lasts as Menu pick
+  lasts says.
+
+### Decisions (2026-09-15)
+
+1. **Theme, skin, surface: A** — keys; a theme or skin set counts as a hand pick.
+2. **The consent gates: B (off only), all three** — the user's reason: safety and accidents.
+3. **Close to tray and Start with Windows: A (included)**, with the reply note above.
+4. **Agent changes settings: Allow / Ask / Off, default Ask** — the user asked for a runtime
+   permission row on top of 2.
+
+## 7. Later
+- **Agent look and surface changes under a slower cover** — planned 2026-09-15, build and test
+  next session: [UX-COVERUPS.md §6b](UX-COVERUPS.md) (three forks listed there).
 - Installer PATH entry (NSIS hook).
 - A small-model test of `mcp --small` (LM Studio / Ollama) with the AGENT-SETUP §3 phrases.
 - Durable history (`play_events` + the track store) as a second history source.

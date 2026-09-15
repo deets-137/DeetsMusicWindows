@@ -28,6 +28,7 @@ import type { CardDef } from "./cards";
 import { registerDropTarget } from "./row-drag";
 import { dropToLibrary } from "./drop-actions";
 import { libraryAddEnabled } from "./library-add";
+import { mosaicHTML } from "./mosaic";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -140,28 +141,20 @@ function initials(name: string): string {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 }
-/** The derived cover (NEXT-VERSION §2): four distinct track covers as a 2×2 mosaic,
- *  or the first one alone when fewer than four are known. `cls` is the slot class. */
-function mosaicHTML(cls: string, urls: string[], px: number): string {
-  const tiles = urls.length >= 4 ? urls.slice(0, 4) : urls.slice(0, 1);
-  const size = tiles.length === 4 ? Math.ceil(px / 2) : px;
-  const imgs = tiles
-    .map((u) => `<img src="${esc(u.replace("{w}", String(size)).replace("{h}", String(size)).replace("{f}", "jpg"))}" alt="" loading="lazy" decoding="async" data-art />`)
-    .join("");
-  return `<div class="${cls} ${cls}--mosaic${tiles.length === 4 ? "" : ` ${cls}--mosaic-one`}" aria-hidden="true">${imgs}</div>`;
-}
-function rowThumb(art: Artwork | undefined, round: boolean, name: string, mosaic?: string[]): string {
+// The derived cover (a playlist with no artwork): one picture drawn from up to 100 track
+// covers, `mosaic.ts` (PLAYLISTS.md §11). `seed` is the playlist's id.
+function rowThumb(art: Artwork | undefined, round: boolean, name: string, mosaic?: string[], seed?: string): string {
   const r = round ? " lib-row__art--round" : "";
   const url = artURL(art, 72);
   if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
-  if (mosaic?.length) return mosaicHTML("lib-row__art", mosaic, 72);
+  if (mosaic?.length) return mosaicHTML("lib-row__art", mosaic, seed ?? name);
   return `<div class="lib-row__art${r} lib-row__art--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
-function tileCover(art: Artwork | undefined, px: number, round: boolean, name: string, mosaic?: string[]): string {
+function tileCover(art: Artwork | undefined, px: number, round: boolean, name: string, mosaic?: string[], seed?: string): string {
   const r = round ? " lib-tile__cover--round" : "";
   const url = artURL(art, px);
   if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
-  if (mosaic?.length) return mosaicHTML("lib-tile__cover", mosaic, px);
+  if (mosaic?.length) return mosaicHTML("lib-tile__cover", mosaic, seed ?? name);
   return `<div class="lib-tile__cover${r} lib-tile__cover--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
 const px = (density: Density) => (density === "large" ? 300 : 160);
@@ -169,10 +162,10 @@ const px = (density: Density) => (density === "large" ? 300 : 160);
 /** The detail hero's cover (a real cover, a mosaic, or the ♪ placeholder). Fetched at
  *  2× the token size so it stays crisp on a HiDPI panel. */
 const HERO_PX = 360;
-export function heroCover(art: Artwork | undefined, name: string, mosaic?: string[]): string {
+export function heroCover(art: Artwork | undefined, name: string, mosaic?: string[], seed?: string): string {
   const url = artURL(art, HERO_PX);
   if (url) return `<img class="lib-hero__cover" src="${esc(url)}" alt="${esc(name)}" decoding="async" data-art />`;
-  if (mosaic?.length) return mosaicHTML("lib-hero__cover", mosaic, HERO_PX);
+  if (mosaic?.length) return mosaicHTML("lib-hero__cover", mosaic, seed ?? name);
   return `<div class="lib-hero__cover lib-hero__cover--empty" aria-hidden="true">♪</div>`;
 }
 
@@ -214,14 +207,14 @@ export function musicCell(
   art: Artwork | undefined,
   primary: string,
   sub: string,
-  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; num?: number } = {},
+  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; mosaicSeed?: string; num?: number } = {},
 ): string {
-  const { round = false, hideCover = false, selected = false, badge = "", mosaic, num } = opts;
+  const { round = false, hideCover = false, selected = false, badge = "", mosaic, mosaicSeed, num } = opts;
   // `num` (an album's track number) takes the cover's slot on a line row.
-  const slot = num !== undefined ? `<span class="lib-row__num">${num}</span>` : hideCover ? undefined : rowThumb(art, round, primary, mosaic);
+  const slot = num !== undefined ? `<span class="lib-row__num">${num}</span>` : hideCover ? undefined : rowThumb(art, round, primary, mosaic, mosaicSeed);
   return density === "lines"
     ? rowHTML(idx, primary, sub, slot, selected, badge)
-    : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic), primary, sub, selected, badge);
+    : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic, mosaicSeed), primary, sub, selected, badge);
 }
 
 // ── sort specs (per grouping) ────────────────────────────────────────────────────

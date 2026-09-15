@@ -15,7 +15,7 @@
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
-import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
+import { setting, setSetting, onSettingsChange, onOwnedSettingChange, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange } from "./skin";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
@@ -504,6 +504,16 @@ function mountSettings(host: HTMLElement): CardInstance {
       rows: [
         storeToggle("eagercounts", "Show playlist counts", "playlistEagerCounts", () => "One small request per playlist, once"),
         storeToggle("createsummon", "New playlist opens Search", "playlistCreateSummon"),
+        {
+          kind: "choice", id: "npcover", label: "Show cover", key: "nowPlayingCover",
+          hint: "For a song from a playlist, in Now Playing and the tray panel",
+          options: [{ value: "album", label: "Album" }, { value: "playlist", label: "Playlist" }],
+        },
+        {
+          kind: "choice", id: "newcover", label: "New cover", key: "newPlaylistCover",
+          hint: "How a new playlist's cover starts. Letters and Note keep the theme you made it in",
+          options: [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }],
+        },
       ],
     },
     {
@@ -541,7 +551,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md), then the browser
       // extension's bridge status and install page (EXTENSION.md).
       title: "Connections",
-      count: 3,
+      count: 4,
       tail: `<div class="set__status" id="set-agent-status">…</div>
         <div class="set__status" id="set-ext-status">Extension bridge off</div>
         <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Extension install guide</span></button>`,
@@ -564,6 +574,12 @@ function mountSettings(host: HTMLElement): CardInstance {
               },
             },
           ],
+        },
+        // AGENT.md §6: a runtime permission for agent settings changes. Agents can't change it.
+        {
+          kind: "choice", id: "agentsettings", label: "Agent changes settings", key: "agentSettings",
+          hint: "An AI app or the command line changing these settings. Ask: DeetsMusic asks you each time",
+          options: [{ value: "allow", label: "Allow" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }],
         },
         // AGENT-SETUP.md: pick the app, then copy its exact setup text.
         {
@@ -1124,6 +1140,15 @@ function mountSettings(host: HTMLElement): CardInstance {
   const unsubStore = onSettingsChange(render);
   const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
   const unsubLibAdd = onLibraryAddChange(render);
+  // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.
+  const unsubOwned = onOwnedSettingChange(() => {
+    invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get")
+      .then((s) => { minimizeToTray = s.minimizeToTray; agentControl = s.agentControl; if (alive) render(); })
+      .catch((e) => console.warn("[settings] get", e));
+    invoke<boolean>("autostart_get")
+      .then((v) => { autostart = v; if (alive) render(); })
+      .catch((e) => console.warn("[settings] autostart", e));
+  });
   const unsubUpdate = onUpdateStatus(paintUpdate);
   const unsubLook = onScheduleChange(paintLook);
   void olderVersions().then((v) => {
@@ -1168,6 +1193,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       unsubStore();
       unsubSkin();
       unsubLibAdd();
+      unsubOwned();
       unsubUpdate();
       unsubLook();
       unsubRequest();

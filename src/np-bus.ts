@@ -36,6 +36,7 @@ import type { Track } from "./library";
 import type { Station } from "./radio";
 import { log } from "./diag";
 import { onToast, type ToastKind } from "./toast";
+import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 
 export interface NpState {
   active: boolean;
@@ -47,6 +48,9 @@ export interface NpState {
   album?: string;
   artworkUrl?: string;
   artworkTemplate?: string;
+  /** "Show cover: Playlist" — the playlist's saved cover, for the tray panel only. The
+   *  Windows media overlay and AirPlay keep `artworkUrl`/`artworkTemplate` (PLAYLISTS.md §11). */
+  coverUrl?: string;
   catalogId?: string;
   inLibrary: boolean;
   live: boolean;
@@ -81,6 +85,7 @@ function snapshot(): NpState {
     album: lastState.album ?? t?.albumName,
     artworkUrl: lastState.artworkUrl,
     artworkTemplate: t?.artwork?.urlTemplate,
+    coverUrl: lastState.station ? undefined : playlistCoverFor(cur?.context, 480),
     catalogId,
     inLibrary: inLibrary(catalogId) || inLibrary(cur?.libraryId),
     live: !!lastState.station?.live,
@@ -237,7 +242,7 @@ const startsPlayback = (kind: string, payload: any): boolean =>
   (kind === "command" && ["next", "previous", "play", "play-pause"].includes(String(payload?.kind)));
 
 async function runAgentWithNotices(kind: string, payload: any): Promise<unknown> {
-  if (kind === "queue-get" || kind === "history-get" || kind === "update-get") return runAgent(kind, payload);
+  if (kind === "queue-get" || kind === "history-get" || kind === "update-get" || kind === "settings-get") return runAgent(kind, payload);
   const notices: { kind: ToastKind; text: string }[] = [];
   const off = onToast((t) => {
     if (NOTICE_KINDS.has(t.kind)) notices.push(t);
@@ -281,6 +286,8 @@ export function initNpBus(): void {
   });
   // Library membership changes (sync, an add from the tray/extension) flip the "+".
   onTracksChange(() => publish(true), "np-bus.publish");
+  // "Show cover" flipped or a playlist's cover changed: the tray panel's cover follows.
+  onPlaylistCoverChange(() => publish(true));
 
   listen<NpCommand>("np-command", (e) => {
     run(e.payload).catch((err) => console.error("[np-bus] command failed:", e.payload, err));

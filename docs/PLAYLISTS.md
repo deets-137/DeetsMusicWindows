@@ -123,9 +123,9 @@ card (`src/library-card.ts`). Rows/tiles render through the shared **`musicCell`
 one cell, one density system, no per-card drift.
 
 **Overview (root context)** — one **"Playlists"** grouping (not songs/albums/artists):
-- **Cover:** a 2×2 **mosaic** composited from the first distinct track covers (the same
-  cover-URL trick as derived albums); curated Apple playlists use their real artwork; ♪
-  placeholder otherwise.
+- **Cover:** the playlist's own cover (a picked image, or a drawn Letters / Note cover);
+  curated Apple playlists use their real artwork; otherwise a **mosaic** of up to 100
+  distinct track covers, drawn in memory (§11); ♪ placeholder until then.
 - **Subtitle:** "N songs" + the **source badge** on mirrored rows.
 - **Sorts:** A–Z · Recently Updated · Recently Added. **Search:** by name.
 - **Header actions:** `＋ New Playlist` and `⟳ Sync` (refresh the Apple mirror), mirroring
@@ -497,6 +497,56 @@ The plan as written before the build:
 1. 10.1 drag (shared module) · 2. 10.2 rename + Apple Music ▸ wording · 3. 10.3 delete confirm ·
 4. 10.4 Get New Songs · 5. 10.5 named skips · 6. 10.6 cover links · 7. 10.7 README note + backup
 doc · 8. 10.8 Replay guard (small; can go first if it bites) · later 10.9.
+
+## 11. Playlist covers — decided and BUILT 2026-09-15, not desk-tested
+
+Two Settings rows in the Playlists section:
+
+| Row | Pills | Key | Default |
+|---|---|---|---|
+| Show cover | Album / Playlist | `nowPlayingCover` | album |
+| New cover | Letters / Mosaic / Note | `newPlaylistCover` | letters |
+
+### 11.1 Show cover (Now Playing card, mini player, tray panel)
+- **Playlist:** a song played from a playlist shows the playlist's **saved** cover: the
+  user's own image, a drawn Letters / Note cover, or Apple's artwork for the playlist.
+- A mosaic playlist has no saved cover, so it keeps the album cover.
+- "From a playlist" = the queue entry's context tag: `playlist:<pid>` (Playlists card,
+  Rewind) or `search-playlists:<catalogId>` (Search, when the playlist is in the cached list).
+- Not changed: the album tint (`album-color.ts`), the Windows media overlay (`smtc.rs`),
+  AirPlay, the queue card. The tray gets the cover as `NpState.coverUrl`.
+- Code: `playlist-cover.ts` (context → playlist map from `playlistsCached`, zero Apple
+  calls), `now-playing-card.ts`, `np-bus.ts` → `bridge.rs` → `tray.ts`.
+
+### 11.2 New cover
+- Applies to playlists made through `playlistCreate`: New Playlist (card, add-to menu,
+  agent) and Replay. Imported copies keep Apple's cover. Old playlists are not changed.
+- **Letters:** up to two letters or digits, the first of each of the first two words
+  ("Late Night" → LN). They cannot be changed, and a rename does not redraw. Drawn like
+  the DM mark: Anton in every skin, first letter higher in `--album-c1`, second lower in
+  `--album-c2`, on `--album-bg`. A name with no letter or digit draws Note.
+- **Note:** a ♪ drawn as a shape (Anton has no ♪): head and stem in c1, flag in c2.
+- Both are saved once as a PNG through `playlist_set_cover`, in the theme in use at that
+  moment, so the cover shows the theme the playlist was made in. Code: `cover-art.ts`.
+- **Mosaic:** nothing is saved. **Remove Cover** also returns a playlist to the mosaic.
+- **Generate Cover ›** (added 2026-09-15): beside Set / Change Cover… and Choose Image…, on any
+  local playlist, old ones included. The flyout offers **Letters (XY)** (only when the name has
+  a letter or digit) and **Note**. It draws in the current theme and replaces the cover.
+
+### 11.3 The mosaic
+- Up to 100 distinct track covers (Rust `mosaic_urls` via `json_extract`; the card's
+  `mosaicOf` from the tracks in hand). A square count (1, 4, 9 … 100) is an even grid; any
+  other count is cut into mixed tile sizes that fill the square. The playlist's id seeds
+  the layout and the tile order, so each playlist has its own picture.
+- **Memory only, never saved** (user's call: compliance). No picture made from Apple
+  artwork is stored; the cover images sit only in the webview's HTTP cache, which Apple's
+  headers allow (`Access-Control-Allow-Origin: *`, long `max-age`).
+- **Kept light:** drawn in a worker (`mosaic-worker.ts`, OffscreenCanvas → 480 px JPEG),
+  one playlist at a time, in idle time, only while the window shows, only once the slot
+  is on screen. The slot shows ♪ until then. Each draw logs `mosaic:drawn {covers, ms}`.
+- Apple policy checked 2026-09-15: the Apple Music Identity Guidelines have no artwork
+  rules for apps; the "no 2×2 grid" rule is in the Curator Best Practices and applies to
+  playlist art uploaded to Apple.
 
 ## Decisions (closed)
 

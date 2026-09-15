@@ -9,6 +9,7 @@ import type { MenuItem } from "./context-menu";
 import { toast, noticeOff } from "./toast";
 import { setting } from "./settings-store";
 import { APPLE_SIGIL } from "./apple-sigil";
+import { drawCover } from "./cover-art";
 
 // ── change bus (same subscribe idiom as layout-bus / onPlayerState) ────────────
 // Fires after any LOCAL-store mutation (create / add tracks / delete), with the
@@ -71,10 +72,24 @@ export function applePlaylistCounts(): Promise<number> {
 /** Create an empty local playlist; returns its rowid (list id = `local:{rowid}`).
  *  `role` "replay" marks one made from listening (replay.ts, PLAYLISTS.md §10.8). */
 export function playlistCreate(name: string, role?: "replay"): Promise<number> {
-  return invoke<number>("playlist_create", { name, description: null, role: role ?? null }).then((id) => {
+  return invoke<number>("playlist_create", { name, description: null, role: role ?? null }).then(async (id) => {
+    await startCover(id, name);
     emitChange(id);
     return id;
   });
+}
+
+/** The "New cover" setting (PLAYLISTS.md §11): draw Letters or Note in the current theme
+ *  and save it as the cover. Mosaic saves nothing. A failure leaves the mosaic. */
+async function startCover(id: number, name: string): Promise<void> {
+  const kind = setting("newPlaylistCover");
+  if (kind === "mosaic") return;
+  try {
+    const cover = await drawCover(kind, name);
+    if (cover) await invoke<void>("playlist_set_cover", { id, cover });
+  } catch (e) {
+    console.warn("[playlists] new cover", e);
+  }
 }
 
 /** Append tracks to a LOCAL playlist (denormalised snapshots — zero Apple calls). */
