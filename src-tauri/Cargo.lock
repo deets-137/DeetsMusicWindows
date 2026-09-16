@@ -812,8 +812,8 @@ dependencies = [
 
 [[package]]
 name = "deets-airplay"
-version = "0.2.1"
-source = "git+https://github.com/deets-137/DeetsAirplay?rev=4b3980b5b8c4265663319ca21da7568106f9dad3#4b3980b5b8c4265663319ca21da7568106f9dad3"
+version = "0.3.0"
+source = "git+https://github.com/deets-137/DeetsAirplay?rev=d735d14b213a79b9af2206cab9bfde689324b093#d735d14b213a79b9af2206cab9bfde689324b093"
 dependencies = [
  "chacha20poly1305",
  "num-bigint",
@@ -825,7 +825,7 @@ dependencies = [
 
 [[package]]
 name = "deetsmusic"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "base64 0.22.1",
  "chrono",

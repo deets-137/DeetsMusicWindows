@@ -18,6 +18,7 @@ use deets_airplay::airplay::mdns;
 use deets_airplay::airplay::rtsp::RemoteCommand;
 use deets_airplay::airplay::session::{self, Config, Metadata, Session, MAX_LATENCY_FRAMES, MIN_LATENCY_FRAMES};
 use deets_airplay::capture::Capture;
+use deets_airplay::claim;
 use deets_airplay::mixer;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -178,9 +179,17 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
     // v1 ships "All PC sound" only (user's call 2026-09-10, AIRPLAY.md §10): the
     // per-process path works from the probe but needs the WebView2-child target
     // and more desk time before it is trusted. The setting stays on disk for v2.
-    let capture = match settings.airplay_capture {
-        AirplayCapture::App if V2_PER_PROCESS => Capture::start_process(capture_target())?,
-        _ => Capture::start()?,
+    // `send` rides the claim file (AIRPLAY.md §11): it says what this stream carries, so the
+    // other sender can tell whether our audio is on the speaker, not only that we hold it.
+    let (capture, send) = match settings.airplay_capture {
+        AirplayCapture::App if V2_PER_PROCESS => {
+            let exe = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+                .unwrap_or_else(|| "DeetsMusic.exe".into());
+            (Capture::start_process(capture_target())?, claim::Send::Apps(vec![exe]))
+        }
+        _ => (Capture::start()?, claim::Send::All), // the default output: the whole PC, us included
     };
     let handle = app.clone();
     let config = Config {
@@ -209,6 +218,7 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
         log(&format!("connect FAILED: {e}"));
         e
     })?;
+    session.describe_send(send); // the claim is written by connect; this fills in its `send`
     Ok(Live {
         session,
         capture,

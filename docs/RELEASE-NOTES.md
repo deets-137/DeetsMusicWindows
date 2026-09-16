@@ -18,6 +18,38 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.6.2 — 2026-09-15
+
+**Each window size opens where you want it.** Settings › Window now has a row for every window
+size — Mini, NP, Midi and Max. Pick a size from the list, or press **Set current** to save the
+size the window has now. That view opens at that size every time, from the title menu, the tray
+icon, or when the app starts. NP, the player on its own, is wider and steadier than before, and
+it no longer turns into Midi when you make it wider.
+
+**Two fixes in the cards.** Play and Shuffle no longer show above a list with nothing in it. And
+a change of skin no longer scrolls the top of a card out of view.
+
+**AirPlay: DeetsAirplay can see the speaker you are using.** If you also run DeetsAirplay, its
+speaker list now marks the speaker DeetsMusic is playing to, shows what DeetsMusic is playing,
+and can ask DeetsMusic to let the speaker go. You need both apps for this; DeetsMusic alone is
+unchanged.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.6.1 — 2026-09-15
 
 **Repeat and shuffle.** Now Playing has a Repeat button next to Shuffle: press it for the whole

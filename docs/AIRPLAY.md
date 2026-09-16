@@ -234,8 +234,12 @@ work, and the usual install has no DeetsAirplay at all.
 `{id, app, pid, exe, speaker, ip, port, since, send}` to
 `%LOCALAPPDATA%\Deets\airplay-claims.tsv` inside `session::connect`, and drops it in the
 session's `Drop`. A claim counts only while a process with that pid *and* that exe name is
-alive, so a crash needs no cleanup. **This app adopts it by bumping the crate `rev`** —
-nothing in `airplay.rs` changes. `send` says what the stream carries (`all` for DeetsAirplay's
+alive, so a crash needs no cleanup. **This app adopts it by bumping the crate `rev`** (done
+2026-09-15: pinned at `d735d14`, crate 0.3.0). The one line in `airplay.rs` is
+`session.describe_send(send)` after `connect`: `Send::All` for the default-output capture
+this version ships, `Send::Apps([this exe])` for the per-process path. Without it the claim
+reads `Unknown` and the other side can say who holds the speaker but not whether our audio
+is on it. `send` says what the stream carries (`all` for DeetsAirplay's
 loopback, `apps [...]` once its per-app picker exists), which is how the other side knows
 whether our song is already on the speaker or genuinely absent from it.
 
@@ -258,6 +262,12 @@ whenever we hold the stream, or whenever it is sending the whole PC and we are p
 Its volume slider forwards to `POST /command {kind:"volume"}`, which lands on our slider,
 which while we stream is already the speaker's own volume: one hop, never a second gain stage.
 
+**The protection is one-directional (2026-09-15).** This app *writes* a claim; it does not
+read them. So DeetsAirplay can see that we hold a speaker and offer Take over, but this app
+will still connect to a speaker DeetsAirplay is holding. Making it symmetric is about five
+lines in `start_live`: bail when `claim::on_speaker(&speaker.name)` is `Some`, and name the
+holder in the error. Not written. Do not describe the pair as mutual protection.
+
 **Releasing:** the routes are additive and inert, so they can ride any release. The claim
-needs a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0, which is the only
-thing here that has to be sequenced — push the crate first.
+needed a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0 — done for 0.6.2,
+after that crate was pushed.

@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic"
-version = "0.6.1"
+version = "0.6.2"
 description = "A lightweight Apple Music player for Windows 11."
 authors = ["Aditya Sundaram"]
 edition = "2021"
@@ -40,7 +40,7 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 # commit + push DeetsAirplay, then bump `rev` here. (For a long local iteration, a
 # gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
 # works, but it churns Cargo.lock — prefer push + bump.)
-deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4b3980b5b8c4265663319ca21da7568106f9dad3" }
+deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "d735d14b213a79b9af2206cab9bfde689324b093" }
 tauri-plugin-deep-link = "2"
 url = "2"
 # Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).

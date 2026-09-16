@@ -18,6 +18,7 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
 [PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
+[AIRPLAY.md](AIRPLAY.md) (play on a HomePod — the shared sender crate, and §11 sharing a speaker with DeetsAirplay) ·
 [PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once — parked 2026-09-15, Spotify's dev-mode terms block it) ·
 [TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [ONBOARDING.md](ONBOARDING.md) (hover hints, right-click coverage, Settings › Tips, the sprite-led first run) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
 [ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
@@ -607,6 +608,37 @@ get large).
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
+- **The AirPlay claim guard (2026-09-15)** — the speaker-sharing work
+  ([AIRPLAY.md §11](AIRPLAY.md)) is **one-directional**, and this is the missing half.
+  DeetsAirplay (the tray sender, the same crate underneath) reads the machine-wide claim file
+  and refuses — or offers a **Take over** on — a speaker this app is holding. This app *writes*
+  a claim but never *reads* one, so it will still connect straight over a speaker DeetsAirplay
+  has, and the user gets a SETUP failure with nothing in it to act on. A receiver takes one
+  sender; whoever loses that race loses it silently.
+  - **Already done, so this is a one-function job:** the pin is at crate **0.3.0**
+    (`d735d14b213a79b9af2206cab9bfde689324b093`, bumped for 0.6.2) so `claim` is in scope, and
+    `start_live` already calls `session.describe_send(...)` — `Send::All` for the default-output
+    capture, `Send::Apps([exe])` for the per-process path. We write a complete claim. We simply
+    never look at anyone else's.
+  - **The guard**, in `connect_speaker` (`src-tauri/src/airplay.rs`, right after the
+    `AirplayState` is taken and before `stop_live`) — the mirror of the one in DeetsAirplay's
+    own `src-tauri/src/lib.rs`:
+    ```rust
+    if let Some(other) = claim::on_speaker(&speaker.name) {
+        return Err(format!("{} is already playing on {}.", other.app, speaker.name));
+    }
+    ```
+    `connect_speaker` already funnels a failure into `state.error`, which the dropdown's state
+    line shows, so the sentence reaches the user with no UI work. `claim` reports only a process
+    that is *actually alive* (pid **and** exe name must match), so a crashed sender never leaves
+    a speaker looking taken, and `on_speaker` never returns our own claim.
+  - **Say it better than a refusal:** the claim carries `send`, so when the holder is
+    DeetsAirplay sending `Send::All`, our audio is *already on that speaker* — the honest line is
+    nearer "DeetsAirplay is already sending this PC's sound to Living Room" than "you can't".
+    `other.send.carries("deetsmusic.exe")` answers that directly.
+  - **The limit, deliberately:** we can offer no "Take over" of our own. DeetsAirplay has no
+    bridge for us to ask, so the guard can only name the holder and leave the user to disconnect
+    it there. Giving it a listener is a bigger decision than this entry — don't smuggle it in.
 - Built since this list was written, so no longer here: the hosted sign-in page + deep link
   (2026-09-13), the CLI / agent control, the mini and max compositions, library windowing,
   playlist rename / drag-reorder / export.
