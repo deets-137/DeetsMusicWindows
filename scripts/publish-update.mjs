@@ -147,6 +147,11 @@ const file = `DeetsMusic_${version}_x64-setup.exe`;
 const sub = version.includes("-") ? "installers/dev" : "installers"; // archive-installer.mjs's rule
 const exe = join(root, sub, file);
 if (!existsSync(exe) || !existsSync(`${exe}.sig`)) die(`need ${sub}/${file} and its .sig (run npm run release first)`);
+// A missing entry used to publish `notes: ""`, and 0.6.3 and 0.7.0 went live with a blank row
+// on the website and in the update offer. The test channel's spike builds carry no notes.
+if (channel === "deetsmusic" && !releaseNotes(version)) {
+  die(`no "## ${version} — <date>" entry in docs/RELEASE-NOTES.md; write it before publishing (RELEASE.md §0 step 1)`);
+}
 if (index.releases.some((r) => r.version === version && !r.history) && !replace) {
   die(`${version} is already in ${channel}/index.json (pass --replace to overwrite)`);
 }

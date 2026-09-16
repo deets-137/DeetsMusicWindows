@@ -18,6 +18,92 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.7.0 — 2026-09-16
+
+**Sleep timer.** Click the alarm clock next to the volume bar. Turn the dial to set the
+minutes. Or click **End of song** or **End of Up Next**. The music pauses when the time runs
+out. **Wind down** lowers the volume over the last minutes. **Play out song** lets the last
+song play to its end. **Every day** sets the timer each day, at sunset or at a time you pick.
+
+**Full volume bar.** The volume bar in the title bar is now always full size. It has mute and
+AirPlay in every window size. To get the small pill back, turn on Settings › Window ›
+**Shrink volume bar**.
+
+**Song bar handle for each skin.** Each skin has its own handle on the song bar: Press, Ocean,
+Glass and Retro-Future. To use a plain handle, turn off Settings › Look and feel ›
+**Fancy scrubber**.
+
+**Shuffle and Repeat show when on.** The Shuffle and Repeat buttons now fill when they are on.
+The Shuffle arrows move each time you click the button. The Repeat loop turns once when you set
+it to one song.
+
+**New hover hints.** Hints now show in a box that matches your theme. Settings › Look and feel
+has three new rows. **Show hover hints** turns the hints on or off. **Hints appear after** sets
+how long you hold the pointer before a hint shows. **Name songs on hover** shows the full song
+name when a row cuts it off.
+
+**Also:** The window buttons are in the Windows order: minimize, maximize, close. On an artist
+page in Search, the playlist rows now line up with the albums. AI apps connected to DeetsMusic
+can read the songs on an album or playlist. They do not change anything to do this.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
+## 0.6.3 — 2026-09-15
+
+**Home card.** Home shows three rows of tiles. The first row shows the music you played last.
+The second row shows the music you added last. The third row shows the music you play most at
+this part of the day, on a weekday or on a weekend. The parts of the day are morning (5 to 11),
+afternoon (11 to 17), evening (17 to 22) and night (22 to 5). The score is the minutes you
+listened in that part of the day, and a play counts half as much after 42 days. The third row
+shows when 5 songs, albums, playlists, stations or artists have a score. To remove a tile,
+right-click it and click **Hide**. Settings › Home sets how long a tile stays hidden.
+
+**Full play history.** The History card now shows the songs you played before you closed the
+app. A small mark shows each song you skipped. To show the day on each row, turn on Settings ›
+Playback › **Show the day in History**.
+
+**Select many rows.** Ctrl+click selects a row. Shift+click selects all rows between two rows.
+Ctrl+A selects the full list. Escape or a plain click clears the selection. This works in the
+Library, Playlists, Search, History, Rewind and Up Next. Drag the selected rows onto a
+playlist. Or right-click them to play them, add them to a playlist, or remove them.
+
+**Add to Playlist in more places.** Right-click a song in Up Next or History and click
+**Add to Playlist**. You can also right-click the cover in Now Playing or the Queue. This works
+for station songs too.
+
+**Empty playlists.** An empty playlist now shows its Play and Shuffle buttons, turned off. It
+also shows a space where you can drop songs.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.6.2 — 2026-09-15
 
 **Each window size opens where you want it.** Settings › Window now has a row for every window

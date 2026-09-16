@@ -1120,7 +1120,13 @@ user a way to turn the cost down without giving up the app's character.
 are about MOTION, not draw cost, and a skin is all-or-nothing: picking Glass buys its frost,
 picking Ocean buys grain, specks and sand edges. There is no "Glass, but cheaper".
 
-**What is measured so far.** On an RX 6700 XT at 244 Hz an Ocean skin switch puts `CrGpuMain`
+**Measured 2026-09-16** (DEBUGGING.md §What the 2026-09-16 graphics-cost baseline found).
+Under `--gpu=off`, **Glass** drops to 26–34 fps in every scene (idle, switch, scroll). Turning
+off the panel frost alone brings idle back to 178 fps. **Ocean** scroll is slow on the real card
+too (160 fps, 49% dropped), and the sand is not the main cause. Press and Retro-Future need
+nothing. So the list is two skins long. Suspect 1 is confirmed; suspects 3–5 are still open.
+
+**Measured before that.** On an RX 6700 XT at 244 Hz an Ocean skin switch puts `CrGpuMain`
 at **86.9%** while the page's own thread sits at 29.5% — the work is in the GPU process, not
 in script. At idle `CrGpuMain` is ~0, so this is the switch, not steady state. Press and
 Retro-Future stayed cheap throughout. **Nothing has been measured on weak hardware yet**;

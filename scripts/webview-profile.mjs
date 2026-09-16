@@ -140,8 +140,13 @@ if (TRACE) {
   // Break one thread down by event name. Default: the busiest RENDERER thread (the page's
   // own main thread), since that is what most questions are about; --thread=gpu etc. to move.
   const isRenderer = (k) => /CrRendererMain/.test(names.get(k) ?? "");
+  // the aliases name the WORKING thread: a plain substring match for "gpu" picked
+  // GpuVSyncThread (always ~100% busy, because it waits on vsync) over CrGpuMain
+  const ALIAS = { gpu: "crgpumain", renderer: "crrenderermain", viz: "vizcompositorthread", compositor: "compositor" };
+  const want = ALIAS[pick] ?? pick;
   const target = pick
-    ? busy.find(([k]) => (names.get(k) ?? "").toLowerCase().includes(pick))?.[0]
+    ? (busy.find(([k]) => (names.get(k) ?? "").toLowerCase() === want) ??
+        busy.find(([k]) => (names.get(k) ?? "").toLowerCase().includes(want)))?.[0]
     : (busy.find(([k]) => isRenderer(k)) ?? busy[0])?.[0];
   if (!target) { console.log("\nno thread matched --thread"); process.exit(0); }
   const agg = new Map();

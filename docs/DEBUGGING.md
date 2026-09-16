@@ -347,6 +347,44 @@ and a CDP session competing for the same CPU/GPU, the same switch measured anywh
 optimisation was accepted from this pass. For a trustworthy number: a freshly started app, its
 window in the foreground, no profiler attached, and check the `@N Hz` first.
 
+### What the 2026-09-16 graphics-cost baseline found
+
+`dev:built`, surface Max (1100×820), 244 Hz, no song, a clean GPU, 3 passes each, spread ≤ 8%
+unless marked. The rows are in `scripts/perf-history.csv` with the notes `baseline` and
+`baseline gpu=off (WARP)`. fps = frames ÷ ms. cpu = GPU process / page (100 = one core).
+
+| scene | skin | RX 6700 XT | `--gpu=off` (WARP) |
+|---|---|---|---|
+| appearance | press | 239 fps · 10 / 18% | 227 fps · 19 / 13% |
+| appearance | ocean | 236 · 20 / 37% | 165 · 56 / 24% |
+| appearance | **glass** | 238 · 43 / 41% | **34 · 97 / 12%** |
+| appearance | retro-future | 236 · 22 / 32% | 209 · 33 / 25% |
+| idle | press | 240 · 4 / 8% | 240 · 2 / 5% |
+| idle | ocean | 240 · 6 / 16% | 204 · 31 / 10% |
+| idle | **glass** | 240 · 12 / 15% | **31 · 98 / 4%** (spread 16%) |
+| idle | retro-future | 240 · 7 / 11% | 237 · 24 / 10% |
+| scroll | press | 240 · 63 / 66% | 240 · 16 / 74% |
+| scroll | **ocean** | **160 · 130 / 70%** (spread 19%) | **88 · 94 / 135%** |
+| scroll | **glass** | 240 · 87 / 63% | **26 · 99 / 15%** |
+| scroll | retro-future | 240 · 87 / 79% | 217 · 89 / 96% |
+
+**The feature list (the gap between the two columns):**
+
+1. **Glass is the one skin that fails on software raster, in every scene.** Idle, switch and
+   scroll all give 26–34 fps, with the GPU process near one full core. A/B at idle under
+   `--gpu=off`: `.panel{backdrop-filter:none}` gives **178 fps, GPU 41%** (from 31 fps, 98%).
+   Pausing only the aurora gives 71 fps, GPU 86% (spread 57%: trust only the direction).
+   So the panel frost is the cost. The aurora drift is what makes the frost render again
+   while nothing else moves.
+2. **Ocean scroll is slow on the real card too** (160 fps, 49% dropped, GPU process 130%). A
+   trace shows `CrGpuMain` 99.5% busy in raster (`DoEndRasterCHROMIUM`, ~7 ms a task). Hiding
+   the sand layers (`.panel::before/::after`) under `--gpu=off` moved only 88 → 100 fps, so the
+   sand is **not** the main cause. The cause is open. Next suspect: the swell
+   (`.ocean__roll` / `.ocean__bob`) under a moving list.
+3. Press and Retro-Future hold ≥ 209 fps under `--gpu=off` in every scene. They need nothing.
+4. Not measured yet: the Press record player (needs a song; see the `playing` column),
+   `--gpu=slow`, and the Mini / NP surfaces.
+
 ## Measuring like the live app (2026-09-16)
 
 The dev server is a poor stand-in for the installed app when the question is GRAPHICS. Three
@@ -394,7 +432,7 @@ npm run dev:built -- --gpu=slow          # release-shaped AND weak
 `frames.ts` logs the real renderer once per launch:
 
 ```
-[perf] gpu SOFTWARE · Google SwiftShader           ← --gpu=off really took
+[perf] gpu SOFTWARE · Microsoft Basic Render Driver   ← --gpu=off really took (WARP, not SwiftShader)
 [perf] gpu accelerated · ANGLE (AMD, AMD Radeon RX 6700 XT …)   ← normal
 ```
 
@@ -412,7 +450,29 @@ Two things to hold in mind when reading the result:
 ```
 npm run bench appearance -- --passes 3
 npm run bench appearance -- --passes 3 --skins ocean,press
+npm run bench idle   -- --passes 3 --note "baseline"          # settle on each skin, touch nothing
+npm run bench scroll -- --passes 3 --note "baseline"          # bounce the library list, 0–1500 px
+npm run bench scroll -- --skins ocean --css ".panel::before,.panel::after{display:none!important}"
 ```
+
+**Three scenes.** `appearance` is a transition cost (the rise). `idle` is a steady cost (the
+aurora, the sea, the album aurora, the record player if a song plays). `scroll` bounces the
+library list inside its first 1500 px, after a warm-up bounce: a run down all 3,895 rows
+measured artwork arriving from the network (250 ms frames), not the skin.
+
+**Two CPU columns.** Frames ÷ ms stops at the display rate for any cheap scene, so each window
+also records the CPU time of the GPU process and the page renderer (CDP `SystemInfo`, 100 = one
+core). Under `--gpu=off` the GPU process is the rasteriser, so `gpu-cpu` is the whole draw cost.
+
+**`--css "<rules>"`** injects a stylesheet for the run and removes it after. That is the A/B:
+hide or cheapen one feature under the same gate. The rules go in the row's note.
+
+**The gate also reads the Windows GPU counters** (2026-09-16). A game held 97% of the 3D engine
+through a whole baseline, and the idle check let it by: a steady load makes both idle samples
+equally slow. The bench now refuses when another process uses over 10% of the GPU 3D engine,
+and names it. `--contended` runs anyway, on purpose, and writes what shared the GPU into the
+note. The `gpu` column is `on` / `off` / `slow` from the flags the runner passed, not from the
+renderer string.
 
 A single frame reading from this machine means nothing: on 2026-09-16 the same skin switch
 measured **36 to 236 fps** run to run, with node, vite, a CDP session and an open DevTools all

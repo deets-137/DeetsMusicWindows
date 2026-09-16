@@ -28,7 +28,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 
 | Step | Command | What it does | Needs |
 |---|---|---|---|
-| 1 | set the version | the same version in the four files (§1) | — |
+| 1 | set the version, write the notes | the same version in the four files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
 | 3 | install + test | the installed build, by hand, from `installers/` | — |
 | 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update | `../DeetsSupport` checkout, wrangler login |
@@ -430,6 +430,10 @@ stored with `\n` line endings whatever the checkout uses:
   reason is shown on the public page, so it is written in plain words for a user.
 - `--notes-only <v>` refreshes one row's `notes` from RELEASE-NOTES.md without re-uploading
   the installer. Today a typo fix needs `--replace`, which uploads ~6 MB again.
+- **A publish to `deetsmusic` stops when RELEASE-NOTES.md has no entry for the version**
+  (added 2026-09-16). Before that, the script wrote `notes: ""` without a warning. 0.6.3 and
+  0.7.0 went live that way, and their rows on the website were empty until `--notes-only`
+  filled them. The test channel is not checked: its spike builds have no notes.
 
 ### 6.8 Test first (spike before the build)
 

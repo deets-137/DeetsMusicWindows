@@ -206,7 +206,9 @@ function sampleHz(): void {
  * Which GPU actually drew this session, as one log line. `npm run dev:app -- --gpu=off`
  * pretends to be a weaker machine, and a flag that silently failed to take would make every
  * later number a lie — so the renderer string goes in the log next to the frame lines.
- * "SwiftShader" or "Software" means acceleration really is off; a card name means it is on.
+ * "SwiftShader", "Software" or "Basic Render Driver" means acceleration really is off; a card
+ * name means it is on. WebView2 under `--gpu=off` falls back to WARP, Windows' own software
+ * rasteriser, which names itself "Microsoft Basic Render Driver" (seen 2026-09-16), not SwiftShader.
  */
 function logRenderer(): void {
   let name = "unknown";
@@ -220,7 +222,7 @@ function logRenderer(): void {
   } catch {
     /* no WebGL at all — leave it unknown */
   }
-  const soft = /swiftshader|software|llvmpipe/i.test(name);
+  const soft = /swiftshader|software|llvmpipe|basic render driver|warp/i.test(name);
   const line = `[perf] gpu ${soft ? "SOFTWARE" : "accelerated"} · ${name}`;
   console.info(line);
   toLog(line);
