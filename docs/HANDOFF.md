@@ -155,7 +155,8 @@ the platform sound and the loop thin. Scoped with forks in
    payload and right-clicks to *Add to Playlist ▸ New Playlist…*. A second pass the same day
    (§19d) took it to **every list in the app**: Library tiles (albums, artists), the Playlists
    overview, the Search card (results and drill panes), Rewind (not artists), plus *Remove N
-   songs from Playlist*. Off in mini.
+   songs from Playlist*. Off in mini. **Shipped as 0.6.3, published to the `deetsmusic`
+   channel 2026-09-15** (commits `13b879b` + `bb465ce` + `596e845`).
    No Rust change, so no dev-runner restart. Desk test: Ctrl+click five songs in the Library
    (the fill, the count row), Shift+click a run, sort the list (the picks hold), drag the set
    onto a playlist row (the ghost's count), right-click → New Playlist…, Escape; then the
