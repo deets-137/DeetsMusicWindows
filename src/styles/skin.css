@@ -70,6 +70,7 @@
      ticks and numbers are geometry here; their colors are theme roles. */
   --sleep-btn-size:     var(--traffic-size);   /* level with the lights and the bar */
   --sleep-panel-w:      224px;
+  --sleep-panel-pad:    var(--space-2);   /* was the flyout's --vol-panel-pad, which left with it (0.7.0 shipped with no margins) */
   --sleep-dial-size:    172px;
   --sleep-tick-w:       1px;
   --sleep-tick-major-w: 2px;

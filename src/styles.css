@@ -291,7 +291,7 @@ body {
   width: var(--sleep-panel-w);
   display: flex; flex-direction: column; align-items: stretch;
   gap: var(--space-2);
-  padding: var(--vol-panel-pad);
+  padding: var(--sleep-panel-pad);
   background: var(--menu-surface);
   -webkit-backdrop-filter: var(--menu-backdrop);
   backdrop-filter: var(--menu-backdrop);
@@ -2108,34 +2108,22 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .scrub { position: relative; display: flex; cursor: pointer; touch-action: none; }
 
 /* Horizontal: full width, fill grows left→right, handle rides the fill edge. */
-.scrub:not(.scrub--v) { height: var(--scrubber-handle-size); align-items: center; }
-.scrub:not(.scrub--v) .scrub__track {
+.scrub { height: var(--scrubber-handle-size); align-items: center; }
+.scrub .scrub__track {
   position: relative; width: 100%; height: var(--scrubber-track-h);
   border-radius: 999px; background: var(--panel-border);
 }
-.scrub:not(.scrub--v) .scrub__fill {
+.scrub .scrub__fill {
   position: absolute; left: 0; top: 0; height: 100%;
   width: var(--slider-fill, 0%); background: var(--title); border-radius: 999px;
 }
-.scrub:not(.scrub--v) .scrub__handle {
+.scrub .scrub__handle {
   position: absolute; top: 50%; left: var(--slider-fill, 0%);
   transform: translate(-50%, -50%) scale(var(--handle-scale, 1));
 }
 
-/* Vertical: fixed run, fill grows bottom→top, handle rides up the fill edge. */
-.scrub--v { width: var(--scrubber-handle-size); height: var(--vol-track-len); justify-content: center; }
-.scrub--v .scrub__track {
-  position: relative; height: 100%; width: var(--scrubber-track-h);
-  border-radius: 999px; background: var(--panel-border);
-}
-.scrub--v .scrub__fill {
-  position: absolute; left: 0; bottom: 0; width: 100%;
-  height: var(--slider-fill, 0%); background: var(--title); border-radius: 999px;
-}
-.scrub--v .scrub__handle {
-  position: absolute; left: 50%; bottom: var(--slider-fill, 0%);
-  transform: translate(-50%, 50%) scale(var(--handle-scale, 1));
-}
+/* The vertical variant (.scrub--v) left with the volume flyout on 2026-09-16; slider.ts still
+   takes axis "y" if a vertical slider ever comes back. */
 
 /* Shared handle look — masked --title box, themes via --title, sizes via token. This is the
    PLAIN handle: what every skin shows with Settings › Look and feel › Fancy scrubber off. */
