@@ -11,6 +11,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import * as health from "./apple-health";
+import { initLastfm } from "./lastfm";
 import * as diag from "./diag";
 import { initTrackStore, tracksLoaded } from "./track-store";
 import { surfaceSized } from "./surface";
@@ -29,6 +30,8 @@ import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initLookSchedule, noteHandPick } from "./look-schedule";
 import { initSleep } from "./sleep";
+import { initSound } from "./sound";
+import { initSoundPanel } from "./sound-panel";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
@@ -50,6 +53,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
+  initSound(); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)
   // File drops belong to the page (tauri.conf.json `dragDropEnabled: false`, for the playlist
   // cover). A drop no element took must not navigate the webview to the file.
   window.addEventListener("dragover", (e) => {
@@ -314,6 +318,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   window.addEventListener("deets:sign-in", () => void signIn()); // the "Sign in" toast button
   void paintAccount();
+  initLastfm(); // the flyout's second account (LASTFM.md §4)
 
   // No developer token at all (a first run offline, or the mint's KILL switch —
   // RELEASE.md §7): Rust logged it at setup and every Apple call will fail with the
@@ -484,6 +489,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
+  initSoundPanel(); // the title bar's Sound item (SOUND.md §2.3)
   initSleep();
 
   // The skins' scrubber motion (UI-ARCHITECTURE §3 SCRUBBERS) runs only while music plays:

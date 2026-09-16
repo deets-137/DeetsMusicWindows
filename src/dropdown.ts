@@ -56,6 +56,8 @@ export interface DropdownHandle {
 
 // Every live dropdown follows one menu mode; `setDropdownMode` fans a change out to all.
 const live = new Set<DropdownHandle>();
+/** Each live dropdown's own elements, so opening one can close the others (below). */
+const regions = new Map<DropdownHandle, { root: HTMLElement; panel: HTMLElement; closeAway: () => void }>();
 let globalMode: DropdownMode = "click";
 
 /** Flip every live dropdown between click/hover (the Hover-Menu toggle calls this). */
@@ -77,6 +79,17 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     // A panel that animates (the .pop style) logs its arrival's frames (DEBUGGING.md §Frame telemetry).
     if (panel.hidden && panel.dataset.frames) frames.during("menu", 300, panel.dataset.frames);
     const appearing = panel.hidden;
+    // One dropdown at a time. A trigger's click stops propagation (so its own panel is not
+    // closed again at once), which also kept every OTHER open panel from seeing a click away:
+    // the sleep panel stayed open over the Sound panel (2026-09-16). So opening closes the
+    // others — except one that holds this trigger (the AirPlay square inside the volume panel).
+    if (appearing) {
+      for (const [h, r] of regions) {
+        if (h === handle || !h.isOpen) continue;
+        if (r.root.contains(trigger) || r.panel.contains(trigger)) continue;
+        r.closeAway();
+      }
+    }
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
     if (appearing) onOpen?.();
@@ -124,6 +137,7 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     setMode(m: DropdownMode) { mode = m; },
     destroy() {
       live.delete(handle);
+      regions.delete(handle);
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
       // root/trigger listeners drop with the host element when a card clears its host.
@@ -131,5 +145,6 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     get isOpen() { return isOpen(); },
   };
   live.add(handle);
+  regions.set(handle, { root, panel, closeAway: () => close("away") });
   return handle;
 }

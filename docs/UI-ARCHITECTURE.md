@@ -457,6 +457,12 @@ A **Skin** row mirrors Theme exactly (flyout of `[data-skin-choice]` items, wire
 slot in the same way. Because the title is now interactive, the **draggable zone is the
 middle `.drag-region`** between the title and the lights, not the whole bar.
 
+**One dropdown open at a time (2026-09-16).** A trigger's click stops propagation, so no other open
+dropdown sees a "click away". Opening a dropdown therefore closes every other open one itself
+(reason `away`, so `shouldStayOpen` still vetoes), except a dropdown whose root or panel holds the
+new trigger (a panel inside a panel, like the AirPlay square in the volume panel). Found when the
+sleep panel stayed open on top of a just-opened Sound panel.
+
 **One dropdown primitive for every menu** (`src/dropdown.ts`, `makeDropdown`): the settings
 menu, the sleep timer's panel, the AirPlay "Play on" panel, and the **slot-card pickers** share a single open/close/dismiss
 mechanism (outside-click + Escape, `aria-expanded`, an optional `shouldStayOpen` veto so a
@@ -646,6 +652,12 @@ Square tiles render Apple artwork by filling the `{w}x{h}` URL template
 (`Track.artwork`); tiles with no art fall back to a `♪` glyph. Tile sizing is
 token-driven (`--lib-tile-small/large`, `--lib-grid-gap`, `--lib-pill-radius` in the
 skin), so a skin can reshape the grid with no markup change.
+
+**Scrollbars — the rule (2026-09-16).** Every element that scrolls wears the app's bar. It is
+opt-in: `::-webkit-scrollbar` styles only the selectors that name it, and nothing warns when a
+new scroller is missed (the Sound panel shipped with the grey OS bar). A new scroller adds the
+`app-scroll` class (styles.css, next to the Library's rule); the older scrollers keep their own
+selectors and draw the same bar from the same tokens.
 
 The card's scrolling body uses **our own scrollbar** instead of the OS one — styled
 via the `::-webkit-scrollbar` pseudo-elements (WebView2 is Chromium). Its **color is

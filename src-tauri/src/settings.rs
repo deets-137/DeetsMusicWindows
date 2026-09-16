@@ -50,6 +50,11 @@ pub struct SettingsData {
     /// The CLI / MCP routes on the bridge answer (AGENT-SETUP.md). Off → 403 with a
     /// plain sentence; the browser extension's routes are untouched.
     pub agent_control: bool,
+    /// Agents may read play history: `plays` / `play_counts` in `deetsmusic sql`, the history
+    /// sorts of `list what=library`, and `/history` (LOCAL-DATA.md §9). On by default: Agent
+    /// control is already the consent to reach the app; this row lets a user keep control and
+    /// still hide their listening habits.
+    pub agent_history: bool,
     /// First installed run enrolled the app in Launch-at-startup (once, like
     /// DeetsAirplay); the Settings toggle owns it from then on.
     pub autostart_seeded: bool,
@@ -62,6 +67,12 @@ pub struct SettingsData {
     /// a position to put it back at — and that must survive a × close and a restart,
     /// not just live in `tray::Inner`. `None` until the window has been placed once.
     pub window_pos: Option<[i32; 2]>,
+    /// Send plays to Last.fm while an account is connected (LASTFM.md §6). On: connecting is
+    /// the consent; this row pauses it without losing the account.
+    pub lastfm_scrobble: bool,
+    /// Tell Last.fm what plays now, for the profile's "listening now" line. Separate from
+    /// scrobbling: it changes only the profile, never the charts.
+    pub lastfm_now_playing: bool,
 }
 
 impl Default for SettingsData {
@@ -73,10 +84,13 @@ impl Default for SettingsData {
             airplay_speaker_volumes: std::collections::HashMap::new(),
             minimize_to_tray: true,
             agent_control: true,
+            agent_history: true,
             autostart_seeded: false,
             read_windows_media: true,
             bridge_token: String::new(),
             window_pos: None,
+            lastfm_scrobble: true,
+            lastfm_now_playing: true,
         }
     }
 }
@@ -162,6 +176,21 @@ pub fn settings_set_read_windows_media(
 #[tauri::command]
 pub fn settings_set_agent_control(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
     settings.update(|d| d.agent_control = on)
+}
+
+#[tauri::command]
+pub fn settings_set_agent_history(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    settings.update(|d| d.agent_history = on)
+}
+
+#[tauri::command]
+pub fn settings_set_lastfm_scrobble(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    settings.update(|d| d.lastfm_scrobble = on)
+}
+
+#[tauri::command]
+pub fn settings_set_lastfm_now_playing(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    settings.update(|d| d.lastfm_now_playing = on)
 }
 
 // ── start with Windows (HKCU Run key via reg.exe; DeetsAirplay / DeetsRGB pattern) ──

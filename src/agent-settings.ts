@@ -20,6 +20,7 @@ import { applySkin, currentSkin, type SkinName } from "./skin";
 import { applySurface, currentSurface, MIN_SIZES, SIZE_KEYS, type SurfaceName, type SizeSlot } from "./surface";
 import { noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
+import { presetOptions, selectPreset } from "./sound";
 
 type Opt = { value: string; label: string };
 type Reply = Record<string, unknown>;
@@ -92,7 +93,7 @@ const storeSize = (slot: SizeSlot, label: string): Spec => ({
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
 const rustSettings = () =>
-  invoke<{ minimizeToTray: boolean; agentControl: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }>("settings_get");
+  invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }>("settings_get");
 const rustToggle = (section: string, key: string, label: string, get: () => Promise<boolean>, set: (on: boolean) => Promise<unknown>, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
   get: async () => ((await get()) ? "on" : "off"),
@@ -170,6 +171,37 @@ const SPECS: Spec[] = [
   storeChoice("Look and feel", "nightSkin", "Night look skin", SKIN_OPTIONS),
   storeTime("dayStart", "Day starts at", 4 * 60, 12 * 60),
   storeTime("nightStart", "Night starts at", 15 * 60, 23 * 60 + 30),
+  // ── Sound (SOUND.md): the equalizer and DeetsAdaptiveSound. The two master switches are
+  //    off only: every effect ships off (Apple DPLA §3.3.6.D), and turning one on is the user's
+  //    own choice in the Sound panel, not an agent's. ──
+  storeToggle("Sound", "soundEq", "Equalizer", { offOnly: true }),
+  {
+    key: "soundEqPreset", label: "Equalizer preset", section: "Sound", kind: "choice",
+    get options() {
+      return presetOptions().map((p) => ({ value: p.id, label: p.name }));
+    },
+    get: () => setting("soundEqPreset"),
+    set: (v) => selectPreset(v),
+  },
+  storeChoice("Sound", "soundEqMode", "Equalizer view", [{ value: "graphic", label: "Sliders" }, { value: "parametric", label: "Dots" }]),
+  storeChoice("Sound", "soundEqPreamp", "Preamp", [{ value: "limiter", label: "Limiter only" }, { value: "needed", label: "When needed" }, { value: "always", label: "Always" }, { value: "manual", label: "Set by hand" }]),
+  storeToggle("Sound", "soundEqPerOutput", "Per output"),
+  storeToggle("Sound", "soundAdaptive", "Adaptive sound", { offOnly: true }),
+  storeToggle("Sound", "soundLoudness", "Match loudness"),
+  storeChoice("Sound", "soundLoudTarget", "Loudness target", [-16, -14, -18].map((v) => ({ value: String(v), label: `${v} LUFS` })), {
+    get: () => String(setting("soundLoudTarget")),
+    set: (v) => setSetting("soundLoudTarget", Number(v)),
+  }),
+  storeToggle("Sound", "soundLoudAlbum", "Album gain"),
+  storeChoice("Sound", "soundLoudUnmeasured", "New songs", [{ value: "median", label: "Median" }, { value: "none", label: "No change" }]),
+  storeChoice("Sound", "soundLowVol", "Fuller at low volume", [{ value: "off", label: "Off" }, { value: "gentle", label: "Gentle" }, { value: "full", label: "Full" }]),
+  storeChoice("Sound", "soundLowVolKey", "Low volume follows", [{ value: "both", label: "App × Windows" }, { value: "app", label: "App only" }]),
+  storeChoice("Sound", "soundCrossfeed", "Headphone crossfeed", [{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "off", label: "Off" }]),
+  storeChoice("Sound", "soundCrossfeedLevel", "Crossfeed amount", [{ value: "light", label: "Light" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }]),
+  storeChoice("Sound", "soundReviewDays", "Ask to keep after", [7, 14, 3, 0].map((d) => ({ value: String(d), label: d ? `${d} days` : "Never" })), {
+    get: () => String(setting("soundReviewDays")),
+    set: (v) => setSetting("soundReviewDays", Number(v)),
+  }),
   // ── Sleep (NEXT-VERSION §17): the schedule and the wind-down; a running timer is the panel's ──
   storeChoice("Sleep", "sleepSchedule", "Sleep every day", [{ value: "off", label: "Off" }, { value: "sun", label: "Sunset" }, { value: "clock", label: "At a time" }], {
     note: (v) => (v === "off" ? undefined : "It pauses only if music is playing at that time."),
@@ -260,6 +292,11 @@ const SPECS: Spec[] = [
     note: (v) => (v === "off" ? "Agent control is off. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
   }),
   storeChoice("Connections", "agentSettings", "Agent changes settings", [{ value: "allow", label: "Allow" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }], { readOnly: true }),
+  // LOCAL-DATA.md §9: a privacy gate, so off only, like Agent control.
+  rustToggle("Connections", "agentHistory", "Agents read play history", async () => (await rustSettings()).agentHistory, (on) => invoke("settings_set_agent_history", { on }), {
+    offOnly: true,
+    note: (v) => (v === "off" ? "Play history is hidden from agents now. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
+  }),
   // ── Updates ──
   storeChoice("Updates", "updateMode", "Get updates", [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }]),
 ];
@@ -362,7 +399,9 @@ export async function settingsWrite(payload: any): Promise<Reply> {
   const v = parse(s, String(payload?.value ?? ""));
   const cur = await s.get();
   if (cur === v) return { ok: true, message: `${s.label} is already ${labelOf(s, v)}.` };
-  if (s.offOnly && v === "on") throw blocked(`Only you can turn on ${s.label}, in DeetsMusic › Settings › ${s.section}.`);
+  // The Sound switches live in the title bar's Sound panel, not in Settings.
+  const where = s.section === "Sound" ? "the Sound panel in the title bar" : `Settings › ${s.section}`;
+  if (s.offOnly && v === "on") throw blocked(`Only you can turn on ${s.label}, in DeetsMusic › ${where}.`);
 
   const mode = setting("agentSettings");
   if (mode === "off") throw blocked("Agent changes settings is off in DeetsMusic › Settings › Connections.");

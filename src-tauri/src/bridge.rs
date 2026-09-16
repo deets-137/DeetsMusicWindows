@@ -650,7 +650,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     // extension (an Origin) is a different feature and is never gated by it.
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
-        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks",
+        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -881,6 +881,47 @@ async fn handle(app: AppHandle, mut req: Request) {
             Ok(list) => json(req, 200, serde_json::json!({ "playlists": list }), origin),
             Err(e) => json(req, 502, serde_json::json!({ "error": e }), origin),
         },
+        // ── local data (LOCAL-DATA.md) — read-only, zero Apple calls ──
+        // The bearer token only: a browser extension (an Origin) has no business reading the
+        // library or the play history, so it is refused even though it counts as paired.
+        (Method::Post, "/query") | (Method::Post, "/songs") if origin.is_some() => {
+            json(req, 403, serde_json::json!({ "error": "This route is for agents with the bridge token, not extensions." }), origin)
+        }
+        (Method::Post, "/query") => {
+            let sql = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|v| v.get("sql").and_then(|s| s.as_str()).map(String::from))
+                .unwrap_or_default();
+            let history = settings.agent_history;
+            // SQLite work off the runtime's threads; its own 2 s limit bounds the wait.
+            let res = tauri::async_runtime::spawn_blocking(move || crate::query::query(&sql, history))
+                .await
+                .unwrap_or_else(|e| Err(e.to_string()));
+            match res {
+                Ok(v) => json(req, 200, v, origin),
+                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+            }
+        }
+        (Method::Post, "/songs") => {
+            let r: crate::query::SongsReq = match serde_json::from_str(&body) {
+                Ok(r) => r,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            let history = settings.agent_history;
+            let res = tauri::async_runtime::spawn_blocking(move || crate::query::songs(r, history))
+                .await
+                .unwrap_or_else(|e| Err(e.to_string()));
+            match res {
+                Ok(v) => json(req, 200, v, origin),
+                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+            }
+        }
+        (Method::Get, "/history") if origin.is_none() && !settings.agent_history => json(
+            req,
+            403,
+            serde_json::json!({ "error": "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections." }),
+            origin,
+        ),
         (Method::Get, "/history") => {
             let limit = query_param(&url, "limit").and_then(|v| v.parse::<u32>().ok()).unwrap_or(50);
             agent_json(req, ask(&app, "history-get", serde_json::json!({ "limit": limit })).await, origin)

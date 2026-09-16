@@ -212,6 +212,10 @@ const RESET_GROUPS: ResetGroup[] = [
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
     keys: ["playlistEagerCounts", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webMakeMotion"],
   },
+  {
+    id: "sound", label: "Sound", hint: "The equalizer, adaptive sound and their choices. Not your saved presets",
+    keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundAdaptive", "soundLoudness", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
+  },
   { id: "home", label: "Home", hint: "Hiding lasts, and every hidden tile", keys: ["homeHideLasts", "homeHidden"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
 ];
@@ -277,10 +281,12 @@ function mountSettings(host: HTMLElement): CardInstance {
   let lastfmScrobble = true;
   let lastfmNowPlaying = true;
   let lastfm: LastfmStatus | null = null;
-  interface RustSettings { minimizeToTray: boolean; agentControl: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }
+  let agentHistory = true;
+  interface RustSettings { minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }
   const takeRust = (s: RustSettings) => {
     minimizeToTray = s.minimizeToTray;
     agentControl = s.agentControl;
+    agentHistory = s.agentHistory;
     lastfmScrobble = s.lastfmScrobble;
     lastfmNowPlaying = s.lastfmNowPlaying;
   };
@@ -929,7 +935,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md), then the browser
       // extension's bridge status and install page (EXTENSION.md).
       title: "Connections",
-      count: 4,
+      count: 5,
       tail: `<div class="set__status" id="set-agent-status">…</div>
         <div class="set__status" id="set-ext-status">Extension bridge off</div>
         <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Extension install guide</span></button>`,
@@ -958,6 +964,19 @@ function mountSettings(host: HTMLElement): CardInstance {
           kind: "choice", id: "agentsettings", label: "Agent changes settings", key: "agentSettings",
           hint: "An AI app or the command line changing these settings. Ask: DeetsMusic asks you each time",
           options: [{ value: "allow", label: "Allow" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }],
+        },
+        // LOCAL-DATA.md §9: agents may read what you played (the sql tool, the library sorts, history).
+        {
+          kind: "toggle",
+          id: "agenthistory",
+          label: "Agents read play history",
+          hint: () => "Lets a connected agent see what you played, when, and what you skipped",
+          get: () => agentHistory,
+          set: (on) => {
+            agentHistory = on;
+            invoke("settings_set_agent_history", { on }).catch((e) => console.error("[settings] agent history", e));
+            render();
+          },
         },
         // AGENT-SETUP.md: pick the app, then copy its exact setup text.
         {

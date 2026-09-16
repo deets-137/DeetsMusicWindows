@@ -10,6 +10,7 @@
 
 import type { ThemeName } from "./theme";
 import type { SkinName } from "./skin";
+import type { EqPreset } from "./sound-presets";
 
 export interface Settings {
   // ── window ──
@@ -114,6 +115,50 @@ export interface Settings {
   /** When the time runs out in the middle of a song, let the song play to its end first
    *  (the wind-down then fills the song's last minutes). Off: the mark is the silence. */
   sleepPlayOut: boolean;
+  // ── sound (SOUND.md; sound.ts, sound-panel.ts) — every effect off by default ──
+  /** The equalizer is on. */
+  soundEq: boolean;
+  /** The active preset: a built-in id ("flat", "bass" …), "custom" (soundEqCustom) or a user id ("u:…"). */
+  soundEqPreset: string;
+  /** The bands edited from a built-in preset, until saved under a name. */
+  soundEqCustom: EqPreset;
+  /** Presets saved by the user, by id. */
+  soundEqUser: Record<string, EqPreset>;
+  /** The curve editor: ten fixed sliders ("graphic"), or a dot per band on the curve ("parametric"). */
+  soundEqMode: "parametric" | "graphic";
+  /** How the equalizer keeps a boost from clipping (SOUND.md §2.1a): never lower the song and let
+   *  the limiter catch peaks; lower only by what the volume does not already leave; always lower
+   *  by the curve's highest point; or a level set by hand. */
+  soundEqPreamp: "limiter" | "needed" | "always" | "manual";
+  /** The preamp for "manual", in dB. */
+  soundEqPreampDb: number;
+  /** Remember a preset per output (Windows device or AirPlay speaker) and switch with it. */
+  soundEqPerOutput: boolean;
+  /** Output key → preset id, written when a preset is picked while that output plays. */
+  soundEqOutputs: Record<string, string>;
+  /** DeetsAdaptiveSound, the one switch over its three parts. */
+  soundAdaptive: boolean;
+  /** Part A: each song at the same loudness. */
+  soundLoudness: boolean;
+  /** Part A's target, in LUFS. */
+  soundLoudTarget: number;
+  /** Part A: an album played in order keeps one gain, so its quiet songs stay quiet. */
+  soundLoudAlbum: boolean;
+  /** Part A: a song never measured gets the library's median gain, or none. */
+  soundLoudUnmeasured: "median" | "none";
+  /** Part B: Fuller at low volume, and how much. */
+  soundLowVol: "off" | "gentle" | "full";
+  /** Part B keys on the app slider × the Windows master volume, or the app slider only. */
+  soundLowVolKey: "both" | "app";
+  /** Part C: headphone crossfeed — on for headphones only, always, or off. */
+  soundCrossfeed: "auto" | "always" | "off";
+  soundCrossfeedLevel: "light" | "medium" | "strong";
+  /** Days after the first effect was turned on to ask "keep it?" (SOUND.md §7). 0 = never. */
+  soundReviewDays: number;
+  /** When an effect was first turned on (epoch ms); 0 = never. Internal, no row. */
+  soundFirstOn: number;
+  /** The review question was answered (Keep). Internal, no row. */
+  soundReviewed: boolean;
   // ── home (HOME.md §4) ──
   /** How long a Home tile stays hidden after a right-click › Hide: until you clear it,
    *  or until the app closes. "session" keeps the map in memory and leaves the stored
@@ -249,6 +294,27 @@ export const DEFAULTS: Settings = {
   sleepAt: "22:00",
   sleepWind: 5, // user's call 2026-09-15: the fade fills the last minutes before the mark
   sleepPlayOut: false, // the mark is the silence unless you ask for the song's end
+  soundEq: false, // user's call 2026-09-16: every effect ships off (Apple DPLA §3.3.6.D, SOUND.md §0)
+  soundEqPreset: "flat",
+  soundEqCustom: { name: "Custom", bands: [], design: "matched" },
+  soundEqUser: {},
+  soundEqMode: "graphic", // user's call 2026-09-16: sliders are easier to read than dots; Dots is one click away
+  soundEqPreamp: "limiter", // user's call 2026-09-16: a boost sounds as drawn; the limiter catches peaks
+  soundEqPreampDb: 0,
+  soundEqPerOutput: true, // user's call 2026-09-16: headphones and speakers want different curves
+  soundEqOutputs: {},
+  soundAdaptive: false, // user's call 2026-09-16: off like every effect
+  soundLoudness: true, // the parts are on inside the switch: turning Adaptive sound on does something at once
+  soundLoudTarget: -16, // user's call 2026-09-16: Apple Sound Check's level, more headroom than −14
+  soundLoudAlbum: true, // user's call 2026-09-16: an album keeps its own dynamics
+  soundLoudUnmeasured: "median", // user's call 2026-09-16
+  soundLowVol: "gentle", // half the ISO 226 boost: noticeable, never boomy
+  soundLowVolKey: "both", // user's call 2026-09-16: app slider × Windows master
+  soundCrossfeed: "auto", // user's call 2026-09-16: on for headphones only
+  soundCrossfeedLevel: "medium",
+  soundReviewDays: 7, // user's call 2026-09-16: judge after living with it (SOUND.md §7)
+  soundFirstOn: 0,
+  soundReviewed: false,
   homeHideLasts: "forever", // user's call 2026-09-15: a hide that dies at relaunch reads as a bug
   homeHidden: {},
   streamQuality: "auto", // user's call 2026-09-16: Auto, and ours follows the network live (AUDIO-QUALITY.md)
@@ -314,6 +380,12 @@ function migrate(into: Partial<Settings>): void {
   // Open sizes replaced the remembered window sizes (2026-09-15, FUTURE-SETTINGS §8a). A
   // remembered size is what made NP small, so they are removed, not copied.
   for (const k of ["mini", "midi", "max", "mini-player"]) localStorage.removeItem(`deets.surface.size.${k}`);
+  // The Sound panel's first default was Dots (2026-09-16, a few hours); the stored value was the
+  // default, not a pick, wherever no effect was ever turned on. Sliders became the default.
+  if ((into.soundEqMode as string | undefined) === "parametric" && !into.soundFirstOn) delete into.soundEqMode;
+  // Auto preamp (on/off, a few hours on 2026-09-16) became a four-way choice; its old default
+  // is dropped so the new one (Limiter only) applies.
+  delete (into as Record<string, unknown>).soundEqAutoPreamp;
 }
 
 function load(): Settings {

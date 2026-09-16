@@ -150,6 +150,14 @@
                 </button>
                 <div class="account__status" id="account-status">Not signed in</div>
               </div>
+              <!-- Last.fm (docs/LASTFM.md §4): the same button + status shape; src/lastfm.ts wires it. -->
+              <div class="account" id="lastfm-account">
+                <button class="account__btn" id="lastfm-action" type="button" data-state="out" title="Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile">
+                  <span class="account__label">Last.fm</span>
+                  <span class="account__icon" id="lastfm-icon" aria-hidden="true"></span>
+                </button>
+                <div class="account__status" id="lastfm-status">Not connected</div>
+              </div>
             </div>
           </div>
         </div>
@@ -158,6 +166,22 @@
       <div class="drag-region" data-tauri-drag-region></div>
 
       <div class="chrome-right">
+        <!-- Sound (SOUND.md §2.3, src/sound-panel.ts): the equalizer and DeetsAdaptiveSound.
+             The icon's three fader knobs follow the curve (low, mid, high); the panel's
+             content is built by sound-panel.ts. Every effect is off by default. -->
+        <div class="sound" id="sound">
+          <button
+            class="sound__btn"
+            id="sound-btn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Sound"
+            title="Sound: the equalizer and adaptive sound"
+          ></button>
+          <div class="sound__panel pop" id="sound-panel" role="group" aria-label="Sound" hidden></div>
+        </div>
+
         <!-- Sleep timer (NEXT-VERSION §17, src/sleep.ts): the alarm clock. Its panel is a
              kitchen-timer dial (drag to set, it turns back as time runs out), two "end of"
              chips, the wind-down length, and the every-day schedule. The icon and the dial's

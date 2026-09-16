@@ -92,6 +92,23 @@ interface OpenEvent {
   msListened: number; // accumulated real listen time
   lastTickSec?: number; // previous progress tick's position
   completed: boolean; // crossed the listened-through threshold
+  lastfm: boolean; // already handed to Last.fm (once per play)
+}
+
+/** Last.fm's own rule (LASTFM.md §5), whatever "Count a play at" says: a song over 30 s,
+ *  heard for half its length or 4 minutes. Rust checks it again with the stored length. */
+const LASTFM_MIN_MS = 30 * 1000;
+function lastfmHeard(ev: OpenEvent, progress: number, currentTime: number): void {
+  if (ev.lastfm || progress <= 0) return;
+  const durationMs = (currentTime / progress) * 1000;
+  if (!(durationMs > LASTFM_MIN_MS) || ev.msListened < Math.min(durationMs / 2, SCROBBLE_MS)) return;
+  ev.lastfm = true;
+  void ev.id.then((eventId) => {
+    if (eventId === null) return;
+    invoke<boolean>("lastfm_heard", { eventId, msListened: Math.round(ev.msListened), durationMs: Math.round(durationMs) })
+      .then((queued) => { if (queued) diag.log("lastfm:queued", { id: eventId }); })
+      .catch((e) => diag.log("stats:err", { kind: "lastfm-heard", e: String(e) }));
+  });
 }
 let openEvent: OpenEvent | null = null;
 
@@ -122,7 +139,7 @@ function startEvent(cur: TrackHandle): void {
       diag.log("stats:err", { kind: "event-start", e: String(e) });
       return null;
     });
-  openEvent = { id, msListened: 0, completed: false };
+  openEvent = { id, msListened: 0, completed: false, lastfm: false };
 }
 
 /** Finalize the open event row (next-song-starts / app-close). Safe to call bare. */
@@ -194,6 +211,7 @@ export function recordProgress(cur: TrackHandle | null, progress: number, curren
     }
     openEvent.lastTickSec = currentTime;
     if (listenedThrough(progress, openEvent.msListened)) openEvent.completed = true;
+    lastfmHeard(openEvent, progress, currentTime);
   }
 
   if (!listenedThrough(progress, openEvent?.msListened ?? 0) || id === fullCountedId) return;

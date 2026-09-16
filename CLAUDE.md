@@ -28,6 +28,16 @@ front-end, Rust back-end).
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
 - `docs/HOME.md` — the Home card: the three shelves, the context-run rule, the
   weekday/weekend bucket score, and Hide (built 2026-09-15; zero Apple calls).
+- `docs/AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker, what we control,
+  and `probe fidelity` (DeetsAirplay) that measures the capture's conversion (opened 2026-09-16).
+- `docs/LASTFM.md` — Last.fm scrobbling: the key built in from Deets' Secrets, the browser
+  connect under Account, `play_events.lastfm` as the queue, the error table, the desk test
+  (built and desk-tested 2026-09-16).
+- `docs/LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users over an
+  in-memory copy of five export tables; the WAL fix; the security layers and their tests
+  (`cargo test --lib query`); the SQL card idea (built 2026-09-16, awaiting desk test).
+- `docs/SOUND.md` — Advanced EQ + DeetsAdaptiveSound (match loudness, fuller at low volume,
+  crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (designed 2026-09-16, not built).
 - `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
   measurements (built and desk-tested 2026-09-16). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
@@ -102,6 +112,10 @@ front-end, Rust back-end).
   5. **Settings keys:** a new key in `settings-store.ts` gets a default with the "why", a
      spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md.
   6. **Log lines:** `diag.log` the arm / fire / off of anything that acts on its own.
+  6a. **Scrollbars:** anything that can scroll (`overflow: auto/scroll`, a `max-height` panel)
+     gets the `app-scroll` class, or it shows the grey OS bar, and `scrollbar-gutter: stable` so its
+     content does not shift when the bar appears. The bar is opt-in per element, so
+     nothing catches a miss (the Sound panel shipped with the OS bar, 2026-09-16).
   7. **Telemetry:** a panel that animates sets `dataset.frames` so frames.ts times it.
   8. **Check:** `npx tsc --noEmit` and `npx vite build`, then hand it over with the desk
      test written into the doc section.

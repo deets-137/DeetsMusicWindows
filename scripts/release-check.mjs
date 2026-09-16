@@ -18,9 +18,12 @@
 //     installer has its signature.
 //  4. Authenticode: a valid, timestamped publisher signature.
 //  5. No dev telemetry in the shipped JS (a stray VITE_PERF would ship a rAF loop).
+//  6. docs/TOKENS.md is current.
+//  7. The Last.fm API key is built in (LASTFM.md §2).
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -123,8 +126,23 @@ if (signed.length) {
   if (have !== want) failures.push(`${TARGET} is stale — run npm run tokens and commit it`);
 }
 
+// ── 7. Last.fm is in the build (docs/LASTFM.md §2) ───────────────────────────────
+// build.rs builds the key in from Deets' Secrets; with no key the build still succeeds and the
+// Account row says "Not in this build". The gate refuses to ship that. The key is not printed.
+{
+  const file = process.env.DEETSMUSIC_LASTFM || join(homedir(), "Documents", "Deets' Secrets", "lastfm.json");
+  let key = "";
+  try {
+    key = String(JSON.parse(readFileSync(file, "utf8")).apiKey ?? "").trim();
+  } catch {
+    /* reported below */
+  }
+  if (!key || key.startsWith("PASTE_")) failures.push(`no Last.fm API key in ${file} — fill it in and rebuild (LASTFM.md §2)`);
+  else if (existsSync(exe) && !readFileSync(exe).includes(Buffer.from(key))) failures.push("the release exe has no Last.fm API key — rebuild after filling in lastfm.json (LASTFM.md §2)");
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in`);

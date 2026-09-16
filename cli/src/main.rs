@@ -114,6 +114,32 @@ enum Cmd {
     Seek { position: String },
     /// Volume: `40`, `+5`, `-5` (percent).
     Vol { level: String },
+    /// Your library, sorted and filtered (LOCAL-DATA.md §6). Reads the local cache: no Apple calls.
+    Library {
+        /// title | artist | album | length | added | plays | last_played | skips
+        #[arg(long, default_value = "title")]
+        sort: String,
+        /// asc | desc (default depends on the sort)
+        #[arg(long)]
+        order: Option<String>,
+        #[arg(short = 'n', long, default_value_t = 20)]
+        limit: u32,
+        #[arg(long)]
+        artist: Option<String>,
+        #[arg(long)]
+        genre: Option<String>,
+        /// Seconds or m:ss.
+        #[arg(long)]
+        shorter_than: Option<String>,
+        /// Seconds or m:ss.
+        #[arg(long)]
+        longer_than: Option<String>,
+    },
+    /// One read-only SELECT over songs, playlists, playlist_songs, plays, play_counts (LOCAL-DATA.md §7).
+    Sql {
+        #[arg(num_args = 1.., trailing_var_arg = true, allow_hyphen_values = true)]
+        query: Vec<String>,
+    },
     /// Session play history, newest first.
     History {
         #[arg(short = 'n', long, default_value_t = 20)]
@@ -593,6 +619,61 @@ fn op_history(c: &Client, limit: usize) -> Result<(String, Value), Failure> {
     Ok((numbered(arr(&v, "plays").iter().map(|t| track_line(t)).collect()), v))
 }
 
+/// The library tool (`POST /songs`): one line per song, id first, so `play` takes it at once.
+fn op_songs(c: &Client, body: Value) -> Result<(String, Value), Failure> {
+    let v = c.post("/songs", body)?;
+    let lines: Vec<String> = arr(&v, "songs")
+        .iter()
+        .map(|t| {
+            let len = t.get("length_s").and_then(Value::as_f64).map(|x| format!(" ({})", mmss(x))).unwrap_or_default();
+            let album = s(t, "album");
+            let album = if album.is_empty() { String::new() } else { format!(" · {album}") };
+            let plays = match (t.get("starts").and_then(Value::as_i64), t.get("skips").and_then(Value::as_i64)) {
+                (Some(p), Some(k)) if p > 0 || k > 0 => format!("  [{p} plays, {k} skips]"),
+                _ => String::new(),
+            };
+            format!("{}  {} — {}{album}{len}{plays}", s(t, "id"), s(t, "title"), s(t, "artist"))
+        })
+        .collect();
+    Ok((if lines.is_empty() { "(no songs match)".into() } else { numbered(lines) }, v))
+}
+
+/// One cell for the text table: no line breaks, at most 40 characters.
+fn cell_text(v: &Value) -> String {
+    let t = match v {
+        Value::Null => "NULL".to_string(),
+        Value::String(x) => x.replace(['\n', '\r', '\t'], " "),
+        other => other.to_string(),
+    };
+    if t.chars().count() > 40 {
+        format!("{}…", t.chars().take(39).collect::<String>())
+    } else {
+        t
+    }
+}
+
+/// The read-only SQL tool (`POST /query`): a plain text table.
+fn op_query(c: &Client, sql: &str) -> Result<(String, Value), Failure> {
+    let v = c.post("/query", json!({ "sql": sql }))?;
+    let cols: Vec<String> = arr(&v, "columns").iter().map(|x| x.as_str().unwrap_or("").to_string()).collect();
+    let rows: Vec<Vec<String>> = arr(&v, "rows").iter().map(|r| r.as_array().map(|a| a.iter().map(cell_text).collect()).unwrap_or_default()).collect();
+    let mut w: Vec<usize> = cols.iter().map(|c| c.chars().count()).collect();
+    for r in &rows {
+        for (i, x) in r.iter().enumerate() {
+            if let Some(slot) = w.get_mut(i) {
+                *slot = (*slot).max(x.chars().count());
+            }
+        }
+    }
+    let line = |cells: &[String]| cells.iter().enumerate().map(|(i, x)| format!("{x:<width$}", width = w.get(i).copied().unwrap_or(0))).collect::<Vec<_>>().join("  ").trim_end().to_string();
+    let mut out = vec![line(&cols), w.iter().map(|n| "-".repeat(*n)).collect::<Vec<_>>().join("  ")];
+    out.extend(rows.iter().map(|r| line(r)));
+    let n = rows.len();
+    let cut = if v.get("truncated").and_then(Value::as_bool).unwrap_or(false) { ", cut at 500 — add a LIMIT or a WHERE" } else { "" };
+    out.push(format!("({n} row{}{cut})", if n == 1 { "" } else { "s" }));
+    Ok((out.join("\n"), v))
+}
+
 /// `repeat` + `all` → `repeat-all`; `shuffle` + `on` → `shuffle-on`; no mode → the bare kind.
 fn mode_kind(kind: &str, mode: &str) -> String {
     let mode = mode.trim().to_ascii_lowercase();
@@ -806,10 +887,17 @@ fn tools(small: bool) -> Value {
               "action": { "type": "string", "enum": ["play", "pause", "next", "previous", "shuffle", "repeat", "mute", "seek", "volume", "clear_queue"] },
               "value": { "type": "number", "description": "Percent, for seek and volume only." },
               "mode": { "type": "string", "description": "For repeat: off | all | one (omit to cycle). For shuffle: on | off (omit to press the button)." } } } }));
-    list.push(json!({ "name": "list", "description": "List the queue (now playing + numbered Up Next), the play history, or the user's playlists (with ids). what=album with an id reads the songs inside an album or playlist, numbered — use it to see a tracklist (and who features on it) without playing or adding anything.",
+    list.push(json!({ "name": "list", "description": "List the queue (now playing + numbered Up Next), the play history, or the user's playlists (with ids). what=album with an id reads the songs inside an album or playlist, numbered — use it to see a tracklist (and who features on it) without playing or adding anything. what=library lists the user's own songs sorted and filtered (shortest, longest, newest added, most played, most skipped), each with a song:… id to play.",
           "inputSchema": { "type": "object", "required": ["what"], "additionalProperties": false, "properties": {
-              "what": { "type": "string", "enum": ["queue", "history", "playlists", "album"] },
-              "id": { "type": "string", "description": "For what=album only: album:… or playlist:…" } } } }));
+              "what": { "type": "string", "enum": ["queue", "history", "playlists", "album", "library"] },
+              "id": { "type": "string", "description": "For what=album only: album:… or playlist:…" },
+              "sort": { "type": "string", "enum": ["title", "artist", "album", "length", "added", "plays", "last_played", "skips"], "description": "what=library: the order. added, plays, last_played and skips list the highest first." },
+              "order": { "type": "string", "enum": ["asc", "desc"], "description": "what=library: flip the order." },
+              "limit": { "type": "number", "description": "what=library: how many, 1-100 (default 20)." },
+              "artist": { "type": "string", "description": "what=library: only artists whose name contains this." },
+              "genre": { "type": "string", "description": "what=library: only this genre." },
+              "shorter_than": { "type": "string", "description": "what=library: a length, e.g. 3:00 or 180." },
+              "longer_than": { "type": "string", "description": "what=library: a length, e.g. 0:30 or 30." } } } }));
     list.push(json!({ "name": "library", "description": "Add a song or album to the user's Apple Music library, or favorite / unfavorite a song. The first time, DeetsMusic may ask the user to allow it; then tell them to answer in DeetsMusic and try again.",
           "inputSchema": { "type": "object", "required": ["action", "id"], "additionalProperties": false, "properties": {
               "action": { "type": "string", "enum": ["add", "favorite", "unfavorite"] },
@@ -861,13 +949,16 @@ fn tools(small: bool) -> Value {
               "key": { "type": "string", "description": "get, set: a key from list, e.g. alwaysOnTop, theme, backgroundMotion." },
               "value": { "type": "string", "description": "set: the new value, e.g. Always, Black & Red, off, 40, 21:00." },
               "section": { "type": "string", "description": "list: one section, e.g. Look and feel (leave it out for all)." } } } }));
+    list.push(json!({ "name": "query", "description": "One read-only SQL SELECT over the user's DeetsMusic data (SQLite). No Apple calls. Tables: songs(id, title, artist, album, length_s, genre, release_date, in_library, added_rank, added_at) · playlists(id, name, source, song_count) · playlist_songs(playlist_id, position, song_id) · plays(song_id, started_at, listened_s, finished, skipped, context) · play_counts(song_id, starts, finishes, last_played). ids are song:… / playlist:…, ready for play and queue. Times are local ISO text. song_count counts the songs DeetsMusic has read. plays and play_counts exist only while the user allows agents to read play history. Only SELECT, one statement, 2 s, 500 rows. For a simple sorted list, list what=library is easier.",
+          "inputSchema": { "type": "object", "required": ["sql"], "additionalProperties": false, "properties": {
+              "sql": { "type": "string", "description": "e.g. SELECT s.title, c.starts FROM play_counts c JOIN songs s ON s.id = c.song_id ORDER BY c.starts DESC LIMIT 10" } } } }));
     Value::Array(list)
 }
 
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -919,8 +1010,23 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             "history" => op_history(c, 20)?.0,
             "playlists" => op_playlists(c)?.0,
             "album" => op_tracks(c, &str_arg("id"))?.0,
+            "library" => {
+                // Only the keys the bridge knows; it checks every value against its own lists.
+                let mut body = json!({});
+                for (k, wire) in [("sort", "sort"), ("order", "order"), ("artist", "artist"), ("genre", "genre"), ("shorter_than", "shorterThan"), ("longer_than", "longerThan")] {
+                    let v = str_arg(k);
+                    if !v.is_empty() {
+                        body[wire] = json!(v);
+                    }
+                }
+                if let Some(n) = num_arg("limit") {
+                    body["limit"] = json!(n);
+                }
+                op_songs(c, body)?.0
+            }
             _ => op_queue_list(c)?.0,
         },
+        "query" => op_query(c, &str_arg("sql"))?.0,
         "library" => op_library(c, &str_arg("action"), &str_arg("id"))?.0,
         "playlist_add" => {
             let id = str_arg("id");
@@ -1085,6 +1191,11 @@ fn main() {
         Cmd::Mute => op_control(&c, "mute", None),
         Cmd::Seek { position } => parse_seek(&c, &position).and_then(|f| op_control(&c, "seek", Some(f))),
         Cmd::Vol { level } => parse_vol(&c, &level).and_then(|f| op_control(&c, "volume", Some(f))),
+        Cmd::Library { sort, order, limit, artist, genre, shorter_than, longer_than } => op_songs(
+            &c,
+            json!({ "sort": sort, "order": order, "limit": limit, "artist": artist, "genre": genre, "shorterThan": shorter_than, "longerThan": longer_than }),
+        ),
+        Cmd::Sql { query } => op_query(&c, &query.join(" ")),
         Cmd::History { limit } => op_history(&c, limit),
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),
         Cmd::Love { id } => op_library(&c, "favorite", id.as_deref().unwrap_or("")),

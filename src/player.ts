@@ -122,6 +122,7 @@ function syncDeveloperToken(): Promise<void> {
       configuredToken = developerToken;
       music = window.MusicKit.getInstance();
       await injectUserToken();
+      applyStreamQuality("reconfigure");
       diag.log("player:reconfigured", { authorized: !!music.isAuthorized });
     } catch (e) {
       diag.error("player:reconfigureFailed", { err: String(e) });
@@ -181,6 +182,7 @@ export function initPlayer(): Promise<any> {
     installMusicKitRejectionFilter();
     wireEvents();
     applyVolumeToMusic(); // push the persisted level onto the fresh instance
+    applyStreamQuality("configure"); // configure made a new bitrate pick (AUDIO-QUALITY.md §4.1)
     (window as any).__music = music; // introspect the opaque instance (dev + bug reports)
     (window as any).__player = { snap, queue: queueDump };
     diag.log("player:configured", { authorized: !!music.isAuthorized });
@@ -2185,6 +2187,58 @@ export function setDuck(f: number): void {
 
 export function getDuck(): number {
   return duck;
+}
+
+// ── Stream quality ───────────────────────────────────────────────────────────
+//
+// MusicKit picks its bitrate ONCE, in configure(), from Chromium's network estimate
+// (`navigator.connection.downlink` × 100 > 64 → HIGH 256 kbps, else STANDARD 64), and never
+// looks again: a low estimate at start kept the whole session at 64 kbps. `music.bitrate` is a
+// plain setter that MusicKit reads when it prepares each song, so a write here changes the next
+// song and never reloads the one playing (AUDIO-QUALITY.md §4.1). No Apple calls.
+//
+// Settings › Playback › Stream quality: High / Low pin it. Auto follows the same estimate
+// live — Chromium keeps it up to date anyway; we only listen for its `change` event. Two
+// thresholds with a gap between them, so an estimate near one line does not flip it each song.
+
+const AUTO_LOW_BELOW_MBPS = 0.5;
+const AUTO_HIGH_ABOVE_MBPS = 1;
+
+function networkDownlink(): number | undefined {
+  const d = (navigator as any).connection?.downlink;
+  return typeof d === "number" ? d : undefined;
+}
+
+function applyStreamQuality(reason: "configure" | "reconfigure" | "setting" | "network"): void {
+  const B = window.MusicKit?.PlaybackBitrate;
+  if (!music || !B) return;
+  const choice = setting("streamQuality");
+  const from: number = music.bitrate;
+  const downlink = networkDownlink();
+  let to = from;
+  if (choice === "high") to = B.HIGH;
+  else if (choice === "low") to = B.STANDARD;
+  else if (downlink !== undefined && downlink < AUTO_LOW_BELOW_MBPS) to = B.STANDARD;
+  else if (downlink !== undefined && downlink > AUTO_HIGH_ABOVE_MBPS) to = B.HIGH;
+  else if (to !== B.HIGH && to !== B.STANDARD) to = B.HIGH; // no pick and no estimate: the better stream
+  if (to !== from) music.bitrate = to;
+  // Arm (configure) always logs; a later check logs only when it switched.
+  if (to !== from || reason === "configure" || reason === "reconfigure") {
+    diag.log("player:bitrate", { reason, choice, kbps: to, from, downlink });
+  }
+}
+
+(navigator as any).connection?.addEventListener?.("change", () => {
+  if (setting("streamQuality") === "auto") applyStreamQuality("network");
+});
+onSettingsChange((k) => {
+  if (k === "streamQuality") applyStreamQuality("setting");
+});
+
+/** The gain MusicKit applies to the audio right now (0..1), before the Sound graph: 1 while a
+ *  speaker holds the volume. sound.ts reads it to know how far below full scale a song arrives. */
+export function getAppliedGain(): number {
+  return volumeSink ? 1 : muted ? 0 : level * duck;
 }
 
 /** Pause, if anything plays. No sign-in check: pausing never needs one. */

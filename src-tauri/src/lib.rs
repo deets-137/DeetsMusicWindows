@@ -3,12 +3,14 @@ mod apple;
 mod bridge;
 mod enrich;
 mod favorites;
+mod lastfm;
 mod library;
 mod log;
 mod model;
 mod media;
 mod playlists;
 mod provider;
+mod query;
 mod report;
 mod settings;
 mod smtc;
@@ -28,7 +30,12 @@ pub fn run() {
     // (DATA-ARCHITECTURE §2a). The nonce check inside decides whether it is accepted.
     let single_instance = tauri_plugin_single_instance::init(|app: &tauri::AppHandle, argv, _cwd| {
         if let Some(link) = apple::link_in_args(argv.iter()) {
-            apple::handle_link(app, link);
+            // `<scheme>://lastfm?token=…` is Last.fm's link back after Allow (LASTFM.md §4).
+            if lastfm::is_link(link) {
+                lastfm::handle_link(link);
+            } else {
+                apple::handle_link(app, link);
+            }
         }
         tray::show_main(app);
     });
@@ -73,7 +80,18 @@ pub fn run() {
                 for name in ["deetsmusic.db", "user-token.txt", "developer-token.json"] {
                     let from = release.join(name);
                     if from.is_file() {
-                        match std::fs::copy(&from, dir.join(name)) {
+                        // The db runs in WAL mode (LOCAL-DATA.md §3): its newest writes can sit in
+                        // `deetsmusic.db-wal` while the installed app runs, so a file copy could miss
+                        // them. `VACUUM INTO` from a read-only connection writes one consistent file.
+                        let copied = if name == "deetsmusic.db" {
+                            rusqlite::Connection::open_with_flags(&from, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                                .and_then(|src| src.execute("VACUUM INTO ?1", [dir.join(name).to_string_lossy()]))
+                                .map(|_| 0)
+                                .map_err(|e| std::io::Error::other(e.to_string()))
+                        } else {
+                            std::fs::copy(&from, dir.join(name))
+                        };
+                        match copied {
                             Ok(_) => log::info(&format!("dev: seeded {name} from {}", release.display())),
                             Err(e) => log::warn(&format!("dev: seed {name} failed: {e}")),
                         }
@@ -140,6 +158,19 @@ pub fn run() {
             }
 
             let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
+            // WAL (LOCAL-DATA.md §3, 2026-09-16): in the default journal mode any reader of the
+            // file (a DB browser, a slow copy for `deetsmusic sql`) made the app's next write fail
+            // at once — a play event, a scrobble. With WAL, readers and the writer don't block each
+            // other; the busy timeout covers the brief checkpoint lock. The mode is stored in the file.
+            match conn.query_row("PRAGMA journal_mode = WAL", [], |r| r.get::<_, String>(0)) {
+                Ok(mode) if mode.eq_ignore_ascii_case("wal") => {}
+                Ok(mode) => log::warn(&format!("db: journal mode stayed {mode}")),
+                Err(e) => log::warn(&format!("db: could not set WAL: {e}")),
+            }
+            if let Err(e) = conn.busy_timeout(std::time::Duration::from_secs(2)) {
+                log::warn(&format!("db: busy timeout: {e}"));
+            }
+            query::set_db_path(db_path.clone());
             library::init_db(&conn).expect("init library db");
             enrich::init_tables(&conn).expect("init enrichment tables");
             playlists::init_tables(&conn).expect("init playlist tables");
@@ -150,11 +181,14 @@ pub fn run() {
             library::migrate_v3(&conn).expect("v3 migration failed");
             library::migrate_v4(&conn).expect("v4 migration failed");
             library::migrate_v5(&conn).expect("v5 migration failed");
+            library::migrate_v6(&conn).expect("v6 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
             // extension pairing token), then the tray + the extension bridge.
             app.manage(settings::Settings::load(dir.clone()));
+            // Last.fm (LASTFM.md): the saved session, and the scrobbles still waiting.
+            lastfm::setup(app.handle(), dir.clone());
             airplay::setup(&dir);
             tray::setup(app.handle())?;
 
@@ -297,6 +331,16 @@ pub fn run() {
             settings::settings_rotate_bridge_token,
             settings::settings_set_airplay_capture,
             settings::settings_set_agent_control,
+            settings::settings_set_agent_history,
+            settings::settings_set_lastfm_scrobble,
+            settings::settings_set_lastfm_now_playing,
+            lastfm::lastfm_begin_auth,
+            lastfm::lastfm_auth_status,
+            lastfm::lastfm_cancel_auth,
+            lastfm::lastfm_disconnect,
+            lastfm::lastfm_status,
+            lastfm::lastfm_open_profile,
+            lastfm::lastfm_heard,
             settings::autostart_get,
             settings::autostart_set,
             settings::agent_setup_text,

@@ -81,6 +81,69 @@
   --sleep-line-h:       26px;   /* the line under the time: the help or the Off button, height reserved */
   --sleep-swap:         0.42s;  /* that line's fade-up; gentler than a row's --pop-in */
 
+  /* -- sound (src/sound-panel.ts, SOUND.md §2.3) ------------- */
+  /* The EQ-fader icon and its panel. Colors are the --eq-* theme roles; the
+     strengths below feed them (themes.css), so a skin can brighten a fill
+     without naming a color. */
+  --sound-btn-size:          var(--traffic-size);
+  --sound-panel-w:           300px;
+  --sound-panel-max-h:       min(620px, calc(100vh - 48px)); /* scrolls inside a short window (mini) */
+  --sound-panel-pad:         var(--space-2);
+  --sound-title-tracking:    0.02em;
+  --sound-chip-radius:       var(--radius-control);
+  --sound-pill-min-w:        44px;   /* On / Off / Gentle keep one width in a column */
+  --sound-icon-btn:          24px;
+  --sound-step-pad:          6px;
+  --sound-strong-fw:         600;
+  --sound-tabs-pad:          2px;    /* the tab strip's inset around the two tabs */
+  --sound-tab-radius:        calc(var(--radius-control) - 2px); /* nested inside the strip's radius */
+  --sound-foot-fs:           11px;   /* the footer line: review date and the limiter, quieter than a row */
+  --sound-reset-w:           56px;   /* Reset and Undo share one width */
+  --sound-foot-pill-w:       64px;   /* Keep: 7 days / 14 days / Never, one width, text centred */
+  --sound-meter-w:           172px;  /* "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box */
+  --sound-meter-pad-y:       2px;
+  --sound-dim:               0.5;    /* a part while its switch is off */
+  --sound-graph-h:           128px;
+  --sound-graph-radius:      var(--radius-control);
+  --sound-axis-h:            12px;
+  --sound-axis-gap:          2px;
+  --sound-axis-fs:           9px;
+  --sound-zone-h:            20px;   /* the zone labels under the graph: a hold target, not just text */
+  --sound-zone-fs:           11px;
+  --sound-heard-w:           1.5px;
+  --sound-heard-dash:        3 2;    /* "what you hear" dashed, so it never reads as the EQ curve */
+  --sound-key-size:          8px;
+  --sound-key-radius:        2px;
+  --sound-key-line:          14px;
+  --sound-song-strength:     22%;
+  --sound-zone-strength:     5%;
+  --sound-zone-lit-strength: 14%;
+  --sound-balance-label-w:   48px;
+  --sound-balance-bar-h:     6px;
+  --sound-curve-w:           2px;
+  --sound-curve-glow:        none;   /* a skin's light on the curve: a drop-shadow() filter */
+  --sound-grid-w:            1px;
+  --sound-grid-dash:         none;
+  --sound-zero-w:            1px;
+  --sound-fill-strength:     16%;
+  --sound-grid-strength:     24%;
+  --sound-handle-size:       16px;
+  --sound-handle-hit:        28px;   /* the dot's pointer target, bigger than the dot */
+  --sound-handle-ring:       2px;
+  --sound-handle-fs:         9px;
+  --sound-handle-shadow:     0 1px 3px rgba(0, 0, 0, 0.25);
+  --sound-handle-hover-scale: 1.18;
+  --sound-fader-w:           18px;
+  --sound-fader-inset:       8px;
+  --sound-fader-track-w:     2px;
+  --sound-fader-knob-h:      8px;
+  --sound-fader-knob-radius: 3px;
+  --sound-glide:             var(--dur-fast); /* a dot or knob settling after an edit */
+  --sound-readout-min-w:     56px;
+  --sound-status-lh:         1.35;
+  --sound-status-gap:        2px;
+  --sound-fold-bg:           color-mix(in srgb, var(--surface-hover) 60%, transparent);
+
   /* -- playlist web (src/web.ts, PLAYLIST-WEB.md) ------------ */
   /* The web button's panel under the Playlists header. Controls share the sleep
      panel's chip shape; colors are theme roles. */
@@ -257,6 +320,10 @@
   --ap-row-h:       var(--icon-lg);
   --ap-dot:         0.9em;          /* the ✓ gutter on a row */
   --ap-pulse:       1.2s;           /* the square's breathing while connecting */
+  --ap-stroke:      2;              /* the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) */
+  --ap-caret-rise:  13px;           /* "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) */
+  --ap-cut-w:       6;              /* the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) */
+  --ap-caret-dur:   0.32s;          /* the caret's rise and fall */
   /* dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in */
   --pop-in:         var(--dur-med); /* a panel and new rows arriving */
   --pop-out:        var(--dur-fast);/* a panel leaving */
@@ -320,10 +387,6 @@
   --scrub-float-size:   11px;   /* Ocean: the float, smaller than the others so the ripple carries the eye */
   --scrub-ripple-scale: 1.8;    /* Ocean: how far the ripple ring spreads, in float widths */
   --scrub-bob-dur:      2.4s;   /* Ocean: one bob of the float, and one ripple */
-  --ap-stroke:      2;              /* the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) */
-  --ap-caret-rise:  13px;           /* "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) */
-  --ap-cut-w:       6;              /* the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) */
-  --ap-caret-dur:   0.32s;          /* the caret's rise and fall */
   --scrub-sheen-dur:    6s;     /* Glass: the specular dot's drift, one way */
   --scrub-lens-scale:   1.2;    /* Glass: the lens's swell under the hand */
   --scrub-breathe-dur:  3s;     /* Retro-Future: the bolt's glow, one way */
@@ -490,6 +553,11 @@
    (Retired the Desk skin, 2026-08-10 — same slot, new idiom.)
    ============================================================ */
 [data-skin="press"] {
+  /* sound panel: an ink-line curve, square plot, no glow (printed, not lit) */
+  --sound-curve-w:       1.5px;
+  --sound-graph-radius:  0px;
+  --sound-fill-strength: 10%;
+  --sound-grid-dash:     2 3;
   --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — a condensed poster grotesque over a spec-sheet mono. Anton
      ships one weight and it is heavy, so --fw-title drops to 400. Plex
@@ -592,6 +660,10 @@
    beneath. Engraved caps title on a serene serif body.
    ============================================================ */
 [data-skin="ocean"] {
+  /* sound panel: the curve glows like light under water */
+  --sound-curve-glow:        drop-shadow(0 0 4px var(--eq-curve));
+  --sound-fill-strength:     22%;
+  --sound-song-strength:     28%;
   --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (the sand mask repainted on every scroll step: 157 → 240 fps) */
   /* type — engraved Roman caps title on a calm serif body */
   --font-title: "Cinzel", Georgia, "Times New Roman", serif;
@@ -714,6 +786,10 @@
    color is still derived from a theme role, never named here.
    ============================================================ */
 [data-skin="glass"] {
+  /* sound panel: a lit edge on the curve, a brighter fill behind the frost */
+  --sound-curve-glow:    drop-shadow(0 0 2px var(--glint));
+  --sound-fill-strength: 24%;
+  --sound-handle-shadow: 0 0 0 1px var(--glint), 0 2px 6px rgba(0, 0, 0, 0.25);
   --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (GPU process in scroll 49 → 23%) */
   /* type — drop the serif for a crisp, light modern sans */
   --font-title: var(--font-body);
@@ -914,6 +990,12 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="retro-future"] {
+  /* sound panel: a scope trace — bright glow, dashed graticule, square dots' ring */
+  --sound-curve-glow:        drop-shadow(0 0 3px var(--eq-curve)) drop-shadow(0 0 8px var(--eq-curve));
+  --sound-curve-w:           1.5px;
+  --sound-grid-dash:         1 3;
+  --sound-grid-strength:     34%;
+  --sound-song-strength:     30%;
   --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (GPU process in scroll 85 → 19%) */
   --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — machined geometric title on a condensed squared body.

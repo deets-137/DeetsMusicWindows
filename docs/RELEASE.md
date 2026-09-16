@@ -121,6 +121,9 @@ installed build showed it. Three layers now guard this:
    - [ ] sign in from zero (Account › sign out, then sign in) — the page loads, Apple accepts;
    - [ ] signed out, press play → "Sign in to Apple Music to play songs." with **Sign in**;
    - [ ] launch offline → the offline toast, and recovery when the network returns;
+   - [ ] **first release with Last.fm (then after any change to `lastfm.rs` or the key):** connect
+     Last.fm from zero and check the link back — [LASTFM.md §9 "OPEN"](LASTFM.md). Needed once:
+     the dev test (2026-09-16) connected by the checks alone, without the link;
    - [ ] **Do NOT force a revoke with `__music.unauthorize()`.** It calls MusicKit's
      `_webPlayerLogout`, which logs the sign-in token out AT APPLE (2026-09-13: the token went
      from 200 to 403 on `/v1/me/storefront`, and it was the same token the installed app used,

@@ -368,10 +368,13 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | Apple key + IDs | `src-tauri/secrets/{apple.json, *.p8}` | ✗ gitignored |
 | Captured MUT | `src-tauri/secrets/user-token.txt` | ✗ gitignored |
 | Library cache | `<app_data_dir>/deetsmusic.db` | n/a (runtime) |
+| WAL files | `<app_data_dir>/deetsmusic.db-wal`, `-shm` (WAL mode since 2026-09-16, [LOCAL-DATA.md](LOCAL-DATA.md) §3) | n/a (runtime) |
 | Back-end settings | `<app_data_dir>/settings.json` | n/a (runtime) |
 | App log | `<app_data_dir>/deetsmusic.log` (+ `.1.log`, LOGGING.md) | n/a (runtime) |
 | Raw API dumps | `dev-dumps/` | ✗ gitignored |
 | Shipped installers | `installers/` | ✗ gitignored ([RELEASE.md](RELEASE.md)) |
+| Last.fm session | `<app_data_dir>/lastfm-session.json` | n/a (runtime) — `{name, key}`; the key never reaches the renderer or the log, [LASTFM.md](LASTFM.md) |
+| Last.fm API key + secret | `Documents\Deets' Secrets\lastfm.json`, built into the exe by `build.rs` | ✗ outside the repo |
 | Cached developer token | `<app_data_dir>/developer-token.json` | n/a (runtime) — `{token, exp, source, config}`; written only when the mint is used, [RELEASE.md](RELEASE.md) §7 |
 
 `<app_data_dir>` is `%APPDATA%\com.deetsmusic.app`, or `…\com.deetsmusic.dev` under

@@ -16,6 +16,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+# build.rs reads the Last.fm key file (docs/LASTFM.md §2). Already in the tree.
+serde_json = "1"
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
@@ -30,7 +32,7 @@ jsonwebtoken = "9"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] } # gzip: Apple compresses some replies (the playlist create) whatever we ask for
 tiny_http = "0.12"
 getrandom = "0.2"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled", "hooks", "limits"] } # hooks + limits: the read-only query sandbox (query.rs, LOCAL-DATA.md §5)
 futures = "0.3"
 # ms → RFC3339 for local playlists' date_added (already in the tree transitively)
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
@@ -51,6 +53,9 @@ base64 = "0.22"
 webview2-com = "0.38"
 # The updater (RELEASE.md §6, update.rs): signed installers from music-api.deets.solutions/update.
 tauri-plugin-updater = "2"
+# Last.fm signs every call with MD5 (docs/LASTFM.md §3). One small crate on the digest 0.10
+# family sha2 already brings.
+md-5 = "0.10"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;

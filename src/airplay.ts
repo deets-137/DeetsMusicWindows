@@ -13,6 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setVolumeSink, reflectExternalVolume } from "./player";
 import { enterRows } from "./pop";
+import { setOutput } from "./sound";
 
 export interface Speaker {
   name: string;
@@ -64,7 +65,15 @@ const fmtDelay = (ms: number) => `${(ms / 1000).toFixed(1)} s behind`;
 let volTimer = 0;
 let volHeldUntil = 0; // a drag owns the slider for a moment; the poll must not yank it back
 let takenOver = false;
+let outputSpeaker = "";
 const applyTakeover = (c: Connected | null) => {
+  // Sound (SOUND.md §2.2): the output is the speaker while one plays, so its preset and the
+  // panel's words follow it.
+  const name = c?.speaker.name ?? "";
+  if (name !== outputSpeaker) {
+    outputSpeaker = name;
+    setOutput(c ? { key: `airplay:${name}`, name, kind: "airplay" } : { key: "default", name: "This PC", kind: "unknown" });
+  }
   if (c && !takenOver) {
     takenOver = true;
     setVolumeSink(

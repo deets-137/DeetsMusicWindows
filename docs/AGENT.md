@@ -79,7 +79,9 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `POST /folder` | `{action: list \| create \| rename \| delete, name, value?}` → `{folders:[{name, playlists}]}` or `{ok, message}` |
 | `GET /update` · `POST /update` | status `{state, current, channel, version, …, mode, skip}` · `{action: check \| install \| rollback \| mode \| skip, value?}` |
 | `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
-| `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first |
+| `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
+| `POST /songs` | `{sort?, order?, limit?, artist?, genre?, shorterThan?, longerThan?}` → `{songs:[{id, title, artist, album, length_s, starts?, finishes?, last_played?, skips?}]}` — the library, sorted and filtered, zero Apple calls ([LOCAL-DATA.md](LOCAL-DATA.md) §6). Token callers only |
+| `POST /query` | `{sql}` → `{columns, rows, truncated, ms}` — one read-only SELECT over the export tables in a sandbox ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7). Token callers only |
 | `GET /stations?group=` | `featured` (My Station · Discovery · live) · `genres` · `genre:<id>` → `{stations, genres}` |
 | `GET /playlists` | `{playlists:[Playlist…]}` — Apple mirror + local, zero Apple calls |
 | `POST /search` | `{term, types:["songs","albums","artists","playlists"]}` → `SearchResults`. Without `types` it's the extension's popup shape |
@@ -126,6 +128,8 @@ deetsmusic repeat [off | all | one]     # cycle, or set
 deetsmusic seek 1:23 | 83 | 45%
 deetsmusic vol 40 | +5 | -5
 deetsmusic history [-n 20]
+deetsmusic library [--sort title|artist|album|length|added|plays|last_played|skips] [--order asc|desc] [-n 20] [--artist X] [--genre X] [--shorter-than 3:00] [--longer-than 0:30]
+deetsmusic sql "select title, length_s from songs order by length_s limit 5"   # read-only, LOCAL-DATA.md §7
 deetsmusic add [id] | love [id] | unlove [id]      # default: the playing song
 deetsmusic playlist show|create|add|remove|move|rename|delete|cover|export|new-copy|get-songs|import|file …
 deetsmusic folder list | create <name> | rename <name> <new> | delete <name>
@@ -155,7 +159,7 @@ subset a tool server needs, no SDK. Tools:
 | `play` | `id` (+ `keep_queue` full) | both | rejects non-ids with "search first" |
 | `queue` | `id`, `position: next\|later` (full: also a row number) | both | |
 | `control` | `action: play\|pause\|next\|previous\|shuffle\|repeat\|mute\|seek\|volume\|clear_queue`, `value?` (percent), `mode?` (repeat: off / all / one, else cycle; shuffle: on / off, else the button) | both | |
-| `list` | `what: queue\|history\|playlists\|album`, `id?` | both | playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]`. `what=album` + an `album:` / `playlist:` id prints the numbered tracklist (`POST /tracks`); CLI: `deetsmusic tracks <id>` |
+| `list` | `what: queue\|history\|playlists\|album\|library`, `id?`; library: `sort?`, `order?`, `limit?`, `artist?`, `genre?`, `shorter_than?`, `longer_than?` | both | `what=library` = `POST /songs` (LOCAL-DATA.md §6); CLI: `deetsmusic library --sort length -n 5`. playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]`. `what=album` + an `album:` / `playlist:` id prints the numbered tracklist (`POST /tracks`); CLI: `deetsmusic tracks <id>` |
 | `library` | `action: add\|favorite\|unfavorite`, `id` (`current` allowed) | both | consent rules, §5 |
 | `playlist_add` | `playlist`, `id` (`current` allowed) | both | local or your own Apple playlist |
 | `update` | `action: status\|check\|install\|rollback` (full: `mode`, `skip`), `value?` | both | install/rollback end in the app's Restart question |
@@ -165,6 +169,7 @@ subset a tool server needs, no SDK. Tools:
 | `queue_edit` | `action: remove\|move\|jump`, `index`, `to?` | full | replies with the fresh queue |
 | `folder` | `action: list\|create\|rename\|delete`, `name`, `new_name?` | full | by name |
 | `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
+| `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
 
 Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp`. The
 **Copy setup for** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;
@@ -306,6 +311,15 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `[Glass only, with Fancy Glass on]`: while `glassFancy` is off they store a value but the look
   holds the locked values (65 / 85 / 40 / 10).
 - `glassFancy` (on | off, 2026-09-16) `[Glass only]`: the live frost and the moving background.
+- The **Sound** section (2026-09-16, SOUND.md): `soundEq` and `soundAdaptive` are **off only** —
+  every effect ships off (Apple DPLA §3.3.6.D) and turning one on is the user's own choice in the
+  Sound panel; `set … on` → `403`. The rest set freely: `soundEqPreset` (a preset id or its name:
+  Flat, Bass lift, Vocal, Treble lift, Warm, Late night, Custom, or a saved one), `soundEqMode`
+  (Sliders | Dots), `soundEqPreamp` (Limiter only | When needed | Always | Set by hand), `soundEqPerOutput`, `soundLoudness`,
+  `soundLoudTarget` (−16 | −14 | −18 LUFS), `soundLoudAlbum`, `soundLoudUnmeasured` (Median | No
+  change), `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` (App × Windows | App only),
+  `soundCrossfeed` (Auto | Always | Off), `soundCrossfeedLevel` (Light | Medium | Strong),
+  `soundReviewDays` (7 | 14 | 3 days | Never). The bands themselves are not an agent value.
 - `streamQuality` (Auto | High | Low, 2026-09-16): the stream bitrate. A set takes effect from the
   next song; the song that plays does not reload.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range
@@ -322,7 +336,7 @@ Max), **except**:
 
 | Left out or limited | Why |
 |---|---|
-| `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control), `lastfmScrobble` (Scrobble plays), `lastfmNowPlaying` (Show now playing; both 2026-09-16, [LASTFM.md](LASTFM.md) §6) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
+| `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control), `agentHistory` (Agents read play history, 2026-09-16, [LOCAL-DATA.md](LOCAL-DATA.md) §9), `lastfmScrobble` (Scrobble plays), `lastfmNowPlaying` (Show now playing; both 2026-09-16, [LASTFM.md](LASTFM.md) §6) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
 | `agentSettings` — **read-only** | The permission itself. |
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
 | Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |

@@ -6,8 +6,8 @@
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 24 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 270 tokens · overrides: vanilla 3, press 57, ocean 32, glass 57, retro-future 58 |
+| Theme (color roles) | themes.css | 34 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 328 tokens · overrides: vanilla 3, press 61, ocean 35, glass 60, retro-future 63 |
 
 ## Theme roles
 
@@ -24,6 +24,16 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--ink-2` | `var(--go)` | every theme | Second-plate fallback: a theme that never names --ink-2 still prints Press's offset in its own "go" accent. |
 | `--picked` | `color-mix(in srgb, var(--title) var(--picked-strength), transparent)` | — | Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own --title ink at the strength the SKIN sets, so a block of picks reads as one shape in every theme. Derived once here — no theme block names a picked color of its own. |
 | `--apple-music-mark` | `light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white))` | — | Apple Music icon fill: Apple's black file on light themes, the white file on dark. light-dark() follows each theme's own color-scheme, so no theme block repeats it. |
+| `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
+| `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
+| `--eq-grid` | `color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent)` | — |  |
+| `--eq-song` | `color-mix(in srgb, var(--ink-2) var(--sound-song-strength), transparent)` | — |  |
+| `--eq-heard` | `var(--ink-2)` | — |  |
+| `--eq-zone-alt` | `color-mix(in srgb, var(--subtext) var(--sound-zone-strength), transparent)` | — |  |
+| `--eq-zone-lit` | `color-mix(in srgb, var(--title) var(--sound-zone-lit-strength), transparent)` | — |  |
+| `--eq-handle` | `var(--title)` | — |  |
+| `--eq-handle-ink` | `var(--surface)` | — |  |
+| `--eq-plot-bg` | `var(--canvas)` | — |  |
 | `--glint` | `light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65))` | — | The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy scrubbers). Light is white in every theme, so this is the one role no theme remaps; a little dimmer on dark themes so it does not blaze. |
 | `--canvas` | — | every theme |  |
 | `--go` | — | every theme |  |
@@ -107,6 +117,69 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sleep-turn` | `1s linear` | — | the face turning back, one step a second |
 | `--sleep-line-h` | `26px` | — | the line under the time: the help or the Off button, height reserved |
 | `--sleep-swap` | `0.42s` | — | that line's fade-up; gentler than a row's --pop-in |
+
+### sound (src/sound-panel.ts, SOUND.md §2.3)
+
+| Token | Base | Overridden by | Note |
+|---|---|---|---|
+| `--sound-btn-size` | `var(--traffic-size)` | — | The EQ-fader icon and its panel. Colors are the --eq-* theme roles; the strengths below feed them (themes.css), so a skin can brighten a fill strengths below feed them (themes.css), so a skin can brighten a fill without naming a color. |
+| `--sound-panel-w` | `300px` | — |  |
+| `--sound-panel-max-h` | `min(620px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
+| `--sound-panel-pad` | `var(--space-2)` | — |  |
+| `--sound-title-tracking` | `0.02em` | — |  |
+| `--sound-chip-radius` | `var(--radius-control)` | — |  |
+| `--sound-pill-min-w` | `44px` | — | On / Off / Gentle keep one width in a column |
+| `--sound-icon-btn` | `24px` | — |  |
+| `--sound-step-pad` | `6px` | — |  |
+| `--sound-strong-fw` | `600` | — |  |
+| `--sound-tabs-pad` | `2px` | — | the tab strip's inset around the two tabs |
+| `--sound-tab-radius` | `calc(var(--radius-control) - 2px)` | — | nested inside the strip's radius |
+| `--sound-foot-fs` | `11px` | — | the footer line: review date and the limiter, quieter than a row |
+| `--sound-reset-w` | `56px` | — | Reset and Undo share one width |
+| `--sound-foot-pill-w` | `64px` | — | Keep: 7 days / 14 days / Never, one width, text centred |
+| `--sound-meter-w` | `172px` | — | "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box |
+| `--sound-meter-pad-y` | `2px` | — |  |
+| `--sound-dim` | `0.5` | — | a part while its switch is off |
+| `--sound-graph-h` | `128px` | — |  |
+| `--sound-graph-radius` | `var(--radius-control)` | press |  |
+| `--sound-axis-h` | `12px` | — |  |
+| `--sound-axis-gap` | `2px` | — |  |
+| `--sound-axis-fs` | `9px` | — |  |
+| `--sound-zone-h` | `20px` | — | the zone labels under the graph: a hold target, not just text |
+| `--sound-zone-fs` | `11px` | — |  |
+| `--sound-heard-w` | `1.5px` | — |  |
+| `--sound-heard-dash` | `3 2` | — | "what you hear" dashed, so it never reads as the EQ curve |
+| `--sound-key-size` | `8px` | — |  |
+| `--sound-key-radius` | `2px` | — |  |
+| `--sound-key-line` | `14px` | — |  |
+| `--sound-song-strength` | `22%` | ocean, retro-future |  |
+| `--sound-zone-strength` | `5%` | — |  |
+| `--sound-zone-lit-strength` | `14%` | — |  |
+| `--sound-balance-label-w` | `48px` | — |  |
+| `--sound-balance-bar-h` | `6px` | — |  |
+| `--sound-curve-w` | `2px` | press, retro-future |  |
+| `--sound-curve-glow` | `none` | ocean, glass, retro-future | a skin's light on the curve: a drop-shadow() filter |
+| `--sound-grid-w` | `1px` | — |  |
+| `--sound-grid-dash` | `none` | press, retro-future |  |
+| `--sound-zero-w` | `1px` | — |  |
+| `--sound-fill-strength` | `16%` | press, ocean, glass |  |
+| `--sound-grid-strength` | `24%` | retro-future |  |
+| `--sound-handle-size` | `16px` | — |  |
+| `--sound-handle-hit` | `28px` | — | the dot's pointer target, bigger than the dot |
+| `--sound-handle-ring` | `2px` | — |  |
+| `--sound-handle-fs` | `9px` | — |  |
+| `--sound-handle-shadow` | `0 1px 3px rgba(0, 0, 0, 0.25)` | glass |  |
+| `--sound-handle-hover-scale` | `1.18` | — |  |
+| `--sound-fader-w` | `18px` | — |  |
+| `--sound-fader-inset` | `8px` | — |  |
+| `--sound-fader-track-w` | `2px` | — |  |
+| `--sound-fader-knob-h` | `8px` | — |  |
+| `--sound-fader-knob-radius` | `3px` | — |  |
+| `--sound-glide` | `var(--dur-fast)` | — | a dot or knob settling after an edit |
+| `--sound-readout-min-w` | `56px` | — |  |
+| `--sound-status-lh` | `1.35` | — |  |
+| `--sound-status-gap` | `2px` | — |  |
+| `--sound-fold-bg` | `color-mix(in srgb, var(--surface-hover) 60%, transparent)` | — |  |
 
 ### playlist web (src/web.ts, PLAYLIST-WEB.md)
 
@@ -273,6 +346,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ap-row-h` | `var(--icon-lg)` | — |  |
 | `--ap-dot` | `0.9em` | — | the ✓ gutter on a row |
 | `--ap-pulse` | `1.2s` | — | the square's breathing while connecting |
+| `--ap-stroke` | `2` | — | the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) |
+| `--ap-caret-rise` | `13px` | — | "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) |
+| `--ap-cut-w` | `6` | — | the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) |
+| `--ap-caret-dur` | `0.32s` | — | the caret's rise and fall |
 | `--pop-in` | `var(--dur-med)` | — | dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in — a panel and new rows arriving |
 | `--pop-out` | `var(--dur-fast)` | — | a panel leaving |
 | `--pop-grow` | `var(--dur-med)` | — | a panel's height following a new row |
@@ -346,10 +423,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--ap-stroke` | `2` | — | the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) |
-| `--ap-caret-rise` | `13px` | — | "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) |
-| `--ap-cut-w` | `6` | — | the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) |
-| `--ap-caret-dur` | `0.32s` | — | the caret's rise and fall |
 | `--lib-pill-radius` | `999px` | press, glass, retro-future | fully-rounded sort/view pills |
 | `--lib-pop-radius` | `var(--radius-panel)` | press, retro-future |  |
 | `--lib-grid-gap` | `var(--space-2)` | — |  |

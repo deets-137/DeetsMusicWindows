@@ -375,6 +375,305 @@ body {
 .sleep__status[hidden] { display: none; }
 .sleep__off[hidden] { display: none; }
 
+/* ── Sound (src/sound-panel.ts, SOUND.md §2.3) ────────────────────────────────
+   The EQ-fader icon left of the sleep clock; any effect on = the title color. Its panel:
+   Compare, the equalizer (a curve with a dot per band, or ten faders over a live
+   song shape), plain-language zones you can hold to hear, presets, DeetsAdaptiveSound's three parts, and a status line for every
+   decision with a "How it decides" fold. Geometry = --sound-* skin tokens; colors =
+   the --eq-* roles (themes.css), so every skin can give the curve its own light. */
+.sound { position: relative; display: flex; align-items: center; }
+.sound__btn {
+  width: var(--sound-btn-size); height: var(--sound-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.sound__btn:hover { color: var(--text); }
+.sound__btn[data-armed] { color: var(--title); }
+.sound__btn svg { width: 100%; height: 100%; }
+.sound__btn svg rect { transition: y var(--sound-glide) var(--pop-ease); }
+.sound__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+.sound__panel {
+  position: absolute; top: 100%; right: 0;
+  margin-top: var(--space-1);
+  width: var(--sound-panel-w);
+  max-height: var(--sound-panel-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;          /* the bar's width is kept, so nothing shifts when it appears */
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--sound-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.sound__panel[hidden], .sound__panel [hidden] { display: none; }
+
+.sound__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.sound__tabs {
+  box-sizing: border-box; height: var(--icon-lg); align-items: stretch;
+  display: flex; padding: var(--sound-tabs-pad);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--sound-chip-radius);
+}
+.sound__tab {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--subtext); background: transparent;
+  border: 1px solid transparent; border-radius: var(--sound-tab-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui), color var(--dur-fast) var(--ease-ui);
+}
+.sound__tab:hover { color: var(--text); }
+.sound__tab[aria-selected="true"] { background: var(--surface); border-color: var(--panel-border); color: var(--title); }
+.sound__tab:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.sound__view { display: flex; flex-direction: column; gap: var(--space-2); }
+.sound__row-end { display: flex; align-items: center; gap: var(--space-1); }
+.sound__part { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sound__part-text { display: flex; flex-direction: column; gap: var(--sound-status-gap); min-width: 0; }
+.sound__part-text .sound__label { color: var(--text); }
+.sound__panel[data-adaptive-off] .sound__part { opacity: var(--sound-dim); }
+.sound__footer {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  border-top: 1px solid var(--border); padding-top: var(--space-2);
+}
+.sound__foot-line { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sound__foot-texts { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); min-width: 0; }
+.sound__foot-text { color: var(--subtext); font-size: var(--sound-foot-fs); font-variant-numeric: tabular-nums; }
+.sound__meter {
+  display: inline-block; min-width: var(--sound-meter-w);
+  padding: var(--sound-meter-pad-y) var(--space-1);
+  border: 1px solid var(--border); border-radius: var(--sound-chip-radius);
+  background: var(--surface);
+  color: var(--subtext); font-size: var(--sound-foot-fs);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sound__title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
+  color: var(--title); letter-spacing: var(--sound-title-tracking);
+}
+.sound__compare {
+  box-sizing: border-box; height: var(--icon-lg);
+  display: inline-flex; align-items: center;
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--title); background: transparent;
+  border: 1px solid var(--title);
+  border-radius: var(--sound-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer; user-select: none; touch-action: none;
+  transition: background var(--dur-fast) var(--ease-ui), color var(--dur-fast) var(--ease-ui);
+}
+.sound__compare:hover { background: var(--picked); }
+.sound__compare[data-held] { background: var(--title); color: var(--surface); }
+
+.sound__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sound__label { color: var(--subtext); }
+.sound__row--strong .sound__label { color: var(--text); font-weight: var(--sound-strong-fw); }
+
+
+.sound__pill, .sound__chip, .sound__step, .sound__icon-btn, .sound__fold-btn {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--sound-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.sound__pill { min-width: var(--sound-pill-min-w); white-space: nowrap; text-align: center; }
+.sound__foot-pill { min-width: var(--sound-foot-pill-w); }
+/* Reset turns into Undo in place: one width for both words, so nothing moves */
+.sound__row-end .sound__chip { min-width: var(--sound-reset-w); }
+.sound__pill:hover, .sound__chip:hover:not(:disabled), .sound__step:hover, .sound__icon-btn:hover, .sound__fold-btn:hover { background: var(--surface-hover); }
+.sound__pill[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.sound__chip:disabled { opacity: var(--sound-dim); cursor: default; }
+.sound__pill:focus-visible, .sound__chip:focus-visible, .sound__step:focus-visible, .sound__icon-btn:focus-visible,
+.sound__fold-btn:focus-visible, .sound__compare:focus-visible, .sound__handle:focus-visible, .sound__fader:focus-visible {
+  outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off);
+}
+.sound__icon-btn { padding: var(--space-1); min-width: var(--sound-icon-btn); }
+.sound__step { padding: var(--space-1) var(--sound-step-pad); }
+
+/* The graph: a plot that stretches to the panel, dots or faders on top */
+.sound__graph-wrap { display: flex; flex-direction: column; gap: var(--sound-axis-gap); }
+.sound__graph {
+  position: relative;
+  height: var(--sound-graph-h);
+  border-radius: var(--sound-graph-radius);
+  background: var(--eq-plot-bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+.sound__graph[data-mode="graphic"] { cursor: default; }
+.sound__plot { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sound__grid { stroke: var(--eq-grid); stroke-width: var(--sound-grid-w); stroke-dasharray: var(--sound-grid-dash); vector-effect: non-scaling-stroke; fill: none; }
+.sound__zero { stroke: var(--eq-grid); stroke-width: var(--sound-zero-w); vector-effect: non-scaling-stroke; fill: none; }
+.sound__zone { fill: transparent; transition: fill var(--dur-fast) var(--ease-ui); }
+.sound__zone--alt { fill: var(--eq-zone-alt); }
+.sound__zone[data-lit] { fill: var(--eq-zone-lit); }
+.sound__song { fill: var(--eq-song); stroke: none; }
+.sound__heard { fill: none; stroke: var(--eq-heard); stroke-width: var(--sound-heard-w); stroke-dasharray: var(--sound-heard-dash); vector-effect: non-scaling-stroke; }
+.sound__fill { fill: var(--eq-fill); stroke: none; transition: opacity var(--dur-fast) var(--ease-ui); }
+.sound__curve {
+  fill: none; stroke: var(--eq-curve); stroke-width: var(--sound-curve-w);
+  stroke-linejoin: round; stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  filter: var(--sound-curve-glow);
+  transition: opacity var(--dur-fast) var(--ease-ui);
+}
+.sound__graph[data-off] .sound__curve, .sound__graph[data-off] .sound__fill { opacity: var(--sound-dim); }
+
+.sound__handles, .sound__faders { position: absolute; inset: 0; }
+.sound__handles { pointer-events: none; }
+.sound__handle {
+  position: absolute;
+  left: calc(var(--x) * 100%); top: calc(var(--y) * 100%);
+  width: var(--sound-handle-hit); height: var(--sound-handle-hit);
+  margin: calc(var(--sound-handle-hit) / -2) 0 0 calc(var(--sound-handle-hit) / -2);
+  padding: 0; border: none; background: none;
+  display: grid; place-items: center;
+  font-family: var(--font-body); font-size: var(--sound-handle-fs); line-height: 1;
+  color: var(--eq-handle);
+  cursor: grab; pointer-events: auto; touch-action: none;
+  transition: left var(--sound-glide) var(--pop-ease), top var(--sound-glide) var(--pop-ease);
+}
+.sound__handle::before {
+  content: ""; position: absolute;
+  width: var(--sound-handle-size); height: var(--sound-handle-size);
+  border-radius: 50%;
+  background: var(--eq-handle-ink);
+  border: var(--sound-handle-ring) solid var(--eq-handle);
+  box-shadow: var(--sound-handle-shadow);
+  transition: transform var(--dur-fast) var(--ease-ui), background var(--dur-fast) var(--ease-ui);
+}
+.sound__handle:hover::before { transform: scale(var(--sound-handle-hover-scale)); }
+.sound__handle[data-selected] { color: var(--eq-handle-ink); }
+.sound__handle[data-selected]::before { background: var(--eq-handle); }
+.sound__handle[data-dragging] { cursor: grabbing; transition: none; }
+.sound__handle[data-dragging]::before { transform: scale(var(--sound-handle-hover-scale)); }
+.sound__handle[data-band-off]::before { border-style: dashed; opacity: var(--sound-dim); }
+/* the number sits over the ring */
+.sound__handle { isolation: isolate; }
+.sound__handle::before { z-index: -1; }
+
+.sound__fader {
+  position: absolute; top: var(--sound-fader-inset); bottom: var(--sound-fader-inset);
+  left: calc(var(--x) * 100%);
+  width: var(--sound-fader-w); margin-left: calc(var(--sound-fader-w) / -2);
+  cursor: ns-resize; touch-action: none;
+}
+.sound__fader-track {
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  width: var(--sound-fader-track-w); margin-left: calc(var(--sound-fader-track-w) / -2);
+  background: var(--eq-grid);
+  border-radius: var(--sound-fader-track-w);
+}
+.sound__fader-knob {
+  position: absolute; left: 0; right: 0;
+  bottom: calc(var(--slider-fill, 50%) - var(--sound-fader-knob-h) / 2);
+  height: var(--sound-fader-knob-h);
+  border-radius: var(--sound-fader-knob-radius);
+  background: var(--eq-handle);
+  box-shadow: var(--sound-handle-shadow);
+  transition: bottom var(--sound-glide) var(--pop-ease);
+}
+.sound__fader[data-dragging] .sound__fader-knob { transition: none; }
+
+/* The zones under the graph: hover says what lives there, hold plays only that range */
+.sound__zones { position: relative; height: var(--sound-zone-h); }
+.sound__zone-btn {
+  position: absolute; top: 0; bottom: 0;
+  left: calc(var(--lo) * 100%); width: calc((var(--hi) - var(--lo)) * 100%);
+  padding: 0; border: none; border-radius: var(--sound-chip-radius);
+  background: transparent; color: var(--subtext);
+  font-family: var(--font-body); font-size: var(--sound-zone-fs); line-height: 1;
+  cursor: pointer; user-select: none; touch-action: none;
+  transition: background var(--dur-fast) var(--ease-ui), color var(--dur-fast) var(--ease-ui);
+}
+.sound__zone-btn:hover { color: var(--text); background: var(--surface-hover); }
+.sound__zone-btn[data-held] { color: var(--surface); background: var(--title); }
+.sound__zone-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.sound__ends { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--sound-axis-fs); color: var(--subtext); }
+.sound__legend { display: flex; gap: var(--space-2); }
+.sound__key::before { content: ""; display: inline-block; vertical-align: middle; margin-right: var(--space-1); }
+.sound__key--song::before { width: var(--sound-key-size); height: var(--sound-key-size); background: var(--eq-song); border-radius: var(--sound-key-radius); }
+.sound__key--heard::before { width: var(--sound-key-line); height: 0; border-top: var(--sound-heard-w) dashed var(--eq-heard); }
+.sound__head-end { display: flex; align-items: center; gap: var(--space-1); }
+.sound__info[aria-expanded="true"] { border-color: var(--title); background: var(--picked); }
+.sound__reading { margin: 0; color: var(--text); }
+.sound__balance { display: flex; flex-direction: column; gap: var(--space-1); }
+.sound__balance-row { display: grid; grid-template-columns: var(--sound-balance-label-w) 1fr var(--sound-readout-min-w); align-items: center; gap: var(--space-2); }
+.sound__balance-bar { position: relative; height: var(--sound-balance-bar-h); background: var(--eq-grid); border-radius: var(--sound-balance-bar-h); }
+.sound__balance-bar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; border-radius: inherit; background: var(--eq-curve);
+  left: var(--bar-left, 50%); width: var(--bar-width, 0%);
+}
+.sound__balance-row .sound__readout { text-align: right; }
+
+.sound__band, .sound__presets, .sound__name { display: flex; align-items: center; gap: var(--space-1); }
+.sound__readout { flex: 1 1 auto; text-align: center; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sound__preset-name {
+  flex: 1 1 auto; min-width: 0; text-align: center;
+  font-family: var(--font-title); font-weight: var(--fw-title); color: var(--title);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sound__actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.sound__input {
+  flex: 1 1 auto; min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-control);
+  font-family: var(--font-body); font-size: var(--fs-subtext);
+  outline: none;
+}
+.sound__input:focus-visible { border-color: var(--title); }
+.sound__stepper { display: flex; align-items: center; gap: var(--space-1); }
+.sound__stepper .sound__readout { min-width: var(--sound-readout-min-w); }
+
+.sound__status { color: var(--subtext); line-height: var(--sound-status-lh); }
+
+.sound__note { color: var(--title); line-height: var(--sound-status-lh); }
+.sound__fold-btn { align-self: flex-start; background: transparent; border-color: transparent; color: var(--subtext); padding-left: 0; }
+.sound__fold-btn::before { content: "›"; display: inline-block; margin-right: var(--space-1); transition: transform var(--dur-fast) var(--ease-ui); }
+.sound__fold-btn[aria-expanded="true"]::before { transform: rotate(90deg); }
+.sound__fold {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--sound-fold-bg);
+}
+.sound__why { display: flex; flex-direction: column; gap: var(--space-1); color: var(--subtext); line-height: var(--sound-status-lh); }
+/* Each piece of the explanation in its own box, so a line that changes length moves only its box */
+.sound__why p {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--sound-chip-radius);
+  background: var(--surface);
+}
+.sound__row[data-inactive] { opacity: var(--sound-dim); }
+.sound__step:disabled { cursor: default; }
+.sound__outputs { display: flex; flex-direction: column; gap: var(--space-1); }
+.sound__output { display: flex; align-items: center; gap: var(--space-1); }
+.sound__output .sound__label { flex: 1 1 auto; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .sound__handle, .sound__fader-knob, .sound__btn svg rect, .sound__fold-btn::before { transition: none; }
+}
+
 /* ── Playlist web (PLAYLIST-WEB.md): the Playlists card's web button + its panel ──────
    The panel is portaled to <body> (a Glass card is a stacking context; web.ts places it).
    Its controls wear the sleep panel's chip look: one control voice for pop panels. */
@@ -572,6 +871,9 @@ body {
 .ap-square[data-state="on"] :is(.ap-caret, .ap-cut) { transform: translateY(calc(-1 * var(--ap-caret-rise))); }
 .ap-square[data-state="on"] .ap-caret { fill: currentColor; }
 .ap-square[data-state="on"] { color: var(--go); }
+@media (prefers-reduced-motion: reduce) {
+  .ap-caret, .ap-cut { transition: none; }
+}
 .ap-square[data-state="connecting"] svg { animation: ap-pulse var(--ap-pulse) ease-in-out infinite; }
 @keyframes ap-pulse { 50% { opacity: 0.35; } }
 
@@ -871,9 +1173,6 @@ body {
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
-@media (prefers-reduced-motion: reduce) {
-  .ap-caret, .ap-cut { transition: none; }
-}
 }
 .bento { position: relative; z-index: 1; }  /* cards ride above the ambient layers */
 .storm__strike,
@@ -1178,6 +1477,14 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 }
 /* Off hides the storm, as reduced motion does: a frozen half-drawn bolt reads as a bug. */
 :root[data-bg-motion="off"] .storm { display: none; }
+
+/* The app's scrollbar as a class: any NEW element that scrolls gets `app-scroll` (CLAUDE.md
+   build checklist; UI-ARCHITECTURE §Scrollbars). The older scrollers below keep their own
+   selectors; they draw the same bar. */
+.app-scroll::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
+.app-scroll::-webkit-scrollbar-track { background: transparent; }
+.app-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
+.app-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* Our own scrollbar for the Library list/grid and any plain panel body that scrolls
    (Settings) — replaces the OS bar. WebView2 is Chromium, so the ::-webkit-scrollbar

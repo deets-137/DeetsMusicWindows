@@ -434,6 +434,7 @@ pub fn record_event_start(
     catalog_id: Option<String>,
     library_id: Option<String>,
     context: Option<String>,
+    app: AppHandle,
     db: State<'_, Db>,
 ) -> Result<i64, String> {
     let track_id = catalog_id.or(library_id).unwrap_or_default();
@@ -444,13 +445,18 @@ pub fn record_event_start(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
-    let conn = db.0.lock().unwrap();
-    conn.execute(
-        "INSERT INTO play_events(track_id, started_ts, context) VALUES(?1, ?2, ?3)",
-        rusqlite::params![track_id, now_ms, context],
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(conn.last_insert_rowid())
+    let id = {
+        let conn = db.0.lock().unwrap();
+        conn.execute(
+            "INSERT INTO play_events(track_id, started_ts, context) VALUES(?1, ?2, ?3)",
+            rusqlite::params![track_id, now_ms, context],
+        )
+        .map_err(|e| e.to_string())?;
+        conn.last_insert_rowid()
+    };
+    // The profile's "listening now" line (LASTFM.md §5). Returns at once; the call runs apart.
+    crate::lastfm::now_playing(&app, track_id);
+    Ok(id)
 }
 
 /// Finalize a play-event row at end-of-play (step 2): the real elapsed listen time
@@ -764,6 +770,24 @@ pub fn migrate_v5(conn: &Connection) -> Result<(), String> {
         crate::log::info("migration: v5 added local_playlists.cover_at");
     }
     meta_set(conn, "schema_version", "5")
+}
+
+/// v6 (2026-09-16): `play_events.lastfm` — the play's Last.fm state (LASTFM.md §5). NULL = not
+/// for Last.fm (no account, the row off, or not heard long enough); `queued` → `sent` /
+/// `ignored` / `failed`. Old rows stay NULL, so connecting sends no history.
+pub fn migrate_v6(conn: &Connection) -> Result<(), String> {
+    let has: i64 = conn
+        .query_row("SELECT COUNT(*) FROM pragma_table_info('play_events') WHERE name = 'lastfm'", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if has == 0 {
+        conn.execute_batch(
+            "ALTER TABLE play_events ADD COLUMN lastfm TEXT;
+             CREATE INDEX IF NOT EXISTS idx_play_events_lastfm ON play_events(lastfm) WHERE lastfm IS NOT NULL;",
+        )
+        .map_err(|e| format!("add lastfm column: {e}"))?;
+        crate::log::info("migration: v6 added play_events.lastfm");
+    }
+    meta_set(conn, "schema_version", "6")
 }
 
 /// The ids marked dead within the last 7 days — the player's denylist at launch.
