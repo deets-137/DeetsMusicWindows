@@ -13,6 +13,8 @@ the app can do any of these things.
   (artist, album, browse, your account), for a future session.
 - [CardSwapMotion.md](CardSwapMotion.md) — animate cards when they swap slots, replace
   each other, or move on a surface flip.
+- [LinuxPort.md](LinuxPort.md) — a Linux (and macOS) release: the DRM + AAC block on Linux,
+  the Tauri CEF / castLabs ECS paths around it, and the Windows-only parts to replace.
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).
