@@ -221,3 +221,43 @@ row. The crate keeps `Capture::start_process`, `mixer.rs`, and the probe subcomm
 the HomePod plays; watch a fresh WebView2 process tree after a MusicKit reload (the child pid
 is looked up at each connect, so a respawned WebView2 is found on the next connect, not
 mid-session); then bring the §7 row back.
+
+## 11. Sharing the speaker with DeetsAirplay (2026-09-15)
+
+DeetsAirplay is the tray sender in `../DeetsAirplay` — the same crate underneath, sending the
+whole PC's output instead of this app's. A receiver takes **one** sender, so before this the
+two could offer the same HomePod, and whoever lost the race got a handshake failure with
+nothing to act on. Two channels now keep them honest. Neither is required for DeetsMusic to
+work, and the usual install has no DeetsAirplay at all.
+
+**The claim file — no code here.** `deets-airplay`'s `claim.rs` writes
+`{id, app, pid, exe, speaker, ip, port, since, send}` to
+`%LOCALAPPDATA%\Deets\airplay-claims.tsv` inside `session::connect`, and drops it in the
+session's `Drop`. A claim counts only while a process with that pid *and* that exe name is
+alive, so a crash needs no cleanup. **This app adopts it by bumping the crate `rev`** —
+nothing in `airplay.rs` changes. `send` says what the stream carries (`all` for DeetsAirplay's
+loopback, `apps [...]` once its per-app picker exists), which is how the other side knows
+whether our song is already on the speaker or genuinely absent from it.
+
+**Two bridge routes — the only new code.** `bridge.rs`:
+
+| Route | Gate | Answers |
+|---|---|---|
+| `GET /airplay` | the token, like `/now-playing` | `{speaker, ip, port, sends}`, or nulls when idle |
+| `POST /airplay` | the token **and** Agent control | `{action:"disconnect"}` — let the speaker go |
+
+`held_speaker()` and `release()` in `airplay.rs` are the two lines behind them; `release` is
+what "This computer" already does. The GET exists so a DeetsAirplay running against an
+*older* DeetsMusic (one whose crate predates `claim.rs`) can still see which speaker we hold;
+the other side detects the route by calling it, so there is no version gate to keep in step.
+
+**What the other app does with it:** its speaker list shows "Playing from DeetsMusic" on a
+held row with a **Take over** button (`POST /airplay`, wait for the claim to clear, connect),
+and its now-playing card is ours — cover, position, exact transport through `POST /command` —
+whenever we hold the stream, or whenever it is sending the whole PC and we are playing.
+Its volume slider forwards to `POST /command {kind:"volume"}`, which lands on our slider,
+which while we stream is already the speaker's own volume: one hop, never a second gain stage.
+
+**Releasing:** the routes are additive and inert, so they can ride any release. The claim
+needs a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0, which is the only
+thing here that has to be sequenced — push the crate first.

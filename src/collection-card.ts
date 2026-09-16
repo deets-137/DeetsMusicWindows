@@ -153,9 +153,11 @@ export function actionsRowHTML(titles: ActionTitles = {}): string {
     </button>
   </div>`;
 }
-/** The row for a song list (`Grouping.playAll`); "" for anything else. */
-function actionsHTML(g: Grouping): string {
-  if (!g.playAll) return "";
+/** The row for a song list (`Grouping.playAll`); "" for anything else, and "" while the
+ *  list has no rows at all (an empty library, or a filter that matches nothing): there is
+ *  nothing for Play or Shuffle to start. */
+function actionsHTML(g: Grouping, count: number): string {
+  if (!g.playAll || count === 0) return "";
   return actionsRowHTML(g.playAll === true ? {} : g.playAll);
 }
 
@@ -435,7 +437,7 @@ export function initCollectionCard(opts: CardOptions) {
     // Play / Shuffle (NEXT-VERSION §13, user's call 2026-09-15): a row of two half-width
     // buttons under the hero — or at the top of a song list with no hero — inside the head
     // block, so the windower measures it and a View switch to a non-song grouping drops it.
-    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g) + (f.ctx.shelves?.() ?? "");
+    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g, items.length) + (f.ctx.shelves?.() ?? "");
     // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
     // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
     // it can stick to the top once the hero and shelves scroll away (a sticky box stops at

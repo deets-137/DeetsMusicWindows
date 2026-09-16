@@ -22,6 +22,12 @@ export interface Settings {
   menuMode: "click" | "hover";
   /** Free resize flips the surface past its band (FUTURE-SETTINGS §8). Off = clamp only. */
   surfaceAutoFlip: boolean;
+  /** Open sizes (FUTURE-SETTINGS §8a): the window size each view opens at, "WxH" in logical
+   *  px. surface.ts applies them on every open; a resize by hand is not remembered. */
+  sizeMini: string;
+  sizePlayer: string;
+  sizeMidi: string;
+  sizeMax: string;
   /** Theme/skin switches animate (NEXT-VERSION §6). The OS reduced-motion preference still wins. */
   appearanceMotion: boolean;
   /** A card swap, summon or replace plays the skin's swap motion (card-swap.ts). The OS
@@ -143,6 +149,10 @@ export const DEFAULTS: Settings = {
   trayView: "cards",
   menuMode: "click",
   surfaceAutoFlip: true,
+  sizeMini: "385x550", // user's numbers, desk-tested 2026-09-15: each view opens at its own floor
+  sizePlayer: "405x675", // NP: 404 px wide is where the Press record stopped jittering
+  sizeMidi: "495x670",
+  sizeMax: "1100x820",
   appearanceMotion: true,
   cardSwapMotion: false, // user's call 2026-09-15: off by default
   backgroundMotion: "on",
@@ -213,6 +223,9 @@ function migrate(into: Partial<Settings>): void {
     into.glassCanvasGlow = into.glassBacklight;
     delete into.glassBacklight;
   }
+  // Open sizes replaced the remembered window sizes (2026-09-15, FUTURE-SETTINGS §8a). A
+  // remembered size is what made NP small, so they are removed, not copied.
+  for (const k of ["mini", "midi", "max", "mini-player"]) localStorage.removeItem(`deets.surface.size.${k}`);
 }
 
 function load(): Settings {

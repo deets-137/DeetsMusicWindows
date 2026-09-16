@@ -196,9 +196,10 @@ max).
 - **Pick:** the Surface flyout's first row is one pill cut in two, **Mini | NP** (the search
   pin idiom): `data-surface-choice="mini"` + `data-mini-choice="cards|player"`. The view is
   stored in `deets.surface.mini` and is kept when the window flips to midi and back.
-- **Size:** the player remembers its own size (`deets.surface.size.mini-player`, default
-  360 × 600) and lowers the window minimum to 340 × 420 (`setMinSize`, per view, in
-  `surface.ts`; the capability `core:window:allow-set-min-size`).
+- **Size:** the player opens at its own size (`sizePlayer`, default 520 × 560; Settings §§ Window
+  §§ *NP opens at*) and lowers the window minimum to 420 × 460 (`setMinSize`, per view, in
+  `surface.ts`; the capability `core:window:allow-set-min-size`). A resize by hand is not
+  remembered, and the player never flips surface on a resize (FUTURE-SETTINGS §8a).
 - **Card requests** (queue / search buttons, Go to, Settings…, Ctrl shortcuts) in the player
   first switch mini to its card view, then mount into the left slot (`layout.ts`).
 - **Settings:** *Tray icon opens* (`trayView`) picks the view a tray click pops; *Keep on top*
@@ -242,8 +243,9 @@ Each phase **compiles and is independently testable**; behaviour only changes wh
      `core:window:allow-set-size` capability — granted in `capabilities/default.json`).
    - **CSS** — the `.bento` base block *is* the midi map; max/mini inherit it (commented override
      stubs mark where their compositions land later).
-   - **Persistence** — `deets.surface` + `deets.surface.size.{mini,midi,max}` (saved debounced on
-     resize, restored on selection and launch) — the FUTURE-SETTINGS §8 keys.
+   - **Persistence** — `deets.surface` (the deliberate choice). The remembered per-surface
+     sizes (`deets.surface.size.*`) were **replaced 2026-09-15** by the open sizes in the
+     settings store (`sizeMini` / `sizePlayer` / `sizeMidi` / `sizeMax`) — FUTURE-SETTINGS §8a.
    - **Still deferred:** the max & mini compositions, mini's minimize-entry / shrink-in-place /
      always-on-top behaviour, and the band-editor setting. Picking Mini today = a small window
      with the midi bento inside (functional, squished — by design until mini's composition lands).

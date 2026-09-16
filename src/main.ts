@@ -154,7 +154,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // name mini's view.
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
     el.addEventListener("click", () => {
-      void applySurface(el.dataset.surfaceChoice as SurfaceName, false, el.dataset.miniChoice as MiniView | undefined);
+      void applySurface(el.dataset.surfaceChoice as SurfaceName, el.dataset.miniChoice as MiniView | undefined);
       invoke("tray_pin_main").catch(() => {});
       close();
     });
@@ -164,7 +164,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // anchor + show the window at the click. Order matters — the anchor needs the mini size,
   // so we resize first.
   void listen("tray-pop", () => {
-    applySurface("mini", true, setting("trayView"))
+    applySurface("mini", setting("trayView"))
       .catch((e) => console.error("[tray] mini", e))
       .then(() => invoke("tray_place_main"))
       .catch((e) => console.error("[tray] place", e));

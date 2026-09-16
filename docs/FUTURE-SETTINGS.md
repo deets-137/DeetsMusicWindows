@@ -265,7 +265,7 @@ the chosen surface + each surface's last window size (`deets.surface` = `"mini"|
 active surface from size. A **Window / Layout** settings subsection would host the toggle +
 (advanced) the band editor.
 
-### 8a. Open sizes — DECIDED 2026-09-15, not built (1A, 2C, 3 as proposed, 4B)
+### 8a. Open sizes — BUILT 2026-09-15 (1A, 2C, 3 as proposed, 4B)
 
 **Terms.** A **surface button** is a row in the title menu's Surface flyout: *Mini | NP*,
 *Midi*, *Max* (`index.html`, `data-surface-choice`). A **view** is one of the four sized
@@ -367,11 +367,15 @@ Each row's `halves`:
    around it), values `"520x560"`. If the stored value is not one of the three (a *Set current*
    size), put it first in the options, with the same label form. `get`/`set` read and write the
    key. Write a helper `sizeRow(id, label, hint, key, presets)` next to `storeMenu`.
-2. `{ type: "action", label: "Set current", hint: "Saves the window's size now as this
-   view's size" }`. `run(el)`: if `activeSizeSlot()` is not this row's view, `flash(el,
-   "Open it first")` and stop. Else `setSetting(key, currentSizeText())`, then `flash(el,
-   "Saved")`. `flash` exists (`settings-card.ts:263`). The card re-renders on the store
-   change, so the menu shows the new size.
+2. `{ type: "action", label: "Set current", hint: "Saves the size this view has now, or had
+   last" }`. `run(el)`: `sizeSeen(slot)` gives the size the view has now, or the size it had
+   while it was last on screen in this session; `null` (never on screen) — `flash(el, "Open
+   it first")` and stop. Else `setSetting(key, v)`. `flash` exists (`settings-card.ts:263`).
+   The card re-renders on the store change, so the menu shows the new size.
+   **Why the session memory** (built 2026-09-15): the Settings card can never be open while
+   NP shows — a card request switches mini back to its cards view (`layout.ts`) — so a
+   row that only read the *active* view could never capture NP. `surface.ts` keeps a `seen`
+   map, written in the ResizeObserver for hand resizes only. It is never stored: 1A holds.
 
 **Reset:** add the four keys to the `window` group in `RESET_GROUPS` (`settings-card.ts:190`)
 and add "the four open sizes" to its hint.

@@ -21,8 +21,9 @@
   guard stops the click that blurred it from re-opening it. If the *real* window was
   visible when the pop happened, its position is remembered. The flyout is **off the
   taskbar** (`set_skip_taskbar(true)` on pop, back to `false` on Open / pin) and always
-  opens at mini's **default** size (`applySurface("mini", true)`) — a fixed panel like
-  DA's, so a remembered mini size from narrowing the app window can't stretch it.
+  opens at the **open size** of the view *Tray icon opens* names (`applySurface("mini", view)`,
+  `sizeMini` or `sizePlayer`) — a fixed panel like DA's. Since 2026-09-15 no size is kept
+  from a resize, so narrowing the app window cannot stretch the flyout (FUTURE-SETTINGS §8a).
 - **Right-click → *Open DeetsMusic* = the real app**: `show_main` **hides the window
   first**, then emits `tray-open` → the page switches to the **full surface**
   (`deets.surface.full`: midi, or max if that was the last non-mini choice) and resizes

@@ -20,6 +20,9 @@
 //!   POST /search         {term} → {songs:[candidate], albums:[{album, artworkUrl}]}
 //!                        (the popup's mini search card — songs + albums only)
 //!   GET  /now-playing    the hub snapshot (what the tray panel sees)
+//!   GET  /airplay        which speaker this app is streaming to, or nulls
+//!   POST /airplay        {action:"disconnect"} — let the speaker go, so the other
+//!                        sender on this PC (DeetsAirplay) can take it over
 //!   GET  /log            text/plain — the app log ring (debug)
 //!
 //! Agent / CLI control (AGENT.md) — the same loopback + token, routed to the main
@@ -649,7 +652,10 @@ async fn handle(app: AppHandle, mut req: Request) {
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings",
     ];
-    let agent_off = !settings.agent_control && origin.is_none() && AGENT_ROUTES.contains(&path.as_str());
+    // `POST /airplay` hands a speaker to another app, which is control, not a
+    // read; `GET /airplay` only says which speaker we hold, like /now-playing.
+    let agent_route = AGENT_ROUTES.contains(&path.as_str()) || (method == Method::Post && path == "/airplay");
+    let agent_off = !settings.agent_control && origin.is_none() && agent_route;
 
     if method == Method::Options {
         return respond(req, 204, String::new(), "text/plain", origin);
@@ -659,7 +665,14 @@ async fn handle(app: AppHandle, mut req: Request) {
     if method == Method::Post {
         let _ = req.as_reader().take(64 * 1024).read_to_string(&mut body);
     }
-    log(&format!("{method} {path} paired={paired} body={}b", body.len()));
+    // The polled reads are not logged: DeetsAirplay's panel asks for the
+    // now-playing card and the held speaker once a second while it is open,
+    // and at that rate the log ring is nothing but our own chatter within
+    // minutes. Everything that changes something still logs.
+    const POLLED: &[&str] = &["/health", "/now-playing", "/airplay"];
+    if !(method == Method::Get && POLLED.contains(&path.as_str())) {
+        log(&format!("{method} {path} paired={paired} body={}b", body.len()));
+    }
     if origin.is_some() {
         mark_extension_connected(&app);
     }
@@ -686,6 +699,38 @@ async fn handle(app: AppHandle, mut req: Request) {
         (Method::Get, "/now-playing") => {
             let np = app.state::<Hub>().np.lock().unwrap().clone();
             json(req, 200, serde_json::to_value(np).unwrap_or_default(), origin)
+        }
+        // AIRPLAY.md §11. Read: which speaker we are holding, so the other
+        // sender on this PC can say "DeetsMusic is playing on Living Room"
+        // instead of failing a handshake against a receiver we already own.
+        // Write: let it go, so its panel can offer a hand-over. Both are inert
+        // when nothing else is installed, which is the usual case.
+        (Method::Get, "/airplay") => {
+            let held = crate::airplay::held_speaker(&app);
+            json(
+                req,
+                200,
+                serde_json::json!({
+                    "speaker": held.as_ref().map(|s| s.name.clone()),
+                    "ip": held.as_ref().map(|s| s.ip.clone()),
+                    "port": held.as_ref().map(|s| s.port),
+                    "sends": "what DeetsMusic plays",
+                }),
+                origin,
+            )
+        }
+        (Method::Post, "/airplay") => {
+            let action = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|v| v.get("action").and_then(|a| a.as_str().map(String::from)))
+                .unwrap_or_default();
+            if action != "disconnect" {
+                return json(req, 400, serde_json::json!({ "error": "action must be \"disconnect\"" }), origin);
+            }
+            // A TEARDOWN plus a thread join; never on the runtime's thread.
+            let handle = app.clone();
+            tauri::async_runtime::spawn_blocking(move || crate::airplay::release(&handle)).await.ok();
+            json(req, 200, serde_json::json!({ "ok": true }), origin)
         }
         (Method::Get, "/log") => respond(req, 200, log_text(), "text/plain; charset=utf-8", origin),
 

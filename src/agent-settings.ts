@@ -17,7 +17,7 @@ import { toast } from "./toast";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
 import { applyTheme, type ThemeName } from "./theme";
 import { applySkin, currentSkin, type SkinName } from "./skin";
-import { applySurface, currentSurface, type SurfaceName } from "./surface";
+import { applySurface, currentSurface, MIN_SIZES, SIZE_KEYS, type SurfaceName, type SizeSlot } from "./surface";
 import { noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
 
@@ -35,7 +35,9 @@ interface Spec {
   key: string;
   label: string;
   section: string;
-  kind: "choice" | "toggle" | "range" | "time";
+  kind: "choice" | "toggle" | "range" | "time" | "size";
+  /** size: the view whose minimum a set is checked against. */
+  slot?: SizeSlot;
   options?: Opt[];
   /** range: the bounds · time: minutes after midnight, on the half hour. */
   min?: number;
@@ -78,6 +80,13 @@ const storeTime = (key: "dayStart" | "nightStart", label: string, from: number, 
   get: () => setting(key),
   set: (v) => setSetting(key, v),
 });
+/** An open size (FUTURE-SETTINGS §8a): "WxH" in px. surface.ts resizes the window when the
+ *  set is for the view that shows. */
+const storeSize = (slot: SizeSlot, label: string): Spec => ({
+  key: SIZE_KEYS[slot], label, section: "Window", kind: "size", slot,
+  get: () => setting(SIZE_KEYS[slot]),
+  set: (v) => setSetting(SIZE_KEYS[slot], v),
+});
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
 const rustSettings = () => invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get");
@@ -113,6 +122,10 @@ const SPECS: Spec[] = [
   storeChoice("Window", "trayView", "Tray icon opens", [{ value: "cards", label: "Mini" }, { value: "player", label: "Player" }]),
   rustToggle("Window", "startWithWindows", "Start with Windows", () => invoke<boolean>("autostart_get"), (on) => invoke<boolean>("autostart_set", { on })),
   storeToggle("Window", "surfaceAutoFlip", "Resize changes surface"),
+  storeSize("mini", "Mini opens at"),
+  storeSize("player", "NP opens at"),
+  storeSize("midi", "Midi opens at"),
+  storeSize("max", "Max opens at"),
   storeChoice("Window", "alwaysOnTop", "Keep on top", [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }]),
   {
     key: "surface", label: "Surface", section: "Window", kind: "choice",
@@ -124,8 +137,8 @@ const SPECS: Spec[] = [
       withAppearanceTransition(
         "surface",
         async () => {
-          if (v === "player") await applySurface("mini", false, "player");
-          else await applySurface(v as SurfaceName, false, v === "mini" ? "cards" : undefined);
+          if (v === "player") await applySurface("mini", "player");
+          else await applySurface(v as SurfaceName, v === "mini" ? "cards" : undefined);
           invoke("tray_pin_main").catch(() => {}); // a deliberate pick pins a tray-popped window, as the menu does
         },
         { by: "agent" },
@@ -226,6 +239,7 @@ function accepts(s: Spec): string {
   switch (s.kind) {
     case "range": return `${s.min}–${s.max}`;
     case "time": return `HH:MM on :00 or :30, ${clock(s.min!)}–${clock(s.max!)}`;
+    case "size": return `W×H in px, at least ${MIN_SIZES[s.slot!].w}×${MIN_SIZES[s.slot!].h}`;
     default: return s.options!.map((o) => o.label).join(" | ");
   }
 }
@@ -233,6 +247,7 @@ function accepts(s: Spec): string {
 function labelOf(s: Spec, v: string): string {
   if (s.kind === "range") return `${v}%`;
   if (s.kind === "time") return v;
+  if (s.kind === "size") return v.replace("x", " × ");
   return s.options!.find((o) => o.value === v)?.label ?? v;
 }
 
@@ -280,6 +295,11 @@ function parse(s: Spec, raw: string): string {
   } else if (s.kind === "range") {
     const v = Number(input.replace(/%$/, ""));
     if (input && Number.isInteger(v) && v >= s.min! && v <= s.max!) return String(v);
+  } else if (s.kind === "size") {
+    // "600x640", "600 x 640", "600×640"
+    const m = /^(\d{3,4})\s*[x×]\s*(\d{3,4})$/i.exec(input);
+    const min = MIN_SIZES[s.slot!];
+    if (m && Number(m[1]) >= min.w && Number(m[2]) >= min.h) return `${Number(m[1])}x${Number(m[2])}`;
   } else {
     const m = /^(\d{1,2}):(\d{2})$/.exec(input);
     const mins = m ? Number(m[1]) * 60 + Number(m[2]) : NaN;

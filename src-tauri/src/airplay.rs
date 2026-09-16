@@ -243,6 +243,21 @@ fn stop_live(state: &AirplayState) {
     }
 }
 
+/// The speaker this app is streaming to, if any. For the bridge's `/airplay`,
+/// which is how DeetsAirplay (the tray sender, the same crate underneath)
+/// knows not to offer a receiver we are already holding — a receiver takes one
+/// sender at a time. Nothing else need be installed for this to be correct:
+/// with no session the route simply answers "nobody".
+pub fn held_speaker(app: &AppHandle) -> Option<AirplaySpeaker> {
+    app.state::<AirplayState>().live.lock().unwrap().as_ref().map(|l| l.speaker.clone())
+}
+
+/// Let the speaker go because the other app asked for it (its "Take over").
+/// Exactly what the "This computer" row does, minus the UI.
+pub fn release(app: &AppHandle) {
+    stop_live(&app.state::<AirplayState>());
+}
+
 fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), String> {
     let state = app.state::<AirplayState>();
     stop_live(&state);

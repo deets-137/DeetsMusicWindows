@@ -294,6 +294,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `glassCanvasGlow`, `glassCanvasDim`), with or without `%`.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range
   (`dayStart` 04:00–12:00, `nightStart` 15:00–23:30).
+- An **open size** takes `W×H` in px (`600x640`, `600 x 640`, `600×640`), at least the view's
+  minimum: `sizeMini` / `sizeMidi` / `sizeMax` 340×560, `sizePlayer` 420×460. A set for the view
+  on screen resizes the window at once (SETTINGS.md §3, FUTURE-SETTINGS §8a).
 - A bad value → `400` that says what the setting takes.
 
 ### Which settings

@@ -71,6 +71,10 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
   // the place, as a row + fraction, so a geometry change can restore it
   let anchorRow = 0;
   let anchorFrac = 0;
+  // While the scroll is still inside the head block (hero, Play / Shuffle, shelves), the
+  // place to keep is that offset in px, NOT a row: a row anchor reads as "row 0" and the
+  // restore below then scrolls the whole head away (seen on a skin switch, 2026-09-15).
+  let anchorHead: number | null = 0;
 
   let top: HTMLElement;
   let bot: HTMLElement;
@@ -182,13 +186,20 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
     if (a === b) patch(0, Math.min(count, 2 * Math.max(cols, 8)));
     const wasPitch = pitch;
     const wasCols = cols;
+    const wasHeroH = heroH;
     if (!measure()) return false;
     setSpacers();
-    if (wasPitch && (wasPitch !== pitch || wasCols !== cols)) {
+    if (wasPitch && (wasPitch !== pitch || wasCols !== cols || wasHeroH !== heroH)) {
       // geometry changed under a fixed scrollTop (skin switch, column count) → restore
       // the remembered place, then re-align the slice to the new rows
-      const idx = anchorRow * wasCols;
-      view.scrollTop = heroH + rowOf(idx) * pitch + anchorFrac * pitch;
+      if (anchorHead !== null) {
+        // inside the head: keep the same px offset into it (0 stays 0), clamped to its
+        // new height, so a taller or shorter head never pushes it off the top
+        view.scrollTop = Math.max(0, Math.min(anchorHead, heroH));
+      } else {
+        const idx = anchorRow * wasCols;
+        view.scrollTop = heroH + rowOf(idx) * pitch + anchorFrac * pitch;
+      }
     }
     return true;
   };
@@ -203,6 +214,7 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
     const bufRows = Math.max(viewRows, Math.ceil(MIN_BUFFER_PX / pitch));
     anchorRow = firstRow;
     anchorFrac = Math.max(0, Math.min(1, (st - heroH - firstRow * pitch) / pitch));
+    anchorHead = st < heroH ? st : null; // in the head, or on a row
     const lastRow = Math.min(rows, firstRow + viewRows);
 
     const clampB = (r: number) => Math.min(count, r * cols);

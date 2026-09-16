@@ -34,6 +34,7 @@ import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, versionText, type OlderVersion } from "./updater";
 import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance } from "./cards";
+import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
 type Option = { value: string; label: string };
@@ -187,7 +188,7 @@ const RESET_GROUPS: ResetGroup[] = [
     keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate"],
   },
   { id: "menus", label: "Menus and notices", hint: "Open menus on hover and Show notices", keys: ["menuMode", "toasts"] },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "alwaysOnTop"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle"],
@@ -264,6 +265,45 @@ function mountSettings(host: HTMLElement): CardInstance {
     const was = el.textContent;
     el.textContent = text;
     window.setTimeout(() => (el.textContent = was), 1200);
+  };
+  // ── Window › the open sizes (FUTURE-SETTINGS §8a): a W × H menu and Set current ──
+  // The open size is the size a view's own button (and the tray, and the launch) sets.
+  const SIZE_PRESETS: Record<SizeSlot, string[]> = {
+    mini: ["385x550", "420x620", "455x700"],
+    player: ["405x675", "460x720", "540x800"],
+    midi: ["495x670", "540x780", "600x900"],
+    max: ["960x700", "1100x820", "1400x900"],
+  };
+  const sizeLabel = (v: string) => v.replace("x", " × ");
+  const sizeRow = (id: string, label: string, hint: string, slot: SizeSlot): Row => {
+    const key = SIZE_KEYS[slot];
+    return {
+      kind: "split", id, label,
+      hint: () => hint,
+      halves: [
+        {
+          type: "menu",
+          // A size saved by Set current that is not one of the three leads the list.
+          get options() {
+            const cur = setting(key);
+            const presets = SIZE_PRESETS[slot];
+            return (presets.includes(cur) ? presets : [cur, ...presets]).map((v) => ({ value: v, label: sizeLabel(v) }));
+          },
+          get: () => setting(key),
+          set: (v) => setSetting(key, v),
+        },
+        {
+          type: "action", label: "Set current", hint: "Saves the size this view has now, or had last",
+          run: (el) => {
+            // The view on screen, or the size it had earlier in this session. The Settings
+            // card cannot be open while NP shows, so its row reads the remembered one.
+            const v = sizeSeen(slot);
+            if (!v) return flash(el, "Open it first");
+            setSetting(key, v); // the card re-renders; the menu shows the new size
+          },
+        },
+      ],
+    };
   };
   const versionLabel = () => `Version ${versionText()}`.trim();
   const copyFrom = (el: HTMLElement, text: Promise<string>) =>
@@ -479,6 +519,10 @@ function mountSettings(host: HTMLElement): CardInstance {
           },
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
+        sizeRow("sizeplayer", "NP opens at", "The window size for NP, the player alone. Set current saves the size it had last", "player"),
+        sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
+        sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
         {
           kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
           hint: "The window stays above other windows. Player: only while it shows the player",

@@ -310,7 +310,7 @@ export function initLayout(): void {
   const visibleSlotOf = (id: CardId): Slot | undefined => comp.slots.find((s) => layout[s] === id && onScreen(hosts[s]));
   onCardRequest((id) => {
     if (comp.anchored.includes(id)) return;
-    if (isPlayerView()) void applySurface("mini", false, "cards");
+    if (isPlayerView()) void applySurface("mini", "cards");
     // Already on screen: leave the layout as it is. It used to exchange the two slots
     // whenever the least-recently-touched slot was the other one (ARTIST-VIEW.md §6).
     if (visibleSlotOf(id)) return;
