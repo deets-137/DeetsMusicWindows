@@ -572,6 +572,47 @@ and the rest of its list shuffled behind it (manual picks stay in front, §5a un
 and a Repeat-all lap is shuffled too. Agent: `shuffle` presses the button, `shuffle-on` /
 `shuffle-off` set the mode; the snapshot's `shuffle` says whether it is on.
 
+**2026-09-16 — the "on" state was invisible, and a press had no answer.** Two faults, both fixed:
+
+1. *Pressed drew nothing.* The only signal was `color: var(--np-accent)`, and `--np-accent`
+   falls back to `var(--title)` (`themes.css`) — the square's own off color. It is overwritten
+   per song, inline, only in skins that opt into `--np-album-text`. In every other skin the on
+   and off squares were the same pixels. `aria-pressed` was right all along, so screen readers
+   were never affected; only the eye was. **Fix:** "on" now fills the square —
+   `background: var(--picked)` + `border-color: var(--title)`, the same `aria-pressed` pattern
+   the sleep chips and the settings half-buttons use. A shape change, not a hue change, so it
+   holds under any album color and for colorblind users. The accent tint stays on top of it.
+   **Repeat had the identical collision** (`data-state="all" | "one"`) and is fixed with it.
+   ♥ and repeat-one were already safe — they change shape (fill / the small "1").
+2. *A press had no feedback while the mode was off.* With `shuffleStays` off the square is a
+   one-shot: it shuffles Up Next and there is no mode to paint, so nothing moved. **Fix — "cross
+   the wires":** the icon's two arrows swing apart to parallel, hold a beat, then re-cross.
+   The `<svg>` is now two `<g>` wires (each line plus its own arrowhead); each rotates ∓45° to
+   flat and translates apart, or they would overlap instead of reading as two. Tokens
+   `--sh-cross-dur` / `--sh-cross-gap` (skin tier); reduced motion snaps. It runs on **every**
+   press, on and off, so the press always answers.
+
+**2026-09-16, second pass — the parted wires showed a hole, and Repeat got its own move.**
+
+3. *The lower wire broke when it straightened.* Feather draws that wire as two stubs with a
+   gap, which is how the icon says "this one passes under". The cue only works while they
+   cross; the moment they part it reads as a broken line. **Fix:** the wire is now **one whole
+   line** (`4,4 → 21,21`), and the under-pass is a soft hole in an SVG mask at the centre —
+   a radial gradient, so the wire fades out and back rather than stopping dead. The mask sits
+   on a still wrapper `<g>`, so the hole stays put in the icon's frame while the wire inside
+   turns. The hole **closes** during the parallel beat (`np-sh-fade` drives `stop-opacity` on
+   the inner stops): nothing crosses then, so nothing should fade. Black and white inside the
+   mask are luminance, not palette — a mask has no other alphabet.
+4. *Repeat one now turns.* The press that lands on **"one"** sends the loop right round once
+   (`--rp-loop-dur`, 0.5s): one song, going round and round. Only that press — `off` and `all`
+   stay still, so the turn names the mode it lands on. `cycleRepeat()` already returns the new
+   mode, so the trigger is the press itself, never a repaint (a persisted "one" does not spin
+   on load). The glyph keeps its rounded-rectangle shape; it simply ends where it started. The
+   "1" is a sibling `<span>`, not part of the `<svg>`, so it stays upright while the loop turns.
+
+**Still sharing the old fault:** the AirPlay square (`.ap-square[data-state="on"]`) is hue-only
+on `--np-accent` too. Left alone for now — its own row names the speaker in words.
+
 ## 15. A Home card — DESIGNED + BUILT 2026-09-15
 
 **Why.** The app opens on the last two cards, not on a landing. There is no "Recently Played"
@@ -826,9 +867,6 @@ Off in mini.
 
 ---
 
-## See also
-- [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) — deferred toggles (not features).
-- [HANDOFF.md](HANDOFF.md) §Not built yet — the older not-built list.
 ## 20. The volume pill grows in place — BUILT 2026-09-16 (fork A), awaiting the desk test
 
 **What changed.** The Vol. pill no longer drops a flyout. It is a **full bar all the time**
@@ -863,3 +901,6 @@ click it (click mode) — it grows and the press does not move the level; click 
 shrinks; open "Play on" from the grown pill and move into that panel — it stays. Menus set to
 hover: hover grows it, leaving shrinks it after a moment. NP view: no pill (as before).
 
+## See also
+- [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) — deferred toggles (not features).
+- [HANDOFF.md](HANDOFF.md) §Not built yet — the older not-built list.

@@ -1989,11 +1989,54 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .np .ap-square[data-state="on"] { color: var(--np-accent); }
 .np__fav svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .np__fav[data-state="on"] { color: var(--np-accent); }
-/* The mode squares (NEXT-VERSION §12, §14): pressed = the album accent, like ♥. Repeat one
-   draws a small "1" in the loop's middle. */
+/* The mode squares (NEXT-VERSION §12, §14): "on" FILLS the square. The accent alone was not
+   enough — --np-accent falls back to --title (themes.css), which is the square's own off
+   color, so in every skin that does not opt into --np-album-text the two states drew the
+   same pixels (2026-09-16). The fill is a shape signal, so it survives any album color.
+   ♥ and repeat-one already carry their own shape change. Repeat one draws a small "1". */
 .np__shuffle[aria-pressed="true"],
 .np__repeat[data-state="all"],
-.np__repeat[data-state="one"] { color: var(--np-accent); }
+.np__repeat[data-state="one"] {
+  color: var(--np-accent);
+  background: var(--picked);
+  border-color: var(--title);
+}
+/* Cross the wires (2026-09-16): on every Shuffle press the two arrows swing to parallel,
+   hold a beat, then re-cross. The rotation lays each wire flat (they sit at ∓45°); the
+   translate parts them, or they would lie on top of each other instead of reading as two.
+   Each <g> is one wire: its line(s) plus its own arrowhead. */
+.np__shuffle svg g { transform-box: view-box; transform-origin: 12px 12px; }
+.np__shuffle.is-crossing .np__sh-up { animation: np-sh-up var(--sh-cross-dur) var(--ease-ui); }
+.np__shuffle.is-crossing .np__sh-dn { animation: np-sh-dn var(--sh-cross-dur) var(--ease-ui); }
+@keyframes np-sh-up {
+  0%, 100% { transform: none; }
+  40%, 60% { transform: translateY(calc(-1 * var(--sh-cross-gap))) rotate(45deg); }
+}
+@keyframes np-sh-dn {
+  0%, 100% { transform: none; }
+  40%, 60% { transform: translateY(var(--sh-cross-gap)) rotate(-45deg); }
+}
+/* The crossing fade closes while the wires run parallel — with nothing crossing, a hole in
+   the lower wire would just read as a break. Both inner stops go clear together. */
+.np__shuffle.is-crossing .np__sh-stop { animation: np-sh-fade var(--sh-cross-dur) var(--ease-ui); }
+@keyframes np-sh-fade {
+  0%, 100% { stop-opacity: 1; }
+  40%, 60% { stop-opacity: 0; }
+}
+/* Repeat one: the loop goes right round once, then sits as the rounded rectangle it was.
+   The <svg> turns; the "1" is a sibling <span>, so it stays upright in the middle. */
+.np__repeat.is-looping svg { animation: np-rp-loop var(--rp-loop-dur) var(--ease-ui); }
+@keyframes np-rp-loop {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Snap, like the other motion here: the fill still reports the mode. */
+  .np__shuffle.is-crossing .np__sh-up,
+  .np__shuffle.is-crossing .np__sh-dn,
+  .np__shuffle.is-crossing .np__sh-stop,
+  .np__repeat.is-looping svg { animation: none; }
+}
 .np__repeat { position: relative; }
 .np__repeat-one {
   display: none;
@@ -2405,6 +2448,13 @@ html[data-boot] .bento > .panel {
   opacity: 0;
   transform: var(--boot-rise);
   animation: boot-safety-panel 0s calc(var(--boot-safety) * var(--motion-scale, 1)) forwards;
+  /* Do NOT add `will-change: opacity, transform` here. Tried 2026-09-16: Chromium's
+     main-thread trace improves a lot (style recalc 766 ms → 260 ms over the Ocean rise,
+     worst pass 11.5 ms → 3.2 ms) because each panel gets its own layer — but the frames
+     the user actually receives COLLAPSE, 229 fps → 50 fps on that same rise, because six
+     full-size layers carrying Ocean's gradients and Glass's frost must be re-rastered
+     instead. The cost moves off the main thread onto raster, where the main-thread trace
+     cannot see it. Judge this rise by frames ÷ ms, never by the trace alone. */
 }
 html[data-boot="veil"] .boot-cover {
   transition: opacity calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--cover-in-ease);

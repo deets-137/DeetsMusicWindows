@@ -62,11 +62,34 @@ const TEMPLATE = `
         <div class="np__left">
           <button class="panel__action np__shuffle" id="np-shuffle" type="button" aria-label="Shuffle" aria-pressed="false" title="Shuffles the songs after this one">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <polyline points="16 3 21 3 21 8"></polyline>
-              <line x1="4" y1="20" x2="21" y2="3"></line>
-              <polyline points="21 16 21 21 16 21"></polyline>
-              <line x1="15" y1="15" x2="21" y2="21"></line>
-              <line x1="4" y1="4" x2="9" y2="9"></line>
+              <defs>
+                <!-- The "passes under" cue. Feather cuts the lower wire into two stubs, which
+                     reads as a gap the moment the wires part. Instead the wire is WHOLE and a
+                     soft hole in this mask fades it out at the crossing only; the hole closes
+                     while they run parallel, because nothing crosses then. Black and white
+                     here are mask luminance, not palette colors — a mask has no other alphabet. -->
+                <radialGradient id="np-sh-fade">
+                  <stop class="np__sh-stop" offset="0" stop-color="#000" stop-opacity="1"></stop>
+                  <stop class="np__sh-stop" offset="0.45" stop-color="#000" stop-opacity="1"></stop>
+                  <stop offset="1" stop-color="#000" stop-opacity="0"></stop>
+                </radialGradient>
+                <mask id="np-sh-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+                  <rect x="0" y="0" width="24" height="24" fill="#fff" stroke="none"></rect>
+                  <circle cx="12" cy="12" r="4.5" fill="url(#np-sh-fade)" stroke="none"></circle>
+                </mask>
+              </defs>
+              <g class="np__sh-up">
+                <polyline points="16 3 21 3 21 8"></polyline>
+                <line x1="4" y1="20" x2="21" y2="3"></line>
+              </g>
+              <!-- The mask sits on a still wrapper, so the hole stays put in the icon's frame
+                   while the wire inside it turns. -->
+              <g mask="url(#np-sh-mask)">
+                <g class="np__sh-dn">
+                  <polyline points="21 16 21 21 16 21"></polyline>
+                  <line x1="4" y1="4" x2="21" y2="21"></line>
+                </g>
+              </g>
             </svg>
           </button>
           <button class="panel__action np__repeat" id="np-repeat" type="button" aria-label="Repeat" aria-pressed="false" data-state="off" title="Repeats the list, then one song, then off">
@@ -137,13 +160,12 @@ export const nowPlayingCard: CardDef = {
     const npBadge = host.querySelector<HTMLElement>("#np-explicit");
     // The explicit badge sits after the title while the title fits. When the title is
     // cut off, the badge moves to the right end of the artist line. The badge is always
-    // measured in the title line first, so the choice can't oscillate. The title's
-    // native tooltip carries the full text only when it is cut off.
+    // measured in the title line first, so the choice can't oscillate. The full song
+    // and artist are the hover box's job now (src/hint.ts owns `.np` as a row shape).
     const placeBadge = () => {
       if (!npTitle || !npBadge || !npArtist) return;
       npTitle.after(npBadge);
       if (npTitle.scrollWidth > npTitle.clientWidth) npArtist.after(npBadge);
-      npTitle.title = npTitle.scrollWidth > npTitle.clientWidth ? npTitle.textContent ?? "" : "";
     };
     let titleKey = ""; // title + badge last placed — re-measured only on change
     const npElapsed = host.querySelector<HTMLElement>("#np-elapsed");
@@ -382,10 +404,27 @@ export const nowPlayingCard: CardDef = {
     // Shuffle — the mode (press = on + Up Next shuffles now, press again = off), or the
     // one-shot when "Shuffle stays on" is off (player.toggleShuffle / FUTURE-SETTINGS §5).
     shuffleBtn?.addEventListener("click", () => {
+      // Cross the wires (user's call 2026-09-16): the two arrows swing to parallel, then
+      // re-cross. It fires on every press, on and off — while `shuffleStays` is off there
+      // is no mode to paint, so this run is the only sign the press landed.
+      shuffleBtn.classList.remove("is-crossing");
+      void shuffleBtn.offsetWidth; // reflow, so a second press inside the run replays it
+      shuffleBtn.classList.add("is-crossing");
       toggleShuffle().catch((e) => console.error("[player] shuffle failed:", e));
     });
+    // Both wires end together; the first event clears the class for the next press.
+    shuffleBtn?.addEventListener("animationend", () => shuffleBtn.classList.remove("is-crossing"));
     // Repeat — off → all → one (NEXT-VERSION §12).
-    repeatBtn?.addEventListener("click", () => cycleRepeat());
+    // The press that lands on "one" sends the loop right round once (user's call 2026-09-16):
+    // one song, going round and round. Only that press — "all" and "off" stay still, so the
+    // turn means the mode it names. The "1" sits outside the <svg> and does not turn with it.
+    repeatBtn?.addEventListener("click", () => {
+      if (cycleRepeat() !== "one" || !repeatBtn) return;
+      repeatBtn.classList.remove("is-looping");
+      void repeatBtn.offsetWidth; // reflow, so cycling back round to "one" replays the turn
+      repeatBtn.classList.add("is-looping");
+    });
+    repeatBtn?.addEventListener("animationend", () => repeatBtn.classList.remove("is-looping"));
 
     // Queue summon — bring the Queue card into the least-recently-touched slot
     // (flips if it's already on-screen in the other slot; see layout.ts).
