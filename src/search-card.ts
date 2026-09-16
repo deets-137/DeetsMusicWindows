@@ -18,7 +18,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem, copyStationLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
 import { onDrillRequest, onPlaylistPaneRequest } from "./go-to";
-import { esc, formatTotal, actionsRowHTML, runListAction } from "./collection-card";
+import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
 import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
@@ -27,6 +27,7 @@ import {
 import type { Track, Artwork } from "./library";
 import type { CardDef, CardInstance } from "./cards";
 import { rowDrag } from "./row-drag";
+import { rowPick, picksText } from "./row-pick";
 import {
   yourPlaylistsFor, checkPlaylists, artistShelvesHTML, playlistShelfMenu, type YourPlaylists, type CheckProgress,
 } from "./artist-view";
@@ -141,6 +142,60 @@ function mountSearch(host: HTMLElement): CardInstance {
   // A drill pane's track list and its queue-origin tag, for a drag from one of its rows.
   const paneTracks = new WeakMap<HTMLElement, { tracks: Track[]; context: string }>();
 
+  // Multi-select (row-pick.ts, NEXT-VERSION §19). This card has TWO song surfaces — the
+  // root's Songs results and a drill pane's track list — so the store reads whichever one
+  // is on top. Keyed by the song, since neither list can hold the same song twice.
+  // Songs only: an album, playlist or station tile is a drill or a play, not a pick.
+  let activeList: () => Track[] = () => [];
+  const picks = rowPick<Track>({
+    id: (t) => t.catalogId ?? `${t.title} ${t.artistName}`,
+    items: () => activeList(),
+    onChange: () => paintPicks(),
+  });
+  // A pane's own Play / Shuffle row, kept so the count row can give it back.
+  const paneActions = new WeakMap<HTMLElement, string>();
+  let lastPicks = 0; // picks at the last paint — tells a first pick from a later one
+
+  /** The surface the picks belong to: the top drill pane, else the root results. */
+  const pickScope = (): HTMLElement => paneStack[paneStack.length - 1] ?? root;
+
+  /**
+   * Re-mark the rows and re-draw the count, WITHOUT rebuilding a pane (a rebuild would
+   * refetch the collection). The root has no Play / Shuffle row, so its Songs section
+   * title carries the count; a pane swaps its row for the count row and back.
+   */
+  const paintPicks = () => {
+    const scope = pickScope();
+    picks.mark(scope, "[data-song]", (el) => songsById.get(el.dataset.song ?? ""));
+    picks.mark(scope, "[data-row]", (el) => {
+      const sc = el.closest<HTMLElement>(".spane__scroll");
+      const l = sc ? paneTracks.get(sc) : undefined;
+      return l?.tracks[Number(el.dataset.row)];
+    });
+    const n = picks.size();
+    const entering = n > 0 && lastPicks === 0;
+    lastPicks = n;
+    const scroll = scope === root ? null : scope.querySelector<HTMLElement>(".spane__scroll");
+    if (scroll) {
+      const bar = scroll.querySelector<HTMLElement>(".lib-actions");
+      const own = paneActions.get(scroll);
+      if (bar && own) bar.outerHTML = n ? picksRowHTML(n, entering) : own;
+      return;
+    }
+    // The root: the Songs section title says how many are picked.
+    const title = root.querySelector<HTMLElement>(".search__scroller--songs")?.previousElementSibling;
+    if (title) title.textContent = n ? `Songs · ${picksText(n)}` : "Songs";
+  };
+
+  /** The menu for a picked set of songs (§19). */
+  const picksMenu = (ts: Track[], context: string): MenuItem[] =>
+    [
+      { label: `Play ${picksText(ts.length)}`, run: () => enqueue(ts, "now", context) },
+      { label: "Play Next", run: () => enqueue(ts, "next", context) },
+      { label: "Add to Queue", run: () => enqueue(ts, "later", context) },
+      addToPlaylistItem(() => ts),
+    ] as MenuItem[];
+
   // ── Add-to-Library square on song rows (root Songs grid + drill-pane track lists) ──
   // Mirrors the Now Playing "+": a press IS the consent (addTrackToLibrary), the Library
   // Add toggle is the only thing that removes it. "+" when not in the library, ✓ when it
@@ -246,6 +301,7 @@ function mountSearch(host: HTMLElement): CardInstance {
   const renderResults = () => {
     if (!results) return renderEmpty();
     songsById = new Map(results.songs.filter((t) => t.catalogId).map((t) => [t.catalogId!, t]));
+    activeList = () => results?.songs ?? [];
     const sections: string[] = [];
     const bodies: Record<SearchType, () => string> = {
       artists: () => results!.artists.map(artistCell).join(""),
@@ -277,6 +333,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       ? sections.join("")
       : `<p class="search__prompt">No results for “${esc(lastTerm)}”.</p>`;
     refreshAdds();
+    if (!paneStack.length) paintPicks(); // re-mark what is still picked after a redraw
   };
 
   // ── querying ──
@@ -286,6 +343,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     searchCatalog(term, types)
       .then((r) => {
         if (token !== queryToken) return; // stale — a newer term is in flight
+        picks.clear();
         results = r;
         lastTerm = term;
         if (!loadPins().some((p) => p.term === term)) pushRecent(term); // pins stay out of the ring
@@ -375,6 +433,13 @@ function mountSearch(host: HTMLElement): CardInstance {
   const popPane = () => {
     const pane = paneStack.pop();
     if (!pane) return;
+    // Back out: the picks belonged to the pane that is leaving, and the surface below
+    // becomes the one they read (§19).
+    picks.clear();
+    const under = paneStack[paneStack.length - 1];
+    const sc = under?.querySelector<HTMLElement>(".spane__scroll");
+    const list = sc ? paneTracks.get(sc) : undefined;
+    activeList = list ? () => list.tracks : () => results?.songs ?? [];
     const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>(".spane:first-child");
     frames.during("slide", 450, "search-pop");
     pane.dataset.pos = "right";
@@ -384,6 +449,30 @@ function mountSearch(host: HTMLElement): CardInstance {
   };
   /** Drop every drill pane at once, so `root` is the visible pane again. */
   const resetToRoot = () => { while (paneStack.length) popPane(); };
+
+  // Escape drops the picks; Ctrl+A takes the surface on top. Gated on the last press
+  // inside this card — a row carries no tabindex, so the focus never leaves <body>.
+  let touched = false;
+  panes.addEventListener("pointerdown", () => {
+    touched = true;
+  });
+  const onDocDown = (e: PointerEvent) => {
+    if (!panes.contains(e.target as Node)) touched = false;
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("input, textarea, [contenteditable]")) return; // the search field keeps its own
+    if (e.key === "Escape") {
+      picks.clear();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a" && touched) {
+      e.preventDefault();
+      picks.all();
+    }
+  };
+  document.addEventListener("pointerdown", onDocDown);
+  document.addEventListener("keydown", onKey);
 
   const listRow = (t: Track, i: number): string =>
     `<div class="search__row" data-row="${i}" role="button" tabindex="0">
@@ -395,6 +484,12 @@ function mountSearch(host: HTMLElement): CardInstance {
   /** A detail pane's track list: tap plays the list from that row (Library semantics). */
   const wireTrackList = (body: HTMLElement, tracks: Track[], context: string) => {
     paneTracks.set(body, { tracks, context });
+    // This pane is now the surface the picks read, and its own Play / Shuffle row is kept
+    // so the count row can hand it back (§19).
+    const ownBar = body.querySelector<HTMLElement>(".lib-actions");
+    if (ownBar) paneActions.set(body, ownBar.outerHTML);
+    activeList = () => tracks;
+    picks.clear();
     const start = (list: Track[], idx: number) => {
       addTransientTracks(list);
       list.forEach(materializeTrack);
@@ -405,11 +500,15 @@ function mountSearch(host: HTMLElement): CardInstance {
       const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
       if (act) {
         e.stopPropagation();
-        runListAction(act.dataset.act ?? "", tracks, (list) => start(list, 0));
+        // While rows are picked the row is the count row: Play / Shuffle act on them (§19).
+        const list = picks.size() ? picks.picked() : tracks;
+        runListAction(act.dataset.act ?? "", list, (l) => start(l, 0));
         return;
       }
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
       if (!row) return;
+      const picked = tracks[Number(row.dataset.row)];
+      if (picked && picks.click(e, picked)) return; // Ctrl / Shift → a pick, not a play
       start(tracks, Number(row.dataset.row));
     });
     body.addEventListener("contextmenu", (e) => {
@@ -417,6 +516,10 @@ function mountSearch(host: HTMLElement): CardInstance {
       if (!row) return;
       e.preventDefault();
       const t = tracks[Number(row.dataset.row)];
+      if (t && picks.size() && picks.isPicked(t)) {
+        openContextMenu(e.clientX, e.clientY, picksMenu(picks.picked(), context));
+        return;
+      }
       if (t) trackMenu(e, t);
     });
   };
@@ -667,6 +770,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     const song = t.closest<HTMLElement>("[data-song]");
     if (song) {
       const track = songsById.get(song.dataset.song!);
+      if (track && picks.click(e, track)) return; // Ctrl / Shift → a pick, not a play
       if (track) enqueue([track], "now", "search"); // just-the-one (FUTURE-SETTINGS §1 sibling)
       return;
     }
@@ -699,6 +803,11 @@ function mountSearch(host: HTMLElement): CardInstance {
     const song = t.closest<HTMLElement>("[data-song]");
     if (song) {
       const track = songsById.get(song.dataset.song!);
+      if (track && picks.size() && picks.isPicked(track)) {
+        e.preventDefault();
+        openContextMenu(e.clientX, e.clientY, picksMenu(picks.picked(), "search"));
+        return;
+      }
       if (track) { e.preventDefault(); trackMenu(e, track); }
       return;
     }
@@ -742,9 +851,16 @@ function mountSearch(host: HTMLElement): CardInstance {
     root: panes,
     label: "search",
     rowAt: (target) => {
+      // A drag off a picked row carries every picked song as ONE payload (§19).
+      const setPayload = (t: Track | undefined, context: string) =>
+        t && picks.size() > 1 && picks.isPicked(t)
+          ? { source: "search" as const, kind: "song" as const, count: picks.size(), tracks: () => picks.picked(), context }
+          : null;
       const song = target.closest<HTMLElement>("[data-song]");
       if (song) {
         const t = songsById.get(song.dataset.song!);
+        const many = setPayload(t, "search");
+        if (many) return { row: song, index: 0, payload: many };
         return t ? { row: song, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: "search" } } : null;
       }
       const row = target.closest<HTMLElement>("[data-row]");
@@ -752,6 +868,8 @@ function mountSearch(host: HTMLElement): CardInstance {
         const scroll = row.closest<HTMLElement>(".spane__scroll");
         const list = scroll ? paneTracks.get(scroll) : undefined;
         const t = list?.tracks[Number(row.dataset.row)];
+        const many = list ? setPayload(t, list.context) : null;
+        if (many) return { row, index: 0, payload: many };
         return t && list ? { row, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: list.context } } : null;
       }
       const album = target.closest<HTMLElement>("[data-album]");
@@ -785,6 +903,8 @@ function mountSearch(host: HTMLElement): CardInstance {
 
   return {
     destroy() {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
       window.clearTimeout(debounceTimer);
       queryToken++; // orphan any in-flight response

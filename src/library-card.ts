@@ -428,7 +428,25 @@ function albumsGrouping(
       tracks: () => albumOrder(list().filter((t) => albumKey(t) === a.key)),
       context: `album:${a.key}`,
     }),
+    // Multi-select over tiles (NEXT-VERSION §19): pick several albums, then drag or file
+    // them as one. The set's songs are each album's own order, albums back to back.
+    pick: {
+      noun: "album",
+      id: (a) => a.key,
+      menu: (as) => trackMenu(albumsTracks(as, list), "albums:picked", nav),
+      drag: (as) => {
+        const ts = albumsTracks(as, list);
+        return { source: "library", kind: "album", count: ts.length, tracks: () => ts, context: "albums:picked" };
+      },
+      play: (as) => void playTracks(albumsTracks(as, list), 0, "albums:picked").catch((e) => console.error("[library] play albums", e)),
+    },
   };
+}
+
+/** The songs of several albums, each in its own disc/track order, albums back to back. */
+function albumsTracks(as: AlbumGroup[], list: () => Track[]): Track[] {
+  const all = list();
+  return as.flatMap((a) => albumOrder(all.filter((t) => albumKey(t) === a.key)));
 }
 
 function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Context): Grouping<ArtistGroup> {
@@ -460,7 +478,24 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
       tracks: () => artistOrder(creditIndex(list()).tracksFor(a.name)),
       context: `artist:${a.name}`,
     }),
+    // Multi-select over tiles (§19): several artists, each one's songs in album order.
+    pick: {
+      noun: "artist",
+      id: (a) => a.name,
+      menu: (as) => trackMenu(artistsTracks(as, list), "artists:picked"),
+      drag: (as) => {
+        const ts = artistsTracks(as, list);
+        return { source: "library", kind: "artist", count: ts.length, tracks: () => ts, context: "artists:picked" };
+      },
+      play: (as) => void playTracks(artistsTracks(as, list), 0, "artists:picked").catch((e) => console.error("[library] play artists", e)),
+    },
   };
+}
+
+/** The songs of several artists, each one in album order, artists back to back. */
+function artistsTracks(as: ArtistGroup[], list: () => Track[]): Track[] {
+  const idx = creditIndex(list());
+  return as.flatMap((a) => artistOrder(idx.tracksFor(a.name)));
 }
 
 // ── the card ────────────────────────────────────────────────────────────────────

@@ -1236,7 +1236,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    a glance, and it has to survive sitting next to that outline. */
 .lib-row[data-picked],
 .lib-tile[data-picked],
-.qrow[data-picked] {
+.qrow[data-picked],
+.qnow[data-picked],          /* a card's hero row: History's latest play, Rewind's top row */
+.search__song[data-picked],  /* Search results */
+.search__row[data-picked] {  /* a Search drill pane's track list */
   background: var(--picked);
   border-radius: var(--radius-control);
 }

@@ -208,8 +208,11 @@ Three entry points. The first two are on the `src/context-menu.ts` primitive —
 ([NEXT-VERSION §19](NEXT-VERSION.md)): Ctrl+click and Shift+click pick song rows, then either
 drag the set onto a playlist (or into an open one), or right-click it and take
 *Add to Playlist ▸ New Playlist…*, which makes the list and fills it in one gesture. It works
-in the Library, in a playlist's own rows, in the Queue's Up Next and in History; a picked set
-also drags as one payload, because `DragPayload` always carried a track list and a count.
+in every list in the app — the Library (songs, and album and artist tiles), the Playlists
+overview and a playlist's own rows, Search, the Queue's Up Next, History and Rewind. A picked
+set also drags as one payload, because `DragPayload` always carried a track list and a count,
+and a hand-made playlist's rows offer *Remove N songs from Playlist*, which deletes from the
+bottom up so the positions still to go stay true.
 - **`＋ New Playlist`** → name input → empty local playlist → drills in → the empty state.
   **The empty pane is the filled pane's skeleton (2026-09-15).** The hero holds the full width,
   the Play / Shuffle row draws disabled, and the invite is one row-shaped slot with a dashed rim
@@ -583,8 +586,7 @@ detail context; source badge → the `.lib-src-badge` sigil on the count row.)*
 
 Still open: detail-header composition (Play / overflow / read-only pill) · the export
 enable-toggle + first-use confirm design (§6 — gates both Export ▸ and direct Apple append) ·
-mosaic-cover rendering specifics · whether imported Apple originals are dimmed vs hidden ·
-*Remove from Playlist* for a picked SET (the indexes shift under a run of removals).
+mosaic-cover rendering specifics · whether imported Apple originals are dimmed vs hidden.
 
 ---
 

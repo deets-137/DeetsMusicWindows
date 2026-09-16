@@ -16,6 +16,7 @@ import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { onTracksChange, tracks as libraryTracks } from "./track-store";
 import { esc } from "./collection-card";
 import { trackMenu, albumOrder } from "./library-card";
+import { rowPick, picksText } from "./row-pick";
 import { artURL } from "./queue-rows";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { onPlaylistsChange, playlistsCached, playlistTracks, addToPlaylistItem } from "./playlists";
@@ -76,6 +77,17 @@ function mountRewind(host: HTMLElement): CardInstance {
   const metaHTML = (r: RewindRow) =>
     `<span class="rewind__meta">${esc(fmtListen(r.ms))} · ${esc(fmtPlays(r.plays))}</span>`;
 
+  // Multi-select (row-pick.ts, NEXT-VERSION §19). Named `picks` because `pick` already
+  // means this card's stat + window choice. Keyed by the row's own key, so a refresh (a
+  // play lands, the track store reloads) keeps what you picked. Artists never pick: "play
+  // an artist" has no obvious order here, which is why they carry no menu and no drag.
+  const picks = rowPick<RewindRow>({
+    id: (r) => r.key,
+    items: () => view as RewindRow[],
+    can: () => pick.stat !== "artists",
+    onChange: () => render(),
+  });
+
   const render = () => {
     const seq = ++renderSeq;
     topBy(pick.stat, pick.window)
@@ -112,9 +124,12 @@ function mountRewind(host: HTMLElement): CardInstance {
             r.title,
           )}</span>${r.subtitle ? `<span class="qrow__artist">${esc(r.subtitle)}</span>` : ""}${metaHTML(r)}</div></li>`;
         }).join("");
+        const label = picks.size() ? `Runners-up · ${picksText(picks.size(), nounOf())}` : "Runners-up";
         board.innerHTML = rows2
-          ? `${hero}<div class="qcard__label">Runners-up</div><ol class="qcard__list">${rows2}</ol>`
+          ? `${hero}<div class="qcard__label">${label}</div><ol class="qcard__list">${rows2}</ol>`
           : hero;
+        // The card re-renders whole, so one sweep marks what is picked.
+        picks.mark(board, "[data-idx]", (el) => view[Number(el.dataset.idx)]);
       })
       .catch((e) => {
         console.error("[rewind] load", e);
@@ -124,6 +139,7 @@ function mountRewind(host: HTMLElement): CardInstance {
 
   // ── the two pickers ──
   const setPick = (patch: Partial<Pick>) => {
+    picks.clear(); // a different stat or window is a different list — the picks go with it
     pick = { ...pick, ...patch };
     localStorage.setItem(STORE_KEY, JSON.stringify(pick));
     pillOf("stat").querySelector(".lib-pill__label")!.textContent = STAT_LABELS[pick.stat];
@@ -199,13 +215,74 @@ function mountRewind(host: HTMLElement): CardInstance {
     ];
   };
 
+  /** What one row is, for the count: the stat's own name without its "s". */
+  const nounOf = () => (pick.stat === "songs" ? "song" : pick.stat === "albums" ? "album" : "playlist");
+
+  /** Every picked row's songs, in the order the rows are shown. Playlists load lazily. */
+  const picksTracks = (rows: RewindRow[]): Promise<Track[]> =>
+    Promise.all(
+      rows.map((r) =>
+        pick.stat === "songs" ? Promise.resolve(r.tracks)
+        : pick.stat === "albums" ? Promise.resolve(albumTracksOf(r))
+        : playlistTracksOf(r),
+      ),
+    ).then((a) => a.flat());
+
+  /** The menu for a picked set (§19): play, queue or file every row's songs at once. */
+  const menuForPicks = (rows: RewindRow[]): MenuItem[] => {
+    const ctx = `rewind:picked`;
+    const err = (what: string) => (x: unknown) => console.error(`[rewind] ${what}`, x);
+    const run = (what: string, go: (ts: Track[]) => Promise<void>) => () =>
+      void picksTracks(rows).then((ts) => (ts.length ? go(ts) : undefined)).catch(err(what));
+    return [
+      { label: `Play ${picksText(rows.length, nounOf())}`, run: run("play picked", (ts) => playTracks(ts, 0, ctx)) },
+      { label: "Play Next", run: run("play next", (ts) => queueTracksNext(ts, ctx)) },
+      { label: "Add to Queue", run: run("add to queue", (ts) => queueTracksLater(ts, ctx)) },
+      addToPlaylistItem(() => picksTracks(rows)),
+    ];
+  };
+
+  // A Rewind row has never done anything on a plain click, and still doesn't. Ctrl and
+  // Shift pick it; a plain click drops the picks (§19).
+  board.addEventListener("click", (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
+    const row = el ? view[Number(el.dataset.idx)] : undefined;
+    if (row) picks.click(e, row);
+    else picks.clear();
+  });
+
+  // Escape drops the picks; Ctrl+A takes the board. Gated on the last press inside this
+  // card — a row carries no tabindex, so the focus never leaves <body>.
+  let touched = false;
+  board.addEventListener("pointerdown", () => {
+    touched = true;
+  });
+  const onDocDown = (e: PointerEvent) => {
+    if (!host.contains(e.target as Node)) touched = false;
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("input, textarea, [contenteditable]")) return;
+    if (e.key === "Escape") {
+      picks.clear();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a" && touched) {
+      e.preventDefault();
+      picks.all();
+    }
+  };
+  document.addEventListener("pointerdown", onDocDown);
+  document.addEventListener("keydown", onKey);
+
   board.addEventListener("contextmenu", (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
     if (!el) return;
     const row = view[Number(el.dataset.idx)];
     if (!row) return;
     let items: MenuItem[] | null = null;
-    if (pick.stat === "songs" && row.tracks.length) items = trackMenu(row.tracks, "rewind");
+    if (picks.size() && picks.isPicked(row)) items = menuForPicks(picks.picked());
+    else if (pick.stat === "songs" && row.tracks.length) items = trackMenu(row.tracks, "rewind");
     else if (pick.stat === "albums" && row.tracks.length) items = trackMenu(albumTracksOf(row), `album:${row.key}`);
     else if (pick.stat === "playlists") items = playlistMenuFor(row);
     if (!items) return; // artists, or an uncached "Unknown" row — nothing playable
@@ -224,6 +301,12 @@ function mountRewind(host: HTMLElement): CardInstance {
       const row = el ? view[Number(el.dataset.idx)] : undefined;
       if (!el || !row) return null;
       const index = Number(el.dataset.idx);
+      // A drag off a picked row carries every picked row's songs as ONE payload (§19).
+      if (picks.size() > 1 && picks.isPicked(row)) {
+        const rows = picks.picked();
+        const kind = pick.stat === "albums" ? "album" : pick.stat === "playlists" ? "playlist" : "song";
+        return { row: el, index, payload: { source: "rewind", kind, count: rows.length, tracks: () => picksTracks(rows), context: "rewind:picked" } };
+      }
       if (pick.stat === "songs" && row.tracks.length)
         return { row: el, index, payload: { source: "rewind", kind: "song", tracks: () => row.tracks, context: "rewind" } };
       if (pick.stat === "albums" && row.tracks.length) {
@@ -253,6 +336,8 @@ function mountRewind(host: HTMLElement): CardInstance {
       unsubQueue();
       unsubTracks();
       unsubPlaylists();
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
       host.innerHTML = "";
     },

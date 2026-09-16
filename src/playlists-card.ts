@@ -22,6 +22,8 @@ import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addSongToLibraryItem } from "./library-add";
 import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
+import { picksText } from "./row-pick";
+import { playlistShelfMenu } from "./artist-view";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { appleMusicItem } from "./playlist-export";
@@ -206,6 +208,10 @@ export const playlistsCard: CardDef = {
     const pending = new Set<string>();
     const refetchAgain = new Set<string>(); // a change landed while a revalidate was in flight
 
+    /** The songs of several picked playlist rows, each playlist's own order, back to back. */
+    const pickedTracks = (xs: PlRow[]): Promise<Track[]> =>
+      Promise.all(xs.map((x) => (x.kind === "playlist" ? tracksOf(x.p) : Promise.resolve([] as Track[])))).then((a) => a.flat());
+
     const tracksOf = (p: Playlist): Promise<Track[]> => {
       const id = pid(p);
       const hit = trackCache.get(id);
@@ -340,10 +346,32 @@ export const playlistsCard: CardDef = {
           : undefined,
         drag: (t) => ({ source: "playlists", kind: "song", tracks: () => [t], context: ctxTag, playlistId: p.libraryId }),
         // Multi-select (NEXT-VERSION §19). No `id`: a playlist may hold the same song
-        // twice, so each ROW is its own pick (object identity). Remove from Playlist is
-        // not offered for a set — the indexes shift under a run of removals.
+        // twice, so each ROW is its own pick (object identity).
         pick: {
-          menu: (ts) => trackMenu(ts, ctxTag),
+          menu: (ts) => {
+            const base = trackMenu(ts, ctxTag);
+            if (!handMade(p)) return base; // mirrors have no remove path
+            // Remove a whole set: resolve every row's position FIRST, then delete from the
+            // bottom up, one after the other. Each delete renumbers the rows below it, so a
+            // descending walk is the only order where the positions still to go stay true.
+            return [
+              ...base,
+              {
+                label: `Remove ${picksText(ts.length)} from Playlist`,
+                run: () => {
+                  const live = trackCache.get(id) ?? [];
+                  const idxs = ts.map((t) => live.indexOf(t)).filter((i) => i >= 0).sort((a, b) => b - a);
+                  void idxs
+                    .reduce((chain, i) => chain.then(() => playlistRemoveTrack(p, i)), Promise.resolve())
+                    .catch((e) => {
+                      console.error("[playlists] remove picked", e);
+                      toast({ kind: "warn", text: `Couldn't remove the songs from “${p.name}”.` });
+                      revalidate(p);
+                    });
+                },
+              },
+            ];
+          },
           drag: (ts) => ({ source: "playlists", kind: "song", count: ts.length, tracks: () => ts, context: ctxTag, playlistId: p.libraryId }),
           play: (ts) => void playTracks(ts, 0, ctxTag).catch((e) => console.error("[playlists] play picked", e)),
         },
@@ -689,6 +717,26 @@ export const playlistsCard: CardDef = {
           dropOn: (x, pay) => {
             const run = x.kind === "playlist" ? dropFor(x.p, pay) : null;
             return run ? () => run(null) : null;
+          },
+          // Multi-select over the overview (§19): pick several playlists and play, queue or
+          // file all their songs at once. Shelf and folder headers never pick, so a shift
+          // run steps straight over them. The songs load lazily, at the pick, not the press.
+          pick: {
+            noun: "playlist",
+            can: (x) => x.kind === "playlist",
+            id: (x) => (x.kind === "playlist" ? pid(x.p) : ""),
+            menu: (xs) => playlistShelfMenu(() => pickedTracks(xs), "playlists:picked", false),
+            drag: (xs) => ({
+              source: "playlists",
+              kind: "playlist",
+              count: xs.reduce((n, x) => n + (x.kind === "playlist" ? trackCache.get(pid(x.p))?.length ?? x.p.trackCount ?? 0 : 0), 0),
+              tracks: () => pickedTracks(xs),
+              context: "playlists:picked",
+            }),
+            play: (xs) =>
+              void pickedTracks(xs)
+                .then((ts) => (ts.length ? playTracks(ts, 0, "playlists:picked") : undefined))
+                .catch((e) => console.error("[playlists] play picked", e)),
           },
         } satisfies Grouping<PlRow>,
       ],

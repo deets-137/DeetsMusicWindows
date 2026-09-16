@@ -86,6 +86,10 @@ export interface Grouping<T = any> {
    *  - `play`: run the count row's Play / Shuffle on the picked set.
    */
   pick?: {
+    /** What one item is, for the count row: "song" (the default), "album", "artist"… */
+    noun?: string;
+    /** Which rows take a pick, when the list is mixed (shelf headers among playlist rows). */
+    can?: (x: T) => boolean;
     id?: (x: T) => string;
     menu: (xs: T[]) => MenuItem[];
     drag: (xs: T[]) => DragPayload;
@@ -178,13 +182,13 @@ export function actionsRowHTML(titles: ActionTitles = {}, disabled = false): str
  *  Clear button — a click on any row (or Escape) already drops the picks.
  *  `enter` is set only on the FIRST pick, so the count slides in and the two buttons
  *  shrink to make room once, not on every pick after it. */
-export function picksRowHTML(n: number, enter: boolean): string {
+export function picksRowHTML(n: number, enter: boolean, noun?: string): string {
   return `<div class="lib-actions lib-actions--picked">
-    <span class="lib-picked${enter ? " is-entering" : ""}"><span class="lib-picked__text">${picksText(n)}</span></span>
-    <button class="lib-action lib-action--play" data-act="play" type="button" title="Play the songs you picked">
+    <span class="lib-picked${enter ? " is-entering" : ""}"><span class="lib-picked__text">${picksText(n, noun)}</span></span>
+    <button class="lib-action lib-action--play" data-act="play" type="button" title="Play what you picked, in order">
       <svg class="lib-action__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg><span>Play</span>
     </button>
-    <button class="lib-action" data-act="shuffle" type="button" title="Shuffle the songs you picked">
+    <button class="lib-action" data-act="shuffle" type="button" title="Shuffle what you picked">
       <svg class="lib-action__icon lib-action__icon--stroke" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h2.5l6 8H14M14 4h-3.5l-1.5 2M2 12h2.5l1.5-2"/><path d="M12 2l2 2-2 2M12 10l2 2-2 2"/></svg><span>Shuffle</span>
     </button>
   </div>`;
@@ -194,9 +198,11 @@ export function picksRowHTML(n: number, enter: boolean): string {
  *  playlist, an empty library, a filter that matches nothing) the row still draws, **disabled**:
  *  the pane keeps one shape, so the first song to arrive moves nothing on screen. */
 function actionsHTML(g: Grouping, count: number, picked: number, enter: boolean): string {
+  // Rows picked → the slot carries the count, then Play and Shuffle (§19). This comes
+  // FIRST, so a grouping with no Play / Shuffle row of its own (albums, artists) still
+  // shows the count while tiles are picked: the row appears with them and leaves with them.
+  if (picked) return picksRowHTML(picked, enter, g.pick?.noun);
   if (!g.playAll) return "";
-  // Rows picked → the same slot carries the count, then Play and Shuffle (§19).
-  if (picked) return picksRowHTML(picked, enter);
   return actionsRowHTML(g.playAll === true ? {} : g.playAll, count === 0);
 }
 
@@ -456,6 +462,7 @@ export function initCollectionCard(opts: CardOptions) {
       return p?.id ? p.id(x) : objectId(x);
     },
     items: () => (groupingOf(cur()).pick ? cur().items : []),
+    can: (x) => groupingOf(cur()).pick?.can?.(x) !== false,
     onChange: () => {
       if (curPane) renderViewInto(curPane, cur());
     },

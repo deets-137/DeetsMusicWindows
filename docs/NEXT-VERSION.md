@@ -675,7 +675,7 @@ Decisions (the user, 2026-09-15):
    of ten picks must not drag the view around, and it must read next to that outline. New
    mark: the `data-picked` attribute, filled with the theme's `--title` at
    `--picked-strength` (skin, 14%). Theme role `--picked`, mixed once in themes.css.
-3. **Song rows only.** Tiles (albums, artists) do not pick yet.
+3. **Song rows first, then tiles.** Tiles came in the second pass (below).
 4. **The Queue and History are in too**, though they are off the collection engine.
 5. **A count row.** While rows are picked, the Play / Shuffle row becomes
    *N songs · Play · Shuffle* (`picksRowHTML`). **No Clear button** (the user, 2026-09-15):
@@ -701,10 +701,38 @@ What a picked set does:
   rows still to go cannot shift). History's is Play / Play Next / Add to Queue / Add to
   Playlist.
 
-**Where it is live:** the Library card (Songs root, an album, the artist view's Songs), the
-Playlists card (a playlist's rows), the Queue card's Up Next, and the History card.
-**Not yet:** the Search card and the Rewind card, which render their own panes instead of
-running on `collection-card.ts`; tiles; and *Remove from Playlist* for a set.
+### 19d. The second pass — everywhere else (2026-09-15, same day)
+
+The four gaps left by 19c are closed. Multi-select now reaches **every list in the app**.
+
+- **Tiles.** Albums and artists in the Library, and playlist rows on the Playlists overview.
+  A picked set of albums plays each album in its own disc/track order, albums back to back;
+  artists the same, each in album order; playlists each in their own order. `Grouping.pick`
+  gained **`noun`** (the count says "3 albums", not "3 songs") and **`can`** (the Playlists
+  overview is a mixed list — shelf and folder headers never pick, and a shift run steps over
+  them). The count row now wins over `playAll`, so a grouping with no Play / Shuffle row of
+  its own still shows the count while tiles are picked: the row arrives with the picks and
+  leaves with them.
+- **The Search card.** It has TWO song surfaces — the root's Songs results and a drill pane's
+  track list — so one store reads whichever is on top (`activeList`), and a pane push, a pane
+  pop or a new search term drops the picks. It never rebuilds a pane to repaint: a rebuild
+  would refetch the collection, so `paintPicks()` re-marks the rows in place and swaps the
+  pane's Play / Shuffle row for the count row (the original is kept in `paneActions`). The
+  root has no such row, so its **Songs section title** carries the count instead. Tiles there
+  (album, playlist, station) stay a drill or a play, not a pick.
+- **The Rewind card.** Songs, albums and playlists pick; **artists do not** — "play an artist"
+  has no obvious order here, which is why they already carry no menu and no drag. A stat or
+  window change drops the picks. Its store is named `picks`, because `pick` already means the
+  card's stat + window choice. A playlist row's songs still load lazily, at the menu pick.
+- **Remove from Playlist for a set.** Offered on a hand-made playlist's rows. It resolves
+  every picked row's position first, then deletes **from the bottom up**: each delete
+  renumbers the rows below it, so a descending walk is the only order in which the positions
+  still to go stay true. A failure puts the stored order back (`revalidate`).
+
+**Where it is live, after 19d:** every song list in the app — the Library card (Songs, an
+album, the artist view), its Albums and Artists tiles, the Playlists overview and a playlist's
+rows, the Search card (results and drill panes), the Queue's Up Next, History, and Rewind.
+Off in mini.
 
 ---
 

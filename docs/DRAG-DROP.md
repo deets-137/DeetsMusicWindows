@@ -57,7 +57,7 @@ lazy `tracks()` that runs only at the drop (so a Search album costs no fetch unt
 | History | a row · the hero | the entry's handle |
 | Rewind | songs · albums · playlists | as its right-click menu (`trackMenu` lists, lazy playlist fetch) |
 | Now Playing | the cover | the current song |
-| **A picked set** (2026-09-15) | any song rows picked with Ctrl / Shift — Library, a playlist's rows, Up Next, History | every picked song, as ONE payload (`count` = how many) |
+| **A picked set** (2026-09-15) | anything picked with Ctrl / Shift — song rows anywhere, Library album and artist tiles, playlist rows, Search results and panes, Rewind | every picked item's songs, as ONE payload (`count` = how many) |
 
 | Radio · Search | a **station** row / tile (2026-09-15) | none — `kind: "station"`, `station` set, `play` = `playStation`. The Queue card makes it the station return (`queueStationAfter`: plays once the queue runs dry, the Qcard row says *Will resume after*); Now Playing plays it now; playlists and the Library refuse it (the *can't drop* ghost) |
 
@@ -165,7 +165,8 @@ rows has no single new position), and the ghost's count badge, which used to be 
 collections only, now also shows for a song payload of more than one.
 
 **Engine hooks** (`collection-card.ts`): `Grouping.drag(x) → DragPayload | null` (a source),
-`Grouping.pick` (multi-select: `id?`, `menu`, `drag`, `play` — present = these rows pick),
+`Grouping.pick` (multi-select: `noun?`, `can?`, `id?`, `menu`, `drag`, `play` — present = these
+rows pick),
 `Grouping.dropOn(x, p) → action | null` (a row target: a playlist row), and
 `Context.dropInto(p) → action(at) | null` (a pane target: an open playlist). The engine
 registers one target on its viewport; with no hook it returns null and an outer target

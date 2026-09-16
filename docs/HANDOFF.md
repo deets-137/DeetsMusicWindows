@@ -149,8 +149,10 @@ the platform sound and the loop thin. Scoped with forks in
    Playing hero, History, the Now Playing cover) — which also means a station song files like
    any other, so "save a station's songs" is not needed. And **multi-select**
    (`src/row-pick.ts`): Ctrl+click, Shift+click, Ctrl+A, Escape. A picked set drags as ONE
-   payload and right-clicks to *Add to Playlist ▸ New Playlist…*. Live in the Library, a
-   playlist's rows, Up Next and History; off in mini; not in Search or Rewind (own panes).
+   payload and right-clicks to *Add to Playlist ▸ New Playlist…*. A second pass the same day
+   (§19d) took it to **every list in the app**: Library tiles (albums, artists), the Playlists
+   overview, the Search card (results and drill panes), Rewind (not artists), plus *Remove N
+   songs from Playlist*. Off in mini.
    No Rust change, so no dev-runner restart. Desk test: Ctrl+click five songs in the Library
    (the fill, the count row), Shift+click a run, sort the list (the picks hold), drag the set
    onto a playlist row (the ghost's count), right-click → New Playlist…, Escape; then the

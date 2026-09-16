@@ -39,6 +39,9 @@ export interface PickHost<T> {
   id?: (x: T) => string;
   /** The list in view order — read only for a shift+click run. */
   items: () => T[];
+  /** Which items take a pick. A heterogeneous list (shelf headers among playlist rows)
+   *  says no to the rest, so a shift run steps over them. Default: everything. */
+  can?: (x: T) => boolean;
   /** The set changed: redraw the rows and the count row. */
   onChange: () => void;
 }
@@ -67,6 +70,7 @@ export const canPick = (): boolean => currentSurface() !== "mini";
 
 export function rowPick<T>(host: PickHost<T>): RowPick<T> {
   const idOf = (x: T) => (host.id ? host.id(x) : objectId(x));
+  const can = (x: T) => host.can?.(x) !== false;
   const set = new Set<string>();
   let anchor: string | null = null; // the last row touched, for a shift run
 
@@ -83,6 +87,7 @@ export function rowPick<T>(host: PickHost<T>): RowPick<T> {
     picked: () => host.items().filter((x) => set.has(idOf(x))),
     click(e, x) {
       const ctrl = e.ctrlKey || e.metaKey;
+      if (!can(x)) return false; // not a pickable row (a shelf header)
       if (!canPick() || (!ctrl && !e.shiftKey)) {
         clear(); // a plain click plays the row, and drops what was picked
         return false;
@@ -97,7 +102,7 @@ export function rowPick<T>(host: PickHost<T>): RowPick<T> {
         const to = list.findIndex((y) => idOf(y) === id);
         if (from >= 0 && to >= 0) {
           const [a, b] = from <= to ? [from, to] : [to, from];
-          for (let i = a; i <= b; i++) set.add(idOf(list[i]));
+          for (let i = a; i <= b; i++) if (can(list[i])) set.add(idOf(list[i]));
         } else set.add(id); // the anchor has left the list — start again here
       } else {
         if (set.has(id)) set.delete(id);
@@ -112,8 +117,10 @@ export function rowPick<T>(host: PickHost<T>): RowPick<T> {
       if (!canPick()) return;
       const list = host.items();
       if (!list.length) return;
-      list.forEach((x) => set.add(idOf(x)));
-      anchor = idOf(list[list.length - 1]);
+      const take = list.filter(can);
+      if (!take.length) return;
+      take.forEach((x) => set.add(idOf(x)));
+      anchor = idOf(take[take.length - 1]);
       host.onChange();
     },
     clear,
@@ -133,5 +140,5 @@ export function rowPick<T>(host: PickHost<T>): RowPick<T> {
   };
 }
 
-/** "12 songs" / "1 song" — the count row's label. */
-export const picksText = (n: number): string => `${n} song${n === 1 ? "" : "s"}`;
+/** "12 songs" / "1 song" / "3 albums" — the count row's label. Tiles name their own kind. */
+export const picksText = (n: number, noun = "song"): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
