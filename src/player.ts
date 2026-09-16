@@ -2149,26 +2149,58 @@ export function setVolumeSink(sink: ((v: number) => void) | null, initial?: numb
 export function reflectExternalVolume(v: number): void {
   if (!volumeSink) return;
   const next = Math.max(0, Math.min(1, v));
-  if (Math.abs(next - (muted ? 0 : level)) < 0.01) return;
-  level = next;
+  if (Math.abs(next - (muted ? 0 : level * duck)) < 0.01) return; // the echo of our own write
+  if (duck < 0.05) return; // the wind-down's last seconds: nothing to read back from
+  level = Math.min(1, next / duck); // the speaker moved under a wind-down: keep the set level's frame
   muted = level === 0;
   if (level > 0) preMuteLevel = level;
   applyVolumeToMusic();
 }
 
+// The sleep timer's wind-down (NEXT-VERSION §17, sleep.ts): a gain factor multiplied into
+// the level on its way out. The stored level never moves — `setVolume` persists on every
+// call, so a fade through it would write the user's level down to 0. The factor snaps back
+// to 1 after the pause, so the next Play is at the set level.
+let duck = 1;
+
 function applyVolumeToMusic(): void {
   volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
-    music.volume = volumeSink ? 1 : muted ? 0 : level;
+    music.volume = volumeSink ? 1 : muted ? 0 : level * duck;
   } catch (e) {
     console.warn("[player] volume not settable:", e);
   }
 }
 
+/** The wind-down's gain factor (0..1). Sent to a speaker too, so the caller keeps it to
+ *  about one write a second while AirPlay holds the volume. */
+export function setDuck(f: number): void {
+  const next = Math.max(0, Math.min(1, f));
+  if (next === duck) return;
+  duck = next;
+  applyVolumeToMusic();
+  if (volumeSink) volumeSink(muted ? 0 : level * duck);
+}
+
+export function getDuck(): number {
+  return duck;
+}
+
+/** Pause, if anything plays. No sign-in check: pausing never needs one. */
+export async function pausePlayback(): Promise<void> {
+  if (!music?.isPlaying) return;
+  await music.pause();
+}
+
+/** Whether MusicKit is playing right now (the state broadcast's `playing`, read live). */
+export function isPlayingNow(): boolean {
+  return !!music?.isPlaying;
+}
+
 function persistVolume(): void {
   if (volumeSink) {
-    volumeSink(muted ? 0 : level); // the speaker's volume is the speaker's to keep
+    volumeSink(muted ? 0 : level * duck); // the speaker's volume is the speaker's to keep
     return;
   }
   try {
@@ -2179,9 +2211,10 @@ function persistVolume(): void {
   }
 }
 
-/** Effective output level (0..1) — 0 while muted. Drives the pill + slider UI. */
+/** Effective output level (0..1) — 0 while muted, sinking during a wind-down. Drives the
+ *  pill + slider UI, so the fade shows. */
 export function getVolume(): number {
-  return muted ? 0 : level;
+  return muted ? 0 : level * duck;
 }
 
 /** Whether output is currently muted (distinct from level === 0). */

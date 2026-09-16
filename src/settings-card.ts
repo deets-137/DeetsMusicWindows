@@ -528,6 +528,7 @@ function mountSettings(host: HTMLElement): CardInstance {
         sizeRow("sizeplayer", "NP opens at", "The window size for NP, the player alone. Set current saves the size it had last", "player"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
         sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
+        storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open"),
         {
           kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
           hint: "The window stays above other windows. Player: only while it shows the player",

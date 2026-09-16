@@ -161,7 +161,15 @@ the platform sound and the loop thin. Scoped with forks in
    (the fill, the count row), Shift+click a run, sort the list (the picks hold), drag the set
    onto a playlist row (the ghost's count), right-click → New Playlist…, Escape; then the
    same in Up Next (Remove N songs) and History; and check mini picks nothing.
-8. **A sleep timer** — §17, to design.
+8. ✅ **A sleep timer** — §17, **DESIGNED + BUILT 2026-09-15 (branch `wakin-up`), awaiting the
+   desk test**: an alarm clock left of the volume pill; its panel is a kitchen-timer dial
+   (one turn = 120 min, 5-min clicks, turns back once a second), *End of song* / *End of Up
+   Next* chips, a wind-down pill (the volume sinks over the last minutes, then the pause) and
+   an every-day schedule (Sunset from the time zone, or a set time). The fade is a gain factor
+   in `player.ts` (`setDuck`), never the stored level. No Rust change. Desk test: §17's list.
+   **2026-09-16, same branch:** the Vol. pill now **grows in place on hover and scrubs
+   there** (§20, fork A — the flyout is gone; mute and AirPlay sit in the grown pill), and
+   the traffic lights follow Windows' order (minimize, maximize, close).
 Not possible on this platform, so not planned: lyrics, crossfade, Sound Check, remove from
 library (§12–§17 header). Spotify (PROVIDERS.md) is parked: Spotify's dev-mode terms block it. The vinyl disc
 (VINYL.md) waits behind items 1–3.

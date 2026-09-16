@@ -28,6 +28,7 @@ import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initLookSchedule, noteHandPick } from "./look-schedule";
 import * as frames from "./frames";
+import { initSleep } from "./sleep";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
@@ -362,45 +363,115 @@ window.addEventListener("DOMContentLoaded", () => {
   // restored, the library loaded and the window at its size, then the cards rise into place.
   runBootCover(restored, [tracksLoaded(), surfaceSized()]);
 
-  // ── Volume: titlebar pill (level meter) + hover flyout + vertical slider ──
+  // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it
+  //    grows in place into a horizontal slider with the mute speaker and the AirPlay square
+  //    at its ends. No flyout. ──
   const volRoot = document.getElementById("vol");
   const volPill = document.getElementById("vol-pill");
-  const volPanel = document.getElementById("vol-panel");
-  const volScrub = document.querySelector<HTMLElement>("#vol-scrub");
   const volMute = document.getElementById("vol-mute");
-  if (volRoot && volPill && volPanel && volScrub && volMute) {
-    // Paint a 0..1 level into the pill fill, the slider handle, and the glyph.
+  if (volRoot && volPill && volMute) {
+    // Paint a 0..1 level into the fill (the slider's own --slider-fill), the glyph, and ARIA.
     const reflect = (v: number) => {
-      const pct = (Math.max(0, Math.min(1, v)) * 100).toFixed(2);
-      volPill.style.setProperty("--vol-pill-fill", `${pct}%`);
       slider.setValue(v);
       volMute.innerHTML = isMuted() || v === 0 ? ICON_MUTE : ICON_VOL;
       volMute.setAttribute("aria-pressed", String(isMuted()));
+      volPill.setAttribute("aria-valuenow", String(Math.round(Math.max(0, Math.min(1, v)) * 100)));
     };
 
-    const slider = makeSlider(volScrub, {
-      axis: "y",
+    // The whole pill is the slider, so the fill (which sweeps under the glyph squares) and
+    // the pointer agree. The squares stop their pointerdown so a press on them never scrubs.
+    const slider = makeSlider(volPill, {
+      axis: "x",
       onDrag: (frac) => { setVolume(frac); reflect(getVolume()); },
       onCommit: (frac) => { setVolume(frac); reflect(getVolume()); },
     });
 
     reflect(getVolume()); // seed from the persisted level
-    onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes
-
-    // Shared dropdown mechanism. A slider drag keeps it up, and so does the pointer leaving
-    // for the nested "Play on" panel (portaled outside this root). A click away or Escape
-    // closes both panels; a click inside "Play on" counts as inside this one.
     const volAirplay = document.getElementById("vol-airplay");
-    let playOn: ReturnType<typeof mountAirplay> | null = null;
-    volPanel.classList.add("pop"); // arrives and leaves like the "Play on" panel
-    volPanel.dataset.frames = "volume";
-    makeDropdown({
-      root: volRoot, trigger: volPill, panel: volPanel,
-      shouldStayOpen: (why) =>
-        slider.dragging || (why === "leave" && volAirplay?.getAttribute("aria-expanded") === "true"),
-      alsoInside: () => [playOn?.panel],
+    volMute.addEventListener("pointerdown", (e) => e.stopPropagation());
+    volAirplay?.addEventListener("pointerdown", (e) => e.stopPropagation());
+    onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes, the sleep fade
+
+    // Shrink volume bar (Settings › Window; default off = the full bar all the time). On, the
+    // pill is small and grows the way the menus open: a click toggles it (a click away or
+    // Escape shrinks it), or a hover grows it and it shrinks a moment after the pointer
+    // leaves. A drag or the open "Play on" panel (portaled to <body>) holds it either way.
+    // The grow is timed like a menu (frames.ts).
+    const GRACE_MS = 400;
+    let shrinkTimer = 0;
+    const shrinkMode = () => setting("volumeShrink");
+    const hoverMode = () => setting("menuMode") === "hover";
+    const isGrown = () => volPill.classList.contains("is-grown");
+    const held = () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true";
+    const grow = () => {
+      window.clearTimeout(shrinkTimer);
+      if (!shrinkMode() || isGrown()) return;
+      frames.during("menu", 300, "volume");
+      volPill.classList.add("is-grown");
+    };
+    const shrinkNow = () => {
+      window.clearTimeout(shrinkTimer);
+      volPill.classList.remove("is-grown");
+    };
+    const shrinkSoon = () => {
+      window.clearTimeout(shrinkTimer);
+      if (!isGrown()) return;
+      shrinkTimer = window.setTimeout(() => {
+        if (held() || volRoot.matches(":hover") || volPill.matches(":focus-within")) return shrinkSoon();
+        shrinkNow();
+      }, GRACE_MS);
+    };
+    const applyShrink = () => {
+      volRoot.classList.toggle("vol--shrink", shrinkMode());
+      if (!shrinkMode()) shrinkNow();
+    };
+    applyShrink();
+    onSettingsChange((k) => {
+      if (k === "volumeShrink") applyShrink();
+      if (k === "menuMode" && !hoverMode()) shrinkSoon();
     });
-    if (volAirplay) playOn = mountAirplay(volAirplay);
+    // Click mode: a press on the SMALL pill grows it and does not scrub (capture runs before
+    // the slider's own pointerdown at the target). Hover mode: the pointer grows it.
+    volPill.addEventListener("pointerdown", (e) => {
+      if (!shrinkMode() || isGrown()) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      grow();
+    }, { capture: true });
+    volRoot.addEventListener("pointerenter", () => { if (hoverMode()) grow(); });
+    volRoot.addEventListener("pointerleave", () => { if (hoverMode()) shrinkSoon(); });
+    volPill.addEventListener("focusin", grow);
+    volPill.addEventListener("focusout", shrinkSoon);
+    document.addEventListener("pointerdown", (e) => {
+      if (!isGrown() || hoverMode() || held()) return;
+      const t = e.target as Node | null;
+      if (t && volRoot.contains(t)) return;
+      shrinkNow();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isGrown() && !held()) shrinkNow();
+    });
+
+    // The wheel and the arrow keys step the level by 5 %.
+    const step = (dir: number) => {
+      setVolume(Math.max(0, Math.min(1, getVolume() + dir * 0.05)));
+      reflect(getVolume());
+    };
+    volPill.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      step(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    volPill.addEventListener("keydown", (e) => {
+      if (e.target !== volPill) return; // the mute or AirPlay square has its own keys
+      if (e.key === "ArrowUp" || e.key === "ArrowRight") step(1);
+      else if (e.key === "ArrowDown" || e.key === "ArrowLeft") step(-1);
+      else if (e.key.toLowerCase() === "m") toggleMute();
+      else return;
+      e.preventDefault();
+      reflect(getVolume());
+    });
+
+    if (volAirplay) mountAirplay(volAirplay);
     initAirplay();
 
     volMute.addEventListener("click", (e) => {
@@ -410,3 +481,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+  // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
+  initSleep();

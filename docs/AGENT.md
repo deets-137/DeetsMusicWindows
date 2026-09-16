@@ -288,6 +288,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   takes `+15 min`, `15`, `-15` (−60…60 in 15-minute steps, the card's menu).
 - A toggle takes `on` / `off` (also `true` / `false`, `yes` / `no`).
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
+- The **Sleep** section (2026-09-15, NEXT-VERSION §17): `sleepSchedule` (Off | Sunset | At a
+  time), `sleepAt` (HH:MM in 15-minute steps, any hour), `sleepWind` (Off | 1 | 2 | 5 | 10 | 15 |
+  30 min). These are the schedule and the wind-down; a running timer is set in the app's own
+  panel and has no agent verb yet.
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
   `pressVinylSpeed` (33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set
   under another skin is stored, and the reply says it shows while Press is the skin.

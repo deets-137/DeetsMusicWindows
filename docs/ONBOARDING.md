@@ -35,8 +35,16 @@ polish). A screen reader gets the `aria-label`; the hint is for the pointer.
 | Title menu | each Skin | one line on the idiom ("A print shop: ink on paper, square corners. The cover can be a record") | index.html |
 | Title menu | Mini · NP · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
-| Title bar | Vol. pill | The volume. Hover for the slider | index.html |
-| Title bar | Mute (pill panel) | Turns the sound off and on | index.html |
+| Title bar | Sleep timer (the alarm clock) | The sleep timer. Music pauses when it runs out · armed: *Sleep in 23:14* / *Sleep at the end of this song* / *Sleep at 10:00 PM, every day* | index.html / sleep.ts |
+| Sleep panel | the dial | Turn the timer to set the minutes. Music pauses when it runs out | index.html |
+| Sleep panel | End of song · End of Up Next | Pauses when this song ends · Pauses when Up Next runs out | index.html |
+| Sleep panel | Wind down pill | Over these last minutes the volume sinks to nothing, then the music pauses. Click for the next length | index.html |
+| Sleep panel | Play out song pill | On: when the time runs out in the middle of a song, the song plays to its end first | index.html |
+| Sleep panel | Every day pill · ‹ › | A sleep time that sets itself every day: at sunset, or at a time you pick. It pauses only if music is playing then · 15 minutes earlier / later | index.html |
+| Sleep panel | Off / Not tonight | Turns the sleep timer off | index.html |
+| Title bar | Volume bar | The volume. Drag it, or roll the wheel | index.html |
+| Title bar | Mute (in the volume bar) | Turns the sound off and on | index.html |
+| Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open | settings-card.ts |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | Title bar | Maximize · Minimize · Close | Fills the screen. Press again to go back · Puts the window on the taskbar · Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing | index.html |
 | Now Playing | Shuffle | Shuffles the songs after this one · *Shuffle is on. Press again to turn it off* | now-playing-card.ts (`paintModes`) |

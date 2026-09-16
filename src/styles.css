@@ -268,42 +268,28 @@ body {
 /* ── Right chrome cluster (volume pill + traffic lights) ────── */
 .chrome-right { display: flex; align-items: center; gap: var(--space-2); }
 
-/* ── Volume pill + flyout ───────────────────────────────────────────────────
-   The pill is a level meter: a tinted --title fill (strength is a skin token)
-   sweeps left→right under a constant "Vol." label. Hovering drops a panel with
-   a mute toggle over a vertical scrubber (the .scrub primitive). */
-.vol { position: relative; display: flex; align-items: center; }
-
-.vol__pill {
-  position: relative;
-  overflow: hidden;                 /* clip the fill to the pill's rounded ends */
-  height: var(--traffic-size);
-  width: var(--vol-pill-w);
-  padding: 0;
-  border: 1px solid var(--panel-border);  /* defined edge (vs the faint --border) */
-  border-radius: var(--vol-pill-radius);
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: var(--vol-pill-fs);
-  line-height: 1;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
+/* ── Sleep timer (src/sleep.ts, NEXT-VERSION §17) ───────────────────────────
+   The alarm clock left of the volume pill; armed = the title color. Its panel is
+   a kitchen-timer dial: the face (ticks + numbers, drawn by sleep.ts) turns by
+   --sleep-angle under a fixed mark at the top, and turns back once a second. */
+.sleep { position: relative; display: flex; align-items: center; }
+.sleep__btn {
+  width: var(--sleep-btn-size); height: var(--sleep-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
 }
-.vol__pill-fill {
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: var(--vol-pill-fill, 0%);
-  background: color-mix(in srgb, var(--title) var(--vol-fill-strength), transparent);
-  pointer-events: none;
-}
-.vol__pill-label { position: relative; z-index: 1; }  /* above the fill */
-.vol__pill:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.sleep__btn:hover { color: var(--text); }
+.sleep__btn[data-armed] { color: var(--title); }
+.sleep__btn svg { width: 100%; height: 100%; }
+.sleep__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
-.vol__panel {
-  position: absolute; top: 100%; right: 0;     /* right-anchored: drops in-window */
+.sleep__panel {
+  position: absolute; top: 100%; right: 0;
   margin-top: var(--space-1);
-  display: flex; flex-direction: column; align-items: center;
+  width: var(--sleep-panel-w);
+  display: flex; flex-direction: column; align-items: stretch;
   gap: var(--space-2);
   padding: var(--vol-panel-pad);
   background: var(--menu-surface);
@@ -312,29 +298,153 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
   z-index: 20;
 }
-.vol__panel[hidden] { display: none; }
+.sleep__panel[hidden] { display: none; }
 
-.vol__mute {
+.sleep__dial {
+  position: relative;
+  width: var(--sleep-dial-size); height: var(--sleep-dial-size);
+  margin: 0 auto;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.sleep__dial[data-dragging] { cursor: grabbing; }
+.sleep__dial:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.sleep__face { width: 100%; height: 100%; display: block; overflow: visible; }
+.sleep__ring {
+  transform-origin: 100px 100px;
+  transform: rotate(var(--sleep-angle, 0deg));
+  transition: transform var(--sleep-turn);
+}
+.sleep__dial[data-dragging] .sleep__ring { transition: none; }
+.sleep__tick { stroke: color-mix(in srgb, var(--subtext) 55%, transparent); stroke-width: var(--sleep-tick-w); }
+.sleep__tick--med { stroke: var(--subtext); stroke-width: var(--sleep-tick-w); }
+.sleep__tick--major { stroke: var(--title); stroke-width: var(--sleep-tick-major-w); }
+.sleep__num { fill: var(--title); font-family: var(--font-body); font-size: var(--sleep-num-fs); }
+.sleep__mark { fill: var(--title); }
+.sleep__center {
+  position: absolute; inset: 0;
+  display: grid; place-content: center; text-align: center;
+  pointer-events: none;
+}
+.sleep__readout {
+  font-family: var(--font-title); font-size: var(--sleep-readout-fs); font-weight: var(--fw-title);
+  color: var(--title); line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.sleep__caption { font-size: var(--fs-subtext); color: var(--subtext); margin-top: var(--space-1); }
+.sleep__caption[hidden] { display: none; }
+/* The line under the time holds either the help or Off. Its height is reserved, so the swap
+   never moves the time, and each arrival fades up gently (slower than a row's slide). */
+.sleep__line { min-height: var(--sleep-line-h); margin-top: var(--space-1); display: grid; place-items: center; }
+.sleep__fade { animation: sleep-fade var(--sleep-swap) var(--pop-ease) both; }
+@keyframes sleep-fade { from { opacity: 0; transform: translateY(var(--pop-shift)); } }
+/* Off sits in the caption's place while the timer runs; the dial's drag must not start from it. */
+.sleep__off { pointer-events: auto; }
+
+.sleep__chips { display: flex; gap: var(--space-1); }
+.sleep__chip, .sleep__pill, .sleep__off, .sleep__step {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--sleep-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.sleep__chip { flex: 1 1 0; }
+.sleep__chip:hover, .sleep__pill:hover, .sleep__off:hover, .sleep__step:hover { background: var(--surface-hover); }
+.sleep__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.sleep__chip:focus-visible, .sleep__pill:focus-visible, .sleep__off:focus-visible, .sleep__step:focus-visible {
+  outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off);
+}
+.sleep__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sleep__row[hidden] { display: none; }
+.sleep__label { font-size: var(--fs-subtext); color: var(--subtext); }
+.sleep__row--time { justify-content: center; }
+.sleep__time { font-size: var(--fs-subtext); min-width: 5.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.sleep__status { font-size: var(--fs-subtext); color: var(--subtext); text-align: center; }
+.sleep__status[hidden] { display: none; }
+.sleep__off[hidden] { display: none; }
+
+/* ── Volume pill + flyout ───────────────────────────────────────────────────
+   The pill is a level meter: a tinted --title fill (strength is a skin token)
+   sweeps left→right under a constant "Vol." label. On hover the pill GROWS in
+   place (NEXT-VERSION §20): the mute speaker appears at its left, the fill becomes
+   a horizontal slider you drag right there, and the AirPlay square sits at its
+   right. It shrinks back when the pointer leaves, unless a drag or the "Play on"
+   panel holds it. Sizes and the grow's timing are skin tokens. */
+.vol { position: relative; display: flex; align-items: center; }
+
+/* The full bar is the default (user's call 2026-09-16). Settings › Window › Shrink volume bar
+   puts `.vol--shrink` on the root: the pill is small until it is grown (`.is-grown`, by a
+   click or a hover, as the menus open). One rule set: the small look is the exception. */
+.vol__pill {
+  position: relative;
+  overflow: hidden;                 /* clip the fill to the pill's rounded ends */
+  box-sizing: border-box;
+  height: var(--vol-pill-grown-h);
+  width: var(--vol-pill-grown-w);
+  padding: 0 var(--vol-pill-pad);
+  gap: var(--space-1);
+  border: 1px solid var(--panel-border);  /* defined edge (vs the faint --border) */
+  border-radius: var(--vol-pill-radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--vol-pill-fs);
+  line-height: 1;
+  cursor: pointer;
+  touch-action: none;               /* the whole pill is the slider (src/slider.ts) */
+  display: flex;
+  align-items: center;
+  transition:
+    width  var(--vol-grow) var(--pop-ease),
+    height var(--vol-grow) var(--pop-ease),
+    padding var(--vol-grow) var(--pop-ease);
+}
+.vol--shrink .vol__pill:not(.is-grown) {
+  width: var(--vol-pill-w);
+  height: var(--traffic-size);
+  padding: 0;
+  gap: 0;
+}
+.vol__pill:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* The fill sweeps the WHOLE pill, under the glyph squares, so 100 % reaches the far end.
+   The slider is the pill itself, so the fill and the pointer agree. */
+.vol__pill-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: var(--slider-fill, 0%);
+  background: color-mix(in srgb, var(--title) var(--vol-fill-strength), transparent);
+  pointer-events: none;
+}
+.vol__track { position: relative; flex: 1 1 auto; align-self: stretch; display: grid; place-items: center; pointer-events: none; }
+.vol__pill-label { position: relative; z-index: 1; display: none; }  /* the small pill's word */
+.vol--shrink .vol__pill:not(.is-grown) .vol__pill-label { display: block; }
+
+/* The two glyph squares: mute at the left, AirPlay at the right (every surface — max has a
+   second square on the stage row, and both follow the same state). Hidden in the small pill. */
+.vol__mute, .vol__airplay {
+  display: grid;
+  flex: 0 0 auto;
   width: var(--vol-icon-size); height: var(--vol-icon-size);
   padding: 0; border: none; background: none;
   color: var(--text); cursor: pointer;
-  display: grid; place-items: center;
+  place-items: center;
+  position: relative; z-index: 1;
 }
+.vol--shrink .vol__pill:not(.is-grown) :is(.vol__mute, .vol__airplay) { display: none; }
 .vol__mute svg { width: 100%; height: 100%; fill: currentColor; }
-.vol__mute:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
-
-/* The pill panel's AirPlay square (mini/midi); max shows the stage row's instead. */
-.vol__airplay {
-  width: var(--vol-icon-size); height: var(--vol-icon-size);
-  padding: 0; border: none; background: none;
-  color: var(--text); cursor: pointer;
-  display: grid; place-items: center;
-}
+.vol__mute:focus-visible, .vol__airplay:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .vol__airplay svg { width: 100%; height: 100%; }
-.vol__airplay:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
-[data-surface="max"] .vol__airplay { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .vol__pill { transition: none; }
+}
 
 /* ── AirPlay (AIRPLAY.md): the square's states + the "Play on" panel ──── */
 .ap-root { position: relative; display: grid; }
@@ -390,6 +500,8 @@ body {
   .pop, .flyout { transition: none; }
   .pop-enter { animation: none; }
   .lib-picked.is-entering { animation: none; }
+  .sleep__ring { transition: none; } /* the dial snaps once a minute (sleep.ts rounds the angle) */
+  .sleep__fade { animation: none; }
 }
 /* Card swap (src/card-swap.ts; skin.css §card swap). JS sets --swap-dx / --swap-dy, the
    offset from the slot the card left. The travel rides `translate` and the skin's shape

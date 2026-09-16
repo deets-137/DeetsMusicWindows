@@ -394,7 +394,9 @@ our own chrome.
 
 - **Surfaces:** mini-player · **midi-player** (480×864, current scaffold) · full window.
 - **Titlebar** (`.titlebar` in `index.html`): app title (left) + a right cluster
-  (`.chrome-right`) holding the **volume pill** and the traffic lights.
+  (`.chrome-right`) holding the **sleep timer** clock (NEXT-VERSION §17), the **volume
+  pill** (it grows in place on hover and scrubs there, NEXT-VERSION §20 — no flyout since
+  2026-09-16) and the traffic lights in Windows' order (minimize, maximize, close).
 - **Drag:** the bar carries `data-tauri-drag-region`, which makes it the OS drag
   handle. Interactive children (the buttons) opt out automatically by *not*
   carrying the attribute. `--webkit-app-region` is **not** used — Tauri's attribute
@@ -425,7 +427,7 @@ slot in the same way. Because the title is now interactive, the **draggable zone
 middle `.drag-region`** between the title and the lights, not the whole bar.
 
 **One dropdown primitive for every menu** (`src/dropdown.ts`, `makeDropdown`): the settings
-menu, the volume flyout, and the **slot-card pickers** share a single open/close/dismiss
+menu, the sleep timer's panel, the AirPlay "Play on" panel, and the **slot-card pickers** share a single open/close/dismiss
 mechanism (outside-click + Escape, `aria-expanded`, an optional `shouldStayOpen` veto so a
 volume drag can't close the panel under itself, a `disabled` veto the picker uses to go
 inert off-root, and an `onOpen` hook). The slot picker's `onOpen` fits the menu to the window

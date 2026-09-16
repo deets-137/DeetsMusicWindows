@@ -58,9 +58,27 @@
   --vol-pill-radius:   999px;  /* true capsule */
   --vol-pill-fs:       9px;
   --vol-fill-strength: 30%;
-  --vol-track-len:     90px;   /* vertical slider run inside the flyout */
-  --vol-panel-pad:     var(--space-2);
   --vol-icon-size:     16px;
+  /* The grown pill (NEXT-VERSION §20): its size on hover, the glyphs' inset, the grow's time. */
+  --vol-pill-grown-w:  120px;
+  --vol-pill-grown-h:  20px;
+  --vol-pill-pad:      2px;
+  --vol-grow:          var(--dur-med);
+
+  /* -- sleep timer (src/sleep.ts, NEXT-VERSION §17) ---------- */
+  /* The alarm clock left of the pill, and its kitchen-timer dial. The face's
+     ticks and numbers are geometry here; their colors are theme roles. */
+  --sleep-btn-size:     16px;   /* the 24-grid clock reads as ~14 px: level with the pill and the lights */
+  --sleep-panel-w:      224px;
+  --sleep-dial-size:    172px;
+  --sleep-tick-w:       1px;
+  --sleep-tick-major-w: 2px;
+  --sleep-num-fs:       11px;   /* SVG user units on the 200-unit face */
+  --sleep-readout-fs:   22px;
+  --sleep-chip-radius:  var(--radius-control);
+  --sleep-turn:         1s linear;   /* the face turning back, one step a second */
+  --sleep-line-h:       26px;   /* the line under the time: the help or the Off button, height reserved */
+  --sleep-swap:         0.42s;  /* that line's fade-up; gentler than a row's --pop-in */
 
   /* -- shape ------------------------------------------------- */
   --radius-panel:   10px;

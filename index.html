@@ -158,28 +158,82 @@
       <div class="drag-region" data-tauri-drag-region></div>
 
       <div class="chrome-right">
-        <!-- Volume: a level-filled pill that drops a vertical scrubber on hover.
-             The pill's tinted fill mirrors the current volume; the panel hosts a
-             mute toggle (speaker icon) above the vertical slider. -->
-        <div class="vol" id="vol">
+        <!-- Sleep timer (NEXT-VERSION §17, src/sleep.ts): the alarm clock. Its panel is a
+             kitchen-timer dial (drag to set, it turns back as time runs out), two "end of"
+             chips, the wind-down length, and the every-day schedule. The icon and the dial's
+             face are drawn by sleep.ts. -->
+        <div class="sleep" id="sleep">
           <button
-            class="vol__pill"
-            id="vol-pill"
+            class="sleep__btn"
+            id="sleep-btn"
             type="button"
             aria-haspopup="true"
             aria-expanded="false"
+            aria-label="Sleep timer"
+            title="The sleep timer. Music pauses when it runs out"
+          ></button>
+
+          <div class="sleep__panel pop" id="sleep-panel" role="group" aria-label="Sleep timer" hidden>
+            <div class="sleep__dial" id="sleep-dial" role="slider" tabindex="0" aria-label="Minutes until sleep"
+                 aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"
+                 title="Turn the timer to set the minutes. Music pauses when it runs out">
+              <svg class="sleep__face" viewBox="0 0 200 200" aria-hidden="true">
+                <g class="sleep__ring" id="sleep-ring"></g>
+                <path class="sleep__mark" d="M100 3 L106 13 L94 13 Z" />
+              </svg>
+              <div class="sleep__center">
+                <div class="sleep__readout" id="sleep-readout">Off</div>
+                <div class="sleep__line">
+                  <div class="sleep__caption" id="sleep-caption">Turn the timer</div>
+                  <button class="sleep__off" id="sleep-off" type="button" hidden title="Turns the sleep timer off">Off</button>
+                </div>
+              </div>
+            </div>
+            <div class="sleep__chips">
+              <button class="sleep__chip" type="button" data-sleep-mode="song" aria-pressed="false" title="Pauses when this song ends">End of song</button>
+              <button class="sleep__chip" type="button" data-sleep-mode="queue" aria-pressed="false" title="Pauses when Up Next runs out">End of Up Next</button>
+            </div>
+            <div class="sleep__row">
+              <span class="sleep__label">Wind down</span>
+              <button class="sleep__pill" id="sleep-wind" type="button" title="Over these last minutes the volume sinks to nothing, then the music pauses. Click for the next length">5 min</button>
+            </div>
+            <div class="sleep__row">
+              <span class="sleep__label">Play out song</span>
+              <button class="sleep__pill" id="sleep-playout" type="button" title="On: when the time runs out in the middle of a song, the song plays to its end first">Off</button>
+            </div>
+            <div class="sleep__row">
+              <span class="sleep__label">Every day</span>
+              <button class="sleep__pill" id="sleep-sched" type="button" title="A sleep time that sets itself every day: at sunset, or at a time you pick. It pauses only if music is playing then">Off</button>
+            </div>
+            <div class="sleep__row sleep__row--time" id="sleep-time-row" hidden>
+              <button class="sleep__step" id="sleep-earlier" type="button" aria-label="15 minutes earlier" title="15 minutes earlier">‹</button>
+              <span class="sleep__time" id="sleep-time">10:00 PM</span>
+              <button class="sleep__step" id="sleep-later" type="button" aria-label="15 minutes later" title="15 minutes later">›</button>
+            </div>
+            <div class="sleep__status" id="sleep-status" hidden></div>
+          </div>
+        </div>
+
+        <!-- Volume (NEXT-VERSION §20, 2026-09-16): a level-filled pill that GROWS in place on
+             hover and scrubs there. Small: the tinted fill under a "Vol." label. Grown: the
+             mute speaker at the left, the fill as a horizontal slider in the middle, the
+             AirPlay square at the right (mini/midi; max has it on the stage row). No panel. -->
+        <div class="vol" id="vol">
+          <div
+            class="vol__pill"
+            id="vol-pill"
+            role="slider"
+            tabindex="0"
             aria-label="Volume"
-            title="The volume. Hover for the slider"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="100"
+            title="The volume. Drag it, or roll the wheel"
           >
             <span class="vol__pill-fill" aria-hidden="true"></span>
-            <span class="vol__pill-label">Vol.</span>
-          </button>
-
-          <div class="vol__panel" id="vol-panel" role="group" aria-label="Volume" hidden>
             <button class="vol__mute" id="vol-mute" type="button" aria-label="Mute" aria-pressed="false" title="Turns the sound off and on"></button>
-            <div class="scrub scrub--v" id="vol-scrub">
-              <div class="scrub__track"><div class="scrub__fill"></div></div>
-              <span class="scrub__handle" aria-hidden="true"></span>
+            <div class="vol__track" id="vol-scrub">
+              <span class="vol__pill-label">Vol.</span>
             </div>
             <!-- AirPlay (AIRPLAY.md): the "Play on" panel for mini/midi; max has the
                  same square on the stage volume row. CSS shows one per surface. -->
@@ -190,11 +244,12 @@
         </div>
 
         <div class="lights">
-          <button class="light light--max" id="tl-max" type="button" aria-label="Maximize" title="Fills the screen. Press again to go back">
-          <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.6V8.4M1.6 5H8.4" /></svg>
-        </button>
-        <button class="light light--min" id="tl-min" type="button" aria-label="Minimize" title="Puts the window on the taskbar">
+          <!-- Windows' order (user's call 2026-09-16): minimize, maximize, close. -->
+          <button class="light light--min" id="tl-min" type="button" aria-label="Minimize" title="Puts the window on the taskbar">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.6 5H8.4" /></svg>
+        </button>
+        <button class="light light--max" id="tl-max" type="button" aria-label="Maximize" title="Fills the screen. Press again to go back">
+          <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.6V8.4M1.6 5H8.4" /></svg>
         </button>
         <button class="light light--close" id="tl-close" type="button" aria-label="Close" title="Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing">
           <svg class="sigil" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 2.3L7.7 7.7M7.7 2.3L2.3 7.7" /></svg>

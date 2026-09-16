@@ -42,6 +42,8 @@ interface Spec {
   /** range: the bounds · time: minutes after midnight, on the half hour. */
   min?: number;
   max?: number;
+  /** time: the minute step (default 30; the sleep time takes 15). */
+  step?: number;
   /** "Ocean only", "Glass only": the row shows in the card only then. */
   only?: string;
   /** A consent gate (§5): an agent may turn it off, never on. */
@@ -75,8 +77,8 @@ const storeRange = (section: string, key: NumKey, label: string, extra: Partial<
   set: (v) => setSetting(key, Number(v)),
   ...extra,
 });
-const storeTime = (key: "dayStart" | "nightStart", label: string, from: number, to: number): Spec => ({
-  key, label, section: "Look and feel", kind: "time", min: from, max: to,
+const storeTime = (key: "dayStart" | "nightStart" | "sleepAt", label: string, from: number, to: number, section = "Look and feel"): Spec => ({
+  key, label, section, kind: "time", min: from, max: to,
   get: () => setting(key),
   set: (v) => setSetting(key, v),
 });
@@ -122,6 +124,7 @@ const SPECS: Spec[] = [
   storeChoice("Window", "trayView", "Tray icon opens", [{ value: "cards", label: "Mini" }, { value: "player", label: "Player" }]),
   rustToggle("Window", "startWithWindows", "Start with Windows", () => invoke<boolean>("autostart_get"), (on) => invoke<boolean>("autostart_set", { on })),
   storeToggle("Window", "surfaceAutoFlip", "Resize changes surface"),
+  storeToggle("Window", "volumeShrink", "Shrink volume bar"),
   storeSize("mini", "Mini opens at"),
   storeSize("player", "NP opens at"),
   storeSize("midi", "Midi opens at"),
@@ -166,6 +169,16 @@ const SPECS: Spec[] = [
   storeChoice("Look and feel", "nightSkin", "Night look skin", SKIN_OPTIONS),
   storeTime("dayStart", "Day starts at", 4 * 60, 12 * 60),
   storeTime("nightStart", "Night starts at", 15 * 60, 23 * 60 + 30),
+  // ── Sleep (NEXT-VERSION §17): the schedule and the wind-down; a running timer is the panel's ──
+  storeChoice("Sleep", "sleepSchedule", "Sleep every day", [{ value: "off", label: "Off" }, { value: "sun", label: "Sunset" }, { value: "clock", label: "At a time" }], {
+    note: (v) => (v === "off" ? undefined : "It pauses only if music is playing at that time."),
+  }),
+  { ...storeTime("sleepAt", "Sleep at", 0, 23 * 60 + 45, "Sleep"), step: 15 },
+  storeToggle("Sleep", "sleepPlayOut", "Play out song"),
+  storeChoice("Sleep", "sleepWind", "Wind down", [0, 1, 2, 5, 10, 15, 30].map((m) => ({ value: String(m), label: m ? `${m} min` : "Off" })), {
+    get: () => String(setting("sleepWind")),
+    set: (v) => setSetting("sleepWind", Number(v)),
+  }),
   {
     key: "sunShift", label: "Shift sun times", section: "Look and feel", kind: "choice",
     options: MINUTES.map((v) => ({ value: String(v), label: v === 0 ? "None" : `${v > 0 ? "+" : "−"}${Math.abs(v)} min` })),
@@ -240,7 +253,7 @@ const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${S
 function accepts(s: Spec): string {
   switch (s.kind) {
     case "range": return `${s.min}–${s.max}`;
-    case "time": return `HH:MM on :00 or :30, ${clock(s.min!)}–${clock(s.max!)}`;
+    case "time": return `HH:MM on ${s.step === 15 ? ":00, :15, :30 or :45" : ":00 or :30"}, ${clock(s.min!)}–${clock(s.max!)}`;
     case "size": return `W×H in px, at least ${MIN_SIZES[s.slot!].w}×${MIN_SIZES[s.slot!].h}`;
     default: return s.options!.map((o) => o.label).join(" | ");
   }
@@ -305,7 +318,7 @@ function parse(s: Spec, raw: string): string {
   } else {
     const m = /^(\d{1,2}):(\d{2})$/.exec(input);
     const mins = m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
-    if (m && Number(m[2]) % 30 === 0 && mins >= s.min! && mins <= s.max!) return clock(mins);
+    if (m && Number(m[2]) % (s.step ?? 30) === 0 && mins >= s.min! && mins <= s.max!) return clock(mins);
   }
   throw unknown(`${s.key} (${s.label}) takes ${accepts(s)}`);
 }

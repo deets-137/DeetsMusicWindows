@@ -72,6 +72,26 @@ front-end, Rust back-end).
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
   real forks (he responds well to multiple-choice), confirm, then build.
+- **Before you build a new panel, row, button or card, walk this list** (added 2026-09-16
+  after the sleep panel shipped without its row motion). Read the primitive's own file, not
+  only a call site: one call site never uses every part of a primitive.
+  1. **Motion:** a dropdown panel gets `.pop` (arrival) AND `enterRows` from `src/pop.ts`
+     on open (`onOpen`) — the "Play on" panel is the reference, not the volume panel. Any
+     part that appears later (a row a pill reveals, a button, a status line) goes through
+     `enterRows` too. Reduced motion is handled by the primitive; a custom animation adds
+     its own `prefers-reduced-motion` rule in styles.css.
+  2. **Tokens:** geometry, type, spacing and motion are `--*` tokens in `skin.css` base
+     (a skin overrides only what it changes); color is a theme role in `themes.css`. Grep
+     the token name before using it (`--fs-small` did not exist; `--fs-subtext` did).
+  3. **Hints:** every `title` is a hover hint (src/hint.ts) and goes in the ONBOARDING.md
+     ledger. New row shapes go in its SHAPES table.
+  4. **Toasts:** every new `toast()` call is a row in TOASTS.md §5.
+  5. **Settings keys:** a new key in `settings-store.ts` gets a default with the "why", a
+     spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md.
+  6. **Log lines:** `diag.log` the arm / fire / off of anything that acts on its own.
+  7. **Telemetry:** a panel that animates sets `dataset.frames` so frames.ts times it.
+  8. **Check:** `npx tsc --noEmit` and `npx vite build`, then hand it over with the desk
+     test written into the doc section.
 - **Everything is token-based**: never hardcode a color, px, font, or motion value in a
   component — add/route through the palette → theme → skin tiers. Color → theme role;
   geometry/type/spacing/motion → skin token.

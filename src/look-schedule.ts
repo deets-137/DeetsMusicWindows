@@ -96,6 +96,17 @@ function place(): Place {
 const RAD = Math.PI / 180;
 const DAY_MS = 86_400_000;
 
+/** The sleep timer's "Sunset" (sleep.ts): sunrise and sunset on a local calendar day, from
+ *  the time zone's main city, or "day" / "night" when the sun stays up or down all day. */
+export function sunTimes(day: Date): { rise: number; set: number } | "day" | "night" {
+  return sunEdges(day, place());
+}
+
+/** The time zone's main city for the sleep panel's status line, or null. */
+export function sunCity(): string | null {
+  return place().city;
+}
+
 /** Sunrise and sunset (ms) on a local calendar day — the standard sunrise equation (NOAA
  *  simplified), good to about a minute. A string when the sun stays up or down all day. */
 function sunEdges(day: Date, p: Place): { rise: number; set: number } | Period {

@@ -22,6 +22,9 @@ export interface Settings {
   menuMode: "click" | "hover";
   /** Free resize flips the surface past its band (FUTURE-SETTINGS §8). Off = clamp only. */
   surfaceAutoFlip: boolean;
+  /** The title bar's volume bar is a small pill that grows on click (or hover, per the
+   *  menu mode) — off: the full bar shows all the time (NEXT-VERSION §20). */
+  volumeShrink: boolean;
   /** Open sizes (FUTURE-SETTINGS §8a): the window size each view opens at, "WxH" in logical
    *  px. surface.ts applies them on every open; a resize by hand is not remembered. */
   sizeMini: string;
@@ -91,6 +94,18 @@ export interface Settings {
   homeHideLasts: "forever" | "session";
   /** The hidden Home tiles: item key → when it was hidden (epoch-ms). A tile played
    *  again after that time unhides itself. Cleared from Settings › Home. */
+  // ── sleep timer (NEXT-VERSION §17; sleep.ts) ──
+  /** A sleep time that arms itself every day: at sunset (the time zone's sun), at a set
+   *  time, or never. It pauses only if music is playing when the time comes. */
+  sleepSchedule: "off" | "sun" | "clock";
+  /** The set time ("HH:MM", local) for `sleepSchedule` = "clock". */
+  sleepAt: string;
+  /** The wind-down: over these last minutes the volume sinks to nothing, then the music
+   *  pauses. 0 = a plain pause at the mark. */
+  sleepWind: number;
+  /** When the time runs out in the middle of a song, let the song play to its end first
+   *  (the wind-down then fills the song's last minutes). Off: the mark is the silence. */
+  sleepPlayOut: boolean;
   homeHidden: Record<string, number>;
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
@@ -170,6 +185,7 @@ export const DEFAULTS: Settings = {
   appearanceMotion: true,
   cardSwapMotion: false, // user's call 2026-09-15: off by default
   backgroundMotion: "on",
+  volumeShrink: false, // user's call 2026-09-16: the full bar by default
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   glassTint: 55, // today's Glass look (55% surface)
@@ -200,6 +216,10 @@ export const DEFAULTS: Settings = {
   shuffleManual: "top",
   shuffleIdle: "library",
   shuffleStays: true, // user's call 2026-09-15: shuffle is a mode (NEXT-VERSION §14 A)
+  sleepSchedule: "off",
+  sleepAt: "22:00",
+  sleepWind: 5, // user's call 2026-09-15: the fade fills the last minutes before the mark
+  sleepPlayOut: false, // the mark is the silence unless you ask for the song's end
   shuffleMode: false,
   repeatMode: "off",
   fullPlayRule: "fraction",

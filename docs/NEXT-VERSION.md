@@ -618,13 +618,101 @@ longer read by anything.
   word "Skipped": most listening has skips in it and a column of words would shout.
 - **Repeats stay real.** Three plays make three rows.
 
-## 17. Sleep timer — to design
+## 17. Sleep timer — DESIGNED + BUILT 2026-09-15 (branch `wakin-up`), awaiting the desk test
 
-Absent. A tray player on a desk at night wants one. Scope to bring: where (the title menu, a
-Now Playing long-press, or a Settings › Playback row), the choices (15 / 30 / 60 min · end of
-song · end of Up Next), what it does at the end (pause vs a fade over 10 s via `setVolume`),
-and the visible countdown (a toast at 1 min, the remaining time in the tray tooltip). No Apple
-calls. Not designed.
+**Terms.** The *mark* is the moment the room goes quiet. The *wind-down* is the last minutes
+before the mark, over which the volume sinks to nothing. The *dial* is the panel's kitchen
+timer. The *schedule* is a mark that sets itself every day.
+
+**Where.** An alarm clock (with two z's) in the title bar, left of the volume pill, in every
+surface (the pill hides in the NP view; the clock stays — it is a clock, not a level). Armed,
+it takes the title color, and its hover hint says the remaining time. Its panel follows the
+menu mode like every dropdown (click, or hover per Settings). Code: `src/sleep.ts`; markup in
+`index.html`; the `.sleep__*` block in `styles.css`; the `--sleep-*` tokens in `skin.css`.
+
+**The panel.**
+- **The dial.** One turn = 120 minutes, with a click every 5. The numbers run
+  counter-clockwise, as a kitchen timer is printed, so a clockwise turn winds it up; the
+  face turns back under a fixed mark at the top, one step a second (`--sleep-turn`; reduced
+  motion snaps once a minute). Drag it, roll the wheel over it, or use the arrow keys (Home
+  or Delete = off). The centre reads the time left (`m:ss`) and a caption (*Sleep in* ·
+  *End of song* · *End of Up Next* · *Every day at 10:00 PM*). Off reads *Off · Turn the dial*.
+- **Two chips.** *End of song* and *End of Up Next*. A click on another song moves the end to
+  that song (the timer does not fire on a hand change: a change with more than 1.5 s left
+  is a click, not the end). *End of Up Next* rolls to each next song while Up Next has any.
+- **Wind down.** A pill that cycles Off · 1 · 2 · 5 · 10 · 15 · 30 min (default 5).
+- **Every day.** A pill that cycles Off · Sunset · At a time, with a ‹ 10:00 PM › stepper
+  (15-minute steps) for the time. A status line says what will happen: *Pauses at sunset,
+  7:12 PM in Chicago, if music is playing.*
+- **Play out song.** An On/Off pill (default Off). On: a mark that comes mid-song moves to
+  the song's end, and the wind-down fills the song's last minutes instead. The dial shows
+  the moved end as soon as the mark falls inside the playing song. Key `sleepPlayOut`.
+- **Off** (or **Not tonight** for a scheduled countdown) sits in the centre of the dial, in
+  the help line's place, while armed. Its press does not start a turn.
+
+**Touch-ups from the first desk look (user, 2026-09-16).** The centre says only *Turn the
+timer* when off and the time alone while armed (the mode captions went; the button's hover
+hint carries them). The icon is the clock face and two z's, no bells and no feet, at 16 px so
+it reads level with the 14-px pill and lights. The panel's parts slide in one after another
+on open (`enterRows`, pop.ts) and any part that appears later (the time stepper, the status
+line, Off) slides in the same way. *Missed on the first build: I read the volume panel as the
+reference, and it never used `enterRows`; the "Play on" panel and the Settings folds do.
+The checklist in CLAUDE.md is the fix.*
+
+**Second look (2026-09-16).** The line under the time (the help, then Off) sat in no
+reserved space, so the swap moved the time and a turn of the dial flickered it. It is now a
+slot of fixed height (`--sleep-line-h`) and each arrival fades up over `--sleep-swap`
+(0.42 s, gentler than a row's slide; reduced motion: none). The z's on the icon are larger.
+The traffic lights follow Windows' order: minimize, maximize, close (the CSS never depended
+on the order; only the markup moved).
+
+**The decisions (user, 2026-09-15 — all as recommended).**
+1. **The mark is the silence.** "30 min" = silent at 30; the wind-down fills the last W
+   minutes before it. "10 PM" = silent at 10:00.
+2. **The dial is one turn of 120 minutes**, 5-minute detents, numbers every 15.
+3. **The two chips are in.** They fade into the song's end and pause on the item change at
+   gain 0 (with no wind-down, the last half second is at gain 0 too), so the next song never
+   sounds.
+4. **The schedule lives in the panel only.** It arms itself once its mark is within one turn
+   (two hours), so the button lights and the dial counts down like a hand-set timer. It fires
+   only if music is playing at the mark; Play after the mark does not re-fire until tomorrow.
+   A hand-set timer holds the night: the schedule's mark passes under it. No rows in Settings
+   — the three keys (`sleepSchedule`, `sleepAt`, `sleepWind`) are in the store, so the agent's
+   `settings` tool reaches them under a **Sleep** section (`sleepAt` takes :15 steps).
+5. **A hand on the volume during the fade turns the timer off**, with an *Undo* toast. Before
+   the fade, the volume is free. (The agent's volume set counts as a hand.)
+6. **AirPlay fades too**: the sink gets one write a second while the speaker holds the volume.
+7. **Icon only while armed**; the remaining time is the hover hint, and a toast at one minute
+   offers **+15 min**. The tray tooltip is a fixed string in Rust and stays out of this pass.
+
+**How the fade works — the one trap.** `setVolume` persists on every call, so a fade through
+it would have written the stored level down to 0. The wind-down is a separate **gain factor**
+in `player.ts` (`setDuck`), multiplied into MusicKit's volume on the way out; `getVolume`
+reports the product, so the pill and the stage row show the level sinking, but the stored
+level never moves. After the pause the factor snaps to 1, so the next Play is at the set
+level. The curve is the fraction squared: gain falls faster than loudness, so the fade sounds
+even instead of dropping off a cliff at the end. A speaker's own move under a fade is read
+back in the set level's frame (`reflectExternalVolume`).
+
+**Sunset** comes from `look-schedule.ts` (`sunTimes`, `sunCity`): the time zone's main city,
+no location, no request. The look schedule's *Shift sun times* does not apply here.
+
+**Toasts** (TOASTS.md §5): *Sleep in 1 minute.* **[+15 min]** (once per arm, only while music
+plays) · *Sleep timer off.* **[Undo]** (the volume cancel). Both `info`.
+
+**Log lines** (`diag`): `sleep:arm` (mode, the mark, scheduled, wind) · `sleep:fire` (playing
+or not) · `sleep:off` (why: dial, chip, button, volume, schedule).
+
+No Apple calls. No Rust change: no dev-runner restart. Not in this pass: agent verbs for the
+timer itself (`sleep 30`), the tray tooltip, a Now Playing badge.
+
+**Desk test.** Turn the dial to 10 (the readout, the button lights; the hint), then to 0
+(off). Set 1 min with wind-down 1 min: the pill sinks, the toast at 1 min, silence at the
+mark, then Play is at the old level. Drag the volume during a fade: off, Undo brings it back.
+*End of song* near a song's end, then click another song (the end moves). Every day › Sunset:
+the status line; set the time to two minutes from now and play: the button lights, the
+countdown, the pause. Reduced motion: the face snaps once a minute. Ask the agent:
+`settings set sleepAt 22:15`.
 
 ## 18. Surface open sizes + the NP record jitter — BUILT + SHIPPED in 0.6.2, 2026-09-15
 
@@ -741,3 +829,37 @@ Off in mini.
 ## See also
 - [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) — deferred toggles (not features).
 - [HANDOFF.md](HANDOFF.md) §Not built yet — the older not-built list.
+## 20. The volume pill grows in place — BUILT 2026-09-16 (fork A), awaiting the desk test
+
+**What changed.** The Vol. pill no longer drops a flyout. It is a **full bar all the time**
+(120 × 20; user's call after the first look, 2026-09-16): the mute speaker at its left end,
+the fill as a horizontal slider across the whole bar (it sweeps under the squares, so 100 %
+reaches the far end), the AirPlay square at its right end in every surface (max has a second
+one on the stage row; both follow the same state). The wheel over the bar and the arrow keys
+step 5 %; M mutes.
+
+**Settings › Window › Shrink volume bar** (default off, key `volumeShrink`) brings back the
+small 32 × 14 pill. It grows in place the way the menus open: in click mode a press on the
+small pill grows it (and does not scrub), and a click away or Escape shrinks it; in hover mode
+the pointer grows it and it shrinks 0.4 s after leaving. A drag or the open "Play on" panel
+holds it either way. Reduced motion: the grow snaps.
+
+**The forks (user, 2026-09-16: A).** A = no panel, everything in the grown pill. B = a
+smaller panel (mute + AirPlay) still dropping on hover — two motions at once. C = the panel
+on click — but a click on a slider should set the level, as the seek bar does.
+
+**Code.** `index.html` (the pill is now a `role="slider"` div holding the three parts),
+`main.ts` (the grow / shrink with a 400 ms grace, `makeSlider` on the track with `axis: "x"`;
+the flyout's `makeDropdown` is gone), `styles.css` (`.vol__pill.is-grown`), `skin.css`
+(`--vol-pill-grown-w / -h`, `--vol-pill-pad`, `--vol-grow`; `--vol-track-len` and
+`--vol-panel-pad` are gone with the flyout). The fill rides the slider's own `--slider-fill`.
+The grow is timed like a menu (`frames.during("menu", …, "volume")`). The tray panel and the
+max stage row keep their own volume controls; only the title bar changed.
+
+**Desk test.** The full bar shows at launch; drag it to 100 % (the fill reaches the far end,
+under the AirPlay square); the wheel; Tab + arrows; M. Max: the bar's AirPlay square and the
+stage row's show the same state. Settings › Window › Shrink volume bar on: the small pill;
+click it (click mode) — it grows and the press does not move the level; click away — it
+shrinks; open "Play on" from the grown pill and move into that panel — it stays. Menus set to
+hover: hover grows it, leaving shrinks it after a moment. NP view: no pill (as before).
+
