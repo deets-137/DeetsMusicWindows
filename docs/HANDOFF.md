@@ -88,8 +88,11 @@ Things that bite:
 
 - **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
   stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
-- **The version lives in three files** — `package.json`, `src-tauri/tauri.conf.json`,
-  `src-tauri/Cargo.toml` — and they must agree or the archive step fails.
+- **The version lives in FOUR files** — `package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml` and **`cli/Cargo.toml`** (what `deetsmusic --version` reports) — and
+  they must all agree or `release-check` fails, *after* the bundle is already built and
+  signed. This note said "three" until 2026-09-15, when the 0.6.3 build tripped over the
+  fourth; [RELEASE.md §2](RELEASE.md) always listed all four.
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).
