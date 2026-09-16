@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 24 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 266 tokens · overrides: vanilla 3, press 57, ocean 32, glass 57, retro-future 58 |
+| Skin (everything else) | skin.css base block | 270 tokens · overrides: vanilla 3, press 57, ocean 32, glass 57, retro-future 58 |
 
 ## Theme roles
 
@@ -346,6 +346,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
+| `--ap-stroke` | `2` | — | the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) |
+| `--ap-caret-rise` | `13px` | — | "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) |
+| `--ap-cut-w` | `6` | — | the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) |
+| `--ap-caret-dur` | `0.32s` | — | the caret's rise and fall |
 | `--lib-pill-radius` | `999px` | press, glass, retro-future | fully-rounded sort/view pills |
 | `--lib-pop-radius` | `var(--radius-panel)` | press, retro-future |  |
 | `--lib-grid-gap` | `var(--space-2)` | — |  |

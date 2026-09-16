@@ -555,8 +555,22 @@ body {
 
 /* ── AirPlay (AIRPLAY.md): the square's states + the "Play on" panel ──── */
 .ap-root { position: relative; display: grid; }
-.ap-square svg { stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; fill: none; }
-.ap-square[data-state="on"] svg path:last-child { fill: currentColor; }
+/* Round caps on the arc's two ends: without them the titlebar pill's square cut the ends
+   flat at a slant (the NP square got round caps from .panel__action svg, so only the pill
+   looked wrong, 2026-09-16). Specificity beats .panel__action svg, so both squares draw
+   the same glyph at the same weight. */
+.ap-root .ap-square svg { stroke: currentColor; stroke-width: var(--ap-stroke); stroke-linecap: round; stroke-linejoin: round; fill: none; }
+/* The glyph is a full ring and a caret. The caret cuts the ring where it crosses it: an SVG
+   mask (one per square, ids ap-cut-vol / ap-cut-np) holds a copy of the caret with a wide
+   black stroke, and that copy moves with the caret. So the gap follows the caret on any
+   background. Off: the caret cuts the bottom of the ring (today's look). On: it slides to
+   the top, cuts the top, and fills. "On" is a shape change, not only a color — --np-accent
+   falls back to --title, the square's off color (the same reason the mode squares fill). */
+.ap-cut { stroke-width: var(--ap-cut-w); }
+.ap-caret, .ap-cut { transform-box: view-box; transition: transform var(--ap-caret-dur) var(--ease-ui); }
+.ap-caret { transition-property: transform, fill; }
+.ap-square[data-state="on"] :is(.ap-caret, .ap-cut) { transform: translateY(calc(-1 * var(--ap-caret-rise))); }
+.ap-square[data-state="on"] .ap-caret { fill: currentColor; }
 .ap-square[data-state="on"] { color: var(--go); }
 .ap-square[data-state="connecting"] svg { animation: ap-pulse var(--ap-pulse) ease-in-out infinite; }
 @keyframes ap-pulse { 50% { opacity: 0.35; } }
@@ -857,6 +871,9 @@ body {
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+@media (prefers-reduced-motion: reduce) {
+  .ap-caret, .ap-cut { transition: none; }
+}
 }
 .bento { position: relative; z-index: 1; }  /* cards ride above the ambient layers */
 .storm__strike,

@@ -320,6 +320,10 @@
   --scrub-float-size:   11px;   /* Ocean: the float, smaller than the others so the ripple carries the eye */
   --scrub-ripple-scale: 1.8;    /* Ocean: how far the ripple ring spreads, in float widths */
   --scrub-bob-dur:      2.4s;   /* Ocean: one bob of the float, and one ripple */
+  --ap-stroke:      2;              /* the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) */
+  --ap-caret-rise:  13px;           /* "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) */
+  --ap-cut-w:       6;              /* the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) */
+  --ap-caret-dur:   0.32s;          /* the caret's rise and fall */
   --scrub-sheen-dur:    6s;     /* Glass: the specular dot's drift, one way */
   --scrub-lens-scale:   1.2;    /* Glass: the lens's swell under the hand */
   --scrub-breathe-dur:  3s;     /* Retro-Future: the bolt's glow, one way */

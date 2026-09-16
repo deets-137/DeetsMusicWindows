@@ -140,7 +140,7 @@ const TEMPLATE = `
           <span class="scrub__handle" aria-hidden="true"></span>
         </div>
         <button class="panel__action np__airplay ap-square" id="np-airplay" type="button" aria-label="AirPlay" data-state="idle" title="Plays on a speaker or TV on your network">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17a8 8 0 1 1 14 0" fill="none"></path><path d="M8 21l4-5 4 5z" fill="none"></path></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><mask id="ap-cut-np" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white" stroke="none"></rect><path class="ap-cut" d="M8 21l4-5 4 5z" fill="black" stroke="black"></path></mask><circle class="ap-ring" cx="12" cy="12" r="8" mask="url(#ap-cut-np)"></circle><path class="ap-caret" d="M8 21l4-5 4 5z"></path></svg>
         </button>
       </div>
     </div>
