@@ -373,6 +373,41 @@ So there are three run modes:
 **`release:check` fails the release if `[perf] frames` appears in the shipped JS** — so the
 ruler can never ship by accident.
 
+## Pretending to be a weaker machine — `--gpu=off | slow` (2026-09-16)
+
+This PC has an RX 6700 XT driving a 244 Hz panel, which is not who the app is for. An Ocean
+skin switch puts `CrGpuMain` at **86.9%** here, so the skins that lean on the GPU — Glass's
+`backdrop-filter`, Ocean's gradients/grain/specks, the aurora layer, the vinyl spin — need
+checking against hardware most people actually have.
+
+```
+npm run dev:app -- --perf --gpu=off      # the hard floor
+npm run dev:built -- --gpu=slow          # release-shaped AND weak
+```
+
+| mode | what it does | stands in for |
+|---|---|---|
+| `--gpu=off` | `--disable-gpu --disable-gpu-compositing`. Chromium falls back to software (SwiftShader). | **Worse than any real integrated chip.** Survive this and you survive anything. |
+| `--gpu=slow` | `--disable-gpu-rasterization --disable-accelerated-2d-canvas --force-gpu-mem-available-mb=64`. The GPU stays, raster moves to the CPU, its memory is squeezed. | An integrated part sharing system RAM. |
+
+**Always confirm the flag took.** A silently-ignored flag makes every later number a lie, so
+`frames.ts` logs the real renderer once per launch:
+
+```
+[perf] gpu SOFTWARE · Google SwiftShader           ← --gpu=off really took
+[perf] gpu accelerated · ANGLE (AMD, AMD Radeon RX 6700 XT …)   ← normal
+```
+
+Two things to hold in mind when reading the result:
+
+- **The refresh rate cuts the other way.** At 244 Hz the GPU has 4.1 ms a frame; on the 60 Hz
+  laptop these modes stand in for it has **16.7 ms**, four times as forgiving. Work that
+  nearly saturates here can sit comfortably inside a 60 Hz frame. Judge against the budget
+  the target machine actually has, not this one's.
+- **A Parsec Virtual Display Adapter is installed on this PC.** Measuring over a Parsec
+  session puts capture and encode on the same GPU, which inflates load and adds variance.
+  Measure on the physical display.
+
 ## Benchmarking a scene — `scripts/bench.mjs`
 
 ```

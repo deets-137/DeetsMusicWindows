@@ -13,6 +13,9 @@
 //      `node scripts/webview-eval.mjs "<js>"` can run console calls from outside the app
 //      (DEBUGGING.md §Driving the webview). It is appended to the window's own
 //      additionalBrowserArgs — the env var would replace them, autoplay flag included.
+//   5. flags for measuring: --perf (hold DevTools shut), --built (serve a release-shaped
+//      bundle), --gpu=off|slow (pretend to be a weaker machine). DEBUGGING.md §Measuring
+//      like the live app, §Pretending to be a weaker machine.
 import { createServer } from "node:net";
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -38,10 +41,34 @@ while (!(await free(port))) port += 1;
 let cdp = 9222;
 while (!(await free(cdp))) cdp += 1;
 
+// --gpu=off | slow — pretend this is a weaker machine, so a skin that is comfortable on a
+// dedicated card can be checked against the hardware most people actually have.
+//   off  : no GPU at all. Chromium falls back to software (SwiftShader), which is WORSE than
+//          any real integrated chip — a hard floor. Survive this and you survive anything.
+//   slow : the GPU stays, but raster moves to the CPU and its memory is squeezed to 64 MB,
+//          which is the shape of an integrated part sharing system RAM.
+// Confirm which one is live from the `[perf] gpu …` line in the log: it prints the real
+// renderer string, so "SwiftShader" means off actually took. DEBUGGING.md §Pretending to be
+// a weaker machine.
+const GPU_FLAGS = {
+  off: "--disable-gpu --disable-gpu-compositing",
+  slow: "--disable-gpu-rasterization --disable-accelerated-2d-canvas --force-gpu-mem-available-mb=64",
+};
+const gpuMode = (process.argv.find((a) => a.startsWith("--gpu=")) ?? "").slice(6);
+if (gpuMode && !GPU_FLAGS[gpuMode]) {
+  console.error(`[dev:app] unknown --gpu=${gpuMode} — use ${Object.keys(GPU_FLAGS).join(" or ")}`);
+  process.exit(2);
+}
+
 const windows = conf.app.windows.map((w) => ({
   ...w,
   title: `${w.title} (dev)`,
-  ...(w.label === "main" ? { additionalBrowserArgs: `${w.additionalBrowserArgs ?? ""} --remote-debugging-port=${cdp}`.trim() } : {}),
+  ...(w.label === "main"
+    ? {
+        additionalBrowserArgs:
+          `${w.additionalBrowserArgs ?? ""} --remote-debugging-port=${cdp}${gpuMode ? " " + GPU_FLAGS[gpuMode] : ""}`.trim(),
+      }
+    : {}),
 }));
 
 // --perf  : hold DevTools shut (it renders in the same GPU process and distorts every
@@ -52,7 +79,7 @@ const windows = conf.app.windows.map((w) => ({
 //           to measure what the live app does. DEBUGGING.md §Measuring like the live app.
 const BUILT = process.argv.includes("--built");
 const PERF = BUILT || process.argv.includes("--perf");
-const passThrough = process.argv.slice(2).filter((a) => a !== "--perf" && a !== "--built");
+const passThrough = process.argv.slice(2).filter((a) => a !== "--perf" && a !== "--built" && !a.startsWith("--gpu="));
 
 let preview;
 if (BUILT) {
@@ -89,7 +116,8 @@ writeFileSync(
 );
 console.log(
   `[dev:app] ${BUILT ? "release-shaped bundle (vite preview)" : "vite"} on ${port} · webview CDP on ${cdp} · identifier ${base.identifier}` +
-    (PERF ? " · DevTools held shut (--perf)" : ""),
+    (PERF ? " · DevTools held shut (--perf)" : "") +
+    (gpuMode ? ` · GPU ${gpuMode.toUpperCase()} (pretending to be a weaker machine)` : ""),
 );
 
 // Run the local tauri CLI directly (no npx/shell) so a space in the path — this user

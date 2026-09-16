@@ -202,6 +202,30 @@ function sampleHz(): void {
   requestAnimationFrame(step);
 }
 
+/**
+ * Which GPU actually drew this session, as one log line. `npm run dev:app -- --gpu=off`
+ * pretends to be a weaker machine, and a flag that silently failed to take would make every
+ * later number a lie — so the renderer string goes in the log next to the frame lines.
+ * "SwiftShader" or "Software" means acceleration really is off; a card name means it is on.
+ */
+function logRenderer(): void {
+  let name = "unknown";
+  try {
+    const c = document.createElement("canvas");
+    const gl = (c.getContext("webgl") ?? c.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+    const dbg = gl?.getExtension("WEBGL_debug_renderer_info");
+    if (gl && dbg) name = String(gl.getParameter((dbg as { UNMASKED_RENDERER_WEBGL: number }).UNMASKED_RENDERER_WEBGL));
+    const lost = gl?.getExtension("WEBGL_lose_context");
+    lost?.loseContext(); // the probe must not hold a live context of its own
+  } catch {
+    /* no WebGL at all — leave it unknown */
+  }
+  const soft = /swiftshader|software|llvmpipe/i.test(name);
+  const line = `[perf] gpu ${soft ? "SOFTWARE" : "accelerated"} · ${name}`;
+  console.info(line);
+  toLog(line);
+}
+
 /** Install the automatic windows and the observers (dev only; call once at launch). */
 export function init(): void {
   if (!ON) return;
@@ -209,6 +233,7 @@ export function init(): void {
   observeLongTasks();
   observeInputs();
   HZ_AT.forEach((t) => window.setTimeout(sampleHz, t)); // one busy sample can no longer pin the rate
+  window.setTimeout(logRenderer, 2000); // after the first paints, before the first hz line
   (window as any).__frames = {
     get hz() {
       return hz;
