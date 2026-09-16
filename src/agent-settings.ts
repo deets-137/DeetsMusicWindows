@@ -91,7 +91,8 @@ const storeSize = (slot: SizeSlot, label: string): Spec => ({
 });
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
-const rustSettings = () => invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get");
+const rustSettings = () =>
+  invoke<{ minimizeToTray: boolean; agentControl: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }>("settings_get");
 const rustToggle = (section: string, key: string, label: string, get: () => Promise<boolean>, set: (on: boolean) => Promise<unknown>, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
   get: async () => ((await get()) ? "on" : "off"),
@@ -192,10 +193,11 @@ const SPECS: Spec[] = [
   storeChoice("Look and feel", "backgroundMotion", "Animate backgrounds", [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }]),
   storeChoice("Look and feel", "oceanEdges", "Draw card edges", [{ value: "sand", label: "Sand" }, { value: "soft", label: "Soft" }], { only: "Ocean only", note: skinNote("ocean", "Ocean") }),
   storeRange("Look and feel", "oceanSand", "Sand width", { only: "Ocean only, with Sand edges", note: skinNote("ocean", "Ocean") }),
-  storeRange("Look and feel", "glassBacklight", "Backlight", { only: "Glass only", note: skinNote("glass", "Glass") }),
-  storeRange("Look and feel", "glassTint", "Tint cards", { only: "Glass only", note: skinNote("glass", "Glass") }),
-  storeRange("Look and feel", "glassCanvasGlow", "Canvas glow", { only: "Glass only", note: skinNote("glass", "Glass") }),
-  storeRange("Look and feel", "glassCanvasDim", "Dim canvas", { only: "Glass only", note: skinNote("glass", "Glass") }),
+  storeToggle("Look and feel", "glassFancy", "Fancy Glass", { only: "Glass only", note: skinNote("glass", "Glass") }),
+  storeRange("Look and feel", "glassBacklight", "Backlight", { only: "Glass only, with Fancy Glass on", note: skinNote("glass", "Glass") }),
+  storeRange("Look and feel", "glassTint", "Tint cards", { only: "Glass only, with Fancy Glass on", note: skinNote("glass", "Glass") }),
+  storeRange("Look and feel", "glassCanvasGlow", "Canvas glow", { only: "Glass only, with Fancy Glass on", note: skinNote("glass", "Glass") }),
+  storeRange("Look and feel", "glassCanvasDim", "Dim canvas", { only: "Glass only, with Fancy Glass on", note: skinNote("glass", "Glass") }),
   storeChoice("Look and feel", "pressVinyl", "Record player", [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }], { only: "Press only", note: skinNote("press", "Press") }),
   storeChoice("Look and feel", "pressVinylWhere", "Show record on", [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }], { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   storeChoice("Look and feel", "pressVinylSpeed", "Spin speed", [{ value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
@@ -207,6 +209,7 @@ const SPECS: Spec[] = [
   },
   storeChoice("Look and feel", "toasts", "Show notices", [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }]),
   // ── Playback ──
+  storeChoice("Playback", "streamQuality", "Stream quality", [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }]),
   storeChoice("Playback", "playNowScope", "Play Now plays", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
   storeChoice("Playback", "dropPlayQueue", "Drop on Now Playing", [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }]),
   storeChoice("Playback", "previousReach", "Previous rewinds", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
@@ -222,11 +225,24 @@ const SPECS: Spec[] = [
     set: (v) => setLibraryAddEnabled(v === "on"),
   },
   storeToggle("Apple Music", "playlistExport", "Export playlists", { offOnly: true }),
+  // ── Last.fm (LASTFM.md §6): both write to the user's Last.fm profile, so off only, like the
+  //    Apple Music gates. The connect itself is the browser's, never an agent's. ──
+  rustToggle("Last.fm", "lastfmScrobble", "Scrobble plays", async () => (await rustSettings()).lastfmScrobble, (on) => invoke("settings_set_lastfm_scrobble", { on }), { offOnly: true }),
+  rustToggle("Last.fm", "lastfmNowPlaying", "Show now playing", async () => (await rustSettings()).lastfmNowPlaying, (on) => invoke("settings_set_lastfm_now_playing", { on }), { offOnly: true }),
   // ── Playlists ──
   storeToggle("Playlists", "playlistEagerCounts", "Show playlist counts"),
   storeChoice("Playlists", "playlistCreateSummon", "New playlist opens Search", [{ value: "notmini", label: "Not in mini" }, { value: "always", label: "Always" }, { value: "off", label: "Never" }]),
   storeChoice("Playlists", "nowPlayingCover", "Show cover", [{ value: "album", label: "Album" }, { value: "playlist", label: "Playlist" }]),
   storeChoice("Playlists", "newPlaylistCover", "New cover", [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }]),
+  storeChoice("Playlists", "webReach", "Web reach", [1, 2, 3].map((n) => ({ value: String(n), label: String(n) })), {
+    get: () => String(setting("webReach")),
+    set: (v) => setSetting("webReach", Number(v) as 1 | 2 | 3),
+  }),
+  storeChoice("Playlists", "webSize", "Web size", [25, 50, 100].map((n) => ({ value: String(n), label: String(n) })), {
+    get: () => String(setting("webSize")),
+    set: (v) => setSetting("webSize", Number(v) as 25 | 50 | 100),
+  }),
+  storeChoice("Playlists", "webPrefer", "Web prefers", [{ value: "familiar", label: "Familiar" }, { value: "discover", label: "Discover" }, { value: "mix", label: "Mix" }]),
   // ── Rewind ──
   storeToggle("Rewind", "rewindCard", "Rewind card"),
   storeChoice("Rewind", "fullPlayRule", "Count a play at", [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }]),

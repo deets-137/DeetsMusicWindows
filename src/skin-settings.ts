@@ -3,11 +3,12 @@
 //        `oceanSand` (0–100) → --ocean-sand, the sand band's width.
 // Glass: `glassBacklight` / `glassTint` / `glassCanvasGlow` (0–100) → --glass-backlight,
 //        --glass-tint (a %), --glass-canvas; `glassCanvasDim` → --glass-canvas-dim.
+//        `glassFancy` → `data-glass-fancy`; off publishes GLASS_LOCKED instead of the sliders.
 // Press: `pressVinyl` / `pressVinylWhere` → `data-press-vinyl` / `data-press-vinyl-where`
 //        (docs/VINYL.md); the tray panel applies these two as well.
 // The skin blocks in skin.css read them; other skins ignore them.
 
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, onSettingsChange, GLASS_LOCKED } from "./settings-store";
 
 type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "oceanSand";
 const PROPS: Record<SliderKey, [string, string]> = {
@@ -19,6 +20,9 @@ const PROPS: Record<SliderKey, [string, string]> = {
 };
 const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
 const isSlider = (k: string): k is SliderKey => k in PROPS;
+/** The value a slider publishes: a Glass slider holds its locked value while Fancy Glass is off. */
+const sliderValue = (k: SliderKey): number =>
+  k !== "oceanSand" && !setting("glassFancy") ? GLASS_LOCKED[k] : setting(k);
 
 /** Show a skin slider value without writing the store (a slider drag). */
 export function previewSkin(key: SliderKey, v: number): void {
@@ -44,14 +48,23 @@ export function initSkinSettings(): void {
   const applyScrubber = () => {
     document.documentElement.dataset.fancyScrub = setting("fancyScrubber") ? "on" : "off";
   };
+  const applyGlassFancy = () => {
+    document.documentElement.dataset.glassFancy = setting("glassFancy") ? "on" : "off";
+  };
   applyEdges();
   applyScrubber();
+  applyGlassFancy();
   applyVinylAttrs();
-  (Object.keys(PROPS) as SliderKey[]).forEach((k) => previewSkin(k, setting(k)));
+  const applySliders = () => (Object.keys(PROPS) as SliderKey[]).forEach((k) => previewSkin(k, sliderValue(k)));
+  applySliders();
   onSettingsChange((k) => {
     if (k === "oceanEdges") applyEdges();
     if (k === "fancyScrubber") applyScrubber();
     if (isVinylKey(k)) applyVinylAttrs();
-    if (isSlider(k)) previewSkin(k, setting(k));
+    if (k === "glassFancy") {
+      applyGlassFancy();
+      applySliders();
+    }
+    if (isSlider(k)) previewSkin(k, sliderValue(k));
   });
 }

@@ -81,6 +81,20 @@
   --sleep-line-h:       26px;   /* the line under the time: the help or the Off button, height reserved */
   --sleep-swap:         0.42s;  /* that line's fade-up; gentler than a row's --pop-in */
 
+  /* -- playlist web (src/web.ts, PLAYLIST-WEB.md) ------------ */
+  /* The web button's panel under the Playlists header. Controls share the sleep
+     panel's chip shape; colors are theme roles. */
+  --web-panel-w:        256px;
+  --web-panel-max-h:    480px;  /* ten genre chips and five artists fit; more scrolls */
+  --web-panel-pad:      var(--space-2);
+  --web-row-h:          32px;   /* an artist row */
+  --web-hit-art:        24px;   /* the artist's round photo */
+  --web-opt-min-w:      32px;   /* a Reach / Size option: 1 and 100 are the same width */
+  --web-chip-radius:    var(--radius-control);
+  --web-title-tracking: 0.06em; /* the panel title, the create menu's label voice */
+  --web-icon-stroke:    1.8;    /* thinner than the header's 2: five small rings stay open at 16px */
+  --web-link-offset:    2px;    /* Retry / Read again: the underline clears the descenders */
+
   /* -- shape ------------------------------------------------- */
   --radius-panel:   10px;
   --radius-control: 6px;
@@ -137,6 +151,8 @@
   --panel:        var(--canvas);
   --shadow-card:  none;             /* skins add a real card shadow */
   --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
+  --scroller-layer: auto;           /* will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) */
+  --panel-isolation: auto;          /* isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) */
 
   /* -- canvas pattern (Press halftone / Retro-Future grid) --- */
   /* A background-image BEHIND the cards. Its color comes from a theme
@@ -168,6 +184,7 @@
   --aurora-drift-3-y: 0px;
   --aurora-slack:   0px;             /* oversize per side; ≥ the largest drift */
   --aurora-dur:     60s;
+  --aurora-drift:   aurora-drift;    /* the drift's keyframes; none holds the blobs at rest (Glass with Fancy Glass off) */
 
   /* -- ambient motion rate ------------------------------------ */
   /* The endless decorative loops (ocean / aurora / storm / NP aurora)
@@ -569,6 +586,7 @@
    beneath. Engraved caps title on a serene serif body.
    ============================================================ */
 [data-skin="ocean"] {
+  --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (the sand mask repainted on every scroll step: 157 → 240 fps) */
   /* type — engraved Roman caps title on a calm serif body */
   --font-title: "Cinzel", Georgia, "Times New Roman", serif;
   --font-body:  "Spectral", Georgia, "Times New Roman", serif;
@@ -690,6 +708,7 @@
    color is still derived from a theme role, never named here.
    ============================================================ */
 [data-skin="glass"] {
+  --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (GPU process in scroll 49 → 23%) */
   /* type — drop the serif for a crisp, light modern sans */
   --font-title: var(--font-body);
   --fw-title:   600;
@@ -708,32 +727,69 @@
   /* 1. canvas glow — scales every aurora stop (the --aurora-* block below): 50 = the
      values as written, 0 = no glow (a plain, deep canvas), 100 = double, each stop
      capped at 100%. */
-  --glass-glow: calc(var(--glass-canvas, 50) / 50);
+  --glass-glow: calc(var(--glass-canvas, 40) / 50);
 
   /* 2. dim canvas — 0–100 maps to a 0–0.9 dim. .app-body::after lays black at
-     --canvas-dim over the canvas and aurora, under the cards. The frost sees that dim
-     too, so its brightness() multiplies it back out (1 / (1 − dim)): only the gaps get
-     darker. The 0.9 cap keeps the ×10 restore inside 8-bit precision. The frost itself
-     is a real 14px blur; saturate() makes the aurora pop through. */
-  --glass-dim:          calc(var(--glass-canvas-dim, 0) / 100 * 0.9);
+     --canvas-dim over the canvas and aurora, under the cards. Only the gaps get darker:
+     the painted frost never sees the dim, and the live frost (Fancy Glass) multiplies it
+     back out with brightness(1 / (1 − dim)). The 0.9 cap keeps that ×10 restore inside
+     8-bit precision. Both forms saturate the aurora so it pops through. */
+  --glass-dim:          calc(var(--glass-canvas-dim, 10) / 100 * 0.9);
   --canvas-dim:         var(--glass-dim);
-  --panel-backdrop:     blur(14px) saturate(1.5) brightness(calc(1 / (1 - var(--glass-dim))));
+  --glass-frost-sat:    1.5;          /* how much the frost saturates what it shows */
+
+  /* the frost has two forms (Settings › Fancy Glass, data-glass-fancy on <html>):
+     · OFF (the default, here): PAINTED. Each card paints its own copy of the canvas and
+       the aurora at rest, pinned to the window (background-attachment: fixed) so it lines
+       up with the real one, pre-saturated, and never dimmed. There is no blur: the blobs are
+       soft already, and a 14px blur of them looks the same. The aurora holds still
+       (--aurora-drift: none) so the copy and the canvas agree. Nothing redraws when a list
+       scrolls. Measured 2026-09-16: DEBUGGING.md §Fancy Glass.
+     · ON (the block after this one): the LIVE backdrop-filter. */
+  --panel-backdrop:     none;
+  --panel-isolation:    isolate;
+  --aurora-drift:       none;
+  --glass-frost-layer:  calc(-1 * var(--aurora-slack)) calc(var(--titlebar-h) - var(--aurora-slack)) /
+                        calc(100% + 2 * var(--aurora-slack)) calc(100% - var(--titlebar-h) + 2 * var(--aurora-slack))
+                        no-repeat fixed;
+  --glass-frost-paint:
+    radial-gradient(42% 52% at 16% 10%,
+      color-mix(in srgb, var(--glass-frost-go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%)
+      var(--glass-frost-layer),
+    radial-gradient(46% 56% at 86% 22%,
+      color-mix(in srgb, var(--glass-frost-stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%)
+      var(--glass-frost-layer),
+    radial-gradient(52% 52% at 60% 96%,
+      color-mix(in srgb, var(--glass-frost-pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%)
+      var(--glass-frost-layer),
+    oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
+  /* the aurora's own hues, saturated the way the live frost's saturate() does (keep the three
+     gradients above in step with --aurora-1..3 below) */
+  --glass-frost-go:    oklch(from var(--go) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-stop:  oklch(from var(--stop) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-pause: oklch(from var(--pause) l calc(c * var(--glass-frost-sat)) h);
+  /* the stuck list bar keeps a real blur in both forms: it frosts the rows under it */
+  --sticky-bar-backdrop: blur(14px) saturate(var(--glass-frost-sat));
 
   /* 3. backlight — the card box paints a soft glow of the theme's accent roles as its
      background (--panel-paint); a faint halo of the same light leaks past the edge (the
      first --shadow-card entry, painted with the card, so the dim never reaches it). */
-  --glass-light: calc(var(--glass-backlight, 50) / 100);
-  --panel-paint:
+  --glass-light: calc(var(--glass-backlight, 85) / 100);
+  --glass-backlight-paint:
     radial-gradient(140% 100% at 50% 0%,
       color-mix(in srgb, var(--go) calc(60% * var(--glass-light)), transparent),
       color-mix(in srgb, var(--stop) calc(40% * var(--glass-light)), transparent) 55%,
       color-mix(in srgb, var(--pause) calc(30% * var(--glass-light)), transparent));
+  --panel-paint: var(--glass-backlight-paint), var(--glass-frost-paint);
 
   /* 4. tint — an alpha of --surface, laid OVER the backlight as a full-size inset
      shadow (the last --shadow-card entry: a box paints its background, then its inset
      shadows with the last listed lowest, then its content). At 0 the backlight shows
      fully. --panel stays a plain color: album-color.ts reads it for the contrast guard. */
-  --panel:              color-mix(in srgb, var(--surface) var(--glass-tint, 55%), transparent);
+  --panel:              color-mix(in srgb, var(--surface) var(--glass-tint, 65%), transparent);
 
   /* the card's shape and depth: a hairline edge, round corners, the halo, a soft drop
      shadow, a top inner sheen (over the tint), then the tint itself */
@@ -835,6 +891,16 @@
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z' fill='%23000'/%3E%3C/svg%3E");
 }
 
+/* Fancy Glass on: the live frost. A real blur of whatever is behind the card; its
+   brightness() undoes the canvas dim (1 / (1 − dim)), so only the gaps get darker. The
+   aurora drifts again. The cost: DEBUGGING.md §Fancy Glass. */
+[data-skin="glass"][data-glass-fancy="on"] {
+  --panel-backdrop:  blur(14px) saturate(var(--glass-frost-sat)) brightness(calc(1 / (1 - var(--glass-dim))));
+  --panel-isolation: auto;
+  --aurora-drift:    aurora-drift;
+  --panel-paint:     var(--glass-backlight-paint);
+}
+
 /* ============================================================
    RETRO-FUTURE — electric/futuristic. Lightning bolts slow-draw
    down the canvas behind the cards (the storm layer); machined
@@ -842,6 +908,7 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="retro-future"] {
+  --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (GPU process in scroll 85 → 19%) */
   --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — machined geometric title on a condensed squared body.
      Orbitron reads very wide, size down; Rajdhani runs thin and

@@ -273,7 +273,7 @@ One line per setting, **key first**, the Settings card's own words after it (`se
 ```
 alwaysOnTop           Keep on top: Off  (Always | Player | Off)  · Window
 backgroundMotion      Animate backgrounds: On  (On | Reduced | Off)  · Look and feel
-glassTint             Tint cards: 55%  (0–100)  [Glass only]  · Look and feel
+glassTint             Tint cards: 65%  (0–100)  [Glass only, with Fancy Glass on]  · Look and feel
 dayStart              Day starts at: 07:00  (HH:MM on :00 or :30, 04:00–12:00)  · Look and feel
 libraryAdd            Add to Library and ♥: On  (On | Off)  [off only]  · Apple Music
 agentSettings         Agent changes settings: Ask  (Allow | Ask | Off)  [read-only]  · Connections
@@ -292,12 +292,20 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   time), `sleepAt` (HH:MM in 15-minute steps, any hour), `sleepWind` (Off | 1 | 2 | 5 | 10 | 15 |
   30 min). These are the schedule and the wind-down; a running timer is set in the app's own
   panel and has no agent verb yet.
+- **Playlists › Web reach / Web size / Web prefers** (2026-09-16, PLAYLIST-WEB.md): `webReach`
+  (1 | 2 | 3), `webSize` (25 | 50 | 100) and `webPrefer` (Familiar | Discover | Mix). Building a web has no agent verb yet; the panel under the Playlists
+  web button uses these two values.
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
   `pressVinylSpeed` (33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set
   under another skin is stored, and the reply says it shows while Press is the skin.
 - A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
-  `glassCanvasGlow`, `glassCanvasDim`), with or without `%`.
+  `glassCanvasGlow`, `glassCanvasDim`), with or without `%`. The four Glass sliders are
+  `[Glass only, with Fancy Glass on]`: while `glassFancy` is off they store a value but the look
+  holds the locked values (65 / 85 / 40 / 10).
+- `glassFancy` (on | off, 2026-09-16) `[Glass only]`: the live frost and the moving background.
+- `streamQuality` (Auto | High | Low, 2026-09-16): the stream bitrate. A set takes effect from the
+  next song; the song that plays does not reload.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range
   (`dayStart` 04:00–12:00, `nightStart` 15:00–23:30).
 - An **open size** takes `W×H` in px (`600x640`, `600 x 640`, `600×640`), at least the view's
@@ -312,13 +320,14 @@ Max), **except**:
 
 | Left out or limited | Why |
 |---|---|
-| `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
+| `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control), `lastfmScrobble` (Scrobble plays), `lastfmNowPlaying` (Show now playing; both 2026-09-16, [LASTFM.md](LASTFM.md) §6) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
 | `agentSettings` — **read-only** | The permission itself. |
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
 | Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |
 
 Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_tray`,
-`startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`. After one,
+`startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`,
+`lastfmScrobble` → `settings_set_lastfm_scrobble`, `lastfmNowPlaying` → `settings_set_lastfm_now_playing`. After one,
 `notifyOwnedSettingChange()` (settings-store.ts) makes an open Settings card read them again.
 A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass is the skin."
 `updateMode` is here and stays on `update action=mode` too (same write).

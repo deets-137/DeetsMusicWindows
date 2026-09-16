@@ -722,6 +722,18 @@ Three rules learned the hard way, all in DEBUGGING.md:
 
 Where it is heading: FUTURE-SETTINGS.md §25, settings for the heaviest features.
 
+**Graphics pass 2026-09-16 — PAUSED, uncommitted** (the user moved other work ahead of it):
+- ✅ **Fancy Glass** (Settings › Look and feel, Glass only, default off): the painted frost with a
+  still aurora and locked sliders 65 / 85 / 40 / 10, or the live blur and the sliders. Built,
+  typechecked, **awaiting desk test**. SETTINGS.md row; numbers in DEBUGGING.md §Fancy Glass
+  and the Ocean swell.
+- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Retro-Future only): built,
+  half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
+- ⬜ **Swell:** measure Animate backgrounds › Reduced under `--gpu=off`, then maybe a hint line.
+- ⬜ Found on the way, older than these changes: a very fast wheel spin (≈ 15,000 px/s) shows
+  blank rows in the windowed Library for a few frames (collection-window.ts fills its buffer only
+  after the scroll pauses).
+
 ## Known gotchas
 - **Registry writes from a Claude desktop session are not real (2026-09-13).** The Claude
   app is an MSIX package: every process it starts — its shells, and `npm run dev:app` run

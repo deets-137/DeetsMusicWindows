@@ -1,5 +1,5 @@
 // `node scripts/bench.mjs appearance|idle|scroll [--passes 3] [--skins press,ocean] [--ms 3000]
-// [--note "…"]` — a REPEATABLE measurement of a scene, so a graphics change can be A/B'd instead
+// [--note "…"] [--css "<rules>"] [--attr name=value]` — a REPEATABLE measurement of a scene, so a graphics change can be A/B'd instead
 // of eyeballed. Sibling of webview-eval.mjs / webview-profile.mjs, same CDP port discovery.
 // DEBUGGING.md §Benchmarking a scene.
 //
@@ -30,7 +30,7 @@ const flag = (name, dflt) => {
   const i = argv.indexOf(`--${name}`);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
-const flagValues = new Set(["passes", "tolerance", "skins", "ms", "note", "css"].map((f) => flag(f, null)).filter(Boolean));
+const flagValues = new Set(["passes", "tolerance", "skins", "ms", "note", "css", "attr"].map((f) => flag(f, null)).filter(Boolean));
 const scene = argv.find((a) => !a.startsWith("--") && !flagValues.has(a)) ?? "appearance";
 const PASSES = Math.max(1, Number(flag("passes", 3)));
 const TOLERANCE = Number(flag("tolerance", 8));
@@ -39,6 +39,11 @@ const WINDOW_MS = Number(flag("ms", 3000));
 // --css "<rules>" injects a stylesheet for the whole run and removes it after: an A/B of one
 // feature (hide it, cheapen it) under the same noise gate. The rules land in the row's note.
 const CSS = flag("css", "");
+// --attr name=value sets data-<name> on <html> for the run and puts the old value back after:
+// an A/B of a settings attribute (glass-fancy=on) without touching the stored settings.
+const ATTR = flag("attr", "");
+const [attrName, attrValue] = ATTR ? [ATTR.split("=")[0], ATTR.split("=").slice(1).join("=")] : [];
+const attrProp = attrName?.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 let gen;
 try {
@@ -173,6 +178,8 @@ const skins = (await evaluate("[...document.querySelectorAll('[data-skin-choice]
 );
 if (!skins.length) fail("no skin choices matched");
 const was = await evaluate("document.documentElement.dataset.skin");
+const attrWas = attrProp ? await evaluate(`document.documentElement.dataset.${attrProp} ?? null`) : null;
+if (attrProp) await evaluate(`document.documentElement.dataset.${attrProp}=${JSON.stringify(attrValue)}`);
 if (CSS) await evaluate(`(()=>{const e=document.createElement("style");e.id="bench-css";e.textContent=${JSON.stringify(CSS)};document.head.append(e)})()`);
 
 // SystemInfo answers on the browser target, not the page
@@ -301,7 +308,7 @@ const HEAD =
   "when,commit,tree,scene,skin,surface,playing,gpu,renderer,hz,passes,window_ms,fps_med,spread_pct,worst_med_ms,drop_pct_med,gpu_cpu_pct,page_cpu_pct,note\n";
 const csvCell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replaceAll('"', '""')}"` : String(v));
 const when = new Date().toISOString();
-const note = flag("note", "") + (CSS ? ` [css: ${CSS}]` : "") + sharedNote;
+const note = flag("note", "") + (CSS ? ` [css: ${CSS}]` : "") + (ATTR ? ` [attr: data-${ATTR}]` : "") + sharedNote;
 let rows = "";
 for (const [s, list] of runs) {
   const st = stats(list);
@@ -317,6 +324,7 @@ console.log(`\nappended ${runs.size} row(s) to scripts/perf-history.csv  (gpu=${
 if (dirty === "dirty") console.log(`the tree is DIRTY, so this row is not reproducible from the commit alone — pass --note to say what was in flight.`);
 
 await evaluate(`document.getElementById("bench-css")?.remove()`);
+if (attrProp) await evaluate(attrWas === null ? `delete document.documentElement.dataset.${attrProp}` : `document.documentElement.dataset.${attrProp}=${JSON.stringify(attrWas)}`);
 await evaluate(`document.querySelector('[data-skin-choice=${JSON.stringify(was)}]')?.click()`); // put the look back
 console.log(`\nrestored skin: ${was}`);
 ws.close();

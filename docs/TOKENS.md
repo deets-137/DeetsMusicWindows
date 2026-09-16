@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 24 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 251 tokens · overrides: vanilla 3, press 57, ocean 31, glass 48, retro-future 57 |
+| Skin (everything else) | skin.css base block | 264 tokens · overrides: vanilla 3, press 57, ocean 32, glass 57, retro-future 58 |
 
 ## Theme roles
 
@@ -108,6 +108,21 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sleep-line-h` | `26px` | — | the line under the time: the help or the Off button, height reserved |
 | `--sleep-swap` | `0.42s` | — | that line's fade-up; gentler than a row's --pop-in |
 
+### playlist web (src/web.ts, PLAYLIST-WEB.md)
+
+| Token | Base | Overridden by | Note |
+|---|---|---|---|
+| `--web-panel-w` | `256px` | — | The web button's panel under the Playlists header. Controls share the sleep panel's chip shape; colors are theme roles. |
+| `--web-panel-max-h` | `480px` | — | ten genre chips and five artists fit; more scrolls |
+| `--web-panel-pad` | `var(--space-2)` | — |  |
+| `--web-row-h` | `32px` | — | an artist row |
+| `--web-hit-art` | `24px` | — | the artist's round photo |
+| `--web-opt-min-w` | `32px` | — | a Reach / Size option: 1 and 100 are the same width |
+| `--web-chip-radius` | `var(--radius-control)` | — |  |
+| `--web-title-tracking` | `0.06em` | — | the panel title, the create menu's label voice |
+| `--web-icon-stroke` | `1.8` | — | thinner than the header's 2: five small rings stay open at 16px |
+| `--web-link-offset` | `2px` | — | Retry / Read again: the underline clears the descenders |
+
 ### shape
 
 | Token | Base | Overridden by | Note |
@@ -158,6 +173,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--panel` | `var(--canvas)` | press, ocean, glass, retro-future | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
 | `--shadow-card` | `none` | press, ocean, retro-future | skins add a real card shadow |
 | `--panel-backdrop` | `none` | press, glass | frosted-glass blur behind the panel; a skin opts in |
+| `--scroller-layer` | `auto` | ocean, glass, retro-future | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) |
+| `--panel-isolation` | `auto` | glass | isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) |
 
 ### canvas pattern (Press halftone / Retro-Future grid)
 
@@ -185,6 +202,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--aurora-drift-3-y` | `0px` | — |  |
 | `--aurora-slack` | `0px` | glass | oversize per side; ≥ the largest drift |
 | `--aurora-dur` | `60s` | glass |  |
+| `--aurora-drift` | `aurora-drift` | glass | the drift's keyframes; none holds the blobs at rest (Glass with Fancy Glass off) |
 
 ### ambient motion rate
 
@@ -205,7 +223,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--panel-paint` | `var(--panel)` | — | .panel paints --panel-paint. A skin with sand edges sets it transparent and shows --panel on .panel::before instead, broken into grains over and shows --panel on .panel::before instead, broken into grains over --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --panel itself opaque: album-color.ts reads it for the contrast guard. |
+| `--panel-paint` | `var(--panel)` | glass | .panel paints --panel-paint. A skin with sand edges sets it transparent and shows --panel on .panel::before instead, broken into grains over and shows --panel on .panel::before instead, broken into grains over --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --panel itself opaque: album-color.ts reads it for the contrast guard. |
 | `--sand-display` | `none` | — |  |
 | `--sand-reach` | `0px` | — |  |
 | `--sand-ink` | `transparent` | — |  |
@@ -340,7 +358,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hero-cover-hover` | `0.85` | — | brightness of a clickable hero cover on hover / file drag |
 | `--hero-artist-radius` | `50%` | — | an artist hero's photo (ARTIST-VIEW.md §1) |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
-| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | retro-future | the card's own frost (Glass); a see-through skin without one adds a blur |
+| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | glass, retro-future | the card's own frost (Glass); a see-through skin without one adds a blur |
 | `--lib-row-art-radius` | `4px` | press, glass, retro-future | its corner — a skin shape lever (round still wins) |
 
 ### scrollbar (our own; color is a theme role)
@@ -466,6 +484,10 @@ A skin sets these, but the base block never declares them — a token that only 
 
 - `--glass-glow (glass)`
 - `--glass-dim (glass)`
+- `--glass-frost-sat (glass)`
+- `--glass-frost-go (glass)`
+- `--glass-frost-stop (glass)`
+- `--glass-frost-pause (glass)`
 - `--glass-light (glass)`
 
 ## Palette

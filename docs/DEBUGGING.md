@@ -385,6 +385,96 @@ unless marked. The rows are in `scripts/perf-history.csv` with the notes `baseli
 4. Not measured yet: the Press record player (needs a song; see the `playing` column),
    `--gpu=slow`, and the Mini / NP surfaces.
 
+### Fancy Glass and the Ocean swell (2026-09-16, second pass)
+
+Same setup as the baseline (`dev:built`, Max 1100×820, 244 Hz, 3 passes). Rows in
+`scripts/perf-history.csv`, notes starting `glass painted`, `glass live`, `ocean …`,
+`all skins scroll …`, and the same with a `gpu=off` prefix. `bench.mjs --attr glass-fancy=on`
+flips the attribute for one run, so both forms use the same slider values (GLASS_LOCKED).
+
+**Glass: painted frost (Fancy Glass off) against live frost (on).** Screenshots of the two
+differ by 0.4 / 255 on average; 0.12% of pixels differ by more than 8 (the NP aurora turning).
+
+| scene | RX 6700 XT painted | RX 6700 XT live | WARP painted | WARP live |
+|---|---|---|---|---|
+| idle | 240 fps · 10 / 17% | 240 · 14 / 9% | **240 · 11 / 8%** | 30 · 97 / 4% |
+| scroll | 240 · 36 / 41% | 240 · 65 / 47% | **172–215 · 89 / 120%** (spread 25%) | 26 · 98 / 13% |
+| appearance | — | — | **193 · 39 / 24%** | 34 · 95 / 12% |
+
+So the live frost costs about **85% of frames without a graphics card** (the Fancy Glass hint).
+On this PC it costs no frames, only GPU-process time (scroll 36% → 65% of a core).
+
+**Ocean: what makes the scroll drop frames.** The baseline blamed "not the sand"; that was the
+WARP reading. The two renderers disagree, so both are listed.
+
+| Ocean scroll variant | RX 6700 XT | WARP |
+|---|---|---|
+| as shipped (Sand edges on the dev profile) | 157 fps · 126 / 63% | 63–82 · 95 / 117% |
+| swell paused (still visible) | 162 · 129 / 64% | 210 · 50% GPU |
+| swell hidden | 201 · 94 / 45% | 240 · 22% GPU |
+| sand hidden (swell on) | 240 · 80 / 89% | 100 (baseline pass) |
+| Soft edges | 239 · 92 / 96% | 67 · 95 / 54% |
+| swell + sand hidden | 240 · 46 / 56% | — |
+| **list scroller `will-change: scroll-position`** | **240 · 24 / 36%** | 110 (spread 51–70%: noise) · 91 / 25% |
+
+Ocean idle under WARP: 176 fps · 42% GPU; swell paused or hidden → 240 · 2%. On the RX the idle
+is already 240.
+
+Reading it:
+1. **On a real GPU the drop is the list repainting, not a layer.** The library scroller is not
+   composited, so every scroll step repaints the card, and Ocean's sand mask (an SVG noise
+   mask) is expensive to repaint. A composited scroller (`will-change: scroll-position`) fixes
+   it with no visible change (0.03 / 255 inside the Library card), and it helps EVERY skin:
+   GPU process in scroll 52→20% Press, 128→24% Ocean, 49→23% Glass, 85→19% Retro-Future; page
+   CPU about halves. User's call 2026-09-16: apply to all card lists, with no visible change
+   allowed. Status below (§The composited-scroller pass).
+2. **Under WARP the swell is Ocean's cost**, in idle and in scroll. Pausing it is nearly as good
+   as hiding it, so its motion (not its presence) is what software drawing pays for. The
+   composited scroller does not help WARP frames reliably (spread too wide); it halves page CPU.
+
+### The composited-scroller pass (2026-09-16, PAUSED part-way)
+
+**Built, uncommitted:** styles.css `:is(.panel__body, .lib-view, .qcard__list, .spane__scroll,
+.search__scroller) { will-change: var(--scroller-layer); }`. Skin token `--scroller-layer`: base
+`auto`; Ocean, Glass and Retro-Future set `scroll-position`. Menus (`.set__menu`,
+`.ctx-menu__fly`, `.slot-picker__menu`) and `.set__preview` are left out on purpose.
+
+**Checked so far** (dev:built, RX 6700 XT, Max, Black & Red theme). The checks forced the rule
+on or off with injected CSS; the token form is not re-measured yet:
+1. **Blank rows on a fast wheel (the real risk).** Windowed Library (3,914 rows), CDP
+   `mouseWheel` events recorded frame by frame with `Page.startScreencast`, then a scan for
+   bands with no text:
+   - hard spin (120 px every 25 ms): 0 blank frames, with the rule and without.
+   - very fast (240 px / 16 ms): 199 frames with a blank band with the rule, 234 without.
+     The worst band is 152 px both ways.
+   - extreme (600 px / 8 ms): 48 blank frames with the rule, 94 without.
+   So the rule adds no blank rows. The blanks at very high speed are **older than this change**:
+   collection-window.ts renders only the visible rows plus a small margin during a scroll and
+   fills its 1200 px buffer after the scroll pauses. That is a separate, open item.
+2. **Offsets / look, each list scrolled to its middle** (Library windowed, Playlists, History):
+   Glass, Retro-Future, Ocean Sand and Ocean Soft differ by ≤ 0.08 / 255 mean. No position shift.
+   **Press differed (max 70 / 255):** Press cards are opaque, so the list text there uses colour
+   (subpixel) smoothing. On its own layer the text falls back to grey smoothing, which is a visible
+   softening (fringe chroma 102 → 36). **That is why the rule is a skin token**, and Press stays
+   `auto`. Press scroll was already 240 fps.
+
+**Left to do before handing it over:**
+- Restart `dev:built` (the token form needs a new bundle) and repeat checks 1–2 with the token.
+- Offsets on the lists not yet seen: **Home** (sideways `.search__scroller` shelves), **Settings**
+  (`.panel__body`), **Queue** with a long Up Next, **Search results** and its sideways rows,
+  an **artist view** (the sticky Songs bar, `.lib-view-bar`, over a composited list), a **grid**
+  view (tiles), and the **Mini / midi** surfaces. Swap cards in with
+  `document.querySelector('.panel[data-slot=c] .slot-picker__menu [data-card-id=home]').click()`.
+- Drag checks: a queue row drag (row-drag.ts insertion line) and a cross-card drag over a
+  composited list.
+- Re-bench scroll on all skins with the token form (`bench scroll --passes 3`).
+- **Swell, user's 2A:** measure Settings › Animate backgrounds › **Reduced** on Ocean under
+  `--gpu=off` (idle + scroll). If it helps, add the cost to that row's hover hint (settings-card.ts,
+  ONBOARDING ledger, SETTINGS.md), the way Fancy Glass states its cost. No new row (Off already
+  holds the swell still).
+- Throwaway scripts used for 1–2 (screencast flick, band scan, per-list screenshot diff) lived in
+  the session scratchpad, not the repo. Rebuild from this description if needed.
+
 ## Measuring like the live app (2026-09-16)
 
 The dev server is a poor stand-in for the installed app when the question is GRAPHICS. Three
@@ -575,6 +665,16 @@ node scripts/webview-eval.mjs "JSON.parse(localStorage.getItem('deets.settings')
   (`document.querySelector('.np__controls [aria-label="Next"]').click()`,
   `#np-playpause`), not MusicKit directly, so the queue model stays right. The `deetsmusic`
   MCP tools reach the INSTALLED app.
+
+## Audio quality — `probe fidelity` (DeetsAirplay, 2026-09-16)
+
+Sound quality is measured, not judged by ear. The probe lives in the DeetsAirplay repo, because it
+measures that crate's capture code: `cd ../DeetsAirplay/src-tauri && cargo run --release --bin probe
+-- fidelity`. It mutes the master volume, plays test tones and prints the numbers. With `--listen 35`
+it records while this app plays the schedule instead: `node scripts/webview-eval.mjs "$(cargo run -q
+--bin probe -- fidelity js)"`. Do not run it during a bench or while anything plays. AUDIO-QUALITY.md
+has the chain and the results; DeetsAirplay `docs/architecture.md` § Measuring audio quality has the
+reference.
 
 ## Toasts — the `__toast` console handle + the morning test script
 The toast primitive ([TOASTS.md](TOASTS.md)) exposes `window.__toast` in every build:

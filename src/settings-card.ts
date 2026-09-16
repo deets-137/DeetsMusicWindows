@@ -15,12 +15,19 @@
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { lastfmStatus, type LastfmStatus } from "./lastfm";
 import { setting, setSetting, onSettingsChange, onOwnedSettingChange, DEFAULTS, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, applySkin, defaultSkin, type SkinName } from "./skin";
 import { applyTheme, defaultTheme, type ThemeName } from "./theme";
 import { withAppearanceTransition } from "./appearance";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
+
+/** Fancy Glass's hover hint. The cost is the 2026-09-16 bench (DEBUGGING.md §Fancy Glass). */
+const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
+/** The four Glass sliders show under Glass with Fancy Glass on (off holds GLASS_LOCKED). */
+const glassSliders = (): boolean => currentSkin() === "glass" && setting("glassFancy");
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
@@ -188,8 +195,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "The three Animate rows and Fancy scrubber", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, the four Glass sliders, and the Press record player",
-    keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, Fancy Glass and its four sliders, and the Press record player",
+    keys: ["oceanEdges", "oceanSand", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -199,11 +206,11 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
-    keys: ["playlistEagerCounts", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover"],
+    keys: ["playlistEagerCounts", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer"],
   },
   { id: "home", label: "Home", hint: "Hiding lasts, and every hidden tile", keys: ["homeHideLasts", "homeHidden"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
@@ -265,6 +272,27 @@ function mountSettings(host: HTMLElement): CardInstance {
   let minimizeToTray = true;
   let autostart = false;
   let agentControl = true;
+  // Last.fm (LASTFM.md §6): the two rows live in Rust (lastfm.rs reads them per play); the
+  // status line reads the account and the waiting count.
+  let lastfmScrobble = true;
+  let lastfmNowPlaying = true;
+  let lastfm: LastfmStatus | null = null;
+  interface RustSettings { minimizeToTray: boolean; agentControl: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }
+  const takeRust = (s: RustSettings) => {
+    minimizeToTray = s.minimizeToTray;
+    agentControl = s.agentControl;
+    lastfmScrobble = s.lastfmScrobble;
+    lastfmNowPlaying = s.lastfmNowPlaying;
+  };
+  const lastfmLine = (): string => {
+    const s = lastfm;
+    if (!s) return "…";
+    if (!s.available) return "Last.fm is not in this build";
+    if (s.reconnect) return "Last.fm needs you to connect again, in the title menu › Account. Your plays wait";
+    if (!s.connected) return "Not connected. Connect in the title menu › Account";
+    const waiting = s.waiting ? ` · ${s.waiting} waiting to send` : "";
+    return `Connected as ${s.name}${waiting}`;
+  };
   let setupClient = "claude-code"; // the app "Copy setup for" copies for
   let older: OlderVersion[] = []; // Roll back's menu (updater.ts, one request per session)
   let rollTarget = "";
@@ -602,31 +630,35 @@ function mountSettings(host: HTMLElement): CardInstance {
           preview: (v) => previewSkin("oceanSand", v),
           when: () => currentSkin() === "ocean" && setting("oceanEdges") === "sand",
         },
-        // Glass: the layers in paint order, back to front — the background (glow, then its
-        // dim), then the card (its backlight, then the tint over it).
+        // Glass: Fancy Glass first (it shows the sliders), then the layers in paint order, back
+        // to front — the background (glow, then its dim), then the card (backlight, then tint).
+        {
+          ...storeToggle("glassfancy", "Fancy Glass", "glassFancy", () => GLASS_FANCY_HINT),
+          when: () => currentSkin() === "glass",
+        },
         {
           kind: "range", id: "glasscanvas", label: "Canvas glow", key: "glassCanvasGlow", min: 0, max: 100, unit: "%",
           hint: "Glass only. How brightly the colors glow on the background. The cards do not change",
           preview: (v) => previewSkin("glassCanvasGlow", v),
-          when: () => currentSkin() === "glass",
+          when: glassSliders,
         },
         {
           kind: "range", id: "glassdim", label: "Dim canvas", key: "glassCanvasDim", min: 0, max: 100, unit: "%",
           hint: "Glass only. Darkens the space between the cards. The cards stay as bright",
           preview: (v) => previewSkin("glassCanvasDim", v),
-          when: () => currentSkin() === "glass",
+          when: glassSliders,
         },
         {
           kind: "range", id: "glassbacklight", label: "Backlight", key: "glassBacklight", min: 0, max: 100, unit: "%",
           hint: "Glass only. A light behind each card, under its tint",
           preview: (v) => previewSkin("glassBacklight", v),
-          when: () => currentSkin() === "glass",
+          when: glassSliders,
         },
         {
           kind: "range", id: "glasstint", label: "Tint cards", key: "glassTint", min: 0, max: 100, unit: "%",
           hint: "Glass only. The card color over the backlight. Less tint: more glow",
           preview: (v) => previewSkin("glassTint", v),
-          when: () => currentSkin() === "glass",
+          when: glassSliders,
         },
         {
           kind: "choice", id: "pressvinyl", label: "Record player", key: "pressVinyl",
@@ -721,6 +753,11 @@ function mountSettings(host: HTMLElement): CardInstance {
       title: "Playback",
       rows: [
         {
+          kind: "choice", id: "streamquality", label: "Stream quality", key: "streamQuality",
+          hint: "Auto follows your network speed; High is 256 kbps and Low is 64 kbps, from the next song",
+          options: [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }],
+        },
+        {
           kind: "choice", id: "playnow", label: "Play Now plays", key: "playNowScope",
           hint: "The right-click action",
           options: [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }],
@@ -776,6 +813,38 @@ function mountSettings(host: HTMLElement): CardInstance {
       ],
     },
     {
+      // Last.fm (LASTFM.md §6). The connect lives in the title menu › Account, beside Apple
+      // Music; these rows pause what a connected account receives.
+      title: "Last.fm",
+      tail: () => `<div class="set__status" id="set-lastfm-status">${esc(lastfmLine())}</div>`,
+      rows: [
+        {
+          kind: "toggle",
+          id: "lastfmscrobble",
+          label: "Scrobble plays",
+          hint: () => "Sends each song to your Last.fm profile once you hear half of it or 4 minutes",
+          get: () => lastfmScrobble,
+          set: (on) => {
+            lastfmScrobble = on;
+            invoke("settings_set_lastfm_scrobble", { on }).catch((e) => console.error("[settings] lastfm scrobble", e));
+            render();
+          },
+        },
+        {
+          kind: "toggle",
+          id: "lastfmnowplaying",
+          label: "Show now playing",
+          hint: () => "Your Last.fm profile shows the song while it plays",
+          get: () => lastfmNowPlaying,
+          set: (on) => {
+            lastfmNowPlaying = on;
+            invoke("settings_set_lastfm_now_playing", { on }).catch((e) => console.error("[settings] lastfm now playing", e));
+            render();
+          },
+        },
+      ],
+    },
+    {
       title: "Playlists",
       rows: [
         storeToggle("eagercounts", "Show playlist counts", "playlistEagerCounts", () => "One small request per playlist, once"),
@@ -793,6 +862,25 @@ function mountSettings(host: HTMLElement): CardInstance {
           kind: "choice", id: "newcover", label: "New cover", key: "newPlaylistCover",
           hint: "How a new playlist's cover starts. Letters and Note keep the theme you made it in",
           options: [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }],
+        },
+        {
+          kind: "choice", id: "webreach", label: "Web reach", key: "webReach",
+          hint: "How far a playlist web goes. 1: the artist and the artists on their songs. Each step adds the next circle out",
+          get: () => String(setting("webReach")),
+          set: (v) => setSetting("webReach", Number(v) as 1 | 2 | 3),
+          options: [1, 2, 3].map((n) => ({ value: String(n), label: String(n) })),
+        },
+        {
+          kind: "choice", id: "websize", label: "Web size", key: "webSize",
+          hint: "How many songs a playlist web gets",
+          get: () => String(setting("webSize")),
+          set: (v) => setSetting("webSize", Number(v) as 25 | 50 | 100),
+          options: [25, 50, 100].map((n) => ({ value: String(n), label: String(n) })),
+        },
+        {
+          kind: "choice", id: "webprefer", label: "Web prefers", key: "webPrefer",
+          hint: "Which songs in a playlist web come first. Familiar: songs you love, play or saved. Discover: songs you don't have",
+          options: [{ value: "familiar", label: "Familiar" }, { value: "discover", label: "Discover" }, { value: "mix", label: "Mix" }],
         },
       ],
     },
@@ -1076,7 +1164,8 @@ function mountSettings(host: HTMLElement): CardInstance {
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
         `<div class="set__status">The log stays on this PC unless you send a bug with Attach log on. ` +
         `The app contacts Apple, music-api.deets.solutions for its access key and updates, and ` +
-        `support.deets.solutions when you send a report. It sends no listening history.</div>`,
+        `support.deets.solutions when you send a report. It sends no listening history, ` +
+        `unless you connect Last.fm: then the songs you hear go to Last.fm.</div>`,
     },
   ];
 
@@ -1452,8 +1541,8 @@ function mountSettings(host: HTMLElement): CardInstance {
   const unsubLibAdd = onLibraryAddChange(render);
   // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.
   const unsubOwned = onOwnedSettingChange(() => {
-    invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get")
-      .then((s) => { minimizeToTray = s.minimizeToTray; agentControl = s.agentControl; if (alive) render(); })
+    invoke<RustSettings>("settings_get")
+      .then((s) => { takeRust(s); if (alive) render(); })
       .catch((e) => console.warn("[settings] get", e));
     invoke<boolean>("autostart_get")
       .then((v) => { autostart = v; if (alive) render(); })
@@ -1467,9 +1556,20 @@ function mountSettings(host: HTMLElement): CardInstance {
     rollTarget = v[0]?.version ?? "";
     render();
   });
-  invoke<{ minimizeToTray: boolean; agentControl: boolean }>("settings_get")
-    .then((s) => { minimizeToTray = s.minimizeToTray; agentControl = s.agentControl; render(); })
+  invoke<RustSettings>("settings_get")
+    .then((s) => { takeRust(s); render(); })
     .catch((e) => console.warn("[settings] get", e));
+  // The Last.fm status line: repainted in place when a send, a connect or a disconnect lands.
+  const paintLastfm = () =>
+    void lastfmStatus()
+      .then((s) => {
+        lastfm = s;
+        const el = body.querySelector<HTMLElement>("#set-lastfm-status");
+        if (el && alive) el.textContent = lastfmLine();
+      })
+      .catch((e) => console.warn("[settings] lastfm", e));
+  const lastfmUnlisten = listen("lastfm-changed", paintLastfm);
+  paintLastfm();
   invoke<boolean>("autostart_get")
     .then((v) => { autostart = v; render(); })
     .catch((e) => console.warn("[settings] autostart", e));
@@ -1506,6 +1606,7 @@ function mountSettings(host: HTMLElement): CardInstance {
       unsubOwned();
       unsubUpdate();
       unsubLook();
+      void lastfmUnlisten.then((un) => un());
       unsubRequest();
       dropMenus();
       window.removeEventListener("resize", closeMenus);

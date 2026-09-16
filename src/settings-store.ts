@@ -49,6 +49,10 @@ export interface Settings {
   oceanEdges: "sand" | "soft";
   /** Ocean sand only, 0–100: how far the sand band reaches into a card (--sand-reach-min…max). */
   oceanSand: number;
+  /** Glass only: the live frost. On = a real blur behind each card, the aurora drifts, and the
+   *  four Glass sliders show. Off = the frost is painted into each card (no blur to redraw),
+   *  the aurora holds still, and the sliders hold GLASS_LOCKED. `data-glass-fancy` on <html>. */
+  glassFancy: boolean;
   /** Glass only, 0–100: how much theme color fills a card (0 = clear, the background glows
    *  through; 100 = solid). skin-settings.ts publishes it as --glass-tint. */
   glassTint: number;
@@ -119,6 +123,9 @@ export interface Settings {
    *  again after that time unhides itself. Cleared from Settings › Home. */
   homeHidden: Record<string, number>;
   // ── playback ──
+  /** MusicKit's stream bitrate: auto follows the network estimate live, high pins 256 kbps,
+   *  low pins 64 kbps. player.ts `applyStreamQuality`; a change starts at the next song. */
+  streamQuality: "auto" | "high" | "low";
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
   /** The History card says which day each play was, inside the row's own subtitle line
@@ -165,6 +172,12 @@ export interface Settings {
   /** How a new playlist's cover starts: its letters or a ♪ drawn in the current theme and
    *  saved, or the derived mosaic (not saved). playlists.ts `playlistCreate` reads it. */
   newPlaylistCover: "letters" | "mosaic" | "note";
+  /** How far a playlist web goes, in steps from the artist (PLAYLIST-WEB.md). web.ts reads it. */
+  webReach: 1 | 2 | 3;
+  /** How many songs a playlist web gets (PLAYLIST-WEB.md §4). */
+  webSize: 25 | 50 | 100;
+  /** Which web songs come first: the ones you have (♥, played, saved), the ones you don't, or no order. */
+  webPrefer: "familiar" | "discover" | "mix";
   // ── cards ──
   /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
   rewindCard: boolean;
@@ -184,6 +197,10 @@ export interface Settings {
 
 const KEY = "deets.settings";
 
+/** The Glass slider values while Fancy Glass is off (user's call 2026-09-16). They are also the
+ *  sliders' defaults, so turning Fancy Glass on starts from the same look. */
+export const GLASS_LOCKED = { glassTint: 65, glassBacklight: 85, glassCanvasGlow: 40, glassCanvasDim: 10 } as const;
+
 export const DEFAULTS: Settings = {
   alwaysOnTop: "off",
   trayView: "cards",
@@ -200,10 +217,11 @@ export const DEFAULTS: Settings = {
   backgroundMotion: "on",
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
-  glassTint: 55, // today's Glass look (55% surface)
-  glassBacklight: 50, // user's call 2026-09-15: a cool 50%, a glow that is not garish
-  glassCanvasGlow: 50, // the aurora as the skin writes it
-  glassCanvasDim: 0, // no dim: today's look
+  glassFancy: false, // user's call 2026-09-16: the painted frost; the live blur failed on software drawing (DEBUGGING.md)
+  glassTint: 65, // user's call 2026-09-16: GLASS_LOCKED, the look Glass holds with Fancy Glass off
+  glassBacklight: 85,
+  glassCanvasGlow: 40,
+  glassCanvasDim: 10,
   pressVinyl: "off", // opt-in, like Sand
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
   pressVinylPlate: true,
@@ -227,6 +245,7 @@ export const DEFAULTS: Settings = {
   sleepPlayOut: false, // the mark is the silence unless you ask for the song's end
   homeHideLasts: "forever", // user's call 2026-09-15: a hide that dies at relaunch reads as a bug
   homeHidden: {},
+  streamQuality: "auto", // user's call 2026-09-16: Auto, and ours follows the network live (AUDIO-QUALITY.md)
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   historyShowDay: false, // user's call 2026-09-15: History looks as it always did until you ask
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
@@ -246,6 +265,9 @@ export const DEFAULTS: Settings = {
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
+  webReach: 2, // the artist's collaborators and theirs: a real web without drifting far (PLAYLIST-WEB.md §3)
+  webSize: 50, // an afternoon of music; 100 at reach 3 is where unrelated artists start to show
+  webPrefer: "mix", // no lean until you pick one: a web is both a comfort list and a find
   rewindCard: false,
   rewindAutoShown: false,
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates

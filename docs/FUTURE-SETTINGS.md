@@ -1126,6 +1126,16 @@ off the panel frost alone brings idle back to 178 fps. **Ocean** scroll is slow 
 too (160 fps, 49% dropped), and the sand is not the main cause. Press and Retro-Future need
 nothing. So the list is two skins long. Suspect 1 is confirmed; suspects 3–5 are still open.
 
+**Glass: BUILT 2026-09-16 as "Fancy Glass"** (user's call: 1A aurora holds still, 2A cards only,
+3A painted by default with a Fancy Glass row that brings back the live blur and shows the
+sliders, 4A slider defaults = the locked 65 / 85 / 40 / 10). SETTINGS.md row; numbers in
+DEBUGGING.md §Fancy Glass and the Ocean swell. **Ocean:** the same pass found that the list
+scroller repaints instead of compositing (fix measured, not applied) and that the swell is the
+cost under software drawing. User's calls: 1A composited scroller on all card lists (no visible
+change allowed; built as a skin token, Press excluded, checks half done), 2A no swell row
+(Animate backgrounds already holds it; measure Reduced). Paused 2026-09-16 — DEBUGGING.md
+§The composited-scroller pass has the remaining list.
+
 **Measured before that.** On an RX 6700 XT at 244 Hz an Ocean skin switch puts `CrGpuMain`
 at **86.9%** while the page's own thread sits at 29.5% — the work is in the GPU process, not
 in script. At idle `CrGpuMain` is ~0, so this is the switch, not steady state. Press and

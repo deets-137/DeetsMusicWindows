@@ -36,6 +36,9 @@ nothing about authoring changed when the box did.
 | Title menu | each Skin | one line on the idiom ("A print shop: ink on paper, square corners. The cover can be a record") | index.html |
 | Title menu | Mini · NP · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
+| Title menu › Account | Last.fm | Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile · connected: Disconnects Last.fm. Songs you hear stop going to your profile · no key: Last.fm is not in this build of DeetsMusic | index.html / lastfm.ts |
+| Title menu › Account | the Last.fm name ("Connected as *name*") | Opens your Last.fm profile in your browser | lastfm.ts |
+| Settings › Last.fm | Scrobble plays · Show now playing | Sends each song to your Last.fm profile once you hear half of it or 4 minutes · Your Last.fm profile shows the song while it plays | settings-card.ts |
 | Title bar | Sleep timer (the alarm clock) | The sleep timer. Music pauses when it runs out · armed: *Sleep in 23:14* / *Sleep at the end of this song* / *Sleep at 10:00 PM, every day* | index.html / sleep.ts |
 | Sleep panel | the dial | Turn the timer to set the minutes. Music pauses when it runs out | index.html |
 | Sleep panel | End of song · End of Up Next | Pauses when this song ends · Pauses when Up Next runs out | index.html |
@@ -47,6 +50,7 @@ nothing about authoring changed when the box did.
 | Title bar | Mute (in the volume bar) | Turns the sound off and on | index.html |
 | Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open | settings-card.ts |
 | Settings › Look and feel | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
+| Settings › Look and feel | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | Title bar | Maximize · Minimize · Close | Fills the screen. Press again to go back · Puts the window on the taskbar · Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing | index.html |
 | Now Playing | Shuffle | Shuffles the songs after this one · *Shuffle is on. Press again to turn it off* | now-playing-card.ts (`paintModes`) |
@@ -57,7 +61,8 @@ nothing about authoring changed when the box did.
 | Now Playing | Mute · AirPlay (stage row) | as the title bar | now-playing-card.ts |
 | Card headers | Back | Goes back one step | library-, playlists-, radio-card.ts; search-card.ts panes |
 | Library | Refresh | Reads your library from Apple Music again | library-card.ts |
-| Playlists | + · Sync | Makes a new playlist or a new folder · Reads your playlists from Apple Music again | playlists-card.ts |
+| Playlists | + · Web · Sync | Makes a new playlist or a new folder · Makes a playlist from an artist and the artists they make songs with · Reads your playlists from Apple Music again | playlists-card.ts |
+| Playlist web panel | Artist field · an artist row (not picked / picked) · Reach row · Size row · Prefer row · a genre chip · Retry · Read again · Playlist name · Make playlist | Type an artist and press Enter. The web starts from them · Starts the web from this artist / The web starts from this artist. Type another name to change it · How far the web goes. 1: the artist and the artists on their songs. Each step adds the next circle out · How many songs the playlist gets · Familiar: songs you love, play or saved come first. Discover: songs you don't have come first. Mix: no order from your library · Keeps only *genre* songs from the web. The artist's own songs always stay · Reads only the artists that didn't load · Reads this web from Apple Music again. Use it when an artist has new songs · The new playlist's name · Makes the playlist and opens it | web.ts |
 | Radio | Refresh | Reads the stations from Apple Music again | radio-card.ts |
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |

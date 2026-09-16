@@ -212,6 +212,8 @@ body {
 /* ── Account flyout ─────────────────────────────────────────── */
 .flyout--account { min-width: 200px; }
 .account { display: flex; flex-direction: column; gap: var(--space-2); }
+/* Apple Music, then Last.fm (LASTFM.md §4): one gap between the two accounts. */
+.account + .account { margin-top: var(--space-3); }
 .account__status {
   font-family: var(--font-body);
   font-size: var(--fs-subtext);
@@ -232,6 +234,8 @@ body {
   cursor: pointer;
 }
 .account__link:hover { color: var(--title); }
+/* Inside a sentence ("Connected as <name>"): the Last.fm profile link. */
+.account__link--inline { display: inline; margin-top: 0; }
 .account__btn {
   display: flex;
   align-items: center;
@@ -370,6 +374,96 @@ body {
 .sleep__status { font-size: var(--fs-subtext); color: var(--subtext); text-align: center; }
 .sleep__status[hidden] { display: none; }
 .sleep__off[hidden] { display: none; }
+
+/* ── Playlist web (PLAYLIST-WEB.md): the Playlists card's web button + its panel ──────
+   The panel is portaled to <body> (a Glass card is a stacking context; web.ts places it).
+   Its controls wear the sleep panel's chip look: one control voice for pop panels. */
+.panel__action.web-btn svg { stroke-width: var(--web-icon-stroke); } /* beats .panel__action svg, later in the file */
+.web {
+  position: fixed;                  /* JS sets top/left under the button */
+  margin-top: var(--space-1);       /* the gap under the button — JS reads it back */
+  width: var(--web-panel-w);
+  max-height: var(--web-panel-max-h);
+  overflow-y: auto;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--web-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  text-align: left;
+  z-index: 100;                     /* the context menu's tier, like "Play on" */
+}
+.web[hidden], .web [hidden] { display: none; }
+.web__title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
+  color: var(--subtext); text-transform: uppercase; letter-spacing: var(--web-title-tracking);
+}
+.web__input {
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-body); font-size: var(--fs-text);
+  outline: none;
+}
+.web__input::placeholder { color: var(--subtext); }
+.web__input:focus-visible { border-color: var(--title); }
+.web__hits { display: flex; flex-direction: column; gap: var(--space-1); }
+.web__hit {
+  display: grid; grid-template-columns: var(--web-hit-art) 1fr auto; align-items: center;
+  gap: var(--space-2);
+  min-height: var(--web-row-h);
+  padding: 0 var(--space-1);
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-control);
+  color: var(--text); font-family: var(--font-body); font-size: var(--fs-text); text-align: left;
+  cursor: pointer;
+}
+.web__hit:hover { background: var(--surface-hover); }
+.web__hit[aria-selected="true"] { background: var(--picked); border-color: var(--title); cursor: default; }
+.web__hit-art { width: var(--web-hit-art); height: var(--web-hit-art); border-radius: 50%; object-fit: cover; background: var(--surface); }
+.web__hit-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.web__hit-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
+.web__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.web__label { font-size: var(--fs-subtext); color: var(--subtext); }
+.web__seg { display: flex; gap: var(--space-1); }
+.web__chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.web__opt, .web__chip, .web__make {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--web-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.web__opt { min-width: var(--web-opt-min-w); }
+.web__opt:hover, .web__chip:hover, .web__make:hover:not(:disabled) { background: var(--surface-hover); }
+.web__opt[aria-pressed="true"], .web__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.web__opt:focus-visible, .web__chip:focus-visible, .web__make:focus-visible, .web__hit:focus-visible {
+  outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off);
+}
+.web__chip-n { color: var(--subtext); font-variant-numeric: tabular-nums; }
+.web__status {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-1) var(--space-2);
+  font-size: var(--fs-subtext); color: var(--subtext); text-align: center;
+}
+/* Retry / Read again: a quiet text action at the end of the status line. */
+.web__again {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--title); background: transparent; border: none; padding: 0;
+  text-decoration: underline; text-underline-offset: var(--web-link-offset);
+  cursor: pointer;
+}
+.web__again:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.web__make { padding: var(--space-2); color: var(--title); }
+.web__make:disabled { opacity: 0.6; cursor: default; }
 
 /* ── Volume pill + flyout ───────────────────────────────────────────────────
    The pill is a level meter: a tinted --title fill (strength is a skin token)
@@ -722,7 +816,7 @@ body {
   inset: calc(-1 * var(--aurora-slack));
   background-repeat: no-repeat;
   /* stepped at --ambient-fps; 10 sine-sampled keyframe segments per loop */
-  animation: aurora-drift var(--aurora-dur) steps(round(var(--aurora-dur) * var(--ambient-fps) / 10 / 1s)) infinite;
+  animation: var(--aurora-drift) var(--aurora-dur) steps(round(var(--aurora-dur) * var(--ambient-fps) / 10 / 1s)) infinite;
   will-change: transform;
 }
 .aurora__blob--1 { background-image: var(--aurora-1); --drift-x: var(--aurora-drift-1-x); --drift-y: var(--aurora-drift-1-y); }
@@ -842,6 +936,7 @@ body {
   background: var(--panel-paint);   /* --panel, unless a skin moves the fill to the rim layer */
   -webkit-backdrop-filter: var(--panel-backdrop);  /* none under most skins; Glass frosts */
   backdrop-filter: var(--panel-backdrop);
+  isolation: var(--panel-isolation);
   border: var(--panel-border-width) solid var(--panel-border);
   border-radius: var(--panel-radius);
   box-shadow: var(--shadow-card);   /* none under Vanilla; Press prints a plate, Ocean/Glass lift */
@@ -962,6 +1057,18 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   min-height: 0;
   overflow-y: auto;             /* each column scrolls on its own */
 }
+
+/* Composited scrollers (2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell). Each card
+   list scrolls on its own compositor layer, so a scroll step MOVES the rows instead of
+   repainting the card under them. Without it Ocean's sand mask repainted on every step
+   (157 fps, 52% dropped); with it every skin holds the display rate and the GPU process does
+   about a fifth of the work. Skin token --scroller-layer: only the see-through skins opt in,
+   because on an opaque card (Press) the layer would switch the list text from colour to grey
+   smoothing. On those skins: no visible change (screenshots 0.03 / 255). Not a stacking
+   context, unlike will-change: transform, so z-index inside the list is unchanged. Menus
+   (.set__menu, .ctx-menu__fly, .slot-picker__menu) are left out: short-lived, and already
+   their own layers under their backdrop-filter. */
+:is(.panel__body, .lib-view, .qcard__list, .spane__scroll, .search__scroller) { will-change: var(--scroller-layer); }
 
 /* Panel header action — small square button (e.g. Library refresh). */
 .panel__action {
