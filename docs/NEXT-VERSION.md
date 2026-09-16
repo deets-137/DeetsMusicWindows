@@ -10,7 +10,7 @@
 > schema bump (v3: the `favorites` table and `local_playlists.cover`). **All eight built
 > and desk-verified 2026-09-12** (user: "look good"). Same day, on top: the extras in §9;
 > the surface-change motion (fork B) was built, judged janky, and walked back (§10).
-> **To talk through next session: the playlist creation flow** (§11). **2026-09-15: the listening-loop review added §12–§17** (repeat, Play/Shuffle on a collection, shuffle mode, Home, durable History, sleep timer); **§12–§14 decided and BUILT the same day as the transport pass** (awaiting the desk test). The toast
+> **State on 2026-09-16: every section through §21 is built and shipped (0.7.0).** Open work: the fancy-scrubber performance eval (§21), and the two update ideas (resume after an update restart; install at the song's end). **2026-09-15: the listening-loop review added §12–§17** (repeat, Play/Shuffle on a collection, shuffle mode, Home, durable History, sleep timer). The toast
 > primitive is built ([TOASTS.md](TOASTS.md), 2026-09-13) with the Add-to-Library notice;
 > the playlist-cover notice (§2) waits on the cover flow itself.
 
@@ -659,7 +659,7 @@ longer read by anything.
   word "Skipped": most listening has skips in it and a column of words would shout.
 - **Repeats stay real.** Three plays make three rows.
 
-## 17. Sleep timer — DESIGNED + BUILT 2026-09-15 (branch `wakin-up`), awaiting the desk test
+## 17. Sleep timer — DESIGNED + BUILT 2026-09-15, shipped in 0.7.0
 
 **Terms.** The *mark* is the moment the room goes quiet. The *wind-down* is the last minutes
 before the mark, over which the volume sinks to nothing. The *dial* is the panel's kitchen
@@ -867,7 +867,7 @@ Off in mini.
 
 ---
 
-## 20. The volume pill grows in place — BUILT 2026-09-16 (fork A), awaiting the desk test
+## 20. The volume pill grows in place — BUILT 2026-09-16 (fork A), shipped in 0.7.0
 
 **What changed.** The Vol. pill no longer drops a flyout. It is a **full bar all the time**
 (120 × 20; user's call after the first look, 2026-09-16): the mute speaker at its left end,
@@ -901,7 +901,7 @@ click it (click mode) — it grows and the press does not move the level; click 
 shrinks; open "Play on" from the grown pill and move into that panel — it stays. Menus set to
 hover: hover grows it, leaving shrinks it after a moment. NP view: no pill (as before).
 
-## 21. Fancy scrubbers — BUILT 2026-09-16, awaiting the desk test and a performance eval
+## 21. Fancy scrubbers — BUILT 2026-09-16, shipped in 0.7.0; the performance eval is open
 
 The per-skin handle idea, redone. The plain masked handles stay as the off state; on
 (Settings › Look and feel › **Fancy scrubber**, default on, key `fancyScrubber`) each skin

@@ -116,14 +116,14 @@ extension's icons are LANCZOS resizes of the same file.
 listening loop (repeat, shuffle, playing a whole album, the queue's end, the keyboard) found
 the platform sound and the loop thin. Scoped with forks in
 **[NEXT-VERSION.md §12–§17](NEXT-VERSION.md)**, in this order:
-1. ✅ **Repeat button** (off / all / one) — §12, **BUILT 2026-09-15, awaiting the desk test**:
+1. ✅ **Repeat button** (off / all / one) — §12, **BUILT 2026-09-15, shipped in 0.6.x**:
    after Shuffle, one cycling square, MusicKit `repeatMode` for *one*, a model lap for *all*
    with one buffering gap per lap, hidden in radio mode, persisted without a Settings row,
    agent + CLI verbs. **Rust (`bridge.rs`) and the CLI changed: restart the dev runner and
    `npm run cli:build` for the MCP binary.** Desk test: cycle the square (accent, the "1");
    *one* loops a song and Rewind counts each loop; *all* laps a short album (the gap at the
    wrap, then track 1 again); a station hides the square; `deetsmusic repeat all`.
-2. ✅ **Play and Shuffle on a collection** — §13, **BUILT, awaiting the desk test**: a row of
+2. ✅ **Play and Shuffle on a collection** — §13, **BUILT, shipped in 0.6.x**: a row of
    two half-width buttons under the hero of every song list (Library Songs root: at the top
    of the list; an album; the artist view, above its shelves; a playlist); Play = the rows in
    the current sort and filter; hover text names the list (a Library artist: every song by
@@ -147,7 +147,7 @@ the platform sound and the loop thin. Scoped with forks in
    rows) at mount and re-reads the last two hours on every log write; the card keeps its shape
    (hero + Previously), each row carries the time and a skip mark, and Settings › Playback ›
    *Show the day in History* (default off) puts the day in the row's subtitle. No Rust change.
-7. ✅ **The playlist creation flow** — §11 → **§19, BUILT 2026-09-15, awaiting the desk test**:
+7. ✅ **The playlist creation flow** — §11 → **§19, BUILT 2026-09-15, shipped in 0.6.3**:
    `Add to Playlist ▸` reached the four cards that lacked it (the Queue's rows and its Now
    Playing hero, History, the Now Playing cover) — which also means a station song files like
    any other, so "save a station's songs" is not needed. And **multi-select**
@@ -295,7 +295,7 @@ what happened and what to do, for each of these; (7) Apple's post-rotation flapp
 for 15+ min) does not end in a saved dead token. Test each one on purpose before shipping it.
 
 **2026-09-13 — Library virtualization (option A, windowing): BUILT on `optimus-deets`,
-measured, scripted checks pass, awaiting the desk test.** `src/collection-window.ts`; how it
+measured, scripted checks pass, desk-tested and shipped (7dbf56f).** `src/collection-window.ts`; how it
 works: UI-ARCHITECTURE.md §"Long lists: windowing"; before/after and the hand-test list:
 **[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)** §Results (skin flip 395–558 →
 16–40 ms; cold grid drag 75–82% dropped with 345 ms long tasks → 1–4%, worst 8–21 ms; DOM
@@ -609,7 +609,7 @@ them), and two scroll/render fixes in the card engine.
   all 81 hint sites (68 in markup, 13 set from code) moved in one step. Row hints come from a
   shape table (`SHAPES`), one delegated handler covering Library, Search, Queue, Rewind,
   History, Home, the Artist shelves and Now Playing. Three Settings rows: Show hover hints,
-  Hints appear after, Name songs on hover. Awaiting the desk test. Not committed.
+  Hints appear after, Name songs on hover. Shipped in 0.7.0 (2026-09-16).
 - **2026-09-15 — Press record player** ([VINYL.md](VINYL.md)): Record player Spin / Still / Off
   (default Off), Show record on, Spin speed (33⅓ / 45 / 78, default 33⅓), Show record plate. The
   cover (Now Playing + tray panel) turns at the chosen rate, locked to the song so each disc starts
@@ -617,7 +617,7 @@ them), and two scroll/render fixes in the card engine.
   Four desk-test rounds, each fault found with the new dev telemetry (`[perf] vinyl show / snap /
   song`, `__vinyl.sample`) and a computed-transform angle trace (VINYL.md §8–§9). Open: the frame
   cost of a full-rate spin (its own optimization session); Apple artwork-rule reading in §10.
-  Not committed.
+  Committed db65b5c, shipped.
 - **2026-09-15 — skin-only settings** ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only
   settings*, [SETTINGS.md](SETTINGS.md) §3): Look and feel rows that show only under their
   skin (`when` + `onSkinChange`), a new **range** (slider) row kind, and `src/skin-settings.ts`.
@@ -631,7 +631,7 @@ them), and two scroll/render fixes in the card engine.
   updater `.sig` (minisign key) and Authenticode via Azure Artifact Signing (`scripts/sign.mjs`).
   Tested end to end with a signed t1 → t2 update on the test channel.
 - **2026-09-13 — toasts** ([TOASTS.md](TOASTS.md)): the primitive, the `toasts` tier
-  setting, and the ten call sites above. **Awaiting the first desk test.**
+  setting, and the ten call sites above. Desk-tested and shipped; every later call site is a row in TOASTS.md §5.
 - **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
   search pins · playlist covers (user / Apple / mosaic; schema v3 `cover`) · ♥ favorites
   (`favorites.rs` + `favorites.ts`, seeded from Apple's Favorite Songs; the Library ♥

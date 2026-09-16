@@ -1,7 +1,7 @@
 # Agent / CLI control — `deetsmusic`
 
 > Design agreed 2026-09-09 (DESIGN.md X4). Playback control built and tested. **The write pass
-> (§5: library, playlists, folders, queue edits, updates) built 2026-09-14, awaiting desk test.**
+> (§5: library, playlists, folders, queue edits, updates) built 2026-09-14, desk-tested and shipped.**
 > User-facing setup: [AGENT-SETUP.md](AGENT-SETUP.md). **Settings › Connections › Agent control**
 > (default on, `agentControl` in `settings.json`) gates every agent route with a `403` and a
 > plain sentence; the extension's routes are never gated. The card's **Copy setup for** row
@@ -226,7 +226,7 @@ copy (the reply names its local playlist). Reach `/add` (extension only).
 **Rows.** Every row is the 1-based number the listing printed. `queue_edit` replies with the
 fresh queue, so a second edit uses current numbers.
 
-## 6. Settings — BUILT 2026-09-15, awaiting desk test
+## 6. Settings — BUILT 2026-09-15, shipped
 
 An agent reads and changes the app's settings with the same setters the Settings card uses.
 **Full pack only** (`deetsmusic mcp`): a frontier model maps "keep DeetsMusic on top" to a

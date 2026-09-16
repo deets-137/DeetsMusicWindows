@@ -113,8 +113,18 @@ if (signed.length) {
   else if (leaked.length) failures.push(`dev telemetry shipped in ${leaked.join(", ")} — VITE_PERF was set for this build`);
 }
 
+// ── 6. The token catalog is current ─────────────────────────────────────────
+// docs/TOKENS.md is generated from the three token files (scripts/tokens.mjs). A stale copy
+// is the kind of doc drift the catalog exists to end, so the gate refuses it.
+{
+  const { render, TARGET } = await import("./tokens.mjs");
+  const want = render();
+  const have = existsSync(join(root, TARGET)) ? readFileSync(join(root, TARGET), "utf8").replace(/\r\n/g, "\n") : "";
+  if (have !== want) failures.push(`${TARGET} is stale — run npm run tokens and commit it`);
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current`);

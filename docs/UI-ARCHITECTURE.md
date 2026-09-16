@@ -119,9 +119,10 @@ the no-op — the same opt-in doctrine as `--hover-lift` / `--panel-backdrop`.
 
 > **The authoritative token list is the code, not this doc.** The `[data-skin]` base
 > block in `skin.css` defines every skin token once, with a comment; `themes.css` does
-> the same for color roles. This section is the *map* — read those two files for the
-> complete, current set. (We deliberately don't keep a separate catalog file — it would
-> duplicate the base block and rot.)
+> the same for color roles. This section is the *map*. The *list* is
+> **[TOKENS.md](TOKENS.md)**, generated from those files by `npm run tokens` (2026-09-16):
+> every role and token, its base value, its comment, and which skins override it, plus the
+> overrides no base token declares. It cannot rot: the release check fails when it is stale.
 
 The base defines, among others:
 

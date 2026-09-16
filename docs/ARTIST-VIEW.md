@@ -1,6 +1,6 @@
 # Artist view — hero, Featured Playlists, Your Playlists
 
-Designed with the user 2026-09-15, built the same day. Status: **BUILT, awaiting desk test.**
+Designed with the user 2026-09-15, built the same day. Status: **BUILT, desk-tested, shipped (80ac7bb).**
 
 ## Terms
 - **Library artist view** — the view after a click on an artist in the Library card
