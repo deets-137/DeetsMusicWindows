@@ -236,12 +236,14 @@ pub fn autostart_set(on: bool) -> Result<bool, String> {
 
 /// Where the shipped `deetsmusic.exe` is: the install's resource folder, else the
 /// per-user install path (what a config written on another build should point at).
+/// Tauri's `resource_dir` can carry the `\\?\` extended-length prefix; some MCP clients
+/// fail to launch a command written that way, so the copied text drops it.
 fn cli_path(app: &tauri::AppHandle) -> String {
     use tauri::Manager;
     if let Ok(dir) = app.path().resource_dir() {
         let p = dir.join("cli").join("deetsmusic.exe");
         if p.is_file() {
-            return p.display().to_string();
+            return p.display().to_string().trim_start_matches(r"\\?\").to_string();
         }
     }
     let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| r"C:\Users\you\AppData\Local".into());
