@@ -404,9 +404,8 @@ Two things to hold in mind when reading the result:
   laptop these modes stand in for it has **16.7 ms**, four times as forgiving. Work that
   nearly saturates here can sit comfortably inside a 60 Hz frame. Judge against the budget
   the target machine actually has, not this one's.
-- **A Parsec Virtual Display Adapter is installed on this PC.** Measuring over a Parsec
-  session puts capture and encode on the same GPU, which inflates load and adds variance.
-  Measure on the physical display.
+- **Measure on the physical display.** A remote-desktop or capture layer puts encode on the
+  same GPU and inflates every reading.
 
 ## Benchmarking a scene — `scripts/bench.mjs`
 
@@ -428,6 +427,22 @@ competing. So the runner **refuses to report** unless the machine is fit to meas
 
 **Read `spread` before the median.** Over ~25% and the run is noise whatever the median says.
 It restores the skin you were on when it finishes.
+
+Every run that gets **past the gate** appends to **`scripts/perf-history.csv`**:
+
+```
+when,commit,tree,scene,skin,gpu,renderer,hz,passes,rise_ms,fps_med,spread_pct,worst_med_ms,drop_pct_med,note
+```
+
+It is written automatically and never by hand — a perf number typed into a doc is stale the
+next day. Only gated runs are recorded, because a row from a noisy machine is worse than no
+row: it looks like evidence. `--note "after the frost change"` labels a run, and a run on a
+dirty tree is marked `dirty` and says so, since it cannot be reproduced from the commit alone.
+
+`renderer` and `hz` are in every row on purpose: **rows are only comparable within the same
+renderer and refresh rate.** Comparing an `accelerated` row at 244 Hz with a `software` row at
+60 Hz says nothing. The file is committed, so a regression can be found by diffing it against
+last week rather than by remembering.
 
 ## Reading CPU and GPU load — `scripts/webview-profile.mjs --trace`
 

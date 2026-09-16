@@ -16,7 +16,7 @@
 //   3. Runs every switch --passes times and reports the MEDIAN and the SPREAD, never one run.
 //
 // Read `spread` before anything else. If it is wide the run is noise, whatever the median says.
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync, appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -139,6 +139,25 @@ for (let p = 0; p < PASSES; p++) {
 }
 
 // ── 3. report ────────────────────────────────────────────────────────────────
+// Every gated run also appends to scripts/perf-history.csv, so a change can be compared with
+// a week ago instead of with a memory. Only runs that got PAST the noise gate are written —
+// a row from a noisy machine is worse than no row, because it looks like evidence.
+// The renderer and hz go in each row: rows are only comparable within the same pair.
+const renderer = await evaluate(`(()=>{try{const c=document.createElement('canvas');
+  const gl=c.getContext('webgl');const d=gl&&gl.getExtension('WEBGL_debug_renderer_info');
+  const n=d?gl.getParameter(d.UNMASKED_RENDERER_WEBGL):'unknown';
+  gl&&gl.getExtension('WEBGL_lose_context')?.loseContext();return n;}catch(e){return 'unknown'}})()`);
+const gpuMode = /swiftshader|software|llvmpipe/i.test(renderer) ? "software" : "accelerated";
+let commit = "?", dirty = "?";
+try {
+  const { execFileSync } = await import("node:child_process");
+  const git = (...a) => execFileSync("git", a, { cwd: root, encoding: "utf8" }).trim();
+  commit = git("rev-parse", "--short", "HEAD");
+  dirty = git("status", "--porcelain").length ? "dirty" : "clean";
+} catch {
+  /* not a checkout — leave the marks */
+}
+
 console.log(`\nskin            rise      fps(med)   spread   worst(med)`);
 for (const [s, lines] of runs) {
   const fps = lines.map(fpsOf);
@@ -152,6 +171,28 @@ for (const [s, lines] of runs) {
 }
 console.log(`\nspread is max→min across passes. Over ~25% and the median means nothing —`);
 console.log(`quieten the machine and run again rather than believing it.`);
+
+// ── 4. the history file ──────────────────────────────────────────────────────
+const CSV = join(root, "scripts", "perf-history.csv");
+const HEAD = "when,commit,tree,scene,skin,gpu,renderer,hz,passes,rise_ms,fps_med,spread_pct,worst_med_ms,drop_pct_med,note\n";
+const csvCell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replaceAll('"', '""')}"` : String(v));
+const when = new Date().toISOString();
+const note = flag("note", "");
+let rows = "";
+for (const [s, lines] of runs) {
+  const fps = lines.map(fpsOf);
+  const worst = lines.map((l) => Number(/worst (\d+)/.exec(l)?.[1] ?? 0));
+  const drops = lines.map((l) => Number(/dropped \d+ \(([\d.]+)%\)/.exec(l)?.[1] ?? 0));
+  const sp = Math.max(...fps) ? ((Math.max(...fps) - Math.min(...fps)) / Math.max(...fps)) * 100 : 0;
+  rows +=
+    [when, commit, dirty, scene, s, gpuMode, renderer, hz, PASSES, /(\d+) ms ·/.exec(lines[0])?.[1] ?? "", median(fps), sp.toFixed(1), median(worst), median(drops).toFixed(1), note]
+      .map(csvCell)
+      .join(",") + "\n";
+}
+if (!existsSync(CSV)) writeFileSync(CSV, HEAD);
+appendFileSync(CSV, rows);
+console.log(`\nappended ${runs.size} row(s) to scripts/perf-history.csv  (gpu=${gpuMode}, ${commit}/${dirty}${note ? `, note "${note}"` : ""})`);
+if (dirty === "dirty") console.log(`the tree is DIRTY, so this row is not reproducible from the commit alone — pass --note to say what was in flight.`);
 
 await evaluate(`document.querySelector('[data-skin-choice=${JSON.stringify(was)}]')?.click()`); // put the look back
 console.log(`\nrestored skin: ${was}`);
