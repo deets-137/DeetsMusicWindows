@@ -297,6 +297,128 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   Serif TTFs — WOFF2 would halve the bundle). WebView2 profile ~400 MB per identifier,
   almost all Chromium's HTTP cache, self-capped.
 
+### What the 2026-09-16 appearance-switch pass found
+
+A stress test of skin switching (the driver: `scripts/webview-eval.mjs` clicking
+`[data-skin-choice]`, which is the REAL user path — the MCP `settings` route is tagged
+`by=agent` and runs `--agent-motion` slower, which hides hitches).
+
+**1. The rise length is deterministic, and Ocean is the outlier.** `appearance.ts` computes
+`total = --boot-dur + --boot-stagger × (slots − 1)`. With the usual 6 bento slots:
+
+| skin | `--boot-dur` | `--boot-stagger` | rise | measured |
+|---|---|---|---|---|
+| press | 0.50s | 40ms | 700 ms | 702 / 709 / 728 |
+| retro-future | 0.60s | 50ms | 850 ms | 853 / 856 / 882 |
+| vanilla | 0.80s | 70ms | 1150 ms | — |
+| glass | 0.90s | 60ms | 1200 ms | 1204 / 1206 / 1215 |
+| **ocean** | **1.05s** | **95ms** | **1525 ms** | 1527 / 1529 / 1540 |
+
+Ocean's rise is **2.2× Press's**, so it is exposed to any hitch for twice as long — that
+alone is why slow switches were always Ocean. Shortening it would be a VISIBLE change to
+Ocean's character, so it is the user's call, not a silent optimisation.
+
+**2. `will-change: opacity, transform` on the rising panels is a trap.** Tried and reverted.
+Chromium's main-thread trace improves a lot (style recalc over the Ocean rise 766 ms → 260 ms,
+worst pass 11.5 ms → 3.2 ms) because each panel gets its own layer — but six full-size layers
+carrying Ocean's gradients and Glass's frost must then be re-rastered, and the cost simply
+moves to raster where the main-thread trace cannot see it. **Judge the rise by frames ÷ ms,
+never by the trace alone.** There is a standing warning comment at the rule in `styles.css`.
+
+**3. The refresh sample could poison a whole session (FIXED).** `sampleHz` took the MEDIAN of
+40 gaps, once, 3 s after boot. A frame gap can only run LONGER than the true period — nothing
+beats vsync — so busy work inflates gaps and nothing deflates them, and the median of a busy
+sample is simply wrong. One reload with a profiler attached pinned a 244 Hz display at **34 Hz**,
+after which every `dropped` verdict was judged against a 29 ms budget instead of 4.1 ms —
+silently wrong, and in the forgiving direction. Now: the **20th percentile**, sampled at 3 s /
+12 s / 40 s, and the period is only ever revised DOWN. `__frames.resample()` forces a reading.
+**Check the `@N Hz` in any line before trusting its percentage.**
+
+**4. An interrupted rise mislabelled the next one (FIXED).** A change landing during the lift
+starts a fresh cover while the old whole-cover window is still open. `frameDetail` was only set
+when that window opened, so the new rise wore the old skin's name — an interrupted Ocean rise
+was followed by a 704 ms line (Press's length) still reading `skin=ocean`. The detail is now
+rebuilt for every new cover. Note the two `appearance-lift` windows still overlap by design;
+read them as "the rise that was abandoned" then "the rise that replaced it".
+
+**5. Measurement caveat — this machine could not give a clean frame number.** With node, vite
+and a CDP session competing for the same CPU/GPU, the same switch measured anywhere from
+**36 to 236 fps** run to run. That variance dwarfs any optimisation, so no frame-based
+optimisation was accepted from this pass. For a trustworthy number: a freshly started app, its
+window in the foreground, no profiler attached, and check the `@N Hz` first.
+
+## Measuring like the live app (2026-09-16)
+
+The dev server is a poor stand-in for the installed app when the question is GRAPHICS. Three
+differences, worst first:
+
+1. **DevTools auto-opens in dev** and renders its own UI in the **same GPU process** as the
+   app. Every graphics number taken with it open includes DevTools painting itself. This was
+   the largest single distortion found.
+2. **Vite serves unbundled modules and injects CSS as many separate `<style>` tags.** Release
+   ships one minified bundle and one stylesheet, so style-recalc and script cost differ.
+3. **`frames.ts` runs a rAF loop** whenever a window is open, which holds the page in
+   continuous-render mode. Release has no such loop and can idle between frames.
+
+So there are three run modes:
+
+| command | bundle | DevTools | telemetry | use it for |
+|---|---|---|---|---|
+| `npm run dev:app` | vite dev | open | yes | normal work — logic, UI, HMR |
+| `npm run dev:perf` | vite dev | **shut** | yes | quick graphics checks |
+| `npm run dev:built` | **release-shaped** (`vite build`, minified, one stylesheet, served by `vite preview`) | **shut** | yes | **the honest graphics measurement** |
+
+`--built` builds with `VITE_PERF=1`, which is the only thing that keeps `frames.ts` / `perf.ts`
+/ `vinyl.ts` in a production bundle (`src/telemetry-on.ts`). A real release never sets it, and
+**`release:check` fails the release if `[perf] frames` appears in the shipped JS** — so the
+ruler can never ship by accident.
+
+## Benchmarking a scene — `scripts/bench.mjs`
+
+```
+npm run bench appearance -- --passes 3
+npm run bench appearance -- --passes 3 --skins ocean,press
+```
+
+A single frame reading from this machine means nothing: on 2026-09-16 the same skin switch
+measured **36 to 236 fps** run to run, with node, vite, a CDP session and an open DevTools all
+competing. So the runner **refuses to report** unless the machine is fit to measure on:
+
+- it re-samples the display refresh first (`__frames.resample()`), because a `dropped` figure
+  judged against a stale rate is silently wrong;
+- it **bails if DevTools is open**;
+- it samples idle throughput twice and **bails if they disagree by more than `--tolerance`**
+  (default 8%);
+- it runs every switch `--passes` times and reports the **median and the spread**, never one run.
+
+**Read `spread` before the median.** Over ~25% and the run is noise whatever the median says.
+It restores the skin you were on when it finishes.
+
+## Reading CPU and GPU load — `scripts/webview-profile.mjs --trace`
+
+`--trace` now prints **busy time per thread** before anything else, as MERGED INTERVALS, then
+one thread broken down by event name (`--thread=gpu | compositor | viz | renderer`).
+
+Two things it is built to stop you doing:
+
+- **Do not sum inclusive durations.** Trace events nest, so a parent contains its children and
+  summing counts the same microsecond repeatedly — that is how "UpdateLayoutTree 765 ms"
+  appeared inside a 2.4 s window whose thread was 88% idle. The per-thread table merges
+  intervals, so its percentages are real occupancy.
+- **Do not read the renderer alone.** The trace used to show only `CrRendererMain`. On an Ocean
+  skin switch the real picture is:
+
+  ```
+  CrGpuMain          1918 ms   86.9%     ← the GPU process, invisible before
+  CrRendererMain      652 ms   29.5%     ← the only thing --trace used to show
+  Compositor          153 ms    6.9%
+  VizCompositorThread  94 ms    4.2%
+  ```
+
+  At idle `CrGpuMain` barely registers, so that 86.9% is the switch's own cost. A change can
+  cut the page's work and still cost the user frames by pushing it onto raster — which only
+  the per-thread table shows. `GpuVSyncThread` blocks on vsync, so its % is waiting, not load.
+
 ## Heaviness sampler — `scripts/heaviness-sample.ps1`
 
 One line per running app (installed + dev) per sample: summed working set, the largest

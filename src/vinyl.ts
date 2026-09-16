@@ -16,11 +16,12 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { setting, onSettingsChange } from "./settings-store";
+import { TELEMETRY } from "./telemetry-on";
 
 // Dev-only telemetry (VINYL.md §Telemetry), gated on Vite's DEV flag like frames.ts: a
 // `[perf] vinyl snap …` line for every jump and one `[perf] vinyl song …` summary per song,
 // in the console and the dev log. `__vinyl.sample(ms)` returns the disc's error, row by row.
-const TEL = import.meta.env.DEV;
+const TEL = TELEMETRY; // dev, or a VITE_PERF=1 release-shaped build (telemetry-on.ts)
 const telLine = (line: string): void => {
   if (!TEL) return;
   console.info(line);

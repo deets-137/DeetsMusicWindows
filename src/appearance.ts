@@ -78,10 +78,16 @@ export function withAppearanceTransition(
   if (opts.by === "agent") root.dataset.bootBy = "agent"; // …unless an agent change is in it
   if (joining) return; // joins the cover already coming in
   window.clearTimeout(timer);
-  if (!endFrames) {
-    frameDetail = opts.by ? `${kind} by=${opts.by}` : kind;
-    endFrames = frames.begin("appearance", frameDetail);
-  }
+  // Name the skin that TIMES the lift: the incoming one on a skin change, else the one
+  // already on (a theme or surface change rises on the current skin's --boot-* tokens).
+  // Without it every line read "skin" and a slow switch could not be pinned on a skin.
+  // Set on EVERY new cover, not only the first: a change that lands during the lift starts
+  // a fresh cover while the old whole-cover window is still open, and keeping the old
+  // detail labelled the new rise with the old skin's name (an interrupted Ocean rise was
+  // followed by a 704 ms line — Press's length — still reading skin=ocean, 2026-09-16).
+  const liftSkin = opts.skin ?? root.dataset.skin ?? "?";
+  frameDetail = `${kind} skin=${liftSkin}${opts.by ? ` by=${opts.by}` : ""}`;
+  if (!endFrames) endFrames = frames.begin("appearance", frameDetail);
   phase = "veil";
   root.dataset.boot = "veil";
   timer = window.setTimeout(() => void swap(), tokenMs("--cover-in-dur") + 30);
@@ -115,7 +121,7 @@ async function swap(): Promise<void> {
   const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * Math.max(0, slots - 1);
   // The whole-cover line counts the opaque wait stage too (the recompose, fonts, resize);
   // this one is only the rise the user sees.
-  frames.during("appearance-lift", total, frameDetail);
+  frames.during("appearance-lift", total, `${frameDetail} slots=${slots}`);
   timer = window.setTimeout(() => {
     phase = null;
     if (root.dataset.boot === "lift") {

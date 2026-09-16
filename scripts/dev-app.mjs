@@ -44,16 +44,67 @@ const windows = conf.app.windows.map((w) => ({
   ...(w.label === "main" ? { additionalBrowserArgs: `${w.additionalBrowserArgs ?? ""} --remote-debugging-port=${cdp}`.trim() } : {}),
 }));
 
+// --perf  : hold DevTools shut (it renders in the same GPU process and distorts every
+//           graphics measurement). Everything else is the normal dev server.
+// --built : also serve a RELEASE-SHAPED bundle — `vite build` with VITE_PERF=1, served by
+//           `vite preview` — so the page is minified, bundled and on one stylesheet like the
+//           installed app, while the telemetry stays compiled in. This is the only honest way
+//           to measure what the live app does. DEBUGGING.md §Measuring like the live app.
+const BUILT = process.argv.includes("--built");
+const PERF = BUILT || process.argv.includes("--perf");
+const passThrough = process.argv.slice(2).filter((a) => a !== "--perf" && a !== "--built");
+
+let preview;
+if (BUILT) {
+  console.log(`[dev:app] --built: building a release-shaped bundle with the telemetry kept…`);
+  const build = spawn(process.execPath, [join(root, "node_modules", "vite", "bin", "vite.js"), "build"], {
+    cwd: root,
+    stdio: "inherit",
+    env: { ...process.env, VITE_PERF: "1" },
+  });
+  const code = await new Promise((r) => build.on("exit", r));
+  if (code) process.exit(code);
+  preview = spawn(
+    process.execPath,
+    [join(root, "node_modules", "vite", "bin", "vite.js"), "preview", "--port", String(port), "--strictPort"],
+    { cwd: root, stdio: "inherit", env: { ...process.env } },
+  );
+  await new Promise((r) => setTimeout(r, 1200)); // let preview bind before tauri loads the URL
+}
+
 const gen = join(root, "src-tauri", ".tauri.dev.gen.json");
-writeFileSync(gen, JSON.stringify({ ...base, app: { windows }, build: { devUrl: `http://localhost:${port}` } }, null, 2));
-console.log(`[dev:app] vite on ${port} · webview CDP on ${cdp} · identifier ${base.identifier}`);
+writeFileSync(
+  gen,
+  JSON.stringify(
+    {
+      ...base,
+      app: { windows },
+      // With --built the bundle is already made and served by preview, so tauri must NOT start
+      // the dev server on top of it.
+      build: { devUrl: `http://localhost:${port}`, ...(BUILT ? { beforeDevCommand: "" } : {}) },
+    },
+    null,
+    2,
+  ),
+);
+console.log(
+  `[dev:app] ${BUILT ? "release-shaped bundle (vite preview)" : "vite"} on ${port} · webview CDP on ${cdp} · identifier ${base.identifier}` +
+    (PERF ? " · DevTools held shut (--perf)" : ""),
+);
 
 // Run the local tauri CLI directly (no npx/shell) so a space in the path — this user
 // dir has one — can't split an argument; the config is passed relative to the repo root.
 const tauriBin = join(root, "node_modules", "@tauri-apps", "cli", "tauri.js");
 const child = spawn(
   process.execPath,
-  [tauriBin, "dev", "--config", "src-tauri/.tauri.dev.gen.json", ...process.argv.slice(2)],
-  { cwd: root, stdio: "inherit", env: { ...process.env, VITE_PORT: String(port) } },
+  [tauriBin, "dev", "--config", "src-tauri/.tauri.dev.gen.json", ...passThrough],
+  {
+    cwd: root,
+    stdio: "inherit",
+    env: { ...process.env, VITE_PORT: String(port), ...(PERF ? { DEETS_NO_DEVTOOLS: "1" } : {}) },
+  },
 );
-child.on("exit", (code) => process.exit(code ?? 0));
+child.on("exit", (code) => {
+  preview?.kill(); // the preview server outlives tauri otherwise and holds the port
+  process.exit(code ?? 0);
+});

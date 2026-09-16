@@ -206,10 +206,16 @@ pub fn run() {
                 });
             }
 
-            // Auto-open devtools in dev so the webview console is visible.
+            // Auto-open devtools in dev so the webview console is visible. DEETS_NO_DEVTOOLS=1
+            // holds it shut: DevTools renders its own UI in the SAME GPU process as the app, so
+            // any graphics measurement taken with it open is measuring DevTools too — it was the
+            // largest single distortion in the 2026-09-16 pass. `npm run dev:app -- --perf` sets
+            // it (DEBUGGING.md §Measuring like the live app).
             #[cfg(debug_assertions)]
-            if let Some(win) = app.get_webview_window("main") {
-                win.open_devtools();
+            if std::env::var("DEETS_NO_DEVTOOLS").as_deref() != Ok("1") {
+                if let Some(win) = app.get_webview_window("main") {
+                    win.open_devtools();
+                }
             }
             Ok(())
         })

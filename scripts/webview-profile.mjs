@@ -5,9 +5,13 @@
 // Native buckets are Chromium's own: "(program)" = the engine's work outside JS (style,
 // layout, paint, image handling…), "(garbage collector)", "(idle)".
 //
-// `--trace` swaps the JS sampler for Chromium's timeline trace: the engine's own events
-// (Layout, UpdateLayoutTree, Paint, HitTest, ImageDecode, EventDispatch, FunctionCall…)
-// summed by name with count and max — the view that says what "(program)" was doing.
+// `--trace` swaps the JS sampler for Chromium's timeline trace. It prints TWO things:
+//   1. busy time per thread — the GPU process, the page, the compositor — as merged
+//      intervals, so it is real occupancy and never double counts a parent and its child.
+//   2. one thread broken down by event name (inclusive time), the renderer's main thread
+//      by default; `--thread=gpu | compositor | viz | renderer` picks another.
+// Read (1) FIRST. A change can cut the page's own work and still cost the user frames by
+// pushing the work onto raster in the GPU process, which only (1) shows (2026-09-16).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +23,7 @@ const fail = (msg, code = 2) => {
 };
 const argv = process.argv.slice(2);
 const TRACE = argv.includes("--trace");
-const expr = argv.filter((a) => a !== "--trace").join(" ");
+const expr = argv.filter((a) => !a.startsWith("--")).join(" "); // flags never reach the page
 if (!expr) fail('usage: node scripts/webview-profile.mjs "<expression>"');
 
 let gen;
@@ -80,8 +84,14 @@ if (TRACE) {
     };
     ws.addEventListener("message", onMsg);
   });
+  // "viz", "gpu", "cc" and "benchmark" bring in the GPU process and the compositor. Without
+  // them a trace shows only the renderer's main thread, which is how a change that moved work
+  // onto raster once read as a 3x win while the frames the user got collapsed (2026-09-16).
   await call("Tracing.start", {
-    traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "blink.user_timing"], excludedCategories: ["*"] },
+    traceConfig: {
+      includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "blink.user_timing", "viz", "gpu", "cc", "benchmark"],
+      excludedCategories: ["*"],
+    },
     transferMode: "ReportEvents",
   });
   const t0 = Date.now();
@@ -91,30 +101,61 @@ if (TRACE) {
   await done;
   ws.close();
   report(evaluated);
-  // Complete events (ph X) carry `dur` in µs; sum by name. Only the renderer's main thread
-  // matters here — pick the thread that hosts the most events with a duration.
-  // The page's main thread is the one that does the rendering work: pick the pid/tid
-  // with the most time in Layout / style / paint / script events.
-  const RENDER = new Set(["Layout", "UpdateLayoutTree", "Paint", "FunctionCall", "EventDispatch", "HitTest", "PrePaint", "UpdateLayerTree"]);
-  const byThread = new Map();
-  for (const e of events) if (e.ph === "X" && e.dur && RENDER.has(e.name)) { const k = `${e.pid}/${e.tid}`; byThread.set(k, (byThread.get(k) ?? 0) + e.dur); }
-  const mainKey = [...byThread].sort((a, b) => b[1] - a[1])[0]?.[0];
+  // Thread names arrive as metadata events (ph M).
+  const names = new Map();
+  for (const e of events) if (e.ph === "M" && e.name === "thread_name") names.set(`${e.pid}/${e.tid}`, e.args?.name ?? "?");
+
+  // BUSY time per thread = the UNION of its event intervals, not the sum. Trace durations are
+  // inclusive, so a parent contains its children and summing counts the same microsecond many
+  // times over — that is how "UpdateLayoutTree 765 ms" appeared inside a 2.4 s window whose
+  // thread was 88% idle. Merging intervals gives the real occupancy, which is what a
+  // utilisation figure has to mean.
+  const spans = new Map();
+  for (const e of events) {
+    if (e.ph !== "X" || !e.dur) continue;
+    const k = `${e.pid}/${e.tid}`;
+    (spans.get(k) ?? spans.set(k, []).get(k)).push([e.ts, e.ts + e.dur]);
+  }
+  const busyOf = (list) => {
+    list.sort((a, b) => a[0] - b[0]);
+    let total = 0, s = -1, e = -1;
+    for (const [a, b] of list) {
+      if (a > e) { if (s >= 0) total += e - s; s = a; e = b; } else if (b > e) e = b;
+    }
+    return s >= 0 ? total + (e - s) : 0;
+  };
+  const busy = [...spans].map(([k, list]) => [k, busyOf(list), list.length]).sort((a, b) => b[1] - a[1]);
+  const ms = (us) => (us / 1000).toFixed(1).padStart(8);
+  const pick = (argv.find((a) => a.startsWith("--thread=")) ?? "").slice(9).toLowerCase();
+
+  console.log(`\nwall ${wall} ms · ${events.length} trace events\n`);
+  console.log("busy time per thread (merged intervals — real occupancy, no double counting):");
+  console.log("  CrGpuMain = the GPU process. CrRendererMain = the page. Compositor/Viz = frame plumbing.");
+  console.log("  GpuVSyncThread blocks on vsync, so its % is waiting, not load — ignore it.");
+  for (const [k, us, n] of busy.slice(0, 10)) {
+    const util = ((us / 1000 / wall) * 100).toFixed(1).padStart(5);
+    console.log(`${ms(us)} ms  ${util}%  ×${String(n).padStart(6)}  ${(names.get(k) ?? "?").padEnd(26)} ${k}`);
+  }
+
+  // Break one thread down by event name. Default: the busiest RENDERER thread (the page's
+  // own main thread), since that is what most questions are about; --thread=gpu etc. to move.
+  const isRenderer = (k) => /CrRendererMain/.test(names.get(k) ?? "");
+  const target = pick
+    ? busy.find(([k]) => (names.get(k) ?? "").toLowerCase().includes(pick))?.[0]
+    : (busy.find(([k]) => isRenderer(k)) ?? busy[0])?.[0];
+  if (!target) { console.log("\nno thread matched --thread"); process.exit(0); }
   const agg = new Map();
   for (const e of events) {
-    if (e.ph !== "X" || !e.dur || `${e.pid}/${e.tid}` !== mainKey) continue;
+    if (e.ph !== "X" || !e.dur || `${e.pid}/${e.tid}` !== target) continue;
     const a = agg.get(e.name) ?? { us: 0, n: 0, max: 0 };
-    a.us += e.dur;
-    a.n += 1;
+    a.us += e.dur; a.n += 1;
     if (e.dur > a.max) a.max = e.dur;
     agg.set(e.name, a);
   }
-  console.log(`
-wall ${wall} ms · ${events.length} trace events · main thread ${mainKey}
-`);
-  console.log("timeline events on the main thread (inclusive time, so parents contain children):");
-  const ms = (us) => (us / 1000).toFixed(1).padStart(8);
-  for (const [name, a] of [...agg].sort((x, y) => y[1].us - x[1].us).slice(0, 25))
+  console.log(`\nevents on ${names.get(target) ?? "?"} ${target} (INCLUSIVE — parents contain children):`);
+  for (const [name, a] of [...agg].sort((x, y) => y[1].us - x[1].us).slice(0, 20))
     console.log(`${ms(a.us)} ms  ×${String(a.n).padStart(5)}  max ${ms(a.max)} ms  ${name}`);
+  console.log(`\n(--thread=gpu | compositor | viz | renderer to break down another one)`);
   process.exit(0);
 }
 

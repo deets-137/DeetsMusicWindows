@@ -16,8 +16,10 @@
 //  3. The pin and the updater: the product name, exe name and per-user install are unchanged
 //     (a pinned taskbar button points at them), the updater public key is set, and the
 //     installer has its signature.
+//  4. Authenticode: a valid, timestamped publisher signature.
+//  5. No dev telemetry in the shipped JS (a stray VITE_PERF would ship a rAF loop).
 import { execFileSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -98,8 +100,21 @@ if (signed.length) {
   }
 }
 
+// ── 5. No dev telemetry in the shipped bundle ────────────────────────────────
+// The dev telemetry (frames.ts, perf.ts, vinyl.ts) must never ship. It is gated on
+// `TELEMETRY` (src/telemetry-on.ts), which a VITE_PERF=1 build turns ON so a release-shaped
+// bundle can be measured — so a stray VITE_PERF in the release environment would quietly put
+// a rAF loop and a log-writing observer into the installed app. Catch it at the bundle.
+{
+  const assets = join(root, "dist", "assets");
+  const js = existsSync(assets) ? readdirSync(assets).filter((f) => f.endsWith(".js")) : [];
+  const leaked = js.filter((f) => readFileSync(join(assets, f), "utf8").includes("[perf] frames"));
+  if (!js.length) failures.push("dist/assets has no JS — build before release-check");
+  else if (leaked.length) failures.push(`dev telemetry shipped in ${leaked.join(", ")} — VITE_PERF was set for this build`);
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; version ${versions["package.json"]} in all four files`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files`);

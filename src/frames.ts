@@ -4,7 +4,7 @@
 // A "window" is one interaction we want buttery: a scroll, a scrub drag, a pane slide,
 // a folder open, a queue drag, a menu open, an appearance switch. While at least one
 // window is open, a requestAnimationFrame loop measures the gap between consecutive
-// frames. Against the display's own refresh period (sampled at startup), a gap over
+// frames. Against the display's own refresh period (sampled repeatedly; see sampleHz), a gap over
 // 1.5 periods is a DROPPED frame. Each window closes with one summary line:
 //
 //   [perf] frames scroll lib-view 812 ms · 117 frames @144 Hz · dropped 3 (2.6%) ·
@@ -24,7 +24,7 @@
 // Scroll windows open themselves (a capturing scroll listener) and close 150 ms after
 // the last scroll event. Everything else is begun/ended by the gesture's own code via
 // `begin()` (returns the closer) or `during()` (a fixed-length window for a CSS
-// transition). `__frames` on the console: `hz`, `begin(name)` → closer, and
+// transition). `__frames` on the console: `hz`, `resample()`, `begin(name)` → closer, and
 // `sample(ms)` (a window of the given length whose summary resolves the promise — the
 // hook for `scripts/webview-eval.mjs`).
 //
@@ -34,8 +34,9 @@
 // Rendering → Frame Rendering Stats.
 
 import { invoke } from "@tauri-apps/api/core";
+import { TELEMETRY } from "./telemetry-on";
 
-const ON = import.meta.env.DEV;
+const ON = TELEMETRY; // dev, or a VITE_PERF=1 release-shaped build (telemetry-on.ts)
 const SCROLL_IDLE_MS = 150; // a scroll window closes this long after the last scroll event
 const DROP_FACTOR = 1.5; // a frame gap over this × the period counts as dropped
 const INPUT_SHOW_FRAMES = 2; // an input→paint over this many periods is logged
@@ -55,7 +56,8 @@ interface Win {
   resolve?: (line: string) => void;
 }
 
-let period = 1000 / 60; // refreshed by the startup sample
+let period = 1000 / 60; // refreshed by the startup samples (sampleHz)
+let sampled = false;   // has any valid refresh sample landed yet
 let hz = 60;
 const open = new Set<Win>();
 let raf = 0;
@@ -163,8 +165,18 @@ function observeInputs(): void {
   }
 }
 
-// The display's refresh period: the median gap over a short idle rAF run. Sampled
-// once, after the launch work has settled, so a 144 Hz panel is not read as 60.
+/**
+ * Sample the display's refresh period. A frame gap can only ever be LONGER than the true
+ * period — nothing renders faster than vsync — so busy work inflates gaps and nothing
+ * deflates them. The truth therefore sits at the FAST end of the sample, not the middle.
+ *
+ * The median used to be taken here, once, 3 s after boot. One busy moment (a reload with a
+ * profiler attached, a cold library paint) then pinned a 238 Hz display at 34 Hz for the
+ * whole session, and every `dropped` verdict after it was judged against a 29 ms budget
+ * instead of 4.2 ms — silently wrong, in the forgiving direction (2026-09-16). So: take a
+ * low percentile, sample more than once, and only ever revise the period DOWN.
+ */
+const HZ_AT = [3000, 12000, 40000]; // when to sample: after launch, after settle, once warm
 function sampleHz(): void {
   const gaps: number[] = [];
   let last = 0;
@@ -173,10 +185,15 @@ function sampleHz(): void {
     last = now;
     if (gaps.length < HZ_SAMPLES) return void requestAnimationFrame(step);
     gaps.sort((a, b) => a - b);
-    const med = gaps[Math.floor(gaps.length / 2)];
-    if (med > 2 && med < 100) {
-      period = med;
-      hz = Math.round(1000 / med);
+    // The 20th percentile, not the median: fast enough to shrug off a busy stretch, not so
+    // fast that one freak sub-period gap (timer jitter) becomes the answer.
+    const p20 = gaps[Math.floor(gaps.length * 0.2)];
+    // The first valid sample is taken as-is (a display slower than the 60 Hz default is
+    // real); after that only a FASTER reading can win, since gaps never run short.
+    if (p20 > 2 && p20 < 100 && (!sampled || p20 < period)) {
+      sampled = true;
+      period = p20;
+      hz = Math.round(1000 / p20);
     }
     const line = `[perf] display ${hz} Hz (period ${period.toFixed(2)} ms)`;
     console.info(line);
@@ -191,12 +208,13 @@ export function init(): void {
   document.addEventListener("scroll", onScroll, { capture: true, passive: true });
   observeLongTasks();
   observeInputs();
-  window.setTimeout(sampleHz, 3000); // after warmPlayer (1.5 s) and the launch renders
+  HZ_AT.forEach((t) => window.setTimeout(sampleHz, t)); // one busy sample can no longer pin the rate
   (window as any).__frames = {
     get hz() {
       return hz;
     },
     begin,
+    resample: sampleHz, // force a fresh refresh-rate reading from the console
     sample: (ms = 1000, name = "sample"): Promise<string> =>
       new Promise((resolve) => {
         const w = openWin(name);
