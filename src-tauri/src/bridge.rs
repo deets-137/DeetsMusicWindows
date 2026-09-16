@@ -899,7 +899,8 @@ async fn handle(app: AppHandle, mut req: Request) {
                 .unwrap_or_else(|e| Err(e.to_string()));
             match res {
                 Ok(v) => json(req, 200, v, origin),
-                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+                // A setting blocks it (403, like the other gates); anything else is the request (400).
+                Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e }), origin),
             }
         }
         (Method::Post, "/songs") => {
@@ -913,7 +914,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                 .unwrap_or_else(|e| Err(e.to_string()));
             match res {
                 Ok(v) => json(req, 200, v, origin),
-                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+                Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e }), origin),
             }
         }
         (Method::Get, "/history") if origin.is_none() && !settings.agent_history => json(

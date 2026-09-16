@@ -629,7 +629,9 @@ fn op_songs(c: &Client, body: Value) -> Result<(String, Value), Failure> {
             let album = s(t, "album");
             let album = if album.is_empty() { String::new() } else { format!(" · {album}") };
             let plays = match (t.get("starts").and_then(Value::as_i64), t.get("skips").and_then(Value::as_i64)) {
-                (Some(p), Some(k)) if p > 0 || k > 0 => format!("  [{p} plays, {k} skips]"),
+                (Some(p), Some(k)) if p > 0 || k > 0 => {
+                    format!("  [{p} play{}, {k} skip{}]", if p == 1 { "" } else { "s" }, if k == 1 { "" } else { "s" })
+                }
                 _ => String::new(),
             };
             format!("{}  {} — {}{album}{len}{plays}", s(t, "id"), s(t, "title"), s(t, "artist"))

@@ -41,7 +41,8 @@ const CELL_MAX: usize = 1000;
 
 const TABLES: &[&str] = &["songs", "playlists", "playlist_songs"];
 const HISTORY_TABLES: &[&str] = &["plays", "play_counts"];
-const HISTORY_OFF: &str = "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections.";
+/// The one refusal that is a setting, not a bad query: the bridge answers it 403 (CLI exit 6).
+pub const HISTORY_OFF: &str = "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections.";
 
 /// Functions a query may call. Everything else is refused (guard 4). No `load_extension`,
 /// nothing that makes large blobs, nothing that reads files or the clock of the connection.
