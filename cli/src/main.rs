@@ -72,6 +72,11 @@ enum Cmd {
     },
     /// Your playlists (Apple mirror + local).
     Playlists,
+    /// The songs inside an album or playlist, numbered. A read: playback is untouched.
+    Tracks {
+        /// album:… or playlist:…
+        id: String,
+    },
     /// Play an id (song:… album:… playlist:… station:…), or a free-text song query.
     Play {
         target: String,
@@ -481,6 +486,20 @@ fn op_playlists(c: &Client) -> Result<(String, Value), Failure> {
     Ok((numbered(arr(&v, "playlists").iter().map(|p| playlist_line(p)).collect()), v))
 }
 
+/// The songs inside an album or playlist, numbered like `playlist_show` (2026-09-16). A read:
+/// it never touches the queue, so an agent can look before it plays or adds.
+fn op_tracks(c: &Client, id: &str) -> Result<(String, Value), Failure> {
+    if !is_id(id) {
+        return Err(not_an_id(id));
+    }
+    let v = c.post("/tracks", json!({ "id": id }))?;
+    let tracks = arr(&v, "tracks");
+    if tracks.is_empty() {
+        return Ok(("(no songs)".into(), v));
+    }
+    Ok((numbered(tracks.iter().map(|t| track_line(t)).collect()), v))
+}
+
 fn is_id(t: &str) -> bool {
     ["song:", "album:", "playlist:", "station:"].iter().any(|p| t.starts_with(p))
 }
@@ -787,9 +806,10 @@ fn tools(small: bool) -> Value {
               "action": { "type": "string", "enum": ["play", "pause", "next", "previous", "shuffle", "repeat", "mute", "seek", "volume", "clear_queue"] },
               "value": { "type": "number", "description": "Percent, for seek and volume only." },
               "mode": { "type": "string", "description": "For repeat: off | all | one (omit to cycle). For shuffle: on | off (omit to press the button)." } } } }));
-    list.push(json!({ "name": "list", "description": "List the queue (now playing + numbered Up Next), the play history, or the user's playlists (with ids).",
+    list.push(json!({ "name": "list", "description": "List the queue (now playing + numbered Up Next), the play history, or the user's playlists (with ids). what=album with an id reads the songs inside an album or playlist, numbered — use it to see a tracklist (and who features on it) without playing or adding anything.",
           "inputSchema": { "type": "object", "required": ["what"], "additionalProperties": false, "properties": {
-              "what": { "type": "string", "enum": ["queue", "history", "playlists"] } } } }));
+              "what": { "type": "string", "enum": ["queue", "history", "playlists", "album"] },
+              "id": { "type": "string", "description": "For what=album only: album:… or playlist:…" } } } }));
     list.push(json!({ "name": "library", "description": "Add a song or album to the user's Apple Music library, or favorite / unfavorite a song. The first time, DeetsMusic may ask the user to allow it; then tell them to answer in DeetsMusic and try again.",
           "inputSchema": { "type": "object", "required": ["action", "id"], "additionalProperties": false, "properties": {
               "action": { "type": "string", "enum": ["add", "favorite", "unfavorite"] },
@@ -898,6 +918,7 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
         "list" => match str_arg("what").as_str() {
             "history" => op_history(c, 20)?.0,
             "playlists" => op_playlists(c)?.0,
+            "album" => op_tracks(c, &str_arg("id"))?.0,
             _ => op_queue_list(c)?.0,
         },
         "library" => op_library(c, &str_arg("action"), &str_arg("id"))?.0,
@@ -1036,6 +1057,7 @@ fn main() {
             op_stations(&c, &g)
         }
         Cmd::Playlists => op_playlists(&c),
+        Cmd::Tracks { id } => op_tracks(&c, &id),
         Cmd::Play { target, keep } => op_play(&c, &target, keep),
         Cmd::Queue { target: None, .. } => op_queue_list(&c),
         Cmd::Queue { target: Some(t), rows, later, at } => match (t.as_str(), rows.as_slice()) {

@@ -380,6 +380,9 @@
   --dur-med:  0.18s;
   --dur-spin: 0.7s;
   --ease-ui:  ease;
+  --sh-cross-dur: 0.42s;            /* Shuffle's press run: uncross → parallel → cross */
+  --sh-cross-gap: 3px;              /* how far the two wires part, in the icon's 24-unit box */
+  --rp-loop-dur:  0.5s;             /* Repeat's one full turn, on the press that lands on "one" */
   --hover-lift: none;               /* interactive rows/tiles rise on hover; a skin opts in */
   --drag-lift:  scale(1.02);        /* lift of a dragged row's copy (row-drag.ts) */
   --drag-ghost-opacity: 0.85;       /* the copy stays see-through so the list under it reads */

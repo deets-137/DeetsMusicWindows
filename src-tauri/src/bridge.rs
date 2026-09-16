@@ -650,7 +650,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     // extension (an Origin) is a different feature and is never gated by it.
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
-        "/playlist", "/library", "/folder", "/update", "/settings",
+        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -845,6 +845,22 @@ async fn handle(app: AppHandle, mut req: Request) {
                 }
                 Ok(Target::Station(s)) if kind == "play" => ask(&app, "play-station", serde_json::json!({ "station": s })).await,
                 Ok(Target::Station(_)) => Err("unknown: a station can't be queued, only played".into()),
+                Err(e) => Err(e),
+            };
+            agent_json(req, res, origin)
+        }
+        // Read the songs inside a collection without touching playback (AGENT.md §3). Until
+        // this existed an agent could only see into an album by pouring it into a playlist,
+        // which made a write out of a read — and left the user a playlist to delete
+        // (2026-09-16). Same resolver as /play, so it takes song: album: playlist: alike.
+        (Method::Post, "/tracks") => {
+            let r: TracksReq = match serde_json::from_str(&body) {
+                Ok(r) => r,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            let res = match resolve_target(&app, r).await {
+                Ok(Target::Tracks(tracks)) => Ok(serde_json::json!({ "tracks": tracks })),
+                Ok(Target::Station(_)) => Err("unknown: a station has no fixed list of songs".to_string()),
                 Err(e) => Err(e),
             };
             agent_json(req, res, origin)

@@ -71,6 +71,7 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next) → the snapshot after |
 | `POST /play` | `{id}` \| `{term}` \| `{track}` \| `{tracks:[…]}`, `keepQueue?` → `{ok, tracks}` or `{ok, station}` |
 | `POST /queue` | same + `{mode: "next" \| "later"}` or `{at: N}` (row of Up Next, 1 = top) → `{ok, tracks}` (a station → `400`) |
+| `POST /tracks` | same body as `/play` → `{tracks:[Track…]}`. A **read**: it resolves the id and hands back the songs without touching playback. Use it to see inside an album or playlist (a station → `400`, it has no fixed list). Added 2026-09-16, so reading a tracklist no longer means writing one to a playlist first. |
 | `GET /queue` | `{current, upcoming:[Track…], history:[Track…]}` |
 | `POST /queue/edit` | `{action: remove \| move \| jump, index, to?}` (1-based rows) → the fresh `GET /queue` shape |
 | `POST /library` | `{action: add \| favorite \| unfavorite, id}` (`song:` · `album:` · `current`) → `{ok, message}` or `{ok, pending: "user", message}` |
@@ -154,7 +155,7 @@ subset a tool server needs, no SDK. Tools:
 | `play` | `id` (+ `keep_queue` full) | both | rejects non-ids with "search first" |
 | `queue` | `id`, `position: next\|later` (full: also a row number) | both | |
 | `control` | `action: play\|pause\|next\|previous\|shuffle\|repeat\|mute\|seek\|volume\|clear_queue`, `value?` (percent), `mode?` (repeat: off / all / one, else cycle; shuffle: on / off, else the button) | both | |
-| `list` | `what: queue\|history\|playlists` | both | playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]` |
+| `list` | `what: queue\|history\|playlists\|album`, `id?` | both | playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]`. `what=album` + an `album:` / `playlist:` id prints the numbered tracklist (`POST /tracks`); CLI: `deetsmusic tracks <id>` |
 | `library` | `action: add\|favorite\|unfavorite`, `id` (`current` allowed) | both | consent rules, §5 |
 | `playlist_add` | `playlist`, `id` (`current` allowed) | both | local or your own Apple playlist |
 | `update` | `action: status\|check\|install\|rollback` (full: `mode`, `skip`), `value?` | both | install/rollback end in the app's Restart question |
@@ -287,11 +288,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - A choice takes its pill label or its store value, any case: `Always`, `always`. `sunShift`
   takes `+15 min`, `15`, `-15` (−60…60 in 15-minute steps, the card's menu).
 - A toggle takes `on` / `off` (also `true` / `false`, `yes` / `no`).
-- The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
 - The **Sleep** section (2026-09-15, NEXT-VERSION §17): `sleepSchedule` (Off | Sunset | At a
   time), `sleepAt` (HH:MM in 15-minute steps, any hour), `sleepWind` (Off | 1 | 2 | 5 | 10 | 15 |
   30 min). These are the schedule and the wind-down; a running timer is set in the app's own
   panel and has no agent verb yet.
+- The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
   `pressVinylSpeed` (33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set
   under another skin is stored, and the reply says it shows while Press is the skin.
