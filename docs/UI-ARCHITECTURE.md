@@ -645,6 +645,12 @@ as before. Design record + measurements: [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIR
   re-measures on the next frame (a `MutationObserver` on `<html>`'s `data-skin` /
   `data-theme` / `data-surface` + a `ResizeObserver` on the view) and restores the place by
   **row + fraction**, so the same first row stays visible when 46 px rows become 49 px.
+- **Inside the head block the anchor is px, not a row (2026-09-15).** A row anchor reads as
+  "row 0" for every scroll position above the first row, so the restore set `scrollTop` to
+  the head's new height and scrolled the hero, the Play / Shuffle row and the shelves out of
+  view — a skin switch at the top of a card jumped 0 → 47 px. `prime()` now keeps the px
+  offset into the head (clamped to its new height) whenever the scroll was inside it, and it
+  also runs when only `heroH` changed, not just the pitch or the column count.
 - **Edge patch:** a pass removes rows that left the range and inserts the missing edge as
   one HTML string. Visible nodes are never re-created — hover, `is-context`, loaded covers
   survive, and an `<img>` is never reused for another item. A plain scroll frame renders

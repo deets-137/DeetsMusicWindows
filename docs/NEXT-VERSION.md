@@ -601,13 +601,15 @@ song · end of Up Next), what it does at the end (pause vs a fade over 10 s via 
 and the visible countdown (a toast at 1 min, the remaining time in the tray tooltip). No Apple
 calls. Not designed.
 
-## 18. Surface open sizes + the NP record jitter — DECIDED 2026-09-15, not built
+## 18. Surface open sizes + the NP record jitter — BUILT + SHIPPED in 0.6.2, 2026-09-15
 
 Each view (Mini, NP, Midi, Max) opens at a size set in Settings › Window, with a `W × H`
-menu and *Set current*. NP defaults to 520 × 560 and never flips surface on a resize. The
-Press record jitter in a small NP is traced and fixed at its cause in the same pass. The full
-build spec (store keys, `surface.ts` changes, rows, agent kind, jitter checks, desk test) is
-[FUTURE-SETTINGS.md §8a](FUTURE-SETTINGS.md).
+menu and *Set current*. Every view has a floor, and that floor is its default: Mini 385 × 550,
+NP 405 × 675, Midi 495 × 670, Max 1100 × 820. NP never flips surface on a resize. The record
+jitter needed no CSS: NP's 404-px floor, plus the `61b1ae1` ResizeObserver fix, settled it.
+Two bugs turned up on the way — Play / Shuffle drew on an empty list, and a skin switch
+scrolled a card's head out of view. Commits `18de3a7` + `5a52852`; the whole record, with the
+shipped numbers, is [FUTURE-SETTINGS.md §8a](FUTURE-SETTINGS.md).
 
 ---
 

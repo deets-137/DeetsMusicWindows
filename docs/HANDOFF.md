@@ -145,8 +145,8 @@ library (§12–§17 header). Spotify (PROVIDERS.md) is parked: Spotify's dev-mo
 [RELEASE.md §6.9](RELEASE.md).** Signed 0.4.4-t1 and t2 were built and published to
 `deetsmusic-test`; t1 was installed by hand and updated to t2 by itself; all installed exes are
 Valid. `release-check` §4 no longer checks `target\release\DeetsMusic.exe` (Tauri writes the
-unsigned original back after bundling). **The installed app on this PC is now t2 on the TEST
-channel** — install the next real release by hand. Version files are back to 0.4.3.
+unsigned original back after bundling). (That test build is long gone: the PC has run real
+releases from the `deetsmusic` channel since 0.5.0.)
 Earlier notes: Identity validated, profile `deetsmusic` made (CN `Aditya
 Sundaram` = `bundle.publisher`, no change). Auth = app registration `Deets Release Signing`,
 secret in Credential Manager `DeetsMusicAzureSigning` (user chose this over `az login`, so a
@@ -480,6 +480,12 @@ get large).
 ---
 
 ## State of play
+
+**Live: 0.6.2** (2026-09-15, `deetsmusic` channel, install-tested). It added the per-view
+**open sizes** (Settings › Window: Mini 385 × 550, NP 405 × 675, Midi 495 × 670, Max
+1100 × 820, each a floor as well as a default; FUTURE-SETTINGS §8a), the **AirPlay speaker
+claim** on crate 0.3.0 (AIRPLAY.md §11 — one-directional: we write claims, we do not read
+them), and two scroll/render fixes in the card engine.
 
 ### Built ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.

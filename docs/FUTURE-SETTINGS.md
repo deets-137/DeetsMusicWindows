@@ -265,7 +265,11 @@ the chosen surface + each surface's last window size (`deets.surface` = `"mini"|
 active surface from size. A **Window / Layout** settings subsection would host the toggle +
 (advanced) the band editor.
 
-### 8a. Open sizes — BUILT 2026-09-15 (1A, 2C, 3 as proposed, 4B)
+### 8a. Open sizes — BUILT + SHIPPED in 0.6.2, 2026-09-15 (1A, 2C, 4B; the sizes are the
+user's desk numbers, not the proposal)
+
+> Commits: `18de3a7` (the build, with the two fixes it turned up), `5a52852` (0.6.2 and the
+> AirPlay crate bump). Published to the `deetsmusic` channel and install-tested by the user.
 
 **Terms.** A **surface button** is a row in the title menu's Surface flyout: *Mini | NP*,
 *Midi*, *Max* (`index.html`, `data-surface-choice`). A **view** is one of the four sized
@@ -286,22 +290,34 @@ shorter side, so a narrow window gives a small record with empty space above and
 2. **2C — one Settings row per view, with a size menu and "Set current".** The menu lists
    sizes as `W × H` in px (no Small / Medium / Large). *Set current* saves the window's size
    now as that view's open size.
-3. **Sizes as proposed.** The user tunes them later with *Set current*; their tuned values
-   then become the shipped defaults (a later one-line change to `DEFAULTS`).
+3. **Sizes: the user's, from the desk.** The proposal (NP 520 × 560, the old 360-px band) was
+   replaced during the session. Each view now has a **floor**, and that floor is also its
+   default. The user found NP's floor by hand: **at 404 px wide the Press record stops
+   jittering**, which is why that one number is not round.
 4. **4B — the jitter fix and the sizes are one build pass.** The fix is at the cause (below),
    not only a larger default.
 
 #### Defaults and menu sizes (logical px, the size `setSize` takes)
 
-| View | Key | Default | Menu sizes | Window minimum (`MIN_SIZES`) |
+| View | Key | Default = floor | Menu sizes | Floor (`MIN_SIZES`) |
 |---|---|---|---|---|
-| Mini | `sizeMini` | **360 × 560** | 340 × 560 · 360 × 560 · 360 × 700 | 340 × 560 (no change) |
-| NP | `sizePlayer` | **520 × 560** | 420 × 460 · 520 × 560 · 640 × 680 | **420 × 460** (was 340 × 420) |
-| Midi | `sizeMidi` | **480 × 864** | 420 × 760 · 480 × 864 · 560 × 900 | 340 × 560 (no change) |
-| Max | `sizeMax` | **1100 × 820** | 960 × 700 · 1100 × 820 · 1400 × 900 | 340 × 560 (no change) |
+| Mini | `sizeMini` | **385 × 550** | 385 × 550 · 420 × 620 · 455 × 700 | 385 × 550 |
+| NP | `sizePlayer` | **405 × 675** | 405 × 675 · 460 × 720 · 540 × 800 | **404 × 550** (the record's floor) |
+| Midi | `sizeMidi` | **495 × 670** | 495 × 670 · 540 × 780 · 600 × 900 | 495 × 670 |
+| Max | `sizeMax` | **1100 × 820** | 960 × 700 · 1100 × 820 · 1400 × 900 | 495 × 670 |
 
-Every menu size sits inside its view's band (Mini ≤ 365 wide; Midi 355–860; Max ≥ 780), so
-applying one cannot flip the surface. NP has its own band rule (see *NP and the band*).
+`tauri.conf.json` holds the first paint (495 × 670) and an absolute floor of 385 × 550.
+
+**The band moved with the floors.** `MINI_CEIL` is **460** (in below 455, out above 465): it
+sits between Mini's floor of 385 and Midi's of 495, so every surface only ever draws at or
+above its own floor. Midi·Max stays at 820 with 40 px of hysteresis.
+
+**One trap this created.** A 495-px floor for Midi puts the flip point (455) below anything
+the window can reach, so narrowing a window could never enter Mini again. While *Resize
+changes surface* is **on**, Midi and Max therefore take Mini's floor as their OS minimum
+(`flipFloor` in `surface.ts`), and the flip fires before the window gets that narrow; with
+the setting **off** they hold their true floor. `applyMinSize` keys its cache on the view
+*and* that setting, or a toggle would never reach the OS.
 
 #### Store
 
@@ -341,14 +357,16 @@ applying one cannot flip the surface. NP has its own band rule (see *NP and the 
   the view that shows, call `applySize(active)`. A menu pick then resizes the window at once.
   A *Set current* write is the same size, so it is a no-op resize.
 
-#### NP and the band (the one code conflict)
+#### NP and the band (the one code conflict) — built as recommended
 
 Today mini's band flips to midi above 365 px wide (`flipFor`, `MINI_CEIL + MINI_HYST`). A
 520 px NP would flip to Midi on the first drag of its edge (the 100 ms `applyingSize` guard
 only covers our own resize). **Rule for the build:** while the player view shows, a resize
 never changes the surface. In `flipFor`'s caller, skip the flip when `isPlayerView()`. NP is a
 floating player: there is no smaller surface to go to, and a wide NP is not a Midi. Mini's
-card view keeps today's band. (Recommended; the user can overrule at the desk test.)
+card view keeps the band. **Built, and kept at the desk test**: the ResizeObserver skips the
+flip while `isPlayerView()`. The widths named in this paragraph are the proposal's (365, 520);
+what shipped is in the table above — flip at 455/465, NP 405 × 675.
 
 #### Settings rows (Settings › Window)
 
@@ -390,30 +408,31 @@ List the kind and the four keys in AGENT.md §6. Wrap the resize in `withAppeara
 with `{ by: "agent" }` only if the size is for the view that shows (the same slower cover as
 the surface key).
 
-#### The jitter — find the cause, then fix it (same pass)
+#### The jitter — what it turned out to be (2026-09-15)
 
-Not confirmed yet. Reproduce first, in the dev app: skin Press, *Record player: Spin*, NP at
-360 × 600, a song playing. Then check these, in this order (VINYL.md §8 has the tools):
+**Settled without a CSS change.** Two things had already dealt with it before this build's
+own checks were needed:
 
-1. **Driver snaps.** `grep "\[perf\] vinyl snap"` in the dev log. Snaps that repeat while
-   playing steadily mean the driver (`sync` in `vinyl.ts`) is the cause, not the layout.
-   `__vinyl.sample(3000)`: steady play reads ±2 ms, rate 1.000.
-2. **A layout loop.** Sample `.np__art` `getBoundingClientRect()` and the `.vinyl` size every
-   50 ms with `scripts/webview-eval.mjs`. A size that changes while nothing else changes is a
-   loop. Suspects: the stage box (`styles.css:2137`: `flex: 1 1 auto; aspect-ratio: 1;
-   max-width: 100%` with `container-type: size`, so the width is capped and the height comes
-   from flex), and the two ResizeObservers in `now-playing-card.ts` (`fit` toggles
-   `np__bottom--stacked`; `placeBadge` on `.np__meta`). Count their calls with a temporary log.
-3. **The angle trace.** The 50 ms `transform` trace (VINYL.md §8). Steps that are not ~10° at
-   steady play mean frames or snaps. Steady steps with visible shake mean a half-pixel center.
-4. **A half-pixel center.** The disc is `calc(100cqmin - 2 * var(--vinyl-inset))`, centered
-   with `margin: auto`. When the box has a fractional width, the turn center sits on a half
-   pixel and the edge moves by a pixel as it turns. Fix: round the disc to whole px
-   (`round(down, calc(100cqmin - 2 * var(--vinyl-inset)), 2px)` — an even size keeps the
-   center on a whole pixel). The token stays in skin.css.
+1. `61b1ae1` (the same day, the parallel polish pass) fixed a **ResizeObserver loop** in the
+   Now Playing transport row: `fit()` read the live `column-gap`, which the stacked rule sets
+   to 0, so a width near the threshold flipped the row every frame. A 360-px NP sat at that
+   width.
+2. The user then found the floor by hand: **at 404 px wide the record is steady**, and NP's
+   floor is set there, so below it the record is never asked to draw.
 
-Fix what the checks find, and log the finding in VINYL.md §9 as round 5. The larger NP default
-does not replace the fix: a user can still drag NP down to its minimum.
+No `styles.css` change shipped, and the half-pixel-centre theory was never needed. If the
+shake returns above 404 px, these checks are still the right order (VINYL.md §8 has the tools):
+
+1. **Driver snaps** — `grep "\[perf\] vinyl snap"`; `__vinyl.sample(3000)` reads ±2 ms, rate
+   1.000 on steady play. Repeating snaps mean `sync` in `vinyl.ts`, not the layout.
+2. **A layout loop** — trace `.np__art` `getBoundingClientRect()` every 50 ms with
+   `scripts/webview-eval.mjs`. Suspects: the stage box (`flex: 1 1 auto; aspect-ratio: 1;
+   max-width: 100%` under `container-type: size`) and the two ResizeObservers in
+   `now-playing-card.ts` (`fit`, `placeBadge`).
+3. **The angle trace** — steady play steps ~10° per 50 ms. Steady steps under a visible shake
+   would mean a half-pixel centre; the fix would then be
+   `round(down, calc(100cqmin - 2 * var(--vinyl-inset)), 2px)` on `.vinyl`, token-side in
+   skin.css. Not needed so far.
 
 #### Docs to update in the build
 
