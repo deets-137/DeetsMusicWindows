@@ -60,6 +60,14 @@ front-end, Rust back-end).
   per cover change, `[perf] vinyl snap …` per jump and `[perf] vinyl song …` per song;
   `__vinyl.sample(ms)` returns the disc's error against the song. For what is on screen, trace the
   computed `transform` angle every 50 ms while clicking the card's own buttons. VINYL.md §8.
+- **Graphics work has its own rules (2026-09-16).** Measure on `npm run dev:built`, never the
+  plain dev server: DevTools auto-opens in dev and renders in the SAME GPU process, and vite
+  serves unbundled JS + many `<style>` tags. Judge a change by **frames ÷ ms**, never by the
+  main-thread trace alone — `will-change` on the rising panels cut style recalc 766→260 ms while
+  delivered frames fell 229→50 fps, because the cost moved to raster. `webview-profile --trace`
+  now prints **busy time per thread** (the GPU process included) as merged intervals; read that
+  before the per-event table. Check the `@N Hz` and `[perf] gpu` lines before trusting any
+  number. `--gpu=off|slow` pretends to be a weaker machine. DEBUGGING.md.
 - **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
   and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
   to read all of it: DEBUGGING.md §Reviewing the telemetry.
@@ -116,6 +124,9 @@ front-end, Rust back-end).
 npm install
 npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 window
 npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
+npm run dev:perf      # dev:app with DevTools held shut (it renders in the app's own GPU process)
+npm run dev:built     # release-shaped bundle + DevTools shut — the honest graphics measurement
+npm run bench appearance -- --passes 3   # repeatable switch benchmark; refuses to run on a noisy machine
 npm run release       # build + sign the installer (→ installers/; see docs/RELEASE.md §0)
 npm run release:publish   # after testing the install: put it on the update channel
 npx tsc --noEmit      # front-end typecheck

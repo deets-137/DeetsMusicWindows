@@ -685,6 +685,31 @@ them), and two scroll/render fixes in the card engine.
 
 ---
 
+## Measuring graphics (2026-09-16)
+
+`npm run dev:app` is a poor stand-in for the installed app when the question is draw cost.
+DevTools **auto-opens in dev and renders in the app's own GPU process**, and vite serves
+unbundled JS with many `<style>` tags. So:
+
+```
+npm run dev:perf                          # dev, DevTools held shut
+npm run dev:built                         # release-shaped bundle, DevTools shut  <- measure here
+npm run dev:built -- --gpu=off            # and pretend the machine has no GPU
+npm run bench appearance -- --passes 3    # repeatable; refuses to run on a noisy machine
+```
+
+Three rules learned the hard way, all in DEBUGGING.md:
+
+- **Judge by frames / ms, never the main-thread trace alone.** `will-change` on the rising
+  panels cut style recalc 766 -> 260 ms while delivered frames fell 229 -> 50 fps: the cost
+  moved to raster, where the main-thread view cannot see it.
+- **Check the `@N Hz` and `[perf] gpu` lines first.** A stale refresh sample once judged a
+  244 Hz display as 34 Hz, making every drop percentage wrong in the forgiving direction.
+- **One reading from this PC means nothing** — the same switch measured 36 to 236 fps run to
+  run. That is what `bench.mjs` and its noise gate are for.
+
+Where it is heading: FUTURE-SETTINGS.md §25, settings for the heaviest features.
+
 ## Known gotchas
 - **Registry writes from a Claude desktop session are not real (2026-09-13).** The Claude
   app is an MSIX package: every process it starts — its shells, and `npm run dev:app` run

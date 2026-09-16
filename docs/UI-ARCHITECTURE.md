@@ -78,6 +78,14 @@ scrollbar corner, and autofill match) and a few non-table roles every block maps
 
 ## 3. Skin tokens
 
+- **Transport motion:** `--sh-cross-dur` / `--sh-cross-gap` (Shuffle's press run: the two
+  arrows swing apart to parallel and re-cross) and `--rp-loop-dur` (Repeat's one full turn on
+  the press that lands on *one*). Motion is skin, so a skin can slow, quicken or flatten both
+  without touching a component. The "on" mode square FILLS (`--picked` + a `--title` border)
+  rather than only changing hue: `--np-accent` falls back to `--title`, which is the square's
+  own off colour, so a hue-only signal drew nothing in any skin that does not opt into
+  `--np-album-text` (NEXT-VERSION.md §14).
+
 ### Structure: a shared base + per-skin deltas
 `skin.css` opens with a **`[data-skin]` base block** that defines *every* token —
 these values **are Vanilla**. Each named skin (`[data-skin="press"]`, `…="ocean"`)

@@ -1107,3 +1107,55 @@ hide already does this through `refit`).
 
 No Apple calls. Files: `settings-store.ts`, `settings-card.ts`, `agent-settings.ts` (SPECS),
 `now-playing-card.ts`, SETTINGS.md.
+
+---
+
+## 25. Graphics cost — settings for the heavy features (2026-09-16, to measure first)
+
+**What it means.** Some of what makes the app beautiful is expensive to draw. On a machine
+without a dedicated card those features are the difference between smooth and not. Give the
+user a way to turn the cost down without giving up the app's character.
+
+**What the code has.** Nothing on this axis. `appearanceMotion` and the reduced-motion honour
+are about MOTION, not draw cost, and a skin is all-or-nothing: picking Glass buys its frost,
+picking Ocean buys grain, specks and sand edges. There is no "Glass, but cheaper".
+
+**What is measured so far.** On an RX 6700 XT at 244 Hz an Ocean skin switch puts `CrGpuMain`
+at **86.9%** while the page's own thread sits at 29.5% — the work is in the GPU process, not
+in script. At idle `CrGpuMain` is ~0, so this is the switch, not steady state. Press and
+Retro-Future stayed cheap throughout. **Nothing has been measured on weak hardware yet**;
+`npm run dev:app -- --gpu=off|slow` exists for exactly that (DEBUGGING.md §Pretending to be a
+weaker machine).
+
+**The suspects, in the order worth measuring:**
+1. **Glass's `backdrop-filter`** (`--panel-backdrop`, `--menu-backdrop`) — a per-pixel blur,
+   re-rastered whenever what is behind it moves. The classic integrated-GPU killer, and it is
+   behind every card and every menu.
+2. **Ocean's grain / specks / sand edges** (`--sand-grain`, `--sand-speck`) — already masked
+   off during the lift, which says they were costly enough to notice once.
+3. **The aurora layer** — drifting blobs that repaint continuously while visible.
+4. **The Press record player** — a transform running the whole time a song plays.
+5. **The canvas pattern** (Press halftone, Retro-Future grid).
+
+**Forks — do NOT pick one before the numbers exist.**
+- **(a) Per-feature toggles.** A Skin settings row for each heavy part ("Frost cards" already
+  exists as a slider). Honest and surgical; the settings card grows, and the user has to know
+  what a word like "frost" costs.
+- **(b) One "Graphics quality" row** — *Full* / *Balanced* / *Light* — that drives the existing
+  tokens per skin. Three words instead of ten rows, and a skin keeps its character at every
+  step because the skin decides what its own *Light* means. Fits the token tiers exactly: a
+  quality step is just another set of skin-token values.
+- **(c) Detect and default.** Read the renderer at launch (`frames.ts` already logs it) and
+  default a software/integrated machine to *Light*, with the row still there to override.
+  Best first-run experience, worst failure mode when the guess is wrong — and the renderer
+  string is a poor proxy for real capability.
+
+**A likely shape: (b) for the control + (c) only for the DEFAULT**, so nobody has to know what
+frost costs, and a weak machine starts sensible without being locked there. Confirm after the
+measurements, not before.
+
+**Cost.** Zero Apple calls. No schema: quality is a settings key like `theme` and `skin`.
+
+**Before building any of it:** baseline every skin with `npm run bench appearance -- --passes 3`
+on `dev:built`, then repeat under `--gpu=off`. The gap between those two IS the feature list,
+and it may turn out that only Glass and Ocean need anything at all.

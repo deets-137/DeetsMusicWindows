@@ -76,6 +76,10 @@ npm run release     # secrets → cli:build → sign cli → tauri build (signed
    (after the Authenticode signature — tested §6.9). ~3 min cold, ~1 min warm. Output:
    `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (+ `.sig`, ~7 MB).
 4. **`scripts/release-check.mjs`** — the gate (§1a): no repo paths in the exe, versions agree,
+   **no dev telemetry in the shipped JS** (check 5, 2026-09-16: `frames.ts` / `perf.ts` /
+   `vinyl.ts` ride `TELEMETRY` in `src/telemetry-on.ts`, which `VITE_PERF=1` turns ON so a
+   release-shaped bundle can be measured — a stray `VITE_PERF` in the release environment
+   would otherwise ship a rAF loop and a log-writing observer to every user),
    pin and updater settings intact, the `.sig` present, the CLI and installer signed.
 5. **`scripts/archive-installer.mjs`** — copies the exe and `.sig` into `installers/` (a
    pre-release version such as `0.4.4-t1` goes to `installers/dev/`).
