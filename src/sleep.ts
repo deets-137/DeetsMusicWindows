@@ -277,9 +277,12 @@ let previewMin: number | null = null; // the dial under the pointer
 // The clock face and two z's rising from it (user's call 2026-09-16: no bells, no feet).
 const ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-  '<circle cx="9" cy="15" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
-  '<path d="M9 10.8v4.4l3 1.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-  '<path d="M13.5 7.5h4.2l-4.2 4.4h4.2M17.5 1h5l-5 5.2h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>' +
+  // The face fills the grid (an outline reads ~15 % smaller than a solid disc the same
+  // size — the traffic lights beside it), and the z's tuck into the top-right corner so the
+  // icon's visual centre stays near the box's centre.
+  '<circle cx="10.5" cy="13.5" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
+  '<path d="M10.5 8.6v5.2l3.4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '<path d="M15.8 5.2h3.6l-3.6 3.6h3.6M19 0.8h4.2L19 5h4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>' +
   "</svg>";
 
 /** The dial's face: 120 ticks, numbers every 15, counted counter-clockwise so that

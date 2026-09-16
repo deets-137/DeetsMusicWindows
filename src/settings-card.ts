@@ -186,13 +186,17 @@ const RESET_GROUPS: ResetGroup[] = [
     id: "schedule", label: "Look schedule", hint: "Change look at, the day and night looks, the times, and Menu pick lasts",
     keys: ["lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "dayStart", "nightStart", "sunShift", "lookHold"],
   },
-  { id: "motion", label: "Motion", hint: "The three Animate rows", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion"] },
+  { id: "motion", label: "Motion", hint: "The three Animate rows and Fancy scrubber", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, the four Glass sliders, and the Press record player",
     keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
   },
-  { id: "menus", label: "Menus and notices", hint: "Open menus on hover and Show notices", keys: ["menuMode", "toasts"] },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop"] },
+  {
+    id: "menus", label: "Menus, hints and notices",
+    hint: "Open menus on hover, the three hover-hint rows, and Show notices",
+    keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts"],
+  },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
@@ -524,11 +528,11 @@ function mountSettings(host: HTMLElement): CardInstance {
           },
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open"),
         sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
         sizeRow("sizeplayer", "NP opens at", "The window size for NP, the player alone. Set current saves the size it had last", "player"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
         sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
-        storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open"),
         {
           kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
           hint: "The window stays above other windows. Player: only while it shows the player",
@@ -580,6 +584,7 @@ function mountSettings(host: HTMLElement): CardInstance {
         },
         storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin changes play the launch animation. Off: they change at once"),
         storeToggle("cardswap", "Animate card swaps", "cardSwapMotion", () => "Cards move to their new places in the skin's own motion. Off: they change at once"),
+        storeToggle("fancyscrub", "Fancy scrubber", "fancyScrubber", () => "Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle"),
         {
           kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
           hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
@@ -654,6 +659,26 @@ function mountSettings(host: HTMLElement): CardInstance {
           label: "Open menus on hover",
           get: () => setting("menuMode") === "hover",
           set: (on) => setSetting("menuMode", on ? "hover" : "click"),
+        },
+        {
+          kind: "toggle",
+          id: "hints",
+          label: "Show hover hints",
+          hint: () => "Rest the pointer on a control and a small box says what it does",
+          get: () => setting("hoverHints"),
+          set: (on) => setSetting("hoverHints", on),
+        },
+        {
+          kind: "choice", id: "hintdelay", label: "Hints appear after", key: "hoverHintDelay",
+          hint: "How long the pointer rests first. A song row always waits a little longer than a button",
+          options: [{ value: "quick", label: "A moment" }, { value: "normal", label: "A pause" }, { value: "slow", label: "A while" }],
+          when: () => setting("hoverHints"),
+        },
+        {
+          kind: "choice", id: "hintsongs", label: "Name songs on hover", key: "hoverSongNames",
+          hint: "The box gives the full song and artist on a row. Cut off: it stays quiet when the name already fits",
+          options: [{ value: "always", label: "Always" }, { value: "cut", label: "Cut off" }, { value: "off", label: "Never" }],
+          when: () => setting("hoverHints"),
         },
         {
           kind: "choice", id: "toasts", label: "Show notices", key: "toasts",

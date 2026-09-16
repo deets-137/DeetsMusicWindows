@@ -36,6 +36,10 @@ export interface Settings {
   /** A card swap, summon or replace plays the skin's swap motion (card-swap.ts). The OS
    *  reduced-motion preference still wins. */
   cardSwapMotion: boolean;
+  /** The skins' scrubber handles with their own shape and motion (Press nib, Ocean float,
+   *  Glass lens, Retro-Future charged bolt). Off: the plain masked handle each skin had
+   *  before 2026-09-16, no motion. `data-fancy-scrub` on <html>. */
+  fancyScrubber: boolean;
   /** The skins' moving backgrounds (Ocean swell, Glass aurora, Retro-Future storm, the NP
    *  aurora): on = 30 fps, reduced = 15 fps, off = still (the storm hides). The OS
    *  reduced-motion preference still wins. src/ambient.ts applies it. */
@@ -69,6 +73,13 @@ export interface Settings {
   /** Press record only, spin only: how fast the record turns, in turns each minute — the three
    *  real record speeds. vinyl.ts turns it into the period (docs/VINYL.md §4). */
   pressVinylSpeed: "33" | "45" | "78";
+  /** Hover hints (ONBOARDING.md §1; src/hint.ts): the themed box every `title` becomes.
+   *  Off = no hover text at all, of either kind. */
+  hoverHints: boolean;
+  /** How long the pointer rests before a hint shows. A song row waits 1.6× as long. */
+  hoverHintDelay: "quick" | "normal" | "slow";
+  /** The name box on a song row: on every row, only when the name is cut off, or never. */
+  hoverSongNames: "always" | "cut" | "off";
   /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
    *  all = every kind, confirmations included. No "off": a failure always shows. */
   toasts: "failures" | "all";
@@ -87,13 +98,6 @@ export interface Settings {
   sunShift: number;
   /** A theme or skin picked by hand: holds until the next change, or turns the schedule off. */
   lookHold: "next" | "always";
-  // ── home (HOME.md §4) ──
-  /** How long a Home tile stays hidden after a right-click › Hide: until you clear it,
-   *  or until the app closes. "session" keeps the map in memory and leaves the stored
-   *  one alone, so switching back restores it. */
-  homeHideLasts: "forever" | "session";
-  /** The hidden Home tiles: item key → when it was hidden (epoch-ms). A tile played
-   *  again after that time unhides itself. Cleared from Settings › Home. */
   // ── sleep timer (NEXT-VERSION §17; sleep.ts) ──
   /** A sleep time that arms itself every day: at sunset (the time zone's sun), at a set
    *  time, or never. It pauses only if music is playing when the time comes. */
@@ -106,6 +110,13 @@ export interface Settings {
   /** When the time runs out in the middle of a song, let the song play to its end first
    *  (the wind-down then fills the song's last minutes). Off: the mark is the silence. */
   sleepPlayOut: boolean;
+  // ── home (HOME.md §4) ──
+  /** How long a Home tile stays hidden after a right-click › Hide: until you clear it,
+   *  or until the app closes. "session" keeps the map in memory and leaves the stored
+   *  one alone, so switching back restores it. */
+  homeHideLasts: "forever" | "session";
+  /** The hidden Home tiles: item key → when it was hidden (epoch-ms). A tile played
+   *  again after that time unhides itself. Cleared from Settings › Home. */
   homeHidden: Record<string, number>;
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
@@ -178,14 +189,15 @@ export const DEFAULTS: Settings = {
   trayView: "cards",
   menuMode: "click",
   surfaceAutoFlip: true,
+  volumeShrink: false, // user's call 2026-09-16: the full bar by default
   sizeMini: "385x550", // user's numbers, desk-tested 2026-09-15: each view opens at its own floor
   sizePlayer: "405x675", // NP: 404 px wide is where the Press record stopped jittering
   sizeMidi: "495x670",
   sizeMax: "1100x820",
   appearanceMotion: true,
   cardSwapMotion: false, // user's call 2026-09-15: off by default
+  fancyScrubber: true, // user's call 2026-09-16: on for now, a performance eval decides
   backgroundMotion: "on",
-  volumeShrink: false, // user's call 2026-09-16: the full bar by default
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   glassTint: 55, // today's Glass look (55% surface)
@@ -196,6 +208,9 @@ export const DEFAULTS: Settings = {
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
   pressVinylPlate: true,
   pressVinylSpeed: "33", // an LP: 33⅓ rpm, one turn per 1.8 s
+  hoverHints: true,
+  hoverHintDelay: "normal",
+  hoverSongNames: "always", // user's call 2026-09-15: name the song on every row, not only cut-off ones
   toasts: "all", // user's call 2026-09-13: Everything by default
   lookSchedule: "off",
   dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
@@ -206,6 +221,10 @@ export const DEFAULTS: Settings = {
   nightStart: "19:00",
   sunShift: 0,
   lookHold: "next", // user's call 2026-09-15: a hand pick holds until the next change
+  sleepSchedule: "off",
+  sleepAt: "22:00",
+  sleepWind: 5, // user's call 2026-09-15: the fade fills the last minutes before the mark
+  sleepPlayOut: false, // the mark is the silence unless you ask for the song's end
   homeHideLasts: "forever", // user's call 2026-09-15: a hide that dies at relaunch reads as a bug
   homeHidden: {},
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
@@ -216,10 +235,6 @@ export const DEFAULTS: Settings = {
   shuffleManual: "top",
   shuffleIdle: "library",
   shuffleStays: true, // user's call 2026-09-15: shuffle is a mode (NEXT-VERSION §14 A)
-  sleepSchedule: "off",
-  sleepAt: "22:00",
-  sleepWind: 5, // user's call 2026-09-15: the fade fills the last minutes before the mark
-  sleepPlayOut: false, // the mark is the silence unless you ask for the song's end
   shuffleMode: false,
   repeatMode: "off",
   fullPlayRule: "fraction",

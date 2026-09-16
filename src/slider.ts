@@ -47,8 +47,14 @@ export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
     el.style.setProperty("--slider-fill", `${(clamp01(frac) * 100).toFixed(2)}%`);
   };
 
+  // The drag state is on the element for the skins' handle motion (SCRUBBERS in
+  // UI-ARCHITECTURE §3): `data-dragging` while held, `data-released` for a moment after.
+  let releasedTimer = 0;
   el.addEventListener("pointerdown", (e) => {
     dragging = true;
+    el.dataset.dragging = "";
+    window.clearTimeout(releasedTimer);
+    delete el.dataset.released;
     endFrames = frames.begin("scrub", axis === "x" ? "seek" : "volume");
     el.setPointerCapture(e.pointerId);
     const f = fracAt(e.clientX, e.clientY);
@@ -64,6 +70,9 @@ export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
   const end = (e: PointerEvent) => {
     if (!dragging) return;
     dragging = false;
+    delete el.dataset.dragging;
+    el.dataset.released = "";
+    releasedTimer = window.setTimeout(() => delete el.dataset.released, 300);
     endFrames();
     const f = fracAt(e.clientX, e.clientY);
     reflect(f);

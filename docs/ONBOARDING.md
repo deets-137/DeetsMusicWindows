@@ -2,12 +2,13 @@
 
 > Three layers, cheapest first: **hover hints** on every control (§1), **right-click menus**
 > everywhere a thing can be acted on (§2), and **Settings › Tips** for the gestures nothing on
-> screen announces (§3). §4 designs the fourth layer — a **first-run walk** led by the Deets and
+> screen announces (§3). The box itself is §1a. §4 designs the fourth layer — a **first-run walk** led by the Deets and
 > Happy sprites from deets.solutions — which is **not built**. §1–§3 were built 2026-09-15.
 
-Terms used here: a **hint** is the native `title` tooltip WebView2 shows after about one
-second of hover. A **menu** is the shared themed right-click popover (`src/context-menu.ts`).
-A **card** is one panel in the bento (Library, Playlists, Queue, …).
+Terms used here: a **hint** is the themed box the app shows when the pointer rests on a
+control (`src/hint.ts`; it replaced the native `title` tooltip on 2026-09-15). A **menu** is
+the shared themed right-click popover (`src/context-menu.ts`). A **card** is one panel in the
+bento (Library, Playlists, Queue, …).
 
 ## 0. The voice
 
@@ -24,9 +25,9 @@ Re-fetches the library index from the API      ✗  jargon
 
 ## 1. Hover hints — the ledger
 
-Native `title` only. There is no themed tooltip primitive (a "B" option that was considered
-and parked: ~150 lines, tokenized box, fixed delay; build it only if the OS box offends the
-polish). A screen reader gets the `aria-label`; the hint is for the pointer.
+Every hint is the themed box (§1a). A screen reader gets the `aria-label`; the hint is for
+the pointer. You still WRITE a hint as `title="…"` in markup or `el.title = "…"` in code —
+nothing about authoring changed when the box did.
 
 | Where | Control | Hint | Set in |
 |---|---|---|---|
@@ -45,6 +46,7 @@ polish). A screen reader gets the `aria-label`; the hint is for the pointer.
 | Title bar | Volume bar | The volume. Drag it, or roll the wheel | index.html |
 | Title bar | Mute (in the volume bar) | Turns the sound off and on | index.html |
 | Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open | settings-card.ts |
+| Settings › Look and feel | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | Title bar | Maximize · Minimize · Close | Fills the screen. Press again to go back · Puts the window on the taskbar · Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing | index.html |
 | Now Playing | Shuffle | Shuffles the songs after this one · *Shuffle is on. Press again to turn it off* | now-playing-card.ts (`paintModes`) |
@@ -75,7 +77,55 @@ with a visible word gets a `title` only when the word leaves a question (Sort, V
 whose meaning changes with state updates `title` where it updates `aria-label`.
 
 Not hinted on purpose: text labels that say it all (the theme names in the Settings look
-row, the Sort keys, the Group-by keys, the Account row), the scrubbers, list rows.
+row, the Sort keys, the Group-by keys, the Account row) and the scrubbers. List rows have no
+written hint either — they get the row hint instead (§1a).
+
+## 1a. The hint box — one engine, adopted not wired
+
+Built 2026-09-15. `src/hint.ts` + `src/styles/hint.css` + the `--hint-*` skin tokens. It
+replaced the native `title` tooltip everywhere: the Windows box could not be themed, delayed,
+or given a second line, so a cut-off song name had nowhere to go.
+
+**It is central by adoption.** No call site was edited for it. On boot the engine sweeps the
+page, moves every `title` value to `data-hint`, and REMOVES the attribute, so Windows never
+draws its own box. A `MutationObserver` (`subtree` + `attributeFilter: ["title"]`) does the
+same for every element added later and every later `title` write, so the state-driven hints
+(Play/Pause, Favorite/Unfavorite, the AirPlay square) keep working untouched. Both webviews
+run it: `main.ts` and `tray.ts`.
+
+**Two kinds of hint.**
+
+| Kind | Where it comes from | Shape |
+|---|---|---|
+| Written | what a `title` said | one line, the author's words |
+| Row | read off a list row itself | the name, and the line under it (a song's artist) |
+
+Nobody authors a row hint. `SHAPES` in hint.ts lists the row and tile shapes the cards build
+— `.lib-row`, `.lib-tile`, `.lib-hero`, `.qrow`, `.qnow`, `.search__song`, `.search__tile`,
+`.search__artist`, `.np` — each with its title span and its sub span, so one delegated handler
+covers Library, Search, Queue, Rewind, History, Home, the Artist shelves and Now Playing.
+**Add a new row shape to that table, not a new listener.** The deeper element wins: the Add
+button inside a song row still says *Add to Library*.
+
+**Three settings** (Settings › Look and feel, beside Open menus on hover):
+
+| Row | Choices | Default |
+|---|---|---|
+| Show hover hints | on / off — off silences both kinds | on |
+| Hints appear after | A moment (250 ms) · A pause (600) · A while (1100) | A pause |
+| Name songs on hover | Always · Cut off · Never | Always |
+
+A row always waits 1.6× the chosen delay: scanning a list must stay quiet. Moving to another
+control within 400 ms of a hint closing shows the next one at once (`WARM_MS`).
+
+**Behaviour worth knowing.** The box is `pointer-events: none` and sits at z 95 — above a
+toast (90), below a menu or picker (100). It hangs under the anchor, centred on the pointer's
+x, and flips above when there is no room below. It hides on press, scroll, resize, Escape, and
+when its row is re-rendered away; a pressed control stays quiet until the pointer moves off it.
+Touch pointers get nothing. Focus shows it only on `:focus-visible`, so it follows the keyboard
+and not the mouse. Under reduced motion it appears without the rise. Where an element had a
+`title` and no accessible name of its own, adoption promotes the hint to `aria-label`, so
+removing the attribute takes nothing from a screen reader.
 
 ## 2. Right-click — the coverage table
 

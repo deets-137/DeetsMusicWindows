@@ -1,0 +1,65 @@
+/* ── Hover hints (src/hint.ts; docs/ONBOARDING.md §1) ─────────────────────
+   One box, positioned in fixed coordinates by hint.ts. It wears the FLOATING
+   material (--menu-surface / --menu-backdrop / --shadow-panel), the same as a
+   menu and a toast, so it is in-family under every theme and skin; its own
+   geometry is the --hint-* skin tokens. Two lines: the name on top in --title,
+   the line under it in --subtext (a song row shows the artist there).
+   z 95: above a toast (90), below a menu, picker or flyout (100) — a menu is
+   the user's live intent, a hint is only an answer to resting the pointer. */
+.hint {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 95;
+  pointer-events: none; /* it must never take the click the pointer is aiming at */
+  box-sizing: border-box;
+  max-width: var(--hint-max-w);
+  padding: var(--hint-pad-y) var(--hint-pad-x);
+  border-radius: var(--hint-radius);
+  border: var(--panel-border-width) solid var(--panel-border);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  box-shadow: var(--shadow-panel);
+  font-size: var(--hint-fs);
+  line-height: var(--lh-text);
+  opacity: 0;
+  transform: translateY(var(--hint-shift));
+  transition:
+    opacity var(--dur-fast) var(--ease-ui),
+    transform var(--dur-fast) var(--ease-ui);
+}
+.hint[hidden] {
+  display: none;
+}
+.hint.is-on {
+  opacity: 1;
+  transform: none;
+}
+/* A name has nowhere to wrap on its own (no spaces in a long track id, a hash-tag
+   title), so it is allowed to break anywhere rather than push the box off screen. */
+.hint__title {
+  display: block;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.hint__sub {
+  display: block;
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  overflow-wrap: anywhere;
+}
+.hint__sub[hidden] {
+  display: none;
+}
+/* A song row's box carries two long lines; a control's hint is one short sentence. */
+.hint--row {
+  max-width: var(--hint-row-max-w);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint {
+    transition: none;
+    transform: none;
+  }
+}

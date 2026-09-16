@@ -901,6 +901,45 @@ click it (click mode) — it grows and the press does not move the level; click 
 shrinks; open "Play on" from the grown pill and move into that panel — it stays. Menus set to
 hover: hover grows it, leaving shrinks it after a moment. NP view: no pill (as before).
 
+## 21. Fancy scrubbers — BUILT 2026-09-16, awaiting the desk test and a performance eval
+
+The per-skin handle idea, redone. The plain masked handles stay as the off state; on
+(Settings › Look and feel › **Fancy scrubber**, default on, key `fancyScrubber`) each skin
+draws its own playhead over them:
+
+| Skin | Playhead | Under the hand | While playing |
+|---|---|---|---|
+| Press | the I-beam: a 2 px stroke with an 8 px bar top and bottom, 14 px tall | the stroke thickens to 4 px and takes the `--ink-2` plate shadow | still |
+| Ocean | the float: an 11 px teardrop, point up (smaller than the others so the ripple carries the eye) | dips 1 px and shrinks; rises on release | bobs 1.5 px, and a faint ripple ring spreads to 1.8× and fades, every 2.4 s |
+| Glass | the hollow lens: a clear centre the rail passes through, a rim lit top-left in `--glint` and shaded bottom-right, a soft flare of light across the top-left; 14 px | swells 20 % | the flare drifts, 6 s each way |
+
+**Second desk look.** The lens's specular dot was drawn in `--surface`, which is black on a
+dark theme — a black dot on the lens. Light is white in every theme, so `themes.css` gains the
+one role no theme remaps, **`--glint`** (a `light-dark()` white, dimmer on dark themes), and the
+dot became a soft radial flare. The Ocean float shrank to 11 px and its ripple to 1.8× at 40 %.
+| Retro-Future | the bolt | burns tight and bright; one flicker on release | a `--title` glow breathes, 3 s each way |
+
+**First desk look (2026-09-16).** The first cut had a nib with a 4 px flag, a drop with a
+same-color crest, and a lens with a `backdrop-filter`. Press read as a bare line, Ocean as the
+base disc, Glass as a solid bead (over a flat canvas the backdrop had nothing to blur). All
+three were 12 px on a 3 px rail. Redrawn as the table says, at 14 px, and the backdrop is
+gone — which also removes the top frame suspect.
+
+On every `.scrub`: the seek bar, the max stage volume, the Settings ranges. **Not** the
+title-bar volume bar (user's call: its clean fill stays). Gates: `data-playing` on `<html>`
+(new, main.ts), `data-dragging` / `data-released` on the slider (new, slider.ts), reduced
+motion. The full map is [UI-ARCHITECTURE.md §3 SCRUBBERS](UI-ARCHITECTURE.md).
+
+**Performance eval (next session).** Measure on `npm run dev:built` per CLAUDE.md's graphics
+rules: frames ÷ ms with a skin's loop running against Fancy scrubber off. The Glass lens is
+the one to watch (a `backdrop-filter` element that moves every progress tick); the bolt's
+breathing `drop-shadow` is the other. If either costs frames, the fallbacks are a static
+lens (no backdrop) and a glow on a pseudo-element.
+
+**Desk test.** Each skin: play a song and watch the seek bar's handle; hover it; drag it;
+release it. Glass: the lens over the album art. Settings › Fancy scrubber off: the plain
+handles, no motion. Pause: every loop stops. The title-bar bar: no handle.
+
 ## See also
 - [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) — deferred toggles (not features).
 - [HANDOFF.md](HANDOFF.md) §Not built yet — the older not-built list.

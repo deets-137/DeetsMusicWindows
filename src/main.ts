@@ -6,6 +6,7 @@ import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
+import { initHints } from "./hint";
 import { setting, onSettingsChange } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
@@ -16,7 +17,7 @@ import { surfaceSized } from "./surface";
 import { runBootCover } from "./boot-cover";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, warmPlayer, noteSignedIn, clearMusicKitSignIn } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn } from "./player";
 import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
@@ -27,8 +28,8 @@ import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initLookSchedule, noteHandPick } from "./look-schedule";
-import * as frames from "./frames";
 import { initSleep } from "./sleep";
+import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
@@ -58,6 +59,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   window.addEventListener("drop", (e) => e.preventDefault());
   initBrowserDefaults(); // no native drag or right-click menu; text fields get our own (DRAG-DROP.md §6)
+  initHints(); // every `title` becomes the themed hover box (ONBOARDING.md §1)
   initNpBus(); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
@@ -373,9 +375,9 @@ window.addEventListener("DOMContentLoaded", () => {
     // Paint a 0..1 level into the fill (the slider's own --slider-fill), the glyph, and ARIA.
     const reflect = (v: number) => {
       slider.setValue(v);
+      volPill.setAttribute("aria-valuenow", String(Math.round(Math.max(0, Math.min(1, v)) * 100)));
       volMute.innerHTML = isMuted() || v === 0 ? ICON_MUTE : ICON_VOL;
       volMute.setAttribute("aria-pressed", String(isMuted()));
-      volPill.setAttribute("aria-valuenow", String(Math.round(Math.max(0, Math.min(1, v)) * 100)));
     };
 
     // The whole pill is the slider, so the fill (which sweeps under the glyph squares) and
@@ -385,11 +387,11 @@ window.addEventListener("DOMContentLoaded", () => {
       onDrag: (frac) => { setVolume(frac); reflect(getVolume()); },
       onCommit: (frac) => { setVolume(frac); reflect(getVolume()); },
     });
-
-    reflect(getVolume()); // seed from the persisted level
     const volAirplay = document.getElementById("vol-airplay");
     volMute.addEventListener("pointerdown", (e) => e.stopPropagation());
     volAirplay?.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+    reflect(getVolume()); // seed from the persisted level
     onVolumeChange(() => reflect(getVolume())); // the stage row, tray, agent routes, the sleep fade
 
     // Shrink volume bar (Settings › Window; default off = the full bar all the time). On, the
@@ -480,7 +482,13 @@ window.addEventListener("DOMContentLoaded", () => {
       reflect(getVolume());
     });
   }
-});
 
   // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
   initSleep();
+
+  // The skins' scrubber motion (UI-ARCHITECTURE §3 SCRUBBERS) runs only while music plays:
+  // one attribute on <html>, so the CSS loops never tick over a paused player.
+  onPlayerState((s) => {
+    document.documentElement.dataset.playing = s.playing ? "on" : "off";
+  });
+});

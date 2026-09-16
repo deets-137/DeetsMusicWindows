@@ -57,6 +57,11 @@
   /* Apple Music icon fill: Apple's black file on light themes, the white file on dark.
      light-dark() follows each theme's own color-scheme, so no theme block repeats it. */
   --apple-music-mark: light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white));
+
+  /* The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy
+     scrubbers). Light is white in every theme, so this is the one role no theme remaps;
+     a little dimmer on dark themes so it does not blaze. */
+  --glint: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65));
 }
 
 [data-theme="lilac"] {

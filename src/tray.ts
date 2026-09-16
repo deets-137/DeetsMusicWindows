@@ -21,6 +21,7 @@ import { mountVinyl } from "./vinyl";
 import { applyVinylAttrs, isVinylKey } from "./skin-settings";
 import { onSettingsChange } from "./settings-store";
 import { openContextMenu, type MenuItem } from "./context-menu";
+import { initHints } from "./hint";
 import type { NpState } from "./np-bus";
 import type { Track } from "./library";
 
@@ -90,6 +91,7 @@ const fmtTime = (s: number): string => {
 
 window.addEventListener("DOMContentLoaded", () => {
   const appWindow = getCurrentWindow();
+  initHints(); // the panel wears the same hover box as the window (ONBOARDING.md §1)
 
   const npEl = $<HTMLElement>("np");
   const art = $<HTMLElement>("np-art");

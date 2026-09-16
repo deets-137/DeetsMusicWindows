@@ -44,6 +44,7 @@ The complete set the UI is allowed to reference:
 | `--surface` | floating panel background (menus, popovers) — distinct from canvas |
 | `--surface-hover` | highlighted / hovered row inside a panel |
 | `--border` | hairline panel edge (kept as low-alpha so it reads on any canvas) |
+| `--glint` | light catching a glass edge (the Glass lens playhead). White in every theme via `light-dark()`, dimmer on dark ones; declared once on `:root`, never remapped by a theme (2026-09-16) |
 | `--ink-2` | the **second plate** — one spot color printed slightly out of register behind cards and menus. Only the Press skin prints it, but the *choice* is the theme's: which of its own accents survives as a solid 4px block on that theme's stock. `:root` falls back to `--go`, so a theme that never names it still prints. |
 
 Traffic-light role names are deliberately function-named (`go/stop/pause`) not
@@ -78,6 +79,22 @@ scrollbar corner, and autofill match) and a few non-table roles every block maps
 
 ## 3. Skin tokens
 
+- **SCRUBBERS (2026-09-16, NEXT-VERSION §21).** Every `.scrub` handle has two layers. The
+  *plain* handle is a `--title` box masked by the skin's `--scrubber-handle` SVG (Press block,
+  Ocean lens swell, Glass ring, Retro-Future bolt). With **Settings › Look and feel › Fancy
+  scrubber** on (`data-fancy-scrub="on"` on `<html>`, default on), the skin's own playhead
+  draws over it in `styles.css` §Fancy scrubbers: the **Press I-beam** (a stroke with a bar
+  top and bottom; thickens under the hand and takes the `--ink-2` plate shadow), the **Ocean
+  float** (a teardrop; bobs and sends a ripple ring while playing, dips while held), the
+  **Glass hollow lens** (a clear centre, a lit rim, a specular dot that drifts while playing;
+  swells under the hand; no backdrop-filter) and the **charged bolt** (breathes a glow while
+  playing, burns tight while held, flickers on release). The first three are 14 px
+  (`--scrub-fancy-size`). Gates: `data-playing` on `<html>` (main.ts) for every loop; `data-dragging` /
+  `data-released` on the slider (slider.ts) for the hand states; reduced motion stops all of
+  it. Loops move transform, opacity and, for the bolt, a drop-shadow only. Tokens:
+  `--scrub-nib-w / -hover-w / -flag`, `--scrub-bob-dur`, `--scrub-sheen-dur`,
+  `--scrub-lens-scale`, `--scrub-breathe-dur`. The title-bar volume bar has no handle by
+  design. A performance eval on `dev:built` is the next step.
 - **Transport motion:** `--sh-cross-dur` / `--sh-cross-gap` (Shuffle's press run: the two
   arrows swing apart to parallel and re-cross) and `--rp-loop-dur` (Repeat's one full turn on
   the press that lands on *one*). Motion is skin, so a skin can slow, quicken or flatten both
@@ -124,6 +141,11 @@ The base defines, among others:
 - **Menu material:** `--menu-surface` / `--menu-backdrop` — the same pair for the
   *floating* tier (menus, flyouts, popovers, ctx-menu, pickers); base = opaque
   `var(--surface)` + no frost, Glass opts in
+- **Hover hints:** `--hint-max-w` / `--hint-row-max-w` / `--hint-pad-x` / `--hint-pad-y` /
+  `--hint-radius` / `--hint-gap` / `--hint-fs` / `--hint-shift` — the geometry of the one
+  hover box (`src/hint.ts`, ONBOARDING.md §1a). It wears the *menu material* above, so a
+  skin usually sets none of these; the radius rides `--radius-control`, so squaring a skin's
+  controls squares the hint with them
 - **Canvas pattern:** `--canvas-bg` / `--canvas-bg-size` / `--canvas-bg-repeat`, and
   `--app-canvas-bg` (what `.app-body` paints; `none` when the skin draws a moving layer)
 - **Ambient layers:** `--ocean-*`, `--aurora-*`, `--storm-*`, and `--ambient-fps` (the step
@@ -792,6 +814,8 @@ src/now-playing-card.ts Now Playing transport card (extracted from main.ts)
 src/playlists-card.ts   Playlists card — overview → detail on the engine; New Playlist (+),
                         remove-track, empty-only delete (PLAYLISTS.md)
 src/dropdown.ts         dropdown primitive + menu-mode fan-out (setDropdownMode, destroy)
+src/hint.ts             hover-hint primitive — adopts every `title` into one themed box,
+                        plus the two-line song/artist hint on list rows (ONBOARDING.md §1a)
 src/theme.ts            theme switch + localStorage persistence (RETIRED id migration, OS-preference default)
 src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)
 src/storm.ts            storm-layer position re-roll (Retro-Future bolts; inert otherwise)

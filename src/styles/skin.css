@@ -46,7 +46,7 @@
 
   /* -- titlebar / chrome ------------------------------------- */
   --titlebar-h:          40px;
-  --traffic-size:        14px;
+  --traffic-size:        16px;   /* one height for every title-row control: the lights, the volume bar, the clock (2026-09-16; 18 read too heavy) */
   --traffic-gap:         8px;
   --traffic-glyph-fs:    11px;
 
@@ -58,17 +58,17 @@
   --vol-pill-radius:   999px;  /* true capsule */
   --vol-pill-fs:       9px;
   --vol-fill-strength: 30%;
-  --vol-icon-size:     16px;
+  --vol-icon-size:     calc(var(--traffic-size) - 4px);   /* inside the bar's 1 px border with a 1 px breath: 12 px at 16 */
   /* The grown pill (NEXT-VERSION §20): its size on hover, the glyphs' inset, the grow's time. */
   --vol-pill-grown-w:  120px;
-  --vol-pill-grown-h:  20px;
+  --vol-pill-grown-h:  var(--traffic-size);
   --vol-pill-pad:      2px;
   --vol-grow:          var(--dur-med);
 
   /* -- sleep timer (src/sleep.ts, NEXT-VERSION §17) ---------- */
   /* The alarm clock left of the pill, and its kitchen-timer dial. The face's
      ticks and numbers are geometry here; their colors are theme roles. */
-  --sleep-btn-size:     16px;   /* the 24-grid clock reads as ~14 px: level with the pill and the lights */
+  --sleep-btn-size:     var(--traffic-size);   /* level with the lights and the bar */
   --sleep-panel-w:      224px;
   --sleep-dial-size:    172px;
   --sleep-tick-w:       1px;
@@ -93,6 +93,19 @@
      blur. A skin points these at roles/derivations, never a hex. */
   --menu-surface:  var(--surface);
   --menu-backdrop: none;
+
+  /* -- hover hints (src/hint.ts, styles/hint.css; ONBOARDING.md §1) --- */
+  /* The box wears the menu material above; these are its own geometry. The
+     radius rides --radius-control, so a skin that squares its controls (Press)
+     squares the hint too without a line here. */
+  --hint-max-w:     236px;  /* a control's one-sentence hint */
+  --hint-row-max-w: 290px;  /* a song row: two lines, both of them names */
+  --hint-pad-x:     var(--space-2);
+  --hint-pad-y:     calc(var(--space-1) + 1px);
+  --hint-radius:    var(--radius-control);
+  --hint-gap:       8px;    /* clearance between the anchor and the box */
+  --hint-fs:        var(--fs-subtext);
+  --hint-shift:     3px;    /* the rise on show; a skin may zero it */
 
   /* -- toasts (src/toast.ts, styles/toast.css; docs/TOASTS.md) -------- */
   /* The strip wears the menu material above; these are its own geometry.
@@ -276,6 +289,20 @@
   --storm-path-2:  none;
   --storm-cycle-1: 8s;              /* full strike period: draw ~60% + linger + dark */
   --storm-cycle-2: 12s;             /* unequal cycles → phases drift, never sync */
+
+  /* -- fancy scrubbers (styles.css §Fancy scrubbers; Settings › Fancy scrubber) -- */
+  /* Each skin's playhead has its own motion; the numbers live here so a skin can
+     retune them. Loops run only while music plays and never under reduced motion. */
+  --scrub-fancy-size:   14px;   /* Press, Ocean, Glass playheads (a shape reads as a dot below 14) */
+  --scrub-nib-w:        2px;    /* Press: the stroke, idle; also the bars' thickness */
+  --scrub-nib-hover-w:  4px;    /* Press: the stroke under the hand */
+  --scrub-nib-bar:      8px;    /* Press: the width of the I-beam's top and bottom bars */
+  --scrub-float-size:   11px;   /* Ocean: the float, smaller than the others so the ripple carries the eye */
+  --scrub-ripple-scale: 1.8;    /* Ocean: how far the ripple ring spreads, in float widths */
+  --scrub-bob-dur:      2.4s;   /* Ocean: one bob of the float, and one ripple */
+  --scrub-sheen-dur:    6s;     /* Glass: the specular dot's drift, one way */
+  --scrub-lens-scale:   1.2;    /* Glass: the lens's swell under the hand */
+  --scrub-breathe-dur:  3s;     /* Retro-Future: the bolt's glow, one way */
 
   /* -- scrubber (handle is a skin-swappable SVG mask) --------- */
   /* The handle is a --title-filled box masked by this SVG, so the shape is

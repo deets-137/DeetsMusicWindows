@@ -188,6 +188,7 @@ const SPECS: Spec[] = [
   storeChoice("Look and feel", "lookHold", "Menu pick lasts", [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }]),
   storeToggle("Look and feel", "appearanceMotion", "Animate look changes"),
   storeToggle("Look and feel", "cardSwapMotion", "Animate card swaps"),
+  storeToggle("Look and feel", "fancyScrubber", "Fancy scrubber"),
   storeChoice("Look and feel", "backgroundMotion", "Animate backgrounds", [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }]),
   storeChoice("Look and feel", "oceanEdges", "Draw card edges", [{ value: "sand", label: "Sand" }, { value: "soft", label: "Soft" }], { only: "Ocean only", note: skinNote("ocean", "Ocean") }),
   storeRange("Look and feel", "oceanSand", "Sand width", { only: "Ocean only, with Sand edges", note: skinNote("ocean", "Ocean") }),

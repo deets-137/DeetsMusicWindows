@@ -40,11 +40,17 @@ export function initSkinSettings(): void {
   const applyEdges = () => {
     document.documentElement.dataset.oceanEdges = setting("oceanEdges");
   };
+  // Fancy scrubber (UI-ARCHITECTURE §3 SCRUBBERS): off = every skin's plain masked handle.
+  const applyScrubber = () => {
+    document.documentElement.dataset.fancyScrub = setting("fancyScrubber") ? "on" : "off";
+  };
   applyEdges();
+  applyScrubber();
   applyVinylAttrs();
   (Object.keys(PROPS) as SliderKey[]).forEach((k) => previewSkin(k, setting(k)));
   onSettingsChange((k) => {
     if (k === "oceanEdges") applyEdges();
+    if (k === "fancyScrubber") applyScrubber();
     if (isVinylKey(k)) applyVinylAttrs();
     if (isSlider(k)) previewSkin(k, setting(k));
   });

@@ -598,6 +598,15 @@ them), and two scroll/render fixes in the card engine.
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
+- **2026-09-15 — one hover-hint box** ([ONBOARDING.md](ONBOARDING.md) §1a): `src/hint.ts`
+  replaced the native `title` tooltip everywhere — a themed box in the menu material, with a
+  second line, so a cut-off song row shows the full song AND artist. **Central by adoption:**
+  no call site changed. The engine sweeps every `title` into `data-hint`, removes the
+  attribute, and a MutationObserver keeps doing it for new nodes and later `title` writes, so
+  all 81 hint sites (68 in markup, 13 set from code) moved in one step. Row hints come from a
+  shape table (`SHAPES`), one delegated handler covering Library, Search, Queue, Rewind,
+  History, Home, the Artist shelves and Now Playing. Three Settings rows: Show hover hints,
+  Hints appear after, Name songs on hover. Awaiting the desk test. Not committed.
 - **2026-09-15 — Press record player** ([VINYL.md](VINYL.md)): Record player Spin / Still / Off
   (default Off), Show record on, Spin speed (33⅓ / 45 / 78, default 33⅓), Show record plate. The
   cover (Now Playing + tray panel) turns at the chosen rate, locked to the song so each disc starts
