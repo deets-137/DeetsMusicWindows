@@ -161,8 +161,11 @@ the platform sound and the loop thin. Scoped with forks in
    (the fill, the count row), Shift+click a run, sort the list (the picks hold), drag the set
    onto a playlist row (the ghost's count), right-click → New Playlist…, Escape; then the
    same in Up Next (Remove N songs) and History; and check mini picks nothing.
-8. ✅ **A sleep timer** — §17, **DESIGNED + BUILT 2026-09-15 (branch `wakin-up`), awaiting the
-   desk test**: an alarm clock left of the volume pill; its panel is a kitchen-timer dial
+8. ✅ **A sleep timer** — §17, **DESIGNED + BUILT 2026-09-15 (branch `wakin-up`), desk-tested
+   and shipped as 0.7.0, published to the `deetsmusic` channel 2026-09-16** (with §20 the
+   full-time volume bar, §21 the fancy scrubbers, the hover-hint pass and the graphics ruler;
+   `main` at `a129c86`). Next: the fancy-scrubber performance eval on `dev:built`.
+   As built: an alarm clock left of the volume pill; its panel is a kitchen-timer dial
    (one turn = 120 min, 5-min clicks, turns back once a second), *End of song* / *End of Up
    Next* chips, a wind-down pill (the volume sinks over the last minutes, then the pause) and
    an every-day schedule (Sunset from the time zone, or a set time). The fade is a gain factor
