@@ -94,6 +94,8 @@
   --web-title-tracking: 0.06em; /* the panel title, the create menu's label voice */
   --web-icon-stroke:    1.8;    /* thinner than the header's 2: five small rings stay open at 16px */
   --web-link-offset:    2px;    /* Retry / Read again: the underline clears the descenders */
+  --web-shrink-dur:     0.32s;  /* "Shrink to chip": the panel closing in on the artist row (a plain time: JS reads it) */
+  --web-shrink-ease:    var(--pop-ease);
 
   /* -- shape ------------------------------------------------- */
   --radius-panel:   10px;

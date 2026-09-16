@@ -383,8 +383,10 @@ body {
   position: fixed;                  /* JS sets top/left under the button */
   margin-top: var(--space-1);       /* the gap under the button — JS reads it back */
   width: var(--web-panel-w);
-  max-height: var(--web-panel-max-h);
+  max-height: var(--web-panel-max-h); /* web.ts lowers it to the room left in the window */
   overflow-y: auto;
+  scrollbar-gutter: stable;          /* the bar's width is kept, so rows never shift when it appears */
+  overscroll-behavior: contain;      /* a wheel at the panel's end does not scroll the card under it */
   display: flex; flex-direction: column; align-items: stretch;
   gap: var(--space-2);
   padding: var(--web-panel-pad);
@@ -400,6 +402,12 @@ body {
   z-index: 100;                     /* the context menu's tier, like "Play on" */
 }
 .web[hidden], .web [hidden] { display: none; }
+.web.web--gone { transition: none; } /* "Shrink to chip" ended: the panel leaves at once, no pop out */
+/* The app's own scrollbar (the Library's), not the OS bar. */
+.web::-webkit-scrollbar { width: var(--scrollbar-w); }
+.web::-webkit-scrollbar-track { background: transparent; }
+.web::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
+.web::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 .web__title {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
   color: var(--subtext); text-transform: uppercase; letter-spacing: var(--web-title-tracking);
@@ -416,9 +424,11 @@ body {
 }
 .web__input::placeholder { color: var(--subtext); }
 .web__input:focus-visible { border-color: var(--title); }
+/* The artist field's list: a search, not free text. The marked row (.is-active) is what
+   Enter picks; the picked artist ([data-picked]) wears the picked look. */
 .web__hits { display: flex; flex-direction: column; gap: var(--space-1); }
 .web__hit {
-  display: grid; grid-template-columns: var(--web-hit-art) 1fr auto; align-items: center;
+  display: flex; align-items: center;
   gap: var(--space-2);
   min-height: var(--web-row-h);
   padding: 0 var(--space-1);
@@ -426,11 +436,14 @@ body {
   color: var(--text); font-family: var(--font-body); font-size: var(--fs-text); text-align: left;
   cursor: pointer;
 }
-.web__hit:hover { background: var(--surface-hover); }
-.web__hit[aria-selected="true"] { background: var(--picked); border-color: var(--title); cursor: default; }
-.web__hit-art { width: var(--web-hit-art); height: var(--web-hit-art); border-radius: 50%; object-fit: cover; background: var(--surface); }
-.web__hit-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.web__hit-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
+.web__hit:hover, .web__hit.is-active { background: var(--surface-hover); }
+.web__hit[data-picked] { background: var(--picked); border-color: var(--title); cursor: default; }
+.web__hit-art { flex: 0 0 auto; width: var(--web-hit-art); height: var(--web-hit-art); border-radius: 50%; object-fit: cover; background: var(--surface); }
+.web__hit-art--glyph { display: grid; place-items: center; background: transparent; }
+.web__hit-glyph { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.web__hit-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.web__hit--search .web__hit-name { color: var(--title); }
+.web__hit-sub { flex: 0 0 auto; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
 .web__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .web__label { font-size: var(--fs-subtext); color: var(--subtext); }
 .web__seg { display: flex; gap: var(--space-1); }

@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 24 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 264 tokens · overrides: vanilla 3, press 57, ocean 32, glass 57, retro-future 58 |
+| Skin (everything else) | skin.css base block | 266 tokens · overrides: vanilla 3, press 57, ocean 32, glass 57, retro-future 58 |
 
 ## Theme roles
 
@@ -122,6 +122,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--web-title-tracking` | `0.06em` | — | the panel title, the create menu's label voice |
 | `--web-icon-stroke` | `1.8` | — | thinner than the header's 2: five small rings stay open at 16px |
 | `--web-link-offset` | `2px` | — | Retry / Read again: the underline clears the descenders |
+| `--web-shrink-dur` | `0.32s` | — | "Shrink to chip": the panel closing in on the artist row (a plain time: JS reads it) |
+| `--web-shrink-ease` | `var(--pop-ease)` | — |  |
 
 ### shape
 

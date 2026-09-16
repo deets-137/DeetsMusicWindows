@@ -8,7 +8,9 @@
 //   3. `open` runs --nav-dur before the landing, so the target's drill slide ends as the chip
 //      lands — and the view already holds its songs, so it arrives full.
 // Motion off (Animate card swaps off, or the OS reduced-motion preference): no chip, the card
-// opens at once and loads as usual. The shape is skin tokens (skin.css §chip flight).
+// opens at once and loads as usual. A flight that swaps no card (the playlist web: its target is
+// already on screen) passes `ownMotion` and follows reduced motion only. The shape is skin
+// tokens (skin.css §chip flight).
 
 import { setting } from "./settings-store";
 import { requestCard, cardHost } from "./layout-bus";
@@ -35,8 +37,10 @@ export function handOff<T>(
   prepare: () => Promise<T>,
   open: (data: T | undefined) => void,
   count?: number,
+  /** The flight moves no card, so Animate card swaps does not govern it; reduced motion still does. */
+  ownMotion = false,
 ): void {
-  if (!setting("cardSwapMotion") || reduced() || !tile.isConnected) {
+  if ((!ownMotion && !setting("cardSwapMotion")) || reduced() || !tile.isConnected) {
     requestCard(target);
     open(undefined);
     return;

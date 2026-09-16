@@ -242,6 +242,8 @@ const SPECS: Spec[] = [
     get: () => String(setting("webSize")),
     set: (v) => setSetting("webSize", Number(v) as 25 | 50 | 100),
   }),
+  storeChoice("Playlists", "webMakeMotion", "Close on Make", [{ value: "shrink", label: "Shrink to chip" }, { value: "pop", label: "Pop out" }]),
+  storeChoice("Playlists", "webSeedFilter", "Genres for Webbing", [{ value: "all", label: "All songs" }, { value: "floor", label: "Keep 5" }, { value: "off", label: "Web only" }]),
   storeChoice("Playlists", "webPrefer", "Web prefers", [{ value: "familiar", label: "Familiar" }, { value: "discover", label: "Discover" }, { value: "mix", label: "Mix" }]),
   // ── Rewind ──
   storeToggle("Rewind", "rewindCard", "Rewind card"),

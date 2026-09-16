@@ -122,7 +122,8 @@ first landed while the playlist view was still loading):
    ends as the chip lands and the view arrives full. A failed fetch still opens the view,
    which then loads as usual.
 
-Motion off (Animate card swaps off, or the OS reduced-motion preference): no chip; the
+Motion off (Animate card swaps off, or the OS reduced-motion preference; a caller whose flight
+swaps no card passes `ownMotion` and follows reduced motion only — the playlist web): no chip; the
 card is summoned and the playlist opens at once. Skin tokens (skin.css §chip flight):
 `--fly-dur`, `--fly-ease`, `--fly-mid` (shape at the midpoint), `--fly-land`,
 `--fly-land-fade`. Press stamps, Ocean dips, Glass uses the base (a straight glide),

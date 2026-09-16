@@ -178,6 +178,12 @@ export interface Settings {
   webSize: 25 | 50 | 100;
   /** Which web songs come first: the ones you have (♥, played, saved), the ones you don't, or no order. */
   webPrefer: "familiar" | "discover" | "mix";
+  /** A picked genre chip filters the artist's own songs too ("all"), keeps at least 5 of
+   *  them ("floor"), or leaves them all ("off"). PLAYLIST-WEB.md §3. */
+  webSeedFilter: "all" | "floor" | "off";
+  /** Make playlist in a web: the panel shrinks into the artist row before it flies ("shrink"),
+   *  or pops out as the row flies ("pop"). PLAYLIST-WEB.md §2b. */
+  webMakeMotion: "shrink" | "pop";
   // ── cards ──
   /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
   rewindCard: boolean;
@@ -212,7 +218,7 @@ export const DEFAULTS: Settings = {
   sizeMidi: "495x670",
   sizeMax: "1100x820",
   appearanceMotion: true,
-  cardSwapMotion: false, // user's call 2026-09-15: off by default
+  cardSwapMotion: true, // user's call 2026-09-16: on by default (was off, 2026-09-15)
   fancyScrubber: true, // user's call 2026-09-16: on for now, a performance eval decides
   backgroundMotion: "on",
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
@@ -268,6 +274,8 @@ export const DEFAULTS: Settings = {
   webReach: 2, // the artist's collaborators and theirs: a real web without drifting far (PLAYLIST-WEB.md §3)
   webSize: 50, // an afternoon of music; 100 at reach 3 is where unrelated artists start to show
   webPrefer: "mix", // no lean until you pick one: a web is both a comfort list and a find
+  webSeedFilter: "all", // user's call 2026-09-16: a genre pick must not leave the artist's other-genre songs clashing
+  webMakeMotion: "shrink", // user's call 2026-09-16: try the shrink first; Pop out is the one-beat close
   rewindCard: false,
   rewindAutoShown: false,
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates

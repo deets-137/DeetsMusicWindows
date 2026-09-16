@@ -14,6 +14,7 @@ mod settings;
 mod smtc;
 mod tray;
 mod update;
+mod web;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -142,6 +143,7 @@ pub fn run() {
             library::init_db(&conn).expect("init library db");
             enrich::init_tables(&conn).expect("init enrichment tables");
             playlists::init_tables(&conn).expect("init playlist tables");
+            web::init_tables(&conn).expect("init web tables");
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
             }
@@ -245,6 +247,8 @@ pub fn run() {
             apple::catalog_related,
             apple::library_artist_info,
             apple::library_artists_expire,
+            web::web_build,
+            web::web_seeds,
             playlists::playlists_song_index,
             library::play_counts,
             library::library_sync,

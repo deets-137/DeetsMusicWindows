@@ -5,7 +5,10 @@
    geometry is the --hint-* skin tokens. Two lines: the name on top in --title,
    the line under it in --subtext (a song row shows the artist there).
    z 95: above a toast (90), below a menu, picker or flyout (100) — a menu is
-   the user's live intent, a hint is only an answer to resting the pointer. */
+   the user's live intent, a hint is only an answer to resting the pointer.
+   .hint--over (hint.ts): the anchor is INSIDE that floating tier, so the hint rises to
+   z 105 — above its own panel (2026-09-16: the web panel covered its hints), still under
+   the drag ghost (200). */
 .hint {
   position: fixed;
   top: 0;
@@ -36,6 +39,7 @@
   opacity: 1;
   transform: none;
 }
+.hint.hint--over { z-index: 105; }
 /* A name has nowhere to wrap on its own (no spaces in a long track id, a hash-tag
    title), so it is allowed to break anywhere rather than push the box off screen. */
 .hint__title {

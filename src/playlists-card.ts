@@ -37,6 +37,7 @@ import type { DragPayload } from "./row-drag";
 import { dropToPlaylist, dropToApplePlaylist } from "./drop-actions";
 import { MOSAIC_MAX } from "./mosaic";
 import { drawCover, coverLetters } from "./cover-art";
+import { mountWeb } from "./web";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 /** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
@@ -180,6 +181,7 @@ const HEAD = `
     <button class="panel__action" id="playlists-add" type="button" aria-label="New playlist" title="Makes a new playlist or a new folder">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg>
     </button>
+    <button class="panel__action web-btn" id="playlists-web" type="button" aria-label="Playlist web" title="Makes a playlist from an artist and the artists they make songs with"></button>
     <button class="panel__action" id="playlists-refresh" type="button" aria-label="Sync playlists" title="Reads your playlists from Apple Music again">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
@@ -198,6 +200,8 @@ export const playlistsCard: CardDef = {
     migrateSortPref(); // before the engine reads the persisted view prefs
     const refreshBtn = host.querySelector<HTMLElement>("#playlists-refresh");
     const addBtn = host.querySelector<HTMLElement>("#playlists-add");
+    const webBtn = host.querySelector<HTMLElement>("#playlists-web");
+    const unmountWeb = webBtn ? mountWeb(webBtn) : null; // PLAYLIST-WEB.md
 
     let lists: Playlist[] = [];
     let folders: PlaylistFolder[] = [];
@@ -754,6 +758,7 @@ export const playlistsCard: CardDef = {
         lastHeader = h;
         if (h.atRoot) openPlaylist = null; // backed out to the overview — nothing open to revalidate
         if (addBtn) addBtn.hidden = !h.atRoot; // New Playlist is a root-only action (create from the overview)
+        if (webBtn) webBtn.hidden = !h.atRoot; // so is the web: it makes a new playlist
         headerSubs.forEach((cb) => cb(h));
       },
     });
@@ -909,6 +914,7 @@ export const playlistsCard: CardDef = {
       destroy() {
         unsubChanges();
         unsubOpen();
+        unmountWeb?.();
         card.destroy();
         host.innerHTML = "";
       },

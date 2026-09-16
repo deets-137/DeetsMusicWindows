@@ -293,7 +293,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   30 min). These are the schedule and the wind-down; a running timer is set in the app's own
   panel and has no agent verb yet.
 - **Playlists › Web reach / Web size / Web prefers** (2026-09-16, PLAYLIST-WEB.md): `webReach`
-  (1 | 2 | 3), `webSize` (25 | 50 | 100) and `webPrefer` (Familiar | Discover | Mix). Building a web has no agent verb yet; the panel under the Playlists
+  (1 | 2 | 3), `webSize` (25 | 50 | 100), `webPrefer` (Familiar | Discover | Mix) and `webSeedFilter`
+  ("Genres for Webbing": All songs | Keep 5 | Web only) and `webMakeMotion` ("Close on Make":
+  Shrink to chip | Pop out). Building a web has no agent verb yet; the panel under the Playlists
   web button uses these two values.
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),

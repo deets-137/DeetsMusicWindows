@@ -28,6 +28,9 @@ front-end, Rust back-end).
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
 - `docs/HOME.md` — the Home card: the three shelves, the context-run rule, the
   weekday/weekend bucket score, and Hide (built 2026-09-15; zero Apple calls).
+- `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
+  Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
+  measurements (built and desk-tested 2026-09-16). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
   led by the Deets and Happy sprites (designed, not built).

@@ -157,6 +157,9 @@ function resolve(from: Element | null): { el: HTMLElement; hint: Hint } | null {
 
 // ── Showing ───────────────────────────────────────────────────────────────────────
 
+/** The floating tier (z 100): pop panels, menus, flyouts, the settings and slot pickers. */
+const FLOATING = ".pop, .ctx-menu, .flyout, .set__menu, .slot-picker__menu";
+
 function fill(el: HTMLElement): boolean {
   const found = resolve(el);
   if (!found || found.el !== el) return false;
@@ -165,6 +168,9 @@ function fill(el: HTMLElement): boolean {
   subEl!.textContent = found.hint.sub ?? "";
   subEl!.hidden = !found.hint.sub;
   b.classList.toggle("hint--row", found.hint.row);
+  // A control inside a floating panel (a pop panel, a menu, a flyout): the hint goes above
+  // that tier, or the panel it explains covers it. Everywhere else it stays under menus.
+  b.classList.toggle("hint--over", !!el.closest(FLOATING));
   return true;
 }
 

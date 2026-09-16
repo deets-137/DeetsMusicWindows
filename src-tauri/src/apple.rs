@@ -1454,7 +1454,7 @@ fn track_from_library_song(v: &serde_json::Value) -> Track {
 
 // ── Catalog normalizers (search results — the rich shapes) ───────────────────
 
-fn track_from_catalog_song(v: &serde_json::Value) -> Track {
+pub(crate) fn track_from_catalog_song(v: &serde_json::Value) -> Track {
     let a = &v["attributes"];
     let pp = &a["playParams"];
     let id = v["id"].as_str().map(String::from);
@@ -1505,7 +1505,7 @@ fn album_from_catalog(v: &serde_json::Value) -> Album {
     }
 }
 
-fn artist_from_catalog(v: &serde_json::Value) -> Artist {
+pub(crate) fn artist_from_catalog(v: &serde_json::Value) -> Artist {
     let a = &v["attributes"];
     Artist {
         library_id: None,
