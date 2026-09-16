@@ -184,6 +184,7 @@ const SPECS: Spec[] = [
   storeRange("Look and feel", "glassCanvasDim", "Dim canvas", { only: "Glass only", note: skinNote("glass", "Glass") }),
   storeChoice("Look and feel", "pressVinyl", "Record player", [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }], { only: "Press only", note: skinNote("press", "Press") }),
   storeChoice("Look and feel", "pressVinylWhere", "Show record on", [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }], { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
+  storeChoice("Look and feel", "pressVinylSpeed", "Spin speed", [{ value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
   storeToggle("Look and feel", "pressVinylPlate", "Show record plate", { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Look and feel", kind: "toggle", options: ON_OFF,
@@ -198,6 +199,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
   storeToggle("Playback", "shuffleStays", "Button is perma-shuffle"),
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
+  storeToggle("Playback", "historyShowDay", "Show the day in History"),
   storeChoice("Playback", "shuffleIdle", "Idle shuffle plays", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
   // ── Apple Music: the consent gates, off only ──
   {
@@ -208,7 +210,7 @@ const SPECS: Spec[] = [
   storeToggle("Apple Music", "playlistExport", "Export playlists", { offOnly: true }),
   // ── Playlists ──
   storeToggle("Playlists", "playlistEagerCounts", "Show playlist counts"),
-  storeToggle("Playlists", "playlistCreateSummon", "New playlist opens Search"),
+  storeChoice("Playlists", "playlistCreateSummon", "New playlist opens Search", [{ value: "notmini", label: "Not in mini" }, { value: "always", label: "Always" }, { value: "off", label: "Never" }]),
   storeChoice("Playlists", "nowPlayingCover", "Show cover", [{ value: "album", label: "Album" }, { value: "playlist", label: "Playlist" }]),
   storeChoice("Playlists", "newPlaylistCover", "New cover", [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }]),
   // ── Rewind ──

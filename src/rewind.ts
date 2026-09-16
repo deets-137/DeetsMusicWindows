@@ -73,7 +73,8 @@ export function windowStart(w: RewindWindow, now = Date.now()): number {
   }
 }
 
-const playEventsSince = (sinceTs: number): Promise<PlayEvent[]> =>
+/** The windowed log, oldest first. Shared with the Home card (home.ts). */
+export const playEventsSince = (sinceTs: number): Promise<PlayEvent[]> =>
   invoke<PlayEvent[]>("play_events_since", { sinceTs });
 
 // Same id rule as the playlists card's `pid` — its context tags are `playlist:<pid>`.

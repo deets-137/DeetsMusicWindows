@@ -290,6 +290,16 @@ tracks(library_id TEXT PRIMARY KEY, sort_key TEXT, json TEXT)  -- + idx_tracks_s
 Each row stores the full `Track` as JSON plus a `sort_key` (`lower(title)lower(artist)`)
 for ordered, paged reads. Upserts are one transaction.
 
+**Add times** (2026-09-15, [HOME.md §3](HOME.md)):
+```sql
+added_at(track_id TEXT PRIMARY KEY, ts INTEGER)   -- epoch-ms, written once
+```
+When a track joined the library **through DeetsMusic** (`graduate_tracks`). Apple sends no
+per-song `dateAdded`, so the library at large has only `added_rank` — a page position from
+the `-dateAdded` sorted sync. This table is the true clock for what we add from here on. It
+sits OUTSIDE `tracks` on purpose: a `library_sync` rewrites every `tracks` row and would
+erase a stamp held in the json. Read with `added_at_map` (the Home card).
+
 **Play stats** (listening tallies, for a future data-vis):
 ```sql
 play_stats(track_id TEXT PRIMARY KEY, partial_count INTEGER, full_count INTEGER, last_played INTEGER)
@@ -342,6 +352,8 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `seen_tracks` | library.rs | all materialized (`source='seen'`) rows — ingested as track-store transients so historical plays resolve cross-session |
 | `record_play(catalogId?, libraryId?, kind)` | library.rs | bump a track's `partial`/`full` play tally |
 | `play_events_since(sinceTs)` | library.rs | windowed read of the play-event log (the Rewind card) |
+| `added_at_map` | library.rs | every add time this app has stamped (the Home card's Recently Added) |
+| `artist_photos` | apple.rs | every artist photo already in `artist_catalog`; read-only, never calls Apple (Home's artist tiles) |
 
 | Event | Payload |
 |---|---|

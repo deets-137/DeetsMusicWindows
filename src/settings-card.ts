@@ -35,6 +35,7 @@ import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatus
 import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance } from "./cards";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
+import { hiddenCount, clearHidden } from "./home";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
 type Option = { value: string; label: string };
@@ -60,6 +61,9 @@ interface ChoiceRow {
   get?: () => string;
   set?: (v: string) => void;
   options: Option[];
+  /** Force the dropdown form even at or under SPLIT_MAX — for options whose labels are
+   *  too long to sit side by side (Press › Show record on). */
+  menu?: boolean;
 }
 /** One half of a split pill. */
 type Half =
@@ -185,18 +189,19 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "motion", label: "Motion", hint: "The three Animate rows", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, the four Glass sliders, and the Press record player",
-    keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate"],
+    keys: ["oceanEdges", "oceanSand", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
   },
   { id: "menus", label: "Menus and notices", hint: "Open menus on hover and Show notices", keys: ["menuMode", "toasts"] },
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle"],
+    keys: ["playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
     keys: ["playlistEagerCounts", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover"],
   },
+  { id: "home", label: "Home", hint: "Hiding lasts, and every hidden tile", keys: ["homeHideLasts", "homeHidden"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
@@ -624,10 +629,16 @@ function mountSettings(host: HTMLElement): CardInstance {
           when: () => currentSkin() === "press",
         },
         {
-          kind: "choice", id: "pressvinylwhere", label: "Show record on", key: "pressVinylWhere",
+          kind: "choice", id: "pressvinylwhere", label: "Show record on", key: "pressVinylWhere", menu: true,
           hint: "Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel",
           options: [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }],
           when: () => currentSkin() === "press" && setting("pressVinyl") !== "off",
+        },
+        {
+          kind: "choice", id: "pressvinylspeed", label: "Spin speed", key: "pressVinylSpeed",
+          hint: "Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single",
+          options: [{ value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }],
+          when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
         },
         {
           kind: "toggle", id: "pressvinylplate", label: "Show record plate",
@@ -649,6 +660,36 @@ function mountSettings(host: HTMLElement): CardInstance {
           options: [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }],
         },
       ],
+    },
+    {
+      // The Home card (HOME.md §4). Only the hide rows: the shelves themselves have
+      // nothing to set — they show what you played and added.
+      title: "Home",
+      rows: [
+        {
+          kind: "choice", id: "homehide", label: "Hiding lasts", key: "homeHideLasts",
+          hint: "Right-click a Home tile and Hide to take it off the card",
+          options: [{ value: "forever", label: "Until cleared" }, { value: "session", label: "This session" }],
+        },
+        {
+          kind: "split", id: "homehidden", label: "Hidden tiles",
+          hint: () => "Puts every hidden tile back on Home. Playing one again also brings it back",
+          halves: [
+            {
+              type: "action",
+              label: "Clear",
+              run: () => {
+                clearHidden();
+                render();
+              },
+            },
+          ],
+        },
+      ],
+      tail: () => {
+        const n = hiddenCount();
+        return `<div class="set__status">${n === 0 ? "Nothing hidden on Home" : `${n} tile${n === 1 ? "" : "s"} hidden on Home`}</div>`;
+      },
     },
     {
       title: "Playback",
@@ -689,6 +730,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           hint: "Shuffle with nothing playing",
           options: [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }],
         },
+        storeToggle("historyday", "Show the day in History", "historyShowDay", () => "Each row says Today, Yesterday or the date, next to the artist"),
       ],
     },
     {
@@ -711,7 +753,11 @@ function mountSettings(host: HTMLElement): CardInstance {
       title: "Playlists",
       rows: [
         storeToggle("eagercounts", "Show playlist counts", "playlistEagerCounts", () => "One small request per playlist, once"),
-        storeToggle("createsummon", "New playlist opens Search", "playlistCreateSummon"),
+        {
+          kind: "choice", id: "createsummon", label: "New playlist opens Search", key: "playlistCreateSummon",
+          hint: "Puts the Search card beside the new playlist. Mini shows one card, so Search would hide it",
+          options: [{ value: "notmini", label: "Not in mini" }, { value: "always", label: "Always" }, { value: "off", label: "Never" }],
+        },
         {
           kind: "choice", id: "npcover", label: "Show cover", key: "nowPlayingCover",
           hint: "For a song from a playlist, in Now Playing and the tray panel",
@@ -1018,7 +1064,7 @@ function mountSettings(host: HTMLElement): CardInstance {
     set: (v) => (r.set ? (r.set(v), render()) : setSetting(r.key!, v as never)),
   });
   const halvesOf = (r: Row): Half[] | undefined =>
-    r.kind === "split" ? r.halves : r.kind === "choice" && r.options.length > SPLIT_MAX ? [menuOf(r)] : undefined;
+    r.kind === "split" ? r.halves : r.kind === "choice" && (r.menu || r.options.length > SPLIT_MAX) ? [menuOf(r)] : undefined;
 
   const halfHTML = (id: string, h: Half, i: number): string => {
     const at = `data-row="${id}" data-half="${i}"`;

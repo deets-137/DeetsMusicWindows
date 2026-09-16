@@ -680,7 +680,13 @@ fresh playlist's empty detail **and force-summons the Search card** into the oth
 content slot (`requestCard("search")` in `src/playlists-card.ts` — the same
 least-recently-touched/flip mechanics as the NP queue button, §10).
 
-**Current default (hardcoded):** **summon ON** — the whole flow is choreographed to
+**Built (2026-09-15): a three-way row.** Settings › Playlists › *New playlist opens Search*
+= **Not in mini** (default) · Always · Never (`playlistCreateSummon`). **Mini shows one card**,
+so a summon there put Search in the only slot and hid the playlist you had just made. The row
+reads `currentSurface()` at the moment of the create. An older stored `true` migrates to
+*Not in mini*, `false` to *Never*.
+
+**Earlier note — current default (hardcoded):** **summon ON** — the whole flow is choreographed to
 land you in "empty playlist here, Search beside it, start adding." But it *does*
 commandeer the other slot, evicting whatever card was there (and a flip remounts both
 slots, dropping any drilled-in state) — a user who creates playlists ahead of filling

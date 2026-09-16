@@ -54,9 +54,10 @@ polish). A screen reader gets the `aria-label`; the hint is for the pointer.
 | Any list | Sort · View · magnifier | Changes the order of this list · Changes what the list groups by and how big the rows are · Finds a name in this list | collection-card.ts |
 | Sort popover | ↑ · ↓ | First to last: A to Z, newest first · Last to first: Z to A, oldest first | collection-card.ts |
 | View popover | density icons | Rows: one line each · Small tiles · Large tiles | collection-card.ts |
-| Any list | Play · Shuffle row | Play these songs in this order · Shuffle these songs (a context can override: `ActionTitles`) | collection-card.ts (pre-existing) |
+| Any list | Play · Shuffle row | Play these songs in this order · Shuffle these songs (a context can override: `ActionTitles`). With no songs yet the row is disabled, and the hint moves to the row itself: *Add a song to play this list* (a disabled button shows no tooltip) | collection-card.ts |
 | Any list | Favorites filter pill | Favorites only | collection-card.ts (pre-existing) |
 | Hero | cover button | Opens the menu for this cover | collection-card.ts |
+| History | skip mark | You skipped this one (the Next glyph on a song you cut short) | history-card.ts |
 | Rewind | Make playlist | A playlist of this window's top songs, filed under Replay | rewind-card.ts (pre-existing) |
 | Settings | every row and action | the row hint (SETTINGS.md §3) | settings-card.ts (pre-existing) |
 | Tray panel | DeetsMusic · Hide · Previous · Play/Pause · Next · Mute · + | Opens the full DeetsMusic window · Hides this panel · as Now Playing · the + shows the song it would add | tray.html / tray.ts |

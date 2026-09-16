@@ -28,6 +28,7 @@ import { appleMusicItem } from "./playlist-export";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { enterRows, rowsAfter } from "./pop";
 import { requestCard } from "./layout-bus";
+import { currentSurface } from "./surface";
 import { toast } from "./toast";
 import type { CardDef } from "./cards";
 import type { DragPayload } from "./row-drag";
@@ -391,7 +392,7 @@ export const playlistsCard: CardDef = {
         groupings: [grouping],
         dropInto: (pay) => dropFor(p, pay),
         defaults: { density: "lines", sortKey: "order" },
-        emptyText: "Add songs from your Library or Search.",
+        emptyText: "Drag songs here, or add them from your Library or Search.",
       };
     };
 
@@ -817,7 +818,11 @@ export const playlistsCard: CardDef = {
           const p = lists.find((x) => x.libraryId === `local:${rowid}`);
           if (!p) throw new Error("created playlist missing from cached list");
           card.drill(detail(p));
-          if (setting("playlistCreateSummon")) requestCard("search"); // FUTURE-SETTINGS §16
+          // FUTURE-SETTINGS §16. Mini shows one card, so a summon there replaces the playlist
+          // you just made — "Not in mini" (the default) keeps it beside you only where there
+          // is room for both.
+          const summon = setting("playlistCreateSummon");
+          if (summon === "always" || (summon === "notmini" && currentSurface() !== "mini")) requestCard("search");
         })
         .catch((e) => {
           console.error("[playlists] create", e);

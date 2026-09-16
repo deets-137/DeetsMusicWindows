@@ -74,6 +74,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Look and feel | Tint cards (Glass only. The card color over the backlight. Less tint: more glow) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassTint` | **55** / 0–100 | `skin-settings.ts` → `--glass-tint` on `<html>` → Glass `--panel` mix, painted as the last inset shadow over the backlight (skin.css) |
 | Look and feel | Record player (Press only. The cover becomes a record. Spin: it turns while music plays) — pills *Spin* / *Still* / *Off* (2026-09-15); shows only while Press is the skin | `pressVinyl` | **off** / spin / still | `skin-settings.ts` → `data-press-vinyl` on `<html>`; `vinyl.ts` — [VINYL.md](VINYL.md) |
 | Look and feel | Show record on (Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel) — pills *Stage* / *Stage + card* / *Everywhere* (2026-09-15); shows only under Press with Record player on | `pressVinylWhere` | **everywhere** / stage / card | `skin-settings.ts` → `data-press-vinyl-where` → skin.css `--vinyl-stage` / `-strip` / `-tray`; the tray panel reads the store through a `storage` event |
+| Look and feel | Spin speed (Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single) — pills *33⅓* / *45* / *78* (2026-09-15); shows only under Press with Record player on Spin | `pressVinylSpeed` | **33** / 45 / 78 | `vinyl.ts` `turnS()` → the turn period; the song-follow math is unchanged — [VINYL.md](VINYL.md) §4 |
 | Look and feel | Show record plate (Press only. The offset ink behind the record. Off: only the record, a little larger) — toggle (2026-09-15); shows only under Press with Record player on | `pressVinylPlate` | **on** / off | `skin-settings.ts` → `data-press-vinyl-plate` → `--vinyl-plate-shadow: none`, `--vinyl-inset: 0px` |
 | Look and feel | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
 | Look and feel | Show notices ([TOASTS.md](TOASTS.md)) — *Everything* / *Failures* (Off removed 2026-09-14) | `toasts` | all / failures | `toast.ts` `admitted()` at every call; a question toast always shows |
@@ -84,10 +85,13 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Playback | Button is perma-shuffle (NEXT-VERSION §14, 2026-09-15) — toggle: the Shuffle button is a mode; off = it shuffles Up Next once | `shuffleStays` | **on** / off | `player.ts` `toggleShuffle` / `isShuffleOn`; the mode's state is `shuffleMode` (no row; Reset › Playback clears it), repeat's is `repeatMode` (no row, NEXT-VERSION §12) |
 | Playback | Shuffle keeps picks (§5a) — *First* / *In place* / *Mixed* | `shuffleManual` | top / hold / mix | `queue.ts` `shuffleUpcoming` |
 | Playback | Idle shuffle plays (§5b) — *Library* / *Nothing* | `shuffleIdle` | library / noop | `player.ts` `shuffleQueue` |
+| Playback | Show the day in History (Each row says Today, Yesterday or the date, next to the artist) — toggle (2026-09-15) | `historyShowDay` | on / **off** | `history-card.ts` — the day joins the row's subtitle line; never a divider ([QUEUE.md](QUEUE.md)) |
 | Apple Music | Add to Library and ♥ (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square + the Search row squares); the ♥ (`favorites.ts`) rides the same consent, hence the label (2026-09-14) |
 | Apple Music | Export playlists (Can't rename, reorder, or delete on Apple Music via DeetsMusic) — 2026-09-14 | `playlistExport` | on / off | `playlist-export.ts` `exportItem` (hides Export ▸) — [PLAYLISTS.md §6](PLAYLISTS.md) |
+| Home | Hiding lasts (Right-click a Home tile and Hide to take it off the card) — pills *Until cleared* / *This session* (2026-09-15) | `homeHideLasts` | **forever** / session | `home.ts` `hiddenMap` — [HOME.md §5](HOME.md) |
+| Home | Hidden tiles (Puts every hidden tile back on Home. Playing one again also brings it back) — a *Clear* action; the section's status line counts them | `homeHidden` (key → hidden-at ms) | **{}** | `home.ts` `clearHidden` / `hiddenCount` |
 | Playlists | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
-| Playlists | New playlist opens Search (§16) | `playlistCreateSummon` | on / off | `playlists-card.ts` `createAndEnter` |
+| Playlists | New playlist opens Search (Puts the Search card beside the new playlist. Mini shows one card, so Search would hide it) — pills *Not in mini* / *Always* / *Never* (three-way 2026-09-15; was a toggle, `true` → **notmini**) | `playlistCreateSummon` | **notmini** / always / off | `playlists-card.ts` `createAndEnter`, against `currentSurface()` |
 | Playlists | Show cover (For a song from a playlist, in Now Playing and the tray panel) — *Album* / *Playlist* (2026-09-15) | `nowPlayingCover` | **album** / playlist | `playlist-cover.ts` `playlistCoverFor` → `now-playing-card.ts`, `np-bus.ts` → `tray.ts` — [PLAYLISTS.md §11](PLAYLISTS.md) |
 | Playlists | New cover (How a new playlist's cover starts. Letters and Note keep the theme you made it in) — *Letters* / *Mosaic* / *Note* (2026-09-15) | `newPlaylistCover` | **letters** / mosaic / note | `playlists.ts` `playlistCreate` → `cover-art.ts` — [PLAYLISTS.md §11](PLAYLISTS.md) |
 | Rewind | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
@@ -102,16 +106,20 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Bugs | App log — Open folder · Copy | — | — | `log_open_folder` (+ `diag.flush()` first; LOGGING.md) / `bridge_log` |
 | About | Apple trademark notice · privacy notice (open by default) | — | — | — |
 
-**Sections regrouped 2026-09-14** (Window / Look and feel / Playback / Apple Music / Playlists /
-Rewind / Connections / Bugs / About). Every section but About starts folded; a fold persists
+**Sections regrouped 2026-09-14** (Window / Look and feel / Home / Playback / Apple Music /
+Playlists / Rewind / Connections / Bugs / About; Home joined 2026-09-15). Every section but About starts folded; a fold persists
 by section title (`deets.settings.folds`), so renamed sections start folded once.
+
+A choice row with more than `SPLIT_MAX` (3) options draws as a dropdown instead of pills;
+`menu: true` forces the dropdown at three or fewer, for labels too long to sit side by side
+(Press › *Show record on*, 2026-09-15).
 
 **Skin rows and range rows** (2026-09-15): a row with `when` shows only while it holds; the
 skin rows test `currentSkin()` and the card re-renders on `onSkinChange`. A skin row's hint
 starts with "<Skin> only." The skin rows sit at the end of the skin-neutral Look and feel
 rows, grouped per skin; a skin's sliders are ordered as their layers paint, back to front
 (Glass: Canvas glow, Dim canvas, Backlight, Tint cards; Press: Record player, then Show record
-on and Show record plate, which need it on), so the list reads top to bottom as
+on, Spin speed and Show record plate, which need it on), so the list reads top to bottom as
 the picture builds up. The range kind (a slider) reuses `slider.ts` and the `.scrub` markup.
 A drag calls the row's `preview` only (a store write re-renders the card under the pointer);
 the release writes the store. A focused slider steps with the arrow keys (Shift: 10) and

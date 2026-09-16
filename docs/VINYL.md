@@ -34,13 +34,15 @@ day (§9); the telemetry and the trace recipe that found each fault are in §8.
 |-----|-----|---------|---------|------|
 | Record player | `pressVinyl` | Spin · Still · Off | **Off** | Press only. The cover becomes a record. Spin: it turns while music plays |
 | Show record on | `pressVinylWhere` | Stage · Stage + card · Everywhere | **Everywhere** | Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel |
+| Spin speed | `pressVinylSpeed` | 33⅓ · 45 · 78 | **33⅓** | Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single |
 | Show record plate | `pressVinylPlate` | toggle | **On** | Press only. The offset ink behind the record. Off: only the record, a little larger |
 
-- Row 1 shows under Press. Rows 2–3 also need Record player ≠ Off (the Sand width pattern).
+- Row 1 shows under Press. Rows 3–4 also need Record player ≠ Off (the Sand width pattern);
+  **Spin speed** needs Record player = *Spin*, because a still record has no speed.
 - `skin-settings.ts` `applyVinylAttrs()` writes `data-press-vinyl`, `data-press-vinyl-where` and
   `data-press-vinyl-plate` (on | off) on `<html>`; `isVinylKey(k)` names the three keys.
-- All three keys are in the **Skin settings** Reset group (`settings-card.ts`, id `skinrows`) and
-  in `agent-settings.ts` (`storeChoice` ×2, `storeToggle` ×1, `only: "Press only…"`).
+- All four keys are in the **Skin settings** Reset group (`settings-card.ts`, id `skinrows`) and
+  in `agent-settings.ts` (`storeChoice` ×3, `storeToggle` ×1, `only: "Press only…"`).
 - **The tray panel** reads the same settings store: same origin, same localStorage. A save in the
   main window reaches it as a `storage` event (`settings-store.ts` reloads and notifies each
   changed key). No Rust change. `tray.ts` calls `applyVinylAttrs` on start and on change.
@@ -92,11 +94,27 @@ A slot (`.vinyl`) holds, bottom to top:
 
 **Rule 2: round the turns per song, so the disc starts AND ends upright.**
 
-    turns  = max(1, round(duration ÷ 1.8 s))      (33⅓ rpm = 1.8 s per turn)
+    turn   = 60 s ÷ rpm                           (33⅓ → 1.8 s, 45 → 1.333 s, 78 → 0.769 s)
+    turns  = max(1, round(duration ÷ turn))
     period = duration ÷ turns                      (vinyl.ts periodFor)
 
 At 0 s the angle is 0°; at `duration` it is `turns × 360°`, upright. The speed change is under half
-a turn per song (under 0.5% for 3 minutes). **Rule 3:** no duration (a live station) → 1.8 s, free.
+a turn per song (under 0.5% for 3 minutes). **Rule 3:** no duration (a live station) → one turn, free.
+
+### Speed (Spin speed, 2026-09-15)
+
+The **Spin speed** row picks the rate; `turnS()` reads it and every other number follows. The rules
+above do not change, so each disc still starts and ends upright at any speed. Two notes:
+
+- **The snap floor is an angle, not a time** (`SNAP_MIN_DEG = 50°`). A fixed 250 ms was 50° of a
+  33⅓ turn but 117° of a 78 rpm turn, so a wrong disc would never have jumped at 78.
+- **Refresh rate is not in the math.** The spin is a compositor Web Animation; the display only
+  decides how many frames one turn gets. Per frame at 60 Hz: 3.3° (33⅓), 4.5° (45), 7.8° (78) —
+  halve those at 120 Hz, and again at 240 Hz. Only the artwork blurs at speed: the grooves and the
+  label ring are `repeating-radial-gradient` rings, so they are the same at every angle and cannot
+  strobe. The song line logs the rate and the °/frame for the panel in use.
+- A change of the row mid-song gives the song a new period, so the disc jumps once to where the
+  song says (`sync("seek")`); a difference under 50° closes by speed instead.
 
 **The driver.** One Web Animation per disc (`rotate 0turn → 1turn`, infinite, `duration = period`),
 run by the compositor. `sync()` compares the animation time with `position mod period`.
@@ -127,7 +145,7 @@ run by the compositor. `sync()` compares the animation time with `position mod p
 | Exact reading ≥ 1.5 s from the last | A seek (media keys, the tray panel, an agent): **snap**, reason `seek`. |
 | Counts that cannot all be true | A seek or a stall: **snap**, reason `count`. |
 | Jump back to < 1.5 s | Held 600 ms for a song change; if none comes, **snap**, reason `zero`. |
-| Any snap with the disc < 250 ms off | Not a snap: speed only (`SNAP_MIN_MS`). |
+| Any snap with the disc < 50° off | Not a snap: speed only (`SNAP_MIN_DEG`; 50° = 250 ms at 33⅓ rpm). |
 | Reading > 2 s within 1.5 s of a song change | The old song still reporting: ignored. |
 | Window hidden or minimized | Held still (`data-ambient="paused"`, watched by `vinyl.ts`); tray: `suspend()`. |
 
@@ -188,7 +206,7 @@ Gated on Vite's DEV flag like `frames.ts`; each line goes to the console and the
   `→ station:<id>|` line with `src none` is a radio gap. `(start)` is a fresh mount of the card
   (a page reload or a surface change), not a slide; its `ms` figure is meaningless.
 - `[perf] vinyl snap <seek|count|zero> · err <ms> · at <s>` — every jump, with how far off the disc was.
-- `[perf] vinyl song <duration> · period <ms> (<turns> turns) · start <angle>° exact|count at <s> ·
+- `[perf] vinyl song <duration> · period <ms> (<turns> turns) · <rpm> rpm, <deg>°/frame @<hz> Hz · start <angle>° exact|count at <s> ·
   snaps N (…) · nudge worst <ms>, rate <min>–<max> · held stale / seek / zero · scrubs · left at <angle>°`
   — one per song, when the next song replaces it. After a natural song end `left at` should be near 0°
   (a skip leaves at any angle).

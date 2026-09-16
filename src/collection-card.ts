@@ -142,23 +142,26 @@ const DEFAULT_TITLES: Required<ActionTitles> = { play: "Play these songs in this
 
 /** The Play / Shuffle row (NEXT-VERSION §13): two half-width buttons, `data-act` = play | shuffle.
  *  Shared with the Search card's panes, which are not on this engine. */
-export function actionsRowHTML(titles: ActionTitles = {}): string {
+export function actionsRowHTML(titles: ActionTitles = {}, disabled = false): string {
   const t = { ...DEFAULT_TITLES, ...titles };
-  return `<div class="lib-actions">
-    <button class="lib-action lib-action--play" data-act="play" type="button" title="${esc(t.play)}">
+  const off = disabled ? " disabled" : "";
+  // A disabled button shows no tooltip, so the hint moves to the row while it waits for songs.
+  const wait = disabled ? ` title="Add a song to play this list"` : "";
+  return `<div class="lib-actions"${wait}>
+    <button class="lib-action lib-action--play" data-act="play" type="button"${off} title="${esc(t.play)}">
       <svg class="lib-action__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg><span>Play</span>
     </button>
-    <button class="lib-action" data-act="shuffle" type="button" title="${esc(t.shuffle)}">
+    <button class="lib-action" data-act="shuffle" type="button"${off} title="${esc(t.shuffle)}">
       <svg class="lib-action__icon lib-action__icon--stroke" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h2.5l6 8H14M14 4h-3.5l-1.5 2M2 12h2.5l1.5-2"/><path d="M12 2l2 2-2 2M12 10l2 2-2 2"/></svg><span>Shuffle</span>
     </button>
   </div>`;
 }
-/** The row for a song list (`Grouping.playAll`); "" for anything else, and "" while the
- *  list has no rows at all (an empty library, or a filter that matches nothing): there is
- *  nothing for Play or Shuffle to start. */
+/** The row for a song list (`Grouping.playAll`); "" for anything else. With no rows (a new
+ *  playlist, an empty library, a filter that matches nothing) the row still draws, **disabled**:
+ *  the pane keeps one shape, so the first song to arrive moves nothing on screen. */
 function actionsHTML(g: Grouping, count: number): string {
-  if (!g.playAll || count === 0) return "";
-  return actionsRowHTML(g.playAll === true ? {} : g.playAll);
+  if (!g.playAll) return "";
+  return actionsRowHTML(g.playAll === true ? {} : g.playAll, count === 0);
 }
 
 /**
@@ -480,7 +483,15 @@ export function initCollectionCard(opts: CardOptions) {
     if (!items.length) {
       dropWindower(pane);
       view.className = "lib-view lib-empty";
-      fill(`<p class="lib-empty__msg">${f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.")}</p>`);
+      // A pane that takes a drop (an open playlist) draws the invite as one row-shaped slot
+      // with a dashed rim, where the first row will land — the pane is already a drop target
+      // (`dropInto` below), and now it says so. A filter with no matches is a plain line.
+      const msg = f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.");
+      fill(
+        !f.query && f.ctx.dropInto
+          ? `<div class="lib-empty__slot"><span class="lib-empty__art" aria-hidden="true">♪</span><span class="lib-empty__msg">${msg}</span></div>`
+          : `<p class="lib-empty__msg">${msg}</p>`,
+      );
       restoreSearch();
       return;
     }
@@ -756,7 +767,9 @@ export function initCollectionCard(opts: CardOptions) {
       if (into) {
         if (view && reorderable(f) && f.items.length)
           return { slots: { list: view, count: f.items.length }, scroll: view, drop: into };
-        return { highlight: view ?? curPane, scroll: view, drop: () => into(null) };
+        // Empty: light the invite slot itself, not the whole pane.
+        const slot = view?.querySelector<HTMLElement>(".lib-empty__slot");
+        return { highlight: slot ?? view ?? curPane, scroll: view, drop: () => into(null) };
       }
       return g.dropOn || f.ctx.dropInto ? { scroll: view } : null; // no drop here, but the list still scrolls
     },

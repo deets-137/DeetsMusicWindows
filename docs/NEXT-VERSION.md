@@ -571,27 +571,51 @@ and the rest of its list shuffled behind it (manual picks stay in front, §5a un
 and a Repeat-all lap is shuffled too. Agent: `shuffle` presses the button, `shuffle-on` /
 `shuffle-off` set the mode; the snapshot's `shuffle` says whether it is on.
 
-## 15. A Home card — to design
+## 15. A Home card — DESIGNED + BUILT 2026-09-15
 
 **Why.** The app opens on the last two cards, not on a landing. There is no "Recently Played"
 or "Recently Added" for songs and albums (Radio has a Recents shelf; the Library has an Added
 Date sort). The play-event log is durable, so the data is here.
 
-**Scope to design.** One card, three shelves: Recently Played (songs or albums, from
-`play_events`), Recently Added (from `addedRank`), and one more (Your Playlists, or Rewind's
-top of the week). Forks to bring: albums vs songs per shelf; a shelf of stations; whether
-Home is the default slot on a fresh install; how many Apple calls a shelf costs (target:
-none). Not designed.
+**Built.** Three mixed shelves. Everything local but one thing: a first-time artist photo
+costs one Apple call, once ever, saved in `artist_catalog`. Recently Played collapses consecutive
+plays that share a `context` into one container tile (playlist / album / station / artist);
+Recently Added interleaves songs, albums and playlists by kind and prints no dates (Apple
+sends no per-song `dateAdded`, so we know the order, never the day); the third shelf is the
+current weekday/weekend × part-of-day bucket, scored on decayed minutes, capped at half
+containers, with songs suppressed when they came mostly from a listed container. Right-click
+› Hide takes a tile off and the shelf refills at once; playing it again brings it back.
+Each shelf is one sideways-scrolling row of twelve tiles, stacked down the card (the artist
+view's shelves), so all three are on screen at once. Settings › Home holds *Hiding lasts* and *Hidden tiles › Clear*. New in Rust: the `added_at`
+table + `added_at_map` — the true add clock for anything added through DeetsMusic from now
+on. Whether Home is the fresh-install default slot waits for the default-cards talk.
+**The whole record, with every fork: [HOME.md](HOME.md).**
 
-## 16. A durable History card — to do
+## 16. A durable History card — BUILT 2026-09-15
 
-**What the code has today.** The History card reads `queue.getPlayLog()`, the session log.
-It empties at every launch. Rewind reads the durable `play_events` table, so the data
-survives; only the card does not use it.
+**What the code had.** The card read `queue.getPlayLog()`, the session log, so it emptied at
+every launch. Rewind already read the durable `play_events` table.
 
-**Scope.** Read the last N events from `play_events` at mount (one SQLite read, no Apple
-calls), then keep appending the session's entries as now. Show a day divider. Keep the
-session-only rows' flags (played / skipped). Small; no forks worth a talk.
+**As built.** The card reads `play_events_since(now − 14 days)` at mount — one SQLite call,
+no Apple calls, 200 rows held — and re-reads the last **two hours** on every write to the log
+(`onPlayEvent` in `stats.ts`, fired when `record_event_start` and `record_event_end` land),
+which catches both a new play and the finalize of the one before it. The session log is no
+longer read by anything.
+
+**The decisions (user, 2026-09-15).**
+- **Names are not copied into the event.** The first plan added `title` / `artist` columns
+  (a `migrate_v6`). Checking the code first killed it: every played track that is not in your
+  library is already materialized as a `seen` row, and `track-store.ts` loads those into the
+  store at launch **for exactly this reason**. So the join already survives a restart, and the
+  schema is untouched — no Rust change, no dev-runner restart.
+- **The card keeps its shape.** Hero + "Previously" + a flat list, as before. **No day
+  dividers**: the day is opt-in, and it shows inside the row's own subtitle line
+  (*"Miles Davis · Yesterday"*) under Settings › Playback › **Show the day in History**,
+  default off.
+- **Each row says when.** The clock time on the right, and the Next glyph when the song was
+  cut short (`completed = 0` on a finalized row), hint *You skipped this one*. A mark, not the
+  word "Skipped": most listening has skips in it and a column of words would shout.
+- **Repeats stay real.** Three plays make three rows.
 
 ## 17. Sleep timer — to design
 

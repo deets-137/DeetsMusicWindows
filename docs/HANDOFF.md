@@ -16,7 +16,7 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 (`__diag` log) · [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (card system + surface seam) ·
 [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](SETTINGS.md) (the settings store + card) ·
 [UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
-[PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [FAVORITES.md](FAVORITES.md) ·
+[PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [HOME.md](HOME.md) (the landing card — three shelves, all local) · [FAVORITES.md](FAVORITES.md) ·
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
 [AIRPLAY.md](AIRPLAY.md) (play on a HomePod — the shared sender crate, and §11 sharing a speaker with DeetsAirplay) ·
 [PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once — parked 2026-09-15, Spotify's dev-mode terms block it) ·
@@ -133,8 +133,17 @@ the platform sound and the loop thin. Scoped with forks in
    (pressed look, Up Next shuffles), click a song in an album (the rest shuffled), press
    again (off; the next click plays in order); turn the row off and press (one-shot).
 4. **Space for play / pause** — folds into the keyboard pass below (not a separate item).
-5. **A Home card** (Recently Played · Recently Added · one more shelf) — §15, **to design**.
-6. **A durable History card** (read `play_events` at mount) — §16, to do; small.
+5. ✅ **A Home card** — §15, **DESIGNED + BUILT 2026-09-15** ([HOME.md](HOME.md)): three mixed
+   shelves (Recently Played from context runs · Recently Added, interleaved by kind, no dates ·
+   a weekday/weekend × part-of-day bucket), right-click › Hide with undo, Settings › Home.
+   Local but for a first-time artist photo (one call each, once ever). New in Rust:
+   `added_at` + `added_at_map` (the add clock starts now) and `artist_photos`.
+   Desk test: the three shelves; a playlist run shows as ONE playlist tile; Hide + Undo;
+   Hide then play the same thing (it comes back); Settings › Home › Clear.
+6. ✅ **A durable History card** — §16, **BUILT 2026-09-15**: reads `play_events` (14 days, 200
+   rows) at mount and re-reads the last two hours on every log write; the card keeps its shape
+   (hero + Previously), each row carries the time and a skip mark, and Settings › Playback ›
+   *Show the day in History* (default off) puts the day in the row's subtitle. No Rust change.
 7. **The playlist creation flow** — §11, to design (carried from 2026-09-12).
 8. **A sleep timer** — §17, to design.
 Not possible on this platform, so not planned: lyrics, crossfade, Sound Check, remove from
@@ -566,8 +575,9 @@ them), and two scroll/render fixes in the card engine.
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
 - **2026-09-15 — Press record player** ([VINYL.md](VINYL.md)): Record player Spin / Still / Off
-  (default Off), Show record on, Show record plate. The cover (Now Playing + tray panel) turns at
-  33⅓ rpm, locked to the song so each disc starts and ends upright; song changes slide the discs.
+  (default Off), Show record on, Spin speed (33⅓ / 45 / 78, default 33⅓), Show record plate. The
+  cover (Now Playing + tray panel) turns at the chosen rate, locked to the song so each disc starts
+  and ends upright at any speed; song changes slide the discs.
   Four desk-test rounds, each fault found with the new dev telemetry (`[perf] vinyl show / snap /
   song`, `__vinyl.sample`) and a computed-transform angle trace (VINYL.md §8–§9). Open: the frame
   cost of a full-rate spin (its own optimization session); Apple artwork-rule reading in §10.
@@ -752,7 +762,7 @@ src/artist-credit.ts        credit-string parser: vocabulary-gated split → con
 src/search.ts / search-card.ts    catalog search data + Search card (SEARCH.md)
 src/playlists.ts / playlists-card.ts   playlists data + card (PLAYLISTS.md); Add-to-Playlist ▸
 src/qcard.ts                Queue card: Now Playing + Up Next + jump-to-item + right-click menus
-src/history-card.ts         History card: session play log (hero + "Previously")
+src/history-card.ts         History card: the durable play log (hero + "Previously")
 src/queue-rows.ts           shared queue-row rendering (entry→Track resolve, .qrow markup)
 src/rewind.ts / rewind-card.ts    Rewind data + leaderboard card (DEETS-REWIND)
 src/radio.ts / radio-card.ts      Radio data (session cache + recents) + stations browser card

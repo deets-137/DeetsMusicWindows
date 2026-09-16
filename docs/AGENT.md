@@ -288,7 +288,8 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   takes `+15 min`, `15`, `-15` (−60…60 in 15-minute steps, the card's menu).
 - A toggle takes `on` / `off` (also `true` / `false`, `yes` / `no`).
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
-  (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off) — each `[Press only]`; a set
+  (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
+  `pressVinylSpeed` (33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set
   under another skin is stored, and the reply says it shows while Press is the skin.
 - A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
   `glassCanvasGlow`, `glassCanvasDim`), with or without `%`.

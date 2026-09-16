@@ -19,13 +19,15 @@ export function artURL(t: Track | undefined, px: number): string | null {
 }
 
 /** One .qrow list item. `interactive` adds button semantics (Qcard rows jump on click);
- *  read-only lists (History) omit them so Tab/Enter don't promise an action they lack. */
+ *  read-only lists (History) omit them so Tab/Enter don't promise an action they lack.
+ *  `meta` is the right-hand column (History: the clock time, and the skip mark). */
 export function rowHTML(
   idx: number,
   title: string,
   artist: string,
   cover: string | null,
   interactive = true,
+  meta = "",
 ): string {
   const art = cover
     ? `<img class="qrow__art" src="${esc(cover)}" alt="" loading="lazy" data-art />`
@@ -33,5 +35,5 @@ export function rowHTML(
   const role = interactive ? ` role="button" tabindex="0"` : "";
   return `<li class="qrow" data-idx="${idx}"${role}>${art}<div class="qrow__text"><span class="qrow__title">${esc(
     title,
-  )}</span><span class="qrow__artist">${esc(artist)}</span></div></li>`;
+  )}</span><span class="qrow__artist">${esc(artist)}</span></div>${meta}</li>`;
 }

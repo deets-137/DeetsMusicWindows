@@ -24,6 +24,8 @@ front-end, Rust back-end).
   upright-start-and-end angle math, the slide on song change, the Apple artwork-rule reading.
 - `docs/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
+- `docs/HOME.md` — the Home card: the three shelves, the context-run rule, the
+  weekday/weekend bucket score, and Hide (built 2026-09-15; zero Apple calls).
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
   led by the Deets and Happy sprites (designed, not built).

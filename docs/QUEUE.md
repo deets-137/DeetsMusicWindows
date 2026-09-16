@@ -363,7 +363,11 @@ restore; a station is not remembered. Names and art resolve through the track st
 durable `seen` rows cover catalog-only songs), and Now Playing repaints once the store's
 first load lands.
 
-## The session play log — the History card's source
+## The session play log (the Previous chain's honest twin)
+
+> **2026-09-15: the History card no longer reads this log.** It reads the durable
+> `play_events` table, so it survives a restart ([NEXT-VERSION §16](NEXT-VERSION.md)). The
+> session log below still exists and is still append-only; nothing renders it today.
 
 `history[]` serves **Previous** — it's deduped and mutated (setContext rebuilds, `previous()`
 pops), so it can't honestly answer "what did I listen to?". For that, `queue.ts` keeps a
@@ -374,11 +378,23 @@ real: a song heard three times appears three times, and re-queueing a song from 
 never removes its earlier rows — the window dedup in `loadFromModel` handles playback
 correctness; the log is display-only.
 
-The **History card** (`history-card.ts`) renders it newest-first: hero block (most recent,
-mirrors the Qcard's Now Playing) + "Previously" list. Read-only rows; right-click →
-Play Now / Play Next / Add to Queue via the handle-level ops (`playContext` /
-`enqueueNext` / `enqueueLater`), stamped `context: "history"`. Row markup/resolution is
-shared with the Qcard via `queue-rows.ts`.
+The **History card** (`history-card.ts`) keeps that shape over the durable rows: hero block
+(most recent, mirrors the Qcard's Now Playing) + "Previously" list, newest first. Read-only
+rows; right-click → Play Now / Play Next / Add to Queue via the handle-level ops
+(`playContext` / `enqueueNext` / `enqueueLater`), stamped `context: "history"`. Row
+markup/resolution is shared with the Qcard via `queue-rows.ts`.
+
+**What it reads.** `play_events_since(now − 14 days)` at mount (one SQLite call, no Apple
+calls), newest first, 200 rows held. After that, **every write to the log re-reads the last
+two hours** (`onPlayEvent` in `stats.ts`, fired when `record_event_start` and
+`record_event_end` land): a start puts a new row on top, and a finalize turns the row above
+it into a skip mark. **Names** come from the track store, not from the event row — a played
+track that is not in your library is materialized as a `seen` row, and those load into the
+store at launch for exactly this (`track-store.ts` `loadTracks`). **Each row** carries the
+clock time on the right, and the Next glyph when the song was cut short (hint: *You skipped
+this one*). Settings › Playback › **Show the day in History** (default off) adds Today /
+Yesterday / the date to the row's own subtitle line — never as a divider, so the card keeps
+its shape.
 
 ---
 

@@ -6,6 +6,7 @@
 // three into their fixed positions.
 
 import { nowPlayingCard } from "./now-playing-card";
+import { homeCard } from "./home-card";
 import { libraryCard } from "./library-card";
 import { queueCard } from "./qcard";
 import { playlistsCard } from "./playlists-card";
@@ -15,7 +16,7 @@ import { rewindCard } from "./rewind-card";
 import { radioCard } from "./radio-card";
 import { settingsCard } from "./settings-card";
 
-export type CardId = "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings";
+export type CardId = "home" | "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings";
 
 export interface CardInstance {
   /** Tear down: drop every listener and clear the host. Called when a slot swaps cards. */
@@ -38,6 +39,7 @@ export interface CardDef {
 
 /** Cards available to slots. Playlists/Search join here as they're built. */
 export const registry: Partial<Record<CardId, CardDef>> = {
+  home: homeCard,
   "now-playing": nowPlayingCard,
   library: libraryCard,
   queue: queueCard,

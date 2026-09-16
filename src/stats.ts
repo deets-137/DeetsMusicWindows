@@ -95,6 +95,17 @@ interface OpenEvent {
 }
 let openEvent: OpenEvent | null = null;
 
+// The durable log changed: a row was appended (a song started) or finalized (it ended).
+// The History card reads `play_events` directly, so it listens here instead of guessing
+// from the queue — by the time this fires, the row is in the table.
+const logSubs = new Set<() => void>();
+/** Called after every `play_events` write lands. Returns the unsubscribe. */
+export function onPlayEvent(cb: () => void): () => void {
+  logSubs.add(cb);
+  return () => logSubs.delete(cb);
+}
+const emitLog = () => logSubs.forEach((cb) => cb());
+
 function startEvent(cur: TrackHandle): void {
   finalizeEvent(); // the outgoing song's row, if any
   const id = invoke<number>("record_event_start", {
@@ -104,6 +115,7 @@ function startEvent(cur: TrackHandle): void {
   })
     .then((n) => {
       diag.log("stats:event-start", { id: n, trackId: playId(cur), context: cur.context });
+      emitLog();
       return n;
     })
     .catch((e) => {
@@ -123,7 +135,10 @@ export function finalizeEvent(): void {
   void ev.id.then((id) => {
     if (id === null) return; // the start write failed — nothing to finalize
     invoke("record_event_end", { eventId: id, msListened, completed })
-      .then(() => diag.log("stats:event-end", { id, msListened, completed }))
+      .then(() => {
+        diag.log("stats:event-end", { id, msListened, completed });
+        emitLog();
+      })
       .catch((e) => diag.log("stats:err", { kind: "event-end", e: String(e) }));
   });
 }

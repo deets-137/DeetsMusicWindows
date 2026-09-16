@@ -204,8 +204,15 @@ plus **kind auto-clusters** so the unfiled pile self-organizes. Both render as
 ## 4. Building playlists
 
 Two entry points, both on the `src/context-menu.ts` primitive — **both BUILT 2026-07-02**:
-- **`＋ New Playlist`** → name input → empty local playlist → drills in → empty state invites
-  "Add songs from your Library or Search."
+- **`＋ New Playlist`** → name input → empty local playlist → drills in → the empty state.
+  **The empty pane is the filled pane's skeleton (2026-09-15).** The hero holds the full width,
+  the Play / Shuffle row draws disabled, and the invite is one row-shaped slot with a dashed rim
+  where the first song will land: *"Drag songs here, or add them from your Library or Search."*
+  The pane has always accepted a drop; now it says so, and a drag lights the slot
+  ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §4a, *An empty pane keeps the shape*).
+  Search is summoned beside it per Settings › Playlists › *New playlist opens Search*
+  (**Not in mini** by default — mini has one slot, so a summon there hid the new playlist;
+  [FUTURE-SETTINGS §16](FUTURE-SETTINGS.md)).
 - **`Add to Playlist ▸`** — a JS-latched side-flyout submenu (`SubmenuItem`) on Library
   songs/albums (shared `trackMenu` — playlist-detail rows ride it too), playlist rows
   (bulk add, self-excluded), and Search songs/albums/playlists (fetch-then-add). Lists

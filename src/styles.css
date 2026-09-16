@@ -1431,6 +1431,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   color: var(--text); font-family: var(--font-body); font-size: var(--fs-text); cursor: pointer;
 }
 .lib-action:hover { background: var(--surface-hover); }
+/* Nothing to play yet (a new playlist): the row keeps its place, quietened and unpressable. */
+.lib-action:disabled { opacity: var(--disabled-alpha); cursor: default; }
+.lib-action:disabled:hover { background: var(--surface); }
+.lib-action--play:disabled:hover { background: var(--title); filter: none; }
 .lib-action--play { background: var(--title); border-color: var(--title); color: var(--surface); }
 .lib-action--play:hover { background: var(--title); filter: brightness(1.12); }
 .lib-action__icon { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; flex: 0 0 auto; }
@@ -1547,8 +1551,29 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .lib-row > .lib-src-badge { margin-left: auto; }        /* trailing accessory on list rows */
 
 /* empty state */
-.lib-empty { display: grid; place-items: center; padding: var(--space-4); }
+/* An empty pane keeps the shape of a filled one: the hero holds the full width (it used to
+   shrink-wrap under a centred grid), the Play / Shuffle row draws disabled, and the invite
+   stands where the first row will. */
+.lib-empty { display: block; }
 .lib-empty__msg { color: var(--subtext); font-size: var(--fs-subtext); }
+.lib-empty > .lib-empty__msg { display: block; text-align: center; padding: var(--space-4); }
+/* The invite as one row-shaped slot with a dashed rim (a pane that takes a drop): the ♪ box
+   sits exactly where a row's mini-cover will, so nothing moves when the first song lands. */
+.lib-empty__slot {
+  display: flex; align-items: center; gap: var(--space-2);
+  box-sizing: border-box; min-height: var(--lib-row-h);
+  padding: var(--space-1) var(--space-2);
+  border: var(--empty-slot-rim-w) var(--empty-slot-rim-style)
+    color-mix(in srgb, var(--border) var(--empty-slot-rim-alpha), transparent);
+  border-radius: var(--radius-control);
+}
+.lib-empty__art {
+  flex: 0 0 auto; width: var(--lib-row-art); height: var(--lib-row-art);
+  border-radius: var(--lib-row-art-radius);
+  background: var(--surface-hover);
+  display: grid; place-items: center;
+  color: var(--subtext); font-size: var(--fs-subtext);
+}
 
 /* ── Radio card (STATIONS.md §3a — the stations browser) ── */
 /* Shelf headers are LIST ITEMS in the engine's root pane (the heterogeneous shelf
@@ -1730,6 +1755,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 
 .search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; }
 .search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
+.search__tile-art--round { border-radius: 50%; } /* an artist on a shelf (Home), as .lib-tile__cover--round */
 .search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
 .search__tile-art--mosaic { overflow: hidden; } /* a playlist with no artwork, on an artist shelf */
 .search__tile-art--mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }

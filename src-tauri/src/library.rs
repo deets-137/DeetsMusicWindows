@@ -65,7 +65,17 @@ pub fn init_db(conn: &Connection) -> rusqlite::Result<()> {
             completed   INTEGER NOT NULL DEFAULT 0,
             context     TEXT
         );
-        CREATE INDEX IF NOT EXISTS idx_play_events_ts ON play_events(started_ts);",
+        CREATE INDEX IF NOT EXISTS idx_play_events_ts ON play_events(started_ts);
+
+        -- When a track joined the library THROUGH DeetsMusic (HOME.md §3): epoch-ms,
+        -- written once by graduate_tracks. Apple sends no per-song dateAdded, so the
+        -- library at large has only `added_rank` (a page position). This table is the
+        -- true clock for what we add from here on. It lives OUTSIDE `tracks` on purpose:
+        -- a library_sync rewrites every `tracks` row and would erase a stamp held in json.
+        CREATE TABLE IF NOT EXISTS added_at (
+            track_id TEXT PRIMARY KEY,
+            ts       INTEGER NOT NULL
+        );",
     )
 }
 
@@ -592,8 +602,32 @@ pub(crate) fn graduate_tracks(conn: &Connection, tracks: &[Track]) -> Result<(),
             rusqlite::params![id, sort_key, json],
         )
         .map_err(|e| e.to_string())?;
+        // The true add time, kept once (a re-add doesn't move it forward).
+        conn.execute(
+            "INSERT OR IGNORE INTO added_at(track_id, ts) VALUES(?1, ?2)",
+            rusqlite::params![id, now as i64 * 1000],
+        )
+        .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// Every add time this app has stamped: `[track_id, epoch_ms]` pairs. One read at mount
+/// (the Home card), no Apple call. Small by nature — one row per add from DeetsMusic.
+#[tauri::command]
+pub fn added_at_map(db: State<'_, Db>) -> Result<Vec<(String, i64)>, String> {
+    let conn = db.0.lock().unwrap();
+    let mut stmt = conn
+        .prepare("SELECT track_id, ts FROM added_at")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
 }
 
 // One sync at a time. Overlapping invocations (double-triggered refresh, a card

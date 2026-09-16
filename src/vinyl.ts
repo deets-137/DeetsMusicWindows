@@ -5,8 +5,8 @@
 // tray panel both use it.
 //
 // The angle follows the song, not the clock (§4): angle = 360° × position ÷ period, and the
-// period is 1.8 s (33⅓ rpm) stretched so the song lasts a whole number of turns — each disc
-// starts upright and ends upright. A song change slides the old disc out and the new one in (§5).
+// period is one turn at the Spin speed row's rate (33⅓, 45 or 78 rpm) stretched so the song
+// lasts a whole number of turns — each disc starts upright and ends upright. A song change slides the old disc out and the new one in (§5).
 // Both motions are Web Animations with plain values, so the compositor runs them: a song
 // change is exactly when MusicKit keeps the main thread busy.
 //
@@ -38,9 +38,12 @@ if (TEL) {
   };
 }
 
-const TURN_S = 1.8; // one turn at 33⅓ rpm
+const RPM: Record<string, number> = { "33": 100 / 3, "45": 45, "78": 78 }; // the three record speeds
+/** One turn, in seconds, at the speed the row asks for (33⅓ rpm = 1.8 s). */
+const turnS = (): number => 60 / (RPM[setting("pressVinylSpeed")] ?? RPM["33"]);
 const SEEK_S = 1.5; // an exact reading this far from the disc is a seek: snap to it…
-const SNAP_MIN_MS = 250; // …but only when the disc is this far off; less is a speed change
+const SNAP_MIN_DEG = 50; // …but only when the disc is this far off; less is a speed change.
+// An angle, not a time: 50° is 250 ms of a 33⅓ turn and 107 ms of a 78 rpm turn.
 const RATE_CAP = 0.05; // anything smaller is closed by running up to 5% fast or slow…
 const CATCH_MS = 1500; // …over about this long
 const DECODE_WAIT_MS = 300; // the longest a slide waits for the new cover to decode
@@ -54,9 +57,10 @@ const root = document.documentElement;
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const spinWanted = () => root.dataset.skin === "press" && setting("pressVinyl") === "spin" && !reduced();
 
-/** The period for a song: 1.8 s, stretched so the song lasts a whole number of turns. */
-export const periodFor = (duration: number): number =>
-  duration > 0 ? duration / Math.max(1, Math.round(duration / TURN_S)) : TURN_S;
+/** The period for a song: one turn at the chosen speed, stretched so the song lasts a whole
+ *  number of turns. Every speed keeps that rule, so a disc always starts and ends upright. */
+export const periodFor = (duration: number, turn = turnS()): number =>
+  duration > 0 ? duration / Math.max(1, Math.round(duration / turn)) : turn;
 
 /** A CSS time token ("0.42s" / "420ms") in ms. */
 const ms = (v: string): number => {
@@ -86,7 +90,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   let gen = 0; // bumps on every song change: a slide still waiting on a decode checks it
   const recent: string[] = []; // songs shown, newest last — a return to the one before is Previous
   let anim: Animation | null = null;
-  let period = TURN_S;
+  let period = turnS();
   let dur = 0;
   let pos = 0; // the best position now, in seconds
   let lastRaw = -1; // the last reading as given
@@ -130,9 +134,14 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
     const pMs = period * 1000;
     const left = a ? ` · left at ${deg(Number(a.currentTime ?? 0), pMs)}°` : "";
     const turns = dur > 0 ? Math.round(dur / period) : 0;
+    // How much of a turn one frame of this display carries: 3.3° at 33⅓ rpm on a 60 Hz panel,
+    // 7.8° at 78 rpm. A 120 or 144 Hz panel draws the same turn in smaller steps.
+    const hz = (window as unknown as { __frames?: { hz: number } }).__frames?.hz ?? 60;
+    const rpm = (60 / period).toFixed(1);
     const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
     telLine(
       `[perf] vinyl song ${dur > 0 ? fmt(dur) : "live"} · period ${pMs.toFixed(1)} ms${turns ? ` (${turns} turns)` : ""}` +
+        ` · ${rpm} rpm, ${(360 / (period * hz)).toFixed(1)}°/frame @${hz} Hz` +
         ` · start ${tel.start} · snaps ${tel.snaps.length}${tel.snaps.length ? ` (${tel.snaps.join(", ")})` : ""}` +
         ` · nudge worst ${Math.round(tel.worstErr)} ms, rate ${tel.minRate.toFixed(3)}–${tel.maxRate.toFixed(3)}` +
         ` · held stale ${tel.stale} · seek ${tel.seekHeld} · zero ${tel.zeroHeld} · scrubs ${tel.scrubs}${left}`,
@@ -230,7 +239,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
     if (scrubbing) return;
     // A seek that leaves the disc nearly right is not worth a visible hop (the log showed a
     // "seek" snap of 40 ms at a station song change): close it by speed instead.
-    if (snap && started && Math.abs(errNow(anim, pMs)) < SNAP_MIN_MS) snap = false;
+    if (snap && started && Math.abs(errNow(anim, pMs)) / pMs * 360 < SNAP_MIN_DEG) snap = false;
     const live = dur <= 0;
     // A song's disc waits at 0° until its sound starts: the exact clock moves. A count can't say
     // that soon enough, so then the play flag alone starts it.
@@ -339,6 +348,12 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   observer.observe(root, { attributes: true, attributeFilter: ["data-skin", "data-ambient"] });
   const unsubSettings = onSettingsChange((k) => {
     if (k === "pressVinyl") sync();
+    // A new speed gives the song a new period. The disc's angle then means something else, so
+    // let it jump to where the song says; a small difference still closes by speed alone.
+    if (k === "pressVinylSpeed") {
+      period = periodFor(dur);
+      sync("seek");
+    }
   });
 
   box.replaceChildren();

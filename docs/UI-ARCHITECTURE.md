@@ -249,7 +249,7 @@ which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
 A skin can expose its own knobs as Settings rows. They sit in Settings › Look and feel and
 show **only while that skin is active**. Today: Ocean's *Draw card edges* + *Sand width*
 (§Sand edges), Glass's *Canvas glow*, *Dim canvas*, *Backlight*, *Tint cards* (§Glass's
-sliders), and Press's *Record player*, *Show record on*, *Show record plate* (§Press's record
+sliders), and Press's *Record player*, *Show record on*, *Spin speed*, *Show record plate* (§Press's record
 player). This supersedes the "future skin options surface" in FUTURE-SETTINGS §12–13.
 
 **The path of one value:** the store (`settings-store.ts`) → `src/skin-settings.ts` writes it
@@ -340,8 +340,8 @@ Other skins never read these properties. Menus keep their own 90% `--menu-surfac
 cards (blur) slider was built first and dropped the same day; the blur is a fixed 14px again.
 
 ### Press's record player (2026-09-15)
-Settings › Look and feel › **Record player** (Spin / Still / Off), **Show record on**, **Show record
-plate**. The cover box (`.np__art`, in the Now Playing card and the tray panel) holds its art in a
+Settings › Look and feel › **Record player** (Spin / Still / Off), **Show record on**, **Spin speed**
+(33⅓ / 45 / 78 rpm), **Show record plate**. The cover box (`.np__art`, in the Now Playing card and the tray panel) holds its art in a
 slot from `src/vinyl.ts`: a plate that never turns, the art that turns (one Web Animation, the
 compositor's), and a sheen that never turns. The place decides the look: skin.css sets
 `--vinyl-stage` / `--vinyl-strip` / `--vinyl-tray` (1 or 0) from the rows; styles.css hands one to
@@ -349,7 +349,7 @@ compositor's), and a sheen that never turns. The place decides the look: skin.cs
 draws the old square cover (`transform: none !important` beats the animation). The cover box is a
 size container so the record is a centered square of `100cqmin`. Geometry, ink and slide timing
 are `--vinyl-*` tokens (base inert, Press values). The angle follows the song, each disc starts and
-ends upright, and a song change slides the discs as Web Animations — [VINYL.md](VINYL.md), with its
+ends upright at any of the three speeds, and a song change slides the discs as Web Animations — [VINYL.md](VINYL.md), with its
 dev telemetry (`[perf] vinyl …`, `__vinyl.sample`) in §8.
 
 ### The storm layer (opt-in decorative strokes)
@@ -534,6 +534,16 @@ is an icon pill that
 list down. Search is case-insensitive **substring** on title/artist/album; its pill
 lights while a query is active. Density = `lines` / `small` / `large` squares
 (`lines` rows carry a mini cover — round for artists — except inside an album).
+
+**An empty pane keeps the shape of a filled one (2026-09-15).** A pane with no rows used to
+shrink-wrap its hero (`.lib-empty` was a centred grid) and drop the Play / Shuffle row, so the
+first song to arrive moved three things at once. Now `.lib-empty` is a plain block, the hero
+holds the full width, and `actionsHTML` draws the Play / Shuffle row **disabled** at a count of
+0 (`--disabled-alpha`). A context that takes a drop (`dropInto` — an open playlist) draws its
+`emptyText` as one **row-shaped slot** with a dashed rim (`.lib-empty__slot`, tokens
+`--empty-slot-rim-w` / `-style` / `-alpha`): the ♪ box sits where the first row's mini-cover
+will, and a drag over the pane lights the slot itself instead of the whole view. A filter that
+matches nothing still shows the plain centred "No matches." line.
 
 **One shared cell.** Every collection card (Library, Playlists) renders each item
 through **`musicCell`** (`src/library-card.ts`) — the single builder that picks line

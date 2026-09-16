@@ -63,6 +63,9 @@ export interface Settings {
   /** Press record only: the offset plate (the Press ink shadow) behind the record. Off: the record
    *  alone, as large as the box allows. `data-press-vinyl-plate` on <html>. */
   pressVinylPlate: boolean;
+  /** Press record only, spin only: how fast the record turns, in turns each minute — the three
+   *  real record speeds. vinyl.ts turns it into the period (docs/VINYL.md §4). */
+  pressVinylSpeed: "33" | "45" | "78";
   /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
    *  all = every kind, confirmations included. No "off": a failure always shows. */
   toasts: "failures" | "all";
@@ -81,9 +84,20 @@ export interface Settings {
   sunShift: number;
   /** A theme or skin picked by hand: holds until the next change, or turns the schedule off. */
   lookHold: "next" | "always";
+  // ── home (HOME.md §4) ──
+  /** How long a Home tile stays hidden after a right-click › Hide: until you clear it,
+   *  or until the app closes. "session" keeps the map in memory and leaves the stored
+   *  one alone, so switching back restores it. */
+  homeHideLasts: "forever" | "session";
+  /** The hidden Home tiles: item key → when it was hidden (epoch-ms). A tile played
+   *  again after that time unhides itself. Cleared from Settings › Home. */
+  homeHidden: Record<string, number>;
   // ── playback ──
   /** Right-click "Play Now": just the song, or the song then the rest of the list (§1). Default list. */
   playNowScope: "song" | "list";
+  /** The History card says which day each play was, inside the row's own subtitle line
+   *  (never as a divider — the card keeps its shape). NEXT-VERSION §16. */
+  historyShowDay: boolean;
   /** A drop on the Now Playing card: play it and keep Up Next after it, or replace Up Next
    *  as Play Now does (DRAG-DROP.md §3). */
   dropPlayQueue: "keep" | "replace";
@@ -116,7 +130,7 @@ export interface Settings {
   /** Backfill missing playlist song counts on the overview (§14). */
   playlistEagerCounts: boolean;
   /** New Playlist summons the Search card beside it (§16). */
-  playlistCreateSummon: boolean;
+  playlistCreateSummon: "always" | "notmini" | "off";
   /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
   playlistExport: boolean;
   /** For a song played from a playlist, the Now Playing card and the tray panel show the
@@ -165,6 +179,7 @@ export const DEFAULTS: Settings = {
   pressVinyl: "off", // opt-in, like Sand
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
   pressVinylPlate: true,
+  pressVinylSpeed: "33", // an LP: 33⅓ rpm, one turn per 1.8 s
   toasts: "all", // user's call 2026-09-13: Everything by default
   lookSchedule: "off",
   dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
@@ -175,7 +190,10 @@ export const DEFAULTS: Settings = {
   nightStart: "19:00",
   sunShift: 0,
   lookHold: "next", // user's call 2026-09-15: a hand pick holds until the next change
+  homeHideLasts: "forever", // user's call 2026-09-15: a hide that dies at relaunch reads as a bug
+  homeHidden: {},
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
+  historyShowDay: false, // user's call 2026-09-15: History looks as it always did until you ask
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
@@ -189,7 +207,7 @@ export const DEFAULTS: Settings = {
   replayDay: "mon",
   replayKeep: false,
   playlistEagerCounts: true,
-  playlistCreateSummon: true,
+  playlistCreateSummon: "notmini", // user's call 2026-09-15: in mini the summon replaces the playlist
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
@@ -209,6 +227,11 @@ function migrate(into: Partial<Settings>): void {
   if (typeof stored === "boolean") into.alwaysOnTop = stored ? "always" : "off";
   const mode = localStorage.getItem("deets.menuMode");
   if (mode !== null && into.menuMode === undefined) into.menuMode = mode === "hover" ? "hover" : "click";
+  // New playlist opens Search became a three-way choice (2026-09-15): in mini the Search card
+  // takes the only slot, so it hid the playlist you had just made. A stored "on" lands on the
+  // new default, which keeps the summon everywhere but mini.
+  const summon = into.playlistCreateSummon as unknown;
+  if (typeof summon === "boolean") into.playlistCreateSummon = summon ? "notmini" : "off";
   const eager = localStorage.getItem("deets.playlists.eagerCounts");
   if (eager !== null && into.playlistEagerCounts === undefined) into.playlistEagerCounts = eager !== "off";
   // Show notices lost its "off" choice (2026-09-14): a failure must always show.

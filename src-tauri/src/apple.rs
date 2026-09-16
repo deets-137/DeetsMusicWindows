@@ -1908,6 +1908,29 @@ fn epoch_ms() -> i64 {
         .unwrap_or(0)
 }
 
+/// Every artist photo already in `artist_catalog`: `[name, artwork]` pairs. Read-only and
+/// network-free — the Home card's artist tiles use it, and Home never calls Apple
+/// (HOME.md §2). An artist not opened in the Library artist view yet has no row here, and
+/// the tile falls back to one of that artist's album covers.
+#[tauri::command]
+pub fn artist_photos(db: tauri::State<'_, crate::library::Db>) -> Result<Vec<(String, Artwork)>, String> {
+    let conn = db.0.lock().unwrap();
+    let mut stmt = conn
+        .prepare("SELECT name, artwork FROM artist_catalog WHERE artwork IS NOT NULL")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (name, json) = row.map_err(|e| e.to_string())?;
+        if let Ok(a) = serde_json::from_str::<Artwork>(&json) {
+            out.push((name, a));
+        }
+    }
+    Ok(out)
+}
+
 /// The Library artist view's catalog facts for a library artist NAME (ARTIST-VIEW.md §4).
 /// Cache-first from `artist_catalog`:
 ///  - no row → `songs/{song_id}?include=artists` gives the id and the photo (1 call);

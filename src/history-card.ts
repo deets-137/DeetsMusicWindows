@@ -1,16 +1,26 @@
-// History card — renders the session play log (queue.getPlayLog, docs/QUEUE.md):
+// History card — renders the DURABLE play log (`play_events`, DEETS-REWIND §5a):
 // the most recently heard song as a hero block (mirrors the Qcard's Now Playing),
-// then the older plays under a "Previously" label, newest first. Repeats are real —
-// a song heard three times shows three rows (the log is append-only, unlike the
-// deduped Previous back-chain). Rows are read-only; right-click offers Play Now /
-// Play Next / Add to Queue via the handle-level player ops (Next/Later are gapless).
+// then the older plays under a "Previously" label, newest first. It survives a restart
+// (it read the session log until 2026-09-15). Repeats are real — a song heard three
+// times shows three rows (the log is append-only, unlike the deduped Previous
+// back-chain). Rows are read-only; right-click offers Play Now / Play Next / Add to
+// Queue via the handle-level player ops (Next/Later are gapless).
+//
+// Names come from the track store, not from the event: every played track that is not
+// in your library is materialized as a `seen` row, and those load into the store at
+// launch for exactly this (track-store.ts `loadTracks`). So no Apple call, and no copy
+// of the metadata in `play_events`.
 
 import "./styles/qcard.css";
+import { invoke } from "@tauri-apps/api/core";
 import * as queue from "./queue";
 import { playContext, enqueueNext, enqueueLater } from "./player";
-import { onTracksChange } from "./track-store";
+import { onTracksChange, trackById } from "./track-store";
+import { setting, onSettingsChange } from "./settings-store";
+import { onPlayEvent } from "./stats";
+import type { PlayEvent } from "./rewind";
 import { esc } from "./collection-card";
-import { resolveEntry, artURL, rowHTML } from "./queue-rows";
+import { artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
@@ -20,6 +30,62 @@ import type { CardDef, CardInstance } from "./cards";
 import { rowDrag, isDragging, onDragEnd } from "./row-drag";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
+const SPAN_MS = 14 * 86_400_000; // how far back the card reads at mount (user's call)
+const KEEP = 200; // the most it holds in memory
+const TAIL_MS = 2 * 3_600_000; // a refresh re-reads this much: new rows AND recent finalizes
+
+/** One play, as the card holds it: the handle to act on, when it was heard, and how it ended. */
+interface Play {
+  handle: queue.TrackHandle;
+  ts: number;
+  /** The song was cut short (the row is finalized and did not reach the listened-through mark). */
+  skipped: boolean;
+}
+
+const nowMs = () => Date.now();
+
+/** A durable row → a play. The id is catalog-first, so a resolved track gives the real
+ *  pair of ids back; an unresolved one still plays by the id it was logged under. */
+const toPlay = (e: PlayEvent): Play => {
+  const t = trackById(e.trackId);
+  return {
+    handle: {
+      catalogId: t?.catalogId ?? e.trackId,
+      libraryId: t?.libraryId,
+      context: e.context ?? undefined,
+    },
+    ts: e.startedTs,
+    skipped: e.msListened != null && !e.completed,
+  };
+};
+
+const readEvents = (sinceTs: number): Promise<PlayEvent[]> =>
+  invoke<PlayEvent[]>("play_events_since", { sinceTs }).catch((e) => {
+    console.error("[history] play_events_since", e);
+    return [];
+  });
+
+/** "21:14" — the clock time in the user's own format. */
+const clock = (ts: number) =>
+  new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+/** "Today" · "Yesterday" · "Tue, Sep 9" — shown in the row's own subtitle line, and only
+ *  while Settings › Playback › *Show the day* is on, so the card keeps its shape. */
+const dayLabel = (ts: number): string => {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  if (ts >= midnight.getTime()) return "Today";
+  // Yesterday's own midnight, by the calendar — not 24 hours back, which a clock change breaks.
+  midnight.setDate(midnight.getDate() - 1);
+  if (ts >= midnight.getTime()) return "Yesterday";
+  return new Date(ts).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+};
+
+// The skip mark: the Next glyph, quiet, with its own hint (a mark, not a word — most
+// listening has skips in it and a column of "Skipped" would shout).
+const SKIP_MARK =
+  '<span class="qrow__skip" title="You skipped this one" aria-label="Skipped">' +
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l6 5-6 5zM11 3h2v10h-2z"/></svg></span>';
 
 export const historyCard: CardDef = {
   id: "history",
@@ -33,8 +99,8 @@ function mountHistory(host: HTMLElement): CardInstance {
 
   // The view rendered last: newest first, hero at index 0. The contextmenu handler
   // resolves data-idx against this snapshot — render() reassigns it, and both run off
-  // the same queue-change emits, so the indices always match the DOM.
-  let view: readonly queue.QueueEntry[] = [];
+  // the same emits, so the indices always match the DOM.
+  let view: readonly Play[] = [];
   let pendingRender = false;
 
   const render = () => {
@@ -43,10 +109,10 @@ function mountHistory(host: HTMLElement): CardInstance {
       return;
     }
     pendingRender = false;
-    view = [...queue.getPlayLog()].reverse();
+    const showDay = setting("historyShowDay");
     const latest = view[0];
 
-    const t = latest ? resolveEntry(latest) : undefined;
+    const t = latest ? trackById(latest.handle.catalogId) ?? trackById(latest.handle.libraryId) : undefined;
     const cover = artURL(t, 96);
     const heroArt = cover
       ? `<img class="qnow__art" src="${esc(cover)}" alt="" data-art />`
@@ -63,9 +129,14 @@ function mountHistory(host: HTMLElement): CardInstance {
     const older = view.slice(1);
     const rows = older
       .slice(0, LIST_CAP)
-      .map((e, i) => {
-        const rt = resolveEntry(e);
-        return rowHTML(i + 1, rt?.title ?? "Unknown", rt?.artistName ?? "", artURL(rt, 72), false);
+      .map((p, i) => {
+        const rt = trackById(p.handle.catalogId) ?? trackById(p.handle.libraryId);
+        // The subtitle carries the day only while the row is on (the card keeps its shape).
+        const day = showDay ? dayLabel(p.ts) : "";
+        const artist = rt?.artistName ?? "";
+        const sub = day ? (artist ? `${artist} · ${day}` : day) : artist;
+        const meta = `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>`;
+        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), false, meta);
       })
       .join("");
     const more =
@@ -82,10 +153,12 @@ function mountHistory(host: HTMLElement): CardInstance {
   // Right-click (hero or row) → re-queue this play. The entry is a log copy, so we
   // hand the player a fresh handle stamped with a history context; Play Now starts a
   // 1-song context (manual picks kept), Next/Later insert gapless.
-  const menuFor = (e: queue.QueueEntry): MenuItem[] => {
+  const trackOf = (p: Play) => trackById(p.handle.catalogId) ?? trackById(p.handle.libraryId);
+  const menuFor = (p: Play): MenuItem[] => {
+    const e = p.handle;
     const h = { catalogId: e.catalogId, libraryId: e.libraryId, context: "history" };
     const err = (what: string) => (x: unknown) => console.error(`[history] ${what}`, x);
-    const t = resolveEntry(e); // supplies fallback pane titles for the drill-ins
+    const t = trackOf(p); // supplies fallback pane titles for the drill-ins
     const items: MenuItem[] = [
       { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")) },
       { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
@@ -122,7 +195,7 @@ function mountHistory(host: HTMLElement): CardInstance {
     rowAt: (target) => {
       const el = target.closest<HTMLElement>("[data-idx]");
       const entry = el ? view[Number(el.dataset.idx)] : undefined;
-      const t = entry ? resolveEntry(entry) : undefined;
+      const t = entry ? trackOf(entry) : undefined;
       return el && t
         ? { row: el, index: Number(el.dataset.idx), payload: { source: "history", kind: "song", tracks: () => [t], context: "history" } }
         : null;
@@ -132,16 +205,41 @@ function mountHistory(host: HTMLElement): CardInstance {
     if (pendingRender) render();
   });
 
-  // Re-render on plays (queue change) and when the track store (re)loads so entries
-  // resolve instead of showing "Unknown".
+  // ── the durable log ──
+  // Mount reads the span once. After that every write to `play_events` (a song starts,
+  // a song is finalized) re-reads only the tail, which is both cheap and enough: a new
+  // row lands at the top, and a finalize turns the row above into a skip mark.
+  const fold = (rows: PlayEvent[], keepBefore: number) => {
+    const fresh = rows.map(toPlay).sort((a, b) => b.ts - a.ts);
+    const older = view.filter((p) => p.ts < keepBefore);
+    view = [...fresh, ...older].slice(0, KEEP);
+  };
+  const loadAll = async () => {
+    const since = nowMs() - SPAN_MS;
+    fold(await readEvents(since), since);
+    render();
+  };
+  const loadTail = async () => {
+    const since = nowMs() - TAIL_MS;
+    fold(await readEvents(since), since);
+    render();
+  };
+
+  // Re-render when the track store (re)loads (entries resolve instead of showing
+  // "Unknown"), when the durable log is written, and when the day row is switched.
   const unsubTracks = onTracksChange(render, "history");
-  const unsubQueue = queue.onQueueChange(render);
-  render();
+  const unsubLog = onPlayEvent(() => void loadTail());
+  const unsubSettings = onSettingsChange((k) => {
+    if (k === "historyShowDay") render();
+  });
+  render(); // the empty hero, until the first read lands (one local SQLite call)
+  void loadAll();
 
   return {
     destroy() {
       unsubTracks();
-      unsubQueue();
+      unsubLog();
+      unsubSettings();
       drag.destroy();
       unsubDragEnd();
       host.innerHTML = "";

@@ -249,6 +249,8 @@ pub fn run() {
             library::record_event_end,
             library::play_events_since,
             library::play_event_count,
+            library::added_at_map,
+            apple::artist_photos,
             library::materialize_track,
             favorites::favorite_set,
             favorites::favorites_cached,

@@ -368,6 +368,12 @@
   --drag-nodrop-opacity: 0.5;       /* the copy over a place that takes no drop */
   --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
   --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
+  --disabled-alpha: 0.6;            /* a control that keeps its place with nothing to act on */
+
+  /* -- the empty-pane invite slot (a row-shaped drop target; styles.css .lib-empty__slot) -- */
+  --empty-slot-rim-w:     1px;
+  --empty-slot-rim-style: dashed;
+  --empty-slot-rim-alpha: 80%;      /* of --border, the theme's own line ink */
 
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;
