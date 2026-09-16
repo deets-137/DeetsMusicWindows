@@ -203,7 +203,13 @@ plus **kind auto-clusters** so the unfiled pile self-organizes. Both render as
 
 ## 4. Building playlists
 
-Two entry points, both on the `src/context-menu.ts` primitive — **both BUILT 2026-07-02**:
+Three entry points. The first two are on the `src/context-menu.ts` primitive — **both BUILT
+2026-07-02**; the third is multi-select — **BUILT 2026-09-15**
+([NEXT-VERSION §19](NEXT-VERSION.md)): Ctrl+click and Shift+click pick song rows, then either
+drag the set onto a playlist (or into an open one), or right-click it and take
+*Add to Playlist ▸ New Playlist…*, which makes the list and fills it in one gesture. It works
+in the Library, in a playlist's own rows, in the Queue's Up Next and in History; a picked set
+also drags as one payload, because `DragPayload` always carried a track list and a count.
 - **`＋ New Playlist`** → name input → empty local playlist → drills in → the empty state.
   **The empty pane is the filled pane's skeleton (2026-09-15).** The hero holds the full width,
   the Play / Shuffle row draws disabled, and the invite is one row-shaped slot with a dashed rim
@@ -572,10 +578,13 @@ snapshot** · playlists play with a `playlist:{id}` queue origin · local playli
 `Add to Playlist ▸` submenu UX → JS-latched side flyout; empty states → `emptyText` on the
 detail context; source badge → the `.lib-src-badge` sigil on the count row.)*
 
-Still open: detail-header composition (Play / overflow / read-only pill) · drag-reorder +
-rename on locals · the non-empty delete UX · the export enable-toggle + first-use confirm
-design (§6 — gates both Export ▸ and direct Apple append) · mosaic-cover rendering
-specifics · whether imported Apple originals are dimmed vs hidden.
+*(Closed 2026-09-14: drag-reorder and rename on locals, and the non-empty delete confirm —
+§10 "As built". Closed 2026-09-15: the creation flow — NEXT-VERSION §19.)*
+
+Still open: detail-header composition (Play / overflow / read-only pill) · the export
+enable-toggle + first-use confirm design (§6 — gates both Export ▸ and direct Apple append) ·
+mosaic-cover rendering specifics · whether imported Apple originals are dimmed vs hidden ·
+*Remove from Playlist* for a picked SET (the indexes shift under a run of removals).
 
 ---
 

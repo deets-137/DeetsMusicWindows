@@ -25,6 +25,7 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
 import { startStationItem } from "./start-station";
 import { copySongLinkItem } from "./copy-link";
+import { addToPlaylistItem } from "./playlists";
 import { explicitBadge } from "./library-card";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import type { CardDef } from "./cards";
@@ -400,6 +401,7 @@ export const nowPlayingCard: CardDef = {
       if (!cur) return; // nothing playing → let the native menu through
       const t = resolveEntry(cur);
       const items = [
+        t ? addToPlaylistItem(() => [t]) : null,
         goToArtistItem("songs", cur.catalogId, t?.artistName),
         goToAlbumItem(cur.catalogId, t?.albumName),
         copySongLinkItem(cur.catalogId),

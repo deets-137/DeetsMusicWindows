@@ -49,6 +49,11 @@
      Press's offset in its own "go" accent. */
   --ink-2: var(--go);
 
+  /* Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own
+     --title ink at the strength the SKIN sets, so a block of picks reads as one shape in
+     every theme. Derived once here — no theme block names a picked color of its own. */
+  --picked: color-mix(in srgb, var(--title) var(--picked-strength), transparent);
+
   /* Apple Music icon fill: Apple's black file on light themes, the white file on dark.
      light-dark() follows each theme's own color-scheme, so no theme block repeats it. */
   --apple-music-mark: light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white));

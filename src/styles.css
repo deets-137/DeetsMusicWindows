@@ -389,6 +389,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pop, .flyout { transition: none; }
   .pop-enter { animation: none; }
+  .lib-picked.is-entering { animation: none; }
 }
 /* Card swap (src/card-swap.ts; skin.css §card swap). JS sets --swap-dx / --swap-dy, the
    offset from the slot the card left. The travel rides `translate` and the skin's shape
@@ -1229,6 +1230,17 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   z-index: 3;
 }
 
+/* Picked rows (multi-select, NEXT-VERSION §19). A FILL, not the outline: `is-selected`
+   already owns the outline, and it means something else — the one row you drilled in
+   from, which the pane scrolls itself to. A block of picks needs a shape you can read at
+   a glance, and it has to survive sitting next to that outline. */
+.lib-row[data-picked],
+.lib-tile[data-picked],
+.qrow[data-picked] {
+  background: var(--picked);
+  border-radius: var(--radius-control);
+}
+
 .lib-row.is-selected,
 .lib-tile.is-selected,
 .lib-row.is-context,        /* right-clicked row while its menu is open */
@@ -1437,6 +1449,27 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .lib-action--play:disabled:hover { background: var(--title); filter: none; }
 .lib-action--play { background: var(--title); border-color: var(--title); color: var(--surface); }
 .lib-action--play:hover { background: var(--title); filter: brightness(1.12); }
+/* The count row (multi-select, NEXT-VERSION §19): while rows are picked, the same slot
+   says how many, then Play and Shuffle. There is no Clear button — a click on any row, or
+   Escape, already drops the picks.
+
+   The count takes its own width and the two buttons are flex:1, so they divide whatever is
+   left. That is what makes the entry animation cheap: growing ONE element's width from 0
+   shrinks the other two in the same layout pass, with no second animation to keep in step.
+   It runs on the first pick only (`is-entering`, set by the engine). */
+.lib-actions--picked { align-items: center; overflow: hidden; }
+.lib-picked {
+  flex: 0 0 auto; display: inline-flex; align-items: center;
+  color: var(--subtext); font-family: var(--font-body); font-size: var(--fs-text); white-space: nowrap;
+}
+.lib-picked__text { padding-inline-end: var(--space-2); }
+.lib-picked.is-entering { animation: lib-picked-in var(--pop-in) var(--ease-ui) both; }
+/* max-width, not width: the count's natural width is the text's, which changes with the
+   number. A max that opens past it lets the layout settle wherever the digits land. */
+@keyframes lib-picked-in {
+  from { max-width: 0; opacity: 0; }
+  to   { max-width: 12ch; opacity: 1; }
+}
 .lib-action__icon { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; flex: 0 0 auto; }
 .lib-action__icon--stroke { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 /* An artist hero's shelves (ARTIST-VIEW.md §2.2): Featured / Your Playlists scrollers

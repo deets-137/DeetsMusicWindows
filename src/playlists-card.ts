@@ -339,6 +339,14 @@ export const playlistsCard: CardDef = {
             }
           : undefined,
         drag: (t) => ({ source: "playlists", kind: "song", tracks: () => [t], context: ctxTag, playlistId: p.libraryId }),
+        // Multi-select (NEXT-VERSION §19). No `id`: a playlist may hold the same song
+        // twice, so each ROW is its own pick (object identity). Remove from Playlist is
+        // not offered for a set — the indexes shift under a run of removals.
+        pick: {
+          menu: (ts) => trackMenu(ts, ctxTag),
+          drag: (ts) => ({ source: "playlists", kind: "song", count: ts.length, tracks: () => ts, context: ctxTag, playlistId: p.libraryId }),
+          play: (ts) => void playTracks(ts, 0, ctxTag).catch((e) => console.error("[playlists] play picked", e)),
+        },
         menu: (t) => {
           // Add-to-Library rides after the shared actions (null unless the toggle is on
           // and the track is catalog-only); Remove stays destructive-last on locals.

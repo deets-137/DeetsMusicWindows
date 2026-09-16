@@ -432,11 +432,12 @@ background now follows the theme canvas (`theme.ts` `syncWindowBackground`), whi
 nothing and hides any late paint. If this comes back, the only honest route is a
 Rust-side loop with few large steps, or no window motion and a content crossfade only.
 
-## 11. To discuss next session — the playlist creation flow
+## 11. The playlist creation flow — CLOSED 2026-09-15, see §19
 
-Not designed. The user wants to talk through how a playlist gets made (today: the ＋ in
-the Playlists header opens a name field, Enter creates an empty list and summons Search;
-Add to Playlist ▸ New Playlist… creates-and-adds from any row). Bring the real forks.
+Talked through on 2026-09-15. The creation gestures were already right; what was missing was
+how songs reach a playlist. Built as §19: `Add to Playlist ▸` on the four cards that lacked
+it, and multi-select rows (`src/row-pick.ts`) so a hand-picked set becomes a playlist in one
+gesture. The name must still exist before the playlist does.
 
 ---
 
@@ -634,6 +635,78 @@ jitter needed no CSS: NP's 404-px floor, plus the `61b1ae1` ResizeObserver fix, 
 Two bugs turned up on the way — Play / Shuffle drew on an empty list, and a skin switch
 scrolled a card's head out of view. Commits `18de3a7` + `5a52852`; the whole record, with the
 shipped numbers, is [FUTURE-SETTINGS.md §8a](FUTURE-SETTINGS.md).
+
+## 19. Multi-select rows, and the playlist creation flow — BUILT 2026-09-15
+
+The flow review (§11) found the way a playlist gets made was not the problem — the way
+songs REACH one was. Three things were missing, and all three are now built.
+
+**19a. `Add to Playlist ▸` reached four cards it had missed.** It was on the Library, the
+artist view, Search, Rewind and the Playlists rows, and the Home tiles (through
+`trackMenu`). It was NOT on the Queue's Up Next rows, the Queue's Now Playing hero, the
+History rows, or the Now Playing card's cover. All four have it now, in `trackMenu`'s own
+place: after the play and queue verbs, before the Go to… drill-ins. It shows only once the
+song has resolved.
+
+**A station song files like any other.** A song heard on a station is ingested as a
+transient track and, once its play is logged, kept as a durable `seen` row, so it resolves
+to a real `Track` with a catalog id. That is why "save a station's songs" is not a feature:
+right-click the song and file it. (Fork D, dropped 2026-09-15.)
+
+**19b. The name still has to exist.** Enter with a name is the only way to commit a new
+playlist. No "Untitled Playlist" to rename later (the user's call — it keeps junk lists out).
+
+**19c. Multi-select — `src/row-pick.ts`.** One store, shared by every list that takes it.
+
+| Gesture | What it does |
+|---|---|
+| Click | Plays the row, as before — and drops what was picked |
+| Ctrl+click | Adds or removes one row |
+| Shift+click | Takes the run from the last row touched to this one (widens only) |
+| Ctrl+A | Takes every row in the current sort and filter, while the card has the focus |
+| Escape, or a click on blank space | Clears |
+
+Decisions (the user, 2026-09-15):
+1. **Picks are identities, not positions.** A sort, a filter, a search, a background sync or
+   a queue advance keeps them. A playlist detail is the exception: the same song can sit in
+   one twice, so those rows pick by object identity (each ROW is its own pick).
+2. **A fill, not the outline.** `is-selected` was NOT reused: it means the one row you
+   drilled in from, and the engine scrolls the pane to it (`isSelected` → `reveal`). A block
+   of ten picks must not drag the view around, and it must read next to that outline. New
+   mark: the `data-picked` attribute, filled with the theme's `--title` at
+   `--picked-strength` (skin, 14%). Theme role `--picked`, mixed once in themes.css.
+3. **Song rows only.** Tiles (albums, artists) do not pick yet.
+4. **The Queue and History are in too**, though they are off the collection engine.
+5. **A count row.** While rows are picked, the Play / Shuffle row becomes
+   *N songs · Play · Shuffle* (`picksRowHTML`). **No Clear button** (the user, 2026-09-15):
+   a click on any row, or Escape, already drops the picks. The count **slides in on the
+   first pick** and the two buttons shrink to make room. One animation does both: the count
+   is `flex: 0 0 auto` and the buttons are `flex: 1`, so growing the count's `max-width`
+   from 0 shrinks them in the same layout pass, with no second animation to keep in step. It
+   runs on the first pick only (`is-entering` — a later pick just retypes the number, and
+   re-running it every Ctrl+click would jitter the row). Reduced motion: no animation.
+   The Queue and History have no such row, so their section label carries the count
+   instead ("Up Next · 12 songs").
+6. **Off in mini.** One narrow slot, nothing to drop into (`canPick()`).
+
+What a picked set does:
+- **Drags as one payload.** `DragPayload` already carried `tracks()` and `count`, because an
+  album tile always did — so every drop target took a set on day one with no change. A drag
+  off a picked row is always a COPY, never a reorder: a block of rows has no single new
+  position. The ghost's count badge now shows for a song payload of more than one.
+- **Right-click acts on the set.** The collection engine hands the picked tracks to
+  `trackMenu`, so *Add to Playlist ▸ New Playlist…* builds a playlist from a hand-picked set
+  in one gesture — the creation flow the review was after. The Queue's set menu is Add to
+  Playlist + *Remove N songs* (removal walks the live indexes from the bottom up, so the
+  rows still to go cannot shift). History's is Play / Play Next / Add to Queue / Add to
+  Playlist.
+
+**Where it is live:** the Library card (Songs root, an album, the artist view's Songs), the
+Playlists card (a playlist's rows), the Queue card's Up Next, and the History card.
+**Not yet:** the Search card and the Rewind card, which render their own panes instead of
+running on `collection-card.ts`; tiles; and *Remove from Playlist* for a set.
+
+---
 
 ---
 

@@ -202,7 +202,10 @@ export function makeGhost(row: HTMLElement, p: DragPayload | undefined): { root:
   ghost.style.top = `${r.top}px`;
   ghost.style.width = `${r.width}px`;
   ghost.style.height = `${r.height}px`;
-  if (p?.count != null && p.kind !== "song") {
+  // The count badge: a collection always names how many songs it carries, and a picked
+  // SET of songs does too once there is more than one (NEXT-VERSION §19). One song alone
+  // never wears a badge — the row itself is the whole payload.
+  if (p?.count != null && (p.kind !== "song" || p.count > 1)) {
     const badge = document.createElement("span");
     badge.className = "drag-ghost__count";
     badge.textContent = songsText(p.count);

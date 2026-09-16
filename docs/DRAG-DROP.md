@@ -57,6 +57,7 @@ lazy `tracks()` that runs only at the drop (so a Search album costs no fetch unt
 | History | a row · the hero | the entry's handle |
 | Rewind | songs · albums · playlists | as its right-click menu (`trackMenu` lists, lazy playlist fetch) |
 | Now Playing | the cover | the current song |
+| **A picked set** (2026-09-15) | any song rows picked with Ctrl / Shift — Library, a playlist's rows, Up Next, History | every picked song, as ONE payload (`count` = how many) |
 
 | Radio · Search | a **station** row / tile (2026-09-15) | none — `kind: "station"`, `station` set, `play` = `playStation`. The Queue card makes it the station return (`queueStationAfter`: plays once the queue runs dry, the Qcard row says *Will resume after*); Now Playing plays it now; playlists and the Library refuse it (the *can't drop* ghost) |
 
@@ -156,7 +157,15 @@ toasts behind each target), `browser-defaults.ts` (§6 page half), `queue.insert
 `player.insertInQueue` / `queueTracksAt`, `playlists.playlistInsertTracks` (Rust
 `playlist_insert_tracks`), `library-add.addDroppedToLibrary`, `webview2-com` in Cargo.toml.
 
+**A picked set drags as one thing** (multi-select, `src/row-pick.ts`,
+[NEXT-VERSION §19](NEXT-VERSION.md)). The drop side needed no change at all: `DragPayload`
+already carried `tracks()` and `count`, because an album tile always dragged many songs. Two
+rules: a drag that starts on a picked row is always a **copy**, never a reorder (a block of
+rows has no single new position), and the ghost's count badge, which used to be for
+collections only, now also shows for a song payload of more than one.
+
 **Engine hooks** (`collection-card.ts`): `Grouping.drag(x) → DragPayload | null` (a source),
+`Grouping.pick` (multi-select: `id?`, `menu`, `drag`, `play` — present = these rows pick),
 `Grouping.dropOn(x, p) → action | null` (a row target: a playlist row), and
 `Context.dropInto(p) → action(at) | null` (a pane target: an open playlist). The engine
 registers one target on its viewport; with no hook it returns null and an outer target

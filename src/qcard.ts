@@ -22,6 +22,9 @@ import { favoriteItem } from "./favorites";
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { copySongLinkItem } from "./copy-link";
+import { addToPlaylistItem } from "./playlists";
+import { rowPick, picksText } from "./row-pick";
+import type { Track } from "./library";
 import type { CardDef, CardInstance } from "./cards";
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
@@ -42,6 +45,14 @@ function mountQueue(host: HTMLElement): CardInstance {
   // Drag state lives out here so the drag handlers (below) and render() share it.
   let dragging = false;
   let pendingRender = false;
+
+  // Multi-select over Up Next (row-pick.ts, NEXT-VERSION §19). The rows shown last, so a
+  // shift+click run and the picked set read the same list the user sees. Keyed by object
+  // identity, NOT by song: the same song can sit in the queue twice, and an entry object
+  // is stable across a reorder — so the picks follow the rows, and a song that leaves the
+  // queue takes its pick with it.
+  let shownRows: queue.QueueEntry[] = [];
+  const pick = rowPick<queue.QueueEntry>({ items: () => shownRows, onChange: () => render() });
 
   const render = () => {
     if (dragging || isDragging()) {
@@ -65,6 +76,7 @@ function mountQueue(host: HTMLElement): CardInstance {
       : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
 
     const shown = upcoming.slice(0, UP_NEXT_CAP);
+    shownRows = shown;
     const rows = shown
       .map((e, i) => {
         const t = resolve(e);
@@ -100,20 +112,26 @@ function mountQueue(host: HTMLElement): CardInstance {
           <span class="qnow__artist">${esc(npArtist)}</span>
         </div>
       </div>
-      <div class="qcard__label">Up Next</div>
+      <div class="qcard__label">${pick.size() ? `Up Next · ${picksText(pick.size())}` : "Up Next"}</div>
       ${list}`;
+    // The pick mark, after the rows exist (the card re-renders whole, so one sweep does it).
+    pick.mark(body, ".qrow[data-idx]", (el) => shownRows[Number(el.dataset.idx)]);
   };
 
   // Click (or Enter/Space) an Up Next row → jump to it. Delegated on the persistent
   // body so it survives re-renders. The jump re-windows and buffers (cover-up above).
-  const jumpFromEvent = (target: EventTarget | null) => {
+  const jumpFromEvent = (target: EventTarget | null, e?: MouseEvent) => {
     if (drag.consumeClick()) return; // this click was the tail of a drag
     const row = (target as HTMLElement | null)?.closest<HTMLElement>(".qrow[data-idx]");
     if (!row) return;
     const idx = Number(row.dataset.idx);
-    if (!Number.isNaN(idx)) jumpToUpcoming(idx).catch((err) => console.error("[qcard] jump", err));
+    if (Number.isNaN(idx)) return;
+    // Ctrl / Shift → a pick, not a jump (§19). A plain click jumps, and drops the picks.
+    const entry = shownRows[idx];
+    if (e && entry && pick.click(e, entry)) return;
+    jumpToUpcoming(idx).catch((err) => console.error("[qcard] jump", err));
   };
-  body.addEventListener("click", (e) => jumpFromEvent(e.target));
+  body.addEventListener("click", (e) => jumpFromEvent(e.target, e));
   body.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -153,12 +171,41 @@ function mountQueue(host: HTMLElement): CardInstance {
         if (i >= 0) void fn(i).catch((err) => console.error(`[qcard] ${label}`, err));
       };
       const t = resolve(entry);
+      // Right-click one of the picked rows → one menu for the whole set (§19): file them
+      // all, or take them all out. Remove walks the LIVE indexes from the bottom up, so
+      // each removal can't shift the rows still to go.
+      if (pick.size() && pick.isPicked(entry)) {
+        const set = pick.picked();
+        const ts = set.map(resolve).filter(Boolean) as Track[];
+        const setItems: MenuItem[] = [];
+        if (ts.length) setItems.push(addToPlaylistItem(() => ts));
+        setItems.push({
+          label: `Remove ${picksText(set.length)}`,
+          run: () => {
+            const live = queue.getUpcoming();
+            const idxs = set.map((x) => live.indexOf(x)).filter((i) => i >= 0).sort((a, b) => b - a);
+            void idxs
+              .reduce((chain, i) => chain.then(() => removeFromQueue(i)), Promise.resolve())
+              .then(() => pick.clear())
+              .catch((err) => console.error("[qcard] remove picked", err));
+          },
+        });
+        e.preventDefault();
+        row.classList.add("is-context");
+        openContextMenu(e.clientX, e.clientY, setItems, () => row.classList.remove("is-context"));
+        return;
+      }
       const items: MenuItem[] = [
         { label: "Play Now", run: act(jumpToUpcoming, "play now") },
         { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
         { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
         { label: "Remove", run: act(removeFromQueue, "remove") },
       ];
+      // Add to Playlist sits where `trackMenu` puts it — after the play/queue verbs,
+      // before the Go to… drill-ins. It needs the RESOLVED track (the builder takes
+      // Track[], not a queue handle), so a row still resolving simply doesn't offer it.
+      // A station song resolves as a transient, so it files like any other song.
+      if (t) items.push(addToPlaylistItem(() => [t]));
       // Go to Artist/Album + Start Station key off the entry's catalog id directly —
       // the resolved track (t) only supplies fallback pane titles, so they work even
       // before the store has resolved the row.
@@ -183,6 +230,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const cur = queue.getCurrent();
     const t = cur ? resolve(cur) : undefined;
     const items = [
+      t ? addToPlaylistItem(() => [t]) : null,
       goToArtistItem("songs", cur?.catalogId, t?.artistName),
       goToAlbumItem(cur?.catalogId, t?.albumName),
       copySongLinkItem(cur?.catalogId),
@@ -224,6 +272,12 @@ function mountQueue(host: HTMLElement): CardInstance {
       const entry = queue.getUpcoming()[index];
       if (!entry) return null;
       const t = resolve(entry);
+      // A drag off a picked row carries every picked song as ONE payload, and is a copy,
+      // never a reorder — a block of rows has no single new position (§19).
+      if (pick.size() > 1 && pick.isPicked(entry)) {
+        const ts = pick.picked().map(resolve).filter(Boolean) as Track[];
+        if (ts.length) return { row, index, payload: { source: "queue", kind: "song", count: ts.length, tracks: () => ts, context: entry.context } };
+      }
       // On Now Playing, an Up Next row plays at once. Keep Up Next (Settings › Playback):
       // it moves to the top first, so the rows above it stay. Replace: its menu's Play Now,
       // a jump that drops the rows above it.
@@ -291,11 +345,40 @@ function mountQueue(host: HTMLElement): CardInstance {
   });
   render();
 
+  // Which card Ctrl+A acts on: the last press inside this one. A row carries no tabindex,
+  // so the focus stays on <body> and a `contains(activeElement)` test would never pass.
+  let touched = false;
+  body.addEventListener("pointerdown", () => {
+    touched = true;
+  });
+  const onDocDown = (e: PointerEvent) => {
+    if (!host.contains(e.target as Node)) touched = false;
+  };
+  document.addEventListener("pointerdown", onDocDown);
+
+  // Escape drops the picks (§19); Ctrl+A takes every row the card shows. Both are on the
+  // document, so they work wherever the pointer is, and both come off on destroy.
+  const onKey = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("input, textarea, [contenteditable]")) return;
+    if (e.key === "Escape") {
+      pick.clear();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a" && touched) {
+      e.preventDefault();
+      pick.all();
+    }
+  };
+  document.addEventListener("keydown", onKey);
+
   return {
     destroy() {
       unsubTracks();
       unsubQueue();
       unsubState();
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDocDown);
       drag.destroy(); // a drag's document listeners would outlive the card
       unsubDragEnd();
       unregisterDrop();

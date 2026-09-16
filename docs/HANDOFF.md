@@ -144,7 +144,17 @@ the platform sound and the loop thin. Scoped with forks in
    rows) at mount and re-reads the last two hours on every log write; the card keeps its shape
    (hero + Previously), each row carries the time and a skip mark, and Settings › Playback ›
    *Show the day in History* (default off) puts the day in the row's subtitle. No Rust change.
-7. **The playlist creation flow** — §11, to design (carried from 2026-09-12).
+7. ✅ **The playlist creation flow** — §11 → **§19, BUILT 2026-09-15, awaiting the desk test**:
+   `Add to Playlist ▸` reached the four cards that lacked it (the Queue's rows and its Now
+   Playing hero, History, the Now Playing cover) — which also means a station song files like
+   any other, so "save a station's songs" is not needed. And **multi-select**
+   (`src/row-pick.ts`): Ctrl+click, Shift+click, Ctrl+A, Escape. A picked set drags as ONE
+   payload and right-clicks to *Add to Playlist ▸ New Playlist…*. Live in the Library, a
+   playlist's rows, Up Next and History; off in mini; not in Search or Rewind (own panes).
+   No Rust change, so no dev-runner restart. Desk test: Ctrl+click five songs in the Library
+   (the fill, the count row), Shift+click a run, sort the list (the picks hold), drag the set
+   onto a playlist row (the ghost's count), right-click → New Playlist…, Escape; then the
+   same in Up Next (Remove N songs) and History; and check mini picks nothing.
 8. **A sleep timer** — §17, to design.
 Not possible on this platform, so not planned: lyrics, crossfade, Sound Check, remove from
 library (§12–§17 header). Spotify (PROVIDERS.md) is parked: Spotify's dev-mode terms block it. The vinyl disc
@@ -773,6 +783,7 @@ src/player.ts               MusicKit engine: init/MUT-inject, windowed loadFromM
                             model-follow, radio mode (playStation/stationFollow/stopStation)
 src/queue.ts                queue model (history/current/upcoming, backlog, stacking, radio ops)
 src/track-store.ts          shared in-memory library: one load, id→Track index + notify
+src/row-pick.ts             multi-select over rows (Ctrl / Shift picks; NEXT-VERSION §19)
 src/stats.ts                play-stats recorder: partial/full counters + play-event log
 src/album-color.ts          NP aurora data path: current album palette → --album-* inline
 src/context-menu.ts         shared popover: cursor/element-anchored; action/input/submenu items

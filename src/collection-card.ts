@@ -15,6 +15,7 @@ import * as frames from "./frames";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload } from "./row-drag";
+import { rowPick, canPick, picksText, objectId } from "./row-pick";
 import { shuffleInPlace } from "./queue";
 import { isShuffleOn, setShuffleMode } from "./player";
 import { setting } from "./settings-store";
@@ -74,6 +75,22 @@ export interface Grouping<T = any> {
   /** Drop target on an item (a playlist row, §3): the drop's action, or null when this item
    *  doesn't take the payload. */
   dropOn?: (x: T, p: DragPayload) => (() => void) | null;
+  /**
+   * Multi-select (row-pick.ts, NEXT-VERSION §19). Present = these rows take Ctrl+click,
+   * Shift+click and Ctrl+A. Song rows only for now (the user's call 2026-09-15).
+   *  - `id`: stable identity, so a sort, a filter or a sync keeps the picks. Omit it
+   *    where the same song can sit in the list twice (a playlist): then each ROW is its
+   *    own pick, by object identity.
+   *  - `menu`: the right-click menu for the whole picked set.
+   *  - `drag`: one payload carrying every picked song.
+   *  - `play`: run the count row's Play / Shuffle on the picked set.
+   */
+  pick?: {
+    id?: (x: T) => string;
+    menu: (xs: T[]) => MenuItem[];
+    drag: (xs: T[]) => DragPayload;
+    play: (xs: T[]) => void;
+  };
 }
 
 /**
@@ -156,11 +173,30 @@ export function actionsRowHTML(titles: ActionTitles = {}, disabled = false): str
     </button>
   </div>`;
 }
+/** The count row (NEXT-VERSION §19): while rows are picked, the Play / Shuffle row makes
+ *  room for how many. Same two buttons, same `data-act`, so one handler serves both. No
+ *  Clear button — a click on any row (or Escape) already drops the picks.
+ *  `enter` is set only on the FIRST pick, so the count slides in and the two buttons
+ *  shrink to make room once, not on every pick after it. */
+export function picksRowHTML(n: number, enter: boolean): string {
+  return `<div class="lib-actions lib-actions--picked">
+    <span class="lib-picked${enter ? " is-entering" : ""}"><span class="lib-picked__text">${picksText(n)}</span></span>
+    <button class="lib-action lib-action--play" data-act="play" type="button" title="Play the songs you picked">
+      <svg class="lib-action__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg><span>Play</span>
+    </button>
+    <button class="lib-action" data-act="shuffle" type="button" title="Shuffle the songs you picked">
+      <svg class="lib-action__icon lib-action__icon--stroke" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h2.5l6 8H14M14 4h-3.5l-1.5 2M2 12h2.5l1.5-2"/><path d="M12 2l2 2-2 2M12 10l2 2-2 2"/></svg><span>Shuffle</span>
+    </button>
+  </div>`;
+}
+
 /** The row for a song list (`Grouping.playAll`); "" for anything else. With no rows (a new
  *  playlist, an empty library, a filter that matches nothing) the row still draws, **disabled**:
  *  the pane keeps one shape, so the first song to arrive moves nothing on screen. */
-function actionsHTML(g: Grouping, count: number): string {
+function actionsHTML(g: Grouping, count: number, picked: number, enter: boolean): string {
   if (!g.playAll) return "";
+  // Rows picked → the same slot carries the count, then Play and Shuffle (§19).
+  if (picked) return picksRowHTML(picked, enter);
   return actionsRowHTML(g.playAll === true ? {} : g.playAll, count === 0);
 }
 
@@ -410,6 +446,38 @@ export function initCollectionCard(opts: CardOptions) {
       </div>`;
   };
 
+  // ── multi-select (row-pick.ts, NEXT-VERSION §19) ─────────────────────────────
+  // One store per card. It keys on the grouping's own `pick.id`, so the picks survive a
+  // sort, a filter, a search and a background sync; only a drill (in or out) drops them,
+  // because the rows you picked are no longer the rows on screen.
+  const pick = rowPick<any>({
+    id: (x) => {
+      const p = groupingOf(cur()).pick;
+      return p?.id ? p.id(x) : objectId(x);
+    },
+    items: () => (groupingOf(cur()).pick ? cur().items : []),
+    onChange: () => {
+      if (curPane) renderViewInto(curPane, cur());
+    },
+  });
+  // Which card Ctrl+A acts on. A row carries no tabindex, so a click leaves the focus on
+  // <body> and `contains(document.activeElement)` would almost never be true — the last
+  // press inside this card is the honest signal instead.
+  let touched = false;
+  viewport.addEventListener("pointerdown", () => {
+    touched = true;
+  });
+  const onDocDown = (e: PointerEvent) => {
+    if (!opts.root.contains(e.target as Node)) touched = false;
+  };
+  document.addEventListener("pointerdown", onDocDown);
+
+  let lastPicked = 0; // picks at the last render — tells a first pick from a later one
+
+  /** A row's HTML, with the pick mark added when it is one of the picked (§19). */
+  const renderRow = (g: Grouping, x: any, density: Density, i: number): string =>
+    g.pick ? pick.markHTML(g.render(x, density, i), x, i) : g.render(x, density, i);
+
   const buildPane = (f: Frame): HTMLElement => {
     const pane = document.createElement("div");
     pane.className = "coll-pane";
@@ -440,7 +508,12 @@ export function initCollectionCard(opts: CardOptions) {
     // Play / Shuffle (NEXT-VERSION §13, user's call 2026-09-15): a row of two half-width
     // buttons under the hero — or at the top of a song list with no hero — inside the head
     // block, so the windower measures it and a View switch to a non-song grouping drops it.
-    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g, items.length) + (f.ctx.shelves?.() ?? "");
+    // The count slides in on the FIRST pick only — a later pick just retypes the number,
+    // and re-running the animation on every Ctrl+click would jitter the row.
+    const nPicked = g.pick ? pick.size() : 0;
+    const entering = nPicked > 0 && lastPicked === 0;
+    lastPicked = nPicked;
+    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g, items.length, nPicked, entering) + (f.ctx.shelves?.() ?? "");
     // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
     // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
     // it can stick to the top once the hero and shelves scroll away (a sticky box stops at
@@ -499,7 +572,7 @@ export function initCollectionCard(opts: CardOptions) {
     // Long homogeneous lists are windowed (only the rows near the viewport exist); the
     // rest render whole, exactly as before. The gate keeps every small pane untouched.
     if (items.length > WINDOW_MIN && !g.mixed) {
-      const spec = { count: items.length, render: (i: number) => g.render(items[i], f.density, i), hero };
+      const spec = { count: items.length, render: (i: number) => renderRow(g, items[i], f.density, i), hero };
       const w = windowers.get(view);
       if (w) w.update(spec);
       else windowers.set(view, windowView(view, spec));
@@ -507,7 +580,7 @@ export function initCollectionCard(opts: CardOptions) {
       return;
     }
     dropWindower(pane);
-    fill(items.map((x, i) => g.render(x, f.density, i)).join(""));
+    fill(items.map((x, i) => renderRow(g, x, f.density, i)).join(""));
     restoreSearch();
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
@@ -577,6 +650,7 @@ export function initCollectionCard(opts: CardOptions) {
 
   const drill = (childCtx: Context) => {
     if (animating) return;
+    pick.clear(); // a drill changes which rows are on screen — the picks go with them (§19)
     // remember where we were so back restores scroll
     const v = curPane?.querySelector<HTMLElement>("[data-view]");
     if (v) cur().scroll = v.scrollTop;
@@ -588,6 +662,7 @@ export function initCollectionCard(opts: CardOptions) {
 
   const back = () => {
     if (animating || stack.length <= 1) return;
+    pick.clear();
     const prev = stack[stack.length - 2];
     setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title);
     slide(buildPane(prev), "pop", prev, () => stack.pop());
@@ -734,7 +809,11 @@ export function initCollectionCard(opts: CardOptions) {
       const index = Number(row.dataset.idx);
       const x = f.items[index];
       if (x === undefined) return null;
-      const payload = groupingOf(f).drag?.(x, index, f.items) ?? undefined;
+      const g0 = groupingOf(f);
+      // A drag that starts on a picked row carries every picked song as ONE payload, and
+      // is a copy, never a reorder — a block of rows has no single new position (§19).
+      if (g0.pick && pick.size() > 1 && pick.isPicked(x)) return { row, index, payload: g0.pick.drag(pick.picked()) };
+      const payload = g0.drag?.(x, index, f.items) ?? undefined;
       if (reorderable(f)) return { row, index, list, count: f.items.length, payload };
       return payload ? { row, index, payload } : null;
     },
@@ -791,8 +870,15 @@ export function initCollectionCard(opts: CardOptions) {
       closePops();
       const f = cur();
       const g = groupingOf(f);
+      const what = act.dataset.act ?? "";
+      // The count row (§19): Clear drops the picks; Play / Shuffle act on them alone.
+      if (g.pick && pick.size()) {
+        const picked = pick.picked();
+        runListAction(what, picked, (list) => g.pick!.play(list));
+        return;
+      }
       if (!g.activate) return;
-      runListAction(act.dataset.act ?? "", f.items, (list) => g.activate!(list[0], 0, list));
+      runListAction(what, f.items, (list) => g.activate!(list[0], 0, list));
       return;
     }
 
@@ -855,6 +941,9 @@ export function initCollectionCard(opts: CardOptions) {
       const idx = Number(item.dataset.idx);
       const x = cur().items[idx];
       if (!x) return;
+      // Ctrl / Shift → a pick, not a play. A plain click falls through and also drops
+      // whatever was picked, so the list always returns to its normal state (§19).
+      if (g.pick && pick.click(e, x)) return;
       if (g.activate) {
         g.activate(x, idx, cur().items);
         return;
@@ -929,10 +1018,16 @@ export function initCollectionCard(opts: CardOptions) {
     const el = t.closest<HTMLElement>("[data-idx]");
     if (!el) return;
     const g = groupingOf(cur());
-    if (!g.menu) return;
     const x = cur().items[Number(el.dataset.idx)];
     if (!x) return;
-    const items = g.menu(x, Number(el.dataset.idx), cur().items);
+    // Right-click one of the picked rows → one menu for the whole set (§19). Right-click
+    // anywhere else → the single-row menu, and the picks stay as they were.
+    const items =
+      g.pick && pick.size() && pick.isPicked(x)
+        ? g.pick.menu(pick.picked())
+        : g.menu
+          ? g.menu(x, Number(el.dataset.idx), cur().items)
+          : [];
     if (!items.length) return;
     e.preventDefault();
     el.classList.add("is-context");
@@ -945,7 +1040,18 @@ export function initCollectionCard(opts: CardOptions) {
     if (!(e.target as HTMLElement).closest("[data-popbody], [data-pop]")) closePops();
   };
   const onDocKey = (e: KeyboardEvent) => {
+    // Ctrl+A takes every row in the current sort and filter — only while this card holds
+    // the focus, and never in a text field (the search box keeps its own select-all).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a") {
+      const t = e.target as HTMLElement | null;
+      if (!canPick() || !touched || t?.closest("input, textarea, [contenteditable]")) return;
+      if (!groupingOf(cur()).pick) return;
+      e.preventDefault();
+      pick.all();
+      return;
+    }
     if (e.key !== "Escape") return;
+    pick.clear();
     closePops();
     if (cur()?.searchOpen) {
       cur().searchOpen = false;
@@ -1004,6 +1110,7 @@ export function initCollectionCard(opts: CardOptions) {
       closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
+      document.removeEventListener("pointerdown", onDocDown);
     },
   };
 }

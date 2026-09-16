@@ -393,6 +393,15 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     // is the setting (SETTINGS.md / FUTURE-SETTINGS §1).
     menu: (t, idx, items) => trackMenu([t], o.context, o.nav, { items, idx }),
     drag: (t) => ({ source: "library", kind: "song", tracks: () => [t], context: o.context }),
+    // Multi-select (NEXT-VERSION §19). Keyed by the SONG, so a sort, a filter or a sync
+    // keeps the picks. The set's menu is the ordinary track menu over many songs, which
+    // is where "Add to Playlist ▸ New Playlist…" builds a list from a hand-picked set.
+    pick: {
+      id: trackId,
+      menu: (ts) => trackMenu(ts, o.context, o.nav),
+      drag: (ts) => ({ source: "library", kind: "song", count: ts.length, tracks: () => ts, context: o.context }),
+      play: (ts) => void playTracks(ts, 0, o.context).catch((e) => console.error("[library] play picked", e)),
+    },
   };
 }
 

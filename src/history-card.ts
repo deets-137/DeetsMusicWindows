@@ -19,6 +19,7 @@ import { onTracksChange, trackById } from "./track-store";
 import { setting, onSettingsChange } from "./settings-store";
 import { onPlayEvent } from "./stats";
 import type { PlayEvent } from "./rewind";
+import type { Track } from "./library";
 import { esc } from "./collection-card";
 import { artURL, rowHTML } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -26,6 +27,8 @@ import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
 import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { copySongLinkItem } from "./copy-link";
+import { addToPlaylistItem } from "./playlists";
+import { rowPick, picksText } from "./row-pick";
 import type { CardDef, CardInstance } from "./cards";
 import { rowDrag, isDragging, onDragEnd } from "./row-drag";
 
@@ -103,6 +106,15 @@ function mountHistory(host: HTMLElement): CardInstance {
   let view: readonly Play[] = [];
   let pendingRender = false;
 
+  // Multi-select (row-pick.ts, NEXT-VERSION §19). Keyed by the PLAY — its stamp, not its
+  // song — so the same song heard three times is three rows, and a tail re-read (which
+  // builds fresh objects) keeps what you picked.
+  const pick = rowPick<Play>({
+    id: (p) => `${p.ts}:${p.handle.catalogId ?? p.handle.libraryId ?? ""}`,
+    items: () => view as Play[],
+    onChange: () => render(),
+  });
+
   const render = () => {
     if (isDragging()) {
       pendingRender = true; // a play landed mid-drag — keep the pressed row until the drop
@@ -145,9 +157,12 @@ function mountHistory(host: HTMLElement): CardInstance {
 
     // Label + list only once there's something OLDER than the hero — a lone play is
     // just the hero; an empty log is the blank idle hero.
+    const label = pick.size() ? `Previously · ${picksText(pick.size())}` : "Previously";
     body.innerHTML = older.length
-      ? `${hero}<div class="qcard__label">Previously</div>${list}`
+      ? `${hero}<div class="qcard__label">${label}</div>${list}`
       : hero;
+    // The card re-renders whole, so one sweep marks what is picked.
+    pick.mark(body, "[data-idx]", (el) => view[Number(el.dataset.idx)]);
   };
 
   // Right-click (hero or row) → re-queue this play. The entry is a log copy, so we
@@ -164,6 +179,10 @@ function mountHistory(host: HTMLElement): CardInstance {
       { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
       { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
     ];
+    // Add to Playlist, in `trackMenu`'s place: after the play verbs, before Go to….
+    // It needs the resolved track, which a played song always has (`seen` rows
+    // materialize catalog-only plays), so a station song files like any other.
+    if (t) items.push(addToPlaylistItem(() => [t]));
     // Go to Artist/Album + Start Station + Add to Library — gated builders (null when
     // they shouldn't offer). Apply to the hero too: it shares this handler via data-idx="0".
     const goA = goToArtistItem("songs", e.catalogId, t?.artistName);
@@ -178,6 +197,28 @@ function mountHistory(host: HTMLElement): CardInstance {
     if (add) items.push(add);
     return items;
   };
+  /** The menu for a picked set of plays (§19). */
+  const menuForSet = (set: Play[]): MenuItem[] => {
+    const err = (what: string) => (x: unknown) => console.error(`[history] ${what}`, x);
+    const hs = set.map((p) => ({ catalogId: p.handle.catalogId, libraryId: p.handle.libraryId, context: "history" }));
+    const ts = set.map(trackOf).filter(Boolean) as Track[];
+    const items: MenuItem[] = [
+      { label: `Play ${picksText(set.length)}`, run: () => void playContext(hs, 0).catch(err("play set")) },
+      { label: "Play Next", run: () => void enqueueNext(hs).catch(err("play next")) },
+      { label: "Add to Queue", run: () => void enqueueLater(hs).catch(err("add to queue")) },
+    ];
+    if (ts.length) items.push(addToPlaylistItem(() => ts));
+    return items;
+  };
+
+  // A history row has never done anything on a plain click, and still doesn't. Ctrl and
+  // Shift pick it; a plain click drops the picks, so the list returns to normal (§19).
+  body.addEventListener("click", (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
+    const entry = el ? view[Number(el.dataset.idx)] : undefined;
+    if (entry) pick.click(e, entry);
+    else pick.clear();
+  });
   body.addEventListener("contextmenu", (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
     if (!el) return;
@@ -185,7 +226,10 @@ function mountHistory(host: HTMLElement): CardInstance {
     if (!entry) return; // idle hero (nothing played yet)
     e.preventDefault();
     el.classList.add("is-context");
-    openContextMenu(e.clientX, e.clientY, menuFor(entry), () => el.classList.remove("is-context"));
+    // Right-click one of the picked rows → one menu for the set (§19). A history row is a
+    // record, not a queue slot, so the set's verbs are play it, queue it, and file it.
+    const items = pick.size() && pick.isPicked(entry) ? menuForSet(pick.picked()) : menuFor(entry);
+    openContextMenu(e.clientX, e.clientY, items, () => el.classList.remove("is-context"));
   });
 
   // Drag a play (the hero or a row) to another card (DRAG-DROP.md §2).
@@ -196,6 +240,12 @@ function mountHistory(host: HTMLElement): CardInstance {
       const el = target.closest<HTMLElement>("[data-idx]");
       const entry = el ? view[Number(el.dataset.idx)] : undefined;
       const t = entry ? trackOf(entry) : undefined;
+      // A drag off a picked row carries the whole set as one payload (§19).
+      if (el && entry && pick.size() > 1 && pick.isPicked(entry)) {
+        const ts = pick.picked().map(trackOf).filter(Boolean) as Track[];
+        if (ts.length)
+          return { row: el, index: Number(el.dataset.idx), payload: { source: "history", kind: "song", count: ts.length, tracks: () => ts, context: "history" } };
+      }
       return el && t
         ? { row: el, index: Number(el.dataset.idx), payload: { source: "history", kind: "song", tracks: () => [t], context: "history" } }
         : null;
@@ -235,11 +285,40 @@ function mountHistory(host: HTMLElement): CardInstance {
   render(); // the empty hero, until the first read lands (one local SQLite call)
   void loadAll();
 
+  // Which card Ctrl+A acts on: the last press inside this one. A row carries no tabindex,
+  // so the focus stays on <body> and a `contains(activeElement)` test would never pass.
+  let touched = false;
+  body.addEventListener("pointerdown", () => {
+    touched = true;
+  });
+  const onDocDown = (e: PointerEvent) => {
+    if (!host.contains(e.target as Node)) touched = false;
+  };
+  document.addEventListener("pointerdown", onDocDown);
+
+  // Escape drops the picks (§19); Ctrl+A takes every row the card shows. Both are on the
+  // document, so they work wherever the pointer is, and both come off on destroy.
+  const onKey = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("input, textarea, [contenteditable]")) return;
+    if (e.key === "Escape") {
+      pick.clear();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a" && touched) {
+      e.preventDefault();
+      pick.all();
+    }
+  };
+  document.addEventListener("keydown", onKey);
+
   return {
     destroy() {
       unsubTracks();
       unsubLog();
       unsubSettings();
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
       unsubDragEnd();
       host.innerHTML = "";

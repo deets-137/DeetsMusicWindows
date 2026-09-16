@@ -375,6 +375,9 @@
   --empty-slot-rim-style: dashed;
   --empty-slot-rim-alpha: 80%;      /* of --border, the theme's own line ink */
 
+  /* -- picked rows (multi-select; themes.css mixes --picked from --title) -- */
+  --picked-strength: 14%;   /* how hard a picked row's fill reads */
+
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;
   --focus-ring-off: 2px;
