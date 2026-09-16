@@ -1789,6 +1789,11 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__song-title { font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__song-artist { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* The shelves block is shared with the Library, where it sits in the card grid and needs
+   its own side inset. In a Search pane the body has no inset, so that padding pushed
+   Featured / Your Playlists 8px right of Albums, Top Songs and the rows. */
+.spane .lib-shelves { padding-left: 0; padding-right: 0; }
+
 .search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; }
 .search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
 .search__tile-art--round { border-radius: 50%; } /* an artist on a shelf (Home), as .lib-tile__cover--round */
