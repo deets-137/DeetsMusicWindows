@@ -208,7 +208,23 @@ stays a monthly chore. The CEF binaries also add ~170 MB per install, so the Lin
 **Risk:** `feat/cef` is not released. Its API can change under us. Pinning a commit protects
 the build, but each bump may need fixes.
 
-### 8.3 Hand-rolling that we should not do
+### 8.3 How much of CEF we ship (asked 2026-09-16)
+- **Only on Linux.** Windows keeps WebView2. `src-tauri/src` has no direct `Wry` type (0 hits
+  on 2026-09-16), so the runtime can be a Linux-only Cargo feature. Check the plugins.
+- **Keep:** `libcef.so`. It holds the engine that MusicKit and our UI need: V8 (JS), Blink,
+  MSE + EME, the media pipeline with the AAC decoder, the Widevine host, networking, and GPU
+  compositing. CEF does not support turning features off. GN flags such as `enable_pdf=false`
+  are not supported by CEF, save little and can break each CEF update. Do not use them.
+- **Drop:** debug symbols (strip; the unstripped file is ~1.2 GB, stripped ~100–200 MB), all
+  locale `.pak` files except the app's languages, the sample apps and test files.
+- **Maybe drop:** SwiftShader (the software GL fallback). Without it, a machine with no working
+  GPU driver (a VM, a broken driver) can show a blank window. Keep it until a test says otherwise.
+- **Compress:** AppImage and Flatpak compress the files. Expected download ~70–100 MB,
+  installed ~150–220 MB. These are estimates. Measure them on the first real build.
+- **Share:** if more Deets apps move to Tauri + CEF on Linux, one CEF copy can serve all of
+  them (a Flatpak base extension, or one shared folder). The user downloads it once.
+
+### 8.4 Hand-rolling that we should not do
 - **Keep WebKitGTK and play the DRM audio in our own Rust code** (load Widevine ourselves,
   decrypt, decode, play). This goes around MusicKit JS for playback, which Apple's terms do not
   allow, and it breaks Widevine's terms. Apple or Google can revoke access, and then no song
@@ -216,6 +232,45 @@ the build, but each bump may need fixes.
 - **Patch WebKitGTK to load Widevine.** Google's CDM talks to Chromium's interface only. A
   non-Chromium engine needs a Widevine agreement with Google (Firefox has one). We would also
   ship and maintain our own WebKitGTK. Rejected.
+
+## 9. The play chain, piece by piece (asked 2026-09-16)
+
+What must happen between "the user presses Play" and sound, on Linux. For each piece: does
+WebKitGTK (Tauri today) have it, does standard CEF have it, and can we hand-roll it.
+
+| # | Piece | WebKitGTK | Standard CEF | Hand-roll? |
+|---|---|---|---|---|
+| 1 | Sign-in, tokens, Apple API calls | Yes (our code) | Yes | — |
+| 2 | MusicKit JS runs (JS, fetch, workers) | Yes | Yes | — |
+| 3 | EME API: `requestMediaKeySystemAccess("com.widevine.alpha")` answers yes | **No.** EME is off in distro builds, or ClearKey only | Yes | The JS surface, yes. It is only a front door for 5–7. |
+| 4 | MSE: MusicKit appends encrypted fMP4 segments | Yes (GStreamer) | Yes | — |
+| 5 | A Widevine **client identity**: the CDM signs a license request that Apple's server accepts | **No** | Yes (downloaded from Google) | **No.** The identity is Google's secret inside the CDM. Making one means extracting keys: that is DRM circumvention. |
+| 6 | Load Google's CDM (`libwidevinecdm.so`): download it, a host adapter (the open `cdm::ContentDecryptionModule` C++ interface), a sandboxed process | **No** | Yes | The code, yes (open headers; Firefox's adapter is a model). The **permission**, no: Google allows the free component download for Chromium-based apps. A non-Chromium host needs a Widevine agreement (Firefox has one). |
+| 7 | Decrypt **inside** the media engine: encrypted samples → CDM → clear samples → decoder, never visible to page JS or our Rust | **No**: needs a WebKit CDM backend + a GStreamer decryptor element, so a WebKitGTK fork | Yes | Inside a WebKit fork, yes, but it is blocked by 6. Outside the engine (clear audio in JS or Rust): **no**, it breaks both Apple's and Google's terms and is the shape of a ripping tool. |
+| 8 | Decode AAC-LC | Yes (GStreamer plugin; can be bundled) | **No** | Yes: a build flag (§9.1). |
+| 9 | Audio out (PipeWire / PulseAudio) | Yes | Yes | — |
+| 10 | Our extras: Sound graph (`createMediaElementSource`), AirPlay capture | Unknown | Probably yes (it works on WebView2, same engine) | AirPlay: PipeWire capture (§4) |
+
+**Result.** On WebKitGTK, pieces 3, 5, 6 and 7 are missing, and all four depend on Google's CDM.
+The block is permission, not code. On CEF, only piece 8 is missing, and piece 8 is a build flag.
+
+A zero-code fork: ask Google for a Widevine agreement for a WebKitGTK host. It costs nothing
+to ask. Even with a yes, pieces 6–7 are a WebKitGTK fork in C++ that we must keep up to date.
+Not recommended over §9.1.
+
+### 9.1 Piece 8 on CEF: the smallest build
+- There is no way to add AAC to a standard CEF without a build: FFmpeg is linked inside
+  `libcef.so`.
+- **Option 8a:** build CEF with AAC-LC turned on (a small patch, not the full
+  `proprietary_codecs` set). The binary carries its own decoder. AAC-LC patents expired (§8.1).
+- **Option 8b:** build CEF with `use_system_ffmpeg=true`. The decoder then comes from the
+  user's system FFmpeg (distro Chromium packages do this). Our binary carries no AAC. Weak
+  point: Chromium expects one FFmpeg version, and distros differ. It suits Flatpak, where the
+  codecs extension gives one known FFmpeg.
+- **Disk:** Chromium's docs ask for 100 GB. That includes the full git history. A
+  `--no-history` checkout plus a release-only build needs an estimated 40–60 GB. Do it on a
+  rented Linux VM, not this PC. The VM runs only for the build.
+- **How often:** once per CEF update we take. A script makes it one command.
 
 ## Sources
 
@@ -240,5 +295,8 @@ the build, but each bump may need fixes.
   [CEF issue #1631: Widevine CDM support](https://github.com/chromiumembedded/cef/issues/1631) ·
   [Fedora: FDK-AAC licensing](https://fedoraproject.org/wiki/Licensing/FDK-AAC) ·
   [Phoronix: Fedora can offer AAC](https://www.phoronix.com/news/Fedora-FDK-AAC)
+- [Chromium Linux build instructions](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/build_instructions.md) ·
+  [WebKitGTK EME discussion](https://lists.webkit.org/pipermail/webkit-gtk/2015-July/002391.html) ·
+  [Electron libffmpeg and proprietary codecs](https://github.com/electron/libchromiumcontent/issues/174)
 - [souvlaki](https://docs.rs/souvlaki) ·
   [tauri-plugin-media](https://crates.io/crates/tauri-plugin-media)
