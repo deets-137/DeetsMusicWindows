@@ -66,6 +66,19 @@ export function setDropdownMode(mode: DropdownMode): void {
   live.forEach((h) => h.setMode(mode));
 }
 
+/** Keep a right-anchored panel (`right: 0` of `anchor`) inside the window: when its left edge
+ *  would pass the window's left edge (a wide panel under an icon far from the right, the Sound
+ *  panel in midi, 2026-09-16), move it right by the difference, less `--panel-edge-gap`.
+ *  Reads layout, not the rect, so the .pop arrival's scale does not skew it. Call on open and
+ *  on resize while open. */
+export function keepInWindow(anchor: HTMLElement, panel: HTMLElement): void {
+  panel.style.right = "";
+  const gap = parseFloat(getComputedStyle(panel).getPropertyValue("--panel-edge-gap")) || 0;
+  const left = anchor.getBoundingClientRect().right - panel.offsetWidth;
+  const under = gap - left;
+  if (under > 0) panel.style.right = `${-under}px`;
+}
+
 /** Wire open/close/dismiss for a trigger+panel pair. Returns a runtime handle. */
 export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled, onOpen } = opts;

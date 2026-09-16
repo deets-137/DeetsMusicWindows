@@ -656,7 +656,7 @@ const META_FULL_SYNC_AT: &str = "full_sync_at";
 fn meta_get(conn: &Connection, key: &str) -> Option<String> {
     conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get(0)).ok()
 }
-fn meta_set(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
+pub(crate) fn meta_set(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
     conn.execute(
         "INSERT INTO meta(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [key, value],

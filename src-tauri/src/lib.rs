@@ -1,4 +1,5 @@
 mod airplay;
+mod audio_out;
 mod apple;
 mod bridge;
 mod enrich;
@@ -6,6 +7,7 @@ mod favorites;
 mod lastfm;
 mod library;
 mod log;
+mod loudness;
 mod model;
 mod media;
 mod playlists;
@@ -182,6 +184,7 @@ pub fn run() {
             library::migrate_v4(&conn).expect("v4 migration failed");
             library::migrate_v5(&conn).expect("v5 migration failed");
             library::migrate_v6(&conn).expect("v6 migration failed");
+            loudness::migrate_v7(&conn).expect("v7 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
@@ -190,6 +193,8 @@ pub fn run() {
             // Last.fm (LASTFM.md): the saved session, and the scrobbles still waiting.
             lastfm::setup(app.handle(), dir.clone());
             airplay::setup(&dir);
+            // Sound (SOUND.md §2.2): the Windows output, its form factor and volume.
+            audio_out::setup(app.handle());
             tray::setup(app.handle())?;
 
             // A login launch (`--tray`, the Run-key command) starts in the tray.
@@ -345,6 +350,10 @@ pub fn run() {
             settings::autostart_set,
             settings::agent_setup_text,
             settings::agent_open_guide,
+            audio_out::audio_output,
+            loudness::loudness_all,
+            loudness::loudness_save,
+            loudness::loudness_forget,
             airplay::airplay_scan,
             airplay::airplay_connect,
             airplay::airplay_disconnect,

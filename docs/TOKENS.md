@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 34 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 328 tokens · overrides: vanilla 3, press 61, ocean 35, glass 60, retro-future 63 |
+| Skin (everything else) | skin.css base block | 333 tokens · overrides: vanilla 3, press 61, ocean 35, glass 60, retro-future 63 |
 
 ## Theme roles
 
@@ -106,6 +106,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--sleep-btn-size` | `var(--traffic-size)` | — | The alarm clock left of the pill, and its kitchen-timer dial. The face's ticks and numbers are geometry here; their colors are theme roles. — level with the lights and the bar |
+| `--title-hit-x` | `calc(var(--space-2) / 2)` | — | The title bar icons' click area past their 16 px glyph: half the row's gap each side, so two icons' areas meet and never overlap, and a little up and down. A click a few px left of the Sound icon landed on the drag region and moved the window instead (2026-09-16 log). |
+| `--title-hit-y` | `6px` | — |  |
 | `--sleep-panel-w` | `224px` | — |  |
 | `--sleep-panel-pad` | `var(--space-2)` | — | was the flyout's --vol-panel-pad, which left with it (0.7.0 shipped with no margins) |
 | `--sleep-dial-size` | `172px` | — |  |
@@ -126,9 +128,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-panel-w` | `300px` | — |  |
 | `--sound-panel-max-h` | `min(620px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
 | `--sound-panel-pad` | `var(--space-2)` | — |  |
+| `--panel-edge-gap` | `6px` | — | a title bar panel keeps this clear of the window edge (dropdown.ts keepInWindow) |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
-| `--sound-pill-min-w` | `44px` | — | On / Off / Gentle keep one width in a column |
+| `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |
+| `--sound-part-pill-w` | `60px` | — | the Adaptive column: On / Gentle / Auto at one width, text centred |
+| `--sound-grow` | `0.22s` | — | a status or help box growing or shrinking to its new text |
 | `--sound-icon-btn` | `24px` | — |  |
 | `--sound-step-pad` | `6px` | — |  |
 | `--sound-strong-fw` | `600` | — |  |

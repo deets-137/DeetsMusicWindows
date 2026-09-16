@@ -285,6 +285,12 @@ body {
   transition: color var(--dur-fast) var(--ease-ui);
 }
 .sleep__btn:hover { color: var(--text); }
+/* The click area is larger than the glyph (--title-hit-*): an empty box around it takes the click. */
+.sleep__btn, .sound__btn { position: relative; }
+.sleep__btn::before, .sound__btn::before {
+  content: ""; position: absolute;
+  inset: calc(-1 * var(--title-hit-y)) calc(-1 * var(--title-hit-x));
+}
 .sleep__btn[data-armed] { color: var(--title); }
 .sleep__btn svg { width: 100%; height: 100%; }
 .sleep__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
@@ -440,9 +446,10 @@ body {
 .sound__tab:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .sound__view { display: flex; flex-direction: column; gap: var(--space-2); }
 .sound__row-end { display: flex; align-items: center; gap: var(--space-1); }
-.sound__part { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.sound__part-text { display: flex; flex-direction: column; gap: var(--sound-status-gap); min-width: 0; }
-.sound__part-text .sound__label { color: var(--text); }
+/* A part: label and pill on one line (the pill never moves), the status box under both. */
+.sound__part { display: flex; flex-direction: column; gap: var(--sound-status-gap); }
+.sound__part-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sound__part-head .sound__label { color: var(--text); }
 .sound__panel[data-adaptive-off] .sound__part { opacity: var(--sound-dim); }
 .sound__footer {
   display: flex; flex-direction: column; gap: var(--space-1);
@@ -490,7 +497,8 @@ body {
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }
-.sound__pill { min-width: var(--sound-pill-min-w); white-space: nowrap; text-align: center; }
+.sound__pill { min-width: var(--sound-pill-min-w); white-space: nowrap; text-align: center; flex-shrink: 0; }
+.sound__part-head > .sound__pill, .sound__row--strong > .sound__pill { min-width: var(--sound-part-pill-w); }
 .sound__foot-pill { min-width: var(--sound-foot-pill-w); }
 /* Reset turns into Undo in place: one width for both words, so nothing moves */
 .sound__row-end .sound__chip { min-width: var(--sound-reset-w); }
@@ -655,14 +663,20 @@ body {
   background: var(--sound-fold-bg);
 }
 .sound__why { display: flex; flex-direction: column; gap: var(--space-1); color: var(--subtext); line-height: var(--sound-status-lh); }
-/* Each piece of the explanation in its own box, so a line that changes length moves only its box */
-.sound__why p {
-  margin: 0;
+/* A status line or a piece of the explanation, in its own box. sound-panel.ts `growBox` sets the
+   box's height from its text, so new text that wraps to more lines (or fewer) slides the rows
+   below instead of jumping them. */
+.sound__box {
+  box-sizing: border-box;
+  overflow: hidden;
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--sound-chip-radius);
   background: var(--surface);
+  transition: height var(--sound-grow) var(--pop-ease);
 }
+.sound__box[data-snap] { transition: none; }
+.sound__box-in { margin: 0; }
 .sound__row[data-inactive] { opacity: var(--sound-dim); }
 .sound__step:disabled { cursor: default; }
 .sound__outputs { display: flex; flex-direction: column; gap: var(--space-1); }
@@ -671,7 +685,7 @@ body {
 
 
 @media (prefers-reduced-motion: reduce) {
-  .sound__handle, .sound__fader-knob, .sound__btn svg rect, .sound__fold-btn::before { transition: none; }
+  .sound__handle, .sound__fader-knob, .sound__btn svg rect, .sound__fold-btn::before, .sound__box { transition: none; }
 }
 
 /* ── Playlist web (PLAYLIST-WEB.md): the Playlists card's web button + its panel ──────

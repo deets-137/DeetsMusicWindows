@@ -123,8 +123,25 @@ export function onPlayEvent(cb: () => void): () => void {
 }
 const emitLog = () => logSubs.forEach((cb) => cb());
 
+// One listen's start and its settled progress ticks, for other listeners (sound-loudness.ts
+// measures a song over the same play this log counts). Same guards as the log: a restart is a
+// new listen; a tick arrives only while the model's current is the song MusicKit plays.
+type ListenStart = (cur: TrackHandle) => void;
+type ListenTick = (cur: TrackHandle, progress: number, currentTime: number) => void;
+const listenStarts = new Set<ListenStart>();
+const listenTicks = new Set<ListenTick>();
+export function onListen(start: ListenStart, tick: ListenTick): () => void {
+  listenStarts.add(start);
+  listenTicks.add(tick);
+  return () => {
+    listenStarts.delete(start);
+    listenTicks.delete(tick);
+  };
+}
+
 function startEvent(cur: TrackHandle): void {
   finalizeEvent(); // the outgoing song's row, if any
+  listenStarts.forEach((cb) => cb(cur));
   const id = invoke<number>("record_event_start", {
     catalogId: cur.catalogId,
     libraryId: cur.libraryId,
@@ -203,6 +220,7 @@ export function recordProgress(cur: TrackHandle | null, progress: number, curren
   const id = playId(cur);
   if (!id) return;
 
+  if (typeof currentTime === "number") listenTicks.forEach((cb) => cb(cur, progress, currentTime));
   if (openEvent && typeof currentTime === "number") {
     const last = openEvent.lastTickSec;
     if (last !== undefined) {

@@ -61,6 +61,11 @@ md-5 = "0.10"
 # Global System Media Transport Controls session + the master volume endpoint;
 # and our own media session (smtc.rs: `Media`). Already in the dependency tree
 # transitively (Tauri), so no new crate downloads.
+# `#[implement]` (audio_out.rs: the Windows audio notices) names this crate at its root.
+# Already in the tree through `windows`; no new download.
+[dependencies.windows-core]
+version = "0.61"
+
 [dependencies.windows]
 version = "0.61"
 features = [
@@ -69,10 +74,14 @@ features = [
   "Media",
   "Media_Control",
   "Storage_Streams",
+  "Win32_Devices_FunctionDiscovery",
   "Win32_Foundation",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
   "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
   "Win32_System_WinRT",
+  "Win32_UI_Shell_PropertiesSystem",
 ]
 

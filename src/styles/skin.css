@@ -69,6 +69,11 @@
   /* The alarm clock left of the pill, and its kitchen-timer dial. The face's
      ticks and numbers are geometry here; their colors are theme roles. */
   --sleep-btn-size:     var(--traffic-size);   /* level with the lights and the bar */
+  /* The title bar icons' click area past their 16 px glyph: half the row's gap each side, so two
+     icons' areas meet and never overlap, and a little up and down. A click a few px left of the
+     Sound icon landed on the drag region and moved the window instead (2026-09-16 log). */
+  --title-hit-x:        calc(var(--space-2) / 2);
+  --title-hit-y:        6px;
   --sleep-panel-w:      224px;
   --sleep-panel-pad:    var(--space-2);   /* was the flyout's --vol-panel-pad, which left with it (0.7.0 shipped with no margins) */
   --sleep-dial-size:    172px;
@@ -89,9 +94,12 @@
   --sound-panel-w:           300px;
   --sound-panel-max-h:       min(620px, calc(100vh - 48px)); /* scrolls inside a short window (mini) */
   --sound-panel-pad:         var(--space-2);
+  --panel-edge-gap:          6px;    /* a title bar panel keeps this clear of the window edge (dropdown.ts keepInWindow) */
   --sound-title-tracking:    0.02em;
   --sound-chip-radius:       var(--radius-control);
-  --sound-pill-min-w:        44px;   /* On / Off / Gentle keep one width in a column */
+  --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */
+  --sound-part-pill-w:       60px;   /* the Adaptive column: On / Gentle / Auto at one width, text centred */
+  --sound-grow:              0.22s;  /* a status or help box growing or shrinking to its new text */
   --sound-icon-btn:          24px;
   --sound-step-pad:          6px;
   --sound-strong-fw:         600;

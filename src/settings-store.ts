@@ -136,6 +136,8 @@ export interface Settings {
   soundEqPerOutput: boolean;
   /** Output key → preset id, written when a preset is picked while that output plays. */
   soundEqOutputs: Record<string, string>;
+  /** Output key → its name when last seen, so the panel lists "Speakers (Realtek)", not a Windows id. */
+  soundOutputNames: Record<string, string>;
   /** DeetsAdaptiveSound, the one switch over its three parts. */
   soundAdaptive: boolean;
   /** Part A: each song at the same loudness. */
@@ -303,6 +305,7 @@ export const DEFAULTS: Settings = {
   soundEqPreampDb: 0,
   soundEqPerOutput: true, // user's call 2026-09-16: headphones and speakers want different curves
   soundEqOutputs: {},
+  soundOutputNames: {}, // filled as presets are remembered: a Windows output's key is an unreadable id
   soundAdaptive: false, // user's call 2026-09-16: off like every effect
   soundLoudness: true, // the parts are on inside the switch: turning Adaptive sound on does something at once
   soundLoudTarget: -16, // user's call 2026-09-16: Apple Sound Check's level, more headroom than −14

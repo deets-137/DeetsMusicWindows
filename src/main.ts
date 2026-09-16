@@ -32,6 +32,7 @@ import { initLookSchedule, noteHandPick } from "./look-schedule";
 import { initSleep } from "./sleep";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
+import { initLoudness } from "./sound-loudness";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initQueuePersist } from "./queue-persist";
@@ -54,6 +55,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
   initSound(); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)
+  initLoudness(); // Match loudness: measures songs and sets each one's gain (SOUND.md §3A)
   // File drops belong to the page (tauri.conf.json `dragDropEnabled: false`, for the playlist
   // cover). A drop no element took must not navigate the webview to the file.
   window.addEventListener("dragover", (e) => {

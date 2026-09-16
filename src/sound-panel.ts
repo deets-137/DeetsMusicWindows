@@ -4,13 +4,14 @@
 // fold and the settings that change it. The panel only writes settings and calls sound.ts;
 // sound.ts is the one reader.
 
-import { makeDropdown } from "./dropdown";
+import { keepInWindow, makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
 import { makeSlider, type SliderHandle } from "./slider";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
 import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, type Band, type BandType } from "./sound-dsp";
 import { GRAPHIC_FREQS, MAX_BANDS, fitGraphic, isGraphic, parseApo, toApo, type EqPreset } from "./sound-presets";
 import * as sound from "./sound";
+import * as loudness from "./sound-loudness";
 import { getVolume, getDuck, onPlayerState } from "./player";
 import * as diag from "./diag";
 
@@ -159,10 +160,15 @@ export function initSoundPanel(): void {
     shouldStayOpen: (why) => dragging || holding || (why === "leave" && overVolume),
     alsoInside: volumeControls,
     onOpen: () => {
+      keepInWindow(root, panel); // midi: the 300 px panel under this icon passed the left edge
       enterRows([head, ...visibleRows(tab === "eq" ? eqView : adaptView), footer]);
       void startShape();
       renderAll();
     },
+  });
+  // A window resized while the panel is open (a surface flip) fits it again.
+  window.addEventListener("resize", () => {
+    if (!panel.hidden) keepInWindow(root, panel);
   });
   // The dropdown hides the panel; stop reading the song's shape then (a MutationObserver on `hidden`).
   new MutationObserver(() => {
@@ -174,6 +180,9 @@ export function initSoundPanel(): void {
   sound.onSoundChange(() => {
     if (!panel.hidden) renderStatus();
     renderIcon();
+  });
+  loudness.onLoudnessChange(() => {
+    if (!panel.hidden) renderStatus();
   });
   // A new song starts a new shape.
   let songKey = "";
@@ -295,7 +304,7 @@ function build(panel: HTMLElement): void {
     t.setAttribute("role", "tab");
   });
   tabEq.title = "The equalizer: the curve, the sliders and the presets";
-  tabAdapt.title = "Adaptive sound: matched loudness, fuller low volume and headphone crossfeed";
+  tabAdapt.title = "Adaptive sound: even loudness between songs, a fuller sound at low volume, and a natural sound on headphones";
   tabEq.addEventListener("click", () => setTab("eq"));
   tabAdapt.addEventListener("click", () => setTab("adapt"));
   tabs.append(tabEq, tabAdapt);
@@ -503,7 +512,7 @@ function build(panel: HTMLElement): void {
   eqStatus = el("div", "sound__status");
   eqNote = el("div", "sound__note");
   eqNote.hidden = true;
-  eqView.append(eqStatus, eqNote);
+  eqView.append(growBox(eqStatus), eqNote);
 
   // The EQ's fold: how it decides, and its settings
   const eqFold = foldButton("How the equalizer decides", "Shows what the equalizer uses and the settings that change it", () => eqFoldBody);
@@ -513,8 +522,8 @@ function build(panel: HTMLElement): void {
   const autoPre = cyclePill(
     "soundEqPreamp",
     ["limiter", "needed", "always", "manual"],
-    ["Limiter only", "When needed", "Always", "Set by hand"],
-    "How a boost is kept from clipping: the limiter alone, lower the song only when the volume leaves no room, always lower it by the boost, or a level you set",
+    ["Limiter only", "When needed", "Always", "By hand"],
+    "How a boost is kept from distorting: Limiter only turns down just the loudest moments; the others lower the whole song (when needed, always, or by an amount you set)",
   );
   syncs.push(autoPre.sync);
   preampValue = el("span", "sound__readout");
@@ -531,31 +540,31 @@ function build(panel: HTMLElement): void {
   preUp.addEventListener("click", () => nudge(0.5));
   const preCtl = el("div", "sound__stepper");
   preCtl.append(preDown, preampValue, preUp);
-  preampRow = row("Preamp level", preCtl);
-  const perOut = cyclePill("soundEqPerOutput", [true, false], ["On", "Off"], "On: each output remembers its own preset, and switching output switches the preset");
+  preampRow = row("Lower the song by", preCtl);
+  const perOut = cyclePill("soundEqPerOutput", [true, false], ["On", "Off"], "On: headphones, speakers and AirPlay speakers each remember their own preset");
   syncs.push(perOut.sync);
   outputsList = el("div", "sound__outputs");
   // The settings first, then what they do (user, 2026-09-16): the controls never move when the text changes.
-  eqFoldBody.append(row("Preamp", autoPre.btn), preampRow, row("Per output", perOut.btn), outputsList, eqWhy);
+  eqFoldBody.append(row("Avoid distortion", autoPre.btn), preampRow, row("Remember each output", perOut.btn), outputsList, eqWhy);
   eqFoldBody.hidden = true;
   eqView.append(eqFoldBody);
 
   // 6. DeetsAdaptiveSound
-  adaptivePill = pill("Turns adaptive sound on or off: matched loudness, fuller low volume and headphone crossfeed");
+  adaptivePill = pill("Turns adaptive sound on or off. Each of the three parts below also has its own switch");
   adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !setting("soundAdaptive")));
   adaptView.append(row("Adaptive sound", adaptivePill, "sound__row--strong"));
 
-  const loud = cyclePill("soundLoudness", [true, false], ["On", "Off"], "Plays each song at the same loudness");
+  const loud = cyclePill("soundLoudness", [true, false], ["On", "Off"], "Plays every song at about the same loudness, so you do not reach for the volume between songs");
   syncs.push(loud.sync);
   loudStatus = el("div", "sound__status");
   adaptView.append(partRow("Match loudness", loudStatus, loud.btn));
 
-  const low = cyclePill("soundLowVol", ["off", "gentle", "full"], ["Off", "Gentle", "Full"], "Adds bass and a little treble as the volume goes down, the way the ear loses them");
+  const low = cyclePill("soundLowVol", ["off", "gentle", "full"], ["Off", "Gentle", "Full"], "Adds bass and a little treble as you turn the volume down, because quiet music sounds thin. Gentle adds half as much as Full");
   syncs.push(low.sync);
   lowStatus = el("div", "sound__status");
   adaptView.append(partRow("Fuller at low volume", lowStatus, low.btn));
 
-  const xf = cyclePill("soundCrossfeed", ["auto", "always", "off"], ["Auto", "Always", "Off"], "Mixes a little of each channel into the other on headphones. Auto: only when Windows reports headphones");
+  const xf = cyclePill("soundCrossfeed", ["auto", "always", "off"], ["Auto", "Always", "Off"], "On headphones, mixes a little of the left side into the right and back, as speakers in a room do. Auto: only on headphones");
   syncs.push(xf.sync);
   xfStatus = el("div", "sound__status");
   adaptView.append(partRow("Headphone crossfeed", xfStatus, xf.btn));
@@ -563,18 +572,26 @@ function build(panel: HTMLElement): void {
   adaptView.append(foldButton("How adaptive sound decides", "Shows what each part follows and the settings that change it", () => adaptFoldBody));
   adaptFoldBody = el("div", "sound__fold");
   adaptWhy = el("div", "sound__why");
-  const target = cyclePill("soundLoudTarget", [-16, -14, -18], ["−16 LUFS", "−14 LUFS", "−18 LUFS"], "How loud every song is made: −16 is Apple's Sound Check level, −14 is louder, −18 is quieter");
-  const album = cyclePill("soundLoudAlbum", [true, false], ["On", "Off"], "On: an album played in order keeps one gain, so its quiet songs stay quiet");
-  const unmeasured = cyclePill("soundLoudUnmeasured", ["median", "none"], ["Median", "No change"], "A song not measured yet: the library's median gain, or no change");
-  const key = cyclePill("soundLowVolKey", ["both", "app"], ["App × Windows", "App only"], "Which volume Fuller at low volume follows");
-  const level = cyclePill("soundCrossfeedLevel", ["medium", "strong", "light"], ["Medium", "Strong", "Light"], "How much of each channel goes into the other");
+  const target = cyclePill("soundLoudTarget", [-16, -14, -18], ["Standard", "Louder", "Quieter"], "How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS");
+  const album = cyclePill("soundLoudAlbum", [true, false], ["On", "Off"], "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet");
+  const unmeasured = cyclePill("soundLoudUnmeasured", ["median", "none"], ["Usual amount", "No change"], "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is");
+  const key = cyclePill("soundLowVolKey", ["both", "app"], ["App + Windows", "App only"], "App + Windows: counts the DeetsMusic volume and the Windows volume together. App only: counts the DeetsMusic volume");
+  const level = cyclePill("soundCrossfeedLevel", ["medium", "strong", "light"], ["Medium", "Strong", "Light"], "How much of each side goes into the other");
   syncs.push(target.sync, album.sync, unmeasured.sync, key.sync, level.sync);
+  const forget = el("button", "sound__chip", "Clear");
+  forget.type = "button";
+  forget.title = "Deletes every song's loudness measurement. Each song is measured again the next time you hear most of it";
+  forget.addEventListener("click", () => {
+    forget.disabled = true;
+    void loudness.forgetMeasurements().finally(() => (forget.disabled = false));
+  });
   adaptFoldBody.append(
-    row("Loudness target", target.btn),
-    row("Album gain", album.btn),
-    row("New songs", unmeasured.btn),
-    row("Low volume follows", key.btn),
-    row("Crossfeed amount", level.btn),
+    row("Match songs to", target.btn),
+    row("Keep albums together", album.btn),
+    row("Songs not measured yet", unmeasured.btn),
+    row("Clear measurements", forget),
+    row("Follow the volume of", key.btn),
+    row("Blend amount", level.btn),
     adaptWhy,
   );
   adaptFoldBody.hidden = true;
@@ -601,7 +618,7 @@ function build(panel: HTMLElement): void {
   reviewActions.append(keep, off);
   reviewActions.hidden = true;
   meter = el("span", "sound__meter");
-  meter.title = "The limiter's deepest cut and the loudest sample in the last quarter second";
+  meter.title = "The limiter stops distortion by turning down only the loudest moments. Shows how much it cut, and the loudest moment, in the last half second";
   const footLine = el("div", "sound__foot-line");
   const keepWrap = el("div", "sound__row-end");
   keepWrap.append(el("span", "sound__label", "Keep:"), review.btn);
@@ -612,11 +629,57 @@ function build(panel: HTMLElement): void {
   setTab(tab);
 }
 
+// ── Boxes that grow to their text (user, 2026-09-16: the status lines jittered) ─────────
+// The box's height is set from its inner text's height; CSS eases the change. A box that is
+// not on screen (panel closed, other tab) keeps its last height, and a first fit snaps.
+const boxFit = typeof ResizeObserver === "function" ? new ResizeObserver((entries) => entries.forEach((e) => fitBox(e.target as HTMLElement))) : null;
+function fitBox(inner: HTMLElement): void {
+  const outer = inner.parentElement;
+  if (!outer || !inner.offsetParent) return;
+  const cs = getComputedStyle(outer);
+  const h = inner.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  if (outer.style.height === `${h}px`) return;
+  if (!outer.style.height) {
+    outer.dataset.snap = "";
+    outer.style.height = `${h}px`;
+    void outer.offsetHeight;
+    delete outer.dataset.snap;
+  } else {
+    outer.style.height = `${h}px`;
+  }
+}
+/** Wrap `inner` in a box that eases to its text's height. */
+function growBox(inner: HTMLElement, cls = ""): HTMLDivElement {
+  inner.classList.add("sound__box-in");
+  const outer = el("div", `sound__box ${cls}`.trim());
+  outer.append(inner);
+  boxFit?.observe(inner);
+  return outer;
+}
+/** Set text only when it changed (a same-text write still costs a layout). */
+function setText(node: HTMLElement, text: string): void {
+  if (node.textContent !== text) node.textContent = text;
+}
+/** The help paragraphs of a fold, as boxes that stay in place and grow to new text. */
+function setWhy(container: HTMLElement, texts: string[]): void {
+  while (container.children.length > texts.length) container.lastElementChild!.remove();
+  texts.forEach((t, i) => {
+    let inner = container.children[i]?.firstElementChild as HTMLElement | null | undefined;
+    if (!inner) {
+      inner = el("p", "");
+      container.append(growBox(inner));
+    }
+    setText(inner, t);
+  });
+}
+
+/** A part: its label and pill on one line, its status box under both. The pill never moves when
+ *  the box grows (user, 2026-09-16: a button must not slide out from under the pointer). */
 function partRow(label: string, status: HTMLElement, control: HTMLElement): HTMLDivElement {
   const r = el("div", "sound__part");
-  const text = el("div", "sound__part-text");
-  text.append(el("span", "sound__label", label), status);
-  r.append(text, control);
+  const head = el("div", "sound__part-head");
+  head.append(el("span", "sound__label", label), control);
+  r.append(head, growBox(status));
   return r;
 }
 
@@ -1032,7 +1095,7 @@ function renderMeter(): void {
   const now = performance.now();
   if (now - meterHold.since < 500 && meter.textContent) return;
   const cut = meterHold.limiterDb < -0.05 ? `Limiter ${db(meterHold.limiterDb)}` : "Limiter idle";
-  meter.textContent = `${cut} · peak ${meterHold.peakDb > -100 ? `${meterHold.peakDb.toFixed(1)} dBFS` : "silent"}`;
+  meter.textContent = `${cut} · peak ${meterHold.peakDb > -100 ? db(meterHold.peakDb) : "silent"}`;
   meterHold = { limiterDb: 0, peakDb: -Infinity, since: now };
 }
 
@@ -1109,17 +1172,40 @@ function preampWhy(peak: number): string {
   const boost = Math.max(0, peak);
   const room = sound.headroomDb();
   const roomText = sound.getOutput().kind === "airplay"
-    ? "The speaker holds the volume, so the song arrives at full scale"
-    : `The volume leaves ${db(room)} of room before full scale`;
+    ? "An AirPlay speaker sets its own volume, so the music reaches it at full level and has no room to spare"
+    : `At this volume there is ${db(room)} of room before the music would distort`;
+  const most = boost > 0.05 ? `Your biggest boost is ${db(boost)}.` : "Nothing is boosted now.";
   switch (setting("soundEqPreamp")) {
     case "limiter":
-      return `Preamp: limiter only. The song is never lowered; the curve's boost of ${db(boost)} plays as drawn, and the limiter holds any peak over −1 dBFS. ${roomText}. On a loud song at full volume the limiter may dip the level on bass hits.`;
+      return `Avoid distortion: limiter only. ${most} ${roomText}. The song is never turned down; if a boost would distort, the limiter turns down just those loud moments.`;
     case "needed":
-      return `Preamp: when needed. ${roomText}; the curve's boost is ${db(boost)}, so the song is lowered by ${db(Math.max(0, boost - room))}. The limiter holds anything left over −1 dBFS.`;
+      return `Avoid distortion: when needed. ${most} ${roomText}, so the song is turned down ${db(Math.max(0, boost - room))}. The limiter catches anything left.`;
     case "always":
-      return `Preamp: always. The song is lowered by the curve's boost, ${db(boost)}, whatever the volume. Nothing clips, but a boost makes the rest of the song quieter.`;
+      return `Avoid distortion: always. ${most} The song is turned down by that much at any volume. Nothing distorts, but the parts you did not boost get quieter.`;
     case "manual":
-      return `Preamp: set by hand to ${db(setting("soundEqPreampDb"))}. The limiter holds anything over −1 dBFS.`;
+      return `Avoid distortion: by hand. The song is turned down by the amount you set, ${db(setting("soundEqPreampDb"))}. The limiter catches anything left.`;
+  }
+}
+
+/** Match loudness, one line: what sets this song's gain, and how far the listen has come. */
+function loudLine(): string {
+  const { source: s, heardPct } = loudness.loudnessState();
+  const moved = (g: number) => (g < -0.05 ? `turned down ${db(-g)}` : g > 0.05 ? `turned up ${db(g)}` : "left as it is");
+  const cap = (x: { cappedFrom?: number }) => (x.cappedFrom !== undefined ? ", less than it needs so its loudest moments stay clean" : "");
+  const heard = heardPct !== null && s.kind !== "off" && s.kind !== "idle" ? ` Measuring: ${heardPct} %.` : "";
+  switch (s.kind) {
+    case "off":
+      return "Off.";
+    case "idle":
+      return "Starts with the next song.";
+    case "song":
+      return `This song is ${moved(s.gainDb)}${cap(s)}.${heard}`;
+    case "album":
+      return `This album is ${moved(s.gainDb)} as one (${s.measured} of ${s.total} songs measured)${cap(s)}.${heard}`;
+    case "median":
+      return `New song: ${moved(s.gainDb)}, the usual amount for your songs.${heard}`;
+    case "none":
+      return `New song: left as it is until it is measured.${heard}`;
   }
 }
 
@@ -1132,25 +1218,29 @@ function renderStatus(): void {
   const peak = sound.curvePeakDb(bands(), p.design, fs);
 
   // EQ
-  eqStatus.textContent = on
-    ? `${out.name} · ${p.name} · preamp ${db(currentPreampDb())}`
-    : `Off. ${out.name} would play ${p.name}.`;
-  const outKind = out.kind === "unknown" ? "its type is not known yet (output detection is the next build step)" : `Windows reports ${out.kind}`;
-  eqWhy.replaceChildren(
-    el("p", "", `Output: ${out.name}; ${outKind}.`),
-    el("p", "", setting("soundEqPerOutput")
-      ? "Per output is on: a preset you pick is remembered for the output that is playing, and a change of output brings its preset back."
-      : "Per output is off: one preset plays on every output."),
-    el("p", "", preampWhy(peak)),
-    el("p", "", p.design === "rbj"
-      ? "This preset was imported: it uses the filters its author designed for (RBJ), so it sounds as measured."
-      : "Bands made here use matched filters: the shape you draw holds up to 20 kHz."),
-  );
+  const pre = currentPreampDb();
+  setText(eqStatus, on
+    ? `Playing ${p.name} on ${out.name}${pre < -0.05 ? `, turned down ${db(-pre)} to avoid distortion` : ""}.`
+    : `Off. ${out.name} uses ${p.name} when you turn it on.`);
+  const outKind =
+    out.kind === "airplay" ? "an AirPlay speaker"
+    : out.kind === "unknown" ? "an output Windows does not name a type for"
+    : out.kind === "headphones" ? "headphones"
+    : out.kind === "headset" ? "a headset"
+    : "speakers";
+  setWhy(eqWhy, [
+    `The equalizer turns ranges of sound up or down: the bass, the voice, the top end. The music plays on ${out.name}, which is ${outKind}.`,
+    setting("soundEqPerOutput")
+      ? "Remember each output is on: the preset you pick is kept for the output that plays now, and it comes back when you switch to that output again."
+      : "Remember each output is off: one preset plays on every output.",
+    preampWhy(peak),
+    ...(p.design === "rbj" ? ["This preset was imported, so it uses the filter type its author measured with."] : []),
+  ]);
   const map = setting("soundEqOutputs");
   outputsList.replaceChildren(
     ...Object.entries(map).map(([k, id]) => {
       const r = el("div", "sound__output");
-      const label = k === out.key ? `${out.name} (playing)` : k === "default" ? "This PC" : k;
+      const label = k === out.key ? `${out.name} (playing)` : sound.outputName(k);
       r.append(el("span", "sound__label", label), el("span", "sound__readout", sound.presetFor(id).name));
       const forget = el("button", "sound__icon-btn", "×");
       forget.type = "button";
@@ -1169,7 +1259,7 @@ function renderStatus(): void {
   // Adaptive
   const adaptive = setting("soundAdaptive");
   const offLine = "Adaptive sound is off.";
-  loudStatus.textContent = !adaptive ? offLine : !setting("soundLoudness") ? "Off." : "Not built yet: measuring comes in a later build step.";
+  setText(loudStatus, !adaptive ? offLine : !setting("soundLoudness") ? "Off." : loudLine());
   const lowMode = setting("soundLowVol");
   const duck = getDuck();
   const app = duck > 0 ? getVolume() / duck : getVolume();
@@ -1177,20 +1267,26 @@ function renderStatus(): void {
   const both = setting("soundLowVolKey") === "both";
   const drop = sound.volumeDropDb();
   const shelves = lowVolumeShelves(drop, lowMode === "full" ? 1 : lowMode === "gentle" ? 0.5 : 0);
-  const levelText = both ? `App ${pct(app)} × Windows ${win.known ? pct(win.value) : "not read yet"}` : `App ${pct(app)}`;
-  lowStatus.textContent = !adaptive
+  const levelText = win.airplay
+    ? `Speaker volume ${pct(app)}`
+    : both
+      ? `Volume: app ${pct(app)}, Windows ${win.known ? pct(win.value) : "not read"}`
+      : `App volume ${pct(app)}`;
+  setText(lowStatus, !adaptive
     ? offLine
     : lowMode === "off"
       ? "Off."
-      : `${levelText} = ${db(-drop)} → ${db(shelves.low)} bass, ${db(shelves.high)} treble.`;
+      : shelves.low < 0.1
+        ? `${levelText}. Loud enough: nothing added.`
+        : `${levelText}. Adds ${db(shelves.low)} bass and ${db(shelves.high)} treble.`);
   const xf = sound.crossfeedState();
-  xfStatus.textContent = !adaptive ? offLine : `${xf.why}${xf.on ? " → on." : setting("soundCrossfeed") === "off" ? "" : " → off."}`;
-  const unmeasured = setting("soundLoudUnmeasured") === "median" ? "get the library's median gain" : "play unchanged";
-  adaptWhy.replaceChildren(
-    el("p", "", `Match loudness measures each song while it plays and counts it once 80 % is heard without a skip. Every song is set to ${setting("soundLoudTarget")} LUFS.${setting("soundLoudAlbum") ? " An album played in order keeps one gain." : ""} Songs not measured yet ${unmeasured}.`),
-    el("p", "", `Fuller at low volume follows ${both ? "the app slider × the Windows volume" : "the app slider"}. At full volume it adds nothing; the quieter it gets, the more bass at 100 Hz and a little treble at 10 kHz, from the ISO 226 equal-loudness curves.`),
-    el("p", "", "Headphone crossfeed, on Auto, turns on when Windows reports headphones or a headset, and off for speakers."),
-  );
+  setText(xfStatus, !adaptive ? offLine : xf.why);
+  const ls = loudness.loudnessState();
+  setWhy(adaptWhy, [
+    `Match loudness: songs are made at very different loudness, so one can be much louder than the next. DeetsMusic measures a song while you listen. When you have heard most of it without skipping ahead, it turns that song up or down to the same level every time it plays.${setting("soundLoudAlbum") ? " An album played in order moves as one, so its quiet songs stay quiet." : ""} A song never moves more than 12 dB. ${ls.measuredSongs} ${ls.measuredSongs === 1 ? "song is" : "songs are"} measured so far.`,
+    `Fuller at low volume: when music is quiet, the ear hears the deep and the high sounds less than the middle, so the music sounds thin. "Fuller" means this part adds back bass (around 100 Hz) and a little treble (around 10 kHz) as the volume goes down, by the amounts the standard equal-loudness curves give. At full volume it adds nothing. Gentle adds half of Full. It follows ${both ? "the DeetsMusic volume and the Windows volume together" : "the DeetsMusic volume only"}.`,
+    "Headphone crossfeed: on headphones each ear hears only its own side, which sounds unnatural when a song puts an instrument in one ear only. Crossfeed mixes a little of each side into the other, as speakers in a room do. On Auto it turns on only when Windows reports headphones or a headset.",
+  ]);
 
   // Review
   const first = setting("soundFirstOn");

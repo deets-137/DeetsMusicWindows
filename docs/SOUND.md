@@ -1,7 +1,7 @@
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
-> **Designed 2026-09-16. BUILT the same day: the graph + worklet (§1, §8.1 tests pass) and the Sound panel
-> (§2.3–2.4, §9). Not built yet: output detection + Windows volume (phase 4), Match loudness (phase 5).** Decided so far (user, 2026-09-16): fork 0 = build, every
+> **Designed 2026-09-16. BUILT the same day: the graph + worklet (§1, §8.1 tests pass), the Sound panel
+> (§2.3–2.4, §9), and phases 4 (the Windows output + volume) and 5 (Match loudness) — §10, awaiting desk test.** Decided so far (user, 2026-09-16): fork 0 = build, every
 > effect **off by default**, and judge whether it is worth the risk (§7); fork 1 = the whole plan; fork 3 =
 > hand-rolled worklet filters; fork 5 = a **title bar item with its own dropdown panel**, like the sleep timer (§2.3).
 > Second round (same day): fork 2 = one DeetsAdaptiveSound switch with three parts; fork 4 = per-output EQ
@@ -206,6 +206,39 @@ One view at a time; a footer line under both.
   click stops propagation, so other panels never saw a click away). Fixed in `dropdown.ts` for every
   menu; UI-ARCHITECTURE §dropdown.
 
+**Fourth look (user, 2026-09-16).**
+- In midi the panel's left edge passed the window's left edge ("Sound" read "nd"): the 300 px panel
+  hangs left from the icon, and midi puts the icon about 290 px from the left. `keepInWindow`
+  (`dropdown.ts`) now moves the panel right until it keeps `--panel-edge-gap` clear of the edge, on
+  open and on a resize while open. It reads layout (the icon's right edge − the panel's width), not
+  the panel's rect, so the `.pop` scale does not skew it.
+- "A couple of clicks to open": the log showed a `pointerdown chrome-right` (the gap between icons)
+  and a `pointerdown drag-region` (just left of the icon, which starts a window move) before the
+  click that opened it. The Sound and sleep icons now take clicks in a larger empty box around the
+  16 px glyph (`--title-hit-x` = half the row gap, `--title-hit-y`). A warm open measured 13 ms;
+  the first open after launch had one 115 ms long task (the panel's first layout), once per launch.
+- Gentle ran into its pill's right edge: the pill shrank in its row. Pills no longer shrink, and the
+  Adaptive column's pills share one width (`--sound-part-pill-w`), text centred.
+- Status lines and the folds' help text sit in boxes (`growBox`): a ResizeObserver sets the box's
+  height from its text and `--sound-grow` eases it, so a line that wraps to more lines slides the
+  rows below instead of jumping them. Fold paragraphs are reused, not rebuilt on each refresh, and
+  text is written only when it changed. Reduced motion: no ease.
+
+**Fifth look (user, 2026-09-16): beginner words, a pill that stays put.**
+- A part's pill sits on its label's line; the status box is under both at full width, so the pill
+  never slides when the box grows.
+- Plain words everywhere a listener reads: "Fuller" is defined in the fold (the ear hears deep and
+  high sounds less when music is quiet; this part adds bass around 100 Hz and a little treble around
+  10 kHz back). Status lines say what happens ("This song is turned down 6.2 dB", "Adds +2.5 dB bass
+  and +0.6 dB treble", "On: Headphones is headphones", "Off: Windows does not say whether … is
+  headphones. Pick Always to use it"). LUFS stays only in the target pill's hint.
+- Row names are verb-first: Avoid distortion (was Preamp; By hand was Set by hand), Lower the song
+  by, Remember each output, Match songs to (Standard / Louder / Quieter), Keep albums together, Songs
+  not measured yet (Usual amount / No change), Clear measurements, Follow the volume of (App +
+  Windows / App only), Blend amount. Store values are unchanged; agent labels follow (AGENT.md).
+- Bug fixed: the remembered-outputs list showed a Windows endpoint id for an output not playing.
+  `soundOutputNames` keeps each output's name when its preset is remembered.
+
 ### 2.5 Seeing the song: shape, zones, the reading (user's picks, 2026-09-16)
 For a listener who has never heard of EQ, the graph shows the music, not only a curve.
 
@@ -394,3 +427,105 @@ Settings › Reset › Sound (not saved presets). Ledgers: ONBOARDING.md (hints)
     the preset becomes Custom with ten bands. Dots: the dot view; back to Sliders.
 19. Reset: the curve goes flat, a note says "Reset to flat." with Undo; Undo brings Vocal back.
 20. The i square looks like the card header buttons in each skin.
+21. **Fits the window.** In midi, open the panel: its left edge sits a little inside the window, and
+    "Sound" and Compare show in full. Drag the window narrower to mini with the panel open: it stays
+    inside. In max it still hangs from the icon.
+
+## 10. Phases 4 and 5: the output and Match loudness (built 2026-09-16, awaiting desk test)
+
+**Scope (user question).** Every effect acts only on DeetsMusic's own audio: the graph is inside the
+app's WebView, between MusicKit's `<audio>` and the app's output stream. Other apps, system sounds
+and browsers are not changed. An AirPlay speaker hears the effects, because the capture records
+this process after the graph (§1).
+
+### 10.1 Phase 4 — `src-tauri/src/audio_out.rs`
+- One thread (`audio-out`) holds the COM objects. Windows calls two notice objects
+  (`IMMNotificationClient`: the default output changed, or its name or form factor;
+  `IAudioEndpointVolumeCallback`: its volume moved). A notice only sends on a channel; the thread
+  waits 40 ms to fold a burst (a volume drag) into one read, reads, and emits `audio-output`
+  `{ key: "win:<endpoint id>", name, kind, volume, volumeDb, muted }` when anything changed.
+  `audio_output` returns the last read for a front end that loads later. **No polling.**
+- Form factor → kind: Headphones → headphones; Headset, Handset → headset; Speakers, line level,
+  digital passthrough, S/PDIF, a display (HDMI) → speakers; the rest → unknown.
+- `sound.ts` keeps the Windows output and the AirPlay speaker apart. The speaker wins while it plays;
+  the Windows output returns when it lets go (`setAirplayOutput`). Per-output presets key on
+  `win:<id>` or `airplay:<name>`.
+- Fuller at low volume, on App × Windows, uses the **Windows attenuation in dB**
+  (`GetMasterVolumeLevel`), not the slider's 0–1 position (the slider is a taper). While AirPlay
+  plays, the Windows volume does not count (the capture is taken before it).
+- Log: `audio-out: <name> (<kind>)` once per output change (not per volume move); `sound:output`.
+- **Limit:** the default output for the console role. An output set for one app in the Windows
+  "App volume and device preferences" page is not followed.
+- First launch (2026-09-16 16:26): `audio-out: Headphones (High Definition Audio Device) (headphones)`.
+
+### 10.2 Phase 5 — `src/sound-loudness.ts` + `src-tauri/src/loudness.rs`
+- **Measure.** While Match loudness is on, each element worklet sends a 100 ms hop (K-weighted mean
+  square + sample peak, before the match gain). The module divides MusicKit's volume back out
+  (`getAppliedGain` squared; hops at less than −40 dB of volume, and exact-zero hops from a paused
+  element, are skipped), makes 400 ms blocks with 75 % overlap, and at the next song start gates
+  them into integrated loudness (`integratedLufs`). The listen counts when at least 80 % was heard
+  (forward progress ticks under 2 s) with **no jump forward**; then one row is saved.
+- **Store.** Schema v7: `loudness(song_id PK, lufs, peak_db, heard, measured_at)`; a later full
+  listen replaces the row. All rows load once at launch into a map (`sound:measurements`).
+- **Apply, at each song start** (`stats.onListen`: the same start the play log counts):
+  1. album gain — the queue context is `album:<albumKey>` of this song and shuffle is off: the
+     energy of the album's measured songs, weighted by length. *Album gain: −5.0 dB (8 of 11
+     measured)*; the total is the library's songs with that album key;
+  2. the song's own loudness — *This song: −9.8 LUFS → −6.2 dB*;
+  3. the library median gain (setting) — *Not measured yet: library median −4.1 dB (212 songs)*;
+  4. no change.
+  The gain is clamped to ±12 dB and capped so the peak sits at most 2 dB over the limiter's ceiling
+  (the line then says *held from …*). It ramps in 50 ms on every element node (one plays at a time).
+  The line adds *Measuring: 42 % heard.* A song measured during this listen uses it the next time.
+- **Forget** (How adaptive sound decides › Measurements) deletes every row.
+- Log: `sound:matchOn` / `sound:matchOff`, `sound:match {kind, gainDb}` per song,
+  `sound:measured {lufs, peakDb, heard, blocks}`, `sound:measureForget`, `loudness: forgot N`,
+  `migration: v7 added the loudness table`.
+
+### 10.3 Performance
+
+| Part | Cost | When |
+|---|---|---|
+| Output watcher | one sleeping thread; one read per notice | always (Windows wakes it) |
+| Volume notices | at most one emit per 40 ms during a drag; one config message to the bus | while the Windows volume moves |
+| Element meter | 2 biquads × 2 channels + a sum per sample (well under 0.1 % of a core) | Match loudness on |
+| Meter hops | 10 small messages a second; a 4-minute song keeps about 2,400 numbers | Match loudness on, playing |
+| Album gain | one pass over the library's tracks (about 4,000) per song start | Album gain on, an album in order |
+| SQLite | one row per fully heard song; one read of all rows at launch | — |
+
+The larger, older cost: while any effect (Match loudness included) is on, audio runs through the
+Web Audio graph and the bus worklet (EQ, limiter) the whole time it plays. The §7.3 heaviness check
+(`heaviness-sample.ps1`, on against off) is still to be run.
+
+### 10.4 Desk test (needs a runner restart: Rust changed)
+1. Launch. The log has `migration: v7 added the loudness table` (once) and
+   `audio-out: <your output> (<kind>)`.
+2. Sound › Equalizer › How the equalizer decides: *Output: <name>; Windows reports <kind>.*
+3. Change the Windows default output (the taskbar's sound flyout). A new `audio-out:` line; the panel
+   names the new output; with Per output on, the preset remembered for it comes back.
+4. Adaptive sound On, Crossfeed Auto: on headphones the line reads *<name>: headphones → on*; on
+   speakers *→ off*.
+5. Fuller at low volume: the line reads *App 14 % × Windows 60 % (−9.6 dB) = …*. Move the Windows
+   volume: the numbers follow at once. Connect AirPlay: the line reads *Speaker …*.
+6. Match loudness On. Play a song not heard before: *Not measured yet: …* with *Measuring: N % heard*
+   rising. Let it play out. The next song logs `sound:measured` with a LUFS value (most pop
+   masters: −6 to −10).
+7. Play the same song again: *This song: −8.1 LUFS → −7.9 dB*; a loud master is clearly quieter.
+8. Seek forward in a song: at the next song, no `sound:measured` line for it.
+9. Play an album from the Library card (not shuffled) with two songs measured: *Album gain: … (2 of N
+   measured)*. Shuffle on: the song's own line.
+10. Forget: the count in the fold goes to 0; the log has `loudness: forgot N`.
+
+## 11. After it goes live: the user's own test (open, 2026-09-16)
+
+All development on Sound is done for now (committed 2026-09-16). The next step is the user's, not a build:
+1. Once the release with Sound is live, use it in daily listening for some days, on headphones and on
+   speakers (and AirPlay).
+2. Get a feel for each part: the Equalizer and its presets, Compare, Match loudness, Fuller at low
+   volume (Gentle and Full), Headphone crossfeed (Auto), and the panel's words and help text.
+3. Report back: what sounds better, what sounds worse or odd, what is confusing, what is never used.
+
+That report is §7 step 4 (keep, keep some parts, or remove). The §10.4 desk test and the §7.3
+heaviness check (`heaviness-sample.ps1`, effects on against off) go with it. No new Sound work
+starts before the report.
+

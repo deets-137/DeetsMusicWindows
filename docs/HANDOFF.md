@@ -112,6 +112,13 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-16 — Sound: the user lives with it after it goes live, then reports back.** The Sound
+panel (EQ + DeetsAdaptiveSound, phases 1–5) is built and committed on `wakin-up`
+([SOUND.md](SOUND.md) §10–§11). Before any more Sound work: once it ships, the user tests it in daily
+listening, gets a feel for each part (Equalizer, Match loudness, Fuller at low volume, Headphone
+crossfeed, Compare) and reports back. Their report decides what stays, what changes and what goes
+(SOUND.md §7 step 4). Do not start new Sound features until that report exists.
+
 **2026-09-15 — the listening-loop review: the transport pass is next.** A review of the daily
 listening loop (repeat, shuffle, playing a whole album, the queue's end, the keyboard) found
 the platform sound and the loop thin. Scoped with forks in
@@ -173,8 +180,9 @@ the platform sound and the loop thin. Scoped with forks in
    **2026-09-16, same branch:** the Vol. pill now **grows in place on hover and scrubs
    there** (§20, fork A — the flyout is gone; mute and AirPlay sit in the grown pill), and
    the traffic lights follow Windows' order (minimize, maximize, close).
-Not possible on this platform, so not planned: lyrics, crossfade, Sound Check, remove from
-library (§12–§17 header). Spotify (PROVIDERS.md) is parked: Spotify's dev-mode terms block it. The vinyl disc
+Not possible on this platform, so not planned: lyrics, crossfade, remove from
+library (§12–§17 header). (Apple's Sound Check itself is not reachable; Match loudness in the Sound
+panel does the same job in-app, SOUND.md §3A.) Spotify (PROVIDERS.md) is parked: Spotify's dev-mode terms block it. The vinyl disc
 (VINYL.md) waits behind items 1–3.
 
 **2026-09-15 — Authenticode signing (Azure Artifact Signing): WORKING, tested —

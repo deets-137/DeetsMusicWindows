@@ -9,6 +9,8 @@
 // Facts this rests on (SOUND.md §0): DRM audio passes through Web Audio; `music.volume` acts
 // before the graph; MusicKit keeps a pool of <audio> elements, so more than one gets routed.
 
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import workletUrl from "./sound-worklet.ts?worker&url";
 import type { BusConfig } from "./sound-worklet";
 import { bandBiquads, chainDb, integratedLufs, logFreqs, lowVolumeShelves, kWeighting, type Band } from "./sound-dsp";
@@ -29,8 +31,10 @@ export interface SoundConfig {
   preampMode: "limiter" | "needed" | "always" | "manual";
   /** Fuller at low volume: 0 off, 0.5 gentle, 1 full. */
   lowVolume: number;
-  /** Windows master volume 0..1 (Rust feeds it in phase 4; 1 until then). */
+  /** The Windows master volume as a gain (audio_out.rs; 1 while AirPlay plays or when not read). */
   masterVolume: number;
+  /** Match loudness is on: element meters run and each song gets its gain (sound-loudness.ts). */
+  match: boolean;
   crossfeed: { on: boolean; fc: number; db: number };
   ceilingDb: number;
 }
@@ -43,6 +47,7 @@ const config: SoundConfig = {
   preampMode: "limiter",
   lowVolume: 0,
   masterVolume: 1,
+  match: false,
   crossfeed: { on: false, fc: 700, db: -6 },
   ceilingDb: -1,
 };
@@ -57,7 +62,7 @@ const seen = new Set<HTMLMediaElement>();
 
 /** Any effect on: the only condition under which a new element is routed. */
 function wanted(): boolean {
-  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on;
+  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match;
 }
 
 // ── The context and the bus ──────────────────────────────────────────────────────────
@@ -67,6 +72,17 @@ let bus: AudioWorkletNode | null = null;
 let ready: Promise<void> | null = null;
 const routed = new WeakMap<HTMLMediaElement, { source: MediaElementAudioSourceNode; node: AudioWorkletNode }>();
 let routedCount = 0;
+/** Every element node, so a song's match gain and the meter switch reach all of them. */
+const elementNodes: AudioWorkletNode[] = [];
+/** The match gain now (dB), given to an element routed later too. */
+let matchDb = 0;
+type MeterHop = (ms: number, peak: number) => void;
+const meterSubs = new Set<MeterHop>();
+/** The element meters' 100 ms hops: K-weighted mean square and sample peak, with MusicKit's volume still in. */
+export function onMeter(cb: MeterHop): () => void {
+  meterSubs.add(cb);
+  return () => meterSubs.delete(cb);
+}
 let lastStatus: { limiterDb: number; outPeakDb: number; matchDb: number } | null = null;
 /** Every element node also feeds this sum, so the panel can read the song before any effect. */
 let pre: GainNode | null = null;
@@ -128,7 +144,16 @@ function route(el: HTMLMediaElement): void {
   if (!ctx || !bus || routed.has(el)) return;
   try {
     const source = ctx.createMediaElementSource(el);
-    const node = new AudioWorkletNode(ctx, "deets-element", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+    const node = new AudioWorkletNode(ctx, "deets-element", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      processorOptions: { meter: config.match, gainDb: matchDb },
+    });
+    node.port.onmessage = (e) => {
+      if (e.data?.type === "meter") meterSubs.forEach((cb) => cb(e.data.ms, e.data.peak));
+    };
+    elementNodes.push(node);
     source.connect(node).connect(bus);
     if (pre) node.connect(pre);
     routed.set(el, { source, node });
@@ -217,6 +242,16 @@ function push(): void {
   bus?.port.postMessage({ type: "config", config: busConfig() });
 }
 
+/** The song's match gain (SOUND.md §3A), ramped on every element: only one plays at a time. */
+export function setMatchGain(db: number, rampMs = 50): void {
+  if (Math.abs(db - matchDb) < 0.01) return;
+  matchDb = db;
+  for (const n of elementNodes) n.port.postMessage({ type: "gain", db, rampMs });
+}
+export function getMatchGain(): number {
+  return matchDb;
+}
+
 /** Change any part of the config. Routes nothing by itself: the next play does. */
 export function setSound(patch: Partial<SoundConfig>): void {
   const before = wanted();
@@ -282,13 +317,16 @@ export function soundStatus() {
 
 // ── Settings → config (the panel writes settings; this is the one reader) ──────────────
 
-/** The output the sound goes to. Rust fills it in (phase 4); until then "this PC", kind unknown. */
+/** The output the sound goes to: the AirPlay speaker while one plays, else the Windows default (audio_out.rs). */
 export interface SoundOutput {
   key: string;
   name: string;
   kind: "speakers" | "headphones" | "headset" | "airplay" | "unknown";
 }
-let output: SoundOutput = { key: "default", name: "This PC", kind: "unknown" };
+const NO_OUTPUT: SoundOutput = { key: "default", name: "This PC", kind: "unknown" };
+let output: SoundOutput = NO_OUTPUT;
+let windowsOutput: SoundOutput | null = null;
+let airplayOutput: SoundOutput | null = null;
 
 const CROSSFEED_LEVELS = { light: { fc: 650, db: -9.5 }, medium: { fc: 700, db: -6 }, strong: { fc: 700, db: -4.5 } } as const;
 const LOW_VOL_STRENGTH = { off: 0, gentle: 0.5, full: 1 } as const;
@@ -314,7 +352,10 @@ export function presetOptions(): { id: string; name: string }[] {
 /** Pick a preset; with per-output profiles on, the current output remembers it. */
 export function selectPreset(id: string): void {
   setSetting("soundEqPreset", id);
-  if (setting("soundEqPerOutput")) setSetting("soundEqOutputs", { ...setting("soundEqOutputs"), [output.key]: id });
+  if (setting("soundEqPerOutput")) {
+    setSetting("soundEqOutputs", { ...setting("soundEqOutputs"), [output.key]: id });
+    if (setting("soundOutputNames")[output.key] !== output.name) setSetting("soundOutputNames", { ...setting("soundOutputNames"), [output.key]: output.name });
+  }
   diag.log("sound:preset", { id, output: output.kind });
 }
 
@@ -330,18 +371,21 @@ export function commitBands(bands: EqPreset["bands"]): void {
   }
 }
 
-/** The crossfeed is on right now, and why (the panel's status line reads this). */
+/** The crossfeed is on right now, and why, in the words of the panel's status line. */
 export function crossfeedState(): { on: boolean; why: string } {
   const mode = setting("soundCrossfeed");
-  if (!setting("soundAdaptive") || mode === "off") return { on: false, why: mode === "off" ? "Off" : "Adaptive sound is off" };
-  if (mode === "always") return { on: true, why: "Always on" };
-  if (output.kind === "headphones" || output.kind === "headset") return { on: true, why: `${output.name}: ${output.kind}` };
-  if (output.kind === "unknown") return { on: false, why: "The output type is not known yet" };
-  return { on: false, why: `${output.name}: ${output.kind === "airplay" ? "a speaker" : output.kind}` };
+  if (mode === "off") return { on: false, why: "Off." };
+  if (!setting("soundAdaptive")) return { on: false, why: "Adaptive sound is off." };
+  if (mode === "always") return { on: true, why: "On for every output." };
+  if (output.kind === "headphones") return { on: true, why: `On: ${output.name} is headphones.` };
+  if (output.kind === "headset") return { on: true, why: `On: ${output.name} is a headset.` };
+  if (output.kind === "unknown") return { on: false, why: `Off: Windows does not say whether ${output.name} is headphones. Pick Always to use it.` };
+  return { on: false, why: `Off: ${output.name} is a speaker.` };
 }
 
-/** Windows master volume 0..1 (phase 4 feeds it; 1 = not read). */
+/** The Windows volume slider (0..1) and the attenuation it applies (dB), from audio_out.rs. */
 let windowsMaster = 1;
+let windowsMasterDb = 0;
 let windowsMasterKnown = false;
 
 function applySettings(): void {
@@ -356,11 +400,19 @@ function applySettings(): void {
     preampMode: setting("soundEqPreamp"),
     preampDb: setting("soundEqPreampDb"),
     lowVolume: adaptive ? LOW_VOL_STRENGTH[setting("soundLowVol")] : 0,
-    masterVolume: setting("soundLowVolKey") === "both" ? windowsMaster : 1,
+    // Windows' slider in dB, not its 0..1 position (the slider is a taper). The AirPlay capture
+    // is taken before the Windows volume, so while a speaker plays it does not count.
+    masterVolume: setting("soundLowVolKey") === "both" && !airplayOutput && windowsMasterKnown ? Math.pow(10, windowsMasterDb / 20) : 1,
+    match: adaptive && setting("soundLoudness"),
     crossfeed: { on: xf.on, ...level },
   };
   const was = wanted();
+  const matchWas = config.match;
   Object.assign(config, patch);
+  if (config.match !== matchWas) {
+    for (const n of elementNodes) n.port.postMessage({ type: "meter", on: config.match });
+    diag.log(config.match ? "sound:matchOn" : "sound:matchOff", { routed: routedCount });
+  }
   const on = wanted();
   if (on !== was) diag.log(on ? "sound:on" : "sound:off", { eq: config.eqOn, lowVolume: config.lowVolume, crossfeed: config.crossfeed.on, routed: routedCount });
   if (on && !setting("soundFirstOn")) setSetting("soundFirstOn", Date.now());
@@ -369,26 +421,64 @@ function applySettings(): void {
   emit();
 }
 
-export function setWindowsMaster(v: number): void {
+/** The Windows volume moved (or a dev call): `v` the slider 0..1, `db` its attenuation (<= 0). */
+export function setWindowsMaster(v: number, db = 20 * Math.log10(Math.max(v, 1e-4))): void {
   windowsMaster = Math.max(0, Math.min(1, v));
+  windowsMasterDb = Math.min(0, db);
   windowsMasterKnown = true;
   applySettings();
 }
-export function getWindowsMaster(): { value: number; known: boolean } {
-  return { value: windowsMaster, known: windowsMasterKnown };
+export function getWindowsMaster(): { value: number; db: number; known: boolean; airplay: boolean } {
+  return { value: windowsMaster, db: windowsMasterDb, known: windowsMasterKnown, airplay: !!airplayOutput };
 }
 
-/** Called by the output watcher (phase 4): switch to the preset remembered for this output. */
+/** airplay.ts: the speaker that plays now, or null when it lets go (Windows' output returns). */
+export function setAirplayOutput(name: string | null): void {
+  airplayOutput = name ? { key: `airplay:${name}`, name, kind: "airplay" } : null;
+  setOutput(airplayOutput ?? windowsOutput ?? NO_OUTPUT);
+}
+
+interface WindowsOutput {
+  key: string;
+  name: string;
+  kind: SoundOutput["kind"];
+  volume: number;
+  volumeDb: number;
+  muted: boolean;
+}
+function takeWindowsOutput(o: WindowsOutput | null): void {
+  windowsOutput = o ? { key: o.key, name: o.name, kind: o.kind } : null;
+  if (o) {
+    windowsMaster = Math.max(0, Math.min(1, o.volume));
+    windowsMasterDb = Math.min(0, o.volumeDb);
+    windowsMasterKnown = true;
+  }
+  if (!airplayOutput) setOutput(windowsOutput ?? NO_OUTPUT);
+  applySettings();
+}
+
+/** Follow the Windows default output and its volume (phase 4). Events only: nothing polls. */
+function watchWindowsOutput(): void {
+  void listen<WindowsOutput | null>("audio-output", (e) => takeWindowsOutput(e.payload)).catch(() => {});
+  void invoke<WindowsOutput | null>("audio_output").then(takeWindowsOutput, () => {});
+}
+
+/** Switch to the preset remembered for this output. */
 export function setOutput(next: SoundOutput): void {
   if (next.key === output.key && next.kind === output.kind && next.name === output.name) return;
   output = next;
-  diag.log("sound:output", { kind: next.kind });
+  diag.log("sound:output", { kind: next.kind, name: next.name });
   const remembered = setting("soundEqOutputs")[next.key];
   if (setting("soundEqPerOutput") && remembered && remembered !== setting("soundEqPreset")) setSetting("soundEqPreset", remembered);
   applySettings();
 }
 export function getOutput(): SoundOutput {
   return output;
+}
+/** A remembered output's name for the panel's list (its key is a Windows id). */
+export function outputName(key: string): string {
+  if (key === output.key) return output.name;
+  return setting("soundOutputNames")[key] ?? (key === "default" ? "This PC" : key.startsWith("airplay:") ? key.slice("airplay:".length) : "An earlier output");
 }
 
 // ── Change notices for the panel ─────────────────────────────────────────────────────
@@ -455,6 +545,7 @@ export function initSound(): void {
   });
   applySettings();
   checkReview();
+  watchWindowsOutput();
   if (import.meta.env.DEV) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster };
 }
 

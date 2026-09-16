@@ -13,7 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setVolumeSink, reflectExternalVolume } from "./player";
 import { enterRows } from "./pop";
-import { setOutput } from "./sound";
+import { setAirplayOutput } from "./sound";
 
 export interface Speaker {
   name: string;
@@ -72,7 +72,7 @@ const applyTakeover = (c: Connected | null) => {
   const name = c?.speaker.name ?? "";
   if (name !== outputSpeaker) {
     outputSpeaker = name;
-    setOutput(c ? { key: `airplay:${name}`, name, kind: "airplay" } : { key: "default", name: "This PC", kind: "unknown" });
+    setAirplayOutput(c ? name : null);
   }
   if (c && !takenOver) {
     takenOver = true;

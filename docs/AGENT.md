@@ -315,9 +315,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   every effect ships off (Apple DPLA §3.3.6.D) and turning one on is the user's own choice in the
   Sound panel; `set … on` → `403`. The rest set freely: `soundEqPreset` (a preset id or its name:
   Flat, Bass lift, Vocal, Treble lift, Warm, Late night, Custom, or a saved one), `soundEqMode`
-  (Sliders | Dots), `soundEqPreamp` (Limiter only | When needed | Always | Set by hand), `soundEqPerOutput`, `soundLoudness`,
-  `soundLoudTarget` (−16 | −14 | −18 LUFS), `soundLoudAlbum`, `soundLoudUnmeasured` (Median | No
-  change), `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` (App × Windows | App only),
+  (Sliders | Dots), `soundEqPreamp` "Avoid distortion" (Limiter only | When needed | Always | By hand), `soundEqPerOutput`
+  "Remember each output", `soundLoudness`, `soundLoudTarget` "Match songs to" (Standard −16 | Louder −14 |
+  Quieter −18 LUFS), `soundLoudAlbum` "Keep albums together", `soundLoudUnmeasured` "Songs not measured
+  yet" (Usual amount | No change), `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` "Follow the
+  volume of" (App + Windows | App only),
   `soundCrossfeed` (Auto | Always | Off), `soundCrossfeedLevel` (Light | Medium | Strong),
   `soundReviewDays` (7 | 14 | 3 days | Never). The bands themselves are not an agent value.
 - `streamQuality` (Auto | High | Low, 2026-09-16): the stream bitrate. A set takes effect from the
