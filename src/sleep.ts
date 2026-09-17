@@ -17,7 +17,7 @@ import {
 import { getUpcoming } from "./queue";
 import { trackById } from "./track-store";
 import { sunTimes, sunCity } from "./look-schedule";
-import { makeDropdown } from "./dropdown";
+import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { toast } from "./toast";
 import * as diag from "./diag";
@@ -46,6 +46,7 @@ const toHHMM = (m: number): string => `${String(Math.floor(m / 60)).padStart(2, 
 
 // ── state ──────────────────────────────────────────────────────
 
+let dropdown: DropdownHandle | null = null; // the title bar panel, for the Compass (COMPASS.md)
 let mode: Mode = "off";
 let deadline = 0; // clock mode: the mark (ms epoch)
 let fromSchedule = false; // the running countdown came from the schedule
@@ -465,6 +466,25 @@ function wireDial(dial: HTMLElement): void {
 }
 
 /** Mount the title bar button and its panel, and start the schedule. Called once from main.ts. */
+// ── The Compass (COMPASS.md §2): arm, turn off, open the panel ──
+/** A hand timer of `minutes` from now, as a turn of the dial would set. */
+export function sleepIn(minutes: number): void {
+  armClock(Date.now() + minutes * 60_000, false);
+}
+/** Turn the timer off, as the panel's Off does. */
+export function sleepOff(): void {
+  disarm("compass");
+}
+export const sleepArmed = (): boolean => mode !== "off";
+/** Sleep at the end of this song, or of Up Next, as the panel's two chips do. */
+export function sleepAtEnd(kind: "song" | "queue"): void {
+  armEnd(kind);
+}
+/** Open the title bar panel (the alarm clock's). */
+export function openSleepPanel(): void {
+  dropdown?.open();
+}
+
 export function initSleep(): void {
   const root = $("sleep");
   const btn = $("sleep-btn");
@@ -488,7 +508,7 @@ export function initSleep(): void {
   buildFace(ring);
   wireDial(dial);
   panel.dataset.frames = "sleep";
-  makeDropdown({
+  dropdown = makeDropdown({
     root, trigger: btn, panel,
     shouldStayOpen: () => dragging,
     // The panel arrives as .pop; its parts slide in one after another (pop.ts), the

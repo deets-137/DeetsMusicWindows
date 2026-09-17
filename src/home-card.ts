@@ -15,12 +15,13 @@
 // The shelves rebuild when the library, the playlists or the played song changes, and on
 // the header's refresh square — all from SQLite and the caches already in memory.
 
+import { wireListKeys } from "./list-keys";
 import { homeShelves, hideItem, fillArtistPhotos, type HomeItem, type HomeShelf } from "./home";
 import { playTracks, playStation, queueStationAfter, onPlayerState } from "./player";
 import { playlistShelfMenu } from "./artist-view";
 import { trackMenu } from "./library-card";
 import { requestOpenPlaylist, onPlaylistsChange } from "./playlists";
-import { requestCard } from "./layout-bus";
+import { requestDrillCard } from "./layout-bus";
 import { copyStationLinkItem } from "./copy-link";
 import { onTracksChange } from "./track-store";
 import { toast } from "./toast";
@@ -30,7 +31,8 @@ import { mosaicHTML } from "./mosaic";
 import { esc } from "./collection-card";
 import { enterRows } from "./pop";
 import type { Artwork, Track } from "./library";
-import type { CardDef } from "./cards";
+import type { CardDef, MountOpts } from "./cards";
+import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 
 const err = (what: string) => (e: unknown) => console.error(`[home] ${what}`, e);
 
@@ -73,7 +75,7 @@ const shelfHTML = (sh: HomeShelf): string =>
 export const homeCard: CardDef = {
   id: "home",
   title: "Home",
-  mount(host) {
+  mount(host, mountOpts?: MountOpts) {
     host.innerHTML = HEAD;
     const refreshBtn = host.querySelector<HTMLElement>("#home-refresh");
     const body = host.querySelector<HTMLElement>(".panel__body")!;
@@ -184,7 +186,7 @@ export const homeCard: CardDef = {
           ? {
               label: "Open in Playlists",
               run: () => {
-                requestCard("playlists");
+                requestDrillCard("playlists");
                 requestOpenPlaylist(p.libraryId as string);
               },
             }
@@ -247,6 +249,7 @@ export const homeCard: CardDef = {
     };
     body.addEventListener("click", onClick);
     body.addEventListener("keydown", onKey);
+    const unwireKeys = wireListKeys(body, { rows: ".search__tile", activate: false }); // the tiles keep their own Enter
     body.addEventListener("contextmenu", onMenu);
 
     // ── keeping up to date ──
@@ -267,8 +270,12 @@ export const homeCard: CardDef = {
     render();
     build();
     refreshBtn?.addEventListener("click", build);
+    // Card memory (CARD-MEMORY.md §5): the body scroll and each shelf's sideways place, once
+    // the shelves are built (the build is a local read, so it lands in a later task).
+    applyScrollSnapshot(body, mountOpts?.memory, ".search__scroller");
 
     return {
+      snapshot: () => scrollSnapshot(body, ".search__scroller"),
       destroy() {
         alive = false;
         window.clearTimeout(timer);
@@ -278,6 +285,7 @@ export const homeCard: CardDef = {
         drag.destroy();
         body.removeEventListener("click", onClick);
         body.removeEventListener("keydown", onKey);
+        unwireKeys();
         body.removeEventListener("contextmenu", onMenu);
         host.innerHTML = "";
       },

@@ -63,8 +63,19 @@ front-end, Rust back-end).
 - `docs/MCP-INSTALL.md` — connect AI apps: a shared `mcp_install` crate behind `deetsmusic mcp
   install` and a Settings panel; client detection, config table, the Claude Desktop MSIX path trap
   (designed 2026-09-16, forks open, not built).
+- `docs/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
+  answers to; update it with `SYNONYMS` in compass.ts.
+- `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
+  inline), transport verb and library item; Space for play / pause; the keyboard pass's first slice
+  (built 2026-09-17, desk test open).
+- `docs/SECOND-SEARCH.md` — a second Search card to compare two albums side by side: the first
+  card is the drill target, the second is one you place yourself; what enforces one instance
+  today and the work per file (designed 2026-09-17, not built).
+- `docs/CARD-MEMORY.md` — a card comes back where you left it after a remount (summon, pick,
+  Midi↔Max, the grow drill swap): keys + resolvers per card, the snapshot, a row to keep it on
+  restart, and memory-only caches of Search's catalog panes and terms (built 2026-09-17, desk test open).
 - `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
-  the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules, and wide-card
+  the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules (§14: a drill from a grown card swaps the target in, Back returns; built 2026-09-17, desk test open), and wide-card
   layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–10 decided; BUILT 2026-09-16, §13 = as built, shipped in 0.9.0).
 
 ## How to verify your work
@@ -149,6 +160,9 @@ front-end, Rust back-end).
   7. **Telemetry:** a panel that animates sets `dataset.frames` so frames.ts times it.
   8. **Check:** `npx tsc --noEmit` and `npx vite build`, then hand it over with the desk
      test written into the doc section.
+  9. **Compass:** a new card, Settings row or verb is reachable from Ctrl+Space by the rules
+     in COMPASS.md §9 (a card and a store-backed row are automatic; a panel exports an
+     opener; a verb, a data kind or a command is one row in `src/compass.ts`).
 - **Everything is token-based**: never hardcode a color, px, font, or motion value in a
   component — add/route through the palette → theme → skin tiers. Color → theme role;
   geometry/type/spacing/motion → skin token.
@@ -186,5 +200,5 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - Front-end only ever sees the normalized model (`Track`/`Album`/…), never raw Apple
   shapes — normalization lives in Rust.
 - Commit only when the user asks. Co-author trailer — name the model that did the work
-  (today `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`); update this line when
+  (today `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`); update this line when
   the model changes.

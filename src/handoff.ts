@@ -13,7 +13,7 @@
 // tokens (skin.css §chip flight).
 
 import { setting } from "./settings-store";
-import { requestCard, cardHost } from "./layout-bus";
+import { requestDrillCard, cardHost, drillSwapsInPlace } from "./layout-bus";
 import { makeGhost } from "./row-drag";
 import { whenSwapSettled } from "./card-swap";
 import { tokenMs } from "./boot-cover";
@@ -41,13 +41,26 @@ export function handOff<T>(
   ownMotion = false,
 ): void {
   if ((!ownMotion && !setting("cardSwapMotion")) || reduced() || !tile.isConnected) {
-    requestCard(target);
+    requestDrillCard(target);
     open(undefined);
+    return;
+  }
+  // The drill swap (CARD-GROW.md §14.3): the target lands in the grown card's own place, so a
+  // chip would fly to where it started. The drill slide carries the change instead.
+  const grownSwap = drillSwapsInPlace(target);
+  if (grownSwap) {
+    requestDrillCard(target);
+    void prepare()
+      .then((d) => open(d))
+      .catch((e) => {
+        console.warn("[handoff] prepare", e);
+        open(undefined);
+      });
     return;
   }
   // Made before the summon: in mini the source card leaves the slot the tile is in.
   const { root, ghost } = makeGhost(tile, count != null ? { source: "", kind: "playlist", count, tracks: () => [] } : undefined);
-  requestCard(target);
+  requestDrillCard(target);
   const data = prepare().catch((e): undefined => {
     console.warn("[handoff] prepare", e);
     return undefined;

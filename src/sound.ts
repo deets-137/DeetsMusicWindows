@@ -95,7 +95,10 @@ let preAnalyser: AnalyserNode | null = null;
 
 function ensureContext(): Promise<void> {
   ready ??= (async () => {
-    ctx = new AudioContext({ latencyHint: "playback" });
+    // Dev only (AIRPLAY.md §12.3 T1): `sessionStorage["deets.dev.soundRate"] = "44100"` + reload
+    // creates the context at that rate, so the fidelity probe can compare rates.
+    const devRate = import.meta.env.DEV ? Number(sessionStorage.getItem("deets.dev.soundRate")) || undefined : undefined;
+    ctx = new AudioContext({ latencyHint: "playback", sampleRate: devRate });
     await ctx.audioWorklet.addModule(workletUrl);
     bus = new AudioWorkletNode(ctx, "deets-bus", {
       numberOfInputs: 1,
@@ -668,7 +671,7 @@ export function initSound(): void {
   applySettings();
   checkReview();
   watchWindowsOutput();
-  if (import.meta.env.DEV) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster };
+  if (import.meta.env.DEV) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting };
 }
 
 /** A live preview of bands while a handle or fader is dragged; the release commits to settings. */

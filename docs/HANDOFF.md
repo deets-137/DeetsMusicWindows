@@ -112,6 +112,16 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-17 — the Compass: BUILT, awaiting the desk test ([COMPASS.md](COMPASS.md)).**
+Ctrl+Space (or Ctrl+Shift+Space) drops a bar under the title bar in every surface: the cards,
+surfaces, themes and skins; every Settings row (store-backed toggles and short choices act inline);
+play / pause, next, previous, shuffle, repeat, mute, sleep in N minutes; the library's songs,
+albums, artists, playlists and recent stations (Enter opens the owner, Ctrl+Enter plays); a last row
+hands the term to the Search card. Zero Apple calls. The same pass added **Space for play / pause**
+and Enter / Space on the Search card's rows (the keyboard pass, 5B). No Rust change. Desk test:
+COMPASS.md §7. Decided alone (flag): the name, the second key, Open vs Play, the inert Settings
+index, the empty state, the caps (§1 "Decided alone").
+
 **2026-09-17 — 0.9.0 is live on the `deetsmusic` channel** (published 01:52 PDT; `main` at
 `14111a7`, fast-forwarded from `grower-not-shower`). It ships card grow, song and album playlist
 webs, temporary web playlists, the Add-to-Library + on song rows and the Cyber skin name
@@ -397,15 +407,15 @@ attached (none exist), and a plain note about SmartScreen (installers are signed
 first release after 0.4.3, but a browser download can still warn until reputation builds —
 RELEASE.md §6.9).
 
-**Before release: polished keyboard control (added 2026-09-13).** Every action a mouse can do
-must also work from the keyboard, with a visible focus ring. Known gaps: **Space does not
-play / pause** (the shortcut set is Ctrl+K / Q / L / P / , only; media keys work through SMTC)
-— the first key a new user presses, so it leads the pass; search result rows
-are `role="button" tabindex="0"` but Enter/Space do not play them; hover-only controls (the
-Search Add-to-Library square) only show on `:focus-visible`. Scope still to design on paper:
-a Tab order per card, arrow keys inside lists and grids, Enter/Space/Menu-key on rows, Escape
-to pop a drill pane, focus return after a menu or pane closes, and the fixed shortcut set in
-[NEXT-VERSION.md](NEXT-VERSION.md) (`Ctrl+K` Search and friends).
+**Before release: polished keyboard control (added 2026-09-13; first slice built 2026-09-17).**
+Every action a mouse can do must also work from the keyboard, with a visible focus ring. Built
+2026-09-17 ([COMPASS.md](COMPASS.md)): **Space plays / pauses** when nothing that takes Space has
+the focus; Enter / Space on the Search card's rows; **Ctrl+Space, the Compass** — a bar that
+reaches every card, setting, transport verb and library item; and, later the same day, the
+**list keys** (`src/list-keys.ts`, COMPASS.md §5): Tab into any list, arrows, Home / End,
+Enter, the Menu key, Escape = Back, in every card. Still open: hover-only controls (the Search
+Add-to-Library square) only show on `:focus-visible`; the Sort / View popovers take no arrows. The fixed shortcut set is in [NEXT-VERSION.md](NEXT-VERSION.md)
+(`Ctrl+K` Search and friends).
 
 **2026-09-11 — the Worker grew into a support back end.** The mint is now one route on
 **`DeetsSupport`**, which also holds the status / suggestions / issues boards, anonymous

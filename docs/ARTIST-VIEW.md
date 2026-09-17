@@ -95,8 +95,13 @@ Everything below is saved in `artist_catalog` (enrich.rs), keyed by the library 
 | After 7 days, or after the Library ⟳ | **1** — the featured playlists; the id is never fetched again |
 | "Check N more playlists" | **1 per 100 songs of each unopened Apple playlist**, once |
 | Chip flight to a Featured playlist | **1+** (its songs, fetched before the flight and handed to the Search pane, which then fetches nothing) |
-| Search artist view | **0 extra** — `featured-playlists` joins the existing `views=` fetch |
+| Search artist view | **1 on every open** (`catalog_artist`) — `featured-playlists` joins that `views=` fetch, so the shelf adds 0. Not saved in `artist_catalog`; a memory-only cache is designed in CARD-MEMORY.md §6 |
 | Start Station on a Library artist | 0 once the id is saved (it shared a session-only cache before) |
+
+**`artist_catalog` belongs to the Library artist view only** (keyed by the library artist
+name). The Search artist view (keyed by catalog id) reads nothing from it and writes nothing to
+it. On 2026-09-17 a plan assumed the Search pane was partly cached here; it was not. Read the
+command in `apple.rs` before you quote a call count.
 
 The Search fetch asks for `top-songs,full-albums,featured-playlists`. If Apple refuses the
 request (a non-200 that is not 404), it asks once more with the old two views, so a wrong

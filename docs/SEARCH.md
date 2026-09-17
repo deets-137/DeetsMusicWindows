@@ -246,6 +246,11 @@ a later, fetch-heavier idea. Recommend **recents + prompt** for MVP.
   tracks, follows `next` pagination capped at 10 pages, skips music videos),
   `catalog_artist` (`views=top-songs,full-albums`). All three **piggyback results into the
   enrichment caches** (`enrich::cache_tracks`) — every search warms palette/ISRC/preview.
+  **This is not a result cache.** `track_catalog` holds only the ISRC, preview URL and cover URL
+  per song id; it cannot draw a row. Each open of an album, catalog playlist or artist pane is a
+  new Apple call (1 per album or artist, 1 per 100 songs of a playlist). The only memo is
+  `relatedCache` in `search.ts` (the "Go to" id hop). Checked 2026-09-17; the memory-only
+  cache for these panes is CARD-MEMORY.md §6.
 - `src-tauri/src/model.rs` — `Playlist` reshaped (both ids optional, like Track; + curator,
   trackCount), `SearchResults`, `ArtistDetail`, `Track.preview_url`, `play_params` defaulted on
   deserialize (Tracks round-trip through the frontend for `materialize_track`).
@@ -305,3 +310,24 @@ a later, fetch-heavier idea. Recommend **recents + prompt** for MVP.
     artist as a submenu, album tiles target the dominant credited artist. Mechanism: `trackMenu`
     gained an optional `nav?: LibNav` (`library-card.ts`) — present → local drill, absent →
     catalog. In-place vs Search is recorded as **[FUTURE-SETTINGS §20](FUTURE-SETTINGS.md#20-drill-in-target--in-place-local-vs-search-card-catalog)**.
+
+## As built (2026-09-17) — the card header is the drill header
+
+The panes used to draw their own head inside themselves: a bare "‹" character and the level's
+name, both sliding with the pane. The Library and Playlists cards put a real button
+(`.panel__back`: bordered, rounded, an SVG chevron) and the level's kind in the CARD header, and
+let the hero carry the name. Search now does the same (the user's call, forks 1A + 2A):
+
+- **The card header owns the level.** While a pane is open the title reads the kind — "Album",
+  "Artist", "Playlist" — and the Back button shows. At the root it reads "Search" and the button
+  hides. A drill-in relabels the header when the id resolves (`setTitle`), and only while that
+  pane is on top.
+- **The hero keeps the name**, as on the other cards (ARTIST-VIEW.md §5). The header never
+  repeats it.
+- **The search field stays live under the header** while a pane is open (fork 2A). Typing still
+  drops the panes and searches again, so nothing you could do before is gone.
+- **A pane is now only its scroller** (`.spane__scroll`). `.spane__head`, `.spane__back` and
+  `.spane__title` are gone from styles.css.
+- **The drill swap's hint rides the same button** ("Goes back to Playlists", CARD-GROW.md §14.4).
+- The slot picker was already inert while a pane is open, because the card reports `atRoot`; now
+  the title it reports is the live one.

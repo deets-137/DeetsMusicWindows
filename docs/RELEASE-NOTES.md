@@ -18,6 +18,51 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.9.5 — 2026-09-17
+
+**Go anywhere with Ctrl+Space.** Press **Ctrl+Space** (or click the compass right of the
+DeetsMusic title) and a bar drops under the title bar. Type a few letters: the cards, the window
+sizes, the themes and skins, every Settings row, the transport (play, next, shuffle, repeat,
+mute, the sleep timer), the equalizer presets, Up Next, what you played, your AirPlay speakers,
+and your library — songs, albums, artists, genres, playlists and stations. Enter goes there;
+Ctrl+Enter plays. Chips above the library rows pick a kind (Tab moves between them). A setting
+you can flip shows its switch right in the bar. Commands: **fav**, **add**, **queue Fancy 3**,
+**web Samara Cyn 1 R&B** (a playlist web, made and opened), **grow library**, **volume 40**.
+The bar knows synonyms (skip, prefs, airplay) and forgives a typo. Every term is listed in the
+[Compass guide](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/COMPASS-TERMS.md).
+It makes no Apple Music calls while you type. Settings › Window › **Compass closes on outside
+click** is on.
+
+**The keyboard, everywhere.** **Space** plays and pauses. In every list — the Library, a
+playlist, Up Next, History, Home, Search — **Tab** reaches the rows, the **arrows** move, **Enter**
+does what a click does, the **Menu key** opens the right-click menu, **Escape** goes back.
+
+**A card comes back where you left it.** Swap a card out and back, change the window size, or
+grow a card and drill: the card returns to the same playlist, album or artist, at the same
+scroll, with the filter you typed. Settings › Window › **Keep card places on restart** keeps
+that across a restart too (off by default).
+
+**Genres in the Library.** View › **Genres**: one mosaic tile per genre, with song and artist
+counts; open one for its songs, albums and artists. The Sort menu of the song list lost Artist,
+Album and Genre — those are views now — and a grown card's column headers still sort by them,
+in record-shop order (by artist, then album, then track).
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.9.0 — 2026-09-17
 
 **Grow a card.** In the Max and Midi windows, move the pointer over a card's title and click the

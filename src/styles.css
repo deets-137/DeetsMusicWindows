@@ -32,6 +32,7 @@ body {
 
 /* ── Titlebar (our own chrome; OS frame is disabled) ─────────── */
 .titlebar {
+  position: relative; /* the Compass bar hangs from it (styles/compass.css) */
   flex: 0 0 var(--titlebar-h);
   height: var(--titlebar-h);
   display: flex;
@@ -1400,6 +1401,12 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 .card-stub__msg { color: var(--subtext); font-size: var(--fs-subtext); }
 .panel__title {
   margin: 0;
+  margin-right: auto;              /* hugs the Back button: the free space goes to its RIGHT, so a
+                                      title with a max width (the Grow buttons' room) stays put */
+  min-width: 0;                    /* shrinks before the action squares do */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;         /* a narrow header cuts the word cleanly, not mid-letter */
   font-family: var(--font-title);
   font-weight: var(--fw-title);
   font-size: var(--fs-title);
@@ -1744,6 +1751,16 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 /* clickable affordance + drilled-in highlight (border around the rectangle) */
 .lib-view[data-openable="1"] .lib-row,
 .lib-view[data-openable="1"] .lib-tile { cursor: pointer; }
+/* ── List keys (src/list-keys.ts, COMPASS.md §5): the focus ring on a row or tile the arrows
+   reached, inset so a clipped row keeps it; the list's own box shows none (its focus moves
+   to the first row at once). ── */
+[data-list-keys]:focus-visible, [data-list-keys] [data-view]:focus-visible { outline: none; }
+/* A row takes the focus only from the keys (rows carry no tabindex until then), so plain
+   :focus is right: a programmatic focus does not always count as :focus-visible. */
+[data-list-keys] [data-idx]:focus,
+[data-list-keys] .qrow:focus,
+[data-list-keys] [role="button"]:focus { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+
 /* ── Row drag (src/row-drag.ts, DRAG-DROP.md §4) ──
    The ghost is a copy of the pressed row on <body> (inside display:contents shells, so the
    row's card styles still match). It follows the pointer 1:1 (--ghost-x/y set in JS) with
@@ -2314,15 +2331,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .spane[data-pos="left"]   { transform: var(--nav-at-left);   opacity: var(--nav-off-opacity); z-index: 0; }
 .spane[data-pos="right"]  { transform: var(--nav-at-right);  opacity: var(--nav-off-opacity); z-index: 0; }
 .spane:not([data-pos="center"]) { pointer-events: none; }
-.spane__head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-1); }
-.spane__back {
-  background: none; border: none; color: var(--title); cursor: pointer;
-  font-size: var(--fs-title); line-height: 1; padding: 0 var(--space-1);
-}
-.spane__title {
-  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
-  color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+/* The pane's own head is gone (2026-09-17): the CARD header carries the level's kind and
+   the real Back button, as the Library and Playlists cards do (SEARCH.md). */
 .spane__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* Match the Library's custom Chromium scrollbar across every search scroll surface
@@ -3283,4 +3293,17 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 @media (prefers-reduced-motion: reduce) {
   .bento > .panel.is-covering, .bento > .panel.is-uncovering { transition: none; }
   .panel.is-grow-rows > :not(.panel__head) { animation: none; }
+}
+
+/* ── The drill swap's slide (layout.ts, docs/CARD-GROW.md §14.6) ──────────────
+   A drill from a grown card swaps the target card into its place. The leaving card's
+   body stays on as a still copy while the new one slides in over the same box, on the
+   card's own --nav-* tokens. Reduced motion: layout.ts plays no slide at all. */
+.panel.is-drill-swap { overflow: hidden; }
+.panel.is-drill-swap > .panel__body,
+.panel.is-drill-swap > .coll-body { will-change: transform; }
+.drill-swap__ghost {
+  position: absolute;               /* layout.ts sets top/left/width/height from the body it copies */
+  pointer-events: none;
+  margin: 0;
 }

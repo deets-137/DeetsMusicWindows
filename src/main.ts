@@ -18,7 +18,7 @@ import { surfaceSized } from "./surface";
 import { runBootCover } from "./boot-cover";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn } from "./player";
+import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus, publishAppearance } from "./np-bus";
@@ -30,6 +30,7 @@ import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initLookSchedule, noteHandPick } from "./look-schedule";
 import { initSleep } from "./sleep";
+import { initCompass, compassOpen } from "./compass";
 import { initPlaylistExpiry } from "./playlist-expiry";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
@@ -150,9 +151,19 @@ window.addEventListener("DOMContentLoaded", () => {
   // text field has focus. Rebinding is deferred (FUTURE-SETTINGS).
   const SHORTCUTS: Record<string, CardId> = { k: "search", q: "queue", l: "library", p: "playlists", ",": "settings" };
   document.addEventListener("keydown", (e) => {
-    if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
     const target = e.target as HTMLElement | null;
-    if (target?.closest("input, textarea, [contenteditable]")) return;
+    const inField = !!target?.closest("input, textarea, [contenteditable]");
+    // Space plays or pauses when nothing that takes Space has the focus (COMPASS.md §5): a
+    // button, a slider, a text field and a row that is a button keep the key for themselves.
+    if (e.key === " " && !e.ctrlKey && !e.altKey && !e.metaKey && !inField && !compassOpen()) {
+      const takes = target?.closest("button, a, [role='button'], [role='slider'], [role='switch'], [role='menuitem'], [role='menuitemradio'], [tabindex]");
+      if (takes && takes !== document.body && !takes.hasAttribute("data-list-keys")) return; // a list's box is a tab stop, not a control
+      e.preventDefault();
+      void playPause().catch((err) => console.error("[keys] space", err));
+      return;
+    }
+    if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+    if (inField) return;
     const id = SHORTCUTS[e.key.toLowerCase()];
     if (!id) return;
     e.preventDefault();
@@ -494,6 +505,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
   initSoundPanel(); // the title bar's Sound item (SOUND.md §2.3)
   initSleep();
+  initCompass(); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   initPlaylistExpiry(); // temporary web playlists (PLAYLIST-WEB.md §10)
 
   // The skins' scrubber motion (UI-ARCHITECTURE §3 SCRUBBERS) runs only while music plays:

@@ -27,6 +27,23 @@ export interface CardInstance {
    * "at root"). Declared now; the Phase 2 picker consumes it. Returns an unsubscribe fn.
    */
   onHeaderChange?(cb: (h: { title: string; atRoot: boolean }) => void): () => void;
+  /** Card memory (CARD-MEMORY.md): where the card is — keys and view state, never data or DOM.
+   *  The layout reads it just before `destroy()` and gives it back on the next mount. */
+  snapshot?(): unknown;
+}
+
+/** What the layout hands a card at mount. */
+export interface MountOpts {
+  /** The snapshot this card left at its last destroy (CARD-MEMORY.md §4). A held request wins over it. */
+  memory?: unknown;
+  /**
+   * The drill swap (CARD-GROW.md §14): the next level this card opens is the one a grown card's
+   * drill asked for. Back on that level calls this; true = the layout brought the first card
+   * back (the card is being destroyed), false = do a plain Back.
+   */
+  onReturn?: () => boolean;
+  /** The card the return goes to, for the Back button's hint. */
+  returnTitle?: string;
 }
 
 export interface CardDef {
@@ -34,7 +51,7 @@ export interface CardDef {
   /** Default header label (used by the slot chrome + the picker). */
   title: string;
   /** Build markup into `host` and wire it up; return a handle to tear it down. */
-  mount(host: HTMLElement): CardInstance;
+  mount(host: HTMLElement, opts?: MountOpts): CardInstance;
 }
 
 /** Cards available to slots. Playlists/Search join here as they're built. */

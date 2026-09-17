@@ -95,6 +95,12 @@
   --sound-panel-max-h:       min(620px, calc(100vh - 48px)); /* scrolls inside a short window (mini) */
   --sound-panel-pad:         var(--space-2);
   --panel-edge-gap:          6px;    /* a title bar panel keeps this clear of the window edge (dropdown.ts keepInWindow) */
+  /* The Compass bar (COMPASS.md, styles/compass.css): Ctrl+Space's panel under the title bar. */
+  --compass-max-h:           min(560px, calc(100vh - var(--titlebar-h) - 24px)); /* scrolls inside a short window */
+  --compass-field-h:         36px;   /* the text field's height */
+  --compass-row-h:           34px;   /* one result row; a two-line row (a song and its artist) */
+  --compass-icon:            16px;   /* a row's leading glyph */
+  --compass-btn-size:        20px;   /* the title bar button, right of the title */
   --sound-title-tracking:    0.02em;
   --sound-chip-radius:       var(--radius-control);
   --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */
@@ -444,6 +450,9 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+  /* Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a
+     restore waits for its data, so the root never flashes before the open level. */
+  --memory-wait: 0.4s;
 
   /* -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) --
      Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to /

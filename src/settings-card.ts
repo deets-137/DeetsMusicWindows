@@ -40,7 +40,8 @@ import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, versionText, type OlderVersion } from "./updater";
 import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
-import type { CardDef, CardInstance } from "./cards";
+import type { CardDef, CardInstance, MountOpts } from "./cards";
+import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
 import { hiddenCount, clearHidden } from "./home";
 
@@ -57,6 +58,8 @@ interface ToggleRow {
   hint?: () => string | undefined;
   get: () => boolean;
   set: (on: boolean) => void;
+  /** The store key, when the store holds the value: the Compass renders such a row inline (COMPASS.md §3). */
+  key?: BoolKey;
 }
 interface ChoiceRow {
   kind: "choice";
@@ -133,6 +136,7 @@ const loadFolds = (): Record<string, boolean> => {
 };
 
 const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
+  key,
   kind: "toggle",
   id,
   label,
@@ -184,6 +188,7 @@ const TIPS: [string, string][] = [
   ["Drag anything", "Songs, albums, and playlists move. Drop one on Now Playing, on the Queue, or on a playlist and see."],
   ["Click your way in", "A tile opens. The arrow at the top goes back. Sort, View, and the magnifier above a list are safe to try."],
   ["Click DeetsMusic at the top left", "The look and the size of the window live there. Try a theme, a skin, and Mini or Max. Nothing is permanent."],
+  ["Press Ctrl+Space", "A bar opens at the top. Type a card, a setting, a song, an album, an artist or a playlist, and press Enter to go there. Escape closes it."],
   [TIP_CLOSE, "The × hides DeetsMusic to the tray and the music keeps playing. The tray icon brings it back."],
 ];
 
@@ -203,7 +208,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, and Show notices",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, and the three Grow cards rows. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the five Grow cards rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop", "cardGrow", "cardGrowOutside", "compassCloseAway", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
@@ -264,10 +269,55 @@ const SETUP_CLIENTS: Option[] = [
 export const settingsCard: CardDef = {
   id: "settings",
   title: "Settings",
-  mount: (host) => mountSettings(host),
+  mount: (host, opts) => mountSettings(host, false, opts),
 };
 
-function mountSettings(host: HTMLElement): CardInstance {
+// ── The Compass's index (COMPASS.md §3): the card's own rows, built once, inert ──
+// `mountSettings(host, true)` builds the sections and returns before any Rust read,
+// listener or render. Only a row's label, hint, kind, store key and options are read from
+// it; a closure over the mount's own state (Close to tray, Last.fm, the report form) is
+// never run. So a row is inline only when its `key` names the store.
+export interface SettingEntry {
+  id: string;
+  label: string;
+  section: string;
+  hint: () => string | undefined;
+  when: () => boolean;
+  control?:
+    | { kind: "toggle"; get: () => boolean; set: (on: boolean) => void }
+    | { kind: "choice"; options: Option[]; get: () => string; set: (v: string) => void };
+}
+let entries: SettingEntry[] | null = null;
+export function settingsRows(): SettingEntry[] {
+  if (entries) return entries;
+  const { sections } = mountSettings(document.createElement("div"), true);
+  entries = sections.flatMap((s) =>
+    s.rows
+      .filter((r) => r.kind !== "html")
+      .map((r): SettingEntry => {
+        const label = r.label;
+        const hint = r.kind === "choice" || r.kind === "range" ? () => r.hint : (r.hint ?? (() => undefined));
+        const when = r.when ?? (() => true);
+        let control: SettingEntry["control"];
+        if (r.kind === "toggle" && r.key) {
+          const key = r.key;
+          control = { kind: "toggle", get: () => setting(key), set: (on) => setSetting(key, on) };
+        } else if (r.kind === "choice" && r.key && !r.menu && r.options.length <= SPLIT_MAX) {
+          const key = r.key;
+          control = {
+            kind: "choice",
+            options: r.options,
+            get: () => (r.get ? r.get() : String(setting(key))),
+            set: (v) => (r.set ? r.set(v) : setSetting(key, v as never)),
+          };
+        }
+        return { id: r.id, label, section: s.title, hint, when, control };
+      }),
+  );
+  return entries;
+}
+
+function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts): CardInstance & { sections: Section[] } {
   host.innerHTML = `<header class="panel__head"><h2 class="panel__title">Settings</h2></header><div class="panel__body set"></div>`;
   const body = host.querySelector<HTMLElement>(".panel__body")!;
 
@@ -575,11 +625,25 @@ function mountSettings(host: HTMLElement): CardInstance {
         // ── Card grow (CARD-GROW.md §8) ──
         storeToggle("cardgrow", "Grow cards from edges", "cardGrow", () => "Click the gap beside a card to open it over its neighbor. Hover a card's title for the button"),
         storeToggle("cardgrowoutside", "Collapse on outside click", "cardGrowOutside", () => "A click outside a grown card collapses it. Pin holds it open"),
+        storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Escape, the compass button, or a pick closes it"),
         {
           kind: "choice", id: "cardgrowpick", label: "Grown card on card pick", key: "cardGrowPick",
           hint: "Pick another card in a grown card's title: it keeps the size, or collapses first",
           options: [{ value: "keep", label: "Keep" }, { value: "collapse", label: "Collapse" }],
         },
+        {
+          kind: "choice", id: "cardgrowview", label: "Keep view when grown", key: "cardGrowView",
+          hint: "A card that grows keeps the view you are in; the tile size still follows the card's size",
+          options: [{ value: "keep", label: "Keep" }, { value: "size", label: "Per size" }],
+        },
+        {
+          kind: "choice", id: "carddrill", label: "Card on drill", key: "cardDrill",
+          hint: "A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot",
+          options: [{ value: "inplace", label: "In place" }, { value: "summon", label: "Summon" }],
+        },
+        storeToggle("carddrillbring", "Bring a card already open", "cardDrillBring", () => "A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits"),
+        // ── Card memory (CARD-MEMORY.md §7) ──
+        storeToggle("cardmemorydisk", "Keep card places on restart", "cardMemoryDisk", () => "Opens each card where you left it, also after you restart DeetsMusic"),
       ],
     },
     {
@@ -610,7 +674,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           halves: [storeMenu("dayStart", timeOptions(4 * 60, 12 * 60)), storeMenu("nightStart", timeOptions(15 * 60, 23 * 60 + 30))],
         },
         {
-          kind: "choice", id: "sunshift", label: "Shift sun times", when: () => setting("lookSchedule") === "sun",
+          kind: "choice", id: "sunshift", label: "Shift sun times", key: "sunShift", when: () => setting("lookSchedule") === "sun",
           hint: "Moves sunrise and sunset. Use it when the look changes too early or too late where you are",
           get: () => String(setting("sunShift")),
           set: (v) => setSetting("sunShift", Number(v)),
@@ -693,7 +757,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
         },
         {
-          kind: "toggle", id: "pressvinylplate", label: "Show record plate",
+          kind: "toggle", id: "pressvinylplate", label: "Show record plate", key: "pressVinylPlate",
           hint: () => "Press only. The offset ink behind the record. Off: only the record, a little larger",
           get: () => setting("pressVinylPlate"),
           set: (on) => setSetting("pressVinylPlate", on),
@@ -709,6 +773,7 @@ function mountSettings(host: HTMLElement): CardInstance {
         {
           kind: "toggle",
           id: "hints",
+          key: "hoverHints",
           label: "Show hover hints",
           hint: () => "Rest the pointer on a control and a small box says what it does",
           get: () => setting("hoverHints"),
@@ -792,7 +857,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           options: [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }],
         },
         {
-          kind: "toggle", id: "shufflestays", label: "Button is perma-shuffle",
+          kind: "toggle", id: "shufflestays", label: "Button is perma-shuffle", key: "shuffleStays",
           hint: () => "The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once",
           get: () => setting("shuffleStays"),
           set: (on) => setSetting("shuffleStays", on),
@@ -1206,6 +1271,8 @@ function mountSettings(host: HTMLElement): CardInstance {
         `unless you connect Last.fm: then the songs you hear go to Last.fm.</div>`,
     },
   ];
+
+  if (inert) return { destroy() {}, sections };
 
   const byId = (id: string): Row | undefined => sections.flatMap((s) => s.rows).find((r) => r.id === id);
 
@@ -1634,8 +1701,13 @@ function mountSettings(host: HTMLElement): CardInstance {
 
   render();
   takeRequest(); // this card was mounted BY a request
+  // Card memory (CARD-MEMORY.md §5): the scroll place. The open sections have their own store
+  // (FOLDS_KEY), and a row request above wins — it scrolls to its own row.
+  applyScrollSnapshot(body, mountOpts?.memory);
 
   return {
+    sections,
+    snapshot: () => scrollSnapshot(body),
     destroy() {
       alive = false;
       unsubStore();

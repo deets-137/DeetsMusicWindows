@@ -198,7 +198,7 @@ const HEAD = `
 export const playlistsCard: CardDef = {
   id: "playlists",
   title: "Playlists",
-  mount(host) {
+  mount(host, mountOpts) {
     host.innerHTML = HEAD;
     migrateSortPref(); // before the engine reads the persisted view prefs
     const refreshBtn = host.querySelector<HTMLElement>("#playlists-refresh");
@@ -406,6 +406,7 @@ export const playlistsCard: CardDef = {
       };
       return {
         title: p.name,
+        key: ctxTag, // card memory (CARD-MEMORY.md §5): "playlist:<pid>"
         headerLabel: "Playlist",
         // The hero: the playlist's own cover (or the mosaic), its name, and songs · length ·
         // source. Tracks land async — the reload after ensureTracks re-renders the line.
@@ -771,10 +772,21 @@ export const playlistsCard: CardDef = {
     // Header state for the slot picker (same pattern as the Library card).
     let lastHeader = { title: "Playlists", atRoot: true };
     const headerSubs = new Set<(h: { title: string; atRoot: boolean }) => void>();
+    // Card memory (CARD-MEMORY.md §5): a playlist level's key back into its context. A
+    // playlist that was deleted (or has not been listed yet) resolves to null.
+    const resolve = (key: string): Context | null => {
+      if (!key.startsWith("playlist:")) return null;
+      const id = key.slice("playlist:".length);
+      const p = lists.find((x) => pid(x) === id);
+      return p ? detail(p) : null;
+    };
     const card = initCollectionCard({
       root: host,
       storeKey: "deets.playlists.view",
       rootContext,
+      resolve,
+      onReturn: mountOpts?.onReturn,
+      returnTitle: mountOpts?.returnTitle,
       onHeader: (h) => {
         lastHeader = h;
         if (h.atRoot) openPlaylist = null; // backed out to the overview — nothing open to revalidate
@@ -845,7 +857,14 @@ export const playlistsCard: CardDef = {
         .finally(() => refreshBtn?.classList.remove("is-busy"));
     };
 
-    void load().then(backfillCounts); // cached list renders instantly; counts fill in
+    // Card memory (CARD-MEMORY.md §4): the playlists must be listed before a key resolves, so
+    // the body waits (hidden) until the first load lands. A held open request wins over it.
+    if (mountOpts?.memory) card.hold();
+    void load()
+      .then(() => {
+        if (mountOpts?.memory && !tookRequest && card.depth() === 1) card.restore(mountOpts.memory);
+      })
+      .then(backfillCounts); // cached list renders instantly; counts fill in
     if (!sessionSynced) {
       sessionSynced = true;
       doSync(false);
@@ -856,8 +875,10 @@ export const playlistsCard: CardDef = {
     // request made while this card mounted waits in the bus; a later one arrives live. A
     // playlist not in the list yet (the first load still running) opens once it lands.
     // Songs fetched by the chip flight seed the cache, so the view slides in full.
+    let tookRequest = false; // a held request beats card memory (CARD-MEMORY.md §4 rule 1)
     const openRequested = (req: OpenPlaylistRequest | null) => {
       if (!req) return;
+      tookRequest = true;
       const open = (p: Playlist) => {
         if (req.tracks) {
           req.tracks.forEach((t, i) => posOf.set(t, i));
@@ -941,6 +962,7 @@ export const playlistsCard: CardDef = {
       });
 
     return {
+      snapshot: () => card.snapshot(),
       destroy() {
         unsubChanges();
         unsubOpen();

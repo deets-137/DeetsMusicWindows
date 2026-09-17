@@ -4,7 +4,7 @@
 // fold and the settings that change it. The panel only writes settings and calls sound.ts;
 // sound.ts is the one reader.
 
-import { keepInWindow, makeDropdown } from "./dropdown";
+import { keepInWindow, makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { makeSlider, type SliderHandle } from "./slider";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
@@ -118,6 +118,11 @@ interface Parts {
 }
 
 let parts: Parts | null = null;
+let dropdown: DropdownHandle | null = null; // the title bar panel, for the Compass (COMPASS.md)
+/** Open the Sound panel (the title bar item's). */
+export function openSoundPanel(): void {
+  dropdown?.open();
+}
 let selected = -1; // the band being edited (parametric)
 let dragging = false;
 let live: Band[] | null = null; // bands during a drag, before the commit
@@ -150,7 +155,7 @@ export function initSoundPanel(): void {
   panel.classList.add("app-scroll"); // the app's own scrollbar, not the OS bar (UI-ARCHITECTURE §Scrollbars)
   build(panel);
   panel.dataset.frames = "sound";
-  makeDropdown({
+  dropdown = makeDropdown({
     root,
     trigger: btn,
     panel,

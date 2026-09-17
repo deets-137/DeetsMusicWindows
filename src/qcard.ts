@@ -4,6 +4,7 @@
 // to Bottom / Remove, + Start Station / Add to Library) — the queue-edit ops live in
 // player.ts (gapless; see docs/QUEUE.md).
 
+import { wireListKeys } from "./list-keys";
 import "./styles/qcard.css";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd } from "./row-drag";
 import { dropToQueue } from "./drop-actions";
@@ -134,12 +135,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     jumpToUpcoming(idx).catch((err) => console.error("[qcard] jump", err));
   };
   body.addEventListener("click", (e) => jumpFromEvent(e.target, e));
-  body.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      jumpFromEvent(e.target);
-    }
-  });
+  const unwireKeys = wireListKeys(body, { rows: ".qrow[data-idx]" }); // arrows, Enter, the Menu key (list-keys.ts)
 
   // Right-click → context menu. Two targets:
   //  - an Up Next row → queue actions (+ Add to Library). We capture the ENTRY (not the
@@ -381,6 +377,7 @@ function mountQueue(host: HTMLElement): CardInstance {
       unsubQueue();
       unsubState();
       document.removeEventListener("keydown", onKey);
+      unwireKeys();
       document.removeEventListener("pointerdown", onDocDown);
       drag.destroy(); // a drag's document listeners would outlive the card
       unsubDragEnd();

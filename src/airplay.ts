@@ -175,6 +175,19 @@ export function initAirplay(): void {
 
 // ── a panel on one square ──
 
+/** The speakers the last scan found (plus the one last used), for the Compass. No scan. */
+export function speakersKnown(): Speaker[] {
+  const out: Speaker[] = [...status.speakers];
+  const last = status.lastSpeaker;
+  if (last && !out.some((s) => s.ip === last.ip && s.port === last.port)) out.push(last);
+  return out;
+}
+/** Look for speakers on the network (the panel's scan: local, no Apple), then the list. */
+export const scanSpeakers = (): Promise<Speaker[]> => scan().then(speakersKnown);
+export const isScanning = (): boolean => scanning;
+/** Play on this speaker (the "Play on" panel's row). */
+export const connectSpeaker = (s: Speaker): Promise<void> => api.connect({ name: s.name, ip: s.ip, port: s.port });
+
 export interface AirplayMount {
   /** The "Play on" panel (portaled to <body>): a parent dropdown counts clicks in it as inside. */
   readonly panel: HTMLElement;

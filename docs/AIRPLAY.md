@@ -13,6 +13,11 @@
 > works from the probe but waits for v2. Before shipping (§9): flip the Cargo dependency from
 > `path` to `git` once the crate is pushed, and confirm the first-connect UAC prompt on an
 > installed build.
+>
+> **Speaker only — designed 2026-09-17, tests T1–T4 pass (§12.5), not built: §12.** The song is copied inside the page, at
+> the end of the Sound graph, and handed to the sender; the PC goes silent and other apps stay
+> out of the speaker. It replaces the per-process capture of §10 (the tap in the page is the
+> "DeetsMusic only" path that Windows could not give us) and makes the AirPlay stream bit-exact.
 
 ## 1. What the user sees (the words)
 
@@ -135,8 +140,8 @@ Same conclusion, now on real data: the tap sits after the per-app mixer volume.
 ## 7. Settings › AirPlay (the rows)
 
 **v1: no rows.** The capture is always the default output ("All PC sound"); the Settings
-card has no AirPlay section. The row below is what v2 brings back when the per-process path
-is trusted (§10) — its field already exists in Rust `settings.json` (`SettingsData`), read at
+card has no AirPlay section. The row below is what §12 brings back, with `app` meaning the
+in-page tap (not the per-process capture of §10) — its field already exists in Rust `settings.json` (`SettingsData`), read at
 connect time, and a `ChoiceRow` with `get`/`set` is how a Rust-owned choice renders
 ([SETTINGS.md](SETTINGS.md) §2). Label: short, active; hint as a tooltip.
 
@@ -216,11 +221,10 @@ process while capturing its own tree). Each is a rule now.
 **v1 ships without it** (user's call): `V2_PER_PROCESS = false` in `airplay.rs`, no Settings
 row. The crate keeps `Capture::start_process`, `mixer.rs`, and the probe subcommands.
 
-**v2, to trust it:** run the app with `V2_PER_PROCESS = true`, connect with the setting on
-`app`, and read `airplay.log`'s "capture heard sound / silence / nothing" lines (each is a 10 s window, logged when the verdict changes and every 10 min while it holds) against what
-the HomePod plays; watch a fresh WebView2 process tree after a MusicKit reload (the child pid
-is looked up at each connect, so a respawned WebView2 is found on the next connect, not
-mid-session); then bring the §7 row back.
+**v2 (2026-09-17): superseded by §12.** The per-process capture can never make the PC quiet
+(rule 4), so "DeetsMusic only" is built as an in-page tap instead. `V2_PER_PROCESS`,
+`capture_target()` and `Capture::start_process` go when §12 lands; `mixer.rs` and the probe
+subcommands stay in the crate for measurement.
 
 ## 11. Sharing the speaker with DeetsAirplay (2026-09-15)
 
@@ -289,3 +293,148 @@ Desk test (Rust changed: restart the dev runner):
 **Releasing:** the routes are additive and inert, so they can ride any release. The claim
 needed a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0 — done for 0.6.2,
 after that crate was pushed.
+
+## 12. Speaker only: the in-page tap (designed 2026-09-17, not built)
+
+**The problem.** A speaker plays, and so does the PC. Decision 2 accepted that because the only
+copy points Windows offers (§4, §10) sit after the per-app volume: mute the app and the speaker
+goes quiet too. Since then two facts changed (SOUND.md §0, built 2026-09-16): DRM audio passes
+through Web Audio, and every song can be routed through our own graph. So the copy can be made
+**inside the page**, before the sound ever reaches Windows.
+
+**Terms used here.** *Tap*: the worklet node that copies the sound. *Sink gain*: the last gain
+node before the destination; 0 makes the PC silent. *Ring*: the crate's buffer the pacer drains
+(`capture.rs` `Ring`). *Chunk*: one block of frames the tap posts.
+
+### 12.1 The design
+
+```
+MusicKit <audio> ─ source ─ element node ─ … bus (EQ, shelves, crossfeed, limiter) ─┐
+                                                                                     ▼
+                                                            tap (worklet) ── sink gain ── destination
+                                                              │                   (0 while a speaker plays,
+                                                              │ Int16 chunks       1 otherwise)
+                                                              ▼
+                                       main thread: invoke("airplay_tap", bytes)
+                                                              ▼
+                                       Rust: Ring.push ── pacer ── ALAC ── HomePod
+```
+
+1. **The tap** is a new processor in `sound-worklet.ts` (`deets-tap`), placed between the bus and
+   the destination. Disarmed, it copies input to output and posts nothing: zero cost. Armed, it
+   also packs each 128-frame block into an interleaved Int16 buffer with TPDF dither and posts one
+   chunk of 4096 frames (93 ms at 44.1 kHz) to the main thread, transferred not copied. The bus
+   worklet is untouched.
+2. **The sink gain** replaces `bus.connect(ctx.destination)` in `ensureContext`. Speaker only = 0.
+   The graph keeps rendering (a node chain to the destination is pulled every quantum even at
+   gain 0), so the tap keeps posting while the window sits in the tray.
+3. **The main thread** forwards each chunk with a raw-body `invoke` (Tauri v2 accepts an
+   `ArrayBuffer` as the body; `tauri::ipc::Request` on the Rust side). 176 KB/s in ~11 calls per
+   second. The worklet cannot call `invoke` itself; a Worker cannot either.
+4. **Rust** (`airplay.rs`): `airplay_tap` pushes the bytes into a `Ring` when a session is live
+   on the tap, and drops them otherwise. The crate makes `Ring::new` and `push` public and adds
+   `Capture::from_ring` (a crate bump: commit, push, `rev`). The existing "capture heard sound /
+   silence / nothing" verdicts keep working unchanged on that ring, because they read the ring's
+   own counters.
+5. **`start_live`**: `AirplayCapture::App` → the tap ring and `claim::Send::Apps([exe])`;
+   `System` → `Capture::start()` as today. `V2_PER_PROCESS` and `capture_target()` go.
+6. **Prefill.** The ring grows from 100 ms to 1 s, and the tap source waits until 500 ms is
+   queued before the pacer drains it, once per session (T3 measured one 256 ms gap in ten minutes). A late chunk (a busy main thread) then
+   costs nothing; today's ring would underrun. The Auto delay (decision 5) is unchanged.
+7. **Routing on connect.** Today an element is routed only while an effect is wanted. Connect
+   arms the tap, so `wanted()` also counts the tap, and the element playing at that moment is
+   routed at once, mid-song (`createMediaElementSource` works on a playing element). Bypass, not
+   teardown: it stays routed after disconnect, at the graph's known zero cost.
+8. **Order on connect.** Arm the tap and route first (the pacer pads silence until frames
+   arrive); the sink gain drops to 0 only when the session reports playing. A failed connect
+   never silences the PC. Disconnect, "Lost", and app exit set the gain back to 1 and disarm.
+9. **The row (§7) returns**, default `app`: *Send to speaker — DeetsMusic only / All PC sound.*
+   A change while connected reconnects in place (already built, `settings_set_airplay_capture`).
+   All PC sound keeps decision 2's words ("and this computer"); DeetsMusic only shows
+   "Playing on Living Room". *(Alone decision, VALUES.md §3: the default is `app` because the
+   whole point of a speaker is that the room hears one source. Flagged for the desk test.)*
+10. **The context rate.** The graph is created once at the device rate (48 kHz here) and cannot
+    be recreated for elements already routed. Created at **44.1 kHz** instead, the element enters
+    the graph without a resample and the tap hands the pacer Apple's decode bit-exact (the two
+    resamples in AUDIO-QUALITY.md §1 both disappear). The local path then resamples once at the
+    context output instead of once at the element, which test T1 must show is no worse than
+    §4.3. If it is worse, the context stays at the device rate and Rust resamples the tap with
+    the crate's `Sinc` + dither, which measures at the 16-bit ceiling (§4.2). *(Test-first fork:
+    the measurement decides, not a person.)*
+11. **Volume**: unchanged (decision 4). The slider drives the speaker, MusicKit's gain is pinned to
+    1, the Windows master no longer matters because the PC is silent, and `sound.ts` already
+    ignores the master while `airplayOutput` is set.
+12. **EQ and DeetsAdaptiveSound** apply to the speaker, because the tap sits after the bus. The
+    per-output preset for `airplay:<name>` keys (SOUND.md fork 4) already exists.
+13. **Fallback.** If the tap ring reports *nothing* for 10 s while MusicKit says playing, log
+    `airplay: tap starved` and show the panel note "The speaker gets no sound from DeetsMusic.
+    Try All PC sound." No automatic switch: the cause gets found first (root-cause rule).
+    The loopback path stays in the crate for exactly this case; Chromium's design is what makes
+    the tap possible, and a Chromium or Apple change would take it away without notice.
+14. **Log lines**: `airplay: tap armed / disarmed` and `sound:sink` (gain 0/1) in `diag.log`;
+    the ring verdicts in `airplay.log` as today. `__sound.status()` gains `tap: {armed, chunks,
+    lastGapMs}`. DeetsAirplay's speaker list reads the claim's `send` and shows "Playing from
+    DeetsMusic" with no change on its side.
+
+**What goes away:** the WebView2 child hunt, the process-tree flag, the per-process capture
+(§10 rules 1, 3 and 4 become history), the double resample, and other apps' sound on the speaker.
+**What stays:** the firewall rule (the HomePod's UDP reply still needs it), the claim file, the
+volume takeover, metadata and artwork.
+
+### 12.2 Terms (DPLA §3.3.6.D), checked 2026-09-17 with the owner
+
+The clause: no download, no upload, no modification of MusicKit Content; play it only as
+rendered by MusicKit JS. Against the tap:
+
+| Word | The tap | Same as today's loopback? |
+|---|---|---|
+| download | Holds under 1 s in memory, writes nothing. | Yes (100 ms ring). |
+| upload | Carries the sound to a HomePod on the LAN over Apple's own AirPlay protocol, which Apple Music does itself; the receiver stores nothing. | Yes. |
+| modify | Every effect off: the bit-exact rendering (the flat graph measured identical, AUDIO-QUALITY.md §4.3a). Effects on: the fork 0 risk already shipped in 0.8.0. | Yes, plus fork 0. |
+| rendered by MusicKit JS | The tap hears MusicKit JS's own rendering into its own element, through the standard `createMediaElementSource` the graph already makes. No second player, no other asset, no undocumented API, no DRM circumvention (Chromium hands EME audio to Web Audio by design, §4.4). | Yes: the loopback hears the same rendering, one stage later. |
+
+Nothing new leaves the PC. The owner's reading (2026-09-17): fine. Recorded here so the question is
+not re-raised; the counter-reading ("only the browser's own output path counts as rendered") was
+already accepted as a risk with fork 0 and is not made worse by moving the copy point.
+
+### 12.3 Tests before the build (facts, cheap, no harness)
+
+All in the dev app through `scripts/webview-eval.mjs`, unless marked *desk*.
+
+| # | Question | How | Pass |
+|---|---|---|---|
+| T1 | Does a 44.1 kHz context cost the local path anything? | `probe fidelity --listen` (AUDIO-QUALITY.md §2) with `__sound` forced to create its context at 44100, and again at the device rate. Nothing else playing. | Level, THD+N and spurs within 2 dB of §4.3 at every tone. Worse → design item 10's fallback. |
+| T2 | Does the graph keep rendering at sink gain 0 with the window hidden? | A test tap node counts posted chunks; hide the window to the tray for 60 s; read the count. | ~640 chunks/min, no gap over 200 ms. |
+| T3 | Does a raw-body `invoke` at 11 Hz stall? | A stub command counts bytes and the largest gap between calls over 10 min while `__frames.sample` runs a scripted scroll, the Sound menu opens and a song changes. | Largest gap under the prefill. Larger → a bigger prefill, or a `SharedArrayBuffer` + Worker path. |
+| T4 | Does routing a playing element mid-song blip? | Route on a live song from the console; listen (*desk*) and read `[perf] frames`. | No gap the ear notices. |
+| T5 | Does the tap hear the song through the ring? | After the build: `airplay.log` verdict "heard sound" while playing, "silence" while paused, never "nothing". | 30 min, no *nothing*. |
+
+### 12.4 The desk test (after the build; Rust changed, restart the dev runner)
+
+1. Play a song; pick the speaker. The PC goes quiet when the note reads "Playing on Living
+   Room"; the speaker carries the song; no other app's sound reaches it (play a video in Edge).
+2. An album end to end: no dropout; `airplay.log` has no *nothing* verdict.
+3. Pause and play from the HomePod's touch surface; next and previous; a seek. The speaker
+   follows; the PC stays silent.
+4. Minimize to the tray for five minutes: the song keeps playing on the speaker.
+5. Turn on Advanced EQ with a strong preset: the speaker's sound changes; turn it off.
+6. Settings › AirPlay › Send to speaker → All PC sound: reconnects in place; the PC plays again;
+   the note reads "and this computer". Back to DeetsMusic only: the PC goes quiet.
+7. Pick "This computer": the PC plays at once, at the level the slider showed before the speaker.
+8. Quit the app while connected: the speaker stops; a restart plays on the PC.
+9. DeetsAirplay's speaker list shows "Playing from DeetsMusic" on the held row.
+10. Pull the HomePod's power: the note reads "Lost Living Room" and the PC plays again.
+
+### 12.5 Results (2026-09-17, dev app, `scripts/webview-eval.mjs`)
+
+| # | Result | Evidence |
+|---|---|---|
+| T1 | **Pass.** A 44.1 kHz context costs the local path nothing. | `probe fidelity --listen` through the graph at 44.1 kHz vs the plain path, same session: 1 kHz THD+N −105.5 / −105.3 dB, 15 kHz −74.5 / −74.5, 19 kHz −70.1 / −70.1, 20 kHz level −3.49 / −3.49 dB. Identical to the decimal, and to §4.3 (2026-09-16). The 20 kHz roll-off is Chromium's output resampler either way. **Design item 10: the context is created at 44.1 kHz.** |
+| T2 | **Pass.** The graph renders at sink gain 0 while the window is hidden. | Oscillator → worklet → gain 0 → destination, 60 s shown then 60 s hidden by `getCurrentWindow().hide()` (the tray's own call): 20,700 then 20,800 quanta (20,671 expected per minute), worst gap 22 ms, no gap over 200 ms. `document.visibilityState` stayed `visible` while hidden. |
+| T3 | **Pass with one change.** A raw-body `invoke` at 11 Hz never fails; the largest gap was 256 ms. | Built dev mode (`dev:built`, a fixed bundle that survives other sessions' saves), 10 min: 5,971 chunks of 16 KB (97.8 MB), 0 failures, worst `invoke` round trip 40 ms, Rust-side largest gap between chunks 256 ms, once, under a scroll every 25 s (worst 29 ms frame), the Sound menu and a song change every 100 s. 256 ms is 6 ms over the 250 ms prefill, so **the prefill is 500 ms** (design item 6); the 1 s ring keeps 500 ms of headroom. The temporary stub (`airplay_tap_probe`) was removed after the run. |
+| T4 | **Pass.** Routing a playing song mid-song makes no audible gap. | Twice on the desk (headphones, the live app off AirPlay): once into a warm context, once creating the 44.1 kHz context and routing in the same call (35 ms). The song's clock ran on; the owner heard no gap and no click. |
+
+**A false alarm worth knowing.** The first T1 run measured the first tone and then digital silence.
+The next run showed the context gone (`ctx: "none"`): a front-end save from another session had
+reloaded the page mid-run. With saves held, the run was clean. Every listen run reports one raw-loopback
+discontinuity, clean runs included, so that warning is the probe's and not a signal.

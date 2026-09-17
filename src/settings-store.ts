@@ -37,8 +37,23 @@ export interface Settings {
   cardGrow: boolean;
   /** A click outside a grown card collapses it; Pin holds the card against that. */
   cardGrowOutside: boolean;
+  /** A click outside the Compass bar closes it (COMPASS.md §4). Off: Escape, the button or a pick. */
+  compassCloseAway: boolean;
   /** A pick in a grown card's title picker: keep the grow on the slot, or collapse first. */
   cardGrowPick: "keep" | "collapse";
+  /** A drill (Go to Album, a shelf tile, a playlist): the card it opens takes the place of the
+   *  card you are reading and Back returns the chain (CARD-GROW.md §15), or it is summoned into
+   *  another slot as before (a grown card then collapses, §7). */
+  cardDrill: "inplace" | "summon";
+  /** A drill whose card is ALREADY on screen: bring that card to the one you are reading (the two
+   *  cards exchange slots), or open it where it sits and move nothing (CARD-GROW.md §15.2). */
+  cardDrillBring: boolean;
+  /** A grow or a collapse: keep the view you are in (only the tile size follows the card's
+   *  size), or take that size's own remembered view (CARD-GROW.md §13a). */
+  cardGrowView: "keep" | "size";
+  /** Card memory (CARD-MEMORY.md): a remounted card comes back where it was. On: the places are
+   *  also saved, so they survive a restart. */
+  cardMemoryDisk: boolean;
   /** Theme/skin switches animate (NEXT-VERSION §6). The OS reduced-motion preference still wins. */
   appearanceMotion: boolean;
   /** A card swap, summon or replace plays the skin's swap motion (card-swap.ts). The OS
@@ -279,7 +294,12 @@ export const DEFAULTS: Settings = {
   sizeMax: "1100x820",
   cardGrow: true, // new and easy to turn off (CARD-GROW.md §8)
   cardGrowOutside: true, // a grow is temporary; Pin covers "keep it"
+  compassCloseAway: true, // user's call 2026-09-17: the bar is a passing thing; a click elsewhere means "not now"
   cardGrowPick: "keep", // decided 6A
+  cardDrill: "inplace", // user's call 2026-09-17: a drill belongs to the card you are reading
+  cardDrillBring: false, // user's call 2026-09-17: a card already on screen is not worth moving two cards for
+  cardGrowView: "keep", // user's call 2026-09-17: the view you are in comes with you; the size sets the tiles
+  cardMemoryDisk: false, // user's call 2026-09-17: memory only; an old drill after a restart can be stale
   appearanceMotion: true,
   cardSwapMotion: true, // user's call 2026-09-16: on by default (was off, 2026-09-15)
   fancyScrubber: true, // user's call 2026-09-16: on for now, a performance eval decides
@@ -372,6 +392,13 @@ export const DEFAULTS: Settings = {
 
 /** Keys that lived on their own before the store (2026-09-10); read once, then owned here. */
 function migrate(into: Partial<Settings>): void {
+  // The grown card's drill rule became the rule for every card (2026-09-17, CARD-GROW.md §15):
+  // one row, so a stored pick moves with its meaning.
+  const drill = (into as Record<string, unknown>).cardGrowDrill as string | undefined;
+  if (drill !== undefined && into.cardDrill === undefined) {
+    into.cardDrill = drill === "collapse" ? "summon" : "inplace";
+    delete (into as Record<string, unknown>).cardGrowDrill;
+  }
   const aot = localStorage.getItem("deets.alwaysOnTop");
   if (aot !== null && into.alwaysOnTop === undefined) into.alwaysOnTop = aot === "true" ? "always" : "off";
   // Keep on top became a three-way choice (2026-09-14).

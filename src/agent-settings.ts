@@ -134,7 +134,12 @@ const SPECS: Spec[] = [
   storeChoice("Window", "alwaysOnTop", "Keep on top", [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }]),
   storeToggle("Window", "cardGrow", "Grow cards from edges"),
   storeToggle("Window", "cardGrowOutside", "Collapse on outside click"),
+  storeToggle("Window", "compassCloseAway", "Compass closes on outside click"),
   storeChoice("Window", "cardGrowPick", "Grown card on card pick", [{ value: "keep", label: "Keep" }, { value: "collapse", label: "Collapse" }]),
+  storeChoice("Window", "cardDrill", "Card on drill", [{ value: "inplace", label: "In place" }, { value: "summon", label: "Summon" }]),
+  storeToggle("Window", "cardDrillBring", "Bring a card already open"),
+  storeChoice("Window", "cardGrowView", "Keep view when grown", [{ value: "keep", label: "Keep" }, { value: "size", label: "Per size" }]),
+  storeToggle("Window", "cardMemoryDisk", "Keep card places on restart"),
   {
     key: "surface", label: "Surface", section: "Window", kind: "choice",
     options: [{ value: "mini", label: "Mini" }, { value: "player", label: "Mini player" }, { value: "midi", label: "Midi" }, { value: "max", label: "Max" }],

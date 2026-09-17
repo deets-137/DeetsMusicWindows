@@ -334,9 +334,14 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   minimum: `sizeMini` / `sizeMidi` / `sizeMax` 340×560, `sizePlayer` 420×460. A set for the view
   on screen resizes the window at once (SETTINGS.md §3, FUTURE-SETTINGS §8a).
 - The **card grow** rows (2026-09-16, CARD-GROW.md §8): `cardGrow` "Grow cards from edges"
-  (on | off), `cardGrowOutside` "Collapse on outside click" (on | off), `cardGrowPick` "Grown
-  card on card pick" (Keep | Collapse). A grow itself has no agent verb: it is a hand gesture
-  and lasts only the session.
+  (on | off), `cardGrowOutside` "Collapse on outside click" (on | off), `compassCloseAway` "Compass closes on outside click" (on | off), `cardGrowPick` "Grown
+  card on card pick" (Keep | Collapse), `cardGrowView` "Keep view when grown" (Keep | Per size),
+  `cardDrill` "Card on drill" (In place | Summon) and `cardDrillBring` "Bring a card already
+  open" (on | off, 2026-09-17, CARD-GROW.md §15). A grow itself has no agent verb: it is a hand gesture
+  and lasts only the session. An agent's own card request never swaps a grown card: the swap
+  follows the last press of the user's, so an agent request collapses as before (§14.2).
+- **`cardMemoryDisk`** "Keep card places on restart" (on | off, 2026-09-17, CARD-MEMORY.md §7).
+  Where a card is has no agent verb; the card comes back where the user left it.
 - A bad value → `400` that says what the setting takes.
 
 ### Which settings

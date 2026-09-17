@@ -403,6 +403,19 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
     if (!box) return;
     // Just right of the title's TEXT (not its box, which runs to the action squares): the
     // text's width comes from a range over it, capped at the box when the title is cut off.
+    // The buttons are out of flow, so nothing reserves room for them. While they show, the
+    // title takes a max width that leaves exactly that room: a long title then ends in an
+    // ellipsis and the buttons sit right after it, instead of on the words (desk report,
+    // 2026-09-17). The buttons are placed again whenever the title text changes.
+    // Only a VISIBLE action square bounds the title: a hidden one (Playlists hides New and Web
+    // while drilled) reports offsetLeft 0, which would squeeze the title to nothing.
+    const actions = [...(box.parentElement?.querySelectorAll<HTMLElement>(".panel__action") ?? [])].filter(
+      (el) => !el.hidden && el.offsetParent !== null,
+    );
+    const first = actions.length ? actions.reduce((a, b) => (a.offsetLeft <= b.offsetLeft ? a : b)) : null;
+    const gap = parseFloat(getComputedStyle(box).getPropertyValue("--grow-btn-gap")) || 0;
+    const room = first && box.offsetWidth ? first.offsetLeft - title.offsetLeft - box.offsetWidth - gap * 2 : 0;
+    title.style.maxWidth = room > 0 ? `${Math.round(room)}px` : "";
     const range = document.createRange();
     range.selectNodeContents(title);
     const text = Math.min(range.getBoundingClientRect().width, title.offsetWidth);
@@ -445,6 +458,7 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
     if (state?.slot === slot) return; // stays while grown
     box.remove();
     box = null;
+    title.style.maxWidth = ""; // the title gets its full room back
   };
   const onEnter = () => {
     hovered = true;
@@ -480,6 +494,12 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
   head.addEventListener("pointerleave", onLeave);
   head.addEventListener("click", onClick);
   head.addEventListener("contextmenu", onMenu);
+  // The title text changes under the buttons: a drill in or out ("Library" → "Album"), and a
+  // Search drill that opens on a fallback name and relabels when the id lands. The buttons are
+  // placed from that text, so they must be placed again, or they sit on the words or far from
+  // them (desk report, 2026-09-17).
+  const watchTitle = new MutationObserver(() => place());
+  watchTitle.observe(title, { characterData: true, childList: true, subtree: true });
   const unsub = onGrowChange(() => {
     if (state?.slot === slot) show();
     paint();
@@ -490,6 +510,7 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
   return {
     destroy() {
       unsub();
+      watchTitle.disconnect();
       zones.forEach((z) => z.remove());
       head.removeEventListener("pointerenter", onEnter);
       head.removeEventListener("pointerleave", onLeave);

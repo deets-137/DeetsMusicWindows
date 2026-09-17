@@ -102,6 +102,13 @@ export function radioDropCaches(): void {
 const RECENTS_KEY = "deets.radio.recents";
 const RECENTS_MAX = 6;
 
+/** Apple's live stations, when the Radio card fetched them this session; else none. No call. */
+export const radioLivePeek = (): Station[] => liveCache ?? [];
+/** The genre list, when read this session (the Radio card, or the Compass's first term). No call. */
+export const radioGenresPeek = (): StationGenre[] => genresCache ?? [];
+/** Your station and the Discovery station, when the Radio card fetched them this session. No call. */
+export const radioSpecialPeek = (): Station[] => [myStationCache, discoveryCache].filter((s): s is Station => !!s);
+
 export function radioRecents(): Station[] {
   try {
     const raw = localStorage.getItem(RECENTS_KEY);

@@ -9,7 +9,7 @@
 // (open pane immediately → resolve id → fill). So resolution + caching stay in one
 // place and these builders are dumb: emit intent + summon.
 
-import { requestCard } from "./layout-bus";
+import { requestDrillCard } from "./layout-bus";
 import type { MenuItem } from "./context-menu";
 import type { Artwork, Track } from "./library";
 
@@ -25,6 +25,12 @@ export interface DrillIntent {
 
 type Cb = (intent: DrillIntent) => void;
 const subs = new Set<Cb>();
+// The intent waits here until a Search card takes it (CARD-GROW.md §14.5): a card mounted BY
+// the request takes it on mount, one already on screen through the subscription. A skin with
+// an out step mounts the card after the swap plays, so an emit alone would be lost. An old
+// request is dropped, so it cannot open a pane much later.
+const HOLD_TTL_MS = 5000;
+let pendingDrill: { intent: DrillIntent; at: number } | null = null;
 
 /** Search-card side: subscribe to drill intents. Returns an unsubscribe fn. */
 export function onDrillRequest(cb: Cb): () => void {
@@ -32,12 +38,18 @@ export function onDrillRequest(cb: Cb): () => void {
   return () => subs.delete(cb);
 }
 
+/** Search-card side: take the waiting drill intent (null when none, or too old). */
+export function takeDrillRequest(): DrillIntent | null {
+  const p = pendingDrill;
+  pendingDrill = null;
+  return p && Date.now() - p.at < HOLD_TTL_MS ? p.intent : null;
+}
+
 function requestDrill(intent: DrillIntent): void {
-  // Ensure the detail surface is on-screen. requestCard mounts Search synchronously
-  // (registering its subscriber) if absent, or no-ops if already visible — either way
-  // the subscriber is live before we emit.
-  requestCard("search");
-  subs.forEach((cb) => cb(intent));
+  pendingDrill = { intent, at: Date.now() };
+  requestDrillCard("search");
+  if (pendingDrill) subs.forEach((cb) => cb(intent));
+  pendingDrill = null;
 }
 
 /**
@@ -68,6 +80,7 @@ export interface PlaylistPaneIntent {
   tracks?: Track[];
 }
 const paneSubs = new Set<(intent: PlaylistPaneIntent) => void>();
+let pendingPane: { intent: PlaylistPaneIntent; at: number } | null = null;
 
 /** Search-card side: subscribe to catalog playlist panes. Returns an unsubscribe fn. */
 export function onPlaylistPaneRequest(cb: (intent: PlaylistPaneIntent) => void): () => void {
@@ -75,10 +88,19 @@ export function onPlaylistPaneRequest(cb: (intent: PlaylistPaneIntent) => void):
   return () => paneSubs.delete(cb);
 }
 
+/** Search-card side: take the waiting playlist pane (null when none, or too old). */
+export function takePlaylistPaneRequest(): PlaylistPaneIntent | null {
+  const p = pendingPane;
+  pendingPane = null;
+  return p && Date.now() - p.at < HOLD_TTL_MS ? p.intent : null;
+}
+
 /** Summon the Search card and open a catalog playlist pane there. */
 export function requestPlaylistPane(intent: PlaylistPaneIntent): void {
-  requestCard("search");
-  paneSubs.forEach((cb) => cb(intent));
+  pendingPane = { intent, at: Date.now() };
+  requestDrillCard("search");
+  if (pendingPane) paneSubs.forEach((cb) => cb(intent));
+  pendingPane = null;
 }
 
 /** "Go to Album" from a song's catalog id — `null` without one. */

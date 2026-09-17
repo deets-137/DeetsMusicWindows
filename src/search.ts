@@ -108,19 +108,67 @@ export async function catalogRelated(
   return ref;
 }
 
+// ── the session cache for catalog panes (CARD-MEMORY.md §6) ──
+// Every open of an album, a catalog playlist or an artist was an Apple call, and a remounted
+// Search card opens its panes again. Memory only, never on disk (Apple's terms on stored
+// catalog content, as the mosaic covers). A failed fetch is not kept. Insertion order is the
+// recency: a hit moves to the end, the oldest entry goes past the cap.
+const PANE_CAP = 30;
+const SEARCH_CAP = 10;
+const paneCache = new Map<string, Track[] | ArtistDetail>();
+const searchCache = new Map<string, SearchResults>();
+const inflight = new Map<string, Promise<unknown>>();
+
+function remember<V>(cache: Map<string, V>, cap: number, key: string, fetch: () => Promise<V>): Promise<V> {
+  const hit = cache.get(key);
+  if (hit !== undefined) {
+    cache.delete(key);
+    cache.set(key, hit);
+    return Promise.resolve(hit);
+  }
+  // Two opens of the same pane at once (a chip flight's prepare + its pane) share one call.
+  const running = inflight.get(key) as Promise<V> | undefined;
+  if (running) return running;
+  const p = fetch()
+    .then((v) => {
+      cache.set(key, v);
+      if (cache.size > cap) cache.delete(cache.keys().next().value as string);
+      return v;
+    })
+    .finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+
+// Callers get their own arrays: a shuffle or a splice on a result must not change the cache.
+const copyResults = (r: SearchResults): SearchResults => ({
+  ...r,
+  songs: [...r.songs],
+  albums: [...r.albums],
+  artists: [...r.artists],
+  playlists: [...r.playlists],
+  stations: [...r.stations],
+});
+
 /** Catalog search. `types` narrows the categories queried (default: all four). */
 export function searchCatalog(term: string, types?: SearchType[]): Promise<SearchResults> {
-  return invoke<SearchResults>("catalog_search", { term, types: types ?? null });
+  const key = `${term}|${(types ?? ALL_TYPES).join(",")}`;
+  return remember(searchCache, SEARCH_CAP, key, () => invoke<SearchResults>("catalog_search", { term, types: types ?? null })).then(copyResults);
 }
 
 /** A catalog album's or playlist's tracks, authored order, music videos skipped. */
 export function collectionTracks(kind: "albums" | "playlists", id: string): Promise<Track[]> {
-  return invoke<Track[]>("catalog_collection_tracks", { kind, id });
+  return remember(paneCache, PANE_CAP, `${kind}:${id}`, () => invoke<Track[]>("catalog_collection_tracks", { kind, id })).then((ts) => [
+    ...(ts as Track[]),
+  ]);
 }
 
 /** A catalog artist's detail: albums + top songs. */
 export function artistDetail(id: string): Promise<ArtistDetail> {
-  return invoke<ArtistDetail>("catalog_artist", { id });
+  return remember(paneCache, PANE_CAP, `artists:${id}`, () => invoke<ArtistDetail>("catalog_artist", { id })).then((v) => {
+    const d = v as ArtistDetail;
+    return { ...d, albums: [...d.albums], topSongs: [...d.topSongs], featuredPlaylists: [...d.featuredPlaylists] };
+  });
 }
 
 /** Durable side of materialize-on-interaction (FAVORITES.md): upsert a catalog

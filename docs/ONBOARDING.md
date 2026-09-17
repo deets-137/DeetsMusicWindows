@@ -36,6 +36,10 @@ nothing about authoring changed when the box did.
 | Title menu | each Skin | one line on the idiom ("A print shop: ink on paper, square corners. The cover can be a record") | index.html |
 | Title menu | Mini · NP · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
+| Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
+| Compass bar | a Settings row | the row's own hint (settings-card.ts, through `settingsRows()`) | compass.ts |
+| Compass bar | a theme, skin or surface row | the title menu button's own hint | compass.ts |
+| Compass bar | Open · Play (a song, album, artist or playlist row) | Enter · Ctrl+Enter | compass.ts |
 | Settings › Connections | Agents read play history | Lets a connected agent see what you played, when, and what you skipped | settings-card.ts |
 | Title menu › Account | Last.fm | Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile · connected: Disconnects Last.fm. Songs you hear stop going to your profile · no key: Last.fm is not in this build of DeetsMusic | index.html / lastfm.ts |
 | Title menu › Account | the Last.fm name ("Connected as *name*") | Opens your Last.fm profile in your browser | lastfm.ts |
@@ -78,7 +82,12 @@ nothing about authoring changed when the box did.
 | Now Playing | Previous · Play/Pause · Next | Plays the song before this one · Play / Pause (follows state) · Plays the next song | now-playing-card.ts |
 | Now Playing | ♥ · + | Favorite / Unfavorite · Add to Library / In your library (follow state) | now-playing-card.ts |
 | Now Playing | Mute · AirPlay (stage row) | as the title bar | now-playing-card.ts |
-| Card headers | Back | Goes back one step | library-, playlists-, radio-card.ts; search-card.ts panes |
+| Card headers | Back | Goes back one step | library-, playlists-, radio-card.ts; search-card.ts (its card header since 2026-09-17) |
+| Card headers | Back, on a level a grown card's drill opened | Goes back to *<card>* | collection-card.ts `setHeader`, search-card.ts `pushPane` (CARD-GROW.md §14.4) |
+| Settings › Window | Keep view when grown | A card that grows keeps the view you are in; the tile size still follows the card's size | settings-card.ts |
+| Settings › Window | Card on drill | A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot | settings-card.ts |
+| Settings › Window | Bring a card already open | A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits | settings-card.ts |
+| Settings › Window | Keep card places on restart | Opens each card where you left it, also after you restart DeetsMusic | settings-card.ts |
 | Library | Refresh | Reads your library from Apple Music again | library-card.ts |
 | Playlists | + · Web · Sync | Makes a new playlist or a new folder · Makes a playlist from an artist and the artists they make songs with · Reads your playlists from Apple Music again | playlists-card.ts |
 | Playlist web panel | Start row (Artist · Song · Album) · the field · a library artist row (song or album row) · an Apple row or an earlier web's row · Search Apple Music row · the picked artist (song, album) · Reach 3 with an album seed · Keep · Temp · the days button · Reach row · Size row · Prefer row · a genre chip · Retry · Read again · Playlist name · Make playlist | Start the web from an artist, a song or an album · Finds an artist in your library, or searches Apple Music (Finds a song… / Finds an album…) · In your library. Starts the web here · Starts the web here · Searches Apple Music for this name (song, album: …for this title) · The web starts here. Type to pick another artist (song, album) · An album starts with many artists, so its web reaches 2 at most · Keeps the playlist until you delete it · Deletes the playlist *7 days* after you last play it. Right-click the playlist to keep it · Press for *30 days*, right-click for *5 days* · 1 reaches the artist's collaborators. Each step reaches one circle further · Songs in the new playlist · Familiar puts your songs first. Discover puts songs you don't have first · (a genre chip, written again on every change) *66 R&B/Soul songs in the web.* Pick it: *44* go in, with *6* by *Artist* / *44* go in, with *6* by *Artist*. Press again to drop it / Add it: *50* go in, with *8* by *Artist* (Web only: ", with all of *Artist*'s songs") · Reads only the artists that didn't load · Reads this web from Apple Music again. Use it when an artist has new songs · Names the new playlist · Makes the playlist and opens it | web.ts |
@@ -192,11 +201,11 @@ popovers. That is fine — but a "what can I do here" menu on empty space is a f
 
 ## 3. Settings › Tips (built)
 
-The first Settings section, collapsed by default, six two-line notes: the gesture in the
+The first Settings section, collapsed by default, seven two-line notes: the gesture in the
 text color, why to try it in the subtext color (`TIPS` in settings-card.ts, `.set__tip` in
 settings.css). **It is not a manual.** It teaches the habits that let a person find the rest
 alone — *hover anything*, *right-click anything*, *drag anything*, *click your way in*, the
-title menu, and *close is not quit* (shown only while Close to tray is on, its default) —
+title menu, *press Ctrl+Space* (the Compass, COMPASS.md), and *close is not quit* (shown only while Close to tray is on, its default) —
 and tells them it is safe ("Nothing in it can break", "Nothing is permanent"). The menu verbs are not listed there; the menus show them. When a
 gesture is added to the app (not a verb), add a note.
 

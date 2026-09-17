@@ -91,7 +91,7 @@ Status: ✅ done · 🔵 designing · ⬜ todo · ❄️ deferred to later
 |---|---|---|
 | X1 | Mini player surface (on minimize) | ✅ mini surface (Mini \| Player views), tray flyout, Keep on top ([TRAY.md](TRAY.md)) |
 | X2 | SMTC — Windows media overlay + media keys | ✅ native session (`smtc.rs`, 2026-09-10) |
-| X3 | Global hotkeys | ✅ media keys via SMTC. In-app keys: Ctrl+K / Q / L / P / , summon cards; **Space for play / pause and the full keyboard pass are ⬜** (HANDOFF "polished keyboard control") |
+| X3 | Global hotkeys | ✅ media keys via SMTC. In-app keys: Ctrl+K / Q / L / P / , summon cards; **Ctrl+Space opens the Compass** (COMPASS.md: any card, setting, verb or library item from the keyboard) and **Space plays / pauses** (built 2026-09-17); **arrows, Enter, the Menu key and Escape work in every list** (list-keys.ts, built 2026-09-17); open: the popovers' arrows (HANDOFF "polished keyboard control") |
 | X4 | **CLI / local-agent control** | ✅ the `deetsmusic` CLI + MCP server, 16 tools, Settings › Connections ([AGENT.md](AGENT.md)) |
 
 *Order we design/build these = your call (see chat).*

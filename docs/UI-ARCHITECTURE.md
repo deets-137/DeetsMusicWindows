@@ -559,7 +559,12 @@ optional `activate(item, i, items)` (the leaf click — play), and an optional
 Because each context carries its own controls, the **Sort/View pills re-render per
 level** — and the View pill auto-hides when neither grouping nor density is
 meaningful (e.g. a future playlists overview). Library's contexts:
-- **Library** (root): groupings **Songs / Albums / Artists**.
+- **Library** (root): groupings **Songs / Albums / Artists / Genres** (Genres added
+  2026-09-17, COMPASS.md §8: one mosaic tile per first genre, drills to a genre context).
+  The Songs sorts Artist, Album and Genre are `hidden` (user's call 2026-09-17): a grown
+  card's column header still sorts by them, and the popover shows one only while in force.
+- **Genre** (drilled from a genre tile, or a Compass row): that genre's **Songs / Albums /
+  Artists**, Songs by Artist by default.
 - **Album** (drilled from an album, or from a song): that album's tracks, density-only;
   covers omitted (they'd all match). A song click drills here and **highlights** the
   clicked track (`.is-selected` border) and scrolls it into view.

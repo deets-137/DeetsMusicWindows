@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 354 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 360 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -132,6 +132,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-panel-max-h` | `min(620px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
 | `--sound-panel-pad` | `var(--space-2)` | — |  |
 | `--panel-edge-gap` | `6px` | — | a title bar panel keeps this clear of the window edge (dropdown.ts keepInWindow) |
+| `--compass-max-h` | `min(560px, calc(100vh - var(--titlebar-h) - 24px))` | — | The Compass bar (COMPASS.md, styles/compass.css): Ctrl+Space's panel under the title bar. — scrolls inside a short window |
+| `--compass-field-h` | `36px` | — | the text field's height |
+| `--compass-row-h` | `34px` | — | one result row; a two-line row (a song and its artist) |
+| `--compass-icon` | `16px` | — | a row's leading glyph |
+| `--compass-btn-size` | `20px` | — | the title bar button, right of the title |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |
@@ -468,6 +473,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--nav-at-left` | `translateX(-100%)` | press, ocean, glass, cyber |  |
 | `--nav-at-right` | `translateX(100%)` | press, ocean, glass, cyber |  |
 | `--nav-off-opacity` | `1` | press, ocean, glass, cyber | off-screen panes stay opaque |
+| `--memory-wait` | `0.4s` | — | Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a restore waits for its data, so the root never flashes before the open level. |
 | `--swap-dur` | `var(--nav-dur)` | — | -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
 | `--swap-ease` | `var(--nav-ease)` | — |  |
 | `--swap-out-dur` | `0s` | cyber |  |

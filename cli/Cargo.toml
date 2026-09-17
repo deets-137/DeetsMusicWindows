@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic-cli"
-version = "0.9.0"
+version = "0.9.5"
 edition = "2021"
 description = "Command-line + MCP client for the DeetsMusic bridge (docs/AGENT.md)."
 

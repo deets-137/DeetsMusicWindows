@@ -12,6 +12,7 @@
 // Everything is client-side over data the card already holds in memory.
 
 import * as frames from "./frames";
+import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload } from "./row-drag";
@@ -21,6 +22,8 @@ import { shuffleInPlace } from "./queue";
 import { isShuffleOn, setShuffleMode } from "./player";
 import { setting } from "./settings-store";
 import { enterRows } from "./pop";
+import { tokenMs } from "./boot-cover";
+import * as diag from "./diag";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -43,6 +46,10 @@ export interface SortSpec<T = any> {
   label: string;
   get: (x: T) => string | number | undefined; // undefined sinks to the bottom
   type: "str" | "num";
+  /** Not offered in the Sort popover (a grown card's column header still sorts by it; the
+   *  popover shows it only while it is the sort in force). The Library's Artist, Album,
+   *  Genre: those are Views, the user's call 2026-09-17. */
+  hidden?: boolean;
 }
 
 /** The frame state a `list()` accessor may shape itself around (e.g. Radio's shelf
@@ -134,6 +141,9 @@ export interface Hero {
 
 export interface Context {
   title: string;
+  /** Card memory (CARD-MEMORY.md §5): what this level shows, as the card's `resolve` reads it
+   *  back ("album:<key>", "playlist:<id>"). A level with no key ends a snapshot there. */
+  key?: string;
   /** What the card header shows while drilled ("Album", "Playlist") when a hero owns
    *  the title itself. Absent → the header shows `title`, as before. */
   headerLabel?: string;
@@ -284,7 +294,32 @@ export interface CardOptions {
   onHeader?: (h: { title: string; atRoot: boolean }) => void;
   /** The host's grow state (CARD-GROW.md): wide / full → columns, any → the letter rail. */
   grown?: () => "wide" | "tall" | "full" | null;
+  /** Card memory: turn a level's key back into its context; null when it is gone. */
+  resolve?: (key: string) => Context | null;
+  /** The drill swap (CARD-GROW.md §14): the next level this card opens returns through it. */
+  onReturn?: () => boolean;
+  /** The card that return goes to, for the Back button's hint. */
+  returnTitle?: string;
 }
+
+/** A card's place (CARD-MEMORY.md §2): the key and view state of each level, root first. */
+export interface CardSnapshot {
+  v: 1;
+  levels: LevelSnapshot[];
+}
+export interface LevelSnapshot {
+  key: string;
+  scroll: number;
+  grouping?: string;
+  sortKey?: string;
+  sortDir?: SortDir;
+  density?: Density;
+  query?: string;
+}
+const isSnapshot = (s: unknown): s is CardSnapshot =>
+  !!s && typeof s === "object" && (s as CardSnapshot).v === 1 && Array.isArray((s as CardSnapshot).levels) && (s as CardSnapshot).levels.length > 0;
+
+const BACK_HINT = "Goes back one step";
 
 interface Frame {
   ctx: Context;
@@ -296,6 +331,8 @@ interface Frame {
   searchOpen: boolean;
   items: any[]; // current view order, for tile-click index → item
   scroll: number; // remembered scroll position, restored on back
+  /** The drill swap's way back (CARD-GROW.md §14.4): true = the layout took the Back. */
+  onBack?: () => boolean;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -323,7 +360,16 @@ export function initCollectionCard(opts: CardOptions) {
   const titleEl = opts.root.querySelector<HTMLElement>(".panel__title");
   const backEl = opts.root.querySelector<HTMLButtonElement>(".panel__back");
   const bodyHost = opts.root.querySelector<HTMLElement>(".coll-body");
-  if (!bodyHost) return { reload: () => {}, drill: (_ctx: Context) => {}, destroy: () => {} };
+  if (!bodyHost)
+    return {
+      reload: () => {},
+      drill: (_ctx: Context) => {},
+      destroy: () => {},
+      snapshot: (): CardSnapshot | null => null,
+      restore: (_s: unknown): boolean => false,
+      hold: () => {},
+      depth: () => 1,
+    };
 
   const baseTitle = titleEl?.textContent ?? "";
   bodyHost.innerHTML = `<div class="coll-viewport" data-viewport></div>`;
@@ -331,6 +377,11 @@ export function initCollectionCard(opts: CardOptions) {
 
   const stack: Frame[] = [];
   let curPane: HTMLElement | null = null;
+  let paneFrame: Frame | null = null; // the frame curPane shows (its live scroll is the true one)
+  // The drill swap's return, for the next level this card opens. It goes stale after a while,
+  // so a request that opened nothing cannot arm a later, unrelated drill.
+  const RETURN_TTL_MS = 5000;
+  let pendingReturn: { cb: () => boolean; at: number } | null = opts.onReturn ? { cb: opts.onReturn, at: Date.now() } : null;
   // A grown card (CARD-GROW.md §9a) keeps its own top-level view prefs per size, under the
   // store key with the size as a suffix, and opens with the size's own density the first
   // time: small tiles wide or tall, large tiles when it fills the window.
@@ -404,6 +455,7 @@ export function initCollectionCard(opts: CardOptions) {
   const sortPopBody = (f: Frame) => {
     const g = groupingOf(f);
     const keys = g.sorts
+      .filter((s) => !s.hidden || s.key === f.sortKey)
       .map(
         (s) =>
           `<button class="lib-pop__opt${s.key === f.sortKey ? " is-active" : ""}" type="button" data-sort-key="${s.key}">${esc(
@@ -630,7 +682,7 @@ export function initCollectionCard(opts: CardOptions) {
     const pane = document.createElement("div");
     pane.className = "coll-pane";
     pane.dataset.pos = "center";
-    pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view></div>`;
+    pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view data-list-keys tabindex="0" aria-label="Songs"></div>`;
     const input = pane.querySelector<HTMLInputElement>("[data-search]");
     if (input) input.value = f.query;
     renderViewInto(pane, f);
@@ -745,29 +797,34 @@ export function initCollectionCard(opts: CardOptions) {
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
 
-  const setHeader = (isTop: boolean, title: string) => {
+  const setHeader = (isTop: boolean, title: string, returns = false) => {
     const shown = isTop ? baseTitle : title;
     if (titleEl) titleEl.textContent = shown;
-    if (backEl) backEl.hidden = isTop;
+    if (backEl) {
+      backEl.hidden = isTop;
+      // A level the drill swap opened goes back to the card it came from (CARD-GROW.md §14.4).
+      backEl.title = returns && opts.returnTitle ? `Goes back to ${opts.returnTitle}` : BACK_HINT;
+    }
     opts.onHeader?.({ title: shown, atRoot: isTop });
   };
 
   // ── transition (push / pop) ──
   // Restore scroll once the pane is in the DOM and laid out (doing it while the
   // pane is detached silently no-ops). A highlighted item wins over saved scroll.
-  const applyScroll = (pane: HTMLElement, f: Frame) => {
+  // `scrollWins`: a restored place (CARD-MEMORY.md §4 rule 4) beats a highlighted row.
+  const applyScroll = (pane: HTMLElement, f: Frame, scrollWins = false) => {
     const v = pane.querySelector<HTMLElement>("[data-view]");
     if (!v) return;
     const w = windowers.get(v);
     if (w) {
       // windowed: the selected element may not exist — find its index in the model
       const g = groupingOf(f);
-      const i = g.isSelected ? f.items.findIndex(g.isSelected) : -1;
+      const i = !scrollWins && g.isSelected ? f.items.findIndex(g.isSelected) : -1;
       if (i >= 0) w.reveal(i, "center");
       else w.scrollTo(f.scroll);
       return;
     }
-    const sel = v.querySelector(".is-selected");
+    const sel = scrollWins ? null : v.querySelector(".is-selected");
     if (sel) sel.scrollIntoView({ block: "center" });
     else v.scrollTop = f.scroll;
   };
@@ -776,6 +833,7 @@ export function initCollectionCard(opts: CardOptions) {
     animating = true;
     const endFrames = frames.begin("slide", dir);
     const outgoing = curPane;
+    paneFrame = frame;
     incoming.dataset.pos = dir === "push" ? "right" : "left";
     incoming.style.transition = "none"; // place off-screen without animating
     viewport.appendChild(incoming);
@@ -815,17 +873,136 @@ export function initCollectionCard(opts: CardOptions) {
     const v = curPane?.querySelector<HTMLElement>("[data-view]");
     if (v) cur().scroll = v.scrollTop;
     const f = frameFor(childCtx, false);
+    if (pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) f.onBack = pendingReturn.cb;
+    pendingReturn = null;
     stack.push(f);
-    setHeader(false, f.ctx.headerLabel ?? f.ctx.title);
+    setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack);
     slide(buildPane(f), "push", f);
   };
 
   const back = () => {
     if (animating || stack.length <= 1) return;
+    const top = cur();
+    // A level a grown card's drill opened: the layout brings the first card back (CARD-GROW.md
+    // §14.4). The level leaves the stack FIRST, so the snapshot taken at the destroy that
+    // follows holds the level under it. A layout that declines leaves a plain Back.
+    if (top.onBack) {
+      const ret = top.onBack;
+      top.onBack = undefined;
+      stack.pop();
+      if (ret()) return;
+      stack.push(top);
+    }
     pick.clear();
     const prev = stack[stack.length - 2];
-    setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title);
+    setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack);
     slide(buildPane(prev), "pop", prev, () => stack.pop());
+  };
+
+  // ── card memory (CARD-MEMORY.md §4) ──
+  const liveScroll = (f: Frame): number => {
+    if (f !== paneFrame || !curPane) return f.scroll;
+    return curPane.querySelector<HTMLElement>("[data-view]")?.scrollTop ?? f.scroll;
+  };
+
+  /** Where the card is: each level with a key, root first. A level with no key ends it. */
+  const snapshot = (): CardSnapshot => {
+    const levels: LevelSnapshot[] = [];
+    stack.every((f, i) => {
+      if (i === 0) {
+        levels.push({ key: "", scroll: liveScroll(f), query: f.query || undefined });
+        return true;
+      }
+      if (!f.ctx.key) return false;
+      levels.push({
+        key: f.ctx.key,
+        scroll: liveScroll(f),
+        grouping: f.grouping,
+        sortKey: f.sortKey,
+        sortDir: f.sortDir,
+        density: f.density,
+        query: f.query || undefined,
+      });
+      return true;
+    });
+    return { v: 1, levels };
+  };
+
+  // While a restore waits for the card's data, the viewport stays hidden, for at most
+  // --memory-wait, so the root never flashes first. A press in the card cancels the restore.
+  let holding = 0;
+  let cancelled = false;
+  const release = () => {
+    if (!holding) return;
+    window.clearTimeout(holding);
+    holding = 0;
+    viewport.style.visibility = "";
+  };
+  const onHoldDown = () => {
+    cancelled = true;
+    release();
+  };
+  const hold = () => {
+    if (holding || cancelled) return;
+    viewport.style.visibility = "hidden";
+    holding = window.setTimeout(release, tokenMs("--memory-wait"));
+    opts.root.addEventListener("pointerdown", onHoldDown, { capture: true });
+  };
+
+  /** Build the levels a snapshot names, with no slide. False when there is nothing to build,
+   *  or the user moved first (a press, a drill), or it is not a snapshot. */
+  const restore = (s: unknown): boolean => {
+    const wasHeld = !!holding;
+    release();
+    opts.root.removeEventListener("pointerdown", onHoldDown, { capture: true });
+    if (!isSnapshot(s)) return false;
+    if (cancelled || stack.length !== 1 || animating) {
+      diag.log("memory", { card: opts.storeKey, cause: cancelled ? "cancelled" : "moved" });
+      return false;
+    }
+    const [rootLevel, ...deeper] = s.levels;
+    const f0 = stack[0];
+    f0.query = typeof rootLevel.query === "string" ? rootLevel.query : "";
+    f0.searchOpen = !!f0.query;
+    f0.scroll = Number(rootLevel.scroll) || 0;
+    let stale = false;
+    for (const l of deeper) {
+      const ctx = typeof l.key === "string" ? opts.resolve?.(l.key) ?? null : null;
+      if (!ctx) {
+        stale = true;
+        break;
+      }
+      const f = frameFor(ctx, false);
+      if (ctx.groupings.some((x) => x.key === l.grouping)) f.grouping = l.grouping!;
+      if (groupingOf(f).sorts.some((x) => x.key === l.sortKey)) f.sortKey = l.sortKey!;
+      if (l.sortDir === "asc" || l.sortDir === "desc") f.sortDir = l.sortDir;
+      if (ctx.density && (l.density === "lines" || l.density === "small" || l.density === "large")) f.density = l.density;
+      f.query = typeof l.query === "string" ? l.query : "";
+      f.searchOpen = !!f.query;
+      f.scroll = Number(l.scroll) || 0;
+      stack.push(f);
+    }
+    const top = cur();
+    // The chain goes deeper (CARD-GROW.md §15.3): Back on the level a restore builds returns
+    // the card before it, exactly as Back on a level a drill opened does.
+    if (stack.length > 1 && pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) top.onBack = pendingReturn.cb;
+    pendingReturn = null;
+    dropWindower(curPane);
+    curPane?.remove();
+    const pane = buildPane(top);
+    viewport.appendChild(pane);
+    curPane = pane;
+    paneFrame = top;
+    setHeader(stack.length === 1, top.ctx.headerLabel ?? top.ctx.title, !!top.onBack);
+    applyScroll(pane, top, true);
+    diag.log("memory", {
+      card: opts.storeKey,
+      cause: stale ? "stale-key" : "restore",
+      levels: stack.length,
+      late: !wasHeld && deeper.length > 0,
+    });
+    // A stale key means the data is not here (yet): the caller may hold and try again.
+    return !stale;
   };
 
   backEl?.addEventListener("click", back);
@@ -1255,12 +1432,38 @@ export function initCollectionCard(opts: CardOptions) {
   };
   document.addEventListener("click", onDocClick);
   document.addEventListener("keydown", onDocKey);
+  // The keyboard inside the list (list-keys.ts): arrows, Enter, the Menu key, Escape = Back.
+  // A windowed list reveals the row first, so an arrow reaches every row.
+  // The tab stop is the rows' own element (`[data-view]`), which comes after the hero's cover
+  // and the Play / Shuffle row in the DOM — so Tab walks cover, Play, Shuffle, then the rows.
+  const unwireKeys = wireListKeys(viewport, {
+    rows: "[data-idx]",
+    within: () => curPane,
+    tabStop: "[data-view]",
+    revealIndex: (i) => {
+      const pane = curPane;
+      if (!pane) return null;
+      const n = cur().items.length;
+      const idx = Math.max(0, Math.min(n - 1, i));
+      const v = pane.querySelector<HTMLElement>("[data-view]");
+      const w = v ? windowers.get(v) : undefined;
+      if (w) w.reveal(idx, "nearest");
+      return pane.querySelector<HTMLElement>(`[data-idx="${idx}"]`);
+    },
+    count: () => cur().items.length,
+    back: () => {
+      if (animating || stack.length <= 1) return false;
+      back();
+      return true;
+    },
+  });
 
   // ── start ──
   const f0 = frameFor(opts.rootContext(), true);
   stack.push(f0);
   setHeader(true, "");
   curPane = buildPane(f0);
+  paneFrame = f0;
   curPane.dataset.pos = "center";
   viewport.appendChild(curPane);
 
@@ -1283,7 +1486,15 @@ export function initCollectionCard(opts: CardOptions) {
       lastMode = mode;
       if (stack.length === 1) {
         const f = frameFor(stack[0].ctx, true);
-        Object.assign(stack[0], { grouping: f.grouping, density: f.density, sortKey: f.sortKey, sortDir: f.sortDir });
+        // "Keep view when grown" (the user's call 2026-09-17): the grouping and the sort you are
+        // in come with you; only the density follows the new size, because tiles want a
+        // different size when the room changes. "Per size" takes that size's whole stored view.
+        Object.assign(
+          stack[0],
+          setting("cardGrowView") === "keep"
+            ? { density: f.density }
+            : { grouping: f.grouping, density: f.density, sortKey: f.sortKey, sortDir: f.sortDir },
+        );
       }
     }
     if (!curPane) return;
@@ -1305,9 +1516,19 @@ export function initCollectionCard(opts: CardOptions) {
       drill(ctx);
     },
     reload,
+    /** Card memory: where the card is now (CARD-MEMORY.md §2). */
+    snapshot,
+    /** Card memory: build a snapshot's levels once the card's own data is ready. */
+    restore,
+    /** Card memory: hide the viewport while a restore waits for that data. */
+    hold,
+    /** How many levels are open (1 = the root). */
+    depth: () => stack.length,
     // Remove the engine's document-level listeners. The viewport/back listeners live on
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {
+      release();
+      opts.root.removeEventListener("pointerdown", onHoldDown, { capture: true });
       drag.destroy(); // a drag's document listeners would outlive the card
       unsubDragEnd();
       unregisterDrop();
@@ -1315,6 +1536,7 @@ export function initCollectionCard(opts: CardOptions) {
       closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
+      unwireKeys();
       document.removeEventListener("pointerdown", onDocDown);
     },
   };

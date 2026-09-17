@@ -87,7 +87,7 @@ const HEAD = `
 export const radioCard: CardDef = {
   id: "radio",
   title: "Radio",
-  mount(host) {
+  mount(host, mountOpts) {
     host.innerHTML = HEAD;
     const refreshBtn = host.querySelector<HTMLElement>("#radio-refresh");
 
@@ -185,6 +185,7 @@ export const radioCard: CardDef = {
       }
       return {
         title: g.name,
+        key: `genre:${g.id}`, // card memory (CARD-MEMORY.md §5)
         density: true,
         groupings: [
           {
@@ -264,10 +265,19 @@ export const radioCard: CardDef = {
     // Header state for the slot picker (the shared collection-card pattern).
     let lastHeader = { title: "Radio", atRoot: true };
     const headerSubs = new Set<(h: { title: string; atRoot: boolean }) => void>();
+    // Card memory (CARD-MEMORY.md §5): a genre level's key back into its context.
+    const resolve = (key: string): Context | null => {
+      if (!key.startsWith("genre:")) return null;
+      const g = genres.find((x) => x.id === key.slice("genre:".length));
+      return g ? genreCtx(g) : null;
+    };
     const card = initCollectionCard({
       root: host,
       storeKey: "deets.radio.view",
       rootContext,
+      resolve,
+      onReturn: mountOpts?.onReturn,
+      returnTitle: mountOpts?.returnTitle,
       onHeader: (h) => {
         lastHeader = h;
         headerSubs.forEach((cb) => cb(h));
@@ -307,9 +317,13 @@ export const radioCard: CardDef = {
           loading = false;
           refreshBtn?.classList.remove("is-busy");
           card.reload();
+          // Card memory (CARD-MEMORY.md §4): a genre key resolves only once the genres are here.
+          if (mountOpts?.memory && card.depth() === 1) card.restore(mountOpts.memory);
         });
     };
 
+    // The body waits (hidden) for that first load, so the root does not flash first.
+    if (mountOpts?.memory) card.hold();
     load();
     refreshBtn?.addEventListener("click", () => {
       radioDropCaches();
@@ -317,6 +331,7 @@ export const radioCard: CardDef = {
     });
 
     return {
+      snapshot: () => card.snapshot(),
       destroy() {
         card.destroy();
         host.innerHTML = "";

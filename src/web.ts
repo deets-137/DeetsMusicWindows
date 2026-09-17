@@ -21,6 +21,7 @@ import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
 import { searchCatalog, type Album, type Artist, type SearchResults, type SearchType } from "./search";
 import { playlistCreate, playlistAddTracks, requestOpenPlaylist } from "./playlists";
+import { requestCard } from "./layout-bus";
 import { setting, setSetting, onSettingsChange } from "./settings-store";
 import { esc } from "./collection-card";
 import { toast } from "./toast";
@@ -96,6 +97,91 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** "Keep 5": the artist's songs a genre filter never goes below. */
 const SEED_FLOOR = 5;
 const MAX_HITS = 5;
+
+// ── A web asked for from outside (the Compass, COMPASS.md §2b): no panel ──
+// The seed is found (the library first, then Apple), the web is built at the asked reach,
+// the asked genres are pressed, the songs are picked by the Settings the panel uses, the
+// playlist is made, and the caller's element flies to the Playlists card as the chip.
+export interface WebRequest {
+  kind?: SeedKind;
+  term: string;
+  /** This web's reach; absent = Settings › Web reach. Never written to the setting. */
+  reach?: 1 | 2 | 3;
+  /** Genre phrases to press, matched by prefix, case-insensitive ("r&b" presses "R&B/Soul"). */
+  genres?: string[];
+}
+/** The seed for a request: the best library match of the kind (or of any kind: artist, then
+ *  song, then album), else Apple's first answer for the kind (artist when none). */
+async function quickSeed(r: WebRequest): Promise<WebSeed | null> {
+  const needle = r.term.toLowerCase();
+  const best = <T>(list: T[], name: (x: T) => string): T | null => {
+    let top: { x: T; rank: number } | null = null;
+    for (const x of list) {
+      const rank = matchRank(name(x), needle);
+      if (rank >= 0 && (!top || rank < top.rank)) top = { x, rank };
+    }
+    return top?.x ?? null;
+  };
+  const kinds: SeedKind[] = r.kind ? [r.kind] : ["artist", "song", "album"];
+  for (const k of kinds) {
+    if (k === "artist") {
+      const lib = best(libraryArtists(), (a) => a.name);
+      if (lib) {
+        if (lib.songId) {
+          const info = await invoke<{ catalogId?: string; artwork?: Artwork } | null>("library_artist_info", { name: lib.name, songId: lib.songId, featured: false }).catch(() => null);
+          if (info?.catalogId) return { kind: "artist", artist: { name: lib.name, catalogId: info.catalogId, artwork: info.artwork ?? lib.cover } };
+        }
+        const r2 = await searchOnce(lib.name, "artists");
+        const same = r2.artists.find((a) => a.catalogId && a.name.toLowerCase() === lib.name.toLowerCase()) ?? r2.artists.find((a) => a.catalogId);
+        if (same) return { kind: "artist", artist: same };
+      }
+    } else if (k === "song") {
+      const t = best(tracks().filter((x) => x.catalogId), (x) => x.title);
+      if (t) return { kind: "song", track: t };
+    } else {
+      const lib = best(libraryAlbums(), (a) => a.title);
+      if (lib) return { kind: "album", album: { title: lib.title, artistName: lib.artistName, artwork: lib.cover, genres: lib.genres }, songId: lib.songId };
+    }
+  }
+  const k = r.kind ?? "artist";
+  const res = await searchOnce(r.term, k === "artist" ? "artists" : k === "song" ? "songs" : "albums");
+  if (k === "artist") { const a = res.artists.find((x) => x.catalogId); return a ? { kind: "artist", artist: a } : null; }
+  if (k === "song") { const t = res.songs.find((x) => x.catalogId); return t ? { kind: "song", track: t } : null; }
+  const a = res.albums.find((x) => x.catalogId);
+  return a ? { kind: "album", album: a } : null;
+}
+
+/** Make a web playlist from a request with no panel. `status` gets the step under way;
+ *  `chip` (the Compass row) flies to the Playlists card, which opens the playlist. Throws
+ *  with a plain message when nothing could be made. */
+export async function webQuick(r: WebRequest, status: (text: string) => void, chip: () => HTMLElement | null): Promise<void> {
+  status("Finding the start…");
+  const seed = await quickSeed(r);
+  if (!seed) throw new Error(`Nothing found for “${r.term}”`);
+  const wanted = r.reach ?? setting("webReach");
+  const reach = seed.kind === "album" ? Math.min(ALBUM_MAX_REACH, wanted) : wanted;
+  status(`Reading the web of ${seedName(seed)}…`);
+  const res = await invoke<WebResult>("web_build", { seed, reach, fresh: false });
+  const have = new Set(res.songs.flatMap((s) => s.track.genres));
+  const want = (r.genres ?? []).map((g) => g.trim().toLowerCase()).filter(Boolean);
+  let picked = new Set([...have].filter((g) => want.some((w) => g.toLowerCase().startsWith(w) || g.toLowerCase().includes(w))));
+  // A song or album seed picks its own genres, as the panel does (§9.1).
+  if (!picked.size && seed.kind !== "artist") picked = new Set(res.genres.filter((g) => !NOT_A_GENRE.has(g) && have.has(g)));
+  const list = pickSongs(res, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"));
+  if (!list.length) throw new Error("The web had no songs to pick");
+  const genres = picked.size <= NAME_GENRES ? [...picked].join(" & ") : "";
+  const name = `${seedName(seed)}${genres ? ` ${genres}` : ""} Web`;
+  const expireDays = setting("webTempDays"); // every new web starts on Temp, as the panel does
+  status("Making the playlist…");
+  const id = await playlistCreate(name, undefined, expireDays);
+  await playlistAddTracks(id, list);
+  diag.log("web:expiry", { arm: id, days: expireDays });
+  diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from: "compass", reach });
+  const open = () => requestOpenPlaylist(`local:${id}`, list);
+  const el = chip();
+  if (el) handOff(el, "playlists", () => Promise.resolve(list), open, list.length, true);
+  else { requestCard("playlists"); open(); }
+}
 
 /** The panel's Apple searches, by kind and text, until the app closes: the same search again
  *  (another kind and back, the panel closed and opened) costs 0 calls. A failure is forgotten. */
@@ -738,6 +824,7 @@ export function mountWeb(btn: HTMLElement): () => void {
       setStatus("Couldn't read this web. Try again");
     }
   };
+
 
   const pickSeed = (s: WebSeed) => {
     seed = s;

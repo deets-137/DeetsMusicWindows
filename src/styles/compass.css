@@ -1,0 +1,118 @@
+/* ── The Compass (docs/COMPASS.md, src/compass.ts) ────────────────────────────
+   Ctrl+Space's bar: it hangs from the title bar over the cards, in every surface. The
+   field on top, then groups of rows. It wears the menu material (the title bar panels'
+   idiom); color through theme roles, geometry through the --compass-* skin tokens. The
+   inline Settings controls reuse the Settings card's split pill (styles/settings.css). */
+
+.compass {
+  position: absolute;
+  top: 100%;
+  left: var(--panel-edge-gap);
+  right: var(--panel-edge-gap);
+  margin-top: var(--space-1);
+  max-height: var(--compass-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius); /* the CARD radius, not the dropdown's: the bar is card-wide (Glass: 12, not 10) */
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  z-index: 20;
+}
+.compass[hidden] { display: none; }
+
+/* The filter row under the field: one split pill of the library kinds with a match, the
+   shown kind pressed, each with its count. Tab cycles it. */
+.compass__chips { display: flex; padding: var(--space-3) var(--space-2) 0; }
+.compass__chips .set__split { margin-left: 0; }
+.compass__n { color: var(--subtext); font-size: var(--fs-subtext); }
+.set__half[aria-pressed="true"] .compass__n { color: inherit; }
+
+/* The field: the compass mark, the text, Esc on the right. It sticks while the rows scroll. */
+.compass__field {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--compass-field-h);
+  padding: 0 var(--space-2);
+  background: var(--menu-surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 1;
+}
+.compass__mark { display: inline-flex; width: var(--compass-icon); height: var(--compass-icon); color: var(--title); flex: none; }
+.compass__mark svg, .compass__glyph svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.compass__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--compass-field-h);
+  padding: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-text);
+}
+.compass__input::placeholder { color: var(--subtext); }
+.compass__side {
+  flex: none;
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap;
+}
+
+/* A group's name: the context menu's label idiom. */
+.compass__group {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+.compass__list { display: flex; flex-direction: column; }
+.compass__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--compass-row-h);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+/* The highlight is the keyboard's focus, drawn on the row (the field keeps the real focus):
+   the hover fill and the focus ring together, so it reads as focus and not only as hover. */
+.compass__row.is-active { background: var(--surface-hover); outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+.compass__glyph { display: inline-flex; width: var(--compass-icon); height: var(--compass-icon); color: var(--subtext); flex: none; }
+.compass__row.is-active .compass__glyph { color: var(--title); }
+.compass__text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; line-height: 1.2; }
+.compass__title, .compass__sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compass__sub { font-size: var(--fs-subtext); color: var(--subtext); }
+.compass__ctl { flex: none; margin-left: auto; }
+.compass__row.is-disabled { opacity: 0.55; cursor: default; }
+.compass__empty { padding: var(--space-3) var(--space-2); color: var(--subtext); font-size: var(--fs-subtext); }
+
+/* The title bar's button, right of the title: the compass glyph alone (the Sound button's idiom). */
+.compass__btn {
+  width: var(--compass-btn-size); height: var(--compass-btn-size);
+  margin-left: var(--space-2);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.compass__btn:hover, .compass__btn[aria-expanded="true"] { color: var(--title); }
+.compass__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.compass__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }

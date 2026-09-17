@@ -18,6 +18,7 @@ import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
+import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
 import { goToArtistItem, goToAlbumItem, requestPlaylistPane } from "./go-to";
@@ -47,6 +48,15 @@ interface AlbumGroup {
   addedRank?: number; // earliest-added track's rank
   count: number;
 }
+/** A genre of the library (a song's first genre), for the Genres view. */
+interface GenreGroup {
+  name: string;
+  songCount: number;
+  artistCount: number;
+  /** Up to 16 distinct covers, for the mosaic tile. */
+  covers: string[];
+}
+
 interface ArtistGroup {
   name: string;
   artwork?: Artwork; // representative cover until catalog hydrate gives a real photo
@@ -62,7 +72,7 @@ interface ArtistGroup {
 // compilations, while two same-named albums with different covers stay distinct. Tracks
 // with no artwork fall back to the old name+artist key. The TRUE album identity (a real
 // library/catalog album id) is a later catalog-hydrate upgrade; this is the cheap fix.
-const albumKey = (t: Track) => {
+export const albumKey = (t: Track) => {
   const name = t.albumName ?? "Unknown Album";
   const art = t.artwork?.urlTemplate;
   return art ? `${name} ${art}` : `${name} ${t.artistName ?? ""}`;
@@ -117,6 +127,31 @@ function groupArtists(tracks: Track[]): ArtistGroup[] {
   }
   return [...map.values()].map((g) => ({ ...g, albumCount: g.albums.size }));
 }
+
+/** A song's genre for grouping: its first genre, as Apple lists it. */
+const genreOf = (t: Track): string | undefined => t.genres[0];
+function groupGenres(tracks: Track[]): GenreGroup[] {
+  const map = new Map<string, GenreGroup & { artists: Set<string>; coverSet: Set<string> }>();
+  for (const t of tracks) {
+    const name = genreOf(t);
+    if (!name) continue;
+    let g = map.get(name);
+    if (!g) {
+      g = { name, songCount: 0, artistCount: 0, covers: [], artists: new Set(), coverSet: new Set() };
+      map.set(name, g);
+    }
+    g.songCount++;
+    g.artists.add(t.artistName);
+    const art = t.artwork?.urlTemplate;
+    if (art && g.coverSet.size < 16 && !g.coverSet.has(art)) {
+      g.coverSet.add(art);
+      g.covers.push(art);
+    }
+  }
+  return [...map.values()].map(({ artists, coverSet: _c, ...g }) => ({ ...g, artistCount: artists.size }));
+}
+/** The songs of one genre, in artist order (release, album, track): the tile's drag and play. */
+const genreTracks = (ts: Track[], name: string): Track[] => artistOrder(ts.filter((t) => genreOf(t) === name));
 
 // ── artwork + cells ─────────────────────────────────────────────────────────────
 // The shared cell for every collection card. `musicCell` (below) is the only export;
@@ -231,14 +266,19 @@ export function musicCell(
 const recency = (rank: number | undefined) => (rank == null ? undefined : -rank);
 // Artist, Album, Length and Genre are the column headers of a grown card (CARD-GROW.md §9a),
 // and they sit in the Sort popover too, so the dropdown always shows the sort in force.
+// Artist, Album and Genre name a COLLECTION, so on a flat song list they sort inside it too
+// (the record-shop order): by artist, then album, then track; by album, then track; by genre,
+// then artist, album, track. Read as one key, so the arrow flips the whole order at once.
+const trackPos = (t: Track) => String((t.discNumber ?? 1) * 1000 + (t.trackNumber ?? 0)).padStart(6, "0");
+const inAlbum = (t: Track) => `${t.albumName ?? ""}\u0001${trackPos(t)}`;
 const songSorts: SortSpec<Track>[] = [
   { key: "az", label: "A–Z", type: "str", get: (t) => t.title },
-  { key: "artist", label: "Artist", type: "str", get: (t) => t.artistName },
-  { key: "album", label: "Album", type: "str", get: (t) => t.albumName },
+  { key: "artist", label: "Artist", type: "str", hidden: true, get: (t) => `${t.artistName}\u0001${inAlbum(t)}` },
+  { key: "album", label: "Album", type: "str", hidden: true, get: (t) => inAlbum(t) },
   { key: "release", label: "Release Date", type: "str", get: (t) => t.releaseDate },
   { key: "added", label: "Added Date", type: "num", get: (t) => recency(t.addedRank) },
   { key: "time", label: "Length", type: "num", get: (t) => t.durationMs },
-  { key: "genre", label: "Genre", type: "str", get: (t) => t.genres[0] },
+  { key: "genre", label: "Genre", type: "str", hidden: true, get: (t) => `${t.genres[0] ?? ""}\u0001${t.artistName}\u0001${inAlbum(t)}` },
 ];
 /** This app's own play tallies (zero Apple calls): most played first under the default ↑. */
 const playsSort = (plays: () => Map<string, PlayCount> | undefined): SortSpec<Track> => ({
@@ -268,6 +308,11 @@ const artistSorts: SortSpec<ArtistGroup>[] = [
   { key: "az", label: "A–Z", type: "str", get: (a) => a.name },
   { key: "songs", label: "Song Count", type: "num", get: (a) => a.songCount },
 ];
+const genreSorts: SortSpec<GenreGroup>[] = [
+  { key: "az", label: "A–Z", type: "str", get: (g) => g.name },
+  { key: "songs", label: "Song Count", type: "num", get: (g) => g.songCount },
+  { key: "artists", label: "Artist Count", type: "num", get: (g) => g.artistCount },
+];
 
 // ── right-click menu (Play Now / Play Next / Add to Queue) ───────────────────────
 // One builder for songs and albums: a song is a 1-track list; an album is its tracks
@@ -276,7 +321,7 @@ const artistSorts: SortSpec<ArtistGroup>[] = [
 export const albumOrder = (ts: Track[]): Track[] =>
   [...ts].sort((a, b) => (a.discNumber ?? 1) - (b.discNumber ?? 1) || (a.trackNumber ?? 0) - (b.trackNumber ?? 0));
 /** An artist's songs in album order: albums oldest first, each in disc/track order (a drag). */
-const artistOrder = (ts: Track[]): Track[] =>
+export const artistOrder = (ts: Track[]): Track[] =>
   [...ts].sort(
     (a, b) =>
       (a.releaseDate ?? "").localeCompare(b.releaseDate ?? "") ||
@@ -297,6 +342,7 @@ export interface LibNav {
   artistNames: (t: Track) => string[];
   drillArtist: (name: string) => void;
   drillAlbum: (t: Track) => void;
+  drillGenre: (name: string) => void;
 }
 
 // The album's dominant credited artist (mode of each track's leading credit) — the
@@ -568,6 +614,34 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
   };
 }
 
+/** The Genres view (the user's ask, 2026-09-17): one mosaic tile per genre, a drill to its songs.
+ *  A genre is a collection the way an artist is, so it is a View, not only a sort. */
+function genresGrouping(list: () => Track[], openDetail: (g: GenreGroup) => Context): Grouping<GenreGroup> {
+  const sub = (g: GenreGroup) => `${g.songCount} song${g.songCount === 1 ? "" : "s"} · ${g.artistCount} artist${g.artistCount === 1 ? "" : "s"}`;
+  return {
+    key: "genres",
+    label: "Genres",
+    sorts: genreSorts,
+    list: () => groupGenres(list()),
+    name: (g) => g.name,
+    match: (g, q) => g.name.toLowerCase().includes(q),
+    render: (g, density, idx) => musicCell(density, idx, undefined, g.name, sub(g), { mosaic: g.covers, mosaicSeed: g.name }),
+    open: openDetail,
+    menu: (g) => trackMenu(genreTracks(list(), g.name), `genre:${g.name}`),
+    drag: (g) => ({ source: "library", kind: "artist", count: g.songCount, tracks: () => genreTracks(list(), g.name), context: `genre:${g.name}` }),
+    pick: {
+      noun: "genre",
+      id: (g) => g.name,
+      menu: (gs) => trackMenu(gs.flatMap((g) => genreTracks(list(), g.name)), "genres:picked"),
+      drag: (gs) => {
+        const ts = gs.flatMap((g) => genreTracks(list(), g.name));
+        return { source: "library", kind: "artist", count: ts.length, tracks: () => ts, context: "genres:picked" };
+      },
+      play: (gs) => void playTracks(gs.flatMap((g) => genreTracks(list(), g.name)), 0, "genres:picked").catch((e) => console.error("[library] play genres", e)),
+    },
+  };
+}
+
 /** The songs of several artists, each one in album order, artists back to back. */
 function artistsTracks(as: ArtistGroup[], list: () => Track[]): Track[] {
   const idx = creditIndex(list());
@@ -596,7 +670,7 @@ const HEAD = `
 export const libraryCard: CardDef = {
   id: "library",
   title: "Library",
-  mount(host) {
+  mount(host, mountOpts) {
     host.innerHTML = HEAD;
     const refreshBtn = host.querySelector<HTMLElement>("#library-refresh");
 
@@ -607,6 +681,7 @@ export const libraryCard: CardDef = {
       const list = () => tracks().filter((t) => albumKey(t) === a.key);
       return {
         title: a.name,
+        key: `album:${a.key}`, // card memory (CARD-MEMORY.md §5)
         headerLabel: "Album",
         // The hero: cover, name, the artist as a tappable subtitle (→ artist detail), and
         // year · songs · length. Read live so a sync that adds a track updates the line.
@@ -723,6 +798,7 @@ export const libraryCard: CardDef = {
       void loadYours();
       return {
         title: a.name,
+        key: `artist:${a.name}`, // card memory (CARD-MEMORY.md §5)
         headerLabel: "Artist",
         // Until the photo is known, a song's album cover stands in (round).
         hero: () => {
@@ -816,6 +892,34 @@ export const libraryCard: CardDef = {
         card.drill(
           albumDetail({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0 }, t),
         ),
+      drillGenre: (name) => card.drill(genreDetail({ name, songCount: 0, artistCount: 0, covers: [] })),
+    };
+
+    // ── genre detail: every song of one genre (the Genres view's drill, the Compass's row) ──
+    const genreDetail = (g: GenreGroup): Context => {
+      const list = () => genreTracks(tracks(), g.name);
+      return {
+        title: g.name,
+        key: `genre:${g.name}`, // card memory (CARD-MEMORY.md §5)
+        headerLabel: "Genre",
+        hero: () => {
+          const ts = list();
+          const live = groupGenres(ts)[0];
+          const total = formatTotal(ts.reduce((n, t) => n + (t.durationMs ?? 0), 0));
+          return {
+            cover: heroCover(undefined, g.name, live?.covers, g.name),
+            title: g.name,
+            meta: [`${ts.length} song${ts.length === 1 ? "" : "s"}`, `${live?.artistCount ?? 0} artist${live?.artistCount === 1 ? "" : "s"}`, total].filter(Boolean).join(" · "),
+          };
+        },
+        density: true,
+        groupings: [
+          songsGrouping(list, { context: `genre:${g.name}`, nav: libNav, plays: () => rootPlays }),
+          albumsGrouping(list, albumDetail, libNav),
+          artistsGrouping(list, artistDetail),
+        ],
+        defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
+      };
     };
 
     // ♥ filter (the toolbar pill): narrows the SOURCE list, so songs, albums and artists
@@ -832,6 +936,7 @@ export const libraryCard: CardDef = {
         songsGrouping(source, { context: "library", nav: libNav, plays: () => rootPlays }),
         albumsGrouping(source, albumDetail, libNav),
         artistsGrouping(source, artistDetail),
+        genresGrouping(source, genreDetail),
       ],
       defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
       filter: { label: "Favorites only", icon: ICON_HEART, active: () => favOnly, toggle: () => { favOnly = !favOnly; } },
@@ -840,10 +945,32 @@ export const libraryCard: CardDef = {
     // Header state for the slot picker: track root/title and replay it to late subscribers.
     let lastHeader = { title: "Library", atRoot: true };
     const headerSubs = new Set<(h: { title: string; atRoot: boolean }) => void>();
+    // Card memory (CARD-MEMORY.md §5): a level's key back into its context, over the live
+    // store. A name or an album that is no longer in the library resolves to null, and the
+    // restore stops at the level above it.
+    const resolve = (key: string): Context | null => {
+      const i = key.indexOf(":");
+      const kind = key.slice(0, i);
+      const name = key.slice(i + 1);
+      if (kind === "artist") {
+        return creditIndex(tracks()).tracksFor(name).length ? artistDetail({ name, albumCount: 0, songCount: 0 }) : null;
+      }
+      if (kind === "album") {
+        const t = tracks().find((x) => albumKey(x) === name);
+        return t
+          ? albumDetail({ key: name, name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0, artwork: t.artwork, releaseDate: t.releaseDate })
+          : null;
+      }
+      if (kind === "genre") return genreTracks(tracks(), name).length ? genreDetail({ name, songCount: 0, artistCount: 0, covers: [] }) : null;
+      return null;
+    };
     const card = initCollectionCard({
       root: host,
       storeKey: "deets.library.view",
       rootContext,
+      resolve,
+      onReturn: mountOpts?.onReturn,
+      returnTitle: mountOpts?.returnTitle,
       onHeader: (h) => {
         lastHeader = h;
         headerSubs.forEach((cb) => cb(h));
@@ -871,6 +998,29 @@ export const libraryCard: CardDef = {
     // Library rows come from the synced store only — a transient ingest (a catalog-only
     // playlist/search play) changes nothing this card shows, so it must not re-render.
     const unsubTracks = onTracksChange((why) => why === "library" && card.reload(), "library.reload");
+    // An artist or an album asked for from outside (the Compass, COMPASS.md §2).
+    const takeDrill = () => {
+      const d = takeLibraryDrill();
+      if (!d) return;
+      if (d.kind === "artist") libNav.drillArtist(d.name);
+      else if (d.kind === "genre") libNav.drillGenre(d.name);
+      else libNav.drillAlbum(d.track);
+    };
+    const unsubDrill = onLibraryDrill(takeDrill);
+    takeDrill(); // this card was mounted BY a request
+    // Card memory (CARD-MEMORY.md §4): a held request above wins, so `restore` refuses once
+    // that drill is open. The library store may still be loading on a cold start: the body
+    // waits (hidden) and the levels build when the first tracks land.
+    if (mountOpts?.memory && card.depth() === 1) {
+      if (!card.restore(mountOpts.memory)) {
+        card.hold();
+        const un = onTracksChange((why) => {
+          if (why !== "library") return;
+          un();
+          card.restore(mountOpts.memory);
+        }, "library.memory");
+      }
+    }
     const unsubFavs = onFavoritesChange(() => card.reload()); // the ♥ filter follows the mirror
 
     const syncUnlisten = onSyncEvent((e) => {
@@ -904,8 +1054,10 @@ export const libraryCard: CardDef = {
     // session, so remounting this card on a slot swap never re-triggers a full sync.)
 
     return {
+      snapshot: () => card.snapshot(),
       destroy() {
         unsubTracks();
+        unsubDrill();
         unsubFavs();
         unsubGrow();
         unregisterDrop();

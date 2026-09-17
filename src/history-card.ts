@@ -11,6 +11,7 @@
 // launch for exactly this (track-store.ts `loadTracks`). So no Apple call, and no copy
 // of the metadata in `play_events`.
 
+import { wireListKeys } from "./list-keys";
 import "./styles/qcard.css";
 import { invoke } from "@tauri-apps/api/core";
 import * as queue from "./queue";
@@ -30,7 +31,8 @@ import { goToArtistItem, goToAlbumItem } from "./go-to";
 import { copySongLinkItem } from "./copy-link";
 import { addToPlaylistItem } from "./playlists";
 import { rowPick, picksText } from "./row-pick";
-import type { CardDef, CardInstance } from "./cards";
+import type { CardDef, CardInstance, MountOpts } from "./cards";
+import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { rowDrag, isDragging, onDragEnd } from "./row-drag";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
@@ -94,10 +96,10 @@ const SKIP_MARK =
 export const historyCard: CardDef = {
   id: "history",
   title: "History",
-  mount: (host) => mountHistory(host),
+  mount: (host, opts) => mountHistory(host, opts),
 };
 
-function mountHistory(host: HTMLElement): CardInstance {
+function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   host.innerHTML = `<header class="panel__head"><h2 class="panel__title">History</h2></header><div class="panel__body qcard"></div>`;
   const body = host.querySelector<HTMLElement>(".panel__body")!;
 
@@ -314,13 +316,18 @@ function mountHistory(host: HTMLElement): CardInstance {
     }
   };
   document.addEventListener("keydown", onKey);
+  const unwireKeys = wireListKeys(body, { rows: "[data-idx]" }); // arrows, Enter, the Menu key (list-keys.ts)
+
+  applyScrollSnapshot(body, mountOpts?.memory); // card memory (CARD-MEMORY.md §5)
 
   return {
+    snapshot: () => scrollSnapshot(body),
     destroy() {
       unsubTracks();
       unsubLog();
       unsubSettings();
       document.removeEventListener("keydown", onKey);
+      unwireKeys();
       document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
       unsubDragEnd();

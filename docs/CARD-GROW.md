@@ -4,6 +4,8 @@
 (§13a), committed ae73226 and shipped in 0.9.0 (2026-09-17; the branch is merged into `main`).** What the build changed against the design is §13. The forks and the decisions are §12. Reviewed the same day
 for large libraries and discoverability: forks 7–10 added (a header button, the Library MVP
 layouts, no memory, and the resting layout stays almost pixel-identical, §0). The wide-card layouts (§9) are a list the user hand-designs after the MVP.
+**§14 (2026-09-17, BUILT):** a drill from a grown card swaps the target card into its place, and
+Back brings the first card back; it rests on CARD-MEMORY.md.
 
 **MVP = §3–§7 + §9a.** The MVP is judged on the Library card: a Fill of the tile view shows about
 four times the tiles; the song list gets columns and a letter rail, or a grow shows the same rows
@@ -400,6 +402,22 @@ Added after the large-library review, the same day:
 - **The opening flash.** The rows are rebuilt at the new size before the clip starts, so a fade
   OUT of the body showed the new columns inside the old box for a moment. The body now goes
   at once when the clip starts and fades in when it is open.
+- **Keep view when grown (a row since 2026-09-17).** The first build took that SIZE's whole
+  stored view on every grow and collapse, so a card you were browsing by Artists opened on
+  Songs when it grew. The row `cardGrowView` decides: **Keep** (the default, the user's taste)
+  carries the grouping and the sort across, and only the density follows the size; **Per size**
+  is the first build's behavior. Each size still stores its own view under its own key.
+- **The buttons no longer sit on the title (2026-09-17, desk report).** Two faults: the title
+  had no ellipsis and nothing reserved room for the out-of-flow buttons, so a long level name
+  ran under them ("Playlis" with the glyph on top); and `place()` ran only on hover and on a
+  resize, so a title that changed under it — "Library" → "Album", or a Search drill that opens
+  on a fallback name and relabels when the id lands — left the buttons far from the text.
+  Now: `.panel__title` truncates with an ellipsis; while the buttons show, the title takes a
+  max width that leaves exactly their room (counting only VISIBLE action squares — Playlists
+  hides New and Web while drilled, and a hidden one reports `offsetLeft` 0, which squeezed the
+  title to nothing); and a `MutationObserver` on the title text places them again. The title
+  also takes `margin-right: auto`: the header is `space-between`, so once the title had a max
+  width it drifted to the right of the Back button until the free space was put on its right.
 - **Density per size.** A grown card opens with the size's own density the first time: small
   tiles wide or tall, large tiles when it fills the window (`GROW_DENSITY`). The top-level view
   prefs (grouping, density, sort) are stored per size, `deets.library.view:wide` /
@@ -437,3 +455,230 @@ Added after the large-library review, the same day:
   the header button's next step), `grow collapse`, `grow pin`, `grow unpin`, `grow state`;
   `GET/POST /grow` on the bridge (AGENT.md §3, `agentGrow` in card-grow.ts). Not an MCP tool.
   A debug CLI build reads the dev app's token only.
+
+## 14. The drill swap (designed and BUILT 2026-09-17; §14.10 = as built)
+
+**Superseded the same day by §15**, which makes this the rule for every card, grown or not.
+What follows still describes the mechanism; the row is now `cardDrill` (§15.4).
+
+A drill from a grown card no longer collapses the grow. The card it opens takes the grown card's
+place, at the same size. Back brings the first card back, where it was. Card memory
+(CARD-MEMORY.md) keeps the first card's place across the remount.
+
+### 14.1 Terms
+
+- **Drill request:** a request that opens one thing in a card: "Go to Artist" / "Go to Album"
+  (`go-to.ts` `requestDrill`), a catalog playlist pane (`requestPlaylistPane`), a chip flight
+  (`handoff.ts` `handOff`), open a playlist (`playlists.ts` `requestOpenPlaylist`), and the
+  Compass requests when they land (`layout-bus.ts` `requestLibraryDrill`, `requestSearchTerm`).
+  A plain summon (the NP card's queue and search buttons) and a Settings row request are not
+  drill requests.
+- **Source card:** the grown card the drill came from.
+- **Target card:** the card the request opens.
+
+### 14.2 When it happens
+
+All of these are true:
+
+1. A grow is on (`grownState()`).
+2. The setting row "Grown card on drill" is **Swap** (`cardGrowDrill`, §14.7).
+3. The source is the grown card. `layout.ts` records the **last input slot**: a capture
+   `pointerdown` / `keydown` on `document` sets it to the slot whose host holds the target, or to
+   `null` for any other place in the app (the NP stage, the anchored Queue, the title bar). A
+   portaled overlay (the context menu, a dropdown panel, the hint box) does not change it, so
+   "Go to Album" in a row's right-click menu still counts as the grown card.
+4. The request does not come from the agent routes. An agent request follows §7 (collapse).
+5. The target card is not the grown card. A drill into the grown card itself (Playlists grown,
+   open a playlist) drills in place, as today.
+
+Otherwise §7 holds, with the fix in §14.5.
+
+### 14.3 The swap (fork 1B, 2B)
+
+- `setSlot(g.slot, target)` under the Keep rule. That code already keeps the span on the slot:
+  - the target is in another slot (usually a covered one): the two cards exchange slots;
+  - the target is not placed: the source card leaves the layout.
+- Both paths remount, so card memory saves the source's snapshot. No other card is moved, so the
+  cards under the grow stay as they were (2B needs no extra work).
+- The skin's swap motion (`playOut` / `playSwap`) does not run. The drill slide runs (§14.6).
+- A chip flight whose target lands in the grown slot does not fly (the chip would fly to its own
+  card): `open` runs at once and the drill slide carries the change.
+- The request reaches the target through a **held request** (§14.5), so a target that mounts
+  after the swap still takes it.
+
+### 14.4 Back
+
+- The target card keeps `returnTo = { slot, card: source }` on the level the drill opened (a
+  Search pane, or a `collection-card.ts` level).
+- **Back on that level:** the level goes with no slide, then `setSlot(slot, source)` with the
+  drill slide in the back direction. The source comes back from card memory (its open playlist
+  and scroll place). The target card is saved at the level under the one that went.
+- Back on a deeper level walks the target's own stack as usual. The last Back returns.
+- **`returnTo` is dropped** when that level is gone by another path, when a new term is typed in
+  Search, on a card pick in that slot, on a collapse, and on a surface change. After that, Back
+  is the card's plain Back.
+- The Back button's hint on a level with `returnTo` names the card: "Goes back to Playlists".
+
+### 14.5 Two fixes this needs
+
+1. **Drill intents are held until a card takes them.** Today `requestDrill` and
+   `requestPlaylistPane` call `requestCard("search")` and then emit to the Search card's
+   subscribers at once. When `setSlot` plays an out step first (a skin with `--swap-out-dur`
+   above 0), Search mounts after the emit and the intent is lost. They move to the held-request
+   shape (`heldRequest` in `layout-bus.ts`, added by the Compass work): take on mount, or through
+   the subscription when already on screen.
+2. **A summon never lands under the grow.** `lruSlot()` can return a covered slot (the grown
+   slot is the freshest, so a covered one is the least recent). The card then mounts where nobody
+   sees it, and nothing seems to happen. `lruSlot()` skips covered slots. When no slot is left
+   (Midi grown, Max filled), the grow collapses first, then the card is placed (the §7 rule).
+
+### 14.6 The motion (fork 3A)
+
+The drill slide, from one card to the other:
+
+1. Before the remount, a static copy of the grown panel's body (`cloneNode(true)`, `inert`,
+   `aria-hidden`) goes over the host, in the same box.
+2. The target mounts. Its body starts at `data-pos="right"` (into a drill) or `"left"` (Back),
+   and the copy moves the other way, on `--nav-dur` / `--nav-ease`, as a pane slide does.
+3. The header changes at the start, as a card's own drill does.
+4. The copy is removed at `transitionend` (with the usual timer net).
+
+Reduced motion: no slide, the change is at once. Animate card swaps off does not stop it: this
+is a drill slide, not a card swap (the chip flight's `ownMotion` rule).
+
+Telemetry: `dataset.frames`, `frames.begin("grow-drill", "<source>→<target>")`.
+Log: `diag.log("grow:drill", { slot, from, to, way: "in" | "back", cause })`.
+
+### 14.7 Settings row
+
+| Key | Label | Pills | Default | Why |
+|---|---|---|---|---|
+| `cardGrowDrill` | Grown card on drill | Swap / Collapse | Swap | Decided 2026-09-17: a drill keeps the size you chose. Collapse is the §7 behavior. |
+
+Settings › Window, after "Grown card on card pick". Hint: "Opens a drill from a grown card in
+its place, or collapses the grow first". Needs the store default, `agent-settings.ts`, AGENT.md,
+SETTINGS.md, the ONBOARDING.md ledger.
+
+### 14.8 Desk test
+
+1. Max, Playlists filled. Open a playlist and scroll. Right-click a song › Go to Album. Search
+   slides in, filled, with the album. No collapse.
+2. Back: the Playlists card slides back in, filled, at the same playlist and scroll place.
+3. From step 1, open the album's artist, then Back twice: artist → album → Playlists.
+4. Search is under the grow (in `c`): after step 1, `c` shows Playlists on collapse. Search not
+   placed: after step 2, the layout is what it was before step 1.
+5. Midi, Library widened over the Queue. Go to Artist from a song: Search takes the slot, wide.
+6. From step 1, type a new term in Search, then Back through its panes: the last Back stays in
+   Search (the return is dropped).
+7. The NP card's search button while a card is grown: §7 (no swap). With Search not placed,
+   the grow collapses and Search shows (fix 14.5.2).
+8. A skin with an out step, no grow: Go to Album with Search not on screen opens the album
+   (fix 14.5.1).
+9. Row on Collapse: step 1 collapses, then Search shows the album.
+10. Reduced motion on: every change is at once. `[perf] frames grow-drill` lines appear with
+    motion on; measure on `npm run dev:built`.
+
+### 14.9 Decisions (2026-09-17)
+
+| Fork | Predicted | Pick |
+|---|---|---|
+| 1. Move the grow to Search (A) or swap the cards in the slot (B) | A | **B**, once card memory keeps the place |
+| 2. After Back, the replaced card stays out (A) or returns (B) | A | **B** (comes free with 1B) |
+| 3. Drill slide (A) or the skin's swap shape (B) | A | **A** |
+
+### 14.10 As built (2026-09-17)
+
+- **The drill signal** rides the card bus: `requestCard(id, "drill")`, with `requestDrillCard`
+  as its short form (`layout-bus.ts`). The drill callers are go-to.ts (both verbs and the
+  playlist pane), handoff.ts and Home's "Open in Playlists". A plain summon is unchanged.
+- **The source test** is `lastInput` in layout.ts: a capture `pointerdown` / `keydown` records
+  the slot; a press inside a portaled overlay (`.ctx-menu`, `.lib-pop`, `.slot-picker__menu`,
+  `.flyout`, `.hint`, `.toast`, `.pop`) keeps the last answer. The press must also be newer than
+  1.5 s, so an agent's request never rides a click the user made earlier.
+- **The swap** is `drillSwap()` in layout.ts, not `setSlot`: same exchange, but no `playOut` /
+  `playSwap`, because the drill slide carries it.
+- **The return** is a callback the layout hands the card at mount (`MountOpts.onReturn`). The
+  engine arms it on the next level it opens, and the Search card on the next pane. Back pops that
+  level FIRST and then calls it, so the snapshot taken at the destroy holds the level under it.
+  The layout declines (returns false) when the grow ended or the slot changed, and Back is plain.
+- **The slide** copies the leaving card's body (`.panel__body` / `.coll-body`), keeps every
+  scroll place in the copy, and animates both bodies on `--nav-dur` / `--nav-ease`
+  (`.drill-swap__ghost`, styles.css). Reduced motion: no slide.
+- **Both §14.5 fixes are in:** go-to.ts holds its intent for 5 s (as `requestOpenPlaylist`
+  already did), and `lruSlot()` never returns a covered slot — when every other slot is covered,
+  the grow collapses first and then the card lands.
+- **The chip flight** asks `drillSwapsInPlace(target)` (the layout installs the answer through
+  the bus) and skips the flight when the target lands in the grown card's own place.
+
+## 15. Drill in place, in any card (designed and BUILT 2026-09-17)
+
+§14 gave a grown card one rule: a drill opens in the card you are looking at, and Back brings
+that card back. §15 makes it the rule for every card, grown or not, and gives the chain a
+memory. Decided 2026-09-17: fork 1 **B** (with a row), fork 2 **B** (no fixed cap), fork 3 **A**
+(one row for both cases).
+
+### 15.1 What it fixes
+
+Without a grow, a drill went to `requestCard`:
+
+- the target card already on screen → the pane opened wherever that card sat, away from your eye;
+- the target not on screen → it landed in the **least recently used** slot, which is a third card
+  that had nothing to do with the chain. That card was gone, with no way back but the picker.
+
+Two hops (an artist's playlist, then that playlist's album) cost two cards you did not choose to
+lose. Now a drill uses the slot you are reading, and Back walks the chain backwards.
+
+### 15.2 The rule
+
+- **The source slot** is the slot of the last press, as §14.2 defines it (a portaled overlay
+  keeps the answer; the press must be newer than 1.5 s, so an agent's request never rides it).
+- **The target card takes that slot** when it is not on screen. The source card leaves the
+  layout, and the way back holds its place.
+- **A card that is ALREADY on screen is left where it is** (the row `cardDrillBring`, Off by
+  default, the user's call 2026-09-17). Pulling it into your slot costs two cards moving — it
+  takes your slot, and the card in your slot takes its old one — for a card you can already see.
+  With the row On, the two exchange instead and both stay visible.
+- **A grown slot keeps its span**, exactly as §14.3 — the grow is no longer what turns the
+  feature on, only a case of it.
+- **The motion** is the drill slide (§14.6).
+- **The chip flight** does not fly when the target lands in the source's own slot (§14.3).
+
+### 15.3 The return chain
+
+- Each slot has its own stack. A drill pushes `{ card, snapshot }` — the source card and **its
+  own** snapshot, taken before the remount, not the shared per-card one (card memory holds one
+  place per card id, and a chain can hold the same card at two places).
+- **Back** on the level the drill opened pops the stack: the card comes back with that snapshot,
+  and if the stack still holds entries, the restored top level is armed to return again.
+- **No fixed cap.** A guard at 20 entries stops a runaway. About 1 KB an entry.
+- **The stack is wiped** when it empties (you are back where you started), and on a card pick in
+  that slot, a surface change, a composition change, or a collapse of a grow on that slot.
+- **The Back hint names the card** it returns to ("Goes back to Playlists").
+
+### 15.4 The settings row
+
+`cardGrowDrill` is replaced by one row for both cases (fork 3A). A stored `swap` reads as
+`inplace`, a stored `collapse` as `summon`.
+
+| Key | Label | Pills | Default | Why |
+|---|---|---|---|---|
+| `cardDrill` | Card on drill | In place / Summon | In place | A drill belongs to the card you are reading; Summon is the old behavior (a grown card collapses, and a summon lands in the least recently used slot). |
+| `cardDrillBring` | Bring a card already open | On / Off | Off | A card you can already see is not worth moving two cards for. On: it comes to the card you are reading and the two exchange. |
+
+### 15.5 Desk test
+
+1. Midi, Library at an artist. Open one of Your Playlists: the Playlists card takes the
+   Library's slot and the Library leaves. Back: the Library returns at that artist, scrolled
+   where it was.
+2. From that playlist, Go to Album: Search takes the same slot. Back, Back: playlist, then
+   artist. The other card on screen never changed.
+3. A chain that alternates cards (Search album → a playlist → Go to Album): each Back returns
+   the right card at the right place, not the root.
+4. The target is on screen elsewhere: nothing moves, and the drill opens in that card where it
+   sits (no chain). With "Bring a card already open" On, the two exchange instead, and Back
+   returns them.
+5. Pick another card in that slot, then press Back in the new card: it is a plain Back (the
+   chain was wiped).
+6. Row on Summon: everything behaves as it did before 2026-09-17.
+7. Max, a filled card: §14 still holds, and Back still returns under the span.
+8. Reduced motion: no slide.

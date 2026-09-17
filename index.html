@@ -139,6 +139,7 @@
             <span class="menu__label">Settings…</span>
           </button>
 
+
           <div class="menu__row" data-row="account">
             <span class="menu__label">Account</span>
             <span class="menu__chev" aria-hidden="true">›</span>
@@ -163,7 +164,15 @@
         </div>
       </div>
 
+      <!-- The Compass (COMPASS.md): the title bar's own button, right of the title. The glyph
+           is the hand-drawn compass the owner gave (a face, a needle, two ticks). -->
+      <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
+
       <div class="drag-region" data-tauri-drag-region></div>
+
+      <!-- The Compass (COMPASS.md): the bar Ctrl+Space drops under the title bar, in every
+           surface. src/compass.ts fills it. -->
+      <div class="compass pop app-scroll" id="compass" role="dialog" aria-label="Go anywhere" hidden></div>
 
       <div class="chrome-right">
         <!-- Sound (SOUND.md §2.3, src/sound-panel.ts): the equalizer and DeetsAdaptiveSound.

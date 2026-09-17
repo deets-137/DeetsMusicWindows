@@ -16,7 +16,9 @@ import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem, copyStationLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
-import { onDrillRequest, onPlaylistPaneRequest } from "./go-to";
+import { onDrillRequest, onPlaylistPaneRequest, takeDrillRequest, takePlaylistPaneRequest, type DrillIntent, type PlaylistPaneIntent } from "./go-to";
+import { onSearchTerm, takeSearchTerm } from "./layout-bus";
+import { wireListKeys } from "./list-keys";
 import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
 import { explicitBadge, heroCover } from "./library-card";
 import {
@@ -24,7 +26,7 @@ import {
   ALL_TYPES, type SearchType, type SearchResults, type Artist,
 } from "./search";
 import type { Track, Artwork } from "./library";
-import type { CardDef, CardInstance } from "./cards";
+import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { rowDrag } from "./row-drag";
 import { rowPick, picksText } from "./row-pick";
 import {
@@ -86,15 +88,38 @@ function savePins(pins: Pin[]): void {
   try { localStorage.setItem(PINS_KEY, JSON.stringify(pins)); } catch { /* session-only */ }
 }
 
+/** Card memory (CARD-MEMORY.md §5a): what one pane shows. Search has its own pane stack, so
+ *  it keeps its own shape rather than the engine's levels. */
+type PaneOpen =
+  | { kind: "album" | "playlist"; id: string; meta: CollectionMeta }
+  | { kind: "artist"; id: string }
+  | { kind: "related"; srcKind: "songs" | "albums"; srcId: string; rel: "artists" | "albums"; name: string };
+interface SearchSnapshot {
+  v: 1;
+  term: string;
+  scroll: number;
+  panes: { open: PaneOpen; scroll: number }[];
+}
+const isSearchSnapshot = (s: unknown): s is SearchSnapshot =>
+  !!s && typeof s === "object" && (s as SearchSnapshot).v === 1 && Array.isArray((s as SearchSnapshot).panes);
+
+/** What a pane's hero knows before its songs land (a drill-in has only a name). */
+interface CollectionMeta { title: string; artwork?: Artwork; artistName?: string; releaseDate?: string; curatorName?: string }
+
 export const searchCard: CardDef = {
   id: "search",
   title: "Search",
-  mount: (host) => mountSearch(host),
+  mount: (host, opts) => mountSearch(host, opts),
 };
 
-function mountSearch(host: HTMLElement): CardInstance {
+function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   host.innerHTML = `
-    <header class="panel__head"><h2 class="panel__title">Search</h2></header>
+    <header class="panel__head">
+      <button class="panel__back" type="button" aria-label="Back" title="Goes back one step" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+      </button>
+      <h2 class="panel__title">Search</h2>
+    </header>
     <div class="panel__body search">
       <div class="search__bar">
         <div class="search__field">
@@ -115,6 +140,8 @@ function mountSearch(host: HTMLElement): CardInstance {
       <div class="search__panes"><div class="spane" data-pos="center"><div class="spane__scroll search__root"></div></div></div>
     </div>`;
 
+  const backEl = host.querySelector<HTMLButtonElement>(".panel__back")!;
+  const titleEl = host.querySelector<HTMLElement>(".panel__title")!;
   const input = host.querySelector<HTMLInputElement>(".search__input")!;
   const clearBtn = host.querySelector<HTMLButtonElement>(".search__clear")!;
   const filterWrap = host.querySelector<HTMLElement>(".search__filter-wrap")!;
@@ -131,8 +158,30 @@ function mountSearch(host: HTMLElement): CardInstance {
   let debounceTimer: number | undefined;
   const headerCbs = new Set<(h: { title: string; atRoot: boolean }) => void>();
   const paneStack: HTMLElement[] = []; // drill panes above root
-  const notifyHeader = () =>
-    headerCbs.forEach((cb) => cb({ title: "Search", atRoot: paneStack.length === 0 }));
+  // Card memory (CARD-MEMORY.md §5a) + the drill swap (CARD-GROW.md §14.4): what each pane
+  // shows, and — on the pane a grown card's drill opened — the way back to that card.
+  const paneOpen = new WeakMap<HTMLElement, PaneOpen>();
+  const paneReturn = new WeakMap<HTMLElement, () => boolean>();
+  const RETURN_TTL_MS = 5000;
+  let pendingReturn: { cb: () => boolean; at: number } | null = mountOpts?.onReturn ? { cb: mountOpts.onReturn, at: Date.now() } : null;
+  // The card header IS the drill header (1A, 2026-09-17): the level's kind while a pane is
+  // open — the hero under it carries the name — and the base title at the root. The search
+  // field stays live under it (2A), so typing still drops the panes and searches again.
+  const paneLabel = new WeakMap<HTMLElement, string>();
+  const headerTitle = (): string => {
+    const top = paneStack[paneStack.length - 1];
+    return top ? paneLabel.get(top) ?? "Search" : "Search";
+  };
+  const syncHeader = () => {
+    const top = paneStack[paneStack.length - 1];
+    titleEl.textContent = headerTitle();
+    backEl.hidden = !top;
+    backEl.title = top && paneReturn.has(top) && mountOpts?.returnTitle ? `Goes back to ${mountOpts.returnTitle}` : "Goes back one step";
+  };
+  const notifyHeader = () => {
+    syncHeader();
+    headerCbs.forEach((cb) => cb({ title: headerTitle(), atRoot: paneStack.length === 0 }));
+  };
 
   // Track lookup for delegated handlers: keyed maps refreshed per render.
   let songsById = new Map<string, Track>();
@@ -334,6 +383,24 @@ function mountSearch(host: HTMLElement): CardInstance {
     debounceTimer = window.setTimeout(() => runSearch(term), DEBOUNCE_MS);
   };
   input.addEventListener("input", onInput);
+  // A term from outside (the Compass, COMPASS.md §2): typed into the field, the search runs.
+  const takeTerm = () => {
+    const term = takeSearchTerm();
+    if (term === null) return;
+    input.value = term;
+    onInput();
+    input.focus();
+  };
+  const unsubTerm = onSearchTerm(takeTerm);
+  // Enter / Space on a row that is a button (`role="button"`, COMPASS.md §5): what a click does.
+  // A real <button> and a text field keep their own keys.
+  host.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const t = e.target as HTMLElement | null;
+    if (!t || t.closest("input, textarea, button") || t.getAttribute("role") !== "button") return;
+    e.preventDefault();
+    t.click();
+  });
   clearBtn.addEventListener("click", () => {
     input.value = "";
     onInput(); // hides the clear button, cancels in-flight, resets to the empty state
@@ -365,27 +432,58 @@ function mountSearch(host: HTMLElement): CardInstance {
   // ── drill panes (push/pop on the shared --nav-* tokens) ──
   const pushPane = (
     title: string,
-    fill: (body: HTMLElement, setTitle: (t: string) => void) => void,
+    fill: (body: HTMLElement, setTitle: (t: string) => void) => void | Promise<unknown>,
+    open?: PaneOpen,
+    memory?: { instant?: boolean; scroll?: number },
   ) => {
     const pane = document.createElement("div");
     pane.className = "spane";
     pane.dataset.pos = "right";
-    pane.innerHTML = `
-      <div class="spane__head"><button class="spane__back" type="button" aria-label="Back" title="Goes back one step">‹</button><span class="spane__title">${esc(title)}</span></div>
-      <div class="spane__scroll"></div>`;
+    pane.innerHTML = `<div class="spane__scroll"></div>`;
+    paneLabel.set(pane, title);
     panes.appendChild(pane);
     // setTitle lets a drill-in relabel the pane once the target resolves (fallback
     // name shown while the id hop is in flight, real name swapped in on arrival).
-    const titleEl = pane.querySelector<HTMLElement>(".spane__title")!;
-    fill(pane.querySelector<HTMLElement>(".spane__scroll")!, (t) => { titleEl.textContent = t; });
+    const scroller = pane.querySelector<HTMLElement>(".spane__scroll")!;
+    const filled = fill(scroller, (t) => {
+      paneLabel.set(pane, t);
+      if (paneStack[paneStack.length - 1] === pane) syncHeader();
+    });
     const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>('.spane[data-pos="center"]');
     void pane.offsetWidth; // commit the off-screen position before sliding in
-    frames.during("slide", 450, "search-push");
+    if (memory?.instant) {
+      // A restore puts the pane straight in its place — no slide (CARD-MEMORY.md §4 rule 2).
+      pane.style.transition = "none";
+      if (below) below.style.transition = "none";
+      requestAnimationFrame(() => {
+        pane.style.transition = "";
+        if (below) below.style.transition = "";
+      });
+    } else {
+      frames.during("slide", 450, "search-push");
+    }
     pane.dataset.pos = "center";
     if (below) below.dataset.pos = "left";
     paneStack.push(pane);
-    pane.querySelector(".spane__back")!.addEventListener("click", popPane);
-    notifyHeader();
+    if (open) paneOpen.set(pane, open);
+    if (pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) paneReturn.set(pane, pendingReturn.cb);
+    pendingReturn = null;
+    if (memory?.scroll) void Promise.resolve(filled).then(() => { scroller.scrollTop = memory.scroll!; });
+    notifyHeader(); // the header takes this level's kind, and shows its Back button
+  };
+
+  /** The Back button: the pane a grown card's drill opened hands the Back to the layout, which
+   *  brings the first card back (CARD-GROW.md §14.4). Everything else is a plain pop. */
+  const backPane = () => {
+    const top = paneStack[paneStack.length - 1];
+    const ret = top ? paneReturn.get(top) : undefined;
+    if (top && ret) {
+      paneReturn.delete(top);
+      paneStack.pop(); // out of the snapshot the destroy that follows takes
+      if (ret()) return;
+      paneStack.push(top);
+    }
+    popPane();
   };
   const popPane = () => {
     const pane = paneStack.pop();
@@ -484,8 +582,8 @@ function mountSearch(host: HTMLElement): CardInstance {
   // Body fillers, split from the open* wrappers so the drill-ins can reuse them:
   // a drill opens the pane on the FALLBACK name, then fills once the id resolves.
   // What the hero knows before the tracks land: the result tile's own facts. Anything
-  // missing (a drill-in only has a name) falls back to the first track.
-  interface CollectionMeta { title: string; artwork?: Artwork; artistName?: string; releaseDate?: string; curatorName?: string }
+  // missing (a drill-in only has a name) falls back to the first track (CollectionMeta,
+  // at module scope so a pane record can hold it).
   const heroHTML = (kind: "albums" | "playlists", m: CollectionMeta, tracks: Track[]): string => {
     const t0 = tracks[0];
     const cover = heroCover(m.artwork ?? t0?.artwork, m.title);
@@ -505,7 +603,7 @@ function mountSearch(host: HTMLElement): CardInstance {
   // `preloaded`: songs a chip flight fetched already (ARTIST-VIEW.md §5) — no second fetch.
   const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[]) => {
     body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-    (preloaded ? Promise.resolve(preloaded) : collectionTracks(kind, id))
+    return (preloaded ? Promise.resolve(preloaded) : collectionTracks(kind, id))
       .then((tracks) => {
         const what = kind === "albums" ? "the album" : "the playlist";
         const actions = tracks.length
@@ -522,15 +620,20 @@ function mountSearch(host: HTMLElement): CardInstance {
       .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
   };
   // The pane header shows the kind; the hero owns the name.
-  const openCollection = (kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[]) =>
-    pushPane(kind === "albums" ? "Album" : "Playlist", (body) => fillCollection(body, kind, id, meta, preloaded));
+  const openCollection = (kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[], memory?: { instant?: boolean; scroll?: number }) =>
+    pushPane(
+      kind === "albums" ? "Album" : "Playlist",
+      (body) => fillCollection(body, kind, id, meta, preloaded),
+      { kind: kind === "albums" ? "album" : "playlist", id, meta },
+      memory,
+    );
 
   // The artist pane (ARTIST-VIEW.md): a round hero, Albums, Featured Playlists, Your Playlists,
   // Top Songs. Your Playlists lands after the pane (zero Apple calls; "Check N more" fetches
   // each unopened Apple playlist once).
   const fillArtist = (body: HTMLElement, id: string) => {
       body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-      artistDetail(id)
+      return artistDetail(id)
         .then((d) => {
           let yours: YourPlaylists | undefined;
           let checking: CheckProgress | null = null;
@@ -605,7 +708,8 @@ function mountSearch(host: HTMLElement): CardInstance {
         .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
   };
   // The pane header shows the kind; the hero owns the name (as album panes do).
-  const openArtist = (id: string, _name: string) => pushPane("Artist", (body) => fillArtist(body, id));
+  const openArtist = (id: string, _name: string, memory?: { instant?: boolean; scroll?: number }) =>
+    pushPane("Artist", (body) => fillArtist(body, id), { kind: "artist", id }, memory);
 
   // ── drill-ins ("Go to Artist" / "Go to Album") ──
   // Open the target pane immediately on the fallback name (the source row's own
@@ -618,18 +722,24 @@ function mountSearch(host: HTMLElement): CardInstance {
     rel: "artists" | "albums",
     fallbackName: string,
     fill: (body: HTMLElement, targetId: string, resolvedName: string) => void,
+    memory?: { instant?: boolean; scroll?: number },
   ) =>
-    pushPane(fallbackName, (body, setTitle) => {
-      body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-      catalogRelated(kind, id, rel)
-        .then((ref) => {
-          if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
-          // The pane header reads the kind; the hero carries the name.
-          setTitle(rel === "albums" ? "Album" : "Artist");
-          fill(body, ref.id, ref.name || fallbackName);
-        })
-        .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
-    });
+    pushPane(
+      fallbackName,
+      (body, setTitle) => {
+        body.innerHTML = `<p class="search__prompt">Loading…</p>`;
+        return catalogRelated(kind, id, rel)
+          .then((ref) => {
+            if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
+            // The pane header reads the kind; the hero carries the name.
+            setTitle(rel === "albums" ? "Album" : "Artist");
+            fill(body, ref.id, ref.name || fallbackName);
+          })
+          .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
+      },
+      { kind: "related", srcKind: kind, srcId: id, rel, name: fallbackName },
+      memory,
+    );
   const goToArtist = (kind: "songs" | "albums", id: string, name: string) =>
     drillRelated(kind, id, "artists", name, fillArtist);
   const goToAlbum = (songId: string, name: string) =>
@@ -638,14 +748,19 @@ function mountSearch(host: HTMLElement): CardInstance {
   // Remote drill-ins: other cards' "Go to Artist/Album" summon this card (go-to.ts)
   // and emit an intent here. Same machinery as an in-card drill — a pane pushes on top
   // of whatever the search card is currently showing.
-  const unsubDrill = onDrillRequest((intent) => {
+  let tookRequest = false; // a held request beats card memory (CARD-MEMORY.md §4 rule 1)
+  const runDrill = (intent: DrillIntent) => {
+    tookRequest = true;
     if (intent.rel === "artists") goToArtist(intent.srcKind, intent.srcId, intent.name);
     else goToAlbum(intent.srcId, intent.name);
-  });
+  };
+  const unsubDrill = onDrillRequest(runDrill);
   // A Featured Playlists tile on the Library artist view opens its playlist here (ARTIST-VIEW.md §5).
-  const unsubPlaylistPane = onPlaylistPaneRequest((i) =>
-    openCollection("playlists", i.id, { title: i.name, artwork: i.artwork, curatorName: i.curatorName }, i.tracks),
-  );
+  const runPane = (i: PlaylistPaneIntent) => {
+    tookRequest = true;
+    openCollection("playlists", i.id, { title: i.name, artwork: i.artwork, curatorName: i.curatorName }, i.tracks);
+  };
+  const unsubPlaylistPane = onPlaylistPaneRequest(runPane);
 
   // ── menus ──
   const enqueue = (tracks: Track[], how: "now" | "next" | "later", context: string) => {
@@ -854,11 +969,74 @@ function mountSearch(host: HTMLElement): CardInstance {
     },
   });
 
+  backEl.addEventListener("click", backPane);
+
   renderEmpty();
   notifyHeader();
+  takeTerm(); // this card was mounted BY a term request
+  // Arrows and the Menu key over the rows and tiles; Escape pops a drill pane (list-keys.ts).
+  // Enter / Space are the rows' own (above).
+  const unwireKeys = wireListKeys(panes, {
+    rows: "[role='button']",
+    activate: false,
+    back: () => {
+      if (!paneStack.length) return false;
+      popPane();
+      return true;
+    },
+  });
+  // …or BY a drill (CARD-GROW.md §14.5): the intent waits in go-to.ts until this card exists.
+  const heldDrill = takeDrillRequest();
+  if (heldDrill) runDrill(heldDrill);
+  const heldPane = takePlaylistPaneRequest();
+  if (heldPane) runPane(heldPane);
+
+  /** Card memory (CARD-MEMORY.md §5a): the term, the results place and every pane. */
+  const snapshot = (): SearchSnapshot => ({
+    v: 1,
+    term: input.value,
+    scroll: root.scrollTop,
+    panes: paneStack
+      .map((p) => {
+        const open = paneOpen.get(p);
+        return open ? { open, scroll: p.querySelector<HTMLElement>(".spane__scroll")?.scrollTop ?? 0 } : null;
+      })
+      .filter(Boolean) as { open: PaneOpen; scroll: number }[],
+  });
+
+  const openFrom = (o: PaneOpen, scroll: number) => {
+    const memory = { instant: true, scroll };
+    if (o.kind === "artist") openArtist(o.id, "Artist", memory);
+    else if (o.kind === "related") drillRelated(o.srcKind, o.srcId, o.rel, o.name, o.rel === "artists" ? fillArtist : (body, albumId, resolved) => fillCollection(body, "albums", albumId, { title: resolved }), memory);
+    else openCollection(o.kind === "album" ? "albums" : "playlists", o.id, o.meta, undefined, memory);
+  };
+
+  const restore = (s: unknown) => {
+    if (!isSearchSnapshot(s) || tookRequest || paneStack.length) return;
+    // The way back belongs to the TOP pane a restore opens, not to the first one pushed.
+    const ret = pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS ? pendingReturn.cb : null;
+    pendingReturn = null;
+    if (s.term) {
+      input.value = s.term;
+      clearBtn.hidden = false;
+      // The session cache answers a term searched already, so this costs no Apple call then.
+      if (s.term.trim().length >= MIN_CHARS) runSearch(s.term.trim());
+    }
+    if (s.scroll) root.scrollTop = s.scroll;
+    s.panes.forEach((p) => openFrom(p.open, p.scroll));
+    const top = paneStack[paneStack.length - 1];
+    if (ret && top) {
+      paneReturn.set(top, ret);
+      syncHeader();
+    }
+  };
+  restore(mountOpts?.memory);
 
   return {
+    snapshot,
     destroy() {
+      unsubTerm();
+      unwireKeys();
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
