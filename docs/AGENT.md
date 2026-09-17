@@ -377,6 +377,8 @@ A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass i
   the same day (1A agents only, 2A one `--agent-motion` scale, 3A no label), BUILT the same day:
   [UX-COVERUPS.md §6b](UX-COVERUPS.md).
 - Installer PATH entry (NSIS hook).
+- **Connect AI apps for the user** — `deetsmusic mcp install` + a Settings panel over one shared
+  crate: [MCP-INSTALL.md](MCP-INSTALL.md) (designed 2026-09-16, forks open).
 - A small-model test of `mcp --small` (LM Studio / Ollama) with the AGENT-SETUP §3 phrases.
 - Durable history (`play_events` + the track store) as a second history source.
 - `artist:` ids for `play` (artist top songs) — search returns them, play doesn't take them yet.

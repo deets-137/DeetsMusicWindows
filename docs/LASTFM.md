@@ -162,7 +162,11 @@ disconnect (warn), session refused (warn, sticky, Connect).
 **Result 2026-09-16 (dev app):** steps 1–6 passed (connect in 10 s, now playing on Last.fm, `play 235` and
 `play 236` queued and sent, 0 ignored). Steps 7–11 were not run separately.
 
-**OPEN — re-test the connect in the first installed release that carries Last.fm.** The user
+**Result 2026-09-16 (installed 0.8.0):** connected in 7 s, no browser prompt, no `link back
+arrived` line. The scheme is registered, so Last.fm ignores `cb` with a desktop token. Decided:
+option C, `LINK_BACK = false` next release (HANDOFF.md › Next up). Not built yet.
+
+**Was OPEN — re-test the connect in the first installed release that carries Last.fm.** The user
 does it then (decided 2026-09-16); it is also a box in RELEASE.md §1a. The dev test left one
 question: the log had no `lastfm: link back arrived` line, so the 3 s checks finished the connect,
 not the `deetsmusic-dev://lastfm` link. The installed app registers `deetsmusic://` through its

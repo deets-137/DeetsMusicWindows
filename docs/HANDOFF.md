@@ -112,11 +112,29 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-16 — Listening rooms: designed, not built.** Friends join a room with an 8-character
+code (`K7QM-4XHT`) and every app follows one queue and clock; each app plays through its own
+MusicKit. A new Cloudflare worker (working name DeetsRooms) holds the room in a Durable Object;
+the room ends when the host leaves. Full design, decisions and the defaults still open to the
+user: **[ROOMS.md](ROOMS.md)** (§14 defaults, §15 build order). **First step when the user says
+go:** the Apple terms check in §12. After the app feature works, DeetsRadio on deets.solutions
+moves onto the new worker (§13).
+
 **2026-09-16 — 0.8.0 is live on the `deetsmusic` channel** (published 17:26 PDT; `main` =
 `wakin-up` at `209c007`). It ships Sound, Last.fm, the playlist web, Stream quality, Fancy Glass
 and the library reads for AI apps ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.8.0). Published at the
 user's request without the hand install test of RELEASE.md §0 step 3: install it from
 `installers/` and check it early.
+
+**2026-09-16 — Last.fm link back: DECIDED C, not built.** The installed 0.8.0 connect test
+(LASTFM.md §9) passed: connected in 7 s (log 17:52:38 → 17:52:45). The browser did not return to
+DeetsMusic, and the log has no `lastfm: link back arrived` line and no "ignored" line. The
+`deetsmusic://` scheme is registered correctly (checked in the real HKCU through WMI). Cause:
+Last.fm's desktop auth (our token from `auth.getToken`) ignores `cb`; only the web auth (no token)
+redirects. **To build next release:** set `LINK_BACK = false` in `src-tauri/src/lastfm.rs`; the
+3 s checks already finish the connect, and the user returns to the app by hand. Rejected: A (the
+app brings its window forward on "connected"; Windows can block the focus) and B (switch to web
+auth, where the link is the only way to finish). Then update LASTFM.md §4 step 4.
 
 **2026-09-16 — Sound: the user lives with it after it goes live, then reports back.** The Sound
 panel (EQ + DeetsAdaptiveSound, phases 1–5) is built and committed on `wakin-up`

@@ -217,7 +217,7 @@ process while capturing its own tree). Each is a rule now.
 row. The crate keeps `Capture::start_process`, `mixer.rs`, and the probe subcommands.
 
 **v2, to trust it:** run the app with `V2_PER_PROCESS = true`, connect with the setting on
-`app`, and read `airplay.log`'s "capture heard … not silent" lines (every 10 s) against what
+`app`, and read `airplay.log`'s "capture heard sound / silence / nothing" lines (each is a 10 s window, logged when the verdict changes and every 10 min while it holds) against what
 the HomePod plays; watch a fresh WebView2 process tree after a MusicKit reload (the child pid
 is looked up at each connect, so a respawned WebView2 is found on the next connect, not
 mid-session); then bring the §7 row back.

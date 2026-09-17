@@ -44,6 +44,15 @@ front-end, Rust back-end).
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
   led by the Deets and Happy sprites (designed, not built).
+- `docs/ROOMS.md` — listening rooms: a title bar item, an 8-character code, a new DeetsRooms
+  worker whose Durable Object keeps the room clock, guest controls, follower mode; then
+  DeetsRadio on deets.solutions moves onto that worker (designed 2026-09-16, not built).
+- `docs/MCP-INSTALL.md` — connect AI apps: a shared `mcp_install` crate behind `deetsmusic mcp
+  install` and a Settings panel; client detection, config table, the Claude Desktop MSIX path trap
+  (designed 2026-09-16, forks open, not built).
+- `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
+  the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules, and wide-card
+  layout ideas per card (designed 2026-09-16, forks decided, not built).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

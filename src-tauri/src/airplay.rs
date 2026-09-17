@@ -31,8 +31,10 @@ use crate::settings::{AirplayCapture, AirplaySpeaker, Settings};
 struct Live {
     session: Session,
     capture: Capture,
-    /// Last capture stats logged (frames in, frames not silent), for the diagnostic line.
+    /// Capture stats at the start of the current 10 s window (frames in, frames not silent).
     heard_logged: (Instant, u64, u64),
+    /// What the last diagnostic line said ("sound", "silence", "nothing") and when.
+    heard_said: Option<(&'static str, Instant)>,
     speaker: AirplaySpeaker,
     /// Auto delay retunes once, from the first seconds of round-trip data.
     retuned: bool,
@@ -223,6 +225,7 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
         session,
         capture,
         heard_logged: (Instant::now(), 0, 0),
+        heard_said: None,
         speaker,
         retuned: rtt_p95_ms.is_some(),
         meta: Metadata::default(),
@@ -500,12 +503,23 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             }
         }
 
-        // Diagnostic: what the capture heard since the last line. "loud=0" while
-        // the player says playing means the tap is not seeing this app's sound.
+        // Diagnostic: what the capture heard, judged per 10 s window. "silence" while
+        // the player says playing means the tap is not seeing this app's sound. Logged
+        // when the verdict changes, and every 10 min while it holds (was every 10 s:
+        // 59% of the log, 2026-09-16).
         if let Some(l) = state.live.lock().unwrap().as_mut() {
             if l.heard_logged.0.elapsed() >= Duration::from_secs(10) {
                 let (all, loud) = l.capture.stats();
-                log(&format!("capture heard {} frames, {} not silent, in the last {} s", all - l.heard_logged.1, loud - l.heard_logged.2, l.heard_logged.0.elapsed().as_secs()));
+                let (d_all, d_loud) = (all - l.heard_logged.1, loud - l.heard_logged.2);
+                let verdict = if d_all == 0 { "nothing" } else if d_loud == 0 { "silence" } else { "sound" };
+                let due = match l.heard_said {
+                    Some((said, at)) => said != verdict || at.elapsed() >= Duration::from_secs(600),
+                    None => true,
+                };
+                if due {
+                    log(&format!("capture heard {verdict}: {d_all} frames, {d_loud} not silent, in the last {} s", l.heard_logged.0.elapsed().as_secs()));
+                    l.heard_said = Some((verdict, Instant::now()));
+                }
                 l.heard_logged = (Instant::now(), all, loud);
             }
         }
