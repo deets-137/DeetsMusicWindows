@@ -118,6 +118,9 @@ panel (EQ + DeetsAdaptiveSound, phases 1–5) is built and committed on `wakin-u
 listening, gets a feel for each part (Equalizer, Match loudness, Fuller at low volume, Headphone
 crossfeed, Compare) and reports back. Their report decides what stays, what changes and what goes
 (SOUND.md §7 step 4). Do not start new Sound features until that report exists.
+**First thing next build session:** grep the dev and installed logs for `sound:startLost` and
+`sound:clockSlip` (the command is in SOUND.md §10.5). They watch for the lost song start that one
+probe run showed on 2026-09-16.
 
 **2026-09-15 — the listening-loop review: the transport pass is next.** A review of the daily
 listening loop (repeat, shuffle, playing a whole album, the queue's end, the keyboard) found

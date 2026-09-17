@@ -235,7 +235,9 @@ work, and the usual install has no DeetsAirplay at all.
 `%LOCALAPPDATA%\Deets\airplay-claims.tsv` inside `session::connect`, and drops it in the
 session's `Drop`. A claim counts only while a process with that pid *and* that exe name is
 alive, so a crash needs no cleanup. **This app adopts it by bumping the crate `rev`** (done
-2026-09-15: pinned at `d735d14`, crate 0.3.0). The one line in `airplay.rs` is
+2026-09-15: pinned at `d735d14`, crate 0.3.0; 2026-09-16: bumped to `4989dfb`, same crate 0.3.0,
+which adds `resample.rs` + `fidelity.rs` and makes the capture's fallback sinc + TPDF dither
+instead of linear — AUDIO-QUALITY.md). The one line in `airplay.rs` is
 `session.describe_send(send)` after `connect`: `Send::All` for the default-output capture
 this version ships, `Send::Apps([this exe])` for the per-process path. Without it the claim
 reads `Unknown` and the other side can say who holds the speaker but not whether our audio

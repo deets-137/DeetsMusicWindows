@@ -10,6 +10,7 @@ import { bandBiquads, kWeighting, rbj, type Band, type Biquad } from "./sound-ds
 
 // ── AudioWorkletGlobalScope (not in the DOM lib) ────────────────────────────────
 declare const sampleRate: number;
+declare const currentFrame: number;
 declare function registerProcessor(name: string, ctor: unknown): void;
 declare class AudioWorkletProcessor {
   readonly port: MessagePort;
@@ -55,6 +56,10 @@ class ElementProcessor extends AudioWorkletProcessor {
   private acc = 0;
   private count = 0;
   private peak = 0;
+  // The start watch (sound.ts `watchStart`, SOUND.md §10.5): the first block this node ever runs
+  // ("alive"), and the first non-silent input sample after a play ("first").
+  private aliveSent = false;
+  private watching = 0;
 
   constructor(options?: { processorOptions?: { gainDb?: number; meter?: boolean } }) {
     super(options);
@@ -67,6 +72,8 @@ class ElementProcessor extends AudioWorkletProcessor {
         this.target = dbToGain(m.db);
         const ramp = Math.max(1, Math.round(((m.rampMs ?? 50) / 1000) * sampleRate));
         this.step = (this.target - this.gain) / ramp;
+      } else if (m.type === "watch") {
+        this.watching = m.id;
       } else if (m.type === "meter") {
         this.metering = !!m.on;
         this.acc = this.count = this.peak = 0;
@@ -79,6 +86,19 @@ class ElementProcessor extends AudioWorkletProcessor {
     const out = outputs[0];
     const n = out[0].length;
     const inL = input[0], inR = input[1] ?? input[0];
+    if (!this.aliveSent) {
+      this.aliveSent = true;
+      this.port.postMessage({ type: "alive", frame: currentFrame });
+    }
+    if (this.watching && inL) {
+      for (let i = 0; i < n; i++) {
+        if (Math.abs(inL[i]) > 1e-4 || (inR && Math.abs(inR[i]) > 1e-4)) {
+          this.port.postMessage({ type: "first", id: this.watching, frame: currentFrame + i });
+          this.watching = 0;
+          break;
+        }
+      }
+    }
     for (let i = 0; i < n; i++) {
       const l = inL ? inL[i] : 0;
       const r = inR ? inR[i] : 0;

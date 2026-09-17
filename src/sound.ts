@@ -16,6 +16,7 @@ import type { BusConfig } from "./sound-worklet";
 import { bandBiquads, chainDb, integratedLufs, logFreqs, lowVolumeShelves, kWeighting, type Band } from "./sound-dsp";
 import { getVolume, getDuck, onVolumeChange, isPlayingNow, getAppliedGain } from "./player";
 import * as diag from "./diag";
+import * as perf from "./perf";
 import { toast } from "./toast";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
 import { BUILTIN, type EqPreset } from "./sound-presets";
@@ -140,6 +141,102 @@ async function resume(why: string): Promise<void> {
   }
 }
 
+// ── The start watch (SOUND.md §10.5) ────────────────────────────────────────────────
+// The first probe run on 2026-09-16 lost its first tone through a freshly routed element, and
+// the cause is not proven. Each play of a routed element is timed: from the play() call to
+// the first non-silent sample the element node receives, against how far the element's own
+// clock moved meanwhile. A start that looks lost writes `sound:startLost` to the log file
+// (release too); in dev every start writes one `[perf] sound start {…}` line.
+
+interface NodeInfo {
+  createdAt: number;
+  aliveAt?: number;
+}
+const nodeInfo = new WeakMap<AudioWorkletNode, NodeInfo>();
+interface StartWatch {
+  id: number;
+  t0: number;
+  c0: number;
+  fresh: boolean;
+  ctxState: string;
+  timer: number;
+}
+const startWatches = new WeakMap<HTMLMediaElement, StartWatch>();
+let watchSeq = 0;
+/** No sound this long after a play of an element that is still playing: reported as silent. */
+const START_SILENT_MS = 5000;
+/** The element's clock moved this far before sound reached a freshly routed node / a routed one. */
+const START_FRESH_GAP_MS = 750;
+const START_GAP_MS = 2500;
+/** A new element node that took this long to run its first block. */
+const START_ALIVE_MS = 150;
+
+function watchStart(el: HTMLMediaElement, fresh: boolean): void {
+  const r = routed.get(el);
+  if (!r) return;
+  const prev = startWatches.get(el);
+  if (prev) window.clearTimeout(prev.timer);
+  // A play after the end starts again from 0 (a replay measured −1294 ms from the old end).
+  const c0 = el.ended ? 0 : el.currentTime;
+  const w: StartWatch = { id: ++watchSeq, t0: performance.now(), c0, fresh, ctxState: ctx?.state ?? "none", timer: 0 };
+  w.timer = window.setTimeout(() => {
+    if (startWatches.get(el) === w && !el.paused) reportStart(el, r.node, w, false);
+  }, START_SILENT_MS);
+  startWatches.set(el, w);
+  r.node.port.postMessage({ type: "watch", id: w.id });
+}
+
+function reportStart(el: HTMLMediaElement, node: AudioWorkletNode, w: StartWatch, heard: boolean): void {
+  window.clearTimeout(w.timer);
+  startWatches.delete(el);
+  const info = nodeInfo.get(node);
+  const data = {
+    heard,
+    fresh: w.fresh,
+    mediaMs: Math.round((el.currentTime - w.c0) * 1000), // the element's clock moved this far before sound arrived
+    wallMs: Math.round(performance.now() - w.t0),
+    aliveMs: w.fresh && info?.aliveAt !== undefined ? Math.round(info.aliveAt - info.createdAt) : null,
+    ctx: w.ctxState,
+    src: el.src.startsWith("blob:") ? "blob" : "stream",
+  };
+  perf.event("sound start", data);
+  // A fresh route or a new node is where the loss was seen; a routed element's song may simply
+  // open with silence, so it needs a longer gap before it counts.
+  // Songs often open with up to half a second of silence; the probe lost a whole 3 s tone.
+  const lost = !heard || (w.fresh && data.mediaMs > START_FRESH_GAP_MS) || data.mediaMs > START_GAP_MS || (data.aliveMs ?? 0) > START_ALIVE_MS;
+  if (lost) diag.warn("sound:startLost", data);
+}
+
+// ── The clock watch: the audio clock against the wall clock while routed audio plays ───
+// Chromium's `playoutStats` (dropout counts) is not in this WebView (Edge 153, 2026-09-16).
+// Instead, every CLOCK_EVERY_MS the output timestamp's context time and performance time are
+// compared; an output that stalls or drops falls behind the wall clock by the lost time.
+const CLOCK_EVERY_MS = 5000;
+const CLOCK_SLIP_MS = 20;
+let clockTimer = 0;
+let clockLast: { ctxMs: number; perfMs: number } | null = null;
+function watchClock(): void {
+  if (clockTimer) return;
+  clockTimer = window.setInterval(() => {
+    if (!ctx || ctx.state !== "running" || !isPlayingNow()) {
+      clockLast = null;
+      return;
+    }
+    const ts = ctx.getOutputTimestamp();
+    if (ts.contextTime === undefined || ts.performanceTime === undefined) return;
+    const now = { ctxMs: ts.contextTime * 1000, perfMs: ts.performanceTime };
+    if (clockLast) {
+      const slip = now.perfMs - clockLast.perfMs - (now.ctxMs - clockLast.ctxMs);
+      if (slip > CLOCK_SLIP_MS) {
+        const data = { slipMs: Math.round(slip), overMs: Math.round(now.perfMs - clockLast.perfMs), routed: routedCount };
+        diag.warn("sound:clockSlip", data);
+        perf.event("sound clockSlip", data);
+      }
+    }
+    clockLast = now;
+  }, CLOCK_EVERY_MS);
+}
+
 function route(el: HTMLMediaElement): void {
   if (!ctx || !bus || routed.has(el)) return;
   try {
@@ -150,12 +247,21 @@ function route(el: HTMLMediaElement): void {
       outputChannelCount: [2],
       processorOptions: { meter: config.match, gainDb: matchDb },
     });
+    const info: NodeInfo = { createdAt: performance.now() };
+    nodeInfo.set(node, info);
     node.port.onmessage = (e) => {
-      if (e.data?.type === "meter") meterSubs.forEach((cb) => cb(e.data.ms, e.data.peak));
+      const m = e.data;
+      if (m?.type === "meter") meterSubs.forEach((cb) => cb(m.ms, m.peak));
+      else if (m?.type === "alive") info.aliveAt = performance.now();
+      else if (m?.type === "first") {
+        const w = startWatches.get(el);
+        if (w && w.id === m.id) reportStart(el, node, w, true);
+      }
     };
     elementNodes.push(node);
     source.connect(node).connect(bus);
     if (pre) node.connect(pre);
+    watchClock();
     routed.set(el, { source, node });
     routedCount++;
     diag.log("sound:route", { routed: routedCount, state: ctx.state });
@@ -174,11 +280,20 @@ function installPlayHook(): void {
   proto.play = function (this: HTMLMediaElement, ...args: []) {
     if (this instanceof HTMLAudioElement && !this.dataset.soundSkip) {
       seen.add(this);
-      if (routed.has(this)) void resume("play");
-      else if (wanted() || inspecting) {
-        const el = this;
-        if (ctx && bus) route(el);
-        else void ensureContext().then(() => route(el), () => {});
+      const el = this;
+      if (routed.has(el)) {
+        void resume("play");
+        watchStart(el, false);
+      } else if (wanted() || inspecting) {
+        if (ctx && bus) {
+          route(el);
+          watchStart(el, true);
+        } else {
+          void ensureContext().then(() => {
+            route(el);
+            watchStart(el, true);
+          }, () => {});
+        }
       }
     }
     return original.apply(this, args);

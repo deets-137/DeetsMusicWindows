@@ -38,6 +38,7 @@ bench runs at the same time (the release build and the analysis load the CPU), `
 1. ~~Does MusicKit lower the bitrate on its own?~~ Once, at player start (§4.1).
 2. ~~How far is the engine from the ceiling?~~ At it (§4.2).
 3. ~~How much does Chromium's resample cost locally?~~ −3.5 dB and ~−73 dBc spurs at 20 kHz (§4.3). Re-measure with the device at 44.1 kHz.
+4. ~~Does routing through the Sound graph cost quality?~~ No: a flat graph measures the same (§4.3a).
 4. ~~Can DRM audio go through Web Audio?~~ Yes (§4.4).
 
 ## 4. Results
@@ -93,6 +94,29 @@ also sits in front of the AirPlay capture (the `E` / `S+D` rows inherit it). Aud
 content up there is quiet in music and most adult hearing stops near 16–17 kHz. The one way to
 remove it: set the Windows output format to 44.1 kHz (a whole-PC setting; 48 kHz sources then get
 resampled instead). Not yet re-measured at 44.1 kHz.
+
+### 4.3a The same, through the Sound graph with every effect off (SOUND.md phase 0, 2026-09-16)
+Same method as §4.3, with the Sound panel open and both Sound switches off: the `<audio>` element
+was routed into the graph (`createMediaElementSource` → element worklet → bus worklet in
+passthrough → destination). `__sound.status()` during the run: 2 elements routed, bus `enabled: false`.
+
+| Tone | Level | THD+N | Worst spur | §4.3, no graph |
+|---|---|---|---|---|
+| 1 kHz −1 dBFS | 0.00 dB | −105.4 dB | −109.6 dBc | 0.00 / −105.3 / −109.6 |
+| 15 kHz −6 dBFS | 0.00 dB | −74.9 dB | −78.3 dBc | 0.00 / −74.5 / −77.9 |
+| 19 kHz −6 dBFS | −0.16 dB | −71.9 dB | −74.7 dBc | −0.16 / −70.1 / −73.3 |
+| 20 kHz −6 dBFS | −3.49 dB | −71.2 dB | −74.1 dBc | −3.49 / −69.2 / −72.5 |
+| 19 + 20 kHz IMD | −0.16 / −3.49 dB | −70.0 dB | IMD −138.8 dBc | — |
+
+**Reading.** The routed, flat graph measures the same as no graph: level identical to 0.01 dB, noise
+and spurs within about 2 dB (run-to-run spread). Routing costs no quality; the only loss on the
+local path is still Chromium's resample above 15 kHz. **Phase 0 passes.**
+
+**The first run failed, and why is not proven.** The first of two runs analysed every tone one
+slot late (the 20 kHz row empty, the last test "no onset"): the first tone was most likely not in
+the recording, so the onset was taken from a later tone. Both runs logged one loopback
+discontinuity. The second run, the same steps, was clean. Worth watching in the desk test: a
+song's first seconds cut off on the first play after an effect is turned on.
 
 ### 4.4 DRM audio through Web Audio (2026-09-16)
 Test: a `play()` hook routed MusicKit's element into `createMediaElementSource` → `AnalyserNode`

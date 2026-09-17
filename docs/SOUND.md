@@ -498,6 +498,8 @@ Web Audio graph and the bus worklet (EQ, limiter) the whole time it plays. The �
 (`heaviness-sample.ps1`, on against off) is still to be run.
 
 ### 10.4 Desk test (needs a runner restart: Rust changed)
+**Status (user, 2026-09-16):** steps 1–3 PASS on the desk. Steps 4–10 are tested when the release is
+live (§11). Phase 0 (a flat graph measures like no graph) PASSES: AUDIO-QUALITY §4.3a.
 1. Launch. The log has `migration: v7 added the loudness table` (once) and
    `audio-out: <your output> (<kind>)`.
 2. Sound › Equalizer › How the equalizer decides: *Output: <name>; Windows reports <kind>.*
@@ -515,6 +517,39 @@ Web Audio graph and the bus worklet (EQ, limiter) the whole time it plays. The �
 9. Play an album from the Library card (not shuffled) with two songs measured: *Album gain: … (2 of N
    measured)*. Shuffle on: the song's own line.
 10. Forget: the count in the fold goes to 0; the log has `loudness: forgot N`.
+
+### 10.5 Watching for a lost start (built 2026-09-16; check it next build session)
+**Why.** The first of two flat-route probe runs (AUDIO-QUALITY §4.3a) lost its first tone through a
+freshly routed element; the second run was clean. The cause is not proven. Two watchers now run
+whenever audio is routed, so a real listen can catch it.
+
+**1. The start watch** (`sound.ts` `watchStart`, the element worklet's `watch` / `alive` / `first`).
+At each `play()` of a routed element: the play time and the element's clock. The node reports its
+first block ever (`alive`) and the first input sample above −80 dBFS after the play (`first`).
+- Dev: every start writes `[perf] sound start {heard, fresh, mediaMs, wallMs, aliveMs, ctx, src}`.
+  `fresh` = routed by this play; `mediaMs` = how far the element's clock moved before sound reached
+  the graph (a song's own opening silence counts too); `aliveMs` = a new node's time to its first block.
+- Release and dev: `sound:startLost` (WARN, to the log file) when no sound arrives in 5 s while
+  playing, or a fresh route waited over 750 ms, or any start over 2.5 s, or a new node took over 150 ms.
+
+**2. The clock watch** (`watchClock`). Chromium's dropout counter (`AudioContext.playoutStats`) is not
+in this WebView (Edge 153). Every 5 s while routed audio plays, the output timestamp's audio clock is
+compared with the wall clock; a stall or dropout makes the audio clock fall behind. Over 20 ms:
+`sound:clockSlip {slipMs, overMs, routed}` (WARN, file) and `[perf] sound clockSlip` in dev.
+
+**Cost.** One sample scan per block only between a play and its first sound; one `alive` message per
+node; one `getOutputTimestamp` call every 5 s while playing.
+
+**First check (2026-09-16 17:16, dev):** a quiet test tone with 200 ms of leading silence →
+`fresh: true, mediaMs: 203, aliveMs: 3` (the node ran within 3 ms; the 203 ms is the tone's own lead).
+
+**Next build session, read it:**
+```bash
+grep -h "sound:startLost\|sound:clockSlip\|\[perf\] sound start" "$APPDATA/com.deetsmusic.dev/deetsmusic.log" "$APPDATA/com.deetsmusic.app/deetsmusic.log" | tail -40
+```
+No `startLost` / `clockSlip` lines over some days of listening = the probe's lost tone was a
+test-setup artefact. Lines = the pattern in their fields (fresh routes only? a context state? a
+long `aliveMs`?) points at the fix.
 
 ## 11. After it goes live: the user's own test (open, 2026-09-16)
 
