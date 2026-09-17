@@ -93,7 +93,7 @@ const storeSize = (slot: SizeSlot, label: string): Spec => ({
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
 const rustSettings = () =>
-  invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }>("settings_get");
+  invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }>("settings_get");
 const rustToggle = (section: string, key: string, label: string, get: () => Promise<boolean>, set: (on: boolean) => Promise<unknown>, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
   get: async () => ((await get()) ? "on" : "off"),
@@ -257,6 +257,16 @@ const SPECS: Spec[] = [
   storeToggle("Playback", "shuffleStays", "Button is perma-shuffle"),
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
+  // ── AirPlay (AIRPLAY.md §7) ──
+  {
+    key: "airplaySend", label: "Send to speaker", section: "AirPlay", kind: "choice",
+    options: [{ value: "app", label: "DeetsMusic only" }, { value: "system", label: "All PC sound" }],
+    get: async () => (await rustSettings()).airplayCapture,
+    set: async (v) => {
+      await invoke("settings_set_airplay_capture", { v });
+      notifyOwnedSettingChange();
+    },
+  },
   storeChoice("Playback", "shuffleIdle", "Idle shuffle plays", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
   // ── Apple Music: the consent gates, off only ──
   {

@@ -1,9 +1,12 @@
 // Sound worklet (SOUND.md §1): runs on Web Audio's audio thread, in 128-sample blocks.
-// Two processors:
+// Three processors:
 // - "deets-element": one per routed MusicKit <audio>. Measures K-weighted loudness before
 //   anything changes it (§3A) and applies the song's match gain with a ramp.
 // - "deets-bus": one per context, after every element. Preamp → EQ → Fuller at low volume →
 //   crossfeed → limiter, and a level-matched bypass for Compare.
+// - "deets-tap": one per context, after the bus (AIRPLAY.md §12). Disarmed it copies input to
+//   output and posts nothing. Armed it also packs the sound to 16-bit stereo with TPDF dither
+//   and posts one chunk per 4096 frames, which sound.ts hands to Rust for the AirPlay speaker.
 // Every setting arrives as a port message; nothing here reads the DOM or the store.
 
 import { bandBiquads, kWeighting, rbj, type Band, type Biquad } from "./sound-dsp";
@@ -460,5 +463,59 @@ class BusProcessor extends AudioWorkletProcessor {
   }
 }
 
+// ── deets-tap ───────────────────────────────────────────────────────────────────
+
+/** Frames per posted chunk: 93 ms at 44.1 kHz, ~11 posts a second (AIRPLAY.md §12.1 item 1). */
+const TAP_CHUNK_FRAMES = 4096;
+
+class TapProcessor extends AudioWorkletProcessor {
+  private armed = false;
+  private buf = new Int16Array(TAP_CHUNK_FRAMES * 2);
+  private fill = 0;
+
+  constructor(options?: { processorOptions?: unknown }) {
+    super(options);
+    this.port.onmessage = (e: MessageEvent) => {
+      const m = e.data;
+      if (m?.type === "arm") {
+        this.armed = !!m.on;
+        this.fill = 0;
+      }
+    };
+  }
+
+  process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+    const input = inputs[0];
+    const out = outputs[0];
+    const n = out[0].length;
+    const inL = input[0], inR = input[1] ?? input[0];
+    for (let i = 0; i < n; i++) {
+      out[0][i] = inL ? inL[i] : 0;
+      if (out[1]) out[1][i] = inR ? inR[i] : 0;
+    }
+    if (!this.armed) return true;
+    const buf = this.buf;
+    for (let i = 0; i < n; i++) {
+      buf[this.fill++] = quantize(inL ? inL[i] : 0);
+      buf[this.fill++] = quantize(inR ? inR[i] : 0);
+      if (this.fill === buf.length) {
+        // Transferred, not copied: the main thread owns this buffer now.
+        this.port.postMessage({ type: "chunk", frames: TAP_CHUNK_FRAMES, buf: buf.buffer }, [buf.buffer]);
+        this.buf = new Int16Array(TAP_CHUNK_FRAMES * 2);
+        this.fill = 0;
+        return true; // a block is 128 frames and 4096 is a multiple: the chunk ends on a block
+      }
+    }
+    return true;
+  }
+}
+
+/** Float → 16-bit with TPDF dither (two uniform draws, ±1 LSB), as the crate's quantizer does. */
+function quantize(x: number): number {
+  const v = Math.round(x * 32767 + (Math.random() - Math.random()));
+  return v > 32767 ? 32767 : v < -32768 ? -32768 : v;
+}
+
 registerProcessor("deets-element", ElementProcessor);
 registerProcessor("deets-bus", BusProcessor);
+registerProcessor("deets-tap", TapProcessor);

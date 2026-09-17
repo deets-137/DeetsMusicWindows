@@ -363,6 +363,7 @@ pub fn run() {
             airplay::airplay_disconnect,
             airplay::airplay_status,
             airplay::airplay_volume,
+            airplay::airplay_tap,
             airplay::airplay_firewall_prompt,
             bridge::np_publish,
             bridge::np_snapshot,

@@ -42,7 +42,7 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 # commit + push DeetsAirplay, then bump `rev` here. (For a long local iteration, a
 # gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
 # works, but it churns Cargo.lock — prefer push + bump.)
-deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4989dfb759b73d795d9949c853b8e9609929cee3" }
+deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "85a9ff179f8e856310ea8b49887218a172013f55" }
 tauri-plugin-deep-link = "2"
 url = "2"
 # Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).

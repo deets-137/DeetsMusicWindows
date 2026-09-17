@@ -52,7 +52,10 @@ MusicKit <audio> (volume applied here, by MusicKit)
   │                                        │
   │           limiter (worklet, lookahead, −1 dBTP ceiling)
   │                                        │
-  └──────────────────────────────── destination (device, Chromium mixes → Windows)
+  └──────────── tap (AirPlay, AIRPLAY.md §12) ── sink gain ── destination (device, Chromium mixes → Windows)
+                 (posts 16-bit chunks while armed)   (0 while a speaker plays alone)
+  Since 2026-09-17 the context is created at 44.1 kHz, Apple's rate, so the tap hands the
+  speaker the decode bit-exact; the local path measured identical either way (AIRPLAY.md §12.5 T1).
 ```
 
 - **One `AudioContext`**, created on the first routed play, `latencyHint: "playback"` (bigger

@@ -359,7 +359,9 @@ Max), **except**:
 
 Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_tray`,
 `startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`,
-`lastfmScrobble` → `settings_set_lastfm_scrobble`, `lastfmNowPlaying` → `settings_set_lastfm_now_playing`. After one,
+`lastfmScrobble` → `settings_set_lastfm_scrobble`, `lastfmNowPlaying` → `settings_set_lastfm_now_playing`,
+`airplaySend` (AirPlay › Send to speaker, `app` / `system`, 2026-09-17, [AIRPLAY.md](AIRPLAY.md) §7) →
+`settings_set_airplay_capture` (a change while a speaker plays reconnects it in place). After one,
 `notifyOwnedSettingChange()` (settings-store.ts) makes an open Settings card read them again.
 A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass is the skin."
 `updateMode` is here and stays on `update action=mode` too (same write).

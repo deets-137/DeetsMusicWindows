@@ -332,9 +332,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
   let lastfmNowPlaying = true;
   let lastfm: LastfmStatus | null = null;
   let agentHistory = true;
-  interface RustSettings { minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean }
+  // AirPlay (AIRPLAY.md §7, §12): Rust reads it at connect time; a change while connected
+  // reconnects in place.
+  let airplayCapture: "app" | "system" = "app";
+  interface RustSettings { minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }
   const takeRust = (s: RustSettings) => {
     minimizeToTray = s.minimizeToTray;
+    airplayCapture = s.airplayCapture;
     agentControl = s.agentControl;
     agentHistory = s.agentHistory;
     lastfmScrobble = s.lastfmScrobble;
@@ -873,6 +877,22 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }],
         },
         storeToggle("historyday", "Show the day in History", "historyShowDay", () => "Each row says Today, Yesterday or the date, next to the artist"),
+      ],
+    },
+    {
+      // AIRPLAY.md §7: the one preference. Never a live action (the Play on panel is that).
+      title: "AirPlay",
+      rows: [
+        {
+          kind: "choice", id: "airplaysend", label: "Send to speaker",
+          hint: "DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app's sound, and this PC keeps playing",
+          options: [{ value: "app", label: "DeetsMusic only" }, { value: "system", label: "All PC sound" }],
+          get: () => airplayCapture,
+          set: (v) => {
+            airplayCapture = v as "app" | "system";
+            invoke("settings_set_airplay_capture", { v }).catch((e) => console.error("[settings] airplay", e));
+          },
+        },
       ],
     },
     {

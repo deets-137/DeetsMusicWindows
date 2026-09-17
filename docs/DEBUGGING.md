@@ -629,6 +629,67 @@ closes. Bare `deetsmusic.exe` processes with no WebView2 children (the CLI / MCP
 are skipped. The tree walk keys on the exe name, so both apps report even when the installed
 one has no CDP port.
 
+## What the tools cannot yet see — the 2026-09-17 review
+
+A session that runs the CLI (`bench`, `webview-eval`, `webview-profile`, the heaviness sampler)
+and reads `perf-history.csv` has enough to measure a *scene* and to A/B a *graphics change*.
+It does not have enough to attribute a *live* regression, which is what the heaviness log
+showed the same day. The evidence, then the gaps, in the order they matter.
+
+**The evidence.** `heaviness-samples.log`, the installed app, the night of 2026-09-16: at 23:44
+the tree sat at 687 MB and 2.5 % CPU; at 23:54 the log has `airplay: connect port 7000`
+(the loopback capture) and the next sample reads 162 %; over the next two hours the tree
+climbed to **1374 MB and 288 %** while `renderer` (≈250 MB) and `gpu` (≈145 MB) stayed flat,
+so ~700 MB grew in processes the sampler does not name. The app's own log for that window holds
+nothing but the 10 s `capture heard` lines and Last.fm. At 12:04 the next day, the same app on
+the same speaker (Cyber, Max, a song playing): the tree at 864 MB and 91 % — the host exe at
+**5.6 % and 62 MB**, the renderer and the GPU process each ~40–50 % averaged over the run. So
+the AirPlay session itself is cheap; what the night's climb was cannot be told from what was
+recorded. Also in that log, at 01:57:08 during the update's exit-and-install: `panic: cannot
+move state from Destroyed` (tao `event_loop/runner.rs:371`) — an exit-path bug, unrelated to
+load, not yet filed.
+
+**The gaps, ranked by what they would have answered.**
+
+1. **A heaviness row has no context and no per-process split.** It says *how heavy*, never
+   *doing what*. Add to each installed/dev line: skin, surface, playing, AirPlay (off / loopback /
+   tap), Sound on, record player on, hidden to tray — the installed app answers `/now-playing`
+   and `/settings` on the bridge already, so the sampler can ask — and one figure per process
+   type (`host`, `renderer`, `gpu`, `audio`, `cdm`, `network`, other), which the command line's
+   `--type=` / `--utility-sub-type=` gives for free. The night's 700 MB would then have a name.
+2. **No reader for the logs.** Reviewing means `grep | tail` by hand. A `scripts/perf-report.mjs`
+   that parses the dev log's `[perf] click→sound`, `[perf] frames <name>`, `[perf] input`,
+   `sound:clockSlip` / `startLost`, the `airplay: capture heard` verdicts and the heaviness log,
+   and prints p50 / p95 / worst per name with the row count, turns a review into one command
+   and makes "did it get worse" a diff of two runs.
+3. **The bench does not see the host exe.** `gpu_cpu_pct` and `page_cpu_pct` are its only CPU
+   columns. With AirPlay's session and the new tap ring in Rust, add `host_cpu_pct` and
+   `host_ws_mb` (Win32 `GetProcessTimes` / working set through PowerShell, or the CDP
+   `SystemInfo.getProcessInfo` list already read for the other two), and an `airplay` scene:
+   connect, 60 s of a song, then `__sound.status().tap.worstGapMs`, the session's
+   `starved_packets` and the host CPU. The prefill (AIRPLAY.md §12) was sized from one T3 run;
+   a scene makes it a number that is re-measured.
+4. **Three scenes only** (`appearance`, `idle`, `scroll`). Nothing repeatable for the
+   gestures built since: card grow / fill, the Compass (open + type), a card swap, the Sound and
+   AirPlay panels, a queue drag, the record player at Press. Each is an `evaluate` of the app's
+   own buttons plus a `__frames.sample`, ~10 lines in `bench.mjs`; a scene that exists gets run.
+5. **Memory is not in the CSV.** `perf-history.csv` has no working-set column, so a leak that a
+   scene causes (a repeated card swap, a Compass open/close loop) is invisible to the one file
+   that is committed. Add `page_heap_mb` (`performance.memory` / CDP `Runtime.getHeapUsage`)
+   and `tree_ws_mb` per row, and a `--repeat N` that runs a scene N times and reports the slope.
+6. **The installed app cannot be benchmarked** (no CDP port, by design), so a number from
+   `dev:built` is the honest stand-in. Keep it that way; but the heaviness sampler is the one
+   tool that does see the installed app, which is why item 1 comes first.
+7. **Smaller:** the `[perf] frames boot` line exists (925 ms, 2 long tasks, 2026-09-17) but no
+   row keeps it, so start-up cannot be trended; `heaviness-samples.log` is gitignored (right)
+   but has no retention, so it grows forever (3,568 lines today); a rotated `deetsmusic.1.log`
+   keeps one generation, so a window older than ~1 MB of lines is gone — the night above
+   survived by luck of the rotation at 01:56.
+
+None of these is a harness: each is a column, a scene or a reader on the tools that exist.
+Suggested order: 1, 2, 3 (together they answer "what was the app doing when it got heavy"
+from a session), then 4 and 5 as gestures come up for review.
+
 ## Profiling the webview — `scripts/webview-profile.mjs` (dev only)
 
 Same CDP discovery as webview-eval. Without flags: V8's sampling profiler over the

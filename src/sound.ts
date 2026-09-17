@@ -8,6 +8,11 @@
 //
 // Facts this rests on (SOUND.md §0): DRM audio passes through Web Audio; `music.volume` acts
 // before the graph; MusicKit keeps a pool of <audio> elements, so more than one gets routed.
+//
+// The AirPlay tap (AIRPLAY.md §12) sits after the bus: bus → tap → sink gain → destination.
+// Armed, the tap posts 16-bit chunks that go to Rust (`airplay_tap`); the sink gain at 0 makes
+// the PC silent while the speaker plays. The context runs at 44.1 kHz, Apple's own rate, so the
+// tap hands the speaker the decode bit-exact and the local path loses nothing (§12.5 T1).
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -65,16 +70,24 @@ let solo: { lo: number; hi: number } | null = null;
 /** Every <audio> MusicKit has played, so opening the panel can route the one already playing. */
 const seen = new Set<HTMLMediaElement>();
 
-/** Any effect on: the only condition under which a new element is routed. */
+/** Any effect on, or the AirPlay tap armed: the only conditions under which a new element is routed. */
 function wanted(): boolean {
-  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match || config.measure;
+  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match || config.measure || tapArmed;
 }
 
 // ── The context and the bus ──────────────────────────────────────────────────────────
 
 let ctx: AudioContext | null = null;
 let bus: AudioWorkletNode | null = null;
+/** After the bus: the AirPlay tap, then the sink gain (0 while a speaker plays alone). */
+let tap: AudioWorkletNode | null = null;
+let sink: GainNode | null = null;
+let tapArmed = false;
+let sinkGain = 1;
+const tapStats = { chunks: 0, failed: 0, lastAt: 0, lastGapMs: 0, worstGapMs: 0 };
 let ready: Promise<void> | null = null;
+/** The rate the tap needs: the AirPlay stream is 44.1 kHz and the crate does not resample the tap. */
+const TAP_RATE = 44100;
 const routed = new WeakMap<HTMLMediaElement, { source: MediaElementAudioSourceNode; node: AudioWorkletNode }>();
 let routedCount = 0;
 /** Every element node, so a song's match gain and the meter switch reach all of them. */
@@ -95,10 +108,11 @@ let preAnalyser: AnalyserNode | null = null;
 
 function ensureContext(): Promise<void> {
   ready ??= (async () => {
-    // Dev only (AIRPLAY.md §12.3 T1): `sessionStorage["deets.dev.soundRate"] = "44100"` + reload
-    // creates the context at that rate, so the fidelity probe can compare rates.
+    // 44.1 kHz, Apple's rate (AIRPLAY.md §12.1 item 10; §12.5 T1 measured the local path
+    // identical to the device rate). Dev only: `sessionStorage["deets.dev.soundRate"] = "48000"`
+    // + reload creates the context at another rate, so the fidelity probe can compare.
     const devRate = import.meta.env.DEV ? Number(sessionStorage.getItem("deets.dev.soundRate")) || undefined : undefined;
-    ctx = new AudioContext({ latencyHint: "playback", sampleRate: devRate });
+    ctx = new AudioContext({ latencyHint: "playback", sampleRate: devRate ?? TAP_RATE });
     await ctx.audioWorklet.addModule(workletUrl);
     bus = new AudioWorkletNode(ctx, "deets-bus", {
       numberOfInputs: 1,
@@ -112,7 +126,14 @@ function ensureContext(): Promise<void> {
         emit();
       }
     };
-    bus.connect(ctx.destination);
+    tap = new AudioWorkletNode(ctx, "deets-tap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+    tap.port.onmessage = (e) => {
+      if (e.data?.type === "chunk") forwardChunk(e.data.buf as ArrayBuffer);
+    };
+    sink = ctx.createGain();
+    sink.gain.value = sinkGain;
+    bus.connect(tap).connect(sink).connect(ctx.destination);
+    if (tapArmed) tap.port.postMessage({ type: "arm", on: true });
     pre = ctx.createGain(); // pulled only while an analyser listens to it
     watchContext(ctx);
     diag.log("sound:context", { rate: ctx.sampleRate, state: ctx.state, baseLatency: ctx.baseLatency });
@@ -121,9 +142,75 @@ function ensureContext(): Promise<void> {
     ready = null;
     ctx = null;
     bus = null;
+    tap = null;
+    sink = null;
     throw e;
   });
   return ready;
+}
+
+// ── The AirPlay tap (AIRPLAY.md §12) ────────────────────────────────────────────────
+
+/** One chunk from the tap: raw bytes to Rust, which pushes them into the live session's ring. */
+function forwardChunk(buf: ArrayBuffer): void {
+  const now = performance.now();
+  if (tapStats.lastAt) {
+    tapStats.lastGapMs = Math.round(now - tapStats.lastAt);
+    if (tapStats.lastGapMs > tapStats.worstGapMs) tapStats.worstGapMs = tapStats.lastGapMs;
+  }
+  tapStats.lastAt = now;
+  tapStats.chunks++;
+  invoke("airplay_tap", new Uint8Array(buf)).catch((e) => {
+    if (tapStats.failed++ === 0) diag.warn("sound:tapFailed", { err: String(e) });
+  });
+}
+
+/**
+ * airplay.ts: arm the tap before a "DeetsMusic only" connect (the pacer pads silence until
+ * chunks arrive), disarm on disconnect. Arming routes the element playing now, mid-song
+ * (§12.5 T4: no audible gap); disarming leaves it routed, a bypass at the graph's known zero cost.
+ * Resolves to the armed state: false when the context could not be made or runs at another rate.
+ */
+export async function armTap(on: boolean): Promise<boolean> {
+  if (on === tapArmed) return on;
+  tapArmed = on;
+  if (on) {
+    try {
+      await ensureContext();
+    } catch {
+      tapArmed = false;
+      return false;
+    }
+    if (!ctx || !tap) return false;
+    if (ctx.sampleRate !== TAP_RATE) {
+      // The stream would play at the wrong pitch: refuse, and let All PC sound be the answer.
+      diag.error("sound:tapRate", { rate: ctx.sampleRate });
+      tapArmed = false;
+      return false;
+    }
+    tapStats.chunks = tapStats.failed = tapStats.lastAt = tapStats.lastGapMs = tapStats.worstGapMs = 0;
+    for (const el of seen) if (!el.paused && !routed.has(el)) route(el);
+    tap.port.postMessage({ type: "arm", on: true });
+    void resume("tap");
+    diag.log("airplay:tapArmed", { routed: routedCount, rate: ctx.sampleRate });
+  } else {
+    tap?.port.postMessage({ type: "arm", on: false });
+    diag.log("airplay:tapDisarmed", { chunks: tapStats.chunks, failed: tapStats.failed, worstGapMs: tapStats.worstGapMs });
+  }
+  push(); // the bus's `enabled` follows wanted()
+  return tapArmed;
+}
+
+/** The PC's own output: 0 while a speaker plays alone (a short ramp, no click), 1 otherwise. */
+export function setSink(gain: 0 | 1): void {
+  if (gain === sinkGain) return;
+  sinkGain = gain;
+  if (sink && ctx) sink.gain.setTargetAtTime(gain, ctx.currentTime, 0.003);
+  diag.log("sound:sink", { gain });
+}
+
+export function tapStatus() {
+  return { armed: tapArmed, sink: sinkGain, ...tapStats };
 }
 
 let resumeFailedShown = false;
@@ -434,7 +521,7 @@ export function setCompare(on: boolean): void {
 }
 
 export function soundStatus() {
-  return { wanted: wanted(), routed: routedCount, state: ctx?.state ?? "none", rate: ctx?.sampleRate ?? null, bus: lastStatus, dropDb: volumeDropDb(), shelves: busConfig() };
+  return { wanted: wanted(), routed: routedCount, state: ctx?.state ?? "none", rate: ctx?.sampleRate ?? null, bus: lastStatus, dropDb: volumeDropDb(), shelves: busConfig(), tap: tapStatus() };
 }
 
 // ── Settings → config (the panel writes settings; this is the one reader) ──────────────

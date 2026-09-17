@@ -2,22 +2,18 @@
 
 > Scoped and **built 2026-09-10** on branch `release-prep`; **connected and played on the desk**
 > the same day. Source of the sender: `../DeetsAirplay` (public repo `deets-137/DeetsAirplay`),
-> now a library crate, `crates/airplay` (`deets-airplay`, 0.3.0 since 2026-09-15, a git dependency
+> now a library crate, `crates/airplay` (`deets-airplay`, 0.4.0 since 2026-09-17, a git dependency
 > pinned by `rev`; §11 has the bumps). Read its `CLAUDE.md` "Never"
 > list before touching any wire code. Code here: `src-tauri/src/airplay.rs` (the session,
 > metadata, commands), `src/airplay.ts` (the "Play on" panel, the volume takeover), the AirPlay
 > row in `settings-card.ts`, `settings.rs` (three fields), `player.ts` (`setVolumeSink`).
 >
-> **v1 ships "All PC sound" only** (user's call, 2026-09-10 evening, §10): the speaker gets the
-> default output's loopback, the PC keeps playing. The per-process path ("DeetsMusic only")
-> works from the probe but waits for v2. Before shipping (§9): flip the Cargo dependency from
-> `path` to `git` once the crate is pushed, and confirm the first-connect UAC prompt on an
-> installed build.
->
-> **Speaker only — designed 2026-09-17, tests T1–T4 pass (§12.5), not built: §12.** The song is copied inside the page, at
-> the end of the Sound graph, and handed to the sender; the PC goes silent and other apps stay
-> out of the speaker. It replaces the per-process capture of §10 (the tap in the page is the
-> "DeetsMusic only" path that Windows could not give us) and makes the AirPlay stream bit-exact.
+> **Two sources since 2026-09-17 (§12, built, awaiting the desk test §12.4).** The default,
+> *DeetsMusic only*, copies the song inside the page at the end of the Sound graph and hands it
+> to the sender: the PC goes silent, other apps stay out of the speaker, and the stream is
+> bit-exact. *All PC sound* is what v1 shipped (2026-09-10 to 0.9.5): the default output's
+> loopback, the PC playing along. Settings › AirPlay › Send to speaker picks. The per-process
+> capture of §10 is gone from this app.
 
 ## 1. What the user sees (the words)
 
@@ -139,15 +135,15 @@ Same conclusion, now on real data: the tap sits after the per-app mixer volume.
 
 ## 7. Settings › AirPlay (the rows)
 
-**v1: no rows.** The capture is always the default output ("All PC sound"); the Settings
-card has no AirPlay section. The row below is what §12 brings back, with `app` meaning the
-in-page tap (not the per-process capture of §10) — its field already exists in Rust `settings.json` (`SettingsData`), read at
-connect time, and a `ChoiceRow` with `get`/`set` is how a Rust-owned choice renders
-([SETTINGS.md](SETTINGS.md) §2). Label: short, active; hint as a tooltip.
+**One row, back since 2026-09-17** (v1 had none: the capture was always the default output).
+`app` means the in-page tap of §12, not the per-process capture of §10. The field lives in
+Rust `settings.json` (`SettingsData`), read at connect time; a `ChoiceRow` with `get`/`set` is
+how a Rust-owned choice renders ([SETTINGS.md](SETTINGS.md) §2). The agent reaches it as
+`airplaySend` (AGENT.md §6).
 
 | Row (hint) | Field | Values (default first) | Read site |
 |---|---|---|---|
-| Send to speaker (All PC sound also sends other apps) — *DeetsMusic only* / *All PC sound* | `airplay_capture` | `app` / `system` | `airplay.rs` `start_live` (behind `V2_PER_PROCESS`) |
+| Send to speaker (DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app's sound, and this PC keeps playing) — *DeetsMusic only* / *All PC sound* | `airplay_capture` | `app` / `system` | `airplay.rs` `start_live` |
 
 Also in `settings.json`, not shown as rows: `airplay_last_speaker` (name, ip, port; feeds
 the dropdown's remembered row), `airplay_firewall_exe` (the exe the one-shot prompt was
@@ -221,10 +217,10 @@ process while capturing its own tree). Each is a rule now.
 **v1 ships without it** (user's call): `V2_PER_PROCESS = false` in `airplay.rs`, no Settings
 row. The crate keeps `Capture::start_process`, `mixer.rs`, and the probe subcommands.
 
-**v2 (2026-09-17): superseded by §12.** The per-process capture can never make the PC quiet
-(rule 4), so "DeetsMusic only" is built as an in-page tap instead. `V2_PER_PROCESS`,
-`capture_target()` and `Capture::start_process` go when §12 lands; `mixer.rs` and the probe
-subcommands stay in the crate for measurement.
+**v2 (2026-09-17): superseded by §12, built the same day.** The per-process capture can never
+make the PC quiet (rule 4), so "DeetsMusic only" is the in-page tap. `V2_PER_PROCESS` and
+`capture_target()` are gone from `airplay.rs`; `Capture::start_process`, `mixer.rs` and the
+probe subcommands stay in the crate, because `probe process` measures with them.
 
 ## 11. Sharing the speaker with DeetsAirplay (2026-09-15)
 
@@ -294,7 +290,7 @@ Desk test (Rust changed: restart the dev runner):
 needed a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0 — done for 0.6.2,
 after that crate was pushed.
 
-## 12. Speaker only: the in-page tap (designed 2026-09-17, not built)
+## 12. Speaker only: the in-page tap (designed and built 2026-09-17; desk test §12.4 open)
 
 **The problem.** A speaker plays, and so does the PC. Decision 2 accepted that because the only
 copy points Windows offers (§4, §10) sit after the per-app volume: mute the app and the speaker
@@ -433,6 +429,27 @@ All in the dev app through `scripts/webview-eval.mjs`, unless marked *desk*.
 | T2 | **Pass.** The graph renders at sink gain 0 while the window is hidden. | Oscillator → worklet → gain 0 → destination, 60 s shown then 60 s hidden by `getCurrentWindow().hide()` (the tray's own call): 20,700 then 20,800 quanta (20,671 expected per minute), worst gap 22 ms, no gap over 200 ms. `document.visibilityState` stayed `visible` while hidden. |
 | T3 | **Pass with one change.** A raw-body `invoke` at 11 Hz never fails; the largest gap was 256 ms. | Built dev mode (`dev:built`, a fixed bundle that survives other sessions' saves), 10 min: 5,971 chunks of 16 KB (97.8 MB), 0 failures, worst `invoke` round trip 40 ms, Rust-side largest gap between chunks 256 ms, once, under a scroll every 25 s (worst 29 ms frame), the Sound menu and a song change every 100 s. 256 ms is 6 ms over the 250 ms prefill, so **the prefill is 500 ms** (design item 6); the 1 s ring keeps 500 ms of headroom. The temporary stub (`airplay_tap_probe`) was removed after the run. |
 | T4 | **Pass.** Routing a playing song mid-song makes no audible gap. | Twice on the desk (headphones, the live app off AirPlay): once into a warm context, once creating the 44.1 kHz context and routing in the same call (35 ms). The song's clock ran on; the owner heard no gap and no click. |
+
+### 12.6 As built (2026-09-17, crate 0.4.0 at `85a9ff1`; Rust changed, restart the dev runner)
+
+| Where | What |
+|---|---|
+| `../DeetsAirplay/crates/airplay/capture.rs` | `Ring::new` / `with_capacity` / `push` / `queued_frames` public; `Capture::from_ring(ring, prefill_frames, note)` — no thread, the pacer source pads silence until the prefill is queued, once. The WASAPI captures are untouched (prefill 0, 100 ms ring). `start_process` stays for `probe process`. |
+| `src-tauri/src/airplay.rs` | `AirplayState.tap`: the live tap session's ring, or None (`publish_tap` after every connect / reconnect / stop). `airplay_tap` (sync, raw body → `Ring::push`, dropped with no ring). `start_live`: `App` → a 1 s ring with a 500 ms prefill + `Send::Apps([exe])`; `System` → `Capture::start()` + `Send::All`. `Connected.tap` / `tapStarved`, `Status.capture`. The starvation check rides the 10 s heard-verdict window: tap mode, the Hub says playing, no frame in → after 10 s one `airplay: tap starved` line and the panel note (item 13). `V2_PER_PROCESS`, `capture_target`, the `mixer` import: gone. |
+| `src/sound-worklet.ts` | `deets-tap`: passthrough; armed, 4096-frame Int16 chunks with TPDF dither, transferred. |
+| `src/sound.ts` | `bus → tap → sink → destination`; the context is created at 44.1 kHz (item 10; the dev override `deets.dev.soundRate` stays for the probe). `armTap(on)` (routes the playing element, refuses if the context is not 44.1 kHz — `sound:tapRate`), `setSink(0|1)` (3 ms time-constant ramp), `tapStatus()` in `__sound.status().tap` (`armed, sink, chunks, failed, lastGapMs, worstGapMs`). `wanted()` counts the tap. Log: `airplay:tapArmed / tapDisarmed`, `sound:sink`, `sound:tapFailed` (first failure only). |
+| `src/airplay.ts` | `connect()`: `capture === "app"` → `armTap(true)` before the invoke (item 8). The poll's `applyTakeover`: `connected.tap` → arm (a reconnect in place) and sink 0; otherwise sink 1 and disarm. State line: *Playing on X · 0.3 s behind* (tap) / *… and this computer · …* (loopback); the starved note. |
+| `src/settings-card.ts`, `src/agent-settings.ts` | The AirPlay section (§7); `airplaySend` for the agent. |
+
+**Alone decisions (VALUES.md §3), for the desk test:** the default is `app` (item 9). The sink
+ramp is 3 ms, not a hard 0, so the PC's last sample never clicks. Arming refuses at any rate but
+44.1 kHz rather than resampling in Rust, because a context at another rate can only come from
+the dev override. The starved note names Settings › AirPlay. The tap chunk is decoded from
+little-endian bytes on the Rust side, one `Vec` per chunk (16 KB, 11 times a second).
+
+**What the desk test should also watch:** `__sound.status().tap.worstGapMs` after an album
+(T3 saw 256 ms; the prefill is 500 ms); `airplay.log` never says *nothing* while playing (T5);
+the PC's own volume slider and Windows master have no effect on the speaker while the tap plays.
 
 **A false alarm worth knowing.** The first T1 run measured the first tone and then digital silence.
 The next run showed the context gone (`ctx: "none"`): a front-end save from another session had

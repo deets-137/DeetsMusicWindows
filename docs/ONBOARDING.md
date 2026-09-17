@@ -44,6 +44,7 @@ nothing about authoring changed when the box did.
 | Title menu › Account | Last.fm | Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile · connected: Disconnects Last.fm. Songs you hear stop going to your profile · no key: Last.fm is not in this build of DeetsMusic | index.html / lastfm.ts |
 | Title menu › Account | the Last.fm name ("Connected as *name*") | Opens your Last.fm profile in your browser | lastfm.ts |
 | Settings › Last.fm | Scrobble plays · Show now playing | Sends each song to your Last.fm profile once you hear half of it or 4 minutes · Your Last.fm profile shows the song while it plays | settings-card.ts |
+| Settings › AirPlay | Send to speaker | DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app's sound, and this PC keeps playing | settings-card.ts |
 | Title bar | Sound (the EQ faders) | Sound: the equalizer and adaptive sound. Everything is off · on: *Sound: Vocal EQ · Match loudness · Fuller at low volume · Crossfeed* | index.html / sound-panel.ts |
 | Sound panel | Compare | Hold to hear the music without the effects, at the same loudness | sound-panel.ts |
 | Sound panel | i (the reading) | *This song is heavy in the bass and soft in the top end.* Click for the numbers · before 3 s of sound: *What this song's sound is like. Click for the numbers* | sound-panel.ts |

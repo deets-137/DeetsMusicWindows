@@ -112,6 +112,32 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
+from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".
+
+1. **Build the tooling first** (the owner builds it in an evening session): items 1–3 together —
+   heaviness rows with context (skin, surface, playing, AirPlay mode, Sound, record player, tray)
+   and a per-process split by `--type`; a `scripts/perf-report.mjs` reader that prints p50 / p95 /
+   worst per `[perf]` name, every `panic:` line and the AirPlay verdicts across both log
+   generations; `host_cpu_pct` / `host_ws_mb` columns and an `airplay` scene in `bench.mjs`. Then
+   items 4–7 as time allows (new scenes, memory columns, boot trend, log retention).
+   Which app each tool sees: the sampler and the reader see the INSTALLED app (the bridge's
+   `/now-playing` needs the pairing token from the installed `settings.json`; `/settings` is
+   gated by Agent control, so it is optional); the bench sees the dev app only, by design.
+2. **Then run the check, in a session, and write what it finds here.** Performance, weight,
+   system load and feature jank, over the installed app and `dev:built`: the heaviness log
+   over a day of real use with the new columns; every bench scene on every skin against the
+   rows in `scripts/perf-history.csv`; the dev log's click→sound, frames and input percentiles;
+   the AirPlay tap after §12's desk test (`worstGapMs`, `starved_packets`, host CPU); the
+   Sound graph at 44.1 kHz.
+   **Open leads to close on the way:** (a) the night of 2026-09-16, the installed tree climbed
+   687 → 1374 MB and 2.5 → 288 % CPU over two hours on the AirPlay loopback, with the renderer
+   and GPU process flat — the growth was in a process the sampler did not name; (b) `panic:
+   cannot move state from Destroyed` (tao `event_loop/runner.rs:371`) at 01:57:08 the same
+   night, 40 s after the relaunched 0.9.0 finished its sync — an exit-path bug; suspects are the
+   tray Quit, the updater's restart and the AirPlay teardown, each of which can touch the window
+   after tao destroyed it. Needs code reading plus a reproduction on the dev app, not tooling.
+
 **2026-09-17 — 0.9.5 is live on the `deetsmusic` channel** (`main` at `7691a66`; installer 7.4 MB).
 It ships the Compass and its commands, the list keys, the Genres view and the collection sorts, card
 memory ([CARD-MEMORY.md](CARD-MEMORY.md)), and the dev-only sound rate override
@@ -731,6 +757,12 @@ releases since 0.6.2, in short:
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
+- **AirPlay speaker only — BUILT 2026-09-17, awaiting desk test ([AIRPLAY.md §12](AIRPLAY.md), §12.4 is
+  the test, §12.6 is what was built).** The song is copied inside the page after the Sound graph
+  (`deets-tap`), handed to Rust as raw-body chunks (`airplay_tap`), and the page's sink gain drops
+  to 0: the PC goes silent, other apps stay off the speaker, the stream is bit-exact. Settings ›
+  AirPlay › Send to speaker (DeetsMusic only, the default / All PC sound). Crate 0.4.0 (`85a9ff1`).
+  Rust changed: restart the dev runner.
 - **The AirPlay claim guard (2026-09-15) — BUILT 2026-09-17, awaiting desk test (AIRPLAY.md §11).**
   The record below is the brief it was built from. The speaker-sharing work
   ([AIRPLAY.md §11](AIRPLAY.md)) is **one-directional**, and this is the missing half.

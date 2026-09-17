@@ -13,7 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setVolumeSink, reflectExternalVolume } from "./player";
 import { enterRows } from "./pop";
-import { setAirplayOutput } from "./sound";
+import { setAirplayOutput, armTap, setSink } from "./sound";
 
 export interface Speaker {
   name: string;
@@ -28,7 +28,12 @@ interface Connected {
   seconds: number;
   latencyMs: number;
   volume: number | null;
+  /** The session drains the in-page tap (AIRPLAY.md §12): the PC is silent. */
+  tap: boolean;
+  /** Tap mode, the player playing, no chunk for 10 s (§12 item 13). */
+  tapStarved: boolean;
 }
+type Capture = "app" | "system";
 interface Status {
   connected: Connected | null;
   connecting: string | null;
@@ -36,6 +41,8 @@ interface Status {
   lastSpeaker: Speaker | null;
   speakers: SpeakerInfo[];
   firewallSeeded: boolean;
+  /** Settings › AirPlay › Send to speaker: `app` arms the tap before a connect. */
+  capture: Capture;
 }
 
 const api = {
@@ -49,7 +56,7 @@ const api = {
 
 // ── one state, many panels ──
 
-let status: Status = { connected: null, connecting: null, error: null, lastSpeaker: null, speakers: [], firewallSeeded: true };
+let status: Status = { connected: null, connecting: null, error: null, lastSpeaker: null, speakers: [], firewallSeeded: true, capture: "app" };
 let scanning = false;
 let busy = false;
 /** A note shown in the state line for a moment (the firewall sentence, a failure). */
@@ -73,6 +80,16 @@ const applyTakeover = (c: Connected | null) => {
   if (name !== outputSpeaker) {
     outputSpeaker = name;
     setAirplayOutput(c ? name : null);
+  }
+  // The tap (AIRPLAY.md §12 item 8): the PC goes silent only once the session is up on the
+  // tap; a session on the loopback, a lost speaker, a failed connect — the PC plays. The tap is
+  // armed ahead of a connect (below) and here too, for a reconnect in place after a Settings
+  // change, and disarmed when no tap session is live.
+  if (c?.tap) {
+    void armTap(true).then((armed) => armed && setSink(0));
+  } else {
+    setSink(1);
+    void armTap(false);
   }
   if (c && !takenOver) {
     takenOver = true;
@@ -144,6 +161,10 @@ const connect = async (sp: Speaker) => {
       status.firewallSeeded = true;
       note = null;
     }
+    // DeetsMusic only: arm the tap first, so the song playing now is routed and chunks are
+    // queued by the time the session starts draining (AIRPLAY.md §12 item 8). The PC stays
+    // audible until the poll sees the session up on the tap.
+    if (status.capture === "app") await armTap(true);
     await api.connect(sp);
   } catch (e) {
     note = String(e);
@@ -347,13 +368,14 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     let state: string;
     if (note) state = note;
     else if (status.connecting) state = `Connecting to ${status.connecting}…`;
-    else if (c) state = `Playing on ${c.speaker.name} and this computer · ${fmtDelay(c.latencyMs)}`;
+    else if (c?.tapStarved) state = "The speaker gets no sound from DeetsMusic. Try All PC sound in Settings › AirPlay.";
+    else if (c) state = c.tap ? `Playing on ${c.speaker.name} · ${fmtDelay(c.latencyMs)}` : `Playing on ${c.speaker.name} and this computer · ${fmtDelay(c.latencyMs)}`;
     else if (scanning) state = "Looking for speakers…";
     else if (status.speakers.length === 0) state = "No speakers found";
     else state = "";
 
     setText(stateEl, state);
-    if (note && !c) stateEl.dataset.tone = "note";
+    if ((note && !c) || c?.tapStarved) stateEl.dataset.tone = "note";
     else delete stateEl.dataset.tone;
     scanBtn.disabled = scanning;
     scanBtn.classList.toggle("is-busy", scanning); // spins while a scan runs

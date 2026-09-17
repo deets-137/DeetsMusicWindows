@@ -15,7 +15,7 @@ use std::sync::Mutex;
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AirplayCapture {
-    /// Only DeetsMusic (per-process loopback of this app's process tree).
+    /// Only DeetsMusic: the in-page tap (AIRPLAY.md §12); the PC goes silent.
     App,
     /// Everything the PC plays (loopback of the default output).
     System,

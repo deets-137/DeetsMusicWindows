@@ -3,9 +3,12 @@
 //! the capture choice, the automatic delay, the now-playing metadata, and the
 //! transport commands the speaker relays back.
 //!
-//! The PC keeps playing while a speaker does: the per-process tap copies the
-//! sound AFTER the app's own Windows-mixer volume, so muting DeetsMusic there
-//! silences the speaker too (measured on the desk 2026-09-10). No mute here.
+//! Two sources (AIRPLAY.md §12): "DeetsMusic only" is the in-page tap — the front
+//! end copies the song at the end of its Sound graph and posts it here through
+//! `airplay_tap`, and the PC goes silent because the page's own sink gain drops to
+//! 0. "All PC sound" is the WASAPI loopback of the default output, the PC playing
+//! along. The per-process capture of §10 is gone: it sat after the app's mixer
+//! volume, so it could never make the PC quiet.
 //!
 //! Every command that touches the network or WASAPI runs on `spawn_blocking`.
 
@@ -17,9 +20,8 @@ use deets_airplay::airplay::alac::SAMPLE_RATE;
 use deets_airplay::airplay::mdns;
 use deets_airplay::airplay::rtsp::RemoteCommand;
 use deets_airplay::airplay::session::{self, Config, Metadata, Session, MAX_LATENCY_FRAMES, MIN_LATENCY_FRAMES};
-use deets_airplay::capture::Capture;
+use deets_airplay::capture::{Capture, Ring};
 use deets_airplay::claim;
-use deets_airplay::mixer;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -36,6 +38,12 @@ struct Live {
     /// What the last diagnostic line said ("sound", "silence", "nothing") and when.
     heard_said: Option<(&'static str, Instant)>,
     speaker: AirplaySpeaker,
+    /// The tap ring this session drains (DeetsMusic only), or None for the loopback.
+    tap: Option<std::sync::Arc<Ring>>,
+    /// Tap mode: when the player first said playing while the tap delivered nothing,
+    /// and whether the starvation line was logged this session.
+    starved_since: Option<Instant>,
+    starved_logged: bool,
     /// Auto delay retunes once, from the first seconds of round-trip data.
     retuned: bool,
     meta: Metadata,
@@ -52,6 +60,8 @@ pub struct AirplayState {
     connecting: Mutex<Option<String>>,
     /// The last connect failure, in plain words, until the next attempt.
     error: Mutex<Option<String>>,
+    /// Where `airplay_tap` chunks go while a tap session is live; dropped otherwise.
+    tap: Mutex<Option<std::sync::Arc<Ring>>>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -71,6 +81,10 @@ pub struct Connected {
     pub latency_ms: u32,
     /// The speaker's own volume, 0–100, as last polled (Siri moves it too).
     pub volume: Option<f64>,
+    /// The session drains the in-page tap (the PC is silent) rather than the loopback.
+    pub tap: bool,
+    /// Tap mode and the player says playing, but no chunk has arrived for 10 s.
+    pub tap_starved: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -82,10 +96,18 @@ pub struct Status {
     pub last_speaker: Option<AirplaySpeaker>,
     pub speakers: Vec<SpeakerInfo>,
     pub firewall_seeded: bool,
+    /// The Send-to-speaker setting, so the front end arms the tap before a connect.
+    pub capture: AirplayCapture,
 }
 
-/// Flip for v2: honours the "DeetsMusic only" setting (AIRPLAY.md §10).
-const V2_PER_PROCESS: bool = false;
+/// The tap ring: 1 s, so a late chunk from a busy main thread costs nothing (the
+/// loopback's 100 ms would underrun). Measured 2026-09-17 (AIRPLAY.md §12.5 T3).
+const TAP_RING_FRAMES: usize = SAMPLE_RATE as usize;
+/// The pacer waits for this much before draining the tap, once per session: the
+/// largest gap between chunks measured over ten minutes was 256 ms.
+const TAP_PREFILL_FRAMES: usize = SAMPLE_RATE as usize / 2;
+/// Tap mode, the player playing, no chunk this long: log it and tell the panel.
+const TAP_STARVED_SECS: u64 = 10;
 
 /// Where a speaker starts the first time it is used (0–100). Low on purpose: the
 /// speaker's own level may be anything, and a blast is the worst first impression.
@@ -178,20 +200,21 @@ fn plain_error(speaker: &str, e: &str) -> String {
 fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>) -> Result<Live, String> {
     let settings = app.state::<Settings>().get();
     let ip: Ipv4Addr = speaker.ip.parse().map_err(|_| format!("bad speaker address {}", speaker.ip))?;
-    // v1 ships "All PC sound" only (user's call 2026-09-10, AIRPLAY.md §10): the
-    // per-process path works from the probe but needs the WebView2-child target
-    // and more desk time before it is trusted. The setting stays on disk for v2.
     // `send` rides the claim file (AIRPLAY.md §11): it says what this stream carries, so the
     // other sender can tell whether our audio is on the speaker, not only that we hold it.
-    let (capture, send) = match settings.airplay_capture {
-        AirplayCapture::App if V2_PER_PROCESS => {
+    let (capture, send, tap) = match settings.airplay_capture {
+        AirplayCapture::App => {
+            // The in-page tap (AIRPLAY.md §12): the front end pushes chunks through
+            // `airplay_tap`; the ring is published once the session is up.
             let exe = std::env::current_exe()
                 .ok()
                 .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
                 .unwrap_or_else(|| "DeetsMusic.exe".into());
-            (Capture::start_process(capture_target())?, claim::Send::Apps(vec![exe]))
+            let ring = std::sync::Arc::new(Ring::with_capacity(TAP_RING_FRAMES));
+            let capture = Capture::from_ring(ring.clone(), TAP_PREFILL_FRAMES, "in-page tap, 44.1 kHz / 16-bit, 500 ms prefill");
+            (capture, claim::Send::Apps(vec![exe]), Some(ring))
         }
-        _ => (Capture::start()?, claim::Send::All), // the default output: the whole PC, us included
+        AirplayCapture::System => (Capture::start()?, claim::Send::All, None), // the default output: the whole PC, us included
     };
     let handle = app.clone();
     let config = Config {
@@ -227,6 +250,9 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
         heard_logged: (Instant::now(), 0, 0),
         heard_said: None,
         speaker,
+        tap,
+        starved_since: None,
+        starved_logged: false,
         retuned: rtt_p95_ms.is_some(),
         meta: Metadata::default(),
         art_url: None,
@@ -234,19 +260,13 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
     })
 }
 
-/// The process whose tree the "DeetsMusic only" capture follows. Our sound is
-/// rendered by WebView2, and Windows' process loopback does not follow the tree
-/// from this exe into it (measured: capturing our own pid hears nothing), so
-/// target the WebView2 browser process — our direct `msedgewebview2.exe` child,
-/// whose own children (the audio utility) the tree flag does reach.
-fn capture_target() -> u32 {
-    let me = std::process::id();
-    match mixer::children_named(me, "msedgewebview2.exe").first() {
-        Some(&pid) => pid,
-        None => {
-            log("no WebView2 child found; capturing our own pid");
-            me
-        }
+/// The live session's ring becomes (or stops being) where `airplay_tap` chunks land.
+fn publish_tap(state: &AirplayState) {
+    let ring = state.live.lock().unwrap().as_ref().and_then(|l| l.tap.clone());
+    let open = ring.is_some();
+    let was = std::mem::replace(&mut *state.tap.lock().unwrap(), ring).is_some();
+    if open != was {
+        log(if open { "tap ring open" } else { "tap ring closed" });
     }
 }
 
@@ -254,6 +274,7 @@ fn stop_live(state: &AirplayState) {
     if let Some(live) = state.live.lock().unwrap().take() {
         live.session.disconnect();
     }
+    publish_tap(state);
 }
 
 /// The speaker this app is streaming to, if any. For the bridge's `/airplay`,
@@ -298,6 +319,7 @@ fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), Strin
     match result {
         Ok(live) => {
             *state.live.lock().unwrap() = Some(live);
+            publish_tap(&state);
             app.state::<Settings>().update(|d| d.airplay_last_speaker = Some(speaker)).ok();
             // The speaker learns the current song right away.
             let np = app.state::<bridge::Hub>().np.lock().unwrap().clone();
@@ -318,9 +340,11 @@ fn reconnect(app: &AppHandle, rtt_p95_ms: Option<f64>) -> Result<(), String> {
     let Some(live) = state.live.lock().unwrap().take() else { return Ok(()) };
     let speaker = live.speaker.clone();
     live.session.disconnect();
+    publish_tap(&state); // between sessions: no ring
     let mut live = start_live(app, speaker, rtt_p95_ms)?;
     live.retuned = true;
     *state.live.lock().unwrap() = Some(live);
+    publish_tap(&state);
     let np = app.state::<bridge::Hub>().np.lock().unwrap().clone();
     push_now_playing(app, &np, true);
     Ok(())
@@ -539,6 +563,23 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
                 }
                 l.heard_logged = (Instant::now(), all, loud);
             }
+            // Tap mode (AIRPLAY.md §12 item 13): the player says playing but the tap delivers
+            // nothing. Logged once per session; the panel shows a note; no automatic switch
+            // (the cause gets found first).
+            if l.tap.is_some() {
+                let playing = app.state::<bridge::Hub>().np.lock().unwrap().playing;
+                let (all, _) = l.capture.stats();
+                let delivering = all > l.heard_logged.1 || l.heard_logged.0.elapsed() < Duration::from_secs(1);
+                if playing && !delivering {
+                    let since = *l.starved_since.get_or_insert_with(Instant::now);
+                    if since.elapsed() >= Duration::from_secs(TAP_STARVED_SECS) && !l.starved_logged {
+                        l.starved_logged = true;
+                        log(&format!("tap starved: playing for {} s, no chunk from the page", since.elapsed().as_secs()));
+                    }
+                } else {
+                    l.starved_since = None;
+                }
+            }
         }
 
         // The speaker's level as heard: the poll's reading once it has one (Siri and the
@@ -552,6 +593,8 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             seconds: l.session.stats().seconds,
             latency_ms: l.session.stats().latency_ms,
             volume: heard.as_ref().map(|(_, pct)| *pct),
+            tap: l.tap.is_some(),
+            tap_starved: l.starved_since.map_or(false, |t| t.elapsed() >= Duration::from_secs(TAP_STARVED_SECS)),
         });
         let settings = app.state::<Settings>().get();
         let status = Status {
@@ -561,11 +604,28 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             last_speaker: settings.airplay_last_speaker,
             speakers: state.speakers.lock().unwrap().clone(),
             firewall_seeded: firewall_seeded(&app),
+            capture: settings.airplay_capture,
         };
         Ok(status)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// One chunk from the page's tap (AIRPLAY.md §12): interleaved stereo i16 at 44.1 kHz as
+/// the raw request body (no JSON; ~11 calls a second of 16 KB). Pushed into the live tap
+/// session's ring, dropped when there is none. Synchronous on purpose: a mutex push, no
+/// network, no WASAPI.
+#[tauri::command]
+pub fn airplay_tap(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("tap: expected raw bytes".into());
+    };
+    let state = app.state::<AirplayState>();
+    let Some(ring) = state.tap.lock().unwrap().clone() else { return Ok(()) };
+    let samples: Vec<i16> = bytes.chunks_exact(2).map(|p| i16::from_le_bytes([p[0], p[1]])).collect();
+    ring.push(&samples);
+    Ok(())
 }
 
 /// The app's one volume slider drives the speaker while connected (AIRPLAY.md decision 4).
