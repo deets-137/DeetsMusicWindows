@@ -112,7 +112,13 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
-**2026-09-17 — the Compass: BUILT, awaiting the desk test ([COMPASS.md](COMPASS.md)).**
+**2026-09-17 — 0.9.5 is live on the `deetsmusic` channel** (`main` at `7691a66`; installer 7.4 MB).
+It ships the Compass and its commands, the list keys, the Genres view and the collection sorts, card
+memory ([CARD-MEMORY.md](CARD-MEMORY.md)), and the dev-only sound rate override
+([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.9.5). Published at the user's request without the hand
+install test of RELEASE.md §0 step 3; he tests on the live channel and polishes as he goes.
+
+**2026-09-17 — the Compass: BUILT, shipped in 0.9.5, the desk test runs live ([COMPASS.md](COMPASS.md)).**
 Ctrl+Space (or Ctrl+Shift+Space) drops a bar under the title bar in every surface: the cards,
 surfaces, themes and skins; every Settings row (store-backed toggles and short choices act inline);
 play / pause, next, previous, shuffle, repeat, mute, sleep in N minutes; the library's songs,
