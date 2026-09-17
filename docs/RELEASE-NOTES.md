@@ -18,6 +18,57 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.9.0 — 2026-09-17
+
+**Grow a card.** In the Max and Midi windows, move the pointer over a card's title and click the
+new **Grow** button, or click the gap beside a card. The card opens over its neighbor. In Max,
+click again (**Fill**) to open it over all four cards. Grown, the Library card shows a letter
+rail on the side and song columns (Artist, Album, Length, Genre, Year, Plays) that sort when you
+click their headers. Click outside the card, press **Esc** or click **Collapse** to close it;
+**Pin** keeps it open. Settings › Window has three rows for it, and **Grow cards from edges**
+turns it off. Details: [card grow](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/CARD-GROW.md).
+
+**Playlist webs from a song or an album.** In the web panel (the web button in the Playlists
+card header), pick **Artist**, **Song** or **Album** above the search field. A song or album web
+starts from every artist credited on it, puts the song or the album's songs first, and picks its
+genre chips for you. An album web reaches 2 steps at most. The playlist name now carries the
+genres you pick, for example "V (Deluxe) Reggae Web".
+
+**Temporary web playlists.** Under **Make playlist**, choose **Keep** or **Temp**. Temp is the
+default: the playlist is deleted a number of days after you last play it. Click the days to go
+up (1, 3, 5, 7 or 30 days) and right-click them to go down. A temporary playlist's row shows
+**Expires** and the date. To keep one, right-click it › **Keep Playlist**. When one is deleted, a
+notice offers **Undo**. A playlist you export to Apple Music is always kept. Web playlists made
+before this version are never deleted. Details: [the playlist web](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/PLAYLIST-WEB.md).
+
+**Add songs to your library from any list.** Point at a song in Search, a playlist, the Queue or
+History and click **+** at the end of its row. To see a ✓ on songs you already have, turn on
+Settings › Apple Music › **Show ✓ on songs you have**.
+
+**Retro-Future is now Cyber.** The skin has a new name. Your choice moves over by itself.
+
+**Also:** Playlist webs make fewer Apple Music requests: a change during a build stops the old
+build, and a search you already made is not sent again. In Sound › Adaptive, **Match loudness**
+is now off until you turn it on; songs are still measured, so it works at once when you do.
+Connecting Last.fm no longer tries to bring the browser back to the app: after you click
+**Allow**, return to DeetsMusic yourself.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.8.0 — 2026-09-16
 
 **Sound: an equalizer and adaptive sound.** Click the three small sliders in the title bar, left
