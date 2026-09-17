@@ -112,6 +112,12 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-16 — 0.8.0 is live on the `deetsmusic` channel** (published 17:26 PDT; `main` =
+`wakin-up` at `209c007`). It ships Sound, Last.fm, the playlist web, Stream quality, Fancy Glass
+and the library reads for AI apps ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.8.0). Published at the
+user's request without the hand install test of RELEASE.md §0 step 3: install it from
+`installers/` and check it early.
+
 **2026-09-16 — Sound: the user lives with it after it goes live, then reports back.** The Sound
 panel (EQ + DeetsAdaptiveSound, phases 1–5) is built and committed on `wakin-up`
 ([SOUND.md](SOUND.md) §10–§11). Before any more Sound work: once it ships, the user tests it in daily
