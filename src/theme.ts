@@ -21,7 +21,7 @@ const RETIRED: Record<string, ThemeName> = {
 // No saved choice: follow the OS light/dark preference, landing on Lilac
 // (light) or Black & Red (dark). The skin axis reads the SAME preference,
 // so a first launch lands on one of two curated pairs — Press × Lilac or
-// Retro-Future × Black & Red. Mirrors DeetsSolutions' default logic.
+// Cyber × Black & Red. Mirrors DeetsSolutions' default logic.
 // Settings › Reset › Theme and skin returns to it too.
 export function defaultTheme(): ThemeName {
   return prefersDark() ? "black-red" : "lilac";

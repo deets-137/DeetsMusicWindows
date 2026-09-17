@@ -99,7 +99,7 @@ cards rise into place, one slot after the next (`src/boot-cover.ts`).
 
 ## 6a. Look change — **the launch animation, not a snap** (built 2026-09-15, desk test pending)
 **Before:** a View Transition. A theme crossfaded; a skin played its own entrance (Press stamp,
-Ocean rise, Glass focus, Retro-Future snap). A skin switch dropped 37% of its frames at 238 Hz,
+Ocean rise, Glass focus, Cyber snap). A skin switch dropped 37% of its frames at 238 Hz,
 because the new skin painted during the animation.
 **Now (user's call: 1A, 2A, 3B):** every theme and skin change, from the title menu or the look
 schedule, runs the launch cover (`src/appearance.ts`) with one more stage:
@@ -110,9 +110,9 @@ schedule, runs the launch cover (`src/appearance.ts`) with one more stage:
 - **lift** — the launch rise, on the INCOMING skin's `--boot-*` tokens.
 - **Per skin (3B):** each skin sets `--boot-dur`, `--boot-ease`, `--boot-rise`, `--boot-stagger`
   and `--cover-in-dur`, which also tunes its launch: Press short and firm, Ocean long and deep,
-  Glass soft with a slight scale, Retro-Future a hard skew that straightens.
+  Glass soft with a slight scale, Cyber a hard skew that straightens.
   `--boot-cover-out` (default `var(--boot-dur)`) times the cover's fade apart from the cards:
-  Retro-Future clears the cover in 0.18 s, then the cards finish their 0.6 s skew (desk
+  Cyber clears the cover in 0.18 s, then the cards finish their 0.6 s skew (desk
   feedback 2026-09-15: the first cut was too short, with too much black screen).
 - **Playback and clicks:** only the `<html>` attributes change; the player is not touched.
   Clicks pass in every stage.
@@ -164,7 +164,7 @@ Max / Mini, single changes and theme + surface back to back. Every change gave o
 batch gave one line (joined). No warnings or errors. New dev line `[perf] frames appearance-lift
 <detail>` times only the rise (the whole-cover line also counts the opaque wait: the Max remount
 long task, 57–80 ms, sits there, unseen). Lift drop into Max: Glass 52–60%, Ocean 43–55%,
-Retro-Future 13–16% without a resize and 30% right after one, Press 1% / 7.6%. Worst frame
+Cyber 13–16% without a resize and 30% right after one, Press 1% / 7.6%. Worst frame
 ≤ 21 ms. ~~The Max rise on Glass and Ocean is the cost of Max itself~~ — wrong, see the fix below.
 Midi and Mini lifts: 0–11% (Glass → Mini 24% once).
 
@@ -178,7 +178,7 @@ four-layer `mask-composite` redraws each frame (PNG tiles instead of the SVG noi
 during the lift the grain tile goes solid and the specks go empty ("Sand B"); they return when
 the lift ends. Ruled out by probes: ambient layers, stagger, frost alone, the rise's `scale()`.
 Re-measured (agent lift dropped %): Glass Max 47 → 0.4–1.5, Ocean Sand Max 47 → 0.7–1.6, Ocean
-Soft Max 0.2, Retro-Future Max 7 → 0, Press Max 6 → 1.2; Midi/Mini skin changes 20–39 → ≤ 1.4;
+Soft Max 0.2, Cyber Max 7 → 0, Press Max 6 → 1.2; Midi/Mini skin changes 20–39 → ≤ 1.4;
 surface → Max after a resize 58–60 → 4–7.5; surface → Midi on Ocean 44 → 11–13.
 
 **Forks — settled 2026-09-15 (user): 1A, 2A, 3A.**

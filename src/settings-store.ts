@@ -45,10 +45,10 @@ export interface Settings {
    *  reduced-motion preference still wins. */
   cardSwapMotion: boolean;
   /** The skins' scrubber handles with their own shape and motion (Press nib, Ocean float,
-   *  Glass lens, Retro-Future charged bolt). Off: the plain masked handle each skin had
+   *  Glass lens, Cyber charged bolt). Off: the plain masked handle each skin had
    *  before 2026-09-16, no motion. `data-fancy-scrub` on <html>. */
   fancyScrubber: boolean;
-  /** The skins' moving backgrounds (Ocean swell, Glass aurora, Retro-Future storm, the NP
+  /** The skins' moving backgrounds (Ocean swell, Glass aurora, Cyber storm, the NP
    *  aurora): on = 30 fps, reduced = 15 fps, off = still (the storm hides). The OS
    *  reduced-motion preference still wins. src/ambient.ts applies it. */
   backgroundMotion: "on" | "reduced" | "off";
@@ -220,6 +220,9 @@ export interface Settings {
   playlistCreateSummon: "always" | "notmini" | "off";
   /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
   playlistExport: boolean;
+  /** The Add-to-Library square on a song row (add-square.ts): on, a song already in your
+   *  library shows ✓ on hover; off, it shows no square. SEARCH.md § Add-to-Library square. */
+  addSquareOwned: boolean;
   /** For a song played from a playlist, the Now Playing card and the tray panel show the
    *  album cover or the playlist's saved cover (PLAYLISTS.md §11). playlist-cover.ts reads it. */
   nowPlayingCover: "album" | "playlist";
@@ -238,6 +241,9 @@ export interface Settings {
   /** Make playlist in a web: the panel shrinks into the artist row before it flies ("shrink"),
    *  or pops out as the row flies ("pop"). PLAYLIST-WEB.md §2b. */
   webMakeMotion: "shrink" | "pop";
+  /** A temporary web playlist's days: deleted this long after its last play. The web panel's
+   *  Temp | N days button remembers it; every new web starts on Temp. No Settings row (PLAYLIST-WEB.md §10). */
+  webTempDays: 1 | 3 | 5 | 7 | 30;
   // ── cards ──
   /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
   rewindCard: boolean;
@@ -297,7 +303,7 @@ export const DEFAULTS: Settings = {
   dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
   daySkin: "press",
   nightTheme: "black-red",
-  nightSkin: "retro-future",
+  nightSkin: "cyber",
   dayStart: "07:00",
   nightStart: "19:00",
   sunShift: 0,
@@ -317,7 +323,7 @@ export const DEFAULTS: Settings = {
   soundEqOutputs: {},
   soundOutputNames: {}, // filled as presets are remembered: a Windows output's key is an unreadable id
   soundAdaptive: false, // user's call 2026-09-16: off like every effect
-  soundLoudness: true, // the parts are on inside the switch: turning Adaptive sound on does something at once
+  soundLoudness: false, // user's call 2026-09-17: off inside Adaptive sound; songs are still measured while Adaptive sound is on, so turning it on later has gains ready
   soundLoudTarget: -16, // user's call 2026-09-16: Apple Sound Check's level, more headroom than −14
   soundLoudAlbum: true, // user's call 2026-09-16: an album keeps its own dynamics
   soundLoudUnmeasured: "median", // user's call 2026-09-16
@@ -348,6 +354,7 @@ export const DEFAULTS: Settings = {
   playlistEagerCounts: true,
   playlistCreateSummon: "notmini", // user's call 2026-09-15: in mini the summon replaces the playlist
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
+  addSquareOwned: false, // user's call 2026-09-17: most playlist and History songs are yours, so a ✓ on each hover says nothing
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
   webReach: 2, // the artist's collaborators and theirs: a real web without drifting far (PLAYLIST-WEB.md §3)
@@ -355,6 +362,7 @@ export const DEFAULTS: Settings = {
   webPrefer: "mix", // no lean until you pick one: a web is both a comfort list and a find
   webSeedFilter: "all", // user's call 2026-09-16: a genre pick must not leave the artist's other-genre songs clashing
   webMakeMotion: "shrink", // user's call 2026-09-16: try the shrink first; Pop out is the one-beat close
+  webTempDays: 7, // user's call 2026-09-17: a week leaves time to play it again or keep it
   rewindCard: false,
   rewindAutoShown: false,
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
@@ -399,6 +407,8 @@ function migrate(into: Partial<Settings>): void {
   // Auto preamp (on/off, a few hours on 2026-09-16) became a four-way choice; its old default
   // is dropped so the new one (Limiter only) applies.
   delete (into as Record<string, unknown>).soundEqAutoPreamp;
+  // The Retro-Future skin became Cyber (2026-09-17); skin.ts migrates deets.skin the same way.
+  for (const k of ["daySkin", "nightSkin"] as const) if ((into[k] as string | undefined) === "retro-future") into[k] = "cyber";
 }
 
 function load(): Settings {

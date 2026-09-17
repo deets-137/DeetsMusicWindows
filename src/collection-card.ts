@@ -15,6 +15,7 @@ import * as frames from "./frames";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload } from "./row-drag";
+import { isAddSquare } from "./add-square";
 import { rowPick, canPick, picksText, objectId } from "./row-pick";
 import { shuffleInPlace } from "./queue";
 import { isShuffleOn, setShuffleMode } from "./player";
@@ -958,7 +959,7 @@ export function initCollectionCard(opts: CardOptions) {
     root: viewport,
     label: "collection",
     rowAt: (target) => {
-      if (animating) return null;
+      if (animating || isAddSquare(target)) return null; // a press on the + adds; it never drags the row
       const pane = target.closest<HTMLElement>(".coll-pane");
       if (!pane || pane !== curPane) return null;
       const row = target.closest<HTMLElement>("[data-idx]");

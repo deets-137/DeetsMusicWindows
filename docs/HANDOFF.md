@@ -123,10 +123,11 @@ moves onto the new worker (§13).
 **2026-09-16 — 0.8.0 is live on the `deetsmusic` channel** (published 17:26 PDT; `main` =
 `wakin-up` at `209c007`). It ships Sound, Last.fm, the playlist web, Stream quality, Fancy Glass
 and the library reads for AI apps ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.8.0). Published at the
-user's request without the hand install test of RELEASE.md §0 step 3: install it from
-`installers/` and check it early.
+user's request without the hand install test of RELEASE.md §0 step 3. The user confirmed on
+2026-09-17: 0.8.0 is installed and works well.
 
-**2026-09-16 — Last.fm link back: DECIDED C, not built.** The installed 0.8.0 connect test
+**2026-09-16 — Last.fm link back: DECIDED C, BUILT 2026-09-17 (`LINK_BACK = false`, LASTFM.md §4
+step 4 updated); ships in the next release.** The installed 0.8.0 connect test
 (LASTFM.md §9) passed: connected in 7 s (log 17:52:38 → 17:52:45). The browser did not return to
 DeetsMusic, and the log has no `lastfm: link back arrived` line and no "ignored" line. The
 `deetsmusic://` scheme is registered correctly (checked in the real HKCU through WMI). Cause:
@@ -134,7 +135,7 @@ Last.fm's desktop auth (our token from `auth.getToken`) ignores `cb`; only the w
 redirects. **To build next release:** set `LINK_BACK = false` in `src-tauri/src/lastfm.rs`; the
 3 s checks already finish the connect, and the user returns to the app by hand. Rejected: A (the
 app brings its window forward on "connected"; Windows can block the focus) and B (switch to web
-auth, where the link is the only way to finish). Then update LASTFM.md §4 step 4.
+auth, where the link is the only way to finish).
 
 **2026-09-16 — Sound: the user lives with it after it goes live, then reports back.** The Sound
 panel (EQ + DeetsAdaptiveSound, phases 1–5) is built and committed on `wakin-up`
@@ -565,13 +566,13 @@ them), and two scroll/render fixes in the card engine.
   Surface flyouts, a **Settings…** row (summons the Settings card, [SETTINGS.md](SETTINGS.md)),
   and the Account row. A first launch with
   no saved choice follows the OS light/dark preference, landing on Press × Lilac or
-  Retro-Future × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`)
+  Cyber × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`/`retro-future`)
   migrate via the `RETIRED` maps in `theme.ts` / `skin.ts` and the pre-paint script in
   `index.html` — keep all three in sync.
 - **Skins**: `vanilla` (borderless + editorial underline; hidden from the picker since
   2026-09-10, block kept as the base), `press` (riso print shop —
   square trim, halftone stock, offset `--ink-2` plate), `ocean` (recessed cards + SVG wave
-  trains), `glass` (frosted, drifting aurora), `retro-future` (lightning storm layer).
+  trains), `glass` (frosted, drifting aurora), `cyber` (lightning storm layer).
   Shared `[data-skin]` base + per-skin deltas; nav/motion/geometry fully tokenized (new
   capabilities like `--hover-lift` / `--panel-backdrop` default to no-ops).
 - **Card + slot system** (`cards.ts`, `layout.ts`; [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md)):
@@ -762,7 +763,7 @@ Where it is heading: FUTURE-SETTINGS.md §25, settings for the heaviest features
   still aurora and locked sliders 65 / 85 / 40 / 10, or the live blur and the sliders. Built,
   typechecked, **awaiting desk test**. SETTINGS.md row; numbers in DEBUGGING.md §Fancy Glass
   and the Ocean swell.
-- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Retro-Future only): built,
+- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber only): built,
   half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
 - ⬜ **Swell:** measure Animate backgrounds › Reduced under `--gpu=off`, then maybe a hint line.
 - ⬜ Found on the way, older than these changes: a very fast wheel spin (≈ 15,000 px/s) shows

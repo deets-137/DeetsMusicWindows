@@ -165,6 +165,13 @@ pub struct Playlist {
     /// an add target and not editable by hand. None = a hand-made playlist.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
+    /// A temporary web playlist's days (PLAYLIST-WEB.md §10). None = kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expire_days: Option<u32>,
+    /// When a temporary playlist goes (epoch-ms): the later of its creation and its last play,
+    /// plus its days.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
 }
 
 /// An Apple radio station (STATIONS.md §2 — live / Discovery / genre / seeded).

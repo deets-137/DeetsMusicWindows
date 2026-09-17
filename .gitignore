@@ -41,3 +41,7 @@ installers/
 
 # heaviness sampler output (scripts/heaviness-sample.ps1 -Loop)
 scripts/heaviness-samples.log
+
+# The owner's values and taste profile (how Claude decides like the owner). Kept on this PC.
+docs/VALUES.md
+docs/TASTE.md

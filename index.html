@@ -13,7 +13,7 @@
       (function () {
         var R = {
           fairy: "lilac", glade: "green", hornet: "black-yellow", viper: "black-red",
-          desk: "press", cyberstorm: "retro-future",
+          desk: "press", cyberstorm: "cyber", "retro-future": "cyber",
         };
         var dark = false;
         try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
@@ -31,10 +31,10 @@
           }
         } catch (e) {}
         [["deets.theme", "data-theme", dark ? "black-red" : "lilac"],
-         ["deets.skin",  "data-skin",  dark ? "retro-future" : "press"]].forEach(function (a, i) {
+         ["deets.skin",  "data-skin",  dark ? "cyber" : "press"]].forEach(function (a, i) {
           var saved = null;
           try { saved = localStorage.getItem(a[0]); } catch (e) {}
-          document.documentElement.setAttribute(a[1], look ? look[i] : saved ? (R[saved] || saved) : a[2]);
+          document.documentElement.setAttribute(a[1], look ? (R[look[i]] || look[i]) : saved ? (R[saved] || saved) : a[2]);
         });
       })();
     </script>
@@ -113,7 +113,7 @@
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="press"        data-skin-choice="press"        title="A print shop: ink on paper, square corners. The cover can be a record">Press</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="ocean"        data-skin-choice="ocean"        title="Cards on rolling waves, with a serif">Ocean</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"        data-skin-choice="glass"        title="Frosted panels over a soft glow">Glass</button>
-              <button class="flyout__item" type="button" role="menuitemradio" data-skin="retro-future" data-skin-choice="retro-future" title="Lightning behind the cards, machined type">Retro-Future</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="cyber" data-skin-choice="cyber" title="Lightning behind the cards, machined type">Cyber</button>
             </div>
           </div>
 
@@ -283,7 +283,7 @@
     </header>
 
     <main class="app-body">
-      <!-- Ambient layers (Ocean swell / Glass aurora / Retro-Future storm) sit BEHIND the
+      <!-- Ambient layers (Ocean swell / Glass aurora / Cyber storm) sit BEHIND the
            cards and are inert (display:none) unless a skin opts in via its display token.
            All three animate ONLY transform and opacity on plain boxes, so the compositor
            moves finished layers and the main thread paints nothing per frame (an SVG child

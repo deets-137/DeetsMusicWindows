@@ -37,7 +37,7 @@ with fontTools); otherwise unmodified. The SemiBold face is bound to
 font-weight 700 in fonts.css — see the note there.
 
 
-Orbitron  (Retro-Future skin — title)
+Orbitron  (Cyber skin — title)
 -------------------------------------
 Files:   Orbitron-Bold.woff2
 Copyright (c) The Orbitron Project Authors (Matt McInerney).
@@ -45,7 +45,7 @@ Upstream: https://github.com/theleagueof/orbitron
 Bundled as a latin-subset WOFF2 (via Google Fonts); otherwise unmodified.
 
 
-Rajdhani  (Retro-Future skin — body)
+Rajdhani  (Cyber skin — body)
 ------------------------------------
 Files:   Rajdhani-Medium.woff2, Rajdhani-Bold.woff2
 Copyright (c) The Rajdhani Project Authors (Indian Type Foundry).

@@ -1,6 +1,6 @@
 // Card swap motion (Settings › Animate card swaps; docs/ideas/CardSwapMotion.md).
 // layout.ts hands each pick here in two steps:
-//   out — a skin with an out phase (--swap-out-dur > 0, Retro-Future) plays the leaving
+//   out — a skin with an out phase (--swap-out-dur > 0, Cyber) plays the leaving
 //         cards out first; the remount waits for it. Other skins remount at once.
 //   in  — after the remount, each new card plays from the slot it left, or rises in.
 // JS only measures the slot a card left; the shape and the timing are skin tokens (skin.css

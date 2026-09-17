@@ -112,7 +112,9 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                 "SELECT p.id, p.name, p.description, p.created_at,
                         (SELECT COUNT(*) FROM local_playlist_tracks t WHERE t.playlist_id = p.id),
                         CASE WHEN p.cover IS NOT NULL AND p.cover != '' THEN COALESCE(p.cover_at, p.updated_at) END,
-                        p.exported_apple_id, p.exported_at, p.role
+                        p.exported_apple_id, p.exported_at, p.role,
+                        p.expire_days, (SELECT MAX(e.started_ts) FROM play_events e
+                                        WHERE p.expire_days IS NOT NULL AND e.context = 'playlist:local:' || p.id)
                  FROM local_playlists p",
             )
             .map_err(err)?;
@@ -128,11 +130,12 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                         r.get::<_, Option<i64>>(5)?,
                     ),
                     (r.get::<_, Option<String>>(6)?, r.get::<_, Option<i64>>(7)?, r.get::<_, Option<String>>(8)?),
+                    (r.get::<_, Option<u32>>(9)?, r.get::<_, Option<i64>>(10)?),
                 ))
             })
             .map_err(err)?;
         let rows: Vec<_> = rows.collect::<Result<_, _>>().map_err(err)?;
-        for ((id, name, description, created_at, n, cover_at), (exported_apple_id, exported_at, role)) in rows {
+        for ((id, name, description, created_at, n, cover_at), (exported_apple_id, exported_at, role), (expire_days, last_play)) in rows {
             let key = format!("local:{id}");
             // Cover precedence (NEXT-VERSION §2): the user's own image (a cover:// link,
             // no {w}/{h} — `artURL` leaves it alone; `v` changes with the cover, so the
@@ -165,6 +168,8 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
                 exported_apple_id,
                 exported_at,
                 role,
+                expire_days,
+                expires_at: expire_days.map(|d| expires_at(created_at, last_play, d)),
                 ..Default::default()
             });
         }
@@ -193,6 +198,12 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
         }
     }
     Ok(out)
+}
+
+/// A temporary playlist's delete time (PLAYLIST-WEB.md §10): the later of its creation and
+/// its last play, plus its days.
+fn expires_at(created_at: i64, last_play: Option<i64>, days: u32) -> i64 {
+    created_at.max(last_play.unwrap_or(0)) + days as i64 * 24 * 60 * 60 * 1000
 }
 
 /// The artwork Apple gave a local playlist's exported copy, read from its mirror row —
@@ -720,7 +731,8 @@ pub async fn playlist_export_apple(
             {
                 let conn = db.0.lock().unwrap();
                 conn.execute(
-                    "UPDATE local_playlists SET exported_apple_id = ?2, exported_at = ?3 WHERE id = ?1",
+                    // An exported playlist is kept: its Apple copy cannot be deleted (PLAYLIST-WEB.md §10.3).
+                    "UPDATE local_playlists SET exported_apple_id = ?2, exported_at = ?3, expire_days = NULL WHERE id = ?1",
                     rusqlite::params![id, apple_id, now_ms()],
                 )
                 .map_err(err)?;
@@ -1080,21 +1092,141 @@ pub async fn apple_playlist_tracks(
 // ── Local CRUD (all SQLite, zero Apple calls; UI callers arrive with creation UX) ──
 
 /// `role`: None for a hand-made playlist, `"replay"` for one made from listening (§10.8).
+/// `expire_days`: a temporary web playlist's days (PLAYLIST-WEB.md §10); None = kept.
 #[tauri::command]
 pub fn playlist_create(
     name: String,
     description: Option<String>,
     role: Option<String>,
+    expire_days: Option<u32>,
     db: State<'_, Db>,
 ) -> Result<i64, String> {
     let conn = db.0.lock().unwrap();
     let now = now_ms();
     conn.execute(
-        "INSERT INTO local_playlists(name, description, created_at, updated_at, role) VALUES(?1, ?2, ?3, ?3, ?4)",
-        rusqlite::params![name, description, now, role],
+        "INSERT INTO local_playlists(name, description, created_at, updated_at, role, expire_days) VALUES(?1, ?2, ?3, ?3, ?4, ?5)",
+        rusqlite::params![name, description, now, role, expire_days],
     )
     .map_err(err)?;
     Ok(conn.last_insert_rowid())
+}
+
+/// Keep Playlist (PLAYLIST-WEB.md §10.5): a temporary playlist becomes an ordinary one.
+#[tauri::command]
+pub fn playlist_keep(id: i64, db: State<'_, Db>) -> Result<(), String> {
+    let conn = db.0.lock().unwrap();
+    conn.execute("UPDATE local_playlists SET expire_days = NULL WHERE id = ?1", [id]).map_err(err)?;
+    crate::log::info(&format!("playlists: kept temporary playlist id={id}"));
+    Ok(())
+}
+
+/// A deleted temporary playlist, whole: Undo makes it again from this.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpiredPlaylist {
+    id: i64,
+    name: String,
+    description: Option<String>,
+    cover: Option<String>,
+    folder_id: Option<i64>,
+    expire_days: u32,
+    /// The songs' saved json, in order.
+    tracks: Vec<String>,
+}
+
+/// The expiry check (PLAYLIST-WEB.md §10.6): delete every temporary playlist past its time,
+/// except the one that plays now (`playing` = the current queue context), and return them
+/// whole for Undo. Local SQL only.
+#[tauri::command]
+pub fn playlists_expire(playing: Option<String>, db: State<'_, Db>) -> Result<Vec<ExpiredPlaylist>, String> {
+    let mut conn = db.0.lock().unwrap();
+    let now = now_ms();
+    let due: Vec<(i64, String, Option<String>, Option<String>, u32)> = {
+        let mut st = conn
+            .prepare(
+                "SELECT p.id, p.name, p.description, p.cover, p.created_at, p.expire_days,
+                        (SELECT MAX(e.started_ts) FROM play_events e WHERE e.context = 'playlist:local:' || p.id)
+                 FROM local_playlists p WHERE p.expire_days IS NOT NULL",
+            )
+            .map_err(err)?;
+        let rows = st
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                    r.get::<_, Option<String>>(3)?,
+                    r.get::<_, i64>(4)?,
+                    r.get::<_, u32>(5)?,
+                    r.get::<_, Option<i64>>(6)?,
+                ))
+            })
+            .map_err(err)?;
+        rows.flatten()
+            .filter(|(id, _, _, _, created, days, last)| {
+                now >= expires_at(*created, *last, *days) && playing.as_deref() != Some(&format!("playlist:local:{id}"))
+            })
+            .map(|(id, name, description, cover, _, days, _)| (id, name, description, cover, days))
+            .collect()
+    };
+    let mut out = Vec::new();
+    for (id, name, description, cover, expire_days) in due {
+        let tracks: Vec<String> = {
+            let mut st = conn
+                .prepare("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
+                .map_err(err)?;
+            let rows = st.query_map([id], |r| r.get::<_, String>(0)).map_err(err)?;
+            rows.flatten().collect()
+        };
+        let key = format!("local:{id}");
+        let folder_id: Option<i64> = conn
+            .query_row("SELECT folder_id FROM playlist_folder_members WHERE playlist_key = ?1", [&key], |r| r.get(0))
+            .ok();
+        let tx = conn.transaction().map_err(err)?;
+        tx.execute("DELETE FROM local_playlist_tracks WHERE playlist_id = ?1", [id]).map_err(err)?;
+        tx.execute("DELETE FROM playlist_folder_members WHERE playlist_key = ?1", [&key]).map_err(err)?;
+        tx.execute("DELETE FROM local_playlists WHERE id = ?1", [id]).map_err(err)?;
+        tx.commit().map_err(err)?;
+        crate::log::info(&format!("playlists: expired temporary playlist id={id} days={expire_days} songs={}", tracks.len()));
+        out.push(ExpiredPlaylist { id, name, description, cover, folder_id, expire_days, tracks });
+    }
+    Ok(out)
+}
+
+/// Undo an expiry: the playlist again, with its name, songs, cover, folder and days. Its
+/// clock starts now, so the next check does not delete it at once. Returns the new id.
+#[tauri::command]
+pub fn playlist_restore(playlist: ExpiredPlaylist, db: State<'_, Db>) -> Result<i64, String> {
+    let mut conn = db.0.lock().unwrap();
+    let now = now_ms();
+    let tx = conn.transaction().map_err(err)?;
+    let has_cover = playlist.cover.as_deref().is_some_and(|c| !c.is_empty());
+    tx.execute(
+        "INSERT INTO local_playlists(name, description, created_at, updated_at, cover, cover_at, expire_days)
+         VALUES(?1, ?2, ?3, ?3, ?4, ?5, ?6)",
+        rusqlite::params![playlist.name, playlist.description, now, playlist.cover, has_cover.then_some(now), playlist.expire_days],
+    )
+    .map_err(err)?;
+    let id = tx.last_insert_rowid();
+    for (i, json) in playlist.tracks.iter().enumerate() {
+        tx.execute(
+            "INSERT INTO local_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)",
+            rusqlite::params![id, i as i64, json],
+        )
+        .map_err(err)?;
+    }
+    if let Some(f) = playlist.folder_id {
+        // Only into a folder that still exists.
+        tx.execute(
+            "INSERT OR REPLACE INTO playlist_folder_members(playlist_key, folder_id)
+             SELECT ?1, id FROM playlist_folders WHERE id = ?2",
+            rusqlite::params![format!("local:{id}"), f],
+        )
+        .map_err(err)?;
+    }
+    tx.commit().map_err(err)?;
+    crate::log::info(&format!("playlists: restored expired playlist id={} as id={id}", playlist.id));
+    Ok(id)
 }
 
 #[tauri::command]

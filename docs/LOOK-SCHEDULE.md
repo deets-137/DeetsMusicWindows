@@ -16,7 +16,7 @@ and one skin. Settings › Look and feel › **Change look at** picks what sets 
 | Off (default) | `off` | never; the saved theme and skin stay |
 
 The **Day look** and **Night look** rows are split pills: a theme menu and a skin menu.
-Defaults are the two first-launch pairs (Lilac × Press, Black & Red × Retro-Future). A
+Defaults are the two first-launch pairs (Lilac × Press, Black & Red × Cyber). A
 status line under the section says which look shows and until when.
 
 A scheduled change runs through `withAppearanceTransition` (the launch animation, the same

@@ -46,7 +46,7 @@ the search field's focus. The label + toolbar bar is **sticky**: once the hero a
 scroll away it stays at the top of the card over the songs (user, 2026-09-15). It is its own
 child of the scroll view (`.lib-view-bar`), painted with `--sticky-bar-surface` /
 `--sticky-bar-backdrop` = the card's own `--panel` and `--panel-backdrop`, so it reads as no box
-(user, 2026-09-15: the menu surface looked jarring). Retro-Future's card is see-through with no
+(user, 2026-09-15: the menu surface looked jarring). Cyber's card is see-through with no
 frost, so its bar adds a blur. Glass: the card's top glow (`--panel-paint` gradient) is not
 repeated on the bar, so a small tint step may show there.
 
@@ -127,7 +127,7 @@ swaps no card passes `ownMotion` and follows reduced motion only — the playlis
 card is summoned and the playlist opens at once. Skin tokens (skin.css §chip flight):
 `--fly-dur`, `--fly-ease`, `--fly-mid` (shape at the midpoint), `--fly-land`,
 `--fly-land-fade`. Press stamps, Ocean dips, Glass uses the base (a straight glide),
-Retro-Future skews.
+Cyber skews.
 
 ## 6. The `requestCard` fix
 

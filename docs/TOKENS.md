@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 351 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, retro-future 64 |
+| Skin (everything else) | skin.css base block | 354 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -61,14 +61,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--font-title` | `"Liberation Serif", Georgia, "Times New Roman", serif` | press, ocean, glass, retro-future |  |
-| `--font-body` | `"Liberation Sans", Arial, Helvetica, sans-serif` | press, ocean, retro-future |  |
-| `--fs-title` | `20px` | press, ocean, glass, retro-future |  |
-| `--fs-text` | `14px` | press, retro-future |  |
-| `--fs-subtext` | `12px` | press, retro-future |  |
-| `--fw-title` | `700` | press, ocean, glass, retro-future |  |
-| `--fw-text` | `400` | retro-future |  |
-| `--fw-subtext` | `400` | retro-future |  |
+| `--font-title` | `"Liberation Serif", Georgia, "Times New Roman", serif` | press, ocean, glass, cyber |  |
+| `--font-body` | `"Liberation Sans", Arial, Helvetica, sans-serif` | press, ocean, cyber |  |
+| `--fs-title` | `20px` | press, ocean, glass, cyber |  |
+| `--fs-text` | `14px` | press, cyber |  |
+| `--fs-subtext` | `12px` | press, cyber |  |
+| `--fw-title` | `700` | press, ocean, glass, cyber |  |
+| `--fw-text` | `400` | cyber |  |
+| `--fw-subtext` | `400` | cyber |  |
 | `--lh-text` | `1.45` | press |  |
 | `--title-underline` | `none` | vanilla | Editorial title rule — an underline under the app title + card titles (.app-title / .panel__title). Ink is currentColor (--title), so the theme owns the color; these knobs are pure geometry. Base is a NO-OP so a new skin never inherits it by accident — a skin opts in. FUTURE-SETTINGS §11: behavior (always/hover/off) may become a toggle. |
 | `--title-underline-w` | `auto` | vanilla |  |
@@ -95,7 +95,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--vol-pill-w` | `32px` | — | Pill height tracks --traffic-size (sits level with the lights). The fill hue is the theme's --title; --vol-fill-strength is how hard that tint hue is the theme's --title; --vol-fill-strength is how hard that tint reads (a skin/material decision, not a color). — ~2.3× a traffic light |
-| `--vol-pill-radius` | `999px` | press, glass, retro-future | true capsule |
+| `--vol-pill-radius` | `999px` | press, glass, cyber | true capsule |
 | `--vol-pill-fs` | `9px` | — |  |
 | `--vol-fill-strength` | `30%` | — |  |
 | `--vol-icon-size` | `calc(var(--traffic-size) - 4px)` | — | inside the bar's 1 px border with a 1 px breath: 12 px at 16 |
@@ -160,18 +160,18 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-key-size` | `8px` | — |  |
 | `--sound-key-radius` | `2px` | — |  |
 | `--sound-key-line` | `14px` | — |  |
-| `--sound-song-strength` | `22%` | ocean, retro-future |  |
+| `--sound-song-strength` | `22%` | ocean, cyber |  |
 | `--sound-zone-strength` | `5%` | — |  |
 | `--sound-zone-lit-strength` | `14%` | — |  |
 | `--sound-balance-label-w` | `48px` | — |  |
 | `--sound-balance-bar-h` | `6px` | — |  |
-| `--sound-curve-w` | `2px` | press, retro-future |  |
-| `--sound-curve-glow` | `none` | ocean, glass, retro-future | a skin's light on the curve: a drop-shadow() filter |
+| `--sound-curve-w` | `2px` | press, cyber |  |
+| `--sound-curve-glow` | `none` | ocean, glass, cyber | a skin's light on the curve: a drop-shadow() filter |
 | `--sound-grid-w` | `1px` | — |  |
-| `--sound-grid-dash` | `none` | press, retro-future |  |
+| `--sound-grid-dash` | `none` | press, cyber |  |
 | `--sound-zero-w` | `1px` | — |  |
 | `--sound-fill-strength` | `16%` | press, ocean, glass |  |
-| `--sound-grid-strength` | `24%` | retro-future |  |
+| `--sound-grid-strength` | `24%` | cyber |  |
 | `--sound-handle-size` | `16px` | — |  |
 | `--sound-handle-hit` | `28px` | — | the dot's pointer target, bigger than the dot |
 | `--sound-handle-ring` | `2px` | — |  |
@@ -198,6 +198,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--web-panel-pad` | `var(--space-2)` | — |  |
 | `--web-row-h` | `32px` | — | an artist row |
 | `--web-hit-art` | `24px` | — | the artist's round photo |
+| `--web-cover-radius` | `var(--lib-row-art-radius)` | — | a song's or album's cover in the list: the Library row's corner (§9) |
+| `--web-hit-line-max-w` | `50%` | — |  |
+| `--web-days-min-w` | `56px` | — | "30 days" and "1 day" are the same width: the row does not move as it cycles */    /* a song's artist line never takes more than half the row from its title |
 | `--web-opt-min-w` | `32px` | — | a Reach / Size option: 1 and 100 are the same width |
 | `--web-chip-radius` | `var(--radius-control)` | — |  |
 | `--web-title-tracking` | `0.06em` | — | the panel title, the create menu's label voice |
@@ -210,8 +213,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--radius-panel` | `10px` | press, retro-future |  |
-| `--radius-control` | `6px` | press, retro-future |  |
+| `--radius-panel` | `10px` | press, cyber |  |
+| `--radius-control` | `6px` | press, cyber |  |
 
 ### floating panels (menus / popovers)
 
@@ -243,29 +246,29 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--toast-stripe` | `3px` | — | the kind stripe on the leading edge |
 | `--toast-bar` | `2px` | — | the countdown bar on timed toasts |
 | `--toast-shift` | `30%` | — | fly-in / fly-out travel; a skin may zero it |
-| `--spane-bg` | `var(--panel)` | glass, retro-future | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Retro-Future) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
+| `--spane-bg` | `var(--panel)` | glass, cyber | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
 
 ### bento panels
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--panel-gap` | `var(--space-3)` | — |  |
-| `--panel-radius` | `12px` | press, ocean, glass, retro-future |  |
+| `--panel-radius` | `12px` | press, ocean, glass, cyber |  |
 | `--panel-pad` | `var(--space-3)` | — |  |
-| `--panel-border-width` | `0` | press, ocean, glass, retro-future | borderless: spacing/typography carry the |
-| `--panel` | `var(--canvas)` | press, ocean, glass, retro-future | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
-| `--shadow-card` | `none` | press, ocean, retro-future | skins add a real card shadow |
+| `--panel-border-width` | `0` | press, ocean, glass, cyber | borderless: spacing/typography carry the |
+| `--panel` | `var(--canvas)` | press, ocean, glass, cyber | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
+| `--shadow-card` | `none` | press, ocean, cyber | skins add a real card shadow |
 | `--panel-backdrop` | `none` | press, glass | frosted-glass blur behind the panel; a skin opts in |
-| `--scroller-layer` | `auto` | ocean, glass, retro-future | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) |
+| `--scroller-layer` | `auto` | ocean, glass, cyber | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) |
 | `--panel-isolation` | `auto` | glass | isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) |
 
-### canvas pattern (Press halftone / Retro-Future grid)
+### canvas pattern (Press halftone / Cyber grid)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--canvas-bg` | `none` | press, glass | A background-image BEHIND the cards. Its color comes from a theme role (--border); the pattern is skin. Vanilla paints nothing. The role (--border); the pattern is skin. Vanilla paints nothing. The extension pages paint --canvas-bg as-is (static). In the app, extension pages paint --canvas-bg as-is (static). In the app, .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it to none and draws on an ambient layer instead (Glass → aurora), to none and draws on an ambient layer instead (Glass → aurora), because a moving background repaints every frame. |
-| `--canvas-bg-size` | `auto` | press, glass, retro-future |  |
-| `--canvas-bg-repeat` | `repeat` | press, glass, retro-future |  |
+| `--canvas-bg-size` | `auto` | press, glass, cyber |  |
+| `--canvas-bg-repeat` | `repeat` | press, glass, cyber |  |
 | `--app-canvas-bg` | `var(--canvas-bg)` | glass |  |
 | `--canvas-dim` | `0` | glass | A black layer over the canvas and ambient layers, under the cards (.app-body::after), as an alpha 0–1. Base 0. Glass drives it (Dim canvas) and undoes it in its frost. |
 
@@ -395,12 +398,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--storm-display` | `none` | retro-future | A layer in .app-body (two wiped strikes, each an SVG bolt) that a skin opts into — same doctrine as --panel-backdrop. The that a skin opts into — same doctrine as --panel-backdrop. The GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can reuse the layer for rain / streaks / scan lines; the ink is a theme reuse the layer for rain / streaks / scan lines; the ink is a theme ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per strike by src/storm.ts) — not a skin token. Base is fully inert. — retro-future opts in |
+| `--storm-display` | `none` | cyber | A layer in .app-body (two wiped strikes, each an SVG bolt) that a skin opts into — same doctrine as --panel-backdrop. The that a skin opts into — same doctrine as --panel-backdrop. The GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can reuse the layer for rain / streaks / scan lines; the ink is a theme reuse the layer for rain / streaks / scan lines; the ink is a theme ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per strike by src/storm.ts) — not a skin token. Base is fully inert. — cyber opts in |
 | `--storm-ink` | `var(--title)` | — | stroke color — theme role, recolors per theme |
-| `--storm-glow` | `none` | retro-future | drop-shadow() halo; a skin opts in |
+| `--storm-glow` | `none` | cyber | drop-shadow() halo; a skin opts in |
 | `--storm-w` | `2px` | — | stroke width (non-scaling) |
-| `--storm-path-1` | `none` | retro-future | bolt geometry, via CSS d: path(...) |
-| `--storm-path-2` | `none` | retro-future |  |
+| `--storm-path-1` | `none` | cyber | bolt geometry, via CSS d: path(...) |
+| `--storm-path-2` | `none` | cyber |  |
 | `--storm-cycle-1` | `8s` | — | full strike period: draw ~60% + linger + dark |
 | `--storm-cycle-2` | `12s` | — | unequal cycles → phases drift, never sync |
 
@@ -417,63 +420,63 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--scrub-bob-dur` | `2.4s` | — | Ocean: one bob of the float, and one ripple |
 | `--scrub-sheen-dur` | `6s` | — | Glass: the specular dot's drift, one way |
 | `--scrub-lens-scale` | `1.2` | — | Glass: the lens's swell under the hand |
-| `--scrub-breathe-dur` | `3s` | — | Retro-Future: the bolt's glow, one way |
+| `--scrub-breathe-dur` | `3s` | — | Cyber: the bolt's glow, one way |
 
 ### scrubber (handle is a skin-swappable SVG mask)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--scrubber-track-h` | `3px` | press | The handle is a --title-filled box masked by this SVG, so the shape is arbitrary and still themes via --title. Skins override the url() only. |
-| `--scrubber-handle` | `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23000'/%3E%3C/svg%3E")` | press, ocean, glass, retro-future |  |
-| `--scrubber-handle-size` | `12px` | press, retro-future |  |
+| `--scrubber-handle` | `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23000'/%3E%3C/svg%3E")` | press, ocean, glass, cyber |  |
+| `--scrubber-handle-size` | `12px` | press, cyber |  |
 
 ### library card (toolbar + square grid)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--lib-pill-radius` | `999px` | press, glass, retro-future | fully-rounded sort/view pills |
-| `--lib-pop-radius` | `var(--radius-panel)` | press, retro-future |  |
+| `--lib-pill-radius` | `999px` | press, glass, cyber | fully-rounded sort/view pills |
+| `--lib-pop-radius` | `var(--radius-panel)` | press, cyber |  |
 | `--lib-grid-gap` | `var(--space-2)` | — |  |
 | `--lib-tile-small` | `84px` | — | min tile width — small squares (denser) |
 | `--lib-tile-large` | `132px` | — | min tile width — large squares |
-| `--lib-tile-radius` | `8px` | press, glass, retro-future |  |
+| `--lib-tile-radius` | `8px` | press, glass, cyber |  |
 | `--lib-tile-lh` | `1.3em` | — | a tile's text line; its meta block is pinned to two of |
 | `--lib-row-art` | `36px` | — | these so every tile in a grid row is one height — mini-cover size on density lines |
-| `--lib-row-h` | `46px` | press, retro-future | a line row's fixed height — its natural height under this |
+| `--lib-row-h` | `46px` | press, cyber | a line row's fixed height — its natural height under this |
 | `--hero-cover` | `180px` | — | skin's type (title + artist stack + padding); pinned so the row can be a relayout boundary (UI-ARCHITECTURE.md §4a) — the detail hero's cover square (album / playlist) |
 | `--hero-gap` | `var(--space-1)` | — | title ↔ subtitle ↔ meta stack spacing |
 | `--hero-cover-hover` | `0.85` | — | brightness of a clickable hero cover on hover / file drag |
 | `--hero-artist-radius` | `50%` | — | an artist hero's photo (ARTIST-VIEW.md §1) |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
-| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | glass, retro-future | the card's own frost (Glass); a see-through skin without one adds a blur |
-| `--lib-row-art-radius` | `4px` | press, glass, retro-future | its corner — a skin shape lever (round still wins) |
+| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |
+| `--lib-row-art-radius` | `4px` | press, glass, cyber | its corner — a skin shape lever (round still wins) |
 
 ### scrollbar (our own; color is a theme role)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--scrollbar-w` | `8px` | — |  |
-| `--scrollbar-radius` | `999px` | press, retro-future |  |
+| `--scrollbar-radius` | `999px` | press, cyber |  |
 
 ### in-card navigation (drill-in push/pop)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--nav-dur` | `0.26s` | press, ocean, glass, retro-future |  |
-| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, retro-future |  |
-| `--nav-at-center` | `translateX(0)` | press, ocean, glass, retro-future | Per-position pane transforms. A skin reshapes the whole nav MOTION (slide / drop / sink) by supplying these values — no CSS rule edits. Vanilla = the classic horizontal push/pop. |
-| `--nav-at-left` | `translateX(-100%)` | press, ocean, glass, retro-future |  |
-| `--nav-at-right` | `translateX(100%)` | press, ocean, glass, retro-future |  |
-| `--nav-off-opacity` | `1` | press, ocean, glass, retro-future | off-screen panes stay opaque |
+| `--nav-dur` | `0.26s` | press, ocean, glass, cyber |  |
+| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber |  |
+| `--nav-at-center` | `translateX(0)` | press, ocean, glass, cyber | Per-position pane transforms. A skin reshapes the whole nav MOTION (slide / drop / sink) by supplying these values — no CSS rule edits. Vanilla = the classic horizontal push/pop. |
+| `--nav-at-left` | `translateX(-100%)` | press, ocean, glass, cyber |  |
+| `--nav-at-right` | `translateX(100%)` | press, ocean, glass, cyber |  |
+| `--nav-off-opacity` | `1` | press, ocean, glass, cyber | off-screen panes stay opaque |
 | `--swap-dur` | `var(--nav-dur)` | — | -- card swap (Settings › Animate card swaps; card-swap.ts, ideas/CardSwapMotion.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
 | `--swap-ease` | `var(--nav-ease)` | — |  |
-| `--swap-out-dur` | `0s` | retro-future |  |
-| `--swap-out-to` | `scale(1)` | retro-future |  |
-| `--swap-out-fade` | `1` | retro-future |  |
-| `--swap-travel` | `1` | press, retro-future |  |
-| `--swap-from` | `scale(1)` | press, retro-future |  |
-| `--swap-mid` | `scale(1)` | press, ocean, retro-future |  |
-| `--swap-fade` | `1` | retro-future |  |
+| `--swap-out-dur` | `0s` | cyber |  |
+| `--swap-out-to` | `scale(1)` | cyber |  |
+| `--swap-out-fade` | `1` | cyber |  |
+| `--swap-travel` | `1` | press, cyber |  |
+| `--swap-from` | `scale(1)` | press, cyber |  |
+| `--swap-mid` | `scale(1)` | press, ocean, cyber |  |
+| `--swap-fade` | `1` | cyber |  |
 | `--swap-stagger` | `0s` | press |  |
 | `--grow-dur` | `0.34s` | — | -- card grow (card-grow.ts, CARD-GROW.md) -- A card opens over its neighbor: the final layout is set once and a clip opens from the old box to the new one over --grow-dur / --grow-ease while the body's content fades (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad opens the clip past the box by the card shadow's reach, so the shadow is not cut off during the motion (0 under a skin with no shadow). The zone bar is the accent line in the gap that shows which card will grow; the rail is the A–Z column of a grown list; the col widths are the fixed columns of a grown song list. |
 | `--grow-ease` | `var(--pop-ease)` | — |  |
@@ -483,10 +486,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-zone-bar-w` | `3px` | press, glass | The zone bar hugs the card it will grow: --gap from the card's edge (negative = over it), --trim from each end (the card's corner radius, so it runs between the corners), its own radius and an optional glow. |
 | `--grow-zone-bar-gap` | `0px` | ocean, glass |  |
 | `--grow-zone-bar-trim` | `var(--panel-radius)` | — |  |
-| `--grow-zone-bar-radius` | `999px` | press, ocean, glass, retro-future |  |
+| `--grow-zone-bar-radius` | `999px` | press, ocean, glass, cyber |  |
 | `--grow-zone-bar-glow` | `none` | ocean, glass |  |
 | `--grow-zone-resize-inset` | `5px` | — | The window-edge Fill zones sit inside Tauri's resize band: the outer 5 px of a window with no OS frame (BORDERLESS_RESIZE_INSET, tauri-runtime-wry undecorated_resizing.rs). |
-| `--grow-btn-gap` | `var(--space-1)` | — | between the Grow button and the first action square |
+| `--grow-btn-gap` | `var(--space-2)` | — | between the title text and the Grow button |
 | `--grow-rail-w` | `20px` | — |  |
 | `--grow-rail-fs` | `10px` | — |  |
 | `--grow-col-time` | `3.6em` | — |  |
@@ -494,22 +497,22 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-col-year` | `3.4em` | — |  |
 | `--grow-col-plays` | `3.6em` | — |  |
 | `--fly-dur` | `0.42s` | press, ocean | -- chip flight (handoff.ts, ARTIST-VIEW.md §5) -- A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease. --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing. Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base = a straight glide that shrinks into the card (Glass uses it). |
-| `--fly-ease` | `var(--nav-ease)` | press, ocean, retro-future |  |
-| `--fly-mid` | `scale(1.04)` | press, ocean, retro-future |  |
-| `--fly-land` | `scale(0.4)` | press, ocean, retro-future |  |
+| `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber |  |
+| `--fly-mid` | `scale(1.04)` | press, ocean, cyber |  |
+| `--fly-land` | `scale(0.4)` | press, ocean, cyber |  |
 | `--fly-land-fade` | `0` | — |  |
 
 ### launch cover + look change (boot-cover.ts, appearance.ts; UX-COVERUPS.md §6)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--boot-dur` | `0.8s` | press, ocean, glass, retro-future | The window shows under an opaque --canvas cover. The cover fades and the cards rise into place, one slot after the next. A theme or skin change plays the same rise into place, one slot after the next. A theme or skin change plays the same rise: first the cover fades in over the old look (--cover-in-*, the OUTGOING rise: first the cover fades in over the old look (--cover-in-*, the OUTGOING skin's), then the look changes under it, then the INCOMING skin's rise runs. skin's), then the look changes under it, then the INCOMING skin's rise runs. Each skin tunes the rise below. --boot-safety lifts the cover by CSS alone if Each skin tunes the rise below. --boot-safety lifts the cover by CSS alone if the script never does (a page error must not leave a blank window). |
-| `--boot-cover-out` | `var(--boot-dur)` | retro-future | the cover's fade; a skin may clear it sooner than the cards settle |
-| `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, retro-future | a long, soft settle |
-| `--boot-rise` | `translateY(12px)` | press, ocean, glass, retro-future |  |
-| `--boot-stagger` | `70ms` | press, ocean, glass, retro-future |  |
+| `--boot-dur` | `0.8s` | press, ocean, glass, cyber | The window shows under an opaque --canvas cover. The cover fades and the cards rise into place, one slot after the next. A theme or skin change plays the same rise into place, one slot after the next. A theme or skin change plays the same rise: first the cover fades in over the old look (--cover-in-*, the OUTGOING rise: first the cover fades in over the old look (--cover-in-*, the OUTGOING skin's), then the look changes under it, then the INCOMING skin's rise runs. skin's), then the look changes under it, then the INCOMING skin's rise runs. Each skin tunes the rise below. --boot-safety lifts the cover by CSS alone if Each skin tunes the rise below. --boot-safety lifts the cover by CSS alone if the script never does (a page error must not leave a blank window). |
+| `--boot-cover-out` | `var(--boot-dur)` | cyber | the cover's fade; a skin may clear it sooner than the cards settle |
+| `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, cyber | a long, soft settle |
+| `--boot-rise` | `translateY(12px)` | press, ocean, glass, cyber |  |
+| `--boot-stagger` | `70ms` | press, ocean, glass, cyber |  |
 | `--boot-safety` | `4s` | — |  |
-| `--cover-in-dur` | `0.22s` | press, ocean, glass, retro-future |  |
+| `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber |  |
 | `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | eases in, so the cover lands softly |
 | `--agent-motion` | `1.6` | — | an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) |
 
@@ -529,19 +532,19 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--dur-fast` | `0.12s` | press, glass, retro-future |  |
+| `--dur-fast` | `0.12s` | press, glass, cyber |  |
 | `--dur-med` | `0.18s` | press |  |
 | `--dur-spin` | `0.7s` | — |  |
 | `--ease-ui` | `ease` | — |  |
 | `--sh-cross-dur` | `0.42s` | — | Shuffle's press run: uncross → parallel → cross |
 | `--sh-cross-gap` | `3px` | — | how far the two wires part, in the icon's 24-unit box |
 | `--rp-loop-dur` | `0.5s` | — | Repeat's one full turn, on the press that lands on "one" |
-| `--hover-lift` | `none` | press, ocean, glass, retro-future | interactive rows/tiles rise on hover; a skin opts in |
-| `--drag-lift` | `scale(1.02)` | press, glass, retro-future | lift of a dragged row's copy (row-drag.ts) |
+| `--hover-lift` | `none` | press, ocean, glass, cyber | interactive rows/tiles rise on hover; a skin opts in |
+| `--drag-lift` | `scale(1.02)` | press, glass, cyber | lift of a dragged row's copy (row-drag.ts) |
 | `--drag-ghost-opacity` | `0.85` | — | the copy stays see-through so the list under it reads |
 | `--drag-nodrop-opacity` | `0.5` | — | the copy over a place that takes no drop |
 | `--drag-source-opacity` | `0.4` | — | the pressed row, left in place while its copy moves |
-| `--drop-line-w` | `2px` | press, retro-future | insertion-indicator + drop-target outline thickness |
+| `--drop-line-w` | `2px` | press, cyber | insertion-indicator + drop-target outline thickness |
 | `--disabled-alpha` | `0.6` | — | a control that keeps its place with nothing to act on |
 
 ### the empty-pane invite slot (a row-shaped drop target; styles.css .lib-empty__slot)

@@ -170,7 +170,7 @@ builds again at that size.
   back when the clip is removed. A skin can set `--grow-clip-pad` to open the clip past the box
   by the shadow's reach.
 - **Tokens (skin.css base, a skin overrides):** `--grow-dur`, `--grow-ease`,
-  `--grow-body-fade`, `--grow-rows-delay`. Retro-Future can use a stepped ease, as it does for swaps.
+  `--grow-body-fade`, `--grow-rows-delay`. Cyber can use a stepped ease, as it does for swaps.
 - **Reduced motion** snaps: no clip and no row entry.
 - **Telemetry:** the panel sets `dataset.frames = "grow"`; frames.ts logs one `[perf] frames
   grow …` line per open and per collapse. Measure on `npm run dev:built`.
@@ -408,7 +408,7 @@ Added after the large-library review, the same day:
   over it), `--grow-zone-bar-trim` (from each end — the base is the card's corner radius, so the
   bar runs between the corners), `--grow-zone-bar-radius`, `--grow-zone-bar-glow`. Press: a 4 px
   square rule. Ocean: 1 px off, a soft glow. Glass: a 2 px lit edge 2 px off the glass with a
-  glow. Retro-Future: the hard rule it had.
+  glow. Cyber: the hard rule it had.
 - **Window-edge Fill zones are back**, to explore: the right and bottom padding inside Tauri's
   5 px resize band (`--grow-zone-resize-inset`), so the zone is the inner 7 px and the resize
   cursor keeps the outer 5. `right` fills from its right edge, `c` from the bottom, `d` from
@@ -426,8 +426,13 @@ Added after the large-library review, the same day:
   `paintZones` decides per strip what it does now and hides idle ones (`beyond()` reads the
   max map: a card's columns and rows, wider for a grown card). §0 still holds: the strips are
   out of flow and paint nothing until hovered.
-- **The rows file back in on collapse too**, on the card that shrinks and on the cards that
-  come back from under it (`enterAll` on each uncovered host).
+- **The rows file back in on collapse too**, on the card that shrinks. The cards that come
+  back from under it only fade in as the clip closes: a row entry on top of that fade read as
+  a double motion (desk test, 2026-09-17), so it was taken out again.
+- **The Grow button sits just right of the title's text** (desk call, 2026-09-17), not at the
+  title box's far end: `place()` measures the text with a range (capped at the box when the
+  title is cut off) and sets `--grow-btn-left`; `--grow-btn-gap` is the space after the text.
+  Order: Grow, then Pin.
 - **A CLI / bridge route.** `deetsmusic grow Library right|left|up|down|full` (no direction =
   the header button's next step), `grow collapse`, `grow pin`, `grow unpin`, `grow state`;
   `GET/POST /grow` on the bridge (AGENT.md §3, `agentGrow` in card-grow.ts). Not an MCP tool.

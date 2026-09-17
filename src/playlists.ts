@@ -71,8 +71,9 @@ export function applePlaylistCounts(): Promise<number> {
 
 /** Create an empty local playlist; returns its rowid (list id = `local:{rowid}`).
  *  `role` "replay" marks one made from listening (replay.ts, PLAYLISTS.md §10.8). */
-export function playlistCreate(name: string, role?: "replay"): Promise<number> {
-  return invoke<number>("playlist_create", { name, description: null, role: role ?? null }).then(async (id) => {
+/** `expireDays`: a temporary web playlist (PLAYLIST-WEB.md §10); absent = kept. */
+export function playlistCreate(name: string, role?: "replay", expireDays?: number): Promise<number> {
+  return invoke<number>("playlist_create", { name, description: null, role: role ?? null, expireDays: expireDays ?? null }).then(async (id) => {
     await startCover(id, name);
     emitChange(id);
     return id;
@@ -298,6 +299,16 @@ export function addToApple(p: Playlist, getTracks: () => Track[] | Promise<Track
 }
 
 /** Delete a LOCAL playlist. Mirrors can't be deleted — there's no Apple write path. */
+/** Keep Playlist (PLAYLIST-WEB.md §10.5): a temporary web playlist becomes an ordinary one. */
+export function playlistKeep(p: Playlist): Promise<void> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<void>("playlist_keep", { id }).then(() => emitChange(id));
+}
+
+/** "Expires 9/21/2026" for a temporary web playlist, "" for any other. */
+export const expiryText = (p: Playlist): string => (p.expiresAt != null ? `Expires ${new Date(p.expiresAt).toLocaleDateString()}` : "");
+
 export function playlistDelete(p: Playlist): Promise<void> {
   const id = localId(p);
   if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));

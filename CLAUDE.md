@@ -5,6 +5,9 @@ front-end, Rust back-end).
 
 ## Start here
 - **`docs/HANDOFF.md`** — cold-start: state of play, how to run, roadmap, gotchas.
+- **`docs/VALUES.md`** — how to decide like the owner: the mission, the three stop rules, the
+  values with their evidence, tie-breakers, and the predict-then-ask log. Read it before any
+  decision he has not made.
 - `docs/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
   `docs/TOKENS.md` — every token, generated (`npm run tokens`; the release check fails when
   stale). Regenerate it in the same commit as any change to palette.css / themes.css / skin.css.
@@ -40,7 +43,10 @@ front-end, Rust back-end).
   crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (designed 2026-09-16, not built).
 - `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
-  measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (designed 2026-09-17, all forks decided, not built). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
+  measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (built 2026-09-17, awaiting desk test). §10: temporary web playlists, Keep · Temp | N days under Make playlist (built 2026-09-17, awaiting desk test). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
+- `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
+  marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
+  stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
   led by the Deets and Happy sprites (designed, not built).
@@ -75,6 +81,10 @@ front-end, Rust back-end).
   library click is a hand test) and its round trip is ~1 s (Previous within 3 s of a
   click can't be reached). Full reference: `docs/DEBUGGING.md`. This is dev-only
   telemetry (`src/perf.ts`, Vite `DEV` flag) — the release bundle carries none of it.
+  **Knowing the dev app is up:** wait for `start: DeetsMusic` in the runner's output with
+  `grep -a` (the file has non-ASCII). Never match `Running .*deetsmusic`: cargo's color codes
+  sit right after "Running", so that pattern never matches (missed several times, 2026-09-17).
+  On a timeout, read the output file before you report.
 - **Frame smoothness is measured the same way (2026-09-13).** `src/frames.ts` logs one
   `[perf] frames …` line per scroll / scrub / pane slide / folder open / queue drag / menu /
   appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`
@@ -104,6 +114,10 @@ front-end, Rust back-end).
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
   real forks (he responds well to multiple-choice), confirm, then build.
+- **Small forks: decide alone by `docs/VALUES.md` (since 2026-09-17).** Ask only on a stop
+  rule (breaking or skirting terms, ship/deploy, loss of user data), or when values conflict.
+  Flag every alone-decision for the desk test (VALUES.md §3). When you do bring a fork, state
+  your predicted pick first and log the result in VALUES.md §6.
 - **Before you build a new panel, row, button or card, walk this list** (added 2026-09-16
   after the sleep panel shipped without its row motion). Read the primitive's own file, not
   only a call site: one call site never uses every part of a primitive.

@@ -55,7 +55,8 @@ const SHAPES: Shape[] = [
   { row: ".lib-hero", title: ".lib-hero__title", sub: ".lib-hero__sub" }, // a collection's own header
   { row: ".qrow", title: ".qrow__title", sub: ".qrow__artist" }, // Queue, Rewind, History, Playing next
   { row: ".qnow", title: ".qnow__title", sub: ".qnow__artist" }, // the queue / history hero row
-  { row: ".search__song", title: ".search__song-title", sub: ".search__song-artist" },
+  { row: ".search__song", title: ".search__song-title", sub: ".search__song-artist" }, // Search's Songs results
+  { row: ".search__row", title: ".search__song-title", sub: ".search__song-artist" }, // a Search album / playlist / artist song list
   { row: ".search__tile", title: ".search__tile-name", sub: ".search__tile-sub" }, // Search tiles, Home + Artist shelves
   { row: ".search__artist", title: ".search__artist-name" }, // the round artist tile
   { row: ".np", title: ".np__title", sub: ".np__artist" }, // Now Playing

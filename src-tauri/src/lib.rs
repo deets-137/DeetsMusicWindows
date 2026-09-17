@@ -185,6 +185,7 @@ pub fn run() {
             library::migrate_v5(&conn).expect("v5 migration failed");
             library::migrate_v6(&conn).expect("v6 migration failed");
             loudness::migrate_v7(&conn).expect("v7 migration failed");
+            library::migrate_v8(&conn).expect("v8 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
@@ -320,6 +321,9 @@ pub fn run() {
             playlists::playlist_import,
             playlists::apple_playlist_add,
             playlists::playlist_delete,
+            playlists::playlist_keep,
+            playlists::playlists_expire,
+            playlists::playlist_restore,
             playlists::playlist_add_tracks,
             playlists::playlist_remove_track,
             playlists::playlist_reorder,

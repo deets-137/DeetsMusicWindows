@@ -32,7 +32,7 @@ const SKIN_FONTS: Record<SkinName, string[]> = {
   press: ['12px "Anton"', '12px "IBM Plex Mono"'],
   ocean: ['12px "Cinzel"', '12px "Spectral"'],
   glass: ['12px "Liberation Sans"'],
-  "retro-future": ['12px "Orbitron"', '12px "Rajdhani"'],
+  "cyber": ['12px "Orbitron"', '12px "Rajdhani"'],
 };
 
 interface Job {

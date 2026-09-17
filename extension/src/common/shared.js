@@ -25,6 +25,9 @@ var DM_SHARED = (function () {
     var out = {};
     Object.keys(DEFAULTS).forEach(function (k) { out[k] = DEFAULTS[k]; });
     if (s) Object.keys(s).forEach(function (k) { if (k in DEFAULTS) out[k] = s[k]; });
+    /* The Retro-Future skin became Cyber (2026-09-17, skin.ts RETIRED). */
+    if (out.skin === "retro-future") out.skin = "cyber";
+    if (out.lastAppearance && out.lastAppearance.skin === "retro-future") out.lastAppearance = { theme: out.lastAppearance.theme, skin: "cyber" };
     return out;
   }
   function loadSettings() {

@@ -753,10 +753,13 @@ body {
 .web__hit[data-picked] { background: var(--picked); border-color: var(--title); cursor: default; }
 .web__hit-art { flex: 0 0 auto; width: var(--web-hit-art); height: var(--web-hit-art); border-radius: 50%; object-fit: cover; background: var(--surface); }
 .web__hit-art--glyph { display: grid; place-items: center; background: transparent; }
+.web__hit-art--cover { border-radius: var(--web-cover-radius); } /* a song's or album's cover (§9) */
 .web__hit-glyph { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .web__hit-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .web__hit--search .web__hit-name { color: var(--title); }
 .web__hit-sub { flex: 0 0 auto; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
+/* A song's or album's artist line: it gives way to the title and ends in an ellipsis. */
+.web__hit-sub--line { flex: 0 1 auto; min-width: 0; max-width: var(--web-hit-line-max-w); overflow: hidden; text-overflow: ellipsis; }
 .web__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .web__label { font-size: var(--fs-subtext); color: var(--subtext); }
 .web__seg { display: flex; gap: var(--space-1); }
@@ -789,7 +792,18 @@ body {
 }
 .web__again:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .web__make { padding: var(--space-2); color: var(--title); }
-.web__make:disabled { opacity: 0.6; cursor: default; }
+.web__make:disabled, .web__opt[aria-disabled] { opacity: 0.6; cursor: default; }
+/* Keep · Temp | N days under Make playlist (PLAYLIST-WEB.md §10.4): two choices of equal width;
+   Temp and its days button are one joined choice, split by the Temp button's right edge. */
+.web__life { display: flex; gap: var(--space-1); }
+.web__life > .web__opt, .web__temp { flex: 1 1 0; }
+.web__temp { display: flex; }
+.web__temp > .web__opt { flex: 1 1 auto; }
+.web__temp > .web__opt:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.web__temp > .web__days { flex: 0 0 auto; min-width: var(--web-days-min-w); border-left: none; border-top-left-radius: 0; border-bottom-left-radius: 0; font-variant-numeric: tabular-nums; overflow: hidden; white-space: nowrap; }
+/* Keep picked: the days half is gone and Temp is a whole button again. */
+.web__temp:has(> .web__days[hidden]) > .web__opt:first-child { border-radius: var(--web-chip-radius); }
+.web__opt[aria-disabled]:hover { background: var(--surface); }
 
 /* ── Volume pill + flyout ───────────────────────────────────────────────────
    The pill is a level meter: a tinted --title fill (strength is a skin token)
@@ -906,7 +920,7 @@ body {
   text-align: left;
 }
 .ap[hidden] { display: none; }
-.ap.is-growing { overflow: hidden; } /* airplay.ts animates the height; a new row is revealed, not overlapping */
+.web.is-growing, .ap.is-growing { overflow: hidden; } /* airplay.ts and web.ts animate the height; new rows are revealed, not overlapping */
 
 /* ── Pop: a dropdown panel that arrives and leaves (AirPlay, Vol.) ──────────
    The panel's `hidden` attribute drives it (the dropdown primitive): @starting-style
@@ -1042,7 +1056,7 @@ body {
   overflow: hidden;             /* the columns scroll, not the whole body */
   position: relative;           /* anchors the ocean + storm layers */
 
-  /* Canvas pattern behind the cards (Press halftone / Retro-Future grid). A skin
+  /* Canvas pattern behind the cards (Press halftone / Cyber grid). A skin
      whose canvas MOVES paints it on an ambient layer instead and sets
      --app-canvas-bg: none (Glass → .aurora). Vanilla paints nothing. */
   background-image:  var(--app-canvas-bg);
@@ -1167,7 +1181,7 @@ body {
 .aurora__blob--3 { background-image: var(--aurora-3); --drift-x: var(--aurora-drift-3-x); --drift-y: var(--aurora-drift-3-y); }
 
 /* ── Storm layer (decorative strokes behind the cards) ──────── */
-/* Inert unless a skin opts in (--storm-display; Retro-Future). Everything
+/* Inert unless a skin opts in (--storm-display; Cyber). Everything
    here reads tokens: geometry via CSS `d:` (--storm-path-*), ink/glow
    from theme roles, per-bolt timing from --storm-cycle-*. The viewBox is
    0..100 both axes with preserveAspectRatio="none" — bolts are authored
@@ -1476,7 +1490,8 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   .ocean__roll, .ocean__bob { animation: none; }
   .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
   /* no hover-lift jump when motion is reduced */
-  .lib-row:hover, .lib-tile:hover, .qrow:hover { transform: none; }
+  .lib-row:hover, .lib-tile:hover, .qrow:hover,
+  .search__song:hover, .search__row:hover, .search__tile:hover, .search__artist:hover { transform: none; }
 }
 
 /* Ambient pause (src/ambient.ts): while the window cannot be seen — or when the user
@@ -2339,9 +2354,18 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__song, .search__row {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1); border-radius: var(--radius-control); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui); /* as .lib-row / .qrow */
 }
 .search__row { margin-bottom: var(--space-1); }
 .search__song:hover, .search__row:hover { background: var(--surface-hover); transform: var(--hover-lift); }
+/* Keyboard focus and the right-clicked item while its menu is open: the outline the Library,
+   Queue and History rows wear. Tiles too (Search results, the Home and Artist shelves). */
+.search__song:focus-visible, .search__row:focus-visible, .search__tile:focus-visible, .search__artist:focus-visible,
+.search__song.is-context, .search__row.is-context, .search__tile.is-context, .search__artist.is-context {
+  outline: var(--focus-ring-w) solid var(--title);
+  outline-offset: calc(-1 * var(--focus-ring-off));
+  border-radius: var(--radius-control);
+}
 .search__song-art {
   flex: 0 0 auto; width: var(--lib-row-art); height: var(--lib-row-art);
   border-radius: var(--lib-row-art-radius); object-fit: cover;
@@ -2356,8 +2380,19 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__song:hover .search__add, .search__row:hover .search__add,
 .search__song:focus-visible .search__add, .search__row:focus-visible .search__add,
 .search__add:focus-visible, .search__add.is-busy { visibility: visible; }
-.search__add.is-in, .search__add.is-busy { cursor: default; }
-.search__add.is-in:hover { filter: none; }
+.add-square.is-in, .add-square.is-busy { cursor: default; }
+.add-square.is-in:hover { filter: none; }
+/* The same square (add-square.ts) in Playlists (Lines view), Queue and History: rows and the
+   hero. Unlike Search it takes NO room until the row is hovered or has keyboard focus — these
+   cards are narrow, so titles keep their full width, and a hovered title ends one square
+   earlier. At the row's right end: after the explicit mark (Playlists), after the time
+   (History). `:not([hidden])` keeps a song you have (with the ✓ setting off) square-less. */
+.lib-row > .add-square, .qrow > .add-square, .qnow > .add-square { display: none; margin-left: auto; }
+.lib-row > .lib-src-badge ~ .add-square, .qrow > .qrow__meta ~ .add-square { margin-left: 0; }
+.lib-row:hover > .add-square:not([hidden]), .lib-row:focus-visible > .add-square:not([hidden]),
+.qrow:hover > .add-square:not([hidden]), .qrow:focus-visible > .add-square:not([hidden]),
+.qnow:hover > .add-square:not([hidden]),
+.add-square:not(.search__add):focus-visible, .add-square:not(.search__add).is-busy { display: grid; }
 .search__song-title { font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__song-artist { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -2366,7 +2401,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    Featured / Your Playlists 8px right of Albums, Top Songs and the rows. */
 .spane .lib-shelves { padding-left: 0; padding-right: 0; }
 
-.search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; }
+.search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
 .search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
 .search__tile-art--round { border-radius: 50%; } /* an artist on a shelf (Home), as .lib-tile__cover--round */
 .search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
@@ -2376,7 +2411,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__tile-name { font-size: var(--fs-subtext); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__tile-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.search__artist { flex: 0 0 auto; width: 72px; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); cursor: pointer; }
+.search__artist { flex: 0 0 auto; width: 72px; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
 .search__artist-art { width: 64px; height: 64px; border-radius: 999px; object-fit: cover; }
 .search__artist-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); }
 .search__artist:hover { transform: var(--hover-lift); }
@@ -2685,11 +2720,11 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 [data-fancy-scrub="on"][data-skin="glass"] .scrub:is(:hover, [data-dragging]) { --handle-scale: var(--scrub-lens-scale); }
 @keyframes scrub-sheen { to { transform: translate(28%, 22%); } }
 
-/* Retro-Future — the bolt, charged: it keeps its mask and breathes a --title glow while music
+/* Cyber — the bolt, charged: it keeps its mask and breathes a --title glow while music
    plays; a held bolt burns tight and bright, and a release flickers once. */
-[data-fancy-scrub="on"][data-playing="on"][data-skin="retro-future"] .scrub__handle { animation: scrub-breathe var(--scrub-breathe-dur) ease-in-out infinite alternate; }
-[data-fancy-scrub="on"][data-skin="retro-future"] .scrub[data-dragging] .scrub__handle { animation: none; filter: drop-shadow(0 0 3px var(--title)) brightness(1.3); }
-[data-fancy-scrub="on"][data-skin="retro-future"] .scrub[data-released] .scrub__handle { animation: scrub-flicker 0.12s steps(2, start) 1; }
+[data-fancy-scrub="on"][data-playing="on"][data-skin="cyber"] .scrub__handle { animation: scrub-breathe var(--scrub-breathe-dur) ease-in-out infinite alternate; }
+[data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-dragging] .scrub__handle { animation: none; filter: drop-shadow(0 0 3px var(--title)) brightness(1.3); }
+[data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-released] .scrub__handle { animation: scrub-flicker 0.12s steps(2, start) 1; }
 @keyframes scrub-breathe { from { filter: drop-shadow(0 0 1.5px var(--title)); } to { filter: drop-shadow(0 0 5px var(--title)); } }
 @keyframes scrub-flicker { 50% { opacity: 0.3; } }
 
@@ -3116,13 +3151,14 @@ html[data-boot="lift"] .bento > .panel:nth-child(6) { transition-delay: calc(var
 .grow-zone[data-act="collapse"] .grow-zone__bar { background: var(--subtext); }
 .grow-zone[data-act="collapse"]:hover .grow-zone__bar { opacity: 0.7; }
 
-/* The Grow button (and Pin beside it): enters the header on hover, absolutely placed at the
-   title's right end before the first action square, so nothing in the header moves. It
-   stays while the card is grown. Same box as a .panel__action, but never in the flow. */
+/* The Grow button (and Pin beside it): enters the header on hover, absolutely placed just
+   right of the title's text (card-grow.ts measures the text; --grow-btn-left), so nothing
+   in the header moves. It stays while the card is grown. Same box as a .panel__action, but
+   never in the flow. */
 .grow-btns {
   position: absolute;
   top: 50%;
-  right: calc(var(--grow-btn-right, 0px) + var(--grow-btn-gap));
+  left: calc(var(--grow-btn-left, 0px) + var(--grow-btn-gap));
   transform: translateY(-50%);
   display: flex;
   gap: var(--space-1);

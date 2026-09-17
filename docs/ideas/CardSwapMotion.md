@@ -39,7 +39,7 @@ collection-card pane slide, the queue drag, the theme/skin switch animation.
 
 ## Per skin
 
-The user skins are Press, Ocean, Glass and Retro-Future. Vanilla is hidden from the picker
+The user skins are Press, Ocean, Glass and Cyber. Vanilla is hidden from the picker
 (UI-ARCHITECTURE.md): its values are the base tokens, which a skin without overrides uses.
 
 | Skin | Its nav motion | Swap | Tokens |
@@ -47,10 +47,10 @@ The user skins are Press, Ocean, Glass and Retro-Future. Vanilla is hidden from 
 | Press | a sheet pulled off, the next stamped down | **Stamp in place**, the second slot 0.06 s after the first | travel 0, from `scale(1.03)`, mid `scale(1.01)`, stagger 0.06s |
 | Ocean | sinks out, rises from beneath | **Dip and travel** | travel 1, mid `scale(0.94)` |
 | Glass | panes fade and scale through | **Straight slide** (the base) | none |
-| Retro-Future | electric snap, skew straightens | **Skew out, then skew in**, in place | out `skewX(-10deg)` + fade 0 over `--nav-dur`; travel 0, from `skewX(10deg)`, mid `skewX(4deg)`, fade 0 |
+| Cyber | electric snap, skew straightens | **Skew out, then skew in**, in place | out `skewX(-10deg)` + fade 0 over `--nav-dur`; travel 0, from `skewX(10deg)`, mid `skewX(4deg)`, fade 0 |
 
 **Revised at the desk (2026-09-15):** Glass first cross-faded in place; through the frost it
-read as a glitch, so Glass takes the base slide. Retro-Future first had a skewed snap slide;
+read as a glitch, so Glass takes the base slide. Cyber first had a skewed snap slide;
 the user asked for a skew out and a skew in, which added the out step below.
 
 ## Tokens (skin.css §card swap, on `[data-skin]`)

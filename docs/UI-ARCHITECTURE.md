@@ -81,7 +81,7 @@ scrollbar corner, and autofill match) and a few non-table roles every block maps
 
 - **SCRUBBERS (2026-09-16, NEXT-VERSION §21).** Every `.scrub` handle has two layers. The
   *plain* handle is a `--title` box masked by the skin's `--scrubber-handle` SVG (Press block,
-  Ocean lens swell, Glass ring, Retro-Future bolt). With **Settings › Look and feel › Fancy
+  Ocean lens swell, Glass ring, Cyber bolt). With **Settings › Look and feel › Fancy
   scrubber** on (`data-fancy-scrub="on"` on `<html>`, default on), the skin's own playhead
   draws over it in `styles.css` §Fancy scrubbers: the **Press I-beam** (a stroke with a bar
   top and bottom; thickens under the hand and takes the `--ink-2` plate shadow), the **Ocean
@@ -219,7 +219,7 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   hex-free. Four Settings sliders tune it — Canvas glow, Dim canvas, Backlight (a glow inside
   each card), Tint cards (§Glass's sliders); the other intensity numbers are catalogued in
   [FUTURE-SETTINGS §12](FUTURE-SETTINGS.md) (skin-specific). Open upgrade: a `--highlight` theme role for a true white sheen.
-- **`retro-future`** — electric/futuristic: two lightning bolts slow-draw down the canvas
+- **`cyber`** — electric/futuristic: two lightning bolts slow-draw down the canvas
   behind the cards (the **storm layer**, below), smoked-glass panels (86% `--canvas` mix —
   a bolt passing behind a card glows through dimly) with a hard 1px edge and no soft shadow,
   a faint `--border` circuit grid, square corners everywhere, a skew-snap nav jolt
@@ -227,11 +227,14 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   (title) + Rajdhani 500 (body). Storm dials are catalogued in
   [FUTURE-SETTINGS §13](FUTURE-SETTINGS.md) (skin-specific). Pairs best with dark themes
   (moonlight / black-yellow / black-red), where the bolts read as light.
+  **Named Retro-Future until 2026-09-17** (CyberStorm before that); saved `retro-future` and
+  `cyberstorm` ids migrate via `RETIRED` in `skin.ts`, the pre-paints, `settings-store.ts` (day/night
+  skin) and the extension. DeetsSolutions and the hosted sign-in (DeetsSupport `signin.js`) were renamed the same day.
 
 ### Ambient layers: the cost rules (2026-09-13)
 The ocean, aurora, and storm layers (and the Now Playing aurora spin) loop forever, so their
 per-frame cost is the app's idle CPU. Measured before these rules: Ocean 46%, Glass 205%,
-Retro-Future 200% of one core at idle; after: 12 / 20 / 17 (DEBUGGING.md has the table).
+Cyber 200% of one core at idle; after: 12 / 20 / 17 (DEBUGGING.md has the table).
 1. **Animate only `transform` and `opacity`, on plain boxes.** Then the compositor moves
    finished layers and the main thread paints nothing. SVG child transforms,
    `background-position`, and `stroke-dashoffset` all repaint every frame.
@@ -675,7 +678,7 @@ thumb color is a registered `@property --set-thumb` that transitions on `--dur-m
 
 `.lib-list` is a **block** stack (not a flex column) and every art row (`.lib-row--art`)
 carries `contain: size layout` with a pinned height, `--lib-row-h` — a skin token because the
-natural height is the skin's title + artist stack (46px base, 49px on Press / Retro-Future).
+natural height is the skin's title + artist stack (46px base, 49px on Press / Cyber).
 Measured 2026-09-13 (DEBUGGING.md §Reviewing the telemetry): a cold pass through the
 3,895-row Library dropped ~80% of frames because each batch of lazy covers loading dirtied
 layout, and a flex column re-lays out every child when one is dirty (140–200 ms a frame).
@@ -815,10 +818,10 @@ index.html              home markup (titlebar, settings menu, bento cards)
 swatch.html             color reference — every role, every theme, read live; plus
                         live skin × theme mini-mockups (one-page demo)
 src/styles.css          imports tokens, then app rules (chrome, menu, panels, lists)
-src/styles/fonts.css    @font-face for bundled fonts (Liberation; Press/Ocean/Retro-Future faces)
+src/styles/fonts.css    @font-face for bundled fonts (Liberation; Press/Ocean/Cyber faces)
 src/styles/palette.css  Tier 1 — raw paints
 src/styles/themes.css   Tier 2 — color roles per theme
-src/styles/skin.css     Tier 3 — [data-skin] base + press/ocean/glass/retro-future deltas (type/geometry/motion)
+src/styles/skin.css     Tier 3 — [data-skin] base + press/ocean/glass/cyber deltas (type/geometry/motion)
 src/styles/fonts/       bundled font files (Liberation TTFs + NOTICE; skin WOFF2s)
 src/main.ts             window controls, settings menu, account, menu-mode; calls initTheme/initSkin/initLayout()
 src/cards.ts            card registry + CardDef/CardInstance (the mountable-card contract)
@@ -831,7 +834,7 @@ src/hint.ts             hover-hint primitive — adopts every `title` into one t
                         plus the two-line song/artist hint on list rows (ONBOARDING.md §1a)
 src/theme.ts            theme switch + localStorage persistence (RETIRED id migration, OS-preference default)
 src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)
-src/storm.ts            storm-layer position re-roll (Retro-Future bolts; inert otherwise)
+src/storm.ts            storm-layer position re-roll (Cyber bolts; inert otherwise)
 src/apple.ts            Apple Music auth bridge (connect/disconnect/status)
 src/library.ts          cache reads + sync trigger + sync-event subscription + types
 src/collection-card.ts  reusable navigable browser engine (contexts, groupings,

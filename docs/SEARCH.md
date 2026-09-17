@@ -129,20 +129,65 @@ The user may revert this after testing it. Decisions: 1A (hover only), 2B (drill
 - **Where:** every song row with a catalog id — the root **Songs** grid (`.search__song`) and the
   track rows in album / playlist / artist drill panes (`.search__row`). A `.panel__action` square
   (`--icon-lg`, the Now Playing "+" geometry) at the row's right end, after the explicit mark.
-- **States:** **+** (not in the library) · spinner while adding · **✓ "In your library"**
-  (`aria-disabled`, a press does nothing). Hidden when the Library Add setting is off.
+- **States:** **+** (not in the library) · the + turning while adding · **✓ "In your library"**
+  (`aria-disabled`, a press does nothing) only with Settings › Apple Music › **Show ✓ on songs you
+  have** on (`addSquareOwned`, default off since 2026-09-17: before, the ✓ always showed). Off, a song
+  you have shows no square. Hidden when the Library Add setting is off.
 - **Visibility:** only while the row is hovered or has keyboard focus (`:focus-visible` on the row or
   the square), or while an add runs. The space is always reserved, so titles do not jump on hover.
   Not `:focus-within` (changed 2026-09-17): a press or a drag's start focuses the row, and the
   square stayed visible after a drag to the Queue took the pointer away.
-- **The press** is the consent, like the NP square: `addTrackToLibrary(t)`. A capture-phase click
-  handler on the card host stops the press from also playing the row. Membership comes from the
-  local store (`libraryAddOffered`), so rendering costs no Apple call.
-- **Live state:** `onTracksChange` (the store reload after an add) and `onLibraryAddChange` repaint
-  every `[data-add]` square in the card.
-- **Code:** `addBtnHTML` / `paintAdd` / `refreshAdds` in `src/search-card.ts`; CSS `.search__add`.
+- **The press** is the consent, like the NP square: `addTrackToLibrary(t)`. One capture-phase click
+  listener on the document stops the press from also playing, jumping or picking the row. `rowAt`
+  returns null on the square (`isAddSquare`), so a press there never starts a drag. Membership comes
+  from the local store, so rendering costs no Apple call.
+- **State in the HTML:** `addSquareHTML` writes the state when the row is drawn (a windowed list
+  draws rows while it scrolls; the Queue card redraws its whole body on a queue change). The store
+  reload after an add, the Library Add toggle and `addSquareOwned` repaint every square on the page.
+- **Code:** `src/add-square.ts` (`addSquareHTML`, `isAddSquare`); CSS `.search__add`, `.add-square`.
 - **Keyboard:** Tab reaches the row, then the square. Full keyboard polish is a pre-release item
   ([HANDOFF.md § Next up](HANDOFF.md#next-up)).
+
+#### In Playlists, Queue and History (2026-09-17)
+Decisions: 1A (no ✓ by default; the Settings row turns it on), 2A (no room until hover), 3B (the
+heroes too), 4A (History keyboard waits for the keyboard pass).
+- **Where:** Playlists — a playlist's songs in Lines view, after the explicit mark (tiles have no
+  room). Queue — Up Next rows and the now hero. History — rows (after the time) and the latest-play
+  hero. Rewind, Home and the Library card have no square.
+- **Room:** `display: none` until the row is hovered or has keyboard focus. A hovered long title
+  ends one square earlier. Search keeps its reserved space.
+- **Keyboard:** Queue rows take focus (Tab → row → square). Playlist and History rows do not, so
+  Tab does not reach the square there yet.
+
+**Desk test** (dev app, Library Add on):
+1. Open a playlist with songs you do not have (a Playlists web playlist, or an added Apple
+   playlist). Hover a row: the + shows at the right end. Move off: it goes.
+2. Press the +: it turns, the "Added" toast shows, then the square goes (Show ✓ off). The song
+   does not play.
+3. Press the + and move the pointer: no drag starts. Drag the row by its title: the drag works.
+4. Queue: hover an Up Next row and the now hero; press + on one. The song does not jump.
+5. History: hover a row and the hero; press +. No row gets picked.
+6. Settings › Apple Music › Show ✓ on songs you have → On: hovering a song you have shows ✓ in
+   all four cards at once. Off: no square.
+7. Add to Library and ♥ → Off: no square anywhere.
+
+### Row parity with the other cards (2026-09-17)
+What Library / Queue / History rows had and Search rows lacked, now added:
+1. **Hover fade:** `.search__song` / `.search__row` fade their background and lift over `--dur-fast`;
+   tiles and artists fade their lift.
+2. **Row hint:** `.search__row` (a drill pane's song list) joined hint.ts `SHAPES`.
+3. **Right-click outline:** every Search menu opens through `menuAt`, which puts `is-context` on the
+   row, tile or artist until the menu closes. The CSS also serves the `.search__tile` shelves in
+   Home and the Library artist view, which already set the class but had no rule for it.
+4. **Focus ring:** `:focus-visible` on rows, tiles and artists draws the Queue row's outline.
+5. **Reduced motion:** the hover lift is off on all four, as on `.lib-row` / `.qrow`.
+
+Not changed: Enter/Space to play (the keyboard pass), the row padding and height, and the
+engine's Sort / View / find (Search is standalone by design).
+
+**Desk test:** hover a Songs result and a row in an album pane (a soft fade, and after a moment the
+name hint on the pane row) · right-click a song, an album tile and an artist (outline while the
+menu is open) · Tab through the results (a ring on each) · Windows reduced motion on: no lift.
 
 ---
 

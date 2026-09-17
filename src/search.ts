@@ -52,6 +52,10 @@ export interface Playlist {
   exportedAt?: number;
   /** A local playlist's role: "replay" = made from listening, not editable by hand (PLAYLISTS.md §10.8). */
   role?: string;
+  /** A temporary web playlist's days (PLAYLIST-WEB.md §10); absent = kept. */
+  expireDays?: number;
+  /** When a temporary playlist is deleted (ms): the later of its creation and its last play, plus its days. */
+  expiresAt?: number;
 }
 
 export interface SearchResults {

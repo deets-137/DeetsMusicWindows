@@ -235,10 +235,10 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   | Press | 5 | 6 | 4 |
   | Ocean | 46 | 46 | 12 |
   | Glass | 205 | 95 | 20 |
-  | Retro-Future | 200 | 46 | 17 |
+  | Cyber | 200 | 46 | 17 |
 
   Causes: Ocean moved SVG `<rect>`/`<g>` children, Glass animated `background-position`,
-  Retro-Future animated `stroke-dashoffset` under a `drop-shadow` — all main-thread
+  Cyber animated `stroke-dashoffset` under a `drop-shadow` — all main-thread
   repaints every frame. Now each layer is plain boxes animating transform/opacity only
   (Ocean = masked tile boxes, Glass = one box per blob, storm = a clip wipe), traced at
   ~0 main-thread paint. The rest was compositing at the display rate: Ocean's fill masks
@@ -247,7 +247,7 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   Probe that found it (injected `<style>`): masks off 36→21, motion stopped →0,
   `steps()` at 30 fps →15.
 - **Skin switch and grid scroll are whole-Library costs (tested, NOT fixed).** Dev app,
-  Retro-Future, 3,897-row Library, styles injected at runtime (no file changes):
+  Cyber, 3,897-row Library, styles injected at runtime (no file changes):
   - *Skin switch* (direct attribute flip, to the 2nd frame): 353–488 ms. Trace: one Layout
     172–192 ms + style 81–90 ms over ~23k nodes; the View Transition adds ~150–200 ms on top.
     `album-color.ts`'s rAF `getPropertyValue` (93 ms) only pulls that same style pass forward.
@@ -259,7 +259,7 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
     tiles (436 ms), a fixed-height `contain: size layout` tile (443 ms). Wrapping the tiles in
     blocks of 60 (each its own grid, the view a block stack): `contain: layout` blocks still
     281 ms; **`content-visibility: auto` blocks → 23% dropped, worst 54 ms, no long tasks.**
-  - *Cold list scroll*: no long tasks, worst 42–54 ms, the same on Press and Retro-Future —
+  - *Cold list scroll*: no long tasks, worst 42–54 ms, the same on Press and Cyber —
     paint/decode of ~2,000 covers in a 2 s scripted pass, not layout. Low priority.
 - **WebView2 keeps drawing when the window is minimized or hidden to the tray.**
   `document.visibilityState` stays `visible` and rAF runs at 60/s. `src/ambient.ts` asks
@@ -309,7 +309,7 @@ A stress test of skin switching (the driver: `scripts/webview-eval.mjs` clicking
 | skin | `--boot-dur` | `--boot-stagger` | rise | measured |
 |---|---|---|---|---|
 | press | 0.50s | 40ms | 700 ms | 702 / 709 / 728 |
-| retro-future | 0.60s | 50ms | 850 ms | 853 / 856 / 882 |
+| cyber | 0.60s | 50ms | 850 ms | 853 / 856 / 882 |
 | vanilla | 0.80s | 70ms | 1150 ms | — |
 | glass | 0.90s | 60ms | 1200 ms | 1204 / 1206 / 1215 |
 | **ocean** | **1.05s** | **95ms** | **1525 ms** | 1527 / 1529 / 1540 |
@@ -358,15 +358,15 @@ unless marked. The rows are in `scripts/perf-history.csv` with the notes `baseli
 | appearance | press | 239 fps · 10 / 18% | 227 fps · 19 / 13% |
 | appearance | ocean | 236 · 20 / 37% | 165 · 56 / 24% |
 | appearance | **glass** | 238 · 43 / 41% | **34 · 97 / 12%** |
-| appearance | retro-future | 236 · 22 / 32% | 209 · 33 / 25% |
+| appearance | cyber | 236 · 22 / 32% | 209 · 33 / 25% |
 | idle | press | 240 · 4 / 8% | 240 · 2 / 5% |
 | idle | ocean | 240 · 6 / 16% | 204 · 31 / 10% |
 | idle | **glass** | 240 · 12 / 15% | **31 · 98 / 4%** (spread 16%) |
-| idle | retro-future | 240 · 7 / 11% | 237 · 24 / 10% |
+| idle | cyber | 240 · 7 / 11% | 237 · 24 / 10% |
 | scroll | press | 240 · 63 / 66% | 240 · 16 / 74% |
 | scroll | **ocean** | **160 · 130 / 70%** (spread 19%) | **88 · 94 / 135%** |
 | scroll | **glass** | 240 · 87 / 63% | **26 · 99 / 15%** |
-| scroll | retro-future | 240 · 87 / 79% | 217 · 89 / 96% |
+| scroll | cyber | 240 · 87 / 79% | 217 · 89 / 96% |
 
 **The feature list (the gap between the two columns):**
 
@@ -381,7 +381,7 @@ unless marked. The rows are in `scripts/perf-history.csv` with the notes `baseli
    the sand layers (`.panel::before/::after`) under `--gpu=off` moved only 88 → 100 fps, so the
    sand is **not** the main cause. The cause is open. Next suspect: the swell
    (`.ocean__roll` / `.ocean__bob`) under a moving list.
-3. Press and Retro-Future hold ≥ 209 fps under `--gpu=off` in every scene. They need nothing.
+3. Press and Cyber hold ≥ 209 fps under `--gpu=off` in every scene. They need nothing.
 4. Not measured yet: the Press record player (needs a song; see the `playing` column),
    `--gpu=slow`, and the Mini / NP surfaces.
 
@@ -425,7 +425,7 @@ Reading it:
    composited, so every scroll step repaints the card, and Ocean's sand mask (an SVG noise
    mask) is expensive to repaint. A composited scroller (`will-change: scroll-position`) fixes
    it with no visible change (0.03 / 255 inside the Library card), and it helps EVERY skin:
-   GPU process in scroll 52→20% Press, 128→24% Ocean, 49→23% Glass, 85→19% Retro-Future; page
+   GPU process in scroll 52→20% Press, 128→24% Ocean, 49→23% Glass, 85→19% Cyber; page
    CPU about halves. User's call 2026-09-16: apply to all card lists, with no visible change
    allowed. Status below (§The composited-scroller pass).
 2. **Under WARP the swell is Ocean's cost**, in idle and in scroll. Pausing it is nearly as good
@@ -436,7 +436,7 @@ Reading it:
 
 **Built, uncommitted:** styles.css `:is(.panel__body, .lib-view, .qcard__list, .spane__scroll,
 .search__scroller) { will-change: var(--scroller-layer); }`. Skin token `--scroller-layer`: base
-`auto`; Ocean, Glass and Retro-Future set `scroll-position`. Menus (`.set__menu`,
+`auto`; Ocean, Glass and Cyber set `scroll-position`. Menus (`.set__menu`,
 `.ctx-menu__fly`, `.slot-picker__menu`) and `.set__preview` are left out on purpose.
 
 **Checked so far** (dev:built, RX 6700 XT, Max, Black & Red theme). The checks forced the rule
@@ -452,7 +452,7 @@ on or off with injected CSS; the token form is not re-measured yet:
    collection-window.ts renders only the visible rows plus a small margin during a scroll and
    fills its 1200 px buffer after the scroll pauses. That is a separate, open item.
 2. **Offsets / look, each list scrolled to its middle** (Library windowed, Playlists, History):
-   Glass, Retro-Future, Ocean Sand and Ocean Soft differ by ≤ 0.08 / 255 mean. No position shift.
+   Glass, Cyber, Ocean Sand and Ocean Soft differ by ≤ 0.08 / 255 mean. No position shift.
    **Press differed (max 70 / 255):** Press cards are opaque, so the list text there uses colour
    (subpixel) smoothing. On its own layer the text falls back to grey smoothing, which is a visible
    softening (fringe chroma 102 → 36). **That is why the rule is a skin token**, and Press stays

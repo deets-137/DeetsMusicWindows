@@ -6,12 +6,11 @@
 // engine (shared idiom, not shared code).
 
 import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter } from "./player";
-import { addTransientTracks, onTracksChange } from "./track-store";
+import { addTransientTracks } from "./track-store";
 import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
 import * as frames from "./frames";
-import {
-  addSongToLibraryItem, addAlbumToLibraryItem, addTrackToLibrary, libraryAddEnabled, libraryAddOffered, onLibraryAddChange,
-} from "./library-add";
+import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
+import { addSquareHTML, isAddSquare } from "./add-square";
 import { startStationItem } from "./start-station";
 import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -37,8 +36,6 @@ const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
 const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
 const ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
-const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
-const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
@@ -196,55 +193,16 @@ function mountSearch(host: HTMLElement): CardInstance {
       addToPlaylistItem(() => ts),
     ] as MenuItem[];
 
-  // ── Add-to-Library square on song rows (root Songs grid + drill-pane track lists) ──
-  // Mirrors the Now Playing "+": a press IS the consent (addTrackToLibrary), the Library
-  // Add toggle is the only thing that removes it. "+" when not in the library, ✓ when it
-  // is. Shown on row hover/focus (CSS). Membership is the local store — no Apple call
-  // until a press.
-  const addable = new Map<string, Track>(); // catalogId → the row's track
-  const adding = new Set<string>();
-  const addBtnHTML = (t: Track): string => {
-    if (!t.catalogId) return "";
-    addable.set(t.catalogId, t);
-    return `<button class="panel__action search__add" type="button" data-add="${esc(t.catalogId)}" hidden></button>`;
+  // A right-clicked row or tile wears `is-context` (the outline) while its menu is open, as
+  // in the Library, Queue and History cards.
+  const menuAt = (e: MouseEvent, items: MenuItem[]) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>(".search__song, .search__row, .search__tile, .search__artist");
+    el?.classList.add("is-context");
+    openContextMenu(e.clientX, e.clientY, items, () => el?.classList.remove("is-context"));
   };
-  const paintAdd = (btn: HTMLButtonElement) => {
-    const id = btn.dataset.add!;
-    const t = addable.get(id);
-    btn.hidden = !t || !libraryAddEnabled();
-    if (btn.hidden || !t) return;
-    const busy = adding.has(id);
-    const inLib = !busy && !libraryAddOffered(t);
-    btn.classList.toggle("is-busy", busy);
-    btn.classList.toggle("is-in", inLib);
-    btn.setAttribute("aria-disabled", String(inLib || busy));
-    btn.innerHTML = inLib ? ICON_CHECK : ICON_PLUS;
-    const label = inLib ? "In your library" : "Add to Library";
-    btn.setAttribute("aria-label", label);
-    btn.title = label;
-  };
-  const refreshAdds = () => host.querySelectorAll<HTMLButtonElement>("[data-add]").forEach(paintAdd);
-  // Capture phase on the host: runs before the row's play handlers (root + panes) and
-  // stops the press from also playing the song.
-  host.addEventListener("click", (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-add]");
-    if (!btn) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const id = btn.dataset.add!;
-    const t = addable.get(id);
-    if (!t || adding.has(id) || !libraryAddOffered(t)) return;
-    adding.add(id);
-    paintAdd(btn);
-    addTrackToLibrary(t)
-      .catch((err) => console.error("[search] add to library", err))
-      .finally(() => {
-        adding.delete(id);
-        refreshAdds();
-      });
-  }, true);
-  const unsubAddTracks = onTracksChange(refreshAdds, "search.add");
-  const unsubAddToggle = onLibraryAddChange(refreshAdds);
+  // The Add-to-Library square on song rows (root Songs grid + drill-pane track lists):
+  // add-square.ts draws it with its state and hears its press.
+  const addBtnHTML = (t: Track): string => addSquareHTML(t, "search__add");
 
   // ── root rendering ──
   // Empty state: a Pinned block above Recent (NEXT-VERSION §1). Each row is one pill
@@ -332,7 +290,6 @@ function mountSearch(host: HTMLElement): CardInstance {
     root.innerHTML = sections.length
       ? sections.join("")
       : `<p class="search__prompt">No results for “${esc(lastTerm)}”.</p>`;
-    refreshAdds();
     if (!paneStack.length) paintPicks(); // re-mark what is still picked after a redraw
   };
 
@@ -517,7 +474,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       e.preventDefault();
       const t = tracks[Number(row.dataset.row)];
       if (t && picks.size() && picks.isPicked(t)) {
-        openContextMenu(e.clientX, e.clientY, picksMenu(picks.picked(), context));
+        menuAt(e, picksMenu(picks.picked(), context));
         return;
       }
       if (t) trackMenu(e, t);
@@ -556,7 +513,6 @@ function mountSearch(host: HTMLElement): CardInstance {
           : "";
         body.innerHTML = heroHTML(kind, meta, tracks) + actions + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
         wireTrackList(body, tracks, `search-${kind}:${id}`);
-        refreshAdds();
         // The album hero's artist subtitle → the artist pane, via the album's own relationship.
         body.querySelector<HTMLElement>("[data-hero-artist]")?.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -597,7 +553,6 @@ function mountSearch(host: HTMLElement): CardInstance {
               .catch((err) => console.error("[search] your playlists", err));
           void loadYours();
           wireTrackList(body, d.topSongs, `search-artist:${id}`);
-          refreshAdds();
           body.addEventListener("click", (e) => {
             const t = e.target as HTMLElement;
             const shelf = t.closest<HTMLElement>("[data-shelf-item]");
@@ -637,7 +592,7 @@ function mountSearch(host: HTMLElement): CardInstance {
                 if (cid) { e.preventDefault(); collectionMenu(e, "playlists", cid, `search-playlists:${cid}`); }
               } else if (shelf.dataset.shelfItem === "yours") {
                 const p = yours?.hits[i]?.p;
-                if (p) { e.preventDefault(); openContextMenu(e.clientX, e.clientY, playlistShelfMenu(() => playlistTracks(p), `playlist:${p.libraryId}`, false)); }
+                if (p) { e.preventDefault(); menuAt(e, playlistShelfMenu(() => playlistTracks(p), `playlist:${p.libraryId}`, false)); }
               }
               return;
             }
@@ -703,7 +658,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     p.catch((e) => console.error("[search] enqueue", e));
   };
   const trackMenu = (e: MouseEvent, t: Track) => {
-    openContextMenu(e.clientX, e.clientY, [
+    menuAt(e, [
       { label: "Play Now", run: () => enqueue([t], "now", "search") },
       { label: "Play Next", run: () => enqueue([t], "next", "search") },
       { label: "Add to Queue", run: () => enqueue([t], "later", "search") },
@@ -730,7 +685,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       collectionTracks(kind, id)
         .then((tracks) => { if (tracks.length) enqueue(tracks, how, ctx); })
         .catch((err) => console.error("[search] collection enqueue", err));
-    openContextMenu(e.clientX, e.clientY, [
+    menuAt(e, [
       { label: "Play Now", run: () => void fetchThen("now") },
       { label: "Play Next", run: () => void fetchThen("next") },
       { label: "Add to Queue", run: () => void fetchThen("later") },
@@ -805,7 +760,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       const track = songsById.get(song.dataset.song!);
       if (track && picks.size() && picks.isPicked(track)) {
         e.preventDefault();
-        openContextMenu(e.clientX, e.clientY, picksMenu(picks.picked(), "search"));
+        menuAt(e, picksMenu(picks.picked(), "search"));
         return;
       }
       if (track) { e.preventDefault(); trackMenu(e, track); }
@@ -824,7 +779,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     if (artist?.dataset.artist) {
       e.preventDefault();
       const a = results?.artists.find((x) => x.catalogId === artist.dataset.artist);
-      openContextMenu(e.clientX, e.clientY, [
+      menuAt(e, [
         { label: "Go to Artist", run: () => openArtist(artist.dataset.artist!, a?.name ?? "Artist") },
         startStationItem("artists", artist.dataset.artist),
       ].filter(Boolean) as MenuItem[]);
@@ -836,7 +791,7 @@ function mountSearch(host: HTMLElement): CardInstance {
       const s = results?.stations.find((x) => x.id === st.dataset.station);
       if (!s) return;
       e.preventDefault();
-      openContextMenu(e.clientX, e.clientY, [
+      menuAt(e, [
         { label: "Play Now", run: () => void playStation(s).catch((err) => console.error("[search] play station", err)) },
         { label: "Add to Queue", run: () => void queueStationAfter(s).catch((err) => console.error("[search] queue station", err)) },
         copyStationLinkItem(s.url),
@@ -851,6 +806,7 @@ function mountSearch(host: HTMLElement): CardInstance {
     root: panes,
     label: "search",
     rowAt: (target) => {
+      if (isAddSquare(target)) return null; // a press on the + adds; it never drags the row
       // A drag off a picked row carries every picked song as ONE payload (§19).
       const setPayload = (t: Track | undefined, context: string) =>
         t && picks.size() > 1 && picks.isPicked(t)
@@ -911,8 +867,6 @@ function mountSearch(host: HTMLElement): CardInstance {
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted
       unsubPlaylistPane();
-      unsubAddTracks();
-      unsubAddToggle();
       headerCbs.clear();
       host.innerHTML = "";
     },

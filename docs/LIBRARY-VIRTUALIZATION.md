@@ -267,7 +267,7 @@ Cases the build must handle (add to the hand test):
 
 ## Results (2026-09-13, built the same evening)
 
-Dev app, Retro-Future, midi surface (the Library slot ~220 px wide → 2 small columns, 1
+Dev app, Cyber, midi surface (the Library slot ~220 px wide → 2 small columns, 1
 large column), 3,898-song Library, 238 Hz display. Same tools as the before-numbers
 (DEBUGGING.md §Reviewing the telemetry): the scrollbar-drag expression after a
 `location.reload()`, a direct `data-skin` flip timed to the 2nd frame, the heaviness sampler.

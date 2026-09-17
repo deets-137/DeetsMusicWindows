@@ -1487,7 +1487,7 @@ pub(crate) fn track_from_catalog_song(v: &serde_json::Value) -> Track {
     }
 }
 
-fn album_from_catalog(v: &serde_json::Value) -> Album {
+pub(crate) fn album_from_catalog(v: &serde_json::Value) -> Album {
     let a = &v["attributes"];
     Album {
         library_id: None,
@@ -1542,6 +1542,8 @@ fn playlist_from_catalog(v: &serde_json::Value) -> Playlist {
         exported_apple_id: None, // export stamps are local playlists only
         exported_at: None,
         role: None,
+        expire_days: None, // temporary web playlists are local only
+        expires_at: None,
     }
 }
 
@@ -1606,6 +1608,8 @@ pub(crate) fn playlist_from_library(v: &serde_json::Value) -> Playlist {
         exported_apple_id: None, // export stamps are local playlists only
         exported_at: None,
         role: None,
+        expire_days: None, // temporary web playlists are local only
+        expires_at: None,
     }
 }
 

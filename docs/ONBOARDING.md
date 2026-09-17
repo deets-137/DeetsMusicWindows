@@ -81,7 +81,7 @@ nothing about authoring changed when the box did.
 | Card headers | Back | Goes back one step | library-, playlists-, radio-card.ts; search-card.ts panes |
 | Library | Refresh | Reads your library from Apple Music again | library-card.ts |
 | Playlists | + · Web · Sync | Makes a new playlist or a new folder · Makes a playlist from an artist and the artists they make songs with · Reads your playlists from Apple Music again | playlists-card.ts |
-| Playlist web panel | Artist field · a library artist row · an Apple row or an earlier web's row · Search Apple Music row · the picked artist · Reach row · Size row · Prefer row · a genre chip · Retry · Read again · Playlist name · Make playlist | Finds an artist in your library, or searches Apple Music · In your library. Starts the web here · Starts the web here · Searches Apple Music for this name · The web starts here. Type to pick another artist · 1 reaches the artist's collaborators. Each step reaches one circle further · Songs in the new playlist · Familiar puts your songs first. Discover puts songs you don't have first · (a genre chip, written again on every change) *66 R&B/Soul songs in the web.* Pick it: *44* go in, with *6* by *Artist* / *44* go in, with *6* by *Artist*. Press again to drop it / Add it: *50* go in, with *8* by *Artist* (Web only: ", with all of *Artist*'s songs") · Reads only the artists that didn't load · Reads this web from Apple Music again. Use it when an artist has new songs · Names the new playlist · Makes the playlist and opens it | web.ts |
+| Playlist web panel | Start row (Artist · Song · Album) · the field · a library artist row (song or album row) · an Apple row or an earlier web's row · Search Apple Music row · the picked artist (song, album) · Reach 3 with an album seed · Keep · Temp · the days button · Reach row · Size row · Prefer row · a genre chip · Retry · Read again · Playlist name · Make playlist | Start the web from an artist, a song or an album · Finds an artist in your library, or searches Apple Music (Finds a song… / Finds an album…) · In your library. Starts the web here · Starts the web here · Searches Apple Music for this name (song, album: …for this title) · The web starts here. Type to pick another artist (song, album) · An album starts with many artists, so its web reaches 2 at most · Keeps the playlist until you delete it · Deletes the playlist *7 days* after you last play it. Right-click the playlist to keep it · Press for *30 days*, right-click for *5 days* · 1 reaches the artist's collaborators. Each step reaches one circle further · Songs in the new playlist · Familiar puts your songs first. Discover puts songs you don't have first · (a genre chip, written again on every change) *66 R&B/Soul songs in the web.* Pick it: *44* go in, with *6* by *Artist* / *44* go in, with *6* by *Artist*. Press again to drop it / Add it: *50* go in, with *8* by *Artist* (Web only: ", with all of *Artist*'s songs") · Reads only the artists that didn't load · Reads this web from Apple Music again. Use it when an artist has new songs · Names the new playlist · Makes the playlist and opens it | web.ts |
 | Radio | Refresh | Reads the stations from Apple Music again | radio-card.ts |
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
@@ -92,6 +92,7 @@ nothing about authoring changed when the box did.
 | Any list | Favorites filter pill | Favorites only | collection-card.ts (pre-existing) |
 | Hero | cover button | Opens the menu for this cover | collection-card.ts |
 | History | skip mark | You skipped this one (the Next glyph on a song you cut short) | history-card.ts |
+| Song rows (2026-09-17): Search, Playlists (Lines), Queue rows + hero, History rows + hero | the Add-to-Library square (hover) | Add to Library · *In your library* (only with Show ✓ on songs you have on) | add-square.ts |
 | Rewind | Make playlist | A playlist of this window's top songs, filed under Replay | rewind-card.ts (pre-existing) |
 | Settings | every row and action | the row hint (SETTINGS.md §3) | settings-card.ts (pre-existing) |
 | Tray panel | DeetsMusic · Hide · Previous · Play/Pause · Next · Mute · + | Opens the full DeetsMusic window · Hides this panel · as Now Playing · the + shows the song it would add | tray.html / tray.ts |
@@ -131,7 +132,8 @@ run it: `main.ts` and `tray.ts`.
 | Row | read off a list row itself | the name, and the line under it (a song's artist) |
 
 Nobody authors a row hint. `SHAPES` in hint.ts lists the row and tile shapes the cards build
-— `.lib-row`, `.lib-tile`, `.lib-hero`, `.qrow`, `.qnow`, `.search__song`, `.search__tile`,
+— `.lib-row`, `.lib-tile`, `.lib-hero`, `.qrow`, `.qnow`, `.search__song`, `.search__row` (a Search
+drill pane's song list; missing until 2026-09-17), `.search__tile`,
 `.search__artist`, `.np` — each with its title span and its sub span, so one delegated handler
 covers Library, Search, Queue, Rewind, History, Home, the Artist shelves and Now Playing.
 **Add a new row shape to that table, not a new listener.** The deeper element wins: the Add
@@ -168,10 +170,11 @@ a song appears (`trackMenu`, library-card.ts).
 | Library | song | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several) · Go to Album · Copy Link · Start Station · Favorite |
 | Library | album tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Copy Link |
 | Library | artist tile | the album menu shape on the artist's songs |
-| Playlists | playlist | Rename (field, hand-made only) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
+| Playlists | playlist | Rename (field, hand-made only) · Keep Playlist (a temporary web playlist, 2026-09-17) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
 | Playlists | song in a playlist | the song menu + Add to Library · Remove from Playlist (hand-made) |
 | Playlists | folder header | Rename (field) · Delete Folder |
-| Playlists | hero cover | Rename · the cover items · Apple Music ▸ |
+| Playlists | hero cover | Rename · Keep Playlist (temporary) · the cover items · Apple Music ▸ |
+| Playlist web panel | the days button of Temp \| N days (2026-09-17) | no menu: a right-click steps the days back (30 → 7 → 5 → 3 → 1 → 30); a press steps forward |
 | Queue | upcoming row | Play Now · Move to Top · Move to Bottom · Remove · Go to Artist · Go to Album · Copy Link · Start Station · Add to Library · Favorite |
 | Queue | now hero | Go to Artist · Go to Album · Copy Link · Start Station · Add to Library · Favorite · Stop Station |
 | Queue | station row | Stop Station / Don't resume |

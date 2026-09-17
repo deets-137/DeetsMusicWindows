@@ -259,6 +259,7 @@ const SPECS: Spec[] = [
     get: () => (libraryAddEnabled() ? "on" : "off"),
     set: (v) => setLibraryAddEnabled(v === "on"),
   },
+  storeToggle("Apple Music", "addSquareOwned", "Show ✓ on songs you have"),
   storeToggle("Apple Music", "playlistExport", "Export playlists", { offOnly: true }),
   // ── Last.fm (LASTFM.md §6): both write to the user's Last.fm profile, so off only, like the
   //    Apple Music gates. The connect itself is the browser's, never an agent's. ──
@@ -280,6 +281,11 @@ const SPECS: Spec[] = [
   storeChoice("Playlists", "webMakeMotion", "Close on Make", [{ value: "shrink", label: "Shrink to chip" }, { value: "pop", label: "Pop out" }]),
   storeChoice("Playlists", "webSeedFilter", "Genres for Webbing", [{ value: "all", label: "All songs" }, { value: "floor", label: "Keep 5" }, { value: "off", label: "Web only" }]),
   storeChoice("Playlists", "webPrefer", "Web prefers", [{ value: "familiar", label: "Familiar" }, { value: "discover", label: "Discover" }, { value: "mix", label: "Mix" }]),
+  // No Settings row: the web panel's Keep · Temp row under Make playlist (PLAYLIST-WEB.md §10).
+  storeChoice("Playlists", "webTempDays", "Temp web playlist days", [1, 3, 5, 7, 30].map((n) => ({ value: String(n), label: String(n) })), {
+    get: () => String(setting("webTempDays")),
+    set: (v) => setSetting("webTempDays", Number(v) as 1 | 3 | 5 | 7 | 30),
+  }),
   // ── Rewind ──
   storeToggle("Rewind", "rewindCard", "Rewind card"),
   storeChoice("Rewind", "fullPlayRule", "Count a play at", [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }]),

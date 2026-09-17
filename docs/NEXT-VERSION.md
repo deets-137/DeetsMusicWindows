@@ -273,7 +273,7 @@ state. Transition types (`:active-view-transition-type(theme | skin)`) tell the 
 - **(A) Look — theme and skin animate differently.** A theme switch is a color crossfade. A
   skin switch arrives in the *incoming* skin's idiom (during the animation `<html>` already
   carries the new skin, so its tokens drive it): Vanilla fade · Press hard stamp-down wipe ·
-  Ocean rise-from-below · Glass blur-dissolve into focus · Retro-Future skewed snap.
+  Ocean rise-from-below · Glass blur-dissolve into focus · Cyber skewed snap.
   Token-based: each skin block gets `--appearance-dur`, `--appearance-ease`,
   `--appearance-anim`. No per-card `view-transition-name` morphs (rejected: text stretch,
   unique names across dynamic panes).
@@ -917,7 +917,7 @@ draws its own playhead over them:
 dark theme — a black dot on the lens. Light is white in every theme, so `themes.css` gains the
 one role no theme remaps, **`--glint`** (a `light-dark()` white, dimmer on dark themes), and the
 dot became a soft radial flare. The Ocean float shrank to 11 px and its ripple to 1.8× at 40 %.
-| Retro-Future | the bolt | burns tight and bright; one flicker on release | a `--title` glow breathes, 3 s each way |
+| Cyber | the bolt | burns tight and bright; one flicker on release | a `--title` glow breathes, 3 s each way |
 
 **First desk look (2026-09-16).** The first cut had a nib with a 4 px flag, a drop with a
 same-color crest, and a lens with a `backdrop-filter`. Press read as a bare line, Ocean as the

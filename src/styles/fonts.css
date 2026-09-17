@@ -29,7 +29,7 @@
      Press        → Anton (poster grotesque title) + IBM Plex Mono
                     (spec-sheet body).
      Ocean        → Cinzel (engraved caps title) + Spectral (serif body).
-     Retro-Future → Orbitron (machined title) + Rajdhani (condensed body).
+     Cyber → Orbitron (machined title) + Rajdhani (condensed body).
    ------------------------------------------------------------ */
 
 /* Press — Anton (title). One weight only; --fw-title is 400 there. */
@@ -76,7 +76,7 @@
   src: url("./fonts/Spectral-Regular.woff2") format("woff2");
 }
 
-/* Retro-Future — Orbitron (machined sci-fi title) */
+/* Cyber — Orbitron (machined sci-fi title) */
 @font-face {
   font-family: "Orbitron";
   font-style: normal;
@@ -85,7 +85,7 @@
   src: url("./fonts/Orbitron-Bold.woff2") format("woff2");
 }
 
-/* Retro-Future — Rajdhani (condensed squared body; 500 is the body weight —
+/* Cyber — Rajdhani (condensed squared body; 500 is the body weight —
    Rajdhani's 400 runs thin at list sizes, so the skin sets --fw-text: 500) */
 @font-face {
   font-family: "Rajdhani";

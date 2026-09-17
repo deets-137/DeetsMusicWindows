@@ -1187,6 +1187,12 @@ function preampWhy(peak: number): string {
   }
 }
 
+/** Match loudness off inside Adaptive sound: the songs are still measured (sound.ts `measure`). */
+function measuringLine(): string {
+  const n = loudness.loudnessState().measuredSongs;
+  return `Off. Songs are measured as you listen, so they are ready when you turn it on (${n} so far).`;
+}
+
 /** Match loudness, one line: what sets this song's gain, and how far the listen has come. */
 function loudLine(): string {
   const { source: s, heardPct } = loudness.loudnessState();
@@ -1259,7 +1265,7 @@ function renderStatus(): void {
   // Adaptive
   const adaptive = setting("soundAdaptive");
   const offLine = "Adaptive sound is off.";
-  setText(loudStatus, !adaptive ? offLine : !setting("soundLoudness") ? "Off." : loudLine());
+  setText(loudStatus, !adaptive ? offLine : !setting("soundLoudness") ? measuringLine() : loudLine());
   const lowMode = setting("soundLowVol");
   const duck = getDuck();
   const app = duck > 0 ? getVolume() / duck : getVolume();

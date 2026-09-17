@@ -144,7 +144,7 @@ place to "go ham" on style, inside the token rules.
   their hit size (`--sound-handle-hit`); in Mini the preset row wraps under the curve.
 - **Tokens:** `--sound-*` in skin.css (panel width, curve height, handle size and hit area, grid,
   motion), curve / fill / grid / handle colors as theme roles in themes.css; each skin may restyle
-  the curve (Press: ink line; Ocean: a glow; Glass: a lit edge; Retro-Future: a scanline trace).
+  the curve (Press: ink line; Ocean: a glow; Glass: a lit edge; Cyber: a scanline trace).
 - **Agent + keys:** `soundOn`, `eqPreset`, `eqMode`, `adaptLoudness`, `adaptLowVolume`,
   `adaptCrossfeed` as settings keys with specs; the bands themselves are not an agent value in v1.
 
@@ -383,7 +383,7 @@ Every effect ships off. Before the feature leaves the dev branch, it has to earn
 settings → config, review), `src/sound-presets.ts` (built-ins, graphic fit, APO text),
 `src/sound-panel.ts` (the panel), markup in `index.html` (`#sound`, left of the sleep clock), the
 `.sound__*` block in `styles.css`, `--sound-*` in `skin.css` (base + a look for Press, Ocean,
-Glass and Retro-Future), `--eq-*` roles in `themes.css`. Keys: `sound*` in `settings-store.ts`
+Glass and Cyber), `--eq-*` roles in `themes.css`. Keys: `sound*` in `settings-store.ts`
 (all effects off), the Sound section in `agent-settings.ts` (the two switches off only),
 Settings › Reset › Sound (not saved presets). Ledgers: ONBOARDING.md (hints), TOASTS.md §5
 (review, resume failed). Log lines: `sound:context`, `sound:ctx`, `sound:route`, `sound:on` /
@@ -413,7 +413,7 @@ Settings › Reset › Sound (not saved presets). Ledgers: ONBOARDING.md (hints)
 10. Open "How the equalizer decides" and "How adaptive sound decides": the lines match the settings.
 11. Turn both switches off: the icon goes grey; the sound is as before (the element stays routed
     through a passthrough — bit-exact in §8.1).
-12. Every skin: Press (ink line, dashed grid), Ocean (glow), Glass (lit edge), Retro-Future (scope).
+12. Every skin: Press (ink line, dashed grid), Ocean (glow), Glass (lit edge), Cyber (scope).
 13. **Song shape.** Everything off, a song playing: open the panel. Within a second a grey silhouette
     grows under the curve and settles; the log has `sound:inspect` and `sound:route`. The sound does
     not change. Next song: the shape starts over.
@@ -459,7 +459,7 @@ this process after the graph (§1).
 - First launch (2026-09-16 16:26): `audio-out: Headphones (High Definition Audio Device) (headphones)`.
 
 ### 10.2 Phase 5 — `src/sound-loudness.ts` + `src-tauri/src/loudness.rs`
-- **Measure.** While Match loudness is on, each element worklet sends a 100 ms hop (K-weighted mean
+- **Measure.** While Adaptive sound is on, each element worklet sends a 100 ms hop (K-weighted mean
   square + sample peak, before the match gain). The module divides MusicKit's volume back out
   (`getAppliedGain` squared; hops at less than −40 dB of volume, and exact-zero hops from a paused
   element, are skipped), makes 400 ms blocks with 75 % overlap, and at the next song start gates
@@ -477,8 +477,16 @@ this process after the graph (§1).
   The gain is clamped to ±12 dB and capped so the peak sits at most 2 dB over the limiter's ceiling
   (the line then says *held from …*). It ramps in 50 ms on every element node (one plays at a time).
   The line adds *Measuring: 42 % heard.* A song measured during this listen uses it the next time.
+- **Measure by default (user's call 2026-09-17, option A).** Match loudness is **off** by default
+  inside Adaptive sound, but songs are measured whenever Adaptive sound is on, so the gains are ready
+  when Match loudness is turned on. `sound.ts` has two flags: `measure` (= Adaptive on: the element
+  meters run, and Adaptive on counts as "wanted", so songs are routed even with every part off) and
+  `match` (= Adaptive on AND Match loudness on: the gain is applied). With Match loudness off the
+  row reads *Off. Songs are measured as you listen, so they are ready when you turn it on (N so
+  far).* Rejected: B, measure with Sound fully off (routes every play for every user; breaks "every
+  effect ships off"; the lost-start watch has no data yet).
 - **Forget** (How adaptive sound decides › Measurements) deletes every row.
-- Log: `sound:matchOn` / `sound:matchOff`, `sound:match {kind, gainDb}` per song,
+- Log: `sound:measureOn` / `sound:measureOff` (the meters), `sound:matchOn` / `sound:matchOff`, `sound:match {kind, gainDb}` per song,
   `sound:measured {lufs, peakDb, heard, blocks}`, `sound:measureForget`, `loudness: forgot N`,
   `migration: v7 added the loudness table`.
 
@@ -488,8 +496,8 @@ this process after the graph (§1).
 |---|---|---|
 | Output watcher | one sleeping thread; one read per notice | always (Windows wakes it) |
 | Volume notices | at most one emit per 40 ms during a drag; one config message to the bus | while the Windows volume moves |
-| Element meter | 2 biquads × 2 channels + a sum per sample (well under 0.1 % of a core) | Match loudness on |
-| Meter hops | 10 small messages a second; a 4-minute song keeps about 2,400 numbers | Match loudness on, playing |
+| Element meter | 2 biquads × 2 channels + a sum per sample (well under 0.1 % of a core) | Adaptive sound on |
+| Meter hops | 10 small messages a second; a 4-minute song keeps about 2,400 numbers | Adaptive sound on, playing |
 | Album gain | one pass over the library's tracks (about 4,000) per song start | Album gain on, an album in order |
 | SQLite | one row per fully heard song; one read of all rows at launch | — |
 
@@ -509,6 +517,8 @@ live (§11). Phase 0 (a flat graph measures like no graph) PASSES: AUDIO-QUALITY
    speakers *→ off*.
 5. Fuller at low volume: the line reads *App 14 % × Windows 60 % (−9.6 dB) = …*. Move the Windows
    volume: the numbers follow at once. Connect AirPlay: the line reads *Speaker …*.
+5a. (2026-09-17) Adaptive sound On, Match loudness Off (the default). The row reads *Off. Songs are
+   measured as you listen … (N so far)*. Let a new song play out: `sound:measured` in the log, N + 1.
 6. Match loudness On. Play a song not heard before: *Not measured yet: …* with *Measuring: N % heard*
    rising. Let it play out. The next song logs `sound:measured` with a LUFS value (most pop
    masters: −6 to −10).

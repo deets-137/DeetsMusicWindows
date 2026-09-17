@@ -1,5 +1,5 @@
 // Ambient pause. The skins' endless decorative loops (Ocean swell, Glass aurora,
-// Retro-Future storm, the Now Playing aurora) hold still while the main window
+// Cyber storm, the Now Playing aurora) hold still while the main window
 // cannot be seen: minimized, or hidden to the tray. CSS does the pausing
 // (`:root[data-ambient="paused"]` → animation-play-state, styles.css); this module
 // only sets the attribute.

@@ -45,7 +45,7 @@ export const THEME_OPTIONS = [
   { value: "moonlight", label: "Moonlight" }, { value: "black-yellow", label: "Black & Yellow" }, { value: "black-red", label: "Black & Red" },
 ];
 export const SKIN_OPTIONS = [
-  { value: "press", label: "Press" }, { value: "ocean", label: "Ocean" }, { value: "glass", label: "Glass" }, { value: "retro-future", label: "Retro-Future" },
+  { value: "press", label: "Press" }, { value: "ocean", label: "Ocean" }, { value: "glass", label: "Glass" }, { value: "cyber", label: "Cyber" },
 ];
 
 /** A change to one of these clears a hand pick's hold and applies the schedule at once. */

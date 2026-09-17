@@ -11,7 +11,7 @@
 import * as frames from "./frames";
 import { setting } from "./settings-store";
 import {
-  playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete,
+  playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
   playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, addToPlaylistItem, onPlaylistsChange,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest,
@@ -25,6 +25,7 @@ import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type
 import { picksText } from "./row-pick";
 import { playlistShelfMenu } from "./artist-view";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
+import { addSquareHTML } from "./add-square";
 import { onGrowChange } from "./card-grow";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { appleMusicItem } from "./playlist-export";
@@ -33,6 +34,7 @@ import { enterRows, rowsAfter } from "./pop";
 import { requestCard } from "./layout-bus";
 import { currentSurface } from "./surface";
 import { toast } from "./toast";
+import * as diag from "./diag";
 import type { CardDef } from "./cards";
 import type { DragPayload } from "./row-drag";
 import { dropToPlaylist, dropToApplePlaylist } from "./drop-actions";
@@ -318,7 +320,11 @@ export const playlistsCard: CardDef = {
           t.title.toLowerCase().includes(q) ||
           t.artistName.toLowerCase().includes(q) ||
           (t.albumName?.toLowerCase().includes(q) ?? false),
-        render: (t, density, idx) => musicCell(density, idx, t.artwork, t.title, t.artistName, { badge: explicitBadge(t) }),
+        // Lines view carries the Add-to-Library square at the row's end (add-square.ts); a tile has no room.
+        render: (t, density, idx) =>
+          musicCell(density, idx, t.artwork, t.title, t.artistName, {
+            badge: explicitBadge(t) + (density === "lines" ? addSquareHTML(t, "add-square--row") : ""),
+          }),
         // Click a song → play the playlist from here, in the current sort order.
         activate: (_t, idx, items) =>
           void playTracks(items, idx, ctxTag).catch((e) => console.error("[playlists] play", e)),
@@ -422,6 +428,7 @@ export const playlistsCard: CardDef = {
               local && q.exportedAt && onApple(q)
                 ? `Exported on ${new Date(q.exportedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
                 : "",
+              expiryText(q),
             ].filter(Boolean).join(" · "),
             // A local playlist's cover is a button (1B) and takes a dropped image file (3B).
             // An Apple playlist's cover offers Import to Edit, its one way to an editable copy.
@@ -445,7 +452,8 @@ export const playlistsCard: CardDef = {
     // ── overview: the unified list ──
     const subOf = (p: Playlist) => {
       const n = trackCache.get(pid(p))?.length ?? p.trackCount;
-      if (n != null) return `${n} song${n === 1 ? "" : "s"}`;
+      // A temporary web playlist says when it goes (PLAYLIST-WEB.md §10.5).
+      if (n != null) return [`${n} song${n === 1 ? "" : "s"}`, expiryText(p)].filter(Boolean).join(" · ");
       return p.curatorName ?? "Playlist";
     };
 
@@ -518,6 +526,18 @@ export const playlistsCard: CardDef = {
     const coverItems = (p: Playlist, pickLabel: string, withRename = true): MenuItem[] => {
       const items: MenuItem[] = [];
       if (withRename && handMade(p)) items.push(renameItem(p));
+      // A temporary web playlist (PLAYLIST-WEB.md §10.5): the only way to stop its expiry.
+      if (p.expireDays != null)
+        items.push({
+          label: "Keep Playlist",
+          run: () =>
+            void playlistKeep(p)
+              .then(() => diag.log("web:expiry", { keep: p.libraryId }))
+              .catch((e) => {
+                console.error("[playlists] keep", e);
+                toast({ kind: "warn", text: `Couldn't keep “${p.name}”.` });
+              }),
+        });
       items.push({ label: pickLabel, run: () => pickCover(p) });
       // Generate Cover (PLAYLISTS.md §11.2): draw Letters or Note now, in the current theme.
       const letters = coverLetters(p.name);

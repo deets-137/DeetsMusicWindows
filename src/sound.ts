@@ -34,8 +34,11 @@ export interface SoundConfig {
   lowVolume: number;
   /** The Windows master volume as a gain (audio_out.rs; 1 while AirPlay plays or when not read). */
   masterVolume: number;
-  /** Match loudness is on: element meters run and each song gets its gain (sound-loudness.ts). */
+  /** Match loudness is on: each song gets its gain (sound-loudness.ts). */
   match: boolean;
+  /** Adaptive sound is on: element meters run and songs are measured, even with Match loudness
+   *  off, so the gains are ready when it is turned on (user's call 2026-09-17, SOUND.md §3A). */
+  measure: boolean;
   crossfeed: { on: boolean; fc: number; db: number };
   ceilingDb: number;
 }
@@ -49,6 +52,7 @@ const config: SoundConfig = {
   lowVolume: 0,
   masterVolume: 1,
   match: false,
+  measure: false,
   crossfeed: { on: false, fc: 700, db: -6 },
   ceilingDb: -1,
 };
@@ -63,7 +67,7 @@ const seen = new Set<HTMLMediaElement>();
 
 /** Any effect on: the only condition under which a new element is routed. */
 function wanted(): boolean {
-  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match;
+  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match || config.measure;
 }
 
 // ── The context and the bus ──────────────────────────────────────────────────────────
@@ -245,7 +249,7 @@ function route(el: HTMLMediaElement): void {
       numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [2],
-      processorOptions: { meter: config.match, gainDb: matchDb },
+      processorOptions: { meter: config.measure, gainDb: matchDb },
     });
     const info: NodeInfo = { createdAt: performance.now() };
     nodeInfo.set(node, info);
@@ -519,15 +523,18 @@ function applySettings(): void {
     // is taken before the Windows volume, so while a speaker plays it does not count.
     masterVolume: setting("soundLowVolKey") === "both" && !airplayOutput && windowsMasterKnown ? Math.pow(10, windowsMasterDb / 20) : 1,
     match: adaptive && setting("soundLoudness"),
+    measure: adaptive,
     crossfeed: { on: xf.on, ...level },
   };
   const was = wanted();
   const matchWas = config.match;
+  const measureWas = config.measure;
   Object.assign(config, patch);
-  if (config.match !== matchWas) {
-    for (const n of elementNodes) n.port.postMessage({ type: "meter", on: config.match });
-    diag.log(config.match ? "sound:matchOn" : "sound:matchOff", { routed: routedCount });
+  if (config.measure !== measureWas) {
+    for (const n of elementNodes) n.port.postMessage({ type: "meter", on: config.measure });
+    diag.log(config.measure ? "sound:measureOn" : "sound:measureOff", { routed: routedCount });
   }
+  if (config.match !== matchWas) diag.log(config.match ? "sound:matchOn" : "sound:matchOff", { routed: routedCount });
   const on = wanted();
   if (on !== was) diag.log(on ? "sound:on" : "sound:off", { eq: config.eqOn, lowVolume: config.lowVolume, crossfeed: config.crossfeed.on, routed: routedCount });
   if (on && !setting("soundFirstOn")) setSetting("soundFirstOn", Date.now());

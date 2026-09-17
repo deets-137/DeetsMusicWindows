@@ -15,7 +15,7 @@ scrobbles (two songs heard to the end) all worked. §9 has what the test covered
 | # | Fork | Decision | Why |
 |---|---|---|---|
 | 1 | Where the secret lives | **In the app** (A) | Last.fm expects a desktop app to carry it. A person who extracts it can send calls as "DeetsMusic", but cannot reach an account. B (the Worker signs every call) puts every scrobble through our Worker. |
-| 2 | Connect | **Browser + checks** (A), in the title menu › Account under Apple Music | Last.fm's desktop auth. The `cb` link back is added on top (§4). |
+| 2 | Connect | **Browser + checks** (A), in the title menu › Account under Apple Music | Last.fm's desktop auth. No `cb` link back: the desktop auth ignores it (§4 step 4). |
 | 3 | Where waiting scrobbles live | **A column on `play_events`** (A) | A scrobble is a state of a play the app already saves. It survives a crash and a restart. |
 | 4 | Album names | **Send Apple's names as they are** (B) | Last.fm: use metadata from "well-structured sources", and never apply its corrections without the user. It gives no rule to strip " - Single" / " - EP". Last.fm corrects names on its side for users who turn that on. |
 | — | Price | DeetsMusic stays free. Donations are possible. | Last.fm's API terms allow non-commercial use only. They do not mention donations. Say "free, optional donations" in the API account application. |
@@ -52,19 +52,20 @@ Cost: one now-playing call per song and about one scrobble call per song. Zero A
 ## 4. Connect (the title menu › Account › Last.fm)
 
 1. The user clicks **Last.fm**. `lastfm_begin_auth` gets a token and opens
-   `last.fm/api/auth/?api_key=…&token=…&cb=<scheme>://lastfm` in the browser.
+   `last.fm/api/auth/?api_key=…&token=…` in the browser (no `cb` since 2026-09-17, step 4).
 2. The row shows a spinner and "Click Allow in your browser, or click again to cancel."
 3. Rust calls `auth.getSession` every 3 s. Error 14 means "not yet". Errors 15 and 4 mean
    the token expired. After 5 minutes the connect ends with "timeout".
-4. **The link back.** Last.fm's web-auth page allows a `cb` on each request, so after Allow it
-   may send the browser to `<scheme>://lastfm?token=…`. The link carries no power: a token
-   that matches the connect in progress only makes the next check happen now. Any other
-   link is logged and ignored. The single-instance callback (`lib.rs`) routes a link by its
-   host, `lastfm` or `auth`, and brings the window forward.
-   **Desk test 2026-09-16:** the Allow page showed no error, and the connect finished in 10 s.
-   The log has no `link back arrived` line, so the checks finished it, not the link. The link
-   back is harmless, so it stays. Earlier note: whether Last.fm accepts a custom-scheme `cb` with the desktop token. If the
-   Allow page shows an error, set `LINK_BACK = false` in `lastfm.rs`. The checks alone still connect.
+4. **No link back (off since 2026-09-17).** After Allow, the user returns to DeetsMusic by hand;
+   the 3 s checks have already finished the connect. `LINK_BACK = false` in `lastfm.rs`.
+   Why: Last.fm's desktop auth (the token from `auth.getToken`) ignores `cb`. Only the web auth
+   (no token) redirects. The installed 0.8.0 test connected in 7 s with no browser prompt and no
+   `link back arrived` line, and `deetsmusic://` was registered (checked in the real HKCU).
+   Rejected: A (bring the window forward on "connected"; Windows can block the focus) and B
+   (switch to web auth, where the link is the only way to finish).
+   The receiving side stays: a `<scheme>://lastfm?token=…` link that matches the connect in
+   progress only makes the next check happen now; any other link is logged and ignored
+   (`lib.rs` routes a link by its host, `lastfm` or `auth`).
 5. On success: `lastfm-session.json` is saved in the app data folder, the key is registered with
    the log scrubber, and the row reads "Connected as *name*". The name opens the profile in the
    browser (it also credits Last.fm). A toast says "Last.fm connected."
@@ -164,7 +165,7 @@ disconnect (warn), session refused (warn, sticky, Connect).
 
 **Result 2026-09-16 (installed 0.8.0):** connected in 7 s, no browser prompt, no `link back
 arrived` line. The scheme is registered, so Last.fm ignores `cb` with a desktop token. Decided:
-option C, `LINK_BACK = false` next release (HANDOFF.md › Next up). Not built yet.
+option C, `LINK_BACK = false` next release. Built 2026-09-17 (§4 step 4); ships in the next release.
 
 **Was OPEN — re-test the connect in the first installed release that carries Last.fm.** The user
 does it then (decided 2026-09-16); it is also a box in RELEASE.md §1a. The dev test left one
@@ -182,8 +183,8 @@ Before it: fill in `lastfm.json`, then restart `dev:app` (build.rs runs again).
 
 1. Title menu › Account shows **Last.fm** under Apple Music with a red ×, "Not connected".
 2. Click it. The browser opens Last.fm's Allow page. **Check: no error from the `cb`** (§4.4).
-   Click Allow. The browser offers to open DeetsMusic (the link back), and the row turns
-   "Connected as *name*" within a second. Without the link: within 3 s.
+   Click Allow. The row turns "Connected as *name*" within 3 s. The browser does not offer to
+   open DeetsMusic (no link back, §4 step 4); go back to the app by hand.
 3. Click the name. Your profile opens.
 4. Play a song. The profile shows it as listening now.
 5. Let it play past half (or 4 min). The log shows `play N queued`, then `sent 1 scrobble(s)`.

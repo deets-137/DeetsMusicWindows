@@ -322,8 +322,7 @@ export function collapseGrow(cause: string, withMotion = true): Promise<void> {
       ended = true;
       anim.cancel();
       endFrames();
-      covered.forEach((s) => uncover(opts!.hosts[s]));
-      covered.forEach((s) => enterAll(opts!.hosts[s]!)); // the cards that come back: their rows file in too
+      covered.forEach((s) => uncover(opts!.hosts[s])); // they faded back in as the clip closed; their rows stay put
       delete panel.dataset.grow;
       delete panel.dataset.growDir;
       panel.classList.remove("is-grown");
@@ -402,9 +401,12 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
 
   const place = () => {
     if (!box) return;
-    // At the right end of the title's box, before the first action square: no flow space.
-    const right = head.clientWidth - (title.offsetLeft + title.offsetWidth);
-    box.style.setProperty("--grow-btn-right", `${Math.max(0, right)}px`);
+    // Just right of the title's TEXT (not its box, which runs to the action squares): the
+    // text's width comes from a range over it, capped at the box when the title is cut off.
+    const range = document.createRange();
+    range.selectNodeContents(title);
+    const text = Math.min(range.getBoundingClientRect().width, title.offsetWidth);
+    box.style.setProperty("--grow-btn-left", `${Math.round(title.offsetLeft + text)}px`);
   };
   const paint = () => {
     if (!box) return;
@@ -432,8 +434,8 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
     box = document.createElement("div");
     box.className = "grow-btns";
     box.innerHTML =
-      `<button class="grow-btn grow-btn--pin" type="button" data-grow-pin hidden>${ICON_PIN}</button>` +
-      `<button class="grow-btn" type="button" data-grow-btn>${ICON_GROW}</button>`;
+      `<button class="grow-btn" type="button" data-grow-btn>${ICON_GROW}</button>` +
+      `<button class="grow-btn grow-btn--pin" type="button" data-grow-pin hidden>${ICON_PIN}</button>`;
     head.appendChild(box);
     paint();
     enterRows(box.querySelectorAll(".grow-btn:not([hidden])"), 2);

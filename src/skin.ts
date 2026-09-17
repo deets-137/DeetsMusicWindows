@@ -1,23 +1,25 @@
 // Skin switching. Mirror of theme.ts: one attribute on <html>, the
 // token sheets (skin.css) do the rest. Choice persists in localStorage.
 
-export type SkinName = "vanilla" | "press" | "ocean" | "glass" | "retro-future";
+export type SkinName = "vanilla" | "press" | "ocean" | "glass" | "cyber";
 
 const STORAGE_KEY = "deets.skin";
 
 // Retired ids still sitting in a saved localStorage value, mapped to their
 // successor — same contract as theme.ts's RETIRED. Desk was retired when
-// Press landed (2026-08-10); CyberStorm kept its idiom and only changed name.
+// Press landed (2026-08-10); CyberStorm kept its idiom and only changed name,
+// to Retro-Future and then to Cyber (2026-09-17).
 const RETIRED: Record<string, SkinName> = {
   desk: "press",
-  cyberstorm: "retro-future",
+  cyberstorm: "cyber",
+  "retro-future": "cyber",
 };
 
 // No saved choice: the skin follows the OS light/dark preference too —
-// Press on light (ink on stock wants a light stock), Retro-Future on dark.
+// Press on light (ink on stock wants a light stock), Cyber on dark.
 // Pairs with theme.ts's default so a first launch lands on a curated combo.
 export function defaultSkin(): SkinName {
-  return prefersDark() ? "retro-future" : "press";
+  return prefersDark() ? "cyber" : "press";
 }
 
 function prefersDark(): boolean {

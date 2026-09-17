@@ -303,6 +303,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   ("Genres for Webbing": All songs | Keep 5 | Web only) and `webMakeMotion` ("Close on Make":
   Shrink to chip | Pop out). Building a web has no agent verb yet; the panel under the Playlists
   web button uses these two values.
+- **Playlists › Temp web playlist days** (2026-09-17, PLAYLIST-WEB.md §10): `webTempDays`
+  (1 | 3 | 5 | 7 | 30). No Settings row: it is the web panel's Temp | N days button under Make
+  playlist, and sets the next web playlist only. Every new web starts on Temp.
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
   `pressVinylSpeed` (33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set
@@ -345,6 +348,7 @@ Max), **except**:
 |---|---|
 | `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control), `agentHistory` (Agents read play history, 2026-09-16, [LOCAL-DATA.md](LOCAL-DATA.md) §9), `lastfmScrobble` (Scrobble plays), `lastfmNowPlaying` (Show now playing; both 2026-09-16, [LASTFM.md](LASTFM.md) §6) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
 | `agentSettings` — **read-only** | The permission itself. |
+| `addSquareOwned` (Show ✓ on songs you have, 2026-09-17) — **not** limited, an ordinary toggle | It changes only what the Add-to-Library square shows. It writes nothing to Apple, so it is not a gate. |
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
 | Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |
 

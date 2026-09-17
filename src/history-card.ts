@@ -22,6 +22,7 @@ import type { PlayEvent } from "./rewind";
 import type { Track } from "./library";
 import { esc } from "./collection-card";
 import { artURL, rowHTML } from "./queue-rows";
+import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
@@ -136,6 +137,7 @@ function mountHistory(host: HTMLElement): CardInstance {
           <span class="qnow__title">${esc(t?.title ?? (latest ? "Unknown" : ""))}</span>
           <span class="qnow__artist">${esc(t?.artistName ?? "")}</span>
         </div>
+        ${addSquareHTML(t)}
       </div>`;
 
     const older = view.slice(1);
@@ -148,7 +150,7 @@ function mountHistory(host: HTMLElement): CardInstance {
         const artist = rt?.artistName ?? "";
         const sub = day ? (artist ? `${artist} · ${day}` : day) : artist;
         const meta = `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>`;
-        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), false, meta);
+        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), false, meta, addSquareHTML(rt));
       })
       .join("");
     const more =
@@ -237,6 +239,7 @@ function mountHistory(host: HTMLElement): CardInstance {
     root: body,
     label: "history",
     rowAt: (target) => {
+      if (isAddSquare(target)) return null; // a press on the + adds; it never drags the row
       const el = target.closest<HTMLElement>("[data-idx]");
       const entry = el ? view[Number(el.dataset.idx)] : undefined;
       const t = entry ? trackOf(entry) : undefined;

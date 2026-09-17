@@ -629,7 +629,7 @@ function mountSettings(host: HTMLElement): CardInstance {
         storeToggle("fancyscrub", "Fancy scrubber", "fancyScrubber", () => "Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle"),
         {
           kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
-          hint: "The moving Ocean, Glass, and Retro-Future backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
+          hint: "The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
           options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
         },
         {
@@ -823,6 +823,7 @@ function mountSettings(host: HTMLElement): CardInstance {
           get: () => libraryAddEnabled(),
           set: (on) => setLibraryAddEnabled(on),
         },
+        storeToggle("addsquareowned", "Show ✓ on songs you have", "addSquareOwned", () => "On: the + on a song row turns into a ✓ when the song is already in your library. Off: no button"),
         storeToggle("playlistexport", "Export playlists", "playlistExport", () => "Can't rename, reorder, or delete on Apple Music via DeetsMusic"),
       ],
     },

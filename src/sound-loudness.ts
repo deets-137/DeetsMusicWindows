@@ -1,6 +1,6 @@
 // Match loudness (SOUND.md §3A — phase 5): every song at one perceived loudness.
 //
-// Measure: while Match loudness is on, each routed element's worklet sends its K-weighted mean
+// Measure: while Adaptive sound is on (Match loudness on or off), each routed element's worklet sends its K-weighted mean
 // square and sample peak every 100 ms (sound-worklet.ts, before the match gain). This module
 // divides MusicKit's volume back out (it acts before the graph, §0), groups the hops into
 // 400 ms blocks with 75 % overlap, and at the end of the listen gates them (BS.1770-4) into
@@ -190,7 +190,7 @@ function onTick(h: TrackHandle, progress: number, currentTime: number): void {
 
 function onHop(ms: number, peak: number): void {
   const l = listen;
-  if (!l || !sound.getSound().match || !isPlayingNow()) return;
+  if (!l || !sound.getSound().measure || !isPlayingNow()) return;
   // A paused element sends exact zeros; a routed element that is not the one playing does too.
   if (ms === 0 && peak === 0) return;
   const g = getAppliedGain();

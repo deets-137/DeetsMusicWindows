@@ -32,7 +32,7 @@
 - **Library** — §21 Sync cadence (full pass every 6 h; incremental at startup)
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
-  §13 Retro-Future storm dials (skin-specific). **The skin-only settings surface exists
+  §13 Cyber storm dials (skin-specific). **The skin-only settings surface exists
   (2026-09-15)**: [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only settings*.
 - **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
   §16 New-Playlist Search summon
@@ -573,12 +573,12 @@ Per-knob granularity is a rabbit hole; two curated presets is the honest setting
 
 ---
 
-## 13. Retro-Future storm dials — the tunable numbers
+## 13. Cyber storm dials — the tunable numbers
 
-**Tag: skin-specific (Retro-Future).** Same species as §12: aesthetic intensity knobs of
-one skin, hardcoded in the `[data-skin="retro-future"]` block (+ the `storm-strike`
+**Tag: skin-specific (Cyber).** Same species as §12: aesthetic intensity knobs of
+one skin, hardcoded in the `[data-skin="cyber"]` block (+ the `storm-strike`
 keyframes and `src/storm.ts`). Tenants of the same future "skin options" surface;
-apply only while Retro-Future is active.
+apply only while Cyber is active.
 
 **The knobs (initial 2026-07-02 values):**
 - **Strike cycles** — `--storm-cycle-1: 8s` / `--storm-cycle-2: 12s`. The draw phase is
@@ -607,7 +607,7 @@ apply only while Retro-Future is active.
   the runner-up was bolt 2 in an accent role (`--pause`). A one-line change in the
   `.storm__bolt:nth-child(2)` ink if it ever becomes a preference.
 
-**Wiring sketch.** Like §12: a single preset (`deets.retro-future.storm` =
+**Wiring sketch.** Like §12: a single preset (`deets.cyber.storm` =
 `"distant" | "overhead"`, default `"distant"`) as a `data-` attr swapping cycle/glow/
 translucency values in one block — not per-knob controls.
 
@@ -1123,7 +1123,7 @@ picking Ocean buys grain, specks and sand edges. There is no "Glass, but cheaper
 **Measured 2026-09-16** (DEBUGGING.md §What the 2026-09-16 graphics-cost baseline found).
 Under `--gpu=off`, **Glass** drops to 26–34 fps in every scene (idle, switch, scroll). Turning
 off the panel frost alone brings idle back to 178 fps. **Ocean** scroll is slow on the real card
-too (160 fps, 49% dropped), and the sand is not the main cause. Press and Retro-Future need
+too (160 fps, 49% dropped), and the sand is not the main cause. Press and Cyber need
 nothing. So the list is two skins long. Suspect 1 is confirmed; suspects 3–5 are still open.
 
 **Glass: BUILT 2026-09-16 as "Fancy Glass"** (user's call: 1A aurora holds still, 2A cards only,
@@ -1139,7 +1139,7 @@ change allowed; built as a skin token, Press excluded, checks half done), 2A no 
 **Measured before that.** On an RX 6700 XT at 244 Hz an Ocean skin switch puts `CrGpuMain`
 at **86.9%** while the page's own thread sits at 29.5% — the work is in the GPU process, not
 in script. At idle `CrGpuMain` is ~0, so this is the switch, not steady state. Press and
-Retro-Future stayed cheap throughout. **Nothing has been measured on weak hardware yet**;
+Cyber stayed cheap throughout. **Nothing has been measured on weak hardware yet**;
 `npm run dev:app -- --gpu=off|slow` exists for exactly that (DEBUGGING.md §Pretending to be a
 weaker machine).
 
@@ -1151,7 +1151,7 @@ weaker machine).
    off during the lift, which says they were costly enough to notice once.
 3. **The aurora layer** — drifting blobs that repaint continuously while visible.
 4. **The Press record player** — a transform running the whole time a song plays.
-5. **The canvas pattern** (Press halftone, Retro-Future grid).
+5. **The canvas pattern** (Press halftone, Cyber grid).
 
 **Forks — do NOT pick one before the numbers exist.**
 - **(a) Per-feature toggles.** A Skin settings row for each heavy part ("Frost cards" already

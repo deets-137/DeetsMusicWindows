@@ -11,12 +11,12 @@
       (function () {
         var R = {
           fairy: "lilac", glade: "green", hornet: "black-yellow", viper: "black-red",
-          desk: "press", cyberstorm: "retro-future",
+          desk: "press", cyberstorm: "cyber", "retro-future": "cyber",
         };
         var dark = false;
         try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
         [["deets.theme", "data-theme", dark ? "black-red" : "lilac"],
-         ["deets.skin",  "data-skin",  dark ? "retro-future" : "press"]].forEach(function (a) {
+         ["deets.skin",  "data-skin",  dark ? "cyber" : "press"]].forEach(function (a) {
           var saved = null;
           try { saved = localStorage.getItem(a[0]); } catch (e) {}
           document.documentElement.setAttribute(a[1], saved ? (R[saved] || saved) : a[2]);

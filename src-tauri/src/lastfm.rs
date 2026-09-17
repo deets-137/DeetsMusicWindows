@@ -27,10 +27,10 @@ const API_URL: &str = "https://ws.audioscrobbler.com/2.0/";
 const AUTH_URL: &str = "https://www.last.fm/api/auth/";
 const API_KEY: Option<&str> = option_env!("DEETS_LASTFM_KEY");
 const API_SECRET: Option<&str> = option_env!("DEETS_LASTFM_SECRET");
-/// Ask Last.fm to send the browser back through `<scheme>://lastfm` after Allow (§4). If
-/// Last.fm refuses a custom-scheme `cb`, set this false: the checks alone still finish the
-/// connect, the user just returns to the app by hand.
-const LINK_BACK: bool = true;
+/// Ask Last.fm to send the browser back through `<scheme>://lastfm` after Allow (§4). Off
+/// since 2026-09-17: the desktop auth (a token from `auth.getToken`) ignores `cb`, so the
+/// 0.8.0 test never came back. The checks alone finish the connect; the user returns by hand.
+const LINK_BACK: bool = false;
 /// A Last.fm auth token lives 60 minutes; the Apple sign-in waits 5, and so does this.
 const AUTH_TTL: Duration = Duration::from_secs(300);
 const AUTH_POLL: Duration = Duration::from_secs(3);

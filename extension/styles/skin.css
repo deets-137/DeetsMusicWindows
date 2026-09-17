@@ -78,7 +78,7 @@
 
   /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
      base paints the panel material — an opaque slide masks the pane beneath.
-     Translucent skins (Glass, Retro-Future) drop this to transparent: they FADE
+     Translucent skins (Glass, Cyber) drop this to transparent: they FADE
      off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting
      --panel over the card's own frost stacks into a visible rectangle. */
   --spane-bg:      var(--panel);
@@ -97,7 +97,7 @@
   --shadow-card:  none;             /* skins add a real card shadow */
   --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
 
-  /* -- canvas pattern (Press halftone / Retro-Future grid) --- */
+  /* -- canvas pattern (Press halftone / Cyber grid) --- */
   /* A background-image painted on .app-body, BEHIND the cards. Its
      color comes from a theme role (--border); the pattern + motion
      are skin. Vanilla paints nothing. */
@@ -146,7 +146,7 @@
      reuse the layer for rain / streaks / scan lines; the ink is a theme
      ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per
      strike by src/storm.ts) — not a skin token. Base is fully inert. */
-  --storm-display: none;            /* retro-future opts in */
+  --storm-display: none;            /* cyber opts in */
   --storm-ink:     var(--title);    /* stroke color — theme role, recolors per theme */
   --storm-glow:    none;            /* drop-shadow() halo; a skin opts in */
   --storm-w:       2px;             /* stroke width (non-scaling) */
@@ -467,12 +467,12 @@
 }
 
 /* ============================================================
-   RETRO-FUTURE — electric/futuristic. Lightning bolts slow-draw
+   CYBER — electric/futuristic. Lightning bolts slow-draw
    down the canvas behind the cards (the storm layer); machined
    sci-fi type; every corner cut square; nav snaps with a lateral
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
-[data-skin="retro-future"] {
+[data-skin="cyber"] {
   /* type — machined geometric title on a condensed squared body.
      Orbitron reads very wide, size down; Rajdhani runs thin and
      small-x-height, so the body sits at 500 and a size up. */
@@ -544,14 +544,14 @@
   --scrubber-handle-size: 14px;
 }
 
-/* Retro-Future's strike cycle: the bolt draws top→bottom over ~60% of its
+/* Cyber's strike cycle: the bolt draws top→bottom over ~60% of its
    period (dashoffset 1→0 against pathLength=1), flickers once at full
    reach, cuts to dark, and rests until the next strike. Both bolts run
    THESE keyframes at different --storm-cycle-* durations — that alone
    yields "two visible at once, drawing at different rates". storm.ts
    re-rolls each bolt's position during the dark window (opacity 0 at
    the loop seam, so the jump is never visible). Defined once; only
-   Retro-Future references it (via the .storm__bolt animation). */
+   Cyber references it (via the .storm__bolt animation). */
 @keyframes storm-strike {
   0%        { stroke-dashoffset: 1; opacity: 0; }
   2%        { opacity: 1; }

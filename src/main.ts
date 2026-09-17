@@ -30,6 +30,7 @@ import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initLookSchedule, noteHandPick } from "./look-schedule";
 import { initSleep } from "./sleep";
+import { initPlaylistExpiry } from "./playlist-expiry";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
 import { initLoudness } from "./sound-loudness";
@@ -493,6 +494,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
   initSoundPanel(); // the title bar's Sound item (SOUND.md §2.3)
   initSleep();
+  initPlaylistExpiry(); // temporary web playlists (PLAYLIST-WEB.md §10)
 
   // The skins' scrubber motion (UI-ARCHITECTURE §3 SCRUBBERS) runs only while music plays:
   // one attribute on <html>, so the CSS loops never tick over a paused player.

@@ -16,6 +16,7 @@ import {
 import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
+import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { favoriteItem } from "./favorites";
@@ -80,7 +81,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const rows = shown
       .map((e, i) => {
         const t = resolve(e);
-        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72));
+        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72), true, "", addSquareHTML(t));
       })
       .join("");
     const more =
@@ -111,6 +112,7 @@ function mountQueue(host: HTMLElement): CardInstance {
           <span class="qnow__title">${esc(npTitle)}</span>
           <span class="qnow__artist">${esc(npArtist)}</span>
         </div>
+        ${addSquareHTML(curTrack)}
       </div>
       <div class="qcard__label">${pick.size() ? `Up Next · ${picksText(pick.size())}` : "Up Next"}</div>
       ${list}`;
@@ -258,6 +260,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     root: body,
     label: "queue",
     rowAt: (target) => {
+      if (isAddSquare(target)) return null; // a press on the + adds; it never drags the row
       const hero = target.closest<HTMLElement>(".qnow");
       if (hero) {
         const cur = queue.getCurrent();

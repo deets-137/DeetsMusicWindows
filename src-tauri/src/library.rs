@@ -790,6 +790,20 @@ pub fn migrate_v6(conn: &Connection) -> Result<(), String> {
     meta_set(conn, "schema_version", "6")
 }
 
+/// v8 (2026-09-17): `local_playlists.expire_days` — a temporary web playlist's days
+/// (PLAYLIST-WEB.md §10). NULL = kept (every playlist made before this).
+pub fn migrate_v8(conn: &Connection) -> Result<(), String> {
+    let has: i64 = conn
+        .query_row("SELECT COUNT(*) FROM pragma_table_info('local_playlists') WHERE name = 'expire_days'", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if has == 0 {
+        conn.execute_batch("ALTER TABLE local_playlists ADD COLUMN expire_days INTEGER;")
+            .map_err(|e| format!("add expire_days column: {e}"))?;
+        crate::log::info("migration: v8 added local_playlists.expire_days");
+    }
+    meta_set(conn, "schema_version", "8")
+}
+
 /// The ids marked dead within the last 7 days — the player's denylist at launch.
 #[tauri::command]
 pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
