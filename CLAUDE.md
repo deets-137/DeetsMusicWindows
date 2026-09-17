@@ -47,6 +47,10 @@ front-end, Rust back-end).
 - `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
   measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (built 2026-09-17, shipped in 0.9.0). §10: temporary web playlists, Keep · Temp | N days under Make playlist (built 2026-09-17, shipped in 0.9.0). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
+- `docs/ideas/DeetsOTD.md` — Song of the Day: picks marked in the app, posts to Discord (a
+  webhook), Bluesky (OAuth) and Mastodon, a Home shelf and Rewind › Picks, a one-time import
+  of the owner's journal (no feed reader); the DeetsOTD repo stays untouched.
+  §8 is the build 1 spec (designed 2026-09-17, not built; move the doc to `docs/` when built).
 - `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
