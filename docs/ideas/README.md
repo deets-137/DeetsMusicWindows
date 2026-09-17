@@ -7,12 +7,11 @@ the app can do any of these things.
 - [DeetsWeather.md](DeetsWeather.md) — stations and queues shaped by the local weather.
   Its premise (the own-station engine) was dropped; it needs a rethink.
 - [WeatherSkin.md](WeatherSkin.md) — a skin and theme that change with the weather.
-- [DeetsOTD.md](DeetsOTD.md) — Song of the Day, a local music diary.
+- [DeetsOTD.md](DeetsOTD.md) — Song of the Day: the Discord journal (DeetsOTD repo + deets.solutions/sotd)
+  as it stands, and the room for DeetsMusic in it (scoped 2026-09-17).
 - [DeetsRecommends.md](DeetsRecommends.md) — recommendations from a music-credit graph.
 - [AppleData.md](AppleData.md) — Apple Music API data the app does not call yet, by area
   (artist, album, browse, your account), for a future session.
-- [CardSwapMotion.md](CardSwapMotion.md) — animate cards when they swap slots, replace
-  each other, or move on a surface flip.
 - [LinuxPort.md](LinuxPort.md) — a Linux (and macOS) release: the DRM + AAC block on Linux,
   the Tauri CEF / castLabs ECS paths around it, and the Windows-only parts to replace.
 

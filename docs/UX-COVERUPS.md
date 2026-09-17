@@ -77,7 +77,7 @@ pre-insert (`playNext` the hovered row's descriptor so MusicKit's next-item prel
 then `skipToNextItem` on click) is the only lever below the ~1 s floor; the paused restore
 at launch covers cold.
 
-## 6. Launch — **the window forms instead of assembling** (built 2026-09-15, desk test pending)
+## 6. Launch — **the window forms instead of assembling** (built 2026-09-15, committed c978fc6, shipped in 0.5.0)
 **What showed before:** the main window appeared at creation, before the page existed:
 WebView2's white, then the theme's canvas, then a resize to the saved surface size
 (`initSurface`), then the cards filling in one by one.
@@ -97,7 +97,7 @@ cards rise into place, one slot after the next (`src/boot-cover.ts`).
 - **Restored scrubber:** while MusicKit holds no song, Now Playing shows the restored song's
   length, and after an update restart its saved position (`emitRestoredProgress`).
 
-## 6a. Look change — **the launch animation, not a snap** (built 2026-09-15, desk test pending)
+## 6a. Look change — **the launch animation, not a snap** (built 2026-09-15, committed c978fc6, shipped in 0.5.0)
 **Before:** a View Transition. A theme crossfaded; a skin played its own entrance (Press stamp,
 Ocean rise, Glass focus, Cyber snap). A skin switch dropped 37% of its frames at 238 Hz,
 because the new skin painted during the animation.
@@ -190,7 +190,7 @@ surface → Max after a resize 58–60 → 4–7.5; surface → Midi on Ocean 44
    (B) A short label on the opaque cover.
 
 **Link to card swap motion (2026-09-15):** a surface change under this cover also covers the
-recompose that [ideas/CardSwapMotion.md](ideas/CardSwapMotion.md) left out: the cards rise in
+recompose that [CARD-SWAP.md](CARD-SWAP.md) left out: the cards rise in
 their new slots. The swap classes cannot collide with it: `html[data-boot] .bento > .panel`
 outranks `.bento > .panel.swap-in`, and a recompose never calls `playSwap`.
 

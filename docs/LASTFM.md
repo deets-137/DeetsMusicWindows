@@ -165,9 +165,9 @@ disconnect (warn), session refused (warn, sticky, Connect).
 
 **Result 2026-09-16 (installed 0.8.0):** connected in 7 s, no browser prompt, no `link back
 arrived` line. The scheme is registered, so Last.fm ignores `cb` with a desktop token. Decided:
-option C, `LINK_BACK = false` next release. Built 2026-09-17 (§4 step 4); ships in the next release.
+option C, `LINK_BACK = false`. Built 2026-09-17 (§4 step 4); shipped in 0.9.0.
 
-**Was OPEN — re-test the connect in the first installed release that carries Last.fm.** The user
+**CLOSED (the 0.8.0 result above) — the re-test plan, kept as the record.** The user
 does it then (decided 2026-09-16); it is also a box in RELEASE.md §1a. The dev test left one
 question: the log had no `lastfm: link back arrived` line, so the 3 s checks finished the connect,
 not the `deetsmusic-dev://lastfm` link. The installed app registers `deetsmusic://` through its

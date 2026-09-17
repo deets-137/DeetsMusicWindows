@@ -434,7 +434,7 @@ Reading it:
 
 ### The composited-scroller pass (2026-09-16, PAUSED part-way)
 
-**Built, uncommitted:** styles.css `:is(.panel__body, .lib-view, .qcard__list, .spane__scroll,
+**Built, committed b59e575, shipped in 0.8.0:** styles.css `:is(.panel__body, .lib-view, .qcard__list, .spane__scroll,
 .search__scroller) { will-change: var(--scroller-layer); }`. Skin token `--scroller-layer`: base
 `auto`; Ocean, Glass and Cyber set `scroll-position`. Menus (`.set__menu`,
 `.ctx-menu__fly`, `.slot-picker__menu`) and `.set__preview` are left out on purpose.

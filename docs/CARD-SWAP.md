@@ -1,8 +1,13 @@
 # Card swap motion — designed and built 2026-09-15
 
-Recorded as an idea 2026-09-15; designed and built the same day. Settings › Look and feel ›
-**Animate card swaps** (`cardSwapMotion`, default **off**). The OS reduced-motion
+Recorded as an idea 2026-09-15; designed and built the same day. Tested and committed
+(0617a1e), shipped. Settings › Look and feel › **Animate card swaps** (`cardSwapMotion`,
+default **on** since 2026-09-16, the user's call; it was off before). The OS reduced-motion
 preference always snaps.
+
+The chip flight (`src/handoff.ts`, ARTIST-VIEW.md) also follows this setting when it swaps a
+card. A flight that swaps no card (the playlist web) passes `ownMotion` and follows reduced
+motion only.
 
 ## Terms
 - **Slot**: a place on a surface that holds one card (`left`, `right`, `c`, `d` in

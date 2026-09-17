@@ -1,7 +1,9 @@
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
 > **Designed 2026-09-16. BUILT the same day: the graph + worklet (§1, §8.1 tests pass), the Sound panel
-> (§2.3–2.4, §9), and phases 4 (the Windows output + volume) and 5 (Match loudness) — §10, awaiting desk test.** Decided so far (user, 2026-09-16): fork 0 = build, every
+> (§2.3–2.4, §9), and phases 4 (the Windows output + volume) and 5 (Match loudness) — §10. Shipped in 0.8.0
+> (2026-09-16); Match loudness off by default since 0.9.0 (§10). Open: §10.4 steps 4–10 and the
+> user's report from daily listening (§11).** Decided so far (user, 2026-09-16): fork 0 = build, every
 > effect **off by default**, and judge whether it is worth the risk (§7); fork 1 = the whole plan; fork 3 =
 > hand-rolled worklet filters; fork 5 = a **title bar item with its own dropdown panel**, like the sleep timer (§2.3).
 > Second round (same day): fork 2 = one DeetsAdaptiveSound switch with three parts; fork 4 = per-output EQ
@@ -390,7 +392,8 @@ Settings › Reset › Sound (not saved presets). Ledgers: ONBOARDING.md (hints)
 `sound:off`, `sound:preset`, `sound:bandAdd`, `sound:presetSaved`, `sound:compare`,
 `sound:output`, `sound:reviewDue`, `sound:resumed` / `sound:resumeFailed`.
 
-**What the panel says it cannot do yet.** Match loudness: "Not built yet". Crossfeed on Auto:
+**What the panel said it could not do yet** (at the panel build, before phases 4 and 5 in §10
+built these parts). Match loudness: "Not built yet". Crossfeed on Auto:
 "The output type is not known yet" (Always works). Fuller at low volume on App × Windows:
 "Windows not read yet" (it counts Windows as 100 % until phase 4).
 
@@ -431,7 +434,7 @@ Settings › Reset › Sound (not saved presets). Ledgers: ONBOARDING.md (hints)
     "Sound" and Compare show in full. Drag the window narrower to mini with the panel open: it stays
     inside. In max it still hangs from the icon.
 
-## 10. Phases 4 and 5: the output and Match loudness (built 2026-09-16, awaiting desk test)
+## 10. Phases 4 and 5: the output and Match loudness (built 2026-09-16, shipped in 0.8.0)
 
 **Scope (user question).** Every effect acts only on DeetsMusic's own audio: the graph is inside the
 app's WebView, between MusicKit's `<audio>` and the app's output stream. Other apps, system sounds
@@ -563,8 +566,9 @@ long `aliveMs`?) points at the fix.
 
 ## 11. After it goes live: the user's own test (open, 2026-09-16)
 
-All development on Sound is done for now (committed 2026-09-16). The next step is the user's, not a build:
-1. Once the release with Sound is live, use it in daily listening for some days, on headphones and on
+All development on Sound is done for now (committed 2026-09-16; live since 0.8.0, 2026-09-16). The
+next step is the user's, not a build:
+1. Use it in daily listening for some days, on headphones and on
    speakers (and AirPlay).
 2. Get a feel for each part: the Equalizer and its presets, Compare, Match loudness, Fuller at low
    volume (Gentle and Full), Headphone crossfeed (Auto), and the panel's words and help text.

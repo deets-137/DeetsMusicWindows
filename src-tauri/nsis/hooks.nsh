@@ -23,6 +23,13 @@
 ;   Extension install guide stays the way back.
 ; Both marks live in the app data folder, which an uninstall keeps (RELEASE.md §5).
 
+; WELCOME TEXT — replaces NSIS's stock "It is recommended that you close all other
+; applications … reboot your computer", which is not true here: a per-user install
+; writes no system files, and the template closes DeetsMusic (and DeetsStopCli the CLI)
+; itself. Tauri includes this file above `!insertmacro MUI_PAGE_WELCOME`, and a define
+; made before that macro is the page's text. $_CLICK is NSIS's own "Click Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "Setup installs DeetsMusic for your Windows account. It does not need administrator rights.$\r$\n$\r$\nIf DeetsMusic is open, Setup closes it for you.$\r$\n$\r$\n$_CLICK"
+
 !macro DeetsStopCli
   DetailPrint "Stopping the DeetsMusic CLI..."
   nsExec::ExecToLog 'powershell -NoProfile -NonInteractive -Command "Get-Process -Name deetsmusic -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like $\'$INSTDIR\cli\*$\' } | Stop-Process -Force; exit 0"'

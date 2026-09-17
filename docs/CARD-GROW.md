@@ -1,7 +1,7 @@
 # DeetsMusic — growing a card
 
-**Designed 2026-09-16. BUILT 2026-09-16 on branch `grower-not-shower`, awaiting the desk test
-(§11).** What the build changed against the design is §13. The forks and the decisions are §12. Reviewed the same day
+**Designed 2026-09-16. BUILT 2026-09-16 on branch `grower-not-shower`, desk-tested (§11), polished
+(§13a), committed ae73226 and shipped in 0.9.0 (2026-09-17; the branch is merged into `main`).** What the build changed against the design is §13. The forks and the decisions are §12. Reviewed the same day
 for large libraries and discoverability: forks 7–10 added (a header button, the Library MVP
 layouts, no memory, and the resting layout stays almost pixel-identical, §0). The wide-card layouts (§9) are a list the user hand-designs after the MVP.
 

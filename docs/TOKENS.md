@@ -468,7 +468,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--nav-at-left` | `translateX(-100%)` | press, ocean, glass, cyber |  |
 | `--nav-at-right` | `translateX(100%)` | press, ocean, glass, cyber |  |
 | `--nav-off-opacity` | `1` | press, ocean, glass, cyber | off-screen panes stay opaque |
-| `--swap-dur` | `var(--nav-dur)` | — | -- card swap (Settings › Animate card swaps; card-swap.ts, ideas/CardSwapMotion.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
+| `--swap-dur` | `var(--nav-dur)` | — | -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
 | `--swap-ease` | `var(--nav-ease)` | — |  |
 | `--swap-out-dur` | `0s` | cyber |  |
 | `--swap-out-to` | `scale(1)` | cyber |  |

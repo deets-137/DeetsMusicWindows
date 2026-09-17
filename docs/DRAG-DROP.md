@@ -1,6 +1,6 @@
 # DeetsMusic — Drag and drop between cards
 
-> **Status (2026-09-14): BUILT the same day, not desk-tested.** Everything below was checked
+> **Status (2026-09-14): BUILT the same day, tested, committed de12ec3, shipped in 0.4.1.** Everything below was checked
 > against the code on this date. The user's picks: Library drop = the menu's behavior;
 > a drop on Now Playing plays now, a drop on the Queue card queues; the ghost is a row copy;
 > text fields get our own Cut/Copy/Paste menu. "As built" notes are in §7.

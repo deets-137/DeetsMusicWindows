@@ -1,10 +1,10 @@
-// Card swap motion (Settings › Animate card swaps; docs/ideas/CardSwapMotion.md).
+// Card swap motion (Settings › Animate card swaps; docs/CARD-SWAP.md).
 // layout.ts hands each pick here in two steps:
 //   out — a skin with an out phase (--swap-out-dur > 0, Cyber) plays the leaving
 //         cards out first; the remount waits for it. Other skins remount at once.
 //   in  — after the remount, each new card plays from the slot it left, or rises in.
 // JS only measures the slot a card left; the shape and the timing are skin tokens (skin.css
-// §card swap, styles.css §Card swap). Off by default; the OS reduced-motion preference snaps.
+// §card swap, styles.css §Card swap). On by default (since 2026-09-16); the OS reduced-motion preference snaps.
 
 import { setting } from "./settings-store";
 import { tokenMs } from "./boot-cover";

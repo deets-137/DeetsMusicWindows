@@ -2,7 +2,7 @@
 
 > Status (2026-09-15): **installer, updater and Authenticode signing are all live and tested.**
 > 0.4.3 is the first release on the update channel (§6). Signing was tested with 0.4.4-t1 → t2
-> on the test channel (§6.9); the next real release is the first signed one.
+> on the test channel (§6.9); 0.5.0 was the first signed real release.
 > Code: `package.json` (`release`, `release:check`, `release:publish`), `scripts/release.mjs`,
 > `scripts/sign.mjs`, `scripts/release-check.mjs`, `scripts/archive-installer.mjs`,
 > `scripts/publish-update.mjs`, `scripts/cli-dist.mjs`, `scripts/cred-read.ps1`,
@@ -191,6 +191,21 @@ installer:
   updater or silent install (`$UpdateMode = 1`, `IfSilent`), never once the extension has
   reached the app (`extension-connected`, written by `bridge.rs`), never after a No
   (`extension-declined`, written by the hook). Both files sit in `%APPDATA%\com.deetsmusic.app`.
+- **`MUI_WELCOMEPAGE_TEXT`** (a define, not a macro; 2026-09-17) — the Welcome page's text. NSIS's
+  stock line ("close all other applications … without having to reboot your computer") is not
+  true for a per-user install that closes the app itself. Tauri includes the hooks file above
+  `!insertmacro MUI_PAGE_WELCOME`, so the define takes effect.
+
+**The installer's look (2026-09-17).** `bundle.windows.nsis.installerIcon` = `icons/icon.ico`
+(the setup exe and its title bar; it was NSIS's stock icon) and `sidebarImage` =
+`nsis/sidebar.bmp` (the Welcome and Finish pages' left strip; it was NSIS's blue default). The
+strip is Deets and Happy standing on the street of the night skyline, pixel art doubled to
+164 × 314 (24-bit BMP). `powershell -NoProfile -File scripts/installer-art.ps1` draws it from
+`src-tauri/nsis/art/` — `deets.png` (the user's sprite), `happy.png` (DeetsSolutions
+`assets/sprites/happy/idle_down.png`), `skyline.png`; it extends the sky upward in the art's own
+purples, moves the moon into it, and adds fixed stars. Run it again after a source changes.
+Checked by compiling the generated `installer.nsi` with the two paths set; a real installer
+needs `npm run release`.
 
 ### Why the CLI has to be stopped (2026-09-09)
 
@@ -544,11 +559,15 @@ lists the client-secret options, but it refuses to run without the Azure CLI ins
   the build log and file times show the `.sig` written after the signed setup exe; installed t1
   took t2 through Check now → Restart now, and t2 opened by itself. The updated `DeetsMusic.exe`,
   CLI and uninstaller are Valid, `CN=Aditya Sundaram`, timestamped.
-- [ ] **A browser download** of the first signed real release (from `deets.solutions/deetsmusic/`)
+- [x] **A browser download** of the first signed real release (from `deets.solutions/deetsmusic/`)
   shows *Aditya Sundaram* in the SmartScreen or install prompt, not "Unknown publisher". Not
   testable with a local build: the 2026-09-15 hand install of t1 showed no prompt at all,
-  because a file from a build folder has no web mark and SmartScreen skips it. Download with
-  a browser, then run it.
+  because a file from a build folder has no web mark and SmartScreen skips it. **2026-09-15,
+  checked twice** (RELEASE-NOTES.md header): 0.5.0 in Edge warned "isn't commonly downloaded";
+  0.6.0 from `deets.solutions/deetsmusic/` gave the same Edge warning, now naming the publisher
+  *Aditya Sundaram* (Delete ▾ › Keep anyway). Windows showed no "Windows protected your PC", and
+  the install worked. Still open, and not part of this box: the day a new version downloads with
+  no Edge warning (download reputation), which ends the Installing lines in the release notes.
 
 **Runbook — the secret expires or leaks.** Entra ID › App registrations › Deets Release Signing ›
 Certificates & secrets: add a new secret, run
@@ -577,8 +596,8 @@ it; signatures already made stay valid (they are timestamped).
 > no cache, mint 503 → the window opens, the log reads `no developer token: no local MusicKit key
 > and mint switched off (503)`, and a search shows the same text. The offline case shares that
 > branch (only the string differs). The launch toast for it is built ([TOASTS.md](TOASTS.md) §5,
-> 2026-09-13; not yet desk-tested against `KILL`).
-> Steps 1–4 done; step 5 (the release) remains.
+> 2026-09-13; shipped, but no test result against `KILL` is on record).
+> Steps 1–5 done: public releases on the `deetsmusic` channel get their token this way.
 
 ### The problem
 

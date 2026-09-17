@@ -27,6 +27,8 @@ front-end, Rust back-end).
   2026-09-15**: Spotify's dev-mode terms block it (§9 has the checked facts). Kept as a record.
 - `docs/VINYL.md` — Press "Record player": the cover as a turning record (`src/vinyl.ts`), the
   upright-start-and-end angle math, the slide on song change, the Apple artwork-rule reading.
+- `docs/CARD-SWAP.md` — card swap motion: swap, summon and replace animate in each skin's own
+  `--swap-*` shape (built 2026-09-15; Animate card swaps on by default since 2026-09-16).
 - `docs/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
 - `docs/HOME.md` — the Home card: the three shelves, the context-run rule, the
@@ -38,12 +40,13 @@ front-end, Rust back-end).
   (built and desk-tested 2026-09-16).
 - `docs/LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users over an
   in-memory copy of five export tables; the WAL fix; the security layers and their tests
-  (`cargo test --lib query`); the SQL card idea (built 2026-09-16, awaiting desk test).
+  (`cargo test --lib query`); the SQL card idea (built 2026-09-16, shipped in 0.8.0; desk test steps 1–8 pass, step 9 over MCP open).
 - `docs/SOUND.md` — Advanced EQ + DeetsAdaptiveSound (match loudness, fuller at low volume,
-  crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (designed 2026-09-16, not built).
+  crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (built 2026-09-16, shipped in 0.8.0;
+  the user's report from daily listening, §11, comes before any new Sound work).
 - `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
-  measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (built 2026-09-17, awaiting desk test). §10: temporary web playlists, Keep · Temp | N days under Make playlist (built 2026-09-17, awaiting desk test). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
+  measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (built 2026-09-17, shipped in 0.9.0). §10: temporary web playlists, Keep · Temp | N days under Make playlist (built 2026-09-17, shipped in 0.9.0). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
 - `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
@@ -58,7 +61,7 @@ front-end, Rust back-end).
   (designed 2026-09-16, forks open, not built).
 - `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
   the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules, and wide-card
-  layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–10 decided; BUILT 2026-09-16 on branch grower-not-shower, §13 = as built, awaiting desk test).
+  layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–10 decided; BUILT 2026-09-16, §13 = as built, shipped in 0.9.0).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

@@ -445,7 +445,7 @@
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
 
-  /* -- card swap (Settings › Animate card swaps; card-swap.ts, ideas/CardSwapMotion.md) --
+  /* -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) --
      Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to /
      --swap-out-fade before the remount. In step: each new card plays from the slot it
      left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place.

@@ -2,8 +2,8 @@
 
 > Scoped and **built 2026-09-10** on branch `release-prep`; **connected and played on the desk**
 > the same day. Source of the sender: `../DeetsAirplay` (public repo `deets-137/DeetsAirplay`),
-> now a library crate, `crates/airplay` (`deets-airplay` 0.2.0, a git dependency pinned by
-> `rev`). Read its `CLAUDE.md` "Never"
+> now a library crate, `crates/airplay` (`deets-airplay`, 0.3.0 since 2026-09-15, a git dependency
+> pinned by `rev`; §11 has the bumps). Read its `CLAUDE.md` "Never"
 > list before touching any wire code. Code here: `src-tauri/src/airplay.rs` (the session,
 > metadata, commands), `src/airplay.ts` (the "Play on" panel, the volume takeover), the AirPlay
 > row in `settings-card.ts`, `settings.rs` (three fields), `player.ts` (`setVolumeSink`).
@@ -264,11 +264,27 @@ whenever we hold the stream, or whenever it is sending the whole PC and we are p
 Its volume slider forwards to `POST /command {kind:"volume"}`, which lands on our slider,
 which while we stream is already the speaker's own volume: one hop, never a second gain stage.
 
-**The protection is one-directional (2026-09-15).** This app *writes* a claim; it does not
-read them. So DeetsAirplay can see that we hold a speaker and offer Take over, but this app
-will still connect to a speaker DeetsAirplay is holding. Making it symmetric is about five
-lines in `start_live`: bail when `claim::on_speaker(&speaker.name)` is `Some`, and name the
-holder in the error. Not written. Do not describe the pair as mutual protection.
+**The claim guard — both directions (built 2026-09-17, awaiting desk test).** Until then this app
+*wrote* a claim but did not read one, so it connected straight over a speaker DeetsAirplay held.
+Now `connect_speaker` checks `claim::on_speaker(&speaker.name)` first, **before `stop_live`**, so a
+refused pick keeps the speaker we already have. `on_speaker` skips our own pid and any holder that
+is no longer running. The error reaches the AirPlay dropdown's note line (`airplay.ts` `connect`),
+with two wordings from the claim's `send`:
+- the holder sends this exe too (`Send::All`, DeetsAirplay's whole-PC loopback): *"DeetsAirplay is
+  already sending this PC's sound to “Living Room”, so your music plays there now."*
+- otherwise: *"DeetsAirplay is playing on “Living Room”. Disconnect it there first."*
+
+Log: `airplay: connect refused: the speaker is held by <app> (sends ours: <bool>)` (no speaker
+name). No **Take over** on this side: DeetsAirplay has no bridge for us to ask. An installed
+DeetsMusic and a `dev:app` are two pids, so each refuses a speaker the other holds.
+
+Desk test (Rust changed: restart the dev runner):
+1. DeetsAirplay connects to a speaker. In DeetsMusic, pick the same speaker: the note shows the
+   "already sending this PC's sound" line, nothing disconnects, and the log has the refused line.
+2. DeetsMusic plays on speaker A; DeetsAirplay takes speaker B; in DeetsMusic pick B: refused, and
+   A keeps playing.
+3. Quit DeetsAirplay (or kill it): pick the speaker again in DeetsMusic; it connects.
+4. With the installed DeetsMusic on a speaker, pick it in `dev:app`: refused, naming DeetsMusic.
 
 **Releasing:** the routes are additive and inert, so they can ride any release. The claim
 needed a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0 — done for 0.6.2,

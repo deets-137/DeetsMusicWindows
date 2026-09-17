@@ -11,7 +11,7 @@
 | MusicKit bitrate | Apple picks once at player start from Chromium's estimate (§4.1). | **Built 2026-09-16:** Settings › Playback › Stream quality, Auto / High / Low (§5). |
 | App gain | `music.volume` = level × sleep-timer duck (`player.ts` §Volume). Pinned to 1 while AirPlay holds the slider. No EQ, normalization or crossfade. | Already clean. |
 | Chromium | Resamples the 44.1 kHz decode to the device mix rate (often 48 kHz float) before Windows sees it. | Only by setting the device to 44.1 kHz in Windows (a whole-PC setting). |
-| AirPlay capture | Loopback of the default output, asked for 44.1 kHz / 16-bit. The engine converts (`SRC_DEFAULT_QUALITY`); 8 of 8 logged connects used it, and it measures at the 16-bit ceiling (§4.2). | **Built 2026-09-16 (crate, uncommitted):** the fallback is now `resample::Sinc` + TPDF dither instead of linear. Reaches DeetsMusic with a crate `rev` bump. |
+| AirPlay capture | Loopback of the default output, asked for 44.1 kHz / 16-bit. The engine converts (`SRC_DEFAULT_QUALITY`); 8 of 8 logged connects used it, and it measures at the 16-bit ceiling (§4.2). | **Built 2026-09-16:** the fallback is now `resample::Sinc` + TPDF dither instead of linear (DeetsAirplay 4989dfb; DeetsMusic pins that `rev`, shipped in 0.8.0). |
 | Network | Uncompressed ALAC, 44.1 kHz / 16-bit (the realtime AirPlay stream). | No. Lossless. |
 
 So on the AirPlay path the sound is resampled twice (44.1 → mix rate → 44.1) and cut to 16-bit once,

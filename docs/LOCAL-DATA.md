@@ -1,6 +1,7 @@
 # Local data for agents and users — the library tool and read-only SQL
 
-Designed and **built 2026-09-16**, awaiting the desk test (§11). The guards have unit tests:
+Designed and **built 2026-09-16**, shipped in 0.8.0. Desk test (§11): steps 1–8 passed
+(with the history-off 403 fix, 6116286); step 9 (from an agent over MCP) is open. The guards have unit tests:
 `cargo test --lib query` in `src-tauri` (9 tests, all pass). Zero Apple calls: everything here
 reads the local cache (`deetsmusic.db`) and the play history DeetsMusic already keeps.
 

@@ -1,7 +1,7 @@
 # Library virtualization — option A (windowing) brief
 
 Status 2026-09-13 (late): **BUILT on branch `optimus-deets`, measured, scripted checks pass;
-awaiting the user's desk test.** `src/collection-window.ts` + the engine hook-up; the living
+desk-tested, committed 7dbf56f and shipped in 0.4.0.** `src/collection-window.ts` + the engine hook-up; the living
 description is UI-ARCHITECTURE.md §"Long lists: windowing". Results at the end of this file.
 The sections between are the design record (the brief, the scope, the forks as settled).
 

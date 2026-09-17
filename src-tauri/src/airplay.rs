@@ -273,6 +273,23 @@ pub fn release(app: &AppHandle) {
 
 fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), String> {
     let state = app.state::<AirplayState>();
+    // The claim guard (AIRPLAY.md §11): a receiver takes one sender, so a speaker another
+    // Deets app holds would fail at SETUP with nothing to act on. Checked before stop_live,
+    // so a refused pick keeps the speaker we already have. `on_speaker` skips our own claim
+    // and any holder that is no longer running.
+    if let Some(other) = claim::on_speaker(&speaker.name) {
+        let ours = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+            .unwrap_or_else(|| "DeetsMusic.exe".into());
+        log(&format!("connect refused: the speaker is held by {} (sends ours: {})", other.app, other.send.carries(&ours)));
+        // The name is quoted: toast.ts drops quoted names from the log.
+        return Err(if other.send.carries(&ours) {
+            format!("{} is already sending this PC's sound to “{}”, so your music plays there now.", other.app, speaker.name)
+        } else {
+            format!("{} is playing on “{}”. Disconnect it there first.", other.app, speaker.name)
+        });
+    }
     stop_live(&state);
     *state.error.lock().unwrap() = None;
     *state.connecting.lock().unwrap() = Some(speaker.name.clone());

@@ -4,9 +4,10 @@ A **web** is a playlist built from one artist and the artists they make songs wi
 an artist, a reach and optionally a genre. DeetsMusic finds the songs and makes the playlist.
 
 Status: **designed, built and desk-tested 2026-09-16 (§8).** Code: `src/web.ts`
-(panel, picking), `src-tauri/src/web.rs` (`web_build`). **Song and album seeds: designed
-and built 2026-09-17 on branch grower-not-shower, awaiting desk test (§9.7). Temporary web playlists: built 2026-09-17, awaiting desk test (§10.8). The default name
-carries the picked genres (§2c).**
+(panel, picking), `src-tauri/src/web.rs` (`web_build`). **Song and album seeds (§9) and
+temporary web playlists (§10): designed and built 2026-09-17, committed 94b82cd, shipped in 0.9.0.
+The default name carries the picked genres (§2c).** Open: the name-search cap (§5b), to check
+against the `search N` part of the `web: built` log lines.
 
 Terms used in this doc:
 - **Seed** — the artist you start from.
@@ -259,7 +260,7 @@ Restart the dev runner (a new Rust command).
    the exact match (one call).
 9. Reduced motion on: the panel and rows appear without moving.
 
-## 9. A song or an album as the seed (designed and built 2026-09-17, awaiting desk test)
+## 9. A song or an album as the seed (designed and built 2026-09-17, shipped in 0.9.0)
 
 A web can start from a song or an album, not only from an artist. The song or album gives
 three things an artist does not: a genre (which side of the artist you mean), more than one
@@ -443,7 +444,7 @@ Restart the dev runner (web.rs changed; new tables are created at startup).
 9. For §9.5a: note `calls=` in the `web: built` lines at reach 1 and 2 for one album (Read again
    between them, or a new album each time).
 
-## 10. Temporary web playlists (designed and built 2026-09-17, awaiting desk test)
+## 10. Temporary web playlists (designed and built 2026-09-17, shipped in 0.9.0)
 
 A web playlist can be temporary: DeetsMusic deletes it by itself after a number of days. You
 choose Keep or Temp for each web in the web panel, under Make playlist. The default is **Temp,

@@ -248,7 +248,7 @@ A card picker also already exists as the card's own title menu
 
 ## 6. Theme and skin switch animation
 
-> **Agreed 2026-09-12.** Unlike the entries above, the forks here are decided. Not built yet.
+> **Agreed 2026-09-12 and built the same day** (NEXT-VERSION batch, a41c995). Unlike the entries above, the forks here were decided first.
 
 **What it means.** A theme or skin switch animates from the old look to the new one. Today
 it snaps.
@@ -313,7 +313,7 @@ the row to [SETTINGS.md §3](SETTINGS.md) when this ships.
 
 ## 7. Album-colored Now Playing text + contrast guard
 
-> **Agreed 2026-09-12.** Forks decided; not built. Fork 1 is "try it and feel it out" —
+> **Agreed 2026-09-12 and built the same day** (a41c995). Fork 1 was "try it and feel it out" —
 > build it, then the user tests on real covers before it is final.
 
 **What it means.** In Glass, the Now Playing text takes its color from the album cover, and a

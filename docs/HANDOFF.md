@@ -20,8 +20,8 @@ playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGIN
 [ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
 [AIRPLAY.md](AIRPLAY.md) (play on a HomePod — the shared sender crate, and §11 sharing a speaker with DeetsAirplay) ·
 [PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once — parked 2026-09-15, Spotify's dev-mode terms block it) ·
-[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [ONBOARDING.md](ONBOARDING.md) (hover hints, right-click coverage, Settings › Tips, the sprite-led first run) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
-[ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends).
+[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [CARD-SWAP.md](CARD-SWAP.md) (card swap motion, per-skin `--swap-*` tokens) · [ONBOARDING.md](ONBOARDING.md) (hover hints, right-click coverage, Settings › Tips, the sprite-led first run) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
+[ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends, AppleData, LinuxPort).
 
 ---
 
@@ -135,19 +135,19 @@ user's request without the hand install test of RELEASE.md §0 step 3. The user 
 2026-09-17: 0.8.0 is installed and works well.
 
 **2026-09-16 — Last.fm link back: DECIDED C, BUILT 2026-09-17 (`LINK_BACK = false`, LASTFM.md §4
-step 4 updated); ships in the next release.** The installed 0.8.0 connect test
+step 4 updated); shipped in 0.9.0.** The installed 0.8.0 connect test
 (LASTFM.md §9) passed: connected in 7 s (log 17:52:38 → 17:52:45). The browser did not return to
 DeetsMusic, and the log has no `lastfm: link back arrived` line and no "ignored" line. The
 `deetsmusic://` scheme is registered correctly (checked in the real HKCU through WMI). Cause:
 Last.fm's desktop auth (our token from `auth.getToken`) ignores `cb`; only the web auth (no token)
-redirects. **To build next release:** set `LINK_BACK = false` in `src-tauri/src/lastfm.rs`; the
-3 s checks already finish the connect, and the user returns to the app by hand. Rejected: A (the
+redirects. **Done in 0.9.0:** `LINK_BACK = false` in `src-tauri/src/lastfm.rs`; the
+3 s checks finish the connect, and the user returns to the app by hand. Rejected: A (the
 app brings its window forward on "connected"; Windows can block the focus) and B (switch to web
 auth, where the link is the only way to finish).
 
 **2026-09-16 — Sound: the user lives with it after it goes live, then reports back.** The Sound
-panel (EQ + DeetsAdaptiveSound, phases 1–5) is built and committed on `wakin-up`
-([SOUND.md](SOUND.md) §10–§11). Before any more Sound work: once it ships, the user tests it in daily
+panel (EQ + DeetsAdaptiveSound, phases 1–5) is built, committed and shipped in 0.8.0
+([SOUND.md](SOUND.md) §10–§11). Before any more Sound work: now that it has shipped, the user tests it in daily
 listening, gets a feel for each part (Equalizer, Match loudness, Fuller at low volume, Headphone
 crossfeed, Compare) and reports back. Their report decides what stays, what changes and what goes
 (SOUND.md §7 step 4). Do not start new Sound features until that report exists.
@@ -235,9 +235,9 @@ Microsoft's dlib from `%LOCALAPPDATA%\DeetsTools\artifact-signing`); `release.mj
 after `cli:build` and passes the exe/installer `signCommand` in a temp `--config` file
 (`tauri.conf.json` unchanged); `release-check.mjs` §4 requires a Valid, timestamped signature
 with CN = publisher on all three; `scripts/cred-write.ps1` saves a secret safely.
-`artifact-signing-cli` was rejected (needs the Azure CLI). Not committed.
+`artifact-signing-cli` was rejected (needs the Azure CLI). Committed; every release since 0.5.0 is signed this way.
 
-**2026-09-14 — playlists §10.9, BUILT, not desk-tested: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
+**2026-09-14 — playlists §10.9, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
 Import to Edit (a mirror row's right-click or its hero cover; your own Apple playlist stays
 linked as one row), Add to Playlist ▸ lists your own Apple playlists with the sigil (the
 first add asks once), and the list splits into Local Playlists / Your Apple Playlists. New
@@ -246,7 +246,7 @@ test: import one of your own playlists (one row, Send New Songs), import an Appl
 (unlinked), add a song to a throwaway Apple playlist (a REAL Apple write, the question
 first), turn Export playlists off (the Apple rows leave the menu).
 
-**2026-09-14 — the playlists wrap-up, BUILT, not desk-tested: [PLAYLISTS.md §10](PLAYLISTS.md)
+**2026-09-14 — the playlists wrap-up, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10](PLAYLISTS.md)
 "As built".** Drag to reorder (`src/row-drag.ts`, now shared with the queue), rename, the
 *Apple Music ▸* menu (Send New Songs · Get New Songs · Make a New Copy), a red delete confirm,
 named skipped uploads, covers served as `http://cover.localhost/` links, the README note, and
@@ -257,7 +257,7 @@ Apple READ). Later: Import to edit, adding straight to Apple playlists (first-ad
 separate Local Playlists section (§10.9). Idea raised: drag songs from any card into the Queue
 (not designed).
 
-**2026-09-14 — Playlist covers + Export to Apple Music: BUILT, not desk-tested** (branch
+**2026-09-14 — Playlist covers + Export to Apple Music: BUILT, desk-tested, shipped in 0.4.1** (branch
 `optimus-deets`). The hero cover of a local playlist is a button (Choose Image… / Remove
 Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](NEXT-VERSION.md)). Export ▸
 makes an Apple copy or adds new songs to it, and asks before a write Apple can't fully copy
@@ -270,8 +270,8 @@ Rewind / Connections / Bugs / About) and **`requestSetting(rowId)`** opens the c
 Also: **a network drop** showed MusicKit's own in-page error box ("loadSegmentError", `MKDialog`,
 not an `alert()`) beside our offline toast. Fixed with `suppressErrorDialog: true` in both
 `MusicKit.configure` calls, and the stopped song now **resumes where it stopped** when Apple
-health next finds the network back ([TOASTS.md](TOASTS.md) §Apple health, offline row). Not yet
-tested against a real Wi-Fi drop.
+health next finds the network back ([TOASTS.md](TOASTS.md) §Apple health, offline row). Shipped in
+0.4.1; no test against a real Wi-Fi drop is on record.
 **Rust + `tauri.conf.json` changed: restart the dev runner.** An export is a REAL Apple
 write — test with a throwaway playlist and delete its copies in the Music app.
 **Export desk-tested the same night:** the first tries made empty copies because Apple's create
@@ -279,12 +279,12 @@ reply is gzip-compressed (fixed: `reqwest` `gzip` feature). An exported playlist
 one row (the local one; the linked Apple copy is hidden), with the Apple Music sigil, the
 copy's Apple artwork when it has no cover of its own, and "Exported on <date>" in its hero.
 
-**2026-09-13 — Apple terms + D.7 pass, built, NOT yet desk-tested or deployed** (branch
+**2026-09-13 — Apple terms + D.7 pass, built, Worker deployed, app part shipped in 0.3.1** (branch
 `toast-time`; decisions and the origin probe in [RELEASE.md §7](RELEASE.md) "Revised
 2026-09-13"). App: Apple Music icon on the playlist badge, Settings › About notice, README
 privacy + trademarks, real MusicKit `app.build`, MUT redacted in the log, `Origin:
 http://tauri.localhost` on every Rust call to Apple, sign-in on fixed ports 47831–47833,
-refresh margin 3 days. Worker (`../DeetsSupport`, uncommitted, **deployed 2026-09-13**,
+refresh margin 3 days. Worker (`../DeetsSupport`, since committed, **deployed 2026-09-13**,
 version `5771f7e5` + secrets): 14-day shared token per 7-day window, `mint_counts` table
 (created with `--command`; `--file` imports fail with auth error 10000), `TOKEN_ORIGINS`
 claim built but empty. **Key rotated:** the Worker signs with **`63Y9S9P5Z8` (DeetsMusic
@@ -297,8 +297,8 @@ Every `.p8` is copied to `Documents\Deets' Secrets` (README there maps ids → a
 `5685728SWS` is DeetsRadio). **Never delete a `.p8`.** Note: 0.3.0 installs keep a 15-day
 margin, so against 14-day tokens they refetch on every launch until they update.
 
-**2026-09-13 — Apple health: say why Apple Music stopped, heal without the user, NOT yet
-desk-tested** (branch `toast-time`). Found live after the key rotation: MusicKit showed
+**2026-09-13 — Apple health: say why Apple Music stopped, heal without the user, desk-verified
+and shipped in 0.3.1; the sign-in fixes below in 0.3.2** (branch `toast-time`). Found live after the key rotation: MusicKit showed
 "Unable to prepare for playback." as a native dialog, the Account row still said Connected,
 the sign-in page said "Error: Unauthorized", and a play-only install never healed (only a
 Rust call triggered the token refetch). Built: `apple_check` (which token Apple rejects, with
@@ -360,7 +360,7 @@ test seams: DEBUGGING.md §Sign-in. Files: `apple.rs` (`begin_hosted`, `handle_l
 scheme), `plugins.deep-link` in both Tauri configs, `apple.ts`/`main.ts` (`connect(local)`,
 the "Use local sign-in" link under the Account note), `scripts/signin-assets.mjs`
 (`npm run signin:assets` copies the app's look into `../DeetsSupport/src/signin/`), and in
-`../DeetsSupport`: `src/signin.js`, `wrangler.jsonc` rules, the router (uncommitted there).
+`../DeetsSupport`: `src/signin.js`, `wrangler.jsonc` rules, the router (since committed there).
 **Verified in the dev app against a `wrangler dev --remote` preview:** the page renders
 themed; every link case (stray, wrong nonce, replay, `error=`, refused token, real token
 → Connected, a hosted link after the local page took over); the Worker-down fallback; the
@@ -369,7 +369,7 @@ popup → the automatic `deetsmusic-dev://` return in Chrome and Edge, the Retur
 Access Request screen's host name + icon, browser history not keeping the link, and a
 Worker-page MUT (PRD key) working with the DEV key (§2a desk-test list). **Deployed
 2026-09-13 evening** (`npm run signin:assets`, then `npx wrangler deploy` in `../DeetsSupport`;
-that repo's changes are not committed yet). The live page answers at
+that repo's changes have since been committed). The live page answers at
 `music-api.deets.solutions/signin`; a build falls back to the loopback page only when that
 GET fails. Same evening: the Account button cancels a waiting sign-in on a second click,
 and the local page reports its own close (§2a "Cancel"). **Desk test result (2026-09-13,
@@ -561,11 +561,22 @@ get large).
 
 ## State of play
 
-**Live: 0.6.2** (2026-09-15, `deetsmusic` channel, install-tested). It added the per-view
-**open sizes** (Settings › Window: Mini 385 × 550, NP 405 × 675, Midi 495 × 670, Max
-1100 × 820, each a floor as well as a default; FUTURE-SETTINGS §8a), the **AirPlay speaker
-claim** on crate 0.3.0 (AIRPLAY.md §11 — one-directional: we write claims, we do not read
-them), and two scroll/render fixes in the card engine.
+**Live: 0.9.0** (2026-09-17, `deetsmusic` channel; `main` at `14111a7`, every branch merged).
+What each version added is in [RELEASE-NOTES.md](RELEASE-NOTES.md); the newest work is at the
+top of "Next up" above. The list below is the long-lived foundation plus dated entries. The
+releases since 0.6.2, in short:
+- **0.9.0** — card grow (Grow / Fill, [CARD-GROW.md](CARD-GROW.md)), song and album web seeds and
+  temporary web playlists ([PLAYLIST-WEB.md](PLAYLIST-WEB.md) §9–§10), the Add to Library square
+  on song rows, Retro-Future renamed Cyber, Last.fm `LINK_BACK = false`.
+- **0.8.0** — Sound (EQ + DeetsAdaptiveSound, [SOUND.md](SOUND.md)), Last.fm scrobbling
+  ([LASTFM.md](LASTFM.md)), the playlist web, Stream quality, Fancy Glass and composited card
+  lists, library reads and read-only SQL for AI apps ([LOCAL-DATA.md](LOCAL-DATA.md)), the
+  AirPlay capture's sinc resampler (crate `rev` 4989dfb).
+- **0.7.0** — the sleep timer, the volume pill that grows in place, fancy scrubbers, the
+  hover-hint pass, the graphics ruler (NEXT-VERSION §17, §20, §21).
+- **0.6.3** — multi-select rows everywhere (NEXT-VERSION §19).
+- **0.6.2** — per-view open sizes (FUTURE-SETTINGS §8a), the AirPlay speaker claim on crate 0.3.0
+  (AIRPLAY.md §11 — one-directional: we write claims, we do not read them).
 
 ### Built ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.
@@ -666,8 +677,8 @@ them), and two scroll/render fixes in the card engine.
   settings*, [SETTINGS.md](SETTINGS.md) §3): Look and feel rows that show only under their
   skin (`when` + `onSkinChange`), a new **range** (slider) row kind, and `src/skin-settings.ts`.
   **Glass** (user: "perfect"): Canvas glow · Dim canvas · Backlight · Tint cards. **Ocean**: Draw
-  card edges Soft / Sand (grainy card edges, off by default) + Sand width. Awaiting a full desk
-  pass on Ocean.
+  card edges Soft / Sand (grainy card edges, off by default) + Sand width. Committed
+  c978fc6, shipped in 0.5.0.
 - **2026-09-14/15 — self-update + signed releases** ([RELEASE.md](RELEASE.md) §0, §6, §6.9):
   `tauri-plugin-updater` behind the DeetsSupport Worker + R2 (`deetsmusic` and `deetsmusic-test`
   channels; Settings › Updates Automatic / Ask / Off, Skip, Roll back within a channel group,
@@ -691,10 +702,10 @@ them), and two scroll/render fixes in the card engine.
   (its §9): the owner needs Premium, the ISRC is gone so there is no merge key, search is capped
   at 10, and Developer Policy III.5 forbids mixing another service's content. Reopen only if
   Spotify's dev-mode terms change.
-- **The listening-loop items (2026-09-15)** — repeat · Play / Shuffle on a collection · a
-  shuffle mode (open question) · Space + the keyboard pass · a Home card · a durable History
-  card · the playlist creation flow · a sleep timer. **[NEXT-VERSION.md §11–§17](NEXT-VERSION.md)**
-  and "Next up" above. (NEXT-VERSION §1–§8 are built; ♥ favorites shipped there 2026-09-12.
+- **The keyboard pass, with Space for play / pause (2026-09-15)** — the one listening-loop item
+  still open. The others (repeat, Play / Shuffle on a collection, the shuffle mode, the Home
+  card, the durable History card, the playlist creation flow, the sleep timer) are built and
+  shipped: **[NEXT-VERSION.md §12–§19](NEXT-VERSION.md)** and "Next up" above. (NEXT-VERSION §1–§8 are built; ♥ favorites shipped there 2026-09-12.
   **Ratings / 👎 are off the roadmap.**)
 - **Real album/artist data + artist photos in the Library card** — Library's Albums/Artists are
   derived from song artwork + initials (Search's artist drill already shows real photos). Scoped
@@ -704,7 +715,8 @@ them), and two scroll/render fixes in the card engine.
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
-- **The AirPlay claim guard (2026-09-15)** — the speaker-sharing work
+- **The AirPlay claim guard (2026-09-15) — BUILT 2026-09-17, awaiting desk test (AIRPLAY.md §11).**
+  The record below is the brief it was built from. The speaker-sharing work
   ([AIRPLAY.md §11](AIRPLAY.md)) is **one-directional**, and this is the missing half.
   DeetsAirplay (the tray sender, the same crate underneath) reads the machine-wide claim file
   and refuses — or offers a **Take over** on — a speaker this app is holding. This app *writes*
@@ -712,7 +724,7 @@ them), and two scroll/render fixes in the card engine.
   has, and the user gets a SETUP failure with nothing in it to act on. A receiver takes one
   sender; whoever loses that race loses it silently.
   - **Already done, so this is a one-function job:** the pin is at crate **0.3.0**
-    (`d735d14b213a79b9af2206cab9bfde689324b093`, bumped for 0.6.2) so `claim` is in scope, and
+    (`d735d14` for 0.6.2, now `4989dfb`, the same crate version) so `claim` is in scope, and
     `start_live` already calls `session.describe_send(...)` — `Send::All` for the default-output
     capture, `Send::Apps([exe])` for the per-process path. We write a complete claim. We simply
     never look at anyone else's.
@@ -735,9 +747,13 @@ them), and two scroll/render fixes in the card engine.
   - **The limit, deliberately:** we can offer no "Take over" of our own. DeetsAirplay has no
     bridge for us to ask, so the guard can only name the holder and leave the user to disconnect
     it there. Giving it a listener is a bigger decision than this entry — don't smuggle it in.
+- **Designed, not built (2026-09-16/17):** listening rooms ([ROOMS.md](ROOMS.md)), connect AI
+  apps ([MCP-INSTALL.md](MCP-INSTALL.md), forks open), Suggest Less
+  ([SUGGEST-LESS.md](SUGGEST-LESS.md)), the sprite-led first-run walk
+  ([ONBOARDING.md](ONBOARDING.md) §4). Ideas with no schedule: [ideas/](ideas/README.md).
 - Built since this list was written, so no longer here: the hosted sign-in page + deep link
   (2026-09-13), the CLI / agent control, the mini and max compositions, library windowing,
-  playlist rename / drag-reorder / export.
+  playlist rename / drag-reorder / export, and every item of the listening loop but the keyboard.
 
 ---
 
@@ -766,13 +782,14 @@ Three rules learned the hard way, all in DEBUGGING.md:
 
 Where it is heading: FUTURE-SETTINGS.md §25, settings for the heaviest features.
 
-**Graphics pass 2026-09-16 — PAUSED, uncommitted** (the user moved other work ahead of it):
+**Graphics pass 2026-09-16 — PAUSED** (the user moved other work ahead of it). Committed
+b59e575, shipped in 0.8.0; the checks below are still open:
 - ✅ **Fancy Glass** (Settings › Look and feel, Glass only, default off): the painted frost with a
-  still aurora and locked sliders 65 / 85 / 40 / 10, or the live blur and the sliders. Built,
-  typechecked, **awaiting desk test**. SETTINGS.md row; numbers in DEBUGGING.md §Fancy Glass
-  and the Ocean swell.
-- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber only): built,
-  half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
+  still aurora and locked sliders 65 / 85 / 40 / 10, or the live blur and the sliders. Shipped
+  in 0.8.0; no desk-test result is on record. SETTINGS.md row; numbers in DEBUGGING.md §Fancy
+  Glass and the Ocean swell.
+- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber only): shipped in
+  0.8.0, half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
 - ⬜ **Swell:** measure Animate backgrounds › Reduced under `--gpu=off`, then maybe a hint line.
 - ⬜ Found on the way, older than these changes: a very fast wheel spin (≈ 15,000 px/s) shows
   blank rows in the windowed Library for a few frames (collection-window.ts fills its buffer only

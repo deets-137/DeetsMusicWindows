@@ -47,11 +47,11 @@
 > **Built since:** mosaic + custom covers (NEXT-VERSION §2; the hero cover button 2026-09-14)
 > and **Export to Apple Music** (§6, 2026-09-14).
 >
-> **Built 2026-09-14 (§10.1–10.8, not desk-tested):** drag to reorder, rename, the
+> **Built 2026-09-14 (§10.1–10.8), shipped in 0.4.1:** drag to reorder, rename, the
 > *Apple Music ▸* menu (Send / Get New Songs, Make a New Copy), the red delete confirm, named
 > skipped uploads, covers served as links, the README note, and the Replay guard.
 >
-> **Built 2026-09-14 (§10.9, not desk-tested):** Import to Edit, adding straight to your own
+> **Built 2026-09-14 (§10.9), shipped in 0.4.1:** Import to Edit, adding straight to your own
 > Apple playlists, and the Local Playlists section.
 >
 > **Still deferred:** the backup file (§10.7, an idea only).
@@ -370,7 +370,7 @@ on top. The collection-card second-instance check passed at Phase 2 (engine hold
 
 ---
 
-## 10. The wrap-up — decided 2026-09-14, BUILT the same day (10.1–10.9), not desk-tested
+## 10. The wrap-up — decided 2026-09-14, BUILT the same day (10.1–10.9), shipped in 0.4.1
 
 Talked through with the user after the export desk test. The toast rows are in TOASTS.md §5.
 
@@ -472,7 +472,7 @@ Talked through with the user after the export desk test. The toast rows are in T
 
 ### 10.9 Import to edit (§5) and adding straight to Apple playlists (§6, parked idea)
 
-**Decided + built 2026-09-14 (not desk-tested).** The user's picks:
+**Decided + built 2026-09-14, shipped in 0.4.1.** The user's picks:
 - **Import link — linked, one row.** `playlist_import(apple_id)` (Rust) copies a mirror into a
   new local playlist (songs from the content cache when cached, else one read per 100) and
   files it in the original's folder. A `canEdit` original becomes the copy's
@@ -514,7 +514,7 @@ The plan as written before the build:
 4. 10.4 Get New Songs · 5. 10.5 named skips · 6. 10.6 cover links · 7. 10.7 README note + backup
 doc · 8. 10.8 Replay guard (small; can go first if it bites) · later 10.9.
 
-## 11. Playlist covers — decided and BUILT 2026-09-15, not desk-tested
+## 11. Playlist covers — decided and BUILT 2026-09-15, committed 1713d89, shipped in 0.5.0
 
 Two Settings rows in the Playlists section:
 
