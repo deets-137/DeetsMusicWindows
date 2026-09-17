@@ -461,6 +461,38 @@
   --swap-fade:     1;
   --swap-stagger:  0s;
 
+  /* -- card grow (card-grow.ts, CARD-GROW.md) --
+     A card opens over its neighbor: the final layout is set once and a clip opens from the
+     old box to the new one over --grow-dur / --grow-ease while the body's content fades
+     (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad
+     opens the clip past the box by the card shadow's reach, so the shadow is not cut off
+     during the motion (0 under a skin with no shadow). The zone bar is the accent line in
+     the gap that shows which card will grow; the rail is the A–Z column of a grown list;
+     the col widths are the fixed columns of a grown song list. */
+  --grow-dur:        0.34s;
+  --grow-ease:       var(--pop-ease);
+  --grow-body-fade:  0.09s;             /* the rebuilt body fades in once the clip is open */
+  --grow-rows-stagger: 0.012s;          /* every row on screen enters; shorter than --pop-stagger */
+  --grow-clip-pad:   0px;
+  /* The zone bar hugs the card it will grow: --gap from the card's edge (negative = over
+     it), --trim from each end (the card's corner radius, so it runs between the corners),
+     its own radius and an optional glow. */
+  --grow-zone-bar-w:      3px;
+  --grow-zone-bar-gap:    0px;
+  --grow-zone-bar-trim:   var(--panel-radius);
+  --grow-zone-bar-radius: 999px;
+  --grow-zone-bar-glow:   none;
+  /* The window-edge Fill zones sit inside Tauri's resize band: the outer 5 px of a window
+     with no OS frame (BORDERLESS_RESIZE_INSET, tauri-runtime-wry undecorated_resizing.rs). */
+  --grow-zone-resize-inset: 5px;
+  --grow-btn-gap:    var(--space-1);   /* between the Grow button and the first action square */
+  --grow-rail-w:     20px;
+  --grow-rail-fs:    10px;
+  --grow-col-time:   3.6em;
+  --grow-col-heart:  2em;
+  --grow-col-year:   3.4em;
+  --grow-col-plays:  3.6em;
+
   /* -- chip flight (handoff.ts, ARTIST-VIEW.md §5) --
      A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease.
      --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing.
@@ -598,6 +630,9 @@
   --panel-border-width: 1px;
   --panel-backdrop:     none;
   --shadow-card:        4px 4px 0 var(--ink-2);
+  --grow-clip-pad:      6px;        /* the plate's offset stays inside the opening clip */
+  --grow-zone-bar-w:      4px;      /* a rule of ink, square ends */
+  --grow-zone-bar-radius: 0;
 
   /* menus print too — same plate, one step further off register */
   --menu-surface: var(--surface);
@@ -685,6 +720,10 @@
   --panel-border-width: 0;
   /* soft border = a diffuse ring in the theme hairline color + depth */
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
+  --grow-clip-pad: 44px;            /* the lift's reach, so the opening clip keeps the shadow */
+  --grow-zone-bar-gap:    1px;      /* a soft line just off the card, with a little water glow */
+  --grow-zone-bar-radius: 3px;
+  --grow-zone-bar-glow:   0 0 6px var(--grow-zone-bar);
   --panel-radius:       14px;       /* softer, water-smoothed corners */
 
   /* surface — the rolling swell, an SVG layer (.ocean in styles.css;
@@ -890,6 +929,11 @@
     0 8px 32px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent),
     inset 0 0 0 100vmax var(--panel);
+  --grow-clip-pad:      40px;       /* the halo and the drop shadow stay inside the opening clip */
+  --grow-zone-bar-w:      2px;      /* a thin lit edge, off the glass, with its glow */
+  --grow-zone-bar-gap:    2px;
+  --grow-zone-bar-radius: 2px;
+  --grow-zone-bar-glow:   0 0 8px color-mix(in srgb, var(--grow-zone-bar) 60%, transparent);
 
   /* controls — rounded glass chips (not the capsule, not the Press trim) */
   --lib-pill-radius:    12px;
@@ -1071,6 +1115,7 @@
      skew that straightens at center */
   --nav-dur:  0.14s;
   --nav-ease: cubic-bezier(0.7, 0, 0.3, 1);
+  --grow-zone-bar-radius: 0;        /* a hard neon rule, no trim (the cards are square) */
   --nav-at-center:   translateX(0) skewX(0deg);
   --nav-at-left:     translateX(-100%) skewX(6deg);
   --nav-at-right:    translateX(100%) skewX(-6deg);

@@ -19,9 +19,23 @@ import { rowPick, canPick, picksText, objectId } from "./row-pick";
 import { shuffleInPlace } from "./queue";
 import { isShuffleOn, setShuffleMode } from "./player";
 import { setting } from "./settings-store";
+import { enterRows } from "./pop";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
+/** A grown card's row layout (CARD-GROW.md §9a): wide and full get columns; tall keeps the row. */
+export type ColumnMode = "wide" | "full";
+/** One column of a grown song list: the header cell, the sort it runs, its grid width. */
+export interface ColumnSpec {
+  key: string;
+  label: string;
+  /** The sort key a click on the header sets (a second click turns it around). */
+  sortKey?: string;
+  /** A grid track size (`minmax(0, 2fr)`, `var(--grow-col-time)`). */
+  width: string;
+  /** Extra class on the header cell (`lib-cols__cell--end` right-aligns). */
+  cls?: string;
+}
 
 export interface SortSpec<T = any> {
   key: string;
@@ -48,7 +62,9 @@ export interface Grouping<T = any> {
   list: (view?: ViewState) => T[];
   name: (x: T) => string; // search tiebreak + (for details) the drilled title
   match: (x: T, q: string) => boolean;
-  render: (x: T, density: Density, idx: number) => string; // root el must carry data-idx="${idx}"
+  render: (x: T, density: Density, idx: number, cols?: ColumnMode | null) => string; // root el must carry data-idx="${idx}"
+  /** The columns a grown card's line rows take (CARD-GROW.md §9a). Absent: the plain row. */
+  columns?: (cols: ColumnMode) => ColumnSpec[];
   open?: (x: T) => Context | null; // drill target, or null for a leaf (e.g. a song)
   // Leaf action on click (e.g. play a song). Takes precedence over `open`, and gets the
   // current sorted view + index so it can act on "everything from here onward".
@@ -218,6 +234,32 @@ export function runListAction<T>(act: string, items: T[], run: (list: T[]) => vo
   run(shuffle || isShuffleOn() ? shuffleInPlace(items.slice()) : items);
 }
 
+/** The column headers of a grown song list (CARD-GROW.md §9a). A sortable header is a button. */
+function colsHTML(specs: ColumnSpec[], sortKey: string, sortDir: SortDir): string {
+  const cells = specs
+    .map((c) => {
+      const cls = `lib-cols__cell${c.cls ? ` ${c.cls}` : ""}`;
+      if (!c.sortKey) return `<span class="${cls}">${esc(c.label)}</span>`;
+      const active = sortKey === c.sortKey;
+      const arrow = active
+        ? `<svg class="lib-cols__arrow" viewBox="0 0 12 12" aria-hidden="true">${sortDir === "asc" ? '<path d="M6 10V2M3 5l3-3 3 3"/>' : '<path d="M6 2v8M3 7l3 3 3-3"/>'}</svg>`
+        : "";
+      return `<button class="${cls}${active ? " is-active" : ""}" type="button" data-col-sort="${c.sortKey}" aria-sort="${
+        active ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+      }" title="Sorts by ${esc(c.label.toLowerCase())}. Click again to turn it around">${esc(c.label)}${arrow}</button>`;
+    })
+    .join("");
+  return `<div class="lib-cols" data-cols role="row">${cells}</div>`;
+}
+
+// ── the letter rail (CARD-GROW.md §9a) ────────────────────────────────────────
+const RAIL_ALPHA = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+/** The rail letter a name files under: its first letter without accents, else "#". */
+function letterOf(name: string): string {
+  const c = (name.trim().normalize("NFD")[0] ?? "#").toUpperCase();
+  return c >= "A" && c <= "Z" ? c : "#";
+}
+
 function heroHTML(h: Hero | undefined): string {
   if (!h) return "";
   const sub = h.sub
@@ -239,6 +281,8 @@ export interface CardOptions {
   // Fires on every header change (drill in / back out). `atRoot` is true at the top level —
   // the slot picker uses it to be live only when the card shows its base title.
   onHeader?: (h: { title: string; atRoot: boolean }) => void;
+  /** The host's grow state (CARD-GROW.md): wide / full → columns, any → the letter rail. */
+  grown?: () => "wide" | "tall" | "full" | null;
 }
 
 interface Frame {
@@ -286,6 +330,15 @@ export function initCollectionCard(opts: CardOptions) {
 
   const stack: Frame[] = [];
   let curPane: HTMLElement | null = null;
+  // A grown card (CARD-GROW.md §9a) keeps its own top-level view prefs per size, under the
+  // store key with the size as a suffix, and opens with the size's own density the first
+  // time: small tiles wide or tall, large tiles when it fills the window.
+  const GROW_DENSITY: Record<string, Density> = { wide: "small", tall: "small", full: "large" };
+  const modeKey = (): string => {
+    const m = opts.grown?.();
+    return m ? `${opts.storeKey}:${m}` : opts.storeKey;
+  };
+  let lastMode: string | null = opts.grown?.() ?? null;
   // one windower per pane view while its list is above WINDOW_MIN (collection-window.ts)
   const windowers = new WeakMap<HTMLElement, Windower>();
   // per view: the last head block (toolbarBelow) — `top` is its hero + shelves markup, `html`
@@ -317,8 +370,10 @@ export function initCollectionCard(opts: CardOptions) {
       scroll: 0,
     };
     if (isTop) {
+      const m = opts.grown?.();
+      if (m && GROW_DENSITY[m] && ctx.density) f.density = GROW_DENSITY[m];
       try {
-        const raw = localStorage.getItem(opts.storeKey);
+        const raw = localStorage.getItem(modeKey());
         if (raw) {
           const s = JSON.parse(raw);
           if (ctx.groupings.some((x) => x.key === s.grouping)) f.grouping = s.grouping;
@@ -338,7 +393,7 @@ export function initCollectionCard(opts: CardOptions) {
     if (stack.length !== 1) return; // only the top level persists
     const { grouping, density, sortKey, sortDir } = cur();
     try {
-      localStorage.setItem(opts.storeKey, JSON.stringify({ grouping, density, sortKey, sortDir }));
+      localStorage.setItem(modeKey(), JSON.stringify({ grouping, density, sortKey, sortDir }));
     } catch {
       /* storage unavailable */
     }
@@ -482,8 +537,93 @@ export function initCollectionCard(opts: CardOptions) {
   let lastPicked = 0; // picks at the last render — tells a first pick from a later one
 
   /** A row's HTML, with the pick mark added when it is one of the picked (§19). */
-  const renderRow = (g: Grouping, x: any, density: Density, i: number): string =>
-    g.pick ? pick.markHTML(g.render(x, density, i), x, i) : g.render(x, density, i);
+  const renderRow = (g: Grouping, x: any, density: Density, i: number, cols: ColumnMode | null): string =>
+    g.pick ? pick.markHTML(g.render(x, density, i, cols), x, i) : g.render(x, density, i, cols);
+
+  /** The column mode a frame renders in: a wide or full card, line rows, a grouping with columns. */
+  const colsOf = (f: Frame, g: Grouping): ColumnMode | null => {
+    const mode = opts.grown?.();
+    return f.density === "lines" && g.columns && (mode === "wide" || mode === "full") ? mode : null;
+  };
+
+  // ── the letter rail (CARD-GROW.md §9a): A–Z down the right side of a grown card's list
+  // under an A–Z sort. A click reveals the first row of that letter. Kept per pane; rebuilt
+  // only when its letters or their first rows change, so a scroll never re-animates it.
+  const railKeys = new WeakMap<HTMLElement, string>();
+  const railViews = new WeakSet<HTMLElement>();
+  const litLetter = (pane: HTMLElement, f: Frame, g: Grouping) => {
+    const rail = pane.querySelector<HTMLElement>(":scope > .lib-rail");
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    if (!rail || !view) return;
+    // The first row that shows under the sticky header (a windowed view renders ~60 rows).
+    const stuck = view.querySelector<HTMLElement>(":scope > .lib-cols, :scope > .lib-view-bar");
+    const under = view.getBoundingClientRect().top + (stuck?.offsetHeight ?? 0) + 1;
+    let i = -1;
+    for (const el of view.querySelectorAll<HTMLElement>("[data-idx]")) {
+      if (el.getBoundingClientRect().bottom > under) {
+        i = Number(el.dataset.idx);
+        break;
+      }
+    }
+    const x = f.items[i];
+    const l = x === undefined ? "" : letterOf(g.name(x));
+    rail.querySelectorAll<HTMLElement>("[data-rail-letter]").forEach((el) => el.classList.toggle("is-lit", el.dataset.railLetter === l));
+  };
+  const syncRail = (pane: HTMLElement, f: Frame, g: Grouping) => {
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    const on = !!opts.grown?.() && f.sortKey === "az" && !g.mixed && f.items.length > 0 && !!view;
+    let rail = pane.querySelector<HTMLElement>(":scope > .lib-rail");
+    if (!on) {
+      rail?.remove();
+      railKeys.delete(pane);
+      return;
+    }
+    const first = new Map<string, number>();
+    f.items.forEach((x, i) => {
+      const l = letterOf(g.name(x));
+      if (!first.has(l)) first.set(l, i);
+    });
+    const order = f.sortDir === "asc" ? RAIL_ALPHA : [...RAIL_ALPHA].reverse();
+    const key = order.map((l) => `${l}${first.get(l) ?? ""}`).join(",");
+    const fresh = !rail;
+    if (!rail) {
+      rail = document.createElement("div");
+      rail.className = "lib-rail";
+      rail.setAttribute("role", "navigation");
+      rail.setAttribute("aria-label", "Jump to a letter");
+      pane.appendChild(rail);
+    }
+    if (railKeys.get(pane) !== key) {
+      rail.innerHTML = order
+        .map((l) => {
+          const i = first.get(l);
+          const what = l === "#" ? "numbers and symbols" : l;
+          return i === undefined
+            ? `<button class="lib-rail__letter is-empty" type="button" data-rail-letter="${l}" disabled aria-label="No ${what} here">${l}</button>`
+            : `<button class="lib-rail__letter" type="button" data-rail-letter="${l}" data-rail-index="${i}" title="Jump to ${what}">${l}</button>`;
+        })
+        .join("");
+      railKeys.set(pane, key);
+    }
+    rail.style.top = `${view!.offsetTop}px`; // beside the scroller, under the toolbar
+    if (fresh) enterRows(rail.children, 27);
+    if (!railViews.has(view!)) {
+      railViews.add(view!);
+      let queued = 0;
+      view!.addEventListener(
+        "scroll",
+        () => {
+          if (queued) return;
+          queued = requestAnimationFrame(() => {
+            queued = 0;
+            if (curPane) litLetter(curPane, cur(), groupingOf(cur()));
+          });
+        },
+        { passive: true },
+      );
+    }
+    litLetter(pane, f, g);
+  };
 
   const buildPane = (f: Frame): HTMLElement => {
     const pane = document.createElement("div");
@@ -520,7 +660,16 @@ export function initCollectionCard(opts: CardOptions) {
     const nPicked = g.pick ? pick.size() : 0;
     const entering = nPicked > 0 && lastPicked === 0;
     lastPicked = nPicked;
-    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g, items.length, nPicked, entering) + (f.ctx.shelves?.() ?? "");
+    // Columns (CARD-GROW.md §9a): a grown wide/full card's line rows, with a sticky header
+    // row right above them. The header is part of the head block, so the windower measures it.
+    const cols = colsOf(f, g);
+    const specs = cols ? g.columns!(cols) : null;
+    const colsHead = specs ? colsHTML(specs, f.sortKey, f.sortDir) : "";
+    if (specs) view.style.setProperty("--cols-template", specs.map((c) => c.width).join(" "));
+    else view.style.removeProperty("--cols-template");
+    if (cols) view.dataset.cols = cols;
+    else delete view.dataset.cols; // no attribute at rest (CARD-GROW.md §0)
+    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g, items.length, nPicked, entering) + (f.ctx.shelves?.() ?? "") + (f.ctx.toolbarBelow != null ? "" : colsHead);
     // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
     // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
     // it can stick to the top once the hero and shelves scroll away (a sticky box stops at
@@ -532,13 +681,13 @@ export function initCollectionCard(opts: CardOptions) {
     let keepHead = false;
     if (f.ctx.toolbarBelow != null) {
       const prev = heads.get(view);
-      keepHead = !!prev && prev.top === top && !!view.querySelector(":scope > [data-view-bar]");
+      keepHead = !!prev && prev.top === top + colsHead && !!view.querySelector(":scope > [data-view-bar]");
       hero =
         keepHead && prev
           ? prev.html
           : `<div class="lib-view-head" data-view-head>${top}</div>` +
-            `<div class="lib-view-bar" data-view-bar><div class="search__label">${esc(f.ctx.toolbarBelow)}</div>${toolbarHTML(f)}</div>`;
-      heads.set(view, { top, html: hero });
+            `<div class="lib-view-bar" data-view-bar><div class="search__label">${esc(f.ctx.toolbarBelow)}</div>${toolbarHTML(f)}${colsHead}</div>`;
+      heads.set(view, { top: top + colsHead, html: hero });
     }
     // Put `rows` in the view: after a kept bar, else under a fresh hero.
     const fill = (rows: string) => {
@@ -562,6 +711,7 @@ export function initCollectionCard(opts: CardOptions) {
     };
     if (!items.length) {
       dropWindower(pane);
+      syncRail(pane, f, g);
       view.className = "lib-view lib-empty";
       // A pane that takes a drop (an open playlist) draws the invite as one row-shaped slot
       // with a dashed rim, where the first row will land — the pane is already a drop target
@@ -579,16 +729,18 @@ export function initCollectionCard(opts: CardOptions) {
     // Long homogeneous lists are windowed (only the rows near the viewport exist); the
     // rest render whole, exactly as before. The gate keeps every small pane untouched.
     if (items.length > WINDOW_MIN && !g.mixed) {
-      const spec = { count: items.length, render: (i: number) => renderRow(g, items[i], f.density, i), hero };
+      const spec = { count: items.length, render: (i: number) => renderRow(g, items[i], f.density, i, cols), hero };
       const w = windowers.get(view);
       if (w) w.update(spec);
       else windowers.set(view, windowView(view, spec));
       restoreSearch();
+      syncRail(pane, f, g);
       return;
     }
     dropWindower(pane);
-    fill(items.map((x, i) => renderRow(g, x, f.density, i)).join(""));
+    fill(items.map((x, i) => renderRow(g, x, f.density, i, cols)).join(""));
     restoreSearch();
+    syncRail(pane, f, g);
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
 
@@ -889,6 +1041,23 @@ export function initCollectionCard(opts: CardOptions) {
       return;
     }
 
+    // A column header (CARD-GROW.md §9a): sorts by that column; the same header again turns it around.
+    const col = t.closest<HTMLElement>("[data-col-sort]");
+    if (col) {
+      e.stopPropagation();
+      closePops();
+      const f = cur();
+      const key = col.dataset.colSort!;
+      if (f.sortKey === key) f.sortDir = f.sortDir === "asc" ? "desc" : "asc";
+      else {
+        f.sortKey = key;
+        f.sortDir = "asc";
+      }
+      persist();
+      renderViewInto(pane, f);
+      return;
+    }
+
     const pop = t.closest<HTMLElement>("[data-pop]");
     if (pop) {
       e.stopPropagation();
@@ -986,6 +1155,24 @@ export function initCollectionCard(opts: CardOptions) {
     el.classList.remove("is-drop");
     const file = e.dataTransfer!.files[0];
     if (file) cur().ctx.hero?.()?.coverDrop?.(file);
+  });
+
+  // The letter rail: a click reveals the first row of that letter at the top of the list.
+  viewport.addEventListener("click", (e) => {
+    const letter = (e.target as HTMLElement).closest<HTMLElement>("[data-rail-index]");
+    if (!letter || !curPane || animating) return;
+    e.stopPropagation();
+    const i = Number(letter.dataset.railIndex);
+    const view = curPane.querySelector<HTMLElement>("[data-view]");
+    if (!view || !Number.isFinite(i)) return;
+    const w = windowers.get(view);
+    if (w) w.reveal(i, "start");
+    else view.querySelector(`[data-idx="${i}"]`)?.scrollIntoView({ block: "start" });
+    // Put the row's top exactly under the sticky column header (or bar), which would cover it.
+    const row = view.querySelector<HTMLElement>(`[data-idx="${i}"]`);
+    const stuck = view.querySelector<HTMLElement>(":scope > .lib-cols, :scope > .lib-view-bar");
+    if (row) view.scrollTop += row.getBoundingClientRect().top - view.getBoundingClientRect().top - (stuck?.offsetHeight ?? 0);
+    litLetter(curPane, cur(), groupingOf(cur()));
   });
 
   viewport.addEventListener("input", (e) => {
@@ -1087,6 +1274,16 @@ export function initCollectionCard(opts: CardOptions) {
     if (stack.length === 1) {
       stack[0].ctx = opts.rootContext();
       if (!groupingOf(stack[0])) stack[0].grouping = stack[0].ctx.groupings[0].key;
+    }
+    // The card's size changed (a grow or a collapse): the top level takes that size's own
+    // view prefs — what the user last set at this size, else the size's default density.
+    const mode = opts.grown?.() ?? null;
+    if (mode !== lastMode) {
+      lastMode = mode;
+      if (stack.length === 1) {
+        const f = frameFor(stack[0].ctx, true);
+        Object.assign(stack[0], { grouping: f.grouping, density: f.density, sortKey: f.sortKey, sortDir: f.sortDir });
+      }
     }
     if (!curPane) return;
     // a background sync shouldn't yank the user to the top

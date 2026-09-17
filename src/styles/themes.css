@@ -72,6 +72,13 @@
   --eq-handle-ink: var(--surface);
   --eq-plot-bg:    var(--canvas);
 
+  /* Card grow (CARD-GROW.md): the accent bar in the gap that shows which card will grow, and
+     the letter rail's ink — the resting letter and the one lit for the rows on screen.
+     Derived once here — no theme block names a grow color of its own. */
+  --grow-zone-bar: var(--title);
+  --rail-ink:      var(--subtext);
+  --rail-ink-lit:  var(--title);
+
   /* The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy
      scrubbers). Light is white in every theme, so this is the one role no theme remaps;
      a little dimmer on dark themes so it does not blaze. */

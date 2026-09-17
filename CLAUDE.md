@@ -40,7 +40,7 @@ front-end, Rust back-end).
   crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (designed 2026-09-16, not built).
 - `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
-  measurements (built and desk-tested 2026-09-16). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
+  measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (designed 2026-09-17, all forks decided, not built). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
   led by the Deets and Happy sprites (designed, not built).
@@ -52,7 +52,7 @@ front-end, Rust back-end).
   (designed 2026-09-16, forks open, not built).
 - `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
   the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules, and wide-card
-  layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–9 decided, not built).
+  layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–10 decided; BUILT 2026-09-16 on branch grower-not-shower, §13 = as built, awaiting desk test).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

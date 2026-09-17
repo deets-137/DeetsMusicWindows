@@ -22,7 +22,8 @@ import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
 import { goToArtistItem, goToAlbumItem, requestPlaylistPane } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
-import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, type ActionTitles, formatTotal } from "./collection-card";
+import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, type ActionTitles, type ColumnMode, type ColumnSpec, formatTotal } from "./collection-card";
+import { onGrowChange } from "./card-grow";
 import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
 import { registerDropTarget } from "./row-drag";
@@ -228,11 +229,31 @@ export function musicCell(
 // "Added Date" negates the rank so ascending (the default ↑) puts the MOST
 // recently added first; the ↓ arrow flips to oldest-first.
 const recency = (rank: number | undefined) => (rank == null ? undefined : -rank);
+// Artist, Album, Length and Genre are the column headers of a grown card (CARD-GROW.md §9a),
+// and they sit in the Sort popover too, so the dropdown always shows the sort in force.
 const songSorts: SortSpec<Track>[] = [
   { key: "az", label: "A–Z", type: "str", get: (t) => t.title },
+  { key: "artist", label: "Artist", type: "str", get: (t) => t.artistName },
+  { key: "album", label: "Album", type: "str", get: (t) => t.albumName },
   { key: "release", label: "Release Date", type: "str", get: (t) => t.releaseDate },
   { key: "added", label: "Added Date", type: "num", get: (t) => recency(t.addedRank) },
+  { key: "time", label: "Length", type: "num", get: (t) => t.durationMs },
+  { key: "genre", label: "Genre", type: "str", get: (t) => t.genres[0] },
 ];
+/** This app's own play tallies (zero Apple calls): most played first under the default ↑. */
+const playsSort = (plays: () => Map<string, PlayCount> | undefined): SortSpec<Track> => ({
+  key: "plays",
+  label: "Plays",
+  type: "num",
+  get: (t) => {
+    const c = plays()?.get(t.libraryId ?? t.catalogId ?? "");
+    return c ? -(c.full * 1e6 + c.partial) : undefined;
+  },
+});
+const playsOf = (plays: (() => Map<string, PlayCount> | undefined) | undefined, t: Track): number | undefined => {
+  const c = plays?.()?.get(t.libraryId ?? t.catalogId ?? "");
+  return c ? c.full + c.partial : undefined;
+};
 // An album detail leads with disc/track order; the shared song sorts follow.
 const trackSorts: SortSpec<Track>[] = [
   { key: "track", label: "Track Order", type: "num", get: (t) => (t.discNumber ?? 1) * 1000 + (t.trackNumber ?? 0) },
@@ -364,25 +385,80 @@ interface SongOpts {
   nav?: LibNav; // in-place "Go to Artist/Album" (Library only)
   extraSorts?: SortSpec<Track>[]; // appended to the Sort menu (the artist view's Popular / Most Played)
   actionTitles?: ActionTitles; // hover text for the Play / Shuffle row (what the list is)
+  /** The play tallies (the Library root): a Plays sort, and the Plays column of a filled card. */
+  plays?: () => Map<string, PlayCount> | undefined;
 }
+
+// ── the columns of a grown card (CARD-GROW.md §9a) ──────────────────────────────
+// Wide: Title · Artist · Album · Length · ♥. Full adds Genre · Year (· Plays where the
+// tallies are known). An album's list keeps its track number as the lead cell and drops the
+// Album column: every row shares it.
+const HEART_MARK =
+  '<svg class="lib-row__heart-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>';
+const END = "lib-cols__cell--end";
+function songColumns(cols: ColumnMode, o: SongOpts): ColumnSpec[] {
+  const specs: ColumnSpec[] = [
+    o.numbered ? { key: "lead", label: "#", sortKey: "track", width: "auto", cls: END } : { key: "lead", label: "", width: "auto" },
+    { key: "title", label: "Title", sortKey: "az", width: "minmax(0, 2fr)" },
+    { key: "artist", label: "Artist", sortKey: "artist", width: "minmax(0, 1.3fr)" },
+    ...(o.hideCover ? [] : [{ key: "album", label: "Album", sortKey: "album", width: "minmax(0, 1.3fr)" }]),
+    { key: "time", label: "Length", sortKey: "time", width: "var(--grow-col-time)", cls: END },
+    { key: "heart", label: "♥", width: "var(--grow-col-heart)", cls: "lib-cols__cell--center" },
+  ];
+  if (cols === "full") {
+    specs.push(
+      { key: "genre", label: "Genre", sortKey: "genre", width: "minmax(0, 1fr)" },
+      { key: "year", label: "Year", sortKey: "release", width: "var(--grow-col-year)", cls: END },
+    );
+    if (o.plays) specs.push({ key: "plays", label: "Plays", sortKey: "plays", width: "var(--grow-col-plays)", cls: END });
+  }
+  return specs;
+}
+function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): string {
+  const lead = o.numbered ? `<span class="lib-row__num lib-row__cell--end">${t.trackNumber ?? idx + 1}</span>` : rowThumb(t.artwork, false, t.title);
+  const cells = [
+    lead,
+    `<span class="lib-row__cell lib-row__title">${esc(t.title)}${explicitBadge(t)}</span>`,
+    `<span class="lib-row__cell lib-row__artist">${esc(t.artistName)}</span>`,
+    ...(o.hideCover ? [] : [`<span class="lib-row__cell lib-row__album">${esc(t.albumName ?? "")}</span>`]),
+    `<span class="lib-row__cell lib-row__cell--end lib-row__time">${fmtClock(t.durationMs)}</span>`,
+    `<span class="lib-row__cell lib-row__cell--center lib-row__heart">${isLoved(t) ? HEART_MARK : ""}</span>`,
+  ];
+  if (cols === "full") {
+    cells.push(
+      `<span class="lib-row__cell lib-row__genre">${esc(t.genres[0] ?? "")}</span>`,
+      `<span class="lib-row__cell lib-row__cell--end lib-row__year">${esc(t.releaseDate?.slice(0, 4) ?? "")}</span>`,
+    );
+    if (o.plays) {
+      const n = playsOf(o.plays, t);
+      cells.push(`<span class="lib-row__cell lib-row__cell--end lib-row__plays">${n === undefined ? "" : n}</span>`);
+    }
+  }
+  const selected = !!o.selectedId && trackId(t) === o.selectedId;
+  return `<div class="lib-row lib-row--art lib-row--cols${selected ? " is-selected" : ""}" data-idx="${idx}">${cells.join("")}</div>`;
+}
+
 function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {
     key: "songs",
     label: "Songs",
-    sorts: [...(o.numbered ? trackSorts : songSorts), ...(o.extraSorts ?? [])],
+    sorts: [...(o.numbered ? trackSorts : songSorts), ...(o.plays ? [playsSort(o.plays)] : []), ...(o.extraSorts ?? [])],
     list,
     name: (t) => t.title,
     match: (t, q) =>
       t.title.toLowerCase().includes(q) ||
       t.artistName.toLowerCase().includes(q) ||
       (t.albumName?.toLowerCase().includes(q) ?? false),
-    render: (t, density, idx) =>
-      musicCell(density, idx, t.artwork, t.title, o.numbered && density === "lines" ? fmtClock(t.durationMs) : t.artistName, {
-        hideCover: o.hideCover,
-        num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
-        selected: !!o.selectedId && trackId(t) === o.selectedId,
-        badge: explicitBadge(t),
-      }),
+    render: (t, density, idx, cols) =>
+      cols && density === "lines"
+        ? songColsHTML(t, idx, cols, o)
+        : musicCell(density, idx, t.artwork, t.title, o.numbered && density === "lines" ? fmtClock(t.durationMs) : t.artistName, {
+            hideCover: o.hideCover,
+            num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
+            selected: !!o.selectedId && trackId(t) === o.selectedId,
+            badge: explicitBadge(t),
+          }),
+    columns: (cols) => songColumns(cols, o),
     isSelected: o.selectedId ? (t) => trackId(t) === o.selectedId : undefined,
     // Click a song → play it and queue the rest of THIS list from here, in the
     // current sort order (the engine hands us the live sorted view).
@@ -746,11 +822,14 @@ export const libraryCard: CardDef = {
     // all reduce to what holds a favorite. Session state; the engine draws the pill.
     let favOnly = false;
     const source = (): Track[] => (favOnly ? tracks().filter(isLoved) : tracks());
+    // The play tallies (one local read, zero Apple calls): the Plays sort and, on a filled
+    // card, the Plays column (CARD-GROW.md §9a).
+    let rootPlays: Map<string, PlayCount> | undefined;
     const rootContext = (): Context => ({
       title: "Library",
       density: true,
       groupings: [
-        songsGrouping(source, { context: "library", nav: libNav }),
+        songsGrouping(source, { context: "library", nav: libNav, plays: () => rootPlays }),
         albumsGrouping(source, albumDetail, libNav),
         artistsGrouping(source, artistDetail),
       ],
@@ -769,6 +848,21 @@ export const libraryCard: CardDef = {
         lastHeader = h;
         headerSubs.forEach((cb) => cb(h));
       },
+      grown: () => (host.dataset.grow as "wide" | "tall" | "full" | undefined) ?? null,
+    });
+    void playCounts()
+      .then((m) => {
+        rootPlays = m;
+        if (host.dataset.grow === "full") card.reload(); // the Plays column is on screen
+      })
+      .catch((e) => console.error("[library] play counts", e));
+    // A grow or a collapse of THIS card (CARD-GROW.md §6): the rows build again at the new
+    // width — columns and the letter rail in, or out. The place in the list is kept.
+    let lastGrow = host.dataset.grow;
+    const unsubGrow = onGrowChange(() => {
+      if (host.dataset.grow === lastGrow) return;
+      lastGrow = host.dataset.grow;
+      card.reload();
     });
 
     // ── render from the shared store + refresh-button state ──
@@ -813,6 +907,7 @@ export const libraryCard: CardDef = {
       destroy() {
         unsubTracks();
         unsubFavs();
+        unsubGrow();
         unregisterDrop();
         syncUnlisten.then((un) => un()).catch(() => {});
         card.destroy();

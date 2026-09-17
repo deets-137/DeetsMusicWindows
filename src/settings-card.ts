@@ -203,7 +203,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, and Show notices",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, and Keep on top. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, and the three Grow cards rows. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
@@ -571,6 +571,14 @@ function mountSettings(host: HTMLElement): CardInstance {
           kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
           hint: "The window stays above other windows. Player: only while it shows the player",
           options: [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }],
+        },
+        // ── Card grow (CARD-GROW.md §8) ──
+        storeToggle("cardgrow", "Grow cards from edges", "cardGrow", () => "Click the gap beside a card to open it over its neighbor. Hover a card's title for the button"),
+        storeToggle("cardgrowoutside", "Collapse on outside click", "cardGrowOutside", () => "A click outside a grown card collapses it. Pin holds it open"),
+        {
+          kind: "choice", id: "cardgrowpick", label: "Grown card on card pick", key: "cardGrowPick",
+          hint: "Pick another card in a grown card's title: it keeps the size, or collapses first",
+          options: [{ value: "keep", label: "Keep" }, { value: "collapse", label: "Collapse" }],
         },
       ],
     },

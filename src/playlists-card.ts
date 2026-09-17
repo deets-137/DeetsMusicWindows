@@ -25,6 +25,7 @@ import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type
 import { picksText } from "./row-pick";
 import { playlistShelfMenu } from "./artist-view";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
+import { onGrowChange } from "./card-grow";
 import { openContextMenuUnder, type MenuItem } from "./context-menu";
 import { appleMusicItem } from "./playlist-export";
 import { APPLE_SIGIL } from "./apple-sigil";
@@ -761,6 +762,15 @@ export const playlistsCard: CardDef = {
         if (webBtn) webBtn.hidden = !h.atRoot; // so is the web: it makes a new playlist
         headerSubs.forEach((cb) => cb(h));
       },
+      grown: () => (host.dataset.grow as "wide" | "tall" | "full" | undefined) ?? null,
+    });
+    // A grow or a collapse of this card (CARD-GROW.md): the rows build again at the new width
+    // (the letter rail in or out); the place in the list is kept.
+    let lastGrow = host.dataset.grow;
+    const unsubGrow = onGrowChange(() => {
+      if (host.dataset.grow === lastGrow) return;
+      lastGrow = host.dataset.grow;
+      card.reload();
     });
 
     // ── load + sync (stale-while-revalidate, like songs) ──
@@ -914,6 +924,7 @@ export const playlistsCard: CardDef = {
       destroy() {
         unsubChanges();
         unsubOpen();
+        unsubGrow();
         unmountWeb?.();
         card.destroy();
         host.innerHTML = "";

@@ -32,6 +32,7 @@ import { setLoved } from "./favorites";
 import { checkForUpdate, download, offerRestart, olderVersions, rollbackTo, updateStatus, type UpdateStatus } from "./updater";
 import { invoke } from "@tauri-apps/api/core";
 import { settingsList, settingsWrite } from "./agent-settings";
+import { agentGrow } from "./card-grow";
 
 type Reply = Record<string, unknown>;
 
@@ -474,6 +475,8 @@ export function runAgentWrite(kind: string, payload: any): Promise<unknown> | nu
     case "update": return update(payload);
     case "settings-get": return settingsList(payload); // AGENT.md §6 (agent-settings.ts)
     case "settings": return settingsWrite(payload);
+    case "grow-get": return agentGrow({ action: "state" }); // CARD-GROW.md; a test handle
+    case "grow": return agentGrow(payload);
     default: return null;
   }
 }

@@ -131,8 +131,10 @@ The user may revert this after testing it. Decisions: 1A (hover only), 2B (drill
   (`--icon-lg`, the Now Playing "+" geometry) at the row's right end, after the explicit mark.
 - **States:** **+** (not in the library) · spinner while adding · **✓ "In your library"**
   (`aria-disabled`, a press does nothing). Hidden when the Library Add setting is off.
-- **Visibility:** only while the row is hovered or has focus (`:focus-within`), or while an add runs.
-  The space is always reserved, so titles do not jump on hover.
+- **Visibility:** only while the row is hovered or has keyboard focus (`:focus-visible` on the row or
+  the square), or while an add runs. The space is always reserved, so titles do not jump on hover.
+  Not `:focus-within` (changed 2026-09-17): a press or a drag's start focuses the row, and the
+  square stayed visible after a drag to the Queue took the pointer away.
 - **The press** is the consent, like the NP square: `addTrackToLibrary(t)`. A capture-phase click
   handler on the card host stops the press from also playing the row. Membership comes from the
   local store (`libraryAddOffered`), so rendering costs no Apple call.

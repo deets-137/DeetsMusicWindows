@@ -132,6 +132,9 @@ const SPECS: Spec[] = [
   storeSize("midi", "Midi opens at"),
   storeSize("max", "Max opens at"),
   storeChoice("Window", "alwaysOnTop", "Keep on top", [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }]),
+  storeToggle("Window", "cardGrow", "Grow cards from edges"),
+  storeToggle("Window", "cardGrowOutside", "Collapse on outside click"),
+  storeChoice("Window", "cardGrowPick", "Grown card on card pick", [{ value: "keep", label: "Keep" }, { value: "collapse", label: "Collapse" }]),
   {
     key: "surface", label: "Surface", section: "Window", kind: "choice",
     options: [{ value: "mini", label: "Mini" }, { value: "player", label: "Mini player" }, { value: "midi", label: "Midi" }, { value: "max", label: "Max" }],

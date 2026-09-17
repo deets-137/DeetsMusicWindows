@@ -32,6 +32,13 @@ export interface Settings {
   sizePlayer: string;
   sizeMidi: string;
   sizeMax: string;
+  /** Card grow (CARD-GROW.md §8): a card opens over its neighbor from the gap beside it, the
+   *  hover button in its header, or its title menu. Off: no zones, no button, no menu items. */
+  cardGrow: boolean;
+  /** A click outside a grown card collapses it; Pin holds the card against that. */
+  cardGrowOutside: boolean;
+  /** A pick in a grown card's title picker: keep the grow on the slot, or collapse first. */
+  cardGrowPick: "keep" | "collapse";
   /** Theme/skin switches animate (NEXT-VERSION §6). The OS reduced-motion preference still wins. */
   appearanceMotion: boolean;
   /** A card swap, summon or replace plays the skin's swap motion (card-swap.ts). The OS
@@ -264,6 +271,9 @@ export const DEFAULTS: Settings = {
   sizePlayer: "405x675", // NP: 404 px wide is where the Press record stopped jittering
   sizeMidi: "495x670",
   sizeMax: "1100x820",
+  cardGrow: true, // new and easy to turn off (CARD-GROW.md §8)
+  cardGrowOutside: true, // a grow is temporary; Pin covers "keep it"
+  cardGrowPick: "keep", // decided 6A
   appearanceMotion: true,
   cardSwapMotion: true, // user's call 2026-09-16: on by default (was off, 2026-09-15)
   fancyScrubber: true, // user's call 2026-09-16: on for now, a performance eval decides

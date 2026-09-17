@@ -167,6 +167,14 @@ enum Cmd {
         #[command(subcommand)]
         action: Option<SettingsCmd>,
     },
+    /// Grow a card over its neighbor: `grow Library right|left|up|down|full` (no direction: the
+    /// header button's next step), `grow collapse`, `grow pin`, `grow unpin`, `grow state`.
+    Grow {
+        /// A card (Library, Search, Playlists…) or a slot (left, right, c, d); or collapse / pin / unpin / state.
+        target: Option<String>,
+        /// right · left · up · down · full
+        dir: Option<String>,
+    },
     /// Serve the operations as MCP tools over stdio (every tool; `--small` for small models).
     Mcp {
         #[arg(long)]
@@ -813,6 +821,17 @@ fn op_settings(c: &Client, action: &str, key: &str, value: &str, section: &str) 
     }
 }
 
+/// The card grow (CARD-GROW.md): `grow <card> [dir]`, `grow collapse|pin|unpin|state`.
+fn op_grow(c: &Client, target: &str, dir: Option<&str>) -> Result<(String, Value), Failure> {
+    let word = target.to_ascii_lowercase();
+    let v = match word.as_str() {
+        "state" => c.get("/grow")?,
+        "collapse" | "pin" | "unpin" => c.post("/grow", json!({ "action": word }))?,
+        _ => c.post("/grow", json!({ "action": "grow", "card": target, "dir": dir }))?,
+    };
+    Ok((message_line(&v), v))
+}
+
 // ── seek / volume parsing ─────────────────────────────────────────────────────
 
 fn parse_seek(c: &Client, pos: &str) -> Result<f64, Failure> {
@@ -1248,6 +1267,7 @@ fn main() {
             SettingsCmd::Get { key } => op_settings(&c, "get", &key, "", ""),
             SettingsCmd::Set { key, value } => op_settings(&c, "set", &key, &value.join(" "), ""),
         },
+        Cmd::Grow { target, dir } => op_grow(&c, target.as_deref().unwrap_or("state"), dir.as_deref()),
         Cmd::Mcp { .. } => unreachable!(),
     };
     match res {

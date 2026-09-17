@@ -6,8 +6,8 @@
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 34 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 333 tokens · overrides: vanilla 3, press 61, ocean 35, glass 60, retro-future 63 |
+| Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 351 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, retro-future 64 |
 
 ## Theme roles
 
@@ -34,6 +34,9 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--eq-handle` | `var(--title)` | — |  |
 | `--eq-handle-ink` | `var(--surface)` | — |  |
 | `--eq-plot-bg` | `var(--canvas)` | — |  |
+| `--grow-zone-bar` | `var(--title)` | — | Card grow (CARD-GROW.md): the accent bar in the gap that shows which card will grow, and the letter rail's ink — the resting letter and the one lit for the rows on screen. Derived once here — no theme block names a grow color of its own. |
+| `--rail-ink` | `var(--subtext)` | — |  |
+| `--rail-ink-lit` | `var(--title)` | — |  |
 | `--glint` | `light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65))` | — | The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy scrubbers). Light is white in every theme, so this is the one role no theme remaps; a little dimmer on dark themes so it does not blaze. |
 | `--canvas` | — | every theme |  |
 | `--go` | — | every theme |  |
@@ -472,6 +475,24 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--swap-mid` | `scale(1)` | press, ocean, retro-future |  |
 | `--swap-fade` | `1` | retro-future |  |
 | `--swap-stagger` | `0s` | press |  |
+| `--grow-dur` | `0.34s` | — | -- card grow (card-grow.ts, CARD-GROW.md) -- A card opens over its neighbor: the final layout is set once and a clip opens from the old box to the new one over --grow-dur / --grow-ease while the body's content fades (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad opens the clip past the box by the card shadow's reach, so the shadow is not cut off during the motion (0 under a skin with no shadow). The zone bar is the accent line in the gap that shows which card will grow; the rail is the A–Z column of a grown list; the col widths are the fixed columns of a grown song list. |
+| `--grow-ease` | `var(--pop-ease)` | — |  |
+| `--grow-body-fade` | `0.09s` | — | the rebuilt body fades in once the clip is open |
+| `--grow-rows-stagger` | `0.012s` | — | every row on screen enters; shorter than --pop-stagger |
+| `--grow-clip-pad` | `0px` | press, ocean, glass |  |
+| `--grow-zone-bar-w` | `3px` | press, glass | The zone bar hugs the card it will grow: --gap from the card's edge (negative = over it), --trim from each end (the card's corner radius, so it runs between the corners), its own radius and an optional glow. |
+| `--grow-zone-bar-gap` | `0px` | ocean, glass |  |
+| `--grow-zone-bar-trim` | `var(--panel-radius)` | — |  |
+| `--grow-zone-bar-radius` | `999px` | press, ocean, glass, retro-future |  |
+| `--grow-zone-bar-glow` | `none` | ocean, glass |  |
+| `--grow-zone-resize-inset` | `5px` | — | The window-edge Fill zones sit inside Tauri's resize band: the outer 5 px of a window with no OS frame (BORDERLESS_RESIZE_INSET, tauri-runtime-wry undecorated_resizing.rs). |
+| `--grow-btn-gap` | `var(--space-1)` | — | between the Grow button and the first action square |
+| `--grow-rail-w` | `20px` | — |  |
+| `--grow-rail-fs` | `10px` | — |  |
+| `--grow-col-time` | `3.6em` | — |  |
+| `--grow-col-heart` | `2em` | — |  |
+| `--grow-col-year` | `3.4em` | — |  |
+| `--grow-col-plays` | `3.6em` | — |  |
 | `--fly-dur` | `0.42s` | press, ocean | -- chip flight (handoff.ts, ARTIST-VIEW.md §5) -- A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease. --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing. Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base = a straight glide that shrinks into the card (Glass uses it). |
 | `--fly-ease` | `var(--nav-ease)` | press, ocean, retro-future |  |
 | `--fly-mid` | `scale(1.04)` | press, ocean, retro-future |  |

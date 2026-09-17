@@ -18,8 +18,8 @@ import { makeDropdown } from "./dropdown";
 import { onCardRequest, setCardHostLookup } from "./layout-bus";
 import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
+import { initCardGrow, attachGrowButton, isCovered, collapseGrow, grownState, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
-type Slot = "left" | "right" | "c" | "d";
 type Assignment = Partial<Record<Slot, CardId>>;
 
 interface Composition {
@@ -200,8 +200,31 @@ export function initLayout(): void {
 
   let comp: Composition = compositionFor(currentSurface());
   let layout: Assignment = loadLayout(comp);
-  const mounted: Partial<Record<Slot, { inst: CardInstance; picker: SlotPicker }>> = {};
+  const mounted: Partial<Record<Slot, { inst: CardInstance; picker: SlotPicker; grow: GrowButton }>> = {};
   let queueInst: CardInstance | null = null;
+
+  // Card grow (CARD-GROW.md): the zones, the header button, the covered-card rules. Wired
+  // before this module's own surface listener, so a grow ends before the slots remount.
+  const bento = document.querySelector<HTMLElement>(".bento");
+  const body = document.querySelector<HTMLElement>(".app-body");
+  if (bento && body)
+    initCardGrow({
+      hosts,
+      bento,
+      body,
+      slots: () => comp.slots,
+      titleOf: (s) => (layout[s] ? registry[layout[s]!]?.title ?? "" : ""),
+      slotOf: (name) => {
+        const n = name.trim().toLowerCase();
+        if (comp.slots.includes(n as Slot)) return n as Slot;
+        return comp.slots.find((s) => {
+          const id = layout[s];
+          return !!id && (id === n || (registry[id]?.title ?? "").toLowerCase() === n);
+        }) ?? null;
+      },
+    });
+  // A slot that shows its card: on screen and not under a grown card.
+  const shown = (s: Slot): boolean => onScreen(hosts[s]) && !isCovered(s);
 
   // ── Slot recency — which content slot the user interacted with least recently.
   // Any pointerdown inside a slot counts (capture phase, so drills/scrolls/menus all
@@ -226,12 +249,14 @@ export function initLayout(): void {
     if (!host || !id || !def) return;
     const inst = def.mount(host);
     const picker = makePicker(slot, host, id, inst, poolFor(comp), setSlot);
-    mounted[slot] = { inst, picker };
+    const grow = attachGrowButton(slot, host);
+    mounted[slot] = { inst, picker, grow };
   };
 
   const unmountSlot = (slot: Slot) => {
     const m = mounted[slot];
     if (!m) return;
+    m.grow.destroy();
     m.picker.destroy();
     m.inst.destroy();
     delete mounted[slot];
@@ -241,11 +266,19 @@ export function initLayout(): void {
     flushSwapOut(); // a remount still waiting on its out step lands first, so `layout` is current
     if (!comp.slots.includes(slot) || layout[slot] === id) return; // not in this composition / already here
     const other = comp.slots.find((s) => layout[s] === id);
+    // A pick that touches a grown card (CARD-GROW.md §7, fork 6): "Keep" swaps the cards and
+    // the span stays on the slot; "Collapse" ends the grow first, then the pick runs.
+    const g = grownState();
+    if (g && setting("cardGrowPick") === "collapse" && (slot === g.slot || other === g.slot || isCovered(slot) || (other !== undefined && isCovered(other)))) {
+      void collapseGrow("pick").then(() => setSlot(slot, id));
+      return;
+    }
     // Motion (card-swap.ts): a skin with an out step plays the leaving cards out before the
     // remount; then each new card plays from the slot it left. A slot off screen (mini's
-    // right) has no start: the card coming out of it rises in, the one going into it is unseen.
-    const a = hosts[slot];
-    const b = other ? hosts[other] : null;
+    // right) or under a grown card has no start: the card coming out of it rises in, the one
+    // going into it is unseen.
+    const a = shown(slot) ? hosts[slot] : null;
+    const b = other && shown(other) ? hosts[other] : null;
     const detail = other ? `swap ${slot}↔${other}` : `replace ${slot}`;
     playOut([a, b].filter(onScreen), () => {
       if (other) {
@@ -269,12 +302,14 @@ export function initLayout(): void {
       }
       saveLayout(comp, layout);
       touch(slot); // acting on a slot (picker or summon) makes it the freshest
+      refreshGrowZones(); // the zones' hints name the cards
     }, detail);
   }
 
   const compose = () => {
     comp.slots.forEach(mountSlot);
     if (comp.queueSlot && queueHost && registry.queue) queueInst = registry.queue.mount(queueHost);
+    refreshGrowZones(); // the zones' hints name the mounted cards
   };
   const decompose = () => {
     (Object.keys(mounted) as Slot[]).forEach(unmountSlot);
@@ -307,10 +342,15 @@ export function initLayout(): void {
   // The player has no visible slot: a request first switches mini to its card view
   // (synchronous — the slot is on-screen before setSlot mounts into it).
   // A slot of this composition that shows `id` on screen (mini's hidden right slot doesn't count).
-  const visibleSlotOf = (id: CardId): Slot | undefined => comp.slots.find((s) => layout[s] === id && onScreen(hosts[s]));
+  const visibleSlotOf = (id: CardId): Slot | undefined => comp.slots.find((s) => layout[s] === id && shown(s));
   onCardRequest((id) => {
     if (comp.anchored.includes(id)) return;
     if (isPlayerView()) void applySurface("mini", "cards");
+    // Under a grown card (CARD-GROW.md §7, fork 5): the grow collapses, and the card is on screen.
+    if (comp.slots.some((s) => layout[s] === id && isCovered(s))) {
+      void collapseGrow("request");
+      return;
+    }
     // Already on screen: leave the layout as it is. It used to exchange the two slots
     // whenever the least-recently-touched slot was the other one (ARTIST-VIEW.md §6).
     if (visibleSlotOf(id)) return;
@@ -326,6 +366,7 @@ export function initLayout(): void {
   onSettingsChange((k) => {
     if (k !== "rewindCard") return;
     flushSwapOut();
+    void collapseGrow("recompose", false);
     if (!setting("rewindCard")) {
       const slot = comp.slots.find((s) => layout[s] === "rewind");
       if (slot) {

@@ -1,6 +1,7 @@
 # DeetsMusic — growing a card
 
-**Designed 2026-09-16. Not built.** The forks and the decisions are §12. Reviewed the same day
+**Designed 2026-09-16. BUILT 2026-09-16 on branch `grower-not-shower`, awaiting the desk test
+(§11).** What the build changed against the design is §13. The forks and the decisions are §12. Reviewed the same day
 for large libraries and discoverability: forks 7–10 added (a header button, the Library MVP
 layouts, no memory, and the resting layout stays almost pixel-identical, §0). The wide-card layouts (§9) are a list the user hand-designs after the MVP.
 
@@ -12,8 +13,11 @@ A content card can take more space for a short time. You click the gap beside th
 card opens over its neighbor, or over all four content cards in Max. The layout with four
 cards does not change. Nothing is saved when the app restarts.
 
-Files (planned): `src/card-grow.ts` (zones, state, motion) · `src/layout.ts` (the covered-card
-rules) · `src/styles.css` §Bento + §Card grow · `src/styles/skin.css` (the `--grow-*` tokens).
+Files: `src/card-grow.ts` (zones, state, motion, the Grow button, the title menu) · `src/layout.ts`
+(the covered-card rules, the pick rule) · `src/collection-card.ts` (the columns, the rail) ·
+`src/library-card.ts` (the song columns and their sorts) · `src/styles.css` §Card grow ·
+`src/styles/skin.css` (the `--grow-*` tokens) · `src/styles/themes.css` (`--grow-zone-bar`,
+`--rail-ink`, `--rail-ink-lit`).
 
 ---
 
@@ -348,3 +352,83 @@ Added after the large-library review, the same day:
 | 8. MVP scope | **2** — §3–§7 plus the Library letter rail and the song-list columns (§9a). Without them a grow of the song list shows the same rows wider. The other cards' wide layouts (§9) are hand-designed by the user after the MVP. |
 | 9. Memory | **1** — temporary, as designed. Pin holds a card for the session. A "Remember pinned card" row is the follow-up if it becomes a daily habit (§8). |
 | 10. The resting layout | **Unchanged, almost pixel-identical** (§0). Every part is absent or out of flow and unpainted at rest. The Grow button is hover-only and out of flow for this reason. Checked by a before/after screenshot diff (desk test step 0). |
+
+## 13. As built (2026-09-16) — where the build differs from the design
+
+- **The columns' data.** `Track` carries no added-at date and the play tallies live in SQLite,
+  so Full is Title · Artist · Album · Length · ♥ · **Genre · Year · Plays**, not "Date Added and
+  Plays". Plays comes from `play_counts` (one local read on Library mount, zero Apple calls);
+  the column shows only where the tallies are known (the Library root). An album's list keeps
+  its track number as the lead cell (`#`, sorts by track order) and drops the Album column.
+- **The Sort popover grew.** Artist, Album, Length and Genre are sort keys of every song list
+  now (they are the column headers), and Plays at the Library root. The popover shows the sort
+  a column header set, as the design asked.
+- **The rail lights the letter on screen.** As the list scrolls, the letter of the first row in
+  view is lit (`is-lit`); empty letters are dimmed and disabled. The rail is rebuilt only when
+  its letters or their first rows change, so a scroll never re-animates it. It shows in every
+  grown state under an A–Z sort, on any card on the engine (Playlists too), never on a mixed
+  list (folders among playlists).
+- **A grown card's zones.** Its remaining inner gap gives Fill (as designed). Its outer zones
+  (the top padding, the stage-side gap) **collapse** it, with a quieter bar (`--subtext`). The
+  other visible cards keep their own Grow zones; a grow there ends the grow on screen first, at
+  once, then opens.
+- **The Grow button's box** is the `.panel__action` box (same size, border and fill) but
+  its own class, absolutely placed at the title's right end, and it takes the `.pop-enter`
+  row motion on arrival. Pin sits to its left while the card is grown and "Collapse on outside
+  click" is on.
+- **Outside click** counts only clicks inside the app body (another card, the stage, a gap).
+  The title bar and the fixed overlays (menus, popovers, toasts) do not collapse a card.
+- **Esc** yields to an open context menu, a Sort/View popover, the slot picker, a title-bar panel
+  or a focused text field, as designed.
+- **`--grow-clip-pad`** is set per skin from the card shadow's reach: Press 6 px (the plate),
+  Ocean 44 px (the lift), Glass 40 px (the halo), the others 0.
+- **Row hints.** The column cells keep the `.lib-row__title` / `.lib-row__artist` classes, so the
+  row hint (ONBOARDING.md §1a) works unchanged; the Grow button, the rail and the column headers
+  carry written hints (the ledger in §1). No new SHAPES row was needed.
+- **Dev handle.** `__grow.grow(slot, dir, cause)` / `__grow.collapse(cause)` / `__grow.state()`
+  / `__grow.zones()` / `__grow.dirs(slot)` in the dev app (`scripts/webview-eval.mjs`).
+- **Log lines.** `grow {slot, dir, mode, cause, covered}`, `grow:collapse {slot, cause, motion}`,
+  `grow:pin` / `grow:unpin {slot}`. Causes: zone · button · menu · esc · outside · request ·
+  pick · surface · setting · recompose · agent · other.
+
+### 13a. The first polish pass (2026-09-16, after the desk test)
+
+- **Every row on screen enters.** The first build entered 14 rows and the rest sat there
+  "already present". Now every row in view enters (`enterAll`), at the grow's own stagger
+  `--grow-rows-stagger` (12 ms; ~30 rows in about half a second), scoped by `is-grow-rows` on the
+  panel, which also fades the rebuilt body in over `--grow-body-fade`.
+- **The opening flash.** The rows are rebuilt at the new size before the clip starts, so a fade
+  OUT of the body showed the new columns inside the old box for a moment. The body now goes
+  at once when the clip starts and fades in when it is open.
+- **Density per size.** A grown card opens with the size's own density the first time: small
+  tiles wide or tall, large tiles when it fills the window (`GROW_DENSITY`). The top-level view
+  prefs (grouping, density, sort) are stored per size, `deets.library.view:wide` /
+  `:tall` / `:full`, beside the resting key, so the size remembers what you set in it.
+- **The bar hugs the card.** Per-skin tokens: `--grow-zone-bar-gap` (off the edge; negative =
+  over it), `--grow-zone-bar-trim` (from each end — the base is the card's corner radius, so the
+  bar runs between the corners), `--grow-zone-bar-radius`, `--grow-zone-bar-glow`. Press: a 4 px
+  square rule. Ocean: 1 px off, a soft glow. Glass: a 2 px lit edge 2 px off the glass with a
+  glow. Retro-Future: the hard rule it had.
+- **Window-edge Fill zones are back**, to explore: the right and bottom padding inside Tauri's
+  5 px resize band (`--grow-zone-resize-inset`), so the zone is the inner 7 px and the resize
+  cursor keeps the outer 5. `right` fills from its right edge, `c` from the bottom, `d` from
+  both. Fork 7's worry stands (a missed resize drag fills a card); the token can go to 12 px to
+  turn them off.
+- **The zones moved onto the cards (2026-09-17).** The first build placed them from on-screen
+  boxes measured at init — during the launch lift, when every panel still carries the skin's
+  `--boot-rise` transform (Ocean: 22 px down). Nothing re-measured after the lift, so the
+  zones sat low and the bars came out the wrong size; Ocean's bottom bars fell off the body.
+  Now each content card's host holds four strips (`makeZones`, made with the Grow button after
+  the card's markup), absolutely placed by CSS from the card's own box: `data-side` says which
+  edge, `data-reach` how far (half the gap toward a neighbor, the full gap toward the stage or
+  the top padding, the padding minus the resize inset on a window edge). Nothing is measured
+  and nothing watches sizes; a transform, a swap, a resize or a grow moves them with the card.
+  `paintZones` decides per strip what it does now and hides idle ones (`beyond()` reads the
+  max map: a card's columns and rows, wider for a grown card). §0 still holds: the strips are
+  out of flow and paint nothing until hovered.
+- **The rows file back in on collapse too**, on the card that shrinks and on the cards that
+  come back from under it (`enterAll` on each uncovered host).
+- **A CLI / bridge route.** `deetsmusic grow Library right|left|up|down|full` (no direction =
+  the header button's next step), `grow collapse`, `grow pin`, `grow unpin`, `grow state`;
+  `GET/POST /grow` on the bridge (AGENT.md §3, `agentGrow` in card-grow.ts). Not an MCP tool.
+  A debug CLI build reads the dev app's token only.

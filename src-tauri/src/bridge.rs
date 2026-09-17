@@ -650,7 +650,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     // extension (an Origin) is a different feature and is never gated by it.
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
-        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs",
+        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -952,6 +952,15 @@ async fn handle(app: AppHandle, mut req: Request) {
                 Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
             };
             agent_json(req, ask(&app, "settings", v).await, origin)
+        }
+        // ── card grow (CARD-GROW.md; card-grow.ts `agentGrow`) — a test handle more than a verb ──
+        (Method::Get, "/grow") => agent_json(req, ask(&app, "grow-get", serde_json::Value::Null).await, origin),
+        (Method::Post, "/grow") => {
+            let v: serde_json::Value = match serde_json::from_str(&body) {
+                Ok(v) => v,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            agent_json(req, ask(&app, "grow", v).await, origin)
         }
         _ => json(req, 404, serde_json::json!({ "error": "no such route" }), origin),
     }

@@ -393,7 +393,7 @@ must also work from the keyboard, with a visible focus ring. Known gaps: **Space
 play / pause** (the shortcut set is Ctrl+K / Q / L / P / , only; media keys work through SMTC)
 — the first key a new user presses, so it leads the pass; search result rows
 are `role="button" tabindex="0"` but Enter/Space do not play them; hover-only controls (the
-Search Add-to-Library square) only show on `:focus-within`. Scope still to design on paper:
+Search Add-to-Library square) only show on `:focus-visible`. Scope still to design on paper:
 a Tab order per card, arrow keys inside lists and grids, Enter/Space/Menu-key on rows, Escape
 to pop a drill pane, focus return after a menu or pane closes, and the fixed shortcut set in
 [NEXT-VERSION.md](NEXT-VERSION.md) (`Ctrl+K` Search and friends).

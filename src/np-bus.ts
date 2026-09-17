@@ -265,7 +265,7 @@ const startsPlayback = (kind: string, payload: any): boolean =>
   (kind === "command" && ["next", "previous", "play", "play-pause"].includes(String(payload?.kind)));
 
 async function runAgentWithNotices(kind: string, payload: any): Promise<unknown> {
-  if (kind === "queue-get" || kind === "history-get" || kind === "update-get" || kind === "settings-get") return runAgent(kind, payload);
+  if (kind === "queue-get" || kind === "history-get" || kind === "update-get" || kind === "settings-get" || kind === "grow-get") return runAgent(kind, payload);
   const notices: { kind: ToastKind; text: string }[] = [];
   const off = onToast((t) => {
     if (NOTICE_KINDS.has(t.kind)) notices.push(t);

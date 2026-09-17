@@ -78,6 +78,7 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `POST /playlist` | `{action, playlist?, id?, index?, to?, value?}` — `show` → `{tracks}`; `create` · `add` · `remove` · `move` · `rename` · `delete` · `cover` · `export` · `new_copy` · `get_songs` · `import` · `folder` → `{ok, message}` / `pending` (§5) |
 | `POST /folder` | `{action: list \| create \| rename \| delete, name, value?}` → `{folders:[{name, playlists}]}` or `{ok, message}` |
 | `GET /update` · `POST /update` | status `{state, current, channel, version, …, mode, skip}` · `{action: check \| install \| rollback \| mode \| skip, value?}` |
+| `GET /grow` · `POST /grow` | `{ok, message, state}` · `{action: grow \| collapse \| pin \| unpin \| state, card?, dir?}` — the card grow ([CARD-GROW.md](CARD-GROW.md)): `card` is a card name (Library) or a slot (left, right, c, d); `dir` is right · left · up · down · full, or absent for the header button's next step. A grow answers after its motion. A test handle more than an agent verb (2026-09-16); not an MCP tool. CLI: `deetsmusic grow Library right` · `grow collapse` · `grow pin` · `grow state` |
 | `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
 | `POST /songs` | `{sort?, order?, limit?, artist?, genre?, shorterThan?, longerThan?}` → `{songs:[{id, title, artist, album, length_s, starts?, finishes?, last_played?, skips?}]}` — the library, sorted and filtered, zero Apple calls ([LOCAL-DATA.md](LOCAL-DATA.md) §6). Token callers only |
@@ -329,6 +330,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - An **open size** takes `W×H` in px (`600x640`, `600 x 640`, `600×640`), at least the view's
   minimum: `sizeMini` / `sizeMidi` / `sizeMax` 340×560, `sizePlayer` 420×460. A set for the view
   on screen resizes the window at once (SETTINGS.md §3, FUTURE-SETTINGS §8a).
+- The **card grow** rows (2026-09-16, CARD-GROW.md §8): `cardGrow` "Grow cards from edges"
+  (on | off), `cardGrowOutside` "Collapse on outside click" (on | off), `cardGrowPick` "Grown
+  card on card pick" (Keep | Collapse). A grow itself has no agent verb: it is a hand gesture
+  and lasts only the session.
 - A bad value → `400` that says what the setting takes.
 
 ### Which settings

@@ -34,7 +34,7 @@ export interface Windower {
   /** New items (a sort, a search, a sync): rebuild the slice; scrollTop is kept (clamped). */
   update(spec: WindowSpec): void;
   /** Make item `index` exist, then scroll it into view. */
-  reveal(index: number, block: "center" | "nearest"): void;
+  reveal(index: number, block: "center" | "nearest" | "start"): void;
   /** Set scrollTop (a saved place) and window around it. */
   scrollTo(top: number): void;
   /** The first visible item's index — the place to keep across a rebuild. */
