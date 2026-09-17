@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic"
-version = "0.7.0"
+version = "0.8.0"
 description = "A lightweight Apple Music player for Windows 11."
 authors = ["Aditya Sundaram"]
 edition = "2021"

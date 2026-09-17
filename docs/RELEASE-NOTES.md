@@ -18,6 +18,68 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.8.0 — 2026-09-16
+
+**Sound: an equalizer and adaptive sound.** Click the three small sliders in the title bar, left
+of the alarm clock. Every effect is **off** until you turn it on. The panel has two tabs.
+**Equalizer** turns ranges of sound up or down: pick a preset (Bass lift, Vocal, Treble lift,
+Late night and more), move the ten sliders, or save your own. Hold **Compare** to hear the music
+without the effects at the same loudness. With **Remember each output** on, your headphones,
+speakers and AirPlay speakers each keep their own preset. **Adaptive** has three parts:
+**Match loudness** plays every song at about the same loudness (it measures a song the first time
+you hear most of it, and an album played in order moves as one); **Fuller at low volume** adds
+bass and a little treble as you turn the volume down, because quiet music sounds thin to the ear;
+**Headphone crossfeed** mixes a little of each side into the other on headphones, as speakers in
+a room do. Open **How … decides** under each tab to see what each part is doing to the song now,
+and why. The effects change only DeetsMusic's sound, not other apps. After 7 days of use the app
+asks once whether to keep them. Details: [the Sound design](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/SOUND.md).
+
+**Last.fm scrobbling.** Open the title menu › **Account** and click the button on the Last.fm
+row, then click **Allow** on the Last.fm page that opens in your browser. A song is sent to your profile when you hear half of it
+or 4 minutes. Your profile also shows what is playing now. Plays wait on your PC while you are
+offline and are sent later. Settings › **Last.fm** pauses either part. Details:
+[Last.fm in DeetsMusic](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/LASTFM.md).
+
+**Playlist web.** Click the new web button in the Playlists card header, between **+** and
+**Sync**. Pick an artist. DeetsMusic makes a playlist from that artist and the artists they make
+songs with. **Reach** (1, 2 or 3 steps out), **Size** (25, 50 or 100 songs), **Prefer** (Familiar,
+Discover or Mix) and genre chips shape it before you click **Make playlist**. Details:
+[the playlist web](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/PLAYLIST-WEB.md).
+
+**Stream quality.** Settings › Playback › **Stream quality**: **Auto** (the default) picks High
+or Low from your connection and follows it while you listen; **High** and **Low** stay put. A
+change applies from the next song. Details:
+[audio quality](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/AUDIO-QUALITY.md).
+
+**Fancy Glass.** In the Glass skin, Settings › Look and feel › **Fancy Glass**
+turns on the live frost and the moving background. It is off by default: on a PC without a
+graphics card it costs most of the frames.
+
+**AI apps can read your library.** An AI app connected to DeetsMusic can list your songs by plays,
+length or date added, and ask read-only questions of your library and play history ("what is my
+shortest song?"). It cannot change anything this way. To keep your play history from AI apps,
+turn off Settings › Connections › **Agents read play history**. Details:
+[local data for agents](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/LOCAL-DATA.md).
+
+**Also:** The AirPlay button is redrawn: a ring the arrow cuts, and the arrow rises when a speaker
+plays. In Rewind, **Make playlist** no longer squeezes the two pickers.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.7.0 — 2026-09-16
 
 **Sleep timer.** Click the alarm clock next to the volume bar. Turn the dial to set the
