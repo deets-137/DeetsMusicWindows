@@ -3,7 +3,7 @@
 // Two events, a funnel: a song *starts* (becomes now-playing) → "partial"; playback
 // crosses the listened-through threshold → "full". Every full is also a partial, so
 // full_count ⊆ partial_count. The counts live in SQLite (Rust `record_play`, keyed by
-// `library_id ?? catalog_id` to join the tracks cache); this module is just the
+// `catalog_id ?? library_id` to join the tracks cache); this module is just the
 // renderer-side trigger + dedup, driven from player.ts.
 //
 // Tracking only for now — no read-out UI. Each record echoes to the `__diag` log

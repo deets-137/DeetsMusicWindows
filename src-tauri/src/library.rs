@@ -686,7 +686,7 @@ pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayCount {
-    /// The play_stats key: `library_id ?? catalog_id` (stats.ts).
+    /// The play_stats key: `catalog_id ?? library_id` (`record_play`).
     pub id: String,
     pub full: i64,
     pub partial: i64,

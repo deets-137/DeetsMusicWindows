@@ -23,7 +23,7 @@ export interface LibraryArtistInfo {
   topSongs?: Track[];
 }
 
-/** One song's play tallies (stats.ts), keyed by `libraryId ?? catalogId`. */
+/** One song's play tallies (stats.ts), keyed by `catalogId ?? libraryId` (record_play's key). */
 export interface PlayCount {
   id: string;
   full: number;

@@ -280,18 +280,21 @@ const songSorts: SortSpec<Track>[] = [
   { key: "time", label: "Length", type: "num", get: (t) => t.durationMs },
   { key: "genre", label: "Genre", type: "str", hidden: true, get: (t) => `${t.genres[0] ?? ""}\u0001${t.artistName}\u0001${inAlbum(t)}` },
 ];
+// The play_stats key is CATALOG-first (`record_play` in library.rs, to match the tracks PK).
+// A library song carries both ids and they differ, so a library-first lookup misses every one.
+const playsKey = (t: Track) => t.catalogId ?? t.libraryId ?? "";
 /** This app's own play tallies (zero Apple calls): most played first under the default ↑. */
 const playsSort = (plays: () => Map<string, PlayCount> | undefined): SortSpec<Track> => ({
   key: "plays",
   label: "Plays",
   type: "num",
   get: (t) => {
-    const c = plays()?.get(t.libraryId ?? t.catalogId ?? "");
+    const c = plays()?.get(playsKey(t));
     return c ? -(c.full * 1e6 + c.partial) : undefined;
   },
 });
 const playsOf = (plays: (() => Map<string, PlayCount> | undefined) | undefined, t: Track): number | undefined => {
-  const c = plays?.()?.get(t.libraryId ?? t.catalogId ?? "");
+  const c = plays?.()?.get(playsKey(t));
   return c ? c.full + c.partial : undefined;
 };
 // An album detail leads with disc/track order; the shared song sorts follow.
@@ -760,7 +763,7 @@ export const libraryCard: CardDef = {
           type: "num",
           // Full listens lead, starts break a tie; a song never played goes last.
           get: (t) => {
-            const c = plays?.get(t.libraryId ?? t.catalogId ?? "");
+            const c = plays?.get(playsKey(t));
             return c ? -(c.full * 1e6 + c.partial) : undefined;
           },
         },
