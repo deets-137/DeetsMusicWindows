@@ -4,6 +4,10 @@ Written 2026-09-16. Not built. The user wants a stable Linux release at some poi
 lists what blocks it, what the research found, and the paths around it. macOS is in §6
 because most of the work is shared.
 
+**§13 (2026-09-17) is the decision: castLabs ECS is the Linux shell, and Linux ships as beta.**
+§2–§12 are the research that led there. Where an earlier section names a different
+favourite, §13.2 says why it lost. Read §13 first.
+
 **Terms (used below):**
 - **Web view:** the browser engine inside the app window. Tauri uses WebView2 (Chromium) on
   Windows, WKWebView (Safari's engine) on macOS and WebKitGTK on Linux.
@@ -132,6 +136,8 @@ but it is unmaintained (pinned to `windows` 0.44). `tauri-plugin-media` is a new
 not evaluated. Our own `smtc.rs` stays on Windows either way.
 
 ## 5. Suggested order (when the Linux work starts)
+
+**Superseded by §13.7.** This order assumed Path A. Kept as the record of the CEF-first plan.
 
 1. **Check the Tauri `feat/cef` state again.** If it is released, try Path A first.
 2. **One-hour test:** a Tauri `feat/cef` build on Linux with standard CEF binaries loads MusicKit
@@ -353,6 +359,8 @@ does not help with the Apple Music catalog.
 ## 11. The lightest setups found, and "use the user's Chrome" (researched 2026-09-16)
 
 ### 11.1 Weight of each setup found
+
+The "Candidate" marks below are from 2026-09-16. §13 chose ECS.
 | Setup | Extra download | Engines in memory | Proven by | Status |
 |---|---|---|---|---|
 | Own Widevine pipeline, no browser (vibez PR #138: ~15 MB RAM, <0.5 s start) | ~0 | 0 | vibez (open PR) | **Rejected** (§8.4, terms) |
@@ -452,7 +460,7 @@ User Token, and play one library song. Pass: a full song plays past 30 s. Then r
 | **Remote for Apple's Android app (Waydroid)** | Waydroid runs Android in a Linux container. Apple's own Android app plays (reports say lossless, output at 48 kHz). DeetsMusic would control it through Android's media session. | Works for users today. Needs Wayland, Waydroid setup and a Widevine add-on script that installs Google binaries (a grey area). DeetsMusic becomes a remote, not the player. Our library, queue, Sound and AirPlay features would not reach the audio. Not a product path. |
 | **Our Windows build under Wine** | WebView2 + Widevine or PlayReady under Wine | See §12.3. WebView2 runs; DRM is unproven. Worth one test. |
 | **A Windows PC as the player, Linux as a remote** | The agent bridge already controls playback over loopback | Not a Linux player. Possible later as a "remote" feature. |
-| **The user's Chrome (§11)** | — | Still the best option found. |
+| **The user's Chrome (§11)** | — | The best option found at the time of writing. Superseded by §13: it keeps the UI on WebKitGTK, which the owner's "1 to 1" rule does not allow. |
 
 ### 12.3 Wine in detail (researched 2026-09-16)
 **Terms:** our unmodified Windows build, WebView2's own Widevine, MusicKit JS rendering. Inside
@@ -554,6 +562,153 @@ host check: unknown, possibly months of Wine C work.
 
 **Result:** PlayReady does not open a Linux path. The options stay: the user's Chrome (§11),
 Tauri + our CEF build (§8), or castLabs ECS (Path B).
+
+## 13. The route we take: ECS on Linux, shipped as beta (owner, 2026-09-17)
+
+Decided in conversation, not built. This section replaces "we have not chosen" in §3 and §11.
+
+### 13.1 The decision
+1. **The Linux shell is castLabs ECS** (Path B, §2.4). Not the user's Chrome (§11.2), not our
+   own CEF build (§8), not Wine (§12.4).
+2. **Linux ships as beta** and says so: in the release notes, on the download page and in the
+   app's About row. Windows stays the supported build.
+3. **macOS is not decided.** §13.6.
+
+### 13.2 Why ECS, against the owner's three constraints
+The constraints given: as lightweight as the Windows app, as robust, and a UI that is 1 to 1.
+
+| Constraint | What it removes |
+|---|---|
+| **UI 1 to 1** | Removes §11.2 (the user's Chrome). That path keeps the UI on WebKitGTK, which paints Glass frost, Ocean sand and grain, the swap and lift motion and the scroll work differently from Chromium. It also needs the `player.ts` split and only works when Chrome, Brave or Vivaldi is installed. |
+| **Lightweight** | Removes Wine (§12.4): 350–500 MB, and Microsoft calls WebView2 on Wine unsupported. |
+| **Robust** | Removes Path C (§3) — two engines, no app does it — and it is the deciding vote against our own CEF build (§8). |
+
+ECS and CEF both give a 1-to-1 UI, because both are Chromium. CEF is about 25 MB smaller and
+keeps one code base. **ECS wins on the standing cost:** Chromium ships security fixes about
+every 4 weeks. On Path A each one is our Chromium rebuild, forever. That is a chore that
+quietly stops happening, and then the Linux app runs an unpatched engine. castLabs builds
+those for us. ECS is also proven for this exact job by Sidra and Cider.
+
+**Accepted with the decision:**
+- The Linux download goes from 7.4 MB to roughly 100 MB. There is no way around that and keep
+  the UI 1 to 1. Runtime memory is about what WebView2 costs today, so the app still feels
+  light while it runs.
+- Two shells can drift. §13.3 is how we stop that.
+
+**When to revisit Path A:** the day `feat/cef` is in a stable Tauri release **and** CEF issue
+#3559 (codec decoding through the OS) closes. Then we stop building Chromium and Path A is
+simply better. Not before.
+
+### 13.3 What the repo looks like
+Measured 2026-09-17. The coupling is smaller than §3 Path B implies on the front end, and
+concentrated in exactly the files Linux rewrites anyway on the Rust side.
+
+**Front end.** 38 of 97 `src/*.ts` files import Tauri, but they use only four surfaces:
+`@tauri-apps/api/core` (`invoke`, 34), `/event` (12), `/window` (5), `/app` (1), plus one
+`plugin-opener`. So the adapter is one small file, not a layer.
+
+```
+src/                 97 .ts files — content unchanged
+src/shell/
+  index.ts           invoke / listen / emit / win / openUrl / deep link  <- the only export
+  tauri.ts           Windows: passes through to @tauri-apps
+  electron.ts        Linux: ipcRenderer
+src-tauri/           unchanged
+electron/            NEW - main.ts, preload.ts, spawns the Rust sidecar
+crates/core/         NEW - the shell-free half of src-tauri/src
+```
+
+The front-end change is 38 mechanical import rewrites, then a lint rule: **no file in `src/`
+outside `src/shell/` may import `@tauri-apps`.** Drift becomes a build error, not a bug report.
+
+**Rust.** 144 `tauri::command` functions across 17 files. `AppHandle` appears 130 times, and
+where it appears is the good news:
+
+| File | `AppHandle` uses | Reading |
+|---|---|---|
+| `tray.rs` 24 · `bridge.rs` 24 · `airplay.rs` 20 | 68 | OS-facing. Rewritten per OS anyway (§4) |
+| `lastfm.rs` 16 · `update.rs` 10 · `report.rs` 10 | 36 | Half shell |
+| `apple.rs` 6 · `settings.rs` 5 · `library.rs` 4 · `playlists.rs` 1 | 16 | **Nearly shell-free** |
+
+`playlists.rs` has 27 commands and one `AppHandle`. `apple.rs` has 25 and six. The data half of
+the back end is already portable. The transport already has a model: 17 `.emit()` calls carry
+every Rust-to-UI push, and `bridge.rs` already serves JSON over loopback with an ask/reply
+pattern for the agent. The ECS shell reuses that shape instead of inventing one.
+
+**Release.** Two pipelines. `npm run release` stays NSIS + Authenticode. A second one does
+AppImage/deb plus castLabs EVS signing (free after sign-up; VMP is enforced on Windows and
+macOS, not Linux, so Linux needs it only if the Mac later runs ECS).
+
+### 13.4 What changes for feature work
+Most work does not change. Both shells are Chromium, so the whole `CLAUDE.md` pre-build
+checklist survives: `pop.ts` motion, tokens, hover hints, toasts, `app-scroll`, `frames.ts`,
+Compass rows, `tsc` + `vite build`. A new card, panel or row renders the same on both.
+
+Three rules are added. They only bite features that cross into Rust or the OS.
+
+- **Rule 0.** No `@tauri-apps` import outside `src/shell/` (a lint rule).
+- **Rule 1.** A new Rust command lands in `crates/core`, not in the shell. A `tauri::command`
+  written only in `src-tauri/src` is a Windows-only feature that nobody notices.
+- **Rule 2.** Any OS-specific primitive needs an answer for both systems, or an explicit
+  "Windows only" line in its own doc.
+
+**The rule of thumb: the fork is always at the edge** — secrets, deep links, tray, media keys,
+autostart, file paths. The middle of a feature never forks.
+
+Two planned features, measured against this:
+
+| Feature | Verdict |
+|---|---|
+| **SECOND-SEARCH.md** | No change. Its §4 work list is five front-end files (`cards.ts`, `layout.ts`, two buses, `card-memory.ts`, `search-card.ts`). No Rust, no OS surface, no new `invoke`. Build it as written. |
+| **ideas/DeetsOTD.md** | Two forks, both at the edge. (a) §8.2 stores the outlet secrets **encrypted with DPAPI**, which is Windows-only — and the repo uses DPAPI nowhere today, so OTD would be the first. Linux's near-match is the Secret Service D-Bus API, a different shape (a daemon that can be locked or absent). Likely answer: the `keyring` crate, one API over DPAPI, Secret Service and the macOS Keychain. Decide it once, there, because every later secret follows it. (b) §8.14's OAuth redirect `deetsmusic://bluesky` reuses "the deep-link path the app already has" — the Tauri deep-link plugin plus a registry scheme. Electron has neither. The deep-link handler moves into `src/shell/` and is written twice; Last.fm and Apple sign-in use it too, so this is worth doing before OTD, not during it. Everything else in OTD (the picks table, the outlet trait, the outbox timer, the Home shelf, the Rewind view, the Settings section) is unchanged. |
+
+### 13.5 Why beta, and what beta means
+Today's verification loop is: Claude builds, the owner runs `npm run tauri dev` on Windows and
+reports (`CLAUDE.md` › How to verify your work). That loop covers the whole product. With a
+Linux shell it covers half. A Linux-only break — the secret store, the OAuth callback, an IPC
+shape the adapter got wrong — would ship, because nothing in the loop looks at Linux.
+
+**Beta is the honest name for that gap**, not a quality claim about the code.
+
+How we work inside it:
+1. **Default: keep Linux features in the middle.** Anything that forks at the edge ships
+   Windows-first, and its Linux half comes in a later pass.
+2. **Before each Linux release: one pass on a Linux VM or spare machine.** Sign in, play a
+   song past 30 s, media keys, tray menu, deep link, update.
+3. Reports from Linux users are expected to find the rest. `report.rs` and the log already
+   carry the OS line (§4: read `/etc/os-release` there).
+
+**Leaving beta** needs: the §13.7 tests passed, one release cycle with no Linux-only break, and
+the §4 table finished including AirPlay capture.
+
+### 13.6 macOS is still open
+ECS does not decide macOS, and does not make it much easier on its own.
+
+- macOS probably does not need ECS: WKWebView has FairPlay, and LitoMusic shipped MusicKit JS
+  in it (§6). If that holds, native Tauri on a Mac is lighter and needs no adapter.
+- What ECS buys is the **failure branch**. If WKWebView will not play, macOS today has no
+  second option. With an ECS shell already built, macOS becomes a packaging job instead of a
+  new port. Note ECS enforces VMP signing on macOS; castLabs EVS signs free after sign-up.
+- The part that really helps macOS is `src/shell/`, not ECS. Once it exists, "which shell runs
+  this UI" is a build flag. That is worth having whichever engine the Mac ends up on.
+- The §6 product question stands: a Mac already has Apple's own client.
+
+### 13.7 Open, before any code
+1. **The UI parity test (do this first).** Run our `src/` front end unchanged in standard
+   Electron on Linux and look at it. No DRM, no adapter, no playback. It answers the owner's
+   first constraint in an afternoon. Check Glass frost, Ocean sand and grain, the lift, the
+   swap, the scroll.
+2. **`navigator.mediaSession`.** `smtc.rs` exists because WebView2 handles media keys but never
+   registers a session with metadata, so the Win11 overlay stayed blank (its own header note,
+   2026-09-10). We call `navigator.mediaSession` nowhere — 0 hits in `src/`. Full Chromium
+   does drive MPRIS on Linux and the macOS now-playing centre from it. **If that holds under
+   ECS, MPRIS and the macOS overlay both collapse** from "port `smtc.rs` twice" to "set
+   metadata in the player page". That is the largest line in the §4 table, on two systems.
+   Not confirmed for ECS. A one-hour test.
+3. Do the Tauri plugins we rely on have Electron answers? single-instance, deep-link, updater,
+   opener. The updater matters most: Tauri's AppImage updater is not available here.
+4. The secret store choice (§13.4), before DeetsOTD starts.
+5. Flatpak later, not at first: AppImage and deb for the beta.
 
 ## Sources
 
