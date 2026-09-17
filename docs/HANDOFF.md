@@ -112,6 +112,14 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-17 — 0.9.0 is live on the `deetsmusic` channel** (published 01:52 PDT; `main` at
+`14111a7`, fast-forwarded from `grower-not-shower`). It ships card grow, song and album playlist
+webs, temporary web playlists, the Add-to-Library + on song rows and the Cyber skin name
+([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.9.0). Installer 7.71 MB (0.8.0: 7.62 MB). Published at the
+user's request without the hand install test of RELEASE.md §0 step 3: the user tests it on the
+live channel. Open for 2026-09-18: the web build's name-search cap (PLAYLIST-WEB.md §5b; read the
+`search N` part of the `web: built` log lines first).
+
 **2026-09-16 — Listening rooms: designed, not built.** Friends join a room with an 8-character
 code (`K7QM-4XHT`) and every app follows one queue and clock; each app plays through its own
 MusicKit. A new Cloudflare worker (working name DeetsRooms) holds the room in a Durable Object;
