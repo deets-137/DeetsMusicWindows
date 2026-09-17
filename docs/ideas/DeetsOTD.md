@@ -897,6 +897,25 @@ post without the user.
   is pending in this process (the Apple hosted sign-in rule, `apple.rs`). A link from any web
   page without a pending sign-in is ignored and logged once.
 
+**The repo is public (checked 2026-09-17: `deets-137/DeetsMusicWindows`, PUBLIC)**
+The design assumes an attacker reads every line of source. Nothing in it depends on hidden code:
+- No secret is in the source. Bluesky and Mastodon are public clients (no client secret), and
+  each install makes its own DPoP key and its own Mastodon app registration per server. No
+  shared Mastodon client secret ships.
+- Our Bluesky `client_id` is public by design. Someone who starts a sign-in with it cannot get
+  the code: Bluesky sends it only to our redirect page, which hands it to the app on the
+  signing-in user's own PC, and that app ignores a code with no pending `state`.
+- **Tests and docs use fake values only** (`example.com`, `webhooks/1/x`, dummy tokens). A real
+  webhook URL or token in a commit is a leak the moment it is pushed; GitHub's secret scanning
+  would also flag it.
+- The import script holds no ids: it reads the public `songs.json` and filters by display
+  name. Its default path points at the sibling repo, not at personal data.
+- Threads (parked) is the case where public source matters most: its Meta app secret could
+  never be in the app, so it would need a server.
+- Already true before this feature, not changed here: the Last.fm API secret is built into the
+  exe from the environment (LASTFM.md §2). It is not in the source, but anyone with the exe
+  can pull it out; Last.fm expects that of desktop apps.
+
 **Desk-test additions**
 - Open `sotd-outlets.json` in a text editor: no readable URL or token.
 - Paste `https://example.com/api/webhooks/1/x`: refused with no request (check the log).
