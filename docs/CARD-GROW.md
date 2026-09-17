@@ -1,7 +1,12 @@
 # DeetsMusic — growing a card
 
-**Designed 2026-09-16. Not built.** The forks and the decisions are §12. The wide-card layouts
-(§9) are ideas to discuss when we build them.
+**Designed 2026-09-16. Not built.** The forks and the decisions are §12. Reviewed the same day
+for large libraries and discoverability: forks 7–10 added (a header button, the Library MVP
+layouts, no memory, and the resting layout stays almost pixel-identical, §0). The wide-card layouts (§9) are a list the user hand-designs after the MVP.
+
+**MVP = §3–§7 + §9a.** The MVP is judged on the Library card: a Fill of the tile view shows about
+four times the tiles; the song list gets columns and a letter rail, or a grow shows the same rows
+wider. The other cards grow with no new layout in the MVP.
 
 A content card can take more space for a short time. You click the gap beside the card. The
 card opens over its neighbor, or over all four content cards in Max. The layout with four
@@ -11,6 +16,26 @@ Files (planned): `src/card-grow.ts` (zones, state, motion) · `src/layout.ts` (t
 rules) · `src/styles.css` §Bento + §Card grow · `src/styles/skin.css` (the `--grow-*` tokens).
 
 ---
+
+## 0. The constraint: the resting layout does not change
+
+**The classic four-card Max layout, and Midi, must stay almost pixel-identical when no card is
+grown.** This is a hard rule for the build (2026-09-16). Every part of the feature is either
+absent at rest, or out of flow and unpainted at rest:
+
+| Part | At rest |
+|---|---|
+| The bento grid, `.panel`, `.panel__head`, the gaps and the padding | Untouched. No new CSS on them. |
+| `data-grow` | Absent. Every new selector is scoped under `[data-grow]`, `.is-grown` or `.is-covered`, so no rule applies at rest. |
+| The edge-zone overlay | One absolutely positioned layer in `.app-body`. It has no background and no border. It paints nothing until a zone is hovered, and then only the accent bar inside the gap, never over a card. Pointer events on the zones only, so clicks elsewhere pass through as today. |
+| The Grow button | **Not in the DOM at rest.** It enters on header hover (pointer inside `.panel__head`), absolutely positioned at the right end of the title's box, before the first action square. It takes no flow space, so the title and the squares do not move. It leaves when the pointer leaves the header. While the card is grown it stays, in flow if that is simpler, because a grown card is not the resting layout. |
+| The letter rail and the song columns | Only under `[data-grow]`. The plain row and the scroller are untouched. |
+| `inert` / `visibility: hidden` on covered cards | Only during a grow. Collapse removes both. |
+| Settings › Window | Three new rows. A settings row is not the resting layout. |
+
+The check is a screenshot of each surface and skin at rest before and after the build, compared
+by eye and by a pixel diff (`scripts/webview-eval.mjs` can take the screenshot). A diff at rest
+is a bug in the build, not a design change.
 
 ## 1. Terms
 
@@ -24,12 +49,16 @@ rules) · `src/styles.css` §Bento + §Card grow · `src/styles/skin.css` (the `
 - **Covered card:** a card under a grown card.
 - **Pin:** a button in the grown card's header. A pinned card does not collapse when you
   click outside it.
+- **Grow button:** a glyph in every content card's header actions (fork 7). It is the visible
+  path to Grow, Fill and Collapse. The edge zones are the fast path.
+- **Letter rail:** a column of letters A–Z down the right side of the Library song list in a
+  grown card (fork 8). A click on a letter jumps the list to that letter.
 
 ## 2. The surfaces
 
 | Surface | Grow zones | Fill zones | Results |
 |---|---|---|---|
-| Max | the gaps inside the 2×2 block | the outer edges of the 2×2 block | Grow right / left / up / down, Fill |
+| Max | the gaps inside the 2×2 block | the top edge and the stage-side edge of the 2×2 block (not the window edges, fork 7) | Grow right / left / up / down, Fill |
 | Midi | the gap between `left` and `right` | none | Grow left / right (the card covers the full content row) |
 | Mini | none | none | — |
 
@@ -47,22 +76,36 @@ The grid gap is `--panel-gap` (12 px). The two cards on its sides share it.
   - The top Fill zone is the padding between the title bar and the cards. It is the full 12 px.
   - The Fill zone on the stage side is the gap between the stage column and the card. The
     stage never grows, so the full 12 px belongs to the card.
-  - The right and bottom Fill zones are on window edges. The window has no OS frame
+  - **There are no Fill zones on the window edges (fork 7).** The window has no OS frame
     (`decorations: false`), and Tauri takes the outer **5 px** (`BORDERLESS_RESIZE_INSET` in
-    `tauri-runtime-wry/src/undecorated_resizing.rs`) as the resize band. So these zones are
-    the inner **7 px** of the 12 px padding. The zone must start inside the band, and the
-    zone's own cursor must not cover the resize cursor.
+    `tauri-runtime-wry/src/undecorated_resizing.rs`) as the resize band. A 7 px zone beside
+    that band turns a missed resize drag into a Fill. So `right` fills from its top edge,
+    and `d` fills from the Grow button (below) or from a grown state (a Grow zone on a grown
+    card gives Fill).
 - **The zones are part of the bento, not the cards.** One overlay layer in `.app-body` places
   them from the grid's measured rects. A card's own inner edge is ruled out as a zone: the
   scrollbar sits there.
 - **A grown card has its own zones.** A Grow zone on its remaining inner edge gives Fill.
   A Fill zone on a filled card does nothing (fork 4C: see §5 for Collapse).
+- **The Grow button (fork 7, kept out of the resting layout by §0).** One glyph per content
+  card. It is not in the DOM at rest. It enters on header hover, absolutely positioned at the
+  right end of the title's box, so nothing in the header moves. It is the visible path once the
+  pointer is in the header, which is where every card interaction starts. Its action depends on
+  the state:
+  - At rest: **Grow** toward the neighbor with the most room (Max: the other card in the same
+    row; Midi: the other card). Its hover hint names the direction ("Widen over Search").
+  - Grown (wide or tall): **Fill** (Max only; in Midi the second click collapses).
+  - Filled: **Collapse**. So in Max, three clicks go around: rest → wide → full → rest.
+  - The glyph changes with the state (an outward arrow at rest and wide, an inward arrow when
+    filled). The hint changes with it.
+  - Right-click on the button opens the same **Grow ▸** / **Fill** menu as the title menu, for a
+    direction the button does not pick.
 - **Keyboard and right-click:** the card title's right-click menu gets **Grow ▸** (the
   directions that exist in this slot) and **Fill**. This is the path without a pointer, and a
   row in the ONBOARDING.md right-click table.
 
-Tokens: `--grow-zone-bar-w`, `--grow-zone-bar-color` (theme role), `--grow-zone-resize-inset`
-(5 px, commented with its source in tauri-runtime-wry).
+Tokens: `--grow-zone-bar-w`, `--grow-zone-bar-color` (theme role). The Grow button uses the
+header action tokens that exist.
 
 ## 4. The grow (layout)
 
@@ -81,7 +124,10 @@ Tokens: `--grow-zone-bar-w`, `--grow-zone-bar-color` (theme role), `--grow-zone-
 
 ## 5. How it ends (fork 4C)
 
-- **The Collapse button.** It shows in the grown card's header actions while the card is grown.
+- **The Grow button** (§3). In the filled state it is the Collapse button. In a wide or tall
+  state it gives Fill in Max; in Midi it collapses. The title menu always has **Collapse**
+  while the card is grown, so a wide card in Max has a one-click collapse without a pointer
+  in a zone.
 - **An edge zone of the grown card.** A click on any of its zones collapses it.
 - **Esc** collapses it, unless a menu, a dropdown or a text field has focus (that Esc closes
   the menu first, as today).
@@ -153,11 +199,49 @@ builds again at that size.
 Each key gets a spec in `agent-settings.ts` and a line in AGENT.md. Each row gets a hint in
 the ONBOARDING.md ledger.
 
-## 9. Wide cards (theory, to discuss at build time)
+**No memory (fork 9, C1).** A grow ends with the app. Pin holds a card for the session only.
+A user who wants Library big at every launch uses Max and grows it. If that turns out to be a
+daily habit, the follow-up is one row here, **Remember pinned card** On / Off (default Off),
+that stores `{surface, slot, mode}` when a pinned card is grown and restores it at launch.
+Not in the MVP.
+
+## 9a. The MVP layouts — Library (fork 8, B2)
+
+Why these two, and why in the MVP: at the default Max size (1100 × 820) a content card is about
+356 × 372 px. Fill gives about 712 × 756 px. Rough counts for the Library card:
+
+| View | At rest | Fill |
+|---|---|---|
+| Song rows visible | ~6 | ~14 |
+| Small tiles visible | ~12 | ~48 |
+
+The tile views get a real overview with no new code (`auto-fill`). The song list does not: a
+wider row shows the same title and badge with more space between them, and fourteen of 3,895
+rows is not a big picture. A large library is crossed by a jump, not by more rows. So the MVP
+adds two things to the Library song list, both keyed off `data-grow`:
+
+1. **The letter rail.** A column of letters down the right side of the list, in a grown card
+   (wide, tall or full). A click on a letter calls `reveal(index)` on the windower with the
+   first row whose sort key starts with that letter. Letters with no rows are dimmed. The
+   rail shows only while the sort is A–Z (title, or artist / album in those groupings);
+   under another sort it hides. It sits outside the scroller so the scrollbar stays where it
+   is (checklist 6a). Hover hint: "Jump to this letter". Tokens: `--grow-rail-w`,
+   `--grow-rail-fs`, the letter color is a theme role.
+2. **Song columns.** In a wide or full card the song row becomes Title · Artist · Album · Time
+   · ♥. Full adds Date Added and Plays. A click on a column header sorts by that column
+   (the Sort dropdown stays and shows the same choice). The tall state keeps the plain row.
+   Column widths are tokens (`--grow-col-*`). The windower renders the same rows; only the
+   row's CSS changes, so the list pass costs the same.
+
+Both are Library-only in the MVP. The Playlist drill and the History card use the same row
+shape and can take the columns later with a selector change.
+
+## 9. Wide cards (hand-designed after the MVP)
 
 A grown card can be very wide (Fill on a large Max window is more than 1,000 px). A list row made
 for 300 px looks empty at that width: the title sits far left and the badge far right. These
-are ideas for each card. Each one is a separate step after the first slice.
+are ideas for each card. **The user hand-designs the big panels after the MVP ships**; this table
+is the starting list, not a plan. Each one is a separate step.
 
 **How to switch the layout.** Two ways, to decide at build time:
 - **`data-grow` selectors.** Simple. They cover a grown card only.
@@ -189,12 +273,17 @@ Rewind winner can stay as they are.
 
 ## 10. Build checklist (CLAUDE.md › Working style)
 
-1. **Motion:** the clip opening (§6), `enterRows` for the rows, the Collapse and Pin buttons
-   come in through `enterRows`, and a `prefers-reduced-motion` rule for the clip.
-2. **Tokens:** `--grow-*` in skin.css base; the zone bar color is a theme role in themes.css;
-   regenerate TOKENS.md in the same commit.
-3. **Hints:** Collapse, Pin, and the edge zones ("Widen this card", "Fill the window with this
-   card") go in the ONBOARDING.md ledger.
+1. **Motion:** the clip opening (§6), `enterRows` for the rows, the Pin button and the letter
+   rail come in through `enterRows`, and a `prefers-reduced-motion` rule for the clip. Read
+   pop.ts first: a Fill of the tile view enters ~48 tiles plus the buffer, so check that
+   `enterRows` caps its stagger, or cap it here.
+2. **Tokens:** `--grow-*`, `--grow-rail-*`, `--grow-col-*` in skin.css base; the zone bar color
+   and the rail letter color are theme roles in themes.css; regenerate TOKENS.md in the same
+   commit.
+3. **Hints:** the Grow button (one hint per state: "Widen over Search", "Fill the window with
+   this card", "Collapse this card"), Pin, the edge zones, the letter rail and the column
+   headers go in the ONBOARDING.md ledger. The Grow button and the rail are new row shapes
+   for its SHAPES table.
 4. **Toasts:** none planned.
 5. **Settings keys:** the three rows in §8.
 6. **Log lines:** `diag.log` for grow (slot, direction), collapse (the cause: button, zone, Esc,
@@ -203,19 +292,33 @@ Rewind winner can stay as they are.
 7. **Telemetry:** `dataset.frames = "grow"`.
 8. **Check:** `npx tsc --noEmit` and `npx vite build`, then the desk test (§11).
 
-## 11. Desk test (first slice, §3–§7)
+## 11. Desk test (first slice, §3–§7 + §9a)
 
+0. **Rest check (§0).** Before the build: a screenshot of Max and Midi at rest, each skin. After
+   the build, the same screenshots. Compare by eye and by pixel diff. Hover a card header: the
+   Grow button appears and nothing else moves. Leave the header: it goes.
 1. Max, each skin. Hover each Grow zone. The bar shows on the card that will grow.
 2. Click the gap half beside `left` toward `right`. `left` opens over `right`. Its rows come in
    at the new width. `right` is hidden and takes no clicks.
 3. Scroll `right` and open a drill before step 2. After Collapse, the scroll and the drill are
    still there.
-4. Click the top Fill zone of `d`. `d` fills the four content cards in one click. The stage and
-   the Queue do not move.
-5. Move the pointer to the window's right edge. The resize cursor shows in the outer 5 px; the
-   Fill zone shows inside it. Resize the window while a card is filled.
-6. Collapse by each path: the button, an edge zone, Esc, an outside click. Pin, then click
-   outside: the card stays. Esc still collapses it.
+4. Click the top Fill zone of `right`. `right` fills the four content cards in one click. The
+   stage and the Queue do not move. `d` has no top or stage-side zone: its Grow button is the
+   path (step 5).
+5. The Grow button on `d`, three clicks: rest → wide (over `c`) → full → rest. The glyph and
+   the hint change with each state. Right-click the button: the Grow ▸ / Fill menu opens.
+   Move the pointer to the window's right edge: only the resize cursor shows, no zone bar.
+   Resize the window while a card is filled.
+6. Collapse by each path: the Grow button, the title menu, an edge zone, Esc, an outside
+   click. Pin, then click outside: the card stays. Esc still collapses it.
+6a. Library song list, A–Z sort, grown wide: the letter rail shows. Click "M": the list jumps
+   to the first M title. Click a dimmed letter: nothing. Switch the sort to Date Added: the rail
+   hides. Grow tall: the rail shows, the row stays plain.
+6b. Library song list grown wide: the row shows Title · Artist · Album · Time · ♥. Click the
+   Album header: the list sorts by album and the Sort dropdown shows Album. Fill: Date Added
+   and Plays columns appear. Collapse: the plain row returns and the scroll place is kept.
+6c. Library small tiles, Fill: about four times the tiles. Scroll to the end: no stagger
+   backlog, no blank rows.
 7. With `library` grown over `search`, press the Now Playing queue button (Midi) or use "Go to"
    for Search. The grow collapses, then the request runs.
 8. Drag a row while a card is grown. A covered card never highlights as a drop target.
@@ -236,3 +339,12 @@ Rewind winner can stay as they are.
 | 4. End | **C** — the Collapse button and a click on an edge zone, plus Esc. Also a setting row for outside click, and a Pin that holds the card against it. |
 | 5. Request for a covered card | **A** — collapse first, then the request runs. Covered cards are not drop targets. |
 | 6. Pick in a grown card | **A** — keep the grow, with a setting row to collapse instead. |
+
+Added after the large-library review, the same day:
+
+| Fork | Choice |
+|---|---|
+| 7. A visible control | **2** — a Grow button in every content card's header (rest → wide → full → rest). The gap zones stay as the fast path. The window-edge Fill zones are dropped: a 7 px zone beside the 5 px resize band turns a missed resize into a Fill. |
+| 8. MVP scope | **2** — §3–§7 plus the Library letter rail and the song-list columns (§9a). Without them a grow of the song list shows the same rows wider. The other cards' wide layouts (§9) are hand-designed by the user after the MVP. |
+| 9. Memory | **1** — temporary, as designed. Pin holds a card for the session. A "Remember pinned card" row is the follow-up if it becomes a daily habit (§8). |
+| 10. The resting layout | **Unchanged, almost pixel-identical** (§0). Every part is absent or out of flow and unpainted at rest. The Grow button is hover-only and out of flow for this reason. Checked by a before/after screenshot diff (desk test step 0). |

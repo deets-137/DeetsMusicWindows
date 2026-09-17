@@ -52,7 +52,7 @@ front-end, Rust back-end).
   (designed 2026-09-16, forks open, not built).
 - `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
   the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules, and wide-card
-  layout ideas per card (designed 2026-09-16, forks decided, not built).
+  layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–9 decided, not built).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
