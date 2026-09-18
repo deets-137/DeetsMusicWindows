@@ -46,6 +46,7 @@ nothing about authoring changed when the box did.
 | Room panel | the code | The code a friend types to join this room | room-panel.ts |
 | Room panel | Copy code · Copy invite link | Copies the room code / Copies a link that opens DeetsMusic and joins this room | room-panel.ts |
 | Room panel | Remove (per guest) | Removes {name} from the room | room-panel.ts |
+| Room panel | Permissions (the fold) | Shows what a guest may do: play, skip, seek, add songs and reorder Up Next | room-panel.ts |
 | Room panel | each guest-control pill | what the control hands over ("Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app") | room-panel.ts |
 | Room panel | Leave room · End room | Leaves the room / Ends the room for everyone. Your own queue comes back | room-panel.ts |
 | Compass bar | a Settings row | the row's own hint (settings-card.ts, through `settingsRows()`) | compass.ts |

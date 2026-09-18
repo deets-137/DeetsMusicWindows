@@ -618,6 +618,45 @@ which keeps it compositor work.
 on a real card (`dataset.frames = "room-stage"` is set), and the honest measurement is
 `npm run dev:built`, not the dev server (CLAUDE.md, graphics rules).
 
+### 16.7 Permissions, one fold (2026-09-17)
+
+His report from the live panel: the guest-control pills did not line up, and the last one,
+"Change Up Next", hung past the panel's right edge. The cause was the row itself — a flex
+line with `justify-content: space-between` and a label that never wraps, so each pill
+started where its own label ended and the longest label pushed its pill out of the panel.
+
+| Fork | His call |
+|---|---|
+| **Where the rows live.** | Behind a **Permissions** fold, the Sound panel's primitive (`.sound__fold-btn` + `.sound__fold`): a row with a turning caret, the rows in a tinted box under it. The flat "Guests may" header is gone from the panel body; the same words are the first line INSIDE the box, so the sentence still reads "Guests may · Play · Skip". |
+| **Shut or open.** | **Shut**, like every Sound fold. In a room the panel reads: the code, the two copies, who is listening, one Permissions row. |
+| **Who gives way, the label or the pill.** | **The labels.** The panel keeps its 248 px (§16.6). "Start and stop" → **Play**, "Change Up Next" → **Reorder**. The hover hint still carries the full meaning, unchanged. |
+
+**What makes them line up.** Two rules, no magic numbers:
+
+- `.room__row--control` is a **grid**, `minmax(0, 1fr) auto`. The pill column is its own
+  width in every row, so the pills stand in one column and a long label can no longer move
+  one. The label takes what is left and ellipses if a skin's type is wide.
+- `.room__pill` is a **grid of two equal columns**. "Everyone" and "Host only" are one
+  width, so the pill is the same size in every skin's type scale — `--fs-subtext` is 11 px,
+  12 px or 13 px depending on the skin, so a fixed pixel width would have clipped.
+
+**The panel no longer shuts when the room starts.** His report the same day: after Start a
+room the panel closed, so the code and the two copies took a second click to reach. The cause
+was not in the room code. `startRoom()` emits `phase: "starting"` while the click is still
+running, `render()` calls `panel.replaceChildren()`, and the chip you pressed leaves the
+document. The click then reaches `document`, where `dropdown.ts` asks `panel.contains(target)`
+— false, because the target is detached — and reads your own press as a click away. The fix is
+in the primitive: **a target the page no longer holds is not a click away**
+(`if (!t.isConnected) return`, `src/dropdown.ts`). Every panel that redraws itself on a press
+is covered, and no panel loses a close it asked for — the ones that close on a pick (Compass,
+the slot picker, the Settings menus, the web panel) all call `close()` themselves.
+
+**The fold's state is a module variable** (`permsOpen`), not the DOM. `render()` rebuilds the
+whole panel on every room change — a member joins, the host reconnects — so a fold that kept
+its state in `hidden` would shut under the host's hand while they were using it. It goes back
+to shut when the phase returns to `off`, so a new room starts tidy. Opening it runs
+`enterRows` over the box, the checklist's motion rule.
+
 ### 16.3 Before a room works between two PCs
 
 1. ~~Deploy the worker.~~ **DONE 2026-09-17**, at the owner's word: `deetsmusic-rooms` is live on

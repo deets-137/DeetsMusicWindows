@@ -70,12 +70,20 @@ let idleTimer: number | undefined;
 
 /** The control rows the host can hand out (§8). Pause is not here: it never greys out. */
 const CONTROL_ROWS: { key: keyof GuestControls; label: string; hint: string }[] = [
-  { key: "playPause", label: "Start and stop", hint: "Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app" },
+  { key: "playPause", label: "Play", hint: "Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app" },
   { key: "skip", label: "Skip", hint: "Guests may play the next or the previous song for everyone" },
   { key: "seek", label: "Seek", hint: "Guests may move the play position for everyone" },
   { key: "add", label: "Add songs", hint: "Guests may add songs to the room's Up Next" },
-  { key: "changeQueue", label: "Change Up Next", hint: "Guests may remove songs from Up Next and put them in another order" },
+  { key: "changeQueue", label: "Reorder", hint: "Guests may remove songs from Up Next and put them in another order" },
 ];
+
+/**
+ * Is the Permissions fold open (§16.7)? The panel is rebuilt on every room change — a
+ * member joins, the host reconnects — so the state cannot live in the DOM, or the fold
+ * would shut under the host's hand. It starts shut, the Sound panel's rule for a fold,
+ * and it forgets when you leave the room.
+ */
+let permsOpen = false;
 
 export function initRoomPanel(): void {
   const root = $("room");
@@ -93,11 +101,14 @@ export function initRoomPanel(): void {
     onOpen: () => {
       render(roomState());
       keepInWindow(root, panel!); // a narrow window must not push the panel off the edge
-      enterRows(panel!.children);
+      // A shut fold is display:none: it would take the class and never hear the
+      // animation end, then play its arrival late, when you open it.
+      enterRows([...panel!.children].filter((c) => !(c as HTMLElement).hidden));
     },
   });
 
   onRoomChange((state) => {
+    if (state.phase === "off") permsOpen = false; // a new room starts with the fold shut
     paintButton(state);
     if (!panel!.hidden) render(state);
   });
@@ -365,12 +376,31 @@ function renderInRoom(state: RoomState): void {
   }
   panel!.append(list);
 
-  // The host's controls (§8).
+  // The host's controls, in one fold (§8, §16.7). The Sound panel's fold: a row with a
+  // turning caret, and the rows in a tinted box under it.
   if (!state.isHost) return;
-  panel!.append(el("div", "room__section", "Guests may"));
+  const body = el("div", "room__fold");
+  body.hidden = !permsOpen;
+  body.append(el("div", "room__section room__section--first", "Guests may"));
   for (const control of CONTROL_ROWS) {
-    panel!.append(controlRow(control, state.guestControls[control.key] ?? DEFAULT_CONTROLS[control.key]));
+    body.append(controlRow(control, state.guestControls[control.key] ?? DEFAULT_CONTROLS[control.key]));
   }
+  panel!.append(foldButton("Permissions", "Shows what a guest may do: play, skip, seek, add songs and reorder Up Next", body), body);
+}
+
+/** A fold: the button and the box it opens (`.sound__fold-btn`, sound-panel.ts). */
+function foldButton(label: string, hint: string, body: HTMLElement): HTMLButtonElement {
+  const b = el("button", "room__fold-btn", label);
+  b.type = "button";
+  b.title = hint;
+  b.setAttribute("aria-expanded", String(permsOpen));
+  b.addEventListener("click", () => {
+    permsOpen = body.hidden;
+    body.hidden = !permsOpen;
+    b.setAttribute("aria-expanded", String(permsOpen));
+    if (permsOpen && !reduced()) enterRows(Array.from(body.children));
+  });
+  return b;
 }
 
 function controlRow(

@@ -126,6 +126,12 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   };
   const onDocClick = (e: MouseEvent) => {
     const t = e.target as Node;
+    // A target the page no longer holds is NOT a click away. A panel that redraws itself
+    // in its own click handler (the Rooms panel on Start a room, 2026-09-17) detaches the
+    // button you pressed before the click reaches the document, and `contains` then says
+    // "outside" about a press that was inside. A panel that WANTS to close on a press
+    // calls close() itself, so nothing loses a close it asked for.
+    if (!t.isConnected) return;
     const inside = root.contains(t) || panel.contains(t) || !!alsoInside?.().some((el) => el?.contains(t));
     if (isOpen() && !inside) close("away");
   };

@@ -248,6 +248,17 @@ of it is automatic; the rest is one row in `src/compass.ts`.
 | You add | What the bar needs | Where |
 |---|---|---|
 | **A card** | Nothing. The Places group reads the card registry (`cards.ts`); a gate like Rewind's is a `continue` in `places()`. | automatic |
+> **A row that stays, stays — fixed 2026-09-17.** `stays: true` (a Settings row, "Look for
+> speakers again", "Web from …", a genre's stations) and a `run()` that returns `false` both
+> keep the bar open, and `runRow` redraws the list instead of closing. Under the mouse that
+> did not hold: `render()` rewrites `list.innerHTML`, so the row you pressed left the document
+> before the click reached `dropdown.ts`, which read your own press as a click away and closed
+> the bar. From the keyboard it always worked, because Enter fires no document click — which
+> is how it hid. The fix is in the primitive, one line: a click whose target is no longer in
+> the document is not a click away (`src/dropdown.ts`, ROOMS.md §16.7 has the whole cause).
+> The inline controls in a Settings row (a toggle, a choice, an options cycle) and the group
+> chips were shut by the same thing, and are fixed by the same line.
+
 | **A Settings row** | Nothing for the jump. For an **inline** control the row's truth must be in the store: use `storeToggle(...)` or give a `choice` its `key` (three options or fewer; `menu: true` makes it a jump). A row over Rust or a closure stays a jump; that is right. | settings-card.ts |
 | **A title bar panel** | Export an `open<Name>Panel()` that calls the dropdown handle's `open()` (Sound and Sleep do), and one Places row. | the panel's module; `places()` |
 | **A verb** (transport, sleep, a toggle) | One row in `actions()`: title, an optional second line, `run`. The title follows the state when the verb does (Play / Pause). | `actions()` |

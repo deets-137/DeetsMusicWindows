@@ -527,8 +527,13 @@ body {
 
 .room__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .room__label { color: var(--subtext); white-space: nowrap; }
-.room__row--control .room__label { color: var(--text); }
+/* A permission row is a GRID, not a flex line: the pill column is the same width in every
+   row, so the pills stand in one column and the longest label can no longer push its own
+   pill past the panel edge (his report, 2026-09-17). The label takes what is left. */
+.room__row--control { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.room__row--control .room__label { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 .room__section { color: var(--subtext); margin-top: var(--space-1); }
+.room__section--first { margin-top: 0; }
 .room__note { color: var(--subtext); text-align: center; }
 
 .room__code {
@@ -586,10 +591,33 @@ body {
 .room__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room__tag { color: var(--title); }
 
-/* The guest-control pill: one control cut in two, the surface picker's split idiom. */
+/* The Permissions fold (.sound__fold-btn / .sound__fold, sound-panel.ts): the rows the host
+   rarely changes, behind one row with a turning caret. */
+.room__fold-btn {
+  align-self: flex-start;
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--subtext); background: transparent; border: 1px solid transparent;
+  padding: var(--space-1) 0; margin-top: var(--space-1);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.room__fold-btn:hover { color: var(--text); }
+.room__fold-btn::before { content: "›"; display: inline-block; margin-right: var(--space-1); transition: transform var(--dur-fast) var(--ease-ui); }
+.room__fold-btn[aria-expanded="true"]::before { transform: rotate(90deg); }
+.room__fold-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.room__fold {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--room-radius);
+  background: var(--room-fold-bg);
+}
+
+/* The guest-control pill: one control cut in two, the surface picker's split idiom.
+   Two equal columns, so "Everyone" and "Host only" are one width and every pill in the
+   fold is the same size whatever the skin's type scale. */
 .room__pill {
   box-sizing: border-box; height: var(--icon-lg);
-  display: flex; flex: 0 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; flex: 0 0 auto;
   border: 1px solid var(--panel-border); border-radius: var(--room-radius);
   overflow: hidden;
 }
@@ -597,7 +625,7 @@ body {
   font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
   color: var(--subtext); background: var(--surface);
   border: none; border-radius: 0;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--room-half-pad-x);
   cursor: pointer; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease-ui), color var(--dur-fast) var(--ease-ui);
 }
@@ -611,7 +639,7 @@ body {
   .room__figure-head { transition: none; transform: none; }
   .room__fig-body, .room__fig-head { transition: none; }
   .room__btn[data-away] svg { animation: none; }
-  .room__half { transition: none; }
+  .room__half, .room__fold-btn, .room__fold-btn::before { transition: none; }
 }
 
 /* ── Sound (src/sound-panel.ts, SOUND.md §2.3) ────────────────────────────────
@@ -1191,18 +1219,18 @@ body {
 /* Card swap (src/card-swap.ts; skin.css §card swap). JS sets --swap-dx / --swap-dy, the
    offset from the slot the card left. The travel rides `translate` and the skin's shape
    rides `transform`, so a midpoint shape never splits the travel's ease. A replace rises in. */
-.bento > .panel.swap-in {
+.bento .panel.swap-in {
   animation:
     card-swap-travel var(--swap-dur) var(--swap-ease) calc(var(--swap-i, 0) * var(--swap-stagger)) both,
     card-swap-shape  var(--swap-dur) var(--swap-ease) calc(var(--swap-i, 0) * var(--swap-stagger)) both;
 }
-.bento > .panel.swap-top { z-index: 1; } /* the card the user picked passes over the other */
+.bento .panel.swap-top { z-index: 1; } /* the card the user picked passes over the other */
 /* The out step (a skin with --swap-out-dur > 0): the leaving card plays out, then the remount. */
-.bento > .panel.swap-out { animation: card-swap-out var(--swap-out-dur) var(--swap-ease) both; pointer-events: none; }
+.bento .panel.swap-out { animation: card-swap-out var(--swap-out-dur) var(--swap-ease) both; pointer-events: none; }
 @keyframes card-swap-out {
   to { transform: var(--swap-out-to); opacity: var(--swap-out-fade); }
 }
-.bento > .panel.swap-rise { animation: card-swap-rise var(--swap-dur) var(--pop-ease) both; }
+.bento .panel.swap-rise { animation: card-swap-rise var(--swap-dur) var(--pop-ease) both; }
 @keyframes card-swap-travel {
   from { translate: calc(var(--swap-dx, 0px) * var(--swap-travel)) calc(var(--swap-dy, 0px) * var(--swap-travel)); }
 }
@@ -1215,7 +1243,7 @@ body {
   from { opacity: 0; transform: translateY(var(--pop-shift)) scale(var(--pop-scale)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bento > .panel.swap-out, .bento > .panel.swap-in, .bento > .panel.swap-rise { animation: none; }
+  .bento .panel.swap-out, .bento .panel.swap-in, .bento .panel.swap-rise { animation: none; }
 }
 .ap__head {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
@@ -1521,6 +1549,10 @@ body {
 }
 /* The max-only hosts (anchored queue + slots c/d) don't exist outside max. */
 .panel[data-slot="queue"], .panel[data-slot="c"], .panel[data-slot="d"] { display: none; }
+/* The stage wrapper (docs/STAGE-COLUMN.md §4.1) is NOT a box outside max: its two panels are
+   direct grid items of .bento, in document order — midi, mini and the NP player view lay out
+   exactly as they did before it existed. */
+.stage { display: contents; }
 
 /* max (2026-09-09, option A "stage + bento"): a stage column on the left — Now Playing
    as a tall card over the anchored Queue — and a 2×2 bento of content slots on the
@@ -3330,7 +3362,7 @@ html[data-boot] .boot-cover {
   animation: boot-safety-cover 0s calc(var(--boot-safety) * var(--motion-scale, 1)) forwards;
 }
 html[data-boot="hold"] .boot-cover { pointer-events: auto; }
-html[data-boot] .bento > .panel {
+html[data-boot] .bento .panel {
   opacity: 0;
   transform: var(--boot-rise);
   animation: boot-safety-panel 0s calc(var(--boot-safety) * var(--motion-scale, 1)) forwards;
@@ -3345,7 +3377,7 @@ html[data-boot] .bento > .panel {
 html[data-boot="veil"] .boot-cover {
   transition: opacity calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--cover-in-ease);
 }
-html[data-boot="veil"] .bento > .panel { opacity: 1; transform: none; animation: none; }
+html[data-boot="veil"] .bento .panel { opacity: 1; transform: none; animation: none; }
 /* A look change swaps --canvas under the opaque cover: its color glides, never jumps. */
 html[data-boot="wait"] .boot-cover {
   transition: background-color calc(var(--cover-in-dur) * var(--motion-scale, 1)) var(--boot-ease);
@@ -3360,7 +3392,7 @@ html[data-boot="lift"] .boot-cover {
 /* No safety animation in the lift: the end state here is already the rest state, and any
    animation on a panel keeps its transitions off the compositor (Chromium "incompatible
    animations"), so each frame re-rastered Glass's frost and repainted Ocean's cards. */
-html[data-boot="lift"] .bento > .panel {
+html[data-boot="lift"] .bento .panel {
   opacity: 1;
   transform: none;
   animation: none;
@@ -3368,11 +3400,14 @@ html[data-boot="lift"] .bento > .panel {
     opacity calc(var(--boot-dur) * var(--motion-scale, 1)) var(--boot-ease),
     transform calc(var(--boot-dur) * var(--motion-scale, 1)) var(--boot-ease);
 }
-html[data-boot="lift"] .bento > .panel:nth-child(2) { transition-delay: calc(var(--boot-stagger) * var(--motion-scale, 1)); }
-html[data-boot="lift"] .bento > .panel:nth-child(3) { transition-delay: calc(var(--boot-stagger) * 2 * var(--motion-scale, 1)); }
-html[data-boot="lift"] .bento > .panel:nth-child(4) { transition-delay: calc(var(--boot-stagger) * 3 * var(--motion-scale, 1)); }
-html[data-boot="lift"] .bento > .panel:nth-child(5) { transition-delay: calc(var(--boot-stagger) * 4 * var(--motion-scale, 1)); }
-html[data-boot="lift"] .bento > .panel:nth-child(6) { transition-delay: calc(var(--boot-stagger) * 5 * var(--motion-scale, 1)); }
+/* The stagger is per SLOT, not per nth-child: the stage wrapper (STAGE-COLUMN.md §4.1) means
+   np and queue count inside it, so nth-child would give two panels the same delay. The order
+   is the one the flat markup had — np, left, right, queue, c, d. */
+html[data-boot="lift"] .bento .panel[data-slot="left"]  { transition-delay: calc(var(--boot-stagger) * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento .panel[data-slot="right"] { transition-delay: calc(var(--boot-stagger) * 2 * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento .panel[data-slot="queue"] { transition-delay: calc(var(--boot-stagger) * 3 * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento .panel[data-slot="c"]     { transition-delay: calc(var(--boot-stagger) * 4 * var(--motion-scale, 1)); }
+html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc(var(--boot-stagger) * 5 * var(--motion-scale, 1)); }
 @keyframes boot-safety-cover { to { opacity: 0; visibility: hidden; } } /* hidden takes no clicks; pointer-events can't animate */
 @keyframes boot-safety-panel { to { opacity: 1; transform: none; } }
 
@@ -3397,12 +3432,12 @@ html[data-boot="lift"] .bento > .panel:nth-child(6) { transition-delay: calc(var
 [data-surface="midi"] .panel[data-grow="wide"]             { grid-area: 2 / 1 / 3 / 3; }
 [data-surface="midi"] .panel[data-slot="left"].is-covered  { grid-area: 2 / 1 / 3 / 2; }
 [data-surface="midi"] .panel[data-slot="right"].is-covered { grid-area: 2 / 2 / 3 / 3; }
-.bento > .panel.is-grown { z-index: 2; }                    /* over the covered cards (swap-top is 1) */
+.bento .panel.is-grown { z-index: 2; }                    /* over the covered cards (swap-top is 1) */
 /* Covered cards: they fade under the opening edge, then they are hidden and inert — no
    paint (Ocean sand, Glass frost) and no input. Collapse fades them back as the clip closes. */
-.bento > .panel.is-covering   { opacity: 0; transition: opacity var(--grow-dur) var(--grow-ease); }
-.bento > .panel.is-uncovering { opacity: 1; transition: opacity var(--grow-dur) var(--grow-ease); }
-.bento > .panel.is-covered    { visibility: hidden; }
+.bento .panel.is-covering   { opacity: 0; transition: opacity var(--grow-dur) var(--grow-ease); }
+.bento .panel.is-uncovering { opacity: 1; transition: opacity var(--grow-dur) var(--grow-ease); }
+.bento .panel.is-covered    { visibility: hidden; }
 /* While the clip opens or closes, the body's content is gone AT ONCE (the rows are already
    rebuilt at the new size when the clip starts, so a fade out would show them in the old
    box); the header stays still. When the clip is open the body fades in and every row on
@@ -3581,7 +3616,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .lib-rail__letter.is-lit { color: var(--rail-ink-lit); }
 .lib-rail__letter.is-empty { opacity: 0.35; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
-  .bento > .panel.is-covering, .bento > .panel.is-uncovering { transition: none; }
+  .bento .panel.is-covering, .bento .panel.is-uncovering { transition: none; }
   .panel.is-grow-rows > :not(.panel__head) { animation: none; }
 }
 
