@@ -189,7 +189,7 @@ builds again at that size.
 - **A request for the grown card itself** does nothing new.
 - **During a row drag, covered cards are not drop targets.** `setCardHostLookup` returns
   `null` for a covered slot.
-- **A pick in the grown card's title picker** follows the setting row "Grown card on card pick":
+- **A pick in the grown card's title picker** follows the setting row "Grown card on a new pick":
   **Keep grown** (default) swaps the card and keeps the span; **Collapse** collapses first,
   then swaps. If the picked card is a covered card, the two exchange, and the grow stays on the
   slot you picked in.
@@ -200,7 +200,7 @@ builds again at that size.
 |---|---|---|---|---|
 | `cardGrow` | Grow cards from edges | On / Off | On | The feature is new and must be easy to turn off. |
 | `cardGrowOutside` | Collapse on outside click | On / Off | On | A grow is temporary. Pin covers the case where you want it to stay. |
-| `cardGrowPick` | Grown card on card pick | Keep / Collapse | Keep | Decided 6A. |
+| `cardGrowPick` | Grown card on a new pick | Keeps size / Collapses | Keep | Decided 6A. |
 
 Each key gets a spec in `agent-settings.ts` and a line in AGENT.md. Each row gets a hint in
 the ONBOARDING.md ledger.
@@ -328,7 +328,7 @@ Rewind winner can stay as they are.
 7. With `library` grown over `search`, press the Now Playing queue button (Midi) or use "Go to"
    for Search. The grow collapses, then the request runs.
 8. Drag a row while a card is grown. A covered card never highlights as a drop target.
-9. Pick a card in the grown card's title picker with "Grown card on card pick" = Keep, then =
+9. Pick a card in the grown card's title picker with "Grown card on a new pick" = Keep, then =
    Collapse.
 10. Midi: grow `left` over `right` and back.
 11. Switch Midi ↔ Max while grown. It collapses with no motion.
@@ -555,7 +555,7 @@ Log: `diag.log("grow:drill", { slot, from, to, way: "in" | "back", cause })`.
 |---|---|---|---|---|
 | `cardGrowDrill` | Grown card on drill | Swap / Collapse | Swap | Decided 2026-09-17: a drill keeps the size you chose. Collapse is the §7 behavior. |
 
-Settings › Window, after "Grown card on card pick". Hint: "Opens a drill from a grown card in
+Settings › Window, after "Grown card on a new pick". Hint: "Opens a drill from a grown card in
 its place, or collapses the grow first". Needs the store default, `agent-settings.ts`, AGENT.md,
 SETTINGS.md, the ONBOARDING.md ledger.
 

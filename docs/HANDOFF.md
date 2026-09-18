@@ -139,6 +139,37 @@ the whole story), so the workaround is dead weight and, worse, a pattern somebod
 Remove the `setTimeout` and its comment, call `activate(r)` straight, then press a hit row in
 the Playlists web panel: the panel must stay open and the rows must redraw as before.
 
+**DECIDED, not built — rename NP to Player (owner, 2026-09-18).** The surface that holds Now
+Playing alone is called three things today, and a hover hint papers over the gap instead of
+closing it: the Surface menu says **NP**, the tray row and Keep on top offer **Player**, Settings
+says **Player (NP) opens at** with the hint "called NP in the Surface menu", and the Compass says
+**Player (NP)**. One thing, one name: **Player** everywhere. Found in the 2026-09-18 wording pass
+over [SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md); it is the only naming slip a user can trip
+over.
+
+The Surface menu also changes shape. `Mini | NP` is one flyout item cut in two
+(`.flyout__split`, the search-pin idiom, `index.html` around line 126). The halves are `flex: 3`
+and `flex: 1` today, so Mini takes three quarters and NP one. **The Player half becomes half the
+width of the Mini half** — `flex: 2` / `flex: 1`, Mini two thirds and Player one third. The
+button's width reads as a preview of how much the window holds, the same way the label's font
+size already previews the window's size.
+
+Where the name lives, all user-facing:
+- `index.html` — `data-mini-choice="player"`'s label and its `title`.
+- `src/settings-card.ts` — `sizeRow("sizeplayer", "Player (NP) opens at", …)`: drop the `(NP)`
+  and the "called NP in the Surface menu" clause from its hint. The `trayView` and `alwaysOnTop`
+  options already read **Player**; leave them.
+- `src/compass.ts:318` — the `name === "NP" ? "Player (NP)" : name` special case goes away once
+  the menu itself says Player. Update `SYNONYMS` so **NP** still FINDS it (an old habit must keep
+  working), and add the term to [COMPASS-TERMS.md](COMPASS-TERMS.md).
+- `src/styles.css` — the `.flyout__split` comment says "Mini takes three quarters, NP one";
+  rewrite it with the new ratio and the new name.
+- Store keys stay `sizePlayer` / `player`: they already say Player, and a key rename is a stored
+  shape for no gain.
+
+Check [ONBOARDING.md](ONBOARDING.md)'s hint ledger and [SETTINGS.md](SETTINGS.md) §3 for any
+remaining "NP", and grep the docs — several cite the surface by the old name.
+
 **DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
 from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".
 
@@ -367,7 +398,7 @@ with CN = publisher on all three; `scripts/cred-write.ps1` saves a secret safely
 **2026-09-14 — playlists §10.9, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
 Import to Edit (a mirror row's right-click or its hero cover; your own Apple playlist stays
 linked as one row), Add to Playlist ▸ lists your own Apple playlists with the sigil (the
-first add asks once), and the list splits into Local Playlists / Your Apple Playlists. New
+first add asks once), and the list splits into Made Here / Your Apple Playlists. New
 Rust commands `playlist_import` + `apple_playlist_add`: **restart the dev runner.** Desk
 test: import one of your own playlists (one row, Send New Songs), import an Apple mix
 (unlinked), add a song to a throwaway Apple playlist (a REAL Apple write, the question
@@ -381,7 +412,7 @@ the Replay guard (`role`). **Schema v5; Rust changed: restart the dev runner.** 
 in a short and a >200-song local playlist, drag the queue (it moved to the shared module),
 rename, delete with songs, a Replay's menus, Get New Songs on an exported playlist (a real
 Apple READ). Later: Import to edit, adding straight to Apple playlists (first-add confirm), a
-separate Local Playlists section (§10.9). Idea raised: drag songs from any card into the Queue
+separate Made Here section (§10.9). Idea raised: drag songs from any card into the Queue
 (not designed).
 
 **2026-09-14 — Playlist covers + Export to Apple Music: BUILT, desk-tested, shipped in 0.4.1** (branch
@@ -754,7 +785,7 @@ releases since 0.6.2, in short:
   - **Playlists** ([PLAYLISTS.md](PLAYLISTS.md)) — Apple mirror + local store; overview → detail;
     New Playlist, Add to Playlist ▸ submenu, remove-track, empty-only delete. **Folders**
     (2026-07-03, §3a): manual folders + kind auto-clusters (Your Playlists / Apple Mixes /
-    From Apple Music) as collapsible sections under the Folders sort; Move to Folder ▸ files
+    Saved from Apple Music) as collapsible sections under the Folders sort; Move to Folder ▸ files
     locals AND mirrors (local metadata, zero Apple calls). Rename, drag-reorder,
     delete with songs, mosaic covers and export / import all built 2026-09-14 (PLAYLISTS.md §10).
   - **Queue** (`qcard.ts`) + **History** (`history-card.ts`) — Now Playing + Up Next / session

@@ -1,4 +1,27 @@
-# DeetsMusic — Settings (the hybrid: title menu + Settings card)
+# DeetsMusic — Settings: the machinery
+
+> **Looking for what a setting does?** [SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md) is the
+> user-facing catalogue — every control, where it is, and what each choice means. It is written
+> as a wiki page. **This** doc holds the machinery: the store, the row kinds, the keys and their
+> owners, the read sites, the Reset groups, and how to add a setting.
+>
+> **Wording pass 2026-09-18**: five labels changed. Old → new: *Button is perma-shuffle* →
+> **Shuffle button stays on** · *Show cover* → **Cover while playing** · *Genres for Webbing* →
+> **Web genre chips filter** · *Close on Make* → **Web panel closes** · *Other (Sm)* →
+> **Other (Small)** · *NP opens at* → **Player (NP) opens at**. **A second pass the same day**
+> (ASD-STE100 read of every label): *Web genre chip filters* → **Web genre chips filter** (a
+> four-word noun cluster; the last word is now the verb) · *Grown card on card pick* → **Grown
+> card on a new pick**, pills *Keep* / *Collapse* → **Keeps size** / **Collapses** · *Web prefers*
+> → **Web prefers songs** (a transitive verb needs its object) · *Songs not measured yet* →
+> **Songs not measured get**. Values and store keys unchanged. Still open from that read: **NP /
+> Player / Player (NP)** is one thing under three names (decided — HANDOFF.md "Next up"), and
+> **web** is a coined noun across five Playlists rows that the card never defines.
+> The Playlists rail groups became
+> *Made Here* · Your Apple Playlists · Apple Mixes · **Apple Replays** · **Saved from Apple Music**.
+> The §3 table below is otherwise older than the app: it predates Sound, AirPlay, Rooms, Compass
+> and the card-grow rows, and its open sizes are stale. SETTINGS-INVENTORY.md is current.
+
+## 0. Shape — the hybrid (user's pick)
 
 > Built 2026-09-10 (branch `release-prep`). Code: `src/settings-store.ts` (the store),
 > `src/settings-card.ts` + `src/styles/settings.css` (the card), the `Settings…` row in
@@ -6,7 +29,6 @@
 > ledger these rows came from), [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §4 (the old
 > title-menu toggle pattern, now retired for preferences).
 
-## 1. Shape — the hybrid (user's pick)
 
 - **The title menu keeps the fast switches**: Theme › · Skin › · Surface › · Account ›,
   plus one row, **Settings…**, that summons the Settings card into a content slot
@@ -37,13 +59,13 @@ window's always-on-top and the dropdown mode in `main.ts`, the Rewind gate in
 **Not in the store** (the card talks to the owner directly): **Library Add** — its own
 module (`library-add.ts`, `deets.libraryAdd`, with `onLibraryAddChange`); **Minimize to
 Tray** — Rust `settings.json` (`settings_get` / `settings_set_minimize_to_tray`), because
-the close policy runs before any JS can answer. (v1 has no AirPlay rows; the v2 row is
-Rust-owned too — [AIRPLAY.md](AIRPLAY.md) §7.) A
+the close policy runs before any JS can answer. **AirPlay** — *Send to speaker* is Rust-owned too ([AIRPLAY.md](AIRPLAY.md) §7). A
 `ChoiceRow` with `get`/`set` instead of `key` is how a Rust-owned choice renders.
 
-## 3. The rows (v1 cut)
+## 3. The rows of the Settings card
 
-Labels are one short active statement; a choice row reads as a sentence completed by the
+Every row of the card, with the key behind it. The controls that are settings but live in a
+title-bar panel instead are §3a. Labels are one short active statement; a choice row reads as a sentence completed by the
 chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
 | Section | Row (hint) | Key | Values | Read site |
@@ -53,14 +75,17 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Tray icon opens (A click on the tray icon. Player: Now Playing only) — pills *Mini* / *Player* (2026-09-14) | `trayView` | **cards** / player | `main.ts` `tray-pop` → `applySurface("mini", view)` |
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
-| Window | Mini opens at (The window size for Mini. Set current saves the size it has now or had last) × a `W × H` menu + *Set current* (2026-09-15, §8a) | `sizeMini` | **360x560** | `surface.ts` `openSize` / `applySize` |
-| Window | NP opens at (The window size for NP, the player alone. Set current saves the size it had last) | `sizePlayer` | **520x560** | same |
-| Window | Midi opens at (The window size for Midi. Set current saves the size it has now or had last) | `sizeMidi` | **480x864** | same |
-| Window | Max opens at (The window size for Max. Set current saves the size it has now or had last) | `sizeMax` | **1100x820** | same |
+| Window | Mini opens at (The window size for Mini. Set current saves the size it has now or had last) × a `W × H` menu + *Set current* (2026-09-15, §8a) | `sizeMini` | **385x550** | `surface.ts` `openSize` / `applySize` |
+| Window | Player (NP) opens at (The window size for the player alone, called NP in the Surface menu. Set current saves the size it had last) | `sizePlayer` | **405x675** (404 px wide is where the Press record stopped jittering) | same |
+| Window | Midi opens at (The window size for Midi. Set current saves the size it has now or had last) | `sizeMidi` | **495x670** | same |
+| Window | Max opens at (The window size for Max. Set current saves the size it has now or had last) | `sizeMax` | **1100x950** (2026-09-17: the tallest skin's need for a square cover AND the Queue's 2.5 rows, and it still fits a 1080p work area) | same |
+| Window | Shrink volume bar (On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway) — toggle (NEXT-VERSION §20) | `volumeShrink` | on / **off** | `main.ts` / the title bar volume; the thin-window rule overrides it |
+| Window | Compass closes on outside click (A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it) — toggle (2026-09-17, [COMPASS.md](COMPASS.md) §4) | `compassCloseAway` | **on** / off | `compass.ts` (the document pointerdown listener) |
+| Window | Max window when short (A Max window dragged shorter than the stage column can hold) — pills *Becomes Midi* / *Stops at floor* (2026-09-17, [STAGE-COLUMN.md](STAGE-COLUMN.md) §5) | `maxShortWindow` | **flip** / floor | `surface.ts`; only *flip* needs `surfaceAutoFlip` on |
 | Window | Keep on top (The window stays above other windows. Player: only while it shows the player) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always) | `alwaysOnTop` | **off** / always / player | `main.ts` (subscribes to the setting and to `onSurfaceChange`; `isPlayerView()`) |
 | Window | Grow cards from edges (Click the gap beside a card to open it over its neighbor. Hover a card's title for the button) (2026-09-16, [CARD-GROW.md](CARD-GROW.md) §8) | `cardGrow` | **on** / off | `card-grow.ts` `enabled()`: off = no zones, no button, no menu items; a grow on screen collapses at once |
 | Window | Collapse on outside click (A click outside a grown card collapses it. Pin holds it open) | `cardGrowOutside` | **on** / off | `card-grow.ts` (the document pointerdown listener; the Pin button shows only while this is on) |
-| Window | Grown card on card pick (Pick another card in a grown card's title: it keeps the size, or collapses first) — pills *Keep* / *Collapse* | `cardGrowPick` | **keep** / collapse | `layout.ts` `setSlot` |
+| Window | Grown card on a new pick (Pick another card in a grown card's title: it keeps the size, or collapses first) — pills *Keeps size* / *Collapses* | `cardGrowPick` | **keep** / collapse | `layout.ts` `setSlot` |
 | Window | Keep view when grown (A card that grows keeps the view you are in; the tile size still follows the card's size) — pills *Keep* / *Per size* (2026-09-17, [CARD-GROW.md](CARD-GROW.md) §13a) | `cardGrowView` | **keep** / size | `collection-card.ts` `reload()` on a size change |
 | Window | Card on drill (A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot) — pills *In place* / *Summon* (2026-09-17, [CARD-GROW.md](CARD-GROW.md) §15; replaced `cardGrowDrill`, whose `swap` reads as `inplace`) | `cardDrill` | **inplace** / summon | `layout.ts` `drillSlot` + `drillInPlace` + `returnFrom` |
 | Window | Bring a card already open (A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits) | `cardDrillBring` | on / **off** | `layout.ts` `drillSlot` (`visibleSlotOf`) |
@@ -72,6 +97,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Look and feel | Menu pick lasts — pills *Until next change* / *For good* | `lookHold` | **next** / always | `look-schedule.ts` `noteHandPick` (main.ts Theme/Skin clicks) |
 | Look and feel | Animate look changes (Theme and skin changes play the launch animation. Off: they change at once) — also the launch fade | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`, the launch cover's veil → wait → lift, UX-COVERUPS.md §6a) and `boot-cover.ts`; OS reduced motion still snaps |
 | Look and feel | Animate card swaps (Cards move to their new places in the skin's own motion. Off: they change at once) — default **on** (was off until 2026-09-16) | `cardSwapMotion` | on / off | `card-swap.ts` from `layout.ts` `setSlot` (picker swap, summon, replace); skin tokens `--swap-*`; OS reduced motion still snaps; [CARD-SWAP.md](CARD-SWAP.md) |
+| Look and feel | Fancy scrubber (Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle) — toggle (2026-09-16) | `fancyScrubber` | **on** / off | `data-fancy-scrub` on `<html>`; a performance eval decides whether it stays on by default |
 | Look and feel | Animate backgrounds (The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
 | Look and feel | Draw card edges (Ocean only. Sand: the card edges break into grains, like a dark beach) — pills *Sand* / *Soft*; shows only while Ocean is the skin (2026-09-15; a stored `waves` or `fade` from the dropped versions migrates to soft) | `oceanEdges` | **soft** / sand | `skin-settings.ts` → `data-ocean-edges` on `<html>`; UI-ARCHITECTURE.md §Sand edges |
 | Look and feel | Sand width (Ocean only. How far the sand reaches into each card) — slider 0–100% (2026-09-15); shows only while Ocean is the skin and Draw card edges is Sand | `oceanSand` | **15** / 0–100 | `skin-settings.ts` → `--ocean-sand` on `<html>` → Ocean `--sand-reach` = 4px…40px |
@@ -107,13 +133,13 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Home | Hidden tiles (Puts every hidden tile back on Home. Playing one again also brings it back) — a *Clear* action; the section's status line counts them | `homeHidden` (key → hidden-at ms) | **{}** | `home.ts` `clearHidden` / `hiddenCount` |
 | Playlists | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
 | Playlists | New playlist opens Search (Puts the Search card beside the new playlist. Mini shows one card, so Search would hide it) — pills *Not in mini* / *Always* / *Never* (three-way 2026-09-15; was a toggle, `true` → **notmini**) | `playlistCreateSummon` | **notmini** / always / off | `playlists-card.ts` `createAndEnter`, against `currentSurface()` |
-| Playlists | Show cover (For a song from a playlist, in Now Playing and the tray panel) — *Album* / *Playlist* (2026-09-15) | `nowPlayingCover` | **album** / playlist | `playlist-cover.ts` `playlistCoverFor` → `now-playing-card.ts`, `np-bus.ts` → `tray.ts` — [PLAYLISTS.md §11](PLAYLISTS.md) |
+| Playlists | Cover while playing (For a song played from a playlist: the cover shown in Now Playing, in mini and in the tray panel) — *Album* / *Playlist* (2026-09-15; renamed 2026-09-18) | `nowPlayingCover` | **album** / playlist | `playlist-cover.ts` `playlistCoverFor` → `now-playing-card.ts`, `np-bus.ts` → `tray.ts` — [PLAYLISTS.md §11](PLAYLISTS.md) |
 | Playlists | Web reach (1 reaches the artist's collaborators. Each step reaches one circle further) — *1* / *2* / *3* (2026-09-16) | `webReach` | 1 / **2** / 3 | `web.ts` → `web_build` — [PLAYLIST-WEB.md](PLAYLIST-WEB.md) |
 | Playlists | Web size (Songs in a new web playlist) — *25* / *50* / *100* (2026-09-16) | `webSize` | 25 / **50** / 100 | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §4](PLAYLIST-WEB.md) |
-| Playlists | Close on Make (Pop out closes the web panel at once while the artist flies to the playlist) — *Shrink to chip* / *Pop out* (2026-09-16) | `webMakeMotion` | **shrink** / pop | `web.ts` `shrinkInto` + `handoff.ts` — [PLAYLIST-WEB.md §2b](PLAYLIST-WEB.md) |
+| Playlists | Web panel closes (Pop out closes the web panel at once while the artist flies to the playlist) — *Shrink to chip* / *Pop out* (2026-09-16) | `webMakeMotion` | **shrink** / pop | `web.ts` `shrinkInto` + `handoff.ts` — [PLAYLIST-WEB.md §2b](PLAYLIST-WEB.md) |
 | Playlists | **No Settings row** (user's call 2026-09-17): the web panel's Temp \| N days button remembers the days; every new web starts on Temp | `webTempDays` | 1 / 3 / 5 / **7** / 30 | `web.ts` `renderLife` → `playlist_create(expire_days)`; the check in `playlist-expiry.ts` — [PLAYLIST-WEB.md §10](PLAYLIST-WEB.md) |
-| Playlists | Genres for Webbing (Web only leaves the artist's songs unfiltered. Keep 5 keeps at least five) — *All songs* / *Keep 5* / *Web only* (2026-09-16) | `webSeedFilter` | **all** / floor / off | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §3–4](PLAYLIST-WEB.md) |
-| Playlists | Web prefers (Familiar puts your songs first. Discover puts songs you don't have first) — *Familiar* / *Discover* / *Mix* (2026-09-16) | `webPrefer` | familiar / discover / **mix** | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §4](PLAYLIST-WEB.md) |
+| Playlists | Web genre chips filter (Web only leaves the artist's songs unfiltered. Keep 5 keeps at least five) — *All songs* / *Keep 5* / *Web only* (2026-09-16) | `webSeedFilter` | **all** / floor / off | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §3–4](PLAYLIST-WEB.md) |
+| Playlists | Web prefers songs (Familiar puts your songs first. Discover puts songs you don't have first) — *Familiar* / *Discover* / *Mix* (2026-09-16) | `webPrefer` | familiar / discover / **mix** | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §4](PLAYLIST-WEB.md) |
 | Playlists | New cover (How a new playlist's cover starts. Letters and Note keep the theme you made it in) — *Letters* / *Mosaic* / *Note* (2026-09-15) | `newPlaylistCover` | **letters** / mosaic / note | `playlists.ts` `playlistCreate` → `cover-art.ts` — [PLAYLISTS.md §11](PLAYLISTS.md) |
 | Rewind | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
 | Rewind | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
@@ -128,9 +154,14 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Bugs | App log — Open folder · Copy | — | — | `log_open_folder` (+ `diag.flush()` first; LOGGING.md) / `bridge_log` |
 | About | Apple trademark notice · privacy notice (open by default) | — | — | — |
 
-**Sections regrouped 2026-09-14** (Window / Look and feel / Home / Playback / Apple Music /
-Playlists / Rewind / Connections / Bugs / About; Home joined 2026-09-15). Every section but About starts folded; a fold persists
-by section title (`deets.settings.folds`), so renamed sections start folded once.
+**The fifteen sections, in order** (regrouped 2026-09-14; Home joined 2026-09-15, Tips
+2026-09-15, AirPlay and Last.fm 2026-09-16): Tips · Window · Look and feel · Home · Playback ·
+AirPlay · Apple Music · Last.fm · Playlists · Rewind · Connections · Updates · Reset · Bugs ·
+About. **Tips and About start open**; every other section starts folded, and a fold persists by
+section title (`deets.settings.folds`), so a renamed section starts folded once.
+
+**There is no Sound section** — the Sound panel owns those rows (§3a) — but Settings › Reset
+does carry a *Sound* group. That mismatch is known and open.
 
 A choice row with more than `SPLIT_MAX` (3) options draws as a dropdown instead of pills;
 `menu: true` forces the dropdown at three or fewer, for labels too long to sit side by side
@@ -157,6 +188,80 @@ Add to Library and Export use it through their **[Settings]** button.
 left-click does; "Song only" is the opt-in interjection. (FUTURE-SETTINGS §1 records the
 original split.)
 
+## 3a. Settings the Settings card does not hold
+
+These are real, persisted preferences in the same store, but their controls live in a title-bar
+panel because they are set while you listen, not while you configure. The Settings card has no
+row for any of them.
+
+### Sound — `sound-panel.ts`, applied by `sound.ts` ([SOUND.md](SOUND.md))
+
+Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.D, SOUND.md §0).
+
+| Row | Key | Values | Read site |
+|---|---|---|---|
+| Equalizer | `soundEq` | on / **off** | `sound.ts` graph gate |
+| The preset | `soundEqPreset` | **flat** / a built-in id / `custom` / `u:…` | `sound-presets.ts` |
+| The edited bands, until saved | `soundEqCustom` | — | same |
+| Presets you saved, by id | `soundEqUser` | **{}** | same |
+| The curve editor | `soundEqMode` | **graphic** (sliders) / parametric (dots) | `sound-panel.ts` |
+| Avoid distortion | `soundEqPreamp` | **limiter** / needed / always / manual | `sound-dsp.ts` (SOUND.md §2.1a) |
+| Lower the song by (dB, for *manual*) | `soundEqPreampDb` | **0**, −24…+6 | same |
+| Remember each output | `soundEqPerOutput` | **on** / off | `sound.ts` on output change |
+| Output key → preset id | `soundEqOutputs` | **{}** | same |
+| Output key → its name when last seen | `soundOutputNames` | **{}** | the panel's output list |
+| Adaptive sound (the switch over the three parts) | `soundAdaptive` | on / **off** | `sound.ts` |
+| Part A — Match loudness | `soundLoudness` | on / **off** | `sound-loudness.ts` |
+| Part A — target, in LUFS | `soundLoudTarget` | **−16** (Apple Sound Check) / −14 / −18 | same |
+| Part A — keep an album together | `soundLoudAlbum` | **on** / off | same |
+| Part A — a song never measured | `soundLoudUnmeasured` | **median** / none | same |
+| Part B — Fuller at low volume | `soundLowVol` | off / **gentle** / full | `sound-worklet.ts` |
+| Part B — what it follows | `soundLowVolKey` | **both** (app × Windows) / app | same |
+| Part C — Headphone crossfeed | `soundCrossfeed` | **auto** / always / off | `sound-dsp.ts` |
+| Part C — how much | `soundCrossfeedLevel` | light / **medium** / strong | same |
+| Days before the "keep it?" question | `soundReviewDays` | **7** / 14 / 3 / 0 (never) | `sound-panel.ts` (SOUND.md §7) |
+| When an effect was first turned on (epoch ms) | `soundFirstOn` | **0** | same — internal, no control |
+| The review was answered *Keep* | `soundReviewed` | **false** | same — internal, no control |
+
+Turning `soundAdaptive` on does **not** turn its three parts on: `soundLoudness` defaults off
+inside an off parent, deliberately (songs are still measured while Adaptive sound is on, so
+turning it on later has gains ready).
+
+### Sleep timer — the title-bar panel in `index.html`, driven by `sleep.ts`
+
+| Row | Key | Values | Read site |
+|---|---|---|---|
+| Every day | `sleepSchedule` | **off** / sun (sunset from the time zone) / clock | `sleep.ts` arm-at-boot + the daily tick |
+| The set time, for *clock* | `sleepAt` | **22:00** | same |
+| Wind down (the last minutes fade to nothing) | `sleepWind` | **5**, 0 = a plain pause | `sleep.ts` → `setDuck` gain factor |
+| Play out song | `sleepPlayOut` | on / **off** | `sleep.ts` at the mark |
+
+The dial, *Off*, *End of song* and *End of Up Next* are live actions, not stored settings.
+
+### Listening rooms — `room-panel.ts`, `room.ts` ([ROOMS.md](ROOMS.md))
+
+| Row | Key | Values | Read site |
+|---|---|---|---|
+| Your name | `roomName` | **""** → *Listener*, or *Host* for a room you start | `room.ts` join / create |
+| Guests may (five permissions) | `roomGuestControls` | each **everyone** / host | `room.ts` §8; the host's last choice is the next room's default |
+| The worker address | `roomsUrl` | **""** = `rooms.deets.solutions` | **Dev-only, no control** — set from the DevTools console, read at the next launch (ROOMS.md §16.3) |
+
+Pause is never in `roomGuestControls`: a guest's Pause never greys out (ROOMS.md §12.3). Under
+*Host only* it stops that guest's own app instead.
+
+### Other keys with no control anywhere
+
+| Key | What it is | Who writes it |
+|---|---|---|
+| `shuffleMode` | Shuffle is on right now (only read while `shuffleStays` is on; persisted like Apple's) | The Now Playing and toolbar Shuffle buttons |
+| `repeatMode` | **off** / all / one | The Now Playing repeat button |
+| `webTempDays` | A temporary web playlist's life, in days | The web panel's **Temp \| N days** button (PLAYLIST-WEB.md §10) |
+| `onboardingStep` | The NEXT first-run step to show, 1-based; **0** = the walk is over | `walk.ts`; Settings › Tips writes 1 to offer it again. A settings key, not a localStorage once-key (owner's call 2026-09-18), so it survives a localStorage clear and the agent can read it |
+| `rewindAutoShown` | The 50-play one-shot already fired, so a later "off" sticks | `stats.ts` (§4) |
+| `updateSkip` | The version *Skip this version* set aside | `updater.ts` |
+| `homeHidden` | Hidden Home tiles: item key → hidden-at ms | `home.ts`; *Clear* in Settings › Home |
+| `soundFirstOn`, `soundReviewed` | See the Sound table above | `sound-panel.ts` |
+
 ## 4. The Rewind gate
 
 The Rewind card is **hidden until it has something to show**: `rewindCard` defaults off,
@@ -177,7 +282,9 @@ its composition default) and the slots remount so every picker re-reads the pool
 2. Read it with `setting("key")` at the acting site (subscribe only if it must apply live).
 3. Add a row to the right section in `settings-card.ts` (`storeToggle(...)` for booleans,
    a `choice` row for enums). Label in sentence case; the hint is optional.
-4. Update the table above and the source entry in FUTURE-SETTINGS.md.
+4. Update §3 (or §3a, for a panel-owned setting) and the source entry in
+   FUTURE-SETTINGS.md. Add the control to [SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md) —
+   the user-facing catalogue — and give it a glossary entry there if it introduces a word.
    Add the key to its group in `RESET_GROUPS` (`settings-card.ts`), unless it is a consent
    gate or Rust owns it.
 5. Agents ([AGENT.md §6](AGENT.md)): add the row to `SPECS` in `src/agent-settings.ts`, with the

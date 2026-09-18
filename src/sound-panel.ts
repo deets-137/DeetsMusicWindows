@@ -595,7 +595,7 @@ function build(panel: HTMLElement): void {
   adaptFoldBody.append(
     row("Match songs to", target.btn),
     row("Keep albums together", album.btn),
-    row("Songs not measured yet", unmeasured.btn),
+    row("Songs not measured get", unmeasured.btn),
     row("Clear measurements", forget),
     row("Follow the volume of", key.btn),
     row("Blend amount", level.btn),

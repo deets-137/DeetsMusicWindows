@@ -315,7 +315,7 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   const click = (el: HTMLElement) => () => el.click();
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
     const name = el.textContent?.trim() ?? "";
-    rows.push({ group: "Places", title: name === "NP" ? "NP (the player alone)" : name, sub: "Surface", hint: el.dataset.hint || el.title, run: click(el) });
+    rows.push({ group: "Places", title: name === "NP" ? "Player (NP)" : name, sub: "Surface", hint: el.dataset.hint || el.title, run: click(el) });
   });
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     rows.push({ group: "Places", title: el.textContent?.trim() ?? "", sub: "Theme", hint: el.dataset.hint || el.title, run: click(el) });

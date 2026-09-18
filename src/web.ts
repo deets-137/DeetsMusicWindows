@@ -933,7 +933,7 @@ export function mountWeb(btn: HTMLElement): () => void {
     diag.log("web:make", { kind: result.kind, seed: seedName(seed), expireDays, songs: tracks.length, genres: [...picked], prefer: setting("webPrefer") });
     // The chip flight (handoff.ts, ARTIST-VIEW.md §5): the picked artist row, with the song
     // count, flies to the Playlists card, and the playlist opens under the landing. The panel
-    // shrinks into the row first or pops out as it lifts (Close on Make, `webMakeMotion`). The row must be on screen: typed text hides it, so clear the field first.
+    // shrinks into the row first or pops out as it lifts (Web panel closes, `webMakeMotion`). The row must be on screen: typed text hides it, so clear the field first.
     if (artistInput.value || kind !== seed.kind) {
       artistInput.value = "";
       kind = seed.kind; // the Start row shows another kind: the picked row is not on screen

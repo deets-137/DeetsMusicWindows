@@ -236,7 +236,7 @@ function actionsHTML(g: Grouping, count: number, picked: number, enter: boolean)
 /**
  * What a press on the row does: `run` gets the list to play from its first item — the
  * rows as they are for Play, a shuffled copy for Shuffle (and for Play while the shuffle
- * mode is on, as Apple does). With "Button is perma-shuffle", Shuffle turns the mode on.
+ * mode is on, as Apple does). With "Shuffle button stays on", Shuffle turns the mode on.
  */
 export function runListAction<T>(act: string, items: T[], run: (list: T[]) => void): void {
   if (!items.length) return;

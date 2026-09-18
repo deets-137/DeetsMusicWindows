@@ -264,7 +264,7 @@ const SETUP_CLIENTS: Option[] = [
   { value: "claude-code", label: "Claude Code" },
   { value: "cursor", label: "Cursor" },
   { value: "other-full", label: "Other (Full)" },
-  { value: "other-small", label: "Other (Sm)" },
+  { value: "other-small", label: "Other (Small)" },
 ];
 
 export const settingsCard: CardDef = {
@@ -637,7 +637,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "On: a window made narrow or short becomes the surface that fits it. Off: the window resizes inside the current surface, and each one keeps its own floor"),
         storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway"),
         sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
-        sizeRow("sizeplayer", "NP opens at", "The window size for NP, the player alone. Set current saves the size it had last", "player"),
+        sizeRow("sizeplayer", "Player (NP) opens at", "The window size for the player alone, called NP in the Surface menu. Set current saves the size it had last", "player"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
         sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
         {
@@ -655,9 +655,9 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         storeToggle("cardgrowoutside", "Collapse on outside click", "cardGrowOutside", () => "A click outside a grown card collapses it. Pin holds it open"),
         storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it"),
         {
-          kind: "choice", id: "cardgrowpick", label: "Grown card on card pick", key: "cardGrowPick",
+          kind: "choice", id: "cardgrowpick", label: "Grown card on a new pick", key: "cardGrowPick",
           hint: "Pick another card in a grown card's title: it keeps the size, or collapses first",
-          options: [{ value: "keep", label: "Keep" }, { value: "collapse", label: "Collapse" }],
+          options: [{ value: "keep", label: "Keeps size" }, { value: "collapse", label: "Collapses" }],
         },
         {
           kind: "choice", id: "cardgrowview", label: "Keep view when grown", key: "cardGrowView",
@@ -885,7 +885,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }],
         },
         {
-          kind: "toggle", id: "shufflestays", label: "Button is perma-shuffle", key: "shuffleStays",
+          kind: "toggle", id: "shufflestays", label: "Shuffle button stays on", key: "shuffleStays",
           hint: () => "The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once",
           get: () => setting("shuffleStays"),
           set: (on) => setSetting("shuffleStays", on),
@@ -978,8 +978,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [{ value: "notmini", label: "Not in mini" }, { value: "always", label: "Always" }, { value: "off", label: "Never" }],
         },
         {
-          kind: "choice", id: "npcover", label: "Show cover", key: "nowPlayingCover",
-          hint: "For a song from a playlist, in Now Playing and the tray panel",
+          kind: "choice", id: "npcover", label: "Cover while playing", key: "nowPlayingCover",
+          hint: "For a song played from a playlist: the cover shown in Now Playing, in mini and in the tray panel",
           options: [{ value: "album", label: "Album" }, { value: "playlist", label: "Playlist" }],
         },
         {
@@ -1002,17 +1002,17 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [25, 50, 100].map((n) => ({ value: String(n), label: String(n) })),
         },
         {
-          kind: "choice", id: "webprefer", label: "Web prefers", key: "webPrefer",
+          kind: "choice", id: "webprefer", label: "Web prefers songs", key: "webPrefer",
           hint: "Familiar puts your songs first. Discover puts songs you don't have first",
           options: [{ value: "familiar", label: "Familiar" }, { value: "discover", label: "Discover" }, { value: "mix", label: "Mix" }],
         },
         {
-          kind: "choice", id: "webseedfilter", label: "Genres for Webbing", key: "webSeedFilter",
+          kind: "choice", id: "webseedfilter", label: "Web genre chips filter", key: "webSeedFilter",
           hint: "Web only leaves the artist's songs unfiltered. Keep 5 keeps at least five",
           options: [{ value: "all", label: "All songs" }, { value: "floor", label: "Keep 5" }, { value: "off", label: "Web only" }],
         },
         {
-          kind: "choice", id: "webmakemotion", label: "Close on Make", key: "webMakeMotion",
+          kind: "choice", id: "webmakemotion", label: "Web panel closes", key: "webMakeMotion",
           hint: "Pop out closes the web panel at once while the artist flies to the playlist",
           options: [{ value: "shrink", label: "Shrink to chip" }, { value: "pop", label: "Pop out" }],
         },

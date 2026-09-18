@@ -125,7 +125,7 @@ const sectionKey = (x: PlRow) => (x.kind === "folder" ? `folder:${x.id}` : x.kin
 const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 const byName = <T extends { name: string }>(a: T, b: T) => collator.compare(a.name, b.name);
 
-// Unfiled auto-clusters, fixed order. "Local Playlists" are made in DeetsMusic; "Your
+// Unfiled auto-clusters, fixed order. "Made Here" are made in DeetsMusic; "Your
 // Apple Playlists" are the user's own on Apple Music — split so the two write paths never
 // look alike (PLAYLISTS.md §10.9). "Apple Mixes" is the weeklies shelf: Apple's
 // personalised mixes all end in "Mix" (New Music Mix, Favourites Mix, …); "Replays"
@@ -142,11 +142,11 @@ const clusterOf = (p: Playlist): ClusterKey =>
           ? "replays"
           : "apple";
 const CLUSTERS: { key: ClusterKey; label: string }[] = [
-  { key: "local", label: "Local Playlists" },
+  { key: "local", label: "Made Here" },
   { key: "yours", label: "Your Apple Playlists" },
   { key: "mixes", label: "Apple Mixes" },
-  { key: "replays", label: "Replays" },
-  { key: "apple", label: "From Apple Music" },
+  { key: "replays", label: "Apple Replays" },
+  { key: "apple", label: "Saved from Apple Music" },
 ];
 
 // Collapse state, persisted across remounts/restarts (section keys, not indices).

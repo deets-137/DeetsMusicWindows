@@ -175,7 +175,7 @@ subset a tool server needs, no SDK. Tools:
 
 Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp`. The
 **Copy setup for** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;
-**Other (Sm)** → `mcp --small`.
+**Other (Small)** → `mcp --small`.
 
 ### Build + ship
 
@@ -299,9 +299,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   time), `sleepAt` (HH:MM in 15-minute steps, any hour), `sleepWind` (Off | 1 | 2 | 5 | 10 | 15 |
   30 min). These are the schedule and the wind-down; a running timer is set in the app's own
   panel and has no agent verb yet.
-- **Playlists › Web reach / Web size / Web prefers** (2026-09-16, PLAYLIST-WEB.md): `webReach`
+- **Playlists › Web reach / Web size / Web prefers songs** (2026-09-16, PLAYLIST-WEB.md): `webReach`
   (1 | 2 | 3), `webSize` (25 | 50 | 100), `webPrefer` (Familiar | Discover | Mix) and `webSeedFilter`
-  ("Genres for Webbing": All songs | Keep 5 | Web only) and `webMakeMotion` ("Close on Make":
+  ("Web genre chips filter": All songs | Keep 5 | Web only) and `webMakeMotion` ("Web panel closes":
   Shrink to chip | Pop out). Building a web has no agent verb yet; the panel under the Playlists
   web button uses these two values.
 - **Playlists › Temp web playlist days** (2026-09-17, PLAYLIST-WEB.md §10): `webTempDays`

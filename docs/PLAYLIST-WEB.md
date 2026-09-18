@@ -74,7 +74,7 @@ and the result with exactly that name is picked.
    with a "N songs" badge, flies to the centre of the Playlists card and shrinks into it; the
    playlist opens under the landing, with its songs handed over, so it arrives full. The card
    is already on screen, so nothing moves in the layout.
-3. **The panel** — Settings › Playlists › **Close on Make** (`webMakeMotion`):
+3. **The panel** — Settings › Playlists › **Web panel closes** (`webMakeMotion`):
    - **Shrink to chip** (default, user's call to try it): the panel's edges draw in to the
      artist row (`clip-path` inset, rounded to the row's radius) while its other parts fade
      in the first 60 %. At the end the row's copy lifts from exactly there, and the panel
@@ -100,7 +100,7 @@ rename it again. A new seed starts over.
 | Where it lives | **in the app**, its own header button | the panel needs pills and chips; the + menu holds fields and rows only |
 | Reach | **a setting, 1–3 degrees** (Settings › Playlists › Web reach, default 2) | how far out is a taste call |
 | Filter | **genre tags** (Apple `genreNames`), no model judgment | the app has no Claude; tags are what he wanted |
-| What a chip filters | **everything, the artist's songs too** (Settings › Playlists › Genres for Webbing: **All songs** / Keep 5 / Web only) | first decided "web only"; changed the same day after the data: Samara Cyn's songs are 37 Hip-Hop/Rap, 6 R&B/Soul of 42, so an R&B/Soul pick kept ~25 rap songs next to 25 R&B songs — a clash. Apple tags a song with its album's genre, so filtering leaves few of the artist's songs; the status line says how many ("· 6 by Samara Cyn") |
+| What a chip filters | **everything, the artist's songs too** (Settings › Playlists › Web genre chips filter: **All songs** / Keep 5 / Web only) | first decided "web only"; changed the same day after the data: Samara Cyn's songs are 37 Hip-Hop/Rap, 6 R&B/Soul of 42, so an R&B/Soul pick kept ~25 rap songs next to 25 R&B songs — a clash. Apple tags a song with its album's genre, so filtering leaves few of the artist's songs; the status line says how many ("· 6 by Samara Cyn") |
 | Other versions of one song ("(HELIUM VERSION)", "- A COLORS SHOW") | **kept as separate songs** | user's call 2026-09-16 |
 | What an edge is | **features only**; `similar-artists` is not an edge | every link is a real song together |
 | Size | **a cap, nearest first** (Web size, default 50) | reach 3 finds hundreds of songs |
@@ -243,7 +243,7 @@ Restart the dev runner (a new Rust command).
 5. Reach 3: only the new degree is read (calls in the next log line are small). Back to 2:
    `calls=0`.
 6. Pick R&B/Soul: the count drops; Size 25 / 100 change the count; no new log line.
-6-. Pick R&B/Soul with "Genres for Webbing" on All songs: the status line adds "· N by
+6-. Pick R&B/Soul with "Web genre chips filter" on All songs: the status line adds "· N by
     Samara Cyn" and N is small; Keep 5: N is at least 5; Web only: the line has no "by" part.
 6a. Prefer Familiar: songs you ♥ or played lead the playlist; Discover: they sink. No log line.
 6b. Close the panel, restart the dev runner, build the same artist: `calls=0`, the status says

@@ -28,7 +28,7 @@ Enter. Start a new Claude Code session.
 
 **Other apps.** Any app that can run a local MCP server over standard input and output
 takes the same values: the command is the path to `deetsmusic.exe`, and the argument is `mcp`.
-Choose **Other (Full)** for a large model; it gets every tool. Choose **Other (Sm)** for a small
+Choose **Other (Full)** for a large model; it gets every tool. Choose **Other (Small)** for a small
 local model (LM Studio, Ollama); it gets ten simpler tools, with the arguments `mcp --small`.
 
 ChatGPT's desktop app does not run local MCP servers, so it cannot control DeetsMusic.
