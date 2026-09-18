@@ -429,3 +429,33 @@ and in max columns 2-3, so it neither covers the NP card nor changes its size.
     the build runs at reach 1, the R&B chip presses, the playlist is made and flies. Then
     `web Fancy` (a library song title): the song seed, reach from Settings. Then `web song
     Fancy 2`: kind and reach given.
+
+## 12. The needle turns with the bar (2026-09-17, the owner's ask)
+
+The title bar button holds the owner's hand-drawn compass. The needle now reports the trip:
+
+| Moment | The turn |
+| --- | --- |
+| The bar opens | Half a turn forward, 0° → 180°. |
+| The bar closes and nothing ran | Back the way it came, 180° → 0°. The trip went nowhere. |
+| A row ran and the bar closed | On through, 180° → 360°. The circle closes with the trip. |
+
+How it is built: `src/compass.ts` keeps one angle that only grows or unwinds by 180 and
+writes it to `--compass-angle` on the button; `styles/compass.css` rotates the `svg` with a
+`transition`, so a turn that reverses mid-way turns back from where it is, not from the end.
+The timing is one skin token, `--compass-spin` (base `0.42s` with a small overshoot — a
+needle settles, it does not snap); reduced motion drops the transition and the mark jumps.
+
+`went` is the answer for the opening under way: `runRow` sets it when the row closes the bar
+(both the row's own action and its `Ctrl+Enter` second action), and the `hidden` observer
+reads it, so every close path — Esc, a click away, the button again — turns the same way. A
+row that keeps the bar open (a toggle, a choice) is not a trip and does not set it. A second
+`Ctrl+Space` while the bar is open only refocuses the field, so it adds no turn.
+
+**Desk test.** 1. Ctrl+Space: the needle turns half a circle as the bar arrives. 2. Esc: it
+turns back to where it started. 3. Ctrl+Space, `library`, Enter: it carries on the same way
+and finishes the circle. 4. Ctrl+Space, press a toggle row (a Settings row with On/Off): the
+bar stays, the needle holds at the half turn; then Esc unwinds it. 5. Ctrl+Space, then click
+the button in the title bar to close: it unwinds. 6. Open and Esc five times in a row: the
+needle ends where it began, never drifting. 7. Windows › Accessibility › Visual effects ›
+Animation effects off: the mark jumps between the two angles with no motion.

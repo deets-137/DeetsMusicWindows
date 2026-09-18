@@ -166,6 +166,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--compass-row-h` | `34px` | — | one result row; a two-line row (a song and its artist) |
 | `--compass-icon` | `16px` | — | a row's leading glyph |
 | `--compass-btn-size` | `20px` | — | the title bar button, right of the title |
+| `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | the needle's half turn as the bar opens, and back or on through as it closes (COMPASS.md §12) |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |

@@ -131,3 +131,9 @@
 .compass__btn:hover, .compass__btn[aria-expanded="true"] { color: var(--title); }
 .compass__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .compass__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* The needle turns with the bar (COMPASS.md §12). compass.ts counts the half turns on
+   --compass-angle: forward as the bar opens, back the way it came when the bar closed and
+   took you nowhere, on through the full circle when it did take you somewhere. */
+.compass__btn svg { transform: rotate(var(--compass-angle, 0deg)); transition: transform var(--compass-spin); }
+@media (prefers-reduced-motion: reduce) { .compass__btn svg { transition: none; } }

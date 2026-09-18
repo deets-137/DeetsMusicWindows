@@ -771,6 +771,18 @@ let active = 0;
 let shiftHeld = false;
 let returnTo: HTMLElement | null = null;
 
+// The needle on the title bar button (COMPASS.md §12). `angle` only grows or unwinds by a
+// half turn, and the CSS transition on --compass-angle does the motion: the bar opens with a
+// half turn forward, and it closes back the way it came, or on through the full circle when
+// the press took you somewhere. `went` is that answer for the opening under way.
+let mark: HTMLElement | null = null;
+let angle = 0;
+let went = false;
+function turnNeedle(by: number): void {
+  angle += by;
+  mark?.style.setProperty("--compass-angle", `${angle}deg`);
+}
+
 // ── the agent's way in (AGENT.md; `deetsmusic go <place>`) ───────────────────
 //
 // One verb over the same registry the bar uses, so a place added to the Compass is
@@ -941,12 +953,16 @@ function runRow(i: number, alt = false): void {
   diag.log("compass:run", { group: r.group, title: r.title, alt });
   if (alt && r.alt) {
     r.alt.run();
+    went = true;
     closeCompass();
     return;
   }
   const keep = r.run() === false || r.stays;
   if (keep) render();
-  else closeCompass();
+  else {
+    went = true;      // the needle carries on instead of unwinding
+    closeCompass();
+  }
 }
 
 /** Keep the bar clear of the Now Playing card (COMPASS.md §11).
@@ -990,6 +1006,7 @@ export function initCompass(): void {
   panel = document.getElementById("compass");
   const trigger = document.getElementById("compass-open");
   if (!panel || !trigger) return;
+  mark = trigger;
   panel.innerHTML =
     `<div class="compass__field"><span class="compass__mark">${COMPASS_GLYPH}</span>` +
     `<input class="compass__input" type="text" role="combobox" aria-expanded="true" aria-controls="compass-list" aria-autocomplete="list" ` +
@@ -1019,6 +1036,8 @@ export function initCompass(): void {
       render();
       void playlistsCached().then((ps) => { playlists = ps; if (handle?.isOpen) render(); }).catch(() => {});
       enterRows(list!.children, 14);
+      went = false;
+      turnNeedle(180);
       diag.log("compass:open");
     },
   });
@@ -1027,6 +1046,8 @@ export function initCompass(): void {
   // body; a focus the user moved elsewhere (a click on a card) is left alone.
   new MutationObserver(() => {
     if (!panel!.hidden) return;
+    turnNeedle(went ? 180 : -180);   // on through the circle, or back the way it came
+    went = false;
     const to = returnTo;
     returnTo = null;
     const now = document.activeElement;
