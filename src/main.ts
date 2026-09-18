@@ -118,6 +118,21 @@ window.addEventListener("DOMContentLoaded", () => {
     close();
   });
 
+  // ── The cog (title bar, right of the Compass) → the same Settings card. ──
+  // The angle only grows: every click adds --cog-step and nothing resets it, so the
+  // cog always turns the same way. The glyph has six teeth, so each step ends on an
+  // identical tooth. The CSS transition (--cog-spin) does the motion.
+  const cog = document.getElementById("cog-open");
+  if (cog) {
+    let cogTurns = 0;
+    cog.addEventListener("click", () => {
+      cogTurns += 1;
+      cog.style.setProperty("--cog-angle", `calc(var(--cog-step) * ${cogTurns})`);
+      requestCard("settings");
+      close(); // the title menu, if the pointer opened it on the way past
+    });
+  }
+
   // Theme choices — the launch animation (appearance.ts); the menu closes under the
   // opaque cover, so the rise never shows it half-closed.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {

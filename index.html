@@ -169,6 +169,11 @@
            is the hand-drawn compass the owner gave (a face, a needle, two ticks). -->
       <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
 
+      <!-- The cog (SETTINGS.md): the title bar's own way into the Settings card, right of the
+           Compass. Six teeth, so the 120-degree turn each click adds lands on an identical
+           tooth and the glyph never looks crooked. src/main.ts wires it. -->
+      <button class="cog__btn" id="cog-open" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.41 2.96A9.4 9.4 0 0 1 14.59 2.96L14.75 6.11A6.5 6.5 0 0 1 15.73 6.68L18.53 5.24A9.4 9.4 0 0 1 21.12 9.73L18.48 11.43A6.5 6.5 0 0 1 18.48 12.57L21.12 14.27A9.4 9.4 0 0 1 18.53 18.76L15.73 17.32A6.5 6.5 0 0 1 14.75 17.89L14.59 21.04A9.4 9.4 0 0 1 9.41 21.04L9.25 17.89A6.5 6.5 0 0 1 8.27 17.32L5.47 18.76A9.4 9.4 0 0 1 2.88 14.27L5.52 12.57A6.5 6.5 0 0 1 5.52 11.43L2.88 9.73A9.4 9.4 0 0 1 5.47 5.24L8.27 6.68A6.5 6.5 0 0 1 9.25 6.11L9.41 2.96Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+
       <div class="drag-region" data-tauri-drag-region></div>
 
       <!-- The Compass (COMPASS.md): the bar Ctrl+Space drops under the title bar, in every
@@ -244,23 +249,9 @@
               <button class="sleep__chip" type="button" data-sleep-mode="song" aria-pressed="false" title="Pauses when this song ends">End of song</button>
               <button class="sleep__chip" type="button" data-sleep-mode="queue" aria-pressed="false" title="Pauses when Up Next runs out">End of Up Next</button>
             </div>
-            <div class="sleep__row">
-              <span class="sleep__label">Wind down</span>
-              <button class="sleep__pill" id="sleep-wind" type="button" title="Over these last minutes the volume sinks to nothing, then the music pauses. Click for the next length">5 min</button>
-            </div>
-            <div class="sleep__row">
-              <span class="sleep__label">Play out song</span>
-              <button class="sleep__pill" id="sleep-playout" type="button" title="On: when the time runs out in the middle of a song, the song plays to its end first">Off</button>
-            </div>
-            <div class="sleep__row">
-              <span class="sleep__label">Every day</span>
-              <button class="sleep__pill" id="sleep-sched" type="button" title="A sleep time that sets itself every day: at sunset, or at a time you pick. It pauses only if music is playing then">Off</button>
-            </div>
-            <div class="sleep__row sleep__row--time" id="sleep-time-row" hidden>
-              <button class="sleep__step" id="sleep-earlier" type="button" aria-label="15 minutes earlier" title="15 minutes earlier">‹</button>
-              <span class="sleep__time" id="sleep-time">10:00 PM</span>
-              <button class="sleep__step" id="sleep-later" type="button" aria-label="15 minutes later" title="15 minutes later">›</button>
-            </div>
+            <!-- Wind down, Play out song, Every day and the time moved to Settings › Sleep on
+                 2026-09-18 (Settings regroup, fork 2A): the panel holds the live timer, the
+                 card holds the preferences. The status line says what the schedule will do. -->
             <div class="sleep__status" id="sleep-status" hidden></div>
           </div>
         </div>

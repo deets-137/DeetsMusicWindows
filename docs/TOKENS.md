@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 405 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 407 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -166,8 +166,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--compass-field-h` | `36px` | — | the text field's height |
 | `--compass-row-h` | `34px` | — | one result row; a two-line row (a song and its artist) |
 | `--compass-icon` | `16px` | — | a row's leading glyph |
-| `--compass-btn-size` | `20px` | — | the title bar button, right of the title |
+| `--compass-btn-size` | `var(--traffic-size)` | — | the title bar button, right of the title. One height for the whole row (2026-09-18; 20 was the row's only outlier) |
 | `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | the needle's half turn as the bar opens, and back or on through as it closes (COMPASS.md §12) |
+| `--cog-btn-size` | `var(--traffic-size)` | — | The cog (SETTINGS.md): the title bar button right of the Compass. Six teeth, so --cog-step lands on an identical tooth and the glyph never rests crooked. |
+| `--cog-step` | `120deg` | — | one click's turn |
+| `--cog-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — |  |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |
@@ -180,7 +183,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-tab-radius` | `calc(var(--radius-control) - 2px)` | — | nested inside the strip's radius |
 | `--sound-foot-fs` | `11px` | — | the footer line: review date and the limiter, quieter than a row |
 | `--sound-reset-w` | `56px` | — | Reset and Undo share one width |
-| `--sound-foot-pill-w` | `64px` | — | Keep: 7 days / 14 days / Never, one width, text centred |
 | `--sound-meter-w` | `172px` | — | "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box |
 | `--sound-meter-pad-y` | `2px` | — |  |
 | `--sound-dim` | `0.5` | — | a part while its switch is off |

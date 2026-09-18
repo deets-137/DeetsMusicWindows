@@ -68,6 +68,28 @@ body {
 .app-title:hover { background: var(--surface-hover); }
 .app-title:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
+/* ── The cog (SETTINGS.md) ───────────────────────────────────
+   The title bar's own way into the Settings card, right of the Compass. Same
+   control family as the Compass button and the right cluster's icon squares:
+   the row's height, no fill, no border, --subtext until hover.
+   The turn (src/main.ts): every click adds --cog-step to --cog-angle and the
+   count never resets, so the cog keeps turning the same way for as long as the
+   app runs. Six teeth means 120 degrees looks identical, so it never rests
+   crooked and there is nothing to unwind. */
+.cog__btn {
+  width: var(--cog-btn-size); height: var(--cog-btn-size);
+  margin-left: var(--space-2);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.cog__btn:hover { color: var(--title); }
+.cog__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.cog__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.cog__btn svg { transform: rotate(var(--cog-angle, 0deg)); transition: transform var(--cog-spin); }
+@media (prefers-reduced-motion: reduce) { .cog__btn svg { transition: none; } }
+
 /* ── Settings menu + flyout ─────────────────────────────────── */
 .menu {
   position: absolute;
@@ -368,7 +390,7 @@ body {
 .sleep__off { pointer-events: auto; }
 
 .sleep__chips { display: flex; gap: var(--space-1); }
-.sleep__chip, .sleep__pill, .sleep__off, .sleep__step {
+.sleep__chip, .sleep__off {
   font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
   color: var(--text); background: var(--surface);
   border: 1px solid var(--panel-border);
@@ -377,16 +399,11 @@ body {
   cursor: pointer;
 }
 .sleep__chip { flex: 1 1 0; }
-.sleep__chip:hover, .sleep__pill:hover, .sleep__off:hover, .sleep__step:hover { background: var(--surface-hover); }
+.sleep__chip:hover, .sleep__off:hover { background: var(--surface-hover); }
 .sleep__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
-.sleep__chip:focus-visible, .sleep__pill:focus-visible, .sleep__off:focus-visible, .sleep__step:focus-visible {
+.sleep__chip:focus-visible, .sleep__off:focus-visible {
   outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off);
 }
-.sleep__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.sleep__row[hidden] { display: none; }
-.sleep__label { font-size: var(--fs-subtext); color: var(--subtext); }
-.sleep__row--time { justify-content: center; }
-.sleep__time { font-size: var(--fs-subtext); min-width: 5.5em; text-align: center; font-variant-numeric: tabular-nums; }
 .sleep__status { font-size: var(--fs-subtext); color: var(--subtext); text-align: center; }
 .sleep__status[hidden] { display: none; }
 .sleep__off[hidden] { display: none; }
@@ -787,7 +804,6 @@ body {
 }
 .sound__pill { min-width: var(--sound-pill-min-w); white-space: nowrap; text-align: center; flex-shrink: 0; }
 .sound__part-head > .sound__pill, .sound__row--strong > .sound__pill { min-width: var(--sound-part-pill-w); }
-.sound__foot-pill { min-width: var(--sound-foot-pill-w); }
 /* Reset turns into Undo in place: one width for both words, so nothing moves */
 .sound__row-end .sound__chip { min-width: var(--sound-reset-w); }
 .sound__pill:hover, .sound__chip:hover:not(:disabled), .sound__step:hover, .sound__icon-btn:hover, .sound__fold-btn:hover { background: var(--surface-hover); }

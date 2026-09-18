@@ -37,6 +37,7 @@ nothing about authoring changed when the box did.
 | Title menu | Mini · Player · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
+| Title bar | the cog (right of the compass) | Settings | index.html |
 | Title bar | the Room item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
 | Room panel | the stage (the silhouettes) | Everyone listening. The heads move with the music → "…when Sound is on" while nothing is routed → out of a room: "Start a room and the others join here" | room-panel.ts |
 | Room panel | Your name | The name the other members see | room-panel.ts |
@@ -85,8 +86,8 @@ nothing about authoring changed when the box did.
 | Title bar | Volume bar | The volume. Drag it, or roll the wheel | index.html |
 | Title bar | Mute (in the volume bar) | Turns the sound off and on | index.html |
 | Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway | settings-card.ts |
-| Settings › Look and feel | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
-| Settings › Look and feel | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
+| Settings › Motion | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
+| Settings › Skin settings | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | "Play on" panel | Scan for speakers · Not now · Continue | Scan for speakers · Keep the speaker list open and ask again later · Show the Windows permission prompt, then play on the speaker | airplay.ts (the last two show once, before the first connect) |
 | Title bar | Maximize · Minimize · Close | Fills the screen. Press again to go back · Puts the window on the taskbar · Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing | index.html |
@@ -174,7 +175,7 @@ collected yet has no third line, and asking warms it for the next hover. A row w
 shows its hint **even under "Name songs on hover: Cut off"** — being cut off is no longer the
 only reason to hover a row.
 
-**Three settings** (Settings › Look and feel, beside Open menus on hover):
+**Three settings** (Settings › Menus, hints and notices, beside Open menus on hover):
 
 | Row | Choices | Default |
 |---|---|---|
