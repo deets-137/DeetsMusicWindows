@@ -68,4 +68,9 @@
   --paint-amber-wax:           #E0B100; /* deep amber (pause) */
   --paint-straw:               #D8C97A; /* muted yellow (text-dim / stop) */
   --paint-paper-warm:          #ECE6CF; /* warm off-white (body text) */
+
+  /* Apple Music brand mark — Apple ships the monochrome icon only as pure black
+     or pure white (Identity Guidelines); never tint it with a theme color. */
+  --paint-apple-music-black:   #000000;
+  --paint-apple-music-white:   #FFFFFF;
 }

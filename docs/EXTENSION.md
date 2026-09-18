@@ -1,8 +1,11 @@
 # Browser extension + the local bridge
 
-> Design agreed 2026-09-08. Status: **built, awaiting first user test.** Code:
-> `extension/` (MV3, Chrome-first), `src-tauri/src/bridge.rs` (loopback server + the
-> now-playing hub), `src/np-bus.ts` (main-window half of the hub).
+> Design agreed 2026-09-08. Status: **built and user-tested** (the first test is what
+> produced the `host_permissions` fix in §3). Code: `extension/` (MV3, Chrome-first),
+> `src-tauri/src/bridge.rs` (loopback server + the now-playing hub), `src/np-bus.ts`
+> (main-window half of the hub). Last checked against the app **2026-09-17** (v0.9.5):
+> routes unchanged, skin list current (Cyber), token CSS re-synced, `manifest.version`
+> now tracks the app.
 
 ## 1. What it is
 
@@ -69,7 +72,8 @@ and a second MusicKit sign-in in the browser; (C) A with B as fallback — overk
 | `GET /log` | ✓ | text — the bridge ring log |
 
 Errors: `401 unpaired`, `409 not connected to Apple Music`, `502` Apple failure, `400` bad
-JSON. `theme`/`skin` come from `appearance_publish` (main.ts calls it on every theme/skin
+JSON. The same server carries the agent/CLI routes (`/play`, `/queue`, `/settings`, `/query`,
+`/grow`, `/go`, …); those are [AGENT.md](AGENT.md)'s table, and the extension calls none of them. `theme`/`skin` come from `appearance_publish` (main.ts calls it on every theme/skin
 change) so the popup mirrors the app's look by default (options: "Follow DeetsMusic").
 
 ### Ranking
@@ -125,6 +129,13 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
   `extension/dist/deetsmusic-<v>.zip` for a Web Store upload. **Web Store publication is the
   user's step** (developer account, listing); once live, replace the walkthrough with the store link.
 - Firefox: not yet (Chrome-first MV3).
+- **`manifest.version` tracks the app's version** (0.9.5 from 2026-09-17; it was left at
+  0.1.0 until then). It is not a fifth file for the release check — the extension is not
+  rebuilt per release — but set it before any Web Store upload.
+- **The token CSS in `extension/styles/` goes stale on its own.** Nothing fails loudly: the
+  popup keeps the values from the last sync, so a new skin token or a changed one (Glass
+  `--glass-tint` was the 2026-09-17 case) silently misses the popup. Re-sync with
+  `node extension/scripts/pack.cjs --styles-only` whenever `src/styles/` changes shape.
 
 ## 7. Debug
 

@@ -38,9 +38,51 @@
   --album-c1: var(--go);
   --album-c2: var(--stop);
 
+  /* Album-colored NP text (NEXT-VERSION §7): JS sets guarded per-track values inline
+     on the card in skins that opt in (--np-album-text); these fallbacks ARE today's
+     look, so no palette (or no opt-in) means the plain theme roles. */
+  --np-title:   var(--title);
+  --np-subtext: var(--subtext);
+  --np-accent:  var(--title);
+
   /* Second-plate fallback: a theme that never names --ink-2 still prints
      Press's offset in its own "go" accent. */
   --ink-2: var(--go);
+
+  /* Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own
+     --title ink at the strength the SKIN sets, so a block of picks reads as one shape in
+     every theme. Derived once here — no theme block names a picked color of its own. */
+  --picked: color-mix(in srgb, var(--title) var(--picked-strength), transparent);
+
+  /* Apple Music icon fill: Apple's black file on light themes, the white file on dark.
+     light-dark() follows each theme's own color-scheme, so no theme block repeats it. */
+  --apple-music-mark: light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white));
+
+  /* The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the
+     song's shape at the strengths the SKIN sets, the song in the second plate so it never
+     reads as the curve. Derived once here — no theme block names an EQ color of its own. */
+  --eq-curve:      var(--title);
+  --eq-fill:       color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent);
+  --eq-grid:       color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent);
+  --eq-song:       color-mix(in srgb, var(--ink-2) var(--sound-song-strength), transparent);
+  --eq-heard:      var(--ink-2);
+  --eq-zone-alt:   color-mix(in srgb, var(--subtext) var(--sound-zone-strength), transparent);
+  --eq-zone-lit:   color-mix(in srgb, var(--title) var(--sound-zone-lit-strength), transparent);
+  --eq-handle:     var(--title);
+  --eq-handle-ink: var(--surface);
+  --eq-plot-bg:    var(--canvas);
+
+  /* Card grow (CARD-GROW.md): the accent bar in the gap that shows which card will grow, and
+     the letter rail's ink — the resting letter and the one lit for the rows on screen.
+     Derived once here — no theme block names a grow color of its own. */
+  --grow-zone-bar: var(--title);
+  --rail-ink:      var(--subtext);
+  --rail-ink-lit:  var(--title);
+
+  /* The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy
+     scrubbers). Light is white in every theme, so this is the one role no theme remaps;
+     a little dimmer on dark themes so it does not blaze. */
+  --glint: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65));
 }
 
 [data-theme="lilac"] {

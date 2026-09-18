@@ -46,7 +46,7 @@
 
   /* -- titlebar / chrome ------------------------------------- */
   --titlebar-h:          40px;
-  --traffic-size:        14px;
+  --traffic-size:        16px;   /* one height for every title-row control: the lights, the volume bar, the clock (2026-09-16; 18 read too heavy) */
   --traffic-gap:         8px;
   --traffic-glyph-fs:    11px;
 
@@ -58,9 +58,155 @@
   --vol-pill-radius:   999px;  /* true capsule */
   --vol-pill-fs:       9px;
   --vol-fill-strength: 30%;
-  --vol-track-len:     90px;   /* vertical slider run inside the flyout */
-  --vol-panel-pad:     var(--space-2);
-  --vol-icon-size:     16px;
+  --vol-icon-size:     calc(var(--traffic-size) - 4px);   /* inside the bar's 1 px border with a 1 px breath: 12 px at 16 */
+  /* The grown pill (NEXT-VERSION §20): its size on hover, the glyphs' inset, the grow's time. */
+  --vol-pill-grown-w:  120px;
+  --vol-pill-grown-h:  var(--traffic-size);
+  --vol-pill-pad:      2px;
+  --vol-grow:          var(--dur-med);
+
+  /* -- sleep timer (src/sleep.ts, NEXT-VERSION §17) ---------- */
+  /* The alarm clock left of the pill, and its kitchen-timer dial. The face's
+     ticks and numbers are geometry here; their colors are theme roles. */
+  --sleep-btn-size:     var(--traffic-size);   /* level with the lights and the bar */
+  /* The title bar icons' click area past their 16 px glyph: half the row's gap each side, so two
+     icons' areas meet and never overlap, and a little up and down. A click a few px left of the
+     Sound icon landed on the drag region and moved the window instead (2026-09-16 log). */
+  --title-hit-x:        calc(var(--space-2) / 2);
+  --title-hit-y:        6px;
+  --sleep-panel-w:      224px;
+  --sleep-panel-pad:    var(--space-2);   /* was the flyout's --vol-panel-pad, which left with it (0.7.0 shipped with no margins) */
+  --sleep-dial-size:    172px;
+  --sleep-tick-w:       1px;
+  --sleep-tick-major-w: 2px;
+  --sleep-num-fs:       11px;   /* SVG user units on the 200-unit face */
+  --sleep-readout-fs:   22px;
+  --sleep-chip-radius:  var(--radius-control);
+  --sleep-turn:         1s linear;   /* the face turning back, one step a second */
+  --sleep-line-h:       26px;   /* the line under the time: the help or the Off button, height reserved */
+  --sleep-swap:         0.42s;  /* that line's fade-up; gentler than a row's --pop-in */
+
+  /* -- listening rooms (src/room-panel.ts, ROOMS.md §1) ------ */
+  /* The three figures right of the sleep clock, and the Room panel. */
+  --room-btn-size:       var(--traffic-size);   /* level with the other title bar icons */
+  --room-panel-w:        248px;  /* back to its own width: the stage does not need Sound's 300 */
+  --room-panel-pad:      var(--sound-panel-pad);
+  --room-panel-max-h:    min(560px, calc(100vh - 48px));  /* scrolls inside a short window (mini) */
+  --room-title-tracking: var(--sound-title-tracking);
+  --room-code-fs:        22px;   /* the code, the panel's one piece of large type */
+  --room-code-space:     0.08em; /* letter spacing, so 8 characters read one by one */
+  --room-field-w:        132px;  /* a name field beside its label, with the label unwrapped */
+  --room-chip-min-w:     var(--sound-pill-min-w);  /* Join, Copy code, Remove: one shape */
+  --room-members-max-h:  132px;  /* about five rows before the list scrolls */
+  --room-radius:         var(--sound-chip-radius);
+  --room-half-pad-x:     var(--space-1);  /* the pill halves are one width; the padding only sets how tight */
+  --room-fold-bg:        var(--sound-fold-bg);  /* the Permissions box, the Sound fold's tint */
+  --room-dim:            var(--sound-dim);
+  /* The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. */
+  --room-stage-h:        104px;
+  --room-fig-w:          62px;   /* the front figure; each rank behind is smaller */
+  --room-fig-step-x:     34px;   /* how far each rank behind steps to its side */
+  --room-fig-stroke:     3.2px;  /* the figures are line work, like the title bar glyph */
+  --room-grid-size:      14px;   /* the backdrop grid's pitch */
+  --room-grid-line:      color-mix(in srgb, var(--border) 55%, transparent);
+  --room-fig-step-s:     0.14;   /* and how much smaller it gets */
+  --room-fig-dim:        0.34;   /* the rank behind you, before its own depth fade */
+  --room-bob-glide:      120ms;  /* a meter hop is 100 ms; the head glides between them */
+  --room-count-size:     14px;   /* the member count over the glyph */
+  --room-count-fs:       9px;
+  --room-fill:           0.28s var(--ease-ui);   /* the glyph filling when a room starts */
+
+  /* -- sound (src/sound-panel.ts, SOUND.md §2.3) ------------- */
+  /* The EQ-fader icon and its panel. Colors are the --eq-* theme roles; the
+     strengths below feed them (themes.css), so a skin can brighten a fill
+     without naming a color. */
+  --sound-btn-size:          var(--traffic-size);
+  --sound-panel-w:           300px;
+  --sound-panel-max-h:       min(620px, calc(100vh - 48px)); /* scrolls inside a short window (mini) */
+  --sound-panel-pad:         var(--space-2);
+  --panel-edge-gap:          6px;    /* a title bar panel keeps this clear of the window edge (dropdown.ts keepInWindow) */
+  /* The Compass bar (COMPASS.md, styles/compass.css): Ctrl+Space's panel under the title bar. */
+  --compass-max-h:           max(calc(var(--compass-row-h) * 3), min(560px, calc(100vh - var(--titlebar-h) - var(--compass-drop, 0px) - 24px))); /* the ceiling: it subtracts the drop under the Now Playing card, so the box ends 24px above the window bottom and no row is clipped (COMPASS.md §11); three rows is the floor in a short window */
+  --compass-field-h:         36px;   /* the text field's height */
+  --compass-row-h:           34px;   /* one result row; a two-line row (a song and its artist) */
+  --compass-icon:            16px;   /* a row's leading glyph */
+  --compass-btn-size:        20px;   /* the title bar button, right of the title */
+  --compass-spin:            0.42s cubic-bezier(0.34, 1.26, 0.64, 1); /* the needle's half turn as the bar opens, and back or on through as it closes (COMPASS.md §12) */
+  --sound-title-tracking:    0.02em;
+  --sound-chip-radius:       var(--radius-control);
+  --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */
+  --sound-part-pill-w:       60px;   /* the Adaptive column: On / Gentle / Auto at one width, text centred */
+  --sound-grow:              0.22s;  /* a status or help box growing or shrinking to its new text */
+  --sound-icon-btn:          24px;
+  --sound-step-pad:          6px;
+  --sound-strong-fw:         600;
+  --sound-tabs-pad:          2px;    /* the tab strip's inset around the two tabs */
+  --sound-tab-radius:        calc(var(--radius-control) - 2px); /* nested inside the strip's radius */
+  --sound-foot-fs:           11px;   /* the footer line: review date and the limiter, quieter than a row */
+  --sound-reset-w:           56px;   /* Reset and Undo share one width */
+  --sound-foot-pill-w:       64px;   /* Keep: 7 days / 14 days / Never, one width, text centred */
+  --sound-meter-w:           172px;  /* "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box */
+  --sound-meter-pad-y:       2px;
+  --sound-dim:               0.5;    /* a part while its switch is off */
+  --sound-graph-h:           128px;
+  --sound-graph-radius:      var(--radius-control);
+  --sound-axis-h:            12px;
+  --sound-axis-gap:          2px;
+  --sound-axis-fs:           9px;
+  --sound-zone-h:            20px;   /* the zone labels under the graph: a hold target, not just text */
+  --sound-zone-fs:           11px;
+  --sound-heard-w:           1.5px;
+  --sound-heard-dash:        3 2;    /* "what you hear" dashed, so it never reads as the EQ curve */
+  --sound-key-size:          8px;
+  --sound-key-radius:        2px;
+  --sound-key-line:          14px;
+  --sound-song-strength:     22%;
+  --sound-zone-strength:     5%;
+  --sound-zone-lit-strength: 14%;
+  --sound-balance-label-w:   48px;
+  --sound-balance-bar-h:     6px;
+  --sound-curve-w:           2px;
+  --sound-curve-glow:        none;   /* a skin's light on the curve: a drop-shadow() filter */
+  --sound-grid-w:            1px;
+  --sound-grid-dash:         none;
+  --sound-zero-w:            1px;
+  --sound-fill-strength:     16%;
+  --sound-grid-strength:     24%;
+  --sound-handle-size:       16px;
+  --sound-handle-hit:        28px;   /* the dot's pointer target, bigger than the dot */
+  --sound-handle-ring:       2px;
+  --sound-handle-fs:         9px;
+  --sound-handle-shadow:     0 1px 3px rgba(0, 0, 0, 0.25);
+  --sound-handle-hover-scale: 1.18;
+  --sound-fader-w:           18px;
+  --sound-fader-inset:       8px;
+  --sound-fader-track-w:     2px;
+  --sound-fader-knob-h:      8px;
+  --sound-fader-knob-radius: 3px;
+  --sound-glide:             var(--dur-fast); /* a dot or knob settling after an edit */
+  --sound-readout-min-w:     56px;
+  --sound-status-lh:         1.35;
+  --sound-status-gap:        2px;
+  --sound-fold-bg:           color-mix(in srgb, var(--surface-hover) 60%, transparent);
+
+  /* -- playlist web (src/web.ts, PLAYLIST-WEB.md) ------------ */
+  /* The web button's panel under the Playlists header. Controls share the sleep
+     panel's chip shape; colors are theme roles. */
+  --web-panel-w:        256px;
+  --web-panel-max-h:    480px;  /* ten genre chips and five artists fit; more scrolls */
+  --web-panel-pad:      var(--space-2);
+  --web-row-h:          32px;   /* an artist row */
+  --web-hit-art:        24px;   /* the artist's round photo */
+  --web-cover-radius:   var(--lib-row-art-radius); /* a song's or album's cover in the list: the Library row's corner (§9) */
+  --web-hit-line-max-w: 50%;
+  --web-days-min-w:     56px;   /* "30 days" and "1 day" are the same width: the row does not move as it cycles */    /* a song's artist line never takes more than half the row from its title */
+  --web-opt-min-w:      32px;   /* a Reach / Size option: 1 and 100 are the same width */
+  --web-chip-radius:    var(--radius-control);
+  --web-title-tracking: 0.06em; /* the panel title, the create menu's label voice */
+  --web-icon-stroke:    1.8;    /* thinner than the header's 2: five small rings stay open at 16px */
+  --web-link-offset:    2px;    /* Retry / Read again: the underline clears the descenders */
+  --web-shrink-dur:     0.32s;  /* "Shrink to chip": the panel closing in on the artist row (a plain time: JS reads it) */
+  --web-shrink-ease:    var(--pop-ease);
 
   /* -- shape ------------------------------------------------- */
   --radius-panel:   10px;
@@ -75,6 +221,30 @@
      blur. A skin points these at roles/derivations, never a hex. */
   --menu-surface:  var(--surface);
   --menu-backdrop: none;
+
+  /* -- hover hints (src/hint.ts, styles/hint.css; ONBOARDING.md §1) --- */
+  /* The box wears the menu material above; these are its own geometry. The
+     radius rides --radius-control, so a skin that squares its controls (Press)
+     squares the hint too without a line here. */
+  --hint-max-w:     236px;  /* a control's one-sentence hint */
+  --hint-row-max-w: 290px;  /* a song row: two lines, both of them names */
+  --hint-credit-gap: var(--space-1);  /* the blank line before a song's writers */
+  --credit-flat-opacity: 0.6;  /* a credited song the app holds no track for */
+  --hint-pad-x:     var(--space-2);
+  --hint-pad-y:     calc(var(--space-1) + 1px);
+  --hint-radius:    var(--radius-control);
+  --hint-gap:       8px;    /* clearance between the anchor and the box */
+  --hint-fs:        var(--fs-subtext);
+  --hint-shift:     3px;    /* the rise on show; a skin may zero it */
+
+  /* -- toasts (src/toast.ts, styles/toast.css; docs/TOASTS.md) -------- */
+  /* The strip wears the menu material above; these are its own geometry.
+     Color comes from the theme's traffic lights (success --go, warn --pause,
+     error --stop; info --panel-border). */
+  --toast-w:      304px;   /* max strip width; narrower windows clamp it */
+  --toast-stripe: 3px;     /* the kind stripe on the leading edge */
+  --toast-bar:    2px;     /* the countdown bar on timed toasts */
+  --toast-shift:  30%;     /* fly-in / fly-out travel; a skin may zero it */
 
   /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
      base paints the panel material — an opaque slide masks the pane beneath.
@@ -96,26 +266,68 @@
   --panel:        var(--canvas);
   --shadow-card:  none;             /* skins add a real card shadow */
   --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
+  --scroller-layer: auto;           /* will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) */
+  --panel-isolation: auto;          /* isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) */
 
   /* -- canvas pattern (Press halftone / Cyber grid) --- */
-  /* A background-image painted on .app-body, BEHIND the cards. Its
-     color comes from a theme role (--border); the pattern + motion
-     are skin. Vanilla paints nothing. */
+  /* A background-image BEHIND the cards. Its color comes from a theme
+     role (--border); the pattern is skin. Vanilla paints nothing. The
+     extension pages paint --canvas-bg as-is (static). In the app,
+     .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it
+     to none and draws on an ambient layer instead (Glass → aurora),
+     because a moving background repaints every frame. */
   --canvas-bg:        none;
   --canvas-bg-size:   auto;
   --canvas-bg-repeat: repeat;
-  --canvas-anim:      none;
+  --app-canvas-bg:    var(--canvas-bg);
+  /* A black layer over the canvas and ambient layers, under the cards (.app-body::after),
+     as an alpha 0–1. Base 0. Glass drives it (Dim canvas) and undoes it in its frost. */
+  --canvas-dim:       0;
+
+  /* -- aurora layer (drifting blobs behind the cards) --------- */
+  /* Three <div>s in .app-body that a skin opts into; each carries one
+     gradient and drifts by its own vector (transform only). Base is inert. */
+  --aurora-display: none;            /* glass opts in */
+  --aurora-1:       none;
+  --aurora-2:       none;
+  --aurora-3:       none;
+  --aurora-drift-1-x: 0px;           /* offset at the loop's midpoint */
+  --aurora-drift-1-y: 0px;
+  --aurora-drift-2-x: 0px;
+  --aurora-drift-2-y: 0px;
+  --aurora-drift-3-x: 0px;
+  --aurora-drift-3-y: 0px;
+  --aurora-slack:   0px;             /* oversize per side; ≥ the largest drift */
+  --aurora-dur:     60s;
+  --aurora-drift:   aurora-drift;    /* the drift's keyframes; none holds the blobs at rest (Glass with Fancy Glass off) */
+
+  /* -- ambient motion rate ------------------------------------ */
+  /* The endless decorative loops (ocean / aurora / storm / NP aurora)
+     step at this rate instead of the display's, so the compositor draws
+     a new frame only when a layer moves. Measured 2026-09-13: Ocean
+     36% → 15% of a core at 30 vs 60 fps. The loops move ≤ ~10 px/s
+     (the storm wipe excepted), so 30 reads smooth. A unitless integer. */
+  --ambient-fps: 30;
 
   /* -- ocean layer (rolling swell behind the cards) ----------- */
-  /* An inline-SVG layer in .app-body (three seamless wave-train
-     <pattern>s) that a skin opts into — same doctrine as --storm-*.
-     Unlike the storm the geometry is fully static, so it lives as
-     markup in index.html; the ink fades with distance via these
-     roles, so far swells recede into haze. Base is inert. */
+  /* Three masked wave-train <div>s in .app-body that a skin opts into —
+     same doctrine as --storm-*. The tile geometry is fixed (styles.css);
+     the ink fades with distance via these roles, so far swells recede
+     into haze. Base is inert. */
   --ocean-display: none;             /* ocean opts in */
   --ocean-ink-1:   var(--border);
   --ocean-ink-2:   var(--border);
   --ocean-ink-3:   var(--border);
+
+  /* -- sand edges (Ocean "Draw card edges: Sand") ------------- */
+  /* .panel paints --panel-paint. A skin with sand edges sets it transparent
+     and shows --panel on .panel::before instead, broken into grains over
+     --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep
+     --panel itself opaque: album-color.ts reads it for the contrast guard. */
+  --panel-paint:  var(--panel);
+  --sand-display: none;
+  --sand-reach:   0px;
+  --sand-ink:     transparent;
 
   /* -- transport (now playing) ------------------------------- */
   --transport-size: 22px;
@@ -123,10 +335,84 @@
   --np-cover:       120px;          /* album-cover square; drives card height */
   --np-cover-glyph: 40px;           /* placeholder ♪ when no artwork */
   --np-meta-gap:    var(--space-1); /* title ↔ artist stack spacing */
+  --np-chip-pad:    var(--space-1) var(--space-2); /* station-name chip over the cover (radio) */
+  --np-chip-strength: 82%;          /* how opaque that chip's panel wash is */
+  --np-vol-gap:     var(--space-2); /* transport row ↔ the stage volume row (max) */
+
+  /* -- record player (Press "Record player"; docs/VINYL.md) -- */
+  /* Whether each place draws the cover as a record: 1 or 0. A skin turns them on from
+     the two rows' attributes (see the Press rules below). Base: off everywhere. The
+     geometry is written here once; radii are a % of the disc's radius. */
+  --vinyl-stage: 0;
+  --vinyl-strip: 0;
+  --vinyl-tray:  0;
+  --vinyl-inset:        0px;          /* room around the disc for the plate's shadow */
+  --vinyl-plate-shadow: none;
+  --vinyl-hole:         5%;           /* the spindle hole */
+  --vinyl-label:        33%;          /* the label edge (a real LP: 100 of 300 mm) */
+  --vinyl-ring-w:       1px;
+  --vinyl-ring-ink:     var(--title);
+  --vinyl-ring-alpha:   30%;
+  --vinyl-groove-pitch: 3px;
+  --vinyl-groove-w:     1px;
+  --vinyl-groove-ink:   var(--title);
+  --vinyl-groove-alpha: 9%;
+  --vinyl-sheen-ink:    var(--surface);
+  --vinyl-sheen-alpha:  35%;
+  --vinyl-sheen-from:   300deg;       /* where the light sits */
+  --vinyl-sheen-spread: 28deg;        /* each of its two lobes */
+  --vinyl-swap-dur:     0.4s;
+  --vinyl-swap-ease:    ease-in-out;
+  --vinyl-swap-travel:  110%;         /* of the disc: far enough to leave the cover box */
+  --vinyl-swap-fade:    0;            /* opacity at the far end of the slide */
+  /* AirPlay "Play on" panel (AIRPLAY.md) */
+  --ap-panel-w:     220px;
+  --ap-row-h:       var(--icon-lg);
+  --ap-dot:         0.9em;          /* the ✓ gutter on a row */
+  --ap-pulse:       1.2s;           /* the square's breathing while connecting */
+  --ap-stroke:      2;              /* the glyph's line weight, in the icon's 24-unit box (matches .panel__action svg) */
+  --ap-caret-rise:  13px;           /* "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) */
+  --ap-cut-w:       6;              /* the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) */
+  --ap-caret-dur:   0.32s;          /* the caret's rise and fall */
+  --ap-ask-radius:  var(--sound-chip-radius); /* the permission question's two buttons (§9a) */
+  --ap-ask-btn-w:   72px;           /* "Not now" and "Continue" keep one width, so the pair is even */
+  /* dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in */
+  --pop-in:         var(--dur-med); /* a panel and new rows arriving */
+  --pop-out:        var(--dur-fast);/* a panel leaving */
+  --pop-grow:       var(--dur-med); /* a panel's height following a new row */
+  --pop-stagger:    0.03s;          /* one arriving row after the next */
+  --pop-shift:      var(--space-1); /* how far a panel and a new row travel in */
+  --pop-scale:      0.97;           /* a panel's size as it starts to arrive */
+  --pop-ease:       cubic-bezier(0.2, 0.8, 0.2, 1); /* fast start, soft stop */
+  /* settings card (SETTINGS.md) */
+  --set-section-gap: var(--space-3);
+  --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
+  --set-range-w:     120px;            /* a range row's slider (Glass's Tint / Frost) */
+  --set-range-val-w: 3.5em;            /* its value, "100%" fits */
+  --set-pill-pad:    var(--space-1) var(--space-2);
+  --set-pill-radius: 999px;          /* the split pill's outer radius */
+  --set-menu-min-w:  120px;          /* the small menu behind a menu half */
+  --set-menu-max-h:  280px;          /* 7 weekdays fit; longer lists scroll */
+  --set-flash-dur:   1600ms;         /* a row opened from a toast: its highlight fades over this */
+  --set-textarea-min-h: 96px;        /* Bugs › the details field: about five lines */
+  --set-preview-max-h:  180px;       /* Bugs › the log text a report sends; longer scrolls */
+  --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace; /* log text */
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
-  --np-stage-cover: 260px;          /* nominal cover size; the aurora halo scales off it */
   --np-stage-glyph: 96px;           /* placeholder ♪ on the stage */
+  --qcard-now-art:  48px;           /* the Queue card's now-playing cover (--max-queue-min reads it) */
+  /* The stage column's Queue floor (docs/STAGE-COLUMN.md §4.3): in max the Queue always keeps
+     the song that plays now plus --max-queue-rows Up Next rows, and Now Playing's cover takes
+     only the height that is left. It is arithmetic over the Queue card's own parts — panel
+     padding, the header, the now-playing block, the card's two gaps, the UP NEXT label, then
+     the rows — so every skin keeps the same PROMISE at its own type size, and a skin that
+     changes its type or its row height moves with it.
+     The 1px panel border of Press / Cyber / Sand is deliberately NOT in the sum: the base
+     --panel-border-width is a UNITLESS 0, and calc() cannot add a bare number to a length —
+     the whole token would be invalid, and with it the cap that keeps the Queue's rows. Two
+     pixels of a 300 px floor is not worth that. */
+  --max-queue-rows: 2.5;            /* 2.5 = two whole rows and half of the third's cover */
+  --max-queue-min:  calc(2 * var(--panel-pad) + var(--fs-title) * var(--lh-text) + var(--space-2) + var(--qcard-now-art) + 2 * var(--space-2) + 2 * var(--space-3) + var(--fs-subtext) * var(--lh-text) + var(--max-queue-rows) * var(--lib-row-h)); /* the Queue's floor in the max stage column */
 
   /* -- album aurora (Now Playing; ALBUM-COLOR.md) ------------- */
   /* Expression knobs only — the COLORS are the runtime --album-*
@@ -140,7 +426,7 @@
   --album-fade-dur:        600ms;   /* crossfade on track change */
 
   /* -- storm layer (decorative strokes behind the cards) ------ */
-  /* An inline-SVG layer in .app-body (two <path pathLength="1"> bolts)
+  /* A layer in .app-body (two wiped strikes, each an SVG bolt)
      that a skin opts into — same doctrine as --panel-backdrop. The
      GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can
      reuse the layer for rain / streaks / scan lines; the ink is a theme
@@ -154,6 +440,20 @@
   --storm-path-2:  none;
   --storm-cycle-1: 8s;              /* full strike period: draw ~60% + linger + dark */
   --storm-cycle-2: 12s;             /* unequal cycles → phases drift, never sync */
+
+  /* -- fancy scrubbers (styles.css §Fancy scrubbers; Settings › Fancy scrubber) -- */
+  /* Each skin's playhead has its own motion; the numbers live here so a skin can
+     retune them. Loops run only while music plays and never under reduced motion. */
+  --scrub-fancy-size:   14px;   /* Press, Ocean, Glass playheads (a shape reads as a dot below 14) */
+  --scrub-nib-w:        2px;    /* Press: the stroke, idle; also the bars' thickness */
+  --scrub-nib-hover-w:  4px;    /* Press: the stroke under the hand */
+  --scrub-nib-bar:      8px;    /* Press: the width of the I-beam's top and bottom bars */
+  --scrub-float-size:   11px;   /* Ocean: the float, smaller than the others so the ripple carries the eye */
+  --scrub-ripple-scale: 1.8;    /* Ocean: how far the ripple ring spreads, in float widths */
+  --scrub-bob-dur:      2.4s;   /* Ocean: one bob of the float, and one ripple */
+  --scrub-sheen-dur:    6s;     /* Glass: the specular dot's drift, one way */
+  --scrub-lens-scale:   1.2;    /* Glass: the lens's swell under the hand */
+  --scrub-breathe-dur:  3s;     /* Cyber: the bolt's glow, one way */
 
   /* -- scrubber (handle is a skin-swappable SVG mask) --------- */
   /* The handle is a --title-filled box masked by this SVG, so the shape is
@@ -169,7 +469,18 @@
   --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
+  --lib-tile-lh:       1.3em;       /* a tile's text line; its meta block is pinned to two of
+                                       these so every tile in a grid row is one height */
   --lib-row-art:        36px;       /* mini-cover size on density lines */
+  --lib-row-h:          46px;       /* a line row's fixed height — its natural height under this
+                                       skin's type (title + artist stack + padding); pinned so the
+                                       row can be a relayout boundary (UI-ARCHITECTURE.md §4a) */
+  --hero-cover:         180px;      /* the detail hero's cover square (album / playlist) */
+  --hero-gap:           var(--space-1); /* title ↔ subtitle ↔ meta stack spacing */
+  --hero-cover-hover:   0.85;       /* brightness of a clickable hero cover on hover / file drag */
+  --hero-artist-radius: 50%;        /* an artist hero's photo (ARTIST-VIEW.md §1) */
+  --sticky-bar-surface:  var(--panel);          /* a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box */
+  --sticky-bar-backdrop: var(--panel-backdrop); /* the card's own frost (Glass); a see-through skin without one adds a blur */
   --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */
 
   /* -- scrollbar (our own; color is a theme role) ------------ */
@@ -186,15 +497,120 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+  /* Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a
+     restore waits for its data, so the root never flashes before the open level. */
+  --memory-wait: 0.4s;
+
+  /* -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) --
+     Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to /
+     --swap-out-fade before the remount. In step: each new card plays from the slot it
+     left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place.
+     --swap-from / --swap-mid shape it at the start and the midpoint (use the same
+     transform functions in both); --swap-fade is its starting opacity; --swap-stagger
+     delays the second card. The base = a straight slide, no out step (Glass uses it).
+     A replace rises in (the pop tokens). */
+  --swap-dur:      var(--nav-dur);
+  --swap-ease:     var(--nav-ease);
+  --swap-out-dur:  0s;
+  --swap-out-to:   scale(1);
+  --swap-out-fade: 1;
+  --swap-travel:   1;
+  --swap-from:     scale(1);
+  --swap-mid:      scale(1);
+  --swap-fade:     1;
+  --swap-stagger:  0s;
+
+  /* -- card grow (card-grow.ts, CARD-GROW.md) --
+     A card opens over its neighbor: the final layout is set once and a clip opens from the
+     old box to the new one over --grow-dur / --grow-ease while the body's content fades
+     (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad
+     opens the clip past the box by the card shadow's reach, so the shadow is not cut off
+     during the motion (0 under a skin with no shadow). The zone bar is the accent line in
+     the gap that shows which card will grow; the rail is the A–Z column of a grown list;
+     the col widths are the fixed columns of a grown song list. */
+  --grow-dur:        0.34s;
+  --grow-ease:       var(--pop-ease);
+  --grow-body-fade:  0.09s;             /* the rebuilt body fades in once the clip is open */
+  --grow-rows-stagger: 0.012s;          /* every row on screen enters; shorter than --pop-stagger */
+  --grow-clip-pad:   0px;
+  /* The zone bar hugs the card it will grow: --gap from the card's edge (negative = over
+     it), --trim from each end (the card's corner radius, so it runs between the corners),
+     its own radius and an optional glow. */
+  --grow-zone-bar-w:      3px;
+  --grow-zone-bar-gap:    0px;
+  --grow-zone-bar-trim:   var(--panel-radius);
+  --grow-zone-bar-radius: 999px;
+  --grow-zone-bar-glow:   none;
+  /* The window-edge Fill zones sit inside Tauri's resize band: the outer 5 px of a window
+     with no OS frame (BORDERLESS_RESIZE_INSET, tauri-runtime-wry undecorated_resizing.rs). */
+  --grow-zone-resize-inset: 5px;
+  --grow-btn-gap:    var(--space-2);   /* between the title text and the Grow button */
+  --grow-rail-w:     20px;
+  --grow-rail-fs:    10px;
+  --grow-col-time:   3.6em;
+  --grow-col-heart:  2em;
+  --grow-col-year:   3.4em;
+  --grow-col-plays:  3.6em;
+
+  /* -- chip flight (handoff.ts, ARTIST-VIEW.md §5) --
+     A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease.
+     --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing.
+     Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base =
+     a straight glide that shrinks into the card (Glass uses it). */
+  --fly-dur:       0.42s;
+  --fly-ease:      var(--nav-ease);
+  --fly-mid:       scale(1.04);
+  --fly-land:      scale(0.4);
+  --fly-land-fade: 0;
+
+  /* -- launch cover + look change (boot-cover.ts, appearance.ts; UX-COVERUPS.md §6) -- */
+  /* The window shows under an opaque --canvas cover. The cover fades and the cards
+     rise into place, one slot after the next. A theme or skin change plays the same
+     rise: first the cover fades in over the old look (--cover-in-*, the OUTGOING
+     skin's), then the look changes under it, then the INCOMING skin's rise runs.
+     Each skin tunes the rise below. --boot-safety lifts the cover by CSS alone if
+     the script never does (a page error must not leave a blank window). */
+  --boot-dur:      0.8s;
+  --boot-cover-out: var(--boot-dur);                /* the cover's fade; a skin may clear it sooner than the cards settle */
+  --boot-ease:     cubic-bezier(0.22, 1, 0.36, 1);  /* a long, soft settle */
+  --boot-rise:     translateY(12px);
+  --boot-stagger:  70ms;
+  --boot-safety:   4s;
+  --cover-in-dur:  0.22s;
+  --cover-in-ease: cubic-bezier(0.4, 0, 1, 1);      /* eases in, so the cover lands softly */
+  --agent-motion:  1.6;                             /* an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) */
+
+  /* -- album-colored Now Playing text (NEXT-VERSION §7) -- */
+  /* 1 = the NP title/subtext/accents take the album's guarded colors; 0 = theme
+     roles. Glass opts in (only Glass has the aurora under the text). */
+  --np-album-text: 0;
+
+  /* -- search card: the recent/pinned split pill -- */
+  --search-pin-size: var(--icon-sm);
 
   /* -- micro-motion (hover/expand/spin; nav has its own --nav-*) -- */
   --dur-fast: 0.12s;
   --dur-med:  0.18s;
   --dur-spin: 0.7s;
   --ease-ui:  ease;
+  --sh-cross-dur: 0.42s;            /* Shuffle's press run: uncross → parallel → cross */
+  --sh-cross-gap: 3px;              /* how far the two wires part, in the icon's 24-unit box */
+  --rp-loop-dur:  0.5s;             /* Repeat's one full turn, on the press that lands on "one" */
   --hover-lift: none;               /* interactive rows/tiles rise on hover; a skin opts in */
-  --drag-lift:  scale(1.02);        /* lift of a row being dragged (Qcard reorder) */
-  --drop-line-w: 2px;               /* insertion-indicator thickness */
+  --drag-lift:  scale(1.02);        /* lift of a dragged row's copy (row-drag.ts) */
+  --drag-ghost-opacity: 0.85;       /* the copy stays see-through so the list under it reads */
+  --drag-nodrop-opacity: 0.5;       /* the copy over a place that takes no drop */
+  --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
+  --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
+  --disabled-alpha: 0.6;            /* a control that keeps its place with nothing to act on */
+
+  /* -- the empty-pane invite slot (a row-shaped drop target; styles.css .lib-empty__slot) -- */
+  --empty-slot-rim-w:     1px;
+  --empty-slot-rim-style: dashed;
+  --empty-slot-rim-alpha: 80%;      /* of --border, the theme's own line ink */
+
+  /* -- picked rows (multi-select; themes.css mixes --picked from --title) -- */
+  --picked-strength: 14%;   /* how hard a picked row's fill reads */
 
   /* -- focus ring (one place to restyle every focus state) --- */
   --focus-ring-w:   2px;
@@ -236,6 +652,12 @@
    (Retired the Desk skin, 2026-08-10 — same slot, new idiom.)
    ============================================================ */
 [data-skin="press"] {
+  /* sound panel: an ink-line curve, square plot, no glow (printed, not lit) */
+  --sound-curve-w:       1.5px;
+  --sound-graph-radius:  0px;
+  --sound-fill-strength: 10%;
+  --sound-grid-dash:     2 3;
+  --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — a condensed poster grotesque over a spec-sheet mono. Anton
      ships one weight and it is heavy, so --fw-title drops to 400. Plex
      Mono runs wide: the body sizes DOWN a step so a density line still
@@ -267,6 +689,9 @@
   --panel-border-width: 1px;
   --panel-backdrop:     none;
   --shadow-card:        4px 4px 0 var(--ink-2);
+  --grow-clip-pad:      6px;        /* the plate's offset stays inside the opening clip */
+  --grow-zone-bar-w:      4px;      /* a rule of ink, square ends */
+  --grow-zone-bar-radius: 0;
 
   /* menus print too — same plate, one step further off register */
   --menu-surface: var(--surface);
@@ -291,6 +716,20 @@
   --drag-lift:   translate(-2px, -2px) scale(1.01);
   --drop-line-w: 3px;
 
+  /* launch + look change — sheets set down firmly: short, a small rise, tight order */
+  --boot-dur:     0.5s;
+  --boot-ease:    cubic-bezier(0.3, 0, 0.1, 1);
+  --boot-rise:    translateY(6px);
+  --boot-stagger: 40ms;
+  --cover-in-dur: 0.16s;
+
+  /* record player — the disc sits on the press plate (the card's own offset ink), and a
+     song change pulls one sheet off and stamps the next down: the nav ease, a longer run */
+  --vinyl-inset:        5px;
+  --vinyl-plate-shadow: 4px 4px 0 var(--ink-2);
+  --vinyl-swap-dur:     0.42s;
+  --vinyl-swap-ease:    cubic-bezier(0.85, 0, 0.15, 1);
+
   /* nav — a sheet pulled off the stack and the next one stamped down:
      the classic horizontal push, but fast and hard-eased at both ends,
      and the stock is opaque so the outgoing pane needs no fade. */
@@ -300,6 +739,16 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;
+  /* swap — no slide: each slot stamps its new sheet down, one after the other */
+  --swap-travel:  0;
+  --swap-from:    scale(1.03);
+  --swap-mid:     scale(1.01);
+  --swap-stagger: 0.06s;
+  /* chip flight: a quick stamp — it swells mid-air and presses down into the card */
+  --fly-dur:      0.34s;
+  --fly-ease:     cubic-bezier(0.2, 0.9, 0.3, 1);
+  --fly-mid:      scale(1.1);
+  --fly-land:     scale(0.85);
 
   /* scrubber handle — a trimmed block riding the rail, corners square */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='2' width='12' height='20' fill='%23000'/%3E%3C/svg%3E");
@@ -313,6 +762,11 @@
    beneath. Engraved caps title on a serene serif body.
    ============================================================ */
 [data-skin="ocean"] {
+  /* sound panel: the curve glows like light under water */
+  --sound-curve-glow:        drop-shadow(0 0 4px var(--eq-curve));
+  --sound-fill-strength:     22%;
+  --sound-song-strength:     28%;
+  --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (the sand mask repainted on every scroll step: 157 → 240 fps) */
   /* type — engraved Roman caps title on a calm serif body */
   --font-title: "Cinzel", Georgia, "Times New Roman", serif;
   --font-body:  "Spectral", Georgia, "Times New Roman", serif;
@@ -325,6 +779,10 @@
   --panel-border-width: 0;
   /* soft border = a diffuse ring in the theme hairline color + depth */
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
+  --grow-clip-pad: 44px;            /* the lift's reach, so the opening clip keeps the shadow */
+  --grow-zone-bar-gap:    1px;      /* a soft line just off the card, with a little water glow */
+  --grow-zone-bar-radius: 3px;
+  --grow-zone-bar-glow:   0 0 6px var(--grow-zone-bar);
   --panel-radius:       14px;       /* softer, water-smoothed corners */
 
   /* surface — the rolling swell, an SVG layer (.ocean in styles.css;
@@ -345,6 +803,14 @@
   /* micro-motion — cards float on the surface; a touch buoys them up */
   --hover-lift: translateY(-1px);
 
+  /* launch + look change — cards come up from beneath the surface: long, deep, unhurried */
+  --boot-dur:      1.05s;
+  --boot-ease:     cubic-bezier(0.25, 0.8, 0.35, 1);
+  --boot-rise:     translateY(22px) scale(0.99);
+  --boot-stagger:  95ms;
+  --cover-in-dur:  0.3s;
+  --cover-in-ease: cubic-bezier(0.37, 0, 0.63, 1);
+
   /* nav — outgoing sinks, incoming rises from beneath the surface */
   --nav-dur:  0.42s;
   --nav-ease: cubic-bezier(0.37, 0, 0.63, 1);
@@ -352,6 +818,13 @@
   --nav-at-left:     translateY(45%) scale(0.92);
   --nav-at-right:    translateY(45%) scale(0.92);
   --nav-off-opacity: 0;
+  /* swap — the card dips under the surface on its way and rises at its new slot */
+  --swap-mid:     scale(0.94);
+  /* chip flight: it dips under the line of travel, then settles into the card */
+  --fly-dur:      0.5s;
+  --fly-ease:     cubic-bezier(0.45, 0, 0.25, 1);
+  --fly-mid:      translateY(18px) scale(0.96);
+  --fly-land:     translateY(8px) scale(0.5);
 
   /* scrubber handle — a lens swell: the bar appears to bulge to a fat middle
      and taper back to track height at the pointed tips. Same --title fill as
@@ -359,12 +832,42 @@
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 12Q12 5 23 12Q12 19 1 12Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
+/* Press "Record player" (Settings; src/skin-settings.ts sets data-press-vinyl and
+   data-press-vinyl-where on <html>). Spin and Still both draw the record; the stage always
+   shows it, the card strip unless "Stage", the tray panel only with "Everywhere". */
+[data-skin="press"]:is([data-press-vinyl="spin"], [data-press-vinyl="still"]) { --vinyl-stage: 1; }
+[data-skin="press"]:is([data-press-vinyl="spin"], [data-press-vinyl="still"]):is([data-press-vinyl-where="card"], [data-press-vinyl-where="everywhere"]) { --vinyl-strip: 1; }
+[data-skin="press"]:is([data-press-vinyl="spin"], [data-press-vinyl="still"])[data-press-vinyl-where="everywhere"] { --vinyl-tray: 1; }
+/* Show record plate: Off — no offset ink behind the record, and the record fills the box. */
+[data-skin="press"][data-press-vinyl-plate="off"] { --vinyl-plate-shadow: none; --vinyl-inset: 0px; }
+
+/* Ocean's sand edges (Settings › Draw card edges: Sand; src/skin-settings.ts sets
+   data-ocean-edges) — a dark beach: the card's edge breaks into grains over
+   --sand-reach, and light specks (--border ink) scatter through that band. The box
+   paints nothing; the fill moves to .panel::before. No glow ring or drop shadow: an
+   outer shadow would trace the hard box edge the grains remove. Ocean panes fade on
+   nav (--nav-off-opacity: 0), so they need no fill (a filled pane would print a hard
+   rectangle inside the grainy rim). */
+:root[data-skin="ocean"][data-ocean-edges="sand"] {
+  --panel-paint:  transparent;
+  --sand-display: block;
+  /* Settings › Sand width (src/skin-settings.ts) sets --ocean-sand (0–100) on
+     <html>; the fallback is the default. It maps onto the min…max reach. */
+  --sand-reach-min: 4px;
+  --sand-reach-max: 40px;
+  --sand-reach:   calc(var(--sand-reach-min) + (var(--sand-reach-max) - var(--sand-reach-min)) * var(--ocean-sand, 15) / 100);
+  --sand-ink:     color-mix(in srgb, var(--border) 70%, transparent);
+  --shadow-card:  none;
+  --spane-bg:     transparent;
+}
+
 /* Ocean's swell — motion for the injected layer. All trains roll the SAME
    direction, nearest fastest, each by an INTEGER number of its own tile
    width over one loop (144=3×48, 128=2×64, 80=1×80), so the seam is
-   invisible. Roll owns the horizontal drift (linear, on the <rect>s), bob
-   the rise-and-fall (ease-in-out alternate ≈ a sine, on the wrapping
-   <g>s) — separate elements, so the two transforms compose instead of
+   invisible. Roll owns the horizontal drift (linear, on the inner
+   .ocean__roll), bob the rise-and-fall (sine-sampled keyframes, alternate,
+   on the wrapping .ocean__bob — the ease is in the keyframes because the
+   stepped timing, see --ambient-fps, replaces any easing) — separate elements, so the two transforms compose instead of
    overwriting each other. Per-layer distances come from --roll-dist /
    --bob-amp, set on the elements in styles.css and resolved inside these
    keyframes per element. 9s·2 vs 16s never sync (LCM 144s) — the pattern
@@ -372,8 +875,14 @@
 @keyframes ocean-roll {
   to { transform: translateX(var(--roll-dist, 0px)); }
 }
+/* (1 − cos πt) / 2 sampled at fifths ≈ the old ease-in-out */
 @keyframes ocean-bob {
-  to { transform: translateY(var(--bob-amp, 0px)); }
+  0%   { transform: translateY(0); }
+  20%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.0955)); }
+  40%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.3455)); }
+  60%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.6545)); }
+  80%  { transform: translateY(calc(var(--bob-amp, 0px) * 0.9045)); }
+  100% { transform: translateY(var(--bob-amp, 0px)); }
 }
 
 /* ============================================================
@@ -383,22 +892,107 @@
    color is still derived from a theme role, never named here.
    ============================================================ */
 [data-skin="glass"] {
+  /* sound panel: a lit edge on the curve, a brighter fill behind the frost */
+  --sound-curve-glow:    drop-shadow(0 0 2px var(--glint));
+  --sound-fill-strength: 24%;
+  --sound-handle-shadow: 0 0 0 1px var(--glint), 0 2px 6px rgba(0, 0, 0, 0.25);
+  --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (GPU process in scroll 49 → 23%) */
   /* type — drop the serif for a crisp, light modern sans */
   --font-title: var(--font-body);
   --fw-title:   600;
   --fs-title:   19px;
 
-  /* frosted panels — a translucent surface + a real backdrop blur, a
-     hairline edge, soft depth, and a top inner sheen. The 55%/70% mixes
-     thin the theme's --surface to glass; saturate() makes the aurora pop
-     through. No hex is named — translucency is an alpha of a theme role. */
-  --panel:              color-mix(in srgb, var(--surface) 55%, transparent);
-  --panel-backdrop:     blur(14px) saturate(1.5);
+  /* ── the layers, back to front ──────────────────────────────
+     Four Settings sliders (Look and feel, shown only under Glass; src/skin-settings.ts
+     writes each as a custom property on <html>, and each fallback below is its default).
+     They read in the same order as the rows:
+       1. Canvas glow  --glass-canvas      the aurora's strength (the --aurora-* stops)
+       2. Dim canvas   --glass-canvas-dim  black over the background, undone inside cards
+       3. Backlight    --glass-backlight   a light inside each card, under its tint
+       4. Tint cards   --glass-tint        the card color, over the backlight
+     No hex is named anywhere: every color is a theme role or an alpha of one. */
+
+  /* 1. canvas glow — scales every aurora stop (the --aurora-* block below): 50 = the
+     values as written, 0 = no glow (a plain, deep canvas), 100 = double, each stop
+     capped at 100%. */
+  --glass-glow: calc(var(--glass-canvas, 40) / 50);
+
+  /* 2. dim canvas — 0–100 maps to a 0–0.9 dim. .app-body::after lays black at
+     --canvas-dim over the canvas and aurora, under the cards. Only the gaps get darker:
+     the painted frost never sees the dim, and the live frost (Fancy Glass) multiplies it
+     back out with brightness(1 / (1 − dim)). The 0.9 cap keeps that ×10 restore inside
+     8-bit precision. Both forms saturate the aurora so it pops through. */
+  --glass-dim:          calc(var(--glass-canvas-dim, 10) / 100 * 0.9);
+  --canvas-dim:         var(--glass-dim);
+  --glass-frost-sat:    1.5;          /* how much the frost saturates what it shows */
+
+  /* the frost has two forms (Settings › Fancy Glass, data-glass-fancy on <html>):
+     · OFF (the default, here): PAINTED. Each card paints its own copy of the canvas and
+       the aurora at rest, pinned to the window (background-attachment: fixed) so it lines
+       up with the real one, pre-saturated, and never dimmed. There is no blur: the blobs are
+       soft already, and a 14px blur of them looks the same. The aurora holds still
+       (--aurora-drift: none) so the copy and the canvas agree. Nothing redraws when a list
+       scrolls. Measured 2026-09-16: DEBUGGING.md §Fancy Glass.
+     · ON (the block after this one): the LIVE backdrop-filter. */
+  --panel-backdrop:     none;
+  --panel-isolation:    isolate;
+  --aurora-drift:       none;
+  --glass-frost-layer:  calc(-1 * var(--aurora-slack)) calc(var(--titlebar-h) - var(--aurora-slack)) /
+                        calc(100% + 2 * var(--aurora-slack)) calc(100% - var(--titlebar-h) + 2 * var(--aurora-slack))
+                        no-repeat fixed;
+  --glass-frost-paint:
+    radial-gradient(42% 52% at 16% 10%,
+      color-mix(in srgb, var(--glass-frost-go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%)
+      var(--glass-frost-layer),
+    radial-gradient(46% 56% at 86% 22%,
+      color-mix(in srgb, var(--glass-frost-stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%)
+      var(--glass-frost-layer),
+    radial-gradient(52% 52% at 60% 96%,
+      color-mix(in srgb, var(--glass-frost-pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%)
+      var(--glass-frost-layer),
+    oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
+  /* the aurora's own hues, saturated the way the live frost's saturate() does (keep the three
+     gradients above in step with --aurora-1..3 below) */
+  --glass-frost-go:    oklch(from var(--go) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-stop:  oklch(from var(--stop) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-pause: oklch(from var(--pause) l calc(c * var(--glass-frost-sat)) h);
+  /* the stuck list bar keeps a real blur in both forms: it frosts the rows under it */
+  --sticky-bar-backdrop: blur(14px) saturate(var(--glass-frost-sat));
+
+  /* 3. backlight — the card box paints a soft glow of the theme's accent roles as its
+     background (--panel-paint); a faint halo of the same light leaks past the edge (the
+     first --shadow-card entry, painted with the card, so the dim never reaches it). */
+  --glass-light: calc(var(--glass-backlight, 85) / 100);
+  --glass-backlight-paint:
+    radial-gradient(140% 100% at 50% 0%,
+      color-mix(in srgb, var(--go) calc(60% * var(--glass-light)), transparent),
+      color-mix(in srgb, var(--stop) calc(40% * var(--glass-light)), transparent) 55%,
+      color-mix(in srgb, var(--pause) calc(30% * var(--glass-light)), transparent));
+  --panel-paint: var(--glass-backlight-paint), var(--glass-frost-paint);
+
+  /* 4. tint — an alpha of --surface, laid OVER the backlight as a full-size inset
+     shadow (the last --shadow-card entry: a box paints its background, then its inset
+     shadows with the last listed lowest, then its content). At 0 the backlight shows
+     fully. --panel stays a plain color: album-color.ts reads it for the contrast guard. */
+  --panel:              color-mix(in srgb, var(--surface) var(--glass-tint, 65%), transparent);
+
+  /* the card's shape and depth: a hairline edge, round corners, the halo, a soft drop
+     shadow, a top inner sheen (over the tint), then the tint itself */
   --panel-border-width: 1px;
   --panel-radius:       18px;
   --shadow-card:
+    0 0 28px color-mix(in srgb, var(--go) calc(30% * var(--glass-light)), transparent),
     0 8px 32px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent),
+    inset 0 0 0 100vmax var(--panel);
+  --grow-clip-pad:      40px;       /* the halo and the drop shadow stay inside the opening clip */
+  --grow-zone-bar-w:      2px;      /* a thin lit edge, off the glass, with its glow */
+  --grow-zone-bar-gap:    2px;
+  --grow-zone-bar-radius: 2px;
+  --grow-zone-bar-glow:   0 0 8px color-mix(in srgb, var(--grow-zone-bar) 60%, transparent);
 
   /* controls — rounded glass chips (not the capsule, not the Press trim) */
   --lib-pill-radius:    12px;
@@ -415,10 +1009,21 @@
   --album-aurora-reach:    3.5;
   --album-spin-dur:        30s;
 
-  /* menus — frosted like the panels, but milkier (65% vs 55%): menus carry
-     dense text over arbitrary backdrops, so legibility buys more opacity */
-  --menu-surface:  color-mix(in srgb, var(--surface) 65%, transparent);
+  /* menus — frosted like the panels, but much milkier (90% vs 55%): menus carry
+     dense text over arbitrary backdrops (the Play-on panel over a card's title
+     and rows), so legibility buys most of the opacity back (2026-09-12) */
+  --menu-surface:  color-mix(in srgb, var(--surface) 90%, transparent);
   --menu-backdrop: blur(16px) saturate(1.4);
+
+  /* album-colored NP text — the aurora sits under the text only here */
+  --np-album-text: 1;
+
+  /* launch + look change — panes settle forward into place: soft and slow, a slight scale */
+  --boot-dur:     0.9s;
+  --boot-ease:    cubic-bezier(0.4, 0, 0.2, 1);
+  --boot-rise:    translateY(6px) scale(0.985);
+  --boot-stagger: 60ms;
+  --cover-in-dur: 0.26s;
 
   /* single frost = the card itself; panes fade (no mask needed), so don't
      re-paint --panel and double the tint into a rectangle below the bar. */
@@ -439,19 +1044,31 @@
        layer shows a crisp straight boundary where a bleeding blob is cut off;
      · each fade gets a mid stop and runs to a farther terminus, so there's
        no abrupt slope change (Mach band) rimming the hotter blobs. */
-  --canvas-bg:
+  --aurora-1:
     radial-gradient(42% 52% at 16% 10%,
-      color-mix(in srgb, var(--go) 50%, transparent),
-      color-mix(in srgb, var(--go) 20%, transparent) 45%, transparent 80%),
+      color-mix(in srgb, var(--go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%);
+  --aurora-2:
     radial-gradient(46% 56% at 86% 22%,
-      color-mix(in srgb, var(--stop) 44%, transparent),
-      color-mix(in srgb, var(--stop) 18%, transparent) 45%, transparent 80%),
+      color-mix(in srgb, var(--stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%);
+  --aurora-3:
     radial-gradient(52% 52% at 60% 96%,
-      color-mix(in srgb, var(--pause) 38%, transparent),
-      color-mix(in srgb, var(--pause) 15%, transparent) 45%, transparent 82%);
+      color-mix(in srgb, var(--pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%);
+  --aurora-display: block;
+  --aurora-slack:   64px;            /* blobs 128px oversized; every drift stays within ±64 */
+  /* each blob wanders a different way and returns */
+  --aurora-drift-1-x:  48px;  --aurora-drift-1-y:  32px;
+  --aurora-drift-2-x: -56px;  --aurora-drift-2-y:  24px;
+  --aurora-drift-3-x:  36px;  --aurora-drift-3-y: -44px;
+  --aurora-dur:     60s;
+  /* the app paints the blobs on the moving .aurora layer; the extension pages
+     read the same stack from --canvas-bg, still */
+  --app-canvas-bg:    none;
+  --canvas-bg:        var(--aurora-1), var(--aurora-2), var(--aurora-3);
   --canvas-bg-size:   calc(100% + 128px) calc(100% + 128px);
   --canvas-bg-repeat: no-repeat;
-  --canvas-anim:      aurora-drift 60s ease-in-out infinite;
 
   /* nav — panes fade/scale through one another rather than slide */
   --nav-dur:  0.34s;
@@ -460,10 +1077,21 @@
   --nav-at-left:     scale(0.96);
   --nav-at-right:    scale(0.96);
   --nav-off-opacity: 0;
+  /* swap — the base straight slide (a cross-fade read as a glitch through the frost, 2026-09-15) */
 
   /* scrubber handle — a glass ring (evenodd hollow): the --title fill draws
      only the rim, so the track shows THROUGH the handle like a little lens */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z' fill='%23000'/%3E%3C/svg%3E");
+}
+
+/* Fancy Glass on: the live frost. A real blur of whatever is behind the card; its
+   brightness() undoes the canvas dim (1 / (1 − dim)), so only the gaps get darker. The
+   aurora drifts again. The cost: DEBUGGING.md §Fancy Glass. */
+[data-skin="glass"][data-glass-fancy="on"] {
+  --panel-backdrop:  blur(14px) saturate(var(--glass-frost-sat)) brightness(calc(1 / (1 - var(--glass-dim))));
+  --panel-isolation: auto;
+  --aurora-drift:    aurora-drift;
+  --panel-paint:     var(--glass-backlight-paint);
 }
 
 /* ============================================================
@@ -473,6 +1101,14 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="cyber"] {
+  /* sound panel: a scope trace — bright glow, dashed graticule, square dots' ring */
+  --sound-curve-glow:        drop-shadow(0 0 3px var(--eq-curve)) drop-shadow(0 0 8px var(--eq-curve));
+  --sound-curve-w:           1.5px;
+  --sound-grid-dash:         1 3;
+  --sound-grid-strength:     34%;
+  --sound-song-strength:     30%;
+  --scroller-layer: scroll-position; /* see-through cards: the lists get their own layer (GPU process in scroll 85 → 19%) */
+  --lib-row-h:          49px;       /* taller type stack than the base (measured) */
   /* type — machined geometric title on a condensed squared body.
      Orbitron reads very wide, size down; Rajdhani runs thin and
      small-x-height, so the body sits at 500 and a size up. */
@@ -501,6 +1137,8 @@
      panels a touch translucent so a bolt passing behind a card glows
      through dimly, full-bright in the gutters. (Dial: FUTURE-SETTINGS §13.) */
   --panel:              color-mix(in srgb, var(--canvas) 86%, transparent);
+  /* the stuck toolbar row matches this see-through card; a blur keeps the rows under it from reading through */
+  --sticky-bar-backdrop: blur(10px);
   --panel-border-width: 1px;
   --shadow-card:        none;
   /* panel is translucent (bolts glow through) — same as Glass, don't re-paint
@@ -523,14 +1161,36 @@
   --canvas-bg-size:   28px 28px;
   --canvas-bg-repeat: repeat;
 
+  /* launch + look change — an electric snap: the cover clears almost at once, then the
+     cards jolt in hard-skewed and straighten, one after the next */
+  --boot-dur:       0.6s;
+  --boot-cover-out: 0.18s;
+  --boot-ease:      cubic-bezier(0.2, 0.9, 0.3, 1);
+  --boot-rise:      translateX(18px) skewX(-10deg);
+  --boot-stagger:   50ms;
+  --cover-in-dur:   0.1s;
+
   /* nav — an electric snap: fast, hard ease, the pane jolts in with a
      skew that straightens at center */
   --nav-dur:  0.14s;
   --nav-ease: cubic-bezier(0.7, 0, 0.3, 1);
+  --grow-zone-bar-radius: 0;        /* a hard neon rule, no trim (the cards are square) */
   --nav-at-center:   translateX(0) skewX(0deg);
   --nav-at-left:     translateX(-100%) skewX(6deg);
   --nav-at-right:    translateX(100%) skewX(-6deg);
   --nav-off-opacity: 0;
+  /* swap — no slide: the old card skews out, then the new one skews in and straightens */
+  --swap-out-dur:  var(--nav-dur);
+  --swap-out-to:   skewX(-10deg);
+  --swap-out-fade: 0;
+  --swap-travel:   0;
+  --swap-from:     skewX(10deg);
+  --swap-mid:      skewX(4deg);
+  --swap-fade:     0;
+  /* chip flight: it skews into the travel and out again as it lands */
+  --fly-ease:      cubic-bezier(0.7, 0, 0.3, 1);
+  --fly-mid:       skewX(-12deg);
+  --fly-land:      skewX(8deg) scale(0.5);
 
   /* micro-motion — twitch-fast; a dragged queue row banks like a blade */
   --dur-fast:    0.08s;
@@ -544,30 +1204,44 @@
   --scrubber-handle-size: 14px;
 }
 
-/* Cyber's strike cycle: the bolt draws top→bottom over ~60% of its
-   period (dashoffset 1→0 against pathLength=1), flickers once at full
-   reach, cuts to dark, and rests until the next strike. Both bolts run
-   THESE keyframes at different --storm-cycle-* durations — that alone
-   yields "two visible at once, drawing at different rates". storm.ts
-   re-rolls each bolt's position during the dark window (opacity 0 at
-   the loop seam, so the jump is never visible). Defined once; only
-   Cyber references it (via the .storm__bolt animation). */
+/* Cyber's strike cycle: the bolt is wiped in top→bottom over ~60% of
+   its period (the strike box slides 0→full reach while storm-hold counter-slides,
+   so the bolt itself never moves), flickers once at full reach, cuts to dark,
+   and rests until the next strike. Both bolts run THESE keyframes at different
+   --storm-cycle-* durations — that alone yields "two visible at once, drawing
+   at different rates". storm.ts re-rolls each bolt's position during the dark
+   window (opacity 0 at the loop seam, so the jump is never visible). Defined
+   once; only Cyber references them (via the .storm__strike / __hold
+   animations). transform + opacity only, so the compositor runs them. */
 @keyframes storm-strike {
-  0%        { stroke-dashoffset: 1; opacity: 0; }
+  0%        { transform: translateY(-100%); opacity: 0; }
   2%        { opacity: 1; }
-  60%       { stroke-dashoffset: 0; opacity: 1; }
+  60%       { transform: translateY(0); opacity: 1; }
   64%       { opacity: 0.4; }   /* flicker at full reach */
   68%       { opacity: 1; }
-  74%, 100% { stroke-dashoffset: 0; opacity: 0; }
+  74%, 100% { transform: translateY(0); opacity: 0; }
+}
+@keyframes storm-hold {
+  0%        { transform: translateY(100%); }
+  60%, 100% { transform: translateY(0); }
 }
 
-/* Glass's aurora blobs wander and return: each layer drifts a different
-   direction, out of phase, with symmetric 0/50/100 keyframes so the loop is
-   seamless. Rest position is −64px (the oversized layer's center); every
-   offset stays within −128..0 on both axes, so the image edge — the hard
-   cut line — can never enter the viewport. Defined once; only Glass
-   references it (via --canvas-anim). */
+/* Glass's aurora blobs wander and return: each blob drifts by its own
+   --drift-x / --drift-y (--aurora-drift-N-*) at the midpoint and comes back, so
+   the loop is seamless; the vectors point different ways, so the blobs move apart
+   and together. Every vector stays within --aurora-slack, so a blob's cut edge can
+   never enter the viewport. The ease is sampled into the keyframes —
+   (1 − cos 2πt) / 2 at tenths — because the stepped timing (--ambient-fps)
+   replaces any easing. Defined once; only Glass opts in (--aurora-display). */
+/* "Animate backgrounds: Reduced" (settings, src/ambient.ts) halves the ambient rate
+   for every skin. A user choice, so it outranks the skin's --ambient-fps. */
+:root[data-bg-motion="reduced"] { --ambient-fps: 15; }
+
 @keyframes aurora-drift {
-  0%, 100% { background-position: -64px -64px, -64px -64px, -64px -64px; }
-  50%      { background-position: -16px -32px, -120px -40px, -28px -108px; }
+  0%, 100% { transform: translate(0, 0); }
+  10%, 90% { transform: translate(calc(var(--drift-x) * 0.0955), calc(var(--drift-y) * 0.0955)); }
+  20%, 80% { transform: translate(calc(var(--drift-x) * 0.3455), calc(var(--drift-y) * 0.3455)); }
+  30%, 70% { transform: translate(calc(var(--drift-x) * 0.6545), calc(var(--drift-y) * 0.6545)); }
+  40%, 60% { transform: translate(calc(var(--drift-x) * 0.9045), calc(var(--drift-y) * 0.9045)); }
+  50%      { transform: translate(var(--drift-x), var(--drift-y)); }
 }
