@@ -112,6 +112,15 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**Small, ready to do (owner takes it next dev cycle, 2026-09-17).** `src/web.ts:1028` defers a
+row press with `window.setTimeout(() => activate(r))` for one reason only: picking rebuilt the
+rows, the pressed row left the document, and `dropdown.ts` then read the press as a click away
+and closed the panel. Its comment says exactly that. **The cause is fixed in the primitive**
+(a target no longer in the document is not a click away, `src/dropdown.ts`; ROOMS.md §16.7 has
+the whole story), so the workaround is dead weight and, worse, a pattern somebody will copy.
+Remove the `setTimeout` and its comment, call `activate(r)` straight, then press a hit row in
+the Playlists web panel: the panel must stay open and the rows must redraw as before.
+
 **DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
 from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".
 
@@ -796,6 +805,20 @@ releases since 0.6.2, in short:
   the contrast guard (Glass) · Glass menus at 90% · explicit badge. Surface-change motion
   (fork B) was tried and walked back the same day (NEXT-VERSION §10). **Next talk: the
   playlist creation flow** (NEXT-VERSION §11).
+
+- **2026-09-17 — the Max stage column** ([STAGE-COLUMN.md](STAGE-COLUMN.md)). The album cover is
+  locked to a square and is never cropped (`100cqw` on the cover inside an inline-size `.np`, so
+  there is no measured constant); **Now Playing is locked** to its full-width square plus its
+  rows and the **Queue absorbs every other pixel** — the owner's rule after stress-testing:
+  the art and the now-playing information are what the surface is for, and the queue is
+  something a user opens when they want it. A new `.stage` wrapper gives column 1 its own two
+  rows (`display: contents` outside Max, so midi / mini / NP render exactly as before), and the
+  **Queue grows up over Now Playing** from a zone on its top edge (CARD-GROW.md §16). The
+  auto-flip now reads the window's **height** as well as its width: under 745 px a Max window
+  becomes Midi, or stops at its 750 px floor — `Settings › Window › "Max window when short"`.
+  Default Max size 1100 × 950, sized from Press (the tallest skin) against a 1920 × 1080 work
+  area. Desk-tested live on all five skins. **Open:** Press at the floor keeps 101 px of Queue,
+  not the 106 the other skins get — move the band to 755 if that reads short.
 
 ### Not built yet ⬜
 - **Two services, one library (2026-09-15) — PARKED.** Designed in the morning
