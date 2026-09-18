@@ -42,6 +42,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 | Updater key password | Credential Manager `DeetsMusicUpdaterKey` + iCloud Passwords | `release.mjs` | §6.6 |
 | Azure client secret (`Deets Release Signing`) | Credential Manager `DeetsMusicAzureSigning`. **Expires 2027-03-14** | `release.mjs` → `sign.mjs` | Make a new one in a minute; runbook §6.9 |
 | Artifact Signing dlib + `metadata.json` | `%LOCALAPPDATA%\DeetsTools\artifact-signing\` | `sign.mjs` | Download again (§6.9) |
+| Build key (one line) | `Documents\Deets' Secrets\deetsmusic-build-key.txt` | `build.rs` → the exe → `X-Deets-Build` on the mint and report intake; the Worker's `BUILD_KEYS` secret | Lost = make a new one and add it to `BUILD_KEYS` (a list) before the next release; leaked = nothing, it was always readable from the exe (§7a) |
 | Cloudflare account (Worker, R2) | wrangler login in `../DeetsSupport` | `release:publish`, the update route | Secure it first in any key incident (§6.6) |
 
 **Why two signatures.** A stolen updater key alone cannot push an update: the attacker also needs
@@ -614,7 +615,8 @@ key becomes a Worker secret and never leaves Cloudflare.
 It cannot verify that the caller really is DeetsMusic. Anything shipped in a public binary
 can be extracted, including any secret it would use to prove itself. There is no client
 attestation for an open-source desktop app, so the endpoint is deliberately **open**, and
-honest about it.
+honest about it. (The build key of §7a does not change this: it is a ledge against an
+accidental clone, not proof.)
 
 What it does buy, which is enough:
 
@@ -767,6 +769,58 @@ Free hardening, no further decision needed:
 - The cached token is a bearer credential: it must reach only Rust and the webview
   (`apple_developer_token`). It must **never** appear on the loopback bridge or the agent
   routes. That invariant holds today — keep it.
+
+### 7a. The build key — a ledge against an accidental clone (2026-09-18)
+
+> Decided 2026-09-18 (forks 1A/2A/3A/4A): **one compiled-in key · checked on the mint and
+> report intake only · dev builds carry it when the file exists · rotated only after an abuse
+> case.** Built the same day; the Worker code is written and **not yet deployed**, and the
+> `BUILD_KEYS` secret is **not set** (see "Turning it on").
+
+**Why.** The repo is public under MIT. Before this, `git clone` + `cargo build` produced an app
+that minted Apple tokens from Deets' Worker and posted reports into Deets' inbox, because the
+only gate was the `DeetsMusic/` User-Agent prefix. The key turns that accident into a deliberate
+act: a clone author must either bring their own back end or pull the key out of the installer.
+
+**What it is not.** Proof. The key sits in a public exe and a strings tool reads it out. The
+shared token itself (one per 7-day window, in every install's app data) is the bigger prize and
+the key does nothing for it. Nothing more is claimed; the "What this buys" list above still holds.
+
+**How it works.**
+
+- `Documents\Deets' Secrets\deetsmusic-build-key.txt` holds one line (32 url-safe characters,
+  made with `crypto.randomBytes(24)`). Override the path with `DEETSMUSIC_BUILD_KEY`.
+- `src-tauri/build.rs` reads it and emits `DEETS_BUILD_KEY`, exactly the Last.fm pattern; the
+  app reads it with `option_env!`. No file → a warning and a build that sends no header.
+- `apple.rs` exports `build_key()` and `BUILD_HEADER` (`X-Deets-Build`). The mint fetch and the
+  report post send the header when the key exists. A 403 from the mint logs `mint refused this
+  build (403)` (or `… has no build key` when the build has none); a 403 `build` from intake shows
+  "The support server doesn't take reports from this build of DeetsMusic."
+- `release-check.mjs` item 8 refuses a release whose exe lacks the key.
+- `DeetsSupport`: `buildRefused()` in `src/index.js`. `BUILD_KEYS` (a secret, comma list)
+  unset or empty = the check is OFF and the deploy changes nothing. Set = a `DeetsMusic/`
+  caller without a listed header gets 403 `build` on `GET /token` and `POST /posts`. Web
+  callers never carry the header and are never asked. Updates and rooms are not checked
+  (fork 2A): updates are signed, and a clone pulling one replaces itself with the real build;
+  rooms are the lowest harm and their Worker is a third repo.
+
+**Turning it on** (in this order, or older installs lose the mint):
+
+1. Deploy the Worker: `npx wrangler deploy` in `../DeetsSupport`. Inert until step 3.
+2. Ship a release with the key built in (the release check enforces it). Wait until every
+   install in use is on it — an older install with no key keeps its cached token for up to
+   14 days after step 3, then gets 403 and shows "no developer token".
+   `CONFIG.minVersion` can hurry that along.
+3. `npx wrangler secret put BUILD_KEYS` with the key. From then on the check is live.
+
+**Rotation** (fork 4A: only after an abuse case): make a new line in the file, set `BUILD_KEYS`
+to `old,new`, ship a release, drop `old` once the installs have moved. Never a per-release key.
+
+**Desk test.** After step 3: `curl -A DeetsMusic/0.0 https://music-api.deets.solutions/token`
+→ 403 `{"error":"build"}`; the same with `-H "X-Deets-Build: <key>"` → 200; the installed app's
+log shows `token: source=worker` after `developer-token.json` is moved away; Settings › Bugs
+sends a report and gets a code. A build without the key file (`DEETSMUSIC_BUILD_KEY=nul`)
+logs `mint refused: this build has no build key (403)` and still plays on the dev `.p8`.
 
 ### What the rate limit is actually for (2026-09-11)
 

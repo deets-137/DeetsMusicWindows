@@ -20,6 +20,7 @@
 //  5. No dev telemetry in the shipped JS (a stray VITE_PERF would ship a rAF loop).
 //  6. docs/TOKENS.md is current.
 //  7. The Last.fm API key is built in (LASTFM.md §2).
+//  8. The build key is built in (RELEASE.md §7a).
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -141,8 +142,23 @@ if (signed.length) {
   else if (existsSync(exe) && !readFileSync(exe).includes(Buffer.from(key))) failures.push("the release exe has no Last.fm API key — rebuild after filling in lastfm.json (LASTFM.md §2)");
 }
 
+// ── 8. The build key is in the build (docs/RELEASE.md §7a) ──────────────────────
+// build.rs builds it in from Deets' Secrets; without it the app still runs on a local .p8, but a
+// public install would be refused by the mint once the worker's check is on. The key is not printed.
+{
+  const file = process.env.DEETSMUSIC_BUILD_KEY || join(homedir(), "Documents", "Deets' Secrets", "deetsmusic-build-key.txt");
+  let key = "";
+  try {
+    key = readFileSync(file, "utf8").trim();
+  } catch {
+    /* reported below */
+  }
+  if (!key) failures.push(`no build key at ${file} — see RELEASE.md §7a`);
+  else if (existsSync(exe) && !readFileSync(exe).includes(Buffer.from(key))) failures.push("the release exe has no build key — rebuild with deetsmusic-build-key.txt in place (RELEASE.md §7a)");
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in`);

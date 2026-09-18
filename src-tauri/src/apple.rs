@@ -366,6 +366,18 @@ fn load_config() -> Result<AppleConfig, String> {
 /// Compiled in. Never the `support.` host (support.md: a future split of the mint
 /// must stay a route move, not an app release).
 const TOKEN_URL: &str = "https://music-api.deets.solutions/token";
+/// The build key (RELEASE.md §7a): built in by `build.rs` from Deets' Secrets, sent as this
+/// header on the mint and on report intake. `None` in a build without the key file — such a
+/// build still runs on a local `.p8`, and the worker answers it 403 `build` once its check is on.
+/// A ledge, not a wall: it can be read out of the exe. It stops a clone build from using
+/// Deets' workers by accident, and nothing more is claimed for it.
+const BUILD_KEY: Option<&str> = option_env!("DEETS_BUILD_KEY");
+pub const BUILD_HEADER: &str = "X-Deets-Build";
+
+/// The build key to send, if this build has one.
+pub fn build_key() -> Option<&'static str> {
+    BUILD_KEY.map(str::trim).filter(|k| !k.is_empty())
+}
 /// The Origin every Rust call to Apple sends: the release webview's own origin. A
 /// token with an `origin` claim gets a 401 for a missing or unlisted Origin (probed
 /// 2026-09-13), and reqwest sends none, so this keeps Rust calls valid once the
@@ -499,12 +511,18 @@ async fn fetch_from_mint() -> Result<DevToken, String> {
         .user_agent(format!("DeetsMusic/{}", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| e.to_string())?;
-    let resp = client.get(TOKEN_URL).send().await.map_err(|e| {
+    let mut req = client.get(TOKEN_URL);
+    if let Some(key) = build_key() {
+        req = req.header(BUILD_HEADER, key);
+    }
+    let resp = req.send().await.map_err(|e| {
         if e.is_timeout() { "mint timed out".to_string() } else { format!("no network: {e}") }
     })?;
     let status = resp.status().as_u16();
     if status != 200 {
         return Err(match status {
+            403 if build_key().is_none() => "mint refused: this build has no build key (403)".into(),
+            403 => "mint refused this build (403)".into(),
             429 => "mint rate-limited (429)".into(),
             503 => "mint switched off (503)".into(),
             s => format!("mint answered {s}"),
@@ -2369,6 +2387,11 @@ pub async fn catalog_related(
 // never held becomes a `seen` row, and its `composerName` joins the writer collection
 // at no extra call (CREDITS.md §3). Both fetch here, in Rust, for exactly that reason.
 
+/// Rows per `recent/played/tracks` call. Apple's ceiling: `limit=100` is a 400.
+const RECENT_PAGE: u32 = 30;
+/// The deepest the "New" shelf reads — 90 songs (HOME.md §10.2).
+const RECENT_PAGES_MAX: u32 = 3;
+
 /// The songs this Apple Music account played last, newest first, across every device.
 /// Apple sends **order, never time** — 30 catalog song rows with no timestamp — so the
 /// front end dates them by bracketing against our own log (HOME.md §9.1).
@@ -2377,26 +2400,44 @@ pub async fn catalog_related(
 /// and every row's writers are noted. A row we DO hold is left alone (`DO NOTHING`).
 #[tauri::command]
 pub async fn recent_played_tracks(
+    pages: Option<u32>,
     state: tauri::State<'_, AppleState>,
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<Track>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
-    let url = "https://api.music.apple.com/v1/me/recent/played/tracks?limit=30";
-    let (status, body) = api_get(&client, &dev, &user, url).await?;
-    if status != 200 {
-        return Err(format!("me/recent/played/tracks HTTP {status}"));
-    }
-    let tracks: Vec<Track> = body["data"]
-        .as_array()
-        .map(|arr| {
-            arr.iter()
+    // Apple caps `limit` at 30 — `limit=100` is a 400 — but `offset` pages, so depth is
+    // bought a call at a time. Recently Played needs one page; the "New" shelf reads
+    // three, for the artists you play elsewhere (HOME.md §10.2).
+    let pages = pages.unwrap_or(1).clamp(1, RECENT_PAGES_MAX);
+    let mut tracks: Vec<Track> = Vec::new();
+    for page in 0..pages {
+        let url = format!(
+            "https://api.music.apple.com/v1/me/recent/played/tracks?limit={RECENT_PAGE}&offset={}",
+            page * RECENT_PAGE
+        );
+        let (status, body) = api_get(&client, &dev, &user, &url).await?;
+        if status != 200 {
+            // A later page failing keeps the pages already in hand: the list is ordered,
+            // so a short answer is a shallower list, not a wrong one.
+            if page == 0 {
+                return Err(format!("me/recent/played/tracks HTTP {status}"));
+            }
+            crate::log::warn(&format!("recent_played_tracks: page {page} HTTP {status}"));
+            break;
+        }
+        let rows = body["data"].as_array().cloned().unwrap_or_default();
+        let empty = rows.is_empty();
+        tracks.extend(
+            rows.iter()
                 .filter(|v| v["type"].as_str() == Some("songs"))
-                .map(track_from_catalog_song)
-                .collect()
-        })
-        .unwrap_or_default();
+                .map(track_from_catalog_song),
+        );
+        if empty {
+            break;
+        }
+    }
     {
         let conn = db.lock();
         crate::credits::note_tracks(&conn, &tracks);
@@ -2430,6 +2471,163 @@ pub async fn recent_added(
             Some("library-albums") => out.albums.push(album_from_library(v)),
             Some("library-playlists") => out.playlists.push(playlist_from_library(v)),
             _ => {}
+        }
+    }
+    Ok(out)
+}
+
+// ── the "New" shelf (HOME.md §10) ─────────────────────────────────────────────
+// Releases by the artists you listen to. Two reads, both here in Rust so every song
+// and album row feeds the writer collection for free (CREDITS.md §3).
+
+/// The `meta` key holding Apple's own count of library artists, so the pass below can
+/// tell in ONE call whether anything changed.
+const META_ARTISTS_TOTAL: &str = "library_artists_total";
+/// Library artists per page. Apple's ceiling for this endpoint.
+const ARTIST_PAGE: u32 = 100;
+/// Catalog artists per `ids=` read. The shape `web.rs` already uses.
+const ARTIST_IDS_BATCH: usize = 25;
+
+/// Fill `artist_catalog` in bulk from `me/library/artists?include=catalog`, which
+/// carries the catalog id, the artist PHOTO and the genres for every library artist at
+/// once — the three things §2 pays one call per artist for today (HOME.md §10.3).
+///
+/// Incremental by count. The endpoint **rejects `sort`** (a 400 on `sort=-dateAdded`),
+/// so there is no newest-first page to stop early on. Instead one `limit=1` call reads
+/// `meta.total`: unchanged against the stored count, the pass ends there at ONE call.
+/// Changed, it re-pages everything. A full sync re-pages regardless, so a same-count
+/// swap (one artist in, one out) heals within the six-hour window.
+///
+/// Never fatal: the library sync's own result does not depend on it.
+pub(crate) async fn sync_artist_catalog(
+    client: &reqwest::Client,
+    dev: &str,
+    user: &str,
+    db: &crate::library::Db,
+    force: bool,
+) -> Result<u32, String> {
+    let url = "https://api.music.apple.com/v1/me/library/artists?limit=1";
+    let (status, body) = api_get(client, dev, user, url).await?;
+    if status != 200 {
+        return Err(format!("me/library/artists HTTP {status}"));
+    }
+    let total = body["meta"]["total"].as_u64().unwrap_or(0) as u32;
+    let known: Option<u32> = {
+        let conn = db.lock();
+        crate::library::meta_get(&conn, META_ARTISTS_TOTAL).and_then(|v| v.parse().ok())
+    };
+    if !force && known == Some(total) {
+        return Ok(0);
+    }
+
+    let mut written = 0u32;
+    let mut offset = 0u32;
+    while offset < total {
+        let url = format!(
+            "https://api.music.apple.com/v1/me/library/artists?limit={ARTIST_PAGE}&offset={offset}&include=catalog"
+        );
+        let (status, body) = api_get(client, dev, user, &url).await?;
+        if status != 200 {
+            return Err(format!("me/library/artists offset {offset} HTTP {status}"));
+        }
+        {
+            let conn = db.lock();
+            for v in body["data"].as_array().into_iter().flatten() {
+                // The LIBRARY name is the key, because that is the name our tracks carry.
+                // It can be longer than the catalog artist's ("adam&steve & Maty Noyes"
+                // resolves to "adam&steve"): the row is still the right join, and the
+                // photo is the primary artist's.
+                let Some(name) = v["attributes"]["name"].as_str().filter(|n| !n.is_empty()) else { continue };
+                let cat = &v["relationships"]["catalog"]["data"][0];
+                let Some(id) = cat["id"].as_str() else { continue };
+                let art = artwork_from(&cat["attributes"]["artwork"])
+                    .and_then(|a| serde_json::to_string(&a).ok());
+                // Keep `featured`, `featured_at` and `top_songs`: this pass knows nothing
+                // about them, and a NULL photo from Apple must not erase a good one.
+                conn.execute(
+                    "INSERT INTO artist_catalog(name, catalog_id, artwork, featured, featured_at, top_songs)
+                     VALUES(?1, ?2, ?3, NULL, 0, NULL)
+                     ON CONFLICT(name) DO UPDATE SET
+                       catalog_id = excluded.catalog_id,
+                       artwork    = COALESCE(excluded.artwork, artist_catalog.artwork)",
+                    rusqlite::params![name, id, art],
+                )
+                .map_err(|e| e.to_string())?;
+                written += 1;
+            }
+        }
+        offset += ARTIST_PAGE;
+    }
+    {
+        let conn = db.lock();
+        crate::library::meta_set(&conn, META_ARTISTS_TOTAL, &total.to_string())?;
+    }
+    crate::log::info(&format!("library: artist catalog filled, {written} of {total} artist(s)"));
+    Ok(written)
+}
+
+/// The newest release by each of the given LIBRARY artist names, through
+/// `artists?ids=…&views=latest-release` (HOME.md §10.4). One call per 25 names; the
+/// shelf asks about ten, so in practice one call.
+///
+/// `latest-release` alone is enough: measured 2026-09-18, it equalled the newest row of
+/// `singles` and `full-albums` for every artist tested, and asking for those two as well
+/// multiplied the payload five times. It returns ONE release, so an artist with both a
+/// release last week and one coming next week shows the coming one.
+///
+/// Names with no `artist_catalog` row are skipped — the sync pass above fills that table,
+/// and a name it has never seen simply contributes nothing. Apple answering fewer artists
+/// than asked (22 of 25, measured) is a gap, never an error. The rows are deduplicated by
+/// catalog id, so one collaboration does not draw twice.
+#[tauri::command]
+pub async fn artist_new_releases(
+    names: Vec<String>,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Album>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = http_client();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+
+    let ids: Vec<String> = {
+        let conn = db.lock();
+        let mut st = conn
+            .prepare_cached("SELECT catalog_id FROM artist_catalog WHERE name = ?1 AND catalog_id <> ''")
+            .map_err(|e| e.to_string())?;
+        names
+            .iter()
+            .filter_map(|n| st.query_row([n], |r| r.get::<_, String>(0)).ok())
+            .collect()
+    };
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut out: Vec<Album> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for batch in ids.chunks(ARTIST_IDS_BATCH) {
+        let url = format!(
+            "https://api.music.apple.com/v1/catalog/{sf}/artists?ids={}&views=latest-release",
+            batch.join(",")
+        );
+        let (status, body) = api_get(&client, &dev, &user, &url).await?;
+        if status != 200 {
+            return Err(format!("catalog/artists latest-release HTTP {status}"));
+        }
+        for a in body["data"].as_array().into_iter().flatten() {
+            for r in a["views"]["latest-release"]["data"].as_array().into_iter().flatten() {
+                if r["type"].as_str() != Some("albums") {
+                    continue;
+                }
+                let album = album_from_catalog(r);
+                if let Some(id) = album.catalog_id.clone() {
+                    if !seen.insert(id) {
+                        continue;
+                    }
+                }
+                out.push(album);
+            }
         }
     }
     Ok(out)

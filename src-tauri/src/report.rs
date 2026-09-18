@@ -235,9 +235,11 @@ pub async fn report_send(
         .user_agent(format!("DeetsMusic/{version}"))
         .build()
         .map_err(|e| e.to_string())?;
-    let resp = client
-        .post(POSTS_URL)
-        .header("Content-Type", "application/json")
+    let mut req = client.post(POSTS_URL).header("Content-Type", "application/json");
+    if let Some(key) = crate::apple::build_key() {
+        req = req.header(crate::apple::BUILD_HEADER, key);
+    }
+    let resp = req
         .body(payload)
         .send()
         .await
@@ -253,6 +255,7 @@ pub async fn report_send(
         crate::log::warn(&format!("report: the server answered {status} {err}"));
         return Err(match (status, err) {
             (429, _) => "Too many reports in a short time. Wait a minute and try again.",
+            (403, "build") => "The support server doesn't take reports from this build of DeetsMusic.",
             (503, _) => "Reports are switched off for now. Try again later.",
             (413, _) | (400, "meta") | (400, "too_large") => "The report is too large. Turn off Attach log, or shorten the details.",
             (400, "title_words") => "Keep the title to 10 words or fewer.",

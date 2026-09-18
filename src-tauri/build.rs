@@ -1,5 +1,6 @@
 fn main() {
     lastfm_key();
+    build_key();
     tauri_build::build()
 }
 
@@ -30,5 +31,25 @@ fn lastfm_key() {
             println!("cargo:rustc-env=DEETS_LASTFM_SECRET={secret}");
         }
         _ => println!("cargo:warning=Last.fm: apiKey / sharedSecret not filled in (scrobbling is off in this build)"),
+    }
+}
+
+/// The build key (docs/RELEASE.md §7a): one line in `Documents\Deets' Secrets\deetsmusic-build-key.txt`
+/// (or the file `DEETSMUSIC_BUILD_KEY` names), handed to the app as `option_env!("DEETS_BUILD_KEY")`.
+/// The app sends it as the `X-Deets-Build` header on the token mint and on report intake, and the
+/// DeetsSupport worker refuses a request without a listed key once its `BUILD_KEYS` secret is set.
+/// A missing file builds an app that sends no header — fine for a clone, which brings its own
+/// back end; `release-check` refuses to ship it.
+fn build_key() {
+    println!("cargo:rerun-if-env-changed=DEETSMUSIC_BUILD_KEY");
+    let path = std::env::var("DEETSMUSIC_BUILD_KEY").map(std::path::PathBuf::from).unwrap_or_else(|_| {
+        let home = std::env::var("USERPROFILE").unwrap_or_default();
+        std::path::Path::new(&home).join("Documents").join("Deets' Secrets").join("deetsmusic-build-key.txt")
+    });
+    println!("cargo:rerun-if-changed={}", path.display());
+    match std::fs::read_to_string(&path).map(|t| t.trim().to_string()) {
+        Ok(key) if !key.is_empty() && !key.contains(char::is_whitespace) => println!("cargo:rustc-env=DEETS_BUILD_KEY={key}"),
+        Ok(_) => println!("cargo:warning=build key: {} is empty or has spaces (this build sends none)", path.display()),
+        Err(_) => println!("cargo:warning=build key: no file at {} (this build sends none)", path.display()),
     }
 }
