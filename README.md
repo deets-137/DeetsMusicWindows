@@ -4,8 +4,8 @@ A lightweight **Apple Music player for Windows 11** — Tauri v2 + WebView2, a v
 TypeScript front end, and a Rust back end, with full DRM playback and a token-driven
 theming system.
 
-**Status:** installable — playback, sign-in, and library sync all work; shipping as a
-per-user NSIS installer (0.4.1) · **Platform:** Windows 11 desktop (Tauri v2)
+**Status:** released — playback, sign-in, and library sync all work; shipping as a signed
+per-user NSIS installer that updates itself · **Platform:** Windows 11 desktop (Tauri v2)
 
 Not to be confused with [DeetsMusic](https://github.com/deets-137/DeetsMusic), the
 separate SwiftUI iOS app. This is the Windows port, and it shares no code with it.
@@ -90,14 +90,27 @@ itself** from `music-api.deets.solutions`, with each installer checked against a
 compiled into the app. How builds are signed, published and updated:
 [docs/RELEASE.md](docs/RELEASE.md) ("The release pipeline at a glance").
 
+## Support and requests
+
+Support, bug reports and feature requests live at
+**[deets.solutions/deetsmusic](https://deets.solutions/deetsmusic/)**, or in the app under
+Settings › Bugs, which files a report from inside DeetsMusic and shows its status.
+
+This repository is the source, published so the app can be read and audited. It is not
+where the project is run: GitHub Issues and Discussions are off, and pull requests are not
+reviewed or merged. The source is MIT-licensed, so forks are fine. A fork must bring its own
+back end: the token mint, update channel and report intake at `deets.solutions` serve
+DeetsMusic builds only ([docs/RELEASE.md](docs/RELEASE.md) §7a).
+
 ## Privacy
 
 - **Apple.** Sign-in, your library, search and playback go straight to Apple
   (`api.music.apple.com` and MusicKit). Your Apple sign-in token stays on your PC.
 - **The access key.** The app needs an Apple Music developer token. It fetches one from
   `music-api.deets.solutions/token` about once a week. That request carries the app
-  version only. The server keeps a daily count of tokens it gives out. It does not store
-  your IP address, the token, or anything about you.
+  version and a fixed build key that names the official build, nothing about you. The
+  server keeps a daily count of tokens it gives out. It does not store your IP address,
+  the token, or anything about you.
 - **The log.** The app writes a log file on your PC (Settings › Bugs › App log). It
   redacts tokens, and names catalog ids instead of song titles. It leaves your PC only
   when you send a bug report with Attach log on (Settings › Bugs). The app shows the
