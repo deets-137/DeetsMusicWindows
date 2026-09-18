@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 391 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 406 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -285,6 +285,21 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--toast-stripe` | `3px` | — | the kind stripe on the leading edge |
 | `--toast-bar` | `2px` | — | the countdown bar on timed toasts |
 | `--toast-shift` | `30%` | — | fly-in / fly-out travel; a skin may zero it |
+| `--walk-card-w` | `var(--toast-w)` | — | -- the first-run walk (src/walk.ts, styles/walk.css; docs/ONBOARDING.md §4) -- Deets and Happy lead a stranger through the app. The speech card joins the TOAST family (§2a) — same material, same button idiom — so these are aliases, not new values; only the walker's own geometry is new. The frame sizes are the art's, not a choice: the sprite sheets are 32-wide frames (ONBOARDING §4.1). |
+| `--walk-card-pad` | `var(--space-2) var(--space-3)` | — |  |
+| `--walk-scale` | `2` | — | pixel art doubled; the site renders it the same way |
+| `--walk-frame-w` | `32px` | — | one frame in a *_side.png strip — both sheets use 32 |
+| `--walk-deets-w` | `32px` | — |  |
+| `--walk-deets-h` | `64px` | — |  |
+| `--walk-happy-w` | `32px` | — |  |
+| `--walk-happy-h` | `32px` | — |  |
+| `--walk-frames` | `4` | — | frames in a *_side.png strip |
+| `--walk-cycle` | `0.571s` | — | the site's own rate: steps(4) at 7 fps |
+| `--walk-travel` | `0.75s` | — | one stop to the next; the sprite's legs set the feel |
+| `--walk-gap` | `10px` | — | clearance between a sprite's head and its target |
+| `--walk-card-gap` | `var(--space-2)` | — | between the sprites and the speech card |
+| `--walk-point` | `14px` | — | the arm/arrow that names the target |
+| `--walk-pair-gap` | `4px` | — | between Deets and Happy |
 | `--spane-bg` | `var(--panel)` | glass, cyber | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
 
 ### bento panels

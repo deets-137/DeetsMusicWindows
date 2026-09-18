@@ -237,7 +237,104 @@ title menu, *press Ctrl+Space* (the Compass, COMPASS.md), and *close is not quit
 and tells them it is safe ("Nothing in it can break", "Nothing is permanent"). The menu verbs are not listed there; the menus show them. When a
 gesture is added to the app (not a verb), add a note.
 
-## 4. The first-run walk — designed, not built
+## 4. The first-run walk (BUILT 2026-09-18)
+
+> §4.0 is **as built**. §4.1–§4.6 are the 2026-09-15 design; where the two differ, §4.0 wins.
+
+### 4.0 As built
+
+`src/walk.ts` + `src/styles/walk.css` + the five sprites in `src/assets/sprites/`. No Rust,
+no Apple calls, no new primitive: the speech card wears the toast material and the toast
+button idiom through `--walk-card-*` aliases (§2a control families), and `toast.ts` is
+untouched.
+
+**The five steps** (owner's, 2026-09-18). Each names one control and waits for the real
+gesture on it:
+
+| # | The sentence points at | Advances when |
+|---|---|---|
+| 1 | the DeetsMusic wordmark — sign in to Apple Music | `deets:signed-in` (main.ts, after Apple accepts) |
+| 2 | the wordmark again — it is the menu | `#settings-trigger` goes `aria-expanded="true"` |
+| 3 | the left card's title — every title is a card picker | a `.slot-picker__menu` opens |
+| 4 | the Compass button — Ctrl + Space reaches everything | `#compass` loses `hidden` |
+| 5 | nothing. The send-off, centred, with **Let's go** | — |
+
+**Four decisions, and what each one cost:**
+
+- **The gesture advances a step, not a button.** A step you clicked past taught nothing.
+- **Next arrives only once we have failed.** It is not on the card; it is added after
+  `NUDGE_MS` (9 s) of a step waiting, and logs `walk:nudge`. Its presence is an admission
+  that the pointing was not good enough, so it must not be offered first.
+- **The sprites travel to the target** (option A). Every step here names something at the
+  top of the window, while the toast host sits at the bottom in midi — a flash 600 px from
+  the sprite pulls no harder than a hint box. So the card leaves the toast host and rides
+  with Deets. `reposition()` puts the group under the target (over it when there is no room
+  below), lines the pointer up with the target's middle, and clamps the group on screen.
+- **A step can speak again once its panel is open.** `Stop.openText` replaces the sentence
+  while the step's own panel is up. Step 4 uses it: *"Esc or Ctrl + Space to close again!"* —
+  we asked them to open the bar, so we owe them the way out. The card then rides **beside**
+  the sprites (`data-tuck="msg"`), one line, no step counter, no buttons, which is what makes
+  it fit above the DeetsBar in midi.
+- **Escape is a skip, except while a panel is open** — and the listener is in the **capture
+  phase** for that reason. In the bubble phase the panel has already closed by the time the
+  event reaches the window, `busyEl()` reads null, and the guard never fires. Measured, not
+  guessed: without capture, doing exactly what step 4's card says shut the bar *and* ended
+  the walk in one press.
+- **The walk waits for a clear screen.** Steps 2–4 each ask the user to OPEN a menu. The
+  step advances the moment it opens, but `whenClear()` holds the travel until it closes, so
+  Deets never walks off behind a menu, and the walk layer (z 95) never covers one (z 100).
+  He tries four placements in order — right of the panel, left, under, over — at full size,
+  then **tucked**: the speech card stands down (or shrinks to its `openText` line) and the
+  two sprites alone go looking again. Only if even they cannot clear it do they take the
+  bottom corner away from the panel. Measured in midi, where the bar runs y 202→745 in a
+  670-tall window: the tucked pair sits at y 60→188, clear by 14 px.
+
+**State: `onboardingStep` in settings** — the NEXT step to show, 0 = over. Not a
+localStorage once-key (this supersedes §4.4): it survives a localStorage clear, the agent
+can read it, and Settings › Tips hands it back. `settings-store.ts seedOnboarding()` decides
+ONCE, at first load, whether this install has ever been used — the tell is `deets.theme`,
+which `applyTheme` writes back on every launch and which is still absent on a true first
+paint — and **persists that answer alone**, so a user who quits during step 1 does not lose
+the walk they never finished, and an upgrade never sees it.
+
+**Who owns "you are signed out".** While the walk is live, `apple-health.ts` stays quiet
+about `signedOut`: step 1 says the same thing with the same button, and one cause raises one
+notice (TOASTS.md). A user who has ever signed in never sees the walk and gets the sticky as
+before. `initWalk()` also skips step 1 outright when a token already exists.
+
+**The way back in:** Settings › Tips › *Show the tour again*, and the Compass row **Show the
+tour** (aliases: tour, walkthrough, onboarding, getting started, help).
+
+**Trigger:** `deets:boot-done` (boot-cover.ts, fired on both the fade and the reduced-motion
+snap). A sprite under a control the launch cover still hides points at nothing.
+
+**Reduced motion:** the sprites are placed, not walked; nothing pulses; the target takes a
+focus ring instead.
+
+**Also changed the same day:** the default cards. Midi is `Home | Library` and Max is
+`Home | Library` over `Playlists | Search` (layout.ts). A stranger has nothing in the Queue
+for a while, and Home is the card that fills first.
+
+**Desk test** — run `npm run dev:fresh` (§5):
+
+1. The window opens on Home | Library, signed out, and Deets + Happy stand under the
+   wordmark with step 1. The old "Sign in to Apple Music to play songs." sticky does NOT
+   also appear.
+2. Wait 9 s: a **Next** button appears. Do not press it.
+3. Sign in. Step 1 advances by itself when the browser comes back.
+4. Step 2: click **DeetsMusic**. The step advances, but the sprites do not move until the
+   menu closes.
+5. Step 3: click the left card's title. The picker opens, the step advances, the sprites
+   walk right and face the way they travelled.
+6. Step 4: press Ctrl + Space. Step 5 lands centred, with no pointer.
+7. Press **Let's go**. Restart the app: no walk.
+8. Settings › Tips › Show the tour again → it starts at step **2**, not 1 (you are signed in).
+9. Ctrl + Space, type "tour" → the same row is there.
+10. Press Escape mid-walk, then restart the app: no walk (Escape is a skip).
+11. Repeat with Windows' *Animation effects* off (reduced motion): the sprites are placed,
+    the target takes a ring, and every step still advances.
+12. Repeat in Max and in Mini: the group stays on screen at both window sizes.
+
 
 **The idea (yours, 2026-09-15):** the Deets and Happy sprites from deets.solutions lead a
 new user through the app on the first launch. Deets (the person, 32×64 a frame) points and
@@ -329,3 +426,38 @@ sentences take the Tips voice (§3): the habit and why it is safe, not the list 
   its own copy (HANDOFF.md, the Account row).
 - No tips on a timer, and no "Did you know" toasts after the walk (TOASTS.md §4: a toast that
   interrupts must be about what the user just did).
+
+## 5. Testing a first run (built 2026-09-18)
+
+Everything a first run does not have lives in two folders, both named after the app's
+identifier:
+
+| Folder | Holds |
+|---|---|
+| `%APPDATA%\<id>` | the Apple token, `settings.json`, the SQLite cache, the Last.fm session, the logs |
+| `%LOCALAPPDATA%\<id>\EBWebView` | localStorage — theme, skin, surface, the layout keys, every once-key |
+
+`scripts/dev-app.mjs` deletes both before it launches:
+
+```
+npm run dev:fresh        # everything goes: you are a stranger, signed out
+npm run dev:fresh:in     # the same wipe, then the Apple token and library cache go back
+```
+
+`dev:fresh` is the honest test of step 1 — you sign in to Apple again. `dev:fresh:in` keeps
+`user-token.txt` and `deetsmusic.db*`, so you land on a first-run UI already signed in, with
+no Apple round trip; it is the one to use when you test steps 2 onward again and again. Both
+are `--fresh` and `--fresh=keep` on `dev:app`, so they combine with `--perf`, `--built` and
+`--gpu=`.
+
+**Why a real wipe and not a flag the app reads.** A pretend-first-run mode inside the app
+would be a second signed-out code path, and a stranger could reach it. The wipe touches no
+app code at all.
+
+**The safety.** The identifier comes from `src-tauri/tauri.dev.conf.json` and the script
+refuses to run unless it ends in `.dev`. The installed app's `com.deetsmusic.app` folders
+can never be deleted this way. The kept files are copied out to `node_modules/.deets-fresh`
+*before* the wipe, so a half-finished delete cannot lose them.
+
+**If it refuses:** Windows will not delete a file a process holds open. Close the dev app and
+any `deetsmusic` CLI, then run it again. The script says which folder it could not clear.

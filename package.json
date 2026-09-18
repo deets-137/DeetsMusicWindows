@@ -20,6 +20,8 @@
     "signin:assets": "node scripts/signin-assets.mjs",
     "dev:perf": "node scripts/dev-app.mjs --perf",
     "dev:built": "node scripts/dev-app.mjs --built",
+    "dev:fresh": "node scripts/dev-app.mjs --fresh",
+    "dev:fresh:in": "node scripts/dev-app.mjs --fresh=keep",
     "bench": "node scripts/bench.mjs"
   },
   "dependencies": {

@@ -62,8 +62,10 @@ front-end, Rust back-end).
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
-  the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
-  led by the Deets and Happy sprites (designed, not built).
+  the right-click coverage table, Settings › Tips (built 2026-09-15), and the **first-run walk**
+  led by the Deets and Happy sprites (§4.0 = as built, 2026-09-18: five steps, the gesture
+  advances, the sprites travel, `onboardingStep` in settings; §5 = `npm run dev:fresh` /
+  `dev:fresh:in`, how to be a first-time user without losing your data).
 - `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;

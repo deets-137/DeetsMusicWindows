@@ -1,0 +1,192 @@
+/* ── The first-run walk (src/walk.ts; docs/ONBOARDING.md §4) ──────────────
+   Deets (32×64) and Happy (32×32) walk to the control a step names, stand
+   under it, and a speech card holds the sentence. Decided 2026-09-18: the
+   sprites TRAVEL to the target (option A) — a flash on a control 600 px from
+   the sprite pulls no harder than a hint box.
+
+   The card wears the toast material and the toast button idiom (§2a control
+   families) through --walk-card-* aliases; the walker's geometry is its own.
+   z 95: above a toast (90) so the walk is never buried, BELOW a menu, picker
+   or the Compass (100) — every step asks the user to OPEN one of those, and
+   the walk must not cover what it just told them to open. */
+.walk {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+
+/* The travelling group: the sprite pair with the speech card under it. `left`
+   and `top` are written by walk.ts from the target's rect; the transition is
+   what makes it a walk rather than a jump. */
+.walk__stop {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--walk-card-gap);
+  transition:
+    left var(--walk-travel) var(--ease-ui),
+    top var(--walk-travel) var(--ease-ui);
+}
+
+.walk__pair {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--walk-pair-gap);
+}
+
+/* Both sprites: nearest-neighbour, one frame wide, feet on the floor line. */
+.walk__sprite {
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+  transform-origin: 50% 100%;
+  flex: none;
+}
+.walk__deets {
+  width: calc(var(--walk-deets-w) * var(--walk-scale));
+  height: calc(var(--walk-deets-h) * var(--walk-scale));
+  background-size: auto calc(var(--walk-deets-h) * var(--walk-scale));
+}
+.walk__happy {
+  width: calc(var(--walk-happy-w) * var(--walk-scale));
+  height: calc(var(--walk-happy-h) * var(--walk-scale));
+  background-size: auto calc(var(--walk-happy-h) * var(--walk-scale));
+}
+
+/* The side strips face LEFT; mirror for rightward travel (ONBOARDING §4.1). Only while
+   walking: the idle frames face the viewer, and mirroring those says nothing. */
+.walk__stop[data-move="walk"][data-way="right"] .walk__sprite { transform: scaleX(-1); }
+
+/* Walking: step through the 4-frame strip. Standing: the idle frame, Happy sits. */
+.walk__stop[data-move="walk"] .walk__sprite {
+  animation: walk-cycle var(--walk-cycle) steps(var(--walk-frames)) infinite;
+}
+.walk__deets { background-image: var(--walk-deets-idle); }
+.walk__happy { background-image: var(--walk-happy-sit); }
+.walk__stop[data-move="walk"] .walk__deets { background-image: var(--walk-deets-walk); }
+.walk__stop[data-move="walk"] .walk__happy { background-image: var(--walk-happy-walk); }
+
+@keyframes walk-cycle {
+  to { background-position-x: calc(-1 * var(--walk-frames) * var(--walk-frame-w) * var(--walk-scale)); }
+}
+
+/* The arm that names the target: a small triangle on the card's edge, pointed
+   at the control. walk.ts sets --walk-point-x so it sits under the target, and
+   data-point says which edge it grows from. */
+.walk__card {
+  pointer-events: auto;
+  position: relative;
+  box-sizing: border-box;
+  width: var(--walk-card-w);
+  max-width: 100%;
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-left: var(--toast-stripe) solid var(--title);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  padding: var(--walk-card-pad);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  font-weight: var(--fw-text);
+  line-height: var(--lh-text);
+  animation: walk-card-in var(--dur-med) var(--ease-ui) both;
+}
+.walk__card::before {
+  content: "";
+  position: absolute;
+  left: var(--walk-point-x, var(--space-3));
+  width: 0;
+  height: 0;
+  border-left: calc(var(--walk-point) / 2) solid transparent;
+  border-right: calc(var(--walk-point) / 2) solid transparent;
+}
+.walk__stop[data-point="up"] .walk__card::before {
+  bottom: 100%;
+  border-bottom: var(--walk-point) solid var(--border);
+}
+.walk__stop[data-point="down"] .walk__card::before {
+  top: 100%;
+  border-top: var(--walk-point) solid var(--border);
+}
+.walk__stop[data-point="none"] .walk__card::before { content: none; }
+/* Tucked: a panel fills the window (the DeetsBar in midi) and the group cannot clear it at
+   full size. The sentence stands down so the panel is readable; Deets and Happy stay, small
+   enough to sit in a corner, so the walk is still visibly waiting for you. */
+.walk__stop[data-tuck="1"] .walk__card { display: none; }
+/* The same tuck, for a step that still has something to say — how to close the panel it
+   asked you to open. The card goes BESIDE the sprites instead of under them, so the pair
+   is one sprite tall, and it carries the line alone: no step counter, no buttons. */
+.walk__stop[data-tuck="msg"] {
+  flex-direction: row;
+  align-items: flex-end;
+}
+.walk__stop[data-tuck="msg"] .walk__card {
+  width: auto;
+  max-width: var(--walk-card-w);
+  margin-bottom: var(--walk-card-gap);
+}
+.walk__stop[data-tuck="msg"] :is(.walk__step, .walk__actions) { display: none; }
+
+.walk__step {
+  display: block;
+  margin: 0 0 var(--space-1);
+  color: var(--subtext);
+  font-size: var(--fs-small, var(--fs-subtext));
+  font-variant-numeric: tabular-nums;
+}
+.walk__text { margin: 0; overflow-wrap: anywhere; }
+
+.walk__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+/* The toast button idiom, unchanged (styles/toast.css .toast__btn). */
+.walk__btn {
+  padding: var(--space-1) var(--space-2);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-subtext);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui);
+}
+.walk__btn:hover { background: var(--surface-hover); }
+.walk__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* Skip is the quiet one: the user leaving is not the action we want to dress up. */
+.walk__btn--skip { border-color: transparent; color: var(--subtext); }
+.walk__btn--skip:hover { color: var(--text); }
+/* Next only exists once WE have failed to be obvious, so it arrives, it is not there. */
+.walk__btn--next { animation: walk-card-in var(--dur-med) var(--ease-ui) both; }
+
+/* The control a step names, while that step waits. */
+.walk-target {
+  position: relative;
+  z-index: 96;
+  animation: walk-target var(--walk-cycle) var(--ease-ui) infinite alternate;
+}
+
+@keyframes walk-card-in {
+  from { opacity: 0; transform: translateY(var(--hint-shift, 3px)); }
+}
+@keyframes walk-target {
+  to { filter: brightness(1.35); }
+}
+
+/* Reduced motion: the sprites are PLACED, not walked, and nothing pulses
+   (ONBOARDING §4.2). The walk still works — it just stops moving. */
+@media (prefers-reduced-motion: reduce) {
+  .walk__stop { transition: none; }
+  .walk__stop[data-move="walk"] .walk__sprite { animation: none; }
+  .walk__card, .walk__btn--next { animation: none; }
+  .walk-target { animation: none; outline: var(--focus-ring-w) solid var(--title); }
+}

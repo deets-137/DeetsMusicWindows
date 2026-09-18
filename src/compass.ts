@@ -32,6 +32,7 @@ import {
   playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt,
 } from "./player";
 import { sleepIn, sleepOff, sleepArmed, sleepAtEnd, openSleepPanel } from "./sleep";
+import { restartWalk } from "./walk";
 import { presetOptions, selectPreset } from "./sound";
 import { getUpcoming, getRecentlyPlayed, getCurrent } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
@@ -385,6 +386,15 @@ function actions(all: boolean): Row[] {
     { group: "Actions", title: "Sleep at end of Up Next", sub: "The sleep timer", run: () => sleepAtEnd("queue") },
   );
   if (sleepArmed()) rows.push({ group: "Actions", title: "Sleep timer off", run: () => sleepOff() });
+  // The first-run walk again (ONBOARDING.md §4, COMPASS.md §9). Settings › Tips has the same
+  // row; a stranger who wants it back is more likely to ask the bar than to read Settings.
+  rows.push({
+    group: "Actions",
+    title: "Show the tour",
+    sub: "Deets and Happy walk you through the app",
+    aliases: ["tour", "walkthrough", "onboarding", "getting started", "help"],
+    run: () => void restartWalk(),
+  });
   // Listening rooms (ROOMS.md §9, COMPASS.md §9): the verbs a room adds. Joining needs a
   // code, so that stays in the panel.
   if (!inRoom()) {

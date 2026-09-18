@@ -43,6 +43,7 @@ import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPT
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
+import { restartWalk } from "./walk";
 import { hiddenCount, clearHidden } from "./home";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -581,7 +582,21 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       // Tips (2026-09-15): the gestures nothing on screen announces — right-click, drag,
       // the title menu, hover. Static text in the row shape; no controls, no count badge.
       title: "Tips",
-      rows: [],
+      rows: [
+        {
+          // The first-run walk again (ONBOARDING.md §4). A user who skipped it, or who read
+          // it before the library had loaded, has no other way back: `onboardingStep` is 0
+          // and nothing on screen offers the sprites.
+          kind: "split", id: "tour", label: "Show the tour again",
+          hint: () => "Deets and Happy walk you through the app, the way they did on the first launch",
+          halves: [
+            {
+              type: "action", label: "Show",
+              run: () => void restartWalk(),
+            },
+          ],
+        },
+      ],
       tail: () =>
         TIPS.filter(([what]) => what !== TIP_CLOSE || minimizeToTray)
           .map(([what, how]) => `<div class="set__tip"><span class="set__label">${esc(what)}</span><span class="set__tip-what">${esc(how)}</span></div>`)

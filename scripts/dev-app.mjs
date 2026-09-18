@@ -16,8 +16,9 @@
 //   5. flags for measuring: --perf (hold DevTools shut), --built (serve a release-shaped
 //      bundle), --gpu=off|slow (pretend to be a weaker machine). DEBUGGING.md §Measuring
 //      like the live app, §Pretending to be a weaker machine.
+//   6. --fresh : be a first-time user. ONBOARDING.md §Testing a first run.
 import { createServer } from "node:net";
-import { readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,6 +61,85 @@ if (gpuMode && !GPU_FLAGS[gpuMode]) {
   process.exit(2);
 }
 
+// --fresh[=keep] — launch as a FIRST-TIME USER (ONBOARDING.md §Testing a first run).
+//
+// Everything a first run does not have lives in exactly two folders, both named after the
+// identifier: %APPDATA%\<id> (the Apple token, settings.json, the SQLite cache, the Last.fm
+// session, the logs) and %LOCALAPPDATA%\<id>\EBWebView (localStorage — theme, skin, surface,
+// the layout keys, every once-key). Delete both and the next launch is a true first run.
+//
+// This is a real wipe, not a flag the app reads: a pretend-first-run mode inside the app
+// would be a second signed-out code path, and a stranger could reach it.
+//
+//   --fresh       everything goes. You sign in to Apple again — this is the honest test of
+//                 the walk from step 1.
+//   --fresh=keep  the same wipe, then the Apple token and the library cache are put back.
+//                 You land on a first-run UI, already signed in, with no Apple round trip —
+//                 the way to test steps 2 onward again and again.
+//
+// The guard below is the whole safety story: the identifier comes from tauri.dev.conf.json
+// and must end in ".dev", so this can never delete the installed app's data.
+const KEEP = ["user-token.txt", "deetsmusic.db", "deetsmusic.db-shm", "deetsmusic.db-wal"];
+const freshArg = process.argv.find((a) => a === "--fresh" || a.startsWith("--fresh="));
+if (freshArg) {
+  const mode = freshArg.includes("=") ? freshArg.slice(8) : "all";
+  if (mode !== "all" && mode !== "keep") {
+    console.error(`[dev:app] unknown ${freshArg} — use --fresh or --fresh=keep`);
+    process.exit(2);
+  }
+  const id = base.identifier;
+  if (!id.endsWith(".dev")) {
+    console.error(`[dev:app] --fresh refuses identifier "${id}": it is not a dev profile. Nothing was deleted.`);
+    process.exit(2);
+  }
+  const roaming = join(process.env.APPDATA, id);
+  const local = join(process.env.LOCALAPPDATA, id, "EBWebView");
+  // Carry the kept files out before the wipe, so a half-finished delete cannot lose them.
+  const stash = join(root, "node_modules", ".deets-fresh");
+  const kept = [];
+  if (mode === "keep" && existsSync(roaming)) {
+    rmSync(stash, { recursive: true, force: true });
+    mkdirSync(stash, { recursive: true });
+    for (const f of KEEP) {
+      if (existsSync(join(roaming, f))) {
+        copyFileSync(join(roaming, f), join(stash, f));
+        kept.push(f);
+      }
+    }
+  }
+  for (const dir of [roaming, local]) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch (e) {
+      // Windows will not delete a file a process holds open — the dev app is still running.
+      console.error(`[dev:app] --fresh could not clear ${dir}: ${e.message}`);
+      console.error(`[dev:app] Close the dev app (and any \`deetsmusic\` CLI) first, then try again.`);
+      process.exit(2);
+    }
+    // Look at the target afterwards. A delete that reports success without deleting is the
+    // worst failure this script can have: the app then launches on a full profile and the
+    // whole first-run test is a lie. It happens for real — run this from inside an MSIX
+    // package (a shell in the Claude desktop app) and the delete lands in that package's
+    // private copy of %APPDATA%, throws nothing, and leaves the real folder untouched
+    // (DEBUGGING.md §Sign-in records the same trap for the registry). Run it from an
+    // ordinary terminal.
+    if (existsSync(dir)) {
+      console.error(`[dev:app] --fresh deleted ${dir} and it is STILL THERE. Nothing was cleared.`);
+      console.error(`[dev:app] A sandboxed or redirected shell (an MSIX package) does this. Run it from a normal terminal.`);
+      process.exit(2);
+    }
+  }
+  if (kept.length) {
+    mkdirSync(roaming, { recursive: true });
+    for (const f of kept) copyFileSync(join(stash, f), join(roaming, f));
+    rmSync(stash, { recursive: true, force: true });
+  }
+  console.log(
+    `[dev:app] --fresh: cleared ${id} — first-time user` +
+      (kept.length ? `, signed in (kept ${kept.join(", ")})` : ", signed out"),
+  );
+}
+
 const windows = conf.app.windows.map((w) => ({
   ...w,
   title: `${w.title} (dev)`,
@@ -79,7 +159,9 @@ const windows = conf.app.windows.map((w) => ({
 //           to measure what the live app does. DEBUGGING.md §Measuring like the live app.
 const BUILT = process.argv.includes("--built");
 const PERF = BUILT || process.argv.includes("--perf");
-const passThrough = process.argv.slice(2).filter((a) => a !== "--perf" && a !== "--built" && !a.startsWith("--gpu="));
+const passThrough = process.argv
+  .slice(2)
+  .filter((a) => a !== "--perf" && a !== "--built" && !a.startsWith("--gpu=") && a !== "--fresh" && !a.startsWith("--fresh="));
 
 let preview;
 if (BUILT) {

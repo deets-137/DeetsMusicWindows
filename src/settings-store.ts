@@ -282,6 +282,12 @@ export interface Settings {
   rewindCard: boolean;
   /** The one-shot auto-enable already fired (so a later "off" sticks). */
   rewindAutoShown: boolean;
+  // ── onboarding (docs/ONBOARDING.md §4) ──
+  /** How far through the first-run walk the user is: the NEXT step to show, 1-based.
+   *  0 = the walk is over (finished or skipped). A settings key, not a localStorage
+   *  once-key (owner's call 2026-09-18): it survives a localStorage clear, the agent
+   *  can read it, and Settings › Tips offers the walk again by writing 1 here. */
+  onboardingStep: number;
   // ── connections ──
   /** A settings change from an agent (AGENT.md §6): apply it, ask in the window each time,
    *  or refuse. Agents can never change this one. agent-settings.ts reads it. */
@@ -410,6 +416,7 @@ export const DEFAULTS: Settings = {
   webTempDays: 7, // user's call 2026-09-17: a week leaves time to play it again or keep it
   rewindCard: false,
   rewindAutoShown: false,
+  onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
   updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
   updateSkip: "",
@@ -472,7 +479,35 @@ function load(): Settings {
     /* corrupt or unavailable — defaults */
   }
   migrate(stored);
+  seedOnboarding(stored);
   return { ...DEFAULTS, ...stored };
+}
+
+/**
+ * Decide ONCE whether this install has ever been used, and remember the answer
+ * (ONBOARDING.md §4.4). The first-run walk must never start on an upgrade.
+ *
+ * The tell is `deets.theme`: applyTheme writes it back on every launch, including the one
+ * that resolved the OS default, so its presence means "this app has painted before" and
+ * nothing else. It is read HERE, at module load, which runs before main.ts calls initTheme
+ * — on a true first run the key is still absent.
+ *
+ * The answer is persisted at once, alone. Without that, a user who quits during step 1
+ * would come back with a saved theme and lose the walk they never finished. Only this key
+ * is written: every other absent key must stay absent, so a later change to a DEFAULT still
+ * reaches them.
+ */
+function seedOnboarding(stored: Partial<Settings>): void {
+  if (stored.onboardingStep !== undefined) return;
+  stored.onboardingStep = localStorage.getItem("deets.theme") === null ? 1 : 0;
+  try {
+    const raw = localStorage.getItem(KEY);
+    const blob = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    blob.onboardingStep = stored.onboardingStep;
+    localStorage.setItem(KEY, JSON.stringify(blob));
+  } catch {
+    /* storage disabled — the walk still runs this session, it just won't be remembered */
+  }
 }
 
 let state: Settings = load();

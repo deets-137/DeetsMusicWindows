@@ -71,6 +71,7 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
     diag.log("boot:ready", { ms: Math.round(performance.now() - t0), capped });
     if (!setting("appearanceMotion") || reducedMotion()) {
       delete root.dataset.boot;
+      done();
       return;
     }
     // The window's first shown frames carry the full cover, not a fade already half run.
@@ -83,6 +84,14 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
     window.setTimeout(() => {
       end();
       if (root.dataset.boot === "lift") delete root.dataset.boot;
+      done();
     }, total + 50);
   });
+}
+
+/** The cover is gone and the cards are in place. The first-run walk waits for this
+ *  (walk.ts): a sprite under a control the cover still hides points at nothing. Fired
+ *  once, on both paths — the fade and the reduced-motion snap. */
+function done(): void {
+  window.dispatchEvent(new Event("deets:boot-done"));
 }

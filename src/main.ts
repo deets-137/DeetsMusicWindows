@@ -16,6 +16,7 @@ import * as diag from "./diag";
 import { initTrackStore, tracksLoaded } from "./track-store";
 import { surfaceSized } from "./surface";
 import { runBootCover } from "./boot-cover";
+import { initWalk } from "./walk";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
@@ -315,6 +316,9 @@ window.addEventListener("DOMContentLoaded", () => {
       signInPending = false;
       noteSignedIn(); // the first playback failure after this gets the subscription hint
       health.reset();
+      // Step 1 of the first-run walk waits for this (walk.ts): the sign-in finishes in the
+      // browser, minutes after the click, so the walk cannot watch the button.
+      window.dispatchEvent(new Event("deets:signed-in"));
       await paintAccount();
       // The user is usually still in the browser; this says the app took the token
       // (`all` tier, TOASTS.md §5).
@@ -410,6 +414,12 @@ window.addEventListener("DOMContentLoaded", () => {
   initLayout();  // The launch cover (boot-cover.ts, UX-COVERUPS.md §6): the window shows once the queue is
   // restored, the library loaded and the window at its size, then the cards rise into place.
   runBootCover(restored, [tracksLoaded(), surfaceSized()]);
+
+  // The first-run walk (walk.ts, ONBOARDING.md §4). It waits for the launch cover, because
+  // a sprite standing under a control the cover still hides points at nothing. It returns
+  // at once unless `onboardingStep` says there is a step left, so this costs a stranger's
+  // first launch and nothing else.
+  window.addEventListener("deets:boot-done", () => initWalk(), { once: true });
 
   // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it
   //    grows in place into a horizontal slider with the mute speaker and the AirPlay square

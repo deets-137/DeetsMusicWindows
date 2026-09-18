@@ -246,6 +246,27 @@
   --toast-bar:    2px;     /* the countdown bar on timed toasts */
   --toast-shift:  30%;     /* fly-in / fly-out travel; a skin may zero it */
 
+  /* -- the first-run walk (src/walk.ts, styles/walk.css; docs/ONBOARDING.md §4) --
+     Deets and Happy lead a stranger through the app. The speech card joins the
+     TOAST family (§2a) — same material, same button idiom — so these are aliases,
+     not new values; only the walker's own geometry is new. The frame sizes are the
+     art's, not a choice: the sprite sheets are 32-wide frames (ONBOARDING §4.1). */
+  --walk-card-w:    var(--toast-w);
+  --walk-card-pad:  var(--space-2) var(--space-3);
+  --walk-scale:     2;        /* pixel art doubled; the site renders it the same way */
+  --walk-frame-w:   32px;   /* one frame in a *_side.png strip — both sheets use 32 */
+  --walk-deets-w:   32px;
+  --walk-deets-h:   64px;
+  --walk-happy-w:   32px;
+  --walk-happy-h:   32px;
+  --walk-frames:    4;        /* frames in a *_side.png strip */
+  --walk-cycle:     0.571s;   /* the site's own rate: steps(4) at 7 fps */
+  --walk-travel:    0.75s;    /* one stop to the next; the sprite's legs set the feel */
+  --walk-gap:       10px;     /* clearance between a sprite's head and its target */
+  --walk-card-gap:  var(--space-2); /* between the sprites and the speech card */
+  --walk-point:     14px;     /* the arm/arrow that names the target */
+  --walk-pair-gap:  4px;      /* between Deets and Happy */
+
   /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
      base paints the panel material — an opaque slide masks the pane beneath.
      Translucent skins (Glass, Cyber) drop this to transparent: they FADE

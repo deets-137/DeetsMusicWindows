@@ -42,7 +42,9 @@ const MIDI: Composition = {
   key: "deets.layout.midi",
   slots: ["left", "right"],
   anchored: ["now-playing"],
-  defaults: { left: "library", right: "queue" },
+  // Home first, Library beside it (owner's call 2026-09-18). A stranger has nothing in the
+  // Queue for a while, and Home is the card that fills first — so the Queue is not a default.
+  defaults: { left: "home", right: "library" },
   queueSlot: false,
 };
 // max (2026-09-09, option A): stage + anchored queue on the left, a 2×2 bento on the right.
@@ -50,7 +52,10 @@ const MAX: Composition = {
   key: "deets.layout.max",
   slots: ["left", "right", "c", "d"],
   anchored: ["now-playing", "queue"],
-  defaults: { left: "library", right: "search", c: "playlists", d: "history" },
+  // The same first row as midi, then Playlists | Search (owner's call 2026-09-18). Max's
+  // Queue is anchored in its own column, so nothing is lost by dropping it from the bento;
+  // History is the card that steps aside.
+  defaults: { left: "home", right: "library", c: "playlists", d: "search" },
   queueSlot: true,
 };
 

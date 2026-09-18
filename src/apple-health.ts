@@ -11,6 +11,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { toast, type ToastAction, type ToastHandle, type ToastKind } from "./toast";
 import { checkApple, requestSignIn, type AppleHealth } from "./apple";
+import { walkActive } from "./walk";
 import * as diag from "./diag";
 
 /** none · app = Apple refuses DeetsMusic · offline · signin = the user's sign-in expired · signedOut */
@@ -76,7 +77,11 @@ export function show(t: Trouble, force = false, source = "show", quiet = false):
   if (t !== was || force) {
     handle?.dismiss();
     handle = null;
-    if (t !== "none" && !(quiet && (t === "signin" || t === "signedOut"))) {
+    // The first-run walk owns "you are signed out" while it is on screen: its step 1 says
+    // the same thing with the same button, and one cause must raise one notice (TOASTS.md).
+    // A user who has ever signed in never sees the walk, so they get this sticky as before.
+    const owned = t === "signedOut" && walkActive();
+    if (t !== "none" && !owned && !(quiet && (t === "signin" || t === "signedOut"))) {
       const c = COPY[t];
       handle = toast({
         kind: c.kind,
