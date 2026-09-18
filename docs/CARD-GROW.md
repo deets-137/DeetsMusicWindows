@@ -682,3 +682,15 @@ lose. Now a drill uses the slot you are reading, and Back walks the chain backwa
 6. Row on Summon: everything behaves as it did before 2026-09-17.
 7. Max, a filled card: §14 still holds, and Back still returns under the span.
 8. Reduced motion: no slide.
+
+## 16. The stage column (2026-09-17) — see docs/STAGE-COLUMN.md
+
+Max's left column (Now Playing over the anchored Queue) joined this system on 2026-09-17. The
+Queue grows **up over Now Playing**, from a zone on its top edge and from the Grow button in its
+header. Now Playing is a cover target only: it has no `.panel__head`, so it has no button and no
+zones of its own, and it never grows.
+
+What changed here: `Slot` gained `"np"` and `"queue"`; `MAX_NEIGHBOR` gained `queue: { up: "np" }`;
+`growSlots()` adds the Queue in Max while Fill keeps reading `opts.slots()`, so Fill still covers
+the bento only. The stage column never offers Fill — not from the button, not from the menu, not
+from its outer zones. The whole rule and the desk test are in **docs/STAGE-COLUMN.md §7–§8**.

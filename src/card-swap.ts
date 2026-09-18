@@ -17,7 +17,7 @@ export interface SwapMove {
 }
 
 const CLASSES = ["swap-out", "swap-in", "swap-top", "swap-rise"];
-const MOVING = ".bento > .panel.swap-out, .bento > .panel.swap-in, .bento > .panel.swap-rise";
+const MOVING = ".bento .panel.swap-out, .bento .panel.swap-in, .bento .panel.swap-rise";
 const LAST = new Set(["card-swap-shape", "card-swap-rise"]); // the animation that ends a panel's in step
 const handlers = new WeakMap<HTMLElement, (e: AnimationEvent) => void>();
 let closeWin: (() => void) | null = null;

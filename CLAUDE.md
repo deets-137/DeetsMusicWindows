@@ -84,6 +84,10 @@ front-end, Rust back-end).
 - `docs/SECOND-SEARCH.md` — a second Search card to compare two albums side by side: the first
   card is the drill target, the second is one you place yourself; what enforces one instance
   today and the work per file (designed 2026-09-17, not built).
+- `docs/STAGE-COLUMN.md` — the Max stage column: the cover locked to a square (no measured
+  constant — `100cqw` + a size-container split), the Queue's floor of "the song that plays now
+  + 2.5 rows" as token arithmetic (`--max-queue-min`), the new 1100×950 default, and the Queue's
+  one upward grow over Now Playing (built 2026-09-17, desk test §8 open).
 - `docs/CARD-MEMORY.md` — a card comes back where you left it after a remount (summon, pick,
   Midi↔Max, the grow drill swap): keys + resolvers per card, the snapshot, a row to keep it on
   restart, and memory-only caches of Search's catalog panes and terms (built 2026-09-17, desk test open).

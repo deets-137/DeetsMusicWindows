@@ -2,10 +2,10 @@
    Colors come from theme roles, spacing/radius/type from skin tokens. Up-Next
    ROWS share the Library's row tokens (--lib-row-art / --lib-row-art-radius) so
    both song lists keep one shape + density and a skin restyles them together.
-   Only the Now-Playing cover (--qcard-now-art) stays component-scoped — it has
-   no Library equivalent. */
+   The Now-Playing cover (--qcard-now-art) moved to skin.css base on 2026-09-17: the stage
+   column's Queue floor (--max-queue-min, docs/STAGE-COLUMN.md) is arithmetic over this card's
+   parts, and a token it reads cannot live inside the card. */
 .qcard {
-  --qcard-now-art: 48px;
   --qcard-label-spacing: 0.06em;
 
   display: flex;

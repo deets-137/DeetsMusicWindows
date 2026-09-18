@@ -122,9 +122,12 @@ nothing about authoring changed when the box did.
 | Tray panel | DeetsMusic · Hide · Previous · Play/Pause · Next · Mute · + | Opens the full DeetsMusic window · Hides this panel · as Now Playing · the + shows the song it would add | tray.html / tray.ts |
 | Card gaps (2026-09-16, CARD-GROW.md) | an edge zone | *Widen Library over Search* · *Make Library taller, over Playlists* · *Fill the window with Library* · on a grown card's outer zone: *Collapse Library back to its place* | card-grow.ts (`growHint` / `collapseHint`) |
 | Card header | the Grow button (hover-only) | the zone text for the direction it takes: *Widen Library over Search* → *Fill the window with Library* → *Collapse Library back to its place* | card-grow.ts |
+| Queue's top edge (Max, 2026-09-17, STAGE-COLUMN.md) | the stage column's one live zone | *Make Queue taller, over Now Playing* · while grown: *Collapse Queue back to its place* | card-grow.ts (`zoneAction`, the stage branch) |
+| Queue header (Max) | the Grow button (hover-only) | *Make Queue taller, over Now Playing* → *Collapse Queue back to its place*. There is no Fill step: the Queue grows up only | card-grow.ts |
 | Card header | Pin (while grown, with Collapse on outside click on) | Keeps this card open when you click outside it · pinned: Lets a click outside collapse this card again | card-grow.ts |
 | Grown song list | a column header | *Sorts by artist. Click again to turn it around* (Title, Artist, Album, Length, Genre, Year, Plays, #) | collection-card.ts (`colsHTML`) |
 | Grown list | a rail letter | *Jump to M* · *Jump to numbers and symbols* · an empty letter: `aria-label` *No M here* | collection-card.ts (`syncRail`) |
+| Settings › Window (2026-09-17) | Max window when short | Max needs height for the album cover and the queue rows. Dragged under 745 px tall it becomes Midi, or it stops there. Becomes Midi needs Resize changes surface on | settings-card.ts |
 | Settings › Window | Grow cards from edges · Collapse on outside click · Grown card on card pick | Click the gap beside a card to open it over its neighbor. Hover a card's title for the button · A click outside a grown card collapses it. Pin holds it open · Pick another card in a grown card's title: it keeps the size, or collapses first | settings-card.ts |
 
 **Rule for new controls:** an icon-only button gets an `aria-label` *and* a `title`. A button
@@ -218,6 +221,7 @@ a song appears (`trackMenu`, library-card.ts).
 | Artist view | shelf playlist | Play Now · Play Next · Add to Queue · Add to Playlist ▸ |
 | Settings | My reports row | Open · Copy link · Close · Clear |
 | **Tray panel** | song (2026-09-15) | Add to Library · Favorite / Unfavorite · Copy Link |
+| **Queue header (Max)** | the title, or the Grow button (2026-09-17, STAGE-COLUMN.md) | Grow ▸ (*Up, over Now Playing* — the only direction the stage column has) · while grown: Pin / Unpin · Collapse. No Fill row. |
 | **Card header** | the title, or the Grow button (2026-09-16, CARD-GROW.md) | Grow ▸ (*Right, over Search* · *Down, over Playlists* — the directions that exist in this slot) · Fill (Max) · while grown: Pin / Unpin (with Collapse on outside click on) · Collapse |
 
 Nothing opens on: the title bar, empty card space, list shelf headers, the Sort / View

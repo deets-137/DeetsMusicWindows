@@ -351,12 +351,19 @@
            each slot from the persisted assignment; the two content slots are swappable via
            their title picker. Now Playing is anchored to the top slot. -->
       <div class="bento" data-screen="home">
-        <section class="panel" data-slot="np" data-span="wide"></section>
+        <!-- The stage column (docs/STAGE-COLUMN.md): Now Playing over the anchored Queue.
+             OUTSIDE max this wrapper is `display: contents` — the two panels are then direct
+             grid items of .bento, in document order, exactly as they were before it existed.
+             In max it is the column-1 grid item and carries its own two rows, so the stage
+             can split where the bento does not. -->
+        <div class="stage">
+          <section class="panel" data-slot="np" data-span="wide"></section>
+          <!-- max-only host (hidden elsewhere): the anchored Queue under the stage. -->
+          <section class="panel" data-slot="queue"></section>
+        </div>
         <section class="panel" data-slot="left"></section>
         <section class="panel" data-slot="right"></section>
-        <!-- max-only hosts (hidden elsewhere): the anchored Queue under the stage, and two
-             more content slots for the 2×2 bento. -->
-        <section class="panel" data-slot="queue"></section>
+        <!-- max-only hosts (hidden elsewhere): two more content slots for the 2×2 bento. -->
         <section class="panel" data-slot="c"></section>
         <section class="panel" data-slot="d"></section>
       </div>

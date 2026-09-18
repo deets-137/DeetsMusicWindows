@@ -26,7 +26,13 @@ import * as frames from "./frames";
 import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
 
-export type Slot = "left" | "right" | "c" | "d";
+/** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
+ *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
+ *  (docs/STAGE-COLUMN.md §7). */
+export type Slot = "left" | "right" | "c" | "d" | "np" | "queue";
+/** The stage column's slots: they grow inside their own column and never offer Fill. */
+const STAGE: Slot[] = ["np", "queue"];
+const isStage = (s: Slot): boolean => STAGE.includes(s);
 export type GrowMode = "wide" | "tall" | "full";
 export type GrowDir = "left" | "right" | "up" | "down" | "full";
 type SideDir = Exclude<GrowDir, "full">;
@@ -57,12 +63,18 @@ const MAX_NEIGHBOR: Record<Slot, Partial<Record<SideDir, Slot>>> = {
   right: { left: "left", down: "d" },
   c: { right: "d", up: "left" },
   d: { left: "c", up: "right" },
+  // The stage column: the Queue grows UP over Now Playing, and nowhere else (the owner's
+  // call, 2026-09-17). Now Playing itself never grows — it has no header to grow from.
+  queue: { up: "np" },
+  np: {},
 };
 const MIDI_NEIGHBOR: Record<Slot, Partial<Record<SideDir, Slot>>> = {
   left: { right: "right" },
   right: { left: "left" },
   c: {},
   d: {},
+  queue: {},
+  np: {},
 };
 const DIR_WORD: Record<SideDir, string> = { left: "left", right: "right", up: "up", down: "down" };
 
@@ -96,13 +108,23 @@ export function onGrowChange(cb: (s: GrowState | null) => void): () => void {
 const emit = () => subs.forEach((cb) => cb(state));
 
 const enabled = (): boolean => !!opts && setting("cardGrow") && currentSurface() !== "mini";
+/** Every slot that can BE grown now: the composition's content slots, plus the anchored Queue
+ *  in max. Fill still reads opts.slots(), so it covers the bento only. */
+const growSlots = (): Slot[] => {
+  if (!opts) return [];
+  const live = opts.slots();
+  return currentSurface() === "max" ? [...live, "queue" as Slot] : live;
+};
+const isLive = (s: Slot): boolean => growSlots().includes(s);
 const neighbors = (): Record<Slot, Partial<Record<SideDir, Slot>>> => (currentSurface() === "max" ? MAX_NEIGHBOR : MIDI_NEIGHBOR);
 const canFill = (): boolean => currentSurface() === "max";
 /** The directions a slot can grow in now (those with a neighbor in this composition). */
 export function growDirs(slot: Slot): SideDir[] {
   if (!opts) return [];
-  const live = opts.slots();
-  return (Object.entries(neighbors()[slot]) as [SideDir, Slot][]).filter(([, n]) => live.includes(n)).map(([d]) => d);
+  const live = growSlots();
+  // A stage neighbour (np) is anchored: it is on screen whenever the surface has it.
+  const here = (n: Slot) => (isStage(n) ? currentSurface() === "max" : live.includes(n));
+  return (Object.entries(neighbors()[slot]) as [SideDir, Slot][]).filter(([, n]) => here(n)).map(([d]) => d);
 }
 const modeOf = (dir: GrowDir): GrowMode => (dir === "full" ? "full" : dir === "left" || dir === "right" ? "wide" : "tall");
 const coveredFor = (slot: Slot, dir: GrowDir): Slot[] => {
@@ -181,8 +203,8 @@ const motion = (): Motion | null => {
 export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
   if (!enabled() || animating || !opts) return;
   const panel = opts.hosts[slot];
-  if (!panel || !opts.slots().includes(slot)) return;
-  if (dir === "full" && !canFill()) return;
+  if (!panel || !isLive(slot)) return;
+  if (dir === "full" && (!canFill() || isStage(slot))) return; // the stage column never fills
   if (dir !== "full" && !growDirs(slot).includes(dir)) return;
   if (state && state.slot !== slot) collapseNow("other");
   if (state && state.slot === slot && state.dir === dir) return;
@@ -354,7 +376,7 @@ export function setPinned(on: boolean): void {
 export function buttonAction(slot: Slot): GrowDir | "collapse" | null {
   if (!enabled()) return null;
   if (state?.slot === slot) {
-    if (state.mode !== "full" && canFill()) return "full";
+    if (state.mode !== "full" && canFill() && !isStage(slot)) return "full";
     return "collapse";
   }
   const dirs = growDirs(slot);
@@ -373,8 +395,8 @@ export function growMenu(slot: Slot): MenuItem[] {
       label: "Grow",
       sub: () => dirs.map((d) => ({ label: `${DIR_WORD[d][0].toUpperCase()}${DIR_WORD[d].slice(1)}, over ${coveredFor(slot, d).map(opts!.titleOf).join(" and ")}`, run: () => growCard(slot, d, "menu") })),
     });
-  if (canFill() && state?.slot !== slot) items.push({ label: "Fill", run: () => growCard(slot, "full", "menu") });
-  if (canFill() && state?.slot === slot && state.mode !== "full") items.push({ label: "Fill", run: () => growCard(slot, "full", "menu") });
+  if (canFill() && !isStage(slot) && state?.slot !== slot) items.push({ label: "Fill", run: () => growCard(slot, "full", "menu") });
+  if (canFill() && !isStage(slot) && state?.slot === slot && state.mode !== "full") items.push({ label: "Fill", run: () => growCard(slot, "full", "menu") });
   if (state?.slot === slot) {
     if (setting("cardGrowOutside")) items.push({ label: state.pinned ? "Unpin" : "Pin", run: () => setPinned(!state?.pinned) });
     items.push({ label: "Collapse", run: () => void collapseGrow("menu") });
@@ -540,6 +562,8 @@ const BAR_SIDE: Record<Side, string> = { right: "left", left: "right", down: "to
  *  ("outer"), the window edge, or nothing that matters (midi's outer sides). */
 function beyond(slot: Slot, side: Side): "card" | "outer" | "edge" | null {
   if (!opts) return null;
+  // The stage column has its own rule in zoneAction: only the Queue's top edge acts.
+  if (isStage(slot)) return null;
   if (currentSurface() === "max") {
     // The max map: content columns 2–3, rows 1–2; a grown card spans more of them.
     const g = state?.slot === slot ? state : null;
@@ -563,14 +587,26 @@ interface ZoneAct {
 }
 /** What a strip does now, or null (hidden). */
 function zoneAction(slot: Slot, side: Side): ZoneAct | null {
-  if (!enabled() || !opts?.slots().includes(slot)) return null;
+  if (!enabled() || !isLive(slot)) return null;
+  // The stage column (STAGE-COLUMN.md §7): ONE strip acts, the Queue's top edge. It grows the
+  // Queue up over Now Playing, and while the Queue is grown the same strip — now at the top of
+  // the window — collapses it. The other three sides are dead: the column is the Queue's home,
+  // and a sideways grow would put it where the bento lives.
+  if (isStage(slot)) {
+    if (slot !== "queue" || side !== "up" || currentSurface() !== "max") return null;
+    if (state?.slot === "queue") return { dir: "up", act: "collapse", reach: "full" };
+    if (state) return null; // another card is grown: its own zones are the only live ones
+    // The WHOLE gap, not half of it: Now Playing has no zones, so nothing else claims the
+    // other half and a 6 px target would be needlessly hard to hit.
+    return { dir: "up", act: "grow", reach: "full" };
+  }
   const b = beyond(slot, side);
   if (!b) return null;
   const mine = state?.slot === slot;
   if (b === "card") {
     // A grown card's remaining inner gap gives Fill; a resting card's gives Grow that way,
     // unless the neighbor sits under a grown card, or a card fills the window.
-    if (mine) return state!.mode === "full" || !canFill() ? null : { dir: "full", act: "grow", reach: "half" };
+    if (mine) return state!.mode === "full" || !canFill() || isStage(slot) ? null : { dir: "full", act: "grow", reach: "half" };
     const n = neighbors()[slot][side];
     if (!n || isCovered(n) || state?.mode === "full") return null;
     return { dir: side, act: "grow", reach: "half" };
@@ -660,8 +696,8 @@ export async function agentGrow(payload: { action?: string; card?: string; dir?:
       if (!enabled()) throw new Error("blocked: Grow cards from edges is off in Settings › Window, or the window is Mini");
       const card = String(payload?.card ?? "");
       const slot = opts.slotOf(card);
-      if (!slot) throw new Error(`unknown: no card ${JSON.stringify(card)} on screen — a card name (Library, Search…) or a slot (left, right, c, d)`);
-      const dirs: GrowDir[] = [...growDirs(slot), ...(canFill() ? (["full"] as GrowDir[]) : [])];
+      if (!slot) throw new Error(`unknown: no card ${JSON.stringify(card)} on screen — a card name (Library, Search…) or a slot (left, right, c, d, queue)`);
+      const dirs: GrowDir[] = [...growDirs(slot), ...(canFill() && !isStage(slot) ? (["full"] as GrowDir[]) : [])];
       const want = payload?.dir ? String(payload.dir).toLowerCase() : null;
       const dir = want ?? buttonAction(slot);
       if (dir === "collapse") {

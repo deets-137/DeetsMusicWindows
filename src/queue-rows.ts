@@ -12,6 +12,12 @@ export function resolveEntry(e: QueueEntry): Track | undefined {
   return trackById(e.catalogId) ?? trackById(e.libraryId);
 }
 
+/** The pixel size the Now Playing cover asks Apple for (docs/STAGE-COLUMN.md §6). The stage
+ *  cover is the card's content width, 316 CSS px — 474 device px at Windows' usual 150% scale,
+ *  632 at 200%. Apple serves the same picture at any size we put in the template, so this
+ *  costs a bigger download on a dense screen and no extra API call. */
+export const stageArtPx = (): number => (window.devicePixelRatio > 1.5 ? 640 : 480);
+
 export function artURL(t: Track | undefined, px: number): string | null {
   if (!t?.artwork?.urlTemplate) return null;
   const s = String(px);

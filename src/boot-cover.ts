@@ -78,7 +78,7 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
     await nextFrame();
     const end = frames.begin("boot");
     root.dataset.boot = "lift";
-    const slots = document.querySelectorAll(".bento > .panel").length;
+    const slots = document.querySelectorAll(".bento .panel").length;
     const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * Math.max(0, slots - 1);
     window.setTimeout(() => {
       end();

@@ -39,6 +39,12 @@ const MINI_CEIL = 460;
 const MIDI_CEIL = 820;
 const HYST = 40; // must drag this far past the midi/max threshold before the surface flips
 const MINI_HYST = 5; // the mini edge is tight on purpose: in below 455, out above 465
+// Height matters for max alone (2026-09-17, docs/STAGE-COLUMN.md §5). Max's stage column needs
+// height for the square cover AND the Queue's rows; below MAX_FLOOR_H it cannot hold both, and
+// a short-and-wide window is a Midi, not a Max. So the band reads BOTH sides: a Max dragged
+// under this becomes Midi in place, and a Midi only becomes Max when it is wide enough AND
+// tall enough. Same dead-band as the width edge: out below 745, back above 785.
+const MAX_FLOOR_H = 745;
 
 // The floor of each view: the size below which its layout stops reading well (the user's
 // numbers, 2026-09-15). NP's 404 px width is the measured floor for the Press record: below
@@ -47,13 +53,27 @@ export const MIN_SIZES: Record<SizeSlot, { w: number; h: number }> = {
   mini: { w: 385, h: 550 },
   player: { w: 404, h: 550 },
   midi: { w: 495, h: 670 },
-  max: { w: 495, h: 670 },
+  // max: 750 tall is the owner's floor (2026-09-17, docs/STAGE-COLUMN.md §5). Below it the
+  // stage column cannot hold a fair cover AND the Queue's rows at the same time: the cover
+  // falls to its --np-cover floor and the Queue starts giving up rows.
+  max: { w: 495, h: 750 },
 };
-// While "Resize changes surface" is on, a window wider than mini must still be draggable
-// past the flip point, which is under midi's own floor. So midi and max take mini's floor
-// as their OS minimum then: the flip fires at 455 and midi never actually draws below it.
-const flipFloor = (k: SizeSlot): { w: number; h: number } =>
-  (k === "midi" || k === "max") && setting("surfaceAutoFlip") ? MIN_SIZES.mini : MIN_SIZES[k];
+// While "Resize changes surface" is on, a window wider than mini must still be draggable past
+// the flip point, which is under midi's own floor. So midi and max take mini's WIDTH as their
+// OS minimum then: the flip fires at 455 and midi never actually draws below it.
+// The HEIGHT floor is always the surface's own: the flip reads the width alone, so lending
+// mini's 550 let a Max window be dragged to a height its own layout does not support (desk
+// report, 2026-09-17 — the player's rows spilled out of its card at 539).
+// With the toggle ON, max must also be draggable DOWN to its height band, so it takes midi's
+// height floor; the flip at MAX_FLOOR_H fires before midi's own 670 is reached. With the toggle
+// OFF nothing flips, so max keeps its own 750: the window simply cannot be made too short.
+const flipFloor = (k: SizeSlot): { w: number; h: number } => {
+  if ((k !== "midi" && k !== "max") || !setting("surfaceAutoFlip")) return MIN_SIZES[k];
+  // max keeps its own 750 unless it is allowed to flip out of it; then it must be draggable
+  // down to the band, so it borrows midi's height floor.
+  const h = k === "max" && !heightFlips() ? MIN_SIZES.max.h : Math.min(MIN_SIZES[k].h, MIN_SIZES.midi.h);
+  return { w: MIN_SIZES.mini.w, h };
+};
 
 const appWindow = getCurrentWindow();
 
@@ -70,21 +90,35 @@ let applyingSize = false; // suppress auto-flip while we programmatically resize
 const seen: Partial<Record<SizeSlot, string>> = {};
 
 /** The surface a width lands in, ignoring hysteresis (pure band lookup). */
-function bandFor(width: number): SurfaceName {
-  return width <= MINI_CEIL ? "mini" : width <= MIDI_CEIL ? "midi" : "max";
+function bandFor(width: number, height: number): SurfaceName {
+  if (width <= MINI_CEIL) return "mini";
+  if (width <= MIDI_CEIL) return "midi";
+  return heightFlips() && height < MAX_FLOOR_H ? "midi" : "max";
 }
 
+/** True while the screen itself can show a Max window. On a short screen (a 768 px laptop)
+ *  the open size is clamped to the work area, and a height flip would make Max unpickable:
+ *  it would turn back into Midi the moment it opened. There, Max stays and its layout
+ *  degrades instead (the cover holds --np-cover, the Queue gives up rows). */
+const roomForMax = (): boolean => window.screen.availHeight >= MAX_FLOOR_H + HYST;
+/** Does a short Max window flip to Midi ("Max window when short"), or stop at its own floor?
+ *  The flip rides the same toggle as the width band: with "Resize changes surface" off nothing
+ *  flips, so the floor is the only answer left. */
+const heightFlips = (): boolean => setting("surfaceAutoFlip") && setting("maxShortWindow") === "flip";
+
 /** Where a resize takes the CURRENT surface — flips only past threshold + hysteresis. */
-function flipFor(width: number, cur: SurfaceName): SurfaceName {
+function flipFor(width: number, height: number, cur: SurfaceName): SurfaceName {
   switch (cur) {
     case "mini":
-      return width > MINI_CEIL + MINI_HYST ? bandFor(width) : "mini";
+      return width > MINI_CEIL + MINI_HYST ? bandFor(width, height) : "mini";
     case "midi":
-      if (width > MIDI_CEIL + HYST) return "max";
+      // Both sides must clear the band: a wide but short window stays a Midi.
+      if (width > MIDI_CEIL + HYST && (!heightFlips() || height > MAX_FLOOR_H + HYST || !roomForMax())) return "max";
       if (width < MINI_CEIL - MINI_HYST) return "mini";
       return "midi";
     case "max":
-      return width < MIDI_CEIL - HYST ? bandFor(width) : "max";
+      if (width < MIDI_CEIL - HYST) return bandFor(width, height);
+      return heightFlips() && height < MAX_FLOOR_H && roomForMax() ? "midi" : "max";
   }
 }
 
@@ -146,7 +180,7 @@ export function sizeSeen(slot: SizeSlot): string | null {
 /** Set the window's minimum for the active view (only when it changes). */
 async function applyMinSize(): Promise<void> {
   const k = slotOf(active);
-  const id = `${k}:${setting("surfaceAutoFlip")}`; // the floor follows the toggle (flipFloor)
+  const id = `${k}:${setting("surfaceAutoFlip")}:${setting("maxShortWindow")}`; // the floor follows both (flipFloor)
   if (id === minKey) return;
   minKey = id;
   const { w, h } = flipFloor(k);
@@ -252,7 +286,7 @@ export function initSurface(): void {
     // "Resize changes surface" off (SETTINGS.md / FUTURE-SETTINGS §8): the window resizes
     // freely and the surface only changes by a deliberate pick. The player never flips (§8a).
     if (setting("surfaceAutoFlip") && !isPlayerView()) {
-      const next = flipFor(window.innerWidth, active);
+      const next = flipFor(window.innerWidth, window.innerHeight, active);
       if (next !== active) {
         activate(next);
         void applyMinSize(); // player → midi raises the minimum height again
@@ -265,6 +299,7 @@ export function initSurface(): void {
   // Reset). Set current writes the size the window already has, so that resize is a no-op.
   onSettingsChange((key) => {
     if (key === SIZE_KEYS[slotOf(active)]) void applySize(active);
-    if (key === "surfaceAutoFlip") void applyMinSize(); // the OS floor follows it (flipFloor)
+    // Both of these move the OS floor (flipFloor): the toggle, and the short-window choice.
+    if (key === "surfaceAutoFlip" || key === "maxShortWindow") void applyMinSize();
   });
 }

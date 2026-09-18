@@ -16,7 +16,7 @@ import { onTracksChange } from "./track-store";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
 import * as queue from "./queue";
-import { resolveEntry, artURL } from "./queue-rows";
+import { resolveEntry, artURL, stageArtPx } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem, addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { favoriteItem, favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
@@ -233,7 +233,8 @@ export const nowPlayingCard: CardDef = {
       const album = s.album ?? next?.albumName;
       // "Show cover: Playlist" (PLAYLISTS.md §11): a song from a playlist with a saved cover
       // shows that cover; everything else (and the tint) stays on the album.
-      const artwork = (s.station ? undefined : playlistCoverFor(cur?.context, 480)) ?? s.artworkUrl ?? artURL(next, 480) ?? undefined;
+      const px = stageArtPx();
+      const artwork = (s.station ? undefined : playlistCoverFor(cur?.context, px)) ?? s.artworkUrl ?? artURL(next, px) ?? undefined;
       const text = title ?? "Not playing";
       const badge = next ? explicitBadge(next) : "";
       if (npArtist) npArtist.textContent = artist ?? (s.station ? s.station.name : "");

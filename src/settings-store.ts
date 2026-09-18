@@ -40,6 +40,10 @@ export interface Settings {
   /** A click outside the Compass bar closes it (COMPASS.md §4). Off: Escape, the button or a pick. */
   compassCloseAway: boolean;
   /** A pick in a grown card's title picker: keep the grow on the slot, or collapse first. */
+  /** A Max window dragged shorter than the stage column can hold (docs/STAGE-COLUMN.md §5):
+   *  "flip" turns it into Midi, which is built for short windows; "floor" stops the drag at
+   *  Max's own 750 px. Only "flip" needs `surfaceAutoFlip` on. */
+  maxShortWindow: "flip" | "floor";
   cardGrowPick: "keep" | "collapse";
   /** A drill (Go to Album, a shelf tile, a playlist): the card it opens takes the place of the
    *  card you are reading and Back returns the chain (CARD-GROW.md §15), or it is summoned into
@@ -305,10 +309,14 @@ export const DEFAULTS: Settings = {
   sizeMini: "385x550", // user's numbers, desk-tested 2026-09-15: each view opens at its own floor
   sizePlayer: "405x675", // NP: 404 px wide is where the Press record stopped jittering
   sizeMidi: "495x670",
-  sizeMax: "1100x820",
+  sizeMax: "1100x950", // 2026-09-17: 948 is the tallest skin's (Press) need for a full-width
+                       // square cover AND the Queue's 2.5 rows (docs/STAGE-COLUMN.md §5);
+                       // 950 clears every skin and still fits a 1080p work area (1032).
   cardGrow: true, // new and easy to turn off (CARD-GROW.md §8)
   cardGrowOutside: true, // a grow is temporary; Pin covers "keep it"
   compassCloseAway: true, // user's call 2026-09-17: the bar is a passing thing; a click elsewhere means "not now"
+  maxShortWindow: "flip", // the width already behaves this way: a window that no longer fits a
+                          // surface becomes the one that does, instead of refusing to move
   cardGrowPick: "keep", // decided 6A
   cardDrill: "inplace", // user's call 2026-09-17: a drill belongs to the card you are reading
   cardDrillBring: false, // user's call 2026-09-17: a card already on screen is not worth moving two cards for

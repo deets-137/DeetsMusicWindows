@@ -195,18 +195,24 @@ export function initLayout(): void {
   const npDef = registry["now-playing"];
   if (npHost && npDef) npDef.mount(npHost); // anchored in every surface; never swapped
 
+  const queueHost = document.querySelector<HTMLElement>('[data-slot="queue"]');
+  // The four content slots, plus max's two anchored hosts: card grow needs them so the Queue
+  // can grow up over Now Playing (docs/STAGE-COLUMN.md §7). They are NOT in comp.slots, so
+  // nothing else here treats them as content slots.
   const hosts: Record<Slot, HTMLElement | null> = {
     left: document.querySelector<HTMLElement>('[data-slot="left"]'),
     right: document.querySelector<HTMLElement>('[data-slot="right"]'),
     c: document.querySelector<HTMLElement>('[data-slot="c"]'),
     d: document.querySelector<HTMLElement>('[data-slot="d"]'),
+    np: npHost,
+    queue: queueHost,
   };
-  const queueHost = document.querySelector<HTMLElement>('[data-slot="queue"]');
 
   let comp: Composition = compositionFor(currentSurface());
   let layout: Assignment = loadLayout(comp);
   const mounted: Partial<Record<Slot, { inst: CardInstance; picker: SlotPicker; grow: GrowButton }>> = {};
   let queueInst: CardInstance | null = null;
+  let queueGrow: GrowButton | null = null;
 
   // Card grow (CARD-GROW.md): the zones, the header button, the covered-card rules. Wired
   // before this module's own surface listener, so a grow ends before the slots remount.
@@ -218,9 +224,16 @@ export function initLayout(): void {
       bento,
       body,
       slots: () => comp.slots,
-      titleOf: (s) => (layout[s] ? registry[layout[s]!]?.title ?? "" : ""),
+      titleOf: (s) => {
+        if (s === "np") return registry["now-playing"]?.title ?? "Now Playing";
+        if (s === "queue") return registry.queue?.title ?? "Queue";
+        return layout[s] ? registry[layout[s]!]?.title ?? "" : "";
+      },
       slotOf: (name) => {
         const n = name.trim().toLowerCase();
+        // The anchored hosts answer to their own names in max (the agent's `/grow` route).
+        if (comp.queueSlot && (n === "queue" || n === "up next")) return "queue";
+        if (comp.queueSlot && (n === "np" || n === "now playing" || n === "now-playing")) return "np";
         if (comp.slots.includes(n as Slot)) return n as Slot;
         return comp.slots.find((s) => {
           const id = layout[s];
@@ -236,7 +249,7 @@ export function initLayout(): void {
   // register), as does a card being swapped in. Session-only; on the launch tie the
   // LRU is the LAST slot of the composition (midi: right — queue's default home, so a
   // fresh-launch summon lands where you'd expect).
-  const lastTouch: Record<Slot, number> = { left: 0, right: 0, c: 0, d: 0 };
+  const lastTouch: Record<Slot, number> = { left: 0, right: 0, c: 0, d: 0, np: 0, queue: 0 };
   const touch = (slot: Slot) => { lastTouch[slot] = Date.now(); };
   (Object.keys(hosts) as Slot[]).forEach((slot) => {
     hosts[slot]?.addEventListener("pointerdown", () => touch(slot), { capture: true });
@@ -499,12 +512,19 @@ export function initLayout(): void {
 
   const compose = () => {
     comp.slots.forEach((s) => mountSlot(s));
-    if (comp.queueSlot && queueHost && registry.queue) queueInst = registry.queue.mount(queueHost);
+    if (comp.queueSlot && queueHost && registry.queue) {
+      queueInst = registry.queue.mount(queueHost);
+      // The anchored Queue takes the Grow button and its edge strips too — one of them acts:
+      // the top one, up over Now Playing (docs/STAGE-COLUMN.md §7).
+      queueGrow = attachGrowButton("queue", queueHost);
+    }
     refreshGrowZones(); // the zones' hints name the mounted cards
   };
   const decompose = () => {
     (Object.keys(hosts) as Slot[]).forEach(wipeChain); // a new composition has no way back
     (Object.keys(mounted) as Slot[]).forEach(unmountSlot);
+    queueGrow?.destroy();
+    queueGrow = null;
     queueInst?.destroy();
     queueInst = null;
   };
@@ -536,7 +556,13 @@ export function initLayout(): void {
   // A slot of this composition that shows `id` on screen (mini's hidden right slot doesn't count).
   const visibleSlotOf = (id: CardId): Slot | undefined => comp.slots.find((s) => layout[s] === id && shown(s));
   onCardRequest((id, how: RequestHow) => {
-    if (comp.anchored.includes(id)) return;
+    if (comp.anchored.includes(id)) {
+      // An anchored card is on screen by construction — unless a grow covers it. In max the
+      // Queue can cover Now Playing (STAGE-COLUMN.md §7), so a request for it ends the grow.
+      const anchored: Slot | null = id === "now-playing" ? "np" : id === "queue" && comp.queueSlot ? "queue" : null;
+      if (anchored && isCovered(anchored)) void collapseGrow("request");
+      return;
+    }
     if (isPlayerView()) void applySurface("mini", "cards");
     // A drill (CARD-GROW.md §15): the card it opens takes the place of the card you are reading,
     // and Back walks the chain back. A grown slot keeps its span.
@@ -562,7 +588,11 @@ export function initLayout(): void {
   });
   setCardHostLookup((id) => {
     const s = visibleSlotOf(id);
-    return s ? hosts[s] : null;
+    if (s) return hosts[s];
+    // max's anchored Queue is on screen but has no content slot: Compass's "grow queue" and
+    // the handoff need its host (docs/STAGE-COLUMN.md §7).
+    if (id === "queue" && comp.queueSlot) return queueHost;
+    return null;
   });
   // A quit saves the places of the cards on screen too, not only of destroyed ones.
   setLiveSnapshots(() =>

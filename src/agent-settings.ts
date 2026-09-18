@@ -131,6 +131,7 @@ const SPECS: Spec[] = [
   storeSize("player", "NP opens at"),
   storeSize("midi", "Midi opens at"),
   storeSize("max", "Max opens at"),
+  storeChoice("Window", "maxShortWindow", "Max window when short", [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }]),
   storeChoice("Window", "alwaysOnTop", "Keep on top", [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }]),
   storeToggle("Window", "cardGrow", "Grow cards from edges"),
   storeToggle("Window", "cardGrowOutside", "Collapse on outside click"),

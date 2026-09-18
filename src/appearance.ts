@@ -117,7 +117,7 @@ async function swap(): Promise<void> {
 
   phase = "lift";
   root.dataset.boot = "lift";
-  const slots = document.querySelectorAll(".bento > .panel").length;
+  const slots = document.querySelectorAll(".bento .panel").length;
   const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * Math.max(0, slots - 1);
   // The whole-cover line counts the opaque wait stage too (the recompose, fonts, resize);
   // this one is only the rise the user sees.

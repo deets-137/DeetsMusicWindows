@@ -1562,11 +1562,38 @@ body {
   grid-template-columns: minmax(0, var(--max-stage-w)) repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   grid-template-areas:
-    "np    left  right"
-    "queue c     d";
+    "stage left  right"
+    "stage c     d";
 }
-[data-surface="max"] .panel[data-slot="np"]    { grid-area: np; }
-[data-surface="max"] .panel[data-slot="queue"] { grid-area: queue; display: flex; }
+/* The stage column (docs/STAGE-COLUMN.md): one grid item over both rows, with its OWN two
+   rows — Now Playing is locked to the height its full-width square cover needs, and the Queue
+   takes every other pixel. It is a size container so its children can read its height; that is
+   safe because the stage's own height comes from the bento row, never from its contents. */
+[data-surface="max"] .stage {
+  grid-area: stage;
+  display: grid;
+  gap: var(--panel-gap);
+  min-height: 0;
+  container-type: size;
+  /* Now Playing is LOCKED (owner's call, 2026-09-17): row 1 is always the card's natural
+     height — the full-width square cover plus its rows — and nothing takes it away. The Queue
+     absorbs every pixel of the window's height, up or down. What keeps the Queue usable is the
+     WINDOW, not a fight inside the column: under 745 px tall the window either becomes Midi or
+     stops (Settings › Window › "Max window when short"), and 745 is the height at which the
+     Queue is still about 106 px with the cover at full size. */
+  grid-template-rows: auto minmax(0, 1fr);
+  /* ONE explicit column. Without it the column grid is implicit, and Now Playing's
+     `[data-span="wide"] { grid-column: 1 / -1 }` (midi's rule, still on the element) resolves
+     against an explicit grid with no columns — which pushed the Queue into a second, narrow
+     implicit column. Both panels take column 1 by hand. */
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-surface="max"] .stage > .panel { grid-column: 1; }
+/* Both panels are placed BY HAND. Auto-placement would send Now Playing to a third row the
+   moment the Queue takes rows 1–2 (the same trap the bento's covered-card rules record). */
+[data-surface="max"] .stage > .panel[data-slot="np"] { grid-row: 1; }
+[data-surface="max"] .stage > .panel[data-slot="queue"] { grid-row: 2; }
+[data-surface="max"] .panel[data-slot="queue"] { display: flex; }
 [data-surface="max"] .panel[data-slot="left"]  { grid-area: left; }
 [data-surface="max"] .panel[data-slot="right"] { grid-area: right; }
 [data-surface="max"] .panel[data-slot="c"]     { grid-area: c; display: flex; }
@@ -3279,11 +3306,21 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    the bottom. The queue lives in its own anchored panel below, so the summon button
    has nothing to summon and hides. mini's player view uses the same stage; there the
    summon button stays and switches mini back to its card view (layout.ts). */
-:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .panel[data-slot="np"] .np { flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch; }
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .panel[data-slot="np"] .np {
+  flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch;
+  /* An INLINE-size container: the cover reads the card's content width as 100cqw. Only the
+     width is contained, so the card's height still follows its content — which is what makes
+     the stage's row 1 size itself (docs/STAGE-COLUMN.md §4.2). */
+  container-type: inline-size;
+}
+/* The cover is a SQUARE, always (STAGE-COLUMN.md §4.2). Its preferred height is the card's own
+   content width, so width = height by definition; `width: auto` off the aspect ratio means a
+   short card shrinks it in both directions at once and it stays square instead of being clamped
+   into a tall box and cropped by object-fit. The auto block margins centre it in spare height. */
 :is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art {
-  flex: 1 1 auto; min-height: 0;
-  width: auto; height: auto; aspect-ratio: 1;
-  align-self: center; max-width: 100%;
+  flex: 0 1 auto; min-width: 0; min-height: var(--np-cover);
+  height: 100cqw; width: auto; aspect-ratio: 1;
+  align-self: center; margin-block: auto; max-width: 100%;
   font-size: var(--np-stage-glyph);
 }
 :is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__center { flex: 0 0 auto; }
@@ -3292,10 +3329,13 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 :is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__times { display: flex; }
 [data-surface="max"] .np__summon { display: none; }
 /* Aurora on the stage: the halo is centered on the (now centered, larger) cover. */
+/* The halo reads the REAL cover: 100cqw is the card's content width, which is the square's
+   side whenever the window pays for it (STAGE-COLUMN.md §4.2). It replaced the nominal
+   --np-stage-cover, which was a stand-in from when the cover had no fixed size. */
 :is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__aurora::before {
   left: 50%;
-  top: calc(var(--panel-pad) + var(--np-stage-cover) / 2);
-  width: calc(var(--np-stage-cover) * var(--album-aurora-reach));
+  top: calc(var(--panel-pad) + 100cqw / 2);
+  width: calc(100cqw * var(--album-aurora-reach));
 }
 
 /* ── Tray panel (tray.html · TRAY.md) ───────────────────────── */
@@ -3427,6 +3467,9 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
 [data-surface="max"] .panel[data-slot="right"][data-grow="tall"],
 [data-surface="max"] .panel[data-slot="d"][data-grow="tall"]     { grid-area: 1 / 3 / 3 / 4; }
 [data-surface="max"] .panel[data-grow="full"]                    { grid-area: 1 / 2 / 3 / 4; }
+/* The stage column (STAGE-COLUMN.md §7): the Queue grows UP over Now Playing, and nowhere
+   else. The span is inside the stage's own two-row grid, so it can never reach the bento. */
+[data-surface="max"] .stage > .panel[data-slot="queue"][data-grow="tall"] { grid-row: 1 / 3; }
 /* Midi: the content row is row 2. The covered card is placed by hand too, or auto-placement
    would open a third row for it under the grown one. */
 [data-surface="midi"] .panel[data-grow="wide"]             { grid-area: 2 / 1 / 3 / 3; }

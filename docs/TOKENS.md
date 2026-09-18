@@ -422,8 +422,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--set-preview-max-h` | `180px` | — | Bugs › the log text a report sends; longer scrolls |
 | `--font-mono` | `"Cascadia Mono", Consolas, ui-monospace, monospace` | — | log text |
 | `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
-| `--np-stage-cover` | `260px` | — | nominal cover size; the aurora halo scales off it |
 | `--np-stage-glyph` | `96px` | — | placeholder ♪ on the stage |
+| `--qcard-now-art` | `48px` | — | the Queue card's now-playing cover |
 
 ### album aurora (Now Playing; ALBUM-COLOR.md)
 

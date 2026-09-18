@@ -208,7 +208,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, and Show notices",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the five Grow cards rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "alwaysOnTop", "cardGrow", "cardGrowOutside", "compassCloseAway", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the five Grow cards rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "compassCloseAway", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
@@ -369,7 +369,11 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     mini: ["385x550", "420x620", "455x700"],
     player: ["405x675", "460x720", "540x800"],
     midi: ["495x670", "540x780", "600x900"],
-    max: ["960x700", "1100x820", "1400x900"],
+    // 2026-09-17 (STAGE-COLUMN.md §5): 1100 × 950 is the default — the first height at which
+    // EVERY skin shows the full-width square cover AND the Queue's 2.5 rows (Press needs 948),
+    // and it still fits a 1920 × 1080 work area. 1400 × 1000 is the wide option that also fits
+    // 1080p; 960 × 700 stays as the compact one, where the cover shrinks (still square).
+    max: ["960x750", "1100x950", "1400x1000"],
   };
   const sizeLabel = (v: string) => v.replace("x", " × ");
   const sizeRow = (id: string, label: string, hint: string, slot: SizeSlot): Row => {
@@ -615,12 +619,17 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
               .catch((e) => console.error("[settings] autostart", e));
           },
         },
-        storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "Off: the window resizes inside the current surface"),
+        storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "On: a window made narrow or short becomes the surface that fits it. Off: the window resizes inside the current surface, and each one keeps its own floor"),
         storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open"),
         sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
         sizeRow("sizeplayer", "NP opens at", "The window size for NP, the player alone. Set current saves the size it had last", "player"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
         sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
+        {
+          kind: "choice", id: "maxshort", label: "Max window when short", key: "maxShortWindow",
+          hint: "Max needs height for the album cover and the queue rows. Dragged under 745 px tall it becomes Midi, or it stops there. Becomes Midi needs Resize changes surface on",
+          options: [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }],
+        },
         {
           kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
           hint: "The window stays above other windows. Player: only while it shows the player",
