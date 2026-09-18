@@ -188,6 +188,122 @@ below need. Click between the halves: neither word moves as the dot jumps across
 the window becomes the player alone. Settings › Window reads
 **Player opens at**. Ctrl+Space, type `np` — the Player row comes back; type `player` — same row.
 
+**BUILT 2026-09-18 — the Settings card is regrouped.** The wording pass shipped first; this is
+the organization. He decided all four forks on 2026-09-18: **1C, 2A, 3C, 4A**.
+[SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md) and [SETTINGS.md](SETTINGS.md) §3 are rewritten
+around it. No store key changed, so there is no migration.
+
+**What he chose.**
+- **Fork 1 = C (mixed).** *Look and feel* becomes four real sections — **Look schedule**,
+  **Motion**, **Skin settings**, **Menus, hints and notices** — which is how `RESET_GROUPS` has
+  split it for months. **Window keeps one fold** and names its groups instead.
+- **Fork 2 = A (a real Sound section)**, and Sleep answered the same way — **then amended the
+  same day**: the rows were first taken OUT of the two panels, and he put them back. The
+  preferences now live in **both** places. See "The amendment" below.
+- **Fork 3 = C.** *Show the day in History* stays in Playback. *Export playlists* still moved from
+  Apple Music to Playlists.
+- **Fork 4 = A.** Window / Window sizes / Growing and drilling.
+
+**As built.** Fifteen sections became **twenty**: Tips · Window · Look schedule · Motion · Skin
+settings · Menus, hints and notices · Home · Playback · **Sound** · **Sleep** · AirPlay · Apple
+Music · Last.fm · Playlists · Rewind · Connections · Updates · Reset · Bugs · About.
+- **Nine Sound preferences are rows of Settings › Sound** (Avoid distortion, Lower the song by,
+  Remember each output, Match songs to, Keep albums together, Songs not measured get, Follow the
+  volume of, Blend amount, Ask to keep after) **and stay in the Sound panel**. The panel is
+  unchanged from 0.10.1; only the card is new.
+- **All four Sleep preferences are rows of Settings › Sleep** and **stay in the sleep panel**.
+  Reset gained a **Sleep** group; it had none, which is the mismatch fork 2 asked about.
+- `compassCloseAway` moved from Window to Menus, hints and notices, in the card, in `SPECS` and in
+  the Reset groups.
+- `agent-settings.ts` sections were renamed to match the card row for row, `theme` and `skin`
+  included (they are now **Theme and skin**, the Reset row's name). The Compass prints these
+  strings under a Settings row, so a name only `SPECS` knew was a name the user could not find.
+
+**The amendment (same day, his call).** 2A as first built REMOVED the nine Sound rows and the four
+Sleep rows from their panels, on the rule "live actions in the panel, preferences in the card". He
+rejected that: **"first time users interacting with those panels won't be going to settings."** A
+panel has to be finishable on its own. Both panels were restored exactly — `git checkout` of
+`sound-panel.ts` and `sleep.ts`, the markup and the CSS put back at their original lines, the
+token restored and TOKENS.md regenerated — and the card sections were kept. The preference is in
+two places; the state is in one. Both controls call `setSetting` on the same key and both repaint
+from `onSettingsChange`, so nothing can drift.
+
+He chose this over the two other real options: undo 2A outright, or fork 2B (one card row with an
+**[Open]** button). What decided it: **`compass.ts:339` builds the Compass's Settings rows from
+`settingsRows()` — the CARD — not from `SPECS`.** Under 2B, Ctrl+Space could find "Sound" but
+never "Blend amount". **Fact 1 of the original fork write-up claimed the Compass reads `SPECS`
+and was wrong.** Nothing was built on it: fork 1's answer does not depend on it.
+
+It costs one line of the user guide. "A control lives in exactly one place" now reads: one place,
+unless a title-bar panel and the card serve different moments — the panel while you listen, the
+card while you configure. Sound and Sleep are the only such pair. Rooms is not one: a live change
+there is a room command, not a setting.
+
+**Decided inside his choice** (none of these was a fork he saw):
+1. **The sub-heading is `.set__sub-head`, not `.set__group`.** `.set__group` is the bordered
+   My-reports family; a group of plain rows inside a section gets a name, not a box — the card's
+   own rule is "a hairline groups the section; no boxes". Same type as a section header, no
+   chevron, no count, no hairline, so nothing invites a click. It is skipped by the header's count
+   and by the Compass index.
+2. **Sound got sub-headings too** (*Equalizer*, *Adaptive sound*), by fork 1C's own logic: its nine
+   rows serve one idea in two halves.
+3. **Fork 4A's group is called *Growing and drilling*, not *Cards*.** Fork 3A would have used
+   *Cards* for Home + History + Rewind. Two meanings of one word in one card.
+4. **Keep on top moved up** into the *Window* group. It is a property of the window, not of a size.
+5. **A section with every row gated off is not drawn at all** — no empty header. Splitting Skin
+   settings out created that case: Cyber sets nothing of its own.
+6. **"Lower the song by" is a slider in the card, not a menu.** The panel's control for the same
+   key is a ± stepper; −24…+6 dB at half-decibel steps would be 61 menu entries. `RangeRow`
+   gained an optional `step`, so the slider makes the same half-decibel move as the stepper
+   (arrows step one, Shift ten) and the two controls can never land on values the other cannot
+   reach. Nothing else uses `step`.
+7. **"Sleep at" is a menu of the whole day in quarter hours** (96 entries, the dropdown scrolls).
+   The panel's ‹ › moved in 15-minute steps and `agent-settings.ts` already declared
+   `step: 15` over the full day; a shorter band would have left a stored time with no option.
+8. ~~The Sound panel's review question shows its line of text.~~ **Undone by the amendment.** It
+   was only needed because the "Keep:" pill had left the footer. The pill is back, the words are
+   its tooltip again, and `--sound-foot-pill-w` and the sleep-panel rules are restored at their
+   original lines. TOKENS.md is back to 493 rows.
+9. The `.set__section` element is now keyed `data-sec="<title>"`, because the fold's enter-motion
+   looked the section up by index and an undrawn section breaks that.
+
+**Desk test.**
+1. Settings: the header list reads as the twenty above. Every section but Tips and About starts
+   folded — including ones you had open before, which is the known `deets.settings.folds` cost of
+   a rename. Open each: no empty section, no count that disagrees with the rows.
+2. **Window**: three sub-headings, *Window* · *Window sizes* · *Growing and drilling*. The count
+   badge says 19, not 22 — a heading is not a setting. The first heading has no gap above it.
+   *Keep on top* is in the first group. *Compass closes on outside click* is **not** here.
+3. **Skin settings**: under Press it holds the four record rows; under Ocean, two; under Glass,
+   five with Fancy Glass on. **Switch the skin to Cyber — the whole section disappears.** Switch
+   back: it returns, folded or open as you left it.
+4. **Sound**: the nine rows under two sub-headings. Set *Avoid distortion* to **By hand** —
+   *Lower the song by* appears. Drag it: the readout moves in half decibels. Arrow keys step 0.5,
+   Shift+arrow 5. Set it back to Limiter only — the row goes.
+5. Open the **Sound panel** (title bar): it is exactly as it was in 0.10.1 — both folds hold their
+   settings, and the footer still has the "Keep:" pill. **Now the duplication test:** change
+   *Blend amount* to **Strong** in the panel, close it, open Settings › Sound — the row already
+   reads Strong. Change it back in the card, reopen the panel — the pill already reads Medium.
+   Do the same once with *Avoid distortion*, which has four values and a dependent row.
+6. **Sleep**: set *Sleep every day* to **At a time** — *Sleep at* appears with a quarter-hour menu.
+   Pick 11:15 PM. Open the **sleep panel**: its Every day pill says *At a time* and the time row
+   says 11:15 PM. Press ‹ in the panel — the card row follows to 11:00 PM.
+7. **Menus, hints and notices**: *Compass closes on outside click* is the last row and still works
+   (open Ctrl+Space, click a card — it closes; turn the row off, repeat — it stays).
+8. **Ctrl+Space**: type `blend` → *Blend amount*, sub **Sound**. Type `wind` → *Wind down*, sub
+   **Sleep**. Type `fancy` → *Fancy scrubber* under **Motion**, *Fancy Glass* under **Skin
+   settings**. Each sets inline, without opening the card.
+9. **Reset**: the row list gained **Sleep**. Reset it — the four sleep rows go back to Off / 22:00
+   / 5 min / off. Reset *Menus, hints and notices* — the Compass rule comes back on with the rest.
+10. `deetsmusic settings list Sound` and `list Sleep` from the CLI print the same labels the card
+    shows. `list "Look and feel"` now finds nothing; `list Motion` does.
+11. With the Sound panel OPEN, run `deetsmusic settings set soundCrossfeedLevel light` — the
+    panel's pill moves under the pointer. That is `onSettingsChange` doing the work both
+    controls already depended on; it is why the duplication needs no code of its own.
+
+**Explicitly not in scope:** "web" is a coined noun across five Playlists rows that the card
+never defines (found in the same review). He looked at it on 2026-09-18 and does not mind it.
+
 **DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
 from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".
 

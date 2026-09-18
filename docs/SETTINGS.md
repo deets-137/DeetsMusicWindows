@@ -74,6 +74,21 @@ Every row of the card, with the key behind it. The controls that are settings bu
 title-bar panel instead are §3a. Labels are one short active statement; a choice row reads as a sentence completed by the
 chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
+**The sections (twenty, since the regroup of 2026-09-18).** Tips · Window · Look schedule ·
+Motion · Skin settings · Menus, hints and notices · Home · Playback · Sound · Sleep · AirPlay ·
+Apple Music · Last.fm · Playlists · Rewind · Connections · Updates · Reset · Bugs · About.
+Look and feel was one fold until that day; `RESET_GROUPS` had treated it as four for months and
+the card now agrees. **Window keeps one fold** and names its three groups with a `.set__sub-head`
+sub-heading — *Window*, *Window sizes*, *Growing and drilling* — because nine of its rows are
+about cards, not about the window. Sound does the same with *Equalizer* and *Adaptive sound*.
+A sub-heading is not a setting: it is left out of the header's count and out of the Compass.
+
+A section whose every row is gated off is **not drawn at all** — no empty header. Skin settings
+under Cyber is the case (Cyber sets nothing of its own).
+
+Folds persist by section **title** (`deets.settings.folds`), so a renamed or new section starts
+folded once for a user who had folded the old one. Harmless; say it in the release note.
+
 | Section | Row (hint) | Key | Values | Read site |
 |---|---|---|---|---|
 | Tips | Six static two-line notes (the gesture, then why to try it): hover anything · right-click anything · drag anything · click your way in · the title menu · close is not quit (2026-09-15). Habits, not a manual — the menus list their own verbs. No controls, no count badge; first section, starts collapsed | `TIPS` in `settings-card.ts` | — | `.set__tip` (settings.css). The in-app half of [ONBOARDING.md](ONBOARDING.md) |
@@ -86,7 +101,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Midi opens at (The window size for Midi. Set current saves the size it has now or had last) | `sizeMidi` | **495x670** | same |
 | Window | Max opens at (The window size for Max. Set current saves the size it has now or had last) | `sizeMax` | **1100x950** (2026-09-17: the tallest skin's need for a square cover AND the Queue's 2.5 rows, and it still fits a 1080p work area) | same |
 | Window | Shrink volume bar (On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway) — toggle (NEXT-VERSION §20) | `volumeShrink` | on / **off** | `main.ts` / the title bar volume; the thin-window rule overrides it |
-| Window | Compass closes on outside click (A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it) — toggle (2026-09-17, [COMPASS.md](COMPASS.md) §4) | `compassCloseAway` | **on** / off | `compass.ts` (the document pointerdown listener) |
+| Menus, hints and notices | Compass closes on outside click (A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it) — toggle (2026-09-17, [COMPASS.md](COMPASS.md) §4) | `compassCloseAway` | **on** / off | `compass.ts` (the document pointerdown listener) |
 | Window | Max window when short (A Max window dragged shorter than the stage column can hold) — pills *Becomes Midi* / *Stops at floor* (2026-09-17, [STAGE-COLUMN.md](STAGE-COLUMN.md) §5) | `maxShortWindow` | **flip** / floor | `surface.ts`; only *flip* needs `surfaceAutoFlip` on |
 | Window | Keep on top (The window stays above other windows. Player: only while it shows the player) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always) | `alwaysOnTop` | **off** / always / player | `main.ts` (subscribes to the setting and to `onSurfaceChange`; `isPlayerView()`) |
 | Window | Grow cards from edges (Click the gap beside a card to open it over its neighbor. Hover a card's title for the button) (2026-09-16, [CARD-GROW.md](CARD-GROW.md) §8) | `cardGrow` | **on** / off | `card-grow.ts` `enabled()`: off = no zones, no button, no menu items; a grow on screen collapses at once |
@@ -96,31 +111,31 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Card on drill (A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot) — pills *In place* / *Summon* (2026-09-17, [CARD-GROW.md](CARD-GROW.md) §15; replaced `cardGrowDrill`, whose `swap` reads as `inplace`) | `cardDrill` | **inplace** / summon | `layout.ts` `drillSlot` + `drillInPlace` + `returnFrom` |
 | Window | Bring a card already open (A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits) | `cardDrillBring` | on / **off** | `layout.ts` `drillSlot` (`visibleSlotOf`) |
 | Window | Keep card places on restart (Opens each card where you left it, also after you restart DeetsMusic) (2026-09-17, [CARD-MEMORY.md](CARD-MEMORY.md) §7); last row of Window | `cardMemoryDisk` | on / **off** | `card-memory.ts` (the map is in memory either way; on = it is also written to `deets.cardMemory`) |
-| Look and feel | Change look at (Changes between a day look and a night look. Sun times come from your time zone, not your location) — menu *Sunrise and sunset* / *Set times* / *Windows mode* / *Off* (2026-09-15) | `lookSchedule` | **off** / sun / clock / windows | `look-schedule.ts` ([LOOK-SCHEDULE.md](LOOK-SCHEDULE.md)); the rows below show only while it is on |
-| Look and feel | Day look · Night look — split: theme menu \| skin menu | `dayTheme` `daySkin` · `nightTheme` `nightSkin` | **lilac press** · **black-red cyber** | `look-schedule.ts` `applyLook` |
-| Look and feel | Day runs (set times only) — split: start menu \| end menu, half-hour steps | `dayStart` · `nightStart` | **07:00** · **19:00** | `look-schedule.ts` `planClock` |
-| Look and feel | Shift sun times (sun only) — menu −60…+60 min | `sunShift` | **0** | `look-schedule.ts` `planSun` |
-| Look and feel | Menu pick lasts — pills *Until next change* / *For good* | `lookHold` | **next** / always | `look-schedule.ts` `noteHandPick` (main.ts Theme/Skin clicks) |
-| Look and feel | Animate look changes (Theme and skin changes play the launch animation. Off: they change at once) — also the launch fade | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`, the launch cover's veil → wait → lift, UX-COVERUPS.md §6a) and `boot-cover.ts`; OS reduced motion still snaps |
-| Look and feel | Animate card swaps (Cards move to their new places in the skin's own motion. Off: they change at once) — default **on** (was off until 2026-09-16) | `cardSwapMotion` | on / off | `card-swap.ts` from `layout.ts` `setSlot` (picker swap, summon, replace); skin tokens `--swap-*`; OS reduced motion still snaps; [CARD-SWAP.md](CARD-SWAP.md) |
-| Look and feel | Fancy scrubber (Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle) — toggle (2026-09-16) | `fancyScrubber` | **on** / off | `data-fancy-scrub` on `<html>`; a performance eval decides whether it stays on by default |
-| Look and feel | Animate backgrounds (The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
-| Look and feel | Draw card edges (Ocean only. Sand: the card edges break into grains, like a dark beach) — pills *Sand* / *Soft*; shows only while Ocean is the skin (2026-09-15; a stored `waves` or `fade` from the dropped versions migrates to soft) | `oceanEdges` | **soft** / sand | `skin-settings.ts` → `data-ocean-edges` on `<html>`; UI-ARCHITECTURE.md §Sand edges |
-| Look and feel | Sand width (Ocean only. How far the sand reaches into each card) — slider 0–100% (2026-09-15); shows only while Ocean is the skin and Draw card edges is Sand | `oceanSand` | **15** / 0–100 | `skin-settings.ts` → `--ocean-sand` on `<html>` → Ocean `--sand-reach` = 4px…40px |
-| Look and feel | Fancy Glass (Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames) — toggle (2026-09-16); shows only while Glass is the skin | `glassFancy` | **off** / on | `skin-settings.ts` → `data-glass-fancy` on `<html>`. Off: skin.css paints the frost into each card (`--glass-frost-paint`, pinned with `background-attachment: fixed`), the aurora holds still (`--aurora-drift: none`), and the four sliders publish `GLASS_LOCKED` (65 / 85 / 40 / 10). On: the live `backdrop-filter`, the drift, the stored sliders. Measured: DEBUGGING.md §Fancy Glass and the Ocean swell |
-| Look and feel | Canvas glow (Glass only. How brightly the colors glow on the background. The cards do not change) — slider 0–100% (2026-09-15; was named Backlight for an hour — a stored `glassBacklight` migrates here; a Frost cards blur slider was dropped the same day); the four Glass sliders show only with Fancy Glass on (2026-09-16) | `glassCanvasGlow` | **40** / 0–100 | `skin-settings.ts` → `--glass-canvas` → Glass `--glass-glow` scales the `--aurora-*` stops (50 = as written, 100 = double, capped at 100%) |
-| Look and feel | Dim canvas (Glass only. Darkens the space between the cards. The cards stay as bright) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassCanvasDim` | **10** / 0–100 | `skin-settings.ts` → `--glass-canvas-dim` → Glass `--canvas-dim` (100 → 0.9) paints `.app-body::after`; the frost's `brightness(1 / (1 − dim))` undoes it inside the cards |
-| Look and feel | Backlight (Glass only. A light behind each card, under its tint) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassBacklight` | **85** / 0–100 | `skin-settings.ts` → `--glass-backlight` → Glass `--glass-light` → the card's `--panel-paint` glow + the outer halo in `--shadow-card` |
-| Look and feel | Tint cards (Glass only. The card color over the backlight. Less tint: more glow) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassTint` | **65** / 0–100 | `skin-settings.ts` → `--glass-tint` on `<html>` → Glass `--panel` mix, painted as the last inset shadow over the backlight (skin.css) |
-| Look and feel | Record player (Press only. The cover becomes a record. Spin: it turns while music plays) — pills *Spin* / *Still* / *Off* (2026-09-15); shows only while Press is the skin | `pressVinyl` | **off** / spin / still | `skin-settings.ts` → `data-press-vinyl` on `<html>`; `vinyl.ts` — [VINYL.md](VINYL.md) |
-| Look and feel | Show record on (Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel) — pills *Stage* / *Stage + card* / *Everywhere* (2026-09-15); shows only under Press with Record player on | `pressVinylWhere` | **everywhere** / stage / card | `skin-settings.ts` → `data-press-vinyl-where` → skin.css `--vinyl-stage` / `-strip` / `-tray`; the tray panel reads the store through a `storage` event |
-| Look and feel | Spin speed (Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single) — pills *33⅓* / *45* / *78* (2026-09-15); shows only under Press with Record player on Spin | `pressVinylSpeed` | **33** / 45 / 78 | `vinyl.ts` `turnS()` → the turn period; the song-follow math is unchanged — [VINYL.md](VINYL.md) §4 |
-| Look and feel | Show record plate (Press only. The offset ink behind the record. Off: only the record, a little larger) — toggle (2026-09-15); shows only under Press with Record player on | `pressVinylPlate` | **on** / off | `skin-settings.ts` → `data-press-vinyl-plate` → `--vinyl-plate-shadow: none`, `--vinyl-inset: 0px` |
-| Look and feel | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
-| Look and feel | Show hover hints — the themed hint box ([ONBOARDING.md](ONBOARDING.md) §1a). Off silences the written hints AND the row hints | `hoverHints` | bool | `hint.ts` |
-| Look and feel | Hints appear after — *A moment* 250 ms / *A pause* 600 / *A while* 1100. A song row always waits 1.6× this. Hidden while Show hover hints is off | `hoverHintDelay` | quick / normal / slow | `hint.ts` `DELAY` |
-| Look and feel | Name songs on hover — the two-line box on a list row: *Always* / *Cut off* (only when the ellipsis really cut the name) / *Never*. Hidden while Show hover hints is off | `hoverSongNames` | always / cut / off | `hint.ts` `rowHint()` |
-| Look and feel | Show notices ([TOASTS.md](TOASTS.md)) — *Everything* / *Failures* (Off removed 2026-09-14) | `toasts` | all / failures | `toast.ts` `admitted()` at every call; a question toast always shows |
+| Look schedule | Change look at (Changes between a day look and a night look. Sun times come from your time zone, not your location) — menu *Sunrise and sunset* / *Set times* / *Windows mode* / *Off* (2026-09-15) | `lookSchedule` | **off** / sun / clock / windows | `look-schedule.ts` ([LOOK-SCHEDULE.md](LOOK-SCHEDULE.md)); the rows below show only while it is on |
+| Look schedule | Day look · Night look — split: theme menu \| skin menu | `dayTheme` `daySkin` · `nightTheme` `nightSkin` | **lilac press** · **black-red cyber** | `look-schedule.ts` `applyLook` |
+| Look schedule | Day runs (set times only) — split: start menu \| end menu, half-hour steps | `dayStart` · `nightStart` | **07:00** · **19:00** | `look-schedule.ts` `planClock` |
+| Look schedule | Shift sun times (sun only) — menu −60…+60 min | `sunShift` | **0** | `look-schedule.ts` `planSun` |
+| Look schedule | Menu pick lasts — pills *Until next change* / *For good* | `lookHold` | **next** / always | `look-schedule.ts` `noteHandPick` (main.ts Theme/Skin clicks) |
+| Motion | Animate look changes (Theme and skin changes play the launch animation. Off: they change at once) — also the launch fade | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`, the launch cover's veil → wait → lift, UX-COVERUPS.md §6a) and `boot-cover.ts`; OS reduced motion still snaps |
+| Motion | Animate card swaps (Cards move to their new places in the skin's own motion. Off: they change at once) — default **on** (was off until 2026-09-16) | `cardSwapMotion` | on / off | `card-swap.ts` from `layout.ts` `setSlot` (picker swap, summon, replace); skin tokens `--swap-*`; OS reduced motion still snaps; [CARD-SWAP.md](CARD-SWAP.md) |
+| Motion | Fancy scrubber (Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle) — toggle (2026-09-16) | `fancyScrubber` | **on** / off | `data-fancy-scrub` on `<html>`; a performance eval decides whether it stays on by default |
+| Motion | Animate backgrounds (The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins |
+| Skin settings | Draw card edges (Ocean only. Sand: the card edges break into grains, like a dark beach) — pills *Sand* / *Soft*; shows only while Ocean is the skin (2026-09-15; a stored `waves` or `fade` from the dropped versions migrates to soft) | `oceanEdges` | **soft** / sand | `skin-settings.ts` → `data-ocean-edges` on `<html>`; UI-ARCHITECTURE.md §Sand edges |
+| Skin settings | Sand width (Ocean only. How far the sand reaches into each card) — slider 0–100% (2026-09-15); shows only while Ocean is the skin and Draw card edges is Sand | `oceanSand` | **15** / 0–100 | `skin-settings.ts` → `--ocean-sand` on `<html>` → Ocean `--sand-reach` = 4px…40px |
+| Skin settings | Fancy Glass (Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames) — toggle (2026-09-16); shows only while Glass is the skin | `glassFancy` | **off** / on | `skin-settings.ts` → `data-glass-fancy` on `<html>`. Off: skin.css paints the frost into each card (`--glass-frost-paint`, pinned with `background-attachment: fixed`), the aurora holds still (`--aurora-drift: none`), and the four sliders publish `GLASS_LOCKED` (65 / 85 / 40 / 10). On: the live `backdrop-filter`, the drift, the stored sliders. Measured: DEBUGGING.md §Fancy Glass and the Ocean swell |
+| Skin settings | Canvas glow (Glass only. How brightly the colors glow on the background. The cards do not change) — slider 0–100% (2026-09-15; was named Backlight for an hour — a stored `glassBacklight` migrates here; a Frost cards blur slider was dropped the same day); the four Glass sliders show only with Fancy Glass on (2026-09-16) | `glassCanvasGlow` | **40** / 0–100 | `skin-settings.ts` → `--glass-canvas` → Glass `--glass-glow` scales the `--aurora-*` stops (50 = as written, 100 = double, capped at 100%) |
+| Skin settings | Dim canvas (Glass only. Darkens the space between the cards. The cards stay as bright) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassCanvasDim` | **10** / 0–100 | `skin-settings.ts` → `--glass-canvas-dim` → Glass `--canvas-dim` (100 → 0.9) paints `.app-body::after`; the frost's `brightness(1 / (1 − dim))` undoes it inside the cards |
+| Skin settings | Backlight (Glass only. A light behind each card, under its tint) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassBacklight` | **85** / 0–100 | `skin-settings.ts` → `--glass-backlight` → Glass `--glass-light` → the card's `--panel-paint` glow + the outer halo in `--shadow-card` |
+| Skin settings | Tint cards (Glass only. The card color over the backlight. Less tint: more glow) — slider 0–100% (2026-09-15); shows only while Glass is the skin | `glassTint` | **65** / 0–100 | `skin-settings.ts` → `--glass-tint` on `<html>` → Glass `--panel` mix, painted as the last inset shadow over the backlight (skin.css) |
+| Skin settings | Record player (Press only. The cover becomes a record. Spin: it turns while music plays) — pills *Spin* / *Still* / *Off* (2026-09-15); shows only while Press is the skin | `pressVinyl` | **off** / spin / still | `skin-settings.ts` → `data-press-vinyl` on `<html>`; `vinyl.ts` — [VINYL.md](VINYL.md) |
+| Skin settings | Show record on (Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel) — pills *Stage* / *Stage + card* / *Everywhere* (2026-09-15); shows only under Press with Record player on | `pressVinylWhere` | **everywhere** / stage / card | `skin-settings.ts` → `data-press-vinyl-where` → skin.css `--vinyl-stage` / `-strip` / `-tray`; the tray panel reads the store through a `storage` event |
+| Skin settings | Spin speed (Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single) — pills *33⅓* / *45* / *78* (2026-09-15); shows only under Press with Record player on Spin | `pressVinylSpeed` | **33** / 45 / 78 | `vinyl.ts` `turnS()` → the turn period; the song-follow math is unchanged — [VINYL.md](VINYL.md) §4 |
+| Skin settings | Show record plate (Press only. The offset ink behind the record. Off: only the record, a little larger) — toggle (2026-09-15); shows only under Press with Record player on | `pressVinylPlate` | **on** / off | `skin-settings.ts` → `data-press-vinyl-plate` → `--vinyl-plate-shadow: none`, `--vinyl-inset: 0px` |
+| Menus, hints and notices | Open menus on hover | `menuMode` | click / hover | `main.ts` → `setDropdownMode` |
+| Menus, hints and notices | Show hover hints — the themed hint box ([ONBOARDING.md](ONBOARDING.md) §1a). Off silences the written hints AND the row hints | `hoverHints` | bool | `hint.ts` |
+| Menus, hints and notices | Hints appear after — *A moment* 250 ms / *A pause* 600 / *A while* 1100. A song row always waits 1.6× this. Hidden while Show hover hints is off | `hoverHintDelay` | quick / normal / slow | `hint.ts` `DELAY` |
+| Menus, hints and notices | Name songs on hover — the two-line box on a list row: *Always* / *Cut off* (only when the ellipsis really cut the name) / *Never*. Hidden while Show hover hints is off | `hoverSongNames` | always / cut / off | `hint.ts` `rowHint()` |
+| Menus, hints and notices | Show notices ([TOASTS.md](TOASTS.md)) — *Everything* / *Failures* (Off removed 2026-09-14) | `toasts` | all / failures | `toast.ts` `admitted()` at every call; a question toast always shows |
 | Playback | Play Now plays (§1) — pills *Song only* / *Song and rest of list* | `playNowScope` | **list** / song | `library-card.ts` `trackMenu` (needs the row's list) |
 | Playback | Drop on Now Playing — pills *Keep Up Next* / *Replace it* (2026-09-14) | `dropPlayQueue` | **keep** / replace | `drop-actions.ts` `dropToPlay` → `player.playTracksKeepQueue` (top of Up Next + jump); an Up Next row moves to the top first (`qcard.ts`). DRAG-DROP.md §3 |
 | Playback | Previous rewinds (§4) — *The list* / *Played songs* | `previousReach` | lookback / heard | `queue.ts` `setContext` (heard = no parked lookback) |
@@ -130,6 +145,19 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Playback | Stream quality (Auto follows your network speed; High is 256 kbps and Low is 64 kbps, from the next song) — *Auto* / *High* / *Low* (2026-09-16) | `streamQuality` | **auto** / high / low | `player.ts` `applyStreamQuality`: sets `music.bitrate` after configure, on a change, and (Auto) on Chromium's `navigator.connection` change, with a 0.5 / 1 Mbps gap. [AUDIO-QUALITY.md](AUDIO-QUALITY.md) §4.1 |
 | Playback | Idle shuffle plays (§5b) — *Library* / *Nothing* | `shuffleIdle` | library / noop | `player.ts` `shuffleQueue` |
 | Playback | Show the day in History (Each row says Today, Yesterday or the date, next to the artist) — toggle (2026-09-15) | `historyShowDay` | on / **off** | `history-card.ts` — the day joins the row's subtitle line; never a divider ([QUEUE.md](QUEUE.md)) |
+| Sound | *Equalizer* group — Avoid distortion (How a boost is kept from distorting. Limiter only turns down just the loudest moments; the others lower the whole song) — menu *Limiter only* / *When needed* / *Always* / *By hand* (2026-09-18; the panel has this row too) | `soundEqPreamp` | **limiter** / needed / always / manual | `sound-dsp.ts` ([SOUND.md](SOUND.md) §2.1a) |
+| Sound | Lower the song by (By hand only. How much the song is turned down before the equalizer. The limiter catches anything left) — a slider, −24…+6 dB in half-steps; shows only while Avoid distortion is *By hand*. The panel's own control for this key is a ± stepper; the card's slider keeps the same half-decibel step (arrows step one, Shift ten), so the two agree | `soundEqPreampDb` | **0**, −24…+6 | same |
+| Sound | Remember each output (On: headphones, speakers and AirPlay speakers each remember their own preset) | `soundEqPerOutput` | **on** / off | `sound.ts` on output change; the outputs it has remembered are listed in the panel's own fold |
+| Sound | *Adaptive sound* group — Match songs to (How loud songs are made. Standard is Apple's Sound Check level) — pills *Standard* / *Louder* / *Quieter* | `soundLoudTarget` | **−16** / −14 / −18 | `sound-loudness.ts` |
+| Sound | Keep albums together (On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet) | `soundLoudAlbum` | **on** / off | same |
+| Sound | Songs not measured get (A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is) — pills *Usual amount* / *No change* | `soundLoudUnmeasured` | **median** / none | same |
+| Sound | Follow the volume of (App + Windows: counts the DeetsMusic volume and the Windows volume together) — pills *App + Windows* / *App only* | `soundLowVolKey` | **both** / app | `sound-worklet.ts` |
+| Sound | Blend amount (How much of each side goes into the other) — pills *Light* / *Medium* / *Strong* | `soundCrossfeedLevel` | light / **medium** / strong | `sound-dsp.ts` |
+| Sound | Ask to keep after (When to ask whether the effects are worth keeping, counted from the first time one was turned on) — menu *3 days* / *7 days* / *14 days* / *Never* | `soundReviewDays` | **7** / 14 / 3 / 0 | `sound-panel.ts` ([SOUND.md](SOUND.md) §7); the panel's footer has the same pill, and the question itself — Keep / Turn all off — is live and only there |
+| Sleep | Sleep every day (Arms a sleep time every day. It pauses only if music is playing when the time comes) — pills *Off* / *Sunset* / *At a time* (2026-09-18; the sleep panel has this row too) | `sleepSchedule` | **off** / sun / clock | `sleep.ts` arm-at-boot + the daily tick |
+| Sleep | Sleep at (The time the daily sleep timer runs out) — a menu of the whole day in quarter hours; shows only while Sleep every day is *At a time*. The panel's ‹ › move in 15-minute steps, so the card's menu does too | `sleepAt` | **22:00** | same |
+| Sleep | Wind down (Over these last minutes the volume sinks to nothing, then the music pauses. Off: a plain pause at the time) — menu *Off* / 1 / 2 / 5 / 10 / 15 / 30 min | `sleepWind` | **5** / 0 = a plain pause | `sleep.ts` → `setDuck` gain factor |
+| Sleep | Play out song (The song that is playing when the time comes finishes first. Off: the time is the silence) | `sleepPlayOut` | on / **off** | `sleep.ts` at the mark |
 | AirPlay | Send to speaker (DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app’s sound, and this PC keeps playing) — pills *DeetsMusic only* / *All PC sound* (2026-09-17) | Rust `airplayCapture` (`settings_set_airplay_capture`) | **app** / system | the shared sender crate — [AIRPLAY.md](AIRPLAY.md) §9a; a `ChoiceRow` with `get`/`set`, the Rust-owned form |
 | Apple Music | Add to Library and ♥ (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square + the row squares of `add-square.ts`); the ♥ (`favorites.ts`) rides the same consent, hence the label (2026-09-14) |
 | Apple Music | Show ✓ on songs you have (On: the + on a song row turns into a ✓ when the song is already in your library. Off: no button) — toggle (2026-09-17) | `addSquareOwned` | on / **off** | `add-square.ts` `stateOf` — the row squares in Search, Playlists, Queue, History ([SEARCH.md § Add-to-Library square](SEARCH.md)) |
@@ -201,6 +229,23 @@ These are real, persisted preferences in the same store, but their controls live
 panel because they are set while you listen, not while you configure. The Settings card has no
 row for any of them.
 
+**Sound and Sleep are now in BOTH places (2026-09-18, his call).** The regroup first moved their
+set-once rows into Settings › Sound and Settings › Sleep and took them out of the panels. That was
+undone the same day: **someone who opens a panel for the first time is not going to go looking in
+the Settings card**, so the panels keep every control they had. The card has the same preferences
+as real rows, so the Compass can reach them (`compass.ts` builds its Settings rows from
+`settingsRows()`, the card — not from `SPECS`) and a reader of Settings can see them.
+
+**This is safe because there is no second copy of the state.** Both controls call `setSetting` on
+the same key, and both repaint from `onSettingsChange`. There is nothing to synchronise and
+nothing that can drift; turn Blend amount in the panel and the card row is already showing
+Strong. The tables below mark each duplicated row.
+
+It is a deliberate exception to "a control lives in exactly one place"
+([SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md)). The rule now reads: one place, unless a panel
+and the card serve different moments — the panel while you listen, the card while you configure.
+Rooms is NOT such a case: a live change there is a room command, not a setting.
+
 ### Sound — `sound-panel.ts`, applied by `sound.ts` ([SOUND.md](SOUND.md))
 
 Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.D, SOUND.md §0).
@@ -212,21 +257,21 @@ Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.
 | The edited bands, until saved | `soundEqCustom` | — | same |
 | Presets you saved, by id | `soundEqUser` | **{}** | same |
 | The curve editor | `soundEqMode` | **graphic** (sliders) / parametric (dots) | `sound-panel.ts` |
-| Avoid distortion | `soundEqPreamp` | **limiter** / needed / always / manual | `sound-dsp.ts` (SOUND.md §2.1a) |
-| Lower the song by (dB, for *manual*) | `soundEqPreampDb` | **0**, −24…+6 | same |
-| Remember each output | `soundEqPerOutput` | **on** / off | `sound.ts` on output change |
+| Avoid distortion | `soundEqPreamp` | **limiter** / needed / always / manual | `sound-dsp.ts` (SOUND.md §2.1a) | **Also a row of Settings › Sound (§3), 2026-09-18.**
+| Lower the song by (dB, for *manual*) | `soundEqPreampDb` | **0**, −24…+6 | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
+| Remember each output | `soundEqPerOutput` | **on** / off | `sound.ts` on output change | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Output key → preset id | `soundEqOutputs` | **{}** | same |
 | Output key → its name when last seen | `soundOutputNames` | **{}** | the panel's output list |
 | Adaptive sound (the switch over the three parts) | `soundAdaptive` | on / **off** | `sound.ts` |
 | Part A — Match loudness | `soundLoudness` | on / **off** | `sound-loudness.ts` |
-| Part A — target, in LUFS | `soundLoudTarget` | **−16** (Apple Sound Check) / −14 / −18 | same |
-| Part A — keep an album together | `soundLoudAlbum` | **on** / off | same |
-| Part A — a song never measured | `soundLoudUnmeasured` | **median** / none | same |
+| Part A — target, in LUFS | `soundLoudTarget` | **−16** (Apple Sound Check) / −14 / −18 | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
+| Part A — keep an album together | `soundLoudAlbum` | **on** / off | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
+| Part A — a song never measured | `soundLoudUnmeasured` | **median** / none | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part B — Fuller at low volume | `soundLowVol` | off / **gentle** / full | `sound-worklet.ts` |
-| Part B — what it follows | `soundLowVolKey` | **both** (app × Windows) / app | same |
+| Part B — what it follows | `soundLowVolKey` | **both** (app × Windows) / app | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part C — Headphone crossfeed | `soundCrossfeed` | **auto** / always / off | `sound-dsp.ts` |
-| Part C — how much | `soundCrossfeedLevel` | light / **medium** / strong | same |
-| Days before the "keep it?" question | `soundReviewDays` | **7** / 14 / 3 / 0 (never) | `sound-panel.ts` (SOUND.md §7) |
+| Part C — how much | `soundCrossfeedLevel` | light / **medium** / strong | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
+| Days before the "keep it?" question | `soundReviewDays` | **7** / 14 / 3 / 0 (never) | `sound-panel.ts` (SOUND.md §7) | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | When an effect was first turned on (epoch ms) | `soundFirstOn` | **0** | same — internal, no control |
 | The review was answered *Keep* | `soundReviewed` | **false** | same — internal, no control |
 
@@ -242,6 +287,9 @@ turning it on later has gains ready).
 | The set time, for *clock* | `sleepAt` | **22:00** | same |
 | Wind down (the last minutes fade to nothing) | `sleepWind` | **5**, 0 = a plain pause | `sleep.ts` → `setDuck` gain factor |
 | Play out song | `sleepPlayOut` | on / **off** | `sleep.ts` at the mark |
+
+**All four are also rows of Settings › Sleep (§3), 2026-09-18**, and Reset gained a **Sleep** group
+for them — it had none, which was the mismatch fork 2 asked about.
 
 The dial, *Off*, *End of song* and *End of Up Next* are live actions, not stored settings.
 

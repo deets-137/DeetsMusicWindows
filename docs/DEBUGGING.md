@@ -1019,7 +1019,7 @@ Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` 
 can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
 
 **Test script (first desk test, 2026-09-13 build).** Devtools console unless noted; the
-setting is Settings › Look and feel › **Show notices**, default *Everything* (was *Failures* before 2026-09-13).
+setting is Settings › Menus, hints and notices › **Show notices**, default *Everything* (was *Failures* before 2026-09-13).
 
 1. **Look.** `__toast.demo()` in midi: a top-right stack under the Now Playing card,
    newest on top, at most 3 (the stack is capped, so `demo()`'s four toasts show the last

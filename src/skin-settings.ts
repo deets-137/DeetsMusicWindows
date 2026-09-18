@@ -1,4 +1,4 @@
-// Skin-only settings (Settings › Look and feel; each row shows only under its skin).
+// Skin-only settings (Settings › Skin settings; each row shows only under its skin).
 // Ocean: `oceanEdges` → `data-ocean-edges` on <html>; skin.css turns the card edges to sand.
 //        `oceanSand` (0–100) → --ocean-sand, the sand band's width.
 // Glass: `glassBacklight` / `glassTint` / `glassCanvasGlow` (0–100) → --glass-backlight,

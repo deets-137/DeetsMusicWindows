@@ -251,9 +251,27 @@
               <button class="sleep__chip" type="button" data-sleep-mode="song" aria-pressed="false" title="Pauses when this song ends">End of song</button>
               <button class="sleep__chip" type="button" data-sleep-mode="queue" aria-pressed="false" title="Pauses when Up Next runs out">End of Up Next</button>
             </div>
-            <!-- Wind down, Play out song, Every day and the time moved to Settings › Sleep on
-                 2026-09-18 (Settings regroup, fork 2A): the panel holds the live timer, the
-                 card holds the preferences. The status line says what the schedule will do. -->
+            <!-- These four are ALSO rows of Settings › Sleep (2026-09-18). Both controls write
+                 the same store key and both repaint on onSettingsChange, so neither can drift.
+                 They stay here because someone who opens this panel for the first time must be
+                 able to set the daily timer without being sent to the Settings card. -->
+            <div class="sleep__row">
+              <span class="sleep__label">Wind down</span>
+              <button class="sleep__pill" id="sleep-wind" type="button" title="Over these last minutes the volume sinks to nothing, then the music pauses. Click for the next length">5 min</button>
+            </div>
+            <div class="sleep__row">
+              <span class="sleep__label">Play out song</span>
+              <button class="sleep__pill" id="sleep-playout" type="button" title="On: when the time runs out in the middle of a song, the song plays to its end first">Off</button>
+            </div>
+            <div class="sleep__row">
+              <span class="sleep__label">Every day</span>
+              <button class="sleep__pill" id="sleep-sched" type="button" title="A sleep time that sets itself every day: at sunset, or at a time you pick. It pauses only if music is playing then">Off</button>
+            </div>
+            <div class="sleep__row sleep__row--time" id="sleep-time-row" hidden>
+              <button class="sleep__step" id="sleep-earlier" type="button" aria-label="15 minutes earlier" title="15 minutes earlier">‹</button>
+              <span class="sleep__time" id="sleep-time">10:00 PM</span>
+              <button class="sleep__step" id="sleep-later" type="button" aria-label="15 minutes later" title="15 minutes later">›</button>
+            </div>
             <div class="sleep__status" id="sleep-status" hidden></div>
           </div>
         </div>

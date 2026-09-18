@@ -1,12 +1,12 @@
 # DeetsMusic — Look schedule (day look / night look)
 
 > Built 2026-09-15. Code: `src/look-schedule.ts`, `src/sun-zones.ts` (generated),
-> `scripts/gen-sun-zones.mjs`, the pre-paint in `index.html`, Settings › Look and feel.
+> `scripts/gen-sun-zones.mjs`, the pre-paint in `index.html`, Settings › Look schedule.
 
 ## 1. What it does
 
 The app changes between a **day look** and a **night look** by itself. A look is one theme
-and one skin. Settings › Look and feel › **Change look at** picks what sets the change:
+and one skin. Settings › Look schedule › **Change look at** picks what sets the change:
 
 | Value | Key value | The change comes at |
 |---|---|---|

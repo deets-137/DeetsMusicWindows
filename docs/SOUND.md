@@ -158,6 +158,14 @@ Each part in the panel has three layers: a **status line** (what it does to this
 **hint** on the row (the rule, one sentence), and a **How it decides** fold (the inputs, live, and
 the settings that change the rule). Nothing acts without a line in the panel saying so.
 
+**The Settings column is now in two places (2026-09-18).** Nine of those rows — Avoid distortion,
+Lower the song by, Remember each output, Match songs to, Keep albums together, Songs not measured
+get, Follow the volume of, Blend amount and Ask to keep after — are ALSO rows of
+**Settings › Sound**. The panel keeps every one of them, unchanged. They were taken out of the
+panel for a few hours that day and put back: a person who opens this panel for the first time
+must be able to finish here. Both controls write the same store key and both repaint from
+`onSettingsChange`, so there is no second copy of the state and nothing to synchronise.
+
 | Part | Status line (examples) | How it decides (fold) | Settings |
 |---|---|---|---|
 | EQ + profiles | *Headphones (WH-1000XM4) · Vocal · preamp −4.5 dB* | Current output and its form factor; the preset remembered for it; *Switches when Windows changes the default output, or AirPlay connects*; the list of known outputs → preset (editable). | `eqPerOutput` On/Off; per-output map; Auto preamp |

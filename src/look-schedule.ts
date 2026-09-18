@@ -245,7 +245,7 @@ export function noteHandPick(): void {
   listeners.forEach((cb) => cb());
 }
 
-/** One line for Settings › Look and feel: which look shows, and until when. "" when off. */
+/** One line for Settings › Look schedule: which look shows, and until when. "" when off. */
 export function scheduleStatus(): string {
   const now = Date.now();
   const p = plan(now);

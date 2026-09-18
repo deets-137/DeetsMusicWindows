@@ -59,6 +59,23 @@
 .set__fold:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .set__head.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
 
+/* A sub-heading inside ONE section's fold (Window's three groups, 2026-09-18). It joins the
+   section-header family, not the bordered .set__group family that My reports uses: a group of
+   plain rows inside a section gets a name, not a box ("a hairline groups the section; no
+   boxes", above). It differs from a section header by having no chevron, no count and no
+   hairline, so nothing invites a click. */
+.set__sub-head {
+  padding: var(--space-2) var(--space-2) 0;
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-subtext);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtext);
+}
+/* The first group sits right under the section header, which already has its own gap. */
+.set__sub-head:first-of-type { padding-top: 0; }
+
 .set__row {
   display: flex;
   align-items: center;

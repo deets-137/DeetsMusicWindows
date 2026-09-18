@@ -279,9 +279,9 @@ One line per setting, **key first**, the Settings card's own words after it (`se
 
 ```
 alwaysOnTop           Keep on top: Off  (Always | Player | Off)  · Window
-backgroundMotion      Animate backgrounds: On  (On | Reduced | Off)  · Look and feel
-glassTint             Tint cards: 65%  (0–100)  [Glass only, with Fancy Glass on]  · Look and feel
-dayStart              Day starts at: 07:00  (HH:MM on :00 or :30, 04:00–12:00)  · Look and feel
+backgroundMotion      Animate backgrounds: On  (On | Reduced | Off)  · Motion
+glassTint             Tint cards: 65%  (0–100)  [Glass only, with Fancy Glass on]  · Skin settings
+dayStart              Day starts at: 07:00  (HH:MM on :00 or :30, 04:00–12:00)  · Look schedule
 libraryAdd            Add to Library and ♥: On  (On | Off)  [off only]  · Apple Music
 agentSettings         Agent changes settings: Ask  (Allow | Ask | Off)  [read-only]  · Connections
 ```
@@ -297,8 +297,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - A toggle takes `on` / `off` (also `true` / `false`, `yes` / `no`).
 - The **Sleep** section (2026-09-15, NEXT-VERSION §17): `sleepSchedule` (Off | Sunset | At a
   time), `sleepAt` (HH:MM in 15-minute steps, any hour), `sleepWind` (Off | 1 | 2 | 5 | 10 | 15 |
-  30 min). These are the schedule and the wind-down; a running timer is set in the app's own
-  panel and has no agent verb yet.
+  30 min) and `sleepPlayOut`. These are the schedule and the wind-down; a running timer is set
+  in the app's own panel and has no agent verb yet. Since 2026-09-18 all four are rows of
+  **Settings › Sleep** as well as of the sleep panel, so the agent and the card name the same
+  four things.
 - **Playlists › Web reach / Web size / Web prefers songs** (2026-09-16, PLAYLIST-WEB.md): `webReach`
   (1 | 2 | 3), `webSize` (25 | 50 | 100), `webPrefer` (Familiar | Discover | Mix) and `webSeedFilter`
   ("Web genre chips filter": All songs | Keep 5 | Web only) and `webMakeMotion` ("Web panel closes":
@@ -318,7 +320,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - `glassFancy` (on | off, 2026-09-16) `[Glass only]`: the live frost and the moving background.
 - The **Sound** section (2026-09-16, SOUND.md): `soundEq` and `soundAdaptive` are **off only** —
   every effect ships off (Apple DPLA §3.3.6.D) and turning one on is the user's own choice in the
-  Sound panel; `set … on` → `403`. The rest set freely: `soundEqPreset` (a preset id or its name:
+  Sound panel; `set … on` → `403`. Since 2026-09-18 nine of this section's rows are rows of
+  **Settings › Sound** as well as of the panel; the master switches, the curve and the presets
+  are in the panel alone. The rest set freely: `soundEqPreset` (a preset id or its name:
   Flat, Bass lift, Vocal, Treble lift, Warm, Late night, Custom, or a saved one), `soundEqMode`
   (Sliders | Dots), `soundEqPreamp` "Avoid distortion" (Limiter only | When needed | Always | By hand), `soundEqPerOutput`
   "Remember each output", `soundLoudness`, `soundLoudTarget` "Match songs to" (Standard −16 | Louder −14 |
@@ -383,6 +387,12 @@ A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass i
 - **The words:** `SPECS` repeats the card's labels, sections and choices (the card builds its rows
   inside `mountSettings`, with local state, so they can't be shared as-is). A new card row joins
   `SPECS` too — SETTINGS.md §5 step 5.
+- **The sections must match the card, row for row.** They are what the Compass prints under a
+  Settings row (`compass.ts` `sub: e.section`), so a name only `SPECS` knows is a name the user
+  is told and cannot find. On 2026-09-18 the card caught up with `SPECS`: **Sound** and **Sleep**
+  became real card sections, and `"Look and feel"` split into **Theme and skin** (the live theme
+  and skin, which the title menu owns), **Look schedule**, **Motion**, **Skin settings** and
+  **Menus, hints and notices** — which is where `compassCloseAway` moved from Window.
 - Reply notes: `closeToTray off` — "The × button now quits DeetsMusic, and that stops these tools
   until DeetsMusic starts again." `agentControl off` — "Agent control is off. Only you can turn it
   on again, in DeetsMusic › Settings › Connections." (The request has passed the gate, so this

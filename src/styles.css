@@ -390,7 +390,7 @@ body {
 .sleep__off { pointer-events: auto; }
 
 .sleep__chips { display: flex; gap: var(--space-1); }
-.sleep__chip, .sleep__off {
+.sleep__chip, .sleep__pill, .sleep__off, .sleep__step {
   font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
   color: var(--text); background: var(--surface);
   border: 1px solid var(--panel-border);
@@ -399,11 +399,16 @@ body {
   cursor: pointer;
 }
 .sleep__chip { flex: 1 1 0; }
-.sleep__chip:hover, .sleep__off:hover { background: var(--surface-hover); }
+.sleep__chip:hover, .sleep__pill:hover, .sleep__off:hover, .sleep__step:hover { background: var(--surface-hover); }
 .sleep__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
-.sleep__chip:focus-visible, .sleep__off:focus-visible {
+.sleep__chip:focus-visible, .sleep__pill:focus-visible, .sleep__off:focus-visible, .sleep__step:focus-visible {
   outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off);
 }
+.sleep__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sleep__row[hidden] { display: none; }
+.sleep__label { font-size: var(--fs-subtext); color: var(--subtext); }
+.sleep__row--time { justify-content: center; }
+.sleep__time { font-size: var(--fs-subtext); min-width: 5.5em; text-align: center; font-variant-numeric: tabular-nums; }
 .sleep__status { font-size: var(--fs-subtext); color: var(--subtext); text-align: center; }
 .sleep__status[hidden] { display: none; }
 .sleep__off[hidden] { display: none; }
@@ -804,6 +809,7 @@ body {
 }
 .sound__pill { min-width: var(--sound-pill-min-w); white-space: nowrap; text-align: center; flex-shrink: 0; }
 .sound__part-head > .sound__pill, .sound__row--strong > .sound__pill { min-width: var(--sound-part-pill-w); }
+.sound__foot-pill { min-width: var(--sound-foot-pill-w); }
 /* Reset turns into Undo in place: one width for both words, so nothing moves */
 .sound__row-end .sound__chip { min-width: var(--sound-reset-w); }
 .sound__pill:hover, .sound__chip:hover:not(:disabled), .sound__step:hover, .sound__icon-btn:hover, .sound__fold-btn:hover { background: var(--surface-hover); }

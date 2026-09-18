@@ -97,6 +97,14 @@ interface HtmlRow {
   id: string;
   html: () => string;
 }
+/** A sub-heading inside one section's fold (Settings regroup, 2026-09-18, fork 1C + 4A):
+ *  Window keeps one fold and names its three groups. Not a setting — it is skipped by the
+ *  header's count and by the Compass index. */
+interface HeadRow {
+  kind: "head";
+  id: string;
+  label: string;
+}
 /** `when`: the row shows only while this is true (the look schedule's rows follow its mode). */
 type NumKey = { [K in keyof Settings]: Settings[K] extends number ? K : never }[keyof Settings];
 /** A slider (Glass's Tint / Frost). A drag calls `preview` only — a store write would
@@ -110,10 +118,15 @@ interface RangeRow {
   min: number;
   max: number;
   unit: string;
+  /** The smallest move, for the drag and the arrow keys. Default 1 (Shift: ten steps). */
+  step?: number;
   preview: (v: number) => void;
 }
-type Row = (ToggleRow | ChoiceRow | SplitRow | HtmlRow | RangeRow) & { when?: () => boolean };
+type Row = (ToggleRow | ChoiceRow | SplitRow | HtmlRow | RangeRow | HeadRow) & { when?: () => boolean };
 const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
+/** The header's count and the Compass index both mean settings, not sub-headings. */
+const settingRows = (rows: Row[]): Row[] => shown(rows).filter((r) => r.kind !== "head");
+const headRow = (id: string, label: string): HeadRow => ({ kind: "head", id, label });
 interface Section {
   title: string;
   rows: Row[];
@@ -155,9 +168,9 @@ const storeMenu = (key: LookKey, options: Option[]): Half => ({
   set: (v) => setSetting(key, v as never),
 });
 /** Half-hour steps from `from` to `to` (local minutes), labelled in the user's clock format. */
-const timeOptions = (from: number, to: number): Option[] => {
+const timeOptions = (from: number, to: number, step = 30): Option[] => {
   const out: Option[] = [];
-  for (let m = from; m <= to; m += 30) {
+  for (let m = from; m <= to; m += step) {
     const hh = String(Math.floor(m / 60)).padStart(2, "0");
     const mm = String(m % 60).padStart(2, "0");
     const label = new Date(2000, 0, 1, 0, m).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -206,10 +219,10 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   {
     id: "menus", label: "Menus, hints and notices",
-    hint: "Open menus on hover, the three hover-hint rows, and Show notices",
-    keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts"],
+    hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
+    keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the five Grow cards rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "compassCloseAway", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
@@ -222,6 +235,7 @@ const RESET_GROUPS: ResetGroup[] = [
     id: "sound", label: "Sound", hint: "The equalizer, adaptive sound and their choices. Not your saved presets",
     keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundAdaptive", "soundLoudness", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
   },
+  { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
   { id: "home", label: "Home", hint: "Hiding lasts, and every hidden tile", keys: ["homeHideLasts", "homeHidden"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
 ];
@@ -294,7 +308,7 @@ export function settingsRows(): SettingEntry[] {
   const { sections } = mountSettings(document.createElement("div"), true);
   entries = sections.flatMap((s) =>
     s.rows
-      .filter((r) => r.kind !== "html")
+      .filter((r) => r.kind !== "html" && r.kind !== "head")
       .map((r): SettingEntry => {
         const label = r.label;
         const hint = r.kind === "choice" || r.kind === "range" ? () => r.hint : (r.hint ?? (() => undefined));
@@ -603,8 +617,11 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           .join(""),
     },
     {
+      // Window (Settings regroup 2026-09-18, fork 1C + 4A): ONE fold, three sub-headings.
+      // Nine of its rows are about cards, not the window — the groups say so out loud.
       title: "Window",
       rows: [
+        headRow("g-window", "Window"),
         {
           kind: "toggle",
           id: "tray",
@@ -636,6 +653,12 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         },
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "On: a window made narrow or short becomes the surface that fits it. Off: the window resizes inside the current surface, and each one keeps its own floor"),
         storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway"),
+        {
+          kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
+          hint: "The window stays above other windows. Player: only while it shows the player",
+          options: [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }],
+        },
+        headRow("g-sizes", "Window sizes"),
         sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
         sizeRow("sizeplayer", "Player opens at", "The window size for Player, the player alone. Set current saves the size it had last", "player"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
@@ -645,15 +668,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           hint: "Max needs height for the album cover and the queue rows. Dragged under 745 px tall it becomes Midi, or it stops there. Becomes Midi needs Resize changes surface on",
           options: [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }],
         },
-        {
-          kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
-          hint: "The window stays above other windows. Player: only while it shows the player",
-          options: [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }],
-        },
-        // ── Card grow (CARD-GROW.md §8) ──
+        // ── Card grow (CARD-GROW.md §8) + card memory (CARD-MEMORY.md §7) ──
+        // `Compass closes on outside click` left this group on 2026-09-18: it is neither a
+        // window nor a card, only another outside-click rule. It is now under
+        // Menus, hints and notices.
+        headRow("g-cards", "Growing and drilling"),
         storeToggle("cardgrow", "Grow cards from edges", "cardGrow", () => "Click the gap beside a card to open it over its neighbor. Hover a card's title for the button"),
         storeToggle("cardgrowoutside", "Collapse on outside click", "cardGrowOutside", () => "A click outside a grown card collapses it. Pin holds it open"),
-        storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it"),
         {
           kind: "choice", id: "cardgrowpick", label: "Grown card on a new pick", key: "cardGrowPick",
           hint: "Pick another card in a grown card's title: it keeps the size, or collapses first",
@@ -670,12 +691,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [{ value: "inplace", label: "In place" }, { value: "summon", label: "Summon" }],
         },
         storeToggle("carddrillbring", "Bring a card already open", "cardDrillBring", () => "A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits"),
-        // ── Card memory (CARD-MEMORY.md §7) ──
         storeToggle("cardmemorydisk", "Keep card places on restart", "cardMemoryDisk", () => "Opens each card where you left it, also after you restart DeetsMusic"),
       ],
     },
+    // Look and feel became four sections on 2026-09-18 (fork 1C). RESET_GROUPS had split it
+    // this way for months; only the card disagreed. The names match the Reset rows exactly.
     {
-      title: "Look and feel",
+      title: "Look schedule",
       tail: () => (scheduled() ? `<div class="set__status" id="set-look-status" aria-live="polite"></div>` : ""),
       rows: [
         {
@@ -716,6 +738,11 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           hint: "A theme or skin you pick from the title menu while the schedule is on. For good: the schedule turns off",
           options: [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }],
         },
+      ],
+    },
+    {
+      title: "Motion",
+      rows: [
         storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin changes play the launch animation. Off: they change at once"),
         storeToggle("cardswap", "Animate card swaps", "cardSwapMotion", () => "Cards move to their new places in the skin's own motion. Off: they change at once"),
         storeToggle("fancyscrub", "Fancy scrubber", "fancyScrubber", () => "Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle"),
@@ -724,6 +751,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           hint: "The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
           options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
         },
+      ],
+    },
+    {
+      // Every row here is gated on one skin, so the whole section is not drawn under a skin
+      // that sets nothing (Cyber today).
+      title: "Skin settings",
+      rows: [
         {
           kind: "choice", id: "oceanedges", label: "Draw card edges", key: "oceanEdges",
           hint: "Ocean only. Sand: the card edges break into grains, like a dark beach",
@@ -791,6 +825,11 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           set: (on) => setSetting("pressVinylPlate", on),
           when: () => currentSkin() === "press" && setting("pressVinyl") !== "off",
         },
+      ],
+    },
+    {
+      title: "Menus, hints and notices",
+      rows: [
         {
           kind: "toggle",
           id: "hover",
@@ -824,6 +863,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           hint: "Everything: confirmations too. Failures: only when an action couldn't do what it said",
           options: [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }],
         },
+        // From Window, 2026-09-18: it is an outside-click rule, not a window rule.
+        storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it"),
       ],
     },
     {
@@ -901,6 +942,91 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }],
         },
         storeToggle("historyday", "Show the day in History", "historyShowDay", () => "Each row says Today, Yesterday or the date, next to the artist"),
+      ],
+    },
+    {
+      // Sound (SOUND.md; Settings regroup 2026-09-18, fork 2A). The Sound panel keeps the LIVE
+      // controls — the two on/off switches, the three part switches, the curve, the presets and
+      // the two Clear actions. The set-once preferences are here, which is the app's own rule
+      // and what `agent-settings.ts` and Reset have said all along.
+      title: "Sound",
+      rows: [
+        headRow("g-eq", "Equalizer"),
+        {
+          kind: "choice", id: "eqpreamp", label: "Avoid distortion", key: "soundEqPreamp",
+          hint: "How a boost is kept from distorting. Limiter only turns down just the loudest moments; the others lower the whole song",
+          options: [
+            { value: "limiter", label: "Limiter only" }, { value: "needed", label: "When needed" },
+            { value: "always", label: "Always" }, { value: "manual", label: "By hand" },
+          ],
+        },
+        {
+          kind: "range", id: "eqpreampdb", label: "Lower the song by", key: "soundEqPreampDb",
+          min: -24, max: 6, unit: " dB", step: 0.5,
+          hint: "By hand only. How much the song is turned down before the equalizer. The limiter catches anything left",
+          preview: () => {}, // the graph reads the store; the release writes it
+          when: () => setting("soundEqPreamp") === "manual",
+        },
+        storeToggle("eqperoutput", "Remember each output", "soundEqPerOutput", () => "On: headphones, speakers and AirPlay speakers each remember their own preset"),
+        headRow("g-adaptive", "Adaptive sound"),
+        {
+          kind: "choice", id: "loudtarget", label: "Match songs to", key: "soundLoudTarget",
+          hint: "How loud songs are made. Standard is Apple's Sound Check level (−16 LUFS), Louder is −14, Quieter is −18",
+          get: () => String(setting("soundLoudTarget")),
+          set: (v) => setSetting("soundLoudTarget", Number(v)),
+          options: [{ value: "-16", label: "Standard" }, { value: "-14", label: "Louder" }, { value: "-18", label: "Quieter" }],
+        },
+        storeToggle("loudalbum", "Keep albums together", "soundLoudAlbum", () => "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet"),
+        {
+          kind: "choice", id: "loudunmeasured", label: "Songs not measured get", key: "soundLoudUnmeasured",
+          hint: "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is",
+          options: [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }],
+        },
+        {
+          kind: "choice", id: "lowvolkey", label: "Follow the volume of", key: "soundLowVolKey",
+          hint: "App + Windows: counts the DeetsMusic volume and the Windows volume together",
+          options: [{ value: "both", label: "App + Windows" }, { value: "app", label: "App only" }],
+        },
+        {
+          kind: "choice", id: "crossfeedlevel", label: "Blend amount", key: "soundCrossfeedLevel",
+          hint: "How much of each side goes into the other",
+          options: [{ value: "light", label: "Light" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }],
+        },
+        {
+          kind: "choice", id: "soundreview", label: "Ask to keep after", key: "soundReviewDays",
+          hint: "When to ask whether the effects are worth keeping, counted from the first time one was turned on",
+          get: () => String(setting("soundReviewDays")),
+          set: (v) => setSetting("soundReviewDays", Number(v)),
+          options: [{ value: "3", label: "3 days" }, { value: "7", label: "7 days" }, { value: "14", label: "14 days" }, { value: "0", label: "Never" }],
+        },
+      ],
+    },
+    {
+      // Sleep (NEXT-VERSION §17; Settings regroup 2026-09-18, fork 2A). The sleep panel keeps
+      // the dial, the two end chips, Off and the status line — a running timer is a live thing.
+      // The schedule and the wind-down are preferences, so they are here.
+      title: "Sleep",
+      rows: [
+        {
+          kind: "choice", id: "sleepsched", label: "Sleep every day", key: "sleepSchedule",
+          hint: "Arms a sleep time every day. It pauses only if music is playing when the time comes",
+          options: [{ value: "off", label: "Off" }, { value: "sun", label: "Sunset" }, { value: "clock", label: "At a time" }],
+        },
+        {
+          kind: "choice", id: "sleepat", label: "Sleep at", key: "sleepAt", menu: true,
+          hint: "The time the daily sleep timer runs out",
+          options: timeOptions(0, 23 * 60 + 45, 15),
+          when: () => setting("sleepSchedule") === "clock",
+        },
+        {
+          kind: "choice", id: "sleepwind", label: "Wind down", key: "sleepWind",
+          hint: "Over these last minutes the volume sinks to nothing, then the music pauses. Off: a plain pause at the time",
+          get: () => String(setting("sleepWind")),
+          set: (v) => setSetting("sleepWind", Number(v)),
+          menu: true,
+          options: [0, 1, 2, 5, 10, 15, 30].map((m) => ({ value: String(m), label: m ? `${m} min` : "Off" })),
+        },
+        storeToggle("sleepplayout", "Play out song", "sleepPlayOut", () => "The song that is playing when the time comes finishes first. Off: the time is the silence"),
       ],
     },
     {
@@ -1156,7 +1282,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       // indented under it, then every group at once (RESET_GROUPS).
       title: "Reset",
       rows: [
-        resetRow("Look and feel", "The theme and skin, and every Look and feel row", RESET_GROUPS.filter((g) => LOOK_AND_FEEL.includes(g.id)), "reset-lookfeel", "group"),
+        resetRow("Look and feel", "The theme and skin, and every row of the four look sections", RESET_GROUPS.filter((g) => LOOK_AND_FEEL.includes(g.id)), "reset-lookfeel", "group"),
         ...RESET_GROUPS.filter((g) => LOOK_PARTS.includes(g.id)).map((g) => resetRow(g.label, g.hint, [g], `reset-${g.id}`, "sub")),
         ...RESET_GROUPS.filter((g) => !LOOK_AND_FEEL.includes(g.id)).map((g) => resetRow(g.label, g.hint, [g], `reset-${g.id}`)),
         resetRow("Everything", "Every row in this list, in one step", RESET_GROUPS, "reset-all"),
@@ -1356,6 +1482,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
   const rowHTML = (r: Row): string => {
     if (r.kind === "html") return r.html();
+    if (r.kind === "head") return `<h4 class="set__sub-head">${esc(r.label)}</h4>`;
     const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const label = `<span class="set__label">${esc(r.label)}</span>`;
@@ -1445,7 +1572,11 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       const r = rangeOf(el);
       if (!r) return;
       const out = el.nextElementSibling;
-      const valueAt = (frac: number) => Math.round(r.min + frac * (r.max - r.min));
+      const step = r.step ?? 1;
+      const valueAt = (frac: number) => {
+        const raw = r.min + frac * (r.max - r.min);
+        return Math.round(Math.round(raw / step) * step * 100) / 100; // a half-step must not drift
+      };
       makeSlider(el, {
         axis: "x",
         onDrag: (frac) => {
@@ -1483,11 +1614,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     saveFolds();
     render();
     // The opened section's rows slide in under its header (src/pop.ts); a close stays instant.
-    if (!was) enterRows([...(body.querySelectorAll(".set__section")[sections.indexOf(s)]?.children ?? [])].slice(1));
+    // By title, not by index: a section with every row gated off is not drawn at all.
+    const drawn = body.querySelector(`.set__section[data-sec="${CSS.escape(title)}"]`);
+    if (!was) enterRows([...(drawn?.children ?? [])].slice(1));
   };
   const headHTML = (s: Section): string => {
     const open = isOpen(s);
-    const count = s.count ?? shown(s.rows).length;
+    const count = s.count ?? settingRows(s.rows).length;
     return (
       `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-fold="${esc(s.title)}" aria-expanded="${open}">` +
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
@@ -1505,7 +1638,10 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
     body.innerHTML =
       sections
-        .map((s) => `<section class="set__section">${headHTML(s)}${isOpen(s) ? shown(s.rows).map(rowHTML).join("") + tailOf(s) : ""}</section>`)
+        // A section whose every row is gated off shows nothing at all — no empty header.
+        // Skin settings under Cyber is the case that made this necessary (2026-09-18).
+        .filter((s) => settingRows(s.rows).length > 0 || !!tailOf(s))
+        .map((s) => `<section class="set__section" data-sec="${esc(s.title)}">${headHTML(s)}${isOpen(s) ? shown(s.rows).map(rowHTML).join("") + tailOf(s) : ""}</section>`)
         .join("");
     if (field && caret) {
       const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-report="${field}"]`);
@@ -1521,7 +1657,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     paintLook();
     markScrollable();
   };
-  // Settings › Look and feel status line: which look shows and until when (look-schedule.ts).
+  // Settings › Look schedule status line: which look shows and until when (look-schedule.ts).
   const paintLook = () => {
     const el = body.querySelector<HTMLElement>("#set-look-status");
     if (el) el.textContent = scheduleStatus();
@@ -1659,9 +1795,10 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const el = (e.target as HTMLElement).closest<HTMLElement>(".set__range");
     const r = el ? rangeOf(el) : undefined;
     if (!r) return;
-    const step = e.shiftKey ? 10 : 1;
+    const one = r.step ?? 1;
+    const step = e.shiftKey ? one * 10 : one;
     const delta = ({ ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step } as Record<string, number>)[e.key];
-    const to = e.key === "Home" ? r.min : e.key === "End" ? r.max : delta === undefined ? null : setting(r.key) + delta;
+    const to = e.key === "Home" ? r.min : e.key === "End" ? r.max : delta === undefined ? null : Math.round((setting(r.key) + delta) * 100) / 100;
     if (to === null) return;
     e.preventDefault();
     setSetting(r.key, Math.max(r.min, Math.min(r.max, to)));

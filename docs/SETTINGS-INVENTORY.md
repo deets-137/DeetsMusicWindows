@@ -10,7 +10,11 @@ For how the settings are stored, which module owns each one, and how to add a ne
 
 ## Where a control lives
 
-DeetsMusic puts each control in exactly one place. Nothing is repeated.
+DeetsMusic puts each control in one place — unless a title-bar panel and the Settings card serve
+two different moments. **Sound** and **Sleep** are the only such pair (2026-09-18): the panel has
+every control because you set them while you listen, and the Settings card has the same
+preferences because that is where you look when you are not listening. There is only ever one
+stored value behind both.
 
 | Place | What it holds |
 |---|---|
@@ -78,7 +82,8 @@ Listen with friends over an 8-character code.
 Pause is never taken away from a guest. Under **Host only** it stops that guest's own app instead.
 
 ### Sound
-Two tabs. Every effect is **off** until you turn it on.
+Two tabs. Every effect is **off** until you turn it on. Everything here is also in
+Settings › Sound, except the curve, the presets and the two Clear actions.
 
 **Equalizer tab**
 
@@ -111,7 +116,7 @@ Two tabs. Every effect is **off** until you turn it on.
 Turning **Adaptive sound** on does not turn its three parts on. Each part has its own switch.
 
 ### Sleep timer
-Music pauses when the timer runs out.
+Music pauses when the timer runs out. The last three rows are also in Settings › Sleep.
 
 | Control | What it does | Choices |
 |---|---|---|
@@ -134,8 +139,13 @@ The slider, and **Mute**. Settings › Window › *Shrink volume bar* makes it a
 
 ## The Settings card
 
-Fifteen sections. **Tips** and **About** start open; the rest start folded.
+Twenty sections. **Tips** and **About** start open; the rest start folded.
 Open one at a row with the Compass, or from the **[Settings]** button on a notice.
+
+Two sections name their groups with a sub-heading instead of splitting: **Window** (*Window* ·
+*Window sizes* · *Growing and drilling*) and **Sound** (*Equalizer* · *Adaptive sound*).
+A section shows nothing at all while every one of its rows is gated off — **Skin settings**
+under the Cyber skin, which sets nothing of its own.
 
 ### Tips
 Six short notes on the habits the app rewards — hover anything · right-click anything · drag
@@ -144,6 +154,8 @@ which restarts the first-run walk.
 
 ### Window
 
+**Window**
+
 | Control | What it does | Choices |
 |---|---|---|
 | Close to tray | × hides the window. The tray icon opens it again | on / off |
@@ -151,24 +163,31 @@ which restarts the first-run walk.
 | Start with Windows | Starts in the tray when you sign in | on / off |
 | Resize changes surface | A window made narrow or short becomes the surface that fits it. Off: it resizes inside the current surface | **on** / off |
 | Shrink volume bar | The title bar volume is a small pill that grows when you click it. A window thinner than 455 px uses the pill anyway | on / **off** |
+| Keep on top | The window stays above other windows | Always / Player / **Off** |
+
+**Window sizes**
+
+| Control | What it does | Choices |
+|---|---|---|
 | Mini opens at | The window size Mini opens at. **Set current** saves the size it has now | **385 × 550** |
 | Player opens at | The size for the player alone | **405 × 675** |
 | Midi opens at | The size for Midi | **495 × 670** |
 | Max opens at | The size for Max | **1100 × 950** |
 | Max window when short | A Max window dragged shorter than the stage column can hold | **Becomes Midi** / Stops at floor |
-| Keep on top | The window stays above other windows | Always / Player / **Off** |
+
+**Growing and drilling**
+
+| Control | What it does | Choices |
+|---|---|---|
 | Grow cards from edges | Click the gap beside a card to open it over its neighbor | **on** / off |
 | Collapse on outside click | A click outside a grown card collapses it. Pin holds it open | **on** / off |
-| Compass closes on outside click | A click elsewhere closes the Ctrl+Space bar | **on** / off |
 | Grown card on a new pick | Pick another card in a grown card's title | **Keeps size** / Collapses |
 | Keep view when grown | A grow or collapse keeps the view you are in, or takes that size's own | **Keep** / Per size |
 | Card on drill | Go to Album, a shelf tile, a playlist: where the new card opens | **In place** (Back returns) / Summon |
 | Bring a card already open | The drilled card is already on screen: bring it to you, or leave it where it sits | on / **off** |
 | Keep card places on restart | Each card comes back where you left it, also after a restart | on / **off** |
 
-### Look and feel
-
-**The schedule**
+### Look schedule
 
 | Control | What it does | Choices |
 |---|---|---|
@@ -178,7 +197,7 @@ which restarts the first-run walk.
 | Shift sun times | Minutes added to sunrise and sunset | **None**, ± minutes |
 | Menu pick lasts | A theme or skin picked by hand | **Until next change** / For good |
 
-**Motion**
+### Motion
 
 | Control | What it does | Choices |
 |---|---|---|
@@ -188,6 +207,11 @@ which restarts the first-run walk.
 | Animate backgrounds | The moving backgrounds: the Ocean swell, the Glass aurora, the Cyber storm | **On** / Reduced / Off |
 
 Your Windows reduced-motion preference always wins over these.
+
+### Skin settings
+
+Each group shows only while its skin is the one you are using. Cyber sets nothing here, so
+under Cyber the whole section is gone.
 
 **Ocean only**
 
@@ -215,7 +239,7 @@ Your Windows reduced-motion preference always wins over these.
 | Spin speed | Turns each minute — the three real record speeds | **33⅓** / 45 / 78 |
 | Show record plate | The ink shadow behind the record | **on** / off |
 
-**Menus, hints and notices**
+### Menus, hints and notices
 
 | Control | What it does | Choices |
 |---|---|---|
@@ -224,6 +248,7 @@ Your Windows reduced-motion preference always wins over these.
 | Hints appear after | How long the pointer rests first. A song row waits longer | A moment / **A pause** / A while |
 | Name songs on hover | The name box on a song row | **Always** / only when Cut off / Never |
 | Show notices | Everything adds confirmations. Failures: only when an action could not do what it said. A failure always shows | **Everything** / Failures |
+| Compass closes on outside click | A click elsewhere closes the Ctrl+Space bar. It is an outside-click rule, which is why it sits here and not under Window | **on** / off |
 
 ### Home
 
@@ -245,6 +270,43 @@ Your Windows reduced-motion preference always wins over these.
 | Shuffle keeps picks | Where songs you queued by hand land | **First** / In place / Mixed |
 | Idle shuffle plays | Shuffle with nothing playing | **Library** / Nothing |
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |
+
+### Sound
+
+**The same controls are in the Sound panel in the title bar.** One stored value behind both, so
+turning one moves the other. They are here as well because the card is where you look when you
+are not listening — and because Ctrl+Space can only reach a setting the card has a row for.
+
+**Equalizer**
+
+| Control | What it does | Choices |
+|---|---|---|
+| Avoid distortion | How a boost is kept from clipping | **Limiter only** / When needed / Always / By hand |
+| Lower the song by | The amount for *By hand*. A slider in half-decibel steps | −24…+6 dB, **0** |
+| Remember each output | Headphones, speakers and AirPlay speakers each keep their own preset | **On** / Off |
+
+**Adaptive sound**
+
+| Control | What it does | Choices |
+|---|---|---|
+| Match songs to | How loud songs are made. Standard is Apple's Sound Check level | **Standard** / Louder / Quieter |
+| Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
+| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
+| Follow the volume of | What *Fuller at low volume* watches | **App + Windows** / App only |
+| Blend amount | How much crossfeed | Light / **Medium** / Strong |
+| Ask to keep after | When to ask whether the effects are worth keeping | 3 days / **7 days** / 14 days / Never |
+
+### Sleep
+
+**The same controls are in the sleep panel in the title bar**, beside the dial. One stored value
+behind both. The dial and the three live ends are only in the panel.
+
+| Control | What it does | Choices |
+|---|---|---|
+| Sleep every day | A sleep time that arms itself daily. It pauses only if music is playing then | **Off** / Sunset / At a time |
+| Sleep at | The time, when *At a time* is chosen. Quarter-hour steps | **10:00 PM** |
+| Wind down | Over these last minutes the volume sinks to nothing, then the music pauses | **5 min**, or Off for a plain pause |
+| Play out song | The time runs out mid-song: the song finishes first | on / **off** |
 
 ### AirPlay
 
@@ -312,7 +374,10 @@ Your Windows reduced-motion preference always wins over these.
 One **Reset** button for each group. Each one asks first, and offers Undo after.
 
 Look and feel › (Theme and skin · Look schedule · Motion · Skin settings) · Menus, hints and
-notices · Window · Playback · Playlists · Sound · Home · Rewind · **Everything**.
+notices · Window · Playback · Playlists · Sound · Sleep · Home · Rewind · **Everything**.
+
+The four Look and feel groups now match four real sections of the card (2026-09-18); the Reset
+row keeps them together because you usually want the whole look back at once.
 
 A group already at its defaults flashes *Default* instead. Not reset: Close to tray, Start with
 Windows, the Apple Music and Last.fm consents, Agent changes settings, and Updates.
@@ -418,8 +483,8 @@ Words in *italics* have their own entry.
 | **AirPlay** | Apple's way of sending sound to a speaker over your network | The title bar; Settings › AirPlay |
 | **Apple Mixes** | Apple's personalised mixes. Their names all end in "Mix" | Playlists card, a group in the *rail* |
 | **Apple Replays** | Apple's yearly Replay playlists. Not the *weekly Replay* this app makes | Playlists card, a group in the *rail* |
-| **Backlight** | The light behind a *Glass* card, under its *tint* | Settings › Look and feel (Glass only) |
-| **Canvas** | The background behind the cards | Settings › Look and feel (Glass only) |
+| **Backlight** | The light behind a *Glass* card, under its *tint* | Settings › Skin settings (Glass only) |
+| **Canvas** | The background behind the cards | Settings › Skin settings (Glass only) |
 | **Card** | One panel of the app: Now Playing, Queue, Library, Search, Playlists, Home, History, Radio, Rewind, Settings. A *surface* holds one to four of them | Everywhere |
 | **Chip** | A small button that carries a value, such as a genre in a *web* | The web panel; the Sound panel |
 | **Collapse** | Put a *grown* card back to its normal size | A card's title menu, or a click outside it |
@@ -427,13 +492,13 @@ Words in *italics* have their own entry.
 | **Crossfeed** | Mixes a little of each stereo side into the other, as speakers in a room do. It makes headphones less tiring | Sound panel › Headphone crossfeed |
 | **Drill** | Following a link deeper: Go to Album, a *shelf* tile, a playlist. Back returns you | Right-click menus; Settings › Window › Card on drill |
 | **Equalizer** | Ten sliders that raise or lower parts of the sound | The Sound button in the title bar |
-| **Fancy Glass** | The *Glass* skin's live blur. Off, the *frost* is painted in, which costs nothing to redraw | Settings › Look and feel (Glass only) |
+| **Fancy Glass** | The *Glass* skin's live blur. Off, the *frost* is painted in, which costs nothing to redraw | Settings › Skin settings (Glass only) |
 | **Fill** | Grow a card over all four *slots* in *Max* | A card's title menu, or the gaps |
 | **Folder** | A group of playlists you make yourself. Not one of the five fixed groups | Playlists card › New… ▸ Folder |
 | **Frost** | The blurred or painted layer that makes a *Glass* card readable | The Glass skin |
 | **Grow** | Open a card over its neighbor, from the gap beside it | The gaps; a card's title; Settings › Window |
 | **Half** (split) | One pill cut in two. Each half is its own button | Settings rows; the Surface menu |
-| **Hint** (hover hint) | The small themed box that appears when the pointer rests on a control | Everywhere; Settings › Look and feel |
+| **Hint** (hover hint) | The small themed box that appears when the pointer rests on a control | Everywhere; Settings › Menus, hints and notices |
 | **Home** | A card with three shelves of what to play next. It makes no requests to Apple | The card picker |
 | **Host** | The person who started a *room*. Only the host can end it, or set what guests may do | The Room panel |
 | **LUFS** | The unit loudness is measured in. Apple's *Sound Check* level is −16 LUFS | Sound panel › Match songs to |
@@ -443,20 +508,20 @@ Words in *italics* have their own entry.
 | **Midi** | The tall *surface*: Now Playing and two cards | The Surface menu |
 | **Mini** | The small *surface*: Now Playing and one card | The Surface menu |
 | **Mosaic** | A playlist cover built from the covers of its songs. It is never saved to disk | Right-click a playlist › Generate Cover |
-| **Notice** | A short message that slides in, then leaves. A failure always shows one. Called a *toast* in the code and in TOASTS.md, never in the app | Everywhere; Settings › Look and feel › Show notices |
+| **Notice** | A short message that slides in, then leaves. A failure always shows one. Called a *toast* in the code and in TOASTS.md, never in the app | Everywhere; Settings › Menus, hints and notices › Show notices |
 | **NP** | The old name for the **Player** *surface*, used until 2026-09-18. Typing it in the *Compass* still finds Player | — |
 | **Pill** | A small rounded control that shows its current value. Click it for the next one | Settings rows; the panels |
 | **Pin** | Hold a *grown* card open against an outside click | A grown card's header |
 | **Player** | The *surface* that shows Now Playing alone, with no card beside it | The Surface menu |
 | **Preset** | A saved *equalizer* curve: a built-in one, or one you saved | The Sound panel |
 | **Rail** | The list of groups and folders down the side of the Playlists card | Playlists card |
-| **Record player** | The *Press* skin's cover as a turning record | Settings › Look and feel (Press only) |
+| **Record player** | The *Press* skin's cover as a turning record | Settings › Skin settings (Press only) |
 | **Replay** (weekly) | A playlist of the past week's most-played songs, made by this app. Not Apple's yearly *Apple Replays* | Settings › Rewind |
 | **Rewind** | A card that ranks your listening. It offers itself once you have 50 plays | The card picker |
 | **Room** (listening room) | Listening in step with other people, over an 8-character code | The title bar |
-| **Sand** | The *Ocean* skin's card edges broken into grains | Settings › Look and feel (Ocean only) |
+| **Sand** | The *Ocean* skin's card edges broken into grains | Settings › Skin settings (Ocean only) |
 | **Scrobble** | Sending a song you heard to your Last.fm profile | Settings › Last.fm |
-| **Scrubber** | The playhead you drag to move through a song | Now Playing; Settings › Look and feel |
+| **Scrubber** | The playhead you drag to move through a song | Now Playing; Settings › Motion |
 | **Seed** | The artist, song or album a *web* is built from | The web panel |
 | **Shelf** | A row of tiles that scrolls sideways | The Home card; artist views |
 | **Skin** | The form of the app: type, corners, motion, texture. Press, Ocean, Glass or Cyber. A *theme* is the color; a skin is the shape | The title menu |
@@ -469,7 +534,7 @@ Words in *italics* have their own entry.
 | **Temp playlist** | A *web* playlist that deletes itself a set number of days after its last play. **Keep Playlist** makes it permanent | The web panel; right-click a playlist |
 | **Theme** | The colors: Lilac, Green, Sepia, Moonlight, Black & Yellow, Black & Red. A *skin* is the shape; a theme is the color | The title menu |
 | **Tile** | One cover-sized item on a *shelf* | Home; artist views |
-| **Tint** | How much theme color fills a *Glass* card | Settings › Look and feel (Glass only) |
+| **Tint** | How much theme color fills a *Glass* card | Settings › Skin settings (Glass only) |
 | **Toast** | The internal name for a *notice*. The app never shows this word | Code and docs only |
 | **Tray** | The Windows notification area, by the clock. DeetsMusic can live there | Settings › Window |
 | **Up Next** | The songs the queue will play after this one | The Queue card |
@@ -489,10 +554,10 @@ Words in *italics* have their own entry.
 | Keep the window above other windows | Settings › Window › Keep on top |
 | Stop the app quitting when I close it | Settings › Window › Close to tray |
 | Start the app with Windows | Settings › Window › Start with Windows |
-| Make the app dark at night | Settings › Look and feel › Change look at |
-| Turn the animation down | Settings › Look and feel › the four Animate rows |
-| Stop the hover boxes | Settings › Look and feel › Show hover hints |
-| See fewer notices | Settings › Look and feel › Show notices |
+| Make the app dark at night | Settings › Look schedule › Change look at |
+| Turn the animation down | Settings › Motion › its four rows |
+| Stop the hover boxes | Settings › Menus, hints and notices › Show hover hints |
+| See fewer notices | Settings › Menus, hints and notices › Show notices |
 | Open a card over its neighbor | Settings › Window › Grow cards from edges, then click a gap |
 | Keep my cards where I left them | Settings › Window › Keep card places on restart |
 | Change the sound | The Sound button in the title bar |

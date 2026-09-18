@@ -904,7 +904,7 @@ hover: hover grows it, leaving shrinks it after a moment. NP view: no pill (as b
 ## 21. Fancy scrubbers — BUILT 2026-09-16, shipped in 0.7.0; the performance eval is open
 
 The per-skin handle idea, redone. The plain masked handles stay as the off state; on
-(Settings › Look and feel › **Fancy scrubber**, default on, key `fancyScrubber`) each skin
+(Settings › Motion › **Fancy scrubber**, default on, key `fancyScrubber`) each skin
 draws its own playhead over them:
 
 | Skin | Playhead | Under the hand | While playing |

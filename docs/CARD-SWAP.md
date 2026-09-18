@@ -1,7 +1,7 @@
 # Card swap motion — designed and built 2026-09-15
 
 Recorded as an idea 2026-09-15; designed and built the same day. Tested and committed
-(0617a1e), shipped. Settings › Look and feel › **Animate card swaps** (`cardSwapMotion`,
+(0617a1e), shipped. Settings › Motion › **Animate card swaps** (`cardSwapMotion`,
 default **on** since 2026-09-16, the user's call; it was off before). The OS reduced-motion
 preference always snaps.
 

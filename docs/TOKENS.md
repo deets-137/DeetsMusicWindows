@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 407 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 408 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -182,6 +182,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-tabs-pad` | `2px` | — | the tab strip's inset around the two tabs |
 | `--sound-tab-radius` | `calc(var(--radius-control) - 2px)` | — | nested inside the strip's radius |
 | `--sound-foot-fs` | `11px` | — | the footer line: review date and the limiter, quieter than a row |
+| `--sound-foot-pill-w` | `64px` | — | Keep: 7 days / 14 days / Never, one width, text centred |
 | `--sound-reset-w` | `56px` | — | Reset and Undo share one width |
 | `--sound-meter-w` | `172px` | — | "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box |
 | `--sound-meter-pad-y` | `2px` | — |  |
