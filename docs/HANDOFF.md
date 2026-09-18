@@ -167,8 +167,11 @@ The worker is its own private repo, **`../DeetsMusicRooms`** (`npx wrangler dev 
 then `node scripts/check.mjs http://127.0.0.1:<n>` runs 23 protocol checks, all passing). The
 app side is `src/room.ts`,
 `src/room-panel.ts`, the RoomBridge in `src/player.ts`, `queue.setRoomQueue`, and
-`src-tauri/src/rooms.rs` for the invite link. **Two things are left: the owner deploys the
-worker (ROOMS.md §16.3), and two apps meet in a room at the desk (§16.4).** As built: §16. Friends join a room with an 8-character
+`src-tauri/src/rooms.rs` for the invite link. **The worker is DEPLOYED** (2026-09-17, `rooms.deets.solutions`,
+no secrets) and passes its 24 checks against the live host. **What is left is the one thing only the
+owner can do: hear two apps play in step (§16.4).** He has a Family plan and is testing it live.
+**That item stays open THROUGH release until he confirms** — if a build ships first, it ships with
+two-app playback unproven, and nothing should say rooms work before he says so. As built: §16. Friends join a room with an 8-character
 code (`K7QM-4XHT`) and every app follows one queue and clock; each app plays through its own
 MusicKit. A new Cloudflare worker, DeetsMusicRooms, holds the room in a Durable Object;
 the room ends when the host leaves. Full design, decisions and the defaults still open to the

@@ -338,13 +338,30 @@ The play's context is `room:<code>`, so a later filter can find them.
 
 ## 11. Abuse limits (worker)
 
-Ported from DeetsRadio (radio.md "Limits & costs"):
-- **Per-socket command limit:** 20 messages per 10 s. The counter rides the socket attachment.
-- **IP rate limit** on `peek`, WebSocket `join` and `POST /room`: 30 per 60 s.
-- **Room size limit:** 32 members. A join past it gets `error: "full"`.
-- **Input checks:** `sanitizeEntry()` rebuilds each entry field by field (allowed fields, length
-  limits, https-only artwork, a sane duration). Names: 1–24 characters, trimmed, unique in the room.
-- **Queue limit:** 500 upcoming entries (row size, not rows: the queue is one key).
+Ported from DeetsRadio (radio.md "Limits & costs"), then brought up to the house set the other
+Deets workers carry (2026-09-17 — DeetsAccounts and DeetsSupport were read side by side):
+
+| Guard | Value | Note |
+|---|---|---|
+| **IP rate limit** | 30 per 60 s | On `POST /room`, `peek` and the WebSocket join. The `ratelimits` binding; **fails OPEN** if absent, so `wrangler dev` still runs. |
+| **Per-socket command limit** | 20 per 10 s | The counter rides the socket attachment, so it survives hibernation with no storage write. |
+| **Socket message size** | 256 KB | Checked **before** `JSON.parse`. A full 500-song add of real Apple entries is about 150 KB. |
+| **POST /room body** | 4 KB → `413` | The body is a name and five permissions. The shape DeetsSupport's `readJson` uses. |
+| **Kill switch** | `KILL_ROOMS` | Non-empty: no new room (503), no new member; rooms already running finish. The shape of `KILL_BOARDS` and `KILL_UPDATE`. |
+| **Room size** | 32 members | A join past it gets `error: "full"`. |
+| **Queue** | 500 upcoming | One storage key, so this is a size cap as much as a count. |
+| **Entry text** | 120 chars, artwork 220 | Cut from 200/400 on 2026-09-17 (below). |
+| **Credential-shaped text** | dropped | A JWT-shaped string is blanked rather than stored and shown to the room — DeetsSupport's rule on every intake. |
+| **Input checks** | `sanitizeEntry()` | Rebuilds each entry field by field: allowed fields, length limits, https-only artwork, a sane duration. Names 1–24 characters, trimmed, unique in the room. |
+| **Unclaimed rooms** | 10 minutes | A room minted by `POST /room` that nobody joins deletes itself (§16.3). |
+
+**The size that matters is what the room sends BACK, not what a client sends.** Measured
+2026-09-17 on a full 500-entry room with worst-case entries: **one command re-broadcast 596 KB to
+every member**, because every `state` carries the whole queue. That is what cut the text caps from
+200/400 to 120/220 — a generous cap is paid 32 times over, on every command. With real Apple
+metadata a full room is about 60 KB a broadcast. **If a room ever feels heavy on a slow
+connection, the fix is a delta `state`, not a smaller cap.** No secrets are attached to the worker
+and none are needed (§3.1).
 
 ---
 
@@ -607,13 +624,18 @@ Two PCs, or one PC with two apps — but read this first (2026-09-17):
   `com.deetsmusic.dev` and the same data dir, and the single-instance plugin turns the second away.
   A `--instance 2` flag (its own identifier, data dir, port and CDP port) is about twenty lines in
   `scripts/dev-app.mjs`, and is not written.
-- **One Apple Music subscription streams to one place at a time.** Even with two apps running, the
-  second play is expected to stop the first — the room would look right and sound wrong. A second
-  Apple account, or a second PC, is what makes the audio test real. This is unmeasured: nobody has
-  yet had two members to try it with.
+- **Two apps playing at once is UNCONFIRMED, and stays that way until the owner says otherwise
+  (his call, 2026-09-17).** One Apple Music subscription streams to one place at a time; a **Family
+  plan carries six**, which is what the owner has, so two members should hold — but nobody has heard
+  it yet. Whether two apps on ONE Apple ID also hold, or whether the second play stops the first, is
+  the open question. He is testing it live.
+
+  **This item does not close at release.** If a build ships before he confirms, it ships with this
+  unproven, and RELEASE-NOTES and HANDOFF say so. Do not write "rooms work" anywhere until he has
+  heard two apps play in step and said so.
 
 So: the protocol, the panel, the codes, the controls and the invite link can all be walked on one
-PC. The one thing that needs two accounts is hearing two apps play in step.
+PC. Hearing two apps play in step is the one thing only he can confirm.
 
 | # | Step | Pass |
 |---|---|---|
@@ -631,7 +653,22 @@ PC. The one thing that needs two accounts is hearing two apps play in step.
 | 12 | Either: start a station. | "A station cannot play in a room", with Leave room on the toast. |
 | 13 | Both: check Settings › Rewind / History after. | The room's songs are there, with the play counts and the Last.fm scrobbles. |
 
+### 16.4a The protection pass (2026-09-17)
+
+Asked whether the worker carried the usual protections, and it did not: it had the IP limit and
+the per-socket limit, but no size cap of any kind, no kill switch and no credential-shape rule —
+the three things DeetsAccounts and DeetsSupport both carry. A measurement came first (§11), then
+all four went in with their own checks (`scripts/check.mjs` is now 28 checks, passing against the
+live host).
+
+What the measurement changed, beyond adding caps: the entry text caps came DOWN, because the cost
+is not the one message a client sends but the whole queue going back to every member on every
+command.
+
 ### 16.5 Known gaps
+
+- **Two apps playing in step is not yet heard** (§16.4). The owner is testing it on a Family plan.
+  It remains open after release until he confirms; nothing should claim rooms work before that.
 
 - **A room is not saved across a restart.** Quit in a room and the app comes back with the
   room's last song as its own (the restore setting's doing). Leaving properly always returns
