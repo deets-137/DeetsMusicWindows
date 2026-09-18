@@ -410,9 +410,19 @@ body {
 .room__btn[data-in] { color: var(--title); }
 /* In a room the figure in front fills — the AirPlay square's idiom. The two behind
    stay line work: they are partial shapes, and filling them made slivers. They step
-   back a little instead, so the filled figure reads as the one that is listening. */
+   back a little instead, so the filled figure reads as the one that is listening.
+
+   The HEAD fills, the shoulders do not (2026-09-18). Filling both turned the button
+   into one red blob: at --room-btn-size the 24-grid scales by 2/3, so the 1.1 units
+   between the filled head and the filled bust are 0.73 px — less than one device
+   pixel, which antialiasing closes. Filling a shape also spends its interior counter,
+   and those counters are what make a 16 px glyph readable. Leaving the bust as an
+   open arc keeps the gap by construction: a 1 px stroke around a hollow cannot merge
+   with the disc above it at any size. Colour still carries the state on its own
+   (`[data-in]` turns the whole glyph --title), so the fill is the second cue, not the
+   only one. */
 .room__fig-body, .room__fig-head { fill: transparent; transition: fill var(--room-fill), opacity var(--room-fill); }
-.room__btn[data-in] .room__fig-body--mid, .room__btn[data-in] .room__fig-head--mid { fill: currentColor; }
+.room__btn[data-in] .room__fig-head--mid { fill: currentColor; }
 .room__btn[data-in] .room__fig-body--side, .room__btn[data-in] .room__fig-head--side {
   opacity: 0.6;
   transition-delay: calc(var(--room-fill) / 3);
@@ -420,18 +430,6 @@ body {
 /* Waiting for the host, or reconnecting: the fill breathes instead of sitting still. */
 .room__btn[data-away] svg { animation: room-away 1.6s var(--ease-ui) infinite; }
 @keyframes room-away { 50% { opacity: 0.45; } }
-/* The member count, when more than one app is listening. */
-.room__btn[data-count]:not([data-count=""])::after {
-  content: attr(data-count);
-  position: absolute; right: -4px; bottom: -2px;
-  min-width: var(--room-count-size); height: var(--room-count-size);
-  padding: 0 2px;
-  display: grid; place-items: center;
-  font-family: var(--font-body); font-size: var(--room-count-fs); line-height: 1;
-  color: var(--bg); background: var(--title);
-  border-radius: calc(var(--room-count-size) / 2);
-}
-
 .room__panel {
   position: absolute; top: 100%; right: 0;
   margin-top: var(--space-1);
@@ -454,14 +452,25 @@ body {
   z-index: 20;
 }
 .room__panel[hidden], .room__panel [hidden] { display: none; }
-/* The gutter is reserved only in a room. `app-scroll` draws a real bar, not an
-   overlay, so it takes width the moment it appears: out of a room the panel is four
-   rows and can never scroll, and a permanent gutter would just narrow the fields.
-   In a room rows ARRIVE while the panel is open — a member joins, "Waiting for the
-   host" appears — and that is exactly when a bar showing up would shove every row
-   left. Same reasoning for the member list below, which always reserves it: it is
-   the part that grows. */
-.room__panel[data-scrolls] { scrollbar-gutter: stable; }
+/* The gutter opens only when the panel REALLY overflows, and it opens by widening the
+   panel — not by taking the width out of the rows (his call, 2026-09-18).
+
+   `app-scroll` draws a real bar, not an overlay, so it takes width the moment it
+   appears. Reserving that width up front (what `[data-scrolls]` did, on every in-room
+   panel whether it scrolled or not) left a blank strip down the side for nothing.
+   Dropping the reservation instead would shove every row 8 px left the moment a member
+   joined. So the panel grows by exactly the bar's width and reserves the gutter at the
+   same time: `--room-panel-w + --scrollbar-w` minus the bar is `--room-panel-w`, so the
+   content box is unchanged, no row moves, and nothing re-wraps. Only the panel's edge
+   travels, over --room-gutter-open.
+
+   That identity is also what makes the measurement in room-panel.ts safe: turning the
+   gutter on cannot change what fits, so it cannot flip back off. */
+.room__panel { transition: width var(--room-gutter-open) var(--ease-ui); }
+.room__panel[data-scrolls] {
+  width: calc(var(--room-panel-w) + var(--scrollbar-w));
+  scrollbar-gutter: stable;
+}
 
 /* The head: the title at the left, one action at the right (.sound__head). */
 .room__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
@@ -581,11 +590,18 @@ body {
   content: ""; flex: 1 1 auto; height: 1px; background: var(--panel-border);
 }
 
+/* The member list is the part that grows, and it had the same always-on gutter. Same
+   trick, one level in: it cannot widen the panel, so it reaches OUT into the panel's
+   own right padding by the bar's width. The rows keep their width either way. */
 .room__members {
   max-height: var(--room-members-max-h);
   overflow-y: auto;
-  scrollbar-gutter: stable;
   display: flex; flex-direction: column; gap: var(--space-1);
+  transition: margin-right var(--room-gutter-open) var(--ease-ui);
+}
+.room__members[data-scrolls] {
+  scrollbar-gutter: stable;
+  margin-right: calc(-1 * var(--scrollbar-w));
 }
 .room__member { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); min-height: var(--icon-lg); }
 .room__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -640,6 +656,8 @@ body {
   .room__fig-body, .room__fig-head { transition: none; }
   .room__btn[data-away] svg { animation: none; }
   .room__half, .room__fold-btn, .room__fold-btn::before { transition: none; }
+  /* The gutter still opens — it just arrives rather than travels. */
+  .room__panel, .room__members { transition: none; }
 }
 
 /* ── Sound (src/sound-panel.ts, SOUND.md §2.3) ────────────────────────────────

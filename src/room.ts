@@ -215,11 +215,16 @@ export async function startRoom(): Promise<void> {
     if (!made.code || !made.hostToken) throw new Error("the rooms server sent no code");
     hostToken = made.hostToken;
     diag.log("room:start", { code: made.code });
-    await connect(made.code, true);
-    // The room takes the host's current song and Up Next (§7).
+    // The room takes the host's current song and Up Next (§7). READ THEM FIRST: `connect`
+    // resolves on the first state message, and that message's `writeModel` has already
+    // replaced this app's queue with the room's — which on a new room is empty. Reading
+    // the queue after the connection therefore seeds the room with nothing, and the room
+    // sits idle for ever (the 2026-09-18 log: `room:in` with no `add` after it).
     const current = queue.getCurrent();
-    const handles = [...(current ? [current] : []), ...queue.getUpcoming()];
-    if (handles.length) send({ type: "add", entries: entriesFrom(handles), where: "end" });
+    const seed = entriesFrom([...(current ? [current] : []), ...queue.getUpcoming()]);
+    await connect(made.code, true);
+    diag.log("room:seed", { songs: seed.length });
+    if (seed.length) send({ type: "add", entries: seed, where: "end" });
   } catch (e) {
     fail("Couldn't start a room.", e);
   }
@@ -530,7 +535,12 @@ async function step(t: Transport): Promise<void> {
     await roomResumeAt(expectedPosition(t));
     return;
   }
-  await roomResumeAt(position, true);
+  // The room plays this song and the app already holds it. Line the position up AND start
+  // again if this app is paused: a pause→play in the room lands here with the song still
+  // loaded but the local player held. `correcting` is for the drift tick alone — passing it
+  // here left the app paused for ever, because a paused player sends no progress tick, so
+  // the drift check never ran to get it back (§9.3).
+  await roomResumeAt(position);
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));

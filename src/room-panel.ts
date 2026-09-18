@@ -93,6 +93,10 @@ export function initRoomPanel(): void {
 
   btn.innerHTML = glyph();
   panel.dataset.frames = "room-panel"; // frames.ts times the arrival
+  // Rows arrive while the panel is open — a member joins, "Waiting for the host" shows —
+  // so the gutter is measured again whenever the panel's own box changes, not only on a
+  // render.
+  new ResizeObserver(() => requestAnimationFrame(measureGutters)).observe(panel);
 
   dropdown = makeDropdown({
     root,
@@ -170,7 +174,6 @@ function paintButton(state: RoomState): void {
   const inRoom = state.phase === "in" || state.phase === "reconnecting";
   btn.toggleAttribute("data-in", inRoom);
   btn.toggleAttribute("data-away", state.phase === "reconnecting" || !state.hostConnected);
-  btn.dataset.count = inRoom && state.members.length > 1 ? String(state.members.length) : "";
   btn.title = inRoom
     ? `${state.members.length} listening together in room ${formatCode(state.code)}`
     : "Listen with friends";
@@ -213,13 +216,33 @@ function render(state: RoomState): void {
   if (!panel) return;
   panel.replaceChildren();
   const inRoom = state.phase === "in" || state.phase === "reconnecting";
-  // Only the in-room panel can outgrow the window, and only it gains rows while it
-  // is open, so only it reserves the scrollbar's gutter (styles.css).
-  panel.toggleAttribute("data-scrolls", inRoom);
   panel.append(head(state, inRoom));
   panel.append(buildStage(state, inRoom));
   if (inRoom) renderInRoom(state);
   else renderOutOfRoom(state);
+  requestAnimationFrame(measureGutters); // the rows are in place; ask what really overflows
+}
+
+/**
+ * Who needs the scrollbar's gutter, measured rather than assumed (styles.css). The old
+ * rule opened it on every in-room panel, so a panel that fitted still carried a blank
+ * strip down its side.
+ *
+ * Both boxes open the gutter WITHOUT changing their own content box — the panel widens
+ * by the bar, the member list reaches into the panel's padding by the bar — so the
+ * answer to "does this overflow" is the same before and after the attribute is written.
+ * That is what stops this from flipping on and off for ever. The write is skipped when
+ * nothing changed, and it runs a frame late, outside the ResizeObserver's own delivery,
+ * so it cannot raise the loop warning.
+ */
+function measureGutters(): void {
+  if (!panel || panel.hidden) return;
+  const boxes: (HTMLElement | null)[] = [panel, panel.querySelector(".room__members")];
+  for (const box of boxes) {
+    if (!box) continue;
+    const scrolls = box.scrollHeight > box.clientHeight + 1;
+    if (scrolls !== box.hasAttribute("data-scrolls")) box.toggleAttribute("data-scrolls", scrolls);
+  }
 }
 
 /**
@@ -266,12 +289,31 @@ function buildStage(state: RoomState, inRoom: boolean): HTMLElement {
  * stage's own floor, so the figure stands on it rather than carrying a baseline of
  * its own. The stroke does not scale with the rank behind (`non-scaling-stroke`), so
  * the figures at the back keep a line you can see.
+ *
+ * ONE TO ONE WITH `glyph()`'s middle figure (2026-09-18, his call). It is that figure
+ * multiplied by 5, the largest whole scale the 64x80 box takes (the head clears the top
+ * at 5.28, the shoulders clear the sides at 5.04), with the baseline on the floor:
+ *
+ *     head cy 8 -> 23.5   r 3.1 -> 15.5   shoulders 5.6 -> 28   baseline 19.3 -> 80
+ *
+ * so all three proportions are the glyph's to four decimals — the head sits 0.8387
+ * radii above the shoulders, the shoulders reach 1.8065 radii to each side, and the
+ * floor is 2.6452 radii below the head. The first cut picked its numbers by eye and
+ * drifted to a 1.40-radii gap, which at 62 px read as a head floating over an
+ * unrelated hump.
+ *
+ * TWO THINGS DELIBERATELY DO NOT SCALE.
+ *   - The `Z`. The glyph's bust is closed because it floats 4.7 units above its box;
+ *     here the stage's own floor closes it, which is the point of the open arc.
+ *   - The stroke. Scaling it would give 7.3 px of line on a 30 px head — an icon's
+ *     weight is an optical choice for 16 px, not a proportion. The stage keeps the
+ *     app's line-work weight, `--room-fig-stroke`.
  */
 function figure(): string {
   return `<svg viewBox="0 0 64 80" aria-hidden="true" fill="none" stroke="currentColor"
       stroke-width="3.2" stroke-linecap="round" vector-effect="non-scaling-stroke">
-    <circle class="room__figure-head" cx="32" cy="23" r="12.5" vector-effect="non-scaling-stroke" />
-    <path class="room__figure-body" d="M5 80a27 27 0 0 1 54 0" vector-effect="non-scaling-stroke" />
+    <circle class="room__figure-head" cx="32" cy="23.5" r="15.5" vector-effect="non-scaling-stroke" />
+    <path class="room__figure-body" d="M4 80a28 28 0 0 1 56 0" vector-effect="non-scaling-stroke" />
   </svg>`;
 }
 

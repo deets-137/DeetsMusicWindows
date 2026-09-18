@@ -99,6 +99,7 @@
   --room-chip-min-w:     var(--sound-pill-min-w);  /* Join, Copy code, Remove: one shape */
   --room-members-max-h:  132px;  /* about five rows before the list scrolls */
   --room-radius:         var(--sound-chip-radius);
+  --room-gutter-open:    var(--dur-med);  /* the scrollbar's gutter widening the panel open */
   --room-half-pad-x:     var(--space-1);  /* the pill halves are one width; the padding only sets how tight */
   --room-fold-bg:        var(--sound-fold-bg);  /* the Permissions box, the Sound fold's tint */
   --room-dim:            var(--sound-dim);
@@ -112,8 +113,6 @@
   --room-fig-step-s:     0.14;   /* and how much smaller it gets */
   --room-fig-dim:        0.34;   /* the rank behind you, before its own depth fade */
   --room-bob-glide:      120ms;  /* a meter hop is 100 ms; the head glides between them */
-  --room-count-size:     14px;   /* the member count over the glyph */
-  --room-count-fs:       9px;
   --room-fill:           0.28s var(--ease-ui);   /* the glyph filling when a room starts */
 
   /* -- sound (src/sound-panel.ts, SOUND.md §2.3) ------------- */

@@ -721,6 +721,20 @@ the card: `settings-card.ts` sets `is-scrollable` after each render and on resiz
 thumb color is a registered `@property --set-thumb` that transitions on `--dur-med`
 (`settings.css`; snaps under reduced motion). Copy the pattern to another card if it jitters.
 
+**Room panel (2026-09-18):** a third option, for a panel where a permanent gutter is visible as
+a blank strip. Reserving the gutter always costs the width; dropping it shoves every row when a
+bar appears. Instead the gutter OPENS: `.room__panel[data-scrolls]` sets
+`width: calc(var(--room-panel-w) + var(--scrollbar-w))` **and** `scrollbar-gutter: stable`
+together, so the content box is identical in both states — no row moves, and only the panel's
+edge travels (`--room-gutter-open`). A child that cannot widen its parent reaches outward with a
+negative margin of the same width instead (`.room__members`). That identity also makes the
+overflow measurement safe: opening the gutter cannot change what fits, so it cannot flip back
+off. `room-panel.ts`'s `measureGutters()` reads `scrollHeight > clientHeight` after a render and
+from a `ResizeObserver`, a frame late and only when the answer changed.
+
+Whether this should replace `scrollbar-gutter: stable` for every scroller is **open — the
+owner's call**. It is one panel's pattern today, not the house rule.
+
 ### Keeping the list's place through a re-render (2026-09-17)
 
 `renderViewInto` replaces the rows' HTML, and that drops `scrollTop` to 0. So the engine has

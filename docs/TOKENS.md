@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 406 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 405 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -138,6 +138,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--room-chip-min-w` | `var(--sound-pill-min-w)` | — | Join, Copy code, Remove: one shape |
 | `--room-members-max-h` | `132px` | — | about five rows before the list scrolls |
 | `--room-radius` | `var(--sound-chip-radius)` | — |  |
+| `--room-gutter-open` | `var(--dur-med)` | — | the scrollbar's gutter widening the panel open |
 | `--room-half-pad-x` | `var(--space-1)` | — | the pill halves are one width; the padding only sets how tight |
 | `--room-fold-bg` | `var(--sound-fold-bg)` | — | the Permissions box, the Sound fold's tint |
 | `--room-dim` | `var(--sound-dim)` | — |  |
@@ -150,8 +151,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--room-fig-step-s` | `0.14` | — | and how much smaller it gets |
 | `--room-fig-dim` | `0.34` | — | the rank behind you, before its own depth fade |
 | `--room-bob-glide` | `120ms` | — | a meter hop is 100 ms; the head glides between them |
-| `--room-count-size` | `14px` | — | the member count over the glyph |
-| `--room-count-fs` | `9px` | — |  |
 | `--room-fill` | `0.28s var(--ease-ui)` | — | the glyph filling when a room starts |
 
 ### sound (src/sound-panel.ts, SOUND.md §2.3)

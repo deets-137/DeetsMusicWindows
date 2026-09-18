@@ -70,8 +70,11 @@ front-end, Rust back-end).
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
   **wrangler 4**, or the rate limit is silently dropped), and its Durable Object keeps the room
-  clock (designed 2026-09-16, BUILT 2026-09-17 — §16 is as built; not deployed, desk test §16.4
-  open). The deets.solutions site is **out
+  clock (designed 2026-09-16, BUILT 2026-09-17 — §16 is as built). **§17 = the first two-app
+  desk test (2026-09-18)**: the host seeded an empty room and a room `play` never reached a
+  held follower, both app-side and both fixed; the title bar count badge removed; the stage
+  figures matched to the glyph; the panel's scrollbar gutter now opens only when it really
+  scrolls. Desk test §17.4 open. The deets.solutions site is **out
   of scope** (§13); DeetsRadio in that doc means only the older website feature it borrows from.
   Apple terms read in §12: no clause names group listening, and §12.3 is decided (a guest's Pause
   never greys out).

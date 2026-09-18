@@ -754,3 +754,165 @@ command.
   shared queue, but the other members see three rows disappear at once.
 - **No `room` agent tool yet** (§9.1 has it as "later"). An agent in a room drives the room
   through the ordinary play and queue routes, because they pass through the same bridge.
+
+---
+
+## 17. The first two-app desk test (2026-09-18) — two bugs, both fixed
+
+The first run of §16.4 on one PC failed: the guest kept its own song, both Queue cards
+were empty, and nothing played. The host's log named the cause in four lines.
+
+```
+3199485ms  room:in    {"code":"3FJH71EF","host":true}
+3367833ms  room:song  {"id":"1249348482","startsIn":1499,"at":0}    ← 168 s later
+```
+
+`room:in` with no `add` after it: the room was created empty and stayed empty until a
+song was clicked by hand.
+
+### 17.1 The host never seeded the room
+
+`startRoom` read `queue.getCurrent()` **after** `await connect(...)`. `connect` resolves
+on the first `state` message, and `applyState` → `writeModel` → `queue.setRoomQueue([])`
+had already replaced this app's queue with the room's — empty, on a new room. So the seed
+read a queue it had just wiped, sent nothing, and the room sat idle for ever.
+
+Fixed by reading the host's current song and Up Next **before** the connection and sending
+the `add` after it. A `room:seed { songs }` line now records what went in, so an empty
+seed is visible in the log instead of being a missing line.
+
+### 17.2 A room `play` never reached a held follower
+
+`step()`'s same-song branch ended in `roomResumeAt(position, true)`, and `correcting`
+is what tells `roomResumeAt` not to call `play()`. So once an app was paused but still
+held the song, a room `play` seeked it to the right moment and left it paused. Nothing
+recovered it: the drift check runs off the progress tick, and a paused player has none.
+
+`correcting` now means "from the drift tick alone", where the song is playing by
+definition. Every other caller leaves it false, so a held player starts again.
+
+### 17.3 Two things this test could not answer
+
+1. **The guest half is unreadable.** The guest was the dev app, and its page reloaded
+   three times in twenty seconds (`boot:ready` at t≈0 in each flush), which drops the
+   WebSocket and the ring buffer with it.
+2. **A room started mid-song replays that song from 0:00.** The `add` reaches the worker
+   with no position, so `advance` starts it at 0. Carrying the host's position needs a
+   `startPosition` on the wire — designed nowhere yet, and open for the owner.
+
+### 17.4 Desk test for these two fixes
+
+1. Start a room from an app that is playing. The host log gets
+   `room:seed { songs: N }` with N ≥ 1, and `room:song` follows within a second or two.
+2. Join from the second app. It takes the room's song at the room's position, and plays.
+3. Press Pause in one app, then Play. **Both** apps stop and both start again.
+4. Press Pause in the guest while the host keeps playing (Stop listening), then Play.
+   The guest re-joins at the room's position.
+
+### 17.5 The title bar button was a red blob in a room (2026-09-18)
+
+The glyph is three line figures on a 24 grid, and in a room the middle one filled —
+head and shoulders both. `--room-btn-size` is `--traffic-size`, 16 px, so the grid
+scales by 2/3:
+
+| part | at 16 px |
+| --- | --- |
+| filled head disc | 5.13 px across |
+| filled bust | 8.47 × 4.23 px |
+| **clear gap between them** | **0.73 px** |
+
+Under one device pixel. Antialiasing closed it, the two filled shapes merged, and the
+button read as one red mark with no figure in it.
+
+Only the **head** fills now. The shoulders stay an open arc, which keeps the gap by
+construction — a 1 px stroke around a hollow cannot merge with the disc above it at any
+size — and keeps the interior counter that makes a 16 px glyph readable. `[data-in]`
+already turns the whole glyph `--title`, so colour carries the state and the fill is the
+second cue.
+
+The **stage** figures inside the panel are a separate drawing and are untouched. Their
+head sits 1.40 head-radii above the shoulders against the glyph's 0.84, so at 62 px the
+head reads as detached. That is a look, not a failure, and it is the owner's call.
+
+### 17.6 The count badge is gone (2026-09-18)
+
+The blob in the title bar was not the glyph. When more than one app was listening, a
+`::after` badge was drawn over the button: 14 × 14 px on a 16 px button, solid `--title`,
+border-radius 7 — a red disc covering 77% of it, leaving a 6 px strip on the left and 4 px
+on the top. The "2" inside it was 9 px type, which at that size is texture, not a digit.
+
+Removed: the rule in styles.css, the `dataset.count` write in `paintButton`, and the
+`--room-count-size` / `--room-count-fs` tokens (TOKENS.md regenerated). The owner's
+words: "I didn't realize we had a count badge. Unnecessary."
+
+Nothing replaces it. The hover hint already says it in full — "2 listening together in
+room 3FJH-71EF" — and the panel lists every member by name.
+
+### 17.7 The stage figures now match the glyph (2026-09-18)
+
+His call: make the two drawings one to one. The stage figure is `glyph()`'s middle
+figure multiplied by **5** — the largest whole scale the 64 x 80 box takes (the head
+clears the top at 5.28, the shoulders clear the sides at 5.04) — with the baseline on
+the stage floor.
+
+| | glyph (24 box) | stage (64 x 80 box) |
+| --- | --- | --- |
+| head | `cy 8, r 3.1` | `cy 23.5, r 15.5` |
+| shoulders | `r 5.6, baseline 19.3` | `r 28, baseline 80` |
+| head to shoulders | 0.8387 r | 0.8387 r |
+| shoulders to each side | 1.8065 r | 1.8065 r |
+| head to floor | 2.6452 r | 2.6452 r |
+
+Before this the stage's gap was **1.40 r**, picked by eye — a head floating over an
+unrelated hump at 62 px.
+
+Two things deliberately do not scale:
+
+- **The `Z`.** The glyph's bust is closed because it floats 4.7 units above its own box.
+  On the stage the floor closes it, which is the whole point of the open arc.
+- **The stroke.** Scaling it gives 7.3 px of line on a 30 px head. An icon's stroke
+  weight is an optical choice for 16 px, not a proportion, so the stage keeps
+  `--room-fig-stroke`.
+
+### 17.8 The scrollbar gutter opens instead of sitting there (2026-09-18)
+
+His ask: no gutter in the room menu, and if it has to scroll, animate the gutter opening.
+
+**What was there.** `.room__panel[data-scrolls]` reserved the gutter, and `data-scrolls`
+meant *in a room* — not *overflowing*. So every in-room panel carried a blank 8 px strip
+down its side whether it scrolled or not. `.room__members` reserved one unconditionally,
+so a two-member list carried a second strip inside the first.
+
+**Why it cannot simply be dropped.** `app-scroll` draws a real bar, not an overlay, so it
+takes its width the moment it appears. With nothing reserved, a member joining shoves
+every row 8 px left. That shove is what the reservation existed to prevent.
+
+**What it does now.** The gutter opens by *widening the panel*, not by taking width from
+the rows:
+
+```css
+.room__panel[data-scrolls] {
+  width: calc(var(--room-panel-w) + var(--scrollbar-w));
+  scrollbar-gutter: stable;
+}
+```
+
+Width `+ --scrollbar-w`, minus the bar, is `--room-panel-w` — **the content box is
+unchanged**. No row moves, nothing re-wraps; only the panel's own edge travels, over
+`--room-gutter-open` (`--dur-med`). The member list cannot widen a panel, so it reaches
+outward into the panel's right padding by the same amount, with the same result.
+
+That identity is load-bearing twice over. It is why no row shifts, and it is why the
+measurement is safe: **turning the gutter on cannot change what fits**, so
+`measureGutters()` cannot flip it back off and oscillate.
+
+`measureGutters()` reads `scrollHeight > clientHeight` on both boxes after a render and
+from a `ResizeObserver` on the panel, always a frame late (outside the observer's own
+delivery, so it cannot raise the loop warning) and only writing when the answer changed.
+
+Reduced motion keeps the gutter and drops the travel.
+
+Also fixed on the way: the panel had `overflow-y: auto` but no `app-scroll` class, so when
+it did scroll it showed the grey OS bar — the exact miss CLAUDE.md's checklist item 6a
+warns about.
+

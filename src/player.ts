@@ -1875,8 +1875,9 @@ export async function roomHold(): Promise<void> {
 }
 
 /**
- * Play at the room's position. `correcting` = a drift fix on a song already playing:
- * seek only, never a re-feed.
+ * Play at the room's position. `correcting` = a drift fix from the progress tick, where
+ * the song is playing by definition: seek only, never start. Every other caller leaves it
+ * false, so a held player starts again when the room says the song is playing.
  */
 export async function roomResumeAt(positionMs: number, correcting = false): Promise<void> {
   const m = music;
