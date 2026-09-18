@@ -86,7 +86,7 @@ fn err<E: std::fmt::Display>(e: E) -> String {
 
 #[tauri::command]
 pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut out: Vec<Playlist> = Vec::new();
 
     // Folder membership, stamped onto both sources below (never baked into the
@@ -252,7 +252,7 @@ pub fn cover_response<R: tauri::Runtime>(app: &tauri::AppHandle<R>, path: &str) 
     let Ok(id) = path.trim_start_matches('/').parse::<i64>() else { return not_found() };
     let Some(db) = app.try_state::<Db>() else { return not_found() };
     let data: Option<String> = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.query_row("SELECT cover FROM local_playlists WHERE id = ?1", [id], |r| r.get(0))
             .ok()
             .flatten()
@@ -282,7 +282,7 @@ pub fn playlist_set_cover(id: i64, cover: Option<String>, db: State<'_, Db>) -> 
             return Err("playlist_set_cover: expected an image data URL under 2 MB".into());
         }
     }
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let now = now_ms();
     conn.execute(
         "UPDATE local_playlists SET cover = ?2, cover_at = ?3, updated_at = ?3 WHERE id = ?1",
@@ -465,7 +465,7 @@ pub async fn playlist_export_plan(
     db: State<'_, Db>,
 ) -> Result<ExportPlan, String> {
     let (local, skipped_titles, apple_id) = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let (rows, skipped) = export_rows(&conn, id)?;
         (rows, skipped, live_copy(&conn, id)?)
     };
@@ -510,7 +510,7 @@ pub async fn playlist_get_apple_songs(
     db: State<'_, Db>,
 ) -> Result<GetSongsResult, String> {
     let (local, apple_id) = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let (rows, _) = export_rows(&conn, id)?;
         (rows, live_copy(&conn, id)?)
     };
@@ -527,7 +527,7 @@ pub async fn playlist_get_apple_songs(
     let (add, _, _) = export_diff(&apple_rows, &local);
     let tracks: Vec<Track> = add.iter().map(|&i| apple_tracks[index[i]].clone()).collect();
     if !tracks.is_empty() {
-        let mut conn = db.0.lock().unwrap();
+        let mut conn = db.lock();
         append_local(&mut conn, id, &tracks)?;
     }
     crate::log::info(&format!("playlists: got {} song(s) from {apple_id} into local:{id}", tracks.len()));
@@ -556,7 +556,7 @@ pub async fn playlist_import(
     db: State<'_, Db>,
 ) -> Result<ImportResult, String> {
     let head: Playlist = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let json: String = conn
             .query_row("SELECT json FROM apple_playlists WHERE playlist_id = ?1", [apple_id.as_str()], |r| r.get(0))
             .map_err(|_| format!("playlist_import: {apple_id} is not in the Apple mirror"))?;
@@ -565,7 +565,7 @@ pub async fn playlist_import(
     let tracks = apple_playlist_tracks(apple_id.clone(), apple_state, db.clone()).await?;
 
     let linked = head.can_edit;
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let now = now_ms();
     conn.execute(
         "INSERT INTO local_playlists(name, description, created_at, updated_at, exported_apple_id) VALUES(?1, ?2, ?3, ?3, ?4)",
@@ -606,7 +606,7 @@ pub async fn apple_playlist_add(
     db: State<'_, Db>,
 ) -> Result<AppleAddResult, String> {
     let can_edit = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.query_row("SELECT json FROM apple_playlists WHERE playlist_id = ?1", [apple_id.as_str()], |r| r.get::<_, String>(0))
             .ok()
             .and_then(|j| serde_json::from_str::<Playlist>(&j).ok())
@@ -634,7 +634,7 @@ pub async fn apple_playlist_add(
         return Err(format!("apple_playlist_add: append to {apple_id} failed"));
     }
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.execute("DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1", [apple_id.as_str()])
             .map_err(err)?;
         let row: Option<String> = conn
@@ -694,7 +694,7 @@ pub async fn playlist_export_apple(
     db: State<'_, Db>,
 ) -> Result<ExportResult, String> {
     let (name, description, exported, rows, skipped) = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let (name, description, exported) = export_head(&conn, id)?;
         let (rows, skipped) = export_rows(&conn, id)?;
         (name, description, exported, rows, skipped)
@@ -729,7 +729,7 @@ pub async fn playlist_export_apple(
                 return Err("export: created on Apple Music, but its reply had no playlist id".into());
             };
             {
-                let conn = db.0.lock().unwrap();
+                let conn = db.lock();
                 conn.execute(
                     // An exported playlist is kept: its Apple copy cannot be deleted (PLAYLIST-WEB.md §10.3).
                     "UPDATE local_playlists SET exported_apple_id = ?2, exported_at = ?3, expire_days = NULL WHERE id = ?1",
@@ -744,7 +744,7 @@ pub async fn playlist_export_apple(
             // Apple Music ▸ offered Export again). Seed the mirror from the create reply now:
             // the copy is live at once, with zero extra Apple calls.
             {
-                let conn = db.0.lock().unwrap();
+                let conn = db.lock();
                 seed_created_copy(&conn, &apple_id, &body["data"][0], &name, added)?;
             }
             crate::log::info(&format!(
@@ -761,7 +761,7 @@ pub async fn playlist_export_apple(
                 return Err(format!("export: append to {apple_id} failed"));
             }
             {
-                let conn = db.0.lock().unwrap();
+                let conn = db.lock();
                 conn.execute(
                     "UPDATE local_playlists SET exported_at = ?2 WHERE id = ?1",
                     rusqlite::params![id, now_ms()],
@@ -815,7 +815,7 @@ pub async fn apple_playlists_sync(
         }
     }
 
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let tx = conn.transaction().map_err(err)?;
 
     let old: std::collections::HashMap<String, String> = {
@@ -924,7 +924,7 @@ pub async fn apple_playlist_counts(
 
     // Which mirror rows still lack a count? Lock only for the read.
     let missing: Vec<String> = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let mut stmt = conn.prepare("SELECT json FROM apple_playlists").map_err(err)?;
         let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
         let mut ids = Vec::new();
@@ -971,7 +971,7 @@ pub async fn apple_playlist_counts(
     drop(stream);
 
     // Persist each learned count back onto its playlist json, one transaction.
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let tx = conn.transaction().map_err(err)?;
     let mut filled = 0u32;
     for (id, total) in &learned {
@@ -1011,7 +1011,7 @@ pub async fn apple_playlist_tracks(
     db: State<'_, Db>,
 ) -> Result<Vec<Track>, String> {
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let mut stmt = conn
             .prepare("SELECT json FROM apple_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
             .map_err(err)?;
@@ -1047,7 +1047,7 @@ pub async fn apple_playlist_tracks(
         }
     }
 
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let tx = conn.transaction().map_err(err)?;
     tx.execute(
         "DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1",
@@ -1101,7 +1101,7 @@ pub fn playlist_create(
     expire_days: Option<u32>,
     db: State<'_, Db>,
 ) -> Result<i64, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let now = now_ms();
     conn.execute(
         "INSERT INTO local_playlists(name, description, created_at, updated_at, role, expire_days) VALUES(?1, ?2, ?3, ?3, ?4, ?5)",
@@ -1114,7 +1114,7 @@ pub fn playlist_create(
 /// Keep Playlist (PLAYLIST-WEB.md §10.5): a temporary playlist becomes an ordinary one.
 #[tauri::command]
 pub fn playlist_keep(id: i64, db: State<'_, Db>) -> Result<(), String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute("UPDATE local_playlists SET expire_days = NULL WHERE id = ?1", [id]).map_err(err)?;
     crate::log::info(&format!("playlists: kept temporary playlist id={id}"));
     Ok(())
@@ -1139,7 +1139,7 @@ pub struct ExpiredPlaylist {
 /// whole for Undo. Local SQL only.
 #[tauri::command]
 pub fn playlists_expire(playing: Option<String>, db: State<'_, Db>) -> Result<Vec<ExpiredPlaylist>, String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let now = now_ms();
     let due: Vec<(i64, String, Option<String>, Option<String>, u32)> = {
         let mut st = conn
@@ -1197,7 +1197,7 @@ pub fn playlists_expire(playing: Option<String>, db: State<'_, Db>) -> Result<Ve
 /// clock starts now, so the next check does not delete it at once. Returns the new id.
 #[tauri::command]
 pub fn playlist_restore(playlist: ExpiredPlaylist, db: State<'_, Db>) -> Result<i64, String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let now = now_ms();
     let tx = conn.transaction().map_err(err)?;
     let has_cover = playlist.cover.as_deref().is_some_and(|c| !c.is_empty());
@@ -1231,7 +1231,7 @@ pub fn playlist_restore(playlist: ExpiredPlaylist, db: State<'_, Db>) -> Result<
 
 #[tauri::command]
 pub fn playlist_rename(id: i64, name: String, db: State<'_, Db>) -> Result<(), String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute(
         "UPDATE local_playlists SET name = ?2, updated_at = ?3 WHERE id = ?1",
         rusqlite::params![id, name, now_ms()],
@@ -1242,7 +1242,7 @@ pub fn playlist_rename(id: i64, name: String, db: State<'_, Db>) -> Result<(), S
 
 #[tauri::command]
 pub fn playlist_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let tx = conn.transaction().map_err(err)?;
     tx.execute("DELETE FROM local_playlist_tracks WHERE playlist_id = ?1", [id])
         .map_err(err)?;
@@ -1259,7 +1259,7 @@ pub fn playlist_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
 /// Append tracks (denormalised snapshots) to the end, preserving order.
 #[tauri::command]
 pub fn playlist_add_tracks(id: i64, tracks: Vec<Track>, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     append_local(&mut conn, id, &tracks)
 }
 
@@ -1310,7 +1310,7 @@ fn write_local_tracks(tx: &rusqlite::Transaction, id: i64, jsons: &[String]) -> 
 
 #[tauri::command]
 pub fn playlist_remove_track(id: i64, position: i64, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let mut jsons = read_local_tracks(&conn, id)?;
     let pos = position as usize;
     if pos >= jsons.len() {
@@ -1326,7 +1326,7 @@ pub fn playlist_remove_track(id: i64, position: i64, db: State<'_, Db>) -> Resul
 
 #[tauri::command]
 pub fn playlist_reorder(id: i64, from: i64, to: i64, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let mut jsons = read_local_tracks(&conn, id)?;
     let (f, t) = (from as usize, to as usize);
     if f >= jsons.len() || t >= jsons.len() {
@@ -1345,7 +1345,7 @@ pub fn playlist_reorder(id: i64, from: i64, to: i64, db: State<'_, Db>) -> Resul
 /// an open local playlist (DRAG-DROP.md §3). `at` past the end appends. One transaction.
 #[tauri::command]
 pub fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let mut jsons = read_local_tracks(&conn, id)?;
     let at = (at.max(0) as usize).min(jsons.len());
     let new = tracks
@@ -1367,7 +1367,7 @@ pub fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, db: State<'_
 #[tauri::command]
 pub fn playlists_song_index(db: State<'_, Db>) -> Result<crate::model::PlaylistSongIndex, String> {
     use std::collections::BTreeMap;
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut groups: BTreeMap<String, Vec<Track>> = BTreeMap::new();
     let mut read = |sql: &str, key: &dyn Fn(String) -> String| -> Result<(), String> {
         let mut stmt = conn.prepare(sql).map_err(err)?;
@@ -1414,7 +1414,7 @@ pub fn playlists_song_index(db: State<'_, Db>) -> Result<crate::model::PlaylistS
 
 #[tauri::command]
 pub fn local_playlist_tracks(id: i64, db: State<'_, Db>) -> Result<Vec<Track>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let jsons = read_local_tracks(&conn, id)?;
     let mut out = Vec::with_capacity(jsons.len());
     for j in jsons {
@@ -1434,7 +1434,7 @@ pub struct PlaylistFolder {
 
 #[tauri::command]
 pub fn playlist_folders_list(db: State<'_, Db>) -> Result<Vec<PlaylistFolder>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT id, name FROM playlist_folders")
         .map_err(err)?;
@@ -1451,7 +1451,7 @@ pub fn playlist_folders_list(db: State<'_, Db>) -> Result<Vec<PlaylistFolder>, S
 
 #[tauri::command]
 pub fn playlist_folder_create(name: String, db: State<'_, Db>) -> Result<i64, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute(
         "INSERT INTO playlist_folders(name, created_at) VALUES(?1, ?2)",
         rusqlite::params![name, now_ms()],
@@ -1462,7 +1462,7 @@ pub fn playlist_folder_create(name: String, db: State<'_, Db>) -> Result<i64, St
 
 #[tauri::command]
 pub fn playlist_folder_rename(id: i64, name: String, db: State<'_, Db>) -> Result<(), String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute(
         "UPDATE playlist_folders SET name = ?2 WHERE id = ?1",
         rusqlite::params![id, name],
@@ -1474,7 +1474,7 @@ pub fn playlist_folder_rename(id: i64, name: String, db: State<'_, Db>) -> Resul
 /// Delete a folder; its members become unfiled (the playlists themselves are untouched).
 #[tauri::command]
 pub fn playlist_folder_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.0.lock().unwrap();
+    let mut conn = db.lock();
     let tx = conn.transaction().map_err(err)?;
     tx.execute("DELETE FROM playlist_folder_members WHERE folder_id = ?1", [id])
         .map_err(err)?;
@@ -1491,7 +1491,7 @@ pub fn playlist_folder_assign(
     folder_id: Option<i64>,
     db: State<'_, Db>,
 ) -> Result<(), String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     match folder_id {
         Some(fid) => conn
             .execute(

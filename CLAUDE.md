@@ -47,6 +47,13 @@ front-end, Rust back-end).
 - `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
   measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (built 2026-09-17, shipped in 0.9.0). §10: temporary web playlists, Keep · Temp | N days under Make playlist (built 2026-09-17, shipped in 0.9.0). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
+- `docs/CREDITS.md` — writer credits: Apple's `composerName` (what it really returns, measured),
+  the collection that rides every song read at zero extra calls (`song_credits`, `credits_stats`),
+  and the **song pane** — right-click Song Credits, the hint's third line, clickable writers
+  (§7, built 2026-09-17). §5 (the producer web) is designed, not built.
+- `docs/DB-HEALTH.md` — is the database still writable: the poison-proof `Db::lock`, the
+  10-minute canary, the failure counters and `db_health`, and why there is no write queue
+  (built 2026-09-17).
 - `docs/ideas/DeetsOTD.md` — Song of the Day: picks marked in the app, posts to Discord (a
   webhook), Bluesky (OAuth) and Mastodon, a Home shelf and Rewind › Picks, a one-time import
   of the owner's journal (no feed reader); the DeetsOTD repo stays untouched.
@@ -57,9 +64,15 @@ front-end, Rust back-end).
 - `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the first-run walk
   led by the Deets and Happy sprites (designed, not built).
-- `docs/ROOMS.md` — listening rooms: a title bar item, an 8-character code, a new DeetsRooms
-  worker whose Durable Object keeps the room clock, guest controls, follower mode; then
-  DeetsRadio on deets.solutions moves onto that worker (designed 2026-09-16, not built).
+- `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
+  guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
+  (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
+  **wrangler 4**, or the rate limit is silently dropped), and its Durable Object keeps the room
+  clock (designed 2026-09-16, BUILT 2026-09-17 — §16 is as built; not deployed, desk test §16.4
+  open). The deets.solutions site is **out
+  of scope** (§13); DeetsRadio in that doc means only the older website feature it borrows from.
+  Apple terms read in §12: no clause names group listening, and §12.3 is decided (a guest's Pause
+  never greys out).
 - `docs/MCP-INSTALL.md` — connect AI apps: a shared `mcp_install` crate behind `deetsmusic mcp
   install` and a Settings panel; client detection, config table, the Claude Desktop MSIX path trap
   (designed 2026-09-16, forks open, not built).
@@ -132,10 +145,40 @@ front-end, Rust back-end).
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
   real forks (he responds well to multiple-choice), confirm, then build.
-- **Small forks: decide alone by `docs/VALUES.md` (since 2026-09-17).** Ask only on a stop
-  rule (breaking or skirting terms, ship/deploy, loss of user data), or when values conflict.
-  Flag every alone-decision for the desk test (VALUES.md §3). When you do bring a fork, state
-  your predicted pick first and log the result in VALUES.md §6.
+- **Predict and check — decide-alone is SUSPENDED (2026-09-17).** `docs/VALUES.md` §3 is
+  paused. It stays a reference for taste (§1, §2, §4, §5 and `docs/TASTE.md` are all still in
+  force); it does not give you the decision. Reason: the §6 log shows the predictions match the
+  owner's picks under half the time, and the misses lean one way — too cautious and too small.
+  Until the rate is proven, every fork comes to him.
+  1. Build your predicted pick, so the work does not wait.
+  2. Write the fork in VALUES.md §6 BEFORE you build: the fork, your pick, the value behind it.
+     Small forks too — those are the ones with no data.
+  3. At hand-off, list those rows first, as a short question set ("I picked X. Would you have
+     picked X?"), one line each, with the desk-test step.
+  4. Fill in his answer and the lesson when he replies. A value that keeps missing gets
+     rewritten from his picks.
+  To lift the pause: §3 comes back one value at a time, when that value's predictions match
+  over the next 20 logged forks (80% or better). The owner decides when.
+- **Ask BEFORE the build when the undo is costly (2026-09-17).** The gate is the cost of
+  reversal, not the size of the fork. A wrong pick found at hand-off must cost a small redo,
+  never a full one. Bring the fork first when the change is any of these:
+  1. A stored shape: a table, a column, the meaning of a settings key, a file on disk. Data
+     already written is the expensive kind of wrong.
+  2. A new primitive or token, or a change to one that more than one caller uses.
+  3. The architecture of a feature: who owns the data, local-first or mirror, where the loop runs.
+  4. Anything he cannot see in the app until more than two files are done.
+  Everything else — a default, a wording, a placement, a motion value, one file's behavior — is
+  cheap to undo: build it, log it in VALUES.md §6, ask at hand-off.
+- **Show the shape before the depth (2026-09-17).** Hand over the first thing he can press in
+  the app, then build the rest. He sees the shape when a redo costs 200 lines, not 1,600.
+  **This is NOT a cut-down feature.** §4.7 and §4.7a still hold: the full, polished version
+  still ships. Only the checkpoint moves earlier. Never read "slower" as "smaller" — that is
+  the exact miss the §6 log already records.
+- **One load-bearing feature in flight (2026-09-17).** Hand it over, he desk-tests it, then the
+  next one starts. Two small features at once is fine. Two that both touch the schema or a
+  shared primitive is not. Clear the open desk tests before new work: on 2026-09-17 five
+  untested features shared one tree (1,603 uncommitted lines), so a wrong call in one hid under
+  the others. That stack, not a single wrong fork, is what makes a redo painful.
 - **Before you build a new panel, row, button or card, walk this list** (added 2026-09-16
   after the sleep panel shipped without its row motion). Read the primitive's own file, not
   only a call site: one call site never uses every part of a primitive.

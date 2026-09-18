@@ -210,6 +210,28 @@ const SPECS: Spec[] = [
     get: () => String(setting("soundReviewDays")),
     set: (v) => setSetting("soundReviewDays", Number(v)),
   }),
+  // ── Rooms (ROOMS.md §8): the guest controls a room YOU host starts with. The room you
+  // are in is the panel's (a live change is a room command, not a setting), and the name
+  // and the worker address are text, which this route has no kind for (AGENT.md §6). ──
+  ...(["playPause", "skip", "seek", "add", "changeQueue"] as const).map((which): Spec => ({
+    key: `roomGuests.${which}`,
+    label: {
+      playPause: "Guests may start and stop",
+      skip: "Guests may skip",
+      seek: "Guests may seek",
+      add: "Guests may add songs",
+      changeQueue: "Guests may change Up Next",
+    }[which],
+    section: "Rooms",
+    kind: "choice",
+    options: [{ value: "everyone", label: "Everyone" }, { value: "host", label: "Host only" }],
+    get: () => String((setting("roomGuestControls") as Record<string, string>)[which] ?? "everyone"),
+    set: (v) => setSetting("roomGuestControls", { ...setting("roomGuestControls"), [which]: v }),
+    note: (v) =>
+      which === "playPause" && v === "host"
+        ? "A guest's Pause still stops their own app; it just does not stop the room (ROOMS.md §12.3)."
+        : undefined,
+  })),
   // ── Sleep (NEXT-VERSION §17): the schedule and the wind-down; a running timer is the panel's ──
   storeChoice("Sleep", "sleepSchedule", "Sleep every day", [{ value: "off", label: "Off" }, { value: "sun", label: "Sunset" }, { value: "clock", label: "At a time" }], {
     note: (v) => (v === "off" ? undefined : "It pauses only if music is playing at that time."),

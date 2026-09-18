@@ -137,6 +137,20 @@ export interface Settings {
   /** When the time runs out in the middle of a song, let the song play to its end first
    *  (the wind-down then fills the song's last minutes). Off: the mark is the silence. */
   sleepPlayOut: boolean;
+  // ── listening rooms (ROOMS.md; room.ts, room-panel.ts) ──
+  /** The name the other members see. Empty: the app joins as "Listener" ("Host" for a
+   *  room you start) until you type one in the Room panel. */
+  roomName: string;
+  /** Which controls guests may use in a room you host (ROOMS.md §8). The host's last
+   *  choice is the default for the next room. Pause is NOT here: it never greys out
+   *  (§12.3) — under "host" it stops the guest's own app instead. */
+  roomGuestControls: Record<string, string>;
+  /** The DeetsMusicRooms worker (its own repo). Empty = the built-in address
+   *  (rooms.deets.solutions). A DEV-ONLY route (his call, 2026-09-17): there is no
+   *  Settings card row, so it is set from the DevTools console and read at the next
+   *  launch — point it at a `npx wrangler dev --port <n>` worker to try a room with
+   *  no deploy (ROOMS.md §16.3). */
+  roomsUrl: string;
   // ── sound (SOUND.md; sound.ts, sound-panel.ts) — every effect off by default ──
   /** The equalizer is on. */
   soundEq: boolean;
@@ -332,6 +346,9 @@ export const DEFAULTS: Settings = {
   sleepAt: "22:00",
   sleepWind: 5, // user's call 2026-09-15: the fade fills the last minutes before the mark
   sleepPlayOut: false, // the mark is the silence unless you ask for the song's end
+  roomName: "", // asked for in the Room panel the first time, then remembered
+  roomGuestControls: { playPause: "everyone", skip: "everyone", seek: "everyone", add: "everyone", changeQueue: "everyone" },
+  roomsUrl: "",
   soundEq: false, // user's call 2026-09-16: every effect ships off (Apple DPLA §3.3.6.D, SOUND.md §0)
   soundEqPreset: "flat",
   soundEqCustom: { name: "Custom", bands: [], design: "matched" },

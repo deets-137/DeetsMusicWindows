@@ -56,6 +56,18 @@
 .hint__sub[hidden] {
   display: none;
 }
+/* The writers (CREDITS.md §7). A line of space separates them from the song and the
+   artist: they answer a different question, and the gap is what says so. */
+.hint__credit {
+  display: block;
+  margin-top: var(--hint-credit-gap);
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  overflow-wrap: anywhere;
+}
+.hint__credit[hidden] {
+  display: none;
+}
 /* A song row's box carries two long lines; a control's hint is one short sentence. */
 .hint--row {
   max-width: var(--hint-row-max-w);

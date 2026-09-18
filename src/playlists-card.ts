@@ -325,6 +325,7 @@ export const playlistsCard: CardDef = {
         render: (t, density, idx) =>
           musicCell(density, idx, t.artwork, t.title, t.artistName, {
             badge: explicitBadge(t) + (density === "lines" ? addSquareHTML(t, "add-square--row") : ""),
+            cid: t.catalogId ?? "",
           }),
         // Click a song → play the playlist from here, in the current sort order.
         activate: (_t, idx, items) =>
@@ -606,6 +607,51 @@ export const playlistsCard: CardDef = {
       });
     };
 
+    // Bulk delete (PLAYLISTS.md §10.3): shift-click a run of playlists, then one question
+    // for the whole set. Apple mirrors have no delete path, so a pick that holds some is
+    // counted, named and left alone. The deletes run one after the other — each one emits
+    // on the change bus, which reloads the list.
+    const confirmDeleteMany = (ps: Playlist[], skipped: number) => {
+      // The song total is what we already hold: the cached tracks, else the row's own
+      // count. Nothing is fetched to ask the question.
+      const songs = ps.reduce((n, p) => n + (trackCache.get(pid(p))?.length ?? p.trackCount ?? 0), 0);
+      const kept = ps.filter(onApple).length;
+      const del = () => {
+        let failed = 0;
+        void ps
+          .reduce(
+            (chain, p) =>
+              chain.then(() =>
+                playlistDelete(p).catch((e) => {
+                  failed++;
+                  console.error("[playlists] delete picked", e);
+                }),
+              ),
+            Promise.resolve(),
+          )
+          .then(() => {
+            card.dropPicks(); // the rows are gone — the count row goes with them
+            if (failed) toast({ kind: "warn", text: `Couldn't delete ${picksText(failed, "playlist")}.` });
+            else toast({ kind: "success", text: `Deleted ${picksText(ps.length, "playlist")}.` });
+          });
+      };
+      toast({
+        kind: "error",
+        sticky: true,
+        text:
+          `Delete ${picksText(ps.length, "playlist")}` +
+          (songs ? ` and ${ps.length === 1 ? "its" : "their"} ${songs} song${songs === 1 ? "" : "s"}?` : "?") +
+          " This can't be undone." +
+          (kept
+            ? ` ${kept === 1 ? "One copy on Apple Music stays" : `${kept} copies on Apple Music stay`} and will show in your list.`
+            : "") +
+          (skipped
+            ? ` ${picksText(skipped, "playlist")} you picked ${skipped === 1 ? "is" : "are"} on Apple Music, and ${skipped === 1 ? "stays" : "stay"}.`
+            : ""),
+        actions: [{ label: "Delete All", run: del }, { label: "Cancel" }],
+      });
+    };
+
     const listMenu = (p: Playlist): MenuItem[] => {
       const ctxTag = `playlist:${pid(p)}`;
       const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
@@ -752,7 +798,21 @@ export const playlistsCard: CardDef = {
             noun: "playlist",
             can: (x) => x.kind === "playlist",
             id: (x) => (x.kind === "playlist" ? pid(x.p) : ""),
-            menu: (xs) => playlistShelfMenu(() => pickedTracks(xs), "playlists:picked", false),
+            menu: (xs) => {
+              const base = playlistShelfMenu(() => pickedTracks(xs), "playlists:picked", false);
+              // Delete the local ones in the pick, destructive-last (the single-row menu's
+              // order). Mirrors cannot be deleted, so a pick of mirrors alone has no item.
+              const ps = xs.flatMap((x) => (x.kind === "playlist" ? [x.p] : []));
+              const locals = ps.filter((p) => p.source === "local");
+              if (!locals.length) return base;
+              return [
+                ...base,
+                {
+                  label: `Delete ${picksText(locals.length, "playlist")}`,
+                  run: () => confirmDeleteMany(locals, ps.length - locals.length),
+                },
+              ];
+            },
             drag: (xs) => ({
               source: "playlists",
               kind: "playlist",

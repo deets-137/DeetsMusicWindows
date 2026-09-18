@@ -27,7 +27,7 @@ import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { startStationItem } from "./start-station";
-import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { goToArtistItem, goToAlbumItem, songCreditsItem } from "./go-to";
 import { copySongLinkItem } from "./copy-link";
 import { addToPlaylistItem } from "./playlists";
 import { rowPick, picksText } from "./row-pick";
@@ -158,7 +158,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         const artist = rt?.artistName ?? "";
         const sub = day ? (artist ? `${artist} · ${day}` : day) : artist;
         const meta = `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>`;
-        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), false, meta, addSquareHTML(rt));
+        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), false, meta, addSquareHTML(rt), rt?.catalogId ?? "");
       })
       .join("");
     const more =
@@ -199,6 +199,8 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (goA) items.push(goA);
     const goAl = goToAlbumItem(e.catalogId, t?.albumName);
     if (goAl) items.push(goAl);
+    const credits = songCreditsItem(t);
+    if (credits) items.push(credits);
     const link = copySongLinkItem(e.catalogId);
     if (link) items.push(link);
     const start = startStationItem("songs", e.catalogId);

@@ -86,7 +86,7 @@ pub async fn favorite_set(
     if !(200..300).contains(&status) {
         return Err(format!("favorite HTTP {status}: {body}"));
     }
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     library::materialize_many(&conn, std::slice::from_ref(&track))?;
     set_local(&conn, &id, loved)?;
     crate::log::info(&format!("favorites: {} {id}", if loved { "loved" } else { "unloved" }));
@@ -96,7 +96,7 @@ pub async fn favorite_set(
 /// Every loved id in the mirror — the front-end's in-memory set at boot.
 #[tauri::command]
 pub fn favorites_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT track_id FROM favorites WHERE loved = 1")
         .map_err(err)?;
@@ -108,7 +108,7 @@ pub fn favorites_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
 /// Apple about the rest.
 #[tauri::command]
 pub fn favorites_known(db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn.prepare("SELECT track_id FROM favorites").map_err(err)?;
     let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
     rows.collect::<Result<Vec<_>, _>>().map_err(err)
@@ -168,7 +168,7 @@ pub async fn favorites_reconcile(
             }
         }
     }
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     for id in &out.loved {
         set_local(&conn, id, true)?;
     }

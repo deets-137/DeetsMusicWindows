@@ -128,9 +128,23 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     }
     e.preventDefault();
   };
+  // A press, not a Tab (2026-09-17). A row carries no tabindex until it takes the focus, so
+  // Chromium sends the focus of ANY press inside the list — a right-click, a Ctrl+click — to
+  // the list's own box, which is the tab stop. Moving to the first row there scrolled a
+  // scrolled-down list back to the top on every right-click. The flag holds for the press's
+  // own task only; the focus lands in it.
+  let byPointer = false;
+  const onDown = (): void => {
+    byPointer = true;
+    setTimeout(() => {
+      byPointer = false;
+    }, 0);
+  };
+
   // Tab into the list: the focus goes to the first row, so the ring shows a row, not the box.
   // `focusin` bubbles, so a tab stop inside the container (a rebuilt rows box) is seen too.
   const onFocus = (e: FocusEvent): void => {
+    if (byPointer) return; // a press puts the focus where the pointer is, not on row one
     if (!isStop(e.target)) return;
     const from = e.relatedTarget as Node | null;
     const stop = e.target as HTMLElement;
@@ -140,9 +154,11 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   };
   container.addEventListener("keydown", onKey);
   container.addEventListener("focusin", onFocus);
+  container.addEventListener("pointerdown", onDown, true);
   return () => {
     container.removeEventListener("keydown", onKey);
     container.removeEventListener("focusin", onFocus);
+    container.removeEventListener("pointerdown", onDown, true);
     delete container.dataset.listKeys;
   };
 }

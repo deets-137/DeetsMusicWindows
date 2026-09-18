@@ -117,7 +117,7 @@ pub(crate) async fn storefront(
     mut_tok: &str,
     db: &State<'_, Db>,
 ) -> Result<String, String> {
-    if let Some(sf) = cached_storefront(&db.0.lock().unwrap()) {
+    if let Some(sf) = cached_storefront(&db.lock()) {
         return Ok(sf);
     }
     let (status, body) = api_get(
@@ -134,8 +134,7 @@ pub(crate) async fn storefront(
         .as_str()
         .ok_or("me/storefront: no id in response")?
         .to_string();
-    db.0.lock()
-        .unwrap()
+    db.lock()
         .execute(
             "INSERT INTO meta(key, value) VALUES('storefront', ?1)
              ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -153,6 +152,10 @@ struct FetchedSong {
     preview_url: Option<String>,
     cover_url: Option<String>,
     palette: AlbumPalette,
+    /// For the credit collection (CREDITS.md §3) — not cached in `track_catalog`.
+    title: String,
+    artist_name: String,
+    composer: Option<String>,
 }
 
 async fn fetch_catalog_songs(
@@ -187,6 +190,9 @@ async fn fetch_catalog_songs(
                             c1: css_hex(&art["textColor1"]),
                             c2: css_hex(&art["textColor2"]),
                         },
+                        title: a["name"].as_str().unwrap_or_default().to_string(),
+                        artist_name: a["artistName"].as_str().unwrap_or_default().to_string(),
+                        composer: a["composerName"].as_str().map(String::from),
                     })
                 })
                 .collect()
@@ -199,6 +205,15 @@ async fn fetch_catalog_songs(
 /// cover URL when it differs from the catalog's (the double-write, see module doc).
 fn write_song(conn: &Connection, s: &FetchedSong, extra_cover_key: Option<&str>) -> Result<(), String> {
     let now = now_ms();
+    crate::credits::note_rows(
+        conn,
+        std::iter::once(crate::credits::CreditRow {
+            catalog_id: &s.catalog_id,
+            composer: s.composer.as_deref(),
+            title: &s.title,
+            artist_name: &s.artist_name,
+        }),
+    );
     conn.execute(
         "INSERT INTO track_catalog(catalog_id, isrc, preview_url, cover_url, fetched_at)
          VALUES(?1, ?2, ?3, ?4, ?5)
@@ -259,6 +274,10 @@ pub(crate) fn cache_tracks(conn: &Connection, tracks: &[crate::model::Track]) ->
                     .and_then(|v| v.get(1))
                     .map(|c| format!("#{}", c.trim_start_matches('#'))),
             },
+            // The writer credits ride the same payload, at no extra call (CREDITS.md §3).
+            title: t.title.clone(),
+            artist_name: t.artist_name.clone(),
+            composer: t.composer.clone(),
         };
         write_song(conn, &song, None)?;
     }
@@ -289,7 +308,7 @@ pub async fn catalog_enrich(
 
     // Cache check (scoped — never hold the lock across an await).
     let misses: Vec<String> = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let mut stmt = conn
             .prepare("SELECT 1 FROM track_catalog WHERE catalog_id = ?1")
             .map_err(|e| e.to_string())?;
@@ -321,7 +340,7 @@ pub async fn catalog_enrich(
             e
         })?;
         fetched += songs.len();
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         for s in &songs {
             write_song(&conn, s, None)?;
         }
@@ -332,6 +351,66 @@ pub async fn catalog_enrich(
         fetched,
         missing: misses.len() - fetched,
     })
+}
+
+/// Read these songs from Apple **now**, for their writer credits (CREDITS.md §8).
+///
+/// `catalog_enrich` above is cache-first on `track_catalog`, so a song enriched before the
+/// credit collection existed would never be fetched again and its credits would never
+/// arrive. This one always asks. It is the song pane's "we have not collected this yet"
+/// path, and the user pressed something to get here — so one call for one song is honest.
+///
+/// Returns how many songs came back with a `composerName`.
+#[tauri::command]
+pub async fn credits_fetch(
+    catalog_ids: Vec<String>,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<usize, String> {
+    let ids: Vec<String> = catalog_ids.into_iter().filter(|i| !i.is_empty()).collect();
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let dev = apple::developer_token()?;
+    let user = apple_state
+        .user_token
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let sf = storefront(&client, &dev, &user, &db).await?;
+
+    let mut with_credits = 0usize;
+    for chunk in ids.chunks(BATCH) {
+        let songs = fetch_catalog_songs(&client, &dev, &user, &sf, chunk).await?;
+        let conn = db.lock();
+        for s in &songs {
+            if s.composer.is_some() {
+                with_credits += 1;
+            }
+            // Writes `song_credits` too, including the NULL row that records "Apple has
+            // none for this song" — which is what stops us asking again forever.
+            write_song(&conn, s, None)?;
+        }
+        // A song Apple did not return at all still gets a row, so the pane can say we
+        // asked. Without it the song looks un-read for ever.
+        for id in chunk {
+            if !songs.iter().any(|s| &s.catalog_id == id) {
+                crate::credits::note_rows(
+                    &conn,
+                    std::iter::once(crate::credits::CreditRow {
+                        catalog_id: id,
+                        composer: None,
+                        title: "",
+                        artist_name: "",
+                    }),
+                );
+            }
+        }
+    }
+    crate::log::info(&format!("credits: read {} song(s), {with_credits} with credits", ids.len()));
+    Ok(with_credits)
 }
 
 /// The NP card's palette lookup: cache-first by cover URL; on a miss with a catalog
@@ -346,7 +425,7 @@ pub async fn album_palette(
 ) -> Result<Option<AlbumPalette>, String> {
     // Cache hit?
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let hit = conn
             .query_row(
                 "SELECT bg, c1, c2 FROM album_palette WHERE cover_url = ?1",
@@ -380,7 +459,7 @@ pub async fn album_palette(
     let sf = storefront(&client, &dev, &user, &db).await?;
 
     let songs = fetch_catalog_songs(&client, &dev, &user, &sf, &[cid]).await?;
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     match songs.first() {
         Some(s) => {
             write_song(&conn, s, Some(&cover_url))?;

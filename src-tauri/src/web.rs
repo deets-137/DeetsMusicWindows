@@ -330,7 +330,7 @@ impl Build<'_> {
     /// Names already known, at zero calls: the Library artist view's ids (`artist_catalog`)
     /// and earlier web lookups (a miss older than NAME_MISS_TTL_MS is forgotten).
     fn load_names(db: &Db) -> HashMap<String, String> {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let mut names = HashMap::new();
         if let Ok(mut st) = conn.prepare("SELECT name, catalog_id FROM artist_catalog WHERE catalog_id <> ''") {
             if let Ok(rows) = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))) {
@@ -379,7 +379,7 @@ impl Build<'_> {
     }
 
     fn album_row(&self, key: &str) -> Option<(AlbumRead, i64)> {
-        let conn = self.db.0.lock().unwrap();
+        let conn = self.db.lock();
         conn.query_row("SELECT json, fetched_at FROM web_albums WHERE key = ?1", [key], |r| {
             Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
         })
@@ -389,7 +389,7 @@ impl Build<'_> {
 
     fn save_album(&self, keys: &[String], a: &AlbumRead) {
         let Ok(json) = serde_json::to_string(a) else { return };
-        let conn = self.db.0.lock().unwrap();
+        let conn = self.db.lock();
         for k in keys {
             if let Err(e) = conn.execute(
                 "INSERT OR REPLACE INTO web_albums(key, json, fetched_at) VALUES(?1, ?2, ?3)",
@@ -404,8 +404,17 @@ impl Build<'_> {
         self.names.entry(norm(name)).or_insert_with(|| id.to_string());
     }
 
+    /// Every song a web read touches carries its writers, at no extra call
+    /// (CREDITS.md §3). A web is the richest source we have: one build reads
+    /// dozens of artists' songs, and the collection keeps them after the
+    /// `web_artists` rows expire.
+    fn note_credits(&self, tracks: &[Track]) {
+        let conn = self.db.lock();
+        crate::credits::note_tracks(&conn, tracks);
+    }
+
     fn row(&self, id: &str) -> Option<Row> {
-        let conn = self.db.0.lock().unwrap();
+        let conn = self.db.lock();
         conn.query_row("SELECT json, ok, fetched_at FROM web_artists WHERE catalog_id = ?1", [id], |r| {
             Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?))
         })
@@ -415,7 +424,7 @@ impl Build<'_> {
 
     fn save(&self, id: &str, s: &Stored, ok: bool) {
         let Ok(json) = serde_json::to_string(s) else { return };
-        let conn = self.db.0.lock().unwrap();
+        let conn = self.db.lock();
         if let Err(e) = conn.execute(
             "INSERT OR REPLACE INTO web_artists(catalog_id, json, ok, fetched_at) VALUES(?1, ?2, ?3, ?4)",
             rusqlite::params![id, json, ok as i64, now_ms()],
@@ -425,11 +434,14 @@ impl Build<'_> {
     }
 
     fn save_names(&self) {
-        let conn = self.db.0.lock().unwrap();
+        let conn = self.db.lock();
         for (n, id) in &self.new_names {
-            let _ = conn.execute(
-                "INSERT OR REPLACE INTO web_names(name, catalog_id, fetched_at) VALUES(?1, ?2, ?3)",
-                rusqlite::params![n, id, now_ms()],
+            let _ = crate::dbhealth::watch(
+                "web names",
+                conn.execute(
+                    "INSERT OR REPLACE INTO web_names(name, catalog_id, fetched_at) VALUES(?1, ?2, ?3)",
+                    rusqlite::params![n, id, now_ms()],
+                ),
             );
         }
     }
@@ -481,6 +493,7 @@ async fn read_artists(apple: &mut Apple, b: &mut Build<'_>, ids: &[String], full
                 .as_array()
                 .map(|arr| arr.iter().filter(|s| s["type"].as_str() == Some("songs")).map(track_from_catalog_song).collect())
                 .unwrap_or_default();
+            b.note_credits(&top);
             let mut ok = true;
             let mut paged = false;
             if full {
@@ -696,6 +709,7 @@ async fn read_album(apple: &mut Apple, b: &mut Build<'_>, album: &Album, song_id
                 tracks.push((track_from_catalog_song(&t), rel));
             }
             let read = AlbumRead { album: crate::apple::album_from_catalog(&data), tracks };
+            b.note_credits(&read.tracks.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>());
             if let Some(id) = &read.album.catalog_id {
                 let k = format!("album:{id}");
                 if !keys.contains(&k) {
@@ -851,7 +865,7 @@ async fn seed_parts(apple: &mut Apple, b: &mut Build<'_>, seed: &WebSeed, fresh:
 
 /// What you already have, by catalog id: 3 ♥, 2 played, 1 in your library.
 fn mine_by_id(db: &Db) -> HashMap<String, u8> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut out: HashMap<String, u8> = HashMap::new();
     let mut add = |sql: &str, level: u8| {
         if let Ok(mut st) = conn.prepare(sql) {
@@ -1049,7 +1063,7 @@ fn save_seed(db: &Db, seed: &WebSeed) {
         WebSeed::Album { album, song_id } => album.catalog_id.clone().or_else(|| song_id.as_ref().map(|s| format!("song:{s}"))),
     };
     let (Some(id), Ok(json)) = (id, serde_json::to_string(seed)) else { return };
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     if let Err(e) = conn.execute(
         "INSERT OR REPLACE INTO web_seed_list(kind, id, json, built_at) VALUES(?1, ?2, ?3, ?4)",
         rusqlite::params![seed.kind(), id, json, now_ms()],
@@ -1062,7 +1076,7 @@ fn save_seed(db: &Db, seed: &WebSeed) {
 /// filtered by its Artist · Song · Album row, before any search. Zero Apple calls.
 #[tauri::command]
 pub fn web_seeds(db: tauri::State<'_, Db>) -> Result<Vec<WebSeed>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut st = conn
         .prepare("SELECT json FROM web_seed_list ORDER BY built_at DESC LIMIT 60")
         .map_err(|e| e.to_string())?;

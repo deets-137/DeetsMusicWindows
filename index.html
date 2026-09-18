@@ -175,6 +175,23 @@
       <div class="compass pop app-scroll" id="compass" role="dialog" aria-label="Go anywhere" hidden></div>
 
       <div class="chrome-right">
+        <!-- Listening rooms (ROOMS.md §1, src/room-panel.ts): three figures side by side.
+             In a room the glyph fills and carries the member count. The panel is built by
+             room-panel.ts: your name, Start a room and Join out of a room; the code, the
+             members, the host's guest-control pills and Leave inside one. -->
+        <div class="room" id="room">
+          <button
+            class="room__btn"
+            id="room-btn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Listening room"
+            title="Listen with friends"
+          ></button>
+          <div class="room__panel pop" id="room-panel" role="group" aria-label="Listening room" hidden></div>
+        </div>
+
         <!-- Sound (SOUND.md §2.3, src/sound-panel.ts): the equalizer and DeetsAdaptiveSound.
              The icon's three fader knobs follow the curve (low, mid, high); the panel's
              content is built by sound-panel.ts. Every effect is off by default. -->

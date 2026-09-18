@@ -1,13 +1,27 @@
-# DeetsMusic — listening rooms
+# DeetsMusic — DeetsMusicRooms (listening rooms)
 
-> **Designed 2026-09-16. Not built.** Decided by the user (2026-09-16): a title bar item with three
+> **Named DeetsMusicRooms (2026-09-17).** The feature, the worker and its repo all carry this
+> name, in line with the other Deets workers.
+> "DeetsRadio" below always means the **older website feature** on deets.solutions and its own
+> worker, which this design borrows rules from. **The website is out of scope (§13).**
+>
+> **Apple terms read 2026-09-17 (§12).** No clause in the agreement names group listening. The
+> design holds on every clause that touches it. The one item it raised is decided: **a guest's Pause
+> never greys out** — under Host only it stops that guest's own app (§12.3, §8).
+>
+> **BUILT 2026-09-17 (§16 = as built). Not deployed, and not desk-tested.** The worker
+> runs locally (its own repo, `../DeetsMusicRooms`; 23 protocol checks pass, §16.1) and the app
+> side compiles.
+> Two things stand between this and a real room: the worker has to be deployed (the owner's
+> call, §16.3), and two apps have to meet in a room at the desk (§16.4).
+>
+> **Designed 2026-09-16.** Decided by the user (2026-09-16): a title bar item with three
 > figures opens a Room panel; a room code of **8 characters from a 32-character set**; a **new,
-> dedicated Cloudflare worker** (not the DeetsRadio worker); the room **ends when the host leaves**,
-> and a room with only the host left needs no broadcast; **seek is a room command**; songs heard in a
-> room **count everywhere** (History, Home, play counts, Last.fm); **the panel sets which controls
-> guests may use**. The user asked Claude to pick the clock owner on free-tier limits, conflicts and
-> user experience: **the worker keeps the clock** (§4). After the app feature works, **the website's
-> DeetsRadio is rebuilt as a client of this worker** (§13).
+> dedicated Cloudflare worker, DeetsMusicRooms** (not the old DeetsRadio worker); the room **ends when the
+> host leaves**, and a room with only the host left needs no broadcast; **seek is a room command**;
+> songs heard in a room **count everywhere** (History, Home, play counts, Last.fm); **the panel sets
+> which controls guests may use**. The user asked Claude to pick the clock owner on free-tier limits,
+> conflicts and user experience: **the worker keeps the clock** (§4).
 > Defaults that Claude chose and the user can still change are in §14.
 
 **Terms used here.**
@@ -46,15 +60,17 @@
 
 | # | Question | Decision | By |
 |---|---|---|---|
-| 1 | Server | A new Cloudflare worker for DeetsMusic rooms (working name **DeetsRooms**). | User |
+| 1 | Server | A new Cloudflare worker for DeetsMusic rooms, **DeetsMusicRooms**, in its own private repo beside DeetsAccounts and DeetsSupport. Name settled 2026-09-17. | User |
 | 2 | Clock owner | The worker (the room's DO) keeps the clock and moves to the next song on an alarm. | Claude, on request (§4) |
 | 3 | Room life | The room ends when the host leaves (after a short grace window, §7). A room with only the host in it stays open, but nothing is sent. | User |
 | 4 | Code | 8 characters from a 32-character set, shown as `XXXX-XXXX` (§6). | User |
 | 5 | Controls | The host sets which controls guests may use, in the panel (§8). | User |
 | 6 | Seek | A room command. Everyone moves. | User |
 | 7 | Stats | Room songs count in History, Home, play counts and Last.fm. | User |
-| 8 | Website | After the app feature works, DeetsRadio on deets.solutions becomes a client of this worker (§13). | User |
+| 8 | Website | **Out of scope** (2026-09-17). The site and its old worker are not a constraint; we borrow rules from them and owe nothing back (§13). | User |
 | 9 | Audio | Never shared. Each app plays through its own MusicKit. | Carried over from DeetsRadio |
+| 10 | Apple terms | Read 2026-09-17. No clause names group listening; the design holds on every clause that touches it (§12). | Claude |
+| 11 | Guest's Pause | Never greys out. Under "Host only" it stops the guest's own app ("Stop listening"), and the room clock runs on (§12.3, §8). | User |
 
 ---
 
@@ -107,7 +123,9 @@ row per queue entry.
 
 ## 4. Why the worker keeps the clock
 
-The user asked for the easiest choice on three tests. Both options need the DO (a relay also needs
+The user asked for the easiest choice on three tests. (A sixth test, the website phase, was
+dropped on 2026-09-17 with the website itself, §13. It favoured the worker too; the result is
+unchanged.) Both options need the DO (a relay also needs
 one place that holds every socket), so the difference is in the rest.
 
 | Test | Worker keeps the clock | Host's app keeps the clock |
@@ -117,7 +135,6 @@ one place that holds every socket), so the difference is in the rest.
 | **Code on the worker** | The rules already exist in the DeetsRadio worker (radio.md "The core mechanic"). We port them. | A relay is small, but the host logic moves into the app. |
 | **Guest command speed** | One hop: guest → worker → everyone. | Two hops: guest → worker → host → worker → everyone. |
 | **Host network trouble** | The room keeps time. Guests hear no gap while the host reconnects. | The room stops moving. A laptop that sleeps freezes the room. |
-| **Website phase (§13)** | A browser tab joins as one more follower. | A browser tab has to be a host or a guest of an app host. |
 
 **Result: the worker keeps the clock.** The cost to the host is the same scheduled start that guests
 get (§9.3): the host's own click waits for the lead time too.
@@ -131,8 +148,8 @@ get (§9.3): the host's own click waits for the lead time too.
 Every message carries `v` (protocol version, integer, starts at `1`). The join reply carries the
 worker's `v` and `minV`. If the app's `v` is below `minV`, the app shows "Update DeetsMusic to join
 this room" and does not join. **Why:** installed apps update later than the worker deploys.
-DeetsRadio had a deploy where the worker and page had to land at the same time
-(radio.md status, day three). Apps cannot land at the same time.
+This is not about a web page any more (§13): it is about installed apps,
+which update whenever their owner lets them, long after the worker deploys.
 
 ### 5.2 Room state (DO storage)
 
@@ -155,7 +172,7 @@ storage before the broadcast.
 {
   entryId,            // minted by the room
   catalogId,          // Apple catalog id — the play target for every member
-  isrc,               // kept for the website phase and later matching
+  isrc,               // kept for matching a song across libraries later; no other use today
   title, artist, album,
   artworkUrl,         // Apple artwork template
   durationMs,         // the room clock moves on this
@@ -241,8 +258,13 @@ One row per control. Each row is a two-way pill: **Everyone | Host only**.
 | Change Up Next | remove, reorder | Everyone |
 
 - Removing a guest and ending the room are always host only.
+- **The Pause button never greys out** (decided 2026-09-17, §12.3). When "Play and pause" is Host
+  only, a guest's Pause becomes **Stop listening**: it stops that guest's own app and leaves the room
+  clock running. Play then reads **Listen again** and re-joins the clock at the room's position, the
+  same path as a late join (§9.3). This keeps the standard media control present and truthful under
+  DPLA §3.3.6.D, which is why the row is worded this way and not greyed.
 - The worker checks every command against these settings and answers `denied`. The app also greys
-  out a denied control, so a guest rarely sees `denied`.
+  out a denied control, so a guest rarely sees `denied`. **Pause is the exception above.**
 - The host's choice is saved as the default for the next room (settings key `roomGuestControls`).
 
 ---
@@ -298,7 +320,7 @@ The play's context is `room:<code>`, so a later filter can find them.
 
 | Feature | In a room |
 |---|---|
-| Play / pause / Next / Previous | Room commands (§8). Previous is always "previous song": the "restart if past 3 s" rule does not apply. |
+| Play / pause / Next / Previous | Room commands (§8). Previous is always "previous song": the "restart if past 3 s" rule does not apply. **Pause with Play/pause set to Host only** stops your own app instead (Stop listening → Listen again, §8). |
 | Seek (scrub bar, keys, `control seek`) | Room command. |
 | Play Next / Add to Up Next / drag to Up Next | Room `add`. |
 | Remove / reorder Up Next | Room commands. |
@@ -326,32 +348,89 @@ Ported from DeetsRadio (radio.md "Limits & costs"):
 
 ---
 
-## 12. Apple terms — check before the build
+## 12. Apple terms — read 2026-09-17
 
-Each member plays through MusicKit with their own subscription, and no audio passes between apps.
-DeetsRadio already does this on the web. **Still read, before the build:** the MusicKit parts of the
-Apple Developer Program License Agreement on synchronized or group listening in a distributed app.
-Record the text and the reading here, as SOUND.md §0 did for §3.3.6.D.
+Read from the Apple Developer Program License Agreement (the English PDF on developer.apple.com,
+§3.3.6.D MusicKit) and the Apple Media Services Terms and Conditions. **The agreement has no clause
+about group listening, synchronized listening between users, or a shared playback session.** Neither
+document names the case. The reading below is therefore built from the clauses that touch it.
+
+### 12.1 The clauses, quoted
+
+| # | Clause (DPLA §3.3.6.D unless marked) | Quoted text |
+|---|---|---|
+| a | Purpose limit | "You agree not to call the MusicKit APIs or use MusicKit JS … for purposes unrelated to **facilitating access to Your end users' Apple Music subscriptions**." |
+| b | Money | "You agree not to require payment for or indirectly monetize access to the Apple Music service (e.g. in-app purchase, advertising, requesting user info)." |
+| c | **Controls** | "full songs must be enabled for playback, and **users must initiate playback and be able to navigate playback using standard media controls such as 'play,' 'pause,' and 'skip'**, and You agree to not misrepresent the functionality of these controls" |
+| d | **Synchronize** | "You may not, and You may not permit Your end users to, download, upload, or modify any MusicKit Content and **MusicKit Content cannot be synchronized with any other content**, unless otherwise permitted by Apple in the Documentation" |
+| e | Rendering | "You may play MusicKit Content only as rendered by the MusicKit APIs or MusicKit JS and only as permitted in the Documentation" |
+| f | User metadata | "Metadata from users (such as playlists and favorites) may be used only to provide a service or function that is **clearly disclosed to end users** and that is directly relevant to the use of Your Application" |
+| g | DPLA §2.8 | "You agree not to **share access to mechanisms provided to You by Apple** for the use of the Services with any third party. Further, You agree not to create or attempt to create a substitute or similar service." |
+| h | Media Services T&C | "You may use the Services and Content only for **personal, noncommercial purposes**." |
+
+### 12.2 The reading, clause by clause
+
+| # | Against a room | Verdict |
+|---|---|---|
+| a | Every member plays from their own subscription, through their own MusicKit. The room carries song ids and a clock, never audio and never a song. | Inside the purpose. |
+| b | Free. No advertising, no purchase, no data collected for money. | Clear. |
+| c | §8 lets the host set Play/Pause, Skip and Seek to "Host only". **Settled §12.3:** Pause never greys out — under Host only it stops the guest's own app ("Stop listening"). Skip and Seek may still be host-only; they move the room, and the guest keeps play, pause and leave. | Answered. |
+| d | "Any other content" reads most naturally as other *media*: a video, a second audio track, a slideshow. A room synchronizes MusicKit Content with **the same MusicKit Content on another subscriber's app**, not with other content. The counter-reading (another member's stream is "other content") is possible, because Apple does not define the phrase. Note that the old DeetsRadio worker's **YouTube entries would sit on the wrong side of this clause** — they are plainly other content beside MusicKit Content. Dropping the website (§13) removes that. | Holds, risk not zero. |
+| e | Each app plays MusicKit's own rendering. The room changes *when* a song starts, never the audio. Nothing is re-encoded, copied or sent. | Clear. |
+| f | The room shows the member's Up Next and who added each song, to the room's members only. The panel says so, and a member joins by choice. | Clear, with the disclosure kept in the panel. |
+| g | No token, key or account crosses the room. The worker holds no Apple secret (§3.1). A person with no Apple Music subscription joins and **hears nothing** — the app cannot play for them, and there is no preview path. This is the clause that would bite a "listen without an account" feature; the design has none. | Clear, and stays clear only while no non-subscriber ever hears audio. |
+| h | A room is a group of friends who each already pay. 32 members, an unlisted 8-character code, no directory, no discovery, no way to find a stranger's room (§6, §11). | Personal use. A public code would be a different question. |
+
+**Overall:** the design does the same thing Apple's own SharePlay does — each subscriber's own device
+plays the song, and only a clock passes between them. Apple ships that behaviour on its platforms
+but gives no API for it on Windows, and the agreement neither permits nor forbids a developer doing
+the same. So this is a **reading, not a permission**. The risk sits in clause d's undefined word and
+in clause c.
+
+### 12.3 The one item the owner must decide (clause c)
+
+Clause c says users must be able to navigate playback with standard controls. §8 lets the host take
+Play/Pause, Skip and Seek away from guests. Three ways to stand:
+
+1. **As designed.** A guest who wants the controls back leaves the room with one click and their own
+   queue returns (§9.4); the guest chose to join, and a room is one session, not the app.
+2. **Play/Pause always Everyone.** Drop that row from §8; keep Skip, Seek, Add and Change Up Next as
+   host-settable. A guest can always stop their own sound. Costs the host nothing they use often.
+3. **Local Stop always.** Keep §8 as it is, but a guest's Pause never greys out — it stops **their
+   own app** and leaves the room's clock running, with the row reading "Stop listening".
+
+**Decided by the owner, 2026-09-17: option 3.** It answers the clause exactly (the standard control
+is always there and does what it says), and it keeps the host's power over the room. Written into
+§8 and §10: Pause never greys out; under Host only it reads **Stop listening**, and Play reads
+**Listen again** and re-joins at the room's position.
+
+### 12.4 Record
+
+Quotes read 2026-09-17 from developer.apple.com (Apple Developer Program License Agreement, English)
+and apple.com/legal/internet-services/itunes/us/terms.html. Re-read §3.3.6.D before the build starts
+if more than a few months pass: Apple revises the agreement several times a year.
 
 ---
 
-## 13. Website phase: DeetsRadio on this worker
+## 13. The website is out of scope (2026-09-17)
 
-After the app feature works and is committed:
-1. The deets.solutions DeetsRadio tab becomes a **client of the DeetsRooms worker**. App members and
-   browser members share one room.
-2. The page keeps its own rules (no build step, plain JS, handwritten strings in `radio/strings.js`).
-   It speaks protocol `v` like the app.
-3. Features the DeetsRadio worker has and this one does not, to settle then:
-   - Rooms that live on when everyone leaves (this design ends them).
-   - Free-form room names (this design uses generated codes).
-   - The no-login 30 s preview listener.
-   - YouTube entries (`Entry.youtube`). The app cannot play them; it would stay silent with a note.
-   - The website as a **host**. MusicKit JS in a browser can follow the clock, so a browser host
-     works in principle.
-4. The old DeetsRadio worker is retired once the page no longer calls it.
+**Decided by the user:** DeetsMusicRooms is an app feature. The deets.solutions radio tab and its old
+worker are **not part of this design and not a constraint on it**. We take pieces from that worker
+where they help (§5.5 transport rules, §9.3 follower values, §11 limits) and owe it nothing back.
 
-The site's own record: DeetsSolutions `docs/HANDOFF.md` Next up.
+What that removes from this doc:
+- **No protocol compatibility** with the old worker. Message names, the `Entry` shape and the lead
+  times are ours to change at any time.
+- **No browser client**, so no MusicKit JS host, no page deploy tied to a worker deploy, and no
+  `ALLOWED_ORIGINS` entry for deets.solutions (§9.2 keeps only the app's own two origins).
+- **No no-login preview listener** — which is what keeps §12 clause g clear.
+- **No YouTube entries** — which is what keeps §12 clause d clear.
+- **No free-form room names** and **no rooms that outlive their members**: the generated code (§6)
+  and "the host leaves, the room ends" (§7) are now simply the rules, not a difference to settle.
+- **No retirement plan for the old worker.** It keeps running on its own. If the site ever wants
+  this worker, that is a DeetsSolutions session, starting from this doc as it stands.
+
+The site's own record stays where it is: DeetsSolutions `docs/HANDOFF.md`.
 
 ---
 
@@ -365,27 +444,203 @@ The site's own record: DeetsSolutions `docs/HANDOFF.md` Next up.
 6. **Sleep timer** fires → you leave; host → room ends (§10).
 7. **Guest's queue** is saved on join and returns on leave (§9.4).
 8. **Guest controls** default to Everyone for all five (§8).
-9. **Worker name** DeetsRooms, and whether it gets `rooms.deets.solutions` (§3).
+9. ~~Whether the worker gets `rooms.deets.solutions`~~ — settled at the build (2026-09-17): it
+   does, as a custom domain, and the app compiles that host in. A workers.dev name would make a
+   later move an app release; the mint follows the same rule with music-api.deets.solutions.
+(Clause c, §12.3, is no longer a default: the owner decided it on 2026-09-17.)
 
 ---
 
-## 15. Build order (when the user says go)
+## 15. Build order
 
-1. §12 terms check. Record it.
-2. Worker: `POST /room`, DO with state keys, WebSocket join, transport rules + alarm, controls,
-   limits, `v`. Local `wrangler dev` first (pick a free port; do not fix one).
-3. `src/room.ts` + follower mode + the queue branch, driven from the console with two dev apps.
-   (Two `dev:app` instances need separate identifiers or data dirs; check before the first run.)
-4. Title bar item + Room panel. Walk the CLAUDE.md pre-build checklist: `.pop` + `enterRows`,
-   tokens, hover hints in ONBOARDING.md, toasts in TOASTS.md §5, settings keys (`roomName`,
-   `roomGuestControls`) in `settings-store.ts` + `agent-settings.ts` + AGENT.md, `diag.log` for
-   join / leave / drift seek / reconnect / ended, `app-scroll` on the member list,
-   `dataset.frames` on the panel.
-5. Deep link `deetsmusic://room`. Note: `dev:app` does not take `deetsmusic://` links from the
-   installed app's registration (`src-tauri/src/apple.rs` §2a fork 4 note), so test invites on the
-   installed build.
-6. Desk test (to write into this section at build time): two PCs, or one PC with the installed app +
-   dev app on different Apple accounts; host start, guest join by code and by link, each §8 control
-   on both settings, seek, song end, host network drop < 60 s and > 60 s, guest kick, `v` below
-   `minV`.
-7. §13 website phase.
+1. §12 is read and recorded, and §12.3 is decided. **Done 2026-09-17.**
+2. The worker. **Done** — its own repo, §16.1.
+3. `src/room.ts` + follower mode + the bridge. **Done** — §16.2.
+4. The title bar item and the Room panel. **Done** — §16.2.
+5. The deep link. **Done** — `src-tauri/src/rooms.rs`, §16.2.
+6. The desk test. **Open** — §16.4.
+7. — (the website phase left with §13).
+
+---
+
+## 16. As built (2026-09-17)
+
+### 16.1 The worker — its own repo, `DeetsMusicRooms`
+
+It sits beside the app, not inside it: **`../DeetsMusicRooms`**, a private GitHub repo
+(`deets-137/DeetsMusicRooms`), in the same shape as DeetsAccounts and DeetsSupport — **plain
+JavaScript, no build step, no `package.json` and no `node_modules`**, run with `npx wrangler`.
+The design doc stays here, in the app repo, the way `accounts.md` and `support.md` stay in
+DeetsSolutions.
+
+| File | What |
+|---|---|
+| `src/index.js` | `POST /room`, `GET /room/:code/peek`, `GET /room/:code/ws`, `GET /`. CORS from `ALLOWED_ORIGINS` plus any `localhost` port. The IP rate limit (§11) sits on all three, and fails OPEN if the binding is absent. |
+| `src/room.js` | The Durable Object: the three storage keys (§5.2), hibernatable sockets, the transport rules (§5.5), guest controls (§8), the host grace window (§7), the per-socket command limit. |
+| `src/protocol.js` | The wire and every constant: `PROTOCOL_V`, `LEAD_MS` 1500, `SEEK_LEAD_MS` 300, `HOST_GRACE_MS` 60000, the caps. The app's `src/room.ts` mirrors this file by hand — they are separate builds, on purpose. |
+| `src/codes.js` | The 8-character Crockford code, unbiased (`byte & 31` on uniform bytes), the typed-code mapping, the 32-byte host token. |
+| `src/sanitize.js` | `sanitizeEntry` rebuilds every entry field by field. **The artwork URL is returned raw, not through `URL.toString()`**: the parser percent-encodes Apple's `{w}`/`{h}` braces and would leave every member with a broken cover. |
+| `scripts/check.mjs` | `node scripts/check.mjs http://127.0.0.1:<port>` drives the protocol as two apps would, against a `wrangler dev` worker. No dependencies, the way DeetsAccounts' own `check.mjs` has none. |
+| `wrangler.jsonc` | The DO binding and its `new_sqlite_classes` migration, the rate limit, `ALLOWED_ORIGINS`, and the `rooms.deets.solutions` custom domain. No D1, no KV, no secrets. |
+
+**Wrangler 4 is required.** On wrangler 3 the `ratelimits` block is silently dropped
+("Unexpected fields found in top-level field"), so the room would run with no IP limit at
+all. Wrangler 4 prints `env.JOIN_LIMIT (30 requests/60s)` in the binding list — read that
+line before every deploy. `@cloudflare/workers-types` must be v5 to match it.
+
+**The protocol run, 2026-09-17: 23 checks, all pass** (re-run after the port to plain JS) — code shape and host token, peek, a
+dashed lower-case code, host and guest join, the first add starting the song, the scheduled
+start (+1498 ms), a guest's pause and play, `setControls` reaching everyone, a host-only
+command denied, **the song ending on the room's own alarm with the next song starting at the
+old one's exact end (0 ms)**, the room history, a seek landing at 2000 ms, an entry with no
+catalog id refused, an app below `minV` turned away, `ended` reaching the guest, and the code
+free again afterwards.
+
+### 16.2 The app
+
+| File | What |
+|---|---|
+| `src/room.ts` | The connection (WebSocket, backoff 0.5–8 s, clock offset), the room state store, follower mode, "Stop listening", and the bridge below. |
+| `src/room-panel.ts` | The title bar item and the panel (§1). `.pop` + `enterRows` on open, `keepInWindow`, `dataset.frames`, `app-scroll` on the member list. **The panel wears the Sound panel's clothes** (§16.6). |
+| `src/player.ts` | A third `PlayerMode`, `"room"`, and **the bridge**. |
+| `src/queue.ts` | `setRoomQueue(handles)`: the room's queue becomes the model, so Now Playing, Up Next, the Queue card and History show the room with no card of their own. |
+| `src/settings-store.ts` | `roomName`, `roomGuestControls`, `roomsUrl`. |
+| `src-tauri/src/rooms.rs` | The `deetsmusic://room?code=…` route. It only checks the code's shape and emits `room-invite`; main.ts asks before joining. Three unit tests (`cargo test --lib rooms`). |
+| `src/compass.ts` | A Places row for the panel, and the Start / Leave / End / Stop listening / Listen again verbs. |
+| `src/agent-settings.ts` | The five guest-control defaults, as `roomGuests.<control>`. |
+
+**The bridge is the design's one change.** §9.1 put the room branch in `queue.ts`; it is in
+`player.ts` instead. `RoomBridge` is an interface room.ts installs while a room is on, and
+the funnels every click already passes through — `playPause`, `nextTrack`, `prevTrack`,
+`seekToFraction`, `seekToSeconds`, `playContext`, `jumpToUpcoming`, `enqueue`,
+`insertInQueue`, `removeFromQueue`, `moveInQueue`, `playStation`, `shuffleQueue`,
+`toggleShuffle`, `setRepeat` — ask it first. **Why:** `queue.ts` is a pure model with no
+idea what a click is, and teaching the dozens of call sites about rooms would have been the
+alternative. One interface, sixteen one-line guards.
+
+**Follower mode feeds MusicKit ONE song.** `roomShow` loads the room's current song alone
+and `growNow`/`scheduleGrow`/`maybeTopUpWindow`/`reconcileUpcoming` stand down in room mode.
+That is what makes §5.5's "apps never move to the next song on their own" true by
+construction: MusicKit reaches the end of a one-song queue and goes quiet, and the room's
+alarm starts the next song. The drift check rides `emitProgress` (`roomDriftTick`), corrects
+past 1.75 s, and at most once per 5 s.
+
+**One catch-up after each start.** `setQueue` alone fetches nothing (no lookup, no licence,
+no bytes), so the lead SCHEDULES the start but does not buffer it: each app's own `play()`
+takes its own moment, and two apps can begin up to about a second apart — under the 1.75 s
+drift threshold, so nothing would ever correct it. `settle()` looks once, 1.4 s after a song
+starts, and lines the app up to within 250 ms. Whether the lead should also pre-buffer (a
+muted play, say) is a question for the desk test, not a guess: §16.4 step 2 measures it.
+
+**Late joins seek before the first sound.** `LoadOpts.seekMs` moves the song to the room's
+position between the feed and the play, so a late join never plays the opening bars the room
+passed a minute ago.
+
+### 16.2a The panel, and what the first cut got wrong
+
+The first cut shipped a panel of its own invention and it showed: the label wrapped, the
+fields stretched, Join sat half off the edge, and there was no title. Two causes, both now
+fixed by taking the **Sound panel** as the pattern rather than inventing one (the user's
+call, 2026-09-17):
+
+1. **The panel did not set its own type scale.** `.sound__panel` sets `font-size:
+   var(--fs-subtext)` on the PANEL; without it every label inherits the body size, and
+   "Your name" wrapped to two lines in a 248 px panel.
+2. **Fields and buttons had no shared shape.** They now share one rule with the Sound
+   panel's chips — `box-sizing: border-box`, `height: var(--icon-lg)`, the same border and
+   radius — so a field beside a chip is one row and nothing is clipped. The name field has a
+   set width (`--room-field-w`), and only the code field grows.
+
+The panel is now the Sound panel's width (`--room-panel-w: var(--sound-panel-w)`), with its
+head (title at the left, one action at the right), its label-left / control-right rows, and
+its chip and pill shapes. The title reads **DeetsRadio**.
+
+**The glyph** was redrawn the same day. Three whole figures crossed their strokes and read as
+a knot of arcs at 16 px; now the middle figure is a whole silhouette and the two behind show
+only the part that sticks out, the way a group glyph is normally built. Only the front figure
+fills in a room — filling the partial shapes behind it made slivers.
+
+**The scrollbar gutter** is reserved only in a room (`[data-scrolls]`). `app-scroll` draws a
+real bar, not an overlay, so it takes width the moment it appears. Out of a room the panel is
+four rows and can never scroll, and a permanent gutter would narrow the fields for nothing. In
+a room rows arrive while the panel is open — a member joins, "Waiting for the host" appears —
+which is exactly when a bar would shove every row left. The member list always reserves it: it
+is the part that grows.
+
+### 16.3 Before a room works between two PCs
+
+1. ~~Deploy the worker.~~ **DONE 2026-09-17**, at the owner's word: `deetsmusic-rooms` is live on
+   **`rooms.deets.solutions`** (version `ce3a94c7`), and `scripts/check.mjs` passes all 24 checks
+   against the live host. **No secrets are attached, and none are needed.**
+
+   The first live probe found a real hole: a room minted by `POST /room` that nobody ever joins had
+   nothing to end it, so it sat in Durable Object storage for good. Rooms now carry
+   `unclaimedUntil` (10 minutes), cleared by the first join and swept by the alarm they already
+   had. Fixed, redeployed and the probe's own room ended by hand the same day.
+   The deploy also creates the `rooms.deets.solutions` custom domain named in its
+   `wrangler.jsonc`; that host is what `ROOMS_URL_DEFAULT` (`src/room.ts`) compiles in, so
+   nothing in the app changes when the worker moves.
+2. For a desk run with no deploy at all: `cd ../DeetsMusicRooms && npx wrangler dev --port 8801`,
+   then point the app at it from DevTools (below). Two apps on one PC both reach it.
+
+**`roomsUrl` is a dev-only route (the user's call, 2026-09-17): no Settings card row.** It is set
+from the DevTools console and read at the next launch, because the store loads once at start and a
+same-window `localStorage` write raises no `storage` event:
+
+```js
+const s = JSON.parse(localStorage.getItem("deets.settings") ?? "{}");
+s.roomsUrl = "http://127.0.0.1:8801";   // "" puts it back on rooms.deets.solutions
+localStorage.setItem("deets.settings", JSON.stringify(s));
+location.reload();
+```
+
+The panel's own errors name the address it tried ("the rooms server answered 404"), so a wrong or
+undeployed host says so rather than failing quietly.
+
+### 16.4 The desk test (open)
+
+Two PCs, or one PC with two apps — but read this first (2026-09-17):
+
+- **The installed app cannot be a member yet.** 0.9.5 shipped before this work, so it has no Room
+  item. A second member on this PC means either a new build installed, or a second dev app.
+- **`npm run dev:app` cannot be run twice.** Both instances would take the identifier
+  `com.deetsmusic.dev` and the same data dir, and the single-instance plugin turns the second away.
+  A `--instance 2` flag (its own identifier, data dir, port and CDP port) is about twenty lines in
+  `scripts/dev-app.mjs`, and is not written.
+- **One Apple Music subscription streams to one place at a time.** Even with two apps running, the
+  second play is expected to stop the first — the room would look right and sound wrong. A second
+  Apple account, or a second PC, is what makes the audio test real. This is unmeasured: nobody has
+  yet had two members to try it with.
+
+So: the protocol, the panel, the codes, the controls and the invite link can all be walked on one
+PC. The one thing that needs two accounts is hearing two apps play in step.
+
+| # | Step | Pass |
+|---|---|---|
+| 1 | Host: play something, open the Room item, Start a room. | The glyph fills; the code shows as `XXXX-XXXX`; the song keeps playing. |
+| 2 | Guest: type the code (lower case, no dash) and Join. | Both apps play the same song, in step, within about a second. |
+| 3 | Guest: Copy invite link on the host, open it on the guest PC. | DeetsMusic asks "Join listening room …?"; Join works. |
+| 4 | Either: Pause, Play, Next, Previous, a scrub. | Everyone moves together. The lead is about 1.5 s on a click. |
+| 5 | Let a song end by itself. | The next song starts on both apps with no gap and no double skip. |
+| 6 | Host: set each §8 control to Host only, then try it as the guest. | The guest is told the host keeps it. **Pause still works and stops only the guest** (§12.3); Play then reads Listen again. |
+| 7 | Guest: add a song from any card; drag one into Up Next; remove one. | The room's Up Next changes for everyone, and the row says who added it. |
+| 8 | Guest: play a song that is only in your library (an upload). | The app says the room cannot play it; the room does not change. |
+| 9 | Host: pull the network for 20 s, then restore it. | Guests keep playing; the panel says "Waiting for the host"; the host rejoins with no new code. |
+| 10 | Host: close the app and wait over 60 s. | Guests get "The room ended", and their own queue comes back paused. |
+| 11 | Host: Remove a guest. | That app leaves and gets its own queue back. |
+| 12 | Either: start a station. | "A station cannot play in a room", with Leave room on the toast. |
+| 13 | Both: check Settings › Rewind / History after. | The room's songs are there, with the play counts and the Last.fm scrobbles. |
+
+### 16.5 Known gaps
+
+- **A room is not saved across a restart.** Quit in a room and the app comes back with the
+  room's last song as its own (the restore setting's doing). Leaving properly always returns
+  the saved queue.
+- **`insertAt` is coarse.** A drop between two rows in a room adds at the top of Up Next,
+  not at the row: the room's `add` takes "next" or "end". A `move` after the add would fix
+  it; it costs a second command and was left out.
+- **`jumpTo` removes the songs it skips.** Clicking the fourth row of the room's Up Next
+  removes the three above it and calls Next. That is what "play from here" means for a
+  shared queue, but the other members see three rows disappear at once.
+- **No `room` agent tool yet** (§9.1 has it as "later"). An agent in a room drives the room
+  through the ordinary play and queue routes, because they pass through the same bridge.

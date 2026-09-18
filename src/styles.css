@@ -382,6 +382,183 @@ body {
 .sleep__status[hidden] { display: none; }
 .sleep__off[hidden] { display: none; }
 
+/* ── Listening rooms (src/room-panel.ts, ROOMS.md §1) ─────────────────
+   Three figures right of the sleep clock. Out of a room the glyph is a line
+   drawing in --subtext; in a room the bodies fill with --title, the middle figure
+   first, and a small count sits at the corner.
+
+   The panel deliberately wears the Sound panel's clothes: the same width, the same
+   --fs-subtext type scale ON THE PANEL (without it every label inherits the body
+   size and wraps), the same head, the same label-left / control-right rows, and the
+   same chip and pill shapes. Geometry = --room-* skin tokens, color = theme roles. */
+.room { position: relative; display: flex; align-items: center; }
+.room__btn {
+  width: var(--room-btn-size); height: var(--room-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  position: relative;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.room__btn:hover { color: var(--text); }
+.room__btn::before {  /* the same larger click area the other title bar icons take */
+  content: ""; position: absolute;
+  inset: calc(-1 * var(--title-hit-y)) calc(-1 * var(--title-hit-x));
+}
+.room__btn svg { width: 100%; height: 100%; }
+.room__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.room__btn[data-in] { color: var(--title); }
+/* In a room the figure in front fills — the AirPlay square's idiom. The two behind
+   stay line work: they are partial shapes, and filling them made slivers. They step
+   back a little instead, so the filled figure reads as the one that is listening. */
+.room__fig-body, .room__fig-head { fill: transparent; transition: fill var(--room-fill), opacity var(--room-fill); }
+.room__btn[data-in] .room__fig-body--mid, .room__btn[data-in] .room__fig-head--mid { fill: currentColor; }
+.room__btn[data-in] .room__fig-body--side, .room__btn[data-in] .room__fig-head--side {
+  opacity: 0.6;
+  transition-delay: calc(var(--room-fill) / 3);
+}
+/* Waiting for the host, or reconnecting: the fill breathes instead of sitting still. */
+.room__btn[data-away] svg { animation: room-away 1.6s var(--ease-ui) infinite; }
+@keyframes room-away { 50% { opacity: 0.45; } }
+/* The member count, when more than one app is listening. */
+.room__btn[data-count]:not([data-count=""])::after {
+  content: attr(data-count);
+  position: absolute; right: -4px; bottom: -2px;
+  min-width: var(--room-count-size); height: var(--room-count-size);
+  padding: 0 2px;
+  display: grid; place-items: center;
+  font-family: var(--font-body); font-size: var(--room-count-fs); line-height: 1;
+  color: var(--bg); background: var(--title);
+  border-radius: calc(var(--room-count-size) / 2);
+}
+
+.room__panel {
+  position: absolute; top: 100%; right: 0;
+  margin-top: var(--space-1);
+  width: var(--room-panel-w);
+  max-height: var(--room-panel-max-h);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--room-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.room__panel[hidden], .room__panel [hidden] { display: none; }
+/* The gutter is reserved only in a room. `app-scroll` draws a real bar, not an
+   overlay, so it takes width the moment it appears: out of a room the panel is four
+   rows and can never scroll, and a permanent gutter would just narrow the fields.
+   In a room rows ARRIVE while the panel is open — a member joins, "Waiting for the
+   host" appears — and that is exactly when a bar showing up would shove every row
+   left. Same reasoning for the member list below, which always reserves it: it is
+   the part that grows. */
+.room__panel[data-scrolls] { scrollbar-gutter: stable; }
+
+/* The head: the title at the left, one action at the right (.sound__head). */
+.room__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.room__title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
+  color: var(--title); letter-spacing: var(--room-title-tracking);
+}
+.room__head-end { display: flex; align-items: center; gap: var(--space-1); }
+.room__head-note { color: var(--subtext); }
+
+.room__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.room__label { color: var(--subtext); white-space: nowrap; }
+.room__row--control .room__label { color: var(--text); }
+.room__section { color: var(--subtext); margin-top: var(--space-1); }
+.room__note { color: var(--subtext); text-align: center; }
+
+.room__code {
+  font-family: var(--font-title); font-size: var(--room-code-fs); font-weight: var(--fw-title);
+  letter-spacing: var(--room-code-space);
+  color: var(--title); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fields and chips are one shape, the Sound panel's: the same height, border and
+   radius, so a field beside a chip reads as one row and nothing is clipped. */
+.room__field, .room__chip {
+  box-sizing: border-box; height: var(--icon-lg);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--room-radius);
+  padding: var(--space-1) var(--space-2);
+}
+.room__field { width: var(--room-field-w); min-width: 0; flex: 0 0 auto; }
+/* The code is typed into the wide half of its row; Join keeps its own width. */
+.room__field--code { flex: 1 1 auto; letter-spacing: var(--room-code-space); text-transform: uppercase; }
+.room__field:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.room__chip {
+  min-width: var(--room-chip-min-w); white-space: nowrap; text-align: center;
+  cursor: pointer; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.room__chip:hover:not(:disabled) { background: var(--surface-hover); }
+.room__chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.room__chip:disabled { opacity: var(--room-dim); cursor: default; }
+.room__chip--wide { width: 100%; }
+.room__chip--small { height: auto; min-width: 0; padding: 2px var(--space-1); }
+.room__chip--leave { color: var(--title); border-color: var(--title); background: transparent; }
+.room__chip--leave:hover:not(:disabled) { background: var(--picked); }
+.room__row--copies { gap: var(--space-1); }
+.room__row--copies .room__chip { flex: 1 1 0; min-width: 0; }
+.room__row--join { gap: var(--space-1); }
+
+.room__divider {
+  display: flex; align-items: center; gap: var(--space-1);
+  color: var(--subtext);
+}
+.room__divider::before, .room__divider::after {
+  content: ""; flex: 1 1 auto; height: 1px; background: var(--panel-border);
+}
+
+.room__members {
+  max-height: var(--room-members-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.room__member { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); min-height: var(--icon-lg); }
+.room__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room__tag { color: var(--title); }
+
+/* The guest-control pill: one control cut in two, the surface picker's split idiom. */
+.room__pill {
+  box-sizing: border-box; height: var(--icon-lg);
+  display: flex; flex: 0 0 auto;
+  border: 1px solid var(--panel-border); border-radius: var(--room-radius);
+  overflow: hidden;
+}
+.room__half {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--subtext); background: var(--surface);
+  border: none; border-radius: 0;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-ui), color var(--dur-fast) var(--ease-ui);
+}
+.room__half + .room__half { border-left: 1px solid var(--panel-border); }
+.room__half:hover { color: var(--text); }
+.room__half[aria-pressed="true"] { background: var(--picked); color: var(--title); }
+.room__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .room__fig-body, .room__fig-head { transition: none; }
+  .room__btn[data-away] svg { animation: none; }
+  .room__half { transition: none; }
+}
+
 /* ── Sound (src/sound-panel.ts, SOUND.md §2.3) ────────────────────────────────
    The EQ-fader icon left of the sleep clock; any effect on = the title color. Its panel:
    Compare, the equalizer (a curve with a dot per band, or ten faders over a live
@@ -765,7 +942,7 @@ body {
 .web__label { font-size: var(--fs-subtext); color: var(--subtext); }
 .web__seg { display: flex; gap: var(--space-1); }
 .web__chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.web__opt, .web__chip, .web__make {
+.web__opt, .web__chip, .web__make, .credit__chip {
   font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
   color: var(--text); background: var(--surface);
   border: 1px solid var(--panel-border);
@@ -774,7 +951,8 @@ body {
   cursor: pointer;
 }
 .web__opt { min-width: var(--web-opt-min-w); }
-.web__opt:hover, .web__chip:hover, .web__make:hover:not(:disabled) { background: var(--surface-hover); }
+.web__opt:hover, .web__chip:hover, .web__make:hover:not(:disabled), .credit__chip:hover { background: var(--surface-hover); }
+.credit__chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .web__opt[aria-pressed="true"], .web__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
 .web__opt:focus-visible, .web__chip:focus-visible, .web__make:focus-visible, .web__hit:focus-visible {
   outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off);
@@ -2349,6 +2527,28 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
   color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
   margin: 0 0 var(--space-1);
+}
+/* The song pane and the writer pane (CREDITS.md §7). The chip wears the web panel's
+   chip shape, so one idiom covers every chip in the app. */
+.credit__chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-1); }
+/* A bottom margin as well as a top one: the note is followed by a section label
+   ("DETAILS"), and without it the label crowds the sentence it is not part of. */
+.credit__note {
+  margin: var(--space-1) 0 var(--space-2); font-size: var(--fs-subtext); color: var(--subtext);
+}
+.credit__facts {
+  display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2);
+  margin: 0; font-size: var(--fs-subtext);
+}
+.credit__facts dt { color: var(--subtext); }
+.credit__facts dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+/* A song we know of but hold no track for: it reads as a row, and does nothing. */
+.search__row--flat { cursor: default; opacity: var(--credit-flat-opacity); }
+/* The same song in the Library's writer level, where the row is a real list row: a quiet
+   trailing word instead of a dimmed row, so the list stays one weight. */
+.credit__flat {
+  font-size: var(--fs-subtext); color: var(--subtext);
+  opacity: var(--credit-flat-opacity);
 }
 .search__scroller { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
 .search__scroller::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }

@@ -429,6 +429,26 @@ Talked through with the user after the export desk test. The toast rows are in T
 - **Exported playlist:** the same toast adds *Its copy on Apple Music stays and will show in
   your list.* (Deleting the local row un-hides the linked copy — §6 "one row".)
 
+**Bulk delete (built 2026-09-17).** The overview's multi-select (NEXT-VERSION §19) reaches
+delete too: Ctrl+click or Shift+click a run of playlists, right-click one of them, then
+**Delete N playlists**.
+- Only the **local** playlists in the pick are deleted — an Apple mirror has no delete path
+  (the Apple write ceiling), so it is counted and named, not touched. A pick of mirrors alone
+  shows no item, and the item's own count is the local count, so the label never over-promises.
+- One question for the whole set, in the same red sticky shape as one playlist:
+  *Delete 3 playlists and their 24 songs? This can't be undone.* **[Delete All] [Cancel]**.
+  A bulk delete **always** asks, even when every playlist is empty: one gesture removes many
+  rows. The song total is read from the track cache, else each row's own count — nothing is
+  fetched to ask the question.
+- Two more sentences ride the question when they apply: *N copies on Apple Music stay and will
+  show in your list.* (exported locals, §6) and *N playlists you picked are on Apple Music, and
+  stay.* (the mirrors in the pick).
+- The deletes run **one after the other**, each one emitting on the local-store change bus,
+  which reloads the list. One that fails is counted, and the rest still go; the result is one
+  toast: *Deleted 3 playlists.* or *Couldn't delete 1 playlist.*
+- The picks are dropped when the run ends (`card.dropPicks()`, collection-card.ts), or the
+  count row would keep counting rows that have left the list.
+
 ### 10.4 Get New Songs (Apple copy → local)
 - Fork **A** (user's pick): add the songs that are on the Apple copy but not in the local
   playlist, **at the end**. Nothing is lost, so no confirm.

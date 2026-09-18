@@ -34,7 +34,7 @@ pub fn migrate_v7(conn: &Connection) -> Result<(), String> {
 /// Every measurement: `[song_id, lufs, peak_db]`.
 #[tauri::command]
 pub fn loudness_all(db: State<'_, Db>) -> Result<Vec<(String, f64, f64)>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     let mut stmt = conn.prepare("SELECT song_id, lufs, peak_db FROM loudness").map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
@@ -53,7 +53,7 @@ pub fn loudness_save(song_id: String, lufs: f64, peak_db: f64, heard: f64, db: S
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     conn.execute(
         "INSERT INTO loudness(song_id, lufs, peak_db, heard, measured_at) VALUES(?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(song_id) DO UPDATE SET lufs = ?2, peak_db = ?3, heard = ?4, measured_at = ?5",
@@ -66,7 +66,7 @@ pub fn loudness_save(song_id: String, lufs: f64, peak_db: f64, heard: f64, db: S
 /// Forget measurements (the panel's action). Returns how many rows went.
 #[tauri::command]
 pub fn loudness_forget(db: State<'_, Db>) -> Result<usize, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     let n = conn.execute("DELETE FROM loudness", []).map_err(|e| e.to_string())?;
     crate::log::info(&format!("loudness: forgot {n} measurement(s)"));
     Ok(n)

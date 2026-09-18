@@ -34,6 +34,7 @@
 // reduced motion (styles/hint.css).
 
 import { setting } from "./settings-store";
+import { creditsFor } from "./credits";
 import "./styles/hint.css";
 
 /** Settings › Hints appear after, in ms. */
@@ -68,6 +69,8 @@ const ROW_SEL = SHAPES.map((s) => s.row).join(",");
 interface Hint {
   text: string;
   sub?: string;
+  /** A song row's writers, under a blank line (CREDITS.md §7). */
+  credit?: string;
   /** A row hint waits longer and can be turned off on its own. */
   row: boolean;
 }
@@ -75,6 +78,7 @@ interface Hint {
 let box: HTMLElement | null = null;
 let titleEl: HTMLElement | null = null;
 let subEl: HTMLElement | null = null;
+let creditEl: HTMLElement | null = null;
 let anchor: HTMLElement | null = null;
 let timer = 0;
 let closedAt = 0;
@@ -93,7 +97,9 @@ function ensureBox(): HTMLElement {
   titleEl.className = "hint__title";
   subEl = document.createElement("span");
   subEl.className = "hint__sub";
-  box.append(titleEl, subEl);
+  creditEl = document.createElement("span");
+  creditEl.className = "hint__credit";
+  box.append(titleEl, subEl, creditEl);
   document.body.appendChild(box);
   return box;
 }
@@ -134,8 +140,14 @@ function rowHint(row: HTMLElement, shape: Shape): Hint | null {
   const text = t?.textContent?.trim() ?? "";
   const sub = s?.textContent?.trim() ?? "";
   if (!text && !sub) return null; // a row still waiting for its data
-  if (mode === "cut" && !cutOff(t) && !cutOff(s)) return null;
-  return { text, sub: sub || undefined, row: true };
+  // The writers (CREDITS.md §7). A song row only — the id is on the row itself, so a tile
+  // or an artist row never asks. The read is synchronous and local: a song we have not
+  // collected yet simply has no third line, and asking warms it for the next hover.
+  const credit = row.dataset.cid ? creditsFor(row.dataset.cid)?.composer : undefined;
+  // The song name being cut off is not the only reason to hover a row any more, so a row
+  // that has credits shows them even under "only when the name is cut off".
+  if (mode === "cut" && !credit && !cutOff(t) && !cutOff(s)) return null;
+  return { text, sub: sub || undefined, credit, row: true };
 }
 
 /** Walk up from the pointer. The first element that can say something owns the hint. */
@@ -168,6 +180,8 @@ function fill(el: HTMLElement): boolean {
   titleEl!.textContent = found.hint.text;
   subEl!.textContent = found.hint.sub ?? "";
   subEl!.hidden = !found.hint.sub;
+  creditEl!.textContent = found.hint.credit ?? "";
+  creditEl!.hidden = !found.hint.credit;
   b.classList.toggle("hint--row", found.hint.row);
   // A control inside a floating panel (a pop panel, a menu, a flyout): the hint goes above
   // that tier, or the panel it explains covers it. Everywhere else it stays under menus.

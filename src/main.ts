@@ -34,6 +34,8 @@ import { initCompass, compassOpen } from "./compass";
 import { initPlaylistExpiry } from "./playlist-expiry";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
+import { initRoomPanel } from "./room-panel";
+import { formatCode, joinRoom, inRoom } from "./room";
 import { initLoudness } from "./sound-loudness";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
@@ -190,6 +192,32 @@ window.addEventListener("DOMContentLoaded", () => {
       .then(() => invoke("tray_place_main"))
       .catch((e) => console.error("[tray] place", e));
   });
+  // The database stopped accepting writes (DB-HEALTH.md §4). Rust sends this once a
+  // session. Silence is the worst outcome here: the app looks fine and remembers nothing.
+  void listen("db-unwritable", () => {
+    toast({
+      kind: "error",
+      text: "DeetsMusic can't save right now. Plays, playlists and settings won't be kept until this is fixed. Check the disk has free space, then restart the app.",
+      dismissKey: "dbUnwritable",
+    });
+  });
+  // An invite link (`deetsmusic://room?code=…`, ROOMS.md §1). A link can be opened by any
+  // page, so nothing joins on its own: the toast asks first, and names the code.
+  void listen<string>("room-invite", (event) => {
+    const code = event.payload;
+    if (!code) return;
+    if (inRoom()) {
+      toast({ kind: "info", text: "Leave the room you are in before you join another." });
+      return;
+    }
+    toast({
+      kind: "info",
+      text: `Join listening room ${formatCode(code)}?`,
+      sticky: true,
+      actions: [{ label: "Join", run: () => void joinRoom(code) }, { label: "Not now" }],
+    });
+  });
+
   // Tray menu "Open DeetsMusic": the real app — back to the full surface (midi/max) at
   // its own remembered size; Rust then restores the pre-pop position and pins it.
   void listen("tray-open", () => {
@@ -505,6 +533,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
   initSoundPanel(); // the title bar's Sound item (SOUND.md §2.3)
   initSleep();
+  initRoomPanel(); // the title bar's Room item (ROOMS.md §1)
   initCompass(); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   initPlaylistExpiry(); // temporary web playlists (PLAYLIST-WEB.md §10)
 

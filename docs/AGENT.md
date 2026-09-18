@@ -341,6 +341,14 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   open" (on | off, 2026-09-17, CARD-GROW.md §15). A grow itself has no agent verb: it is a hand gesture
   and lasts only the session. An agent's own card request never swaps a grown card: the swap
   follows the last press of the user's, so an agent request collapses as before (§14.2).
+- The **Rooms** section (2026-09-17, ROOMS.md §8): `roomGuests.playPause`, `roomGuests.skip`,
+  `roomGuests.seek`, `roomGuests.add`, `roomGuests.changeQueue` (Everyone | Host only) — the
+  controls a room YOU host starts with. They are defaults, not the live room: a change inside a
+  room is a room command from the panel, not a setting. Setting `roomGuests.playPause` to Host
+  only replies with the note that a guest's Pause still stops their own app (§12.3). `roomName`
+  and `roomsUrl` are text, and this route has no text kind, so they are the panel's and the
+  Settings card's alone. An agent in a room needs no new verb: `play`, `queue` and `control` pass
+  through the same bridge every click does, so they become room commands (ROOMS.md §16.2).
 - **`cardMemoryDisk`** "Keep card places on restart" (on | off, 2026-09-17, CARD-MEMORY.md §7).
   Where a card is has no agent verb; the card comes back where the user left it.
 - A bad value → `400` that says what the setting takes.

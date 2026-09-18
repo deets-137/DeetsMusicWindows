@@ -21,8 +21,14 @@ import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playli
 import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
-import { goToArtistItem, goToAlbumItem, requestPlaylistPane } from "./go-to";
+import { goToArtistItem, goToAlbumItem, songCreditsItem, requestPlaylistPane } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
+import {
+  creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
+  CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
+  WRITER_REACH, WRITER_SEARCH_NOTE, FLAT_MARK,
+  type WriterSong,
+} from "./credits";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, type ActionTitles, type ColumnMode, type ColumnSpec, formatTotal } from "./collection-card";
 import { onGrowChange } from "./card-grow";
 import type { MenuItem } from "./context-menu";
@@ -219,10 +225,12 @@ export const fmtClock = (ms: number | undefined): string => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
-function rowHTML(idx: number, title: string, sub: string, thumb?: string, selected = false, badge = ""): string {
+function rowHTML(idx: number, title: string, sub: string, thumb?: string, selected = false, badge = "", cid = ""): string {
   const art = thumb ? thumb : "";
   // `badge` (a source sigil) rides the row's trailing edge (right-aligned via CSS).
-  return `<div class="lib-row${thumb ? " lib-row--art" : ""}${selected ? " is-selected" : ""}" data-idx="${idx}">${art}<div class="lib-row__text"><span class="lib-row__title">${esc(
+  // data-cid: the hover hint reads the song's writers off it (CREDITS.md §7, hint.ts).
+  const id = cid ? ` data-cid="${esc(cid)}"` : "";
+  return `<div class="lib-row${thumb ? " lib-row--art" : ""}${selected ? " is-selected" : ""}" data-idx="${idx}"${id}>${art}<div class="lib-row__text"><span class="lib-row__title">${esc(
     title,
   )}</span><span class="lib-row__artist">${esc(sub)}</span></div>${badge}</div>`;
 }
@@ -250,13 +258,13 @@ export function musicCell(
   art: Artwork | undefined,
   primary: string,
   sub: string,
-  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; mosaicSeed?: string; num?: number } = {},
+  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; mosaicSeed?: string; num?: number; cid?: string } = {},
 ): string {
-  const { round = false, hideCover = false, selected = false, badge = "", mosaic, mosaicSeed, num } = opts;
+  const { round = false, hideCover = false, selected = false, badge = "", mosaic, mosaicSeed, num, cid = "" } = opts;
   // `num` (an album's track number) takes the cover's slot on a line row.
   const slot = num !== undefined ? `<span class="lib-row__num">${num}</span>` : hideCover ? undefined : rowThumb(art, round, primary, mosaic, mosaicSeed);
   return density === "lines"
-    ? rowHTML(idx, primary, sub, slot, selected, badge)
+    ? rowHTML(idx, primary, sub, slot, selected, badge, cid)
     : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic, mosaicSeed), primary, sub, selected, badge);
 }
 
@@ -346,6 +354,8 @@ export interface LibNav {
   drillArtist: (name: string) => void;
   drillAlbum: (t: Track) => void;
   drillGenre: (name: string) => void;
+  /** The song level (CREDITS.md §7.6) — local, so it stays in this card. */
+  drillSong: (t: Track) => void;
 }
 
 // The album's dominant credited artist (mode of each track's leading credit) — the
@@ -373,6 +383,7 @@ function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
     return [
       goToArtistItem("songs", first.catalogId, first.artistName),
       items.length === 1 ? goToAlbumItem(first.catalogId, first.albumName) : null,
+      items.length === 1 ? songCreditsItem(first) : null,
     ];
   }
   let artistItem: MenuItem | null;
@@ -390,7 +401,13 @@ function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
   }
   const albumItem =
     items.length === 1 && first.albumName ? { label: "Go to Album", run: () => nav.drillAlbum(first) } : null;
-  return [artistItem, albumItem];
+  // A nav means this card drills locally, so Song Credits stays here too — it would be odd
+  // for two verbs in one menu to stay and the third to summon another card (go-to.ts).
+  const creditsItem =
+    items.length === 1 && first.catalogId
+      ? { label: "Song Credits", run: () => nav.drillSong(first) }
+      : null;
+  return [artistItem, albumItem, creditsItem];
 }
 
 /** The list a song sits in, for "Play Now → the song, then the list" (SETTINGS.md / §1). */
@@ -506,6 +523,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
             num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
             selected: !!o.selectedId && trackId(t) === o.selectedId,
             badge: explicitBadge(t),
+            cid: t.catalogId ?? "",
           }),
     columns: (cols) => songColumns(cols, o),
     isSelected: o.selectedId ? (t) => trackId(t) === o.selectedId : undefined,
@@ -896,6 +914,168 @@ export const libraryCard: CardDef = {
           albumDetail({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0 }, t),
         ),
       drillGenre: (name) => card.drill(genreDetail({ name, songCount: 0, artistCount: 0, covers: [] })),
+      drillSong: (t) => card.drill(songDetail(t)),
+    };
+
+    // ── song detail and writer detail (CREDITS.md §7.6) ──
+    // A song is a LOCAL target: every fact on the level is already in hand, so it drills
+    // here rather than summoning the Search card (go-to.ts, "the rule and its limit").
+    // The engine wants a list at every level, and a song's natural list is its WRITERS —
+    // so the level is a hero, the facts as a shelf, and one row per writer.
+
+    const songFacts = (t: Track): string => {
+      const rows: [string, string][] = [];
+      if (t.albumName) rows.push(["Album", t.albumName]);
+      const genres = (t.genres ?? []).filter((g) => g !== "Music");
+      if (genres.length) rows.push(["Genre", genres.join(", ")]);
+      if (t.releaseDate) rows.push(["Released", t.releaseDate.slice(0, 10)]);
+      if (t.durationMs) rows.push(["Length", fmtClock(t.durationMs)]);
+      if (t.isrc) rows.push(["ISRC", t.isrc]);
+      if (!rows.length) return "";
+      return `<div class="search__label">Details</div><dl class="credit__facts">${rows
+        .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
+        .join("")}</dl>`;
+    };
+
+    const songDetail = (t: Track): Context => {
+      let credit = creditsFor(t.catalogId);
+      let reading = false;
+      let readFailed = false;
+      if (!credit)
+        void primeCredits([t.catalogId]).then(async () => {
+          credit = creditsFor(t.catalogId);
+          card.reload();
+          // Never read: the gap is ours, so close it rather than blame Apple. One call.
+          if (t.catalogId && !credit) {
+            reading = true;
+            card.reload();
+            try {
+              await fetchCredits([t.catalogId]);
+            } catch {
+              readFailed = true;
+            }
+            reading = false;
+            credit = creditsFor(t.catalogId);
+            card.reload();
+          }
+        });
+      const names = () => credit?.names ?? [];
+      const gap = () =>
+        readFailed ? CREDITS_READ_FAILED
+        : reading ? CREDITS_READING
+        : credit?.state === "none" ? CREDITS_NONE
+        : CREDITS_READING;
+      // Credit order is the order Apple sent, and it carries meaning (the lead writer
+      // leads). It is the default sort, so the rows read as Apple wrote them.
+      const orderOf = (n: string) => names().indexOf(n);
+      return {
+        title: t.title,
+        key: `song:${t.catalogId ?? trackId(t)}`, // card memory (CARD-MEMORY.md §5)
+        headerLabel: "Song",
+        hero: () => ({
+          cover: heroCover(t.artwork, t.title),
+          title: t.title,
+          sub: t.artistName ? { text: t.artistName, run: () => libNav.drillArtist(t.artistName) } : undefined,
+          meta: [t.albumName, t.releaseDate?.slice(0, 4), fmtClock(t.durationMs)].filter(Boolean).join(" · "),
+        }),
+        shelves: () => songFacts(t) + (names().length ? "" : `<p class="credit__note">${esc(gap())}</p>`),
+        toolbarBelow: CREDITS_LABEL,
+        density: false,
+        groupings: [
+          {
+            key: "writers",
+            label: CREDITS_LABEL,
+            sorts: [
+              { key: "credit", label: "Credit order", type: "num", get: orderOf },
+              { key: "name", label: "Name", type: "str", get: (n: string) => n },
+            ],
+            list: names,
+            name: (n: string) => n,
+            match: (n: string, q: string) => n.toLowerCase().includes(q),
+            render: (n: string, density: Density, idx: number) =>
+              musicCell(density, idx, undefined, n, "Writer", { round: true }),
+            open: (n: string) => writerDetail(n),
+          } as Grouping<string>,
+        ],
+        defaults: { density: "lines", sortKey: "credit" },
+      };
+    };
+
+    // Every song the app has collected that credits one writer (CREDITS.md §5.2): one
+    // local join, no Apple call. A row the app holds a track for plays like any song row;
+    // one it met through a web read and never materialized is a flat row.
+    const writerDetail = (name: string): Context => {
+      let rows: WriterSong[] = [];
+      let loaded = false;
+      let searching = false;
+      void songsByWriter(name).then((r) => {
+        rows = r;
+        loaded = true;
+        card.reload();
+      });
+      const list = () => rows;
+      return {
+        title: name,
+        key: `writer:${name}`, // card memory (CARD-MEMORY.md §5)
+        headerLabel: "Writer",
+        hero: () => ({
+          cover: heroCover(undefined, name, undefined, undefined, true),
+          title: name,
+          meta: loaded
+            ? `${rows.length} song${rows.length === 1 ? "" : "s"} collected`
+            : "Reading…",
+        }),
+        // The Apple search fills THIS level in place (the user's call 2026-09-17), so the
+        // page you asked the question from is the page that answers it.
+        shelves: () =>
+          loaded
+            ? `<p class="credit__note">${esc(WRITER_REACH)}</p>` +
+              `<button type="button" class="credit__chip" data-shelf-item="writer-search" ${searching ? "disabled" : ""}>${
+                searching ? "Searching…" : `Search Apple Music for “${esc(name)}”`
+              }</button>` +
+              `<p class="credit__note">${esc(WRITER_SEARCH_NOTE)}</p>`
+            : "",
+        onShelf: (el) => {
+          if (el.dataset.shelfItem !== "writer-search" || searching) return;
+          searching = true;
+          card.reload();
+          void searchAppleForWriter(name)
+            .then((found) => { rows = found; })
+            .finally(() => { searching = false; card.reload(); });
+        },
+        density: true,
+        groupings: [
+          {
+            key: "writerSongs",
+            label: "Songs",
+            sorts: [
+              { key: "yours", label: "Yours first", type: "num", get: (s: WriterSong) => -s.mine },
+              { key: "title", label: "Title", type: "str", get: (s: WriterSong) => s.title },
+              { key: "artist", label: "Artist", type: "str", get: (s: WriterSong) => s.artistName },
+            ],
+            list,
+            name: (s: WriterSong) => s.title,
+            match: (s: WriterSong, q: string) =>
+              s.title.toLowerCase().includes(q) || s.artistName.toLowerCase().includes(q),
+            render: (s: WriterSong, density: Density, idx: number) =>
+              musicCell(density, idx, s.track?.artwork, s.title, s.artistName, {
+                cid: s.catalogId,
+                badge: s.track ? "" : FLAT_MARK,
+              }),
+            // Only the songs we hold a track for can play, so the click acts on those.
+            activate: (s: WriterSong, _idx: number, items: WriterSong[]) => {
+              if (!s.track) return;
+              const playable = items.filter((x) => x.track).map((x) => x.track!);
+              const at = playable.findIndex((x) => x === s.track);
+              void playTracks(playable, Math.max(0, at), `writer:${name}`).catch((e) =>
+                console.error("[library] play writer song", e),
+              );
+            },
+            menu: (s: WriterSong) => (s.track ? trackMenu([s.track], `writer:${name}`, libNav) : []),
+          } as Grouping<WriterSong>,
+        ],
+        defaults: { density: "lines", sortKey: "yours" },
+      };
     };
 
     // ── genre detail: every song of one genre (the Genres view's drill, the Compass's row) ──
@@ -965,6 +1145,14 @@ export const libraryCard: CardDef = {
           : null;
       }
       if (kind === "genre") return genreTracks(tracks(), name).length ? genreDetail({ name, songCount: 0, artistCount: 0, covers: [] }) : null;
+      // A song level is keyed by its catalog id, over the live store: a song no longer in
+      // the library ends the restore there, as an album that has gone does.
+      if (kind === "song") {
+        const t = tracks().find((x) => (x.catalogId ?? trackId(x)) === name);
+        return t ? songDetail(t) : null;
+      }
+      // A writer level needs no store: its rows are read again from the collection.
+      if (kind === "writer") return name ? writerDetail(name) : null;
       return null;
     };
     const card = initCollectionCard({

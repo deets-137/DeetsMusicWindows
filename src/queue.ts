@@ -312,6 +312,32 @@ export function jumpTo(index: number): QueueEntry | null {
   emit();
   return state.current;
 }
+/**
+ * Listening rooms (docs/ROOMS.md §9.1): the room's queue becomes this model, so Now
+ * Playing, Up Next, the Queue card and History all show the room with no card of their
+ * own. `handles[0]` is the room's current song; the rest is its Up Next.
+ *
+ * Called on every room state message, so it must be cheap and quiet: when the song has
+ * not changed, only `upcoming` is replaced and the current entry is left alone (its
+ * `played` flag and the play log stay as they are). When it HAS changed, the old song
+ * joins the heard trail the same way a local advance would, so a room song counts in
+ * History and the play log (§9.5).
+ */
+export function setRoomQueue(handles: TrackHandle[]): void {
+  const [head, ...rest] = handles;
+  const nextUp = rest.map((h): QueueEntry => ({ ...h, origin: "auto" }));
+  const sameSong = !!head && !!state.current && idOf(head) === idOf(state.current);
+  if (sameSong) {
+    state.upcoming = nextUp;
+    emit();
+    return;
+  }
+  if (state.current) pushHistory(state.current);
+  state.current = head ? { ...head, origin: "auto", played: true } : null;
+  state.upcoming = nextUp;
+  emit();
+}
+
 export function clear(): void {
   state.history = [];
   state.current = null;

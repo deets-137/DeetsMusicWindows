@@ -17,6 +17,8 @@ export interface Track {
   contentRating?: string;
   hasLyrics: boolean;
   isrc?: string;
+  /** Apple's `composerName`: the writers as one flat string, no roles (docs/CREDITS.md). */
+  composer?: string;
   /** Catalog-only: 30s preview stream URL (rides search results). */
   previewUrl?: string;
   releaseDate?: string;

@@ -380,7 +380,7 @@ pub fn lastfm_disconnect(app: AppHandle) -> Result<(), String> {
     }
     let dropped = {
         let db = app.state::<crate::library::Db>();
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.execute("UPDATE play_events SET lastfm = NULL WHERE lastfm = 'queued'", [])
             .map_err(|e| e.to_string())?
     };
@@ -407,7 +407,7 @@ pub fn lastfm_status(app: AppHandle) -> LastfmStatus {
     let name = SESSION.lock().unwrap().as_ref().map(|s| s.name.clone());
     let waiting = {
         let db = app.state::<crate::library::Db>();
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.query_row("SELECT COUNT(*) FROM play_events WHERE lastfm = 'queued'", [], |r| r.get(0)).unwrap_or(0)
     };
     LastfmStatus {
@@ -464,7 +464,7 @@ fn meta_of(json: &str) -> Option<Meta> {
 
 fn track_meta(app: &AppHandle, track_id: &str) -> Option<Meta> {
     let db = app.state::<crate::library::Db>();
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let json: String = conn.query_row("SELECT json FROM tracks WHERE track_id = ?1", [track_id], |r| r.get(0)).ok()?;
     meta_of(&json)
 }
@@ -521,7 +521,7 @@ pub fn lastfm_heard(event_id: i64, ms_listened: i64, duration_ms: Option<u64>, a
     }
     let queued = {
         let db = app.state::<crate::library::Db>();
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         let json: Option<String> = conn
             .query_row(
                 "SELECT t.json FROM play_events e LEFT JOIN tracks t ON t.track_id = e.track_id
@@ -561,9 +561,13 @@ fn arm_retry(app: &AppHandle, why: &CallError) {
 
 fn set_status(app: &AppHandle, ids: &[i64], status: &str) {
     let db = app.state::<crate::library::Db>();
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     for id in ids {
-        let _ = conn.execute("UPDATE play_events SET lastfm = ?1 WHERE id = ?2", rusqlite::params![status, id]);
+        // A lost status write means a scrobble is sent twice or waits forever: count it.
+        let _ = crate::dbhealth::watch(
+            "scrobble status",
+            conn.execute("UPDATE play_events SET lastfm = ?1 WHERE id = ?2", rusqlite::params![status, id]),
+        );
     }
 }
 
@@ -599,7 +603,7 @@ async fn run_flush(app: &AppHandle) {
         let Some(sk) = SESSION.lock().unwrap().as_ref().map(|s| s.key.clone()) else { return };
         let rows: Vec<Row> = {
             let db = app.state::<crate::library::Db>();
-            let conn = db.0.lock().unwrap();
+            let conn = db.lock();
             let old = conn
                 .execute(
                     "UPDATE play_events SET lastfm = 'ignored' WHERE lastfm = 'queued' AND started_ts < ?1",

@@ -37,6 +37,16 @@ nothing about authoring changed when the box did.
 | Title menu | Mini · NP · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
+| Title bar | the Room item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
+| Room panel | Your name | The name the other members see | room-panel.ts |
+| Room panel | Start a room | Makes a room from what you play now and shows its code | room-panel.ts |
+| Room panel | the code field | The 8-character code the host reads out. Upper or lower case, with or without the dash | room-panel.ts |
+| Room panel | Join | Joins the room with that code | room-panel.ts |
+| Room panel | the code | The code a friend types to join this room | room-panel.ts |
+| Room panel | Copy code · Copy invite link | Copies the room code / Copies a link that opens DeetsMusic and joins this room | room-panel.ts |
+| Room panel | Remove (per guest) | Removes {name} from the room | room-panel.ts |
+| Room panel | each guest-control pill | what the control hands over ("Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app") | room-panel.ts |
+| Room panel | Leave room · End room | Leaves the room / Ends the room for everyone. Your own queue comes back | room-panel.ts |
 | Compass bar | a Settings row | the row's own hint (settings-card.ts, through `settingsRows()`) | compass.ts |
 | Compass bar | a theme, skin or surface row | the title menu button's own hint | compass.ts |
 | Compass bar | Open · Play (a song, album, artist or playlist row) | Enter · Ctrl+Enter | compass.ts |
@@ -94,6 +104,7 @@ nothing about authoring changed when the box did.
 | Playlist web panel | Start row (Artist · Song · Album) · the field · a library artist row (song or album row) · an Apple row or an earlier web's row · Search Apple Music row · the picked artist (song, album) · Reach 3 with an album seed · Keep · Temp · the days button · Reach row · Size row · Prefer row · a genre chip · Retry · Read again · Playlist name · Make playlist | Start the web from an artist, a song or an album · Finds an artist in your library, or searches Apple Music (Finds a song… / Finds an album…) · In your library. Starts the web here · Starts the web here · Searches Apple Music for this name (song, album: …for this title) · The web starts here. Type to pick another artist (song, album) · An album starts with many artists, so its web reaches 2 at most · Keeps the playlist until you delete it · Deletes the playlist *7 days* after you last play it. Right-click the playlist to keep it · Press for *30 days*, right-click for *5 days* · 1 reaches the artist's collaborators. Each step reaches one circle further · Songs in the new playlist · Familiar puts your songs first. Discover puts songs you don't have first · (a genre chip, written again on every change) *66 R&B/Soul songs in the web.* Pick it: *44* go in, with *6* by *Artist* / *44* go in, with *6* by *Artist*. Press again to drop it / Add it: *50* go in, with *8* by *Artist* (Web only: ", with all of *Artist*'s songs") · Reads only the artists that didn't load · Reads this web from Apple Music again. Use it when an artist has new songs · Names the new playlist · Makes the playlist and opens it | web.ts |
 | Radio | Refresh | Reads the stations from Apple Music again | radio-card.ts |
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
+| Song pane (2026-09-17) | a writer chip | Other songs by this writer | search-card.ts (CREDITS.md §7) |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
 | Any list | Sort · View · magnifier | Changes the order of this list · Changes what the list groups by and how big the rows are · Finds a name in this list | collection-card.ts |
 | Sort popover | ↑ · ↓ | First to last: A to Z, newest first · Last to first: Z to A, oldest first | collection-card.ts |
@@ -140,6 +151,7 @@ run it: `main.ts` and `tray.ts`.
 |---|---|---|
 | Written | what a `title` said | one line, the author's words |
 | Row | read off a list row itself | the name, and the line under it (a song's artist) |
+| Row + credit | the same, plus the song's writers | a third line, after a blank one (CREDITS.md §7.3) |
 
 Nobody authors a row hint. `SHAPES` in hint.ts lists the row and tile shapes the cards build
 — `.lib-row`, `.lib-tile`, `.lib-hero`, `.qrow`, `.qnow`, `.search__song`, `.search__row` (a Search
@@ -148,6 +160,13 @@ drill pane's song list; missing until 2026-09-17), `.search__tile`,
 covers Library, Search, Queue, Rewind, History, Home, the Artist shelves and Now Playing.
 **Add a new row shape to that table, not a new listener.** The deeper element wins: the Add
 button inside a song row still says *Add to Library*.
+
+**The third line — a song's writers** (2026-09-17, CREDITS.md §7.3). A row that carries
+`data-cid` (its catalog id) shows Apple's `composerName` under a blank line. The read is
+synchronous from a memory map, because a hover cannot wait for a round trip: a song not
+collected yet has no third line, and asking warms it for the next hover. A row with writers
+shows its hint **even under "Name songs on hover: Cut off"** — being cut off is no longer the
+only reason to hover a row.
 
 **Three settings** (Settings › Look and feel, beside Open menus on hover):
 
@@ -177,20 +196,21 @@ a song appears (`trackMenu`, library-card.ts).
 
 | Surface | Item | Menu |
 |---|---|---|
-| Library | song | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several) · Go to Album · Copy Link · Start Station · Favorite |
+| Library | song | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several) · Go to Album · **Song Credits** · Copy Link · Start Station · Favorite |
 | Library | album tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Copy Link |
 | Library | artist tile | the album menu shape on the artist's songs |
 | Playlists | playlist | Rename (field, hand-made only) · Keep Playlist (a temporary web playlist, 2026-09-17) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
+| Playlists | a picked set of playlists (Ctrl/Shift+click) | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Delete N playlists** (the local ones in the pick, 2026-09-17) |
 | Playlists | song in a playlist | the song menu + Add to Library · Remove from Playlist (hand-made) |
 | Playlists | folder header | Rename (field) · Delete Folder |
 | Playlists | hero cover | Rename · Keep Playlist (temporary) · the cover items · Apple Music ▸ |
 | Playlist web panel | the days button of Temp \| N days (2026-09-17) | no menu: a right-click steps the days back (30 → 7 → 5 → 3 → 1 → 30); a press steps forward |
-| Queue | upcoming row | Play Now · Move to Top · Move to Bottom · Remove · Go to Artist · Go to Album · Copy Link · Start Station · Add to Library · Favorite |
-| Queue | now hero | Go to Artist · Go to Album · Copy Link · Start Station · Add to Library · Favorite · Stop Station |
+| Queue | upcoming row | Play Now · Move to Top · Move to Bottom · Remove · Go to Artist · Go to Album · **Song Credits** · Copy Link · Start Station · Add to Library · Favorite |
+| Queue | now hero | Go to Artist · Go to Album · **Song Credits** · Copy Link · Start Station · Add to Library · Favorite · Stop Station |
 | Queue | station row | Stop Station / Don't resume |
 | Now Playing | cover · title · artist | the Queue now-hero menu |
-| History · Rewind | row | Play Now · Play Next · Add to Queue (+ Go to Artist / Album, links where a catalog id exists) |
-| Search | song · album · playlist · artist | the song menu · the album menu (+ Add to Library) · the playlist menu · Go to Artist · Start Station |
+| History · Rewind | row | Play Now · Play Next · Add to Queue (+ Go to Artist / Album / **Song Credits**, where a catalog id exists) |
+| Search | song · album · playlist · artist | the song menu (with **Song Credits**) · the album menu (+ Add to Library) · the playlist menu · Go to Artist · Start Station |
 | Search · Radio | **station** (2026-09-15) | Play Now · Add to Queue (plays when the queue runs dry) · Copy Link. A station also drags: to the Queue card (after the queue) or Now Playing (now) |
 | Artist view | shelf playlist | Play Now · Play Next · Add to Queue · Add to Playlist ▸ |
 | Settings | My reports row | Open · Copy link · Close · Clear |

@@ -27,7 +27,7 @@ import { startStationItem } from "./start-station";
 import { copySongLinkItem } from "./copy-link";
 import { addToPlaylistItem } from "./playlists";
 import { explicitBadge } from "./library-card";
-import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { goToArtistItem, goToAlbumItem, songCreditsItem } from "./go-to";
 import type { CardDef } from "./cards";
 import { rowDrag, registerDropTarget } from "./row-drag";
 import { dropToPlay } from "./drop-actions";
@@ -237,6 +237,11 @@ export const nowPlayingCard: CardDef = {
       const text = title ?? "Not playing";
       const badge = next ? explicitBadge(next) : "";
       if (npArtist) npArtist.textContent = artist ?? (s.station ? s.station.name : "");
+      // data-cid: the hover hint reads the song's writers off it (CREDITS.md §7, hint.ts).
+      if (npEl2) {
+        if (cur?.catalogId) npEl2.dataset.cid = cur.catalogId;
+        else delete npEl2.dataset.cid;
+      }
       if (npTitle && `${text}|${badge}` !== titleKey) {
         titleKey = `${text}|${badge}`;
         npTitle.textContent = text;
@@ -443,6 +448,7 @@ export const nowPlayingCard: CardDef = {
         t ? addToPlaylistItem(() => [t]) : null,
         goToArtistItem("songs", cur.catalogId, t?.artistName),
         goToAlbumItem(cur.catalogId, t?.albumName),
+        songCreditsItem(t),
         copySongLinkItem(cur.catalogId),
         startStationItem("songs", cur.catalogId),
         t ? addSongToLibraryItem(t) : null,

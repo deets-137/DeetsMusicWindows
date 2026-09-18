@@ -20,6 +20,32 @@ use crate::provider::MusicProvider;
 /// Managed SQLite connection.
 pub struct Db(pub Mutex<Connection>);
 
+impl Db {
+    /// The connection, through a poison-proof lock (docs/DB-HEALTH.md §2).
+    ///
+    /// A Rust `Mutex` **poisons** when a thread panics while it holds the lock. With
+    /// `.lock().unwrap()` at ~88 call sites, one panic anywhere in a write path made every
+    /// later lock panic too: the app kept running and silently stopped remembering
+    /// anything — plays, scrobbles, playlists, settings. Nothing recovered it but a
+    /// restart, and nothing told the user.
+    ///
+    /// Recovering is safe here because every write is a single statement or an explicit
+    /// transaction: a panic cannot leave a half-applied multi-step invariant in the
+    /// connection. SQLite itself rolls back an interrupted statement. So the guard's data
+    /// is sound, and we take it back rather than spread the panic.
+    ///
+    /// The poisoning is still worth knowing about, so the first one is logged and counted.
+    pub fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
+        match self.0.lock() {
+            Ok(g) => g,
+            Err(poisoned) => {
+                crate::dbhealth::note_poisoned();
+                poisoned.into_inner()
+            }
+        }
+    }
+}
+
 pub fn init_db(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "-- The UNIFIED track store (FAVORITES.md): every track we've touched, not just
@@ -306,7 +332,7 @@ fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<
 /// Read a page of cached tracks, ordered by title/artist.
 #[tauri::command]
 pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page<Track>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     // Library views show synced rows only; 'seen' rows exist for feedback joins.
     let total: u32 = conn
         .query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0))
@@ -337,7 +363,7 @@ pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page
 /// sessions; library views still read only synced rows (`library_tracks`).
 #[tauri::command]
 pub fn seen_tracks(db: State<'_, Db>) -> Result<Vec<Track>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT json FROM tracks WHERE source = 'seen'")
         .map_err(|e| e.to_string())?;
@@ -385,7 +411,7 @@ pub fn record_play(
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
 
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     // One upsert per kind: create the row on first sight, else bump the tally.
     // `partial` also stamps last_played (the start); `full` leaves it (it follows a start).
     let sql = match kind.as_str() {
@@ -407,7 +433,9 @@ pub fn record_play(
         }
         other => return Err(format!("record_play: unknown kind '{other}'")),
     };
-    conn.execute(sql, rusqlite::params![track_id, now_ms])
+    // The caller logs a failure and moves on (stats.ts), so the play would be lost with
+    // nothing counting it. `watch` counts it (DB-HEALTH.md §3).
+    crate::dbhealth::watch("play", conn.execute(sql, rusqlite::params![track_id, now_ms]))
         .map_err(|e| e.to_string())?;
 
     conn.query_row(
@@ -446,7 +474,7 @@ pub fn record_event_start(
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
     let id = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.execute(
             "INSERT INTO play_events(track_id, started_ts, context) VALUES(?1, ?2, ?3)",
             rusqlite::params![track_id, now_ms, context],
@@ -468,7 +496,7 @@ pub fn record_event_end(
     completed: bool,
     db: State<'_, Db>,
 ) -> Result<(), String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute(
         "UPDATE play_events SET ms_listened = ?2, completed = ?3 WHERE id = ?1",
         rusqlite::params![event_id, ms_listened.max(0), completed],
@@ -493,7 +521,7 @@ pub struct PlayEvent {
 /// auto-reveal reads this once at boot, then counts starts in the renderer.
 #[tauri::command]
 pub fn play_event_count(db: State<'_, Db>) -> Result<i64, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.query_row("SELECT COUNT(*) FROM play_events", [], |r| r.get(0))
         .map_err(|e| e.to_string())
 }
@@ -503,7 +531,7 @@ pub fn play_event_count(db: State<'_, Db>) -> Result<i64, String> {
 /// rows over IPC; all grouping/ranking lives in TS where the track-store join is.
 #[tauri::command]
 pub fn play_events_since(since_ts: i64, db: State<'_, Db>) -> Result<Vec<PlayEvent>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn
         .prepare(
             "SELECT track_id, started_ts, ms_listened, completed, context
@@ -541,7 +569,7 @@ pub fn materialize_track(track: Track, db: State<'_, Db>) -> Result<(), String> 
         track.artist_name.to_lowercase()
     );
     let json = serde_json::to_string(&track).map_err(|e| e.to_string())?;
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute(
         "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'seen', ?2, ?3)
          ON CONFLICT(track_id) DO NOTHING",
@@ -622,7 +650,7 @@ pub(crate) fn graduate_tracks(conn: &Connection, tracks: &[Track]) -> Result<(),
 /// (the Home card), no Apple call. Small by nature — one row per add from DeetsMusic.
 #[tauri::command]
 pub fn added_at_map(db: State<'_, Db>) -> Result<Vec<(String, i64)>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT track_id, ts FROM added_at")
         .map_err(|e| e.to_string())?;
@@ -671,13 +699,13 @@ const META_QUEUE_STATE: &str = "queue_state";
 
 #[tauri::command]
 pub fn queue_state_get(db: State<'_, Db>) -> Result<Option<String>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     Ok(meta_get(&conn, META_QUEUE_STATE))
 }
 
 #[tauri::command]
 pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     meta_set(&conn, META_QUEUE_STATE, &json)
 }
 
@@ -695,7 +723,7 @@ pub struct PlayCount {
 /// Every song this app has played, with its tallies. Zero Apple calls.
 #[tauri::command]
 pub fn play_counts(db: State<'_, Db>) -> Result<Vec<PlayCount>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT track_id, full_count, partial_count FROM play_stats WHERE partial_count > 0")
         .map_err(|e| e.to_string())?;
@@ -807,7 +835,7 @@ pub fn migrate_v8(conn: &Connection) -> Result<(), String> {
 /// The ids marked dead within the last 7 days — the player's denylist at launch.
 #[tauri::command]
 pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT id FROM dead_ids WHERE marked_at >= ?1")
         .map_err(|e| e.to_string())?;
@@ -821,7 +849,7 @@ pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
 /// row before — first found dead on this install.
 #[tauri::command]
 pub fn dead_ids_mark(ids: Vec<String>, reason: String, db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut conn = db.lock();
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     let now = now_secs();
     let mut fresh = Vec::new();
@@ -886,7 +914,7 @@ pub async fn library_sync(
     let provider = std::sync::Arc::new(AppleProvider::new(dev, user));
 
     let last_full: Option<i64> = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         meta_get(&conn, META_FULL_SYNC_AT).and_then(|v| v.parse().ok())
     };
     let age = last_full.map(|t| now_secs() - t);
@@ -952,7 +980,7 @@ pub async fn library_sync(
 
     let complete = errors.is_empty();
     {
-        let mut conn = db.0.lock().unwrap();
+        let mut conn = db.lock();
         write_tracks(&mut conn, &all, complete)?;
     }
 
@@ -968,7 +996,7 @@ pub async fn library_sync(
     }
 
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         if let Err(e) = meta_set(&conn, META_FULL_SYNC_AT, &now_secs().to_string()) {
             crate::log::warn(&format!("library: full sync timestamp not written: {e}"));
         }
@@ -1008,7 +1036,7 @@ async fn sync_incremental(
         pages += 1;
         total = page.total;
         let (known, fresh) = {
-            let mut conn = db.0.lock().unwrap();
+            let mut conn = db.lock();
             let known = {
                 let mut stmt = conn
                     .prepare("SELECT 1 FROM tracks WHERE track_id = ?1 AND source = 'library'")
@@ -1031,7 +1059,7 @@ async fn sync_incremental(
         offset = next.unwrap_or(offset + 100);
     }
     let count: u32 = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0)).unwrap_or(0)
     };
     crate::log::info(&format!(

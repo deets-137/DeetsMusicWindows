@@ -22,7 +22,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem } from "./library-add";
 import { favoriteItem } from "./favorites";
 import { startStationItem } from "./start-station";
-import { goToArtistItem, goToAlbumItem } from "./go-to";
+import { goToArtistItem, goToAlbumItem, songCreditsItem } from "./go-to";
 import { copySongLinkItem } from "./copy-link";
 import { addToPlaylistItem } from "./playlists";
 import { rowPick, picksText } from "./row-pick";
@@ -82,7 +82,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const rows = shown
       .map((e, i) => {
         const t = resolve(e);
-        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72), true, "", addSquareHTML(t));
+        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72), true, "", addSquareHTML(t), t?.catalogId ?? "");
       })
       .join("");
     const more =
@@ -211,6 +211,8 @@ function mountQueue(host: HTMLElement): CardInstance {
       if (goA) items.push(goA);
       const goAl = goToAlbumItem(entry.catalogId, t?.albumName);
       if (goAl) items.push(goAl);
+      const credits = songCreditsItem(t);
+      if (credits) items.push(credits);
       const link = copySongLinkItem(entry.catalogId);
       if (link) items.push(link);
       const start = startStationItem("songs", entry.catalogId);
@@ -231,6 +233,7 @@ function mountQueue(host: HTMLElement): CardInstance {
       t ? addToPlaylistItem(() => [t]) : null,
       goToArtistItem("songs", cur?.catalogId, t?.artistName),
       goToAlbumItem(cur?.catalogId, t?.albumName),
+      songCreditsItem(t),
       copySongLinkItem(cur?.catalogId),
       startStationItem("songs", cur?.catalogId), // "more like what's playing"
       t ? addSongToLibraryItem(t) : null,

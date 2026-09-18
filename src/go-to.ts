@@ -2,12 +2,28 @@
 // other menu-item builders (startStationItem, addSongToLibraryItem, addToPlaylistItem):
 // a card spreads these into its menu array and drops nulls with `.filter(Boolean)`.
 //
-// The catalog detail panes live in the Search card (its `.spane` stack + fillArtist/
-// fillCollection + the memoized resolve in search.ts). Rather than duplicate that
-// surface per card, a drill from ANYWHERE summons the Search card (requestCard) and
-// hands it the intent over this bus; the search card runs its own `drillRelated`
-// (open pane immediately → resolve id → fill). So resolution + caching stay in one
-// place and these builders are dumb: emit intent + summon.
+// **The rule, and its limit** (restated 2026-09-17 after it was misapplied).
+//
+// The app has TWO drill systems, and which one a verb belongs to depends on whether the
+// target needs an Apple id hop:
+//
+//  • A CATALOG target (an artist, an album or a playlist we hold only a name for) needs a
+//    `?include=` hop to resolve, and that resolve is memoized in search.ts. Those panes live
+//    in the Search card (its `.spane` stack + fillArtist / fillCollection). Rather than
+//    duplicate that surface per card, a drill from ANYWHERE summons the Search card
+//    (requestCard) and hands it the intent over this bus; the search card runs its own
+//    `drillRelated` (open pane → resolve id → fill). Resolution and caching stay in one
+//    place, and these builders stay dumb: emit intent + summon.
+//
+//  • A LOCAL target — one answered from data the app already holds, at zero Apple calls —
+//    belongs to the collection-card engine instead, which Library, Playlists and Radio all
+//    run on: a stack of `Context` levels with its own hero, rows, Back, slide and card
+//    memory. The Library drills artist, album and genre this way (`LibNav`), and the song
+//    pane too (CREDITS.md §7.6): `drillSong` in a card that has a nav, the Search pane in a
+//    card that does not.
+//
+// So a menu builder here that has a nav in hand should prefer it. `goToItems` in
+// library-card.ts is the reference: it branches on `nav` before it reaches for this bus.
 
 import { requestDrillCard } from "./layout-bus";
 import type { MenuItem } from "./context-menu";
@@ -110,4 +126,44 @@ export function goToAlbumItem(songCatalogId?: string | null, albumName?: string)
     label: "Go to Album",
     run: () => requestDrill({ srcKind: "songs", srcId: songCatalogId, rel: "albums", name: albumName || "Album" }),
   };
+}
+
+// ── The song pane (CREDITS.md §7) ────────────────────────────────────────────
+// A song is the one thing every card lists and no card could open. It rides the same bus
+// as the catalog playlist pane above: the caller already holds the Track, so there is no
+// id hop — the pane opens full.
+
+export interface SongPaneIntent {
+  track: Track;
+}
+const songSubs = new Set<(intent: SongPaneIntent) => void>();
+let pendingSong: { intent: SongPaneIntent; at: number } | null = null;
+
+/** Search-card side: subscribe to song panes. Returns an unsubscribe fn. */
+export function onSongPaneRequest(cb: (intent: SongPaneIntent) => void): () => void {
+  songSubs.add(cb);
+  return () => songSubs.delete(cb);
+}
+
+/** Search-card side: take the waiting song pane (null when none, or too old). */
+export function takeSongPaneRequest(): SongPaneIntent | null {
+  const p = pendingSong;
+  pendingSong = null;
+  return p && Date.now() - p.at < HOLD_TTL_MS ? p.intent : null;
+}
+
+export function requestSongPane(intent: SongPaneIntent): void {
+  pendingSong = { intent, at: Date.now() };
+  requestDrillCard("search");
+  if (pendingSong) songSubs.forEach((cb) => cb(intent));
+  pendingSong = null;
+}
+
+/**
+ * "Song Credits" — opens the song pane, whose first section is the writers.
+ * `null` without a catalog id (an uploaded library track has no credits to show).
+ */
+export function songCreditsItem(track?: Track | null): MenuItem | null {
+  if (!track?.catalogId) return null;
+  return { label: "Song Credits", run: () => requestSongPane({ track }) };
 }

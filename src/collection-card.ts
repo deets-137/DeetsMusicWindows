@@ -361,7 +361,29 @@ function sortItems<T>(items: T[], spec: SortSpec<T>, dir: SortDir, nameOf: (x: T
 }
 
 // ── controller ──────────────────────────────────────────────────────────────────
-export function initCollectionCard(opts: CardOptions) {
+/** The handle a host card holds onto (declared, not inferred: a host whose own options
+ *  reach back through the handle would otherwise build a circular inference). */
+export interface CollectionCardHandle {
+  /** Push a child context programmatically — the same slide/header path as a tile click. */
+  drill(ctx: Context): void;
+  reload(): void;
+  /** Card memory: where the card is now (CARD-MEMORY.md §2). Null from a card whose
+   *  host has no body to mount into — there is no place to remember. */
+  snapshot(): CardSnapshot | null;
+  /** Card memory: build a snapshot's levels once the card's own data is ready. */
+  restore(s: unknown): boolean;
+  /** Card memory: hide the viewport while a restore waits for that data. */
+  hold(): void;
+  /** How many levels are open (1 = the root). */
+  depth(): number;
+  /** Drop the multi-select picks (§19). A host action that removes the rows it acted on
+   *  calls this, or the count row keeps counting rows that have left the list. */
+  dropPicks(): void;
+  /** Remove the engine's document-level listeners. */
+  destroy(): void;
+}
+
+export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   const titleEl = opts.root.querySelector<HTMLElement>(".panel__title");
   const backEl = opts.root.querySelector<HTMLButtonElement>(".panel__back");
   const bodyHost = opts.root.querySelector<HTMLElement>(".coll-body");
@@ -374,6 +396,7 @@ export function initCollectionCard(opts: CardOptions) {
       restore: (_s: unknown): boolean => false,
       hold: () => {},
       depth: () => 1,
+      dropPicks: () => {},
     };
 
   const baseTitle = titleEl?.textContent ?? "";
@@ -577,7 +600,9 @@ export function initCollectionCard(opts: CardOptions) {
     items: () => (groupingOf(cur()).pick ? cur().items : []),
     can: (x) => groupingOf(cur()).pick?.can?.(x) !== false,
     onChange: () => {
-      if (curPane) renderViewInto(curPane, cur());
+      // A pick only adds a mark and the count row — the rows and their order are the same,
+      // so the list must not move (2026-09-17: a Ctrl+click far down jumped to the top).
+      if (curPane) rerenderInPlace(curPane, cur());
     },
   });
   // Which card Ctrl+A acts on. A row carries no tabindex, so a click leaves the focus on
@@ -1472,6 +1497,21 @@ export function initCollectionCard(opts: CardOptions) {
   curPane.dataset.pos = "center";
   viewport.appendChild(curPane);
 
+  /** Re-render a pane and keep the list where it is. `renderViewInto` replaces the rows'
+   *  HTML, which drops scrollTop to 0 — so anything that changes how the SAME rows look
+   *  (a pick, a background sync) has to put the place back. A change that reorders or
+   *  refilters the list calls `renderViewInto` directly: the top is right there. */
+  const rerenderInPlace = (pane: HTMLElement, f: Frame) => {
+    const v = pane.querySelector<HTMLElement>("[data-view]");
+    const keep = v ? v.scrollTop : 0;
+    renderViewInto(pane, f);
+    const v2 = pane.querySelector<HTMLElement>("[data-view]");
+    if (!v2) return;
+    const w = windowers.get(v2);
+    if (w) w.scrollTo(keep);
+    else v2.scrollTop = keep;
+  };
+
   // Refresh data without losing the user's place. Live grouping closures pick up
   // new data; we just re-render the visible pane (deeper frames re-render on back).
   function reload() {
@@ -1503,15 +1543,7 @@ export function initCollectionCard(opts: CardOptions) {
       }
     }
     if (!curPane) return;
-    // a background sync shouldn't yank the user to the top
-    const v = curPane.querySelector<HTMLElement>("[data-view]");
-    const keep = v ? v.scrollTop : 0;
-    renderViewInto(curPane, cur());
-    const v2 = curPane.querySelector<HTMLElement>("[data-view]");
-    if (!v2) return;
-    const w = windowers.get(v2);
-    if (w) w.scrollTo(keep);
-    else v2.scrollTop = keep;
+    rerenderInPlace(curPane, cur()); // a background sync shouldn't yank the user to the top
   }
 
   return {
@@ -1529,6 +1561,9 @@ export function initCollectionCard(opts: CardOptions) {
     hold,
     /** How many levels are open (1 = the root). */
     depth: () => stack.length,
+    /** Drop the multi-select picks (§19). A host action that removes the rows it acted on
+     *  calls this, or the count row keeps counting rows that have left the list. */
+    dropPicks: (): void => pick.clear(),
     // Remove the engine's document-level listeners. The viewport/back listeners live on
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {

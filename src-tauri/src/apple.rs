@@ -420,6 +420,13 @@ pub fn set_app_handle(app: tauri::AppHandle) {
     let _ = APP_HANDLE.set(app);
 }
 
+/// The handle, for code that must reach the app from outside a command
+/// (`dbhealth::tell_once`). None before `setup()` has run.
+pub(crate) fn app_handle() -> Option<&'static tauri::AppHandle> {
+    APP_HANDLE.get()
+}
+
+
 fn unix_now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
@@ -1440,6 +1447,8 @@ fn track_from_library_song(v: &serde_json::Value) -> Track {
         content_rating: a["contentRating"].as_str().map(String::from),
         has_lyrics: a["hasLyrics"].as_bool().unwrap_or(false),
         isrc: a["isrc"].as_str().map(String::from),
+        // Library payloads usually omit composerName; the catalog read fills it in (CREDITS.md §3).
+        composer: a["composerName"].as_str().map(String::from),
         release_date: a["releaseDate"].as_str().map(String::from),
         preview_url: None, // catalog-only; library payloads never carry previews
         added_rank: None,  // set during sync from the dateAdded-sorted page position
@@ -1475,6 +1484,7 @@ pub(crate) fn track_from_catalog_song(v: &serde_json::Value) -> Track {
         content_rating: a["contentRating"].as_str().map(String::from),
         has_lyrics: a["hasLyrics"].as_bool().unwrap_or(false),
         isrc: a["isrc"].as_str().map(String::from),
+        composer: a["composerName"].as_str().map(String::from),
         preview_url: a["previews"][0]["url"].as_str().map(String::from),
         release_date: a["releaseDate"].as_str().map(String::from),
         added_rank: None,
@@ -1809,7 +1819,7 @@ pub async fn catalog_collection_tracks(
         .map(track_from_catalog_song)
         .collect();
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         crate::enrich::cache_tracks(&conn, &tracks)?;
     }
     Ok(tracks)
@@ -1848,7 +1858,7 @@ pub async fn apple_add_to_library(
     if !(200..300).contains(&status) {
         return Err(format!("add-to-library HTTP {status}: {body}"));
     }
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     crate::library::graduate_tracks(&conn, &tracks)?;
     Ok(())
 }
@@ -1891,7 +1901,7 @@ pub async fn catalog_artist(
         .map(|arr| arr.iter().map(playlist_from_catalog).collect())
         .unwrap_or_default();
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         crate::enrich::cache_tracks(&conn, &top_songs)?;
     }
     Ok(ArtistDetail {
@@ -1918,7 +1928,7 @@ fn epoch_ms() -> i64 {
 /// the tile falls back to one of that artist's album covers.
 #[tauri::command]
 pub fn artist_photos(db: tauri::State<'_, crate::library::Db>) -> Result<Vec<(String, Artwork)>, String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     let mut stmt = conn
         .prepare("SELECT name, artwork FROM artist_catalog WHERE artwork IS NOT NULL")
         .map_err(|e| e.to_string())?;
@@ -1952,7 +1962,7 @@ pub async fn library_artist_info(
 ) -> Result<Option<crate::model::LibraryArtistInfo>, String> {
     type Row = (String, Option<String>, Option<String>, i64, Option<String>);
     let row: Option<Row> = {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.query_row(
             "SELECT catalog_id, artwork, featured, featured_at, top_songs FROM artist_catalog WHERE name = ?1",
             [name.as_str()],
@@ -1999,7 +2009,7 @@ pub async fn library_artist_info(
             let node = &body["data"][0]["relationships"]["artists"]["data"][0];
             let id = node["id"].as_str().unwrap_or_default().to_string();
             let art = artwork_from(&node["attributes"]["artwork"]);
-            let conn = db.0.lock().unwrap();
+            let conn = db.lock();
             conn.execute(
                 "INSERT OR REPLACE INTO artist_catalog(name, catalog_id, artwork, featured, featured_at) VALUES(?1, ?2, ?3, NULL, 0)",
                 rusqlite::params![name, id, art.as_ref().and_then(|a| serde_json::to_string(a).ok())],
@@ -2042,7 +2052,7 @@ pub async fn library_artist_info(
         .map(|arr| arr.iter().filter(|v| v["type"].as_str() == Some("songs")).map(track_from_catalog_song).collect())
         .unwrap_or_default();
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         conn.execute(
             "UPDATE artist_catalog SET artwork = ?2, featured = ?3, featured_at = ?4, top_songs = ?5 WHERE name = ?1",
             rusqlite::params![
@@ -2067,7 +2077,7 @@ pub async fn library_artist_info(
 /// each artist fetches it again. Ids and photo links stay. Zero Apple calls.
 #[tauri::command]
 pub fn library_artists_expire(db: tauri::State<'_, crate::library::Db>) -> Result<(), String> {
-    let conn = db.0.lock().unwrap();
+    let conn = db.lock();
     conn.execute("UPDATE artist_catalog SET featured_at = 0", []).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -2097,7 +2107,7 @@ pub async fn catalog_search(
         .await?;
 
     {
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         crate::enrich::cache_tracks(&conn, &results.songs)?;
     }
     Ok(results)

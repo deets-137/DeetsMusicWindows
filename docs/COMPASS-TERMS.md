@@ -15,6 +15,7 @@
 | **press**, **ocean**, **glass**, **cyber** (skin, look) | The skin |
 | **sound** (eq, equalizer) | The Sound panel |
 | **sleep timer** (timer, alarm) | The sleep panel |
+| **listening room** (room, friends, together) | The Room panel |
 
 ## 2. Settings (type any word of the row's name or its section)
 
@@ -31,6 +32,9 @@ Any other row opens the Settings card at that row. Examples: **hover hints**, **
 | **next** (skip, forward) · **previous** (back, prev) | The next or the previous song |
 | **shuffle** (random) · **repeat** (loop) · **mute** (silence, quiet) | The transport buttons |
 | **sleep in 15 / 30 / 45 / 60** · **sleep at end of song** · **sleep at end of up next** · **sleep timer off** | The sleep timer |
+| **start a listening room** (room, listen together, share) | Starts a room from what you play now |
+| **leave room** / **end room** (in a room) | Leaves it, or ends it for everyone |
+| **stop listening** / **listen again** (in a room) | Stops this app while the room plays on, and re-joins it |
 | **eq** (equalizer, sound): **flat**, **night**, … and your own presets | The equalizer preset; the one in force says On |
 | a song in **up next** | Jumps there |
 | a song played this session (**recent**) | Plays it again |

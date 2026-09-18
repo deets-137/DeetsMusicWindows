@@ -60,6 +60,11 @@ pub struct Track {
     pub has_lyrics: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub isrc: Option<String>,
+    /// Apple's `composerName`: the writers as ONE flat string, with no roles
+    /// ("JENNIE, Daniel Aged, Deb Never, Romil Hemnani, Jelli & Saya Gray").
+    /// It rides every catalog song read at no extra call (docs/CREDITS.md).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub composer: Option<String>,
     /// Catalog-only: 30s preview stream URL (rides search results for free).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preview_url: Option<String>,

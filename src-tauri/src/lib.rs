@@ -2,6 +2,8 @@ mod airplay;
 mod audio_out;
 mod apple;
 mod bridge;
+mod credits;
+mod dbhealth;
 mod enrich;
 mod favorites;
 mod lastfm;
@@ -15,6 +17,7 @@ mod provider;
 mod query;
 mod report;
 mod settings;
+mod rooms;
 mod smtc;
 mod tray;
 mod update;
@@ -35,6 +38,10 @@ pub fn run() {
             // `<scheme>://lastfm?token=…` is Last.fm's link back after Allow (LASTFM.md §4).
             if lastfm::is_link(link) {
                 lastfm::handle_link(link);
+            } else if rooms::is_link(link) {
+                // `<scheme>://room?code=…` is an invite (ROOMS.md §1). It carries no
+                // power: the code is all it holds, and the front end asks before joining.
+                rooms::handle_link(app, link);
             } else {
                 apple::handle_link(app, link);
             }
@@ -177,6 +184,8 @@ pub fn run() {
             enrich::init_tables(&conn).expect("init enrichment tables");
             playlists::init_tables(&conn).expect("init playlist tables");
             web::init_tables(&conn).expect("init web tables");
+            credits::init_tables(&conn).expect("init credit tables");
+            dbhealth::init_tables(&conn).expect("init db health tables");
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
             }
@@ -187,6 +196,8 @@ pub fn run() {
             loudness::migrate_v7(&conn).expect("v7 migration failed");
             library::migrate_v8(&conn).expect("v8 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
+            // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
+            dbhealth::start(app.handle().clone());
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
             // extension pairing token), then the tray + the extension bridge.
@@ -308,6 +319,11 @@ pub fn run() {
             favorites::favorites_reconcile,
             enrich::catalog_enrich,
             enrich::album_palette,
+            credits::credits_stats,
+            credits::credits_for,
+            enrich::credits_fetch,
+            credits::songs_by_writer,
+            dbhealth::db_health,
             playlists::playlists_cached,
             playlists::apple_playlists_sync,
             playlists::apple_playlist_counts,

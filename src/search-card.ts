@@ -16,7 +16,12 @@ import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem, copyStationLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
-import { onDrillRequest, onPlaylistPaneRequest, takeDrillRequest, takePlaylistPaneRequest, type DrillIntent, type PlaylistPaneIntent } from "./go-to";
+import { onDrillRequest, onPlaylistPaneRequest, onSongPaneRequest, songCreditsItem, takeDrillRequest, takePlaylistPaneRequest, takeSongPaneRequest, type DrillIntent, type PlaylistPaneIntent, type SongPaneIntent } from "./go-to";
+import {
+  creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
+  CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
+  WRITER_REACH, WRITER_SEARCH_NOTE, WRITER_EMPTY, type WriterSong,
+} from "./credits";
 import { onSearchTerm, takeSearchTerm } from "./layout-bus";
 import { wireListKeys } from "./list-keys";
 import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
@@ -93,7 +98,11 @@ function savePins(pins: Pin[]): void {
 type PaneOpen =
   | { kind: "album" | "playlist"; id: string; meta: CollectionMeta }
   | { kind: "artist"; id: string }
-  | { kind: "related"; srcKind: "songs" | "albums"; srcId: string; rel: "artists" | "albums"; name: string };
+  | { kind: "related"; srcKind: "songs" | "albums"; srcId: string; rel: "artists" | "albums"; name: string }
+  // The song pane carries the whole Track: the caller already held it, so a restore
+  // needs no id hop and costs no Apple call (CREDITS.md §7).
+  | { kind: "song"; track: Track }
+  | { kind: "writer"; name: string };
 interface SearchSnapshot {
   v: 1;
   term: string;
@@ -286,7 +295,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
 
   const songCell = (t: Track): string => {
     const id = t.catalogId ?? "";
-    return `<div class="search__song" data-song="${esc(id)}" role="button" tabindex="0">
+    return `<div class="search__song" data-song="${esc(id)}"${id ? ` data-cid="${esc(id)}"` : ""} role="button" tabindex="0">
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
       ${addBtnHTML(t)}
@@ -530,7 +539,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   document.addEventListener("keydown", onKey);
 
   const listRow = (t: Track, i: number): string =>
-    `<div class="search__row" data-row="${i}" role="button" tabindex="0">
+    `<div class="search__row" data-row="${i}"${t.catalogId ? ` data-cid="${esc(t.catalogId)}"` : ""} role="button" tabindex="0">
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
       ${addBtnHTML(t)}
@@ -711,6 +720,114 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const openArtist = (id: string, _name: string, memory?: { instant?: boolean; scroll?: number }) =>
     pushPane("Artist", (body) => fillArtist(body, id), { kind: "artist", id }, memory);
 
+  // ── the song pane and the writer pane (CREDITS.md §7) ──
+  // A song is the one thing every card lists and no card could open. Its pane answers
+  // "who made this": Apple's writers, then the facts we already hold. Every writer is a
+  // chip, and a chip opens the writer pane — which is the producer-web idea at its
+  // smallest (CREDITS.md §5.2): a name string as a node, answered by a local join.
+
+  const factsHTML = (t: Track): string => {
+    const rows: [string, string][] = [];
+    if (t.albumName) rows.push(["Album", t.albumName]);
+    const genres = (t.genres ?? []).filter((g) => g !== "Music");
+    if (genres.length) rows.push(["Genre", genres.join(", ")]);
+    if (t.releaseDate) rows.push(["Released", t.releaseDate.slice(0, 10)]);
+    const clock = t.durationMs ? `${Math.floor(t.durationMs / 60000)}:${String(Math.round((t.durationMs % 60000) / 1000)).padStart(2, "0")}` : "";
+    if (clock) rows.push(["Length", clock]);
+    if (t.isrc) rows.push(["ISRC", t.isrc]);
+    if (!rows.length) return "";
+    return `<div class="search__label">Details</div><dl class="credit__facts">${rows
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
+      .join("")}</dl>`;
+  };
+
+
+  const fillSong = (body: HTMLElement, t: Track) => {
+    // "Reading…" is shown only while WE are the reason there is nothing (CREDITS.md §8):
+    // a song we have never read. Apple having no credits is a settled answer, not a wait.
+    let reading = false;
+    let readFailed = false;
+    const paint = () => {
+      const credit = t.catalogId ? creditsFor(t.catalogId) : undefined;
+      const writers = credit?.names ?? [];
+      const gap = readFailed
+        ? CREDITS_READ_FAILED
+        : reading
+          ? CREDITS_READING
+          : credit?.state === "none"
+            ? CREDITS_NONE
+            : CREDITS_READING; // never read, and the read is about to start
+      body.innerHTML = `
+        <div class="lib-hero">${heroCover(t.artwork, t.title)}<span class="lib-hero__title">${esc(t.title)}</span><span class="lib-hero__sub">${esc(t.artistName)}</span></div>
+        <div class="search__label">${esc(CREDITS_LABEL)}</div>
+        ${writers.length
+          ? `<div class="credit__chips">${writers
+              .map((n) => `<button type="button" class="credit__chip" data-writer="${esc(n)}" title="Other songs by this name">${esc(n)}</button>`)
+              .join("")}</div>`
+          : `<p class="search__prompt">${esc(gap)}</p>`}
+        ${factsHTML(t)}`;
+      body.querySelectorAll<HTMLElement>("[data-writer]").forEach((chip) => {
+        chip.addEventListener("click", () => openWriter(chip.dataset.writer!));
+      });
+    };
+    paint();
+    return primeCredits([t.catalogId]).then(async () => {
+      if (!body.isConnected) return;
+      paint();
+      // Never read: that gap is ours, so close it instead of blaming Apple. One call.
+      if (t.catalogId && !creditsFor(t.catalogId)) {
+        reading = true;
+        paint();
+        try {
+          await fetchCredits([t.catalogId]);
+        } catch {
+          readFailed = true;
+        }
+        reading = false;
+        if (body.isConnected) paint();
+      }
+    });
+  };
+
+  const openSong = (t: Track, memory?: { instant?: boolean; scroll?: number }) =>
+    pushPane("Song", (body) => fillSong(body, t), { kind: "song", track: t }, memory);
+
+  const fillWriter = (body: HTMLElement, name: string) => {
+    body.innerHTML = `<p class="search__prompt">Loading…</p>`;
+    const paint = (songs: WriterSong[], searching: boolean) => {
+      if (!body.isConnected) return;
+      const playable = songs.filter((s) => s.track).map((s) => s.track!);
+      const rest = songs.filter((s) => !s.track);
+      const count = songs.length === 1 ? "1 song" : `${songs.length} songs`;
+      body.innerHTML = `
+        <div class="lib-hero">${heroCover(undefined, name, undefined, undefined, true)}<span class="lib-hero__title">${esc(name)}</span><span class="lib-hero__sub">Writer</span></div>
+        <p class="credit__note">${esc(count)} · ${esc(WRITER_REACH)}</p>
+        ${playable.length ? `<div class="search__label">In your app</div>${playable.map(listRow).join("")}` : ""}
+        ${rest.length
+          ? `<div class="search__label">Also credited</div>${rest
+              .map((s) => `<div class="search__row search__row--flat"><div class="search__song-text"><span class="search__song-title">${esc(s.title)}</span><span class="search__song-artist">${esc(s.artistName)}</span></div></div>`)
+              .join("")}`
+          : ""}
+        ${!songs.length ? `<p class="search__prompt">${esc(WRITER_EMPTY)}</p>` : ""}
+        <div class="search__label">More</div>
+        <button type="button" class="credit__chip" data-apple ${searching ? "disabled" : ""}>${
+          searching ? "Searching…" : `Search Apple Music for “${esc(name)}”`
+        }</button>
+        <p class="credit__note">${esc(WRITER_SEARCH_NOTE)}</p>`;
+      if (playable.length) wireTrackList(body, playable, `writer:${name}`);
+      // The search fills THIS level in place (the user's call 2026-09-17): leaving for the
+      // results would lose the page you asked the question from.
+      body.querySelector<HTMLElement>("[data-apple]")?.addEventListener("click", () => {
+        paint(songs, true);
+        void searchAppleForWriter(name).then((found) => paint(found, false));
+      });
+    };
+    return songsByWriter(name).then((songs) => paint(songs, false));
+  };
+
+  const openWriter = (name: string, memory?: { instant?: boolean; scroll?: number }) =>
+    pushPane("Writer", (body) => fillWriter(body, name), { kind: "writer", name }, memory);
+
   // ── drill-ins ("Go to Artist" / "Go to Album") ──
   // Open the target pane immediately on the fallback name (the source row's own
   // artist/album string), resolve the catalog id via one memoized `include=` hop,
@@ -761,6 +878,12 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     openCollection("playlists", i.id, { title: i.name, artwork: i.artwork, curatorName: i.curatorName }, i.tracks);
   };
   const unsubPlaylistPane = onPlaylistPaneRequest(runPane);
+  // "Song Credits" from any card's right-click menu (go-to.ts).
+  const runSongPane = (i: SongPaneIntent) => {
+    tookRequest = true;
+    openSong(i.track);
+  };
+  const unsubSongPane = onSongPaneRequest(runSongPane);
 
   // ── menus ──
   const enqueue = (tracks: Track[], how: "now" | "next" | "later", context: string) => {
@@ -784,6 +907,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       t.catalogId && t.albumName
         ? { label: "Go to Album", run: () => goToAlbum(t.catalogId!, t.albumName!) }
         : null,
+      songCreditsItem(t),
       copySongLinkItem(t.catalogId),
       startStationItem("songs", t.catalogId),
       addSongToLibraryItem(t), // null unless the Library Add toggle is on
@@ -990,6 +1114,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   if (heldDrill) runDrill(heldDrill);
   const heldPane = takePlaylistPaneRequest();
   if (heldPane) runPane(heldPane);
+  const heldSong = takeSongPaneRequest();
+  if (heldSong) runSongPane(heldSong);
 
   /** Card memory (CARD-MEMORY.md §5a): the term, the results place and every pane. */
   const snapshot = (): SearchSnapshot => ({
@@ -1007,6 +1133,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const openFrom = (o: PaneOpen, scroll: number) => {
     const memory = { instant: true, scroll };
     if (o.kind === "artist") openArtist(o.id, "Artist", memory);
+    else if (o.kind === "song") openSong(o.track, memory);
+    else if (o.kind === "writer") openWriter(o.name, memory);
     else if (o.kind === "related") drillRelated(o.srcKind, o.srcId, o.rel, o.name, o.rel === "artists" ? fillArtist : (body, albumId, resolved) => fillCollection(body, "albums", albumId, { title: resolved }), memory);
     else openCollection(o.kind === "album" ? "albums" : "playlists", o.id, o.meta, undefined, memory);
   };
@@ -1045,6 +1173,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted
       unsubPlaylistPane();
+      unsubSongPane();
       headerCbs.clear();
       host.innerHTML = "";
     },

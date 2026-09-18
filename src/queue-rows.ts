@@ -30,12 +30,15 @@ export function rowHTML(
   interactive = true,
   meta = "",
   add = "",
+  cid = "",
 ): string {
   const art = cover
     ? `<img class="qrow__art" src="${esc(cover)}" alt="" loading="lazy" data-art />`
     : `<div class="qrow__art qrow__art--empty" aria-hidden="true">♪</div>`;
   const role = interactive ? ` role="button" tabindex="0"` : "";
-  return `<li class="qrow" data-idx="${idx}"${role}>${art}<div class="qrow__text"><span class="qrow__title">${esc(
+  // data-cid: the hover hint reads the song's writers off it (CREDITS.md §7, hint.ts).
+  const id = cid ? ` data-cid="${esc(cid)}"` : "";
+  return `<li class="qrow" data-idx="${idx}"${role}${id}>${art}<div class="qrow__text"><span class="qrow__title">${esc(
     title,
   )}</span><span class="qrow__artist">${esc(artist)}</span></div>${meta}${add}</li>`;
 }

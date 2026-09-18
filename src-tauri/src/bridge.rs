@@ -524,7 +524,7 @@ async fn resolve_id(app: &AppHandle, id: &str) -> Result<Target, String> {
     let db = app.state::<crate::library::Db>();
     match kind {
         "song" => {
-            let local = { crate::library::track_by_id(&db.0.lock().unwrap(), rest) };
+            let local = { crate::library::track_by_id(&db.lock(), rest) };
             if let Some(t) = local {
                 return Ok(Target::Tracks(vec![t]));
             }
@@ -836,7 +836,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                         // with no Apple call (a local upsert; never touches library rows).
                         if !results.songs.is_empty() {
                             let db = app.state::<crate::library::Db>();
-                            let conn = db.0.lock().unwrap();
+                            let conn = db.lock();
                             if let Err(e) = crate::library::materialize_many(&conn, &results.songs) {
                                 log(&format!("materialize after search failed: {e}"));
                             }
@@ -1195,7 +1195,7 @@ pub async fn resolve(app: &AppHandle, r: &ResolveReq) -> Result<Vec<Candidate>, 
     }
     let mut cands: Vec<Candidate> = {
         let db = app.state::<crate::library::Db>();
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         songs
             .into_iter()
             .map(|t| {
@@ -1252,7 +1252,7 @@ pub async fn search(app: &AppHandle, term: &str) -> Result<(Vec<Candidate>, Vec<
     .await?;
     let songs = {
         let db = app.state::<crate::library::Db>();
-        let conn = db.0.lock().unwrap();
+        let conn = db.lock();
         results
             .songs
             .into_iter()

@@ -21,6 +21,7 @@ import { trackById, tracks, addTransientTracks, inLibrary } from "./track-store"
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
+import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
@@ -45,7 +46,7 @@ let isLoading = false; // a (re)window is buffering — surfaced in PlayerState.
 // While an Apple station plays, MusicKit OWNS the queue and its refill — the model
 // keeps only the heard trail (stationFollow). Every window-machinery path
 // (model-follow walk, top-up, reconcile, alignment canaries) is guarded on `mode`.
-type PlayerMode = "queue" | "radio";
+type PlayerMode = "queue" | "radio" | "room";
 let mode: PlayerMode = "queue";
 let radioStation: Station | null = null;
 // A manual insert during radio waits for the CURRENT song to end (your call,
@@ -58,7 +59,7 @@ let pendingBreakout = false;
 let resumeStation: Station | null = null;
 
 function exitRadio(): void {
-  mode = "queue";
+  if (mode === "radio") mode = "queue"; // room mode stays: its loads come through here too
   radioStation = null;
   pendingBreakout = false;
 }
@@ -70,6 +71,7 @@ function exitRadio(): void {
  * (idle, or already on a station) it simply starts now.
  */
 export function queueStationAfter(s: Station): Promise<void> {
+  if (roomBridge && !roomBridge.station()) return Promise.resolve();
   if (mode === "radio" || (!queue.getCurrent() && !queue.getUpcoming().length)) return playStation(s);
   diag.log("player:queueStation", { id: s.id });
   resumeStation = s;
@@ -469,6 +471,7 @@ function emitProgress(): void {
   if (freshSignIn && currentTime > 0.5) freshSignIn = false;
   if (currentTime > 0) lastHeardAt = currentTime; // MusicKit's clock resets when its player dies
   progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
+  if (mode === "room") roomDriftTick(); // the room's clock against ours (ROOMS.md §9.3)
   // Repeat one (NEXT-VERSION §12c): MusicKit loops the song with no item change, so the
   // play-event log would never see the second listen. A clock that jumps from the last
   // second and a half back to the start IS that loop — count it as a fresh listen (the
@@ -570,6 +573,7 @@ function applyRepeatToMusicKit(): void {
   }
 }
 export function setRepeat(m: RepeatMode): void {
+  if (roomBridge) return; // repeat is off in a room (§10)
   diag.log("player:repeat", { mode: m });
   setSetting("repeatMode", m); // the settings listener applies + emits
   applyRepeatToMusicKit(); // unchanged value: no notification — still make sure
@@ -700,6 +704,10 @@ function onNowPlayingChange(): void {
         stationFollow();
         diag.log("player:np", snap());
       }
+    } else if (mode === "room") {
+      // The room wrote the model already (room.ts); only count the play.
+      stats.recordStart(queue.getCurrent());
+      diag.log("player:npRoom", snap());
     } else {
       syncModelToMusicKit();
       stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
@@ -778,7 +786,7 @@ const REWINDOW_LOW = 50;
 let topUp: Promise<void> | null = null;
 
 function maybeTopUpWindow(cap = WINDOW_FWD): void {
-  if (topUp || !music || mode === "radio") return; // stations refill themselves
+  if (topUp || !music || mode !== "queue") return; // stations refill themselves; a room feeds one song
   const items: any[] = music.queue?.items ?? [];
   const np = typeof music.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
   if (np < 0) return;
@@ -1159,6 +1167,8 @@ let loadChain: Promise<void> = Promise.resolve();
 // (Every load now feeds `current` at index 0 — the former `noBack` is the only shape.)
 interface LoadOpts {
   stopFirst?: boolean;
+  /** Start the fed song here, in ms — a late join or a seek in a room (ROOMS.md §9.3). */
+  seekMs?: number;
 }
 
 function loadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Promise<void> {
@@ -1283,6 +1293,11 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
       if (pos > 0 && typeof m.changeToMediaAtIndex === "function") {
         await m.changeToMediaAtIndex(pos); // move to the clicked song within the window
       }
+      // A room's song is joined where the room is: seek before the first sound, so a
+      // late join never plays the opening bars everyone else passed a minute ago.
+      if (opts.seekMs && opts.seekMs > 500 && typeof m.seekToTime === "function") {
+        await m.seekToTime(opts.seekMs / 1000);
+      }
       if (autoplay && !m.isPlaying) await m.play(); // no-op if changeToMediaAtIndex already started
     };
     let fed = await feed(true);
@@ -1307,8 +1322,10 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     }
     stats.recordStart(queue.getCurrent()); // settled start (intermediate rebuild changes were suppressed)
     perf.mark("resolve");
-    growNow(); // the next few songs, by id, at once — what natural advance needs
-    scheduleGrow(); // the rest of the plan grows in gaplessly once the song is under way
+    if (mode !== "room") {
+      growNow(); // the next few songs, by id, at once — what natural advance needs
+      scheduleGrow(); // the rest of the plan grows in gaplessly once the song is under way
+    }
   } catch (e) {
     // Surface and rethrow — but NEVER leave `loadingContext` stuck (the finally): a
     // rejection here used to suppress model-follow for the rest of the session.
@@ -1329,6 +1346,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
  * `handles` is the full list; the queue model keeps all of it, MusicKit gets a window.
  */
 export async function playContext(handles: TrackHandle[], startIndex: number): Promise<void> {
+  if (roomBridge) return roomBridge.playHandles(handles, startIndex); // the room's queue (§10)
   perf.mark("model"); // ingest + re-renders done; what follows up to `context` is MusicKit init
   await requireSignIn();
   const m = await initPlayer();
@@ -1365,6 +1383,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
 
 /** Jump to an Up Next entry by index (skipped songs are dropped). Re-windows → buffers. */
 export async function jumpToUpcoming(index: number): Promise<void> {
+  if (roomBridge) return roomBridge.jumpTo(index);
   perf.click("jump", index + 1);
   await requireSignIn();
   const m = await initPlayer();
@@ -1461,6 +1480,7 @@ async function setStationQueue(m: any, s: Station): Promise<void> {
  * explicit departure). Exit = Stop Station, any finite-context play, or a break-out.
  */
 export async function playStation(s: Station): Promise<void> {
+  if (roomBridge && !roomBridge.station()) return;
   await requireSignIn();
   const m = await initPlayer();
   diag.log("player:playStation", { id: s.id, live: s.isLive });
@@ -1534,6 +1554,7 @@ export async function stopStation(): Promise<void> {
 
 /** Shared core: filter to playable handles, bootstrap if idle, else mutate model + MusicKit. */
 async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise<void> {
+  if (roomBridge) return roomBridge.enqueue(handles, where);
   const playable = handles.filter((h) => playId(h));
   if (!playable.length) return;
   const m = await initPlayer();
@@ -1586,6 +1607,7 @@ export const queueTracksLater = (tracks: Track[], context = "library"): Promise<
  * playing: start the block.
  */
 export async function insertInQueue(at: number, handles: TrackHandle[]): Promise<void> {
+  if (roomBridge) return roomBridge.insertAt(at, handles);
   const playable = handles.filter((h) => playId(h));
   if (!playable.length) return;
   await initPlayer();
@@ -1653,6 +1675,7 @@ function mkUpcomingIndex(m: any, k: number, id: string): number {
 
 /** Remove an Up Next entry (gapless). */
 export async function removeFromQueue(index: number): Promise<void> {
+  if (roomBridge) return roomBridge.removeAt(index);
   const entry = queue.getUpcoming()[index];
   if (!entry) return;
   const m = await initPlayer();
@@ -1666,6 +1689,7 @@ export async function removeFromQueue(index: number): Promise<void> {
 
 /** Move an Up Next entry to the front (top) or back (bottom) of upcoming (gapless). */
 export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<void> {
+  if (roomBridge) return roomBridge.moveTo(index, to);
   const up = queue.getUpcoming();
   const entry = up[index];
   if (!entry) return;
@@ -1696,7 +1720,8 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
  */
 export async function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
   // Radio: MusicKit's queue is station-owned; a break-out block edit is model-only.
-  if (!music || mode === "radio") return;
+  // Room: the room owns the queue, and MusicKit holds only the song being heard.
+  if (!music || mode !== "queue") return;
   const m = music;
   const items: any[] = m.queue?.items ?? [];
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
@@ -1748,6 +1773,7 @@ export async function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
  * (FUTURE-SETTINGS §5); the P6 persistent shuffle MODE is a separate, later feature.
  */
 export async function shuffleQueue(): Promise<void> {
+  if (roomBridge) return; // the room decides the order (§10)
   await initPlayer();
   if (!queue.getCurrent()) {
     if (setting("shuffleIdle") === "noop") return; // FUTURE-SETTINGS §5b: idle press does nothing
@@ -1772,16 +1798,110 @@ export async function shuffleQueue(): Promise<void> {
  * Next stays as it is; the next list plays in order). With the row off it is the one-shot.
  */
 export async function toggleShuffle(): Promise<void> {
+  if (roomBridge) return;
   if (!setting("shuffleStays")) return shuffleQueue();
   const on = !setting("shuffleMode");
   setShuffleMode(on);
   if (on) await shuffleQueue();
 }
 
+// ── Listening rooms (docs/ROOMS.md) ──────────────────────────────────────────
+//
+// In a room the transport, the queue edits and every play are the ROOM's, not this
+// app's (§10). Rather than teach each of the dozens of call sites about rooms, the
+// funnels below ask the bridge first: room.ts installs one while a room is on, and
+// every click becomes a room command.
+//
+// Follower mode is the other half: the room says WHEN a song starts, and `roomShow` /
+// `roomResumeAt` / `roomHold` make MusicKit agree. MusicKit is fed ONE song, so at its
+// end it goes quiet and waits for the room instead of advancing on its own (§5.5).
+
+export interface RoomBridge {
+  playPause(): void;
+  next(): void;
+  previous(): void;
+  seekSeconds(seconds: number): void;
+  playHandles(handles: readonly TrackHandle[], startIndex: number): void;
+  enqueue(handles: readonly TrackHandle[], where: "next" | "later"): void;
+  insertAt(at: number, handles: readonly TrackHandle[]): void;
+  jumpTo(index: number): void;
+  removeAt(index: number): void;
+  moveTo(index: number, to: "top" | "bottom"): void;
+  /** A station cannot play in a room (§10). Returns false: the caller stops. */
+  station(): boolean;
+}
+
+let roomBridge: RoomBridge | null = null;
+/** room.ts installs the bridge on join and clears it on leave. */
+export function setRoomBridge(b: RoomBridge | null): void {
+  roomBridge = b;
+  diag.log("player:roomBridge", { on: !!b });
+}
+
+/** Enter room mode: MusicKit holds one song, and the window machinery stands down. */
+export async function roomEnter(): Promise<void> {
+  await initPlayer();
+  cancelGrow();
+  mode = "room";
+  resumeStation = null;
+  diag.log("player:roomEnter", {});
+  emit();
+}
+
+/** Back to the app's own player. */
+export function roomExit(): void {
+  if (mode === "room") mode = "queue";
+  diag.log("player:roomExit", {});
+  emit();
+}
+
+/**
+ * Put `handle` in MusicKit alone, at `positionMs`, and play or hold. The room's own
+ * state message is what decides; nothing here starts a song the room did not start.
+ */
+export async function roomShow(handle: TrackHandle, positionMs: number, play: boolean): Promise<void> {
+  const m = await initPlayer();
+  const id = playId(handle);
+  if (!id) return;
+  // The model already holds the room's queue (room.ts wrote it); play its head.
+  await loadFromModel(m, play, { seekMs: positionMs });
+}
+
+/** Pause without leaving the room: the room's clock runs on. */
+export async function roomHold(): Promise<void> {
+  const m = music;
+  if (m?.isPlaying && typeof m.pause === "function") await m.pause();
+}
+
+/**
+ * Play at the room's position. `correcting` = a drift fix on a song already playing:
+ * seek only, never a re-feed.
+ */
+export async function roomResumeAt(positionMs: number, correcting = false): Promise<void> {
+  const m = music;
+  if (!m?.nowPlayingItem) return;
+  const duration = (m.currentPlaybackDuration ?? 0) * 1000;
+  const want = duration > 0 ? Math.min(positionMs, Math.max(0, duration - 500)) : positionMs;
+  const off = Math.abs((m.currentPlaybackTime ?? 0) * 1000 - want);
+  if (off > 400 && typeof m.seekToTime === "function") await m.seekToTime(want / 1000);
+  if (!correcting && !m.isPlaying) await m.play();
+}
+
+/** Where the local player is, in ms — what the room's drift check compares. */
+export function roomPositionMs(): number {
+  return (music?.currentPlaybackTime ?? 0) * 1000;
+}
+
+/** False once MusicKit's one-song queue has played out and gone quiet (§5.5). */
+export function roomHasSong(): boolean {
+  return !!music?.nowPlayingItem;
+}
+
 // ── Transport ────────────────────────────────────────────────────────────────
 
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */
 export async function playPause(): Promise<void> {
+  if (roomBridge) return roomBridge.playPause(); // a room command (ROOMS.md §10)
   if (!music?.isPlaying) await requireSignIn(); // pausing never needs a sign-in
   const m = await initPlayer();
   if (m.isPlaying) {
@@ -1827,6 +1947,7 @@ export async function playPause(): Promise<void> {
 
 /** Skip forward (native within the fed window). */
 export async function nextTrack(): Promise<void> {
+  if (roomBridge) return roomBridge.next();
   const m = await initPlayer();
   diag.log("player:next", snap());
   // Dev telemetry: a native skip is the preloaded path — time it like a click so the
@@ -2047,6 +2168,7 @@ if (import.meta.env.DEV) {
 
 /** Restart the song if we're past the intro, otherwise skip back. */
 export async function prevTrack(): Promise<void> {
+  if (roomBridge) return roomBridge.previous();
   const m = await initPlayer();
   const at = Math.round(m.currentPlaybackTime ?? 0);
   diag.log("player:prev", { at, ...snap() });
@@ -2077,11 +2199,13 @@ export async function seekToFraction(fraction: number): Promise<void> {
   const duration = music.currentPlaybackDuration ?? 0;
   if (duration <= 0) return;
   const clamped = Math.max(0, Math.min(1, fraction));
+  if (roomBridge) return roomBridge.seekSeconds(clamped * duration);
   await music.seekToTime(clamped * duration);
 }
 
 /** Seek to an absolute position in seconds (the OS media session scrubs in seconds). */
 export async function seekToSeconds(seconds: number): Promise<void> {
+  if (roomBridge) return roomBridge.seekSeconds(seconds);
   if (!music) return;
   const duration = music.currentPlaybackDuration ?? 0;
   if (duration <= 0) return;
