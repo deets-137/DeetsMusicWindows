@@ -89,17 +89,27 @@
   /* -- listening rooms (src/room-panel.ts, ROOMS.md §1) ------ */
   /* The three figures right of the sleep clock, and the Room panel. */
   --room-btn-size:       var(--traffic-size);   /* level with the other title bar icons */
-  --room-panel-w:        var(--sound-panel-w);  /* the Sound panel's width, on purpose */
+  --room-panel-w:        248px;  /* back to its own width: the stage does not need Sound's 300 */
   --room-panel-pad:      var(--sound-panel-pad);
   --room-panel-max-h:    min(560px, calc(100vh - 48px));  /* scrolls inside a short window (mini) */
   --room-title-tracking: var(--sound-title-tracking);
   --room-code-fs:        22px;   /* the code, the panel's one piece of large type */
   --room-code-space:     0.08em; /* letter spacing, so 8 characters read one by one */
-  --room-field-w:        150px;  /* a name field beside its label, with the label unwrapped */
+  --room-field-w:        132px;  /* a name field beside its label, with the label unwrapped */
   --room-chip-min-w:     var(--sound-pill-min-w);  /* Join, Copy code, Remove: one shape */
   --room-members-max-h:  132px;  /* about five rows before the list scrolls */
   --room-radius:         var(--sound-chip-radius);
   --room-dim:            var(--sound-dim);
+  /* The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. */
+  --room-stage-h:        104px;
+  --room-fig-w:          62px;   /* the front figure; each rank behind is smaller */
+  --room-fig-step-x:     34px;   /* how far each rank behind steps to its side */
+  --room-fig-stroke:     3.2px;  /* the figures are line work, like the title bar glyph */
+  --room-grid-size:      14px;   /* the backdrop grid's pitch */
+  --room-grid-line:      color-mix(in srgb, var(--border) 55%, transparent);
+  --room-fig-step-s:     0.14;   /* and how much smaller it gets */
+  --room-fig-dim:        0.34;   /* the rank behind you, before its own depth fade */
+  --room-bob-glide:      120ms;  /* a meter hop is 100 ms; the head glides between them */
   --room-count-size:     14px;   /* the member count over the glyph */
   --room-count-fs:       9px;
   --room-fill:           0.28s var(--ease-ui);   /* the glyph filling when a room starts */

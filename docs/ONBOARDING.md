@@ -38,6 +38,7 @@ nothing about authoring changed when the box did.
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
 | Title bar | the Room item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
+| Room panel | the stage (the silhouettes) | Everyone listening. The heads move with the music → "…when Sound is on" while nothing is routed → out of a room: "Start a room and the others join here" | room-panel.ts |
 | Room panel | Your name | The name the other members see | room-panel.ts |
 | Room panel | Start a room | Makes a room from what you play now and shows its code | room-panel.ts |
 | Room panel | the code field | The 8-character code the host reads out. Upper or lower case, with or without the dash | room-panel.ts |

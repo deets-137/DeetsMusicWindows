@@ -15,6 +15,7 @@
 import { makeDropdown, keepInWindow, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { toast } from "./toast";
+import { onMeter, soundStatus } from "./sound";
 import {
   DEFAULT_CONTROLS,
   endRoom,
@@ -36,11 +37,36 @@ import {
 /** The name over the panel. */
 const TITLE = "DeetsRadio";
 
+/**
+ * The stage: silhouettes of the people listening, you at the front, everyone who
+ * joined behind you and to the sides (his design, 2026-09-17; confirmed from a
+ * mockup before any of it was written).
+ *
+ * **Three figures, and no more** (his call the same day): the stage is a picture of
+ * a room, not a count of it. The member list under it is the count. A fourth
+ * silhouette bought nothing and cost the panel its width.
+ */
+const STAGE_MAX = 3;
+
+/**
+ * The heads move ONLY to the loudness meter, and the meter only exists while the
+ * Sound graph is routed — which is while an effect is on (SOUND.md §1: nothing is
+ * routed while everything is off, at zero cost). **His call, 2026-09-17: no steady
+ * fallback bob.** A made-up rhythm against a slow song is worse than stillness, and
+ * nobody pays for an analyser they did not ask for. With Sound off the stage is a
+ * still picture of the room, which is most of what it is for.
+ */
+const BOB_MAX_PX = 7;
+/** Hops arrive every 100 ms; a gap this long means the music or the graph stopped. */
+const BOB_IDLE_MS = 400;
+
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
 let dropdown: DropdownHandle | null = null;
 let btn: HTMLButtonElement | null = null;
 let panel: HTMLElement | null = null;
+let stage: HTMLElement | null = null;
+let idleTimer: number | undefined;
 
 /** The control rows the host can hand out (§8). Pause is not here: it never greys out. */
 const CONTROL_ROWS: { key: keyof GuestControls; label: string; hint: string }[] = [
@@ -76,7 +102,28 @@ export function initRoomPanel(): void {
     if (!panel!.hidden) render(state);
   });
   paintButton(roomState());
+
+  // The meter's 100 ms hops drive the bob. The subscription is permanent and the
+  // work is one style write per hop, only while the panel is open: no loop, no
+  // rAF, and nothing at all while the panel is shut or the graph is not routed.
+  onMeter((ms) => {
+    if (!stage || !panel || panel.hidden) return;
+    if (reduced()) return;
+    // The hop is a mean square with MusicKit's volume still in it. The fourth root
+    // pulls a quiet passage up into something the eye can see without the loud
+    // parts pinning the heads at the top.
+    const level = Math.min(1, Math.pow(Math.max(ms, 0), 0.25) * 1.9);
+    stage.style.setProperty("--room-bob", `${(level * BOB_MAX_PX).toFixed(1)}px`);
+    stage.toggleAttribute("data-bobbing", true);
+    window.clearTimeout(idleTimer);
+    idleTimer = window.setTimeout(() => {
+      stage?.style.setProperty("--room-bob", "0px");
+      stage?.removeAttribute("data-bobbing");
+    }, BOB_IDLE_MS);
+  });
 }
+
+const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** The Compass reaches the panel through this (COMPASS.md §9). */
 export function openRoomPanel(): void {
@@ -159,8 +206,62 @@ function render(state: RoomState): void {
   // is open, so only it reserves the scrollbar's gutter (styles.css).
   panel.toggleAttribute("data-scrolls", inRoom);
   panel.append(head(state, inRoom));
+  panel.append(buildStage(state, inRoom));
   if (inRoom) renderInRoom(state);
   else renderOutOfRoom(state);
+}
+
+/**
+ * The stage. Out of a room it holds one still figure — the room you have not made
+ * yet — and in one it fills from the middle outwards as people join.
+ *
+ * Decorative: the member list below is what actually says who is here, so this is
+ * `aria-hidden` and carries no text a screen reader needs.
+ */
+function buildStage(state: RoomState, inRoom: boolean): HTMLElement {
+  const box = el("div", "room__stage");
+  box.setAttribute("aria-hidden", "true");
+  box.dataset.frames = "room-stage";
+  const count = inRoom ? Math.max(1, state.members.length) : 1;
+  const shown = Math.min(count, STAGE_MAX);
+
+  // Drawn from the back forwards, so the front figure is painted over the others
+  // without a z-index on every one of them.
+  for (let rank = shown - 1; rank >= 0; rank--) {
+    const side = rank === 0 ? 0 : rank % 2 ? -1 : 1;
+    const depth = Math.ceil(rank / 2);
+    const fig = el("div", `room__figure${rank === 0 ? " room__figure--you" : ""}`);
+    fig.style.setProperty("--fig-x", `${side * depth}`);
+    fig.style.setProperty("--fig-depth", `${depth}`);
+    fig.innerHTML = figure();
+    box.append(fig);
+  }
+  // Past three the stage stops drawing people and simply says how many are here.
+  if (count > shown) box.append(el("span", "room__stage-more", `+${count - shown}`));
+
+  // Why the heads may be still: said once, where the stillness is (§16.6).
+  box.title = inRoom
+    ? soundStatus().routed
+      ? "Everyone listening. The heads move with the music"
+      : "Everyone listening. The heads move with the music when Sound is on"
+    : "Start a room and the others join here";
+  stage = box;
+  return box;
+}
+
+/**
+ * The same figure as the title bar glyph, and hollow like it (his call, 2026-09-17):
+ * line work, not a filled shape. The shoulders are an open arc whose ends meet the
+ * stage's own floor, so the figure stands on it rather than carrying a baseline of
+ * its own. The stroke does not scale with the rank behind (`non-scaling-stroke`), so
+ * the figures at the back keep a line you can see.
+ */
+function figure(): string {
+  return `<svg viewBox="0 0 64 80" aria-hidden="true" fill="none" stroke="currentColor"
+      stroke-width="3.2" stroke-linecap="round" vector-effect="non-scaling-stroke">
+    <circle class="room__figure-head" cx="32" cy="23" r="12.5" vector-effect="non-scaling-stroke" />
+    <path class="room__figure-body" d="M5 80a27 27 0 0 1 54 0" vector-effect="non-scaling-stroke" />
+  </svg>`;
 }
 
 /** The head: the title at the left, one action at the right (the Sound panel's shape). */

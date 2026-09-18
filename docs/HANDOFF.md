@@ -192,23 +192,32 @@ user's request without the hand install test of RELEASE.md §0 step 3: the user 
 live channel. Open for 2026-09-18: the web build's name-search cap (PLAYLIST-WEB.md §5b; read the
 `search N` part of the `web: built` log lines first).
 
-**2026-09-17 — DeetsMusicRooms (listening rooms): BUILT, not deployed, not desk-tested.**
-The worker is its own private repo, **`../DeetsMusicRooms`** (`npx wrangler dev --port <n>`,
-then `node scripts/check.mjs http://127.0.0.1:<n>` runs 23 protocol checks, all passing). The
-app side is `src/room.ts`,
-`src/room-panel.ts`, the RoomBridge in `src/player.ts`, `queue.setRoomQueue`, and
-`src-tauri/src/rooms.rs` for the invite link. **The worker is DEPLOYED** (2026-09-17, `rooms.deets.solutions`,
-no secrets) and passes its 24 checks against the live host. **What is left is the one thing only the
-owner can do: hear two apps play in step (§16.4).** He has a Family plan and is testing it live.
-**That item stays open THROUGH release until he confirms** — if a build ships first, it ships with
-two-app playback unproven, and nothing should say rooms work before he says so. As built: §16. Friends join a room with an 8-character
-code (`K7QM-4XHT`) and every app follows one queue and clock; each app plays through its own
-MusicKit. A new Cloudflare worker, DeetsMusicRooms, holds the room in a Durable Object;
-the room ends when the host leaves. Full design, decisions and the defaults still open to the
-user: **[ROOMS.md](ROOMS.md)** (§14 defaults, §15 build order). The Apple terms are read (§12, 2026-09-17): no
-clause names group listening, and the design holds on every clause that touches it; the one item it
-raised is decided (a guest's Pause never greys out — under Host only it stops that guest's own app,
-§12.3). The deets.solutions site is **out of scope** (§13). Nothing blocks the build now.
+**2026-09-17 — DeetsMusicRooms (listening rooms): BUILT and the worker is LIVE. Two apps
+playing in step is still unheard.** Friends join a room with an 8-character code
+(`K7QM-4XHT`); every app follows one queue and one clock, and each plays through its own
+MusicKit and its own Apple Music subscription — no audio passes between apps.
+
+- **The worker is its own private repo**, `../DeetsMusicRooms` (github deets-137). Plain JS,
+  no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use.
+  **Deployed to `rooms.deets.solutions`, no secrets attached and none needed.**
+  `npx wrangler dev --port <n>` then `node scripts/check.mjs http://127.0.0.1:<n>` drives the
+  whole protocol: 28 checks, green locally and against the live host. **Wrangler 4 or newer**,
+  or the rate-limit binding is silently dropped.
+- **The app side** is `src/room.ts`, `src/room-panel.ts`, the `RoomBridge` in `src/player.ts`,
+  `queue.setRoomQueue`, and `src-tauri/src/rooms.rs` for the `deetsmusic://room` invite.
+  The panel wears the Sound panel's clothes and carries the **stage** — hollow silhouettes on
+  a light grid, the heads moving only to the loudness meter (ROOMS.md §16.6).
+- **Apple terms are read** (§12): no clause names group listening, the design holds on every
+  clause that touches it, and the one item it raised is decided — a guest's Pause never greys
+  out; under Host only it stops that guest's own app (§12.3).
+- **What is left is the one thing only the owner can do: hear two apps play in step (§16.4).**
+  He has a Family plan and is testing it live. **That item stays open THROUGH release until he
+  confirms** — if a build ships first, it ships with two-app playback unproven, and nothing
+  should say rooms work before he says so. The frame cost of the stage is also unmeasured.
+- The deets.solutions site is **out of scope** (§13); the site's own status row for the worker
+  is written up in `DeetsSolutions/docs/rooms-status.md`, designed and not built.
+
+As built, end to end: **[ROOMS.md](ROOMS.md) §16**.
 
 **2026-09-16 — 0.8.0 is live on the `deetsmusic` channel** (published 17:26 PDT; `main` =
 `wakin-up` at `209c007`). It ships Sound, Last.fm, the playlist web, Stream quality, Fancy Glass

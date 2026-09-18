@@ -584,6 +584,40 @@ a room rows arrive while the panel is open — a member joins, "Waiting for the 
 which is exactly when a bar would shove every row left. The member list always reserves it: it
 is the part that grows.
 
+### 16.6 The stage (2026-09-17)
+
+The panel's rectangle of silhouettes, designed from a mockup he confirmed before any of it
+was written. It sits under the head, in the shape the Sound panel's graph takes (a bordered
+box of its own height, `--room-stage-h`).
+
+| Decision | His call |
+|---|---|
+| **It is always there.** | One still figure out of a room — the room you have not made yet — and the crowd fills in from the middle as people join. |
+| **The front figure is you.** | Not the host. The room reads from where you stand, which matches the title bar glyph, where the middle figure is the one that fills. |
+| **The heads move ONLY to the loudness meter.** | No steady fallback bob. With every Sound effect off nothing is routed (SOUND.md §1), so there is no meter and the stage is a still picture. A made-up rhythm against a slow song is worse than stillness, and nobody pays for an analyser they did not ask for. |
+| **Hollow figures, three at most.** | Line work like the title bar glyph, not filled shapes. **The stage is a picture of a room, not a count of it** — the member list under it is the count — so a fourth silhouette bought nothing and cost the panel its width. Past three the corner says `+N`. |
+| **The panel keeps its own width.** | 248 px, not the Sound panel's 300. The stage stopped needing the room, so the width went back. Everything else still follows Sound: the type scale on the panel, the head, the rows, the chips. |
+| **A backdrop behind them.** | A light grid: two repeating gradients at `--room-grid-size`, drawn in `--room-grid-line` from the panel's own border color, so every theme gets its own weight and nothing is hardcoded. A skyline image was tried first the same day and taken out again — it read as a picture the figures stood in front of, rather than a ground they stand on. |
+
+**How it moves.** `sound.ts` `onMeter` hands the panel a mean square every 100 ms; the panel
+writes one custom property, `--room-bob`, and CSS moves the heads. No loop and no `rAF`: one
+style write per hop, only while the panel is open, and none at all while the graph is not
+routed. The value is the fourth root of the mean square, so a quiet passage still shows
+without the loud parts pinning the heads at the top. Four hundred milliseconds without a hop
+and the heads settle. Reduced motion: the panel stops writing and the transform is dropped.
+
+**Shape.** Three figures, then `+N` in the corner (a room holds 32). The two behind step out
+to either side, `--room-fig-step-s` smaller, dimmer, and bob a fifth shallower and 40 ms
+later, so a crowd does not nod in lockstep. The stroke does not scale with them
+(`non-scaling-stroke`), so the figures at the back keep a line you can see, and the shoulders
+are an open arc whose ends meet the stage floor — the figures stand on it rather than
+carrying a baseline of their own. Only the head moves, one transform on its own element,
+which keeps it compositor work.
+
+**Open:** the frame cost is unmeasured. It wants a `[perf] frames` pass with the panel open
+on a real card (`dataset.frames = "room-stage"` is set), and the honest measurement is
+`npm run dev:built`, not the dev server (CLAUDE.md, graphics rules).
+
 ### 16.3 Before a room works between two PCs
 
 1. ~~Deploy the worker.~~ **DONE 2026-09-17**, at the owner's word: `deetsmusic-rooms` is live on

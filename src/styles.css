@@ -472,6 +472,59 @@ body {
 .room__head-end { display: flex; align-items: center; gap: var(--space-1); }
 .room__head-note { color: var(--subtext); }
 
+/* The stage: the room as silhouettes, you at the front (ROOMS.md §16.6). The heads
+   ride --room-bob, which room-panel.ts writes from the loudness meter's 100 ms hops
+   and nothing else — with Sound off there is no meter and the picture is still. */
+.room__stage {
+  position: relative;
+  height: var(--room-stage-h);
+  border: 1px solid var(--border);
+  border-radius: var(--room-radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+/* The backdrop behind the figures: a light grid, drawn from the panel's own border
+   color so every theme gets its own weight and nothing is hardcoded. Two repeating
+   gradients, no image — the skyline that sat here first (2026-09-17) read as a
+   picture the figures stood in front of, rather than a ground they stand on. */
+.room__stage::before {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    repeating-linear-gradient(to right,
+      var(--room-grid-line) 0 1px, transparent 1px var(--room-grid-size)),
+    repeating-linear-gradient(to bottom,
+      var(--room-grid-line) 0 1px, transparent 1px var(--room-grid-size));
+}
+.room__figure {
+  position: absolute; bottom: 0; left: 50%;
+  width: var(--room-fig-w);
+  color: var(--text);
+  stroke-width: var(--room-fig-stroke);
+  opacity: calc(var(--room-fig-dim) - var(--fig-depth, 0) * 0.06);
+  transform:
+    translateX(calc(-50% + var(--fig-x, 0) * var(--room-fig-step-x)))
+    scale(calc(1 - var(--fig-depth, 0) * var(--room-fig-step-s)));
+  transform-origin: 50% 100%;
+}
+.room__figure, .room__stage-more { z-index: 1; }
+.room__figure--you { color: var(--title); opacity: 1; }
+.room__figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* Only the head moves. One transform, on its own line, so the bob is compositor work. */
+.room__figure-head {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  transform: translateY(calc(-1 * var(--room-bob, 0px) * var(--fig-bob, 1)));
+  transition: transform var(--room-bob-glide) linear;
+}
+/* The ranks behind bob a little less, and a beat later, so it reads as a crowd. */
+.room__figure { --fig-bob: calc(1 - var(--fig-depth, 0) * 0.22); }
+.room__figure:not(.room__figure--you) .room__figure-head {
+  transition-delay: calc(var(--fig-depth, 0) * 40ms);
+}
+.room__stage-more {
+  position: absolute; right: var(--space-1); bottom: var(--space-1);
+  font-size: var(--fs-subtext); color: var(--subtext);
+}
+
 .room__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .room__label { color: var(--subtext); white-space: nowrap; }
 .room__row--control .room__label { color: var(--text); }
@@ -554,6 +607,8 @@ body {
 .room__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
 
 @media (prefers-reduced-motion: reduce) {
+  /* No bob at all: the primitive's rule, and room-panel.ts stops writing the value. */
+  .room__figure-head { transition: none; transform: none; }
   .room__fig-body, .room__fig-head { transition: none; }
   .room__btn[data-away] svg { animation: none; }
   .room__half { transition: none; }
