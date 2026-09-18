@@ -402,6 +402,19 @@ struct MintResponse {
     config: serde_json::Value,
 }
 
+/// The one HTTP client for every Apple Music call (and the other plain fetches). A
+/// `reqwest::Client` is a connection pool: built once, it keeps the TLS session to
+/// api.music.apple.com open between commands, so an album open or an artist view
+/// after the first pays no new handshake. Before 2026-09-18 each command built its
+/// own client, used it once, and dropped the pool with it. Callers that need their
+/// own timeout (the mint, the health check, the updater, reports) keep a builder.
+static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+
+/// A handle to the shared client. Cloning a `Client` is an `Arc` bump, not a new pool.
+pub fn http_client() -> reqwest::Client {
+    HTTP_CLIENT.get_or_init(reqwest::Client::new).clone()
+}
+
 static DEV_TOKEN: Mutex<Option<DevToken>> = Mutex::new(None);
 /// Why there is no token, when there is none — so `developer_token()` can name
 /// the real cause ("no local key and no network") instead of a file path.
@@ -1329,7 +1342,7 @@ pub async fn apple_dump_library(state: tauri::State<'_, AppleState>) -> Result<S
         .clone()
         .ok_or("not connected to Apple Music")?;
 
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = "https://api.music.apple.com/v1";
     let mut summary: Vec<String> = Vec::new();
 
@@ -1406,7 +1419,7 @@ impl AppleProvider {
         Self {
             dev,
             user,
-            client: reqwest::Client::new(),
+            client: http_client(),
         }
     }
 }
@@ -1790,7 +1803,7 @@ pub async fn catalog_collection_tracks(
     }
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}?include=tracks");
@@ -1848,7 +1861,7 @@ pub async fn apple_add_to_library(
     }
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     // `ids[songs]=a,b` — reqwest percent-encodes the brackets, which Apple accepts.
     let url = format!(
         "https://api.music.apple.com/v1/me/library?ids[{kind}]={}",
@@ -1874,7 +1887,7 @@ pub async fn catalog_artist(
 ) -> Result<ArtistDetail, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
     let base = format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{id}?views=top-songs,full-albums");
@@ -1930,7 +1943,7 @@ fn epoch_ms() -> i64 {
 pub fn artist_photos(db: tauri::State<'_, crate::library::Db>) -> Result<Vec<(String, Artwork)>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT name, artwork FROM artist_catalog WHERE artwork IS NOT NULL")
+        .prepare_cached("SELECT name, artwork FROM artist_catalog WHERE artwork IS NOT NULL")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
@@ -1993,7 +2006,7 @@ pub async fn library_artist_info(
 
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
     // Call 1 (first open only): a song → its primary artist's id + photo.
@@ -2155,7 +2168,7 @@ pub async fn radio_live(
 ) -> Result<Vec<Station>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!(
         "https://api.music.apple.com/v1/catalog/{sf}/stations?filter[featured]=apple-music-live-radio"
@@ -2174,7 +2187,7 @@ pub async fn radio_my_station(
 ) -> Result<Option<Station>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!(
         "https://api.music.apple.com/v1/catalog/{sf}/stations?filter[identity]=personal"
@@ -2196,7 +2209,7 @@ pub async fn radio_discovery(
 ) -> Result<Option<Station>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let url = "https://api.music.apple.com/v1/me/recommendations";
     let (status, body) = api_get(&client, &dev, &user, url).await?;
     if status != 200 {
@@ -2230,7 +2243,7 @@ pub async fn radio_genres(
 ) -> Result<Vec<StationGenre>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres");
     let items = paged_data(&client, &dev, &user, &url, "station-genres").await?;
@@ -2254,7 +2267,7 @@ pub async fn radio_genre_stations(
 ) -> Result<Vec<Station>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres/{id}/stations");
     let items = paged_data(&client, &dev, &user, &url, "station-genres/stations").await?;
@@ -2276,7 +2289,7 @@ pub async fn radio_seed_station(
     }
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}/station");
     let (status, body) = api_get(&client, &dev, &user, &url).await?;
@@ -2300,7 +2313,7 @@ pub async fn catalog_song_artist(
 ) -> Result<Option<String>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/songs/{id}?include=artists");
     let (status, body) = api_get(&client, &dev, &user, &url).await?;
@@ -2331,7 +2344,7 @@ pub async fn catalog_related(
 ) -> Result<Option<NamedRef>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}?include={rel}");
     let (status, body) = api_get(&client, &dev, &user, &url).await?;
@@ -2369,7 +2382,7 @@ pub async fn recent_played_tracks(
 ) -> Result<Vec<Track>, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let url = "https://api.music.apple.com/v1/me/recent/played/tracks?limit=30";
     let (status, body) = api_get(&client, &dev, &user, url).await?;
     if status != 200 {
@@ -2405,7 +2418,7 @@ pub async fn recent_added(
 ) -> Result<RecentAdded, String> {
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let url = "https://api.music.apple.com/v1/me/library/recently-added?limit=25";
     let (status, body) = api_get(&client, &dev, &user, url).await?;
     if status != 200 {

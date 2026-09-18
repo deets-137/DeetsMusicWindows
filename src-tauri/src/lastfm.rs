@@ -613,7 +613,7 @@ async fn run_flush(app: &AppHandle) {
             if old > 0 {
                 crate::log::warn(&format!("lastfm: {old} waiting scrobble(s) older than 14 days; Last.fm would refuse them"));
             }
-            let Ok(mut stmt) = conn.prepare(
+            let Ok(mut stmt) = conn.prepare_cached(
                 "SELECT e.id, e.started_ts, e.context, t.json FROM play_events e
                  LEFT JOIN tracks t ON t.track_id = e.track_id
                  WHERE e.lastfm = 'queued' ORDER BY e.started_ts LIMIT ?1",

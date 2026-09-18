@@ -83,7 +83,7 @@ pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
     // Before §9 the artist seeds were the paged artist reads: copy them over once.
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM web_seed_list", [], |r| r.get(0))?;
     if count == 0 {
-        let mut st = conn.prepare("SELECT catalog_id, json, fetched_at FROM web_artists")?;
+        let mut st = conn.prepare_cached("SELECT catalog_id, json, fetched_at FROM web_artists")?;
         let rows: Vec<(String, String, i64)> = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?.flatten().collect();
         for (id, json, at) in rows {
             let Ok(s) = serde_json::from_str::<Stored>(&json) else { continue };
@@ -332,7 +332,7 @@ impl Build<'_> {
     fn load_names(db: &Db) -> HashMap<String, String> {
         let conn = db.lock();
         let mut names = HashMap::new();
-        if let Ok(mut st) = conn.prepare("SELECT name, catalog_id FROM artist_catalog WHERE catalog_id <> ''") {
+        if let Ok(mut st) = conn.prepare_cached("SELECT name, catalog_id FROM artist_catalog WHERE catalog_id <> ''") {
             if let Ok(rows) = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))) {
                 for (n, id) in rows.flatten() {
                     names.insert(norm(&n), id);
@@ -340,7 +340,7 @@ impl Build<'_> {
             }
         }
         let cutoff = now_ms() - NAME_MISS_TTL_MS;
-        if let Ok(mut st) = conn.prepare("SELECT name, catalog_id FROM web_names WHERE catalog_id <> '' OR fetched_at > ?1") {
+        if let Ok(mut st) = conn.prepare_cached("SELECT name, catalog_id FROM web_names WHERE catalog_id <> '' OR fetched_at > ?1") {
             if let Ok(rows) = st.query_map([cutoff], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))) {
                 for (n, id) in rows.flatten() {
                     names.entry(n).or_insert(id);
@@ -348,7 +348,7 @@ impl Build<'_> {
             }
         }
         // Artists read by earlier webs: a song seed's leads are often here.
-        if let Ok(mut st) = conn.prepare("SELECT json_extract(json, '$.artist.name'), catalog_id FROM web_artists") {
+        if let Ok(mut st) = conn.prepare_cached("SELECT json_extract(json, '$.artist.name'), catalog_id FROM web_artists") {
             if let Ok(rows) = st.query_map([], |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, String>(1)?))) {
                 for (n, id) in rows.flatten() {
                     if let Some(n) = n {
@@ -898,7 +898,7 @@ pub async fn web_build(
     let fresh = fresh.unwrap_or(false);
     let dev = developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     // A newer build makes this one stop before its next Apple call: a Reach press during a build
     // no longer reads the same artists twice (2026-09-17: 8TEEN reach 1 and 2 overlapped, 49 calls).
@@ -1078,7 +1078,7 @@ fn save_seed(db: &Db, seed: &WebSeed) {
 pub fn web_seeds(db: tauri::State<'_, Db>) -> Result<Vec<WebSeed>, String> {
     let conn = db.lock();
     let mut st = conn
-        .prepare("SELECT json FROM web_seed_list ORDER BY built_at DESC LIMIT 60")
+        .prepare_cached("SELECT json FROM web_seed_list ORDER BY built_at DESC LIMIT 60")
         .map_err(|e| e.to_string())?;
     let rows = st.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
     Ok(rows.flatten().filter_map(|j| serde_json::from_str::<WebSeed>(&j).ok()).collect())

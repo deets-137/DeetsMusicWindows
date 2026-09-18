@@ -75,7 +75,7 @@ pub async fn favorite_set(
         .ok_or("favorite_set: no catalog id")?;
     let dev = apple::developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     let url = format!("https://api.music.apple.com/v1/me/ratings/songs/{id}");
     let (status, body) = if loved {
         let payload = serde_json::json!({ "type": "rating", "attributes": { "value": 1 } });
@@ -98,7 +98,7 @@ pub async fn favorite_set(
 pub fn favorites_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT track_id FROM favorites WHERE loved = 1")
+        .prepare_cached("SELECT track_id FROM favorites WHERE loved = 1")
         .map_err(err)?;
     let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
     rows.collect::<Result<Vec<_>, _>>().map_err(err)
@@ -109,7 +109,7 @@ pub fn favorites_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub fn favorites_known(db: State<'_, Db>) -> Result<Vec<String>, String> {
     let conn = db.lock();
-    let mut stmt = conn.prepare("SELECT track_id FROM favorites").map_err(err)?;
+    let mut stmt = conn.prepare_cached("SELECT track_id FROM favorites").map_err(err)?;
     let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
     rows.collect::<Result<Vec<_>, _>>().map_err(err)
 }
@@ -138,7 +138,7 @@ pub async fn favorites_reconcile(
     }
     let dev = apple::developer_token()?;
     let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     for chunk in ids.chunks(100) {
         let url = format!(
             "https://api.music.apple.com/v1/me/ratings/songs?ids={}",

@@ -377,7 +377,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── hub events ──
   listen<NpState>("np", (e) => {
     deets = e.payload;
-    render();
+    // The hub sends this once a second while a song plays. A hidden WebView2 window still
+    // paints at full rate (ambient.ts), so a render nobody sees is a real paint: skip it.
+    // `panel-shown` re-reads np_snapshot, so the panel opens on the current state.
+    if (visible) render();
   });
   listen<Settings>("settings", (e) => {
     settings = e.payload;

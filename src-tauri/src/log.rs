@@ -33,6 +33,39 @@ const RING_CAP: usize = 400;
 static PATH: OnceLock<PathBuf> = OnceLock::new();
 static RING: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
 
+/// The open log file and its length. Kept open across lines (2026-09-18): before, every
+/// line did a stat, an open and a close. The length is counted here so the rotation
+/// check needs no stat either. Each line is still one unbuffered `write`, so a crash
+/// loses nothing. `None` until the first line, and again after a rotation until the
+/// next line reopens the fresh file.
+static SINK: Mutex<Option<(std::fs::File, u64)>> = Mutex::new(None);
+
+/// Append `text` (which must end in its newline) to the log file, rotating first when
+/// the file has passed ROTATE_AT. Every error is dropped: a log line must never take
+/// the app down.
+fn append(text: &str) {
+    let Some(path) = PATH.get() else { return };
+    let Ok(mut sink) = SINK.lock() else { return };
+    if sink.as_ref().map_or(false, |(_, len)| *len > ROTATE_AT) {
+        // Two files rather than a truncate: the run-up to a fault is the part
+        // worth reading. Close ours first: the handle would follow the renamed file.
+        *sink = None;
+        let _ = std::fs::rename(path, path.with_file_name(PREV));
+    }
+    if sink.is_none() {
+        let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(path) else { return };
+        let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+        *sink = Some((f, len));
+    }
+    if let Some((f, len)) = sink.as_mut() {
+        if f.write_all(text.as_bytes()).is_ok() {
+            *len += text.len() as u64;
+        } else {
+            *sink = None; // reopen on the next line (the file was deleted or locked)
+        }
+    }
+}
+
 /// Point the log at the app data dir, adopt the old `bridge.log` as the previous
 /// generation (renamed, never orphaned or deleted), install the panic hook, and
 /// write the startup line. Call once, first thing in `setup()`.
@@ -93,12 +126,13 @@ pub fn diag_flush(text: String) {
     let lines: Vec<&str> = text.lines().collect();
     let Some((head, body)) = lines.split_first() else { return };
     info(&format!("diag: {head}"));
-    let Some(path) = PATH.get() else { return };
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
-        for l in body {
-            let _ = writeln!(f, "    {}", scrub(l));
-        }
+    let mut block = String::new();
+    for l in body {
+        block.push_str("    ");
+        block.push_str(&scrub(l));
+        block.push('\n');
     }
+    append(&block);
 }
 
 /// Front-end events arrive without bound (a broken page can call in a loop), so the file
@@ -170,15 +204,7 @@ fn write(level: &str, msg: &str) {
         }
     }
 
-    let Some(path) = PATH.get() else { return };
-    if std::fs::metadata(path).map(|m| m.len() > ROTATE_AT).unwrap_or(false) {
-        // Two files rather than a truncate: the run-up to a fault is the part
-        // worth reading.
-        let _ = std::fs::rename(path, path.with_file_name(PREV));
-    }
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(f, "{line}");
-    }
+    append(&format!("{line}\n"));
 }
 
 /// Credentials that no pattern can catch, redacted by exact value.

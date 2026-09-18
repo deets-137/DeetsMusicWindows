@@ -93,7 +93,7 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
     // cached json — this read is the one source of folder truth).
     let folder_of: std::collections::HashMap<String, i64> = {
         let mut stmt = conn
-            .prepare("SELECT playlist_key, folder_id FROM playlist_folder_members")
+            .prepare_cached("SELECT playlist_key, folder_id FROM playlist_folder_members")
             .map_err(err)?;
         let rows = stmt
             .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
@@ -108,7 +108,7 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
     {
         // `cover_at` only, never the cover itself: the image is served by its own link.
         let mut stmt = conn
-            .prepare(
+            .prepare_cached(
                 "SELECT p.id, p.name, p.description, p.created_at,
                         (SELECT COUNT(*) FROM local_playlist_tracks t WHERE t.playlist_id = p.id),
                         CASE WHEN p.cover IS NOT NULL AND p.cover != '' THEN COALESCE(p.cover_at, p.updated_at) END,
@@ -178,7 +178,7 @@ pub fn playlists_cached(db: State<'_, Db>) -> Result<Vec<Playlist>, String> {
     // Apple mirror rows, in Apple's order (the front-end sorts client-side).
     {
         let mut stmt = conn
-            .prepare("SELECT json FROM apple_playlists ORDER BY position")
+            .prepare_cached("SELECT json FROM apple_playlists ORDER BY position")
             .map_err(err)?;
         let rows = stmt
             .query_map([], |r| r.get::<_, String>(0))
@@ -339,7 +339,7 @@ fn export_head(conn: &Connection, id: i64) -> Result<(String, Option<String>, Op
 /// can't (no catalog id: an upload). The toasts name those songs (§10.5).
 fn export_rows(conn: &Connection, id: i64) -> Result<(Vec<ExportRow>, Vec<String>), String> {
     let mut stmt = conn
-        .prepare("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
+        .prepare_cached("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
         .map_err(err)?;
     let rows = stmt.query_map([id], |r| r.get::<_, String>(0)).map_err(err)?;
     let (mut out, mut skipped) = (Vec::new(), Vec::new());
@@ -628,7 +628,7 @@ pub async fn apple_playlist_add(
 
     let dev = apple::developer_token()?;
     let user = apple_state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     let (added, failed) = append_to_apple(&client, &dev, &user, &apple_id, &ids).await;
     if added == 0 {
         return Err(format!("apple_playlist_add: append to {apple_id} failed"));
@@ -701,7 +701,7 @@ pub async fn playlist_export_apple(
     };
     let dev = apple::developer_token()?;
     let user = apple_state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
 
     match mode.as_str() {
         "new" => {
@@ -820,7 +820,7 @@ pub async fn apple_playlists_sync(
 
     let old: std::collections::HashMap<String, String> = {
         let mut stmt = tx
-            .prepare("SELECT playlist_id, json FROM apple_playlists")
+            .prepare_cached("SELECT playlist_id, json FROM apple_playlists")
             .map_err(err)?;
         let rows = stmt
             .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
@@ -865,7 +865,7 @@ pub async fn apple_playlists_sync(
     // instead of dropping it, or the playlist loses its sigil and offers Export again.
     let recent: Vec<String> = {
         let mut stmt = tx
-            .prepare("SELECT exported_apple_id FROM local_playlists WHERE exported_apple_id IS NOT NULL AND exported_at > ?1")
+            .prepare_cached("SELECT exported_apple_id FROM local_playlists WHERE exported_apple_id IS NOT NULL AND exported_at > ?1")
             .map_err(err)?;
         let rows = stmt
             .query_map([now_ms() - EXPORT_LIST_LAG_MS], |r| r.get::<_, String>(0))
@@ -925,7 +925,7 @@ pub async fn apple_playlist_counts(
     // Which mirror rows still lack a count? Lock only for the read.
     let missing: Vec<String> = {
         let conn = db.lock();
-        let mut stmt = conn.prepare("SELECT json FROM apple_playlists").map_err(err)?;
+        let mut stmt = conn.prepare_cached("SELECT json FROM apple_playlists").map_err(err)?;
         let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
         let mut ids = Vec::new();
         for row in rows {
@@ -1013,7 +1013,7 @@ pub async fn apple_playlist_tracks(
     {
         let conn = db.lock();
         let mut stmt = conn
-            .prepare("SELECT json FROM apple_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
+            .prepare_cached("SELECT json FROM apple_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
             .map_err(err)?;
         let rows = stmt
             .query_map([id.as_str()], |r| r.get::<_, String>(0))
@@ -1056,7 +1056,7 @@ pub async fn apple_playlist_tracks(
     .map_err(err)?;
     {
         let mut ins = tx
-            .prepare("INSERT INTO apple_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
+            .prepare_cached("INSERT INTO apple_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
             .map_err(err)?;
         for (i, t) in all.iter().enumerate() {
             let json = serde_json::to_string(t).map_err(err)?;
@@ -1143,7 +1143,7 @@ pub fn playlists_expire(playing: Option<String>, db: State<'_, Db>) -> Result<Ve
     let now = now_ms();
     let due: Vec<(i64, String, Option<String>, Option<String>, u32)> = {
         let mut st = conn
-            .prepare(
+            .prepare_cached(
                 "SELECT p.id, p.name, p.description, p.cover, p.created_at, p.expire_days,
                         (SELECT MAX(e.started_ts) FROM play_events e WHERE e.context = 'playlist:local:' || p.id)
                  FROM local_playlists p WHERE p.expire_days IS NOT NULL",
@@ -1173,7 +1173,7 @@ pub fn playlists_expire(playing: Option<String>, db: State<'_, Db>) -> Result<Ve
     for (id, name, description, cover, expire_days) in due {
         let tracks: Vec<String> = {
             let mut st = conn
-                .prepare("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
+                .prepare_cached("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
                 .map_err(err)?;
             let rows = st.query_map([id], |r| r.get::<_, String>(0)).map_err(err)?;
             rows.flatten().collect()
@@ -1274,7 +1274,7 @@ fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), 
         .map_err(err)?;
     {
         let mut ins = tx
-            .prepare("INSERT INTO local_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
+            .prepare_cached("INSERT INTO local_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
             .map_err(err)?;
         for (i, t) in tracks.iter().enumerate() {
             ins.execute(rusqlite::params![id, next + i as i64, serde_json::to_string(t).map_err(err)?])
@@ -1290,7 +1290,7 @@ fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), 
 /// playlists are small, so read-mutate-rewrite keeps positions trivially dense).
 fn read_local_tracks(conn: &Connection, id: i64) -> Result<Vec<String>, String> {
     let mut stmt = conn
-        .prepare("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
+        .prepare_cached("SELECT json FROM local_playlist_tracks WHERE playlist_id = ?1 ORDER BY position")
         .map_err(err)?;
     let rows = stmt.query_map([id], |r| r.get::<_, String>(0)).map_err(err)?;
     rows.collect::<Result<_, _>>().map_err(err)
@@ -1300,7 +1300,7 @@ fn write_local_tracks(tx: &rusqlite::Transaction, id: i64, jsons: &[String]) -> 
     tx.execute("DELETE FROM local_playlist_tracks WHERE playlist_id = ?1", [id])
         .map_err(err)?;
     let mut ins = tx
-        .prepare("INSERT INTO local_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
+        .prepare_cached("INSERT INTO local_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
         .map_err(err)?;
     for (i, j) in jsons.iter().enumerate() {
         ins.execute(rusqlite::params![id, i as i64, j]).map_err(err)?;
@@ -1391,7 +1391,7 @@ pub fn playlists_song_index(db: State<'_, Db>) -> Result<crate::model::PlaylistS
 
     let mut unchecked = Vec::new();
     {
-        let mut stmt = conn.prepare("SELECT playlist_id, json FROM apple_playlists ORDER BY position").map_err(err)?;
+        let mut stmt = conn.prepare_cached("SELECT playlist_id, json FROM apple_playlists ORDER BY position").map_err(err)?;
         let rows = stmt
             .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
             .map_err(err)?;
@@ -1436,7 +1436,7 @@ pub struct PlaylistFolder {
 pub fn playlist_folders_list(db: State<'_, Db>) -> Result<Vec<PlaylistFolder>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT id, name FROM playlist_folders")
+        .prepare_cached("SELECT id, name FROM playlist_folders")
         .map_err(err)?;
     let rows = stmt
         .query_map([], |r| {

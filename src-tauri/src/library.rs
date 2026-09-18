@@ -154,7 +154,7 @@ pub fn migrate_v2(conn: &mut Connection) -> Result<(), String> {
     // 2. Re-key every row whose canonical id changes (library-first → catalog-first).
     let rows: Vec<(String, String)> = {
         let mut stmt = tx
-            .prepare("SELECT track_id, json FROM tracks")
+            .prepare_cached("SELECT track_id, json FROM tracks")
             .map_err(|e| e.to_string())?;
         let mapped = stmt
             .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
@@ -169,7 +169,7 @@ pub fn migrate_v2(conn: &mut Connection) -> Result<(), String> {
             continue;
         }
         let collision: bool = tx
-            .prepare("SELECT 1 FROM tracks WHERE track_id = ?1")
+            .prepare_cached("SELECT 1 FROM tracks WHERE track_id = ?1")
             .and_then(|mut s| s.exists([new_key.as_str()]))
             .map_err(|e| e.to_string())?;
         if collision {
@@ -249,7 +249,7 @@ fn remap_stat(tx: &rusqlite::Transaction, old: &str, new: &str) -> Result<(), St
         return Ok(());
     };
     let new_exists: bool = tx
-        .prepare("SELECT 1 FROM play_stats WHERE track_id = ?1")
+        .prepare_cached("SELECT 1 FROM play_stats WHERE track_id = ?1")
         .and_then(|mut s| s.exists([new]))
         .map_err(|e| e.to_string())?;
     if new_exists {
@@ -285,7 +285,7 @@ fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<
         // A sync write is authoritative: it also GRADUATES a 'seen' row to 'library'
         // (the track joined the library — same canonical key, so feedback rides along).
         let mut stmt = tx
-            .prepare(
+            .prepare_cached(
                 "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'library', ?2, ?3)
                  ON CONFLICT(track_id) DO UPDATE SET
                      sort_key = excluded.sort_key, json = excluded.json, source = 'library'",
@@ -309,7 +309,7 @@ fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<
         .map_err(|e| e.to_string())?;
         {
             let mut ins = tx
-                .prepare("INSERT OR IGNORE INTO sync_ids(id) VALUES(?1)")
+                .prepare_cached("INSERT OR IGNORE INTO sync_ids(id) VALUES(?1)")
                 .map_err(|e| e.to_string())?;
             for id in &ids {
                 ins.execute([id]).map_err(|e| e.to_string())?;
@@ -338,7 +338,7 @@ pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page
         .query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT json FROM tracks WHERE source = 'library' ORDER BY sort_key LIMIT ?1 OFFSET ?2")
+        .prepare_cached("SELECT json FROM tracks WHERE source = 'library' ORDER BY sort_key LIMIT ?1 OFFSET ?2")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map(rusqlite::params![limit, offset], |r| r.get::<_, String>(0))
@@ -365,7 +365,7 @@ pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page
 pub fn seen_tracks(db: State<'_, Db>) -> Result<Vec<Track>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT json FROM tracks WHERE source = 'seen'")
+        .prepare_cached("SELECT json FROM tracks WHERE source = 'seen'")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| r.get::<_, String>(0))
@@ -533,7 +533,7 @@ pub fn play_event_count(db: State<'_, Db>) -> Result<i64, String> {
 pub fn play_events_since(since_ts: i64, db: State<'_, Db>) -> Result<Vec<PlayEvent>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare(
+        .prepare_cached(
             "SELECT track_id, started_ts, ms_listened, completed, context
              FROM play_events WHERE started_ts >= ?1 ORDER BY started_ts",
         )
@@ -652,7 +652,7 @@ pub(crate) fn graduate_tracks(conn: &Connection, tracks: &[Track]) -> Result<(),
 pub fn added_at_map(db: State<'_, Db>) -> Result<Vec<(String, i64)>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT track_id, ts FROM added_at")
+        .prepare_cached("SELECT track_id, ts FROM added_at")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
@@ -725,7 +725,7 @@ pub struct PlayCount {
 pub fn play_counts(db: State<'_, Db>) -> Result<Vec<PlayCount>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT track_id, full_count, partial_count FROM play_stats WHERE partial_count > 0")
+        .prepare_cached("SELECT track_id, full_count, partial_count FROM play_stats WHERE partial_count > 0")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| Ok(PlayCount { id: r.get(0)?, full: r.get(1)?, partial: r.get(2)? }))
@@ -837,7 +837,7 @@ pub fn migrate_v8(conn: &Connection) -> Result<(), String> {
 pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT id FROM dead_ids WHERE marked_at >= ?1")
+        .prepare_cached("SELECT id FROM dead_ids WHERE marked_at >= ?1")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([now_secs() - DEAD_ID_TTL_SECS], |r| r.get::<_, String>(0))
@@ -1039,7 +1039,7 @@ async fn sync_incremental(
             let mut conn = db.lock();
             let known = {
                 let mut stmt = conn
-                    .prepare("SELECT 1 FROM tracks WHERE track_id = ?1 AND source = 'library'")
+                    .prepare_cached("SELECT 1 FROM tracks WHERE track_id = ?1 AND source = 'library'")
                     .map_err(|e| e.to_string())?;
                 page.items
                     .iter()

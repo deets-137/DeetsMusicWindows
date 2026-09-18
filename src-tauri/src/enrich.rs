@@ -310,7 +310,7 @@ pub async fn catalog_enrich(
     let misses: Vec<String> = {
         let conn = db.lock();
         let mut stmt = conn
-            .prepare("SELECT 1 FROM track_catalog WHERE catalog_id = ?1")
+            .prepare_cached("SELECT 1 FROM track_catalog WHERE catalog_id = ?1")
             .map_err(|e| e.to_string())?;
         catalog_ids
             .into_iter()
@@ -330,7 +330,7 @@ pub async fn catalog_enrich(
         .unwrap()
         .clone()
         .ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     let sf = storefront(&client, &dev, &user, &db).await?;
 
     let mut fetched = 0usize;
@@ -378,7 +378,7 @@ pub async fn credits_fetch(
         .unwrap()
         .clone()
         .ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     let sf = storefront(&client, &dev, &user, &db).await?;
 
     let mut with_credits = 0usize;
@@ -455,7 +455,7 @@ pub async fn album_palette(
         .unwrap()
         .clone()
         .ok_or("not connected to Apple Music")?;
-    let client = reqwest::Client::new();
+    let client = crate::apple::http_client();
     let sf = storefront(&client, &dev, &user, &db).await?;
 
     let songs = fetch_catalog_songs(&client, &dev, &user, &sf, &[cid]).await?;

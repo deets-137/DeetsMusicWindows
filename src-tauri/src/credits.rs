@@ -167,7 +167,7 @@ pub fn credits_stats(db: State<'_, Db>) -> Result<CreditsStats, String> {
         .map_err(|e| e.to_string())?;
 
     let mut stmt = conn
-        .prepare("SELECT composer FROM song_credits WHERE composer IS NOT NULL")
+        .prepare_cached("SELECT composer FROM song_credits WHERE composer IS NOT NULL")
         .map_err(|e| e.to_string())?;
     let mut counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
     let rows = stmt
@@ -218,7 +218,7 @@ pub fn credits_for(
     }
     let conn = db.lock();
     let mut stmt = conn
-        .prepare("SELECT composer FROM song_credits WHERE catalog_id = ?1")
+        .prepare_cached("SELECT composer FROM song_credits WHERE catalog_id = ?1")
         .map_err(|e| e.to_string())?;
     for id in catalog_ids {
         if id.is_empty() {
@@ -268,7 +268,7 @@ pub fn songs_by_writer(name: String, db: State<'_, Db>) -> Result<Vec<WriterSong
     // LIKE narrows the scan; `split_composer` then decides, so "Ali" never matches "Alicia".
     let like = format!("%{}%", wanted.replace('%', "").replace('_', ""));
     let mut stmt = conn
-        .prepare(
+        .prepare_cached(
             "SELECT c.catalog_id, c.title, c.artist_name, c.composer,
                     (SELECT 1 FROM tracks t WHERE t.track_id = c.catalog_id AND t.source = 'library'),
                     (SELECT partial_count FROM play_stats p WHERE p.track_id = c.catalog_id),

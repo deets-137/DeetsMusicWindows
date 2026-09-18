@@ -167,6 +167,9 @@ pub fn run() {
             }
 
             let mut conn = rusqlite::Connection::open(&db_path).expect("open library db");
+            // Every fixed statement goes through `prepare_cached` (2026-09-18): SQLite compiles
+            // it once per connection, not per call. 45 fixed statements; the default cache holds 16.
+            conn.set_prepared_statement_cache_capacity(96);
             // WAL (LOCAL-DATA.md §3, 2026-09-16): in the default journal mode any reader of the
             // file (a DB browser, a slow copy for `deetsmusic sql`) made the app's next write fail
             // at once — a play event, a scrobble. With WAL, readers and the writer don't block each

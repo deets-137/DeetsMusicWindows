@@ -35,7 +35,7 @@ pub fn migrate_v7(conn: &Connection) -> Result<(), String> {
 #[tauri::command]
 pub fn loudness_all(db: State<'_, Db>) -> Result<Vec<(String, f64, f64)>, String> {
     let conn = db.lock();
-    let mut stmt = conn.prepare("SELECT song_id, lufs, peak_db FROM loudness").map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare_cached("SELECT song_id, lufs, peak_db FROM loudness").map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
         .map_err(|e| e.to_string())?
