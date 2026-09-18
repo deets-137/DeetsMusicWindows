@@ -172,7 +172,8 @@ the text caret; Tab belongs to the filter row (2a).
   default on; a press on the title bar's drag region counts, since it never sends a click),
   or a result that leaves the bar. Focus returns to the element that had it.
 - **Where:** under the title bar, `left` and `right` at `--panel-edge-gap`, `z-index` with
-  the other title bar panels. Opening it closes any other title bar panel (dropdown.ts).
+  the other title bar panels, and clear of the Now Playing card — §11. Opening it closes any
+  other title bar panel (dropdown.ts).
 - **Reduced motion:** `.pop` and `enterRows` already snap.
 
 ## 5. The rest of the keyboard pass (fork 5B, then the lists — built 2026-09-17)
@@ -301,6 +302,56 @@ Settings rows, transport verbs and the library's own data rows are out of `go` f
 reason: each already has a CLI verb that obeys its own rules. Like `grow`, `go` is a CLI verb
 and a route, not an MCP tool.
 
+## 11. Clear of the Now Playing card (2026-09-17, the owner's ask)
+
+The bar used to hang straight down from the title bar, so the field and the results covered
+the player. The rule now: **the bar never covers the Now Playing card**, in any surface.
+
+Where the card is decides which way the bar moves (styles.css, the bento):
+
+| Surface | The NP card | What the bar does |
+|---|---|---|
+| midi | row 1, full width, under the title bar | drops below the card |
+| mini, card view | the top row of the one column | drops below the card |
+| max | the tall left stage column | keeps its top, insets its left edge right of the card |
+| mini, player view | the whole window | nothing to dodge: it hangs from the title bar (fork 2B) |
+
+**How.** `keepClearOfNp()` in compass.ts measures the card against the title bar (the
+panel's positioning context) and publishes two custom properties on the panel:
+`--np-drop` (the card's bottom edge below the title bar) and `--np-right` (the card's right
+edge from the title bar's left). styles/compass.css picks one per surface through
+`--compass-drop`; max sets the drop to `0px` and uses `--np-right + --panel-gap` for `left`;
+mini's player view sets the drop to `0px` as well. No card measured (width or height `0`)
+drops both, and the CSS falls back to today's placement.
+
+Both numbers are **measured, not tokens**, for two reasons found in the code:
+
+- The midi/mini row is `auto`, so the card is content-sized, and its height changes by one
+  row when the transport row stacks — a window resize, or a **station**, which hides Repeat
+  and so needs less width (now-playing-card.ts `fit()`). The title and artist never change
+  it: they are `nowrap` with an ellipsis.
+- max's stage column is `minmax(0, var(--max-stage-w))`, so the column is allowed to be
+  narrower than the 340px token.
+
+A `ResizeObserver` on the card, a `resize` listener and `onSurfaceChange` keep both live
+while the bar is open, and **`onOpen` measures again on every press**. This is the toast
+stack's own method (src/toast.ts `ensureHost`), excluded surfaces included, plus that
+open-time read.
+
+The open-time read is not belt and braces. The cards arrive with a `transform`
+(`boot-safety-panel`, styles.css), so a rect taken during boot puts the card's bottom edge
+lower than its resting one, and the drop comes out too big. A transform changes no element's
+**size**, so no `ResizeObserver` ever corrects it: the number stayed stale until the next
+real resize. The owner saw exactly this on the first press after a launch (2026-09-17).
+
+**No clipping.** The drop moves the panel down, so `--compass-max-h` (skin.css) subtracts
+the same `--compass-drop`: the box always ends 24px above the window bottom, the rows scroll
+inside it, and the window never clips a row. Three rows is the floor for a very short
+window. When the drop is `0px` the token is exactly what it was before.
+
+**Not affected.** A grown card never changes this: in midi a grown card takes row 2 only,
+and in max columns 2-3, so it neither covers the NP card nor changes its size.
+
 ## 7. Desk test
 
 1. Ctrl+Space in Midi: the bar drops in under the title bar; the field has the focus;
@@ -318,6 +369,18 @@ and a route, not an MCP tool.
 9. Type a playlist: Enter opens it in Playlists; Ctrl+Enter plays it.
 10. Type anything: the last row is "Search Apple Music for …". Enter opens the Search card
     with the term typed and the search running.
+11. **Clear of the player (§11).** Midi: Ctrl+Space — the bar starts under the Now Playing
+    card, not over it; the whole card stays readable. Drag the window narrower until the
+    transport row stacks: the bar moves down with the card. Play a station (Repeat hides) at
+    a borderline width: the bar follows again.
+12. Max: the bar keeps its top but starts right of the stage column; the player and the
+    anchored Queue stay clear. Mini, card view: it drops under the card. Mini, player view:
+    it hangs from the title bar over the player, as decided.
+13. **The first press after a launch.** Start the app and press Ctrl+Space as soon as the
+    cards are up: the gap under the player is the same as on every later press (the boot
+    arrival's transform used to make it too big).
+14. Make the window short (drag the bottom up) and type a letter with many matches: the
+    bar's last row stays inside the window and the list scrolls to it. Nothing is cut off.
 11. In mini › NP (the player alone): Ctrl+Space works; a Place switches to the card view.
 12. In Max with a Fill: Ctrl+Space works over the filled card.
 13. The compass button right of the title opens the bar; its hint reads "Go anywhere! (Ctrl + Space)".

@@ -14,7 +14,7 @@ import "./styles/compass.css";
 import { registry, type CardId } from "./cards";
 import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, cardHost } from "./layout-bus";
 import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
-import { currentSurface } from "./surface";
+import { currentSurface, onSurfaceChange } from "./surface";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
 import { setting } from "./settings-store";
@@ -37,9 +37,13 @@ import { getUpcoming, getRecentlyPlayed, getCurrent } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
 import { addTrackToLibrary, alreadyInLibrary, libraryAddEnabled } from "./library-add";
 import { trackById } from "./track-store";
+import { resolveEntry } from "./queue-rows";
+import { requestSongPane } from "./go-to";
 import { speakersKnown, connectSpeaker, scanSpeakers, isScanning } from "./airplay";
 import { webQuick, type WebRequest } from "./web";
 import { openSoundPanel } from "./sound-panel";
+import { openRoomPanel } from "./room-panel";
+import { inRoom, leaveRoom, endRoom, roomState, startRoom, isStopped, listenAgain, stopListening } from "./room";
 import * as diag from "./diag";
 import { toast } from "./toast";
 
@@ -217,6 +221,12 @@ function places(all: boolean): Row[] {
   });
   rows.push({ group: "Places", title: "Sound", sub: "The equalizer and adaptive sound", run: () => openSoundPanel() });
   rows.push({ group: "Places", title: "Sleep timer", sub: "The alarm clock", run: () => openSleepPanel() });
+  rows.push({
+    group: "Places",
+    title: "Listening room",
+    sub: inRoom() ? `In room ${roomState().code}` : "Listen with friends",
+    run: () => openRoomPanel(),
+  });
   return rows;
 }
 
@@ -255,11 +265,48 @@ function actions(all: boolean): Row[] {
     { group: "Actions", title: isMuted() ? "Unmute" : "Mute", aliases: ["silence", "quiet", "sound off"], run: () => toggleMute() },
     ...[15, 30, 45, 60].map((m): Row => ({ group: "Actions", title: `Sleep in ${m} min`, sub: "The sleep timer", run: () => sleepIn(m) })),
   );
+  // The song pane for what is playing (CREDITS.md §7). Only while a song with a catalog
+  // id is on: an uploaded track has no credits to show.
+  const playing = getCurrent();
+  const playingTrack = playing ? resolveEntry(playing) : undefined;
+  if (playingTrack?.catalogId)
+    rows.push({
+      group: "Actions",
+      title: "Song credits",
+      sub: playingTrack.title,
+      aliases: ["writers", "composer", "credits", "who wrote"],
+      run: () => requestSongPane({ track: playingTrack }),
+    });
   rows.push(
     { group: "Actions", title: "Sleep at end of song", sub: "The sleep timer", run: () => sleepAtEnd("song") },
     { group: "Actions", title: "Sleep at end of Up Next", sub: "The sleep timer", run: () => sleepAtEnd("queue") },
   );
   if (sleepArmed()) rows.push({ group: "Actions", title: "Sleep timer off", run: () => sleepOff() });
+  // Listening rooms (ROOMS.md §9, COMPASS.md §9): the verbs a room adds. Joining needs a
+  // code, so that stays in the panel.
+  if (!inRoom()) {
+    rows.push({
+      group: "Actions",
+      title: "Start a listening room",
+      sub: "Friends follow what you play",
+      aliases: ["room", "listen together", "share"],
+      run: () => void startRoom(),
+    });
+  } else {
+    const state = roomState();
+    rows.push({
+      group: "Actions",
+      title: state.isHost ? "End room" : "Leave room",
+      sub: `Room ${state.code}`,
+      aliases: ["room"],
+      run: () => (state.isHost ? endRoom() : leaveRoom()),
+    });
+    rows.push(
+      isStopped()
+        ? { group: "Actions", title: "Listen again", sub: "Re-join the room's song", run: () => listenAgain() }
+        : { group: "Actions", title: "Stop listening", sub: "The room plays on", run: () => stopListening() },
+    );
+  }
   return rows;
 }
 
@@ -902,6 +949,43 @@ function runRow(i: number, alt = false): void {
   else closeCompass();
 }
 
+/** Keep the bar clear of the Now Playing card (COMPASS.md §11).
+ *
+ *  Two raw numbers, both measured against the title bar (the panel's positioning context),
+ *  and styles/compass.css decides which one a surface uses:
+ *    --np-drop   how far the card's bottom edge sits below the title bar — midi and mini
+ *                card view, where NP is the full-width top row, so the bar drops under it.
+ *    --np-right  where the card's right edge sits from the title bar's left — max, where NP
+ *                is the tall left stage column, so the bar insets its left edge instead.
+ *
+ *  Measured, not tokens, for two reasons: the midi/mini row is content-sized, so the card's
+ *  height changes when the transport row stacks (a resize, or a station hiding Repeat), and
+ *  max's stage column is `minmax(0, --max-stage-w)`, so it is allowed to be narrower than
+ *  the token. Mini's player view is the NP card alone — nothing to dodge, and the CSS
+ *  excludes it (the owner's pick, 2026-09-17). The toast stack places itself the same way
+ *  (src/toast.ts), including the excluded surfaces. */
+function keepClearOfNp(panel: HTMLElement): () => void {
+  const bar = panel.parentElement;                                  // the title bar
+  const np = document.querySelector<HTMLElement>('[data-slot="np"]');
+  if (!bar || !np) return () => {};
+  const place = (): void => {
+    const card = np.getBoundingClientRect();
+    const top = bar.getBoundingClientRect();
+    if (card.width <= 0 || card.height <= 0) {                      // no card: CSS falls back
+      panel.style.removeProperty("--np-drop");
+      panel.style.removeProperty("--np-right");
+      return;
+    }
+    panel.style.setProperty("--np-drop", `${Math.max(0, Math.round(card.bottom - top.bottom))}px`);
+    panel.style.setProperty("--np-right", `${Math.max(0, Math.round(card.right - top.left))}px`);
+  };
+  place();
+  new ResizeObserver(place).observe(np);   // the card's own size: a stack, a surface open size
+  window.addEventListener("resize", place);
+  onSurfaceChange(place);                  // a flip moves the card before the window resizes
+  return place;
+}
+
 export function initCompass(): void {
   panel = document.getElementById("compass");
   const trigger = document.getElementById("compass-open");
@@ -917,6 +1001,7 @@ export function initCompass(): void {
   if (!input || !list) return;
   panel.dataset.frames = "compass";
   panel.style.setProperty("--pop-origin", "top center");
+  const placeClear = keepClearOfNp(panel);
 
   // The panel is its own hover region (root): hover mode must never open it from the title
   // bar. The menu row is the trigger, so a click there toggles it like any title bar panel.
@@ -927,6 +1012,7 @@ export function initCompass(): void {
     // Settings › Window › Compass closes on outside click (default on).
     shouldStayOpen: (why) => why === "away" && !setting("compassCloseAway"),
     onOpen: () => {
+      placeClear();     // fresh on every press: a transform (the boot arrival) moves the card without resizing it
       active = 0;
       kind = null;
       if (input) input.value = "";

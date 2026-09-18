@@ -9,7 +9,12 @@
   top: 100%;
   left: var(--panel-edge-gap);
   right: var(--panel-edge-gap);
-  margin-top: var(--space-1);
+  /* Clear of the Now Playing card in every surface (COMPASS.md §11). compass.ts measures
+     the card and publishes --np-drop / --np-right on this element; the two vars below pick
+     which one this surface uses, and --compass-max-h (skin.css) subtracts the same drop so
+     the box always ends inside the window instead of being clipped by it. */
+  --compass-drop: var(--np-drop, 0px);
+  margin-top: calc(var(--space-1) + var(--compass-drop));
   max-height: var(--compass-max-h);
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -29,6 +34,16 @@
   z-index: 20;
 }
 .compass[hidden] { display: none; }
+
+/* max: NP is the tall left stage column, so the bar keeps its top and dodges sideways —
+   its left edge starts where the card's right edge is, one panel gap clear. */
+[data-surface="max"] .compass {
+  --compass-drop: 0px;
+  left: calc(var(--np-right, 0px) + var(--panel-gap));
+}
+/* mini's player view is the NP card alone: there is nothing to dodge, so the bar hangs from
+   the title bar as before (the owner's pick, 2026-09-17). */
+[data-surface="mini"][data-mini="player"] .compass { --compass-drop: 0px; }
 
 /* The filter row under the field: one split pill of the library kinds with a match, the
    shown kind pressed, each with its count. Tab cycles it. */

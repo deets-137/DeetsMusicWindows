@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 360 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 377 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -123,6 +123,26 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sleep-line-h` | `26px` | — | the line under the time: the help or the Off button, height reserved |
 | `--sleep-swap` | `0.42s` | — | that line's fade-up; gentler than a row's --pop-in |
 
+### listening rooms (src/room-panel.ts, ROOMS.md §1)
+
+| Token | Base | Overridden by | Note |
+|---|---|---|---|
+| `--room-btn-size` | `var(--traffic-size)` | — | The three figures right of the sleep clock, and the Room panel. — level with the other title bar icons |
+| `--room-panel-w` | `var(--sound-panel-w)` | — | the Sound panel's width, on purpose |
+| `--room-panel-pad` | `var(--sound-panel-pad)` | — |  |
+| `--room-panel-max-h` | `min(560px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
+| `--room-title-tracking` | `var(--sound-title-tracking)` | — |  |
+| `--room-code-fs` | `22px` | — | the code, the panel's one piece of large type |
+| `--room-code-space` | `0.08em` | — | letter spacing, so 8 characters read one by one |
+| `--room-field-w` | `150px` | — | a name field beside its label, with the label unwrapped |
+| `--room-chip-min-w` | `var(--sound-pill-min-w)` | — | Join, Copy code, Remove: one shape |
+| `--room-members-max-h` | `132px` | — | about five rows before the list scrolls |
+| `--room-radius` | `var(--sound-chip-radius)` | — |  |
+| `--room-dim` | `var(--sound-dim)` | — |  |
+| `--room-count-size` | `14px` | — | the member count over the glyph |
+| `--room-count-fs` | `9px` | — |  |
+| `--room-fill` | `0.28s var(--ease-ui)` | — | the glyph filling when a room starts |
+
 ### sound (src/sound-panel.ts, SOUND.md §2.3)
 
 | Token | Base | Overridden by | Note |
@@ -132,7 +152,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-panel-max-h` | `min(620px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
 | `--sound-panel-pad` | `var(--space-2)` | — |  |
 | `--panel-edge-gap` | `6px` | — | a title bar panel keeps this clear of the window edge (dropdown.ts keepInWindow) |
-| `--compass-max-h` | `min(560px, calc(100vh - var(--titlebar-h) - 24px))` | — | The Compass bar (COMPASS.md, styles/compass.css): Ctrl+Space's panel under the title bar. — scrolls inside a short window |
+| `--compass-max-h` | `max(calc(var(--compass-row-h) * 3), min(560px, calc(100vh - var(--titlebar-h) - var(--compass-drop, 0px) - 24px)))` | — | The Compass bar (COMPASS.md, styles/compass.css): Ctrl+Space's panel under the title bar. — the ceiling: it subtracts the drop under the Now Playing card, so the box ends 24px above the window bottom and no row is clipped (COMPASS.md §11); three rows is the floor in a short window |
 | `--compass-field-h` | `36px` | — | the text field's height |
 | `--compass-row-h` | `34px` | — | one result row; a two-line row (a song and its artist) |
 | `--compass-icon` | `16px` | — | a row's leading glyph |
@@ -236,6 +256,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 |---|---|---|---|
 | `--hint-max-w` | `236px` | — | The box wears the menu material above; these are its own geometry. The radius rides --radius-control, so a skin that squares its controls (Press) radius rides --radius-control, so a skin that squares its controls (Press) squares the hint too without a line here. — a control's one-sentence hint |
 | `--hint-row-max-w` | `290px` | — | a song row: two lines, both of them names |
+| `--hint-credit-gap` | `var(--space-1)` | — | the blank line before a song's writers |
+| `--credit-flat-opacity` | `0.6` | — | a credited song the app holds no track for |
 | `--hint-pad-x` | `var(--space-2)` | — |  |
 | `--hint-pad-y` | `calc(var(--space-1) + 1px)` | — |  |
 | `--hint-radius` | `var(--radius-control)` | — |  |
