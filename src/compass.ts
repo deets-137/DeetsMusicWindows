@@ -81,6 +81,9 @@ interface Row {
   stays?: boolean;
   /** A command's own options (the grow command's shape): a split pill, Tab moves between them. */
   options?: { labels: string[]; get: () => number; set: (i: number) => void };
+  /** Draw `options` on the highlighted row only; the other rows keep their `side` (the card
+   *  rows' shape pill, so the key hints stay readable). CSS does it, so no re-render. */
+  ctlOnActive?: boolean;
   /** A data row's songs (the queue command reads them). */
   tracks?: () => Promise<Track[]>;
   /** Shown muted; Enter does nothing (the grow command in Mini). */
@@ -195,17 +198,117 @@ function expand(words: string[]): string[][] {
 
 // ── the index ─────────────────────────────────────────────────
 
+// ── a card's shape (COMPASS.md §2c) ───────────────────────────
+//
+// Every card row opens its card. HOW it opens is a shape: as the card at rest, or grown over
+// its neighbor (Horizontal, Vertical) or over the whole bento (Full). Two ways to pick it:
+// a word typed before or after the card's name ("full settings", "settings full"), or the
+// pill the highlighted row carries — Tab moves between the shapes this surface has. The pick
+// is not remembered: the bar opens on Card every time, because opening a card is the common
+// act and a remembered Full would fill the window on an Enter nobody thought about.
+
+/** The card keys, and the hints the rows show for them. ONE list: main.ts's global handler
+ *  reads it too, and so does the bar's own handler — the bar must answer the key it prints,
+ *  because the global one ignores every Ctrl key while a text field has the focus, and the
+ *  bar's field is one (found 2026-09-18). */
+export const CARD_KEYS: Record<string, CardId> = { k: "search", q: "queue", l: "library", p: "playlists", ",": "settings" };
+const KEY_HINT: Partial<Record<CardId, string>> = Object.fromEntries(
+  Object.entries(CARD_KEYS).map(([k, id]) => [id, `Ctrl+${k === "," ? "," : k.toUpperCase()}`]),
+);
+
+type CardShape = "card" | "wide" | "tall" | "full";
+const SHAPE_LABEL: Record<CardShape, string> = { card: "Card", wide: "Horizontal", tall: "Vertical", full: "Full" };
+/** The shapes this surface has. Mini has one: a card already fills the window. */
+const shapesNow = (): CardShape[] =>
+  currentSurface() === "max" ? ["card", "wide", "tall", "full"] : currentSurface() === "midi" ? ["card", "wide"] : ["card"];
+/** The nearest shape this surface has ("full" in Midi is Horizontal; anything in Mini is Card). */
+const clampShape = (s: CardShape): CardShape => {
+  const have = shapesNow();
+  return have.includes(s) ? s : have.length > 1 ? have[1] : "card";
+};
+/** Words that name a shape. "max" is NOT one: it is the surface. */
+const SHAPE_WORDS: Record<string, CardShape> = {
+  card: "card", normal: "card", open: "card", plain: "card",
+  horizontal: "wide", wide: "wide", side: "wide", across: "wide", half: "wide",
+  vertical: "tall", tall: "tall", upright: "tall",
+  full: "full", fill: "full", whole: "full", big: "full", huge: "full",
+};
+/** The shape a word names, by the word itself or a prefix of three letters or more that
+ *  reaches one shape only ("hor", "vert", "ful"). */
+function shapeOf(word: string): CardShape | null {
+  const exact = SHAPE_WORDS[word];
+  if (exact) return exact;
+  if (word.length < 3) return null;
+  let found: CardShape | null = null;
+  for (const [w, sh] of Object.entries(SHAPE_WORDS)) {
+    if (!w.startsWith(word)) continue;
+    if (found && found !== sh) return null;
+    found = sh;
+  }
+  return found;
+}
+/** Splits a shape word off the front or the back of the typed words. */
+function splitShape(words: string[]): { shape: CardShape | null; rest: string[] } {
+  if (words.length >= 2) {
+    const first = shapeOf(words[0]);
+    if (first) return { shape: first, rest: words.slice(1) };
+    const last = shapeOf(words[words.length - 1]);
+    if (last) return { shape: last, rest: words.slice(0, -1) };
+  }
+  return { shape: null, rest: words };
+}
+/** The Tab pick while the bar is open; cleared on every opening. Tab beats a typed word. */
+let shapeTab: CardShape | null = null;
+
+/** Open a card in a shape: the card comes in first, then the grow (its host has a slot the
+ *  next frame). Shared by the card rows and the `grow` command. */
+function openCard(id: CardId, shape: CardShape): void {
+  const here = !!cardHost(id);
+  requestCard(id);
+  if (shape === "card") return;
+  const doGrow = () => {
+    const slot = cardHost(id)?.dataset.slot as Slot | undefined;
+    if (!slot) return;
+    const dirs = growDirs(slot);
+    const dir: GrowDir | undefined =
+      shape === "full" ? "full" : shape === "wide" ? dirs.find((d) => d === "left" || d === "right") : dirs.find((d) => d === "up" || d === "down");
+    if (dir) growCard(slot, dir, "compass");
+  };
+  if (here) doGrow();
+  else requestAnimationFrame(doGrow);
+}
+
 /** The cards, the surfaces, the themes and skins, the two title bar panels. A theme, skin or
  *  surface row clicks the title menu's own button, so the owner's handler runs (the
  *  appearance transition, the schedule's hand-pick note, the tray pin). */
-function places(all: boolean): Row[] {
-  const KEY: Partial<Record<CardId, string>> = { search: "Ctrl+K", queue: "Ctrl+Q", library: "Ctrl+L", playlists: "Ctrl+P", settings: "Ctrl+," };
+function places(all: boolean, typed: CardShape | null = null, plain = false): Row[] {
+  const KEY = KEY_HINT;
   const rows: Row[] = [];
+  // The shape pill: the shapes this surface has. Tab's pick beats a typed word; with neither,
+  // a card opens as the card at rest.
+  const shapes = shapesNow();
+  const eff = (): CardShape => (plain ? "card" : clampShape(shapeTab ?? typed ?? "card"));
+  // The second line says the shape, and names the limit when the surface has no such shape.
+  const subOf = (): string => {
+    const want = plain ? null : shapeTab ?? typed;
+    const got = eff();
+    if (!want || want === "card") return "Card";
+    if (got === "card") return "Card · Mini shows one card";
+    if (got !== want) return `Card · ${SHAPE_LABEL[got]} · Midi grows sideways only`;
+    return `Card · ${SHAPE_LABEL[got]}`;
+  };
   for (const def of Object.values(registry)) {
     if (!def || def.id === "now-playing") continue;
     if (def.id === "rewind" && !setting("rewindCard")) continue;
     const ALIAS: Partial<Record<CardId, string[]>> = { settings: ["preferences", "options"], queue: ["up next"], history: ["recent", "plays"], radio: ["stations"], library: ["songs", "music"], search: ["find", "apple music"] };
-    rows.push({ group: "Places", title: def.title, sub: "Card", side: KEY[def.id], aliases: ALIAS[def.id], run: () => requestCard(def.id) });
+    rows.push({
+      group: "Places", title: def.title, sub: subOf(), side: KEY[def.id], aliases: ALIAS[def.id],
+      options: !plain && shapes.length > 1
+        ? { labels: shapes.map((sh) => SHAPE_LABEL[sh]), get: () => Math.max(0, shapes.indexOf(eff())), set: (i) => { shapeTab = shapes[i]; } }
+        : undefined,
+      ctlOnActive: !plain && shapes.length > 1,
+      run: () => openCard(def.id, eff()),
+    });
   }
   if (!all) return rows;
   const click = (el: HTMLElement) => () => el.click();
@@ -528,15 +631,6 @@ function growRow(term: string): Row[] {
   if (!def) return [];
   if (!shapes.length) return [{ group: "Actions", title: `Grow ${def.title}`, sub: "Nothing to grow in Mini: one card fills the window. Midi or Max first", disabled: true, run: () => false }];
   const idx = () => Math.max(0, shapes.findIndex((s) => s.shape === growPick));
-  const doGrow = () => {
-    const slot = cardHost(def.id)?.dataset.slot as Slot | undefined;
-    if (!slot) return;
-    const shape = shapes[idx()].shape;
-    const dirs = growDirs(slot);
-    const dir: GrowDir | undefined =
-      shape === "full" ? "full" : shape === "wide" ? dirs.find((d) => d === "left" || d === "right") : dirs.find((d) => d === "up" || d === "down");
-    if (dir) growCard(slot, dir, "compass");
-  };
   return [{
     group: "Actions", title: `Grow ${def.title}`, sub: cardHost(def.id) ? "On screen" : "Brings the card in first",
     options: {
@@ -547,11 +641,7 @@ function growRow(term: string): Row[] {
         try { localStorage.setItem(GROW_KEY, growPick); } catch { /* session only */ }
       },
     },
-    run: () => {
-      if (cardHost(def.id)) return doGrow();
-      requestCard(def.id);
-      requestAnimationFrame(doGrow); // the card mounts at once; its host has a slot the next frame
-    },
+    run: () => openCard(def.id, shapes[idx()].shape),
   }];
 }
 
@@ -736,7 +826,20 @@ function query(termRaw: string, kind: Group | null): Result {
   // default order — so an exact playlist name ("Replay") sits above the Settings rows that
   // only contain the word. The library block (its chips ride with it) is one block.
   const blocks: { best: number; rows: Row[] }[] = [];
-  for (const pool of [places(true), settingRows(), actions(true), soundRows(), upNextRows(), recentRows(), speakerRows(term)]) {
+  // Places first, because a shape word is split off the term for them alone ("full settings",
+  // "settings full"). The split only stands when what is left still finds a card; otherwise
+  // the whole term is searched, so a song called "Wide Awake" is still reachable.
+  {
+    const { shape, rest } = splitShape(words);
+    let h = hitsOf(places(true, shape), words, term).slice(0, perGroup());
+    if (shape && rest.length) {
+      const rt = rest.join(" ");
+      const shaped = hitsOf(places(true, shape), rest, rt).filter((x) => x.r.sub?.startsWith("Card"));
+      if (shaped.length) h = [...shaped, ...h.filter((x) => !shaped.some((y) => y.r.title === x.r.title))].slice(0, perGroup());
+    }
+    if (h.length) blocks.push({ best: h[0].s, rows: h.map((x) => x.r) });
+  }
+  for (const pool of [settingRows(), actions(true), soundRows(), upNextRows(), recentRows(), speakerRows(term)]) {
     const h = hitsOf(pool, words, term).slice(0, perGroup());
     if (h.length) blocks.push({ best: h[0].s, rows: h.map((x) => x.r) });
   }
@@ -807,7 +910,7 @@ function navigable(r: Row): boolean {
 
 function placeHits(term: string): Row[] {
   const t = fold(term.trim());
-  const pool = places(true).filter(navigable);
+  const pool = places(true, null, true).filter(navigable);
   if (!t) return pool;
   return hitsOf(pool, t.split(/\s+/), t).map((h) => h.r);
 }
@@ -828,7 +931,7 @@ export function agentGo(payload: { target?: string; list?: boolean } | null): Re
   if (!hits.length) {
     // Say WHY when the word does match something the bar knows: a skin or a setting is a
     // different verb, not a dead end.
-    const near = places(true).find((r) => hitsOf([r], fold(term).split(/\s+/), fold(term)).length);
+    const near = places(true, null, true).find((r) => hitsOf([r], fold(term).split(/\s+/), fold(term)).length);
     if (near && (near.sub === "Theme" || near.sub === "Skin" || near.sub === "Surface")) {
       const key = near.sub.toLowerCase();
       throw new Error(
@@ -850,6 +953,7 @@ export function openCompass(): void {
   if (!handle) return;
   if (!handle.isOpen) {
     returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    shapeTab = null; // a card opens as the card at rest until this opening's Tab says otherwise
     handle.open();
   }
   input?.focus();
@@ -874,9 +978,15 @@ const sideHTML = (r: Row, i: number): string => {
   }
   if (r.options) {
     const cur = r.options.get();
-    return `<div class="set__split compass__ctl" role="radiogroup">${r.options.labels
+    // ctlOnActive (the card rows): the pill is drawn on the highlighted row only and the key
+    // hint takes its place on the others. Both are in the DOM; CSS picks — setActive only
+    // moves a class, it does not re-render.
+    const cls = `set__split compass__ctl${r.ctlOnActive ? " compass__ctl--active" : ""}`;
+    const pill = `<div class="${cls}" role="radiogroup">${r.options.labels
       .map((l, j) => `<button class="set__half" type="button" data-opt="${i}" data-j="${j}" aria-pressed="${j === cur}" tabindex="-1" title="Tab moves between these">${esc(l)}</button>`)
       .join("")}</div>`;
+    if (!r.ctlOnActive || !r.side) return pill;
+    return `<span class="compass__side compass__side--rest">${esc(r.side)}</span>${pill}`;
   }
   if (r.alt) {
     return `<div class="set__split compass__ctl"><button class="set__half" type="button" data-run="${i}" tabindex="-1" title="Enter">Open</button><button class="set__half" type="button" data-alt="${i}" tabindex="-1" title="Ctrl+Enter">${esc(r.alt.label)}</button></div>`;
@@ -1057,6 +1167,19 @@ export function initCompass(): void {
   input.addEventListener("input", () => { active = 0; kind = null; render(); }); // a new term: predict again
   input.addEventListener("keydown", (e) => {
     shiftHeld = e.shiftKey;
+    // A card key printed on a row (Ctrl+L…): it acts like Enter on that row, in this
+    // opening's shape. The global handler cannot — the field has the focus.
+    if (e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) {
+      const id = CARD_KEYS[e.key.toLowerCase()];
+      if (id) {
+        e.preventDefault();
+        diag.log("compass:key", { key: e.key, card: id, shape: clampShape(shapeTab ?? "card") });
+        openCard(id, clampShape(shapeTab ?? "card"));
+        went = true;
+        closeCompass();
+        return;
+      }
+    }
     switch (e.key) {
       case "Tab": {
         // A row with its own options (grow): Tab moves between them. Else the filter row:

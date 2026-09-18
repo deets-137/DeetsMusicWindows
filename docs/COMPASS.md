@@ -94,6 +94,47 @@ so a Radio card opened after costs nothing (the owner's ask, 2026-09-17). A bar 
 for cards or settings never makes them. Genre stations (one call per genre) are not read;
 the ones the Radio card already read show (`radioGenreStationsPeek`).
 
+### 2c. How a card opens: the shape (2026-09-18, the owner's ask)
+
+A card row opens the card. **How much room it takes** is a shape on the same row, so there
+is one row for one act (§4.1) and no second place to learn.
+
+Two ways to pick it:
+- **A word before or after the card's name.** `full settings` and `settings full` are the
+  same. The words are in COMPASS-TERMS.md §1a: **card / normal / open / plain**,
+  **horizontal / wide / side / across / half**, **vertical / tall / upright**,
+  **full / fill / whole / big / huge**. A prefix of three letters or more that reaches one
+  shape counts (`hor`, `vert`, `ful`). The word is split off the term for the **card rows
+  only**; the split stands only when what is left still finds a card, so the song *Wide
+  Awake* is still reachable.
+- **The pill and Tab.** The **highlighted** card row carries the pill; the other rows keep
+  their key hint (Ctrl+K, Ctrl+L…). Both are in the DOM and CSS picks, so moving the
+  highlight costs no re-render. **Tab** moves between the shapes (on a row with its own
+  options, Tab is the row's, not the filter row's — the filter row's chips are still
+  clickable). Tab beats a typed word: the typed shape is where Tab starts.
+
+The shapes this window has: **Max** Card · Horizontal · Vertical · Full; **Midi** Card ·
+Horizontal; **Mini** Card alone (no pill). A word this window does not have takes the
+nearest one and the second line says why ("Card · Horizontal · Midi grows sideways only").
+
+**The pick is not remembered.** `shapeTab` is cleared each time the bar opens, so an Enter on
+a card row opens the card at rest unless this opening said otherwise (§4.8). The `grow`
+command keeps its own remembered pick (`deets.compass.grow`); it is unchanged, and now runs
+through the same `openCard` helper.
+
+**The keys the rows print answer inside the bar too** (2026-09-18). `main.ts`'s global
+handler ignores every Ctrl key while a text field has the focus, and the bar's field is one —
+so a row printed "Ctrl+L" and then swallowed it. The bar's own handler now reads the same
+list (`CARD_KEYS`, exported from compass.ts and imported by main.ts, so there is one list)
+and runs that card in this opening's shape, exactly as Enter on its row would.
+
+The grow itself is `card-grow.ts`: the card is brought in first (`requestCard`), and the
+grow runs the next frame, when its host has a slot.
+
+**The CLI is not touched.** `deetsmusic go` reads the card rows in their plain form
+(`places(true, null, true)`): its rows always say "Card", and growing from the CLI stays
+`deetsmusic grow`.
+
 ### 2b. Commands
 
 Two terms are commands, drawn as the first row:
@@ -393,6 +434,34 @@ and in max columns 2-3, so it neither covers the NP card nor changes its size.
 14. Make the window short (drag the bottom up) and type a letter with many matches: the
     bar's last row stays inside the window and the list scrolls to it. Nothing is cut off.
 11. In mini › NP (the player alone): Ctrl+Space works; a Place switches to the card view.
+
+**The card shape (§2c, 2026-09-18).**
+15. Max. Ctrl+Space, type `settings`: the Settings row leads and its second line says "Card".
+    The **highlighted** row shows the pill Card · Horizontal · Vertical · Full; the rows under
+    it still show their keys (Ctrl+K on Search, Ctrl+L on Library). Enter opens Settings as
+    it always did.
+16. Max. Type `settings full` — and then `full settings`: both put the Settings card row
+    first, the second line says "Card · Full", the pill shows Full pressed. Enter: the card
+    comes in and fills the bento. Collapse it.
+17. Max. Type `queue vertical`, Enter: the Queue grows up over Now Playing. Type
+    `library horizontal`, Enter: the Library grows sideways.
+18. Max. Type `lib`, then press **Tab** three times: the pill steps Horizontal → Vertical →
+    Full and the second line follows. Enter grows the Library that way. Close the bar, open
+    it again, type `lib`: it is back on **Card** (the pick is not remembered).
+19. Max. Arrow down to a card row and click an option on its pill with the mouse: the pill
+    changes and the row does NOT run. Click the row itself: it runs in that shape.
+20. Midi. Type `settings full`: the second line says "Card · Horizontal · Midi grows
+    sideways only" and Enter grows it sideways. Tab steps Card ↔ Horizontal only.
+21. Mini. Type `settings full`: the Settings row is found, there is **no pill**, the second
+    line says "Card · Mini shows one card", and Enter just opens Settings.
+22. Type `wide awake` (or any song of yours whose name starts with a shape word): the song
+    is still found — the shape split does not eat it.
+23. Type `grow library`: the old command row is unchanged and still remembers its own pick.
+24. In a terminal, `deetsmusic go library` still works after you have Tabbed a shape in the
+    bar and closed it.
+25. **The keys the rows print (fixed 2026-09-18).** With the bar open, press **Ctrl+L**: the
+    Library opens and the bar closes. The same for Ctrl+K, Ctrl+Q, Ctrl+P and Ctrl+, . Tab a
+    shape first (say Full) and press Ctrl+L: the Library comes in grown that way.
 12. In Max with a Fill: Ctrl+Space works over the filled card.
 13. The compass button right of the title opens the bar; its hint reads "Go anywhere! (Ctrl + Space)".
 14. Space with nothing focused: play / pause. Click a Search card row (it takes focus), press

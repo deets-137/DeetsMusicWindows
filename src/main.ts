@@ -30,7 +30,7 @@ import { initAirplay, mountAirplay } from "./airplay";
 import { withAppearanceTransition } from "./appearance";
 import { initLookSchedule, noteHandPick } from "./look-schedule";
 import { initSleep } from "./sleep";
-import { initCompass, compassOpen } from "./compass";
+import { initCompass, compassOpen, CARD_KEYS } from "./compass";
 import { initPlaylistExpiry } from "./playlist-expiry";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
@@ -43,7 +43,6 @@ import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
-import type { CardId } from "./cards";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -151,7 +150,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Keyboard shortcuts (NEXT-VERSION §5): summon a card. Fixed set; ignored while a
   // text field has focus. Rebinding is deferred (FUTURE-SETTINGS).
-  const SHORTCUTS: Record<string, CardId> = { k: "search", q: "queue", l: "library", p: "playlists", ",": "settings" };
+  const SHORTCUTS = CARD_KEYS; // one list, shared with the bar's own handler (compass.ts)
   document.addEventListener("keydown", (e) => {
     const target = e.target as HTMLElement | null;
     const inField = !!target?.closest("input, textarea, [contenteditable]");

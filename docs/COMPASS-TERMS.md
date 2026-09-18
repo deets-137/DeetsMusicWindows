@@ -17,6 +17,24 @@
 | **sleep timer** (timer, alarm) | The sleep panel |
 | **listening room** (room, friends, together) | The Room panel |
 
+### 1a. How a card opens (a shape word before or after its name)
+
+A card row opens the card. Add a shape word to say how much room it takes; the word goes
+before the name or after it, so **full settings** and **settings full** are the same.
+
+| Type | The card opens |
+|---|---|
+| **card**, **normal**, **open**, **plain** | As it is now (the default: no word) |
+| **horizontal**, **wide**, **side**, **across**, **half** | Grown sideways over its neighbor |
+| **vertical**, **tall**, **upright** | Grown up or down over its neighbor |
+| **full**, **fill**, **whole**, **big**, **huge** | Over all four cards (Max) |
+
+Three letters are enough (`hor`, `vert`, `ful`). The highlighted card row also carries a
+**pill** of the shapes this window has; **Tab** moves between them. Midi grows sideways only,
+so a word it does not have takes the nearest one and the row says so. Mini has no pill: one
+card fills the window there. The pick is not remembered — the bar opens on **Card** each
+time.
+
 ## 2. Settings (type any word of the row's name or its section)
 
 Every row of the Settings card. A row whose value the app itself holds (a toggle or a choice
@@ -102,7 +120,8 @@ The same table as `SYNONYMS` in `src/compass.ts`; change both.
 | Ctrl+Space, Ctrl+Shift+Space | Opens the bar (from a text field too); the compass button right of the title does too |
 | ↓ ↑, Home, End, PageUp, PageDown | Move the highlight |
 | Enter · Ctrl+Enter | The row's action · its second action (Play) |
-| Tab · Shift+Tab | The next library kind · the one before; on a row with its own options, the next option |
+| Tab · Shift+Tab | The next library kind · the one before; on a row with its own options (a card row's shape, the grow command's), the next option |
 | Shift+Enter | On an inline setting: the option before |
+| Ctrl+K · Ctrl+Q · Ctrl+L · Ctrl+P · Ctrl+, | The card the row names, in the shape the pill shows; the bar closes |
 | Escape | Clears typed text; empty, closes the bar |
 | a click outside | Closes the bar (Settings › Window › Compass closes on outside click) |

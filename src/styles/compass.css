@@ -116,6 +116,12 @@
 .compass__title, .compass__sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .compass__sub { font-size: var(--fs-subtext); color: var(--subtext); }
 .compass__ctl { flex: none; margin-left: auto; }
+/* The card rows' shape pill: on the highlighted row only, so the other rows keep their key
+   hint (COMPASS.md §2c). Both are drawn; this picks, so moving the highlight costs no
+   re-render. */
+.compass__ctl--active { display: none; }
+.compass__row.is-active .compass__ctl--active { display: flex; }
+.compass__row.is-active .compass__side--rest { display: none; }
 .compass__row.is-disabled { opacity: 0.55; cursor: default; }
 .compass__empty { padding: var(--space-3) var(--space-2); color: var(--subtext); font-size: var(--fs-subtext); }
 
