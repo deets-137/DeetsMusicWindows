@@ -8,7 +8,8 @@
 > metadata, commands), `src/airplay.ts` (the "Play on" panel, the volume takeover), the AirPlay
 > row in `settings-card.ts`, `settings.rs` (three fields), `player.ts` (`setVolumeSink`).
 >
-> **Two sources since 2026-09-17 (§12, built, awaiting the desk test §12.4).** The default,
+> **Two sources since 2026-09-17 (§12; the owner confirmed on the desk the same day that the
+> speaker plays and the headphones stay silent — the rest of §12.4 is still open).** The default,
 > *DeetsMusic only*, copies the song inside the page at the end of the Sound graph and hands it
 > to the sender: the PC goes silent, other apps stay out of the speaker, and the stream is
 > bit-exact. *All PC sound* is what v1 shipped (2026-09-10 to 0.9.5): the default output's
@@ -27,7 +28,7 @@ Settings section title, because that is the word on the HomePod's box.
 | State line under the list | "Connecting to Living Room…" → "Playing on Living Room" → "Lost Living Room" (when the speaker drops). Failure: "Couldn't reach Living Room. Check that it is on the same Wi-Fi." |
 | The volume slider (pill + stage row) | While on a speaker, it moves the **speaker's** volume, and follows Siri / the HomePod's touch surface (polled every ~2 s). See fork 4. **A speaker starts at 20 % the first time** (`AIRPLAY_FIRST_VOLUME`, set during the handshake, before audio flows) and **comes back at whatever it was last left at** (`airplaySpeakerVolumes` in `settings.json`, by speaker name; written on every slider change and on every polled Siri change). |
 | The HomePod's touch surface / Siri | Play, pause, next, previous drive DeetsMusic itself (`np-command` on the main window, the tray panel's existing path). |
-| First connect ever | One plain sentence, then the Windows permission prompt: "Windows needs to let the speaker talk back to DeetsMusic. Click Yes on the next prompt." (fork 6) |
+| First connect ever | The panel asks first — a question block under the speaker list, with Not now and Continue — then the Windows permission prompt (§9a, built 2026-09-17; fork 6). |
 | Settings › AirPlay | The preferences (fork 5). Never live actions. |
 
 ## 2. What carries over from DeetsAirplay
@@ -181,7 +182,8 @@ latency change.
    build skipped the prompt and "Couldn't reach" the speaker. 0.2.1 remembers the **exe
    path** the rule was made for (`airplayFirewallExe`); a dev build reports itself seeded
    and records nothing. **Re-tested on the installed 0.2.1: prompt shown, AirPlay works.**
-5. **The firewall prompt scares people (open, user's note 2026-09-10).** Today the only
+5. ~~**The firewall prompt scares people**~~ **(picked 3A and built 2026-09-17; §9a).**
+   The old shape, kept here as the record: the only
    warning is one line in the panel's state area, then Windows' UAC dialog appears with
    `netsh` as the program. A first-time user has no reason to trust that. Two shapes to
    pick from, both now possible (toasts landed 2026-09-13, [TOASTS.md](TOASTS.md)): (a) a confirmation
@@ -189,6 +191,52 @@ latency change.
    answer DeetsMusic. Continue?" with a Not now that leaves the speaker list usable; (b) a
    toast that stays until the dialog closes, naming what to click. Either way the sentence
    must say it happens once, and the dialog names `netsh`, so say that too.
+
+## 9a. The permission question (shape (a), built 2026-09-17; desk test below)
+
+The user picked **(a)**: the question lives in the "Play on" panel, under the speaker list,
+where the eyes already are. A toast was the other shape; it would have put the question in
+the corner, away from the list it gates.
+
+**What happens.** Before the first connect on this exe, a click on a speaker row does not
+connect. The panel grows a block under the list:
+
+> Windows asks for permission once, so **Living Room** can answer DeetsMusic. The prompt
+> names netsh, the Windows firewall tool.
+>
+> `Not now`   `Continue`
+
+- **Continue** runs the same one-shot prompt as before, then connects. The state line reads
+  "Windows is asking now. Click Yes on the prompt." while the dialog is up.
+- **Not now** drops the question and nothing else: the panel stays open, the speaker list
+  stays usable, and the next click on a speaker asks again.
+- The panel cannot close under the question (`shouldStayOpen`), and closing it by the square
+  forgets the question.
+- The speaker's own name is in the sentence, so it is clear what the permission is for.
+
+`askFirewall` in `airplay.ts` is the whole state. The block is built once with the panel and
+hidden; when it appears, its two parts go through `enterRows`, and the panel's height follows.
+Styles: `.ap__ask*` in styles.css, tokens only. The two buttons wear the app's panel chip
+shape — the Sound panel's pill, which Rooms already borrows: `--surface` fill,
+`--panel-border`, `--icon-lg` tall, text centred, one width for both words
+(`--ap-ask-btn-w`, `--ap-ask-radius`). **Continue** wears the Rooms Leave treatment (the
+title colour on a clear fill, `--picked` on hover), which is the app's one "this is the
+action" mark; `--picked` as a fill is kept for a pressed state, so it is not used at rest.
+Log lines:
+`airplay:firewallAsk` and `airplay:firewallDeclined` (both carry the speaker name).
+
+**Desk test (front-end only; no runner restart).** The flag is per exe
+(`airplay_firewall_exe`), so clear it first: stop the app, delete `airplayFirewallExe` from
+`settings.json`, start again.
+
+1. Open "Play on", click a speaker. The block appears under the list, with the speaker's
+   name in it; the panel grows; nothing connects.
+2. Press **Not now**. The block goes, the panel stays open, the speaker list still works.
+3. Click a speaker again: the block comes back.
+4. Press **Continue**. The Windows prompt appears; click Yes; the speaker connects.
+5. Click a speaker once more: no block ever again on this exe.
+6. With the block up, click the card behind the panel: the panel stays open.
+7. Reduced motion on: the block appears with no slide.
 
 ## 10. The per-process capture: what was learned, and what v2 must do
 

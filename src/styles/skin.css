@@ -371,6 +371,8 @@
   --ap-caret-rise:  13px;           /* "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) */
   --ap-cut-w:       6;              /* the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) */
   --ap-caret-dur:   0.32s;          /* the caret's rise and fall */
+  --ap-ask-radius:  var(--sound-chip-radius); /* the permission question's two buttons (§9a) */
+  --ap-ask-btn-w:   72px;           /* "Not now" and "Continue" keep one width, so the pair is even */
   /* dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in */
   --pop-in:         var(--dur-med); /* a panel and new rows arriving */
   --pop-out:        var(--dur-fast);/* a panel leaving */

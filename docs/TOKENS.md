@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 386 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 388 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -397,6 +397,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ap-caret-rise` | `13px` | — | "on": the caret moves from the ring's bottom to its top, in the 24-unit box (ring r 8 at 12) |
 | `--ap-cut-w` | `6` | — | the mask stroke round the caret: the gap it cuts in the ring (line + a clear space each side) |
 | `--ap-caret-dur` | `0.32s` | — | the caret's rise and fall |
+| `--ap-ask-radius` | `var(--sound-chip-radius)` | — | the permission question's two buttons (§9a) |
+| `--ap-ask-btn-w` | `72px` | — | "Not now" and "Continue" keep one width, so the pair is even |
 | `--pop-in` | `var(--dur-med)` | — | dropdown panels that pop (.pop: AirPlay, Vol.) — arrive, leave, grow, rows slide in — a panel and new rows arriving |
 | `--pop-out` | `var(--dur-fast)` | — | a panel leaving |
 | `--pop-grow` | `var(--dur-med)` | — | a panel's height following a new row |

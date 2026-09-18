@@ -87,6 +87,7 @@ nothing about authoring changed when the box did.
 | Settings › Look and feel | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Settings › Look and feel | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
+| "Play on" panel | Scan for speakers · Not now · Continue | Scan for speakers · Keep the speaker list open and ask again later · Show the Windows permission prompt, then play on the speaker | airplay.ts (the last two show once, before the first connect) |
 | Title bar | Maximize · Minimize · Close | Fills the screen. Press again to go back · Puts the window on the taskbar · Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing | index.html |
 | Now Playing | Shuffle | Shuffles the songs after this one · *Shuffle is on. Press again to turn it off* | now-playing-card.ts (`paintModes`) |
 | Now Playing | Repeat | Repeats the list, then one song, then off → Repeats the list. Press again: one song → Repeats this song. Press again: off | now-playing-card.ts (`REPEAT_HINT`) |

@@ -190,6 +190,14 @@ front-end, Rust back-end).
   2. **Tokens:** geometry, type, spacing and motion are `--*` tokens in `skin.css` base
      (a skin overrides only what it changes); color is a theme role in `themes.css`. Grep
      the token name before using it (`--fs-small` did not exist; `--fs-subtext` did).
+  2a. **Design language:** correct tokens do not stop drift. Name the **control family**
+     the new control joins — panel chip, menu row, icon square, toast button, field — and
+     copy that family's whole rule set (fill, border, height, radius, type, alignment,
+     hover, focus). The family is decided by WHERE the control sits, not by the nearest
+     code you copied: a panel is not a toast. The table and the action mark are
+     UI-ARCHITECTURE.md §2a. A family gets alias tokens (`--ap-ask-radius:
+     var(--sound-chip-radius)`), never a new raw value. Added 2026-09-17, after the AirPlay
+     permission buttons shipped on the toast idiom inside a panel of filled chips.
   3. **Hints:** every `title` is a hover hint (src/hint.ts) and goes in the ONBOARDING.md
      ledger. New row shapes go in its SHAPES table.
   4. **Toasts:** every new `toast()` call is a row in TOASTS.md §5.

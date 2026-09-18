@@ -77,6 +77,48 @@ scrollbar corner, and autofill match) and a few non-table roles every block maps
 
 ---
 
+## 2a. Control families: what a new control must copy (2026-09-17)
+
+A token stops a hardcoded value. It does not stop **drift**: two controls can be built
+from correct tokens and still not look like the same app. This section names the families,
+so a new control joins one instead of starting a sixth.
+
+**The rule.** Before you style a new button, chip, row or square, name the family it belongs
+to, then copy that family's declarations. The family is decided by **where the control sits**,
+not by which file you happened to be reading. A panel is not a toast; a menu row is not a
+chip. The reference for each family is the file in the table, and it is the whole rule set:
+fill, border, height, radius, type size, alignment, hover and focus travel together.
+
+| Family | Where it lives | The shape | Reference |
+|---|---|---|---|
+| **Panel chip** (a word you press) | Inside a panel: Sound, Rooms, the AirPlay question | `--surface` fill, `1px --panel-border`, `--icon-lg` tall, `--sound-chip-radius`, `--fs-subtext`, `line-height: 1`, padding `--space-1 --space-2`, `inline-flex` centred both ways, a **min-width token so a pair of them is one width**, hover `--surface-hover` | `.sound__pill` |
+| **Menu / list row** (a thing you choose) | A dropdown or context menu: "Play on", the context menu, library rows | No fill, no border, full width, **left aligned**, `--radius-control`, `--fs-text`, hover `--surface-hover`, a tick gutter on the right | `.ap__row`, `.ctx-menu__item` |
+| **Icon square** (a picture you press) | A panel head or a control row: Sync, scan, the Sound buttons | `--icon-lg` square, `--surface-hover` fill, `1px --border`, `--radius-control`, `--title` line art in a 24-unit SVG box, hover dims by `filter` | `.panel__action` |
+| **Toast button** | A toast, and nowhere else | Flat: no fill, `1px --border`, `--radius-control`, `--fs-subtext` | `.toast__btn` |
+| **Field** | Beside a chip: the room code | The chip shape with a text cursor, so a field and a chip read as one row | `.room__field` |
+
+**The action mark.** When a question has two answers, the one that acts wears the *Leave*
+treatment: `--title` text on a **clear** fill with a `--title` border, and `--picked` on hover
+(`.room__chip--leave`, `.ap__ask-btn.is-go`). A **filled** `--picked` at rest means *pressed or
+chosen* everywhere else in the app (`.sound__pill[aria-pressed]`, `.web__chip[aria-pressed]`,
+`.sleep__chip[aria-pressed]`), so it must not be spent on "this is the main button" — the state
+would stop reading as a state.
+
+**Focus is one shape for all of them:** `outline: var(--focus-ring-w) solid var(--title)` at
+`var(--focus-ring-off)`. A menu row insets it (a negative offset) because it is full width.
+
+**A family gets its own alias tokens, not new values.** Rooms sets
+`--room-radius: var(--sound-chip-radius)` and `--room-chip-min-w: var(--sound-pill-min-w)`;
+AirPlay sets `--ap-ask-radius` and `--ap-ask-btn-w` the same way. The alias lets a skin move
+one family alone later, and it keeps the shared value in one place today. A raw px or a
+second radius is drift.
+
+**How this was learned.** The AirPlay permission buttons (AIRPLAY.md §9a) shipped first on the
+toast idiom, because the toast was the confirm code nearest to hand. They were correct
+token-wise and still wrong: flat outlines beside a panel full of filled chips. The owner caught
+it by asking whether they matched the app. Read the family, not the nearest call site — the
+same lesson the pre-build checklist already carries for primitives.
+
 ## 3. Skin tokens
 
 - **SCRUBBERS (2026-09-16, NEXT-VERSION §21).** Every `.scrub` handle has two layers. The

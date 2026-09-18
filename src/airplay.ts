@@ -14,6 +14,7 @@ import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setVolumeSink, reflectExternalVolume } from "./player";
 import { enterRows } from "./pop";
 import { setAirplayOutput, armTap, setSink } from "./sound";
+import * as diag from "./diag";
 
 export interface Speaker {
   name: string;
@@ -61,6 +62,12 @@ let scanning = false;
 let busy = false;
 /** A note shown in the state line for a moment (the firewall sentence, a failure). */
 let note: string | null = null;
+/**
+ * The speaker waiting on the permission question (AIRPLAY.md §9.5). The Windows prompt
+ * names `netsh`, not DeetsMusic, so the panel asks first and says what will happen.
+ * Null when nothing is being asked.
+ */
+let askFirewall: Speaker | null = null;
 const panels = new Set<() => void>();
 const repaint = () => panels.forEach((p) => p());
 
@@ -148,6 +155,18 @@ const scan = async () => {
 
 const connect = async (sp: Speaker) => {
   if (busy) return;
+  // The Windows permission prompt arrives with `netsh` as the program, which a first-time
+  // user has no reason to trust (AIRPLAY.md §9.5). The panel asks first; "Not now" leaves
+  // the speaker list usable. A second call for the same speaker goes through.
+  if (!status.firewallSeeded && !askFirewall) {
+    askFirewall = sp;
+    note = null;
+    status.error = null;
+    diag.log("airplay:firewallAsk", { speaker: sp.name });
+    repaint();
+    return;
+  }
+  askFirewall = null;
   busy = true;
   note = null;
   status.error = null;
@@ -155,7 +174,7 @@ const connect = async (sp: Speaker) => {
   repaint();
   try {
     if (!status.firewallSeeded) {
-      note = "Windows needs to let the speaker talk back to DeetsMusic. Click Yes on the next prompt.";
+      note = "Windows is asking now. Click Yes on the prompt.";
       repaint();
       await api.firewallPrompt().catch((e) => console.warn("[airplay] firewall", e));
       status.firewallSeeded = true;
@@ -173,6 +192,15 @@ const connect = async (sp: Speaker) => {
     status.connecting = null;
     await refresh();
   }
+};
+
+/** "Not now": drop the question, keep the panel and its speaker list as they were. */
+const declineFirewall = () => {
+  if (!askFirewall) return;
+  diag.log("airplay:firewallDeclined", { speaker: askFirewall.name });
+  askFirewall = null;
+  note = null;
+  repaint();
 };
 
 const disconnect = async () => {
@@ -248,9 +276,17 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline>` +
     `<polyline points="1 20 1 14 7 14"></polyline>` +
     `<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button></div>` +
-    `<div class="ap__list"></div><div class="ap__state"></div>`;
+    `<div class="ap__list"></div>` +
+    // The permission question (§9.5). Built once, hidden until a first connect needs it.
+    `<div class="ap__ask" hidden role="group" aria-label="Windows permission">` +
+    `<p class="ap__ask-text"></p><div class="ap__ask-row">` +
+    `<button class="ap__ask-btn" type="button" data-ask="no" title="Keep the speaker list open and ask again later">Not now</button>` +
+    `<button class="ap__ask-btn is-go" type="button" data-ask="yes" title="Show the Windows permission prompt, then play on the speaker">Continue</button>` +
+    `</div></div><div class="ap__state"></div>`;
   const list = panel.querySelector<HTMLElement>(".ap__list")!;
   const stateEl = panel.querySelector<HTMLElement>(".ap__state")!;
+  const askEl = panel.querySelector<HTMLElement>(".ap__ask")!;
+  const askTextEl = panel.querySelector<HTMLElement>(".ap__ask-text")!;
   const scanBtn = panel.querySelector<HTMLButtonElement>("[data-scan]")!;
   const rowEls = new Map<string, HTMLButtonElement>();
   const speakerOf = new Map<string, Speaker | null>();
@@ -365,8 +401,20 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
       if (list.children[i] !== el) list.insertBefore(el, list.children[i] ?? null);
     });
 
+    // The permission question takes the panel's lower half while it is up.
+    const wasAsking = !askEl.hidden;
+    if (askFirewall) {
+      setText(
+        askTextEl,
+        `Windows asks for permission once, so ${askFirewall.name} can answer DeetsMusic. ` +
+          `The prompt names netsh, the Windows firewall tool.`,
+      );
+    }
+    askEl.hidden = !askFirewall;
+
     let state: string;
-    if (note) state = note;
+    if (askFirewall) state = "";
+    else if (note) state = note;
     else if (status.connecting) state = `Connecting to ${status.connecting}…`;
     else if (c?.tapStarved) state = "The speaker gets no sound from DeetsMusic. Try All PC sound in Settings › AirPlay.";
     else if (c) state = c.tap ? `Playing on ${c.speaker.name} · ${fmtDelay(c.latencyMs)}` : `Playing on ${c.speaker.name} and this computer · ${fmtDelay(c.latencyMs)}`;
@@ -382,6 +430,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
 
     if (panel.hidden) return;
     enterRows(fresh); // a speaker found while the panel shows slides in
+    if (!askEl.hidden && !wasAsking) enterRows([askTextEl, askEl.querySelector(".ap__ask-row")!]);
     animateHeight(from);
     place(); // the height changed (a scan result, a note) — and it may no longer fit below
   };
@@ -392,6 +441,12 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     const t = e.target as HTMLElement;
     if (t.closest("[data-scan]")) {
       void scan();
+      return;
+    }
+    const ask = t.closest<HTMLElement>("[data-ask]")?.dataset.ask;
+    if (ask) {
+      if (ask === "no") declineFirewall();
+      else if (askFirewall) void connect(askFirewall);
       return;
     }
     const k = t.closest<HTMLElement>(".ap__row[data-key]")?.dataset.key;
@@ -409,7 +464,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     root,
     trigger: square,
     panel,
-    shouldStayOpen: () => busy,
+    shouldStayOpen: () => busy || !!askFirewall,
   });
   // The dropdown primitive owns open/close; watch the panel to run the scan and the poll.
   const observer = new MutationObserver(() => {
@@ -421,6 +476,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
       place(true);
       enterRows(list.children); // every row, one after another
       note = null;
+      askFirewall = null;
       void refresh();
       void scan();
     } else {

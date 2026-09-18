@@ -1248,6 +1248,41 @@ body {
 }
 .ap__state:empty { display: none; }
 .ap__state[data-tone="note"] { color: var(--text); }
+/* The Windows permission question (AIRPLAY.md §9a): it takes the panel's lower half
+   before the first connect, so the UAC dialog and its `netsh` never arrive unannounced.
+   The buttons wear the panel chip shape (the Sound panel's pill, which Rooms also wears),
+   and Continue wears the Rooms Leave treatment: the title colour, filled on hover. */
+.ap__ask {
+  padding: 0 var(--space-2);
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-1);
+}
+.ap__ask[hidden] { display: none; }
+.ap__ask-text {
+  margin: var(--space-2) 0 0;
+  color: var(--text); font-family: var(--font-body); font-size: var(--fs-subtext);
+  white-space: normal;
+}
+.ap__ask-row {
+  display: flex; justify-content: flex-end; gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+.ap__ask-btn {
+  box-sizing: border-box; height: var(--icon-lg); min-width: var(--ap-ask-btn-w);
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--ap-ask-radius);
+  color: var(--text);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  white-space: nowrap; text-align: center; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui);
+}
+.ap__ask-btn:hover { background: var(--surface-hover); }
+.ap__ask-btn.is-go { color: var(--title); border-color: var(--title); background: transparent; }
+.ap__ask-btn.is-go:hover { background: var(--picked); }
+.ap__ask-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 /* ── Traffic lights ─────────────────────────────────────────── */
 .lights { display: flex; gap: var(--traffic-gap); }
