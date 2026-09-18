@@ -301,3 +301,131 @@ lead the shelf. Both are real times, so the two merge honestly.
   playable. Recently Played has no such limit — it carries its own catalog rows, so on a fresh
   install it fills from Apple immediately. This matters more since 2026-09-18, when Home became
   a default card and so the first thing a stranger sees.
+
+---
+
+## 10. New — releases from your artists (designed 2026-09-18, not built)
+
+A fourth shelf, labelled **New**. It holds one tile per recent release by an artist you
+listen to: an album or a single put out in the **last 30 days**, or one **coming in the next
+5 days**. The shelf is left out when it is empty, like the other three.
+
+### 10.1 The ten artists
+
+The shelf asks Apple about **ten artists**, no more. Ten is the whole cost control: one
+batched call answers all of them.
+
+**Six seats go to plays**, from `play_stats` (full + partial counts, summed per
+`artistName`). **Four seats go to recency**, filled from Apple's recent list in its own
+order, skipping any artist already seated. The floor of four is the point of the rule: a
+play count is a record of the past, and an artist you started last week has none.
+
+- **A play seat does not check the library.** An artist you play often enough to reach the
+  top six has earned the tile whether or not you own them (his call, 2026-09-18). No
+  threshold number exists: the seat itself is the test.
+- **A recency seat is library only.** Apple's 90 songs held 68 artists, 31 of them not in
+  the library (measured 2026-09-18). Those 31 are Apple's discovery job. Ours is your
+  artists.
+- **Ties break on recency**, then on name, so the list is stable between builds.
+
+### 10.2 Where recency comes from
+
+`me/recent/played/tracks`, read **90 songs deep** (his call). The endpoint caps `limit` at
+30 — `limit=100` is a `400` — but `offset` pages, so 90 is three calls, and **Home already
+makes the first one** for Recently Played (§9.1). Two extra calls.
+
+That list is the only sight we have of a phone, a Mac or the Music app. Measured
+2026-09-18: 90 songs, 68 distinct artists, 37 in the library. **Little Simz sat first in it
+with zero plays in DeetsMusic** — the exact case the shelf exists for.
+
+**Apple publishes no play counts** (ideas/AppleData.md §6). So plays are ours and recency is
+Apple's, and neither one pretends to be the other.
+
+### 10.3 The artist ids
+
+`latest-release` needs a catalog artist id. `artist_catalog` holds a name, and it fills one
+artist at a time, one call each — 3 rows against 1,731 library artist names.
+
+`me/library/artists?limit=100&include=catalog` answers it in bulk. Probed 2026-09-18:
+
+- `meta.total` = **1,376** library artists — 14 pages, about 1 s and 280 KB each.
+- **100 of 100 rows carried a catalog id.**
+- The catalog row also carries the **artist photo** and `genreNames`, so the same pass fills
+  `artist_catalog.artwork` — the column §2 pays one Apple call for, per artist, today.
+
+**The pass runs on every sync, incrementally (fork B):** the endpoint **rejects `sort`**
+(`400 Invalid Parameter` on `sort=-dateAdded`), so there is no newest-first page to stop
+early on. Instead one `limit=1` call reads `meta.total`. Unchanged against the stored count,
+the pass ends there — **one call**. Changed, it re-pages all 14 and upserts `artist_catalog`
+— **15 calls**, only after you added or removed an artist. A full sync re-pages regardless,
+so a same-count swap heals within six hours.
+
+The stored count is a new `meta` key. `library_sync` is a full pass whenever the last one is
+six hours old or more, and it runs once per launch (library.rs, `FULL_SYNC_EVERY_SECS`).
+
+**The name join.** `artist_catalog` stays keyed by the LIBRARY artist name, because that is
+the name our tracks carry. A library artist can map to a catalog artist with a shorter name
+— "adam&steve & Maty Noyes" resolved to "adam&steve" (measured 2026-09-18). The row is still
+correct for the join; the photo is the primary artist's.
+
+### 10.4 The release read
+
+`catalog/{sf}/artists?ids=<10>&views=latest-release`, the batch-of-25 shape `web.rs` already
+uses. **One call a day.** Measured 2026-09-18: 238 ms, and `latest-release` equalled the
+newest row of `singles` and `full-albums` in every artist tested. Asking for those two views
+as well multiplied the payload 5× (30 KB → 163 KB) and found nothing new, so the shelf asks
+for one view.
+
+Two measured facts to build against:
+
+- **Apple can answer fewer artists than you ask for** — 22 of 25 ids came back once. A
+  missing artist is a gap, never an error.
+- **An artist can have no `latest-release` view at all.** They contribute nothing. Correct
+  for this shelf.
+- **One release per artist.** When an artist has both a release last week and one coming next
+  week, `latest-release` returns the coming one and the older one is not shown. Accepted: the
+  upcoming release is the better tile.
+
+### 10.5 The window, and "Coming"
+
+| Release date | Tile |
+|---|---|
+| Within the last 30 days | Normal tile |
+| Today up to +5 days | Tile marked **Coming MM/DD** |
+| Anything else | Not shown |
+
+**No year in the mark** (his call, 2026-09-18) — the window is five days wide, so the year
+can only be this one or the next. The mark is the only text the shelf adds to a tile.
+
+### 10.6 Cold start
+
+A fresh install has no plays, so the six play seats are empty. **All ten seats fill from
+Apple recency** instead (his call), and the recency list is available on the first launch
+after sign-in. This shelf does NOT follow §4's "stay away until there is data" rule, because
+its data does not have to be earned here.
+
+A release we do not hold is a catalog album. It draws and plays through the same path a
+Search catalog album uses (`search-albums:<id>`), so a tile is always playable.
+
+### 10.7 The cost, on an ordinary day
+
+| Call | Count |
+|---|---|
+| `me/library/artists?limit=1` (the count check), per sync | 1 |
+| `me/library/artists?limit=100&include=catalog` ×14, when the count moved | 0 usually |
+| `me/recent/played/tracks` offsets 30 and 60 | 2 |
+| `artists?ids=<10>&views=latest-release` | 1 |
+| **Total** | **4** |
+
+Fewer than one artist-view open. The release read refreshes **once a day** (his call) — a
+release date does not change in an afternoon — on the §9 floor machinery, cleared by the
+header's refresh square and by `deets:signed-in`.
+
+### 10.8 Settings and the stored key
+
+- **The off switch lives with the other Home rows** (his call, 2026-09-18) — Settings › Home,
+  the section that already holds Hiding lasts and Hidden tiles. It pays §9.4's debt: one row
+  turns off every Apple call Home makes, this shelf included.
+- **The stored count is `meta.library_artists_total`** — Apple's own `meta.total` from
+  `me/library/artists`, under a name that says what it holds. It joins `storefront`,
+  `schema_version`, `full_sync_at` and `queue_state`, which carry no prefix either.
