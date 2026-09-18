@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 408 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 410 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -441,6 +441,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
 | `--np-stage-glyph` | `96px` | — | placeholder ♪ on the stage |
 | `--qcard-now-art` | `48px` | — | the Queue card's now-playing cover |
+| `--qcard-idle-dim` | `0.6` | — | the now-playing row with nothing to play |
+| `--qcard-loading-dim` | `0.55` | — | its cover while a jump buffers (UX-COVERUPS.md §1) |
 
 ### album aurora (Now Playing; ALBUM-COLOR.md)
 

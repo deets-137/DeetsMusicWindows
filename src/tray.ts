@@ -396,6 +396,7 @@ window.addEventListener("DOMContentLoaded", () => {
     visible = true;
     vinyl.suspend(false);
     log("tray:shown");
+    render(); // at once, from the state kept current while hidden: no stale frame on open
     invoke<NpState>("np_snapshot").then((s) => {
       deets = s;
       render();
@@ -404,10 +405,14 @@ window.addEventListener("DOMContentLoaded", () => {
     fit();
   });
   window.addEventListener("blur", () => {
-    // Release builds hide on blur (tray.rs); either way, stop polling until shown.
-    visible = false;
+    // Release builds hide on blur (tray.rs); either way, stop polling until shown. `visible`
+    // is NOT cleared here: a debug build stays on screen after a blur and must keep
+    // rendering `np`; Rust says when the panel is really hidden (`panel-hidden`).
     stopPolling();
     vinyl.suspend(true);
+  });
+  listen("panel-hidden", () => {
+    visible = false;
   });
 
   // ── chrome ──

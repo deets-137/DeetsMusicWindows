@@ -33,33 +33,68 @@ const RING_CAP: usize = 400;
 static PATH: OnceLock<PathBuf> = OnceLock::new();
 static RING: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
 
-/// The open log file and its length. Kept open across lines (2026-09-18): before, every
-/// line did a stat, an open and a close. The length is counted here so the rotation
-/// check needs no stat either. Each line is still one unbuffered `write`, so a crash
-/// loses nothing. `None` until the first line, and again after a rotation until the
-/// next line reopens the fresh file.
-static SINK: Mutex<Option<(std::fs::File, u64)>> = Mutex::new(None);
+/// The open log file. Kept open across lines (2026-09-18): before, every line did a stat,
+/// an open and a close. The length is counted here so the rotation check needs no stat.
+/// Each line is still one unbuffered `write`, so a crash loses nothing.
+struct Sink {
+    file: std::fs::File,
+    /// Our count of the file's bytes; re-read from disk every RESYNC_EVERY lines.
+    len: u64,
+    /// Lines written since the last disk check.
+    since_check: u32,
+    /// After a failed rotation (a reader holds the file without share-delete), no retry
+    /// before this — or every line would pay the rename attempt the old code paid.
+    retry_rotate_at: Option<Instant>,
+}
+static SINK: Mutex<Option<Sink>> = Mutex::new(None);
+/// Another process can share the file (`npm run tauri dev` and the installed app share one
+/// data dir). Its writes are not in our count, and its rotation renames the file from under
+/// our handle, which would follow the renamed file and keep writing there. So every
+/// RESYNC_EVERY lines the path is stat'ed: a shorter file than we counted (or none) means
+/// someone rotated — reopen; a longer one means someone else wrote — adopt its length.
+const RESYNC_EVERY: u32 = 32;
+const ROTATE_RETRY: Duration = Duration::from_secs(30);
 
 /// Append `text` (which must end in its newline) to the log file, rotating first when
 /// the file has passed ROTATE_AT. Every error is dropped: a log line must never take
-/// the app down.
+/// the app down. A poisoned lock is taken over, never left: the panic hook logs through
+/// here, and a log that dies with the first panic is the one nobody gets to read.
 fn append(text: &str) {
     let Some(path) = PATH.get() else { return };
-    let Ok(mut sink) = SINK.lock() else { return };
-    if sink.as_ref().map_or(false, |(_, len)| *len > ROTATE_AT) {
+    let mut sink = SINK.lock().unwrap_or_else(|p| p.into_inner());
+    if let Some(s) = sink.as_mut() {
+        if s.since_check >= RESYNC_EVERY {
+            s.since_check = 0;
+            match std::fs::metadata(path) {
+                Ok(m) if m.len() >= s.len => s.len = m.len(),
+                _ => *sink = None, // rotated or deleted by another process: reopen the path
+            }
+        }
+    }
+    let due = sink.as_ref().map_or(false, |s| {
+        s.len > ROTATE_AT && s.retry_rotate_at.map_or(true, |t| Instant::now() >= t)
+    });
+    if due {
         // Two files rather than a truncate: the run-up to a fault is the part
         // worth reading. Close ours first: the handle would follow the renamed file.
-        *sink = None;
-        let _ = std::fs::rename(path, path.with_file_name(PREV));
+        let old = sink.take();
+        if std::fs::rename(path, path.with_file_name(PREV)).is_err() {
+            // Keep writing to the big file; try again later.
+            *sink = old.map(|mut s| {
+                s.retry_rotate_at = Some(Instant::now() + ROTATE_RETRY);
+                s
+            });
+        }
     }
     if sink.is_none() {
-        let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(path) else { return };
-        let len = f.metadata().map(|m| m.len()).unwrap_or(0);
-        *sink = Some((f, len));
+        let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(path) else { return };
+        let len = file.metadata().map(|m| m.len()).unwrap_or(0);
+        *sink = Some(Sink { file, len, since_check: 0, retry_rotate_at: None });
     }
-    if let Some((f, len)) = sink.as_mut() {
-        if f.write_all(text.as_bytes()).is_ok() {
-            *len += text.len() as u64;
+    if let Some(s) = sink.as_mut() {
+        if s.file.write_all(text.as_bytes()).is_ok() {
+            s.len += text.len() as u64;
+            s.since_check += 1;
         } else {
             *sink = None; // reopen on the next line (the file was deleted or locked)
         }

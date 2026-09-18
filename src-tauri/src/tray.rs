@@ -92,6 +92,10 @@ pub fn hide_panel(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(PANEL) {
         w.hide().ok();
         state(app).panel_hidden_at = Some(Instant::now());
+        // The panel stops rendering the once-a-second `np` while hidden (tray.ts). It keys
+        // on this, not on blur: a debug build does not hide on blur, and a panel that is on
+        // screen but unfocused must keep its clock moving.
+        let _ = tauri::Emitter::emit_to(app, PANEL, "panel-hidden", ());
     }
 }
 

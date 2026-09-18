@@ -24,9 +24,9 @@
   background: var(--surface-hover);
   border-radius: var(--radius-control);
 }
-.qnow--idle { opacity: 0.6; }
-/* Buffering a jump — dim the cover as the interim cover-up (see docs/UX-COVERUPS.md). */
-.qnow--loading .qnow__art { opacity: 0.55; }
+.qnow--idle { opacity: var(--qcard-idle-dim); }
+/* Buffering a jump — dim the cover (docs/UX-COVERUPS.md §1); a skin may set the depth. */
+.qnow--loading .qnow__art { opacity: var(--qcard-loading-dim); }
 .qnow__art {
   flex: 0 0 auto;
   width: var(--qcard-now-art);

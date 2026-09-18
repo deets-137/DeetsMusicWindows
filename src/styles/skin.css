@@ -426,6 +426,8 @@
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-glyph: 96px;           /* placeholder ♪ on the stage */
   --qcard-now-art:  48px;           /* the Queue card's now-playing cover */
+  --qcard-idle-dim: 0.6;            /* the now-playing row with nothing to play */
+  --qcard-loading-dim: 0.55;        /* its cover while a jump buffers (UX-COVERUPS.md §1) */
   /* The stage column (docs/STAGE-COLUMN.md) needs no floor token: Now Playing is locked to
      its natural height and the Queue takes the rest, so nothing inside the column competes.
      The window's own height band (surface.ts MAX_FLOOR_H) is what keeps the Queue usable. */

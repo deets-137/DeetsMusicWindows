@@ -471,7 +471,10 @@ function emitProgress(): void {
   // subscription (TOASTS.md). Not at the song-start: MusicKit sets now-playing first.
   if (freshSignIn && currentTime > 0.5) freshSignIn = false;
   if (currentTime > 0) lastHeardAt = currentTime; // MusicKit's clock resets when its player dies
-  progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
+  // While a (re)window loads, the outgoing song still ticks through the teardown. The
+  // scrubber already shows the incoming song at 0 (emitLoadingProgress, UX-COVERUPS.md §1);
+  // an old-song tick here would drag it back under the new title.
+  if (!isLoading) progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
   if (mode === "room") roomDriftTick(); // the room's clock against ours (ROOMS.md §9.3)
   // Repeat one (NEXT-VERSION §12c): MusicKit loops the song with no item change, so the
   // play-event log would never see the second listen. A clock that jumps from the last
@@ -510,7 +513,16 @@ export function refreshPlayerState(): void {
  *  take over from the first Play. */
 function emitRestoredProgress(): void {
   if (music?.nowPlayingItem) return;
-  const cur = queue.getCurrent();
+  emitModelProgress();
+}
+
+/** The model's current song as one progress report: its length from the store, and the
+ *  saved position when an update restart left one for this very song (resumeAt), else 0.
+ *  Nothing is sent when the length is unknown — a station, or a catalog song the store
+ *  has not seen — because a zero-length report is not just cosmetic: the sleep timer reads
+ *  "0 s left" from it and would take the next song change for the song's own end. */
+function emitModelProgress(): void {
+  const cur = mode === "radio" ? null : queue.getCurrent();
   const id = cur?.catalogId ?? cur?.libraryId;
   const durationMs = (trackById(cur?.catalogId) ?? trackById(cur?.libraryId))?.durationMs;
   if (!id || !durationMs) return;
@@ -518,6 +530,12 @@ function emitRestoredProgress(): void {
   const currentTime = resumeAt?.id === id ? Math.min(resumeAt.sec, duration) : 0;
   progressListeners.forEach((cb) => cb({ progress: currentTime / duration, currentTime, duration }));
 }
+
+/** The scrubber the moment a (re)window starts loading (UX-COVERUPS.md §1, 1A): the
+ *  incoming song at 0:00 (or its resume position) with its own length, under the title the
+ *  card already shows from the model. Without this the old song's clock ran on under the
+ *  new title for up to 1.6 s. MusicKit's own ticks take over when the new song reports. */
+const emitLoadingProgress = emitModelProgress;
 
 /** Where the song is, in seconds (queue-persist's update restart). */
 export function playbackPosition(): number {
@@ -1234,6 +1252,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
   isLoading = true;
   loadingContext = true; // suppress model-follow while we (re)build MusicKit's queue
   perf.span("emit.loading", emit); // surface the loading state for the cover-up
+  emitLoadingProgress(); // the scrubber at 0:00 of the incoming song (UX-COVERUPS.md §1)
   try {
     // Clean the transport before the swap. MusicKit refuses a play() "without a previous
     // stop()/pause()" while already playing. Normally pause() is enough; leaving a STATION
@@ -1494,6 +1513,8 @@ export async function playStation(s: Station): Promise<void> {
   isLoading = true;
   loadingContext = true; // suppress model-follow while the station queue builds
   emit();
+  // No loading report here: a station has no length, and emitProgress holds the old song's
+  // ticks back while `loading` is true, so its clock stops rather than runs on.
   try {
     if (m.isPlaying && typeof m.pause === "function") await m.pause();
     await setStationQueue(m, s);

@@ -25,23 +25,41 @@ before audio starts — a perceptible silent gap after the click.
 clicked track immediately (model is authoritative the instant you click), and dims the
 cover (`.qnow--loading`) while `loading` is true. So the *click* feels instant even
 though *audio* lags.
-**Holistic pass should add:** a consistent loading treatment on the **Now Playing
-strip** too (it currently only updates when MusicKit catches up), e.g. a subtle
-progress shimmer / disabled transport during `loading`.
+**Now Playing (built 2026-09-18, fork 1A):** the card already painted the incoming title and
+cover from the model at click time (`now-playing-card.ts`, the between-songs gap-fill), so
+the text was instant. What lagged was the clock: the scrubber and the times kept the OLD
+song's position under the NEW title for up to 1.6 s, because the outgoing song still ticks
+through MusicKit's teardown. Now `player.ts` `emitLoadingProgress` sends one progress report
+the moment `loading` goes true — the incoming song at 0:00 (or its saved resume position after
+an update restart) with its own length; the launch path, `emitRestoredProgress`, is the same
+function — and `emitProgress` holds the old song's ticks back while `loading` is true. Every
+progress subscriber follows: the card, the tray panel, the Sound panel, the record. **No report
+when the length is unknown** (a station, a catalog song the store has not seen): the sleep timer
+reads "seconds left" from progress, and a zero-length report made it take the next song change
+for the song's own end (found in review, 2026-09-18). Then the old clock simply stops until the
+new song reports. MusicKit's own ticks take over when it does. No shimmer, no disabled
+transport: the measured gap after a warm click is 0.7–1.6 s (§5) and the text is already
+right, so a reset clock is the whole treatment. The Qcard's dims are skin tokens now
+(`--qcard-idle-dim`, `--qcard-loading-dim`).
 
 ## 2. Previous beyond the window — **buffering gap**
 **Where:** `player.prevTrack` (native skip) works gaplessly *within* the window; rewinding
 past the backlog edge isn't built yet, but when it is it will re-window → buffer.
-**Status:** not yet implemented (re-windowing at edges is roadmap). Same `loading` hook
-will apply.
+**Status: built.** `player.prevTrack` re-windows around the previous entry when MusicKit sits
+at index 0 and the model has history (`player:prevRewindow` in the diag log). It goes through
+`loadFromModel`, so `loading` and §1's treatment apply. A station has no backward walk (a
+restart only, STATIONS.md).
 
 ## 3. Scrubbing / seek — **buffering gap**
 **Where:** `player.seekToFraction` → MusicKit `seekToTime` on a DRM stream.
 **Why:** seeking re-buffers from the new position; audio doesn't resume instantly.
-**Interim cover-up:** none yet — the scrubber fill moves optimistically (the drag
-already updates the bar before release), but there's no buffering indicator.
-**Holistic pass should add:** a buffering state on the scrubber after release (e.g. a
-pulsing fill / spinner at the handle) until playback resumes; debounce rapid seeks.
+**Cover-up in place (logged 2026-09-18, built earlier):** the drag moves the fill before
+release, and after release the handle **holds where it was let go** until a progress report
+lands within a second of it, for up to 1.5 s (`seekHold` in `now-playing-card.ts` and the
+tray panel's twin). Without the hold, the old position arrived for a beat and the handle
+flicked back before it jumped forward. **Closed:** no buffering indicator. The hold is honest
+(the handle is where the song will be) and the gap is short; a pulse at the handle would be
+more motion than the wait deserves.
 
 ## 4. First play / context start — **configure + buffer** (mostly fixed 2026-09-12)
 **Where:** the first `playPause`/`playContext` of a session used to lazily configure
@@ -72,10 +90,11 @@ Where the time goes on a warm click now that our own part is ~10 ms:
   the element's `playing` fires — 500–800 ms. MusicKit's loader, not the network (each
   fetch is ~10 ms warm).
 Native Next is the same shape minus the teardown (~1.0 s): MusicKit preloads only the next
-item's asset lookup, not its license or bytes. **Holistic pass candidates:** a hover
-pre-insert (`playNext` the hovered row's descriptor so MusicKit's next-item preload runs,
-then `skipToNextItem` on click) is the only lever below the ~1 s floor; the paused restore
-at launch covers cold.
+item's asset lookup, not its license or bytes. **Closed (2026-09-18):** the hover pre-insert
+(`playNext` the hovered row's descriptor so MusicKit's next-item preload runs, then
+`skipToNextItem` on click) was the only lever below the ~1 s floor and was skipped on
+2026-09-12 — it mutates MusicKit's queue on a hover. The paused restore at launch was
+rejected in §4. The floor is Apple's; the cover-ups above are the whole answer.
 
 ## 6. Launch — **the window forms instead of assembling** (built 2026-09-15, committed c978fc6, shipped in 0.5.0)
 **What showed before:** the main window appeared at creation, before the page existed:
@@ -200,7 +219,18 @@ and surface back to back. Check `[perf] frames appearance` in the dev log for ea
 
 ---
 
-## Holistic pass — guiding ideas (when fundamentals are done)
+## Holistic pass — done small (2026-09-18)
+The fundamentals were done: a warm click is 0.7–1.6 s and our part is under 20 ms (§5). The
+pass reviewed every section against the code. `loading` is set on both re-window paths and
+cleared in a `finally`, so no cover-up can outlive a failed load. One loading vocabulary is now:
+model-first text and cover (Now Playing, Qcard), the clock reset to the incoming song (§1), the
+Qcard cover dim (a skin token), the seek hold (§3). No spinners, shimmers or disabled transport
+were added — the gaps are too short for them. **§6b fork 1B closed (2026-09-18, user: C):** a
+user's own surface pick stays an instant jump; only an agent's change goes under the cover. An
+agent does not care about the surface, so its change is the one that should read as a calm view
+for the user; a person who picked a surface wants it now.
+
+## Holistic pass — guiding ideas (as written before the pass)
 - **One loading vocabulary:** drive every cover-up off `PlayerState.loading` (+ a future
   `buffering` for seeks) so spinners/shimmers/disabled-states look and time the same.
 - **Optimistic-first:** update the UI from the *model* immediately on intent; let audio
