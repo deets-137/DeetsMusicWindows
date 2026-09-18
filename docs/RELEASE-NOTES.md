@@ -18,6 +18,62 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.10.1 — 2026-09-18
+
+**A tour on the first launch.** Deets and Happy, the two sprites from deets.solutions, meet a
+new user under the DeetsMusic title and walk them through five steps: sign in to Apple Music,
+click **DeetsMusic**, click a section title, press **Ctrl + Space**, and a send-off. Each step
+waits for you to do the thing it names, so nothing is clicked past; a **Next** button appears
+only after a step has waited a while. **Escape** skips the tour. It runs once, on a fresh
+install, and never on an update. Settings › Tips › **Show the tour again** brings it back, and
+so does typing **tour** in the DeetsBar.
+
+**Rooms start with your song, and a paused listener rejoins.** In 0.10.0 a room started from
+a playing app could open empty: guests joined, nothing played, and both Queue cards stayed
+blank. The host now seeds the room with its song and Up Next before it connects. A guest who
+pressed Pause and then Play took the room's position but stayed silent; Play now plays. The
+count badge on the title bar's room button is gone: the hover hint and the panel already say
+who is in the room.
+
+**Home shows what you played and added on your phone.** Recently Played folds in the plays
+Apple Music saw on your other devices, in the right order, and Recently Added follows Apple's
+own list, so an album you added on the phone this morning leads the shelf here. Neither adds a
+date to your play history, so Rewind's minutes stay measured. Signed out, Home asks nothing.
+
+**The surface that shows the player alone is called Player.** It was NP in the Surface menu,
+Player in the tray, and Player (NP) in Settings. One name now, everywhere. In the Surface menu
+the **Mini | Player** halves are the same width with centred labels. Typing **np** in the
+DeetsBar still finds it.
+
+**Ctrl + Space closes the DeetsBar too.** The key that opens the bar puts it away. The compass
+button in the title bar still opens it.
+
+**A thin window uses the small volume pill.** Under a certain width the full volume bar pushed
+the window buttons off the title bar. A thin window now switches to the small pill by itself,
+and the full bar comes back when the window widens.
+
+**Settings labels read plainer.** A pass over every row: *Shuffle button stays on*, *Cover
+while playing*, *Web genre chips filter*, *Grown card on a new pick*, *Web prefers songs*,
+*Songs not measured get*. Values and stored settings are unchanged. The Playlists rail groups
+are now *Made Here*, *Your Apple Playlists*, *Apple Mixes*, *Apple Replays* and *Saved from
+Apple Music*.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.10.0 — 2026-09-18
 
 **Listen with friends.** A new item in the title bar — three figures side by side — opens the
