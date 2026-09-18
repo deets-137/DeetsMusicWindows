@@ -190,26 +190,33 @@ body {
 .flyout__item[data-surface-choice], .flyout__split { line-height: var(--fs-title); }
 .flyout__split                            { font-size: var(--fs-subtext); }
 .flyout__item[data-surface-choice="max"]  { font-size: var(--fs-title); }
-/* Mini | Player: one item cut in two (the search pin idiom). Mini takes two thirds, Player
-   one third, so the button's width previews how much the window holds — the same way the
-   label's font size already previews the window's size (2026-09-18, was 3/1 while the half
-   read "NP"). Both halves wear the same type; each carries its own radio dot, and a hover
-   rings only the half under the pointer. */
+/* Mini | Player: one item cut in two (the search pin idiom). The halves are EQUAL: "Player"
+   does not fit a third (owner, desk, 2026-09-18 — it was 3/1 while the half read "NP", then
+   2/1 for a beat). The label is CENTRED, and the radio dot is taken out of the flow for it:
+   the dot is an indicator, not a column, so it is absolutely placed in the half's own right
+   padding. That keeps the row narrow (an in-flow dot slot cost each half a slot AND a gap,
+   and balancing it for a true centre cost a second of each) and it keeps the label still —
+   the word does not shift when the pick moves between the halves. Both halves wear the same
+   type, and a hover rings only the half under the pointer. */
 .flyout__split { padding: 0; gap: 0; overflow: hidden; cursor: default; }
 .flyout__split::after { content: none; }
 .flyout__split:hover { box-shadow: none; }
 .flyout__half {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-  flex: 2 1 0; min-width: 0;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  flex: 1 1 0; min-width: 0;
   padding: var(--space-2) var(--space-3);
   background: none; border: none;
-  font: inherit; line-height: inherit; color: inherit; text-align: left;
+  font: inherit; line-height: inherit; color: inherit; text-align: center;
   cursor: pointer;
   transition: box-shadow var(--dur-fast) var(--ease-ui);
 }
-.flyout__half + .flyout__half { flex: 1 1 0; border-left: 1px solid var(--border); }
-.flyout__half::after { content: ""; width: 0.9em; text-align: center; line-height: 1; }
-.flyout__half[aria-checked="true"]::after { content: "•"; }
+.flyout__half + .flyout__half { border-left: 1px solid var(--border); }
+.flyout__half[aria-checked="true"]::after {
+  content: "•";
+  position: absolute; right: var(--space-1); top: 50%; transform: translateY(-50%);
+  line-height: 1; pointer-events: none;
+}
 .flyout__half:hover { background: var(--surface-hover); box-shadow: inset 0 0 0 2px var(--text); }
 
 /* ── Account flyout ─────────────────────────────────────────── */

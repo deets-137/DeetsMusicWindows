@@ -16,8 +16,8 @@
 > **Songs not measured get**. Values and store keys unchanged. From that read: the surface that shows the player alone was
 > **NP** in the Surface menu, **Player** in the tray row, and **Player (NP)** in Settings and the
 > Compass — one thing under three names. **BUILT 2026-09-18: it is "Player" everywhere**, the
-> Mini | Player halves went from `flex: 3/1` to `2/1`, and `np` stays a Compass synonym so the old
-> habit still finds it. Still open: **web** is a coined noun across five Playlists rows that the
+> Mini | Player halves are equal (`flex: 1` each — 3/1 then 2/1 were both too narrow for the
+> word) with the labels centred over an out-of-flow radio dot (an in-flow dot slot made the flyout too wide), and `np` stays a Compass synonym so the old habit still finds it. Still open: **web** is a coined noun across five Playlists rows that the
 > card never defines.
 > The Playlists rail groups became
 > *Made Here* · Your Apple Playlists · Apple Mixes · **Apple Replays** · **Saved from Apple Music**.

@@ -148,11 +148,17 @@ over [SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md); it is the only naming slip 
 over.
 
 The Surface menu also changes shape. `Mini | NP` is one flyout item cut in two
-(`.flyout__split`, the search-pin idiom, `index.html` around line 126). The halves are `flex: 3`
-and `flex: 1` today, so Mini takes three quarters and NP one. **The Player half becomes half the
-width of the Mini half** — `flex: 2` / `flex: 1`, Mini two thirds and Player one third. The
-button's width reads as a preview of how much the window holds, the same way the label's font
-size already previews the window's size.
+(`.flyout__split`, the search-pin idiom, `index.html` around line 126). The halves were `flex: 3`
+and `flex: 1`, so Mini took three quarters and NP one. **They are now EQUAL** — `flex: 1` each.
+2/1 was tried first, on the idea that a half's width could preview how much the window holds;
+at the desk "Player" did not fit a third, so the width stops carrying that meaning and the
+label is simply legible. The labels are also **centred** now. That was a real bug, not a
+side effect of the width: the half was `justify-content: space-between`, which pins the label
+to the left edge and the dot to the right, and at three quarters' width with "Mini" in it that
+read as ordinary menu-row alignment. **The radio dot is now out of the flow** — absolutely
+placed in the half's own right padding — so it costs no width and the label centres on the
+half itself. An in-flow dot slot cost each half a slot AND a gap, and balancing it with an
+empty twin (tried first, 2026-09-18) cost a second of each and made the flyout too wide.
 
 Where the name lives, all user-facing:
 - `index.html` — `data-mini-choice="player"`'s label and its `title`.
@@ -176,8 +182,10 @@ an **NP** entry that points at Player, so a search for the old word lands somewh
 different thing from the surface. The dated design logs (FUTURE-SETTINGS.md, NEXT-VERSION.md,
 RELEASE-NOTES.md) keep the old name: they record what was decided under the name it had.
 
-**Desk test.** Title menu › Surface: the row reads **Mini | Player**, and the Player half is half
-the Mini half's width. Pick it — the window becomes the player alone. Settings › Window reads
+**Desk test.** Title menu › Surface: the row reads **Mini | Player**, the two halves are the same
+width, each label is centred in its half, and the flyout is no wider than the Midi / Max rows
+below need. Click between the halves: neither word moves as the dot jumps across. Pick Player —
+the window becomes the player alone. Settings › Window reads
 **Player opens at**. Ctrl+Space, type `np` — the Player row comes back; type `player` — same row.
 
 **DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
