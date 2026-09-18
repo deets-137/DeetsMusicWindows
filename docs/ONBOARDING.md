@@ -84,7 +84,7 @@ nothing about authoring changed when the box did.
 | Sleep panel | Off / Not tonight | Turns the sleep timer off | index.html |
 | Title bar | Volume bar | The volume. Drag it, or roll the wheel | index.html |
 | Title bar | Mute (in the volume bar) | Turns the sound off and on | index.html |
-| Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open | settings-card.ts |
+| Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway | settings-card.ts |
 | Settings › Look and feel | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Settings › Look and feel | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |

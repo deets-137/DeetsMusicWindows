@@ -75,6 +75,38 @@ const flipFloor = (k: SizeSlot): { w: number; h: number } => {
   return { w: MIN_SIZES.mini.w, h };
 };
 
+// ── The thin-window edge (2026-09-18) ───────────────────────────────────────
+// Under this width the title bar cannot hold the FULL volume bar and the window buttons at
+// the same time: the lights fall off the right end (desk report, mini dragged to its floor).
+// So the bar falls back to its small pill below this width, whatever "Shrink volume bar"
+// says, and returns to the full bar above it. Same number as the flip-in edge, 455: a
+// window this thin is a mini at or near its floor.
+const NARROW_W = MINI_CEIL - MINI_HYST;
+let narrow = false;
+type NarrowListener = (n: boolean) => void;
+const narrowListeners = new Set<NarrowListener>();
+
+/** True while the window is too thin for the title bar's full-width parts. */
+export function isNarrowWindow(): boolean {
+  return narrow;
+}
+
+/** Subscribe to the thin-window edge being crossed. Returns an unsubscribe fn. */
+export function onNarrowChange(cb: NarrowListener): () => void {
+  narrowListeners.add(cb);
+  return () => narrowListeners.delete(cb);
+}
+
+// `data-narrow` on <html> is the CSS side of the same state (no rule needs it yet).
+function readNarrow(): void {
+  const next = window.innerWidth < NARROW_W;
+  if (next === narrow) return;
+  narrow = next;
+  if (next) document.documentElement.dataset.narrow = "1";
+  else delete document.documentElement.dataset.narrow;
+  narrowListeners.forEach((cb) => cb(next));
+}
+
 const appWindow = getCurrentWindow();
 
 let active: SurfaceName = DEFAULT_SURFACE;
@@ -276,11 +308,13 @@ export const surfaceSized = (): Promise<void> => sized;
 export function initSurface(): void {
   const saved = (localStorage.getItem(STORAGE_KEY) as SurfaceName | null) ?? DEFAULT_SURFACE;
   activate(saved);
+  readNarrow(); // before the first paint: a thin window never shows the full volume bar
   // The window opens at tauri.conf's size, so set the chosen view's open size.
   sized = applySize(saved);
 
   // The resize allowance: free within the band, flip past threshold + hysteresis.
   const observer = new ResizeObserver(() => {
+    readNarrow(); // the thin edge reads every resize, our own size calls included
     if (applyingSize) return;
     seen[slotOf(active)] = currentSizeText(); // a hand resize: this session only
     // "Resize changes surface" off (SETTINGS.md / FUTURE-SETTINGS §8): the window resizes

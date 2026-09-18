@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
-import { applySurface, fullSurface, initSurface, isPlayerView, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
+import { applySurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, onNarrowChange, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initArtworkHeal } from "./artwork-heal";
@@ -457,7 +457,9 @@ window.addEventListener("DOMContentLoaded", () => {
     // The grow is timed like a menu (frames.ts).
     const GRACE_MS = 400;
     let shrinkTimer = 0;
-    const shrinkMode = () => setting("volumeShrink");
+    // A thin window forces the small pill whatever the setting says: below 455 px the full
+    // bar pushes the window buttons off the right end of the title bar (2026-09-18).
+    const shrinkMode = () => setting("volumeShrink") || isNarrowWindow();
     const hoverMode = () => setting("menuMode") === "hover";
     const isGrown = () => volPill.classList.contains("is-grown");
     const held = () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true";
@@ -484,6 +486,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!shrinkMode()) shrinkNow();
     };
     applyShrink();
+    onNarrowChange(() => applyShrink()); // the window crossed the thin edge, either way
     onSettingsChange((k) => {
       if (k === "volumeShrink") applyShrink();
       if (k === "menuMode" && !hoverMode()) shrinkSoon();
