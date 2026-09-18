@@ -112,6 +112,24 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-18 — 0.10.0 is live on the `deetsmusic` channel** (`main` at `5850210`; installer
+7.4 MB). It ships listening rooms ([ROOMS.md](ROOMS.md) §16), song credits and the song pane
+([CREDITS.md](CREDITS.md) §7), the Max stage column ([STAGE-COLUMN.md](STAGE-COLUMN.md)), card
+memory ([CARD-MEMORY.md](CARD-MEMORY.md)), the AirPlay speaker-only tap and its in-panel
+permission question ([AIRPLAY.md](AIRPLAY.md) §9.5, §12), the Compass card shapes and the turning
+needle ([COMPASS.md](COMPASS.md) §2c, §12), DB write health ([DB-HEALTH.md](DB-HEALTH.md)) and the
+list-place fix ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.10.0). Published at the owner’s request
+without the hand install test of RELEASE.md §0 step 3, and with these desk tests still open, now
+running live: ROOMS §16.4 (two apps in step — the release notes announce rooms as finished, the
+owner’s call), STAGE-COLUMN §8, CARD-MEMORY, CARD-GROW §14, COMPASS 15–25, AIRPLAY §11 (the claim
+guard). The route answers: `GET /update/deetsmusic?v=0.9.5` offers 0.10.0, and
+`/update/deetsmusic/health` is `ok`.
+
+**Not done with this release:** `npm run signin:assets` and a DeetsSupport `wrangler deploy`. The
+hosted sign-in page serves a COPY of the app’s look, and skin.css gained tokens since 0.9.5
+(`--room-half-pad-x`, `--room-fold-bg` and the card-grow set). The app never needs the Worker for a
+release; run it before the next Worker deploy (RELEASE.md §1).
+
 **Small, ready to do (owner takes it next dev cycle, 2026-09-17).** `src/web.ts:1028` defers a
 row press with `window.setTimeout(() => activate(r))` for one reason only: picking rebuilt the
 rows, the pressed row left the document, and `dropdown.ts` then read the press as a click away
