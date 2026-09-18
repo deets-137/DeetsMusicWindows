@@ -96,6 +96,7 @@ fill, border, height, radius, type size, alignment, hover and focus travel toget
 | **Icon square** (a picture you press) | A panel head or a control row: Sync, scan, the Sound buttons | `--icon-lg` square, `--surface-hover` fill, `1px --border`, `--radius-control`, `--title` line art in a 24-unit SVG box, hover dims by `filter` | `.panel__action` |
 | **Toast button** | A toast, and nowhere else | Flat: no fill, `1px --border`, `--radius-control`, `--fs-subtext` | `.toast__btn` |
 | **Field** | Beside a chip: the room code | The chip shape with a text cursor, so a field and a chip read as one row | `.room__field` |
+| **Tile badge** (a mark on a cover, 2026-09-18) | The corner of a shelf tile's art: the pin mark (PINS.md) | `--tile-badge-size` square, `--surface` fill, no border, `--tile-badge-radius` (the tile's own radius), `--icon-sm` `--title` line art, inset `--tile-badge-inset` top-right; a **button** — a press unpins — with the icon square's hover (dim by filter) and the one focus ring | `.search__tile-badge` |
 
 **The action mark.** When a question has two answers, the one that acts wears the *Leave*
 treatment: `--title` text on a **clear** fill with a `--title` border, and `--picked` on hover

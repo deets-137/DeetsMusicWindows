@@ -23,15 +23,16 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Artwork, Track } from "./library";
-import { tracks as allTracks, trackById } from "./track-store";
+import { tracks as allTracks, trackById, addTransientTracks } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
-import { collectionTracks, type Album, type Playlist } from "./search";
+import { collectionTracks, catalogRelated, materializeTrack, type Album, type Playlist } from "./search";
 import { radioRecents, type Station } from "./radio";
 import { playCounts } from "./artist-view";
 import { albumKey, pid, playEventsSince, type PlayEvent } from "./rewind";
 import { setting, setSetting } from "./settings-store";
 import { trouble } from "./apple-health";
 import { isConnected } from "./apple";
+import { pinnedItems, pinsOf, pinPlayCounts } from "./pins";
 
 // ── the windows ───────────────────────────────────────────────────────────────
 const DAY_MS = 86_400_000;
@@ -103,6 +104,10 @@ export interface HomeItem {
   tracks: () => Track[] | Promise<Track[]>;
   /** Songs in the tile, when known without a fetch (the drag ghost). */
   count?: number;
+  /** An album the library does not hold: the WHOLE album, fetched (one song→album hop,
+   *  then the catalog album; both memoized for the session). `tracks()` is only the songs
+   *  the tile knew. A press and a pin use this (owner, 2026-09-18: pins are not the library). */
+  whole?: () => Promise<Track[]>;
 }
 
 export interface HomeShelf {
@@ -194,7 +199,7 @@ function containerOf(context: string | null, sample: Track | undefined, playlist
 }
 
 // ── tiles ─────────────────────────────────────────────────────────────────────
-const songItem = (t: Track): HomeItem => ({
+export const songItem = (t: Track): HomeItem => ({
   key: `song:${t.catalogId ?? t.libraryId ?? t.title}`,
   kind: "song",
   title: t.title,
@@ -210,7 +215,7 @@ const byTrackOrder = (ts: Track[]): Track[] =>
 
 /** An album tile. Its songs come from the library where they are there (the whole
  *  album, in disc/track order); `fallback` covers a catalog album played from Search. */
-function albumItem(key: string, fallback: Track[]): HomeItem | null {
+export function albumItem(key: string, fallback: Track[]): HomeItem | null {
   const mine = allTracks().filter((t) => albumKey(t) === key);
   const list = mine.length ? byTrackOrder(mine) : byTrackOrder(fallback);
   const head = list[0];
@@ -224,10 +229,31 @@ function albumItem(key: string, fallback: Track[]): HomeItem | null {
     context: `album:${key}`,
     tracks: () => list,
     count: list.length,
+    whole: mine.length ? undefined : () => wholeAlbum(list),
   };
 }
 
-function playlistItem(p: Playlist): HomeItem {
+/** The whole album for songs the library does not hold: one song→album hop, then the
+ *  catalog album, both memoized in search.ts. The songs are made playable (a transient
+ *  add + materialize, as a Search pane does). Falls back to what the tile knew. */
+export async function wholeAlbum(known: Track[]): Promise<Track[]> {
+  const seed = known.find((t) => t.catalogId);
+  if (!seed?.catalogId) return known;
+  try {
+    const ref = await catalogRelated("songs", seed.catalogId, "albums");
+    if (!ref) return known;
+    const ts = await collectionTracks("albums", ref.id);
+    if (!ts.length) return known;
+    addTransientTracks(ts);
+    ts.forEach(materializeTrack);
+    return byTrackOrder(ts);
+  } catch (e) {
+    console.warn("[home] whole album", e);
+    return known;
+  }
+}
+
+export function playlistItem(p: Playlist): HomeItem {
   return {
     key: `playlist:${pid(p)}`,
     kind: "playlist",
@@ -243,7 +269,7 @@ function playlistItem(p: Playlist): HomeItem {
   };
 }
 
-const stationItem = (s: Station): HomeItem => ({
+export const stationItem = (s: Station): HomeItem => ({
   key: `station:${s.id}`,
   kind: "station",
   title: s.name,
@@ -298,7 +324,7 @@ export async function fillArtistPhotos(items: HomeItem[]): Promise<boolean> {
 }
 
 /** An artist tile plays that artist's library songs, albums oldest first. */
-function artistItem(name: string): HomeItem | null {
+export function artistItem(name: string): HomeItem | null {
   const mine = allTracks().filter((t) => t.artistName === name);
   if (!mine.length) return null;
   const list = [...mine].sort(
@@ -890,10 +916,26 @@ export async function homeShelves(): Promise<HomeShelf[]> {
 
   const fresh = keep(newShelf(deep));
 
+  // Pinned (PINS.md): every pin, by plays over all time, ties by pin time. A pin is the
+  // user's own choice, so the hide list never touches it, and no floor holds it back.
+  const pinned = await pinnedShelf();
+
   const shelves: HomeShelf[] = [];
   if (played.length) shelves.push({ label: "Recently Played", items: played });
   if (added.length) shelves.push({ label: "Recently Added", items: added });
   if (fresh.length) shelves.push({ label: "New", items: fresh });
   if (scored.length) shelves.push({ label: bucketLabel(), items: scored });
+  if (pinned.length) shelves.push({ label: "Pinned", items: pinned });
   return shelves;
+}
+
+/** The fifth shelf: the pinned tiles, most played first (PINS.md fork 4). */
+async function pinnedShelf(): Promise<HomeItem[]> {
+  const items = pinnedItems();
+  if (!items.length) return [];
+  const counts = await pinPlayCounts(items.map((i) => i.key)).catch(() => new Map<string, number>());
+  const at = new Map(pinsOf().map((p) => [p.key, p.pinnedAt]));
+  return items
+    .sort((a, b) => (counts.get(b.key) ?? 0) - (counts.get(a.key) ?? 0) || (at.get(b.key) ?? 0) - (at.get(a.key) ?? 0))
+    .slice(0, SHELF);
 }

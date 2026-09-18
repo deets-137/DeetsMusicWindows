@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 410 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 413 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -500,6 +500,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--lib-tile-small` | `84px` | — | min tile width — small squares (denser) |
 | `--lib-tile-large` | `132px` | — | min tile width — large squares |
 | `--lib-tile-radius` | `8px` | press, glass, cyber |  |
+| `--tile-badge-size` | `20px` | — | the tile badge (PINS.md): a pinned tile's corner square |
+| `--tile-badge-inset` | `var(--space-1)` | — |  |
+| `--tile-badge-radius` | `var(--lib-tile-radius)` | — | cut to the tile's own corner |
 | `--lib-tile-lh` | `1.3em` | — | a tile's text line; its meta block is pinned to two of |
 | `--lib-row-art` | `36px` | — | these so every tile in a grid row is one height — mini-cover size on density lines |
 | `--lib-row-h` | `46px` | press, cyber | a line row's fixed height — its natural height under this |

@@ -33,6 +33,7 @@ import type { DragPayload } from "./row-drag";
 import { musicCell } from "./library-card";
 import { playStation, queueStationAfter } from "./player";
 import { copyStationLinkItem } from "./copy-link";
+import { pinItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
 import type { MenuItem } from "./context-menu";
 import { enterRows, rowsAfter } from "./pop";
 import type { CardDef } from "./cards";
@@ -129,6 +130,7 @@ export const radioCard: CardDef = {
         { label: "Play Now", run: () => startStation(s) },
         { label: "Add to Queue", run: () => void queueStationAfter(s).catch((e) => console.error("[radio] queue station", e)) },
         copyStationLinkItem(s.url),
+        pinItem(`station:${s.id}`, "station", s),
       ].filter(Boolean) as MenuItem[];
     // A station drags (DRAG-DROP.md §2, 2026-09-15): to the Queue card it plays after the
     // queue, to Now Playing it plays now. No songs — the playlist and library targets refuse it.
@@ -212,9 +214,21 @@ export const radioCard: CardDef = {
     };
 
     // ── root: the shelves ──
+    // The Pinned shelf (PINS.md): pinned stations above the sections. A tile plays, as its
+    // row does; its menu is the row's menu.
     const rootContext = (): Context => ({
       title: "Radio",
       density: true, // lines / small / large all work; headers span the grid rows
+      shelves: () => pinnedShelfHTML(["station"]),
+      shelvesFirst: true,
+      onShelf: (el) => {
+        const it = pinShelfItem(el);
+        if (it?.station) startStation(it.station);
+      },
+      shelfMenu: (el) => {
+        const it = pinShelfItem(el);
+        return it?.station ? stationMenu(it.station) : [];
+      },
       groupings: [
         {
           key: "shelves",
@@ -284,6 +298,8 @@ export const radioCard: CardDef = {
       },
     });
 
+    const unsubPins = onPinsChange(() => card.reload());
+
     // ── load (session-cached in radio.ts — a remount costs zero Apple calls) ──
     const load = () => {
       loading = true;
@@ -333,6 +349,7 @@ export const radioCard: CardDef = {
     return {
       snapshot: () => card.snapshot(),
       destroy() {
+        unsubPins();
         card.destroy();
         host.innerHTML = "";
       },

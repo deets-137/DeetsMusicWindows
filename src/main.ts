@@ -40,6 +40,7 @@ import { formatCode, joinRoom, inRoom } from "./room";
 import { initLoudness } from "./sound-loudness";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
+import { initPins } from "./pins";
 import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -423,6 +424,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Shared library store: one load, read by every card ──
   initTrackStore();
   void initFavorites(); // the ♥ mirror (favorites.ts) — local, zero Apple calls
+  void initPins(); // the pins mirror (pins.ts, PINS.md) — local, zero Apple calls
   const restored = initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch
   initUpdater(); // RELEASE.md §6: scheduled checks per Settings › Updates
   // Warm MusicKit + the DRM module at idle so the session's first click pays neither

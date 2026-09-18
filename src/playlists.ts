@@ -312,7 +312,11 @@ export const expiryText = (p: Playlist): string => (p.expiresAt != null ? `Expir
 export function playlistDelete(p: Playlist): Promise<void> {
   const id = localId(p);
   if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
-  return invoke<void>("playlist_delete", { id }).then(() => emitChange(id));
+  // A deleted playlist's pin goes with it (PINS.md §3). The key is rewind.ts's `pid`, spelled
+  // out here because rewind.ts imports this file.
+  return invoke<void>("playlist_delete", { id })
+    .then(() => invoke<boolean>("pin_clear", { key: `playlist:${p.libraryId ?? p.catalogId ?? p.name}` }).catch(() => false))
+    .then(() => emitChange(id));
 }
 
 /**

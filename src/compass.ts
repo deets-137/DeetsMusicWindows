@@ -39,6 +39,7 @@ import { isLoved, setLoved, favoriteOffered } from "./favorites";
 import { addTrackToLibrary, alreadyInLibrary, libraryAddEnabled } from "./library-add";
 import { trackById } from "./track-store";
 import { resolveEntry } from "./queue-rows";
+import { isPinned, songKey, togglePin } from "./pins";
 import { requestSongPane } from "./go-to";
 import { speakersKnown, connectSpeaker, scanSpeakers, isScanning } from "./airplay";
 import { webQuick, type WebRequest } from "./web";
@@ -382,6 +383,17 @@ function actions(all: boolean): Row[] {
       aliases: ["writers", "composer", "credits", "who wrote"],
       run: () => requestSongPane({ track: playingTrack }),
     });
+  // Pin / Unpin the playing song (PINS.md fork 7): the pin key is the song's tile key.
+  if (playingTrack) {
+    const key = songKey(playingTrack);
+    rows.push({
+      group: "Actions",
+      title: isPinned(key) ? "Unpin this song" : "Pin this song",
+      sub: playingTrack.title,
+      aliases: ["pin", "unpin", "pinned"],
+      run: () => void togglePin(key, "song", playingTrack).catch((e) => console.error("[compass] pin", e)),
+    });
+  }
   rows.push(
     { group: "Actions", title: "Sleep at end of song", sub: "The sleep timer", run: () => sleepAtEnd("song") },
     { group: "Actions", title: "Sleep at end of Up Next", sub: "The sleep timer", run: () => sleepAtEnd("queue") },

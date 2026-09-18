@@ -10,7 +10,7 @@ use std::sync::Mutex;
 
 use futures::StreamExt;
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
 use crate::apple::{self, AppleProvider, AppleState};
@@ -816,6 +816,104 @@ pub fn migrate_v6(conn: &Connection) -> Result<(), String> {
         crate::log::info("migration: v6 added play_events.lastfm");
     }
     meta_set(conn, "schema_version", "6")
+}
+
+/// v9 (2026-09-18): the `pins` table (PINS.md §3). One row per pinned item; `key` is the
+/// Home tile key (`playlist:<pid>`, `station:<id>`, `album:<key>`, `artist:<name>`,
+/// `song:<id>`). `data` is a JSON snapshot for the kinds with no local store (a station, a
+/// song from Search), so a pin still draws with nothing else loaded. Additive, idempotent.
+pub fn migrate_v9(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS pins (
+            key        TEXT PRIMARY KEY,
+            kind       TEXT NOT NULL,
+            data       TEXT,
+            pinned_at  INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| format!("create pins: {e}"))?;
+    meta_set(conn, "schema_version", "9")
+}
+
+// ── Pins (PINS.md) ────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Pin {
+    pub key: String,
+    pub kind: String,
+    pub data: Option<String>,
+    pub pinned_at: i64,
+}
+
+/// Every pin, newest first — the order the cards show (PINS.md fork 4).
+#[tauri::command]
+pub fn pins_list(db: State<'_, Db>) -> Result<Vec<Pin>, String> {
+    let conn = db.lock();
+    let mut stmt = conn
+        .prepare_cached("SELECT key, kind, data, pinned_at FROM pins ORDER BY pinned_at DESC")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok(Pin { key: r.get(0)?, kind: r.get(1)?, data: r.get(2)?, pinned_at: r.get(3)? }))
+        .map_err(|e| e.to_string())?;
+    let out: Result<Vec<Pin>, _> = rows.collect();
+    out.map_err(|e| e.to_string())
+}
+
+/// Pin an item. Pinning again refreshes the snapshot and keeps the original time, so a
+/// re-pin does not jump to the front.
+#[tauri::command]
+pub fn pin_set(key: String, kind: String, data: Option<String>, db: State<'_, Db>) -> Result<Pin, String> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    let conn = db.lock();
+    conn.execute(
+        "INSERT INTO pins(key, kind, data, pinned_at) VALUES(?1, ?2, ?3, ?4)
+         ON CONFLICT(key) DO UPDATE SET kind = excluded.kind, data = excluded.data",
+        rusqlite::params![key, kind, data, now],
+    )
+    .map_err(|e| e.to_string())?;
+    let pinned_at: i64 = conn
+        .query_row("SELECT pinned_at FROM pins WHERE key = ?1", [&key], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    crate::log::info(&format!("pin:set {key}"));
+    Ok(Pin { key, kind, data, pinned_at })
+}
+
+#[tauri::command]
+pub fn pin_clear(key: String, db: State<'_, Db>) -> Result<bool, String> {
+    let conn = db.lock();
+    let n = conn.execute("DELETE FROM pins WHERE key = ?1", [&key]).map_err(|e| e.to_string())?;
+    if n > 0 {
+        crate::log::info(&format!("pin:clear {key}"));
+    }
+    Ok(n > 0)
+}
+
+/// Plays per pin, all time (PINS.md fork 5): a song counts its own play rows, a container
+/// counts the rows played from it (`play_events.context` is the pin key). One statement
+/// each; the log is thousands of rows and Home reads it whole anyway.
+#[tauri::command]
+pub fn pin_play_counts(keys: Vec<String>, db: State<'_, Db>) -> Result<Vec<(String, i64)>, String> {
+    let conn = db.lock();
+    let mut by_ctx = conn
+        .prepare_cached("SELECT COUNT(*) FROM play_events WHERE context = ?1")
+        .map_err(|e| e.to_string())?;
+    let mut by_track = conn
+        .prepare_cached("SELECT COUNT(*) FROM play_events WHERE track_id = ?1")
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::with_capacity(keys.len());
+    for key in keys {
+        let n: i64 = match key.strip_prefix("song:") {
+            Some(id) => by_track.query_row([id], |r| r.get(0)),
+            None => by_ctx.query_row([&key], |r| r.get(0)),
+        }
+        .map_err(|e| e.to_string())?;
+        out.push((key, n));
+    }
+    Ok(out)
 }
 
 /// v8 (2026-09-17): `local_playlists.expire_days` — a temporary web playlist's days

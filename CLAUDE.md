@@ -60,6 +60,10 @@ front-end, Rust back-end).
   webhook), Bluesky (OAuth) and Mastodon, a Home shelf and Rewind › Picks, a one-time import
   of the owner's journal (no feed reader); the DeetsOTD repo stays untouched.
   §8 is the build 1 spec (designed 2026-09-17, not built; move the doc to `docs/` when built).
+- `docs/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
+  a Pinned tile shelf on the Library / Playlists / Radio roots (pin order) and Home's fifth shelf
+  (by plays, all time), a corner tile badge (BUILT 2026-09-18 on branch `pins-for-days`, §7 = as
+  built, desk test §6 open).
 - `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).

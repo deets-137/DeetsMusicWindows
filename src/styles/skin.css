@@ -487,6 +487,9 @@
   --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
+  --tile-badge-size:   20px;        /* the tile badge (PINS.md): a pinned tile's corner square */
+  --tile-badge-inset:  var(--space-1);
+  --tile-badge-radius: var(--lib-tile-radius); /* cut to the tile's own corner */
   --lib-tile-lh:       1.3em;       /* a tile's text line; its meta block is pinned to two of
                                        these so every tile in a grid row is one height */
   --lib-row-art:        36px;       /* mini-cover size on density lines */

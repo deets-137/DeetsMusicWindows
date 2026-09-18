@@ -4,7 +4,7 @@
 //! **The security model (LOCAL-DATA.md §5).** The user writes the SQL, so the danger is what
 //! that SQL can reach, not injection into our own queries. Every query runs on a FRESH
 //! in-memory database that holds only the exported tables (`songs`, `playlists`,
-//! `playlist_songs`, and — while Settings › Connections › Agents read play history is on —
+//! `playlist_songs`, `pins`, and — while Settings › Connections › Agents read play history is on —
 //! `plays` and `play_counts`). The app's own tables are never in that database, so no query can
 //! name them. On top of that, in order:
 //! 1. The copy is made from the app's file opened `mode=ro`, then DETACHed before any user SQL.
@@ -39,7 +39,7 @@ const TIME_MAX: Duration = Duration::from_secs(2);
 const ROWS_MAX: usize = 500;
 const CELL_MAX: usize = 1000;
 
-const TABLES: &[&str] = &["songs", "playlists", "playlist_songs"];
+const TABLES: &[&str] = &["songs", "playlists", "playlist_songs", "pins"];
 const HISTORY_TABLES: &[&str] = &["plays", "play_counts"];
 /// The one refusal that is a setting, not a bad query: the bridge answers it 403 (CLI exit 6).
 pub const HISTORY_OFF: &str = "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections.";
@@ -89,6 +89,10 @@ INSERT INTO playlist_songs SELECT 'playlist:local:' || x.playlist_id, x.position
   'song:' || coalesce(json_extract(x.json, '$.catalogId'), json_extract(x.json, '$.libraryId')) FROM src.local_playlist_tracks x;
 INSERT INTO playlist_songs SELECT 'playlist:' || x.playlist_id, x.position + 1,
   'song:' || coalesce(json_extract(x.json, '$.catalogId'), json_extract(x.json, '$.libraryId')) FROM src.apple_playlist_tracks x;
+
+CREATE TABLE pins(id TEXT, kind TEXT, pinned_at TEXT);
+INSERT INTO pins SELECT p.key, p.kind,
+  strftime('%Y-%m-%dT%H:%M:%S', p.pinned_at / 1000, 'unixepoch', 'localtime') FROM src.pins p;
 ";
 
 const BUILD_HISTORY: &str = "
@@ -451,6 +455,8 @@ mod tests {
                 INSERT INTO play_events VALUES(2, '222', 1789594540820, 5000, 0, 'library', NULL);
                 CREATE TABLE play_stats(track_id TEXT PRIMARY KEY, partial_count INTEGER, full_count INTEGER, last_played INTEGER);
                 INSERT INTO play_stats VALUES('111', 3, 2, 1789594440820);
+                CREATE TABLE pins(key TEXT PRIMARY KEY, kind TEXT, data TEXT, pinned_at INTEGER);
+                INSERT INTO pins VALUES('song:111', 'song', NULL, 1789594440820);
                 CREATE TABLE meta(key TEXT, value TEXT);
                 INSERT INTO meta VALUES('secret', 'internal');
                 "#,
@@ -481,6 +487,8 @@ mod tests {
         assert_eq!(v["rows"][0], json!(["Mine", "Welcome"]));
         let v = q("select song_id, finished, skipped from plays order by started_at").unwrap();
         assert_eq!(v["rows"], json!([["song:111", 1, 0], ["song:222", 0, 1]]));
+        let v = q("select id, kind from pins").unwrap();
+        assert_eq!(v["rows"], json!([["song:111", "song"]]));
         assert!(q("with recursive r(n) as (select 1 union all select n + 1 from r where n < 5) select count(*) from r").is_ok());
         assert!(q("select name from sqlite_schema").is_ok());
     }

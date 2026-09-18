@@ -50,6 +50,7 @@ Any other row opens the Settings card at that row. Examples: **hover hints**, **
 | **next** (skip, forward) · **previous** (back, prev) | The next or the previous song |
 | **shuffle** (random) · **repeat** (loop) · **mute** (silence, quiet) | The transport buttons |
 | **sleep in 15 / 30 / 45 / 60** · **sleep at end of song** · **sleep at end of up next** · **sleep timer off** | The sleep timer |
+| **pin this song** / **unpin this song** (pin, pinned) | Pins the playing song: a tile on Home's Pinned shelf and the Library's (PINS.md, 2026-09-18) |
 | **start a listening room** (room, listen together, share) | Starts a room from what you play now |
 | **leave room** / **end room** (in a room) | Leaves it, or ends it for everyone |
 | **stop listening** / **listen again** (in a room) | Stops this app while the room plays on, and re-joins it |

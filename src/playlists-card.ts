@@ -24,6 +24,7 @@ import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
 import { playlistShelfMenu } from "./artist-view";
+import { pinItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
 import { onGrowChange } from "./card-grow";
@@ -664,6 +665,7 @@ export const playlistsCard: CardDef = {
         // self-excluded so a playlist can't append to itself.
         addToPlaylistItem(() => tracksOf(p), p.libraryId),
         moveToFolderItem(p),
+        pinItem(ctxTag, "playlist"),
       ];
       if (p.source === "apple") items.push(importItem(p));
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
@@ -740,9 +742,21 @@ export const playlistsCard: CardDef = {
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
       `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`;
 
+    // The Pinned shelf (PINS.md): pinned playlists above the sections. A tile opens the
+    // playlist, as its row does; its menu is the row's menu.
     const rootContext = (): Context => ({
       title: "Playlists",
       density: true,
+      shelves: () => pinnedShelfHTML(["playlist"]),
+      shelvesFirst: true,
+      onShelf: (el) => {
+        const it = pinShelfItem(el);
+        if (it?.playlist) card.drill(detail(it.playlist));
+      },
+      shelfMenu: (el) => {
+        const it = pinShelfItem(el);
+        return it?.playlist ? listMenu(it.playlist) : [];
+      },
       groupings: [
         {
           key: "playlists",
@@ -865,6 +879,8 @@ export const playlistsCard: CardDef = {
       lastGrow = host.dataset.grow;
       card.reload();
     });
+
+    const unsubPins = onPinsChange(() => card.reload());
 
     // ── load + sync (stale-while-revalidate, like songs) ──
     const load = () =>
@@ -1028,6 +1044,7 @@ export const playlistsCard: CardDef = {
         unsubChanges();
         unsubOpen();
         unsubGrow();
+      unsubPins();
         unmountWeb?.();
         card.destroy();
         host.innerHTML = "";

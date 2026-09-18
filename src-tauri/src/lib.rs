@@ -198,6 +198,7 @@ pub fn run() {
             library::migrate_v6(&conn).expect("v6 migration failed");
             loudness::migrate_v7(&conn).expect("v7 migration failed");
             library::migrate_v8(&conn).expect("v8 migration failed");
+            library::migrate_v9(&conn).expect("v9 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
@@ -305,6 +306,10 @@ pub fn run() {
             web::web_seeds,
             playlists::playlists_song_index,
             library::play_counts,
+            library::pins_list,
+            library::pin_set,
+            library::pin_clear,
+            library::pin_play_counts,
             library::library_sync,
             library::library_tracks,
             library::seen_tracks,

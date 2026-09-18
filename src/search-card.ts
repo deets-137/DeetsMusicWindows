@@ -42,7 +42,7 @@ import { handOff } from "./handoff";
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
 const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
-const ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
+import { ICON_PIN, pinArtistItem } from "./pins"; // one pin glyph for the app (PINS.md)
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
@@ -696,6 +696,12 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           // reach them — wire the same menus here (else the native menu shows).
           body.addEventListener("contextmenu", (e) => {
             const t = e.target as HTMLElement;
+            // The hero (PINS.md): pin the artist, or start their station.
+            if (t.closest(".lib-hero")) {
+              e.preventDefault();
+              menuAt(e, [pinArtistItem(d.artist), startStationItem("artists", id)].filter(Boolean) as MenuItem[]);
+              return;
+            }
             const shelf = t.closest<HTMLElement>("[data-shelf-item]");
             if (shelf) {
               const i = Number(shelf.dataset.shelfIdx);
@@ -1021,6 +1027,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       menuAt(e, [
         { label: "Go to Artist", run: () => openArtist(artist.dataset.artist!, a?.name ?? "Artist") },
         startStationItem("artists", artist.dataset.artist),
+        a ? pinArtistItem(a) : null, // PINS.md: an artist off the library pins from here
       ].filter(Boolean) as MenuItem[]);
       return;
     }

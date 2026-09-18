@@ -2809,7 +2809,26 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    Featured / Your Playlists 8px right of Albums, Top Songs and the rows. */
 .spane .lib-shelves { padding-left: 0; padding-right: 0; }
 
-.search__tile { flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
+.search__tile { position: relative; flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
+/* The tile badge (PINS.md fork 6A; the family in UI-ARCHITECTURE.md §2a): a small square in the
+   art's top-right corner, on the surface color, cut to the tile's own radius. It marks a
+   pinned tile on every shelf, so the card shelves need no "Pinned" label. */
+.search__tile-badge {
+  position: absolute; top: var(--tile-badge-inset); right: var(--tile-badge-inset);
+  width: var(--tile-badge-size); height: var(--tile-badge-size);
+  display: grid; place-items: center;
+  padding: 0; border: 0; cursor: pointer;
+  background: var(--surface); color: var(--title);
+  border-radius: var(--tile-badge-radius);
+}
+/* A press unpins: it wears the icon square's hover (a dim by filter) and the one focus ring. */
+.search__tile-badge:hover { filter: brightness(0.97); }
+.search__tile-badge:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.search__tile-badge svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.search__tile-badge svg path:first-child { fill: currentColor; }
+/* A card's Pinned shelf (PINS.md fork 8): no label, and one hairline under it. Everything
+   below the line is the card as it was. */
+.lib-shelves--pins { border-bottom: 1px solid var(--border); margin-bottom: var(--space-2); }
 .search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
 .search__tile-art--round { border-radius: 50%; } /* an artist on a shelf (Home), as .lib-tile__cover--round */
 .search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }

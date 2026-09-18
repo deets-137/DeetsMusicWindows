@@ -11,6 +11,7 @@
 //
 // Everything is client-side over data the card already holds in memory.
 
+import { handleUnpin } from "./pins";
 import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
@@ -152,6 +153,9 @@ export interface Context {
    *  the block the windower measures. A function, so async facts fill in on `reload()`.
    *  Items carry `data-shelf-item`: a click goes to `onShelf`, a right-click to `shelfMenu`. */
   shelves?: () => string;
+  /** Draw the shelves ABOVE the Play / Shuffle row instead of under it (the Pinned shelf,
+   *  PINS.md fork 9B). */
+  shelvesFirst?: boolean;
   onShelf?: (item: HTMLElement) => void;
   shelfMenu?: (item: HTMLElement) => MenuItem[];
   /** Draw the Sort / View / Search toolbar inside the scroll, under the hero and shelves,
@@ -752,7 +756,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     else view.style.removeProperty("--cols-template");
     if (cols) view.dataset.cols = cols;
     else delete view.dataset.cols; // no attribute at rest (CARD-GROW.md §0)
-    const top = heroHTML(f.ctx.hero?.()) + actionsHTML(g, items.length, nPicked, entering) + (f.ctx.shelves?.() ?? "") + (f.ctx.toolbarBelow != null ? "" : colsHead);
+    const actions = actionsHTML(g, items.length, nPicked, entering);
+    const shelves = f.ctx.shelves?.() ?? "";
+    const top = heroHTML(f.ctx.hero?.()) + (f.ctx.shelvesFirst ? shelves + actions : actions + shelves) + (f.ctx.toolbarBelow != null ? "" : colsHead);
     // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
     // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
     // it can stick to the top once the hero and shelves scroll away (a sticky box stops at
@@ -1314,6 +1320,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       return;
     }
 
+    // a pinned tile's badge → unpin (pins.ts), not the tile's own press
+    if (handleUnpin(e)) return;
     // a shelf tile under the hero → the context's own handler
     const shelfItem = t.closest<HTMLElement>("[data-shelf-item]");
     if (shelfItem) {

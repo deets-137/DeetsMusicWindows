@@ -20,6 +20,7 @@ import { resolveEntry, artURL, stageArtPx } from "./queue-rows";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { addSongToLibraryItem, addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { favoriteItem, favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
+import { pinItem, songKey } from "./pins";
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
@@ -454,6 +455,7 @@ export const nowPlayingCard: CardDef = {
         startStationItem("songs", cur.catalogId),
         t ? addSongToLibraryItem(t) : null,
         favoriteItem(t),
+        t ? pinItem(songKey(t), "song", t) : null,
         onStation
           ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
           : null,

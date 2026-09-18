@@ -43,6 +43,8 @@ import {
 } from "./artist-view";
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
+import { pinItem, pinItemFor, pinArtistItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { playTracks as playList } from "./player";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -439,6 +441,8 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
     ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
     // ♥ — one song only (an album has no favorite here); null without consent/catalog id.
     ...(items.length === 1 ? [favoriteItem(items[0])] : []),
+    // Pin / Unpin (PINS.md): the album or artist this list is, else the one song.
+    pinItemFor(items, context),
   ].filter(Boolean) as MenuItem[];
 }
 
@@ -613,6 +617,7 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
             .tracksFor(a.name)
             .map((t) => t.catalogId),
         ),
+        pinItem(`artist:${a.name}`, "artist"), // PINS.md: the artist tile's own pin row
       ].filter(Boolean) as MenuItem[],
     drag: (a) => ({
       source: "library",
@@ -827,6 +832,9 @@ export const libraryCard: CardDef = {
           const albums = groupAlbums(ts).length;
           return {
             cover: heroCover(info?.artwork ?? ts.find((t) => t.artwork)?.artwork, a.name, undefined, undefined, true),
+            // The cover's menu (PINS.md): pin the artist. The snapshot carries the catalog id
+            // and photo, so the pin outlives the artist's songs leaving the library.
+            coverMenu: () => [pinArtistItem({ name: a.name, artwork: info?.artwork, catalogId: info?.catalogId })],
             title: a.name,
             meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
           };
@@ -1112,9 +1120,37 @@ export const libraryCard: CardDef = {
     // The play tallies (one local read, zero Apple calls): the Plays sort and, on a filled
     // card, the Plays column (CARD-GROW.md §9a).
     let rootPlays: Map<string, PlayCount> | undefined;
+    // The Pinned shelf (PINS.md): this card's kinds, above the Play / Shuffle row (9B). A
+    // tile does what the card's own rows do — an album or an artist drills, a song plays.
+    const pinShelfMenu = (el: HTMLElement): MenuItem[] => {
+      const it = pinShelfItem(el);
+      if (!it) return [];
+      const list = it.tracks();
+      const known = Array.isArray(list) ? list : [];
+      if (it.whole) {
+        // Off the library: the loader rows over the whole album, then the pin row.
+        return [...playlistShelfMenu(it.whole, it.context, false), pinItem(it.key, "album", known)];
+      }
+      return trackMenu(known, it.context, libNav);
+    };
+    const pinShelfOpen = (el: HTMLElement) => {
+      const it = pinShelfItem(el);
+      if (!it) return;
+      const list = it.tracks();
+      const ts = Array.isArray(list) ? list : [];
+      // An album the library does not hold has nothing to drill into: it plays, whole.
+      if (it.whole) void it.whole().then((all) => (all.length ? playList(all, 0, it.context) : undefined)).catch((e) => console.error("[library] play pin", e));
+      else if (it.kind === "album" && ts[0]) libNav.drillAlbum(ts[0]);
+      else if (it.kind === "artist") libNav.drillArtist(it.title);
+      else if (ts.length) void playList(ts, 0, it.context).catch((e) => console.error("[library] play pin", e));
+    };
     const rootContext = (): Context => ({
       title: "Library",
       density: true,
+      shelves: () => pinnedShelfHTML(["album", "artist", "song"]),
+      shelvesFirst: true,
+      onShelf: pinShelfOpen,
+      shelfMenu: pinShelfMenu,
       groupings: [
         songsGrouping(source, { context: "library", nav: libNav, plays: () => rootPlays }),
         albumsGrouping(source, albumDetail, libNav),
@@ -1189,6 +1225,7 @@ export const libraryCard: CardDef = {
     // Library rows come from the synced store only — a transient ingest (a catalog-only
     // playlist/search play) changes nothing this card shows, so it must not re-render.
     const unsubTracks = onTracksChange((why) => why === "library" && card.reload(), "library.reload");
+    const unsubPins = onPinsChange(() => card.reload());
     // An artist or an album asked for from outside (the Compass, COMPASS.md §2).
     const takeDrill = () => {
       const d = takeLibraryDrill();
@@ -1248,6 +1285,7 @@ export const libraryCard: CardDef = {
       snapshot: () => card.snapshot(),
       destroy() {
         unsubTracks();
+      unsubPins();
         unsubDrill();
         unsubFavs();
         unsubGrow();

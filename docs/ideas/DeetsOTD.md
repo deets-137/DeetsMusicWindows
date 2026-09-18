@@ -1,7 +1,7 @@
 # DeetsMusic — DeetsOTD (Song of the Day)
 
-> **Status (2026-09-17): designed, not built. Build 1 is ready to start: §8 is the spec, and
-> no fork blocks it.** A Song of the Day
+> **Status (2026-09-18): designed, not built. Build 1 = picks + the Discord webhook only
+> (§8; Bluesky and Mastodon are build 2, owner 2026-09-18). No fork blocks it.** A Song of the Day
 > journal already exists and runs every night, but it lives outside the app: the
 > [DeetsOTD](../../../DeetsOTD) repo reads a Discord channel, and
 > [deets.solutions/sotd](../../../DeetsSolutions/sotd) shows it. This doc records the state of
@@ -376,10 +376,14 @@ the friends' Discord posts, or retires if the friends move too.
 
 ## 8. Paper design — build 1 (picks + webhook) (2026-09-17)
 
-**Scope of build 1 (owner, 2026-09-17: one build):** the feature switch, marking picks (B),
-the outlet layer with **three outlets — Discord webhook, Bluesky (OAuth), Mastodon-compatible
-(Fediverse)**, the Home shelf, the Rewind Picks view, the suggestion (C), the settings section,
-and **a one-time import of the owner's journal** (§8.13). There is no build 2 or 3.
+**Scope of build 1 (owner, 2026-09-18, narrowed):** the feature switch, marking picks (B),
+the outlet layer with **one outlet — the Discord webhook**, the Home shelf, the Rewind Picks
+view, the suggestion (C), the settings section, and **a one-time import of the owner's
+journal** (§8.13). **Bluesky (OAuth) and Mastodon-compatible (Fediverse) move to build 2**
+(owner, 2026-09-18). Their sections (§8.4b, §8.4c, §8.12, §8.14, the Bluesky rows of §8.15)
+stay as the build 2 spec. The outlet trait is still shaped for three, so build 2 adds outlets,
+not a layer. The earlier scope (owner, 2026-09-17: one build with three outlets) is kept
+here as the record of that decision.
 
 **The feed reader is dropped (owner, 2026-09-17).** A feed is a personal tool: only the owner
 has one. So no feed code ships in the app. The owner's 8 months come in once, by a script

@@ -439,7 +439,7 @@ export function growMenu(slot: Slot): MenuItem[] {
 // ── the Grow button (hover-only, out of flow) ─────────────────────────────────
 const ICON_GROW = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>`;
 const ICON_SHRINK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M14 10l7-7M4 14h6v6M10 14l-7 7"/></svg>`;
-const ICON_PIN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 6 3 3v2H7v-2l3-3zM12 15v6"/></svg>`;
+import { ICON_PIN } from "./pins"; // one pin glyph for the app (PINS.md)
 
 export interface GrowButton {
   destroy(): void;

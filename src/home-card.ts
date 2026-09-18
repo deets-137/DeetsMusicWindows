@@ -24,7 +24,7 @@ import { playlistShelfMenu } from "./artist-view";
 import { trackMenu } from "./library-card";
 import { requestOpenPlaylist, onPlaylistsChange } from "./playlists";
 import { requestDrillCard } from "./layout-bus";
-import { copyStationLinkItem } from "./copy-link";
+import { copyStationLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
 import { onTracksChange } from "./track-store";
 import { toast } from "./toast";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -35,6 +35,7 @@ import { enterRows } from "./pop";
 import type { Artwork, Track } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
+import { isPinned, pinItem, pinBadgeHTML, handleUnpin, onPinsChange } from "./pins";
 
 const err = (what: string) => (e: unknown) => console.error(`[home] ${what}`, e);
 
@@ -67,7 +68,7 @@ function tileArt(it: HomeItem): string {
 /** `data-key` is the item's identity — the one thing a listener needs to find it again. */
 const tileHTML = (it: HomeItem): string =>
   `<div class="search__tile" data-key="${esc(it.key)}" role="button" tabindex="0" title="${esc(it.title)}">` +
-  `${tileArt(it)}<span class="search__tile-name">${esc(it.title)}</span>` +
+  `${tileArt(it)}${isPinned(it.key) ? pinBadgeHTML(it.key) : ""}<span class="search__tile-name">${esc(it.title)}</span>` +
   `<span class="search__tile-sub">${esc(it.sub)}</span></div>`;
 
 const shelfHTML = (sh: HomeShelf): string =>
@@ -152,14 +153,16 @@ export const homeCard: CardDef = {
         void playStation(it.station).then(build).catch(err("play station"));
         return;
       }
-      void Promise.resolve(it.tracks())
+      // An album or artist off the library plays whole (its `whole` fetch), not only the songs known.
+      void (it.whole?.() ?? Promise.resolve(it.tracks()))
         .then((ts) => (ts.length ? playTracks(ts, 0, it.context) : undefined))
         .catch(err("play"));
     };
 
     // Hide: the tile goes, the shelf refills from the next candidate, and the toast
     // holds the undo. A hide never changes what the bucket shelf scores (HOME.md §4).
-    const hideRow = (it: HomeItem): MenuItem => ({
+    // A pinned tile is never hidden (PINS.md): its row is Unpin, which the menu carries.
+    const hideRow = (it: HomeItem): MenuItem | null => isPinned(it.key) ? null : ({
       label: "Hide",
       run: () => {
         const undo = hideItem(it.key);
@@ -179,6 +182,7 @@ export const homeCard: CardDef = {
           { label: "Play Now", run: () => void playStation(s).then(build).catch(err("play station")) },
           { label: "Add to Queue", run: () => void queueStationAfter(s).catch(err("queue station")) },
           copyStationLinkItem(s.url),
+          pinItem(it.key, "station", s),
           hideRow(it),
         ].filter(Boolean) as MenuItem[];
       }
@@ -194,12 +198,26 @@ export const homeCard: CardDef = {
             }
           : null;
         const load = () => Promise.resolve(it.tracks());
-        return [...playlistShelfMenu(load, it.context, false), open, hideRow(it)].filter(Boolean) as MenuItem[];
+        return [...playlistShelfMenu(load, it.context, false), open, pinItem(it.key, "playlist"), hideRow(it)].filter(Boolean) as MenuItem[];
+      }
+      // An album or an artist the library does not hold: its rows load the whole list (the
+      // shelf menu's loader shape), an album's link from a song, and the pin (an album's
+      // known songs are its snapshot; an artist's snapshot is already in the pin).
+      if (it.whole) {
+        const known = it.tracks();
+        const seed = Array.isArray(known) ? known.find((t) => t.catalogId) : undefined;
+        return [
+          ...playlistShelfMenu(it.whole, it.context, false),
+          it.kind === "album" ? copyAlbumLinkFromSongItem(seed?.catalogId) : null,
+          pinItem(it.key, it.kind, it.kind === "album" && Array.isArray(known) ? known : undefined),
+          hideRow(it),
+        ].filter(Boolean) as MenuItem[];
       }
       // Songs, albums and artists are all track lists: the shared Library menu, which
       // brings Play Now / Next / Queue, Add to playlist, Go to…, the link and ♥.
+      // (`trackMenu` carries Pin / Unpin itself, from the context tag or the one song.)
       const list = it.tracks();
-      return [...trackMenu(Array.isArray(list) ? list : ([] as Track[]), it.context), hideRow(it)];
+      return [...trackMenu(Array.isArray(list) ? list : ([] as Track[]), it.context), hideRow(it)].filter(Boolean) as MenuItem[];
     };
 
     const payloadFor = (it: HomeItem): DragPayload => ({
@@ -230,12 +248,14 @@ export const homeCard: CardDef = {
       target instanceof HTMLElement ? target.closest<HTMLElement>(".search__tile") : null;
 
     const onClick = (e: MouseEvent) => {
+      if (handleUnpin(e)) return; // the badge unpins; the tile does not play
       if (drag.consumeClick()) return; // the tail of a drag, not a play
       const it = itemOf(tileAt(e.target)?.dataset.key);
       if (it) activate(it);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== " ") return;
+      if (e.target instanceof HTMLElement && e.target.closest("[data-unpin]")) return; // the badge's own key press
       const it = itemOf(tileAt(e.target)?.dataset.key);
       if (!it) return;
       e.preventDefault();
@@ -268,6 +288,7 @@ export const homeCard: CardDef = {
     });
     const offTracks = onTracksChange(() => build(), "home-card");
     const offPlaylists = onPlaylistsChange(() => build());
+    const offPins = onPinsChange(() => build());
 
     render();
     build();
@@ -287,6 +308,7 @@ export const homeCard: CardDef = {
         offState();
         offTracks();
         offPlaylists();
+        offPins();
         drag.destroy();
         body.removeEventListener("click", onClick);
         body.removeEventListener("keydown", onKey);
