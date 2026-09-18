@@ -71,9 +71,15 @@ const readEvents = (sinceTs: number): Promise<PlayEvent[]> =>
     return [];
   });
 
+// Built once, not per row. `toLocaleTimeString(undefined, {…})` builds a formatter on every
+// CALL: the card draws 50 rows with two of them each, and this card re-renders on every play.
+// Measured 27.9 ms against 2.35 ms for 500 formats (2026-09-17); the strings are identical —
+// the same reason as `cmpStr` in collection-card.ts.
+const CLOCK_FMT = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" });
+
 /** "21:14" — the clock time in the user's own format. */
-const clock = (ts: number) =>
-  new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+const clock = (ts: number) => CLOCK_FMT.format(ts);
 
 /** "Today" · "Yesterday" · "Tue, Sep 9" — shown in the row's own subtitle line, and only
  *  while Settings › Playback › *Show the day* is on, so the card keeps its shape. */
@@ -84,7 +90,7 @@ const dayLabel = (ts: number): string => {
   // Yesterday's own midnight, by the calendar — not 24 hours back, which a clock change breaks.
   midnight.setDate(midnight.getDate() - 1);
   if (ts >= midnight.getTime()) return "Yesterday";
-  return new Date(ts).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return DAY_FMT.format(ts);
 };
 
 // The skip mark: the Next glyph, quiet, with its own hint (a mark, not a word — most

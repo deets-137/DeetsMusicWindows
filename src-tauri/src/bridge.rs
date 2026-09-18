@@ -121,6 +121,14 @@ pub struct NpState {
 pub struct Appearance {
     pub theme: String,
     pub skin: String,
+    /// The rest is context for `/health`, which the heaviness sampler reads so a heavy
+    /// row says what the app was DOING (DEBUGGING.md §2026-09-17 review, item 1). The
+    /// tray panel ignores these fields.
+    pub surface: String,
+    /// Advanced EQ / DeetsAdaptiveSound is routing audio (SOUND.md).
+    pub sound: bool,
+    /// Press "Record player": "off" | "spin" | "plate" — whatever `data-press-vinyl` holds.
+    pub vinyl: String,
 }
 
 #[derive(Default)]
@@ -160,8 +168,22 @@ pub fn np_command(cmd: NpCommand, app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn appearance_publish(theme: String, skin: String, app: AppHandle, hub: tauri::State<'_, Hub>) {
-    let a = Appearance { theme, skin };
+pub fn appearance_publish(
+    theme: String,
+    skin: String,
+    surface: Option<String>,
+    sound: Option<bool>,
+    vinyl: Option<String>,
+    app: AppHandle,
+    hub: tauri::State<'_, Hub>,
+) {
+    let a = Appearance {
+        theme,
+        skin,
+        surface: surface.unwrap_or_default(),
+        sound: sound.unwrap_or(false),
+        vinyl: vinyl.unwrap_or_default(),
+    };
     *hub.appearance.lock().unwrap() = a.clone();
     let _ = app.emit_to("tray", "appearance", a);
 }
@@ -650,7 +672,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     // extension (an Origin) is a different feature and is never gated by it.
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
-        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow",
+        "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -681,6 +703,23 @@ async fn handle(app: AppHandle, mut req: Request) {
         (Method::Get, "/health") => {
             let connected = app.state::<crate::apple::AppleState>().user_token.lock().unwrap().is_some();
             let a = app.state::<Hub>().appearance.lock().unwrap().clone();
+            // Context, not content: what the app is DOING, never what it is playing. The
+            // heaviness sampler reads this line without a token so a heavy sample can be
+            // attributed (DEBUGGING.md §2026-09-17 review, item 1); a title or an artist
+            // would make an unauthenticated route leak the listening, so none is here.
+            let playing = app.state::<Hub>().np.lock().unwrap().playing;
+            let air = match crate::airplay::held_speaker(&app) {
+                None => "off",
+                Some(_) => match settings.airplay_capture {
+                    crate::settings::AirplayCapture::App => "tap",
+                    crate::settings::AirplayCapture::System => "loopback",
+                },
+            };
+            let hidden = app
+                .get_webview_window("main")
+                .and_then(|w| w.is_visible().ok())
+                .map(|v| !v)
+                .unwrap_or(false);
             json(
                 req,
                 200,
@@ -688,6 +727,8 @@ async fn handle(app: AppHandle, mut req: Request) {
                     "ok": true, "app": "DeetsMusic", "version": env!("CARGO_PKG_VERSION"),
                     "connected": connected, "paired": paired, "theme": a.theme, "skin": a.skin,
                     "agent": settings.agent_control,
+                    "surface": a.surface, "sound": a.sound, "vinyl": a.vinyl,
+                    "playing": playing, "airplay": air, "tray": hidden,
                 }),
                 origin,
             )
@@ -952,6 +993,17 @@ async fn handle(app: AppHandle, mut req: Request) {
                 Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
             };
             agent_json(req, ask(&app, "settings", v).await, origin)
+        }
+        // ── go (COMPASS.md §10; compass.ts `agentGo`) — the CLI's way to a place ──
+        // Navigation only: the Compass's Places minus theme, skin and surface, which are
+        // stored settings and keep their own consent on `/settings`.
+        (Method::Get, "/go") => agent_json(req, ask(&app, "go-get", serde_json::Value::Null).await, origin),
+        (Method::Post, "/go") => {
+            let v: serde_json::Value = match serde_json::from_str(&body) {
+                Ok(v) => v,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            agent_json(req, ask(&app, "go", v).await, origin)
         }
         // ── card grow (CARD-GROW.md; card-grow.ts `agentGrow`) — a test handle more than a verb ──
         (Method::Get, "/grow") => agent_json(req, ask(&app, "grow-get", serde_json::Value::Null).await, origin),

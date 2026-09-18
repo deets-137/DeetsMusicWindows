@@ -339,7 +339,12 @@ interface Frame {
 export const esc = (s: string) =>
   s.replace(/[&<>"]/g, (c) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }) as Record<string, string>)[c]);
 
-const cmpStr = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
+// One collator, built once. `a.localeCompare(b, undefined, {…})` builds one per CALL: the
+// library's 3,895 rows make ~100,000 of them in a single sort, which measured 204 ms against
+// 3.5 ms for the cached collator (2026-09-17). Same locale, same options, same order — this
+// is only where the object is made. It is why picking a sort key took ~280 ms to paint.
+const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+const cmpStr = (a: string, b: string) => collator.compare(a, b);
 
 function sortItems<T>(items: T[], spec: SortSpec<T>, dir: SortDir, nameOf: (x: T) => string): T[] {
   const sign = dir === "asc" ? 1 : -1;

@@ -266,6 +266,41 @@ Rules that hold for every row:
 - Add the row, command or synonym to **COMPASS-TERMS.md** (the user-guide list) and, for a
   synonym, to `SYNONYMS` in compass.ts. Give a static row `aliases` for the words people say.
 
+## 10. `deetsmusic go` — the CLI's way to a place (built 2026-09-17)
+
+The CLI could reach the data (playlists, the library, the queue), the settings and the
+transport, but it had no way to reach a **place**. The Compass already registers every one,
+so the verb is one reader over that registry rather than a second list:
+
+```bash
+deetsmusic go                # lists every place it will go to
+deetsmusic go rewind         # a card
+deetsmusic go sound          # the Sound panel
+deetsmusic go sleep timer    # several words are fine
+```
+
+Routes: `GET /go` (the list) and `POST /go {target}` (go there), both under Agent control
+like every other agent route. `compass.ts` exports `agentGo`; `agent-writes.ts` routes the
+`go` and `go-get` kinds. A place added to the Compass by §9's rules is reachable from the
+CLI the same day, with nothing else to write.
+
+**It goes to places; it does not change settings.** The Places group also holds the themes,
+the skins and the surfaces, and picking one of those WRITES a stored setting. That write
+already has a route (`/settings`), a consent row (Settings › Connections › Agent changes
+settings, default Ask) and a slower cover so the change is visible
+([UX-COVERUPS](UX-COVERUPS.md) §6b). Letting `go glass` through here would be a second way
+in that asks nobody, so `go` refuses it and names the verb that does ask:
+
+```
+$ deetsmusic go glass
+blocked: Glass is a skin, and changing it is a setting — use `deetsmusic settings set skin
+glass`, which asks first if you have set it to.
+```
+
+Settings rows, transport verbs and the library's own data rows are out of `go` for the same
+reason: each already has a CLI verb that obeys its own rules. Like `grow`, `go` is a CLI verb
+and a route, not an MCP tool.
+
 ## 7. Desk test
 
 1. Ctrl+Space in Midi: the bar drops in under the title bar; the field has the focus;

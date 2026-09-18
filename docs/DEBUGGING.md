@@ -545,14 +545,37 @@ npm run bench scroll -- --passes 3 --note "baseline"          # bounce the libra
 npm run bench scroll -- --skins ocean --css ".panel::before,.panel::after{display:none!important}"
 ```
 
-**Three scenes.** `appearance` is a transition cost (the rise). `idle` is a steady cost (the
+**Four scenes.** `appearance` is a transition cost (the rise). `idle` is a steady cost (the
 aurora, the sea, the album aurora, the record player if a song plays). `scroll` bounces the
 library list inside its first 1500 px, after a warm-up bounce: a run down all 3,895 rows
-measured artwork arriving from the network (250 ms frames), not the skin.
+measured artwork arriving from the network (250 ms frames), not the skin. `airplay`
+(2026-09-17, review item 3) is one window over a song already playing on a speaker.
 
-**Two CPU columns.** Frames ÷ ms stops at the display rate for any cheap scene, so each window
+**Four CPU columns.** Frames ÷ ms stops at the display rate for any cheap scene, so each window
 also records the CPU time of the GPU process and the page renderer (CDP `SystemInfo`, 100 = one
 core). Under `--gpu=off` the GPU process is the rasteriser, so `gpu-cpu` is the whole draw cost.
+Since 2026-09-17 each row also carries `host-cpu` and `host-MB`: CDP sees the WebView2
+processes only, so the Rust exe — the AirPlay session, the tap ring, the SQLite work — was
+invisible. PowerShell reads it, OUTSIDE the CDP pair, so the older `gpu_cpu_pct` and
+`page_cpu_pct` rows stay comparable. Both are columns in `perf-history.csv`.
+
+**Five gesture scenes** (2026-09-17, review item 4) cover what shipped after the first three
+were written: `grow` (a real edge strip grows a card, then collapses it), `compass` (Ctrl+Space,
+four keystrokes, Escape), `sound` (the title-bar panel opens and closes), `swap` (a card swap
+through the slot picker, and back), `libsort` (the library's Sort pop: pick another key, then
+the old one back). Each one drives the app's OWN control and puts the state back, so a pass
+leaves the app as it found it; each returns a sentence instead of a number when its control is
+not on screen, and the run fails with that sentence rather than reporting a gesture that did
+not happen. `grow` is the same path as `deetsmusic grow <card> <dir>` — both end in
+`growCard()` — so the CLI and the bench measure the same motion.
+
+**The `airplay` scene** (`npm run bench airplay -- --ms 60000`) measures what the others
+cannot: the host exe's CPU and working set, the in-page tap's chunk rate and worst gap
+between chunks, and any `tap starved` line the session wrote in the window. It does **not**
+connect a speaker — a script must not take a speaker a room is listening to — so connect one
+in the app first, with Capture set to "This app", and start a song. It refuses with an
+explanation otherwise, and it cannot measure All PC sound (loopback), which has no tap. The
+500 ms prefill (AIRPLAY.md §12) was sized from one run; this is how it gets re-measured.
 
 **`--css "<rules>"`** injects a stylesheet for the run and removes it after. That is the A/B:
 hide or cheapen one feature under the same gate. The rules go in the row's note.
@@ -619,6 +642,216 @@ Two things it is built to stop you doing:
   cut the page's work and still cost the user frames by pushing it onto raster — which only
   the per-thread table shows. `GpuVSyncThread` blocks on vsync, so its % is waiting, not load.
 
+## What the 2026-09-17 health check found
+
+The first run of the new tools, on branch `optimus-deets`, against the installed 0.9.5 and a
+dev build. Two of the three open leads now have a named cause.
+
+**1. The `tao` panic is the Windows shutdown, not the update.** The review read
+`panic: cannot move state from Destroyed` (tao `event_loop/runner.rs:371`) as a fault in the
+update's exit-and-install. It is not. The Windows System log (`Get-WinEvent -FilterHashtable
+@{LogName='System'; Id=1074}`) has an Event 1074 "has initiated the power off of computer" at
+**01:57:07 on 2026-09-17** and at **02:15:25 on 2026-09-16** — one second before, and at the
+same second as, the two panics. The 09-17 update had finished 60 s earlier and the new app had
+started, synced the library and reconciled favorites before the panic. So the panic is on the
+Windows session-end path (`WM_QUERYENDSESSION` / `WM_ENDSESSION`): the loop is destroyed under
+us and something still drives it.
+
+A plain quit does **not** reproduce it: the dev app was quit through `app_quit` on 2026-09-17
+16:09 and exited clean, no panic line. The next test is a real Windows restart with the app up,
+and the paths to suspect are the ones that touch a window after the loop is gone — the
+`WindowEvent::Focused(false)` → `hide_main` rule in `tray.rs`, and any bridge request still
+being served while the process winds down.
+
+**2. The AirPlay session never recovers from PC sleep, and never gives up.** In
+`%APPDATA%\com.deetsmusic.app\airplay.log` the first `[session] keep-alive failed` is at
+12:37:43 on 2026-09-17; the System log has "The system is entering sleep" at 12:37:44. The PC
+woke at 15:49:52 and the very next line is another failure — then **~500 consecutive failures**,
+one every 2 s, still going twenty minutes later, with the speaker still claimed.
+
+What recovers and what does not is the useful part. The capture did: its first line after the
+wake reads `capture heard sound: 313110 frames … in the last 12747 s` (it was starved for the
+3.5 h of sleep), and from 15:59 it is back to a full `441882 frames` every 10 s. The RTSP
+control channel did not, and never will: the keep-alive thread (DeetsAirplay `session.rs:501`)
+logs the failure and loops for ever. Nothing counts the failures, tears the session down, or
+tells the user — so the app holds a speaker it can no longer command. This is a design gap,
+not a leak: the loop allocates nothing.
+
+**3. The night-of-09-16 climb is still unnamed, but is now nameable.** The rows are
+unambiguous: flat until `airplay: connect port 7000` at 23:54, then +70 MB per 10 min for two
+hours (687 → 1374 MB) with `renderer` and `gpu` flat, and CPU 2.5% → 288%. No PC sleep in that
+window. The app was measured again on 2026-09-17 16:06-16:08 in the state it is in now (session
+up, keep-alive failing, nothing playing) and it is **flat** — 875 / 876 / 876 MB — so the idle
+failing session is not the climb. The split now on every heaviness row will name the process
+group the next time it happens; until then nothing here is worth guessing at.
+
+## The 2026-09-17 frame pass — the gestures built since the last one
+
+Measured on `npm run dev:built` (release-shaped bundle, DevTools shut), display 244 Hz, 3
+passes per skin. `worst` is the median across passes of the worst frame gap in the window.
+The rows are in `perf-history.csv` under the note "0.9.5 baseline, new gesture scenes".
+
+Every scene ran on every skin, with the scene assertions in (a scene that cannot prove its
+gesture happened returns a sentence and fails the run). `worst` is press / ocean / glass / cyber.
+
+| scene | fps (med) | worst gap | dropped | gpu-cpu |
+| --- | --- | --- | --- | --- |
+| `grow` | 225–235 | 29 / 33 / 29 / 25 ms | 0.7 / **4.3** / 1.1 / 0.9% | 16 / **43** / 39 / 20% |
+| `compass` | 235–236 | 29 / 29 / 38 / 33 ms | 0.6–0.7% | 9 / 11 / 24 / 11% |
+| `sound` | 240 | 5 / 4 / 4 / 4 ms | 0.0% | 8 / 10 / 23 / 11% |
+| `swap` | 234–238 | 21 / 21 / 17 / 17 ms | 1.0 / 1.6 / 0.7 / 0.7% | 10 / 27 / 30 / 19% |
+| `libsort` (long list) | 239–240 | 8 / 12 / 8 / 8 ms | 0.1% | 5 / 7 / 14 / 9% |
+
+`libsort` before the fix, on cyber: 232 fps, **112 ms**, page CPU 17%. After: 240 fps, 8 ms,
+page CPU 13%. Ocean is the one skin that stands out, and only in `grow` (4.3% dropped and
+43% GPU CPU against Press's 0.7% and 16%) — the known appearance cost, not a gesture cost.
+
+**Read the incidental numbers with care.** The same gestures in the rolling log look far
+worse — `grow left down` 175 ms, `menu compass` 175 ms, `pointerup lib-pop__opt` 280 ms —
+because those were recorded in `dev:app`: unbundled modules, dozens of style tags and
+DevTools rendering in the same GPU process. Where the two disagree, the bench is the honest
+number and the log says which gesture to point it at. That is the division of labour between
+them.
+
+**The one real fault it found: the library sort built a collator per comparison.**
+`collection-card.ts` compared strings with `a.localeCompare(b, undefined, { sensitivity: "base" })`.
+Passing an options object builds a fresh collator on **every call**, and one sort of the
+3,895-row library makes about 100,000 of them. Measured in isolation: **204 ms per sort
+against 3.5 ms** for a single cached `Intl.Collator`. In the app, picking a sort key went
+from a **112 ms** worst frame gap to **4 ms**, page CPU 17% → 8%, and the incidental
+`pointerup lib-pop__opt` press→paint of 280 ms has nothing left to explain it.
+
+The fix is one object moved out of the comparator, so the ordering is unchanged by
+construction — ECMA-402 defines `localeCompare` with options as `Intl.Collator` with those
+options. Checked anyway inside WebView2 over 225 pairs of accented, cased, CJK and
+numeric-prefixed titles: **zero orderings differ**. The same pattern was fixed in
+`artist-view.ts` and `playlists-card.ts`. A bare `a.localeCompare(b)` with no options is
+**not** affected — V8 caches that path (1.2 ms per sort), so those call sites were left alone.
+
+**Two faults in the bench's own PowerShell reads, found by using it.** Both matter because a
+tool that lies is worse than no tool.
+
+- **The host columns read the wrong process.** `hostNow()` picked the dev exe with
+  `-match '\target\'`. PowerShell reads that regex as TAB + "arget", so it never matched
+  and the code fell back to the FIRST `deetsmusic.exe` — the installed app, whenever it was
+  running. It is now `-like '*\target\*'`, a literal wildcard with nothing to escape. Rows
+  written before 2026-09-17 evening have an untrustworthy `host_cpu_pct` / `host_ws_mb`;
+  `fps_med`, `worst_med_ms` and `drop_pct_med` are unaffected.
+- **A spawn could hang the run.** Three runs in a row stopped inside the noise check
+with a PowerShell still alive minutes later: `Get-Counter '\GPU Engine(*engtype_3D)\…'`
+expands to every engine of every process and on a busy machine may never return, and
+`execFileSync`'s own `timeout` did not end it. The same happened to the host read, which a
+scene spawns about 24 times. Both now spawn async and are killed by hand — the GPU read at
+12 s (the run carries on without the names, and says so), the host read at 5 s (that window's
+host columns read 0). A run that never ends is worse than a column that is missing.
+
+**A correction, because the first reading of this pass was wrong.** The Sound panel looked
+like it held one ~82 ms frame on open, and that was written here. It does not: on
+`dev:built` it opens in **4–5 ms on every skin**. The 82 ms came from `menu sound` lines in
+the rolling log, which were written while the app ran under `dev:app`. It is the same trap
+as the 280 ms sort click and the 175 ms grow — a third instance of the same mistake in one
+day. **Do not quote a frame number that came from a `dev:app` log.** Use the log to choose
+what to point the bench at, and the bench for the number.
+
+## The leak run — `npm run bench <scene> -- --repeat N` (2026-09-17, review item 5)
+
+`perf-history.csv` had no memory column, so a gesture that RETAINS something was invisible to
+the one file that is committed. Two columns now ride every row — `page_heap_mb` (the page's
+own JS heap) and `tree_ws_mb` (the working set of the whole app tree: the host exe plus every
+WebView2 child) — and `--repeat N` turns a scene into a leak test:
+
+```
+npm run bench compass -- --repeat 10 --skins press
+```
+
+It runs the gesture N times, forces a collection (`HeapProfiler.collectGarbage`) and takes a
+reading between each, then prints the table and a least-squares slope in **MB per run**.
+
+Both numbers are kept because they fail differently. The **heap** catches a listener, a
+closure or a detached node the JS side is holding. The **tree** catches what the heap never
+sees — renderer layers, GPU textures, the audio graph, the host exe. A run whose heap is flat
+while the tree climbs is exactly the shape of the night-of-09-16 climb, where `renderer` and
+`gpu` sat still and ~700 MB grew in processes nothing named.
+
+The **first run is not a leak** — a gesture builds its one-time structures then — so the
+headline is the WARM slope, from run 1 on, with the cold step reported beside it. The Compass
+makes the case: heap 7.6 → 10.0 MB on run 1, then 10.1–10.2 for seven more.
+
+Read the trend over all N, never two readings: Windows hands memory back lazily, and one
+collection that did not finish looks exactly like a small leak. Re-run before believing a
+small positive slope — the first two runs of this tool prove the point:
+
+| scene | runs | heap warm slope | tree warm slope | verdict |
+| --- | --- | --- | --- | --- |
+| `compass` | 8 | +0.19 → cold step only | −1.87 MB/run | clean |
+| `swap` | 8 | **+0.04 MB/run** | −0.02 MB/run | suspicious |
+| `swap` | 20 | **+0.00 MB/run** | +0.02 MB/run | clean — the +0.04 was noise |
+
+Twenty card swaps retain nothing. Had the 8-run number been trusted, it would have started a
+hunt for a leak that is not there.
+
+**The columns changed, so the writer migrates.** Every new column has been appended just
+before `note`, so a file written by an older bench has shorter rows. On 2026-09-17 the header
+was left behind while the rows grew — 19 names over 21 fields, which makes the history
+unreadable in a spreadsheet. The writer now re-spells every old row against the current
+columns and rewrites the file, so it is always square and nothing is lost.
+
+## Trending start-up — `node scripts/boot-log.mjs` (2026-09-17, review item 7)
+
+`[perf] frames boot` existed but nothing kept it, so start-up could not be trended — and the
+rolling log holds only one rotated generation, so a boot older than about a megabyte of lines
+is simply gone. This harvests every start-up still in the log into `scripts/boot-history.csv`,
+which is committed. Rows are keyed by app + start time, so running it twice is safe; run it
+after a session, before the log rotates past what you care about.
+
+```
+node scripts/boot-log.mjs              # harvest, then print the last 12 and the medians
+node scripts/boot-log.mjs --show 30
+node scripts/boot-log.mjs --json
+```
+
+A row carries the version, `to_first_paint_ms` (the app's own `start:` line to the first
+painted frame — what the person actually sits through), the boot window frames.ts measured,
+its dropped % and worst gap, the long tasks, and whether the GPU was accelerated.
+
+**It sees the dev app.** The boot line rides the telemetry gate, so an ordinary installed
+release writes none — by design. An installed build made with `VITE_PERF=1` does, and that is
+the only way to trend the real thing.
+
+**First harvest, 2026-09-17:** dev median `to_first_paint` **3683 ms (0.8.0) → 2465 ms (0.9.0)
+→ 2352 ms (0.9.5)**, with the boot window itself steady around 905 ms. Start-up got faster
+across the two versions that made the app feel bigger, which is the opposite of the worry that
+prompted the pass.
+
+## Reading the logs — `scripts/perf-report.mjs` (2026-09-17, review item 2)
+
+Reviewing used to be `grep | tail` by hand, so "did it get worse" had no answer. One command
+now reads the rolling log (the rotated generation included) and the heaviness log, and prints
+**p50 / p95 / worst with the row count** per name.
+
+```
+node scripts/perf-report.mjs                 # the dev app's log + heaviness, whole file
+node scripts/perf-report.mjs --installed     # the installed app's log instead
+node scripts/perf-report.mjs --since 2h      # 30m | 2h | 3d | "2026-09-16 23:00"
+node scripts/perf-report.mjs --file <path>   # any log file, or several
+node scripts/perf-report.mjs --all           # every row, not the worst 15
+node scripts/perf-report.mjs --json          # the same numbers as JSON
+```
+
+What it reads, and what each table answers:
+
+| table | from | answers |
+| --- | --- | --- |
+| `click→sound` | `[perf] click→sound`, keyed by `where` | how long a play takes, and how much of it is MusicKit's own |
+| `frames` | `[perf] frames <name>` | the worst gap and the dropped % per gesture |
+| `input` | `[perf] input` | press → paint |
+| `faults` | `sound:clockSlip`, `sound:startLost`, `sound:tapRate`, `airplay:tapDisarmed`, `[perf] abandon`, `panic` | a count that climbs between two runs |
+| `airplay capture` | `capture heard …` | ok / partial / silent |
+| `heaviness` | `scripts/heaviness-samples.log` | MB and CPU per app, and per process bucket once the row carries the split |
+
+It starts nothing and reads only files already on this PC. The two runs are compared by
+running it twice with different `--since` windows.
+
 ## Heaviness sampler — `scripts/heaviness-sample.ps1`
 
 One line per running app (installed + dev) per sample: summed working set, the largest
@@ -628,6 +861,28 @@ seconds and appends to `scripts/heaviness-samples.log` (gitignored) until the te
 closes. Bare `deetsmusic.exe` processes with no WebView2 children (the CLI / MCP bridges)
 are skipped. The tree walk keys on the exe name, so both apps report even when the installed
 one has no CDP port.
+
+**The split and the context (2026-09-17, review item 1).** A row used to say how heavy and
+never what the app was doing, so the night of 09-16 climbed 700 MB in processes nothing
+named. Each row now carries:
+
+```
+2026-09-17 15:56 installed up=246min total=871MB renderer=220MB gpu=228MB cpu=18.4%
+  | host=64MB/0.9% webview=136MB/0% renderer=220MB/8.4% gpu=228MB/9% audio=28MB/0%
+    network=47MB/0% cdm=108MB/0% utility=23MB/0% other=16MB/0%
+  | skin=cyber theme=lilac surface=max playing=yes airplay=tap sound=on vinyl=off tray=shown
+```
+
+- **The split** is `MB/CPU%` per process type, from each process's own `--type=` /
+  `--utility-sub-type=`. The parts add up to `total`. `host` is the Rust exe, `webview`
+  the WebView2 browser process, `cdm` the Widevine sandbox that decrypts the stream.
+- **The context** is `GET /health` on the bridge (ports 47825-47828). That route is
+  unauthenticated, so the sampler reads it with no token; it carries what the app is DOING
+  and never what it is playing — a title on an unauthenticated route would leak the
+  listening. An app built before this change answers `skin` and `theme` only and the rest
+  of the line is left out.
+- Only one app can hold a bridge port, so with both apps running the context belongs to
+  whichever bound it first (normally the installed one, which starts at login).
 
 ## What the tools cannot yet see — the 2026-09-17 review
 
@@ -645,9 +900,10 @@ nothing but the 10 s `capture heard` lines and Last.fm. At 12:04 the next day, t
 the same speaker (Cyber, Max, a song playing): the tree at 864 MB and 91 % — the host exe at
 **5.6 % and 62 MB**, the renderer and the GPU process each ~40–50 % averaged over the run. So
 the AirPlay session itself is cheap; what the night's climb was cannot be told from what was
-recorded. Also in that log, at 01:57:08 during the update's exit-and-install: `panic: cannot
+recorded. Also in that log, at 01:57:08: `panic: cannot
 move state from Destroyed` (tao `event_loop/runner.rs:371`) — an exit-path bug, unrelated to
-load, not yet filed.
+load, not yet filed. (It read as a fault in the update's exit-and-install; the health check
+below shows it is the Windows shutdown one second later.)
 
 **The gaps, ranked by what they would have answered.**
 
@@ -689,6 +945,15 @@ load, not yet filed.
 None of these is a harness: each is a column, a scene or a reader on the tools that exist.
 Suggested order: 1, 2, 3 (together they answer "what was the app doing when it got heavy"
 from a session), then 4 and 5 as gestures come up for review.
+
+**Built 2026-09-17 on branch `optimus-deets`: items 1, 2 and 3.** Item 1 is the per-process
+split plus the `/health` context (§Heaviness sampler); the app side is `bridge.rs`
+(`Appearance` + the `/health` fields), `np-bus.ts` (`publishAppearance` carries surface,
+sound and vinyl), `surface.ts` and `sound.ts` (one publish each when the state flips). Item 2
+is `scripts/perf-report.mjs` (§Reading the logs). Item 3 is `host_cpu_pct` / `host_ws_mb` and
+the `airplay` scene in `bench.mjs` (§Benchmarking a scene). Items 4-7 stay open; item 7's
+first half (a row for `[perf] frames boot`) is partly answered, because perf-report now trends
+`boot` from the log without a CSV row.
 
 ## Profiling the webview — `scripts/webview-profile.mjs` (dev only)
 

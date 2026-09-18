@@ -116,10 +116,30 @@ export function publish(force = false): void {
   invoke("np_publish", { state: snapshot() }).catch((e) => console.warn("[np-bus] publish", e));
 }
 
-/** Tell Rust (→ tray panel, → extension /health) which theme × skin is live. */
+/**
+ * Tell Rust (→ tray panel, → extension /health) which theme × skin is live, and with it
+ * the rest of the context `/health` reports: surface, Sound on, record player. The
+ * heaviness sampler reads that line, so a heavy sample says what the app was doing
+ * (DEBUGGING.md §2026-09-17 review, item 1). Cheap: one IPC call, only on a change.
+ */
+let soundOn = false;
+
+/** sound.ts calls this when Advanced EQ / Adaptive Sound starts or stops routing audio. */
+export function noteSound(on: boolean): void {
+  if (on === soundOn) return;
+  soundOn = on;
+  publishAppearance();
+}
+
 export function publishAppearance(): void {
   const root = document.documentElement;
-  invoke("appearance_publish", { theme: root.dataset.theme ?? "", skin: root.dataset.skin ?? "" }).catch(() => {});
+  invoke("appearance_publish", {
+    theme: root.dataset.theme ?? "",
+    skin: root.dataset.skin ?? "",
+    surface: root.dataset.surface ?? "",
+    sound: soundOn,
+    vinyl: root.dataset.pressVinyl ?? "off",
+  }).catch(() => {});
 }
 
 async function run(cmd: NpCommand): Promise<void> {

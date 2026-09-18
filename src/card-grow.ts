@@ -24,6 +24,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { TELEMETRY } from "./telemetry-on";
 
 export type Slot = "left" | "right" | "c" | "d";
 export type GrowMode = "wide" | "tall" | "full";
@@ -719,8 +720,10 @@ export function initCardGrow(o: Opts): void {
     { capture: true },
   );
   paintZones();
-  // Dev only: drive a grow from the console or scripts/webview-eval.mjs (DEBUGGING.md).
-  if (import.meta.env.DEV) {
+  // A measuring handle: drive a grow from the console or scripts/webview-eval.mjs
+  // (DEBUGGING.md). On the TELEMETRY gate, not DEV, so `npm run dev:built` — the honest
+  // graphics build — still answers it. The installed bundle carries none of it.
+  if (TELEMETRY) {
     (window as unknown as { __grow: unknown }).__grow = {
       grow: growCard,
       collapse: collapseGrow,

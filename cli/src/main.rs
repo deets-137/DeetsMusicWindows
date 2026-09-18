@@ -175,6 +175,12 @@ enum Cmd {
         /// right · left · up · down · full
         dir: Option<String>,
     },
+    /// Go to a place in the app: a card (Library, Rewind…), the Sound panel, the Sleep timer.
+    /// With no words it lists them. A theme or skin is a setting — use `settings set skin …`.
+    Go {
+        /// The place. Several words are fine: `go sleep timer`.
+        target: Vec<String>,
+    },
     /// Serve the operations as MCP tools over stdio (every tool; `--small` for small models).
     Mcp {
         #[arg(long)]
@@ -821,6 +827,19 @@ fn op_settings(c: &Client, action: &str, key: &str, value: &str, section: &str) 
     }
 }
 
+/// Go to a place (COMPASS.md §10): `go <place>`, or `go` alone for the list. The window's
+/// own Compass registry answers, so a place added there is reachable here the same day.
+fn op_go(c: &Client, target: &str) -> Result<(String, Value), Failure> {
+    if target.trim().is_empty() {
+        let v = c.get("/go")?;
+        let places = arr(&v, "places").iter().filter_map(|p| p.as_str()).map(|p| format!("  {p}")).collect::<Vec<_>>();
+        return Ok((if places.is_empty() { "(no places)".into() } else { places.join("
+") }, v));
+    }
+    let v = c.post("/go", json!({ "target": target }))?;
+    Ok((message_line(&v), v))
+}
+
 /// The card grow (CARD-GROW.md): `grow <card> [dir]`, `grow collapse|pin|unpin|state`.
 fn op_grow(c: &Client, target: &str, dir: Option<&str>) -> Result<(String, Value), Failure> {
     let word = target.to_ascii_lowercase();
@@ -1268,6 +1287,7 @@ fn main() {
             SettingsCmd::Set { key, value } => op_settings(&c, "set", &key, &value.join(" "), ""),
         },
         Cmd::Grow { target, dir } => op_grow(&c, target.as_deref().unwrap_or("state"), dir.as_deref()),
+        Cmd::Go { target } => op_go(&c, &target.join(" ")),
         Cmd::Mcp { .. } => unreachable!(),
     };
     match res {

@@ -33,6 +33,7 @@ import { checkForUpdate, download, offerRestart, olderVersions, rollbackTo, upda
 import { invoke } from "@tauri-apps/api/core";
 import { settingsList, settingsWrite } from "./agent-settings";
 import { agentGrow } from "./card-grow";
+import { agentGo } from "./compass";
 
 type Reply = Record<string, unknown>;
 
@@ -477,6 +478,9 @@ export function runAgentWrite(kind: string, payload: any): Promise<unknown> | nu
     case "settings": return settingsWrite(payload);
     case "grow-get": return agentGrow({ action: "state" }); // CARD-GROW.md; a test handle
     case "grow": return agentGrow(payload);
+    // `deetsmusic go <place>` (COMPASS.md §10): the Compass's own Places, navigation only.
+    case "go-get": return Promise.resolve(agentGo({ list: true }));
+    case "go": return Promise.resolve(agentGo(payload));
     default: return null;
   }
 }

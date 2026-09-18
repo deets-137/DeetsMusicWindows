@@ -200,5 +200,5 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - Front-end only ever sees the normalized model (`Track`/`Album`/…), never raw Apple
   shapes — normalization lives in Rust.
 - Commit only when the user asks. Co-author trailer — name the model that did the work
-  (today `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`); update this line when
+  (today `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`); update this line when
   the model changes.

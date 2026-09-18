@@ -724,6 +724,66 @@ let active = 0;
 let shiftHeld = false;
 let returnTo: HTMLElement | null = null;
 
+// ── the agent's way in (AGENT.md; `deetsmusic go <place>`) ───────────────────
+//
+// One verb over the same registry the bar uses, so a place added to the Compass is
+// reachable from the CLI the same day, with no second list to keep.
+//
+// PLACES ONLY, and not all of them. A card, the Sound panel and the Sleep timer only
+// move what is on screen. Theme, skin and surface are in the same group but they WRITE a
+// stored setting, and writing settings is already a route with its own consent (Settings ›
+// Connections › Agent changes settings) and its own slower cover (UX-COVERUPS §6b). Letting
+// `go glass` through here would be a second way in that asks nobody, so it is refused with
+// a pointer at the route that does ask. Settings rows, transport verbs and data rows are
+// out for the same reason: each already has a CLI verb that obeys its own rules.
+type Reply = Record<string, unknown>;
+/** The two panels in Places that are not cards; everything else navigable is `sub: "Card"`. */
+const PANELS = new Set(["Sound", "Sleep timer"]);
+/** A Places row this verb may run: it moves the view and writes nothing. */
+function navigable(r: Row): boolean {
+  if (r.group !== "Places") return false;
+  if (r.sub === "Theme" || r.sub === "Skin" || r.sub === "Surface") return false;
+  return r.sub === "Card" || PANELS.has(r.title);
+}
+
+function placeHits(term: string): Row[] {
+  const t = fold(term.trim());
+  const pool = places(true).filter(navigable);
+  if (!t) return pool;
+  return hitsOf(pool, t.split(/\s+/), t).map((h) => h.r);
+}
+
+const placeName = (r: Row): string => (r.sub && r.sub !== "Card" ? `${r.title} (${r.sub})` : r.title);
+
+/**
+ * `GET /go` (list) and `POST /go {target}` (run) — AGENT.md §3.
+ * A target that matches nothing, or matches a place this verb will not run, says which.
+ */
+export function agentGo(payload: { target?: string; list?: boolean } | null): Reply {
+  const term = String(payload?.target ?? "").trim();
+  if (payload?.list || !term) {
+    const all = placeHits("").map(placeName);
+    return { ok: true, places: all, message: `${all.length} place(s) to go to` };
+  }
+  const hits = placeHits(term);
+  if (!hits.length) {
+    // Say WHY when the word does match something the bar knows: a skin or a setting is a
+    // different verb, not a dead end.
+    const near = places(true).find((r) => hitsOf([r], fold(term).split(/\s+/), fold(term)).length);
+    if (near && (near.sub === "Theme" || near.sub === "Skin" || near.sub === "Surface")) {
+      const key = near.sub.toLowerCase();
+      throw new Error(
+        `blocked: ${near.title} is a ${key}, and changing it is a setting — use \`deetsmusic settings set ${key} ${near.title.toLowerCase()}\`, which asks first if you have set it to.`,
+      );
+    }
+    throw new Error(`unknown: no place called ${JSON.stringify(term)} — \`deetsmusic go\` with no words lists them`);
+  }
+  const row = hits[0];
+  diag.log("compass:go", { title: row.title, sub: row.sub });
+  row.run();
+  return { ok: true, went: placeName(row), also: hits.slice(1, 4).map(placeName), message: `Went to ${placeName(row)}.` };
+}
+
 export const compassOpen = (): boolean => !!handle?.isOpen;
 
 /** Open the bar (Ctrl+Space, the title menu row). A second press keeps it open and refocuses. */

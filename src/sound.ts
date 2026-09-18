@@ -22,6 +22,7 @@ import { bandBiquads, chainDb, integratedLufs, logFreqs, lowVolumeShelves, kWeig
 import { getVolume, getDuck, onVolumeChange, isPlayingNow, getAppliedGain } from "./player";
 import * as diag from "./diag";
 import * as perf from "./perf";
+import { TELEMETRY } from "./telemetry-on";
 import { toast } from "./toast";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
 import { BUILTIN, type EqPreset } from "./sound-presets";
@@ -466,7 +467,12 @@ export function setSound(patch: Partial<SoundConfig>): void {
   const before = wanted();
   Object.assign(config, patch);
   const after = wanted();
-  if (before !== after) diag.log(after ? "sound:on" : "sound:off", { routed: routedCount });
+  if (before !== after) {
+    diag.log(after ? "sound:on" : "sound:off", { routed: routedCount });
+    // /health carries "sound" as context for the heaviness sampler (DEBUGGING.md
+    // §2026-09-17 review, item 1).
+    void import("./np-bus").then((m) => m.noteSound(after));
+  }
   if (after) void ensureContext().catch(() => {}); // warm it, so the next play routes before its first sample
   push();
 }
@@ -758,7 +764,9 @@ export function initSound(): void {
   applySettings();
   checkReview();
   watchWindowsOutput();
-  if (import.meta.env.DEV) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting };
+  // TELEMETRY, not DEV: the `airplay` bench scene reads `__sound.status().tap` and must
+  // run on the release-shaped build too (telemetry-on.ts). Absent from the installed app.
+  if (TELEMETRY) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting };
 }
 
 /** A live preview of bands while a handle or fader is dragged; the release commits to settings. */

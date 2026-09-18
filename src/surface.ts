@@ -91,6 +91,9 @@ function flipFor(width: number, cur: SurfaceName): SurfaceName {
 function setAttribute(s: SurfaceName): void {
   document.documentElement.dataset.surface = s;
   document.documentElement.dataset.mini = miniView;
+  // /health carries the surface as context for the heaviness sampler (DEBUGGING.md
+  // §2026-09-17 review, item 1). One IPC call per surface change.
+  void import("./np-bus").then((m) => m.publishAppearance());
 }
 
 function persistChoice(s: SurfaceName): void {

@@ -70,7 +70,9 @@ export interface YourPlaylists {
   unchecked: Playlist[];
 }
 
-const byName = (a: Playlist, b: Playlist) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+// One collator, not one per comparison — see collection-card.ts `cmpStr` (2026-09-17).
+const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+const byName = (a: Playlist, b: Playlist) => collator.compare(a.name, b.name);
 
 /** The user's playlists with songs by `name` — the Artists grouping's credit parse, with the
  *  library vocabulary, so a song that features the artist counts. Zero Apple calls. */

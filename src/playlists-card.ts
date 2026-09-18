@@ -121,8 +121,9 @@ type PlRow = { pos: number } & (
 
 const sectionKey = (x: PlRow) => (x.kind === "folder" ? `folder:${x.id}` : x.kind === "cluster" ? x.key : "");
 
-const byName = <T extends { name: string }>(a: T, b: T) =>
-  a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+// One collator, not one per comparison — see collection-card.ts `cmpStr` (2026-09-17).
+const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+const byName = <T extends { name: string }>(a: T, b: T) => collator.compare(a.name, b.name);
 
 // Unfiled auto-clusters, fixed order. "Local Playlists" are made in DeetsMusic; "Your
 // Apple Playlists" are the user's own on Apple Music — split so the two write paths never
