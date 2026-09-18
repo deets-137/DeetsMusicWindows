@@ -139,7 +139,7 @@ the whole story), so the workaround is dead weight and, worse, a pattern somebod
 Remove the `setTimeout` and its comment, call `activate(r)` straight, then press a hit row in
 the Playlists web panel: the panel must stay open and the rows must redraw as before.
 
-**DECIDED, not built — rename NP to Player (owner, 2026-09-18).** The surface that holds Now
+**BUILT 2026-09-18 — NP renamed to Player.** The surface that holds Now
 Playing alone is called three things today, and a hover hint papers over the gap instead of
 closing it: the Surface menu says **NP**, the tray row and Keep on top offer **Player**, Settings
 says **Player (NP) opens at** with the hint "called NP in the Surface menu", and the Compass says
@@ -167,8 +167,18 @@ Where the name lives, all user-facing:
 - Store keys stay `sizePlayer` / `player`: they already say Player, and a key rename is a stored
   shape for no gain.
 
-Check [ONBOARDING.md](ONBOARDING.md)'s hint ledger and [SETTINGS.md](SETTINGS.md) §3 for any
-remaining "NP", and grep the docs — several cite the surface by the old name.
+**As built.** All of the above, plus: `SYNONYMS` in `compass.ts` gained `np` and `nowplaying`
+→ `player`, so an old habit still finds it, and the pair is listed in
+[COMPASS-TERMS.md](COMPASS-TERMS.md). The name was updated in ONBOARDING.md's hint ledger,
+COMPASS.md, SURFACES-AND-CARDS.md, SETTINGS.md §3 and SETTINGS-INVENTORY.md (the glossary keeps
+an **NP** entry that points at Player, so a search for the old word lands somewhere).
+**"NP card" is left alone everywhere** — that is shorthand for the Now Playing card, which is a
+different thing from the surface. The dated design logs (FUTURE-SETTINGS.md, NEXT-VERSION.md,
+RELEASE-NOTES.md) keep the old name: they record what was decided under the name it had.
+
+**Desk test.** Title menu › Surface: the row reads **Mini | Player**, and the Player half is half
+the Mini half's width. Pick it — the window becomes the player alone. Settings › Window reads
+**Player opens at**. Ctrl+Space, type `np` — the Player row comes back; type `player` — same row.
 
 **DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
 from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".

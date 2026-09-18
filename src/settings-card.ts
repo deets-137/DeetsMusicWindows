@@ -637,7 +637,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         storeToggle("autoflip", "Resize changes surface", "surfaceAutoFlip", () => "On: a window made narrow or short becomes the surface that fits it. Off: the window resizes inside the current surface, and each one keeps its own floor"),
         storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway"),
         sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
-        sizeRow("sizeplayer", "Player (NP) opens at", "The window size for the player alone, called NP in the Surface menu. Set current saves the size it had last", "player"),
+        sizeRow("sizeplayer", "Player opens at", "The window size for Player, the player alone. Set current saves the size it had last", "player"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
         sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
         {

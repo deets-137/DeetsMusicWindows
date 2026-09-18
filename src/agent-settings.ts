@@ -128,7 +128,7 @@ const SPECS: Spec[] = [
   storeToggle("Window", "surfaceAutoFlip", "Resize changes surface"),
   storeToggle("Window", "volumeShrink", "Shrink volume bar"),
   storeSize("mini", "Mini opens at"),
-  storeSize("player", "Player (NP) opens at"),
+  storeSize("player", "Player opens at"),
   storeSize("midi", "Midi opens at"),
   storeSize("max", "Max opens at"),
   storeChoice("Window", "maxShortWindow", "Max window when short", [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }]),

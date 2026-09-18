@@ -115,6 +115,7 @@ export const SYNONYMS: Record<string, string[]> = {
   expand: ["grow"], enlarge: ["grow"], big: ["grow"], fill: ["grow"],
   look: ["theme", "skin"], colors: ["theme"], colour: ["theme"], dark: ["theme"], light: ["theme"],
   window: ["surface"], size: ["surface"], small: ["mini"], large: ["max"],
+  np: ["player"], nowplaying: ["player"], // "NP" was this surface's name until 2026-09-18
   lib: ["library"], songs: ["library"], music: ["library"],
   lists: ["playlists"], list: ["playlists"],
   web: ["web"], playlistweb: ["web"],
@@ -315,7 +316,7 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   const click = (el: HTMLElement) => () => el.click();
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
     const name = el.textContent?.trim() ?? "";
-    rows.push({ group: "Places", title: name === "NP" ? "Player (NP)" : name, sub: "Surface", hint: el.dataset.hint || el.title, run: click(el) });
+    rows.push({ group: "Places", title: name, sub: "Surface", hint: el.dataset.hint || el.title, run: click(el) });
   });
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     rows.push({ group: "Places", title: el.textContent?.trim() ?? "", sub: "Theme", hint: el.dataset.hint || el.title, run: click(el) });

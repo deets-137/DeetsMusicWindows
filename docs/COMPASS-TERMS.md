@@ -10,7 +10,7 @@
 | Type | Goes to |
 |---|---|
 | **home**, **library** (lib, songs, music), **queue** (up next), **playlists** (lists), **search** (find, apple music), **history** (recent, plays), **rewind**, **radio** (stations), **settings** (preferences, options, prefs) | The card, on screen |
-| **mini**, **np** (the player alone), **midi**, **max** (window, size) | The window's surface |
+| **mini**, **player** (the player alone; **np** still finds it — its name until 2026-09-18), **midi**, **max** (window, size) | The window's surface |
 | **lilac**, **green**, **sepia**, **moonlight**, **black & yellow**, **black & red** (theme, colors, dark, light) | The theme, with the launch animation |
 | **press**, **ocean**, **glass**, **cyber** (skin, look) | The skin |
 | **sound** (eq, equalizer) | The Sound panel |
@@ -108,6 +108,7 @@ The same table as `SYNONYMS` in `src/compass.ts`; change both.
 | look, colors, colour, dark, light | theme, skin |
 | window, size | surface |
 | small | mini |
+| np, nowplaying | player |
 | large | max |
 | lib, songs, music | library |
 | list, lists | playlists |

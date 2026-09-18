@@ -8,18 +8,24 @@
 > **Wording pass 2026-09-18**: five labels changed. Old → new: *Button is perma-shuffle* →
 > **Shuffle button stays on** · *Show cover* → **Cover while playing** · *Genres for Webbing* →
 > **Web genre chips filter** · *Close on Make* → **Web panel closes** · *Other (Sm)* →
-> **Other (Small)** · *NP opens at* → **Player (NP) opens at**. **A second pass the same day**
+> **Other (Small)** · *NP opens at* → **Player opens at**. **A second pass the same day**
 > (ASD-STE100 read of every label): *Web genre chip filters* → **Web genre chips filter** (a
 > four-word noun cluster; the last word is now the verb) · *Grown card on card pick* → **Grown
 > card on a new pick**, pills *Keep* / *Collapse* → **Keeps size** / **Collapses** · *Web prefers*
 > → **Web prefers songs** (a transitive verb needs its object) · *Songs not measured yet* →
-> **Songs not measured get**. Values and store keys unchanged. Still open from that read: **NP /
-> Player / Player (NP)** is one thing under three names (decided — HANDOFF.md "Next up"), and
-> **web** is a coined noun across five Playlists rows that the card never defines.
+> **Songs not measured get**. Values and store keys unchanged. From that read: the surface that shows the player alone was
+> **NP** in the Surface menu, **Player** in the tray row, and **Player (NP)** in Settings and the
+> Compass — one thing under three names. **BUILT 2026-09-18: it is "Player" everywhere**, the
+> Mini | Player halves went from `flex: 3/1` to `2/1`, and `np` stays a Compass synonym so the old
+> habit still finds it. Still open: **web** is a coined noun across five Playlists rows that the
+> card never defines.
 > The Playlists rail groups became
 > *Made Here* · Your Apple Playlists · Apple Mixes · **Apple Replays** · **Saved from Apple Music**.
-> The §3 table below is otherwise older than the app: it predates Sound, AirPlay, Rooms, Compass
-> and the card-grow rows, and its open sizes are stale. SETTINGS-INVENTORY.md is current.
+> **The §3 table was brought up to date the same day**: the four open sizes were wrong, and the
+> rows for Shrink volume bar, Compass closes on outside click, Max window when short, Fancy
+> scrubber and AirPlay were missing. §3a is new, for the settings whose controls live in a
+> title-bar panel (Sound, the sleep timer, rooms) and the keys with no control at all. Every key
+> in `DEFAULTS` now appears in this doc.
 
 ## 0. Shape — the hybrid (user's pick)
 
@@ -76,7 +82,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Window | Start with Windows (Starts in the tray at sign-in) | Rust (HKCU Run key, `autostart_get` / `autostart_set`; seeded once on the first installed run) | on / off | `lib.rs` `--tray` launch → `tray::start_hidden` |
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
 | Window | Mini opens at (The window size for Mini. Set current saves the size it has now or had last) × a `W × H` menu + *Set current* (2026-09-15, §8a) | `sizeMini` | **385x550** | `surface.ts` `openSize` / `applySize` |
-| Window | Player (NP) opens at (The window size for the player alone, called NP in the Surface menu. Set current saves the size it had last) | `sizePlayer` | **405x675** (404 px wide is where the Press record stopped jittering) | same |
+| Window | Player opens at (The window size for Player, the player alone. Set current saves the size it had last) | `sizePlayer` | **405x675** (404 px wide is where the Press record stopped jittering) | same |
 | Window | Midi opens at (The window size for Midi. Set current saves the size it has now or had last) | `sizeMidi` | **495x670** | same |
 | Window | Max opens at (The window size for Max. Set current saves the size it has now or had last) | `sizeMax` | **1100x950** (2026-09-17: the tallest skin's need for a square cover AND the Queue's 2.5 rows, and it still fits a 1080p work area) | same |
 | Window | Shrink volume bar (On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway) — toggle (NEXT-VERSION §20) | `volumeShrink` | on / **off** | `main.ts` / the title bar volume; the thin-window rule overrides it |
@@ -124,6 +130,7 @@ chosen pill. Hints ride the row as a hover tooltip only. Default first.
 | Playback | Stream quality (Auto follows your network speed; High is 256 kbps and Low is 64 kbps, from the next song) — *Auto* / *High* / *Low* (2026-09-16) | `streamQuality` | **auto** / high / low | `player.ts` `applyStreamQuality`: sets `music.bitrate` after configure, on a change, and (Auto) on Chromium's `navigator.connection` change, with a 0.5 / 1 Mbps gap. [AUDIO-QUALITY.md](AUDIO-QUALITY.md) §4.1 |
 | Playback | Idle shuffle plays (§5b) — *Library* / *Nothing* | `shuffleIdle` | library / noop | `player.ts` `shuffleQueue` |
 | Playback | Show the day in History (Each row says Today, Yesterday or the date, next to the artist) — toggle (2026-09-15) | `historyShowDay` | on / **off** | `history-card.ts` — the day joins the row's subtitle line; never a divider ([QUEUE.md](QUEUE.md)) |
+| AirPlay | Send to speaker (DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app’s sound, and this PC keeps playing) — pills *DeetsMusic only* / *All PC sound* (2026-09-17) | Rust `airplayCapture` (`settings_set_airplay_capture`) | **app** / system | the shared sender crate — [AIRPLAY.md](AIRPLAY.md) §9a; a `ChoiceRow` with `get`/`set`, the Rust-owned form |
 | Apple Music | Add to Library and ♥ (Can't remove from library via DeetsMusic) | module | on / off | `library-add.ts` (menus + the NP square + the row squares of `add-square.ts`); the ♥ (`favorites.ts`) rides the same consent, hence the label (2026-09-14) |
 | Apple Music | Show ✓ on songs you have (On: the + on a song row turns into a ✓ when the song is already in your library. Off: no button) — toggle (2026-09-17) | `addSquareOwned` | on / **off** | `add-square.ts` `stateOf` — the row squares in Search, Playlists, Queue, History ([SEARCH.md § Add-to-Library square](SEARCH.md)) |
 | Apple Music | Export playlists (Can't rename, reorder, or delete on Apple Music via DeetsMusic) — 2026-09-14 | `playlistExport` | on / off | `playlist-export.ts` `exportItem` (hides Export ▸) — [PLAYLISTS.md §6](PLAYLISTS.md) |

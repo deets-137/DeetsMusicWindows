@@ -44,7 +44,7 @@ The window size and what it holds. The label's own size is the preview.
 | Choice | What you get |
 |---|---|
 | **Mini** | A small window: Now Playing and one card |
-| **NP** | The player alone: Now Playing only. Called **Player (NP)** in Settings and the Compass |
+| **Player** | The player alone: Now Playing only |
 | **Midi** | The tall window: Now Playing and two cards |
 | **Max** | The wide window: the stage, the queue, and four cards |
 
@@ -152,7 +152,7 @@ which restarts the first-run walk.
 | Resize changes surface | A window made narrow or short becomes the surface that fits it. Off: it resizes inside the current surface | **on** / off |
 | Shrink volume bar | The title bar volume is a small pill that grows when you click it. A window thinner than 455 px uses the pill anyway | on / **off** |
 | Mini opens at | The window size Mini opens at. **Set current** saves the size it has now | **385 × 550** |
-| Player (NP) opens at | The size for the player alone | **405 × 675** |
+| Player opens at | The size for the player alone | **405 × 675** |
 | Midi opens at | The size for Midi | **495 × 670** |
 | Max opens at | The size for Max | **1100 × 950** |
 | Max window when short | A Max window dragged shorter than the stage column can hold | **Becomes Midi** / Stops at floor |
@@ -223,7 +223,7 @@ Your Windows reduced-motion preference always wins over these.
 | Show hover hints | The themed box every hover hint appears in | **on** / off |
 | Hints appear after | How long the pointer rests first. A song row waits longer | A moment / **A pause** / A while |
 | Name songs on hover | The name box on a song row | **Always** / only when Cut off / Never |
-| Show notices | Which toasts appear. A failure always shows | **Everything** / Failures |
+| Show notices | Everything adds confirmations. Failures: only when an action could not do what it said. A failure always shows | **Everything** / Failures |
 
 ### Home
 
@@ -443,11 +443,11 @@ Words in *italics* have their own entry.
 | **Midi** | The tall *surface*: Now Playing and two cards | The Surface menu |
 | **Mini** | The small *surface*: Now Playing and one card | The Surface menu |
 | **Mosaic** | A playlist cover built from the covers of its songs. It is never saved to disk | Right-click a playlist › Generate Cover |
-| **Notice** | See *toast* | — |
-| **NP** | The *surface* that shows the player alone. Written **Player (NP)** in Settings and the *Compass* | The Surface menu |
+| **Notice** | A short message that slides in, then leaves. A failure always shows one. Called a *toast* in the code and in TOASTS.md, never in the app | Everywhere; Settings › Look and feel › Show notices |
+| **NP** | The old name for the **Player** *surface*, used until 2026-09-18. Typing it in the *Compass* still finds Player | — |
 | **Pill** | A small rounded control that shows its current value. Click it for the next one | Settings rows; the panels |
 | **Pin** | Hold a *grown* card open against an outside click | A grown card's header |
-| **Player** | See *NP* | — |
+| **Player** | The *surface* that shows Now Playing alone, with no card beside it | The Surface menu |
 | **Preset** | A saved *equalizer* curve: a built-in one, or one you saved | The Sound panel |
 | **Rail** | The list of groups and folders down the side of the Playlists card | Playlists card |
 | **Record player** | The *Press* skin's cover as a turning record | Settings › Look and feel (Press only) |
@@ -465,12 +465,12 @@ Words in *italics* have their own entry.
 | **Stage** | The tall left column in *Max*: the big cover, Now Playing, and the queue | Max |
 | **Station** | An endless stream of songs around a *seed*. Apple builds it | The Radio card; right-click › Start Station |
 | **Summon** | Bring a card into a *slot* | The card pickers; Settings › Window › Card on drill |
-| **Surface** | The window size and what it holds: *Mini*, *NP*, *Midi* or *Max* | The title menu |
+| **Surface** | The window size and what it holds: *Mini*, *Player*, *Midi* or *Max* | The title menu |
 | **Temp playlist** | A *web* playlist that deletes itself a set number of days after its last play. **Keep Playlist** makes it permanent | The web panel; right-click a playlist |
 | **Theme** | The colors: Lilac, Green, Sepia, Moonlight, Black & Yellow, Black & Red. A *skin* is the shape; a theme is the color | The title menu |
 | **Tile** | One cover-sized item on a *shelf* | Home; artist views |
 | **Tint** | How much theme color fills a *Glass* card | Settings › Look and feel (Glass only) |
-| **Toast** | A short notice that slides in, then leaves. A failure always shows one | Everywhere; Settings › Look and feel › Show notices |
+| **Toast** | The internal name for a *notice*. The app never shows this word | Code and docs only |
 | **Tray** | The Windows notification area, by the clock. DeetsMusic can live there | Settings › Window |
 | **Up Next** | The songs the queue will play after this one | The Queue card |
 | **Web** (playlist web) | A playlist built from an artist and the people they work with, reaching out in steps | Playlists card › the web button |

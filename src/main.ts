@@ -173,7 +173,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // Surface choices (same pattern). A deliberate pick also pins a tray-popped window
-  // (it stops hiding on blur) — the user has made it theirs. The "Mini | NP" halves also
+  // (it stops hiding on blur) — the user has made it theirs. The "Mini | Player" halves also
   // name mini's view.
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {
     el.addEventListener("click", () => {

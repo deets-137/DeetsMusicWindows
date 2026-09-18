@@ -15,7 +15,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 export type SurfaceName = "mini" | "midi" | "max";
 /** What mini shows (2026-09-14): Now Playing + one card, or the player — the Now Playing
- *  card alone, styled as max's stage. `data-mini` on <html>; the flyout's "Mini | NP" row. */
+ *  card alone, styled as max's stage. `data-mini` on <html>; the flyout's "Mini | Player" row. */
 export type MiniView = "cards" | "player";
 
 const STORAGE_KEY = "deets.surface";
@@ -240,7 +240,7 @@ async function applySize(s: SurfaceName): Promise<void> {
   }
 }
 
-// Reflect the active surface onto the settings flyout's radio items. The "Mini | NP" halves
+// Reflect the active surface onto the settings flyout's radio items. The "Mini | Player" halves
 // also carry data-mini-choice; only the half for the current view is checked.
 function markActive(s: SurfaceName): void {
   document.querySelectorAll<HTMLElement>("[data-surface-choice]").forEach((el) => {

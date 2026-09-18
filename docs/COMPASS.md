@@ -54,7 +54,7 @@ The bar has one text field at the top and groups of rows under it. The groups, i
 
 | Group | Rows | Enter | Ctrl+Enter |
 |---|---|---|---|
-| **Places** | Every card in the registry but Now Playing (it is always on screen); Rewind only while its gate is on. Then the four surfaces (Mini, NP, Midi, Max), the six themes, the four skins, Sound, Sleep timer. | `requestCard`, `applySurface`, `applyTheme` / `applySkin` under the appearance transition, or the Sound / Sleep panel opens. | — |
+| **Places** | Every card in the registry but Now Playing (it is always on screen); Rewind only while its gate is on. Then the four surfaces (Mini, Player, Midi, Max), the six themes, the four skins, Sound, Sleep timer. | `requestCard`, `applySurface`, `applyTheme` / `applySkin` under the appearance transition, or the Sound / Sleep panel opens. | — |
 | **Settings** | Every Settings row (label, its section as the second line, its hint on hover). `when` rows show only while they apply (skin rows). Store-backed rows are inline (§3). | Inline: the toggle flips, or the highlighted option applies. Others: the Settings card opens at the row (`requestSetting`). | — |
 | **Actions** | Play / Pause (the label follows the state), Next song, Previous song, Shuffle on/off, Repeat (off › all › one), Mute / Unmute, Sleep in 15 · 30 · 45 · 60 min, Sleep timer off. | Runs it. The bar closes. | — |
 | **Sound** | The equalizer presets: built-in, Custom, yours; the one in force says On. | Selects it (`selectPreset`, the per-output memory included). | — |
@@ -433,7 +433,7 @@ and in max columns 2-3, so it neither covers the NP card nor changes its size.
     arrival's transform used to make it too big).
 14. Make the window short (drag the bottom up) and type a letter with many matches: the
     bar's last row stays inside the window and the list scrolls to it. Nothing is cut off.
-11. In mini › NP (the player alone): Ctrl+Space works; a Place switches to the card view.
+11. In mini › Player (the player alone): Ctrl+Space works; a Place switches to the card view.
 
 **The card shape (§2c, 2026-09-18).**
 15. Max. Ctrl+Space, type `settings`: the Settings row leads and its second line says "Card".

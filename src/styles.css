@@ -190,15 +190,17 @@ body {
 .flyout__item[data-surface-choice], .flyout__split { line-height: var(--fs-title); }
 .flyout__split                            { font-size: var(--fs-subtext); }
 .flyout__item[data-surface-choice="max"]  { font-size: var(--fs-title); }
-/* Mini | NP: one item cut in two (the search pin idiom). Mini takes three quarters, NP
-   one. Both halves wear the same type; each carries its own radio dot, and a hover rings
-   only the half under the pointer. */
+/* Mini | Player: one item cut in two (the search pin idiom). Mini takes two thirds, Player
+   one third, so the button's width previews how much the window holds — the same way the
+   label's font size already previews the window's size (2026-09-18, was 3/1 while the half
+   read "NP"). Both halves wear the same type; each carries its own radio dot, and a hover
+   rings only the half under the pointer. */
 .flyout__split { padding: 0; gap: 0; overflow: hidden; cursor: default; }
 .flyout__split::after { content: none; }
 .flyout__split:hover { box-shadow: none; }
 .flyout__half {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-  flex: 3 1 0; min-width: 0;
+  flex: 2 1 0; min-width: 0;
   padding: var(--space-2) var(--space-3);
   background: none; border: none;
   font: inherit; line-height: inherit; color: inherit; text-align: left;

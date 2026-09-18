@@ -193,11 +193,11 @@ max).
 - **What:** mini has two views. `data-mini="cards"` is Now Playing + the left slot's card.
   `data-mini="player"` is the Now Playing card alone, in the max stage composition (the
   large cover, album line, times, the stage volume row). The titlebar Vol. pill hides there.
-- **Pick:** the Surface flyout's first row is one pill cut in two, **Mini | NP** (the search
+- **Pick:** the Surface flyout's first row is one pill cut in two, **Mini | Player** (the search
   pin idiom): `data-surface-choice="mini"` + `data-mini-choice="cards|player"`. The view is
   stored in `deets.surface.mini` and is kept when the window flips to midi and back.
 - **Size:** the player opens at its own size (`sizePlayer`, default 520 × 560; Settings §§ Window
-  §§ *NP opens at*) and lowers the window minimum to 420 × 460 (`setMinSize`, per view, in
+  §§ *Player opens at*) and lowers the window minimum to 420 × 460 (`setMinSize`, per view, in
   `surface.ts`; the capability `core:window:allow-set-min-size`). A resize by hand is not
   remembered, and the player never flips surface on a resize (FUTURE-SETTINGS §8a).
 - **Card requests** (queue / search buttons, Go to, Settings…, Ctrl shortcuts) in the player
