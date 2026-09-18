@@ -91,7 +91,9 @@ front-end, Rust back-end).
   answers to; update it with `SYNONYMS` in compass.ts.
 - `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
   inline), transport verb and library item; Space for play / pause; the keyboard pass's first slice
-  (built 2026-09-17, desk test open).
+  (built 2026-09-17, desk test open). §2d = the
+  calculator: type a sum, the first row answers it and Enter copies (built 2026-09-18, desk
+  test §7.10a open).
 - `docs/SECOND-SEARCH.md` — a second Search card to compare two albums side by side: the first
   card is the drill target, the second is one you place yourself; what enforces one instance
   today and the work per file (designed 2026-09-17, not built).

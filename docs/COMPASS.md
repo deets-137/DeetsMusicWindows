@@ -135,6 +135,56 @@ grow runs the next frame, when its host has a slot.
 (`places(true, null, true)`): its rows always say "Card", and growing from the CLI stays
 `deetsmusic grow`.
 
+### 2d. The calculator (2026-09-18, the owner's ask)
+
+Type a sum into the bar and the first row is the answer: `1+1` shows **`1 + 1 = 2`** under
+an **Answer** header, with an equals sign in the row's square. **Enter copies the answer**
+(the plain digits) and **the bar stays open**, so the next sum follows the last. The row has
+no second line: the sum and its answer are the whole row. Nothing is stored, and no Apple
+call is made. The engine is `src/compass-math.ts` — a tokenizer and a recursive-descent
+parser, about 200 lines. There is no `eval`, so nothing a user types can run as code.
+
+**Keep it out of the release notes** (the owner's call, 2026-09-18). It is documented here
+and in COMPASS-TERMS.md so it is supported and supportable, but no entry in
+[RELEASE-NOTES.md](RELEASE-NOTES.md) announces it: the point is that you find it yourself.
+
+**When a row appears.** The bar is a search box first, so the grammar is strict:
+
+- The **whole** term must parse as a sum. Anything left over kills the row.
+- Every name must be a function or a constant this file knows. `Blink-182` gives no row,
+  because "Blink" is not a number or a name.
+- The sum must hold at least one **operator or function call**. `1984` gives no row. The
+  one exception is a bare `pi`, `π` or `tau`; a bare `e` is a typed letter, not a sum.
+- The answer must be **real and finite**. `1/0`, `sqrt(-1)` and `1+` give no row at all —
+  never an error row (the owner's call: no scold in the bar while you type).
+
+A term that is both a sum and a name — `50/50` — shows the answer AND the library rows
+under it, so the song is still one arrow-down away.
+
+**What it knows.**
+
+| Kind | Words |
+| --- | --- |
+| Operators | `+` `-` `*` (`×`) `/` (`÷`) `^` (`**`) `%` (`mod`) `!` (factorial), parentheses |
+| Roots, powers | `sqrt` `cbrt` `root(n, x)` `pow(a, b)` `exp` |
+| Logs | `ln` `log` (base 10) `log10` `log2` |
+| Trigonometry | `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sinh` `cosh` `tanh` |
+| Rounding | `round` `floor` `ceil` `trunc` `abs` `sign` |
+| Several numbers | `min` `max` `hypot` `gcd` `lcm` |
+| Whole numbers | `fact(n)` (the same as `n!`) |
+| Units | `rad(x)` degrees → radians, `deg(x)` radians → degrees |
+| Constants | `pi` `π` `tau` `e` |
+
+**Angles are degrees.** `sin(30)` is 0.5 and `atan(1)` is 45. Use `rad()` and `deg()` when
+you want the other unit.
+
+**Numbers.** `-2^2` is −4 and `2^3^2` is 2^9, as in mathematics. `%` is the **remainder**,
+not a percentage (`10 % 3` = 1); `mod` is the same operator. Float noise is cut at 12
+significant digits, so `0.1+0.2` reads `0.3`. The shown answer groups thousands
+(`2^64` reads `18,446,744,073,709,552,000`); **the clipboard gets the plain digits**, so a
+paste is always a number. A number too large or too small for plain digits goes to the
+exponent shape (`1.2e21`).
+
 ### 2b. Commands
 
 Two terms are commands, drawn as the first row:
@@ -421,6 +471,17 @@ and in max columns 2-3, so it neither covers the NP card nor changes its size.
 9. Type a playlist: Enter opens it in Playlists; Ctrl+Enter plays it.
 10. Type anything: the last row is "Search Apple Music for …". Enter opens the Search card
     with the term typed and the search running.
+10a. **The calculator (§2d, added 2026-09-18 — OPEN).** Type `1+1`: the first row reads
+    `1 + 1 = 2` under an **Answer** header, with an equals sign in its square and no second
+    line. Enter copies `2`, a "Copied 2." toast shows, and **the bar stays open** with the
+    term still in the field. Paste somewhere: `2`, plain. Then check, in one sitting:
+    `2^10` = 1,024 · `log(1000)` = 3 · `sin(30)` = 0.5 · `atan(1)` = 45 · `5!` = 120 ·
+    `0.1+0.2` = 0.3 (not 0.30000000000000004) · `-2^2` = −4 · `(1+2)*3` = 9 ·
+    `100/3` = 33.3333333333 · `pi` = 3.14159265359 · `2^64` groups its thousands, and the
+    paste has none. **No row at all** for: `1984`, `e`, `1+`, `1/0`, `sqrt(-1)`, `3:45`,
+    an artist with a number in the name (`Blink-182`, `2 Chainz`). A song named `50/50`
+    shows the answer first AND the song under it. Last, in Mini: the row still appears and
+    Enter still copies.
 11. **Clear of the player (§11).** Midi: Ctrl+Space — the bar starts under the Now Playing
     card, not over it; the whole card stays readable. Drag the window narrower until the
     transport row stacks: the bar moves down with the card. Play a station (Repeat hides) at

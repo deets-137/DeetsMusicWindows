@@ -48,11 +48,12 @@ import { openRoomPanel } from "./room-panel";
 import { inRoom, leaveRoom, endRoom, roomState, startRoom, isStopped, listenAgain, stopListening } from "./room";
 import * as diag from "./diag";
 import { toast } from "./toast";
+import { parseSum } from "./compass-math";
 
 // ── the rows ──────────────────────────────────────────────────
 
 type Group =
-  | "Places" | "Settings" | "Actions" | "Sound" | "Up Next" | "Recently Played" | "Speakers"
+  | "Answer" | "Places" | "Settings" | "Actions" | "Sound" | "Up Next" | "Recently Played" | "Speakers"
   | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music";
 /** Rows per group, and for the shown library kind, by surface: Mini is a small window
  *  (the user's call 2026-09-17: three there). */
@@ -154,6 +155,7 @@ function nearWord(w: string, words: string[]): boolean {
 }
 
 const GLYPH: Record<Group, string> = {
+  Answer: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10h12M6 14h12"/></svg>',
   Places: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg>',
   Settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>',
   Actions: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l12 7-12 7z"/></svg>',
@@ -576,6 +578,24 @@ function volumeRow(term: string): Row[] {
   return [{ group: "Actions", title: `Volume ${pct}%`, run: () => setVolume(pct / 100) }];
 }
 
+/** A sum, answered inline (compass-math.ts, COMPASS.md §2c): `1+1` shows `1 + 1 = 2`. Enter
+ *  copies the answer and the bar stays open, so the next sum follows the last. Nothing that is
+ *  not a whole, real sum makes a row, so a song title with a number in it is untouched. */
+function mathRow(term: string): Row[] {
+  const sum = parseSum(term);
+  if (!sum) return [];
+  return [{
+    group: "Answer", title: `${sum.text} = ${sum.shown}`, stays: true,
+    run: () => void navigator.clipboard.writeText(sum.plain).then(
+      () => void toast({ kind: "success", text: `Copied ${sum.shown}.` }),
+      (e) => {
+        console.error("[compass] clipboard", e);
+        toast({ kind: "warn", text: "Couldn't copy the answer." });
+      },
+    ),
+  }];
+}
+
 /** "web <seed> [1|2|3] [genre, genre]" and "web song|album|artist <seed> …": one row that
  *  asks the playlist web for a playlist (web.ts `requestWeb`, COMPASS.md §2b). The seed is the
  *  longest run of words that starts a library artist, song, album or an earlier web's name;
@@ -844,7 +864,7 @@ function query(termRaw: string, kind: Group | null): Result {
   const words = term.split(/\s+/);
   const lib = libraryRows();
   preloadStations();
-  const rows: Row[] = [...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...favoriteRow(termRaw), ...addRow(termRaw)];
+  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...favoriteRow(termRaw), ...addRow(termRaw)];
   // Each group is a block with its best score; the blocks come in that order, ties in the
   // default order — so an exact playlist name ("Replay") sits above the Settings rows that
   // only contain the word. The library block (its chips ride with it) is one block.

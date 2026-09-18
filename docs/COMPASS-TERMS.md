@@ -35,6 +35,26 @@ so a word it does not have takes the nearest one and the row says so. Mini has n
 card fills the window there. The pick is not remembered — the bar opens on **Card** each
 time.
 
+## 1b. Sums (type the sum)
+
+Type a sum and the first row is the answer: **1+1** shows `1 + 1 = 2`. **Enter copies the
+answer** and the bar stays open. Nothing is sent anywhere.
+
+| Type | You get |
+|---|---|
+| **1+1**, **(2+3)*4**, **100/3**, **10 % 3** (or **10 mod 3**, the remainder) | The four operations, brackets, the remainder |
+| **2^10**, **2**10**, **sqrt(16)**, **cbrt(27)**, **root(3, 27)**, **5!** | Powers, roots, factorial |
+| **log(1000)** (base 10), **ln(e)**, **log2(256)**, **exp(1)** | Logarithms |
+| **sin(30)**, **cos(60)**, **tan(45)**, **asin(0.5)**, **atan(1)**, **atan2(1, 1)**, **sinh(1)** | Trigonometry, **in degrees** |
+| **rad(180)**, **deg(pi)** | Degrees to radians, and back |
+| **round(2.7)**, **floor**, **ceil**, **trunc**, **abs(-3)**, **sign(-3)** | Rounding |
+| **min(1, 9)**, **max(1, 9, 4)**, **hypot(3, 4)**, **gcd(12, 18)**, **lcm(4, 6)** | Several numbers |
+| **pi**, **π**, **tau**, **e** | The constants (`e` alone is read as a letter; use it in a sum) |
+
+A sum that is not finished (**1+**) or has no real answer (**1/0**, **sqrt(-1)**) shows no
+row. A name is never read as a sum, so **Blink-182** still finds the artist. A year
+(**1984**) is a search, not a sum.
+
 ## 2. Settings (type any word of the row's name or its section)
 
 Every row of the Settings card. A row whose value the app itself holds (a toggle or a choice
