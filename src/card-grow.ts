@@ -5,7 +5,8 @@
 //
 // Ways in: the edge zones (four strips per card, children of its host, placed by CSS in the
 // grid's gaps), the Grow button (enters a card's header on hover — it is NOT in the DOM at
-// rest, §0), and the title's right-click menu. Ways out: the same button, its zones, Esc, an outside click
+// rest, §0), the title's right-click menu, and `expandCard` (the title bar's cog opens
+// Settings as wide as the window allows, §17). Ways out: the same button, its zones, Esc, an outside click
 // (a setting; Pin holds the card against it), a card request for a covered card, a surface
 // change (no motion).
 //
@@ -22,6 +23,7 @@ import { currentSurface, onSurfaceChange } from "./surface";
 import { enterRows } from "./pop";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { tokenMs } from "./boot-cover";
+import { whenSwapSettled } from "./card-swap";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
@@ -295,6 +297,36 @@ function collapseNow(cause: string): void {
 
 /** End the grow. Resolves when the card is back in its place (after the motion). A collapse
  *  asked for during a motion waits for it, then runs. */
+/** Is `card` the grown one right now? (The cog's second click, SETTINGS.md.) */
+export function isGrownCard(card: string): boolean {
+  const slot = opts?.slotOf(card) ?? null;
+  return !!slot && state?.slot === slot;
+}
+
+/**
+ * Open `card` as wide as this window allows: Fill over all four in Max, over its one
+ * neighbor in Midi. The cog's way in (SETTINGS.md) — a button, not an edge, but it still
+ * obeys "Grow cards from edges" (the owner's call, 2026-09-18), so one flag governs every
+ * grow. In Mini nothing can grow and it does nothing.
+ *
+ * It waits for the summon's card swap first: the card has to be IN its slot before the
+ * clip-path can open from that slot's box.
+ *
+ * Returns true when the card grew.
+ */
+export async function expandCard(card: string, cause: string): Promise<boolean> {
+  if (!enabled()) return false; // Mini, or "Grow cards from edges" is off
+  await whenSwapSettled();
+  const slot = opts?.slotOf(card) ?? null;
+  if (!slot) return false;
+  if (state?.slot === slot) return true; // already the grown card
+  const dir: GrowDir | null = canFill() && !isStage(slot) ? "full" : growDirs(slot)[0] ?? null;
+  if (!dir) return false;
+  growCard(slot, dir, cause);
+  await settled;
+  return true;
+}
+
 export function collapseGrow(cause: string, withMotion = true): Promise<void> {
   if (!state || !opts) return Promise.resolve();
   if (animating) return settled.then(() => collapseGrow(cause, withMotion));

@@ -44,6 +44,7 @@ import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
+import { expandCard, isGrownCard, collapseGrow } from "./card-grow";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -118,18 +119,27 @@ window.addEventListener("DOMContentLoaded", () => {
     close();
   });
 
-  // ── The cog (title bar, right of the Compass) → the same Settings card. ──
-  // The angle only grows: every click adds --cog-step and nothing resets it, so the
-  // cog always turns the same way. The glyph has six teeth, so each step ends on an
-  // identical tooth. The CSS transition (--cog-spin) does the motion.
+  // ── The cog (title bar, right of the Compass) → Settings, as big as the window allows. ──
+  // Someone who presses the cog wants Settings, so the card does not arrive at card size:
+  // it fills all four in Max and opens over its neighbor in Midi (expandCard). A second
+  // press collapses it again. In Mini nothing can grow, so the card simply arrives.
+  //
+  // The angle only grows: every press adds --cog-step and nothing resets it, so the cog
+  // always turns the same way, whether it is opening or collapsing. The glyph has six
+  // teeth, so each step ends on an identical tooth. The CSS transition does the motion.
   const cog = document.getElementById("cog-open");
   if (cog) {
     let cogTurns = 0;
     cog.addEventListener("click", () => {
       cogTurns += 1;
       cog.style.setProperty("--cog-angle", `calc(var(--cog-step) * ${cogTurns})`);
-      requestCard("settings");
       close(); // the title menu, if the pointer opened it on the way past
+      if (isGrownCard("settings")) {
+        void collapseGrow("cog");
+        return;
+      }
+      requestCard("settings");
+      void expandCard("settings", "cog");
     });
   }
 

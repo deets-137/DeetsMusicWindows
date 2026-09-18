@@ -683,6 +683,32 @@ lose. Now a drill uses the slot you are reading, and Back walks the chain backwa
 7. Max, a filled card: §14 still holds, and Back still returns under the span.
 8. Reduced motion: no slide.
 
+## 17. `expandCard` — a button that opens a card at full size (BUILT 2026-09-18)
+
+The title bar's cog (right of the Compass) summons the Settings card and opens it at once.
+Someone who presses the cog wants Settings, not a card-sized corner of it.
+
+`expandCard(card, cause)` in `src/card-grow.ts` is the way in:
+
+| Surface | What it does |
+| --- | --- |
+| Max  | Fill — the card covers all four content cards. |
+| Midi | Grow over its one neighbour (there is no Fill outside Max). |
+| Mini / Player | Nothing grows. The card arrives as the only card. Player becomes Mini first. |
+
+Rules, all decided by the owner on 2026-09-18:
+
+- **It obeys "Grow cards from edges"** (Settings › Window, `cardGrow`). The cog is a button,
+  not an edge, but one flag governs every grow. With the row off, the cog summons the card
+  and nothing opens.
+- **A second press collapses it.** `isGrownCard("settings")` answers whether the cog's card
+  is the grown one; the cog calls `collapseGrow("cog")` when it is.
+- **It waits for `whenSwapSettled()`** before it grows. The card has to be in its slot first,
+  or the clip-path has no box to open from.
+
+The cog turns 120° on every press, open or collapse, so the turn reads as "you pressed it"
+and never as "it is open". Six teeth means each step ends on an identical tooth.
+
 ## 16. The stage column (2026-09-17) — see docs/STAGE-COLUMN.md
 
 Max's left column (Now Playing over the anchored Queue) joined this system on 2026-09-17. The
