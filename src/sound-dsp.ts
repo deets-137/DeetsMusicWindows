@@ -263,15 +263,42 @@ export function isoCompensation(i: number, refPhon: number, dropDb: number): num
 /** The listening level full volume is assumed to reach, in phon (a room at a loud-ish level). */
 export const LOW_VOLUME_REF_PHON = 80;
 
+/** Corners of the two low shelves that model the bass side of the ISO 226 rise (see below). */
+export const LOW_SHELF_HZ = 300;
+export const SUB_SHELF_HZ = 70;
+export const HIGH_SHELF_HZ = 10000;
+/** The bass boost may reach this, all shelves summed (the deep-bass plateau). */
+export const LOW_VOLUME_BASS_CAP_DB = 12;
+export const LOW_VOLUME_TREBLE_CAP_DB = 6;
+
 /**
- * The two shelves for Fuller at low volume: the ISO 226 compensation at 100 Hz (low shelf)
- * and 10 kHz (high shelf), scaled by `strength` 0..1, never more than the drop itself (so the
- * boost cannot lift the signal above where the volume put it) and capped at 12 / 6 dB.
+ * The shelves for Fuller at low volume, scaled by `strength` 0..1.
+ *
+ * Bass: ISO 226 does not give a flat step; between 400 Hz and 30 Hz the needed boost climbs
+ * about 0.8 dB per octave and keeps climbing. One RBJ shelf cannot follow that — its corner is
+ * its HALF-gain point, so the first build's 100 Hz shelf set to the 100 Hz value delivered only
+ * half of it there and about 70 % at 50 Hz (found in review, 2026-09-18). Two shelves fit the
+ * contour to within 0.4 dB RMS over 31.5–400 Hz at every drop from 12 to 30 dB (fit run
+ * against `isoCompensation`, 2026-09-18): `low` at 300 Hz carrying 0.8 × the 100 Hz value, and
+ * `sub` at 70 Hz carrying 0.5 × the 31.5 Hz value. Their sum is the plateau under ~30 Hz.
+ * Treble: one shelf at 10 kHz with the 10 kHz value (small by the science: ≤ 2.6 dB).
+ *
+ * Caps: the bass plateau never passes LOW_VOLUME_BASS_CAP_DB nor the drop itself (the boost
+ * cannot lift the signal above where the volume put it); both bass shelves scale together so
+ * the shape holds. Treble likewise against its own cap.
  */
-export function lowVolumeShelves(dropDb: number, strength: number): { low: number; high: number } {
+export function lowVolumeShelves(dropDb: number, strength: number): { low: number; sub: number; high: number } {
   const d = Math.max(0, dropDb);
-  const i100 = ISO_F.indexOf(100), i10k = ISO_F.indexOf(10000);
-  const low = Math.min(isoCompensation(i100, LOW_VOLUME_REF_PHON, d) * strength, 12, d);
-  const high = Math.min(isoCompensation(i10k, LOW_VOLUME_REF_PHON, d) * strength, 6, d);
-  return { low, high };
+  const i100 = ISO_F.indexOf(100), i31 = ISO_F.indexOf(31.5), i10k = ISO_F.indexOf(10000);
+  let low = 0.8 * isoCompensation(i100, LOW_VOLUME_REF_PHON, d) * strength;
+  let sub = 0.5 * isoCompensation(i31, LOW_VOLUME_REF_PHON, d) * strength;
+  const plateau = low + sub;
+  const limit = Math.min(LOW_VOLUME_BASS_CAP_DB, d);
+  if (plateau > limit && plateau > 0) {
+    const k = limit / plateau;
+    low *= k;
+    sub *= k;
+  }
+  const high = Math.min(isoCompensation(i10k, LOW_VOLUME_REF_PHON, d) * strength, LOW_VOLUME_TREBLE_CAP_DB, d);
+  return { low, sub, high };
 }

@@ -397,12 +397,16 @@ function installPlayHook(): void {
 
 // ── Config → the bus ─────────────────────────────────────────────────────────────────
 
-/** The volume the listener has set (app slider × Windows master), in dB below full. */
+/** The level the listener hears, in dB below full: the app slider × Windows master, and the
+ *  match gain when Match loudness is on. The ear needs the compensation for the level it gets,
+ *  and a song matched 7 dB down is 7 dB quieter whatever the slider says (before 2026-09-18 the
+ *  slider alone was read, so raising it to undo the match gain shrank the shelves for nothing). */
 function volumeDropDb(): number {
   const duck = getDuck();
   const app = duck > 0 ? getVolume() / duck : getVolume(); // the sleep fade is not "listening quieter"
   const level = Math.max(app * config.masterVolume, 1e-4);
-  return -20 * Math.log10(level);
+  const match = config.match ? matchDb : 0;
+  return -20 * Math.log10(level) - match;
 }
 
 /** The EQ curve's highest point over 20 Hz–20 kHz (dB). */
@@ -432,7 +436,7 @@ export function preampFor(bands: Band[] = config.bands): number {
 
 function busConfig(): BusConfig {
   const eq = config.eqOn ? config.bands : [];
-  const shelves = config.lowVolume > 0 ? lowVolumeShelves(volumeDropDb(), config.lowVolume) : { low: 0, high: 0 };
+  const shelves = config.lowVolume > 0 ? lowVolumeShelves(volumeDropDb(), config.lowVolume) : { low: 0, sub: 0, high: 0 };
   const preampDb = config.eqOn ? preampFor(eq) : 0;
   return {
     enabled: wanted(),
@@ -441,6 +445,7 @@ function busConfig(): BusConfig {
     bands: eq,
     design: config.design,
     lowShelfDb: shelves.low,
+    subShelfDb: shelves.sub,
     highShelfDb: shelves.high,
     crossfeed: config.crossfeed,
     ceilingDb: config.ceilingDb,
@@ -457,6 +462,11 @@ export function setMatchGain(db: number, rampMs = 50): void {
   if (Math.abs(db - matchDb) < 0.01) return;
   matchDb = db;
   for (const n of elementNodes) n.port.postMessage({ type: "gain", db, rampMs });
+  // Fuller at low volume keys on the heard level, which this gain is part of (volumeDropDb).
+  if (config.lowVolume > 0 && config.match) {
+    push();
+    emit();
+  }
 }
 export function getMatchGain(): number {
   return matchDb;
@@ -796,7 +806,7 @@ export { volumeDropDb };
 async function offlineTest(): Promise<Record<string, unknown>> {
   const fs = 48000;
   const report: Record<string, unknown> = {};
-  const base: BusConfig = { enabled: true, compare: false, preampDb: 0, bands: [], design: "matched", lowShelfDb: 0, highShelfDb: 0, crossfeed: { on: false, fc: 700, db: -6 }, ceilingDb: -1, solo: null };
+  const base: BusConfig = { enabled: true, compare: false, preampDb: 0, bands: [], design: "matched", lowShelfDb: 0, subShelfDb: 0, highShelfDb: 0, crossfeed: { on: false, fc: 700, db: -6 }, ceilingDb: -1, solo: null };
 
   /** Render `seconds` of `gen(i, ch)` through a bus with `cfg`; returns [input, output] channel data. */
   async function render(cfg: BusConfig, seconds: number, gen: (i: number, ch: number) => number) {
@@ -865,12 +875,13 @@ async function offlineTest(): Promise<Record<string, unknown>> {
     report.crossfeedMono = rows;
   }
 
-  // 5. Fuller at low volume: −17 dB (14 %) at full strength → the shelf gains at 50 Hz and 16 kHz.
+  // 5. Fuller at low volume: −17 dB (14 %) at full strength → the gains at 31.5 / 50 / 100 Hz
+  //    against ISO 226 (8.0 / 7.0 / 5.3 dB), 1 kHz flat, 16 kHz the treble shelf.
   {
     const s = lowVolumeShelves(17, 1);
     const rows: unknown[] = [];
-    for (const f of [50, 1000, 16000]) {
-      const r = await render({ ...base, lowShelfDb: s.low, highShelfDb: s.high, ceilingDb: 12 }, 1, sine(f, 0.1));
+    for (const f of [31.5, 50, 100, 1000, 16000]) {
+      const r = await render({ ...base, lowShelfDb: s.low, subShelfDb: s.sub, highShelfDb: s.high, ceilingDb: 12 }, 1, sine(f, 0.1));
       rows.push({ f, dB: +(rmsDb(r.output[0], fs / 2) - rmsDb(r.input[0], fs / 2)).toFixed(2) });
     }
     report.lowVolume = { shelves: s, rows };

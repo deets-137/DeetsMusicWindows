@@ -8,7 +8,7 @@ import { keepInWindow, makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { makeSlider, type SliderHandle } from "./slider";
 import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
-import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, type Band, type BandType } from "./sound-dsp";
+import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, LOW_SHELF_HZ, SUB_SHELF_HZ, HIGH_SHELF_HZ, type Band, type BandType } from "./sound-dsp";
 import { GRAPHIC_FREQS, MAX_BANDS, fitGraphic, isGraphic, parseApo, toApo, type EqPreset } from "./sound-presets";
 import * as sound from "./sound";
 import * as loudness from "./sound-loudness";
@@ -1305,9 +1305,9 @@ function renderStatus(): void {
     ? offLine
     : lowMode === "off"
       ? "Off."
-      : shelves.low < 0.1
+      : shelves.low + shelves.sub < 0.1
         ? `${levelText}. Loud enough: nothing added.`
-        : `${levelText}. Adds ${db(shelves.low)} bass and ${db(shelves.high)} treble.`);
+        : `${levelText}. Adds ${db(shelves.low + shelves.sub)} deep bass and ${db(shelves.high)} treble.`);
   const xf = sound.crossfeedState();
   setText(xfStatus, !adaptive ? offLine : xf.why);
   const ls = loudness.loudnessState();
@@ -1407,7 +1407,7 @@ function effectDbAt(freqs: number[]): number[] {
   const mode = setting("soundLowVol");
   if (setting("soundAdaptive") && mode !== "off") {
     const sh = lowVolumeShelves(sound.volumeDropDb(), mode === "full" ? 1 : 0.5);
-    chain.push(rbj("lowshelf", 100, sh.low, 0.707, fs), rbj("highshelf", 10000, sh.high, 0.707, fs));
+    chain.push(rbj("lowshelf", LOW_SHELF_HZ, sh.low, 0.707, fs), rbj("lowshelf", SUB_SHELF_HZ, sh.sub, 0.707, fs), rbj("highshelf", HIGH_SHELF_HZ, sh.high, 0.707, fs));
   }
   return freqs.map((f) => (chain.length ? chainDb(chain, f, fs) : 0));
 }

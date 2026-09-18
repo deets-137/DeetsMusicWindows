@@ -9,7 +9,7 @@
 //   and posts one chunk per 4096 frames, which sound.ts hands to Rust for the AirPlay speaker.
 // Every setting arrives as a port message; nothing here reads the DOM or the store.
 
-import { bandBiquads, kWeighting, rbj, type Band, type Biquad } from "./sound-dsp";
+import { bandBiquads, kWeighting, rbj, LOW_SHELF_HZ, SUB_SHELF_HZ, HIGH_SHELF_HZ, type Band, type Biquad } from "./sound-dsp";
 
 // ── AudioWorkletGlobalScope (not in the DOM lib) ────────────────────────────────
 declare const sampleRate: number;
@@ -142,8 +142,9 @@ export interface BusConfig {
   preampDb: number;
   bands: Band[];
   design: "matched" | "rbj";
-  /** Fuller at low volume: shelf gains in dB (0 = off). */
+  /** Fuller at low volume: shelf gains in dB (0 = off) — low (300 Hz), sub (70 Hz), high (10 kHz). */
   lowShelfDb: number;
+  subShelfDb: number;
   highShelfDb: number;
   crossfeed: { on: boolean; fc: number; db: number };
   ceilingDb: number;
@@ -183,10 +184,16 @@ class BusProcessor extends AudioWorkletProcessor {
   private preampTarget = 1;
 
   private lowDb = 0;
+  private subDb = 0;
   private highDb = 0;
   private lowTarget = 0;
+  private subTarget = 0;
   private highTarget = 0;
-  private shelves = new Chain([rbj("lowshelf", 100, 0, 0.707, sampleRate), rbj("highshelf", 10000, 0, 0.707, sampleRate)]);
+  private shelves = new Chain([
+    rbj("lowshelf", LOW_SHELF_HZ, 0, 0.707, sampleRate),
+    rbj("lowshelf", SUB_SHELF_HZ, 0, 0.707, sampleRate),
+    rbj("highshelf", HIGH_SHELF_HZ, 0, 0.707, sampleRate),
+  ]);
 
   // Crossfeed (Bauer, as bs2b): complementary one-pole low/high-pass per channel. No explicit
   // delay: the low-pass's own group delay (~0.23 ms at 700 Hz) is the interaural delay, and an
@@ -257,6 +264,7 @@ class BusProcessor extends AudioWorkletProcessor {
     this.cfg = c;
     this.preampTarget = dbToGain(c.preampDb);
     this.lowTarget = c.lowShelfDb;
+    this.subTarget = c.subShelfDb;
     this.highTarget = c.highShelfDb;
     this.xfTarget = c.crossfeed.on ? dbToGain(c.crossfeed.db) : 0;
     this.xfA = Math.exp((-2 * Math.PI * c.crossfeed.fc) / sampleRate);
@@ -280,6 +288,7 @@ class BusProcessor extends AudioWorkletProcessor {
     if (first) {
       this.preamp = this.preampTarget;
       this.lowDb = this.lowTarget;
+      this.subDb = this.subTarget;
       this.highDb = this.highTarget;
       this.xfC = this.xfTarget;
       this.mix = c.enabled && !c.compare ? 0 : 1;
@@ -293,8 +302,9 @@ class BusProcessor extends AudioWorkletProcessor {
 
   private rebuildShelves(): void {
     const s = this.shelves.sections;
-    s[0].c = rbj("lowshelf", 100, this.lowDb, 0.707, sampleRate);
-    s[1].c = rbj("highshelf", 10000, this.highDb, 0.707, sampleRate);
+    s[0].c = rbj("lowshelf", LOW_SHELF_HZ, this.lowDb, 0.707, sampleRate);
+    s[1].c = rbj("lowshelf", SUB_SHELF_HZ, this.subDb, 0.707, sampleRate);
+    s[2].c = rbj("highshelf", HIGH_SHELF_HZ, this.highDb, 0.707, sampleRate);
   }
 
   /** Once per block: glide EQ parameters and shelf gains toward their targets. */
@@ -318,9 +328,11 @@ class BusProcessor extends AudioWorkletProcessor {
       this.eq.sections.forEach((s, i) => cs[i] && (s.c = cs[i]));
     }
     const lowStep = Math.max(-0.1, Math.min(0.1, this.lowTarget - this.lowDb));
+    const subStep = Math.max(-0.1, Math.min(0.1, this.subTarget - this.subDb));
     const highStep = Math.max(-0.1, Math.min(0.1, this.highTarget - this.highDb));
-    if (lowStep !== 0 || highStep !== 0) {
+    if (lowStep !== 0 || subStep !== 0 || highStep !== 0) {
       this.lowDb += lowStep;
+      this.subDb += subStep;
       this.highDb += highStep;
       this.rebuildShelves();
     }
@@ -362,7 +374,7 @@ class BusProcessor extends AudioWorkletProcessor {
       }
 
       // Fuller at low volume
-      if (this.lowDb !== 0 || this.highDb !== 0) {
+      if (this.lowDb !== 0 || this.subDb !== 0 || this.highDb !== 0) {
         l = this.shelves.run(l, 0);
         r = this.shelves.run(r, 1);
       }

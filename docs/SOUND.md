@@ -304,14 +304,34 @@ One switch, three parts. Each part adapts to one thing and has its own on/off (a
 
 ### 3B. Fuller at low volume
 - **The curve:** ISO 226 equal-loudness contours. At a lower listening level the ear needs more
-  bass (and some top) for the same balance. Modelled with two shelves: low shelf ~100 Hz, high
-  shelf ~10 kHz, gains from the volume in dB against a reference (100 % volume = no change).
-- **The level it keys on** — a fork (§6 fork 7): the app slider only; or the app slider × the
-  Windows master volume (Rust reads `IAudioEndpointVolume` and its change notice); while AirPlay
-  holds the slider, the speaker volume.
-- **Strength**: Off / Gentle / Full (a scale on the shelf gains). Full, from the ISO 226 formula with
-  80 phon at full volume: −6 dB → +1.9 / +0.4 dB (100 Hz / 10 kHz); −17 dB (14 %) → +5.3 / +1.2 dB;
-  −24 dB → +7.4 / +1.7 dB; −40 dB → +11.9 / +2.6 dB. Gentle = half.
+  bass (and some top) for the same balance. Gains from the volume in dB against a reference
+  (100 % volume = no change, assumed 80 phon).
+- **The shelves (rebuilt 2026-09-18, found in review).** The first build used one low shelf at
+  100 Hz set to the ISO value at 100 Hz. An RBJ shelf's corner is its **half-gain** point, so it
+  delivered 2.6 dB at 100 Hz where ISO asked 5.3, and 4.9 dB at 50 Hz where ISO asked 7.0 (at a
+  17 dB drop). ISO's bass side is a slope, about 0.8 dB per octave from 400 Hz down, not a step.
+  Now **two low shelves** fit it to within 0.4 dB RMS over 31.5–400 Hz at every drop from 12 to
+  30 dB (fit run against `isoCompensation`): 300 Hz carrying 0.8 × the 100 Hz value, and 70 Hz
+  carrying 0.5 × the 31.5 Hz value; their sum is the deep-bass plateau. One high shelf at 10 kHz
+  as before. Constants in `sound-dsp.ts` (`LOW_SHELF_HZ`, `SUB_SHELF_HZ`, `HIGH_SHELF_HZ`); the
+  worklet, the panel's curve and the panel's status line all read them.
+- **The level it keys on** — fork 7 decided: the app slider × the Windows master volume (Rust
+  reads `IAudioEndpointVolume` and its change notice); while AirPlay holds the slider, the
+  speaker volume. **Plus the match gain (2026-09-18):** with Match loudness on, a song matched
+  7 dB down is 7 dB quieter at the ear whatever the slider says, so `volumeDropDb` subtracts
+  `matchDb` and `setMatchGain` re-pushes the bus. Before, raising the slider to undo the match
+  gain shrank the shelves while the loudness at the ear had not changed.
+- **Strength**: Off / Gentle / Full (a scale on the shelf gains). Full, the response of the chain:
+
+  | Drop | Plateau (≤ 31.5 Hz) | 50 Hz | 100 Hz | ISO at 31.5 / 50 / 100 | 16 kHz |
+  |---|---|---|---|---|---|
+  | −6 dB | +2.9 | +2.6 | +1.8 | 2.8 / 2.5 / 1.9 | +0.4 |
+  | −17 dB (14 %) | +8.1 | +7.4 | +5.0 | 8.0 / 7.0 / 5.3 | +1.2 |
+  | −24 dB | +11.3 | +10.3 | +7.0 | 11.3 / 9.9 / 7.4 | +1.6 |
+  | −40 dB | +11.7 (capped) | +10.7 | +7.2 | 18.5 / 16.1 / 11.9 | +2.5 |
+
+  Gentle = half (−17 dB: +4.0 / +3.7 / +2.5). The bass plateau is capped at 12 dB and at the
+  drop itself; both bass shelves scale together so the shape holds.
 - **Clipping:** none possible from this part at low volume — the boost sits after a larger cut
   (§0). Near 100 % it adds nothing.
 - Cost: two biquads whose gains change only when the volume changes (a ramp, not per sample).
@@ -386,7 +406,7 @@ Every effect ships off. Before the feature leaves the dev branch, it has to earn
 | EQ (+6 dB 1 kHz, −6 dB 12 kHz, +4 dB low shelf 120 Hz), tone gains vs the design | 60 Hz 3.781 / 1 kHz 5.969 / 3 kHz 0.468 / 12 kHz −5.961 / 16 kHz −3.436 dB — equal to `chainDb` to 3 decimals |
 | Limiter, +6 dBFS sine in | output peak −1.000 dBFS (the ceiling) |
 | Crossfeed −4.5 dB, mono in, at 100 Hz / 1 kHz / 10 kHz | 0.000 / 0.000 / 0.000 dB (first build had a delay line: −3.4 dB at 1 kHz; removed) |
-| Fuller at low volume, −17 dB drop, full strength | shelves +5.27 / +1.22 dB; measured +4.94 dB at 50 Hz, 0 at 1 kHz, +1.17 dB at 16 kHz |
+| Fuller at low volume, −17 dB drop, full strength | 2026-09-16 (one shelf): +4.94 dB at 50 Hz, 0 at 1 kHz, +1.17 dB at 16 kHz. **Since 2026-09-18 (two low shelves, §3B) the test renders 31.5 / 50 / 100 Hz too; expected +8.1 / +7.4 / +5.0 dB — re-run `__sound.offlineTest()` and record it here.** |
 | Element meter, 1 kHz −23 dBFS stereo, 12 s | −22.99 LUFS |
 | Listen to a zone (Body, 150–500 Hz), effects off | 300 Hz −0.09 dB; 60 Hz −31.8 dB; 3 kHz −62.7 dB |
 
