@@ -138,6 +138,36 @@ from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09
    tray Quit, the updater's restart and the AirPlay teardown, each of which can touch the window
    after tao destroyed it. Needs code reading plus a reproduction on the dev app, not tooling.
 
+**2026-09-17 — bulk delete local playlists, and the list stopped jumping to the top.**
+The owner asked for one thing and the work found two bugs under it.
+- **Bulk delete** ([PLAYLISTS.md §10.3](PLAYLISTS.md)): Ctrl/Shift+click a run of playlists,
+  right-click, *Delete N playlists*. Only the **local** ones go — an Apple mirror has no delete
+  path, so it is counted and named, not touched. One red sticky question for the whole set
+  (**always**, even when every playlist is empty: one gesture removes many rows), the deletes
+  run one after the other, and one failure does not stop the rest. `card.dropPicks()` drops the
+  picks after, or the count row keeps counting rows that have left the list.
+- **A right-click after scrolling jumped the list to the top** — two independent causes, both
+  fixed (UI-ARCHITECTURE.md "Keeping the list's place through a re-render"). (a) A row carries
+  no `tabindex` until the keys reach it, so Chromium sent the focus of ANY press to the list's
+  own box, and `list-keys.ts` moved that focus to row one. It now ignores a focus that arrived
+  with a pointer press. This hit **every card that adopts the helper** — the collection cards,
+  Queue, History, Home, Search — not only Playlists. (b) `renderViewInto` replaces the rows'
+  HTML, which drops `scrollTop`; the multi-select pick re-rendered with no save-and-restore, so
+  every Ctrl+click and Shift+click also jumped. `reload()`'s save-and-restore is now the shared
+  `rerenderInPlace`, and the pick goes through it.
+- **Density switch keeps your place** too (the owner's call): the same rows in the same order at
+  a different size. Sort and the filter toggle still go to the top, unchanged.
+- On the way: `initCollectionCard` now returns a **declared** `CollectionCardHandle`. It was
+  inferred, and the no-`.coll-body` early-return stub made every new member optional — which is
+  why `dropPicks()` read as possibly-undefined. The interface stops the stub drifting again, and
+  it records that `snapshot()` really can return null.
+- No Rust change, so no dev-runner restart. **Desk test:** scroll the Playlists list down, then
+  right-click a row, Ctrl+click a row, Shift+click a run, and switch Lines → Tiles — the list
+  must not move in any of them; Tab into the list must still land on the first row. Repeat the
+  right-click in the Queue and History. Then pick three local playlists and delete them (the
+  question's counts, [Delete All], the result toast), pick a mirror with them (it is named and
+  stays), and pick mirrors alone (no item at all).
+
 **2026-09-17 — 0.9.5 is live on the `deetsmusic` channel** (`main` at `7691a66`; installer 7.4 MB).
 It ships the Compass and its commands, the list keys, the Genres view and the collection sorts, card
 memory ([CARD-MEMORY.md](CARD-MEMORY.md)), and the dev-only sound rate override
@@ -635,7 +665,8 @@ releases since 0.6.2, in short:
   AirPlay capture's sinc resampler (crate `rev` 4989dfb).
 - **0.7.0** — the sleep timer, the volume pill that grows in place, fancy scrubbers, the
   hover-hint pass, the graphics ruler (NEXT-VERSION §17, §20, §21).
-- **0.6.3** — multi-select rows everywhere (NEXT-VERSION §19).
+- **0.6.3** — multi-select rows everywhere (NEXT-VERSION §19). A picked set of playlists also
+  **deletes** (the local ones, PLAYLISTS.md §10.3; 2026-09-17).
 - **0.6.2** — per-view open sizes (FUTURE-SETTINGS §8a), the AirPlay speaker claim on crate 0.3.0
   (AIRPLAY.md §11 — one-directional: we write claims, we do not read them).
 

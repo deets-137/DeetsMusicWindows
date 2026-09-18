@@ -679,6 +679,30 @@ the card: `settings-card.ts` sets `is-scrollable` after each render and on resiz
 thumb color is a registered `@property --set-thumb` that transitions on `--dur-med`
 (`settings.css`; snaps under reduced motion). Copy the pattern to another card if it jitters.
 
+### Keeping the list's place through a re-render (2026-09-17)
+
+`renderViewInto` replaces the rows' HTML, and that drops `scrollTop` to 0. So the engine has
+two ways to re-render the visible pane, and picking the wrong one is what a "the list jumped
+to the top" report usually is:
+
+- **`rerenderInPlace(pane, frame)`** — the rows and their order do not change, only how they
+  look: a multi-select pick, a background sync (`reload`), a density switch. It reads
+  `scrollTop`, re-renders, and puts it back (a windowed list through `w.scrollTo`).
+- **`renderViewInto(pane, frame)`** — the list itself changes: a sort, a grouping, a filter, a
+  search. The top is the right place, and the grouping and search paths also set `frame.scroll
+  = 0` so a Back does not restore the old place.
+
+`frame.scroll` is only written on a **drill** and by `liveScroll` (for a snapshot), so it is
+stale during a re-render — never restore a re-render from it, or the list goes to wherever the
+user last drilled from (usually 0).
+
+A second way the list can jump: the **focus**. A row carries no `tabindex` until the keys
+reach it (`src/list-keys.ts`), so Chromium sends the focus of any press inside a list to the
+list's own box, which is the tab stop. The helper's `focusin` handler exists for Tab — it
+moves to the first row — and it ignores a focus that arrived with a pointer press, or every
+right-click and Ctrl+click would scroll the list back to row one (fixed 2026-09-17; it hit
+every card that adopts the helper: the collection cards, Queue, History, Home, Search).
+
 ### Long lists: rows are relayout boundaries
 
 `.lib-list` is a **block** stack (not a flex column) and every art row (`.lib-row--art`)

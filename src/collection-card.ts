@@ -1084,7 +1084,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       cur().density = dn.dataset.density as Density;
       persist();
       setActive("data-density", dn.dataset.density!);
-      renderViewInto(pane, cur());
+      // The same rows in the same order, at a different size (the user's call 2026-09-17):
+      // keep the place. The rows are taller or shorter, so the offset lands near where you
+      // were, not exactly on it — a windowed list re-anchors on its own row pitch.
+      rerenderInPlace(pane, cur());
       return;
     }
     const gr = t.closest<HTMLElement>("[data-group]");
