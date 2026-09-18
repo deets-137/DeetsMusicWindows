@@ -188,7 +188,7 @@ const TIPS: [string, string][] = [
   ["Drag anything", "Songs, albums, and playlists move. Drop one on Now Playing, on the Queue, or on a playlist and see."],
   ["Click your way in", "A tile opens. The arrow at the top goes back. Sort, View, and the magnifier above a list are safe to try."],
   ["Click DeetsMusic at the top left", "The look and the size of the window live there. Try a theme, a skin, and Mini or Max. Nothing is permanent."],
-  ["Press Ctrl+Space", "A bar opens at the top. Type a card, a setting, a song, an album, an artist or a playlist, and press Enter to go there. Escape closes it."],
+  ["Press Ctrl+Space", "A bar opens at the top. Type a card, a setting, a song, an album, an artist or a playlist, and press Enter to go there. Ctrl+Space again, or Escape, closes it."],
   [TIP_CLOSE, "The × hides DeetsMusic to the tray and the music keeps playing. The tray icon brings it back."],
 ];
 
@@ -638,7 +638,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         // ── Card grow (CARD-GROW.md §8) ──
         storeToggle("cardgrow", "Grow cards from edges", "cardGrow", () => "Click the gap beside a card to open it over its neighbor. Hover a card's title for the button"),
         storeToggle("cardgrowoutside", "Collapse on outside click", "cardGrowOutside", () => "A click outside a grown card collapses it. Pin holds it open"),
-        storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Escape, the compass button, or a pick closes it"),
+        storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it"),
         {
           kind: "choice", id: "cardgrowpick", label: "Grown card on card pick", key: "cardGrowPick",
           hint: "Pick another card in a grown card's title: it keeps the size, or collapses first",

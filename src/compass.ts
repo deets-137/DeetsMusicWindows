@@ -948,7 +948,8 @@ export function agentGo(payload: { target?: string; list?: boolean } | null): Re
 
 export const compassOpen = (): boolean => !!handle?.isOpen;
 
-/** Open the bar (Ctrl+Space, the title menu row). A second press keeps it open and refocuses. */
+/** Open the bar (the title menu row, the compass button). A second call keeps it open and refocuses.
+ *  Ctrl+Space itself toggles: see the key handler at the end of this file. */
 export function openCompass(): void {
   if (!handle) return;
   if (!handle.isOpen) {
@@ -1272,9 +1273,11 @@ export function initCompass(): void {
   // Ctrl+Space, and Ctrl+Shift+Space for a PC whose IME takes the first (COMPASS.md §1).
   // From a text field too: no field of ours uses Ctrl+Space, and the Search field is where
   // a person often is when they want to go somewhere else.
+  // The same keys close the bar when it is open: the key that opens it also puts it away.
   document.addEventListener("keydown", (e) => {
     if (e.code !== "Space" || !e.ctrlKey || e.altKey || e.metaKey) return;
     e.preventDefault();
-    openCompass();
+    if (handle?.isOpen) closeCompass();
+    else openCompass();
   });
 }

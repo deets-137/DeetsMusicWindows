@@ -209,7 +209,7 @@ the text caret; Tab belongs to the filter row (2a).
   the focus the whole time; the highlighted row carries `is-active` and `aria-selected`.
   Typing filters at once (no debounce: the index is in memory).
 - **Run:** Enter, or a click on a row. Ctrl+Enter is the row's second action.
-- **Close:** Escape (typed text clears first; a second Escape closes), a click outside (Settings › Window › **Compass closes on outside click**,
+- **Close:** Ctrl+Space again (the same key puts the bar away), Escape (typed text clears first; a second Escape closes), a click outside (Settings › Window › **Compass closes on outside click**,
   default on; a press on the title bar's drag region counts, since it never sends a click),
   or a result that leaves the bar. Focus returns to the element that had it.
 - **Where:** under the title bar, `left` and `right` at `--panel-edge-gap`, `z-index` with
@@ -530,7 +530,8 @@ needle settles, it does not snap); reduced motion drops the transition and the m
 (both the row's own action and its `Ctrl+Enter` second action), and the `hidden` observer
 reads it, so every close path — Esc, a click away, the button again — turns the same way. A
 row that keeps the bar open (a toggle, a choice) is not a trip and does not set it. A second
-`Ctrl+Space` while the bar is open only refocuses the field, so it adds no turn.
+`Ctrl+Space` while the bar is open closes it, so the needle unwinds the way Esc does.
+The compass button and `openCompass()` still only open and refocus.
 
 **Desk test.** 1. Ctrl+Space: the needle turns half a circle as the bar arrives. 2. Esc: it
 turns back to where it started. 3. Ctrl+Space, `library`, Enter: it carries on the same way
