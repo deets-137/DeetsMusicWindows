@@ -12,7 +12,7 @@ import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, type Band, type 
 import { GRAPHIC_FREQS, MAX_BANDS, fitGraphic, isGraphic, parseApo, toApo, type EqPreset } from "./sound-presets";
 import * as sound from "./sound";
 import * as loudness from "./sound-loudness";
-import { getVolume, getDuck, onPlayerState } from "./player";
+import { getVolume, getDuck, onPlayerState, onPlayerProgress } from "./player";
 import * as diag from "./diag";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -189,6 +189,8 @@ export function initSoundPanel(): void {
   loudness.onLoudnessChange(() => {
     if (!panel.hidden) renderStatus();
   });
+  // The listen's own progress: the only part of the status that moves between songs.
+  onPlayerProgress(() => renderLoudStatus());
   // A new song starts a new shape.
   let songKey = "";
   onPlayerState((st) => {
@@ -1200,10 +1202,16 @@ function measuringLine(): string {
 
 /** Match loudness, one line: what sets this song's gain, and how far the listen has come. */
 function loudLine(): string {
-  const { source: s, heardPct } = loudness.loudnessState();
+  const { source: s, heardPct, songMeasured } = loudness.loudnessState();
   const moved = (g: number) => (g < -0.05 ? `turned down ${db(-g)}` : g > 0.05 ? `turned up ${db(g)}` : "left as it is");
   const cap = (x: { cappedFrom?: number }) => (x.cappedFrom !== undefined ? ", less than it needs so its loudest moments stay clean" : "");
-  const heard = heardPct !== null && s.kind !== "off" && s.kind !== "idle" ? ` Measuring: ${heardPct} %.` : "";
+  // The song's own measurement is there: say so, and drop the progress. Every listen is measured
+  // again, so without this the line said "Measuring" on a song measured months ago.
+  const heard = songMeasured
+    ? " Measured."
+    : heardPct !== null && s.kind !== "off" && s.kind !== "idle"
+      ? ` Measuring: ${heardPct} %.`
+      : "";
   switch (s.kind) {
     case "off":
       return "Off.";
@@ -1218,6 +1226,16 @@ function loudLine(): string {
     case "none":
       return `New song: left as it is until it is measured.${heard}`;
   }
+}
+
+/** The Match loudness line alone. A progress tick calls this, so "Measuring: N %" counts up
+ *  instead of standing at the number it held when the panel opened. `setText` drops the write
+ *  when the sentence did not change, which is most ticks. */
+function renderLoudStatus(): void {
+  if (!parts || parts.panel.hidden) return;
+  setText(loudStatus, !setting("soundAdaptive")
+    ? "Adaptive sound is off."
+    : !setting("soundLoudness") ? measuringLine() : loudLine());
 }
 
 function renderStatus(): void {
@@ -1270,7 +1288,7 @@ function renderStatus(): void {
   // Adaptive
   const adaptive = setting("soundAdaptive");
   const offLine = "Adaptive sound is off.";
-  setText(loudStatus, !adaptive ? offLine : !setting("soundLoudness") ? measuringLine() : loudLine());
+  renderLoudStatus();
   const lowMode = setting("soundLowVol");
   const duck = getDuck();
   const app = duck > 0 ? getVolume() / duck : getVolume();

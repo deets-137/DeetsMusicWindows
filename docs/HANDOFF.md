@@ -162,13 +162,20 @@ user's request without the hand install test of RELEASE.md §0 step 3: the user 
 live channel. Open for 2026-09-18: the web build's name-search cap (PLAYLIST-WEB.md §5b; read the
 `search N` part of the `web: built` log lines first).
 
-**2026-09-16 — Listening rooms: designed, not built.** Friends join a room with an 8-character
+**2026-09-17 — DeetsMusicRooms (listening rooms): BUILT, not deployed, not desk-tested.**
+The worker is its own private repo, **`../DeetsMusicRooms`** (`npx wrangler dev --port <n>`,
+then `node scripts/check.mjs http://127.0.0.1:<n>` runs 23 protocol checks, all passing). The
+app side is `src/room.ts`,
+`src/room-panel.ts`, the RoomBridge in `src/player.ts`, `queue.setRoomQueue`, and
+`src-tauri/src/rooms.rs` for the invite link. **Two things are left: the owner deploys the
+worker (ROOMS.md §16.3), and two apps meet in a room at the desk (§16.4).** As built: §16. Friends join a room with an 8-character
 code (`K7QM-4XHT`) and every app follows one queue and clock; each app plays through its own
-MusicKit. A new Cloudflare worker (working name DeetsRooms) holds the room in a Durable Object;
+MusicKit. A new Cloudflare worker, DeetsMusicRooms, holds the room in a Durable Object;
 the room ends when the host leaves. Full design, decisions and the defaults still open to the
-user: **[ROOMS.md](ROOMS.md)** (§14 defaults, §15 build order). **First step when the user says
-go:** the Apple terms check in §12. After the app feature works, DeetsRadio on deets.solutions
-moves onto the new worker (§13).
+user: **[ROOMS.md](ROOMS.md)** (§14 defaults, §15 build order). The Apple terms are read (§12, 2026-09-17): no
+clause names group listening, and the design holds on every clause that touches it; the one item it
+raised is decided (a guest's Pause never greys out — under Host only it stops that guest's own app,
+§12.3). The deets.solutions site is **out of scope** (§13). Nothing blocks the build now.
 
 **2026-09-16 — 0.8.0 is live on the `deetsmusic` channel** (published 17:26 PDT; `main` =
 `wakin-up` at `209c007`). It ships Sound, Last.fm, the playlist web, Stream quality, Fancy Glass
@@ -196,6 +203,15 @@ crossfeed, Compare) and reports back. Their report decides what stays, what chan
 **First thing next build session:** grep the dev and installed logs for `sound:startLost` and
 `sound:clockSlip` (the command is in SOUND.md §10.5). They watch for the lost song start that one
 probe run showed on 2026-09-16.
+
+**2026-09-17 — the first report from daily listening: the Match loudness line.** The user read
+"Measuring" on every play and took it for a measurement that never ends. Measuring was never
+broken (70 rows in `loudness`); the line was. Two fixes, committed: a song that already has a
+row now ends the line with *Measured.* instead of a percentage, and the percentage on a song
+without one counts up live (`renderLoudStatus()` on `onPlayerProgress`). Desk test: SOUND.md
+§9 steps 6 and 7. The repeat-one lap window was reviewed and deliberately left at 1.5 s
+(SOUND.md, Repeat one and the listen). This is report item 1 of SOUND.md §11 — the rest of
+the report is still owed before new Sound features.
 
 **2026-09-15 — the listening-loop review: the transport pass is next.** A review of the daily
 listening loop (repeat, shuffle, playing a whole album, the queue's end, the keyboard) found

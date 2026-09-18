@@ -482,7 +482,21 @@ this process after the graph (§1).
   4. no change.
   The gain is clamped to ±12 dB and capped so the peak sits at most 2 dB over the limiter's ceiling
   (the line then says *held from …*). It ramps in 50 ms on every element node (one plays at a time).
-  The line adds *Measuring: 42 % heard.* A song measured during this listen uses it the next time.
+  The line ends with the state of the song's own measurement: *Measured.* when the song already
+  has a row, or *Measuring: 42 %.* when it does not. Every listen measures the song again and
+  replaces the row, but the line speaks about the number the gain comes from, so a song heard
+  before never reads "Measuring" again (fix, 2026-09-17: it said "Measuring" on every play, on
+  a frozen percentage, which read as a measurement that never ends). The percentage now counts
+  up: `renderLoudStatus()` in sound-panel.ts runs on every `onPlayerProgress` tick while the
+  panel is open, and `setText` drops the write on the ticks that do not change the sentence.
+- **Repeat one and the listen (reviewed 2026-09-17, left as it is).** A repeat-one lap has no
+  item change, so `player.ts` reads the lap from the clock: a tick in the last 1.5 s, then a tick
+  under 1 s. That lap is what ends the listen and saves the row. Widening the 1.5 s window was
+  considered and **rejected**: `playbackTimeDidChange` fires about once a second, so the last tick
+  is already inside the window, and a false lap opens a second Last.fm scrobble window for a song
+  that was already scrobbled — the cost lands outside the app. If a lap is ever seen to be missed,
+  measure it first: three laps must give three `player:repeatLoop` lines, two `sound:measured`
+  lines, and a `sound:match` of `kind:"song"` from lap 2 on.
 - **Measure by default (user's call 2026-09-17, option A).** Match loudness is **off** by default
   inside Adaptive sound, but songs are measured whenever Adaptive sound is on, so the gains are ready
   when Match loudness is turned on. `sound.ts` has two flags: `measure` (= Adaptive on: the element
@@ -525,10 +539,12 @@ live (§11). Phase 0 (a flat graph measures like no graph) PASSES: AUDIO-QUALITY
    volume: the numbers follow at once. Connect AirPlay: the line reads *Speaker …*.
 5a. (2026-09-17) Adaptive sound On, Match loudness Off (the default). The row reads *Off. Songs are
    measured as you listen … (N so far)*. Let a new song play out: `sound:measured` in the log, N + 1.
-6. Match loudness On. Play a song not heard before: *Not measured yet: …* with *Measuring: N % heard*
-   rising. Let it play out. The next song logs `sound:measured` with a LUFS value (most pop
-   masters: −6 to −10).
-7. Play the same song again: *This song: −8.1 LUFS → −7.9 dB*; a loud master is clearly quieter.
+6. Match loudness On. Play a song not heard before: *New song: left as it is until it is measured.*
+   with *Measuring: N %.* Watch the number for 20 s **with the panel open**: it must rise on its
+   own (fix 2026-09-17). Let it play out. The next song logs `sound:measured` with a LUFS value
+   (most pop masters: −6 to −10).
+7. Play the same song again: *This song is turned down 7.9 dB. Measured.* — the word "Measuring"
+   and the percentage are gone (fix 2026-09-17), and a loud master is clearly quieter.
 8. Seek forward in a song: at the next song, no `sound:measured` line for it.
 9. Play an album from the Library card (not shuffled) with two songs measured: *Album gain: … (2 of N
    measured)*. Shuffle on: the song's own line.

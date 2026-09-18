@@ -203,9 +203,12 @@ function onHop(ms: number, peak: number): void {
 
 // ── For the panel ───────────────────────────────────────────────────────────────────
 
-export function loudnessState(): { source: GainSource; measuredSongs: number; loaded: boolean; heardPct: number | null } {
+export function loudnessState(): { source: GainSource; measuredSongs: number; loaded: boolean; heardPct: number | null; songMeasured: boolean } {
   const heardPct = listen && listen.durationSec ? Math.min(100, Math.round((100 * listen.heardSec) / listen.durationSec)) : null;
-  return { source: listen?.source ?? { kind: sound.getSound().match ? "idle" : "off" }, measuredSongs: measured.size, loaded, heardPct };
+  // The song has its own row from an earlier listen. This listen measures it again and replaces
+  // the row, but the line says "Measured": the number the gain comes from is already there.
+  const songMeasured = !!listen && measured.has(listen.id);
+  return { source: listen?.source ?? { kind: sound.getSound().match ? "idle" : "off" }, measuredSongs: measured.size, loaded, heardPct, songMeasured };
 }
 
 /** The panel's "Forget measurements": every song is measured again from its next full listen. */
