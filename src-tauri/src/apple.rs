@@ -17,8 +17,8 @@ use tauri::Emitter;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::model::{
-    Album, Artist, ArtistDetail, Artwork, NamedRef, Page, PlayParams, Playlist, SearchResults,
-    Station, StationGenre, Track,
+    Album, Artist, ArtistDetail, Artwork, NamedRef, Page, PlayParams, Playlist, RecentAdded,
+    SearchResults, Station, StationGenre, Track,
 };
 use crate::provider::MusicProvider;
 
@@ -2346,4 +2346,100 @@ pub async fn catalog_related(
         id: id.to_string(),
         name: node["attributes"]["name"].as_str().unwrap_or_default().to_string(),
     }))
+}
+
+// ── Home's Apple reads (HOME.md §9) ───────────────────────────────────────────
+// Two calls, one per shelf, both on `/v1/me`. They exist for CONTINUITY: a play or an
+// add made on another device never reaches this machine otherwise. Neither one writes a
+// play — we did not observe those plays, and invented rows would corrupt Rewind's
+// minutes and Home's own bucket score. What they do write is catalog: a song we have
+// never held becomes a `seen` row, and its `composerName` joins the writer collection
+// at no extra call (CREDITS.md §3). Both fetch here, in Rust, for exactly that reason.
+
+/// The songs this Apple Music account played last, newest first, across every device.
+/// Apple sends **order, never time** — 30 catalog song rows with no timestamp — so the
+/// front end dates them by bracketing against our own log (HOME.md §9.1).
+///
+/// Side effects, both local: the rows we do not hold are materialized as `seen` tracks,
+/// and every row's writers are noted. A row we DO hold is left alone (`DO NOTHING`).
+#[tauri::command]
+pub async fn recent_played_tracks(
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Track>, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let url = "https://api.music.apple.com/v1/me/recent/played/tracks?limit=30";
+    let (status, body) = api_get(&client, &dev, &user, url).await?;
+    if status != 200 {
+        return Err(format!("me/recent/played/tracks HTTP {status}"));
+    }
+    let tracks: Vec<Track> = body["data"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter(|v| v["type"].as_str() == Some("songs"))
+                .map(track_from_catalog_song)
+                .collect()
+        })
+        .unwrap_or_default();
+    {
+        let conn = db.lock();
+        crate::credits::note_tracks(&conn, &tracks);
+        crate::library::materialize_many(&conn, &tracks)?;
+    }
+    Ok(tracks)
+}
+
+/// What this Apple Music account added last, newest first, across every device.
+/// Unlike the song list this one carries a REAL `dateAdded`, and Apple has already
+/// grouped the songs into albums — the two things our own added shelf could never
+/// know (HOME.md §3 called both open). Albums and playlists arrive on one date scale,
+/// so the shelf can order them truthfully. It still prints no dates (his call).
+///
+/// One call, no side effects: an added album is already in the library sync's path.
+#[tauri::command]
+pub async fn recent_added(
+    state: tauri::State<'_, AppleState>,
+) -> Result<RecentAdded, String> {
+    let dev = developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = reqwest::Client::new();
+    let url = "https://api.music.apple.com/v1/me/library/recently-added?limit=25";
+    let (status, body) = api_get(&client, &dev, &user, url).await?;
+    if status != 200 {
+        return Err(format!("me/library/recently-added HTTP {status}"));
+    }
+    let mut out = RecentAdded { albums: vec![], playlists: vec![] };
+    for v in body["data"].as_array().into_iter().flatten() {
+        match v["type"].as_str() {
+            Some("library-albums") => out.albums.push(album_from_library(v)),
+            Some("library-playlists") => out.playlists.push(playlist_from_library(v)),
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
+/// A library album row from `recently-added`. It carries no catalog id (only the
+/// `l.` library one), so the front end joins it to our library by name + artist.
+/// `trackCount` is NOT kept: Apple's count disagrees with ours (it said 1 for an EP
+/// we hold four songs from, measured 2026-09-18), and the real count is local anyway.
+fn album_from_library(v: &serde_json::Value) -> Album {
+    let a = &v["attributes"];
+    Album {
+        library_id: v["id"].as_str().map(String::from),
+        catalog_id: a["playParams"]["catalogId"].as_str().map(String::from),
+        title: a["name"].as_str().unwrap_or_default().to_string(),
+        artist_name: a["artistName"].as_str().unwrap_or_default().to_string(),
+        artwork: artwork_from(&a["artwork"]),
+        genres: a["genreNames"]
+            .as_array()
+            .map(|arr| arr.iter().filter_map(|g| g.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
+        release_date: a["releaseDate"].as_str().map(String::from),
+        track_count: None,
+        date_added: a["dateAdded"].as_str().map(String::from),
+    }
 }

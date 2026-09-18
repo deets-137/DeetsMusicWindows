@@ -15,6 +15,9 @@ export interface Album {
   genres: string[];
   releaseDate?: string;
   trackCount?: number;
+  /** Apple's real add date, set only by `recent_added` (HOME.md §9.2). The library
+   *  sync never fills it: it groups albums from tracks, which carry no date. */
+  dateAdded?: string;
 }
 
 export interface Artist {

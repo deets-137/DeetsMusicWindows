@@ -3,11 +3,15 @@
 **Built 2026-09-15.** Designed in one session (the forks and the decisions are §7).
 
 Home is the landing card: three shelves of what you played, what you added, and what this
-kind of hour usually holds. Every fact it shows is already on this machine — the play log
-in SQLite, the track metadata in the shared store, the cached playlist list, and the Radio
-card's local station recents. **The one Apple call it ever makes is an artist photo**: one
-per artist, once ever, and only for an artist who reaches a shelf and has no photo cached
-yet (§2). Nothing else on the card touches the network, ever.
+kind of hour usually holds. Nearly every fact it shows is already on this machine — the
+play log in SQLite, the track metadata in the shared store, the cached playlist list, and
+the Radio card's local station recents.
+
+**Since 2026-09-18 it also asks Apple two questions, one per shelf (§9).** They exist for
+continuity: a play or an add made on your phone never reaches this machine otherwise. Both
+are capped by a fifteen-minute floor, both fail softly, and neither one writes a play.
+The third Apple call is an artist photo: one per artist, once ever, and only for an artist
+who reaches a shelf and has no photo cached yet (§2).
 
 Files: [`src/home.ts`](../src/home.ts) (the data layer) ·
 [`src/home-card.ts`](../src/home-card.ts) (the card) · `added_at` table + `added_at_map`
@@ -176,3 +180,124 @@ cold start.
 grouped client-side from tracks. One `limit=1` call would settle it. If it does, albums
 could join playlists on the date scale and Recently Added could become one truthful line.
 Not done.
+
+---
+
+## 9. Apple's own recents (built 2026-09-18)
+
+Two calls, one per shelf. Both live in [`apple.rs`](../src-tauri/src/apple.rs) rather than
+the webview, and that is deliberate: `credits.rs` harvests `composerName` from **every song
+read in Rust**, so these rows feed the writer collection at no extra call (CREDITS.md §3).
+
+**Neither call writes a play.** We did not observe those plays. A row in `play_events` would
+carry an invented time and an invented `ms_listened`, and both would corrupt Rewind's minutes
+and Home's own bucket score. What they DO write is catalog: a song we have never held is
+materialized as a `seen` track (`materialize_many`, `ON CONFLICT DO NOTHING`), which is the
+shape that already exists for "met through an interaction" and which a later sync graduates
+to a library row. That was the owner's reason for storing them — fill out the catalog for
+writer webs and whatever else reads it later.
+
+**The floor.** The card rebuilds whenever the played song changes, so an uncapped fetch would
+call Apple all afternoon. Both lists are cached for `APPLE_FLOOR_MS` (15 minutes); a failure
+retries after `APPLE_RETRY_MS` (2 minutes) and keeps the lists already in hand.
+
+**Two things clear the clock**: the header's refresh square, and `deets:signed-in` — the event
+main.ts fires once Apple accepts a token. That second one is not a nicety. On a true first run
+the walk's step 1 IS the sign-in, so Home mounts signed out and stays that way for as long as
+the user takes in the browser. Step 1 promises the library fills after signing in; a floor that
+outlived the sign-in would be the app breaking that promise out loud.
+
+**Signed out, we do not ask at all.** `fetchApple` returns before the request when there is no
+token, and starts no clock. A request there would fail for a reason the card is already showing,
+and a 403 from an expired token would raise a second sticky over a card that says the same
+thing — one cause, one notice (TOASTS.md).
+
+**The token is the tell, not `trouble()`.** This was got wrong once, on 2026-09-18, and the bug
+is worth keeping written down. `trouble()` starts at `"none"`, and every path that moves it off
+`"none"` is a REACTION to a call that already failed: the sign-in flow, a play attempt, a sync
+error, or Rust's 403. On a stranger's first launch none of those have happened — and the startup
+sync is itself gated on `isConnected()`, so it never runs and never errors. `trouble()` therefore
+reads `"none"` on the exact run the guard exists for. The guard now asks `isConnected()`, which
+asks Rust whether a token exists; `trouble() === "signin"` stays as the second reason to skip,
+for a token Apple has since refused. **Offline, every shelf still builds** —
+Recently Played falls back to the local log alone, Recently Added to the rank round-robin of §3.
+
+### 9.1 Recently Played — the bracket rule
+
+`me/recent/played/tracks?limit=30` returns catalog **song** rows, newest first, with the full
+attribute set (artwork, ISRC, `composerName`) and a catalog id — which is already our canonical
+track key, so the join to the library is exact, never a title-and-artist guess.
+
+**Apple sends order, never time.** But Apple's list is a total order of recent plays, and our
+log dates a subset of it: every play made here. So a borrowed row sits between the two rows
+around it that we do have:
+
+```
+Apple order        our log
+1  101 FM          14:22   <- anchor
+2  High            —       <- between 14:22 and 11:05
+3  SCARED OF YOU?! —       <- same bracket
+4  OVER AGAIN      11:05   <- anchor
+```
+
+Rows above the newest anchor open at now; rows below the oldest step down by a nominal song.
+**The guessed time never reaches the database.** It orders this shelf and nothing else.
+
+Borrowed rows fold into Recently Played **unmarked** (his call, 2026-09-18): no fourth shelf,
+no badge, nothing that says which device played it. A run of **two or more** consecutive
+borrowed rows from one album becomes an album tile; one alone stays a song tile. A local run
+earns its container tile at length one (fork C2), but there the context is stated by us — here
+the album is only inferred, and one song is not evidence.
+
+**Apple counts our own plays.** Measured 2026-09-18: a song played in DeetsMusic appeared at
+position 1 of `me/recent/played/tracks` seconds later. So the list is *not* other devices only,
+and the shelf subtracts by anchor before it borrows anything.
+
+### 9.2 Recently Added — Apple's order, our tiles
+
+`me/library/recently-added?limit=25` answers what §3 and §8 both called unanswerable:
+
+- Apple **groups the songs into albums** server-side, one row per album.
+- Every row carries a **real `dateAdded`** — albums *and* playlists, on one scale.
+- 25 rows reach back about a week of ordinary adding. The mix measured on 2026-09-18 was
+  24 `library-albums` to 1 `library-playlists`.
+
+So the shelf orders by a true date and **drops the round-robin of §3**. It still prints no
+dates (his call, 2026-09-18) — the dates order the shelf and stay out of sight.
+
+Apple is used for the **order only**. Our own rules still decide the tile: a group of one
+track is not an album, so a one-track row draws as a song tile. Apple's `trackCount` is
+ignored — it reported 1 for an EP we hold four songs from (measured 2026-09-18), and the real
+count is local anyway. A library album row carries no catalog id, so the join is name + artist.
+
+**Your newest add never waits on the floor.** `added_at` stamps newer than Apple's newest row
+lead the shelf. Both are real times, so the two merge honestly.
+
+### 9.3 Desk test
+
+1. Open Home. Recently Played and Recently Added look as they did.
+2. Play a song on your phone, or in the Music app. Press Home's refresh square.
+   The song appears in Recently Played, in the right place in time, with no mark on it.
+3. Play two or more songs from one album elsewhere, refresh: one album tile, not two songs.
+4. Play one song from an album elsewhere, refresh: a song tile.
+5. Add an album on your phone, refresh: it leads Recently Added.
+6. Add a song in DeetsMusic: it leads Recently Added **at once**, without a refresh.
+7. Turn the network off, press refresh: both shelves still draw. Nothing errors.
+7a. `npm run dev:fresh` (a full wipe, signed out — **not** `dev:fresh:in`, which keeps the
+   token). Home mounts: no Apple call is made, and no second sticky appears over the sign-in
+   card. Sign in. Recently Played fills **at once**, not after a floor.
+8. Open Rewind and Settings > Home. The minutes and the bucket shelf are unchanged — no
+   borrowed play was ever counted.
+9. Right-click a borrowed tile: the normal menu, Hide included.
+
+### 9.4 Open
+
+- **No settings row.** Home now makes Apple calls with no way to turn them off. It was not
+  asked for and a settings key is a stored shape, so it waits for his word.
+- The hover-hint ledger in ONBOARDING.md needs the refresh square's new wording. That file
+  was held by another session at build time.
+- **A brand-new install still sees an empty Recently Added until the first library sync
+  finishes.** An Apple album row draws only when we hold its songs, because a tile has to be
+  playable. Recently Played has no such limit — it carries its own catalog rows, so on a fresh
+  install it fills from Apple immediately. This matters more since 2026-09-18, when Home became
+  a default card and so the first thing a stranger sees.

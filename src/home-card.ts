@@ -1,6 +1,8 @@
 // Home card (HOME.md) — the landing card: three shelves of what you played, what you
-// added, and what this kind of hour usually holds. Every tile is local; the card costs
-// no Apple call at any point, including its refresh.
+// added, and what this kind of hour usually holds. Nearly every tile is local. The card
+// makes two Apple calls, one per shelf, at most once per floor (HOME.md §9): the plays
+// and the adds made on your other devices, which never reach this machine otherwise.
+// The refresh square asks Apple again; a failed call costs only the continuity.
 //
 // The shelves are the artist view's shelves (ARTIST-VIEW.md §2.2): a label, then one row
 // of tiles that scrolls sideways, stacked down the card — the same `.search__scroller` +
@@ -16,7 +18,7 @@
 // the header's refresh square — all from SQLite and the caches already in memory.
 
 import { wireListKeys } from "./list-keys";
-import { homeShelves, hideItem, fillArtistPhotos, type HomeItem, type HomeShelf } from "./home";
+import { homeShelves, hideItem, fillArtistPhotos, refreshApple, type HomeItem, type HomeShelf } from "./home";
 import { playTracks, playStation, queueStationAfter, onPlayerState } from "./player";
 import { playlistShelfMenu } from "./artist-view";
 import { trackMenu } from "./library-card";
@@ -39,7 +41,7 @@ const err = (what: string) => (e: unknown) => console.error(`[home] ${what}`, e)
 const HEAD = `
   <header class="panel__head">
     <h2 class="panel__title">Home</h2>
-    <button class="panel__action" id="home-refresh" type="button" aria-label="Refresh Home" title="Builds the shelves again from what you have played and added">
+    <button class="panel__action" id="home-refresh" type="button" aria-label="Refresh Home" title="Builds the shelves again, and asks Apple Music what you played and added elsewhere">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
@@ -269,7 +271,10 @@ export const homeCard: CardDef = {
 
     render();
     build();
-    refreshBtn?.addEventListener("click", build);
+    refreshBtn?.addEventListener("click", () => {
+      refreshApple(); // the square is the one place that overrides the Apple floor
+      build();
+    });
     // Card memory (CARD-MEMORY.md §5): the body scroll and each shelf's sideways place, once
     // the shelves are built (the build is a local read, so it lands in a later task).
     applyScrollSnapshot(body, mountOpts?.memory, ".search__scroller");

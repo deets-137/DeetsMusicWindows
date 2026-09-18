@@ -312,6 +312,8 @@ pub fn run() {
             library::play_event_count,
             library::added_at_map,
             apple::artist_photos,
+            apple::recent_played_tracks,
+            apple::recent_added,
             library::materialize_track,
             favorites::favorite_set,
             favorites::favorites_cached,

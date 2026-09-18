@@ -293,3 +293,14 @@ pub struct Page<T> {
     pub total: u32,
     pub next_offset: Option<u32>,
 }
+
+/// What Apple says this account added last, across every device (HOME.md §9.2).
+/// Albums and playlists both carry a real `dateAdded`, so the two lists merge onto
+/// one true order in the front end. Songs are absent on purpose: Apple groups them
+/// into their albums before it answers.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentAdded {
+    pub albums: Vec<Album>,
+    pub playlists: Vec<Playlist>,
+}

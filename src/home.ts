@@ -1,16 +1,19 @@
 // Home data layer (HOME.md) — the three shelves, built from what is already on this
 // machine: the play log is SQLite (`play_events_since`), the track metadata is the shared
 // store, the playlists are the cached unified list, and the stations are the Radio card's
-// local recents. The ONE exception is an artist photo Apple has never been asked for —
-// one call per artist, once ever, saved in `artist_catalog` (see fillArtistPhotos).
+// local recents. Apple is asked three things and no more: an artist photo never asked for
+// before (one per artist, once ever, saved in `artist_catalog` — see fillArtistPhotos),
+// and the two recents lists that carry what you played and added on your OTHER devices
+// (HOME.md §9). The recents calls are floored, fail softly, and never write a play.
 //
 // One pass of the log feeds all three shelves:
 //   Recently Played  — the log walked newest-first, consecutive plays that share a
 //                      `context` collapsed into ONE container tile (playlist / album /
 //                      station / artist); a bare context stays one tile per song.
-//   Recently Added   — songs + albums by `addedRank`, playlists by their `dateAdded`,
-//                      interleaved round-robin. No dates are printed: Apple sends no
-//                      per-song dateAdded, so we know the ORDER, never the day.
+//   Recently Added   — Apple's own `recently-added` list, which groups the songs into
+//                      albums and stamps each row with a REAL date. No dates are printed:
+//                      they order the shelf and stay out of sight. With no answer from
+//                      Apple it falls back to `addedRank` + a round-robin by kind.
 //   <bucket>         — the songs and lists this hour of this kind of day usually holds
 //                      (weekday/weekend x four parts of the day), decayed by age.
 //
@@ -22,10 +25,12 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Artwork, Track } from "./library";
 import { tracks as allTracks, trackById } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
-import type { Playlist } from "./search";
+import type { Album, Playlist } from "./search";
 import { radioRecents, type Station } from "./radio";
 import { albumKey, pid, playEventsSince, type PlayEvent } from "./rewind";
 import { setting, setSetting } from "./settings-store";
+import { trouble } from "./apple-health";
+import { isConnected } from "./apple";
 
 // ── the windows ───────────────────────────────────────────────────────────────
 const DAY_MS = 86_400_000;
@@ -43,9 +48,17 @@ const SCORE_MIN = 5;
 /** A song is dropped from the bucket shelf when this much of it came from a list
  *  that is already on the shelf (container suppression). */
 const FROM_CONTAINER = 0.6;
-/** Artist photos fetched per rebuild — the only Apple calls Home ever makes, one per
- *  artist, once ever (the answer is saved in `artist_catalog`). */
+/** Artist photos fetched per rebuild — one per artist, once ever (the answer is saved
+ *  in `artist_catalog`). */
 const ARTIST_FETCH_MAX = 4;
+/** How long Apple's two recents lists stay good. The card rebuilds on every song
+ *  change, so without a floor a long listen would call Apple all afternoon. */
+const APPLE_FLOOR_MS = 15 * 60_000;
+/** After a failed call — offline, or signed out. Short enough to catch a reconnect,
+ *  long enough that a rebuild storm cannot hammer Apple. */
+const APPLE_RETRY_MS = 2 * 60_000;
+/** A nominal song, for spacing rows older than anything we have dated. */
+const SONG_MS = 210_000;
 
 // ── one tile ──────────────────────────────────────────────────────────────────
 export type HomeKind = "song" | "album" | "playlist" | "station" | "artist";
@@ -298,6 +311,148 @@ function itemOf(c: Container, fallback: Track[]): HomeItem | null {
   }
 }
 
+// ── Apple's own recents (HOME.md §9) ──────────────────────────────────────────
+// Two calls, one per shelf, for CONTINUITY: a play or an add made on your phone never
+// reaches this machine otherwise. Both are fetched in Rust, so every song read feeds the
+// writer collection for free and a song we have never held becomes a `seen` row.
+//
+// The floor matters. This card rebuilds whenever the played song changes, so the lists
+// are cached for APPLE_FLOOR_MS and the header's refresh square clears the clock.
+
+let appleAt = 0;
+let applePlayed: Track[] = [];
+let appleAdded: { albums: Album[]; playlists: Playlist[] } = { albums: [], playlists: [] };
+let appleInFlight: Promise<void> | null = null;
+
+/** The refresh square asks Apple again, floor or no floor. A fresh sign-in does the
+ *  same: on a first run Home mounts signed out, so the floor must not outlive the
+ *  sign-in that fixes it (main.ts fires `deets:signed-in` once Apple accepts the
+ *  token). The walk's first step promises the library fills after signing in — a
+ *  shelf that stayed empty behind a floor would be the app breaking that out loud. */
+export function refreshApple(): void {
+  appleAt = 0;
+}
+window.addEventListener("deets:signed-in", () => {
+  appleAt = 0;
+});
+
+/** Read both lists, at most once per floor. A failure keeps the lists we already have
+ *  and retries sooner — offline, the shelves simply fall back to what is on disk. */
+async function fetchApple(): Promise<void> {
+  if (Date.now() < appleAt) return;
+  // Signed out, or a sign-in Apple has already refused: do not ask, and do not start a
+  // clock. On a true first run the walk's step 1 IS the sign-in, so Home can sit here
+  // for minutes. A request would fail for a reason the user is already being told, and
+  // a 403 from an expired token would raise a second notice over the card that says the
+  // same thing (one cause, one notice — TOASTS.md).
+  //
+  // The TOKEN is the tell, not `trouble()`. `trouble()` starts at "none" and everything
+  // that moves it off "none" is a reaction to a call that has already failed, so on a
+  // first launch — no token, no sync, nothing played — it still reads "none" and would
+  // wave these calls straight through. `isConnected()` asks Rust whether a token exists,
+  // which is what the startup sync and the walk's step 1 both gate on. `trouble()` stays
+  // in the condition for the second reason to skip: a token Apple has since refused.
+  if (trouble() === "signin") return;
+  if (!(await isConnected())) return;
+  if (appleInFlight) return appleInFlight;
+  appleInFlight = (async () => {
+    const [played, added] = await Promise.all([
+      invoke<Track[]>("recent_played_tracks").catch((e) => {
+        console.warn("[home] recent played", e);
+        return null;
+      }),
+      invoke<{ albums: Album[]; playlists: Playlist[] }>("recent_added").catch((e) => {
+        console.warn("[home] recent added", e);
+        return null;
+      }),
+    ]);
+    if (played) applePlayed = played;
+    if (added) appleAdded = added;
+    appleAt = Date.now() + (played || added ? APPLE_FLOOR_MS : APPLE_RETRY_MS);
+  })();
+  try {
+    await appleInFlight;
+  } finally {
+    appleInFlight = null;
+  }
+}
+
+const idOf = (t: Track): string => t.catalogId ?? t.libraryId ?? t.title;
+
+/** Apple's list is a TOTAL ORDER of recent plays with no times on it. Our log dates a
+ *  subset of that order — every play made here. So a row we did not play sits between
+ *  the two rows around it that we did, and its time can be read off the bracket:
+ *
+ *      Apple order        our log
+ *      1  101 FM          14:22   <- anchor
+ *      2  High            —       <- between 14:22 and 11:05
+ *      3  SCARED OF YOU?! —       <- same bracket
+ *      4  OVER AGAIN      11:05   <- anchor
+ *
+ *  Above the newest anchor the bracket opens at now; below the oldest it steps down by
+ *  a nominal song. The guessed time NEVER reaches the database — it orders this shelf
+ *  and nothing else, so Rewind's minutes and the bucket score stay measured.
+ *
+ *  A run of two or more consecutive borrowed rows from one album becomes an album tile.
+ *  One alone does not: a local run earns its container tile at length one (fork C2), but
+ *  there the context is stated by us, and here the album is only inferred. */
+function elsewhere(apple: Track[], events: PlayEvent[]): { events: PlayEvent[]; tracks: Map<string, Track> } {
+  const tracks = new Map<string, Track>();
+  if (!apple.length) return { events: [], tracks };
+
+  // The newest local play per track — the anchors.
+  const anchor = new Map<string, number>();
+  for (const e of events) {
+    const t = trackById(e.trackId);
+    const key = t ? idOf(t) : e.trackId;
+    if (e.startedTs > (anchor.get(key) ?? 0)) anchor.set(key, e.startedTs);
+  }
+
+  const rows = apple.map((t) => ({ t, at: anchor.get(idOf(t)) }));
+  // Times, newest first. `prev` is the last time we are sure of.
+  const ts = new Array<number>(rows.length);
+  let prev = Date.now();
+  for (let i = 0; i < rows.length; i++) {
+    const known = rows[i].at;
+    if (known != null) {
+      ts[i] = Math.min(known, prev);
+      prev = ts[i];
+      continue;
+    }
+    // The unknown run i..j-1, and the anchor that closes it (if any).
+    let j = i;
+    while (j < rows.length && rows[j].at == null) j++;
+    const n = j - i;
+    const next = rows[j]?.at;
+    const floor = next != null && next < prev ? next : prev - (n + 1) * SONG_MS;
+    for (let k = 0; k < n; k++) ts[i + k] = prev - ((prev - floor) * (k + 1)) / (n + 1);
+    prev = ts[j - 1];
+    i = j - 1;
+  }
+
+  // Only the rows we have no play of our own for become events; the rest are already
+  // in the log, with their real times.
+  const out: PlayEvent[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].at != null) continue;
+    const t = rows[i].t;
+    const key = idOf(t);
+    if (!trackById(key)) tracks.set(key, t);
+    // Consecutive borrowed rows from one album: a run, and so one album tile.
+    const mine = albumKey(t);
+    const runs = rows[i - 1]?.at == null && i > 0 && albumKey(rows[i - 1].t) === mine;
+    const nextRuns = rows[i + 1]?.at == null && i + 1 < rows.length && albumKey(rows[i + 1].t) === mine;
+    out.push({
+      trackId: key,
+      startedTs: Math.round(ts[i]),
+      msListened: null,
+      completed: false,
+      context: runs || nextRuns ? `album:${mine}` : null,
+    });
+  }
+  return { events: out, tracks };
+}
+
 // ── runs ──────────────────────────────────────────────────────────────────────
 interface Run {
   context: string | null;
@@ -316,7 +471,12 @@ function runsOf(events: PlayEvent[]): Run[] {
 }
 
 // ── shelf 1: Recently Played ──────────────────────────────────────────────────
-function playedShelf(events: PlayEvent[], playlists: Map<string, Playlist>, want: number): HomeItem[] {
+function playedShelf(
+  events: PlayEvent[],
+  playlists: Map<string, Playlist>,
+  want: number,
+  borrowed: Map<string, Track> = new Map(),
+): HomeItem[] {
   const out: HomeItem[] = [];
   const seen = new Set<string>();
   const push = (it: HomeItem | null) => {
@@ -327,7 +487,11 @@ function playedShelf(events: PlayEvent[], playlists: Map<string, Playlist>, want
   const runs = runsOf(events).reverse(); // newest run first
   for (const run of runs) {
     if (out.length >= want) break;
-    const resolved = run.events.map((e) => trackById(e.trackId)).filter((t): t is Track => !!t);
+    // A borrowed row's song may not be in the store yet — Rust has just written it as a
+    // `seen` row, which the store picks up on its next read, so carry it here meanwhile.
+    const resolved = run.events
+      .map((e) => trackById(e.trackId) ?? borrowed.get(e.trackId))
+      .filter((t): t is Track => !!t);
     const c = containerOf(run.context, resolved[0], playlists);
     // C2: any run of one or more earns its container tile. A container we cannot
     // resolve (deleted playlist, forgotten station) falls back to its songs.
@@ -396,6 +560,69 @@ function addedShelf(playlists: Playlist[], addedAt: Map<string, number>, want: n
     if (lists[i]) take(playlistItem(lists[i]));
   }
   return out.slice(0, want);
+}
+
+/** Recently Added from Apple's own list (HOME.md §9.2). Apple has already grouped the
+ *  songs into their albums and stamped each row with a REAL `dateAdded`, so albums and
+ *  playlists sit on one true scale and the round-robin guess above is not needed. The
+ *  dates order the shelf and are never printed (his call, 2026-09-18).
+ *
+ *  Apple is used for the ORDER only. Whether a row draws as an album tile or a song tile
+ *  is still our rule: a group of one track is not an album. And `trackCount` from Apple
+ *  is ignored — it disagreed with our own count on an EP (measured 2026-09-18).
+ *
+ *  Anything added HERE since Apple last answered leads the shelf, from `added_at`. Both
+ *  are real times, so the two merge honestly, and your newest add never waits on a floor. */
+function addedShelfApple(
+  added: { albums: Album[]; playlists: Playlist[] },
+  playlists: Map<string, Playlist>,
+  addedAt: Map<string, number>,
+  want: number,
+): HomeItem[] {
+  const lib = allTracks();
+  const rows: { at: number; item: HomeItem | null }[] = [];
+
+  for (const a of added.albums) {
+    const at = Date.parse(a.dateAdded ?? "");
+    if (!Number.isFinite(at)) continue;
+    // Apple's library album carries no catalog id, so the join is name + artist.
+    const mine = lib.filter((t) => t.albumName === a.title && t.artistName === a.artistName);
+    if (!mine.length) continue; // added on another device; ours after the next sync
+    rows.push({ at, item: mine.length > 1 ? albumItem(albumKey(mine[0]), mine) : songItem(mine[0]) });
+  }
+  for (const p of added.playlists) {
+    const at = Date.parse(p.dateAdded ?? "");
+    if (!Number.isFinite(at)) continue;
+    // Prefer our cached row: it carries the mosaic covers and the track count.
+    rows.push({ at, item: playlistItem(playlists.get(pid(p)) ?? p) });
+  }
+
+  if (!rows.length) return [];
+
+  // Adds made here since Apple's newest row — real stamps, so they merge, not jump.
+  const newest = Math.max(...rows.map((r) => r.at));
+  const onShelf = new Set(rows.map((r) => r.item?.key).filter(Boolean));
+  for (const [id, at] of addedAt) {
+    if (at <= newest) continue;
+    const t = lib.find((x) => x.catalogId === id || x.libraryId === id);
+    if (!t) continue;
+    const sameAlbum = lib.filter((x) => albumKey(x) === albumKey(t));
+    const item = sameAlbum.length > 1 ? albumItem(albumKey(t), sameAlbum) : songItem(t);
+    if (item && !onShelf.has(item.key)) {
+      onShelf.add(item.key);
+      rows.push({ at, item });
+    }
+  }
+
+  const out: HomeItem[] = [];
+  const shown = new Set<string>();
+  for (const r of rows.sort((a, b) => b.at - a.at)) {
+    if (out.length >= want) break;
+    if (!r.item || shown.has(r.item.key)) continue;
+    shown.add(r.item.key);
+    out.push(r.item);
+  }
+  return out;
 }
 
 // ── shelf 3: the bucket ───────────────────────────────────────────────────────
@@ -478,13 +705,16 @@ const addedAtMap = (): Promise<[string, number][]> => invoke<[string, number][]>
 const artistPhotos = (): Promise<[string, Artwork][]> => invoke<[string, Artwork][]>("artist_photos");
 
 /** Every shelf, ready to render. One SQLite read for the log, one for the add stamps,
- *  one cached playlist list. No Apple call, ever. An empty shelf is left out. */
+ *  one cached playlist list — plus Apple's two recents lists, at most once per floor
+ *  (HOME.md §9). An empty shelf is left out, and a failed Apple call costs nothing but
+ *  the continuity: every shelf still builds from what is on this machine. */
 export async function homeShelves(): Promise<HomeShelf[]> {
   const [events, lists, stamps, faces] = await Promise.all([
     playEventsSince(Date.now() - SCORE_DAYS * DAY_MS),
     playlistsCached(),
     addedAtMap().catch(() => [] as [string, number][]),
     artistPhotos().catch(() => [] as [string, Artwork][]),
+    fetchApple(),
   ]);
   // Keep anything fetched this session that the cached read does not carry yet.
   photos = new Map([...faces, ...photos]);
@@ -515,8 +745,16 @@ export async function homeShelves(): Promise<HomeShelf[]> {
 
   const playedFrom = Date.now() - PLAYED_DAYS * DAY_MS;
   const deep = SHELF * 3; // candidates, so a hide refills at once
-  const played = keep(playedShelf(events.filter((e) => e.startedTs >= playedFrom), playlists, deep));
-  const added = keep(addedShelf(lists, addedAt, deep));
+  // Plays made elsewhere fold into the shelf, dated by the bracket rule and unmarked
+  // (his call, 2026-09-18). They feed THIS shelf only: `events` stays measured, so the
+  // bucket score below and Rewind never see a guessed time.
+  const localPlays = events.filter((e) => e.startedTs >= playedFrom);
+  const borrowed = elsewhere(applePlayed, localPlays);
+  const allPlays = [...localPlays, ...borrowed.events].sort((a, b) => a.startedTs - b.startedTs);
+  const played = keep(playedShelf(allPlays, playlists, deep, borrowed.tracks));
+  // Apple's dated list when we have it; our own rank-and-round-robin when we do not.
+  const fromApple = addedShelfApple(appleAdded, playlists, addedAt, deep);
+  const added = keep(fromApple.length ? fromApple : addedShelf(lists, addedAt, deep));
   const bucket = bucketShelf(events, playlists, deep);
   // The cold start (fork 3): the bucket shelf stays away until it has something to say.
   const scored = bucket.length >= SCORE_MIN ? keep(bucket) : [];
