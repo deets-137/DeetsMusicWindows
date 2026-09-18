@@ -372,7 +372,7 @@ One switch, three parts. Each part adapts to one thing and has its own on/off (a
    worklet hosts the EQ, the shelves, crossfeed, the meter and the limiter.
 4. ~~Per-output EQ profiles~~ — **decided:** yes, configurable, with the insight of §2.4.
 5. ~~EQ UI~~ — **decided:** a title bar item with a dropdown panel (§2.3).
-6. ~~Match loudness~~ — **decided:** −16 LUFS (setting), album gain on (setting), library median for unmeasured (setting).
+6. ~~Match loudness~~ — **decided:** −16 LUFS (setting), album gain on (setting), library median for unmeasured (setting). **2026-09-18 (user):** the default target is −14, and Match loudness is on by default inside Adaptive sound (§10.2).
 7. ~~Low-volume key~~ — **decided:** app slider × Windows master (setting).
 8. ~~Crossfeed~~ — **decided:** automatic on headphones (setting: Auto / Always / Off).
 
@@ -525,6 +525,11 @@ this process after the graph (§1).
   that was already scrobbled — the cost lands outside the app. If a lap is ever seen to be missed,
   measure it first: three laps must give three `player:repeatLoop` lines, two `sound:measured`
   lines, and a `sound:match` of `kind:"song"` from lap 2 on.
+- **Reversed 2026-09-18 (user):** Match loudness is **on** by default inside Adaptive sound, and
+  the target is **−14**. The review found the owner's install with Match on had changed 3 of 106
+  song starts (unmeasured songs set to No change), and that at −16 a library of −8 to −10 LUFS
+  masters is a 6–8 dB cut on nearly everything. The paragraph below is the record of the day
+  before.
 - **Measure by default (user's call 2026-09-17, option A).** Match loudness is **off** by default
   inside Adaptive sound, but songs are measured whenever Adaptive sound is on, so the gains are ready
   when Match loudness is turned on. `sound.ts` has two flags: `measure` (= Adaptive on: the element

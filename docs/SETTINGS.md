@@ -148,7 +148,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Sound | *Equalizer* group — Avoid distortion (How a boost is kept from distorting. Limiter only turns down just the loudest moments; the others lower the whole song) — menu *Limiter only* / *When needed* / *Always* / *By hand* (2026-09-18; the panel has this row too) | `soundEqPreamp` | **limiter** / needed / always / manual | `sound-dsp.ts` ([SOUND.md](SOUND.md) §2.1a) |
 | Sound | Lower the song by (By hand only. How much the song is turned down before the equalizer. The limiter catches anything left) — a slider, −24…+6 dB in half-steps; shows only while Avoid distortion is *By hand*. The panel's own control for this key is a ± stepper; the card's slider keeps the same half-decibel step (arrows step one, Shift ten), so the two agree | `soundEqPreampDb` | **0**, −24…+6 | same |
 | Sound | Remember each output (On: headphones, speakers and AirPlay speakers each remember their own preset) | `soundEqPerOutput` | **on** / off | `sound.ts` on output change; the outputs it has remembered are listed in the panel's own fold |
-| Sound | *Adaptive sound* group — Match songs to (How loud songs are made. Standard is Apple's Sound Check level) — pills *Standard* / *Louder* / *Quieter* | `soundLoudTarget` | **−16** / −14 / −18 | `sound-loudness.ts` |
+| Sound | *Adaptive sound* group — Match songs to (How loud songs are made. Standard is Apple's Sound Check level) — pills *Standard* / *Louder* / *Quieter* | `soundLoudTarget` | −16 / **−14** / −18 (default −14 since 2026-09-18) | `sound-loudness.ts` |
 | Sound | Keep albums together (On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet) | `soundLoudAlbum` | **on** / off | same |
 | Sound | Songs not measured get (A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is) — pills *Usual amount* / *No change* | `soundLoudUnmeasured` | **median** / none | same |
 | Sound | Follow the volume of (App + Windows: counts the DeetsMusic volume and the Windows volume together) — pills *App + Windows* / *App only* | `soundLowVolKey` | **both** / app | `sound-worklet.ts` |
@@ -263,8 +263,8 @@ Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.
 | Output key → preset id | `soundEqOutputs` | **{}** | same |
 | Output key → its name when last seen | `soundOutputNames` | **{}** | the panel's output list |
 | Adaptive sound (the switch over the three parts) | `soundAdaptive` | on / **off** | `sound.ts` |
-| Part A — Match loudness | `soundLoudness` | on / **off** | `sound-loudness.ts` |
-| Part A — target, in LUFS | `soundLoudTarget` | **−16** (Apple Sound Check) / −14 / −18 | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
+| Part A — Match loudness | `soundLoudness` | **on** / off (on since 2026-09-18; was off) | `sound-loudness.ts` |
+| Part A — target, in LUFS | `soundLoudTarget` | −16 (Apple Sound Check) / **−14** / −18 (−14 since 2026-09-18; was −16) | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part A — keep an album together | `soundLoudAlbum` | **on** / off | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part A — a song never measured | `soundLoudUnmeasured` | **median** / none | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part B — Fuller at low volume | `soundLowVol` | off / **gentle** / full | `sound-worklet.ts` |
@@ -275,9 +275,12 @@ Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.
 | When an effect was first turned on (epoch ms) | `soundFirstOn` | **0** | same — internal, no control |
 | The review was answered *Keep* | `soundReviewed` | **false** | same — internal, no control |
 
-Turning `soundAdaptive` on does **not** turn its three parts on: `soundLoudness` defaults off
-inside an off parent, deliberately (songs are still measured while Adaptive sound is on, so
-turning it on later has gains ready).
+Turning `soundAdaptive` on turns Match loudness on with it (`soundLoudness` defaults on since
+2026-09-18): a person who turns Adaptive sound on expects it to do something, and this is its
+most audible part. From 2026-09-17 to 2026-09-18 it defaulted off inside the off parent, with
+songs measured meanwhile so a later switch-on had gains ready; the review of 2026-09-18 found
+that on the owner's install it had changed 3 of 106 song starts. Every effect still ships off,
+because `soundAdaptive` does.
 
 ### Sleep timer — the title-bar panel in `index.html`, driven by `sleep.ts`
 

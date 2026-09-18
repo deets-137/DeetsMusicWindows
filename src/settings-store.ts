@@ -374,8 +374,8 @@ export const DEFAULTS: Settings = {
   soundEqOutputs: {},
   soundOutputNames: {}, // filled as presets are remembered: a Windows output's key is an unreadable id
   soundAdaptive: false, // user's call 2026-09-16: off like every effect
-  soundLoudness: false, // user's call 2026-09-17: off inside Adaptive sound; songs are still measured while Adaptive sound is on, so turning it on later has gains ready
-  soundLoudTarget: -16, // user's call 2026-09-16: Apple Sound Check's level, more headroom than −14
+  soundLoudness: true, // user's call 2026-09-18: on inside Adaptive sound — a person who turns Adaptive sound on expects it to do something, and this is its most audible part (it was off from 2026-09-17; every effect still ships off because soundAdaptive does)
+  soundLoudTarget: -14, // user's call 2026-09-18: the level streaming services use; at −16 a library of modern masters (−8 to −10 LUFS) was a 6–8 dB cut on nearly everything (it was −16, Apple Sound Check's level, from 2026-09-16)
   soundLoudAlbum: true, // user's call 2026-09-16: an album keeps its own dynamics
   soundLoudUnmeasured: "median", // user's call 2026-09-16
   soundLowVol: "gentle", // half the ISO 226 boost: noticeable, never boomy
