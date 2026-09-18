@@ -18,6 +18,66 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.10.0 — 2026-09-18
+
+**Listen with friends.** A new item in the title bar — three figures side by side — opens the
+**Room** panel. Type your name, click **Start a room**, and the panel shows an eight-character
+code with **Copy code** and **Copy invite link**. A friend pastes the code into **Join**, or
+clicks your link and DeetsMusic joins for them. Everyone hears the same song at the same
+moment, each through their own Apple Music. The room's queue becomes your queue: Now Playing,
+Up Next and the Queue card show the room, and Up Next says who added each song. Under
+**Permissions**, the host chooses what guests may do — Play, Skip, Seek, Add songs and
+Reorder — each **Everyone** or **Host only**. A guest's Pause always works: it stops their own app, and
+the room plays on. Room songs count in History, Home, your play counts and Last.fm. Details:
+[listening rooms](https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/ROOMS.md).
+
+**Who wrote this song.** Right-click any song — anywhere in the app — and pick **Song
+Credits**. The pane names the writers, each one a chip. Click a writer and you see everything
+of theirs in your library. The credits come from the song information DeetsMusic already
+reads, so this costs no extra Apple Music requests.
+
+**A bigger, squarer cover.** The Max window's left column is rebuilt. The cover is always a
+square and is never cropped, at every window height. Now Playing keeps its room and the Queue
+takes the rest: the art and the song come first, and the queue is something you open when you
+want it. Click the strip above the Queue, or its **Grow** button, to open the Queue over Now Playing.
+The default Max window is now 1100×950. Settings › Window › **Max window when short** chooses
+what a short screen does: become Midi, or stop at the floor.
+
+**AirPlay asks before Windows does.** The first time you pick a speaker, the **Play on** panel
+explains in one sentence why Windows is about to ask for permission, and names what it runs.
+**Continue** answers it once; **Not now** leaves the list alone. DeetsMusic also sends the
+music to the speaker only — your headphones stay silent.
+
+**More from Ctrl+Space.** A card row now says how the card opens: type **full settings** or
+**settings full**, or press **Tab** on the highlighted row to pick Card, Horizontal, Vertical
+or Full. The compass mark in the title bar turns as the bar opens, and on through a full circle
+when a row takes you somewhere. **Ctrl+L**, **Ctrl+K**, **Ctrl+Q**, **Ctrl+P** and **Ctrl+,**
+now work while the bar is open.
+
+**Also:** a list keeps its place — a right-click, a Ctrl+click or Shift+click, or a change of
+row size no longer throws the list back to the top. A panel no longer closes under your own
+press, which fixes a Settings row inside the Compass bar and several panels besides. Sound ›
+Adaptive › **Match loudness** says **Measured.** for a song it has already measured, and the
+percentage moves while a new one plays. The Library's **Plays** sort reads the right count.
+DeetsMusic now checks every ten minutes that its own database is still writable, and says so
+in the app log.
+
+### Installing
+
+- **The installer is signed by Aditya Sundaram.** A new version has little download history,
+  so your browser may still warn that it isn't commonly downloaded.
+- **Edge:** in the download list, click **…** › **Keep**, then the arrow on **Delete** ›
+  **Keep anyway**.
+- **Firefox:** in the downloads panel, click the arrow next to the file and allow the
+  download. When you open it, Windows may show a blue screen: click **More info**, then
+  **Run anyway**.
+- **Chrome:** in the download list, click **Keep**. When you open it, Windows may show a blue
+  screen: click **More info**, then **Run anyway**.
+- To check the file first, right-click it › **Properties** › **Digital Signatures**. It lists
+  **Aditya Sundaram**, and **Details** says the signature is OK.
+- Quit any AI app that is connected to DeetsMusic before you install; it keeps a file open
+  that the installer must replace.
+
 ## 0.9.5 — 2026-09-17
 
 **Go anywhere with Ctrl+Space.** Press **Ctrl+Space** (or click the compass right of the
