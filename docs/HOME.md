@@ -304,7 +304,7 @@ lead the shelf. Both are real times, so the two merge honestly.
 
 ---
 
-## 10. New — releases from your artists (designed 2026-09-18, not built)
+## 10. New — releases from your artists (built 2026-09-18)
 
 A fourth shelf, labelled **New**. It holds one tile per recent release by an artist you
 listen to: an album or a single put out in the **last 30 days**, or one **coming in the next
@@ -429,3 +429,50 @@ header's refresh square and by `deets:signed-in`.
 - **The stored count is `meta.library_artists_total`** — Apple's own `meta.total` from
   `me/library/artists`, under a name that says what it holds. It joins `storefront`,
   `schema_version`, `full_sync_at` and `queue_state`, which carry no prefix either.
+
+### 10.9 As built
+
+| Piece | Where |
+|---|---|
+| The artist pass | `sync_artist_catalog` in [`apple.rs`](../src-tauri/src/apple.rs), called by `artist_catalog_pass` in [`library.rs`](../src-tauri/src/library.rs) at the end of BOTH sync paths — `force: true` on a full pass, the count check on an incremental one |
+| The release read | `artist_new_releases(names)` in `apple.rs`, a `#[tauri::command]` |
+| Depth on the recents list | `recent_played_tracks(pages)`, `RECENT_PAGE` 30 × `RECENT_PAGES_MAX` 3 |
+| The ten artists | `newArtists()` in [`home.ts`](../src/home.ts) |
+| The shelf | `newShelf()` in `home.ts`, placed third, above the bucket shelf |
+| The switch | `homeApple` in `settings-store.ts`, one row in Settings › Home, one spec in `agent-settings.ts` |
+
+Decided while building, inside his choices:
+
+- **The mark rides the tile's second line**, as `Coming 09/23 · Dua Lipa`. A badge would be
+  a new control family on a tile that has none (UI-ARCHITECTURE.md §2a), and the mark is
+  one short string. No new CSS, no new token, no drift.
+- **Recently Played still brackets against the first 30 rows only.** The list is read 90
+  deep for artist recency, but feeding all 90 to the bracket rule would quietly re-shape a
+  shelf nobody asked to change (§9.1).
+- **A release date is read as LOCAL midnight.** Apple sends `YYYY-MM-DD` with no zone, so
+  parsing it as UTC would put "today" a day out on one side of the world.
+- **A release already in your library still draws.** It is new music by that artist, and
+  Apple's row does not say whether you hold it.
+- **`homeApple` defaults on.** The shelves exist for continuity, and the cost is four calls
+  a day. The row is how you say no.
+- **The hide rows stay out of the agent's reach.** Hiding a tile is a gesture on the tile.
+- Sorting is by release date, newest first, and `SHELF` caps it at twelve like the others.
+
+### 10.10 Desk test
+
+1. Open Home. The three old shelves look as they did — **Recently Played especially**, which
+   must not have grown new borrowed tiles.
+2. **New** sits third, above the bucket shelf. Every tile is an album by an artist you play.
+3. Click a tile whose album you do not own. It plays from the top.
+4. Right-click a tile: the normal album menu, Hide included. Hide it; the shelf refills.
+5. A tile dated in the future reads **Coming MM/DD · Artist** on its second line, with no year.
+6. Settings › Home › **Follow your other devices** › Off. Press Home's refresh square. The New
+   shelf goes, and Recently Played falls back to this machine's own log. On again: both return.
+7. Turn the network off, press refresh. Every shelf still draws. Nothing errors.
+8. Watch `%APPDATA%\com.deetsmusic.dev\deetsmusic.log` across a restart: `library: artist
+   catalog filled, N of M artist(s)` appears on the first full sync and NOT on the next
+   launch inside six hours.
+9. On a second launch the same day, no `artists?ids=…latest-release` call is made — the floor
+   is a day. The refresh square clears it.
+10. `npm run dev:fresh` (signed out): Home mounts, no Apple call, no second sticky. Sign in.
+    The library syncs, and New fills once the artist pass has run.

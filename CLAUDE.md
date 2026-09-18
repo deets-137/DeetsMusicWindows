@@ -31,8 +31,10 @@ front-end, Rust back-end).
   `--swap-*` shape (built 2026-09-15; Animate card swaps on by default since 2026-09-16).
 - `docs/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
-- `docs/HOME.md` — the Home card: the three shelves, the context-run rule, the
-  weekday/weekend bucket score, and Hide (built 2026-09-15; zero Apple calls).
+- `docs/HOME.md` — the Home card: the shelves, the context-run rule, the weekday/weekend
+  bucket score, and Hide (built 2026-09-15). §9 = Apple's own recents, §10 = the **New**
+  shelf: releases by your top ten artists, the bulk `artist_catalog` fill that rides the
+  library sync, and the `homeApple` switch (built 2026-09-18, desk test open).
 - `docs/AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker, what we control,
   and `probe fidelity` (DeetsAirplay) that measures the capture's conversion (opened 2026-09-16).
 - `docs/LASTFM.md` — Last.fm scrobbling: the key built in from Deets' Secrets, the browser

@@ -236,7 +236,7 @@ const RESET_GROUPS: ResetGroup[] = [
     keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundAdaptive", "soundLoudness", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
   },
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
-  { id: "home", label: "Home", hint: "Hiding lasts, and every hidden tile", keys: ["homeHideLasts", "homeHidden"] },
+  { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
@@ -868,10 +868,16 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       ],
     },
     {
-      // The Home card (HOME.md §4). Only the hide rows: the shelves themselves have
-      // nothing to set — they show what you played and added.
+      // The Home card (HOME.md §4, §9, §10). The hide rows, and the one switch that
+      // turns off every Apple call Home makes.
       title: "Home",
       rows: [
+        storeToggle(
+          "homeapple",
+          "Follow your other devices",
+          "homeApple",
+          () => "Home asks Apple what you played and added elsewhere, and what your artists released",
+        ),
         {
           kind: "choice", id: "homehide", label: "Hiding lasts", key: "homeHideLasts",
           hint: "Right-click a Home tile and Hide to take it off the card",

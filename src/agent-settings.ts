@@ -291,6 +291,9 @@ const SPECS: Spec[] = [
     },
   },
   storeChoice("Playback", "shuffleIdle", "Idle shuffle plays", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
+  // ── Home (HOME.md §9, §10): the one switch over every Apple call the card makes. The
+  //    hide rows stay out — a hide is the user's own gesture on a tile. ──
+  storeToggle("Home", "homeApple", "Follow your other devices"),
   // ── Apple Music: the consent gates, off only ──
   {
     key: "libraryAdd", label: "Add to Library and ♥", section: "Apple Music", kind: "toggle", options: ON_OFF, offOnly: true,

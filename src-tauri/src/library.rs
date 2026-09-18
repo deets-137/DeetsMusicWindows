@@ -681,7 +681,7 @@ impl Drop for SyncFlagGuard {
 const FULL_SYNC_EVERY_SECS: i64 = 6 * 60 * 60;
 const META_FULL_SYNC_AT: &str = "full_sync_at";
 
-fn meta_get(conn: &Connection, key: &str) -> Option<String> {
+pub(crate) fn meta_get(conn: &Connection, key: &str) -> Option<String> {
     conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get(0)).ok()
 }
 pub(crate) fn meta_set(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
@@ -911,7 +911,7 @@ pub async fn library_sync(
         .unwrap()
         .clone()
         .ok_or("not connected to Apple Music")?;
-    let provider = std::sync::Arc::new(AppleProvider::new(dev, user));
+    let provider = std::sync::Arc::new(AppleProvider::new(dev.clone(), user.clone()));
 
     let last_full: Option<i64> = {
         let conn = db.lock();
@@ -922,7 +922,9 @@ pub async fn library_sync(
 
     app.emit("library-sync", serde_json::json!({ "phase": "start" })).ok();
     if incremental {
-        return sync_incremental(&app, provider, &db, age.unwrap_or(0)).await;
+        let n = sync_incremental(&app, provider, &db, age.unwrap_or(0)).await;
+        artist_catalog_pass(&dev, &user, &db, false).await;
+        return n;
     }
     crate::log::info(&format!(
         "library: full sync start ({})",
@@ -1001,6 +1003,9 @@ pub async fn library_sync(
             crate::log::warn(&format!("library: full sync timestamp not written: {e}"));
         }
     }
+    // The artist pass rides the sync (HOME.md §10.3). A full pass re-pages regardless
+    // of the count, so an artist swapped for another one heals here.
+    artist_catalog_pass(&dev, &user, &db, true).await;
     crate::log::info(&format!("library: full sync done, {} of {total} song(s)", all.len()));
     app.emit(
         "library-sync",
@@ -1008,6 +1013,20 @@ pub async fn library_sync(
     )
     .ok();
     Ok(all.len() as u32)
+}
+
+/// Fill `artist_catalog` from `me/library/artists?include=catalog` after a sync
+/// (HOME.md §10.3): catalog ids, artist photos and genres for every library artist, in
+/// bulk, instead of one Apple call per artist on first sight.
+///
+/// `force` re-pages without asking; otherwise one `limit=1` call compares Apple's count
+/// to the stored one and usually ends there. **Never fatal**: the songs are what a sync
+/// promises, and a failed artist pass leaves the old rows in place and warns.
+async fn artist_catalog_pass(dev: &str, user: &str, db: &State<'_, Db>, force: bool) {
+    let client = apple::http_client();
+    if let Err(e) = apple::sync_artist_catalog(&client, dev, user, db, force).await {
+        crate::log::warn(&format!("library: artist catalog pass failed: {e}"));
+    }
 }
 
 /// The incremental pass: newest-added first, one page at a time, stop at the first

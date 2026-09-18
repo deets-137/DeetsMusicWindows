@@ -25,8 +25,9 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Artwork, Track } from "./library";
 import { tracks as allTracks, trackById } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
-import type { Album, Playlist } from "./search";
+import { collectionTracks, type Album, type Playlist } from "./search";
 import { radioRecents, type Station } from "./radio";
+import { playCounts } from "./artist-view";
 import { albumKey, pid, playEventsSince, type PlayEvent } from "./rewind";
 import { setting, setSetting } from "./settings-store";
 import { trouble } from "./apple-health";
@@ -59,6 +60,24 @@ const APPLE_FLOOR_MS = 15 * 60_000;
 const APPLE_RETRY_MS = 2 * 60_000;
 /** A nominal song, for spacing rows older than anything we have dated. */
 const SONG_MS = 210_000;
+
+// ── the "New" shelf (HOME.md §10) ─────────────────────────────────────────────
+/** Artists the shelf asks Apple about. Ten is the whole cost control: one batched call. */
+const NEW_ARTISTS = 10;
+/** Of those ten, the seats won by our own play counts. The other four go to recency, and
+ *  that floor is the point of the rule — a play count is a record of the past, and an
+ *  artist you started last week has none. */
+const NEW_PLAY_SEATS = 6;
+/** Pages of Apple's recent list to read (30 rows each): 90 songs (his call). Recently
+ *  Played still brackets against the FIRST page only, so its shelf is unchanged. */
+const RECENT_PAGES = 3;
+const RECENT_PAGE = 30;
+/** The window: released in the last 30 days, or coming in the next 5. */
+const NEW_BACK_DAYS = 30;
+const NEW_AHEAD_DAYS = 5;
+/** How long the release list stays good. A release date does not change in an afternoon
+ *  (his call), so this floor is a day where the recents floor is fifteen minutes. */
+const NEW_FLOOR_MS = DAY_MS;
 
 // ── one tile ──────────────────────────────────────────────────────────────────
 export type HomeKind = "song" | "album" | "playlist" | "station" | "artist";
@@ -321,6 +340,8 @@ function itemOf(c: Container, fallback: Track[]): HomeItem | null {
 
 let appleAt = 0;
 let applePlayed: Track[] = [];
+let newAt = 0;
+let newReleases: Album[] = [];
 let appleAdded: { albums: Album[]; playlists: Playlist[] } = { albums: [], playlists: [] };
 let appleInFlight: Promise<void> | null = null;
 
@@ -331,9 +352,11 @@ let appleInFlight: Promise<void> | null = null;
  *  shelf that stayed empty behind a floor would be the app breaking that out loud. */
 export function refreshApple(): void {
   appleAt = 0;
+  newAt = 0;
 }
 window.addEventListener("deets:signed-in", () => {
   appleAt = 0;
+  newAt = 0;
 });
 
 /** Read both lists, at most once per floor. A failure keeps the lists we already have
@@ -352,12 +375,14 @@ async function fetchApple(): Promise<void> {
   // wave these calls straight through. `isConnected()` asks Rust whether a token exists,
   // which is what the startup sync and the walk's step 1 both gate on. `trouble()` stays
   // in the condition for the second reason to skip: a token Apple has since refused.
+  // Off, Home never leaves this machine (Settings › Home › Follow your other devices).
+  if (!setting("homeApple")) return;
   if (trouble() === "signin") return;
   if (!(await isConnected())) return;
   if (appleInFlight) return appleInFlight;
   appleInFlight = (async () => {
     const [played, added] = await Promise.all([
-      invoke<Track[]>("recent_played_tracks").catch((e) => {
+      invoke<Track[]>("recent_played_tracks", { pages: RECENT_PAGES }).catch((e) => {
         console.warn("[home] recent played", e);
         return null;
       }),
@@ -700,6 +725,103 @@ function bucketShelf(events: PlayEvent[], playlists: Map<string, Playlist>, want
   return out;
 }
 
+// ── New — releases from your artists (HOME.md §10) ────────────────────────────
+// Ten artists, one batched Apple call. Six seats go to our own play counts, four to the
+// artists Apple says you played last — on any device, which is the only way an artist you
+// listen to on your phone can reach this machine.
+
+/** The ten artists to ask about. Plays first, then recency, and a recency seat is
+ *  LIBRARY ONLY: Apple's list holds artists you do not own (31 of 68, measured
+ *  2026-09-18), and those are Apple's discovery job, not ours. A play seat does not
+ *  check the library — an artist you play that often has earned the tile (his call).
+ *  A fresh install has no plays at all, so every seat falls to recency. */
+function newArtists(counts: Map<string, { full: number; partial: number }>): string[] {
+  const plays = new Map<string, number>();
+  const inLibrary = new Set<string>();
+  for (const t of allTracks()) {
+    const name = t.artistName?.trim();
+    if (name && t.libraryId) inLibrary.add(name);
+  }
+  for (const [id, c] of counts) {
+    const name = trackById(id)?.artistName?.trim();
+    if (!name) continue;
+    plays.set(name, (plays.get(name) ?? 0) + c.full + c.partial);
+  }
+  const seats: string[] = [];
+  const take = (name: string): void => {
+    if (name && !seats.includes(name) && seats.length < NEW_ARTISTS) seats.push(name);
+  };
+  for (const [name] of [...plays.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))) {
+    if (seats.length >= NEW_PLAY_SEATS) break;
+    take(name);
+  }
+  // Apple's order IS the recency order. Library only, and the cold start fills the play
+  // seats it left empty from the same list.
+  for (const t of applePlayed) {
+    if (seats.length >= NEW_ARTISTS) break;
+    const name = t.artistName?.trim();
+    if (name && inLibrary.has(name)) take(name);
+  }
+  return seats;
+}
+
+/** Ask Apple for each artist's newest release, at most once a day. A failure keeps the
+ *  list already in hand and retries sooner, exactly as the recents calls do. */
+async function fetchNew(counts: Map<string, { full: number; partial: number }>): Promise<void> {
+  if (Date.now() < newAt) return;
+  if (!setting("homeApple")) return;
+  if (trouble() === "signin") return;
+  if (!(await isConnected())) return;
+  const names = newArtists(counts);
+  if (!names.length) return;
+  const got = await invoke<Album[]>("artist_new_releases", { names }).catch((e) => {
+    console.warn("[home] new releases", e);
+    return null;
+  });
+  if (got) newReleases = got;
+  newAt = Date.now() + (got ? NEW_FLOOR_MS : APPLE_RETRY_MS);
+}
+
+/** "Coming 09/23" — no year (his call): the window ahead is five days wide, so the year
+ *  can only be this one or the next. */
+const comingMark = (d: Date): string =>
+  `Coming ${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+
+/** The shelf: one tile per release inside the window, newest first. A release we do not
+ *  hold is a catalog album, and it plays through the same path a Search catalog album
+ *  uses, so every tile is playable. */
+function newShelf(limit: number): HomeItem[] {
+  const now = Date.now();
+  const from = now - NEW_BACK_DAYS * DAY_MS;
+  const to = now + NEW_AHEAD_DAYS * DAY_MS;
+  const out: { at: number; item: HomeItem }[] = [];
+  for (const al of newReleases) {
+    const id = al.catalogId;
+    if (!id || !al.releaseDate) continue;
+    // Apple dates a release YYYY-MM-DD with no zone. Read it as local midnight, so
+    // "today" is today here and not a day out either side.
+    const [y, m, d] = al.releaseDate.split("-").map(Number);
+    if (!y || !m || !d) continue;
+    const at = new Date(y, m - 1, d).getTime();
+    if (at < from || at > to) continue;
+    const coming = at > now;
+    out.push({
+      at,
+      item: {
+        key: `album:${id}`,
+        kind: "album",
+        title: al.title,
+        sub: coming ? `${comingMark(new Date(at))} · ${al.artistName}` : al.artistName,
+        art: al.artwork,
+        context: `search-albums:${id}`,
+        tracks: () => collectionTracks("albums", id),
+        count: al.trackCount,
+      },
+    });
+  }
+  return out.sort((a, b) => b.at - a.at).map((r) => r.item).slice(0, limit);
+}
+
 // ── the card's one entry point ────────────────────────────────────────────────
 const addedAtMap = (): Promise<[string, number][]> => invoke<[string, number][]>("added_at_map");
 const artistPhotos = (): Promise<[string, Artwork][]> => invoke<[string, Artwork][]>("artist_photos");
@@ -709,13 +831,17 @@ const artistPhotos = (): Promise<[string, Artwork][]> => invoke<[string, Artwork
  *  (HOME.md §9). An empty shelf is left out, and a failed Apple call costs nothing but
  *  the continuity: every shelf still builds from what is on this machine. */
 export async function homeShelves(): Promise<HomeShelf[]> {
-  const [events, lists, stamps, faces] = await Promise.all([
+  const [events, lists, stamps, faces, counts] = await Promise.all([
     playEventsSince(Date.now() - SCORE_DAYS * DAY_MS),
     playlistsCached(),
     addedAtMap().catch(() => [] as [string, number][]),
     artistPhotos().catch(() => [] as [string, Artwork][]),
+    playCounts().catch(() => new Map()),
     fetchApple(),
   ]);
+  // The release read needs the recents list, so it follows the fetch above. Its own floor
+  // is a day, so this is a no-op on all but the first build of each day.
+  await fetchNew(counts);
   // Keep anything fetched this session that the cached read does not carry yet.
   photos = new Map([...faces, ...photos]);
   const playlists = new Map(lists.map((p) => [pid(p), p]));
@@ -749,7 +875,10 @@ export async function homeShelves(): Promise<HomeShelf[]> {
   // (his call, 2026-09-18). They feed THIS shelf only: `events` stays measured, so the
   // bucket score below and Rewind never see a guessed time.
   const localPlays = events.filter((e) => e.startedTs >= playedFrom);
-  const borrowed = elsewhere(applePlayed, localPlays);
+  // The FIRST page only (30 rows). The list is read 90 deep for the "New" shelf's artist
+  // recency, but Recently Played's bracket rule is unchanged by that: a deeper borrow
+  // would quietly re-shape a shelf nobody asked to change.
+  const borrowed = elsewhere(applePlayed.slice(0, RECENT_PAGE), localPlays);
   const allPlays = [...localPlays, ...borrowed.events].sort((a, b) => a.startedTs - b.startedTs);
   const played = keep(playedShelf(allPlays, playlists, deep, borrowed.tracks));
   // Apple's dated list when we have it; our own rank-and-round-robin when we do not.
@@ -759,9 +888,12 @@ export async function homeShelves(): Promise<HomeShelf[]> {
   // The cold start (fork 3): the bucket shelf stays away until it has something to say.
   const scored = bucket.length >= SCORE_MIN ? keep(bucket) : [];
 
+  const fresh = keep(newShelf(deep));
+
   const shelves: HomeShelf[] = [];
   if (played.length) shelves.push({ label: "Recently Played", items: played });
   if (added.length) shelves.push({ label: "Recently Added", items: added });
+  if (fresh.length) shelves.push({ label: "New", items: fresh });
   if (scored.length) shelves.push({ label: bucketLabel(), items: scored });
   return shelves;
 }

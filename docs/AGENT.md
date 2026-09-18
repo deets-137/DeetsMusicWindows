@@ -301,6 +301,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   in the app's own panel and has no agent verb yet. Since 2026-09-18 all four are rows of
   **Settings › Sleep** as well as of the sleep panel, so the agent and the card name the same
   four things.
+- **Home › Follow your other devices** (2026-09-18, HOME.md §9, §10): `homeApple` (On | Off).
+  One switch over every Apple call the Home card makes — the recents lists that carry what you
+  played and added elsewhere, and the "New" shelf of your artists' releases. Off, every shelf
+  still builds from this machine alone. The hide rows are not exposed: hiding a tile is a
+  gesture on the tile.
 - **Playlists › Web reach / Web size / Web prefers songs** (2026-09-16, PLAYLIST-WEB.md): `webReach`
   (1 | 2 | 3), `webSize` (25 | 50 | 100), `webPrefer` (Familiar | Discover | Mix) and `webSeedFilter`
   ("Web genre chips filter": All songs | Keep 5 | Web only) and `webMakeMotion` ("Web panel closes":

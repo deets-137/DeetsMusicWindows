@@ -209,6 +209,10 @@ export interface Settings {
   /** The hidden Home tiles: item key → when it was hidden (epoch-ms). A tile played
    *  again after that time unhides itself. Cleared from Settings › Home. */
   homeHidden: Record<string, number>;
+  /** Home's Apple calls (HOME.md §9, §10): what you played and added on your other
+   *  devices, and the "New" shelf of your artists' releases. Off, every shelf still
+   *  builds from this machine alone — Home just stops seeing your phone. */
+  homeApple: boolean;
   // ── playback ──
   /** MusicKit's stream bitrate: auto follows the network estimate live, high pins 256 kbps,
    *  low pins 64 kbps. player.ts `applyStreamQuality`; a change starts at the next song. */
@@ -387,6 +391,7 @@ export const DEFAULTS: Settings = {
   soundReviewed: false,
   homeHideLasts: "forever", // user's call 2026-09-15: a hide that dies at relaunch reads as a bug
   homeHidden: {},
+  homeApple: true, // the shelves are about continuity across devices; four Apple calls a day
   streamQuality: "auto", // user's call 2026-09-16: Auto, and ours follows the network live (AUDIO-QUALITY.md)
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   historyShowDay: false, // user's call 2026-09-15: History looks as it always did until you ask

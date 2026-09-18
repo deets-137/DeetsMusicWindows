@@ -317,6 +317,7 @@ pub fn run() {
             apple::artist_photos,
             apple::recent_played_tracks,
             apple::recent_added,
+            apple::artist_new_releases,
             library::materialize_track,
             favorites::favorite_set,
             favorites::favorites_cached,
