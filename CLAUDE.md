@@ -5,9 +5,9 @@ front-end, Rust back-end).
 
 ## Start here
 - **`docs/HANDOFF.md`** — cold-start: state of play, how to run, roadmap, gotchas.
-- **`docs/VALUES.md`** — how to decide like the owner: the mission, the three stop rules, the
-  values with their evidence, tie-breakers, and the predict-then-ask log. Read it before any
-  decision he has not made.
+- **`docs/LESSONS.md`** — what the owner tends to want: the mission, the three stop rules, the
+  lessons with their evidence, and the tie-breakers. It shapes the option you RECOMMEND. It
+  never closes a fork — he does (see Working style).
 - `docs/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
   `docs/TOKENS.md` — every token, generated (`npm run tokens`; the release check fails when
   stale). Regenerate it in the same commit as any change to palette.css / themes.css / skin.css.
@@ -151,35 +151,18 @@ front-end, Rust back-end).
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
   real forks (he responds well to multiple-choice), confirm, then build.
-- **Predict and check — decide-alone is SUSPENDED (2026-09-17).** `docs/VALUES.md` §3 is
-  paused. It stays a reference for taste (§1, §2, §4, §5 and `docs/TASTE.md` are all still in
-  force); it does not give you the decision. Reason: the §6 log shows the predictions match the
-  owner's picks under half the time, and the misses lean one way — too cautious and too small.
-  Until the rate is proven, every fork comes to him.
-  1. Build your predicted pick, so the work does not wait.
-  2. Write the fork in VALUES.md §6 BEFORE you build: the fork, your pick, the value behind it.
-     Small forks too — those are the ones with no data.
-  3. At hand-off, list those rows first, as a short question set ("I picked X. Would you have
-     picked X?"), one line each, with the desk-test step.
-  4. Fill in his answer and the lesson when he replies. A value that keeps missing gets
-     rewritten from his picks.
-  To lift the pause: §3 comes back one value at a time, when that value's predictions match
-  over the next 20 logged forks (80% or better). The owner decides when.
-- **Ask BEFORE the build when the undo is costly (2026-09-17).** The gate is the cost of
-  reversal, not the size of the fork. A wrong pick found at hand-off must cost a small redo,
-  never a full one. Bring the fork first when the change is any of these:
-  1. A stored shape: a table, a column, the meaning of a settings key, a file on disk. Data
-     already written is the expensive kind of wrong.
-  2. A new primitive or token, or a change to one that more than one caller uses.
-  3. The architecture of a feature: who owns the data, local-first or mirror, where the loop runs.
-  4. Anything he cannot see in the app until more than two files are done.
-  Everything else — a default, a wording, a placement, a motion value, one file's behavior — is
-  cheap to undo: build it, log it in VALUES.md §6, ask at hand-off.
-- **Show the shape before the depth (2026-09-17).** Hand over the first thing he can press in
-  the app, then build the rest. He sees the shape when a redo costs 200 lines, not 1,600.
-  **This is NOT a cut-down feature.** §4.7 and §4.7a still hold: the full, polished version
-  still ships. Only the checkpoint moves earlier. Never read "slower" as "smaller" — that is
-  the exact miss the §6 log already records.
+- **He decides every fork (2026-09-18).** Deciding for him is off, and there is no prediction
+  log any more. When a choice comes up that he has not already made — a default, a wording, a
+  placement, a motion value, a new row, a badge, a schema shape, an architecture — bring him
+  the fork before you build it. Short options, the real ones only, your recommendation first.
+  Reason: on 2026-09-18 he found the room member count badge in the title bar
+  (`src/room-panel.ts`) only after it had shipped to live in 0.10.0. A decision he never saw
+  reached users.
+  - `docs/LESSONS.md` and `docs/TASTE.md` are how you pick what to RECOMMEND. They are not
+    permission to skip the question.
+  - Inside a fork he HAS chosen, build the full, polished thing without asking again — the
+    lessons' §4.7 and §4.7a hold. "He decides" never means "build less".
+  - At hand-off, list what you decided inside his choice, so nothing ships unseen.
 - **One load-bearing feature in flight (2026-09-17).** Hand it over, he desk-tests it, then the
   next one starts. Two small features at once is fine. Two that both touch the schema or a
   shared primitive is not. Clear the open desk tests before new work: on 2026-09-17 five
