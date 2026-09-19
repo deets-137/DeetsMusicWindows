@@ -18,6 +18,38 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.11.0 — 2026-09-18
+
+**Song of the Day.** Right-click any song and **Mark as Song of the Day**: one song, for one
+day, kept on this PC. Your picks gather on a new shelf at the foot of Home, each with the day
+it belongs to, and Rewind's new **SOTD** button turns its board into your picks, newest first,
+with **Make playlist** to turn a stretch of them into a playlist. Settings › Song of the Day
+holds the whole thing: whether a day starts at midnight or 5 AM, how many picks a day may
+hold, and a switch to turn the feature off entirely without losing a single pick.
+
+**It can post them to Discord, if you ask it to.** Paste one webhook link from your own
+channel — no bot, no account, nothing to register — and a marked song is posted there as a
+plain Apple Music link. You choose when: it can ask you each time, post right away, or wait
+until a time you set. The webhook link is encrypted on your PC and never appears in a log or
+a bug report. **Posted something you would rather take back?** A **Withdraw** button pulls the
+message out of the channel and keeps the pick. Settings shows **What has left this PC**: every
+post, with its state and the time it went, and a Copy button for the lot.
+
+**Pins.** Keep a playlist, a station, an album, an artist or a song in view. A pinned thing
+gets a tile at the top of Library, Playlists or Radio, and a shelf of its own on Home, ordered
+by what you play most. The pin badge on a tile is a button: press it to unpin.
+
+**The DeetsBar does sums.** Press **Ctrl + Space** and type a sum — `18*3`, `1h20 in minutes`
+— and the answer sits at the top of the list. Press Enter to copy it.
+
+### Installing
+
+Windows 11, 64-bit. The installer is per-user and asks for no administrator prompt.
+
+The installer is code-signed, but a new version starts with no download reputation, so a
+browser may still warn. In Microsoft Edge the path is **Delete ▾ › Keep anyway**; the box names
+the publisher (Aditya Sundaram). Windows itself shows no warning.
+
 ## 0.10.1 — 2026-09-18
 
 **A tour on the first launch.** Deets and Happy, the two sprites from deets.solutions, meet a
