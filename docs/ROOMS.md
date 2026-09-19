@@ -1009,3 +1009,110 @@ changes nothing for it — 0.11.1 or `npm run tauri dev` is required.
    (`room:seed { songs: 0 }`), the room stays idle, and the panel shows no current song.
    Add an album from the Library: it starts, because a non-seed add still auto-advances.
 8. Two apps: the guest joins mid-song and lands at the host's position, as §17.4.
+
+## 18. Race conditions — found 2026-09-19, none fixed
+
+A read of both sides after §17.9 shipped. **Nothing here is built.** Nothing here is
+causing a fault today: #1 and #2 are the only two with a symptom you could see, and both
+are narrow. Each one below names its own cost, because the four are not equally cheap.
+
+**The worker is clean.** A Durable Object serialises its events, a storage `await` holds
+the input gate, and the host-grace path is defended at both ends: `graceEndAt` is cleared
+when the host rejoins (`room.js:250`) AND the alarm re-checks `hostConnected()` before it
+ends the room (`room.js:548`). No finding on that side.
+
+### 18.1 `roomResumeAt` can start your OWN queue after you leave
+
+**This one arrived with the §17.9 fix.** `roomResumeAt` now re-feeds through
+`loadFromModel(m, true, …)` when MusicKit holds nothing, and that call has no room guard.
+
+`step()` checks `inRoom()` BEFORE calling it, but `teardown()` can land during the await,
+and teardown restores `ownQueue` first. The load then reads `queue.getCurrent()` — which
+is now the user's own local queue — and plays it with `autoplay = true`, right after
+teardown's `roomHold()` tried to stop the music. Leaving a room can leave music playing
+that nobody started.
+
+**Fix:** `if (mode !== "room") return;` before the re-feed, WITH a `diag.log` on the way
+out — another silent early return is what caused §17.9 in the first place.
+
+**Cost: near zero.** `roomEnter()` sets `mode = "room"` and `connect()` awaits it before
+the socket opens, so no legitimate room resume can see `mode !== "room"`. Three lines.
+
+### 18.2 A Pause during the 1.5 s lead plays a blip of sound first
+
+`step()`'s new-song branch sleeps `startsIn`, then re-checks only `inRoom()`, `stopped`
+and `playingEntryId` — **not whether the room is still playing** — and resumes from the
+CAPTURED `t`.
+
+`follow()` serialises, so a `pause` arriving during that sleep is queued behind the
+sleeping step. The sleeper wakes, calls `roomResumeAt` on stale transport, sound starts,
+and only then does the queued step call `roomHold()`. Up to a second of music you just
+cancelled.
+
+**Fix:** after the sleep, read `lastTransport` instead of trusting `t`, and return when it
+is no longer playing this entry. `settle()` already does exactly this — copy it.
+
+**Cost: low, about three lines, but it edits the lead path §17.10 just tested.** It needs
+§17.10 run again, not a typecheck. One deliberate behaviour change comes with it: a seek
+during the lead now resumes at the NEW position rather than the stale one.
+
+### 18.3 A stale socket can still apply state — and the fix is not a one-liner
+
+`connect()` reassigns `socket = ws` but never detaches the old socket's `message`
+listener, and `onMessage` has no "is this still my socket?" check. `onClose` IS guarded
+(`readyState === OPEN`); `message` is not.
+
+**How narrow:** the reconnect path only runs after the old socket closed, and a closed
+socket delivers nothing more. The reachable window is `joinRoom` → `leaveRoom()` →
+`connect()`, where a message already queued on the event loop dispatches to the old
+handler after `socket` was reassigned.
+
+**Why `if (ws !== socket) return;` is wrong on its own:** that listener also settles the
+`connect()` promise. Returning early leaves a superseded `connect()` awaiting for ever, so
+`startRoom` / `joinRoom` hang — worse than the race. Guarding only the `onMessage` call is
+not enough either: a stale socket can see `state.phase === "in"` set by the LIVE socket
+and resolve spuriously.
+
+**Cost: about five lines, and the settle path has to be thought through.**
+
+### 18.4 `epoch` is dead code, and wiring it up is the expensive option
+
+`transport.epoch` is incremented in the worker at `room.js:446` and `room.js:564`, carried
+in every broadcast, declared in the app's `Transport` interface (`room.ts:78`) — and
+**never compared anywhere**. It looks built to drop stale state, which would make 18.3
+impossible by construction.
+
+**The trap:** only 2 of the 7 broadcasts bump it. These five do not —
+
+| Line | Event |
+|---|---|
+| 223 | a member leaves |
+| 279 | a member joins |
+| 410 | the host changes guest controls |
+| 421 | the host removes a member |
+| 437 | a guest leaves |
+
+So the obvious "drop any state whose epoch is not newer" would **stop the member list, the
+permission pills and the stage figures from ever updating**. Doing it properly means
+either comparing `epoch` for the transport and queue ONLY while always applying members
+and meta (a two-speed `applyState`, easy to break later), or bumping the epoch on every
+broadcast — a worker change, so a redeploy, which drops every live room socket (§17.10).
+
+**Deleting `epoch` as dead code is a legitimate answer and is cheaper than wiring it up.**
+
+### 18.5 Looked at and cleared
+
+- `ownQueue ??= queue.snapshot()` survives a reconnect correctly, as its comment claims.
+- `settle()` re-reads `lastTransport` rather than a captured value, so it is already right.
+- `following = following.then(...)` has a `.catch`, so a REJECTION cannot wedge the chain.
+  A `step()` that never settles would block all later state for the session — a sharp
+  edge, not a bug: nothing today can hang that way.
+
+### 18.6 The recommendation, for whoever picks this up
+
+- **18.1 + 18.2 as one small commit.** The two with real symptoms, app-side only, and they
+  share one desk test: §17.10, plus "press Pause during the first second of a new song".
+- **18.3 on its own, or not at all.**
+- **18.4: decide between wiring `epoch` up and deleting it.** Do not start it as a patch.
+- Fork for the owner, not yet asked: **is 18.3 worth closing at all, given 18.4 could
+  close it instead?** They are one decision, not two.
