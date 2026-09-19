@@ -51,12 +51,26 @@ and users can check, and it opens a possible second lock (§6.6).
 
 ## 1. Cut a build
 
-Four files hold the version and **must agree**: `package.json`, `src-tauri/tauri.conf.json`,
-`src-tauri/Cargo.toml`, and `cli/Cargo.toml` (what `deetsmusic --version` and the MCP
-server info report). Tauri names the installer from `tauri.conf.json`;
-`scripts/archive-installer.mjs` looks for it using `package.json`. A mismatch fails the
-archive step with a message that says to check all three — deliberately, because the
-alternative is an installer that silently never gets archived.
+**Six files hold the version**, and only four of them are checked (2026-09-18).
+
+| File | Checked by | If it is stale |
+|---|---|---|
+| `package.json` | `release-check`, `archive-installer.mjs` | the archive step fails, loudly |
+| `src-tauri/tauri.conf.json` | `release-check` | Tauri names the installer from it, so the archive step fails |
+| `src-tauri/Cargo.toml` | `release-check` | caught |
+| `cli/Cargo.toml` | `release-check` | caught. It is what `deetsmusic --version` and the MCP server info report |
+| **`extension/manifest.json`** | **nothing** | the browser extension keeps reporting the old version, silently, for ever |
+| **`src-tauri/Cargo.lock` + `cli/Cargo.lock`** | **nothing** | cargo rewrites them during the build, so the release is fine but the tree is left dirty and the version commit is incomplete |
+
+`release-check` compares the first four and fails when they disagree. **The last two it does
+not see**: on 0.11.0 both `extension/manifest.json` and `cli/Cargo.lock` were still on 0.10.1
+after the first four were bumped, and nothing would have said so. Bump the manifest by hand,
+and run `cargo check` in `cli/` (and let the app's own build touch `src-tauri/Cargo.lock`)
+before the version commit, so the locks are in it rather than in the next one.
+
+A mismatch among the checked four fails the archive step with a message that says to check
+them all — deliberately, because the alternative is an installer that silently never gets
+archived.
 
 ```bash
 npm run release     # secrets → cli:build → sign cli → tauri build (signed) → release-check → archive
@@ -579,6 +593,36 @@ renew. Update the expiry date above.
 
 **Cost:** $9.99/month while the account exists, even with no release. Deleting the account ends
 it; signatures already made stay valid (they are timestamped).
+
+**The build can fail to SPAWN the signer, and a plain re-run fixes it (0.11.0, 2026-09-18).**
+The first `npm run release` for 0.11.0 died with:
+
+```
+Signing .../nsis/x64/Plugins/x86-unicode/additional/nsis_tauri_utils.dll with a custom signing command
+failed to bundle project: `failed to run C:/Program Files/nodejs/node.exe`
+```
+(the real output uses Windows backslashes; forward slashes here so the paths read cleanly)
+
+The identical command, with nothing changed, succeeded on the next run and every run after.
+
+**Read the error before digging.** This one is NOT signtool and NOT Azure:
+- `sign.mjs` prints `[sign] signtool failed on <file>` when the signer itself fails, and the
+  Artifact Signing banner (`Version: 1.0.128`, `Submitting digest…`) for every file it tries.
+  **Neither appeared for that DLL**, so `sign.mjs` never ran at all.
+- "failed to run node.exe" is Tauri reporting that it could not *start* the `signCommand`
+  process — a transient OS-level spawn failure on a DLL that `makensis` had just written.
+  Defender scanning the new file is the usual cause of that shape on Windows.
+
+**So: run it again first.** A single failure means nothing. If it repeats on the same file
+twice in a row, then look at: whether `node.exe` is still at the path Tauri names, whether
+Defender is holding `src-tauri/target/release/nsis/`, and whether the NSIS plugin directory is
+read-only from an interrupted earlier build (delete `src-tauri/target/release/nsis/` and let it
+be re-extracted).
+
+**No automatic retry.** Nothing wraps `tauri build` in one, deliberately: a retry around a
+signing stage hides exactly the repeated failure that would matter, and the re-run is one
+command. If it ever becomes common, the retry belongs in `release.mjs` around stage 3, not in
+`sign.mjs` — which, as above, is not where the failure happens.
 
 ## 7. Distributing a usable build — the developer token
 
