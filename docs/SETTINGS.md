@@ -74,9 +74,10 @@ Every row of the card, with the key behind it. The controls that are settings bu
 title-bar panel instead are §3a. Labels are one short active statement; a choice row reads as a sentence completed by the
 chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
-**The sections (twenty, since the regroup of 2026-09-18).** Tips · Window · Look schedule ·
-Motion · Skin settings · Menus, hints and notices · Home · Playback · Sound · Sleep · AirPlay ·
-Apple Music · Last.fm · Playlists · Rewind · Connections · Updates · Reset · Bugs · About.
+**The sections (twenty-one, since the regroup of 2026-09-18 and Song of the Day the same day).**
+Tips · Window · Look schedule · Motion · Skin settings · Menus, hints and notices · Home ·
+Playback · Sound · Sleep · AirPlay · Apple Music · Last.fm · Playlists · Rewind ·
+**Song of the Day** · Connections · Updates · Reset · Bugs · About.
 Look and feel was one fold until that day; `RESET_GROUPS` had treated it as four for months and
 the card now agrees. **Window keeps one fold** and names its three groups with a `.set__sub-head`
 sub-heading — *Window*, *Window sizes*, *Growing and drilling* — because nine of its rows are
@@ -180,6 +181,14 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Rewind | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
 | Rewind | Weekly Replay — day menu (*Mon … Sun*) + on/off (A playlist of the past week's most-played songs, made on this day) | `replayDay` + `replayAuto` | mon / … · on / off | `replay.ts` `lastDue` / `runWeeklyReplay` (boot) |
 | Rewind | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
+| Song of the Day (2026-09-18, [DeetsOTD.md](DeetsOTD.md) §8.4) | Song of the Day (Mark one song a day. With no outlet set up it stays on this PC and posts nothing) | `sotd` — **Rust** | **on** / off | `sotd/mod.rs`, and every row below it |
+| Song of the Day | Suggest today's pick (Puts the song you played most today at the head of the Home shelf. You still choose) | `sotdSuggest` — the store | **off** / on | `sotd.ts` `suggestionTile` |
+| Song of the Day | Day starts at (A song marked before this hour counts for the day before) | `sotdDayStart` — **Rust** | **5 AM** / Midnight | `sotd/mod.rs` `day_of` |
+| Song of the Day | Picks per day (At the limit, Mark becomes Replace Today's Pick) | `sotdPicksPerDay` — **Rust** | **1** / 2 / No limit (0) | `sotd/mod.rs` `pick_mark` |
+| Song of the Day | Post my picks (When a marked song goes out to the outlets you turned on) | `sotdPostMode` — **Rust** | **Ask each time** / Right away / At a set time | `sotd/outbox.rs` `after_mark` |
+| Song of the Day | Post at (shows on *At a set time*) | `sotdPostAt` — **Rust** | **20:00** | `sotd/outbox.rs` `rearm` |
+| Song of the Day | **What has left this PC** — the record of every post, newest first, with a Copy square (2026-09-18, [DeetsOTD.md](DeetsOTD.md) §10.6) | no key — read from `pick_posts` | — | `sotd/mod.rs` `post_log` |
+| Song of the Day | Discord — Set up / Change · Remove · on/off, then Post as | `<app_data>/sotd-outlets.json` (DPAPI), + `sotdPostAs` — **Rust** | not set up | `sotd/discord.rs` |
 | Connections | Agent changes settings (An AI app or the command line changing these settings. Ask: DeetsMusic asks you each time) — *Allow* / *Ask* / *Off* (2026-09-15); agents can't change it | `agentSettings` | **ask** / allow / off | `agent-settings.ts` `settingsWrite` — [AGENT.md §6](AGENT.md) |
 | Connections | Agents read play history (Lets a connected agent see what you played, when, and what you skipped) — 2026-09-16 | Rust `agentHistory` (`settings_set_agent_history`) | **on** / off (agents: off only) | `bridge.rs` `/query`, `/songs`, `/history` — [LOCAL-DATA.md §9](LOCAL-DATA.md) |
 | Connections | Agent control (Lets a CLI or an AI app drive DeetsMusic on this PC) — Guide + on/off · Copy setup for (Claude Desktop / Claude Code / Cursor / Other) · agent status · extension bridge status · Extension install guide | Rust `agentControl` | on / off | `bridge.rs` gate (403) — [AGENT-SETUP.md](AGENT-SETUP.md); `bridge_info` / `bridge_open_install_page` ([EXTENSION.md](EXTENSION.md)) |

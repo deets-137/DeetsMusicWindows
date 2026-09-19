@@ -274,6 +274,15 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+/* The record of what has left this PC (docs/DeetsOTD.md §10.6): five rows, then it scrolls
+   inside the group so the section does not grow without end. `app-scroll` for the themed bar
+   (never the grey OS one) and a stable gutter, so the rows do not shift when it appears. */
+.set__group-scroll {
+  max-height: var(--set-log-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.set__group-scroll .set__row + .set__row { border-top: 1px solid var(--border); }
 .set__group .set__row { border-radius: 0; }
 .set__group .set__row + .set__row { border-top: 1px solid var(--border); }
 /* The worker's state at the last Refresh, and a dot for an unseen owner reply. */

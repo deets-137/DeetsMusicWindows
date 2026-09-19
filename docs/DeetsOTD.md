@@ -1,10 +1,12 @@
 # DeetsMusic — DeetsOTD (Song of the Day)
 
-> **Status (2026-09-18): designed, not built. Build 1 = picks + the Discord webhook only
-> (§8; Bluesky and Mastodon are build 2, owner 2026-09-18). No fork blocks it.** A Song of the Day
-> journal already exists and runs every night, but it lives outside the app: the
-> [DeetsOTD](../../../DeetsOTD) repo reads a Discord channel, and
-> [deets.solutions/sotd](../../../DeetsSolutions/sotd) shows it. This doc records the state of
+> **Status (2026-09-18): build 1 BUILT — §10 is as built. Desk test §8.11 open.**
+> Build 1 is picks + the Discord webhook, the Home shelf, Rewind › Picks, the suggestion,
+> the settings section, the agent routes and the one-time journal import. Bluesky and
+> Mastodon stay as the build 2 spec (§8.4b, §8.4c, §8.12, §8.14).
+> A Song of the Day journal already existed before any of this, and it still runs every
+> night outside the app: the [DeetsOTD](../../DeetsOTD) repo reads a Discord channel, and
+> [deets.solutions/sotd](../../DeetsSolutions/sotd) shows it. This doc records the state of
 > all three places, then the room for DeetsMusic in that chain, then the forks.
 > Status marks: ✅ decided · 🔵 open (predicted pick noted) · ⬜ later.
 
@@ -579,6 +581,8 @@ What we need from the user: **the address of their server** (for example `mastod
 
 ### 8.7 Rewind › Picks
 - `STAT_LABELS` gains `picks: "Picks"`. The window pill filters by `day`.
+  **Superseded 2026-09-18 (§10.5): the picks board is reached by the header's SOTD button, and
+  Picks is not in the stat pill's menu.** The pill still shows "Picks" while that board is up.
 - ✅ **R1 (owner, 2026-09-17): newest first, the day as meta.** Owner's reason: Rewind is
   about habits; Song of the Day is about revisiting the past as a timeline ("how did a week
   already fly by!").
@@ -624,6 +628,8 @@ What we need from the user: **the address of their server** (for example `mastod
   build time: the two Bluesky files on deets.solutions (§8.14).
 
 ### 8.11 Desk test (after build 1)
+*(Steps 7a and 7c are build 2 — there is no Bluesky or Mastodon outlet yet. Step 4 reads
+"Discord" alone. Everything else stands. §10 is what was actually built.)*
 1. Right-click a song › Mark. Home shows the shelf with "Today". Right-click another song:
    the item reads Replace Today's Pick.
 2. Day starts at 5 AM, then mark at 12:30 AM: the item shows the previous day's date.
@@ -639,7 +645,8 @@ What we need from the user: **the address of their server** (for example `mastod
    carries neither.
 7a. Mastodon › Connect `mastodon.social`: the browser signs in, the status shows the account.
    Mark with all three outlets on: all three posts arrive; Unmark → Delete removes all three.
-7b. Run the import (§8.13) on the dev app's data: Home shows the past picks with their days;
+7b. **Already run on the dev app's data (2026-09-18): 198 picks added, 0 skipped, 0 without an
+   Apple link.** Restart the dev app and check: Home shows the past picks with their days;
    Rewind › Picks › This Year shows them from Jan 21. Run it again: nothing doubles.
 7c. Bluesky › Connect: the browser opens Bluesky, Allow returns to the app through the
    deets.solutions page, and the status shows the handle (dev app: the localhost client).
@@ -927,9 +934,184 @@ The design assumes an attacker reads every line of source. Nothing in it depends
   happens; one log line.
 - Bug report preview after connecting all three: no secret appears.
 
-## 9. Cross-links
-[DEETS-REWIND.md](../DEETS-REWIND.md) (plays) · [HOME.md](../HOME.md) (shelves) ·
-[PLAYLISTS.md](../PLAYLISTS.md) · [PLAYLIST-WEB.md](../PLAYLIST-WEB.md) §10 (temporary
-playlists) · [LOCAL-DATA.md](../LOCAL-DATA.md) · [EXTENSION.md](../EXTENSION.md) (why web
-pages cannot reach the bridge) · [STATIONS.md](../STATIONS.md) (picks as a curated signal) ·
+## 10. As built (2026-09-18)
+
+Build 1 shipped as §8 describes it, with the owner's four answers of that day and the
+differences below. Every one of them is noted where it differs from §8, so §8 stays readable
+as the design and this section is the truth.
+
+### 10.1 The owner's answers (2026-09-18)
+| Question | Answer |
+|---|---|
+| Branch | `pins-for-days` — Pins is tested, and "days" was always this feature too |
+| The feature, for a new user | **On**. With no outlet it is local: one right-click row and a shelf after the first pick |
+| The Home shelf | **Last, after Pinned**. Home can be rearranged later |
+| "Day starts at" default | **5 AM** — the rule his own journal already uses |
+
+### 10.2 The files
+| Part | File |
+|---|---|
+| Picks table, the day rule, the commands | `src-tauri/src/sotd/mod.rs` (`migrate_v10`) |
+| The outlet layer + the encrypted secret file | `src-tauri/src/sotd/outlet.rs` |
+| The Discord webhook | `src-tauri/src/sotd/discord.rs` |
+| The outbox: modes, the timer, the retries | `src-tauri/src/sotd/outbox.rs` |
+| The six settings rows Rust owns | `src-tauri/src/settings.rs` |
+| The agent route | `src-tauri/src/bridge.rs` (`/picks`), `src/agent-writes.ts` |
+| The window's mirror, menus and toasts | `src/sotd.ts` |
+| The Home shelf + the suggestion | `src/home.ts`, `src/home-card.ts` |
+| Rewind › Picks | `src/rewind.ts`, `src/rewind-card.ts`, `src/replay.ts` |
+| The settings section | `src/settings-card.ts`, `src/agent-settings.ts`, `src/settings-store.ts` |
+| CLI `pick` + the MCP `picks` tool | `cli/src/main.rs` |
+| The one-time journal import | `scripts/import-sotd-journal.mjs` |
+
+### 10.3 What differs from §8, and why
+1. **Discord cannot name the channel or the server.** §8.4a says the webhook read gives "its
+   name, channel and server". Checked against Discord's REST docs and a real reply
+   (2026-09-18): the webhook object carries the webhook's own **name** and the **ids** of its
+   channel and server, and no names for either. So the status line reads
+   *"Discord: posts through the “<webhook name>” webhook"*, not *"#channel in Server"*. The
+   app refuses a webhook with no channel id.
+2. **Five settings rows live in Rust, not three.** §8.4 put `sotd`, `sotdSuggest` and
+   `sotdDayStart` in the front-end store. Rust is what enforces the day rule (a timer fires
+   with no window up), the per-day limit (an agent must not slip past it) and the feature gate
+   (an agent gets a 403), so those live in `settings.json` with the post mode and the time.
+   Only **Suggest today's pick** stayed in the store: Rust never reads it.
+3. **A fifth post state, `asking`.** §8.1 lists `waiting | sent | failed | skipped`. A mark
+   under *Ask each time* now writes `asking` rows and Rust emits `sotd-ask`, so **an agent's
+   mark raises the same question in the window as a right-click does** — which is what G2
+   asks for. An unanswered `asking` is asked again at the next start while it is still that
+   day, and becomes `skipped` after.
+4. **Right away has no toast of its own; the result does.** §8.5 toasts `Posted to
+   #song-of-the-day` at mark time, before the send finishes. Rust now emits `sotd-posted`
+   with the real outcome, so the toast is either *Posted “Song” to Discord.* **[Undo]** or a
+   warn with Discord's own reason. Nothing claims a post that did not happen.
+5. **"Post at" is a time menu, not a − time + stepper.** §8.4 named the sleep *timer's*
+   stepper; the sleep *settings row* is a menu of quarter-hours (`timeOptions`), and a
+   settings row joins the settings family it sits in.
+6. **One outlet dispatcher, not a Rust trait.** The doc asks for a trait; with one outlet, a
+   `match` in `outlet.rs` does the same job without an async-trait crate. Build 2 adds an arm
+   and a module, not a layer — the outbox, the modes, the retries and the toasts already know
+   nothing about Discord.
+7. **The import's "app must be closed" check is a process check.** §8.13 says the script
+   checks the WAL lock. Measured 2026-09-18: `BEGIN IMMEDIATE` succeeds while the app runs,
+   whenever the app is not mid-write, so it proves nothing. The script looks for
+   `DeetsMusic.exe` instead, and `--force` overrides it. The rows would land safely either way
+   — what a running app misses is its own picks mirror, which is read at start.
+8. **The journal grew.** The import reads 198 of the owner's posts, and **all 198 carry a
+   catalog id** (§8.13 expected 196 with 3 skipped).
+
+### 10.4 Decided inside the owner's choices
+Small calls made while building, none of them a fork he had not already settled:
+- **Marking a song twice in one day** is refused with "That is already today's Song of the
+  Day", not counted as a second pick.
+- **Replace** drops the day's OLDEST picks, so the day holds the limit again — and only then
+  asks about the posts they left behind.
+- **A song with no catalog id gets no menu row at all**, and an agent asking for one is told
+  why. There would be nothing to post and nothing Apple could resolve.
+- **The pick's own tile does not repeat the Mark row**: `markItem` returns nothing under the
+  `picks` context, because the tile's own rows act on THAT pick's day, not on today's.
+- **The suggestion's rim** is an outline on the tile's art (`.search__tile--offer`), so the
+  name and the sub line read exactly as every other tile's.
+- **`Picks` leaves the Rewind stat picker** while the feature is off, and a card left on it
+  falls back to Songs.
+- **Make playlist on Picks** files "Songs of the Day — <window>, <date>" under Replay,
+  oldest first.
+- **The CLI numbers picks like every other listing** (1 = the newest), so `pick unmark 2`
+  reads the same way as `queue remove 2`.
+
+### 10.5 The SOTD button (owner, 2026-09-18, after the first hand-off)
+Rewind reached the picks board through a fifth entry in the stat pill. The owner asked for a
+button instead, and settled it in four answers:
+
+| Question | Answer |
+|---|---|
+| Where | The **card header, top right** — the refresh square's own place |
+| Its shape | The refresh square's family, **widened into a rectangle** to carry the word |
+| What it says | **SOTD**, in words, not a glyph |
+| Picks in the stat pill | **Taken out.** The button is the one door |
+| Pressed again | **Toggles back** to the stat you were on |
+
+- A new member of the header-action family: `.panel__action--text` keeps the family's fill,
+  border, height, radius and hover, and opens only its width. Its three values are aliases —
+  `--action-text-pad` → `--space-2`, `--action-text-fs` → `--fs-subtext`,
+  `--action-text-weight` → `--fw-title` (UI-ARCHITECTURE.md §2a: a family gets aliases, never
+  new raw values). It is reusable: any card header can now carry a worded action.
+- **Pressed** while the picks board shows, as `--picked` with the title's ink — the app's own
+  pressed look (the sleep chips, the sound pills, the web chips). The rule is scoped to
+  `--text`, so the glyph squares that already carry `aria-pressed` (`np__shuffle`) are
+  untouched.
+- The **stat pill still reads "Picks"** while that board shows: it names what is on screen.
+  Its menu offers the four listening stats, so picking one is the way out, and that un-presses
+  the button. The window pill and Make playlist keep working on the picks board.
+- **Hidden** (`hidden`, so the Grow button's title measurement skips it) while Song of the Day
+  is off. A card left on the picks board falls back to the stat it came from, before its
+  markup is built, so the pill's own label is right too.
+
+### 10.6 Withdraw a post, and the record of what left (owner, 2026-09-18)
+The toast's Undo only lives as long as the toast. The owner asked for a way to pull a post
+back an hour later, and for **a record, available to him, of what has left the app**.
+
+**Withdraw is not Unmark.** Unmarking is about the journal; withdrawing is about the channel,
+and an hour later they are rarely the same wish. So:
+- `pick_withdraw(id)` deletes the sent message through the outlet and sets its row
+  **`withdrawn`** — a sixth post state, distinct from `skipped` (which never went out). The
+  pick itself is untouched: it stays in the journal, on Home and in Rewind.
+- The row then reads `· Withdrawn`, and **Post Now comes back**, because a withdrawn pick has
+  nothing out there. A repost is a new message with a new time in the channel, and the toast
+  says so rather than pretending the old one returns.
+- It **asks first** (`Take the Discord post for “Song” down? Your pick stays.`
+  **[Withdraw] [Keep]**). A delete cannot be undone — the same message id can never be
+  reposted — so the question is the only safe place to stop.
+
+**Where it is.** Rewind's picks board, as a square at the row's end (and on the hero). It
+wears the **add-square family's** shape — a `.panel__action` with `margin-left: auto` — but
+**not its hover reveal** (owner, 2026-09-18): it is visible whenever the pick is really
+posted, so the way to pull a post back never has to be hunted for. It is only rendered on a
+posted pick, so its room is never taken for nothing. The glyph is an arrow turning back. The
+same verb is a row in every pick's right-click menu (`pickMenu`), so Home's shelf has it too,
+and a **Withdraw** button sits on each posted line of the record below.
+
+**The record — Settings › Song of the Day, at the foot of the section.** The owner asked for
+it "in some format"; the format is chosen here and is open to change:
+- The **My reports idiom**: a bordered `set__group`, a heading (*What has left this PC*) and
+  the card headers' own square, here a **Copy** button.
+- One line per send, newest first, in the My-reports **row** shape: the song, a state tag
+  (Posted · Withdrawn · Failed · Not posted · Waiting · Asking you) and a time tag, with the
+  outlet, the full timestamp and any failure reason in the row's own hover hint. A line that
+  is really posted carries a **Withdraw** half-button, which asks the same question the picks
+  board asks.
+- **It scrolls past five rows** (owner, 2026-09-18) inside the group, so the section never
+  grows without end: `--set-log-rows` × the row height, `app-scroll` for the themed bar and
+  `scrollbar-gutter: stable` so nothing shifts when the bar appears. Every record is in the
+  DOM (capped at 200, only to keep a years-old journal from building thousands of rows), the
+  heading counts them, and **Copy takes them all** as plain text with full timestamps.
+- `post_log()` reads `pick_posts` joined to `picks`, ordered by `pick_posts.at`. It carries
+  **names and states only** — never a webhook link, a token or a message id.
+- With nothing sent yet it reads "Nothing has been posted from this PC yet." The whole group
+  is hidden while the feature is off.
+
+**Schema.** `pick_posts.at` (when the state last changed) is what the record is ordered by.
+It was added inside `migrate_v10` with a self-healing `ALTER`, rather than a v11: v10 has
+never shipped, so a mid-development database heals itself and released installs see one
+migration. `at` is stamped on every state write — the rows going in, a send, a failure, a
+skip, a missed-time skip and a withdraw.
+
+**Not built, and deliberately:** an agent cannot withdraw. `/picks` has `mark` and `unmark`
+only. Pulling something back out of a channel is the user's own call, and no agent asked for
+it. Also unchanged: a note added **after** a post does not reach Discord — the message text
+is built at send time, and Discord's message edit (`PATCH`) is not used.
+
+### 10.7 Tests that run
+`cargo test --lib sotd` — four:
+- the grace hour moves a late-night moment back a day, and nothing else;
+- every clock time falls inside the journal day it belongs to, under both day rules;
+- a real Discord webhook URL is taken (every host, an optional API version, a trailing space);
+- **everything else is refused before any request is made** — another host, `http`,
+  `discord.com.evil.net`, a non-numeric id, a missing token, an extra path segment.
+
+## 11. Cross-links
+[DEETS-REWIND.md](DEETS-REWIND.md) (plays) · [HOME.md](HOME.md) (shelves) ·
+[PLAYLISTS.md](PLAYLISTS.md) · [PLAYLIST-WEB.md](PLAYLIST-WEB.md) §10 (temporary
+playlists) · [LOCAL-DATA.md](LOCAL-DATA.md) · [EXTENSION.md](EXTENSION.md) (why web
+pages cannot reach the bridge) · [STATIONS.md](STATIONS.md) (picks as a curated signal) ·
 DeetsSolutions `docs/architecture.md` §SOTD, `docs/bluesky.md`.

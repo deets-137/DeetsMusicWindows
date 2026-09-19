@@ -36,6 +36,7 @@ import type { Artwork, Track } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { isPinned, pinItem, pinBadgeHTML, handleUnpin, onPinsChange } from "./pins";
+import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 
 const err = (what: string) => (e: unknown) => console.error(`[home] ${what}`, e);
 
@@ -67,7 +68,7 @@ function tileArt(it: HomeItem): string {
 
 /** `data-key` is the item's identity — the one thing a listener needs to find it again. */
 const tileHTML = (it: HomeItem): string =>
-  `<div class="search__tile" data-key="${esc(it.key)}" role="button" tabindex="0" title="${esc(it.title)}">` +
+  `<div class="search__tile${it.dashed ? " search__tile--offer" : ""}" data-key="${esc(it.key)}" role="button" tabindex="0" title="${esc(it.title)}">` +
   `${tileArt(it)}${isPinned(it.key) ? pinBadgeHTML(it.key) : ""}<span class="search__tile-name">${esc(it.title)}</span>` +
   `<span class="search__tile-sub">${esc(it.sub)}</span></div>`;
 
@@ -213,6 +214,18 @@ export const homeCard: CardDef = {
           hideRow(it),
         ].filter(Boolean) as MenuItem[];
       }
+      // A Song of the Day tile: the pick's own rows (a note, Post Now, Unmark) after the
+      // song's, and the suggestion, whose first row is the Mark it exists for (§8.6).
+      if (it.key === SUGGEST_KEY) {
+        const list = it.tracks();
+        const one = Array.isArray(list) ? list[0] : undefined;
+        return one ? [suggestMarkItem(one), ...trackMenu([one], it.context)] : [];
+      }
+      const pick = it.key.startsWith("pick:") ? pickByKey(it.key) : undefined;
+      if (pick) {
+        const list = it.tracks();
+        return [...trackMenu(Array.isArray(list) ? list : ([] as Track[]), it.context), ...pickMenu(pick)];
+      }
       // Songs, albums and artists are all track lists: the shared Library menu, which
       // brings Play Now / Next / Queue, Add to playlist, Go to…, the link and ♥.
       // (`trackMenu` carries Pin / Unpin itself, from the context tag or the one song.)
@@ -289,6 +302,7 @@ export const homeCard: CardDef = {
     const offTracks = onTracksChange(() => build(), "home-card");
     const offPlaylists = onPlaylistsChange(() => build());
     const offPins = onPinsChange(() => build());
+    const offSotd = onSotdChange(() => build());
 
     render();
     build();
@@ -306,6 +320,7 @@ export const homeCard: CardDef = {
         alive = false;
         window.clearTimeout(timer);
         offState();
+        offSotd();
         offTracks();
         offPlaylists();
         offPins();

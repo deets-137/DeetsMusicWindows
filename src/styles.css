@@ -1824,6 +1824,21 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   color: var(--title);
   cursor: pointer;
 }
+/* A header action that says a word instead of drawing a glyph (Rewind's SOTD button). The
+   square becomes a rectangle: the family's own fill, border, height, radius and hover stay,
+   and only the width opens up for the letters (owner, 2026-09-18). */
+.panel__action--text {
+  width: auto;
+  padding: 0 var(--action-text-pad);
+  font-family: var(--font-body);
+  font-size: var(--action-text-fs);
+  font-weight: var(--action-text-weight);
+  line-height: 1;
+}
+/* Pressed = the board it opens is the one showing. Scoped to the worded action, so the
+   glyph squares that already carry aria-pressed (np__shuffle) keep their own rule. The
+   pressed look is the app's own: --picked, with the title's ink on the border and the word. */
+.panel__action--text[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
 .panel__action:hover { filter: brightness(0.97); }
 .panel__action[disabled] { opacity: 0.6; cursor: default; }
 .panel__action[hidden] { display: none; } /* class sets display:grid, which would beat [hidden] */
@@ -2796,6 +2811,11 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    earlier. At the row's right end: after the explicit mark (Playlists), after the time
    (History). `:not([hidden])` keeps a song you have (with the ✓ setting off) square-less. */
 .lib-row > .add-square, .qrow > .add-square, .qnow > .add-square { display: none; margin-left: auto; }
+/* The withdraw square (Rewind's picks board, docs/DeetsOTD.md §10.6) wears the add-square's
+   shape but NOT its hover reveal (owner, 2026-09-18): it shows whenever the pick is really
+   posted, so the way to pull a post back is visible without hunting for it. It is only
+   rendered on a posted pick, so its room is never taken for nothing. */
+.qrow > .rewind__withdraw, .qnow > .rewind__withdraw { display: grid; margin-left: auto; }
 .lib-row > .lib-src-badge ~ .add-square, .qrow > .qrow__meta ~ .add-square { margin-left: 0; }
 .lib-row:hover > .add-square:not([hidden]), .lib-row:focus-visible > .add-square:not([hidden]),
 .qrow:hover > .add-square:not([hidden]), .qrow:focus-visible > .add-square:not([hidden]),
@@ -2834,6 +2854,13 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
 .search__tile-art--mosaic { overflow: hidden; } /* a playlist with no artwork, on an artist shelf */
 .search__tile-art--mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* A tile that is an OFFER, not a thing you have (the Song of the Day suggestion): the
+   empty-slot dashed rim, on the art alone so the name and sub line read as they always do. */
+.search__tile--offer .search__tile-art {
+  outline: var(--empty-slot-rim-w) var(--empty-slot-rim-style)
+    color-mix(in srgb, var(--border) var(--empty-slot-rim-alpha), transparent);
+  outline-offset: calc(var(--empty-slot-rim-w) * 2);
+}
 .search__tile:hover { transform: var(--hover-lift); }
 .search__tile-name { font-size: var(--fs-subtext); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__tile-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -45,6 +45,10 @@ import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
 import { restartWalk } from "./walk";
 import { hiddenCount, clearHidden } from "./home";
+import {
+  sotdSettings, outletStatuses, refreshSotdSettings, onSotdChange,
+  postLog, postLine, outletName, STATE_WORD, withdrawPickAsking, type PostRecord,
+} from "./sotd";
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
 type Option = { value: string; label: string };
@@ -368,6 +372,160 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const waiting = s.waiting ? ` · ${s.waiting} waiting to send` : "";
     return `Connected as ${s.name}${waiting}`;
   };
+  // ── Song of the Day (docs/DeetsOTD.md §8.4) ──
+  // The five Rust-owned rows and the outlet states are read live from sotd.ts, which already
+  // mirrors them and redraws this card when they change — so the card caches nothing of its own.
+  const on = () => sotdSettings().sotd;
+  const outletOf = (name: string) => outletStatuses().find((o) => o.outlet === name);
+  let hookOpen = false; // the paste field is showing
+  let hookDraft = "";
+  let hookSay = ""; // what the check answered, under the field
+  let hookBusy = false;
+
+  /** Write one Rust-owned Song of the Day row, then let sotd.ts tell every card. */
+  const setRust = (cmd: string, args: Record<string, unknown>) => {
+    invoke(cmd, args)
+      .then(() => refreshSotdSettings())
+      .catch((e) => {
+        console.error(`[settings] ${cmd}`, e);
+        toast({ kind: "warn", text: "Couldn't save that." });
+      });
+  };
+
+  /** Check the pasted webhook and store it. It posts nothing. */
+  const checkHook = () => {
+    if (hookBusy) return;
+    if (!hookDraft.trim()) {
+      hookSay = "Paste the webhook link first.";
+      render();
+      return;
+    }
+    hookBusy = true;
+    hookSay = "Asking Discord…";
+    render();
+    invoke("outlet_connect", { outlet: "discord", input: hookDraft.trim() })
+      .then(() => {
+        hookOpen = false;
+        hookDraft = "";
+        hookSay = "";
+        return refreshSotdSettings();
+      })
+      .catch((e) => {
+        hookSay = String(e);
+      })
+      .finally(() => {
+        hookBusy = false;
+        render();
+      });
+  };
+
+  const discordHalves = (): Half[] => {
+    const c = outletOf("discord");
+    const halves: Half[] = [
+      {
+        type: "action",
+        get label() {
+          return hookOpen ? (hookBusy ? "Checking" : "Check") : c?.connected ? "Change" : "Set up";
+        },
+        hint: "Asks Discord what the webhook is. It posts nothing",
+        run: () => {
+          if (hookOpen) checkHook();
+          else {
+            hookOpen = true;
+            hookSay = "";
+            render();
+          }
+        },
+      },
+    ];
+    if (c?.connected) {
+      halves.push({
+        type: "action",
+        label: "Remove",
+        hint: "Forgets the webhook here. Delete it in Discord to stop it working",
+        run: () => {
+          invoke("outlet_disconnect", { outlet: "discord" })
+            .then(() => refreshSotdSettings())
+            .catch((e) => console.error("[settings] outlet disconnect", e));
+        },
+      });
+      halves.push({
+        type: "toggle",
+        get: () => !!c.on,
+        set: (o) => {
+          invoke("outlet_set_on", { outlet: "discord", on: o })
+            .then(() => refreshSotdSettings())
+            .catch((e) => console.error("[settings] outlet on", e));
+        },
+      });
+    }
+    return halves;
+  };
+
+  // What has left the app (docs/DeetsOTD.md §10.7). A user-facing record, in the My-reports
+  // idiom: a bordered group with a heading and a Copy square. It holds names and states only
+  // — never a webhook link, a token or a message id.
+  let postRecords: PostRecord[] = [];
+  // It scrolls at five rows (owner, 2026-09-18), so every record can be in the DOM; the cap
+  // is only there to keep a years-old journal from building thousands of rows at once.
+  const LOG_CAP = 200;
+  const loadPostLog = () =>
+    void postLog()
+      .then((rs) => {
+        postRecords = rs;
+        if (alive) render();
+      })
+      .catch((e) => console.warn("[settings] post log", e));
+
+  const postLogHTML = (): string => {
+    if (!on()) return "";
+    if (!postRecords.length) {
+      return `<div class="set__status">Nothing has been posted from this PC yet.</div>`;
+    }
+    // One row per send, in the My-reports row shape: the song and its state as a tag, the
+    // time as a second tag, the outlet and any reason in the row's own hover hint, and
+    // Withdraw as a `set__half` where there is really something to pull.
+    const rows = postRecords
+      .slice(0, LOG_CAP)
+      .map((r) => {
+        const when = r.at ? new Date(r.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+        const tip = `${outletName(r.outlet)} · ${r.at ? new Date(r.at).toLocaleString() : "no time recorded"}${r.error ? ` · ${r.error}` : ""}`;
+        const pull =
+          r.state === "sent"
+            ? `<div class="set__split"><button class="set__half" type="button" data-withdraw-log="${r.pickId}" ` +
+              `title="Takes the post down. Your pick stays">Withdraw</button></div>`
+            : "";
+        return (
+          `<div class="set__row set__row--choice" title="${esc(tip)}">` +
+          `<span class="set__label">${esc(r.title)}<span class="set__tag">${esc(STATE_WORD[r.state] ?? r.state)}</span>` +
+          `<span class="set__tag">${esc(when)}</span></span>${pull}</div>`
+        );
+      })
+      .join("");
+    const count = `<span class="set__tag">${postRecords.length}</span>`;
+    return (
+      `<div class="set__group"><div class="set__group-head"><span>What has left this PC${count}</span>` +
+      `<button class="panel__action" type="button" data-sotd-copy aria-label="Copy this record" ` +
+      `title="Copies every line to the clipboard, newest first">` +
+      `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect>` +
+      `<path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg></button></div>` +
+      `<div class="set__group-scroll app-scroll">${rows}</div></div>`
+    );
+  };
+
+  /** The one status line under the section. Never the webhook link: it is a credential. */
+  const discordLine = (): string => {
+    if (!on()) return "Off. Your picks and your webhook are kept";
+    const c = outletOf("discord");
+    if (!c?.connected) return "Discord: not set up. Your picks stay on this PC";
+    if (c.error) {
+      const gone = c.error.includes("no longer exists");
+      return gone ? "Discord: the webhook no longer exists. Set it up again" : `Discord: the last post failed: ${c.error}`;
+    }
+    const place = c.whereTo ? `the “${c.whereTo}” webhook` : "your channel";
+    return c.on ? `Discord: posts through ${place}` : `Discord: set up, but turned off`;
+  };
+
   let setupClient = "claude-code"; // the app "Copy setup for" copies for
   let older: OlderVersion[] = []; // Roll back's menu (updater.ts, one request per session)
   let rollTarget = "";
@@ -1182,6 +1340,90 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       ],
     },
     {
+      // Song of the Day (docs/DeetsOTD.md §8.4). The first row is the whole feature; every
+      // other row shows only while it is on. Five of the six live in Rust (settings.rs) —
+      // Rust is what enforces them, for an agent and for a timer with no window up.
+      title: "Song of the Day",
+      tail: () => `<div class="set__status" id="set-sotd-status">${esc(discordLine())}</div>`,
+      rows: [
+        {
+          kind: "choice", id: "sotd", label: "Song of the Day", get: () => (sotdSettings().sotd ? "on" : "off"),
+          hint: "Mark one song a day. With no outlet set up it stays on this PC and posts nothing",
+          set: (v) => setRust("settings_set_sotd", { on: v === "on" }),
+          options: [{ value: "on", label: "On" }, { value: "off", label: "Off" }],
+        },
+        { ...storeToggle("sotdsuggest", "Suggest today's pick", "sotdSuggest", () =>
+          "Puts the song you played most today at the head of the Home shelf. You still choose",
+        ), when: on },
+        {
+          kind: "choice", id: "sotdday", label: "Day starts at",
+          hint: "A song marked before this hour counts for the day before",
+          get: () => String(sotdSettings().sotdDayStart),
+          set: (v) => setRust("settings_set_sotd_day_start", { hour: Number(v) }),
+          options: [{ value: "0", label: "Midnight" }, { value: "5", label: "5 AM" }],
+          when: on,
+        },
+        {
+          kind: "choice", id: "sotdlimit", label: "Picks per day",
+          hint: "At the limit, Mark becomes Replace Today's Pick",
+          get: () => String(sotdSettings().sotdPicksPerDay),
+          set: (v) => setRust("settings_set_sotd_picks_per_day", { n: Number(v) }),
+          options: [{ value: "1", label: "1" }, { value: "2", label: "2" }, { value: "0", label: "No limit" }],
+          when: on,
+        },
+        {
+          kind: "choice", id: "sotdpost", label: "Post my picks", menu: true,
+          hint: "When a marked song goes out to the outlets you turned on",
+          get: () => sotdSettings().sotdPostMode,
+          set: (v) => setRust("settings_set_sotd_post_mode", { mode: v }),
+          options: [
+            { value: "ask", label: "Ask each time" },
+            { value: "now", label: "Right away" },
+            { value: "time", label: "At a set time" },
+          ],
+          when: on,
+        },
+        {
+          kind: "choice", id: "sotdat", label: "Post at", menu: true,
+          hint: "The time the day's picks go out. It always falls inside the day they belong to",
+          get: () => sotdSettings().sotdPostAt,
+          set: (v) => setRust("settings_set_sotd_post_at", { at: v }),
+          options: timeOptions(0, 23 * 60 + 45, 15),
+          when: () => on() && sotdSettings().sotdPostMode === "time",
+        },
+        {
+          kind: "split", id: "sotddiscord", label: "Discord", group: true,
+          hint: () => "Posts the song's link in one channel through a webhook. Anyone who has the link can post there",
+          halves: discordHalves(),
+          when: on,
+        },
+        {
+          // The setup field and its steps. An html row, so the field keeps what is typed
+          // while the card redraws around it (the report form's shape).
+          kind: "html", id: "sotdhook",
+          when: () => on() && hookOpen,
+          html: () =>
+            `<div class="set__group">` +
+            `<label class="set__field"><input class="set__input" data-sotd="hook" type="text" spellcheck="false" ` +
+            `placeholder="Paste the webhook link" value="${esc(hookDraft)}" /></label>` +
+            `<div class="set__status">In Discord: the channel's gear › Integrations › Webhooks › New Webhook › ` +
+            `Copy Webhook URL. You need the Manage Webhooks permission. If you do not have it, ask a server admin to send you the link.</div>` +
+            (hookSay ? `<div class="set__status">${esc(hookSay)}</div>` : "") +
+            `</div>`,
+        },
+        {
+          kind: "html", id: "sotdpostas",
+          when: () => on() && !!outletOf("discord")?.connected,
+          html: () =>
+            `<label class="set__field"><input class="set__input" data-sotd="postas" type="text" maxlength="80" ` +
+            `placeholder="${esc(outletOf("discord")?.defaultName || "Post as")}" value="${esc(sotdSettings().sotdPostAs)}" /></label>`,
+        },
+        // The record of what has left the app. Last in the section: it is a thing you check,
+        // not a thing you set.
+        { kind: "html", id: "sotdlog", when: on, html: postLogHTML },
+      ],
+    },
+    {
       // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md), then the browser
       // extension's bridge status and install page (EXTENSION.md).
       title: "Connections",
@@ -1638,7 +1880,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     dropMenus();
     // A report field being typed in survives the rebuild: its focus and caret come back.
     const active = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
-    const field = active && body.contains(active) ? active.dataset.report : undefined;
+    const field = active && body.contains(active) ? (active.dataset.report ?? active.dataset.sotd) : undefined;
     const caret = field ? [active!.selectionStart ?? 0, active!.selectionEnd ?? 0] : null;
     const rangeFocus = active && body.contains(active) ? active.dataset.range : undefined; // a key step keeps focus
     const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
@@ -1650,7 +1892,9 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         .map((s) => `<section class="set__section" data-sec="${esc(s.title)}">${headHTML(s)}${isOpen(s) ? shown(s.rows).map(rowHTML).join("") + tailOf(s) : ""}</section>`)
         .join("");
     if (field && caret) {
-      const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-report="${field}"]`);
+      const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+        `[data-report="${field}"], [data-sotd="${field}"]`,
+      );
       el?.focus({ preventScroll: true });
       el?.setSelectionRange(caret[0], caret[1]);
     }
@@ -1811,6 +2055,12 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
   });
   body.addEventListener("input", (e) => {
     const f = e.target as HTMLInputElement | HTMLTextAreaElement;
+    // Song of the Day: the webhook field is a draft until Check; Post as writes on change.
+    if (f.dataset.sotd === "hook") {
+      hookDraft = f.value;
+      return;
+    }
+    if (f.dataset.sotd === "postas") return;
     if (f.dataset.report === "title") draft.title = f.value;
     else if (f.dataset.report === "body") draft.body = f.value;
     else return;
@@ -1818,6 +2068,40 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     if (f.dataset.report === "title" && words(draft.title) > TITLE_WORDS) say(`Keep the title to ${TITLE_WORDS} words or fewer.`);
     else if (reportStatus && !sentUrl) say("");
   });
+  body.addEventListener("keydown", (e) => {
+    const f = e.target as HTMLInputElement;
+    if (e.key !== "Enter" || f?.dataset?.sotd !== "hook") return;
+    e.preventDefault();
+    checkHook();
+  });
+  body.addEventListener("change", (e) => {
+    const f = e.target as HTMLInputElement;
+    if (f?.dataset?.sotd !== "postas") return;
+    setRust("settings_set_sotd_post_as", { name: f.value });
+  });
+  // A mark, an outlet change or a Song of the Day row set from anywhere else.
+  const unsubSotd = onSotdChange(() => {
+    if (!alive) return;
+    loadPostLog(); // a post, a withdraw or a failure changed the record
+    render();
+    const el = body.querySelector<HTMLElement>("#set-sotd-status");
+    if (el) el.textContent = discordLine();
+  });
+  loadPostLog();
+  body.addEventListener("click", (e) => {
+    // Withdraw, straight from the record: the same question the picks board asks.
+    const pull = (e.target as HTMLElement).closest<HTMLElement>("[data-withdraw-log]");
+    if (pull?.dataset.withdrawLog) {
+      e.stopPropagation();
+      withdrawPickAsking(Number(pull.dataset.withdrawLog));
+      return;
+    }
+    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-sotd-copy]");
+    if (!btn) return;
+    e.stopPropagation();
+    void copyFrom(btn, Promise.resolve(postRecords.map(postLine).join("\n")));
+  });
+
   invoke<ReportView[]>("report_list")
     .then((r) => {
       if (!alive) return;
@@ -1898,6 +2182,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     destroy() {
       alive = false;
       unsubStore();
+      unsubSotd();
       unsubSkin();
       unsubLibAdd();
       unsubOwned();

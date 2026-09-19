@@ -19,7 +19,7 @@ the queue and history. It rides the **same loopback bridge the browser extension
 `<app_data>/settings.json` as `Authorization: Bearer …`. No new server, port, or trust
 surface. Plain `deets` is reserved for other things; this is `deetsmusic`.
 
-**Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 16 tools, for Claude-class
+**Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 18 tools, for Claude-class
 clients. `deetsmusic mcp --small` serves 10, for small tool-calling models (LFM2.5, Gemma
 4B-class): flat string / enum arguments, and no argument whose meaning depends on the action.
 Both use **prefixed ids everywhere** and a two-step flow — search (or list stations) first,
@@ -80,6 +80,9 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `GET /update` · `POST /update` | status `{state, current, channel, version, …, mode, skip}` · `{action: check \| install \| rollback \| mode \| skip, value?}` |
 | `GET /go` · `POST /go` | `{ok, places:[…]}` · `{target}` → `{ok, went, also, message}` — go to a place ([COMPASS.md](COMPASS.md) §10): a card, the Sound panel, the Sleep timer, resolved by the Compass's own registry. Navigation only: a theme, a skin or a surface is a stored setting and is refused with a pointer at `settings set`, which has the consent row and the cover. CLI: `deetsmusic go` (the list) · `deetsmusic go rewind` · `deetsmusic go sleep timer`. Not an MCP tool |
 | `GET /grow` · `POST /grow` | `{ok, message, state}` · `{action: grow \| collapse \| pin \| unpin \| state, card?, dir?}` — the card grow ([CARD-GROW.md](CARD-GROW.md)): `card` is a card name (Library) or a slot (left, right, c, d); `dir` is right · left · up · down · full, or absent for the header button's next step. A grow answers after its motion. A test handle more than an agent verb (2026-09-16); not an MCP tool. CLI: `deetsmusic grow Library right` · `grow collapse` · `grow pin` · `grow state` |
+| `GET /picks[?window=]` · `POST /picks` | `{ok, day, picks:[{row, day, title, artist, id, note?, posted:[…]}]}` · `{action: mark \| unmark, id?, index?, value?}` → `{ok, message}` / `pending` — Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `window` is Rewind's (day · week · month · ytd · year); without it, every pick. `mark` takes `song:…` or `current` and `value` as the note; `unmark` takes the row from the list (1 = the newest) and deletes the post it made. There is
+deliberately **no `withdraw`**: pulling a message back out of a channel is the user's own call
+(DeetsOTD.md §10.6). **403 while Song of the Day is off**, and the first mark asks the user in the window (G2). CLI: `deetsmusic pick list` · `pick mark song:123 --note "…"` · `pick unmark 2`. MCP tool: `picks` (full pack only) |
 | `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
 | `POST /songs` | `{sort?, order?, limit?, artist?, genre?, shorterThan?, longerThan?}` → `{songs:[{id, title, artist, album, length_s, starts?, finishes?, last_played?, skips?}]}` — the library, sorted and filtered, zero Apple calls ([LOCAL-DATA.md](LOCAL-DATA.md) §6). Token callers only |
@@ -171,6 +174,7 @@ subset a tool server needs, no SDK. Tools:
 | `queue_edit` | `action: remove\|move\|jump`, `index`, `to?` | full | replies with the fresh queue |
 | `folder` | `action: list\|create\|rename\|delete`, `name`, `new_name?` | full | by name |
 | `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
+| `picks` | `action: list\|mark\|unmark`, `id?`, `index?`, `note?`, `window?` | full | Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `mark` takes a `song:…` id or `current`; `unmark` takes the row from `list`. Refused while the feature is off; the first mark is `pending` until the user allows it in the window |
 | `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
 
 Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp`. The
@@ -370,6 +374,7 @@ Max), **except**:
 | Left out or limited | Why |
 |---|---|
 | `libraryAdd` (Add to Library and ♥), `playlistExport` (Export playlists), `agentControl` (Agent control), `agentHistory` (Agents read play history, 2026-09-16, [LOCAL-DATA.md](LOCAL-DATA.md) §9), `lastfmScrobble` (Scrobble plays), `lastfmNowPlaying` (Show now playing; both 2026-09-16, [LASTFM.md](LASTFM.md) §6) — **off only**. `set … off` follows the permission; `set … on` → `403`, "Only you can turn on … in DeetsMusic › Settings › …" | The consent gates of §5. Off takes power away from agents. An agent that could turn them on would skip the user's Allow. |
+| `sotd` (Song of the Day, 2026-09-18, [DeetsOTD.md](DeetsOTD.md) §8.8) — **off only** | Another consent gate: the feature is what lets an agent mark at all, so an agent may turn it off, never on. Its other five rows (`sotdSuggest`, `sotdDayStart`, `sotdPicksPerDay`, `sotdPostMode`, `sotdPostAt`) are ordinary. The webhook link has **no key at all**: no route reads or writes a secret. |
 | `agentSettings` — **read-only** | The permission itself. |
 | `addSquareOwned` (Show ✓ on songs you have, 2026-09-17) — **not** limited, an ordinary toggle | It changes only what the Add-to-Library square shows. It writes nothing to Apple, so it is not a gate. |
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
@@ -379,7 +384,9 @@ Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_
 `startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`,
 `lastfmScrobble` → `settings_set_lastfm_scrobble`, `lastfmNowPlaying` → `settings_set_lastfm_now_playing`,
 `airplaySend` (AirPlay › Send to speaker, `app` / `system`, 2026-09-17, [AIRPLAY.md](AIRPLAY.md) §7) →
-`settings_set_airplay_capture` (a change while a speaker plays reconnects it in place). After one,
+`settings_set_airplay_capture` (a change while a speaker plays reconnects it in place),
+`sotd` / `sotdDayStart` / `sotdPicksPerDay` / `sotdPostMode` / `sotdPostAt` → their own
+`settings_set_sotd*` commands (2026-09-18). After one,
 `notifyOwnedSettingChange()` (settings-store.ts) makes an open Settings card read them again.
 A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass is the skin."
 `updateMode` is here and stays on `update action=mode` too (same write).

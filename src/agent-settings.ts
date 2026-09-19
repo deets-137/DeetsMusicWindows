@@ -92,6 +92,10 @@ const storeSize = (slot: SizeSlot, label: string): Spec => ({
 });
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
+/** The Song of the Day rows Rust owns (settings.rs). Same call as `rustSettings`, its own
+ *  shape: they are read and written one row at a time, like Last.fm's. */
+const sotdRust = () =>
+  invoke<{ sotd: boolean; sotdDayStart: number; sotdPicksPerDay: number; sotdPostMode: string; sotdPostAt: string }>("settings_get");
 const rustSettings = () =>
   invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }>("settings_get");
 const rustToggle = (section: string, key: string, label: string, get: () => Promise<boolean>, set: (on: boolean) => Promise<unknown>, extra: Partial<Spec> = {}): Spec => ({
@@ -336,6 +340,50 @@ const SPECS: Spec[] = [
     { value: "fri", label: "Fri" }, { value: "sat", label: "Sat" }, { value: "sun", label: "Sun" },
   ]),
   storeToggle("Rewind", "replayKeep", "Keep every Replay"),
+  // ── Song of the Day (docs/DeetsOTD.md §8.8) ──
+  // Five rows live in Rust; the sixth (the suggestion) is a view preference in the store.
+  // The switch itself is OFF ONLY: an agent may take the feature away, never give it (§5 2B).
+  // The webhook link has no spec at all — no route reads or writes a secret.
+  rustToggle("Song of the Day", "sotd", "Song of the Day", async () => (await sotdRust()).sotd, (on) => invoke("settings_set_sotd", { on }), {
+    offOnly: true,
+    note: (v) => (v === "off" ? "Song of the Day is off. Only you can turn it on again, in DeetsMusic › Settings › Song of the Day." : undefined),
+  }),
+  storeToggle("Song of the Day", "sotdSuggest", "Suggest today's pick"),
+  {
+    key: "sotdDayStart", label: "Day starts at", section: "Song of the Day", kind: "choice",
+    options: [{ value: "0", label: "Midnight" }, { value: "5", label: "5 AM" }],
+    get: async () => String((await sotdRust()).sotdDayStart),
+    set: async (v) => {
+      await invoke("settings_set_sotd_day_start", { hour: Number(v) });
+      notifyOwnedSettingChange();
+    },
+  },
+  {
+    key: "sotdPicksPerDay", label: "Picks per day", section: "Song of the Day", kind: "choice",
+    options: [{ value: "1", label: "1" }, { value: "2", label: "2" }, { value: "0", label: "No limit" }],
+    get: async () => String((await sotdRust()).sotdPicksPerDay),
+    set: async (v) => {
+      await invoke("settings_set_sotd_picks_per_day", { n: Number(v) });
+      notifyOwnedSettingChange();
+    },
+  },
+  {
+    key: "sotdPostMode", label: "Post my picks", section: "Song of the Day", kind: "choice",
+    options: [{ value: "ask", label: "Ask each time" }, { value: "now", label: "Right away" }, { value: "time", label: "At a set time" }],
+    get: async () => (await sotdRust()).sotdPostMode,
+    set: async (v) => {
+      await invoke("settings_set_sotd_post_mode", { mode: v });
+      notifyOwnedSettingChange();
+    },
+  },
+  {
+    key: "sotdPostAt", label: "Post at", section: "Song of the Day", kind: "time", min: 0, max: 23 * 60 + 45, step: 15,
+    get: async () => (await sotdRust()).sotdPostAt,
+    set: async (v) => {
+      await invoke("settings_set_sotd_post_at", { at: v });
+      notifyOwnedSettingChange();
+    },
+  },
   // ── Connections ──
   rustToggle("Connections", "agentControl", "Agent control", async () => (await rustSettings()).agentControl, (on) => invoke("settings_set_agent_control", { on }), {
     offOnly: true,

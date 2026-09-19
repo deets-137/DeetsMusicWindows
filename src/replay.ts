@@ -79,6 +79,21 @@ export async function makeReplayPlaylist(window: RewindWindow): Promise<number> 
   return id;
 }
 
+/**
+ * Rewind › Picks' own Make playlist (DeetsOTD.md §8.7): the window's Songs of the Day,
+ * OLDEST first — a pick list reads as a timeline, not a ranking — filed under Replay like
+ * the others. Zero Apple calls: every song is the pick's own stored copy.
+ */
+export async function makePicksPlaylist(window: RewindWindow): Promise<number> {
+  const rows = await topBy("picks", window);
+  const tracks = tracksOf([...rows].reverse(), Number.MAX_SAFE_INTEGER);
+  if (!tracks.length) throw new Error("no picks in this window");
+  const name = `Songs of the Day — ${WINDOW_LABELS[window]}, ${fmtDate(Date.now())}`;
+  const id = await createReplay(name, tracks);
+  diag.log("replay", `made "${name}" (${tracks.length} picks)`);
+  return id;
+}
+
 /** Most recent occurrence of the chosen weekday at local midnight (today counts). */
 function lastDue(day: string, now = Date.now()): number {
   const d = new Date(now);

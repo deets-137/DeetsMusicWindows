@@ -25,7 +25,8 @@ import {
   type RewindRow, type RewindStat, type RewindWindow,
 } from "./rewind";
 import type { CardDef, CardInstance } from "./cards";
-import { makeReplayPlaylist } from "./replay";
+import { makeReplayPlaylist, makePicksPlaylist } from "./replay";
+import { sotdOn, pickMenu, allPicks, onSotdChange, isPosted, withdrawAsking } from "./sotd";
 import { rowDrag } from "./row-drag";
 
 const LIST_CAP = 20; // hero + 19 runners-up; a leaderboard's tail is noise
@@ -58,8 +59,18 @@ function mountRewind(host: HTMLElement): CardInstance {
     </div>`;
 
   let pick = loadPick();
+  // A card left on the picks board before the feature was switched off. Done here, before the
+  // markup: the stat pill takes its label from `pick` as it is built.
+  if (pick.stat === "picks" && !sotdOn()) pick = { ...pick, stat: "songs" };
+  // SOTD (owner, 2026-09-18): the header's top-right button — the refresh square's family,
+  // widened to carry the word (.panel__action--text). It is the ONLY way to the picks board:
+  // Picks is not in the stat pill. Pressed while that board shows; pressing it again goes
+  // back to the stat you were on. Hidden entirely while Song of the Day is off.
   host.innerHTML = `
-    <header class="panel__head"><h2 class="panel__title">Rewind</h2></header>
+    <header class="panel__head"><h2 class="panel__title">Rewind</h2>
+      <button class="panel__action panel__action--text" id="rewind-sotd" type="button" aria-pressed="false"
+        aria-label="Your Songs of the Day" title="The songs you marked, newest first">SOTD</button>
+    </header>
     <div class="panel__body qcard rewind">
       <div class="lib-pills rewind__pills">
         ${pillHTML("stat", STAT_LABELS[pick.stat])}${pillHTML("window", WINDOW_LABELS[pick.window])}
@@ -74,8 +85,26 @@ function mountRewind(host: HTMLElement): CardInstance {
   let view: RewindRow[] = [];
   let renderSeq = 0; // stale-async guard: only the latest topBy() call may render
 
+  // The withdraw square on a posted pick (§10.7). It joins the add-square family: a
+  // `panel__action` at the row's end that takes no room until the row is hovered or focused,
+  // so a title keeps its full width. The glyph is an arrow turning back — recall what left.
+  const WITHDRAW_ICON =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 14 4 14 4 9"></polyline>' +
+    '<path d="M4 14l3.5-3.5a7 7 0 1 1 1.4 9.9"></path></svg>';
+  const withdrawHTML = (r: RewindRow): string => {
+    if (pick.stat !== "picks" || !r.pickId) return "";
+    const p = pickById(r.pickId);
+    if (!p || !isPosted(p)) return "";
+    return (
+      `<button class="panel__action add-square rewind__withdraw" type="button" data-withdraw="${r.pickId}" ` +
+      `aria-label="Withdraw the post" title="Takes the Discord post down. Your pick stays">${WITHDRAW_ICON}</button>`
+    );
+  };
+
+  // Picks carry their day (and their note) instead of minutes: the view is a timeline,
+  // and there is nothing ranked to measure (DeetsOTD.md §8.7).
   const metaHTML = (r: RewindRow) =>
-    `<span class="rewind__meta">${esc(fmtListen(r.ms))} · ${esc(fmtPlays(r.plays))}</span>`;
+    `<span class="rewind__meta">${esc(r.meta ?? `${fmtListen(r.ms)} · ${fmtPlays(r.plays)}`)}</span>`;
 
   // Multi-select (row-pick.ts, NEXT-VERSION §19). Named `picks` because `pick` already
   // means this card's stat + window choice. Keyed by the row's own key, so a refresh (a
@@ -114,6 +143,7 @@ function mountRewind(host: HTMLElement): CardInstance {
               ${top.subtitle ? `<span class="qnow__artist">${esc(top.subtitle)}</span>` : ""}
               ${metaHTML(top)}
             </div>
+            ${withdrawHTML(top)}
           </div>`;
         const rows2 = view.slice(1).map((r, i) => {
           const c = artURL(r.track, 72);
@@ -122,9 +152,12 @@ function mountRewind(host: HTMLElement): CardInstance {
             : `<div class="qrow__art qrow__art--empty" aria-hidden="true">♪</div>`;
           return `<li class="qrow${round}" data-idx="${i + 1}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
             r.title,
-          )}</span>${r.subtitle ? `<span class="qrow__artist">${esc(r.subtitle)}</span>` : ""}${metaHTML(r)}</div></li>`;
+          )}</span>${r.subtitle ? `<span class="qrow__artist">${esc(r.subtitle)}</span>` : ""}${metaHTML(r)}</div>${withdrawHTML(r)}</li>`;
         }).join("");
-        const label = picks.size() ? `Runners-up · ${picksText(picks.size(), nounOf())}` : "Runners-up";
+        // No ranking in the Picks view, so no "Runners-up": what follows the newest pick
+        // is simply what came before it.
+        const head = pick.stat === "picks" ? "Earlier" : "Runners-up";
+        const label = picks.size() ? `${head} · ${picksText(picks.size(), nounOf())}` : head;
         board.innerHTML = rows2
           ? `${hero}<div class="qcard__label">${label}</div><ol class="qcard__list">${rows2}</ol>`
           : hero;
@@ -144,6 +177,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     localStorage.setItem(STORE_KEY, JSON.stringify(pick));
     pillOf("stat").querySelector(".lib-pill__label")!.textContent = STAT_LABELS[pick.stat];
     pillOf("window").querySelector(".lib-pill__label")!.textContent = WINDOW_LABELS[pick.window];
+    paintSotd();
     render();
   };
   const openPicker = <K extends string>(
@@ -158,14 +192,41 @@ function mountRewind(host: HTMLElement): CardInstance {
     }));
     openContextMenuUnder(pill, items, () => pill.setAttribute("aria-expanded", "false"));
   };
+  // Picks never appears in the stat menu (owner, 2026-09-18: one door, and it is the button).
+  // The PILL still reads "Picks" while that board shows — it names what is on screen — and
+  // picking any stat from its menu is a way out, which turns the button off.
+  const statLabels = (): Record<Exclude<RewindStat, "picks">, string> => {
+    const { picks: _picks, ...rest } = STAT_LABELS;
+    return rest;
+  };
   pillOf("stat").addEventListener("click", (e) => {
     e.stopPropagation(); // the menu's outside-press dismiss must not see this click
-    openPicker(pillOf("stat"), STAT_LABELS, (stat) => setPick({ stat }));
+    openPicker(pillOf("stat"), statLabels(), (stat) => setPick({ stat }));
   });
   pillOf("window").addEventListener("click", (e) => {
     e.stopPropagation();
     openPicker(pillOf("window"), WINDOW_LABELS, (window) => setPick({ window }));
   });
+
+  // ── the SOTD button ──
+  const sotdBtn = host.querySelector<HTMLButtonElement>("#rewind-sotd");
+  // The stat to come back to. Never "picks": the button is what leaves and returns.
+  let before: RewindStat = pick.stat === "picks" ? "songs" : pick.stat;
+  const paintSotd = () => {
+    if (!sotdBtn) return;
+    sotdBtn.hidden = !sotdOn();
+    const on = pick.stat === "picks";
+    sotdBtn.setAttribute("aria-pressed", String(on));
+    sotdBtn.title = on ? "Back to your listening" : "The songs you marked, newest first";
+  };
+  sotdBtn?.addEventListener("click", () => {
+    if (pick.stat === "picks") setPick({ stat: before });
+    else {
+      before = pick.stat;
+      setPick({ stat: "picks" });
+    }
+  });
+  paintSotd();
 
   // Make playlist (NEXT-VERSION §4): the window's top songs by minutes listened → a
   // dated local playlist under the Replay folder. Zero Apple calls.
@@ -174,7 +235,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     if (!makeBtn || makeBtn.disabled) return;
     makeBtn.disabled = true;
     const label = makeBtn.textContent;
-    makeReplayPlaylist(pick.window)
+    (pick.stat === "picks" ? makePicksPlaylist(pick.window) : makeReplayPlaylist(pick.window))
       .then(() => { makeBtn.textContent = "Made"; })
       .catch((e) => { console.error("[rewind] make playlist", e); makeBtn.textContent = "Nothing to add"; })
       .finally(() => window.setTimeout(() => { makeBtn.textContent = label; makeBtn.disabled = false; }, 1500));
@@ -188,6 +249,8 @@ function mountRewind(host: HTMLElement): CardInstance {
   // An album row's playable list: the full album from the library cache when we have
   // it (disc/track order — the Library card's recipe); a catalog-only album falls
   // back to the tracks we've actually seen played (the best list we hold locally).
+  const pickById = (id: number) => allPicks().find((p) => p.id === id);
+
   const albumTracksOf = (row: RewindRow): Track[] => {
     const lib = libraryTracks().filter((t) => albumKey(t) === row.key);
     return albumOrder(lib.length ? lib : row.tracks);
@@ -216,13 +279,14 @@ function mountRewind(host: HTMLElement): CardInstance {
   };
 
   /** What one row is, for the count: the stat's own name without its "s". */
-  const nounOf = () => (pick.stat === "songs" ? "song" : pick.stat === "albums" ? "album" : "playlist");
+  const nounOf = () =>
+    pick.stat === "songs" ? "song" : pick.stat === "albums" ? "album" : pick.stat === "picks" ? "pick" : "playlist";
 
   /** Every picked row's songs, in the order the rows are shown. Playlists load lazily. */
   const picksTracks = (rows: RewindRow[]): Promise<Track[]> =>
     Promise.all(
       rows.map((r) =>
-        pick.stat === "songs" ? Promise.resolve(r.tracks)
+        pick.stat === "songs" || pick.stat === "picks" ? Promise.resolve(r.tracks)
         : pick.stat === "albums" ? Promise.resolve(albumTracksOf(r))
         : playlistTracksOf(r),
       ),
@@ -245,6 +309,15 @@ function mountRewind(host: HTMLElement): CardInstance {
   // A Rewind row has never done anything on a plain click, and still doesn't. Ctrl and
   // Shift pick it; a plain click drops the picks (§19).
   board.addEventListener("click", (e) => {
+    // The withdraw square first: it is inside a row, and its press is not the row's.
+    const pull = (e.target as HTMLElement).closest<HTMLElement>("[data-withdraw]");
+    if (pull?.dataset.withdraw) {
+      e.preventDefault();
+      e.stopPropagation();
+      const p = pickById(Number(pull.dataset.withdraw));
+      if (p) withdrawAsking(p);
+      return;
+    }
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
     const row = el ? view[Number(el.dataset.idx)] : undefined;
     if (row) picks.click(e, row);
@@ -282,6 +355,10 @@ function mountRewind(host: HTMLElement): CardInstance {
     if (!row) return;
     let items: MenuItem[] | null = null;
     if (picks.size() && picks.isPicked(row)) items = menuForPicks(picks.picked());
+    else if (pick.stat === "picks" && row.pickId) {
+      const p = pickById(row.pickId);
+      items = p ? [...trackMenu(row.tracks, "picks"), ...pickMenu(p)] : trackMenu(row.tracks, "rewind");
+    }
     else if (pick.stat === "songs" && row.tracks.length) items = trackMenu(row.tracks, "rewind");
     else if (pick.stat === "albums" && row.tracks.length) items = trackMenu(albumTracksOf(row), `album:${row.key}`);
     else if (pick.stat === "playlists") items = playlistMenuFor(row);
@@ -307,7 +384,7 @@ function mountRewind(host: HTMLElement): CardInstance {
         const kind = pick.stat === "albums" ? "album" : pick.stat === "playlists" ? "playlist" : "song";
         return { row: el, index, payload: { source: "rewind", kind, count: rows.length, tracks: () => picksTracks(rows), context: "rewind:picked" } };
       }
-      if (pick.stat === "songs" && row.tracks.length)
+      if ((pick.stat === "songs" || pick.stat === "picks") && row.tracks.length)
         return { row: el, index, payload: { source: "rewind", kind: "song", tracks: () => row.tracks, context: "rewind" } };
       if (pick.stat === "albums" && row.tracks.length) {
         const ts = albumTracksOf(row);
@@ -328,6 +405,14 @@ function mountRewind(host: HTMLElement): CardInstance {
   const unsubQueue = queue.onQueueChange(render);
   const unsubTracks = onTracksChange(render, "rewind");
   const unsubPlaylists = onPlaylistsChange(() => { if (pick.stat === "playlists") render(); });
+  // A mark, an unmark, a note or the feature going off: the Picks view is drawn from picks.
+  const unsubSotd = onSotdChange(() => {
+    if (pick.stat === "picks" && !sotdOn()) setPick({ stat: before });
+    else {
+      paintSotd();
+      if (pick.stat === "picks") render();
+    }
+  });
   render();
 
   return {
@@ -336,6 +421,7 @@ function mountRewind(host: HTMLElement): CardInstance {
       unsubQueue();
       unsubTracks();
       unsubPlaylists();
+      unsubSotd();
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();

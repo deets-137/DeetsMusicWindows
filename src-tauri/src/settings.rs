@@ -21,6 +21,20 @@ pub enum AirplayCapture {
     System,
 }
 
+/// When a marked Song of the Day goes out (docs/DeetsOTD.md §8.4). One mode for every
+/// outlet: the Ask toast names them all at once.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PostMode {
+    /// A sticky toast asks before anything leaves. The default: the first post never goes
+    /// out unseen.
+    Ask,
+    /// Sent as soon as it is marked.
+    Now,
+    /// Sent at "Post at", inside the pick's own journal day.
+    Time,
+}
+
 /// A speaker as the dropdown remembers it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -73,6 +87,25 @@ pub struct SettingsData {
     /// Tell Last.fm what plays now, for the profile's "listening now" line. Separate from
     /// scrobbling: it changes only the profile, never the charts.
     pub lastfm_now_playing: bool,
+    // ── Song of the Day (docs/DeetsOTD.md §8.4) ──
+    // Rust owns these five because Rust is what enforces them: the per-day limit must hold
+    // for an agent too, and the day rule is read by a timer that fires with no window up.
+    // "Suggest today's pick" is the one row Rust never needs, so it stays in the front-end
+    // store beside the other view preferences.
+    /// The whole feature. Off hides the menu items, the shelf and Rewind's Picks, stops the
+    /// outbox timer, and refuses an agent mark. It keeps every pick and every connection.
+    pub sotd: bool,
+    /// "Day starts at", as the hour taken off the clock before the date is read: 0 =
+    /// midnight, 5 = 5 AM. The owner's journal (DeetsOTD) uses 5, and so does the default.
+    pub sotd_day_start: u8,
+    /// How many picks one journal day holds. 0 = no limit.
+    pub sotd_picks_per_day: u8,
+    pub sotd_post_mode: PostMode,
+    /// "Post at", `HH:MM` in the system time zone. Every clock time falls inside exactly one
+    /// journal day, so this needs no error state.
+    pub sotd_post_at: String,
+    /// The name a post shows under. Empty = the webhook's own name.
+    pub sotd_post_as: String,
 }
 
 impl Default for SettingsData {
@@ -91,6 +124,14 @@ impl Default for SettingsData {
             window_pos: None,
             lastfm_scrobble: true,
             lastfm_now_playing: true,
+            // On: with no outlet set up the feature is local only — one right-click item and
+            // a shelf that appears after your first pick. It posts nothing (owner, 2026-09-18).
+            sotd: true,
+            sotd_day_start: 5, // owner, 2026-09-18: the rule his journal already uses
+            sotd_picks_per_day: 1,
+            sotd_post_mode: PostMode::Ask,
+            sotd_post_at: "20:00".into(),
+            sotd_post_as: String::new(),
         }
     }
 }
@@ -186,6 +227,61 @@ pub fn settings_set_agent_history(on: bool, settings: tauri::State<'_, Settings>
 #[tauri::command]
 pub fn settings_set_lastfm_scrobble(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
     settings.update(|d| d.lastfm_scrobble = on)
+}
+
+// ── Song of the Day (docs/DeetsOTD.md §8.4) ───────────────────────────────────
+
+#[tauri::command]
+pub fn settings_set_sotd(on: bool, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    let out = settings.update(|d| d.sotd = on)?;
+    crate::sotd::switched(&app, on);
+    Ok(out)
+}
+
+/// 0 (midnight) or 5 (5 AM). Anything else is refused: the two are the row's only choices,
+/// and a stray hour would move every later pick to a day nobody picked.
+#[tauri::command]
+pub fn settings_set_sotd_day_start(hour: u8, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    if hour != 0 && hour != 5 {
+        return Err("day start must be 0 or 5".into());
+    }
+    let out = settings.update(|d| d.sotd_day_start = hour)?;
+    // A waiting post's due time was read under the old rule.
+    crate::sotd::outbox::rearm(&app);
+    Ok(out)
+}
+
+#[tauri::command]
+pub fn settings_set_sotd_picks_per_day(n: u8, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    if n > 2 {
+        return Err("picks per day must be 0 (no limit), 1 or 2".into());
+    }
+    settings.update(|d| d.sotd_picks_per_day = n)
+}
+
+#[tauri::command]
+pub fn settings_set_sotd_post_mode(mode: PostMode, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    settings.update(|d| d.sotd_post_mode = mode)
+}
+
+#[tauri::command]
+pub fn settings_set_sotd_post_at(at: String, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    let ok = at.len() == 5
+        && at.as_bytes()[2] == b':'
+        && at[..2].parse::<u32>().map(|h| h < 24).unwrap_or(false)
+        && at[3..].parse::<u32>().map(|m| m < 60).unwrap_or(false);
+    if !ok {
+        return Err("post at must be HH:MM".into());
+    }
+    let out = settings.update(|d| d.sotd_post_at = at)?;
+    crate::sotd::outbox::rearm(&app);
+    Ok(out)
+}
+
+#[tauri::command]
+pub fn settings_set_sotd_post_as(name: String, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    // Discord caps a webhook username at 80 characters.
+    settings.update(|d| d.sotd_post_as = name.chars().take(80).collect())
 }
 
 #[tauri::command]

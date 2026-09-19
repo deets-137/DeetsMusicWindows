@@ -44,6 +44,7 @@ import {
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
 import { pinItem, pinItemFor, pinArtistItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { markItem } from "./sotd";
 import { playTracks as playList } from "./player";
 
 // ── derived models ────────────────────────────────────────────────────────────
@@ -443,6 +444,9 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
     ...(items.length === 1 ? [favoriteItem(items[0])] : []),
     // Pin / Unpin (PINS.md): the album or artist this list is, else the one song.
     pinItemFor(items, context),
+    // Mark as Song of the Day (DeetsOTD.md §8.5) — one song with a catalog id, and only
+    // while the feature is on. The row itself says Replace or Unmark where that is what it does.
+    markItem(items, context),
   ].filter(Boolean) as MenuItem[];
 }
 

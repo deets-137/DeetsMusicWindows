@@ -412,6 +412,10 @@
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
+  /* The Song of the Day record scrolls past five rows (docs/DeetsOTD.md §10.6). A row is
+     --set-row-h plus its own padding, so five of them plus the hairlines. */
+  --set-log-rows:    5;
+  --set-log-max-h:   calc((var(--set-row-h) + var(--space-2)) * var(--set-log-rows));
   --set-range-w:     120px;            /* a range row's slider (Glass's Tint / Frost) */
   --set-range-val-w: 3.5em;            /* its value, "100%" fits */
   --set-pill-pad:    var(--space-1) var(--space-2);
@@ -641,6 +645,14 @@
   --icon-sm: 14px;
   --icon-md: 16px;
   --icon-lg: 24px;
+
+  /* A header action that carries WORDS instead of a glyph (Rewind's SOTD button,
+     docs/DeetsOTD.md §10.5). Same family as .panel__action — same fill, border, height,
+     radius and hover — so it only needs the side room and the type the letters take.
+     Aliases, never new raw values (UI-ARCHITECTURE.md §2a). */
+  --action-text-pad:    var(--space-2);
+  --action-text-fs:     var(--fs-subtext);
+  --action-text-weight: var(--fw-title);
 
   /* -- spacing scale ----------------------------------------- */
   --space-1: 4px;

@@ -56,10 +56,12 @@ front-end, Rust back-end).
 - `docs/DB-HEALTH.md` — is the database still writable: the poison-proof `Db::lock`, the
   10-minute canary, the failure counters and `db_health`, and why there is no write queue
   (built 2026-09-17).
-- `docs/ideas/DeetsOTD.md` — Song of the Day: picks marked in the app, posts to Discord (a
-  webhook), Bluesky (OAuth) and Mastodon, a Home shelf and Rewind › Picks, a one-time import
-  of the owner's journal (no feed reader); the DeetsOTD repo stays untouched.
-  §8 is the build 1 spec (designed 2026-09-17, not built; move the doc to `docs/` when built).
+- `docs/DeetsOTD.md` — Song of the Day: one song you mark for one day (`picks`, `pick_posts`),
+  sent out through an **outlet** — build 1 has one, the Discord webhook, with its URL encrypted
+  by DPAPI in `sotd-outlets.json`. Home's last shelf, Rewind › Picks, the suggestion from
+  today's plays, the `/picks` agent route, and `scripts/import-sotd-journal.mjs` for the
+  owner's own journal. The DeetsOTD repo stays untouched. **§10 = as built (BUILT 2026-09-18
+  on `pins-for-days`; desk test §8.11 open).** Bluesky and Mastodon are build 2 (§8.4b, §8.14).
 - `docs/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
   a Pinned tile shelf on the Library / Playlists / Radio roots (pin order) and Home's fifth shelf
   (by plays, all time), a corner tile badge (BUILT 2026-09-18 on branch `pins-for-days`, §7 = as
@@ -251,5 +253,5 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - Front-end only ever sees the normalized model (`Track`/`Album`/…), never raw Apple
   shapes — normalization lives in Rust.
 - Commit only when the user asks. Co-author trailer — name the model that did the work
-  (today `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`); update this line when
+  (today `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`); update this line when
   the model changes.

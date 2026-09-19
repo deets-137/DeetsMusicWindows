@@ -33,6 +33,7 @@ import { setting, setSetting } from "./settings-store";
 import { trouble } from "./apple-health";
 import { isConnected } from "./apple";
 import { pinnedItems, pinsOf, pinPlayCounts } from "./pins";
+import { sotdOn, pickTiles, suggestionTile } from "./sotd";
 
 // ── the windows ───────────────────────────────────────────────────────────────
 const DAY_MS = 86_400_000;
@@ -93,6 +94,9 @@ export interface HomeItem {
   art?: Artwork;
   /** An artist tile wears a round thumb, as it does everywhere else. */
   round?: boolean;
+  /** A tile that is an offer, not a thing you have: the empty-slot dashed rim (the Song of
+   *  the Day suggestion). Same token as the empty-playlist drop slot. */
+  dashed?: boolean;
   /** A playlist with no artwork of its own draws the derived mosaic. */
   mosaic?: string[];
   mosaicSeed?: string;
@@ -920,13 +924,28 @@ export async function homeShelves(): Promise<HomeShelf[]> {
   // user's own choice, so the hide list never touches it, and no floor holds it back.
   const pinned = await pinnedShelf();
 
+  // Songs of the Day (DeetsOTD.md §8.6): the picks, newest first, with the suggestion
+  // before them when its row is on. Last, after Pinned (owner, 2026-09-18). All local.
+  const sotd = await sotdShelf();
+
   const shelves: HomeShelf[] = [];
   if (played.length) shelves.push({ label: "Recently Played", items: played });
   if (added.length) shelves.push({ label: "Recently Added", items: added });
   if (fresh.length) shelves.push({ label: "New", items: fresh });
   if (scored.length) shelves.push({ label: bucketLabel(), items: scored });
   if (pinned.length) shelves.push({ label: "Pinned", items: pinned });
+  if (sotd.length) shelves.push({ label: "Songs of the Day", items: sotd });
   return shelves;
+}
+
+/** The last shelf: the picks, newest first, with today's suggestion at its head. Left out
+ *  when there is neither — Home's empty-shelf rule. A pick is never hidden: Unmark is the
+ *  way off, so the hide list never touches this shelf. */
+async function sotdShelf(): Promise<HomeItem[]> {
+  if (!sotdOn()) return [];
+  const suggestion = await suggestionTile().catch(() => null);
+  const tiles = pickTiles(suggestion ? SHELF - 1 : SHELF);
+  return suggestion ? [suggestion, ...tiles] : tiles;
 }
 
 /** The fifth shelf: the pinned tiles, most played first (PINS.md fork 4). */

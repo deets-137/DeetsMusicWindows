@@ -19,6 +19,7 @@ mod report;
 mod settings;
 mod rooms;
 mod smtc;
+mod sotd;
 mod tray;
 mod update;
 mod web;
@@ -199,6 +200,7 @@ pub fn run() {
             loudness::migrate_v7(&conn).expect("v7 migration failed");
             library::migrate_v8(&conn).expect("v8 migration failed");
             library::migrate_v9(&conn).expect("v9 migration failed");
+            sotd::migrate_v10(&conn).expect("v10 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
@@ -208,6 +210,9 @@ pub fn run() {
             app.manage(settings::Settings::load(dir.clone()));
             // Last.fm (LASTFM.md): the saved session, and the scrobbles still waiting.
             lastfm::setup(app.handle(), dir.clone());
+            // Song of the Day (docs/DeetsOTD.md): the outlets that are set up, and the posts
+            // that were still waiting when the app last closed.
+            sotd::setup(app.handle(), dir.clone());
             airplay::setup(&dir);
             // Sound (SOUND.md §2.2): the Windows output, its form factor and volume.
             audio_out::setup(app.handle());
@@ -370,6 +375,29 @@ pub fn run() {
             settings::settings_set_agent_history,
             settings::settings_set_lastfm_scrobble,
             settings::settings_set_lastfm_now_playing,
+            // Song of the Day (docs/DeetsOTD.md §8.2)
+            settings::settings_set_sotd,
+            settings::settings_set_sotd_day_start,
+            settings::settings_set_sotd_picks_per_day,
+            settings::settings_set_sotd_post_mode,
+            settings::settings_set_sotd_post_at,
+            settings::settings_set_sotd_post_as,
+            sotd::pick_today,
+            sotd::picks_list,
+            sotd::pick_mark,
+            sotd::pick_note,
+            sotd::pick_unmark,
+            sotd::pick_post,
+            sotd::pick_withdraw,
+            sotd::post_log,
+            sotd::pick_skip,
+            sotd::pick_delete_posts,
+            sotd::outbox::picks_missed,
+            sotd::outbox::picks_missed_skip,
+            sotd::outlet::outlet_status,
+            sotd::outlet::outlet_connect,
+            sotd::outlet::outlet_disconnect,
+            sotd::outlet::outlet_set_on,
             lastfm::lastfm_begin_auth,
             lastfm::lastfm_auth_status,
             lastfm::lastfm_cancel_auth,

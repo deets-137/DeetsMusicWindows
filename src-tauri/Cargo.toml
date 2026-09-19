@@ -78,6 +78,9 @@ features = [
   "Win32_Foundation",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
+  # DPAPI for the Song of the Day outlet secrets (docs/DeetsOTD.md §8.15). A feature of the
+  # `windows` crate the app already has; no new download.
+  "Win32_Security_Cryptography",
   "Win32_System_Com",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Variant",

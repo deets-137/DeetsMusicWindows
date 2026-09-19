@@ -34,6 +34,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { settingsList, settingsWrite } from "./agent-settings";
 import { agentGrow } from "./card-grow";
 import { agentGo } from "./compass";
+import { allPicks, atLimit, mark, sotdOn, todayDay, unmark } from "./sotd";
+import { topBy, type RewindWindow } from "./rewind";
 
 type Reply = Record<string, unknown>;
 
@@ -465,6 +467,61 @@ async function update(payload: any): Promise<Reply> {
   }
 }
 
+// ── /picks (docs/DeetsOTD.md §8.8) ───────────────────────────────────────────
+
+/** The first agent mark asks in the window. Allow once, and later marks go through. */
+const SOTD_NOTICE_KEY = "deets.notice.sotdAgentMark";
+
+async function picksGet(payload: any): Promise<Reply> {
+  const w = String(payload?.window ?? "").trim() as RewindWindow;
+  // A window is Rewind's own (day, week, month, ytd, year); no window is every pick.
+  const keep = w ? new Set((await topBy("picks", w)).map((r) => r.pickId)) : null;
+  const list = allPicks()
+    .filter((p) => !keep || keep.has(p.id))
+    .map((p, i) => ({
+      row: i + 1,
+      day: p.day,
+      title: p.meta.title,
+      artist: p.meta.artistName,
+      id: p.meta.catalogId ? `song:${p.meta.catalogId}` : undefined,
+      note: p.note ?? undefined,
+      posted: p.posts.filter((x) => x.state === "sent").map((x) => x.outlet),
+    }));
+  return { ok: true, day: todayDay(), picks: list };
+}
+
+async function picks(payload: any): Promise<Reply> {
+  if (!sotdOn()) throw blocked("Song of the Day is off in DeetsMusic › Settings › Song of the Day.");
+  const action = String(payload?.action ?? "");
+  if (action === "unmark") {
+    const list = allPicks();
+    const i = row(payload?.index, list.length, "pick");
+    const p = list[i - 1];
+    await unmark(p.id, true);
+    said(`An agent removed “${p.meta.title}” from your Songs of the Day.`);
+    return done(`Removed “${p.meta.title}” (${p.day}).`);
+  }
+  if (action !== "mark") throw unknown("give action: mark or unmark");
+  const t = tracksOf(payload)[0];
+  if (!t?.catalogId) throw unknown("that song is not in the Apple Music catalog, so it cannot be a Song of the Day");
+  const note = String(payload?.value ?? "").trim() || undefined;
+  // G2 (owner, 2026-09-17): an agent may mark, and the post follows the user's own post
+  // mode — after they allow it once, here, in the window.
+  const run = async () => {
+    await mark(t, { replace: atLimit(), note });
+    said(`An agent marked “${t.title}” as today's Song of the Day.`);
+  };
+  if (localStorage.getItem(SOTD_NOTICE_KEY) !== "off") {
+    return askFirst(
+      SOTD_NOTICE_KEY,
+      `Let an agent mark “${t.title}” as today's Song of the Day? It will ask no more after this.`,
+      run,
+    );
+  }
+  await run();
+  return done(`“${t.title}” is today's Song of the Day.`);
+}
+
 /** np-bus.ts routes the write kinds here. Null = not a write kind. */
 export function runAgentWrite(kind: string, payload: any): Promise<unknown> | null {
   switch (kind) {
@@ -481,6 +538,9 @@ export function runAgentWrite(kind: string, payload: any): Promise<unknown> | nu
     // `deetsmusic go <place>` (COMPASS.md §10): the Compass's own Places, navigation only.
     case "go-get": return Promise.resolve(agentGo({ list: true }));
     case "go": return Promise.resolve(agentGo(payload));
+    // Song of the Day (DeetsOTD.md §8.8): read the picks, mark one, take one off.
+    case "picks-get": return picksGet(payload);
+    case "picks": return picks(payload);
     default: return null;
   }
 }

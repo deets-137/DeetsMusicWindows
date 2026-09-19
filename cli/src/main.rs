@@ -145,6 +145,8 @@ enum Cmd {
         #[arg(short = 'n', long, default_value_t = 20)]
         limit: usize,
     },
+    /// Song of the Day: the picks, or mark / unmark one (docs/DeetsOTD.md).
+    Pick(PickArgs),
     /// Add to your Apple Music library: an id, or the playing song.
     Add { id: Option<String> },
     /// ♥ a song (the playing song by default).
@@ -989,6 +991,13 @@ fn tools(small: bool) -> Value {
               "key": { "type": "string", "description": "get, set: a key from list, e.g. alwaysOnTop, theme, backgroundMotion." },
               "value": { "type": "string", "description": "set: the new value, e.g. Always, Black & Red, off, 40, 21:00." },
               "section": { "type": "string", "description": "list: one section, e.g. Look and feel (leave it out for all)." } } } }));
+    list.push(json!({ "name": "picks", "description": "The user's Songs of the Day (docs: one song they mark for one day). list shows them newest first, with the day, the song and any note. mark makes a song today's pick — the user is asked in DeetsMusic the first time, and the pick is posted (or not) by their own Post my picks setting. unmark takes one off by its row from list, and deletes the post it made. Refused while Song of the Day is off.",
+          "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
+              "action": { "type": "string", "enum": ["list", "mark", "unmark"] },
+              "id": { "type": "string", "description": "mark: a song:… id from search, or current for the playing song." },
+              "index": { "type": "number", "description": "unmark: the row from list (1 = the newest pick)." },
+              "note": { "type": "string", "description": "mark: a line posted under the song." },
+              "window": { "type": "string", "enum": ["day", "week", "month", "ytd", "year"], "description": "list: only this window (leave it out for every pick)." } } } }));
     list.push(json!({ "name": "query", "description": "One read-only SQL SELECT over the user's DeetsMusic data (SQLite). No Apple calls. Tables: songs(id, title, artist, album, length_s, genre, release_date, in_library, added_rank, added_at) · playlists(id, name, source, song_count) · playlist_songs(playlist_id, position, song_id) · plays(song_id, started_at, listened_s, finished, skipped, context) · play_counts(song_id, starts, finishes, last_played). ids are song:… / playlist:…, ready for play and queue. Times are local ISO text. song_count counts the songs DeetsMusic has read. plays and play_counts exist only while the user allows agents to read play history. Only SELECT, one statement, 2 s, 500 rows. For a simple sorted list, list what=library is easier.",
           "inputSchema": { "type": "object", "required": ["sql"], "additionalProperties": false, "properties": {
               "sql": { "type": "string", "description": "e.g. SELECT s.title, c.starts FROM play_counts c JOIN songs s ON s.id = c.song_id ORDER BY c.starts DESC LIMIT 10" } } } }));
@@ -998,7 +1007,7 @@ fn tools(small: bool) -> Value {
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -1092,6 +1101,19 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
         "queue_edit" => op_queue_edit(c, &str_arg("action"), num_arg("index"), num_arg("to"))?.0,
         "folder" => op_folder(c, &str_arg("action"), &str_arg("name"), &str_arg("new_name"))?.0,
         "settings" => op_settings(c, &str_arg("action"), &str_arg("key"), &str_arg("value"), &str_arg("section"))?.0,
+        "picks" => op_picks(
+            c,
+            &PickArgs {
+                action: if str_arg("action").is_empty() { "list".into() } else { str_arg("action") },
+                target: match str_arg("action").as_str() {
+                    "unmark" => num_arg("index").map(|n| n.to_string()),
+                    _ => Some(if str_arg("id").is_empty() { "current".into() } else { str_arg("id") }),
+                },
+                note: Some(str_arg("note")).filter(|n| !n.is_empty()),
+                window: Some(str_arg("window")).filter(|w| !w.is_empty()),
+            },
+        )?
+        .0,
         other => return Err(Failure { status: 400, message: format!("unknown tool {other:?}") }),
     };
     Ok(text)
@@ -1168,6 +1190,57 @@ fn bad(msg: String) -> Failure {
     Failure { status: 400, message: msg }
 }
 
+#[derive(clap::Args, Debug)]
+struct PickArgs {
+    /// list (the default) · mark · unmark
+    #[arg(default_value = "list")]
+    action: String,
+    /// mark: a song:… id, or `current` for the playing song. unmark: the row from `pick list`.
+    target: Option<String>,
+    /// mark: a line posted with the song.
+    #[arg(long)]
+    note: Option<String>,
+    /// list: day · week · month · ytd · year (leave it out for every pick).
+    #[arg(long)]
+    window: Option<String>,
+}
+
+/// `deetsmusic pick` — the Song of the Day list, and the two verbs (DeetsOTD.md §8.8).
+fn op_picks(c: &Client, a: &PickArgs) -> Result<(String, Value), Failure> {
+    match a.action.as_str() {
+        "list" => {
+            let q = a.window.as_deref().map(|w| format!("?window={w}")).unwrap_or_default();
+            let v = c.get(&format!("/picks{q}"))?;
+            let lines: Vec<String> = arr(&v, "picks")
+                .iter()
+                .map(|p| {
+                    let note = s(p, "note");
+                    let note = if note.is_empty() { String::new() } else { format!("  — {note}") };
+                    let posted = arr(p, "posted");
+                    let posted = if posted.is_empty() { String::new() } else { format!("  [posted]") };
+                    format!("{}  {} — {}{note}{posted}", s(p, "day"), s(p, "title"), s(p, "artist"))
+                })
+                .collect();
+            Ok((if lines.is_empty() { "No Songs of the Day yet.".into() } else { numbered(lines) }, v))
+        }
+        "mark" => {
+            let id = a.target.clone().unwrap_or_else(|| "current".into());
+            let v = c.post("/picks", json!({ "action": "mark", "id": id, "value": a.note }))?;
+            Ok((s(&v, "message").to_string(), v))
+        }
+        "unmark" => {
+            let row: u32 = a
+                .target
+                .as_deref()
+                .and_then(|t| t.trim().parse().ok())
+                .ok_or_else(|| bad("usage: pick unmark N  (the row from `deetsmusic pick list`)".to_string()))?;
+            let v = c.post("/picks", json!({ "action": "unmark", "index": row }))?;
+            Ok((s(&v, "message").to_string(), v))
+        }
+        other => Err(bad(format!("{other:?} is not a pick action — use list, mark or unmark"))),
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Cmd::Mcp { small } = cli.cmd {
@@ -1237,6 +1310,7 @@ fn main() {
         ),
         Cmd::Sql { query } => op_query(&c, &query.join(" ")),
         Cmd::History { limit } => op_history(&c, limit),
+        Cmd::Pick(a) => op_picks(&c, &a),
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),
         Cmd::Love { id } => op_library(&c, "favorite", id.as_deref().unwrap_or("")),
         Cmd::Unlove { id } => op_library(&c, "unfavorite", id.as_deref().unwrap_or("")),

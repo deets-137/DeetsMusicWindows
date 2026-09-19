@@ -673,6 +673,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
+        "/picks",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -970,7 +971,7 @@ async fn handle(app: AppHandle, mut req: Request) {
         }
         // ── agent writes (AGENT.md §5) — the window runs them (agent-writes.ts) ──
         (Method::Post, "/library") | (Method::Post, "/playlist") | (Method::Post, "/folder")
-        | (Method::Post, "/queue/edit") | (Method::Post, "/update") => {
+        | (Method::Post, "/queue/edit") | (Method::Post, "/update") | (Method::Post, "/picks") => {
             let r: WriteReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
                 Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
@@ -979,6 +980,13 @@ async fn handle(app: AppHandle, mut req: Request) {
             agent_json(req, res, origin)
         }
         (Method::Get, "/update") => agent_json(req, ask(&app, "update-get", serde_json::Value::Null).await, origin),
+        // ── Song of the Day (docs/DeetsOTD.md §8.8; sotd.ts, agent-writes.ts) ──
+        // The reads are free; a mark asks the user once, and is refused while the feature
+        // is off. The window runs both, so the shelf, Rewind and the outbox all follow.
+        (Method::Get, "/picks") => {
+            let window = query_param(&url, "window").unwrap_or_default();
+            agent_json(req, ask(&app, "picks-get", serde_json::json!({ "window": window })).await, origin)
+        }
         // ── agent settings (AGENT.md §6) — the window lists and sets them (agent-settings.ts) ──
         (Method::Get, "/settings") => {
             // `section` is a card section name ("Look and feel"): undo the CLI's small encoding.
@@ -1056,6 +1064,13 @@ async fn write(app: &AppHandle, path: &str, r: WriteReq) -> Result<serde_json::V
             ask_for(app, "playlist", payload, if long { AGENT_LONG_TIMEOUT } else { AGENT_TIMEOUT }).await
         }
         "/folder" => ask(app, "folder", serde_json::json!({ "action": r.action, "name": r.name, "value": r.value })).await,
+        "/picks" => {
+            let mut payload = serde_json::json!({ "action": r.action, "index": r.index, "value": r.value });
+            if r.action == "mark" {
+                payload = merge(payload, tracks_payload(app, r.id.as_deref()).await?);
+            }
+            ask(app, "picks", payload).await
+        }
         "/queue/edit" => ask(app, "queue-edit", serde_json::json!({ "action": r.action, "index": r.index, "to": r.to })).await,
         _ => ask(app, "update", serde_json::json!({ "action": r.action, "value": r.value })).await,
     }

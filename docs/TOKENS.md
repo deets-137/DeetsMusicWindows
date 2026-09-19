@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 413 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 418 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -428,6 +428,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--pop-ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | — | fast start, soft stop |
 | `--set-section-gap` | `var(--space-3)` | — | settings card (SETTINGS.md) |
 | `--set-row-h` | `var(--icon-lg)` | — | one consistent row height (matches a panel action) |
+| `--set-log-rows` | `5` | — | The Song of the Day record scrolls past five rows (docs/DeetsOTD.md §10.6). A row is --set-row-h plus its own padding, so five of them plus the hairlines. |
+| `--set-log-max-h` | `calc((var(--set-row-h) + var(--space-2)) * var(--set-log-rows))` | — |  |
 | `--set-range-w` | `120px` | — | a range row's slider (Glass's Tint / Frost) |
 | `--set-range-val-w` | `3.5em` | — | its value, "100%" fits |
 | `--set-pill-pad` | `var(--space-1) var(--space-2)` | — |  |
@@ -639,6 +641,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--icon-sm` | `14px` | — |  |
 | `--icon-md` | `16px` | — |  |
 | `--icon-lg` | `24px` | — |  |
+| `--action-text-pad` | `var(--space-2)` | — | A header action that carries WORDS instead of a glyph (Rewind's SOTD button, docs/DeetsOTD.md §10.5). Same family as .panel__action — same fill, border, height, radius and hover — so it only needs the side room and the type the letters take. Aliases, never new raw values (UI-ARCHITECTURE.md §2a). |
+| `--action-text-fs` | `var(--fs-subtext)` | — |  |
+| `--action-text-weight` | `var(--fw-title)` | — |  |
 
 ### spacing scale
 

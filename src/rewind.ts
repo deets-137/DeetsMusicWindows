@@ -16,6 +16,7 @@ import type { Track } from "./library";
 import { trackById } from "./track-store";
 import { playlistsCached } from "./playlists";
 import type { Playlist } from "./search";
+import { allPicks, dayLabel } from "./sotd";
 
 /** Mirrors Rust's `PlayEvent` (library.rs). `msListened: null` = never finalized. */
 export interface PlayEvent {
@@ -26,7 +27,7 @@ export interface PlayEvent {
   context: string | null;
 }
 
-export type RewindStat = "songs" | "artists" | "albums" | "playlists";
+export type RewindStat = "songs" | "artists" | "albums" | "playlists" | "picks";
 export type RewindWindow = "day" | "week" | "month" | "ytd" | "year";
 
 export const STAT_LABELS: Record<RewindStat, string> = {
@@ -34,6 +35,9 @@ export const STAT_LABELS: Record<RewindStat, string> = {
   artists: "Artists",
   albums: "Albums",
   playlists: "Playlists",
+  // Song of the Day (DeetsOTD.md §8.7). Not a leaderboard: a timeline, newest first. The
+  // card leaves it out of the picker while the feature is off.
+  picks: "Picks",
 };
 export const WINDOW_LABELS: Record<RewindWindow, string> = {
   day: "Past Day",
@@ -58,6 +62,10 @@ export interface RewindRow {
   /** Every distinct resolvable track played in the group — the right-click menus'
    *  playable list (songs: the one track; albums: the played-subset fallback). */
   tracks: Track[];
+  /** Picks only: the row's own meta line ("Tue, Sep 16 · a note"), and the pick it is. The
+   *  Picks view measures nothing, so `ms` and `plays` stay 0 there. */
+  meta?: string;
+  pickId?: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -100,6 +108,9 @@ interface Group {
 
 /** The card's one entry point: ranked rows for a stat × window, minutes-desc. */
 export async function topBy(stat: RewindStat, window: RewindWindow): Promise<RewindRow[]> {
+  // Picks are not measured, so they never touch the play log: they are the picks in the
+  // window, newest first (R1, owner 2026-09-17).
+  if (stat === "picks") return picksIn(window);
   const events = await playEventsSince(windowStart(window));
   // Playlist names resolve from the cached list (local + Apple mirrors). A tag whose
   // playlist was since deleted renders as "Unknown Playlist" rather than vanishing.
@@ -169,6 +180,24 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
   }
   rows.sort((a, b) => b.ms - a.ms || b.plays - a.plays || a.title.localeCompare(b.title));
   return rows;
+}
+
+/** The Picks view's rows: every pick whose day falls in the window, newest first. Local. */
+function picksIn(window: RewindWindow): RewindRow[] {
+  const from = windowStart(window);
+  return allPicks()
+    .filter((p) => new Date(`${p.day}T12:00:00`).getTime() >= from)
+    .map((p) => ({
+      key: `pick:${p.id}`,
+      title: p.meta.title,
+      subtitle: p.meta.artistName,
+      ms: 0,
+      plays: 0,
+      track: p.meta,
+      tracks: [p.meta],
+      meta: `${dayLabel(p.day)}${p.note ? ` · ${p.note}` : ""}`,
+      pickId: p.id,
+    }));
 }
 
 /** "47 min" under an hour, "3 hr 12 min" past it, "<1 min" below the line (covers

@@ -281,6 +281,11 @@ export interface Settings {
   /** A temporary web playlist's days: deleted this long after its last play. The web panel's
    *  Temp | N days button remembers it; every new web starts on Temp. No Settings row (PLAYLIST-WEB.md §10). */
   webTempDays: 1 | 3 | 5 | 7 | 30;
+  // ── Song of the Day (docs/DeetsOTD.md §8.4) ──
+  /** Offer today's most-played song on the Home shelf, before the picks, with a dashed rim.
+   *  Off by default: people prefer to find what they like themselves (owner's words). The
+   *  feature's other five rows live in Rust (settings.rs), which is what enforces them. */
+  sotdSuggest: boolean;
   // ── cards ──
   /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
   rewindCard: boolean;
@@ -419,6 +424,7 @@ export const DEFAULTS: Settings = {
   webSeedFilter: "all", // user's call 2026-09-16: a genre pick must not leave the artist's other-genre songs clashing
   webMakeMotion: "shrink", // user's call 2026-09-16: try the shrink first; Pop out is the one-beat close
   webTempDays: 7, // user's call 2026-09-17: a week leaves time to play it again or keep it
+  sotdSuggest: false, // user's call 2026-09-17: a suggestion row is off until you ask for it
   rewindCard: false,
   rewindAutoShown: false,
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
