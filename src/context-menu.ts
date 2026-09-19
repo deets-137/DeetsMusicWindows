@@ -21,6 +21,7 @@
 // One instance at a time: opening a new menu (or right-clicking elsewhere) replaces it.
 
 import * as frames from "./frames";
+import * as diag from "./diag";
 
 export interface ActionItem {
   label: string;
@@ -186,6 +187,9 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
       else
         btn.addEventListener("click", () => {
           closeContextMenu();
+          // The click trail (LOGGING.md §The click trail): which menu row ran. The label
+          // is the gesture — a UI word, never a song title.
+          diag.log("ui:act", { do: "menu", what: item.label.slice(0, 40) });
           item.run();
         });
       if (topLevel) btn.addEventListener("pointerenter", closeFly); // hovering a sibling unlatches

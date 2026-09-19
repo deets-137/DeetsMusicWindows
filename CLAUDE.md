@@ -61,7 +61,8 @@ front-end, Rust back-end).
   by DPAPI in `sotd-outlets.json`. Home's last shelf, Rewind › Picks, the suggestion from
   today's plays, the `/picks` agent route, and `scripts/import-sotd-journal.mjs` for the
   owner's own journal. The DeetsOTD repo stays untouched. **§10 = as built (BUILT 2026-09-18
-  on `pins-for-days`; desk test §8.11 open).** Bluesky and Mastodon are build 2 (§8.4b, §8.14).
+  on `pins-for-days`; desk test §8.11 open).** Bluesky and Mastodon are build 2 (§8.4b, §8.14). **§9 = more than one Discord
+  webhook** (paper design 2026-09-18, five forks open, not built).
 - `docs/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
   a Pinned tile shelf on the Library / Playlists / Radio roots (pin order) and Home's fifth shelf
   (by plays, all time), a corner tile badge (BUILT 2026-09-18 on branch `pins-for-days`, §7 = as
@@ -135,6 +136,13 @@ front-end, Rust back-end).
   `grep -a` (the file has non-ASCII). Never match `Running .*deetsmusic`: cargo's color codes
   sit right after "Running", so that pattern never matches (missed several times, 2026-09-17).
   On a timeout, read the output file before you report.
+- **A complaint about the app HE is running is read, never guessed (2026-09-18).** Three
+  reads, in order, none needing a restart: the `query` MCP tool over `plays` (its `context`
+  column names the surface every start came from), then `deetsmusic diag` / the `diag` MCP
+  tool (the window's LIVE ring — `ui:act` gestures, `player:*`, drills), then the log file
+  for anything older. The ring auto-flushes every 5 minutes. Two code paths that read the
+  same in the file can behave differently on the queue's state at the click, so reading the
+  source is not a trace. DEBUGGING.md §Recipe — the user reports a playback complaint.
 - **Frame smoothness is measured the same way (2026-09-13).** `src/frames.ts` logs one
   `[perf] frames …` line per scroll / scrub / pane slide / folder open / queue drag / menu /
   appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`

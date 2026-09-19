@@ -1247,6 +1247,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       const f = cur();
       const g = groupingOf(f);
       const what = act.dataset.act ?? "";
+      // The click trail (LOGGING.md §The click trail): the Play / Shuffle row, and what
+      // list it was pressed over. Reading the play that follows is guesswork without it.
+      diag.log("ui:act", { at: `${opts.storeKey}:${g.key}`, do: what, n: pick.size() || f.items.length, picked: pick.size() > 0 });
       // The count row (§19): Clear drops the picks; Play / Shuffle act on them alone.
       if (g.pick && pick.size()) {
         const picked = pick.picked();
@@ -1340,6 +1343,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       // whatever was picked, so the list always returns to its normal state (§19).
       if (g.pick && pick.click(e, x)) return;
       if (g.activate) {
+        diag.log("ui:act", { at: `${opts.storeKey}:${g.key}`, do: "row", i: idx, n: cur().items.length });
         g.activate(x, idx, cur().items);
         return;
       }

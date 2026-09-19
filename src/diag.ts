@@ -15,6 +15,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export interface DiagEvent {
+  n: number; // sequence number, monotonic for the session — what a flush counts from
   t: number; // ms since page load (monotonic)
   tag: string; // e.g. "player:play", "player:desync"
   data?: unknown; // small JSON-able snapshot
@@ -22,6 +23,8 @@ export interface DiagEvent {
 
 const CAP = 300;
 const buffer: DiagEvent[] = [];
+let seq = 0; // the last number handed out; `flushedSeq` is how far the file has it
+let flushedSeq = 0;
 
 let echo = false;
 try {
@@ -31,7 +34,7 @@ try {
 }
 
 export function log(tag: string, data?: unknown): void {
-  buffer.push({ t: Math.round(performance.now()), tag, data });
+  buffer.push({ n: ++seq, t: Math.round(performance.now()), tag, data });
   if (buffer.length > CAP) buffer.shift();
   if (echo) console.debug(`[diag] ${tag}`, data ?? "");
 }
@@ -43,10 +46,7 @@ export function log(tag: string, data?: unknown): void {
 type Level = "warn" | "error";
 const DEDUPE_MS = 2000;
 let lastSent = { key: "", at: -Infinity };
-let dirty = false; // a warn/error since the last flush: the unload flush is worth writing
-
 function send(level: Level, tag: string, data?: unknown): void {
-  dirty = true;
   let text: string | undefined;
   try {
     text = data === undefined ? undefined : JSON.stringify(data);
@@ -85,23 +85,47 @@ export function setEcho(on: boolean): void {
   }
 }
 
-/** A copy-pasteable text report of the recent log — the future bug-report payload. */
-export function report(): string {
-  const header = `DeetsMusic diag — ${new Date().toISOString()} — ${buffer.length} events`;
-  const lines = buffer.map(
+/** A copy-pasteable text report of the recent log — the bug-report payload.
+ *  `since` (a sequence number) keeps only the events after it, which is what a flush
+ *  writes; the default is the whole ring, which is what the clipboard copy wants. */
+export function report(since = 0): string {
+  const events = since ? buffer.filter((e) => e.n > since) : buffer;
+  const header = `DeetsMusic diag — ${new Date().toISOString()} — ${events.length} events`;
+  const lines = events.map(
     (e) => `${String(e.t).padStart(8)}ms  ${e.tag}${e.data !== undefined ? "  " + JSON.stringify(e.data) : ""}`,
   );
   return [header, ...lines].join("\n");
 }
 
-/** Append the report to the app log file. Fire-and-forget; never throws. An empty
- *  buffer still writes its header line — "0 events" is itself a finding. */
-export function flush(): Promise<void> {
-  dirty = false;
-  return invoke<void>("diag_flush", { text: report() }).catch((e) => {
+/**
+ * Append the events the file does not have yet to the app log. Fire-and-forget; never
+ * throws.
+ *
+ * It writes only what is NEW (LOGGING.md §Auto-flush, the owner's call 2026-09-18).
+ * Writing all 300 events on every flush is what filled the 512 KB file and rotated it
+ * in 2026-09-13; the since-cursor is what makes a frequent flush affordable. Nothing
+ * new means nothing written, so the timer below stays silent on an idle app.
+ *
+ * `all` re-writes the whole ring — `__diag.flush(true)` from the console, for when the
+ * interesting part is already on disk but you want it in one block.
+ */
+export function flush(all = false): Promise<void> {
+  if (!all && seq === flushedSeq) return Promise.resolve();
+  const since = all ? 0 : flushedSeq;
+  flushedSeq = seq;
+  return invoke<void>("diag_flush", { text: report(since) }).catch((e) => {
     console.warn("[diag] flush failed", e); // not under Tauri, or the command is missing
   });
 }
+
+// ── The timer (LOGGING.md §Auto-flush) ───────────────────────────────────────
+// A bug that does not throw used to leave NO front-end trace: the ring lived in memory
+// and reached disk only on a crash, an unload, or the report form. The owner hit one on
+// 2026-09-18 (a Home song tile, then an album's Play) and the file held the PREVIOUS
+// session. The ring now lands every 5 minutes, gated on new events and writing only
+// them.
+const FLUSH_EVERY_MS = 5 * 60 * 1000;
+window.setInterval(() => void flush(), FLUSH_EVERY_MS);
 
 // One uncaught error tends to bring friends; write the buffer once per burst.
 const FLUSH_GAP_MS = 5000;
@@ -140,10 +164,12 @@ window.addEventListener("unhandledrejection", (e) => {
     flushOnError();
   }, 0);
 });
-// The buffered block on unload only when something went wrong this session: writing all
-// 300 events on every reload filled the 512 KB file and rotated it (2026-09-13).
+// On unload, whatever the timer has not written yet — at most one interval of events,
+// because `flush` carries a since-cursor. (Before that cursor, this had to be gated on
+// `dirty`: writing all 300 events on every reload filled the 512 KB file and rotated
+// it, 2026-09-13.)
 window.addEventListener("beforeunload", () => {
-  if (dirty) flush();
+  flush();
 });
 
 // Console handle (available in prod too, so bug reports can be gathered anywhere).
@@ -153,6 +179,8 @@ window.addEventListener("beforeunload", () => {
   copy: copyReport,
   flush,
   dump: () => console.table(buffer),
+  /** The text a flush would write now — the events the log file does not have yet. */
+  pending: () => report(flushedSeq),
   clear: () => {
     buffer.length = 0;
   },

@@ -1370,16 +1370,27 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   perf.mark("model"); // ingest + re-renders done; what follows up to `context` is MusicKit init
   await requireSignIn();
   const m = await initPlayer();
-  diag.log("player:playContext", { startIndex, len: handles.length });
+  diag.log("player:playContext", { startIndex, len: handles.length, ctx: handles[startIndex]?.context });
   perf.mark("context", { len: handles.length });
 
   // Idempotent re-click: clicking the song that's already current shouldn't tear down
   // and rebuild MusicKit's queue (a needless buffer/gap, and the path that used to
   // accumulate). Just restart it from the top — what people expect from re-clicking.
+  //
+  // It is a re-click only when the SAME LIST is clicked again (2026-09-18, the owner's
+  // fork 1A). The song id alone is not enough: a Home song tile queues one song, and the
+  // album that song opens starts with it — so Play on the album read as a re-click, and
+  // the album never reached the queue. `sameContext` compares the click's list against
+  // the loaded plan, position by position. An empty plan (a restored session, or a
+  // station) fails it, which is the safe way round: rebuild.
   const target = handles[startIndex];
   const cur = queue.getCurrent();
-  if (target && cur && playId(target) && playId(target) === playId(cur) && m.nowPlayingItem) {
-    diag.log("player:reclick", { id: playId(target) });
+  const sameContext = (): boolean => {
+    const plan = queue.getPlan();
+    return plan.length === handles.length && handles.every((h, i) => playId(h) === playId(plan[i]));
+  };
+  if (target && cur && playId(target) && playId(target) === playId(cur) && m.nowPlayingItem && sameContext()) {
+    diag.log("player:reclick", { id: playId(target), ctx: target.context, len: handles.length });
     perf.abandon("reclick"); // no rebuild, no `playing` transition to time
     await m.seekToTime(0);
     if (!m.isPlaying) await m.play();

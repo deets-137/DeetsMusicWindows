@@ -253,3 +253,79 @@ state tag, a dot for an unseen owner reply, and Open | Copy link | Close.
 - **One day for closed posts.** `save` stamps `closed_at` the first time a report
   is stored `closed` or `gone`; `load` drops it 24 hours later. Open reports are
   kept (newest 100). The file stays small without a cleanup job.
+
+---
+
+## Auto-flush — the ring buffer lands every 5 minutes (BUILT 2026-09-18)
+
+**Why.** The user reported: a song played from a Home tile, then **Go to Album**,
+then the album's **Play** — and only that one song played. The cause was one diag
+line, `player:reclick`. That line was in the ring buffer, in memory. It was NOT in
+the log file, because `diag_flush` ran only on `window:error`, on `beforeunload`
+and when the report form opened (see **The front-end bridge**). None of the three
+had happened, so the file still held the PREVIOUS session. The session had to be
+read from `plays.context` over SQL, and the answer stayed a guess between two code
+paths until the user flushed by hand.
+
+A bug that does not throw left no front-end trace at all. Most bugs do not throw.
+
+**As built** (`src/diag.ts`):
+
+- **Every event carries a sequence number** (`DiagEvent.n`), and the module keeps
+  `flushedSeq` — how far the file has it. `report(since)` filters on it.
+- **A flush writes only what is new.** `flush()` returns at once when nothing is
+  new, so nothing is written. `flush(true)` re-writes the whole ring
+  (`__diag.flush(true)` from the console). This cursor is what makes a frequent
+  flush affordable: writing all 300 events per flush is what filled the 512 KB
+  file and rotated it on 2026-09-13.
+- **A 5-minute timer** (`FLUSH_EVERY_MS`) calls `flush()`. An idle app writes
+  nothing.
+- **The unload flush is no longer gated on a warn/error.** It writes whatever the
+  timer has not, which is at most one interval of events.
+- **`__diag.pending()`** prints the text a flush would write now.
+- No Settings row: the file is local, rotated and already redacted.
+
+**Two log lines got their context at the same time.**
+`player:playContext` now logs `{startIndex, len, ctx}` — two different lists of the
+same length used to read the same. `player:reclick` now logs `{id, ctx, len}`, so
+the line says what it rejected.
+
+---
+
+## Reading it from outside (BUILT 2026-09-18)
+
+The log file only ever holds what a flush has written. A session being debugged has
+more than that in memory. `GET /diag` reads the window's ring as it is now.
+
+- **Route:** `GET /diag?limit=100&since=0&tag=` → `{events:[{n, t, tag, data}], dropped}`,
+  oldest first. `since` takes the `n` of an event already read, so a second call carries
+  on where the first stopped. `tag` keeps the tags that START with it (`player` takes
+  `player:np`, `player:reclick`, …).
+- **Where it runs:** `np-bus.ts` case `diag-get` — the window answers, because the ring
+  lives there. `bridge.rs` puts `/diag` in `AGENT_ROUTES`, so the Agent control switch
+  governs it like every other agent read. It carries song ids, and it is a read of the
+  app's own behaviour, so it needs no second switch of its own.
+- **CLI:** `deetsmusic diag -n 50 --tag player`. **MCP tool:** `diag` (full pack only —
+  a small local model has no use for it).
+
+## The click trail (BUILT 2026-09-18)
+
+`ui:act` says which gesture ran, at the shared primitives only — not per card:
+
+| Where | Line |
+| --- | --- |
+| `context-menu.ts`, an item runs | `{do:"menu", what:"Go to Album"}` |
+| `collection-card.ts`, the Play / Shuffle row | `{at:"<storeKey>:<grouping>", do:"play"\|"shuffle", n, picked}` |
+| `collection-card.ts`, a row activates | `{at:"<storeKey>:<grouping>", do:"row", i, n}` |
+| `search-card.ts`, a pane's Play / Shuffle row | `{at:"<context>", do:"play"\|"shuffle", n, picked}` |
+| `search-card.ts`, a pane row | `{at:"<context>", do:"row", i, n}` |
+| `home-card.ts`, a tile | `{at:"home", do:"tile", kind, n}` |
+
+`n` is what the gesture ACTS ON, which is the fact that reads a bug: a Home song tile
+logs `n:1`, and the album's Play under it logs `n:6`. Reading the play that follows
+without this is guesswork — it was, on 2026-09-18.
+
+**The one content exception, on purpose:** a menu row logs its **label**, capped at 40
+characters. The label is the gesture; it is a UI word, not a song title, and the trail is
+worth nothing without it. A submenu row can carry a playlist name the user wrote. Nothing
+else in the trail carries content — the rest is counts, indices and surface names.

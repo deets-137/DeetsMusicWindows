@@ -673,7 +673,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
-        "/picks",
+        "/picks", "/diag",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -980,6 +980,20 @@ async fn handle(app: AppHandle, mut req: Request) {
             agent_json(req, res, origin)
         }
         (Method::Get, "/update") => agent_json(req, ask(&app, "update-get", serde_json::Value::Null).await, origin),
+        // ── the live diag ring (LOGGING.md §Reading it from outside) ──
+        // The log FILE only holds what a flush has written; this reads the window's own
+        // buffer as it is, which is what a session being debugged needs. It carries song
+        // ids, so it sits behind the Agent control switch like every other agent read.
+        (Method::Get, "/diag") => {
+            let limit = query_param(&url, "limit").and_then(|v| v.parse::<u32>().ok()).unwrap_or(100);
+            let since = query_param(&url, "since").and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+            let tag = query_param(&url, "tag").unwrap_or_default();
+            agent_json(
+                req,
+                ask(&app, "diag-get", serde_json::json!({ "limit": limit, "since": since, "tag": tag })).await,
+                origin,
+            )
+        }
         // ── Song of the Day (docs/DeetsOTD.md §8.8; sotd.ts, agent-writes.ts) ──
         // The reads are free; a mark asks the user once, and is refused while the feature
         // is off. The window runs both, so the shelf, Rewind and the outbox all follow.

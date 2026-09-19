@@ -37,6 +37,7 @@ import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { isPinned, pinItem, pinBadgeHTML, handleUnpin, onPinsChange } from "./pins";
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
+import * as diag from "./diag";
 
 const err = (what: string) => (e: unknown) => console.error(`[home] ${what}`, e);
 
@@ -150,6 +151,10 @@ export const homeCard: CardDef = {
 
     // ── acting on a tile ──
     const activate = (it: HomeItem) => {
+      // The click trail (LOGGING.md §The click trail): which tile, and what it stands for
+      // — a song tile queues ONE song, an album tile queues the album, and the two lead
+      // to very different queues from the same gesture.
+      diag.log("ui:act", { at: "home", do: "tile", kind: it.kind, n: it.count ?? 1 });
       if (it.kind === "station" && it.station) {
         void playStation(it.station).then(build).catch(err("play station"));
         return;

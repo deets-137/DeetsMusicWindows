@@ -145,6 +145,17 @@ enum Cmd {
         #[arg(short = 'n', long, default_value_t = 20)]
         limit: usize,
     },
+    /// The window's live diag events — what the app is doing right now (LOGGING.md).
+    Diag {
+        #[arg(short = 'n', long, default_value_t = 100)]
+        limit: u32,
+        /// Only events after this sequence number (the `#n` a previous read printed).
+        #[arg(long, default_value_t = 0)]
+        since: u64,
+        /// Only tags that start with this, e.g. `player` or `ui:`.
+        #[arg(long, default_value = "")]
+        tag: String,
+    },
     /// Song of the Day: the picks, or mark / unmark one (docs/DeetsOTD.md).
     Pick(PickArgs),
     /// Add to your Apple Music library: an id, or the playing song.
@@ -635,6 +646,29 @@ fn op_history(c: &Client, limit: usize) -> Result<(String, Value), Failure> {
     Ok((numbered(arr(&v, "plays").iter().map(|t| track_line(t)).collect()), v))
 }
 
+/// The live diag ring (`GET /diag`, LOGGING.md §Reading it from outside). One line per
+/// event, oldest first, in the same shape the log file uses — so a session being debugged
+/// reads the same either way. The log file only holds what a flush has written; this is
+/// the window's buffer as it is now.
+fn op_diag(c: &Client, limit: u32, since: u64, tag: &str) -> Result<(String, Value), Failure> {
+    let v = c.get(&format!("/diag?limit={limit}&since={since}&tag={tag}"))?;
+    let lines: Vec<String> = arr(&v, "events")
+        .iter()
+        .map(|e| {
+            let n = e.get("n").and_then(Value::as_u64).unwrap_or(0);
+            let t = e.get("t").and_then(Value::as_u64).unwrap_or(0);
+            let data = match e.get("data") {
+                None | Some(Value::Null) => String::new(),
+                Some(d) => format!("  {d}"),
+            };
+            format!("#{n} {t:>8}ms  {}{data}", s(e, "tag"))
+        })
+        .collect();
+    let dropped = v.get("dropped").and_then(Value::as_u64).unwrap_or(0);
+    let head = if dropped > 0 { format!("({dropped} older event(s) not shown)\n") } else { String::new() };
+    Ok((if lines.is_empty() { "(no events)".into() } else { format!("{head}{}", lines.join("\n")) }, v))
+}
+
 /// The library tool (`POST /songs`): one line per song, id first, so `play` takes it at once.
 fn op_songs(c: &Client, body: Value) -> Result<(String, Value), Failure> {
     let v = c.post("/songs", body)?;
@@ -1001,13 +1035,18 @@ fn tools(small: bool) -> Value {
     list.push(json!({ "name": "query", "description": "One read-only SQL SELECT over the user's DeetsMusic data (SQLite). No Apple calls. Tables: songs(id, title, artist, album, length_s, genre, release_date, in_library, added_rank, added_at) · playlists(id, name, source, song_count) · playlist_songs(playlist_id, position, song_id) · plays(song_id, started_at, listened_s, finished, skipped, context) · play_counts(song_id, starts, finishes, last_played). ids are song:… / playlist:…, ready for play and queue. Times are local ISO text. song_count counts the songs DeetsMusic has read. plays and play_counts exist only while the user allows agents to read play history. Only SELECT, one statement, 2 s, 500 rows. For a simple sorted list, list what=library is easier.",
           "inputSchema": { "type": "object", "required": ["sql"], "additionalProperties": false, "properties": {
               "sql": { "type": "string", "description": "e.g. SELECT s.title, c.starts FROM play_counts c JOIN songs s ON s.id = c.song_id ORDER BY c.starts DESC LIMIT 10" } } } }));
+    list.push(json!({ "name": "diag", "description": "The app's live diagnostic events — what DeetsMusic just did, in order (card drills, button presses, queue loads, errors). Use it to work out WHY the app behaved as it did; it is the window's own buffer, so it needs no flush and no restart. tag narrows to a prefix, e.g. 'player' or 'ui:'. since takes the #n of an event you already read.",
+          "inputSchema": { "type": "object", "additionalProperties": false, "properties": {
+              "limit": { "type": "number", "description": "How many of the most recent events, 1-300 (default 100)." },
+              "since": { "type": "number", "description": "Only events after this sequence number." },
+              "tag": { "type": "string", "description": "Only tags starting with this, e.g. player, ui:, sound." } } } }));
     Value::Array(list)
 }
 
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -1076,6 +1115,7 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             _ => op_queue_list(c)?.0,
         },
         "query" => op_query(c, &str_arg("sql"))?.0,
+        "diag" => op_diag(c, num_arg("limit").unwrap_or(100), num_arg("since").unwrap_or(0) as u64, &str_arg("tag"))?.0,
         "library" => op_library(c, &str_arg("action"), &str_arg("id"))?.0,
         "playlist_add" => {
             let id = str_arg("id");
@@ -1310,6 +1350,7 @@ fn main() {
         ),
         Cmd::Sql { query } => op_query(&c, &query.join(" ")),
         Cmd::History { limit } => op_history(&c, limit),
+        Cmd::Diag { limit, since, tag } => op_diag(&c, limit, since, &tag),
         Cmd::Pick(a) => op_picks(&c, &a),
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),
         Cmd::Love { id } => op_library(&c, "favorite", id.as_deref().unwrap_or("")),

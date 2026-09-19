@@ -176,6 +176,18 @@ detects `playId(target) === playId(current)` and just `seekToTime(0)` (+ `play()
 paused) — what people expect from re-clicking, and it avoids a needless buffer. Logged as
 `player:reclick`.
 
+**It must be the same LIST, not only the same song (2026-09-18).** The id test alone made
+this guard swallow whole contexts. The user's report: a Home song tile plays ONE song; the
+album that song opens starts with it; **Play** on the album therefore read as a re-click,
+seeked to 0:00 and returned before `setContext` — so only that one song ever played, with
+nothing in Up Next. The fix (the owner's fork 1A, and 2A for the audio): `playContext`
+also asks `sameContext()`, which compares the click's handles against `queue.getPlan()`
+position by position. A different list always rebuilds. The song restarts at 0:00, because
+Play on an album means "play this album from the top".
+
+`getPlan()` is empty after a restart and after a station, so the comparison fails and the
+click rebuilds — the safe way round.
+
 ---
 
 ## Model-follow

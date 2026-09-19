@@ -1143,6 +1143,37 @@ failure: <reason>`, `user token captured`.
    `player:loadWindow` fire with a sane `pos`? Is there a `window:unhandledrejection`?
 4. For "what does MusicKit actually expose?" questions, poke `__music` directly.
 
+## Recipe — the user reports a playback complaint, and you were not there (2026-09-18)
+
+You cannot reproduce it by clicking: the app is on his screen, not yours. Three reads
+answer it, in this order, and none of them needs a restart.
+
+1. **What was played, and from where.** The SQL tool over `plays` dates every start and
+   names the surface it came from:
+
+   ```sql
+   SELECT s.title, p.started_at, p.listened_s, p.skipped, p.context
+   FROM plays p LEFT JOIN songs s ON s.id = p.song_id
+   ORDER BY p.started_at DESC LIMIT 15
+   ```
+
+   `context` is the load-bearing column. `home` and `search-albums:123` are different
+   gestures, and a row per second is a flurry of clicks, not one. This read alone usually
+   shows the SHAPE of the bug: which click took, which did not.
+
+2. **What the app did between those plays.** `deetsmusic diag` (or the `diag` MCP tool)
+   reads the window's live ring — the `ui:act` gesture, the drill, the `player:*` lines,
+   any toast. `--tag player` or `--tag ui:` narrows it. This is the step that names the
+   bug; on 2026-09-18 it was one line, `player:reclick`.
+
+3. **The log file** (`%APPDATA%\com.deetsmusic.app\deetsmusic.log`) only for what is
+   older than the ring (300 events) or from an earlier session. It auto-flushes every
+   5 minutes, so it is at most that far behind.
+
+**What NOT to do:** do not guess between code paths from reading the source. Two paths
+that look identical in the file can behave differently because of the queue's state at
+the moment of the click. Read what happened.
+
 ## MusicKit quirks learned (so we don't relearn them)
 - **`music.queue.position` is empty in this build** — use `music.nowPlayingItemIndex`
   for the live index. (Relying on `queue.position` froze the queue model.)

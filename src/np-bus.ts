@@ -36,7 +36,7 @@ import { runAgentWrite } from "./agent-writes";
 import { materializeTrack } from "./search";
 import type { Track } from "./library";
 import type { Station } from "./radio";
-import { log } from "./diag";
+import { log, events as diagEvents } from "./diag";
 import { onToast, type ToastKind } from "./toast";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 
@@ -260,6 +260,17 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
       const limit = Math.max(1, Math.min(200, Number(payload?.limit) || 50));
       return { plays: [...queue.getPlayLog()].reverse().slice(0, limit).map(trackOf) };
     }
+    // The live diag ring (LOGGING.md §Reading it from outside). The file only ever has
+    // what a flush has written; this reads the buffer in the window, now. Oldest first,
+    // so the reply reads as a story. `tag` keeps the tags that START with it
+    // ("player" takes player:np, player:reclick …).
+    case "diag-get": {
+      const limit = Math.max(1, Math.min(300, Number(payload?.limit) || 100));
+      const since = Number(payload?.since) || 0;
+      const tag = String(payload?.tag ?? "").trim();
+      const all = diagEvents().filter((e) => e.n > since && (!tag || e.tag.startsWith(tag)));
+      return { events: all.slice(-limit), dropped: Math.max(0, all.length - limit) };
+    }
     case "queue-edit": {
       await runAgentWrite(kind, payload);
       return runAgent("queue-get", null); // the fresh numbering, so the next edit's row is right
@@ -285,7 +296,7 @@ const startsPlayback = (kind: string, payload: any): boolean =>
   (kind === "command" && ["next", "previous", "play", "play-pause"].includes(String(payload?.kind)));
 
 async function runAgentWithNotices(kind: string, payload: any): Promise<unknown> {
-  if (kind === "queue-get" || kind === "history-get" || kind === "update-get" || kind === "settings-get" || kind === "grow-get") return runAgent(kind, payload);
+  if (kind === "queue-get" || kind === "history-get" || kind === "update-get" || kind === "settings-get" || kind === "grow-get" || kind === "diag-get") return runAgent(kind, payload);
   const notices: { kind: ToastKind; text: string }[] = [];
   const off = onToast((t) => {
     if (NOTICE_KINDS.has(t.kind)) notices.push(t);

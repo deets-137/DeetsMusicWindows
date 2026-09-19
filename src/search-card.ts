@@ -25,6 +25,7 @@ import {
 import { onSearchTerm, takeSearchTerm } from "./layout-bus";
 import { wireListKeys } from "./list-keys";
 import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
+import * as diag from "./diag";
 import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
@@ -566,6 +567,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         e.stopPropagation();
         // While rows are picked the row is the count row: Play / Shuffle act on them (§19).
         const list = picks.size() ? picks.picked() : tracks;
+        // The click trail (LOGGING.md §The click trail).
+        diag.log("ui:act", { at: context, do: act.dataset.act ?? "", n: list.length, picked: picks.size() > 0 });
         runListAction(act.dataset.act ?? "", list, (l) => start(l, 0));
         return;
       }
@@ -573,6 +576,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       if (!row) return;
       const picked = tracks[Number(row.dataset.row)];
       if (picked && picks.click(e, picked)) return; // Ctrl / Shift → a pick, not a play
+      diag.log("ui:act", { at: context, do: "row", i: Number(row.dataset.row), n: tracks.length });
       start(tracks, Number(row.dataset.row));
     });
     body.addEventListener("contextmenu", (e) => {

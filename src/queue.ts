@@ -159,6 +159,12 @@ export function setContext(handles: TrackHandle[], startIndex: number, shuffle =
  *  persisted: after a restart the refill falls back to the songs Previous can reach. */
 let plan: TrackHandle[] = [];
 
+/** The context now loaded, in its list order — what `playContext` compares a new click
+ *  against, so the same list clicked twice is a re-click and a DIFFERENT list is never
+ *  mistaken for one (player.ts; the Home-tile → album Play bug, 2026-09-18). Empty after
+ *  a restart and after a station, which both make the comparison fail safe: rebuild. */
+export const getPlan = (): readonly TrackHandle[] => plan;
+
 /**
  * Up Next ran dry under Repeat all: refill it with the whole plan (the clicked song's list,
  * in list order — the song that just finished included, so it plays again in its turn), or,
