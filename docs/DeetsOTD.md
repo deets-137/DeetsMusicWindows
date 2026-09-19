@@ -4,6 +4,8 @@
 > Build 1 is picks + the Discord webhook, the Home shelf, Rewind › Picks, the suggestion,
 > the settings section, the agent routes and the one-time journal import. Bluesky and
 > Mastodon stay as the build 2 spec (§8.4b, §8.4c, §8.12, §8.14).
+> **§9 = more than one Discord webhook: a paper design with five open forks (2026-09-18,
+> not built).**
 > A Song of the Day journal already existed before any of this, and it still runs every
 > night outside the app: the [DeetsOTD](../../DeetsOTD) repo reads a Discord channel, and
 > [deets.solutions/sotd](../../DeetsSolutions/sotd) shows it. This doc records the state of
@@ -933,6 +935,159 @@ The design assumes an attacker reads every line of source. Nothing in it depends
 - Open `deetsmusic://bluesky?code=x&state=y` from a browser with no sign-in pending: nothing
   happens; one log line.
 - Bug report preview after connecting all three: no secret appears.
+
+## 9. More than one Discord webhook — paper design (2026-09-18, not built)
+
+The owner asked for this after build 1 shipped: one pick, **more than one Discord channel**.
+Today the app holds exactly one webhook. `outlet.rs` stores `Store { discord: Option<Conn> }`,
+so a second Set up replaces the first, and there is no way to post the same pick to a friends
+server and to a music server.
+
+This section is the paper design only. Every 🔵 below is the owner's to decide before a build
+starts. Nothing here is built.
+
+### 9.1 What blocks it today (checked in the code, 2026-09-18)
+| Place | What it holds | Why it blocks a second webhook |
+|---|---|---|
+| `sotd/outlet.rs` `Store` | one `Option<Conn>` per outlet name | a second connect overwrites the first |
+| `sotd/outlet.rs` `KNOWN` | `["discord"]`, a fixed list | the status list has one row per name, not one per channel |
+| `pick_posts` | `PRIMARY KEY (pick_id, outlet)` | one post row per pick per outlet name |
+| `outlet::live()` | `Vec<String>` of names | the outbox loops over names, not over channels |
+| `Conn.error` | one last failure per outlet | two channels can fail for two different reasons |
+| `settings-card.ts` | `outletOf("discord")`, `discordHalves()`, `discordLine()` | one hard-coded row and one status line |
+| `sotd_post_as` | one name for every post | one setting for what may be two servers |
+
+Two parts do **not** block it. The outbox already keys every state write, retry and withdraw on
+the post row (`pick_id` + `outlet`), so more rows need no new rules. `discord.rs` holds no
+state: `check`, `post` and `delete` all take the `Conn` they are given.
+
+### 9.2 🔵 Fork 1 — how a channel is named in the data
+This is the load-bearing choice. Everything else follows from it.
+
+- **A. A compound outlet name** (*recommended*). The `outlet` column carries `discord#2`,
+  `discord#3` and so on. `Store` holds `discord: Vec<Conn>`, each `Conn` with its own `slot`
+  number. `post()` splits the name at `#`, then calls `discord::post` with that `Conn`.
+  - No migration. `pick_posts` keeps its key. Every row already written stays valid and means
+    "the first webhook" (`discord` = `discord#1`).
+  - `live()` stays `Vec<String>`. The outbox, the withdraw path and the post log need no new
+    shape, only a name that is longer.
+  - Cost: every place that prints an outlet name must map `discord#2` to words
+    (`outletName()` in `sotd.ts` is the one door).
+- **B. A new `target` column.** `pick_posts` gets `target TEXT`, and the key becomes
+  `(pick_id, outlet, target)`. This is a v11 migration on a released table, and a changed
+  primary key in SQLite means a table copy.
+- **C. An `outlet_targets` table.** A row per channel, and `pick_posts` points at its id. The
+  most correct shape, and the largest change: the outbox, the record view and the agent all
+  read a join they do not read today.
+
+Recommendation: **A**. It is the only one of the three that ships without a migration, and
+build 2 (Bluesky, Mastodon) keeps working, because those outlets never carry a `#`.
+
+### 9.3 🔵 Fork 2 — how many
+- **A. Five** (*recommended*). Enough for a friends server, a music server, a private channel
+  and two more. It keeps the Ask toast readable and the send loop short.
+- **B. Three.**
+- **C. No cap.**
+
+Why a cap at all: the posts go out one after the other through one `reqwest` client, and each
+webhook has its own Discord rate limit. Five sends is still under a second in normal use, and
+a failure of one is reported on its own row. With no cap, one pick could hold twenty sends, and
+a 429 ("Discord asked us to slow down") becomes normal instead of rare.
+
+### 9.4 🔵 Fork 3 — how a channel is labelled on screen
+Discord's webhook object carries the webhook's own **name** and its channel **id**, but no
+channel or server names (measured 2026-09-18, §10.3). So "#music in Friends" cannot be shown.
+With one webhook the status line names the webhook. With five, two webhooks with the same name
+are likely.
+
+- **A. Discord's name, with a number when two are the same.** No new field. "Spoiler" and
+  "Spoiler (2)".
+- **B. The user types a label on set-up.** A field beside the URL field.
+- **C. Both** (*recommended*). The set-up field is filled with the webhook's own name, and the
+  user can change it. One more string in `Conn` (`label`), and the row always shows words the
+  user chose.
+
+### 9.5 🔵 Fork 4 — "Post as"
+`sotd_post_as` is one setting, sent as `username` on every post.
+- **A. Keep one name for every channel** (*recommended for this change*). No new key, and no
+  new agent spec.
+- **B. A name per channel.** `Conn.post_as`, with the global setting as the fallback. The
+  Settings row then moves inside each channel's own block.
+
+### 9.6 🔵 Fork 5 — what the Ask toast says
+Today: `Post “Song” to Discord?`. With three channels on:
+- **A. Count the channels** (*recommended*): `Post “Song” to 3 Discord channels?` — the
+  channels are named in the toast's hover hint.
+- **B. Name them all**: `Post “Song” to Friends, Music and Spoiler?`. It grows past one line
+  at four.
+
+Both keep one Post button. Sending to some channels and not others is **not** offered: the
+per-channel toggle is the way to hold one channel back, and a second set of buttons in a
+sticky toast would be a new control family.
+
+### 9.7 The Settings shape (follows forks 1, 3 and 4)
+One **Discord** group row, then one sub-row per channel, then an Add row:
+
+```
+Discord                                              [status line under the group]
+  Friends                        Change · Remove      ( on )
+  Music                          Change · Remove      ( on )
+  Spoiler                        Change · Remove      (off )
+  Add a channel                  Set up
+```
+
+- Each channel row is the **split row** family the outlet row already uses
+  (`kind: "split"`), so no new control family is added (CLAUDE.md › Working style §2a).
+- **Set up** opens the field and the two lines of Discord steps (§8.4a), unchanged. It is
+  hidden at the cap, with the hint "Five channels is the limit".
+- The **status line** under the group names the live count, and the first failure only:
+  "Discord: posts to 2 channels" · "Discord: Music failed: the webhook no longer exists".
+  A channel's own error is in **its** row's hover hint, the way the post log does it (§10.6).
+- A **new channel gets today's pick** if that pick is not sent yet. `post_now` already adds a
+  row for a live outlet that has none, so this needs no new code.
+- **Remove** asks nothing: it forgets the URL here. The wording in the hint stays — the user
+  must delete the webhook in Discord to revoke it.
+- The same URL twice is refused on Check, with "That channel is already set up". The compare is
+  on the webhook id, not on the whole URL, so a re-copied URL with a new token is a **Change**
+  of that channel, not a second channel.
+
+### 9.8 Agent, CLI and Compass
+- `outlet_set_on` takes the compound name (`discord#2`), and stays **off-only** for an agent
+  (§8.4, the standing rule). An agent cannot turn a channel on, and cannot add one.
+- The `settings` pack shows one row per channel, named by its label.
+- `/picks` does not change. It marks and unmarks; it never chose channels.
+- Compass: the channel rows are store rows the bar finds on its own. "Add a channel" is the
+  Settings row's own opener, so COMPASS.md §9 needs one line, not a verb.
+
+### 9.9 Work per file
+| File | Change |
+|---|---|
+| `src-tauri/src/sotd/outlet.rs` | `Store.discord: Vec<Conn>`; `Conn.slot` + `Conn.label`; `KNOWN` becomes a function over the stored channels; `conn()`, `put()`, `live()`, `note_error()`, `post()`, `delete_post()` take the compound name |
+| `src-tauri/src/sotd/discord.rs` | no change to `check` / `post` / `delete`; one more test, that a second webhook id is taken and the same id is refused |
+| `src-tauri/src/sotd/outbox.rs` | no rule change; the log lines carry the longer name |
+| `src/sotd.ts` | `outletName()` maps `discord#2` to its label; `outletsText()` counts channels (fork 5A) |
+| `src/settings-card.ts` | `discordHalves()` becomes one block per channel plus the Add row; `discordLine()` counts |
+| `docs/DeetsOTD.md` | §8.4a gains the multi-channel steps; §10 gains an "as built" block |
+| `docs/AGENT.md`, `docs/ONBOARDING.md`, `docs/TOASTS.md` | one row each, per the build checklist |
+
+No database migration, and no new settings key, under fork 1A with fork 4A.
+
+### 9.10 Desk test (to run after the build)
+1. Set up one webhook. It behaves as it does today. The status line names one channel.
+2. Add a second. Mark a song. Both channels get the post, and the record (§10.6) shows two
+   rows with two message ids.
+3. Turn the second channel off. Mark tomorrow's song. Only the first channel gets it.
+4. Withdraw the pick. Only the sent channel's message is deleted, and only its row reads
+   `Withdrawn`.
+5. Delete the second webhook **in Discord**, then mark. The first channel gets the post. The
+   second row reads failed with "the webhook no longer exists", and the group's status line
+   names that channel.
+6. Paste the same URL again. It is refused with "That channel is already set up".
+7. Reach the cap. The Add row is hidden, and its hint says why.
+8. Restart with two channels on and a pick waiting at a set time. Both go at the time.
+9. Open `sotd-outlets.json` in a text editor: no readable URL for either channel.
+10. A pick marked before this change still shows its old `discord` row, and Withdraw still
+    pulls that message back.
 
 ## 10. As built (2026-09-18)
 
