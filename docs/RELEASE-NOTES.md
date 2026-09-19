@@ -18,6 +18,18 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.11.1 — 2026-09-18
+
+**Listening rooms start when you press Play.** Starting a room filled it with what you were
+playing and then started it by itself, so the Play button in a brand-new room was really a
+Pause button. A room you start now waits for you.
+
+**And a room that would not play at all is fixed.** If the first song in your new room was the
+song already loaded — which it always was, because a room takes the song you are playing — the
+app quietly went silent and stayed silent. Adding more songs did not help, because every song
+after it hit the same fault. Rooms now keep the song they already have instead of rebuilding
+it, and a room that finds nothing loaded starts the song again instead of doing nothing.
+
 ## 0.11.0 — 2026-09-18
 
 **Song of the Day.** Right-click any song and **Mark as Song of the Day**: one song, for one
