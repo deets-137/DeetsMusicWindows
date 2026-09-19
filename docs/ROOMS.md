@@ -916,3 +916,80 @@ Also fixed on the way: the panel had `overflow-y: auto` but no `app-scroll` clas
 it did scroll it showed the grey OS bar — the exact miss CLAUDE.md's checklist item 6a
 warns about.
 
+
+### 17.9 A host's own room played nothing (2026-09-18)
+
+The owner started a room, pressed Play, and nothing played. Adding more songs did not
+help either — "not even just the first". The log named it, room `W1THF05N`:
+
+```
+6854388ms  room:start  {"code":"W1THF05N"}
+6854545ms  room:seed   {"songs":50}
+6854622ms  room:song   {"id":"1439611897","startsIn":1495,"at":0}
+6854672ms  player:loadWindow  {"ids":1,"pos":0,"fed":"items"}
+           <- nothing: no sound:match, no stats:event-start, no error
+```
+
+Every working song start has `sound:match` within ~25 ms of `player:loadWindow`. This one
+has none. The song loaded and never started. Three faults, all fixed here.
+
+**a. The room started itself, so Play was really Pause.** The seed arrives as a plain
+`add`, and `room.js`'s add auto-advances an idle room (`if (!this.transport.current)
+this.advance(...)`), and `advance` sets `t.playing = true`. The room was playing 77 ms
+after `room:seed`, before the host pressed anything. The host's first press therefore sent
+`pause`, and the second sent `play`. The seed now carries `seed: true`, and the worker
+calls the new `holdAtStart()` after the advance: `current` is chosen, `playing` stays
+false. The flag is honoured for the host only, and an older app that omits it keeps the
+old auto-start, so the worker stays backward compatible.
+
+**b. `roomResumeAt` returned in silence.** Its first line was `if (!m?.nowPlayingItem)
+return;` — no log, no toast, and nothing that could ever recover it, because the drift
+check runs off the progress tick and a silent player emits none. It now logs
+`room:resume { had, at, correcting, playing }` on every call, and when MusicKit holds
+nothing it re-feeds the room's song with `autoplay = true` instead of returning. This is
+the same trap as §17.2's `correcting` bug, one guard further along: a room step that ends
+in silence with no log line is the shape to watch for.
+
+**c. The seed always walked into it.** The seed puts the host's own current song first
+(§7), so the room's first song is the song the app already holds. `roomShow` fed it
+through `loadFromModel`, which pauses MusicKit before `setQueue`; a paused
+descriptor-fed queue (`fed:"items"`) leaves `nowPlayingItem` null, and every later step
+read that same null — which is why queueing more songs did not help. `roomShow` now
+checks `m.nowPlayingItem?.id` against the handle first: on a match it seeks and matches
+the room's play state instead of rebuilding, and logs `player:roomSameSong`.
+
+The `!roomHasSong()` branch in `step()` lost its `roomShow(handle, position, false)`:
+that fed the song PAUSED, leaving `nowPlayingItem` null — the very thing the branch
+tests. `roomResumeAt` alone now covers it. The two of them took turns doing nothing.
+
+The missing `stats:event-start` was not a fourth bug: `recordStart` latches on
+`id === lastStartedId` (stats.ts), and the room's first song was the song already open.
+
+New log lines: `room:resume`, `player:roomSameSong`.
+
+### 17.10 Desk test for 17.9
+
+**The worker is DEPLOYED** (2026-09-18, version `3d227ddc`), and `node scripts/check.mjs
+https://rooms.deets.solutions` is 33/33 green, including five new seed checks. Note the
+run immediately after a deploy hits a cold Durable Object and the timing-sensitive checks
+fail on latency alone — run it twice before believing a failure.
+
+**This desk test needs an app build.** The installed 0.11.0 does NOT send `seed: true`, so
+the deploy on its own changes nothing for it; and fixes (b) and (c) live in the front-end
+bundle. Run `npm run tauri dev`, or cut a release.
+
+1. Play a song from a playlist and let it run a minute. Do not pause it.
+2. Start a room. **The song keeps playing, and the transport shows Pause.** Wrong if the
+   music stops, or if the button shows Play while sound continues.
+3. The Queue card shows the seeded songs, the first one current.
+4. Press Pause. Sound stops. Press Play. **The same song plays from the top** (the room
+   starts it at 0). Wrong if there is silence.
+5. `grep "room:resume\|player:roomSameSong" %APPDATA%\com.deetsmusic.app\deetsmusic.log`
+   after a flush: step 2 gives `player:roomSameSong { play: true }`, step 4's Play gives
+   `room:resume { had: true }`. **No `room:resume { had: false }` should appear at all**
+   in a healthy run; if one does, it must be followed by sound.
+6. Press Next, then Previous. Both play.
+7. Start a room with **nothing loaded** (a fresh launch, no song). Seed is empty
+   (`room:seed { songs: 0 }`), the room stays idle, and the panel shows no current song.
+   Add an album from the Library: it starts, because a non-seed add still auto-advances.
+8. Two apps: the guest joins mid-song and lands at the host's position, as §17.4.

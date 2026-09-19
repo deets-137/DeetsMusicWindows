@@ -121,6 +121,13 @@ Player events (`src/player.ts`):
 - `player:next` / `player:prev` — transport buttons (+ `snap()`)
 - `player:desync` — **model's `current` ≠ MusicKit's now-playing item** (the bug class
   that froze Up Next). If you see these, model-follow is drifting.
+- `player:roomSameSong` — `{ id, play, playing, at }` a room load found MusicKit already
+  holding that song, so it seeked instead of rebuilding. The rebuild pauses before
+  `setQueue`, and a paused descriptor feed leaves `nowPlayingItem` null (ROOMS.md §17.9).
+- `room:resume` — `{ had, at, correcting, playing }` every `roomResumeAt`. **`had: false`
+  is the one to watch**: MusicKit held nothing, so the room's song was re-fed and started.
+  A `had: false` with no `sound:match` after it is a room stuck silent — the 2026-09-18
+  bug, which returned here with no log line at all (ROOMS.md §17.9).
 
 ## Frame telemetry — `src/frames.ts` (dev only, 2026-09-13)
 

@@ -224,7 +224,11 @@ export async function startRoom(): Promise<void> {
     const seed = entriesFrom([...(current ? [current] : []), ...queue.getUpcoming()]);
     await connect(made.code, true);
     diag.log("room:seed", { songs: seed.length });
-    if (seed.length) send({ type: "add", entries: seed, where: "end" });
+    // `seed: true` fills the room WITHOUT starting it (DeetsMusicRooms room.js: a plain
+    // first add auto-advances and sets playing). The host's own Play is what starts a
+    // room — otherwise the room is already playing before the host has pressed anything,
+    // and their Play button is really a Pause button (the owner's call, 2026-09-18).
+    if (seed.length) send({ type: "add", entries: seed, where: "end", seed: true });
   } catch (e) {
     fail("Couldn't start a room.", e);
   }
@@ -530,9 +534,12 @@ async function step(t: Transport): Promise<void> {
   }
   if (!roomHasSong()) {
     // The local player has nothing loaded (a song ended locally and went silent, or a
-    // reconnect): put the room's song back and start it where the room is.
-    await roomShow(handle, position, false);
-    await roomResumeAt(expectedPosition(t));
+    // reconnect): put the room's song back and start it where the room is. `roomResumeAt`
+    // does BOTH now — it re-feeds when MusicKit holds nothing — so the old
+    // `roomShow(…, false)` before it is gone: it fed the song PAUSED, and a paused
+    // descriptor feed leaves `nowPlayingItem` null, which is what this branch tests.
+    // The two of them took turns doing nothing (2026-09-18).
+    await roomResumeAt(position);
     return;
   }
   // The room plays this song and the app already holds it. Line the position up AND start

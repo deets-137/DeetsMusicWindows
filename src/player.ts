@@ -1896,6 +1896,22 @@ export async function roomShow(handle: TrackHandle, positionMs: number, play: bo
   const m = await initPlayer();
   const id = playId(handle);
   if (!id) return;
+  // MusicKit ALREADY HOLDS this exact song: seek, do not rebuild. A rebuild pauses before
+  // setQueue, and a paused descriptor-fed queue leaves `nowPlayingItem` null — which
+  // stranded the room in silence, because every later step reads that same null
+  // (2026-09-18, room W1THF05N: `player:loadWindow` with no sound after it). The host's
+  // seed hits this every time: it puts the host's own current song first (ROOMS.md §7).
+  const npId = m.nowPlayingItem?.id;
+  if (npId && (npId === handle.catalogId || npId === handle.libraryId)) {
+    diag.log("player:roomSameSong", { id, play, playing: !!m.isPlaying, at: Math.round(positionMs) });
+    const off = Math.abs((m.currentPlaybackTime ?? 0) * 1000 - positionMs);
+    if (off > 400 && typeof m.seekToTime === "function") await m.seekToTime(Math.max(0, positionMs) / 1000);
+    // Match the room, whichever way it points: a seeded room that has not started yet
+    // must HOLD this song, not leave it playing from before the room existed.
+    if (play && !m.isPlaying) await m.play();
+    else if (!play && m.isPlaying && typeof m.pause === "function") await m.pause();
+    return;
+  }
   // The model already holds the room's queue (room.ts wrote it); play its head.
   await loadFromModel(m, play, { seekMs: positionMs });
 }
@@ -1913,7 +1929,18 @@ export async function roomHold(): Promise<void> {
  */
 export async function roomResumeAt(positionMs: number, correcting = false): Promise<void> {
   const m = music;
-  if (!m?.nowPlayingItem) return;
+  if (!m) return;
+  const had = !!m.nowPlayingItem;
+  diag.log("room:resume", { had, at: Math.round(positionMs), correcting, playing: !!m.isPlaying });
+  if (!had) {
+    // MusicKit holds NOTHING. This used to be a bare `return` — no log, no toast, and
+    // nothing that could ever recover it: the drift check runs off the progress tick,
+    // and a silent player emits none. A room that landed here stayed silent for ever
+    // (2026-09-18). Re-feed the room's song from the model and START it.
+    if (correcting) return; // the drift tick's song is playing by definition
+    await loadFromModel(m, true, { seekMs: positionMs });
+    return;
+  }
   const duration = (m.currentPlaybackDuration ?? 0) * 1000;
   const want = duration > 0 ? Math.min(positionMs, Math.max(0, duration - 500)) : positionMs;
   const off = Math.abs((m.currentPlaybackTime ?? 0) * 1000 - want);
