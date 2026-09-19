@@ -83,7 +83,7 @@ front-end, Rust back-end).
   desk test (2026-09-18)**: the host seeded an empty room and a room `play` never reached a
   held follower, both app-side and both fixed; the title bar count badge removed; the stage
   figures matched to the glyph; the panel's scrollbar gutter now opens only when it really
-  scrolls. Desk test §17.4 open. **§17.9 = the host's own room played nothing (2026-09-18)**: the seed auto-started the room so Play was really Pause, `roomResumeAt` returned in silence on a null `nowPlayingItem`, and `roomShow` rebuilt a song MusicKit already held. All three fixed; the worker needs a deploy. Desk test §17.10 open. The deets.solutions site is **out
+  scrolls. Desk test §17.4 open. **§17.9 = the host's own room played nothing (2026-09-18)**: the seed auto-started the room so Play was really Pause, `roomResumeAt` returned in silence on a null `nowPlayingItem`, and `roomShow` rebuilt a song MusicKit already held. All three fixed, worker deployed, shipped in 0.11.1; **desk test §17.10 PASSED**. §17.10 also records that a worker deploy drops every live room socket. The deets.solutions site is **out
   of scope** (§13); DeetsRadio in that doc means only the older website feature it borrows from.
   Apple terms read in §12: no clause names group listening, and §12.3 is decided (a guest's Pause
   never greys out).

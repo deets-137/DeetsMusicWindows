@@ -969,14 +969,30 @@ New log lines: `room:resume`, `player:roomSameSong`.
 
 ### 17.10 Desk test for 17.9
 
-**The worker is DEPLOYED** (2026-09-18, version `3d227ddc`), and `node scripts/check.mjs
-https://rooms.deets.solutions` is 33/33 green, including five new seed checks. Note the
-run immediately after a deploy hits a cold Durable Object and the timing-sensitive checks
-fail on latency alone — run it twice before believing a failure.
+**PASSED 2026-09-18**, by the owner, on the installed **0.11.1**. Rooms start when you
+press Play, and a room you start plays. §17.9 is closed.
 
-**This desk test needs an app build.** The installed 0.11.0 does NOT send `seed: true`, so
-the deploy on its own changes nothing for it; and fixes (b) and (c) live in the front-end
-bundle. Run `npm run tauri dev`, or cut a release.
+**The worker is DEPLOYED** (2026-09-18, version `3d227ddc`), and `node scripts/check.mjs
+https://rooms.deets.solutions` is 33/33 green, including five new seed checks.
+
+**A deploy drops every live room socket — including yours.** `wrangler deploy` replaces the
+worker and evicts the running Durable Object, so the WebSockets it holds die. A `check.mjs`
+run started right after a deploy therefore breaks in the MIDDLE: the first 15 checks pass,
+then everything from the song-end advance onward fails, because every later read is off a
+dead socket. The 2026-09-18 run failed 9 that way, with `a credential-shaped title is
+dropped — Two` (the step-5 song, so that add never landed) and `—4000 ms` (exactly one song
+length) as the tells. Run it again before believing a failure. **This is inferred from the
+failure shape, not proved** — a deploy plus an immediate run would confirm it, at the cost
+of dropping anyone in a room. It was first written here as a cold-start effect, which does
+not fit: a cold DO makes the EARLY checks flaky, not the late ones uniformly dead.
+
+The practical half matters beyond the test script: **do not deploy the worker while anyone
+is in a room.**
+
+**Testing this solo.** Steps 1–7 need one app: the §17.9 bug was entirely host-side and had
+no guests. Only step 8 needs a second app, and the worker half of it is already covered by
+`check.mjs`. Note the installed 0.11.0 does NOT send `seed: true`, so the deploy alone
+changes nothing for it — 0.11.1 or `npm run tauri dev` is required.
 
 1. Play a song from a playlist and let it run a minute. Do not pause it.
 2. Start a room. **The song keeps playing, and the transport shows Pause.** Wrong if the
