@@ -2,6 +2,9 @@
 
 > **Status (2026-09-18): BUILT on branch `pins-for-days`, desk test §6 PASSED 2026-09-19.** Forks 1–9 decided
 > by the owner; the Library mockup passed before code. §7 = as built.
+> **§8 (2026-09-19): On Click — a per-pin verb (Play · Shuffle · Open) on a right-click row.
+> Forks 1-7 decided by the owner; §8.2a (what verb a NEW pin starts with) is the one open
+> fork. NOT BUILT.**
 
 **Terms used in this doc**
 - **Pin** — one item you chose to keep in view: a playlist, a station, an album, an artist or
@@ -188,3 +191,167 @@ Decided while building, inside the owner's choices:
   (the engine's cover menu), a Search artist row, the Search artist pane's hero, and the Home
   artist tile. An artist pin carries a snapshot (name, photo, catalog id); off the library the
   tile draws from it and a press plays Apple's top songs for them (`artistDetail`, memoized).
+
+---
+
+## 8. What a click on a pin does — On Click (designed 2026-09-19, DECIDED, NOT BUILT)
+
+**The idea (owner, 2026-09-19):** a settings item that says what a click on a pinned tile
+does — **play**, **shuffle** or **open** the album, playlist, artist or station.
+
+**Terms added here**
+- **Open** — go to the item's own view: the album detail, the playlist detail, the artist
+  view. It starts no sound.
+- **Play** — start the item from its first song, in its own order.
+- **Shuffle** — start the item from a shuffled copy of its songs.
+
+### 8.1 What a click does today (read from the code, 2026-09-19)
+
+| Where | Pin kind | The click today | Code |
+|---|---|---|---|
+| Library root | album (in the library) | **opens** the album detail | `pinShelfOpen`, [`library-card.ts:1140`](../src/library-card.ts) |
+| Library root | album (off the library) | **plays** whole (`it.whole()` → `playList`) | same |
+| Library root | artist | **opens** the artist view (`drillArtist`) | same |
+| Library root | song | **plays** | same |
+| Playlists root | playlist | **opens** the playlist (`card.drill(detail)`) | [`playlists-card.ts:752`](../src/playlists-card.ts) |
+| Radio root | station | **plays** (`startStation`) | [`radio-card.ts:224`](../src/radio-card.ts) |
+| Home › Pinned | every kind | **plays** (`activate`) | [`home-card.ts:153`](../src/home-card.ts) |
+
+So there are already two rules in the app, and they disagree: a card's pin tile copies that
+card's own row, and a Home tile always plays. The rule was decided in §7 ("A card's shelf tile
+acts like that card's row"). This section can keep that rule as the default and let the setting
+override it, or replace it.
+
+Three more facts the code fixes:
+1. **A song pin has no Open and no Shuffle.** One song plays. Whatever the setting says, a
+   song pin plays.
+2. **A station pin has no Open.** Radio has no station detail view; a station is a stream,
+   and Apple shuffles it, not us. Whatever the setting says, a station plays.
+3. **Shuffle already has a house rule.** The card Play / Shuffle row shuffles a copy of the
+   list, and with `shuffleStays` on, Shuffle also turns the shuffle MODE on, as Apple does
+   (`collection-card.ts:242`). A pin's Shuffle must do the same thing, or one gesture means
+   two things in one app. There is no "shuffle this list" helper yet: it is
+   `playTracks(shuffleInPlace([...ts]), 0, ctx)` plus the mode call.
+
+### 8.2 Decisions (owner, 2026-09-19)
+
+| # | Fork | Decision |
+|---|---|---|
+| 1 | How many settings items | **C — per pin, a right-click row on the tile.** Each pin carries its own verb. A Settings row sets the verb NEW pins start with (fork 7). |
+| 2 | What it covers | **A — pinned tiles only.** Home's other shelves and the artist view's shelves are untouched. |
+| 3 | The values | **A — the three verbs only: Play · Shuffle · Open.** "As the card does" is dropped. (It was a fourth value meaning "keep what this card does today", so nobody who never opened the menu saw a change; with a per-pin row it is dead weight — the row must read as three plain verbs.) |
+| 4 | Home too | **A — yes.** One pin, one verb, in all four Pinned shelves. |
+| 5 | Songs and stations | **They play.** A song has one song; a station is a stream Apple shuffles. Their row is not offered; the hint says *Played on click*. |
+| 6 | How to play when the verb is Open | **A — the right-click menu.** It already carries Play Now / Shuffle / Add to Queue. No hover badge, no modifier click. |
+| 7 | Where the Settings row sits | **Playback.** |
+
+**Wording (owner, 2026-09-19):** the menu row is **On Click**.
+
+### 8.2a One fork still open
+
+**What verb does a NEW pin start with?** The per-pin row needs a starting value, and the
+Settings row (fork 7) is what sets it.
+
+- **A. `Open`.** What the three cards do today for an album, an artist and a playlist. A pin
+  made today and a pin made after this ships behave the same.
+- **B. `Play`.** What Home does today, and what "pin" suggests: the thing you keep in view
+  because you play it.
+- **C. Per kind**: album and playlist `Open`, artist `Open`, everything else `Play` — i.e.
+  each card's own rule, frozen as the starting value, so nothing visibly changes on the day
+  this ships.
+- *Recommendation:* **C.** It is the only one where existing pins do not silently change verb
+  on update day, and the user who wants Play sets it per pin, which is the whole point of 1C.
+
+A second, smaller question rides on the answer: **does the Settings row change pins that
+already exist, or only new ones?** Recommended: **only new ones** — a per-pin verb the user
+set by hand must not be overwritten by a Settings row, and a pin that was never set reads its
+card's rule (C above) forever. That makes the Settings row honestly "New pins open / play /
+shuffle", which is the label §8.3 uses.
+
+### 8.3 What it looks like
+
+**On the tile (the per-pin row).** Right-click any pinned tile, or any pinned row in the three
+cards. A new row **On Click**, holding the three verbs with the current one marked:
+
+> Play · Shuffle · Open
+
+Placement: above Pin / Unpin, which stays the last row of every menu (§7). It is offered for
+**playlist, album and artist** pins only — see 8.2
+fork 5: a `song:` and a `station:` pin get no On Click row.
+
+**In Settings › Playback**, one choice row under "Play Now plays":
+
+> **New pins open on click** — `Open` · `Play` · `Shuffle`
+> Hint: *The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click.*
+
+(The row's label follows 8.2a: it names NEW pins, because it never touches a pin you set.)
+
+### 8.4 How it is built
+
+- **Storage: the `pins` row, not a settings key.** The verb belongs to the pin, and the pin is
+  a row (§3, fork 1B). Add a nullable column: `ALTER TABLE pins ADD COLUMN act TEXT` in a new
+  migration **v10**; `NULL` = never set = the card's rule (8.2a C). `pin_set` keeps an existing
+  `act` on a re-pin, exactly as it keeps `pinned_at` (§7). A new command `pin_act(key, act)`
+  writes it; `Pin` gains `act: Option<String>`. `query.rs` exports the column so the agent's
+  SQL sees it (LOCAL-DATA.md), and `TABLES` gains the `act` line.
+- **One resolver.** `pinAct(key, kind): "play" | "shuffle" | "open"` in `src/pins.ts` — the
+  pin's `act`, else the new-pin default from settings if the key was made after it, else the
+  card rule. Every shelf calls one new `pinActivate(it, nav)` that replaces the four
+  hand-written `onShelf` bodies ([`library-card.ts:1140`](../src/library-card.ts),
+  [`playlists-card.ts:752`](../src/playlists-card.ts), [`radio-card.ts:224`](../src/radio-card.ts),
+  `activate` in [`home-card.ts:153`](../src/home-card.ts)).
+- **Open, off Home.** Home has no Library card of its own to drill into; an `Open` on a Home
+  pinned tile must hop to the card that holds the item, as Home's playlist tile already does
+  with its "Open in Playlists" row ([`home-card.ts`](../src/home-card.ts), `menuFor`). An album
+  or artist pin opens the Library card at that detail, a playlist pin opens the Playlists card.
+  A pin off the library has no detail view: it **plays** (the §7 `whole` path), the same
+  exception the Library shelf already makes.
+- **Shuffle** follows the house rule (8.1 fact 3): a shuffled copy through
+  `playTracks(shuffleInPlace([...ts]), 0, ctx)`, and with `shuffleStays` on it turns the
+  shuffle mode on, as the card's Shuffle button does (`collection-card.ts:242`).
+- **The menu row.** `pinActItem(key, kind)` in `pins.ts`, beside `pinItem`, so every menu adds
+  one call: the playlist row, the Library album / artist row menus, and the four shelves' own
+  `shelfMenu`. It is left out when the key is not pinned, and for `song:` / `station:` keys.
+- **Settings key** `pinNewAct` in `settings-store.ts`, default per 8.2a, with its spec in
+  `agent-settings.ts` (`storeChoice("Playback", "pinNewAct", "New pins open on click", …)`) and
+  a line in AGENT.md. Compass reaches it for free (COMPASS.md §9).
+- **Log line:** `diag.log("ui:act", { at: <card>, do: "pin", kind, act })` at the click, and
+  `pin:act` with the key when the menu row changes it — so a complaint about it is read, not
+  guessed (CLAUDE.md › a complaint is read).
+
+### 8.5 Checklist (CLAUDE.md › Working style)
+
+1. Motion: none new — the click already drills or plays; the menu row is a menu row.
+2. Tokens: none new.
+2a. Family: the **menu row** (the pin rows' own family) and the Settings **choice row**. No
+    new control.
+3. Hints: the Settings row's hint (8.3). The tile's `title` stays the item's name — the verb
+   does not go in it. One ONBOARDING.md ledger row for the Settings hint; the On Click row is
+   a new SHAPES entry (a menu row with three values).
+4. Toasts: none. The next click shows the change.
+5. Settings keys: `pinNewAct` — default with its why, the agent spec, the AGENT.md line.
+6. Log lines: the two above.
+6a. Scrollbars: nothing new scrolls. (The pin menus gain one row; they are already `app-scroll`.)
+7. Telemetry: none new.
+8. Check: `npx tsc --noEmit`, `npx vite build`, `cargo test --lib query`.
+9. Compass: the Settings row is automatic; no new verb row.
+
+### 8.6 Desk test (after build)
+
+1. Pin an album in Library. Right-click the tile: **On Click** shows three verbs, with the
+   current one marked. §6's desk test still passes unchanged.
+2. Set the album to **Play**: the tile plays instead of drilling. Set **Shuffle**: it starts
+   on a song that is not track 1, twice out of three; with "Shuffle button stays on", the
+   toolbar Shuffle is lit after it. Set **Open**: it drills again.
+3. The same pin on **Home** obeys the same verb. `Open` on Home hops to the Library card at
+   the album.
+4. A pinned **playlist** set to Play plays; set to Open it drills, from both Playlists and Home.
+5. A pinned **song** and a pinned **station** have no On Click row and still play.
+6. A pinned album **off the library** set to Open: it plays whole (no detail view), no error
+   in the log.
+7. Re-pin an item that has a verb set: the verb holds, and so does its shelf position (§7).
+8. Settings › Playback › **New pins open on click** = Play. An OLD pin keeps its verb; a
+   pin made after it starts on Play.
+9. Restart the app: every per-pin verb holds (`pins.act`). The agent's `query` over `pins`
+   reads the `act` column.
+10. Unpin and re-pin from scratch: the verb is the Settings default again.

@@ -54,6 +54,13 @@
 > **Built 2026-09-14 (§10.9), shipped in 0.4.1:** Import to Edit, adding straight to your own
 > Apple playlists, and the Local Playlists section.
 >
+> **A mirror's songs cache once, forever** — the sync evicts a playlist only when a flat-list
+> attribute changed, and Apple rewrites its personalised mixes without changing one, so New Music
+> Mix serves last week's songs until you press ⟳. The fix is designed in
+> [PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) (paper, 2026-09-19, not built): a per-playlist
+> *Refresh ▸ Daily · Weekly ▸ (day) · Off* submenu. §1 there also settles how we tell Apple's
+> playlists from the user's, from signals §2 below already carries.
+>
 > **Still deferred:** the backup file (§10.7, an idea only).
 > This doc still fixes *what* and *why* for those parts.
 

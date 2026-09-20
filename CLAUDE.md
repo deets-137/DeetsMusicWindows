@@ -18,7 +18,10 @@ front-end, Rust back-end).
   the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, Authenticode signing,
   publish, the self-updater, install, uninstall (§0 = commands, secrets and keys on one page).
 - `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
-  call site; `__toast.demo()` in the console shows one of each kind.
+  call site; `__toast.demo()` in the console shows one of each kind. **§4a = the sticky queue**
+  (designed 2026-09-19, not built, three forks open): past the cap of 3 a sticky toast is
+  DESTROYED with its actions unrun, so §4's "a question always shows" and "an Undo always shows"
+  can both break today — a queue is what makes them true.
 - `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 - `docs/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
@@ -66,7 +69,11 @@ front-end, Rust back-end).
 - `docs/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
   a Pinned tile shelf on the Library / Playlists / Radio roots (pin order) and Home's fifth shelf
   (by plays, all time), a corner tile badge (BUILT 2026-09-18 on branch `pins-for-days`, §7 = as
-  built, desk test §6 PASSED 2026-09-19).
+  built, desk test §6 PASSED 2026-09-19). **§8 = On Click**, what a click on a pinned tile does:
+  a per-pin verb (Play · Shuffle · Open) on a right-click row, kept in a new `pins.act` column,
+  over one shared resolver that replaces the four hand-written `onShelf` bodies; a Settings ›
+  Playback row sets what a NEW pin starts with. Forks 1-7 decided 2026-09-19, §8.2a open,
+  NOT BUILT.
 - `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
@@ -86,7 +93,25 @@ front-end, Rust back-end).
   §15 = reuse the rooms worker or make a new one — **cost is identical, the free tier meters per
   ACCOUNT**, so fork 10 closed on deploy blast radius: **a new `deetsmusic-friends` worker** (paper
   design 2026-09-19; D1 no heartbeat, D2 a friend row opens a room, D3 the toast, D4 a new worker
-  are decided; nine forks open; not built).
+  are decided; nine forks open; not built). **§8.6 = Discord OAuth, asked and closed (D5, 2026-09-19)**:
+  no scope sets presence, Spotify's card is a first-party Connection with no public route, and the
+  Social SDK writes the same activity a named pipe writes; §8.6.1 reads the webhook path out of
+  `sotd/` — it posts straight from Rust, no worker. **§8.7 = the Rich Presence card (D6/D7/D8)**:
+  two buttons plus clickable `details_url`, *Listen Along* → `rooms.deets.solutions/j/<CODE>`, which
+  always serves one landing page (Open · Get) and rides the §18.7 deploy. §8.5 = Sharing › Discord and
+  its four keys. Buttons are invisible to the account that sets them, so 7A needs a two-account desk
+  test (§8.4 item 3). §8.5 = Settings: a top-level **Sharing** (two adjacent *Share activity on …*
+  rows + a pause that covers both) and a top-level **Discord**, into which the Song of the Day webhook
+  Connect row **moves** (SotD keeps its pick rows and gains a linked status line). **D14 (2026-09-19) = Rich Presence ONLY; a
+  now-playing channel post is REJECTED as spam (forks 8 and 9 fall with it, and the doc's earlier
+  "7C" was an inference, now corrected). D15 = the profile clears a minute after pause, at once on
+  quit; §8.9 is the full lifecycle table. **§8.8 = the build gate: every fork is closed; the only
+  step left before code is the three §8.4 measurements, which need Windows + the Discord desktop
+  client and cannot be run from a Mac session.** Build order after D14 is 6 → 7 → 1 → 2 → 4 → 5:
+  Rich Presence needs no friend code, no worker and no network. §2b = where a later
+  DeetsAccounts link would land (identity is **1C** + **1a-A**, decided 2026-09-19: the minted key is
+  permanent, the account link is additive, `../DeetsAccounts`'s schema already expects an
+  `identities` table).
 - `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
@@ -98,7 +123,7 @@ front-end, Rust back-end).
   scrolls. Desk test §17.4 PASSED 2026-09-19. **§17.9 = the host's own room played nothing (2026-09-18)**: the seed auto-started the room so Play was really Pause, `roomResumeAt` returned in silence on a null `nowPlayingItem`, and `roomShow` rebuilt a song MusicKit already held. All three fixed, worker deployed, shipped in 0.11.1; **desk test §17.10 PASSED**. §17.10 also records that a worker deploy drops every live room socket. **§18 = four race conditions, read 2026-09-19, NONE FIXED** (the worker side is clean): a re-feed that can start your own queue after you leave, a Pause during the lead that plays a blip first, a stale socket that can still apply state, and `epoch` — incremented by the worker, never compared. §18.6 has the recommendation and the one open fork. **§18.1-18.4 BUILT 2026-09-19** (§18.7 = as
   built: the room guard on the re-feed, the lead re-read, the superseded-socket guard, `epoch`
   deleted app-side; a fifth bug fell out of 18.3 — a superseded close nulled the LIVE socket.
-  **Desk test §18.7 is the ONLY open one in the repo (2026-09-19): it is uncommitted work in `src/room.ts` + `src/player.ts`.** The worker's two `epoch` lines wait for the next real deploy).
+  **Desk test §18.7 PASSED 2026-09-19 — Rooms now has NO open desk test.** The worker's two `epoch` lines wait for the next real deploy).
   **§20 = a room that writes no SQLite rows** (designed 2026-09-19, NOT BUILT): live state moves from
   `storage.put` into the host's socket attachment (16 KB, free, verified) and the per-song alarm
   becomes arithmetic both sides compute; ~450 rows per room → ~0. The host is the RECOVERY copy, never
@@ -113,6 +138,21 @@ front-end, Rust back-end).
 - `docs/MCP-INSTALL.md` — connect AI apps: a shared `mcp_install` crate behind `deetsmusic mcp
   install` and a Settings panel; client detection, config table, the Claude Desktop MSIX path trap
   (designed 2026-09-16, forks open, not built).
+- `docs/PLAYLIST-REFRESH.md` — **how often a mirrored Apple playlist re-reads its songs**:
+  today the answer is ONCE, EVER (the sync evicts only on an attribute change, and Apple rewrites
+  New Music Mix without changing one — §0 is the bug, ⟳ is the only fix today). A *Refresh ▸
+  Daily · Weekly ▸ (day) · Off* submenu per playlist, defaults by `kind`, two triggers (on open +
+  a day change while the app runs), one toast, one global switch. §1 = telling Apple's playlists
+  from the user's, with the signals we already have (paper design 2026-09-19, **every fork closed** —
+  ten decisions in §3, the last three settled in §9 — NOT BUILT; §5.1 is the one piece of Rust it needs).
+- `docs/MOVABLE-ROWS.md` — **movable rows**: drag a section (Home shelves, Playlists folders,
+  Radio sections, Settings sections) into the order you want, plus the **Settings search bar**
+  (it reads the Compass's own `settingsRows()` index). §2 = the one hard problem (an order over a
+  computed list); §0a = **the SCOPE, decided 2026-09-19** (sections everywhere; items only for
+  pinned tiles and playlist rows — radio and Home's other tiles are out); §11 = the fork sheet,
+  three closed and ten open, recommendations named. Pinned tiles need a sideways drag axis and a
+  `rank` column on `pins`, so they are their OWN hand-over, never beside `playlist_refresh`
+  (paper design 2026-09-19/20, NOT BUILT).
 - `docs/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
   answers to; update it with `SYNONYMS` in compass.ts.
 - `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
@@ -251,7 +291,7 @@ front-end, Rust back-end).
   component — add/route through the palette → theme → skin tiers. Color → theme role;
   geometry/type/spacing/motion → skin token.
 - He values polish and good stewardship (e.g. minimize Apple API calls; ask cost before
-  committing to a fetch-heavy approach).
+  committing to a fetch-heavy approach). He prefers the most user-friendly and user-empowering option.
 - **Do NOT delegate to subagents (the `Agent` tool) for this codebase.** It's small
   enough to hold in context directly — explore, read, and edit files yourself so you
   keep the full picture while building. Only exception: if he explicitly asks for one.

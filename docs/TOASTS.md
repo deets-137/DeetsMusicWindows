@@ -54,7 +54,7 @@ A caller may override `sticky` either way; none does today.
 |---|---|---|
 | Position | top-right column under the header | **top-right, newest on top**, on every surface. **mini/midi:** under the Now Playing card, so the song stays readable (`--toast-top`, the card's bottom edge measured by `toast.ts`) · **max:** under the titlebar, since the stage is on the left. Changed 2026-09-13 from bottom-centred in mini/midi. |
 | Fly-in | from the right | from the right (`--toast-shift`) |
-| Cap | 4 | **3** — the oldest *timed* toast yields first; sticky ones only when nothing timed is left |
+| Cap | 4 | **3** — the oldest *timed* toast yields first; sticky ones only when nothing timed is left, **which destroys them with their actions unrun — see §4a** |
 | Setting | none | `toasts`: `all` (default, 2026-09-13) · `failures` — Settings › Look and feel › **Show notices** (no `off` since 2026-09-14, §4) |
 | Notices | none | `dismissKey` + `noticeOff()` |
 | Sticky default | caller's choice | `error` sticky by default (§2) |
@@ -84,6 +84,135 @@ it writes only its `toast` diag line, never the `warn`/`error` line (2026-09-14,
 delete confirm). A question with its own **Cancel** button gets no extra Dismiss.
 **An Undo always shows too (2026-09-15):** a toast with an action labelled *Undo* is admitted
 under every tier, timed or sticky, because a muted one would lose the undo (Settings › Reset).
+
+## 4a. The sticky queue (designed 2026-09-19, NOT BUILT)
+
+> Asked for by the owner on 2026-09-19: *"can we set up queues for sticky toasts so they can
+> appear after space opens up?"* Forks are in §4a.5 and are **open**.
+
+### 4a.1 The hole it closes
+
+This is not only a missing feature. Today, past the cap, the loser is **destroyed**:
+
+```ts
+while (live().length >= CAP) {
+  const victim = kids.find((k) => k.querySelector(".toast__bar")) ?? kids[0];
+  victim.remove();            // ← gone, with its buttons and their closures
+}
+```
+
+`.toast__bar` is the timer bar, so a **timed** toast is preferred as the victim — which is
+right. But when all three live toasts are **sticky**, `kids[0]` is taken: the oldest sticky is
+removed **with its actions unrun**. A sticky toast is the app's only way to ask a question, so
+what can be destroyed this way includes:
+
+- an **Undo** (Settings › Reset) — the only way back from a reset,
+- the **export question** (PLAYLISTS.md §6) — the gate before an Apple write,
+- a **one-time notice**, silently spent without being read,
+- the planned **[Get them]** offer ([PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) §7.2).
+
+§4 says *"a question always shows"* and *"an Undo always shows too"*. **The cap can break both
+promises today.** A queue is what makes them true.
+
+### 4a.2 The rule
+
+**Only sticky toasts queue.** A timed toast's information is momentary — *Link copied.*
+arriving eight seconds late is worse than not arriving — so timed toasts keep exactly today's
+behaviour.
+
+Admission, in order:
+
+1. Room under the cap → show it.
+2. Full, and at least one live toast is **timed** → evict the oldest timed one, as today. A
+   sticky outranks a timed toast; a timed toast outranks nothing.
+3. Full, and every live toast is **sticky** → **the new one queues** (FIFO). Nothing is
+   destroyed.
+
+A slot frees (a dismiss, a press, a timer) → the head of the queue shows at once, with the
+normal arrival motion.
+
+**This inverts the priority only in case 3**, and only there is the inversion right: an older
+sticky is one the user may be reading, with a live action under the pointer.
+
+### 4a.3 What the handle must do
+
+`toast()` returns its handle **synchronously**, and callers hold it (`apple-health.ts`'s
+reconnecting line, `settings-card.ts`). A queued toast has no element yet, so:
+
+| | Behaviour while queued |
+|---|---|
+| `dismiss()` | **Removes it from the queue.** It never appears. This is the `"Reconnecting…"` case: the cause cleared while it waited |
+| `update(text)` | Rewrites the **pending** text, so what finally shows is current |
+| `shown` | Stays **`true`** — existing call sites branch on it, and the toast *will* show. A new `queued: true` flag says the rest |
+
+**A notice re-checks its key at dequeue.** A `dismissKey` / `onceKey` toast that waited while
+another instance was silenced must **not** appear. `noticeOff(key)` is re-read on the way out
+of the queue.
+
+### 4a.4 Bounds
+
+Failures arrive without bound, and §Recovery bounds says every layer caps itself.
+
+- **Identical text does not queue twice.** The repeating-failure case is the real overflow
+  risk, and one line saying it once is the whole of its information.
+- **Queue cap 10.** Past it the **newest** is dropped: a user already holding three notices
+  plus ten waiting learns nothing from a fourteenth.
+- Every queue, dequeue and drop writes a `diag` line (`toast:queued`, `toast:dequeued`,
+  `toast:dropped`), because the queue acts on its own — CLAUDE.md checklist item 6. A dropped
+  sticky **must** be traceable, or this feature hides the very thing it set out to fix.
+
+### 4a.5 Open forks
+
+**Q1 — does a queued sticky ever go stale?** An Undo that surfaces two minutes after the reset
+is a hazard: the user has moved on and may press it without the context. A `[Get them]` offer
+two minutes late is harmless.
+- **Q1a** No expiry — sticky means sticky. Simplest, and the Undo hazard is real.
+- **Q1b** A new `maxWait` option, default none; the Undo and question call sites pass a short
+  one (say 30 s) and are dropped rather than shown late. *Recommendation* — it is the only
+  option that distinguishes the two cases, and it is one field.
+- **Q1c** A blanket expiry for every queued sticky.
+
+**Q2 — is a waiting notice visible?** Three shown plus ten waiting is invisible today.
+- **Q2a** Nothing. *Recommendation* for a first build — the queue drains as fast as the user
+  dismisses, and a counter on the stack is a new control with its own family rules.
+- **Q2b** A `+N` mark on the stack's edge.
+
+**Q3 — does the queue survive a surface switch?** The host moves between mini/midi and max
+(§3). The live toasts move with it; a queue is module state and would too. Confirm that is
+wanted, since a queued notice then crosses a surface change it was not raised in.
+
+### 4a.6 The checklist
+
+1. **Motion.** A dequeued toast uses the normal arrival — no new animation.
+2. **Tokens.** None, unless Q2b wins.
+3. **Hints.** None (no new hoverable control), unless Q2b wins.
+4. **Toasts.** No new call sites. **§5's table gains nothing**; what changes is that the rows
+   promising "shows under every tier" become true.
+5. **Settings keys.** None.
+6. **Log lines.** §4a.4.
+7. **Telemetry.** None.
+8. **Check.** `npx tsc --noEmit`, `npx vite build`, then `__toast.demo()` plus the desk test
+   below.
+9. **Compass.** Nothing.
+
+### 4a.7 The desk test
+
+1. Push four sticky toasts from the console. Three show; the fourth waits. Dismiss one — the
+   fourth appears. **Today the first one is destroyed instead**, which is the before/after.
+2. Push three stickies, then a timed one: the timed one shows and a sticky is **not** evicted
+   (rule 2 only sacrifices timed toasts). Verify against today's behaviour.
+3. Push three timed, then a sticky: the oldest timed yields, exactly as today.
+4. Queue a sticky, then call `dismiss()` on its handle before a slot frees → it never appears.
+5. Queue a sticky, `update()` it, free a slot → the **new** text shows.
+6. Queue a `dismissKey` notice, silence the same key from another instance, free a slot → it
+   does not appear.
+7. Push the same text twenty times → one shows, none queue behind it, and the `diag` ring
+   shows the dedupe, not twenty drops.
+8. Push twenty different stickies → three show, ten queue, seven log `toast:dropped`.
+9. Switch surface (mini → max) with a full stack and a queue → Q3's answer holds.
+10. Reduced motion on → a dequeued toast still arrives, without the slide.
+
+---
 
 ## 5. The call sites (all built 2026-09-13)
 

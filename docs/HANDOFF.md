@@ -112,6 +112,44 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-20 — four features designed on branch `twelve`, none built.** One session, three docs,
+no code. In the order they should be built:
+
+| | Feature | Doc | State |
+|---|---|---|---|
+| **A** | **The sticky toast queue** | [TOASTS.md](TOASTS.md) §4a | 3 forks open. **One file** (`src/toast.ts`), no schema |
+| **B** | **Playlist refresh** | [PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) | **Every fork closed** (ten decisions, §3). Ten pieces, §§4–8. Ready to build |
+| **C** | **Movable rows** | [MOVABLE-ROWS.md](MOVABLE-ROWS.md) | Scope closed (§0a), 10 mechanism forks open (§11.2) |
+| **D** | **A Settings search bar** | [MOVABLE-ROWS.md](MOVABLE-ROWS.md) §10 | 4 forks open (§11.3). Cheap — it reads the Compass's own `settingsRows()` index |
+
+**Why A comes before B even though B is the decided one.** A fixes a live bug, not just a
+missing feature: past the cap of 3, `toast.ts` **destroys** the loser (`victim.remove()`,
+[toast.ts:256](../src/toast.ts)), and when all three live toasts are sticky the oldest sticky
+goes **with its actions unrun**. So TOASTS.md §4's promises — *"a question always shows"* and
+*"an Undo always shows too"* — can both break today: a Settings › Reset **Undo**, the export
+question that gates an Apple write, or B's own `[Get them]` offer can vanish unseen. B's §7.2
+notice is only trustworthy once A exists.
+
+**Why B is the biggest user-visible win.** A mirrored Apple playlist caches its songs **once,
+forever**. The once-per-session sync evicts only when a flat-list attribute changed, and Apple
+rewrites **New Music Mix** every Friday without changing one — so it serves last week's songs
+until you press ⟳. The owner hit this on 2026-09-19. PLAYLIST-REFRESH.md §0 has the proof and
+the code comment that predicted it.
+
+**Two schema-touching pieces must not share a tree** (the one-load-bearing-feature rule):
+B's `playlist_refresh` table (§6) and C's `rank` column on `pins` (§5.2). C's pinned tiles are
+its own hand-over for that reason, and they also need a **sideways** drag axis that
+`row-drag.ts` does not have.
+
+**What the owner decided this session, all recorded in the docs:** PLAYLIST-REFRESH D1–D10
+(§3, including F1/F2/F3 settled in §9) and MOVABLE-ROWS §0a (sections everywhere; items only
+for pinned tiles and playlist rows — radio stations and Home's other shelf tiles are out).
+PLAYLIST-REFRESH §1 also settles, from signals we already have and with **no new Apple call**,
+how to tell Apple's playlists from the user's — `canEdit` and `globalId` give `user` /
+`catalog` / `smart`, which is what the defaults key on.
+
+**Not started, and not to be started without an answer:** every fork listed above.
+
 **2026-09-19 — Friends is designed and scheduled to be built** ([FRIENDS.md](FRIENDS.md)): a friend
 code that stands for one person, presence, a friend's row as the way into a room, and broadcasting
 what you play to Discord. Decided: no heartbeat (D1), a friend's row opens a room (D2), a "busy —
@@ -1020,6 +1058,16 @@ releases since 0.6.2, in short:
   not the 106 the other skins get — move the band to 755 if that reads short.
 
 ### Not built yet ⬜
+- **The New Music Mix staleness (2026-09-19)** — a mirrored Apple playlist caches its songs once,
+  forever; ⟳ in the Playlists card header is the only fix today. Designed in
+  **[PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md)** (every fork closed), not built.
+- **The sticky toast queue (2026-09-19)** — past the cap of 3, a sticky toast is destroyed with
+  its actions unrun, so an Undo or a question can vanish unseen. **[TOASTS.md](TOASTS.md) §4a**,
+  three forks open, not built.
+- **Movable rows + a Settings search bar (2026-09-19)** — drag a section into the order you want
+  across Home, Playlists, Radio and Settings, plus hand order for pinned tiles and playlist rows.
+  **[MOVABLE-ROWS.md](MOVABLE-ROWS.md)**: scope closed in §0a, ten mechanism forks open in §11.2,
+  four search-bar forks in §11.3. Not built.
 - **Two services, one library (2026-09-15) — PARKED.** Designed in the morning
   (**[PROVIDERS.md](PROVIDERS.md)**), stopped the same day after the Spotify facts were checked
   (its §9): the owner needs Premium, the ISRC is gone so there is no merge key, search is capped

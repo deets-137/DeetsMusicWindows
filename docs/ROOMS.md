@@ -1160,14 +1160,18 @@ the NEW position, not the stale one. That is the correct reading of the room.
 field. Nothing reads it on either side now. Delete those three when a worker deploy next
 happens for a real reason — never as a deploy of its own.
 
-**Desk test.** §17.10 again (it edits the lead path), plus:
+**Desk test. PASSED 2026-09-19**, by the owner. §18 is closed, and with §17.4 and §17.10
+already passed there is **no open desk test left in Rooms**.
 
 1. In a room with a guest, press **Pause inside the first second** of a new song. No blip
-   of sound on either app. `room:leadDropped` in `deetsmusic diag`.
+   of sound on either app. `room:leadDropped` in `deetsmusic diag`. — PASSED
 2. Join a room, **Leave, and join again at once**. The second join lands, and the log shows
-   `room:supersede` with no `room:reconnect` after it.
+   `room:supersede` with no `room:reconnect` after it. — PASSED
 3. Leave a room while a song is loading. No music starts by itself after the card is gone.
-   `room:resumeStale` appears if the race was hit; nothing plays either way.
+   `room:resumeStale` appears if the race was hit; nothing plays either way. — PASSED
+
+The worker's three `epoch` crumbs still wait for a deploy that happens for a real reason.
+FRIENDS.md §8.7.3 gives them one: the `/j/` landing route rides that deploy.
 
 ## 19. Telling people the room server restarted (designed 2026-09-19, NOT BUILT)
 
@@ -1339,16 +1343,17 @@ About **450 rows for a 3-hour room** (§3.2), and rows are the meter that runs o
 2. **A host socket drop loses live state** until the re-seed lands. Today a storage-backed room survives
    it untouched. The grace window (§7) covers the gap, but a guest could see a stall where they see
    none now.
-3. **Deterministic advance is new code on a stable feature.** Rooms shipped in 0.11.1, and §17.4 and
-   §18.7 is still an open desk test (§17.4 passed 2026-09-19). Rewriting its clock while that test is unrun breaks the
-   one-load-bearing-feature-in-flight rule in CLAUDE.md.
+3. **Deterministic advance is new code on a stable feature.** Rooms shipped in 0.11.1. §17.4, §17.10
+   and §18.7 have all now passed (2026-09-19), so the objection is no longer "an unrun test" — it is
+   that rewriting a shipped clock is its own load-bearing feature, and CLAUDE.md allows one at a time.
 4. **It has to be measured, not assumed.** Cloudflare's own docs are the source above; the DO metrics
    after a real deploy are the proof. Observability is already on in `wrangler.jsonc`.
 
 ### 20.6 The recommendation
 
 **Build this shape into Friends first, where it is new code and risks nothing** (FRIENDS.md §5.1 rule 4
-already says presence never touches storage). **Leave Rooms alone until §18.7 closes.**
+already says presence never touches storage). **§18.7 closed on 2026-09-19**, so the remaining reason to
+leave Rooms alone is the one-feature-in-flight rule, not an unrun test.
 Then port §20 to Rooms as its own piece of work, with the queue-size fork answered.
 
 The reason is not doubt about the idea. It is that a room that plays wrongly is worse than a room that
