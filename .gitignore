@@ -42,6 +42,6 @@ installers/
 # heaviness sampler output (scripts/heaviness-sample.ps1 -Loop)
 scripts/heaviness-samples.log
 
-# The owner's lessons and taste profile (what Claude RECOMMENDS; he decides). Kept on this PC.
-docs/LESSONS.md
+# The owner's taste profile (what Claude RECOMMENDS; he decides). Kept on this PC.
+# docs/LESSONS.md is tracked since 2026-09-19.
 docs/TASTE.md
