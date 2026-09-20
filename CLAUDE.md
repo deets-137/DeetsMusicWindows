@@ -73,8 +73,8 @@ front-end, Rust back-end).
   built, desk test §6 PASSED 2026-09-19). **§8 = On Click**, what a click on a pinned tile does:
   a per-pin verb (Play · Shuffle · Open) on a right-click row, kept in a new `pins.act` column,
   over one shared resolver that replaces the four hand-written `onShelf` bodies; a Settings ›
-  Playback row sets what a NEW pin starts with. Forks 1-7 decided 2026-09-19, §8.2a open,
-  NOT BUILT.
+  Playback row sets what a NEW pin starts with. **BUILT 2026-09-20** (§8.2a closed the same
+  day); desk test §10 PASSED 2026-09-20.
 - `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
@@ -137,8 +137,8 @@ front-end, Rust back-end).
   New Music Mix without changing one — §0 is the bug, ⟳ is the only fix today). A *Refresh ▸
   Daily · Weekly ▸ (day) · Off* submenu per playlist, defaults by `kind`, two triggers (on open +
   a day change while the app runs), one toast, one global switch. §1 = telling Apple's playlists
-  from the user's, with the signals we already have (paper design 2026-09-19, **every fork closed** —
-  ten decisions in §3, the last three settled in §9 — NOT BUILT; §5.1 is the one piece of Rust it needs).
+  from the user's, with the signals we already have. **BUILT 2026-09-20** (designed 2026-09-19,
+  ten decisions in §3, the last three settled in §9); desk test §10 PASSED 2026-09-20.
 - `docs/MOVABLE-ROWS.md` — **movable rows**: HOLD a section header (Home shelves, Playlists
   folders, Radio sections, Settings sections) to move it, a grip bar to move a pinned tile, a
   hold to move a playlist row inside its own section, plus the **Settings search bar** (it reads
