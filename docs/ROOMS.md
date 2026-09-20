@@ -115,6 +115,19 @@ people type. Each app plays with its own Apple token from DeetsSupport.
 - Rows written: about 2 per command + 1 alarm per song ≈ **450 rows**.
 - Duration: the DO wakes only for a message or an alarm. It is close to zero.
 
+**Re-checked 2026-09-19** (developers.cloudflare.com, while designing FRIENDS.md §14.1). Every number
+above stands. Four things this table did not say:
+- **The limits are per ACCOUNT, not per worker.** "Accounts on the Workers Free plan have a daily
+  request limit of 100,000 requests, resetting at midnight UTC." `deets-support`, `deets-accounts`,
+  `deetsmusic-rooms`, `deets-radio` and `deetsfilm-worker` all spend the same 100,000.
+- **The key-value methods are SQLite rows.** `get()`, `put()`, `delete()` and `list()` run against a
+  hidden SQLite table, so `room.js:77` is billed in rows although it writes no SQL. `delete()` counts
+  as a row written too, so `deleteAll()` at the end of a room is not free.
+- **The 20:1 rule, in Cloudflare's words:** "a 20:1 ratio is applied to incoming WebSocket messages",
+  and "There is no charge for outgoing WebSocket messages, nor for incoming WebSocket protocol pings."
+- **`serializeAttachment()` does not touch SQLite, and its cap is 16,384 bytes** — not the 2 KB
+  assumed when §5.2 was written. That is what §20 is built on.
+
 So the free tier carries about **200 evenings like this per day**. **Rule for the build:** keep the
 room state in a small number of storage keys (§5.2), so that one command writes 1–2 rows and not one
 row per queue entry.
@@ -475,7 +488,7 @@ The site's own record stays where it is: DeetsSolutions `docs/HANDOFF.md`.
 3. `src/room.ts` + follower mode + the bridge. **Done** — §16.2.
 4. The title bar item and the Room panel. **Done** — §16.2.
 5. The deep link. **Done** — `src-tauri/src/rooms.rs`, §16.2.
-6. The desk test. **Open** — §16.4.
+6. The desk test. **PASSED 2026-09-19** (the owner: everything here has been tested). §16.4's ground was covered by the §17 and §17.10 runs.
 7. — (the website phase left with §13).
 
 ---
@@ -687,7 +700,7 @@ location.reload();
 The panel's own errors name the address it tried ("the rooms server answered 404"), so a wrong or
 undeployed host says so rather than failing quietly.
 
-### 16.4 The desk test (open)
+### 16.4 The desk test (PASSED 2026-09-19)
 
 Two PCs, or one PC with two apps — but read this first (2026-09-17):
 
@@ -800,7 +813,7 @@ definition. Every other caller leaves it false, so a held player starts again.
    with no position, so `advance` starts it at 0. Carrying the host's position needs a
    `startPosition` on the wire — designed nowhere yet, and open for the owner.
 
-### 17.4 Desk test for these two fixes
+### 17.4 Desk test for these two fixes (PASSED 2026-09-19)
 
 1. Start a room from an app that is playing. The host log gets
    `room:seed { songs: N }` with N ≥ 1, and `room:song` follows within a second or two.
@@ -1010,9 +1023,10 @@ changes nothing for it — 0.11.1 or `npm run tauri dev` is required.
    Add an album from the Library: it starts, because a non-seed add still auto-advances.
 8. Two apps: the guest joins mid-song and lands at the host's position, as §17.4.
 
-## 18. Race conditions — found 2026-09-19, none fixed
+## 18. Race conditions — found 2026-09-19, FIXED the same day (§18.7)
 
-A read of both sides after §17.9 shipped. **Nothing here is built.** Nothing here is
+A read of both sides after §17.9 shipped. **§18.1–18.4 are now built — see §18.7 for what
+each one became.** §18.1–18.6 are kept as written, as the record of the read. Nothing here is
 causing a fault today: #1 and #2 are the only two with a symptom you could see, and both
 are narrow. Each one below names its own cost, because the four are not equally cheap.
 
@@ -1116,3 +1130,228 @@ broadcast — a worker change, so a redeploy, which drops every live room socket
 - **18.4: decide between wiring `epoch` up and deleting it.** Do not start it as a patch.
 - Fork for the owner, not yet asked: **is 18.3 worth closing at all, given 18.4 could
   close it instead?** They are one decision, not two.
+
+### 18.7 As built (2026-09-19)
+
+The owner took the recommendation in §18.6 and closed the fork: **guard the socket, delete
+`epoch`** — with one refinement. Removing `epoch` from the worker is itself a deploy, and a
+deploy drops every live room socket (§17.10). A cleanup does not earn its own deploy. So
+the app side went now and the worker's two lines wait.
+
+| # | File | What changed |
+|---|---|---|
+| 18.1 | `src/player.ts` `roomResumeAt` | `if (mode !== "room") return;` before the re-feed, with a `room:resumeStale` log on the way out. A `teardown()` landing during an await can no longer make the room you just left start your own queue. |
+| 18.2 | `src/room.ts` `step()` | After the lead sleep, the new-song branch reads `lastTransport` instead of the captured `t`, and drops out with `room:leadDropped` when the room is no longer playing this entry. No more blip of sound from a Pause you already pressed. |
+| 18.3 | `src/room.ts` `connect()` | The old socket is closed BEFORE the new one exists, and the `message` and `close` listeners both return early when `ws !== socket`. A `room:supersede` log marks it. |
+| 18.4 | `src/room.ts` `Transport` | `epoch` deleted from the interface, with a comment saying why it is not coming back. |
+
+**A second bug fell out of 18.3.** The old socket's `close` listener called `onClose`
+unguarded. `onClose` returns early only when `socket.readyState === OPEN`, and a brand new
+socket is CONNECTING, not OPEN — so a superseded close **nulled the live socket and
+scheduled a reconnect on top of a connection that was already coming up**. The `ws !==
+socket` guard on `close` fixes that as well. It was reachable from the same `joinRoom` →
+`leaveRoom()` → `connect()` window, and it was not in the §18 read.
+
+**One deliberate behaviour change, from 18.2:** a seek during the 1.5 s lead now lands on
+the NEW position, not the stale one. That is the correct reading of the room.
+
+**The crumb left on purpose.** `src/room.js:446` and `src/room.js:564` in
+`../DeetsMusicRooms` still do `epoch += 1`, and `src/protocol.js:60` still carries the
+field. Nothing reads it on either side now. Delete those three when a worker deploy next
+happens for a real reason — never as a deploy of its own.
+
+**Desk test.** §17.10 again (it edits the lead path), plus:
+
+1. In a room with a guest, press **Pause inside the first second** of a new song. No blip
+   of sound on either app. `room:leadDropped` in `deetsmusic diag`.
+2. Join a room, **Leave, and join again at once**. The second join lands, and the log shows
+   `room:supersede` with no `room:reconnect` after it.
+3. Leave a room while a song is loading. No music starts by itself after the card is gone.
+   `room:resumeStale` appears if the race was hit; nothing plays either way.
+
+## 19. Telling people the room server restarted (designed 2026-09-19, NOT BUILT)
+
+The owner asked whether a worker redeploy can send an apology to everyone in a room. It
+can, but **not from the worker at the moment of the deploy**. A Cloudflare deploy replaces
+the isolate and the Durable Object is evicted without running user code: there is no
+shutdown hook, so nothing can send a last message on the way out. An apology has to come
+from the app afterwards, or go out from the worker BEFORE the deploy.
+
+All three parts below are wanted (decided 2026-09-19). They compose: A is the pair of
+toasts, B refines A's wording, C adds the warning ahead of time.
+
+### 19.1 What a deploy looks like today
+
+`onClose` sets `phase: "reconnecting"` and the backoff reconnects ([room.ts:344](../src/room.ts:344)).
+The user sees the title-bar room item dim (`data-away`, [room-panel.ts:176](../src/room-panel.ts:176))
+and, **only if the panel is open**, the words "Reconnecting…" ([room-panel.ts:399](../src/room-panel.ts:399)).
+There is no toast. With the panel shut a deploy is a silent dim. Music keeps playing
+locally through the gap, because playback runs from MusicKit, not from the socket.
+
+### 19.2 A — the app speaks for itself (app-side only)
+
+When `phase` has been `reconnecting` for longer than `RECONNECT_QUIET_MS`, toast; when it
+returns to `in`, toast again. A timer armed in `onClose` and cleared in `applyState`.
+
+- **Out:** `warn`, timed — "Reconnecting to the room…". `warn` is right by the §2 sticky
+  rule: a routine failure with nothing for the user to do.
+- **Back:** `success`, timed — "Back in the room."
+- Only toast the return **if the outgoing one was shown**. A drop nobody saw needs no
+  all-clear.
+- `diag.log("room:gap", { ms })` on the return, so the length of every real drop is on
+  record.
+
+**The tier trap.** Under the `failures` tier (TOASTS.md §4) a `warn` shows and a `success`
+does not, so a user on that tier would see "Reconnecting to the room…" and never see it
+resolve. The title bar and the panel do show the recovery, so it is not silent — but it is
+a dangling message. **Fork for the owner at build time**, options in order of my
+preference: (a) accept it, the tier means what it says; (b) make the return toast `warn`
+too, which is honest under both tiers but reads oddly for good news; (c) give the return
+toast an `info` kind with no `dismissKey`, which behaves the same as (a).
+
+### 19.3 B — name the cause
+
+The worker puts a build stamp in the state message; the app keeps the last one it saw in a
+module variable (it survives the drop — the app is not restarting). On the reconnect, when
+the stamp differs, A's return toast says instead: **"The rooms server was updated. You are
+back in the room."**
+
+- **Where the stamp comes from:** prefer Cloudflare's `version_metadata` binding, which
+  hands the worker its own version id with no hand-bumping. **Verify that binding exists
+  on this account's plan before building** — if it does not, the fallback is a constant in
+  `src/protocol.js` bumped by hand at deploy, which is a step that will be forgotten.
+- It is one field on the existing state message, so no protocol version bump.
+- B only changes wording. It must not add a second toast.
+
+### 19.4 C — warn before, not apologise after
+
+An authenticated admin route broadcasts a `notice` to every live room. Run it, wait a few
+seconds, then deploy. Toast: **"The rooms server restarts in a moment. Your room will come
+back."**
+
+**Two things make this bigger than it looks. Read both before starting.**
+
+1. **There is no list of live rooms.** Each room is a Durable Object named by its code, and
+   the Workers runtime offers no way to enumerate the instances of a namespace. A fan-out
+   needs a **directory**: one extra DO (or a KV key with a TTL) that each room registers
+   with when it is made and deregisters from when it ends. A room that dies without
+   deregistering leaves a stale code, which is harmless — the fan-out finds nothing there.
+   This is the real cost of C, not the route.
+2. **C is a two-deploy feature.** The admin route runs on the OLD isolate, so the directory
+   and the route must already be live before the first deploy they can announce. Deploy 1
+   adds them and drops every room once, unannounced. Every deploy after that can be warned.
+
+Also for C:
+
+- The worker holds **no secrets today**, by design (`wrangler.jsonc` says so). The admin
+  route needs one — `npx wrangler secret put ROOMS_ADMIN`. Record it in RELEASE.md §0 with
+  the other keys.
+- A new `notice` message type is **backward compatible**: `onMessage`'s `default` returns,
+  so an app on an older build ignores it ([room.ts](../src/room.ts)). No `PROTOCOL_V` bump.
+- The notice goes to **everyone, host and guests alike** — a guest's room is interrupted
+  just as much as the host's.
+- **Fork for the owner:** does the deploy script run the notice and wait, or is it a
+  hand step in the runbook? My recommendation is a hand step first, because an automatic
+  one announces every deploy including the ones that fail their build.
+
+### 19.5 Order, and what it costs
+
+| | Needs | Worker deploy | Rough size |
+|---|---|---|---|
+| A | nothing | no | a timer, two toasts, one diag line |
+| B | A | rides the next deploy | one field, one branch in A's wording |
+| C | A | **two** (the first unannounced) | a directory DO, an admin route, a secret, a runbook step |
+
+**A first, on its own.** It closes the real gap and waits on nothing. **B rides the next
+worker deploy that happens for a real reason** — §18.7 already parks the `epoch` cleanup
+for that same deploy, so the two should travel together. **C last**, and only if deploys
+become routine enough to be worth a directory.
+
+### 19.6 The build checklist for this section
+
+Per CLAUDE.md › Working style: each new toast is a row in **TOASTS.md §5**; the arm and
+fire of A's timer get `diag.log` lines; no new Settings key is proposed (the existing
+`toasts` tier governs these already, §19.2); no new panel, so no `.pop` / `enterRows` work.
+
+---
+
+## 20. A room that writes no SQLite rows (designed 2026-09-19, NOT BUILT)
+
+The owner's question, while designing Friends (FRIENDS.md §14): **can a room avoid SQLite writes if
+the host's queue is treated as the accurate one, and everyone else's changes edit the host's queue?**
+
+**Short answer: yes, and we can get to about zero writes — but not by making the host authoritative
+for live commands.** The host should be the **recovery** source of truth, not the **live** one. The
+difference is one network hop, and §4 already decided that hop matters.
+
+### 20.1 What a room writes today, and why
+
+| Write | Where | Rows | Why it exists |
+|---|---|---|---|
+| `storage.put({meta, transport, queue})` | `room.js:77` | 1 per key changed, on every command | **Hibernation throws memory away** (§5.2). Without a write, a DO that wakes has no room. |
+| `storage.setAlarm(...)` | `room.js:529` | 1 per song | The worker moves the room to the next song at the boundary (§4). |
+| `storage.deleteAll()` | `room.js:586` | counted as writes | The room ends and frees its code (§7). |
+
+About **450 rows for a 3-hour room** (§3.2), and rows are the meter that runs out first.
+
+### 20.2 The two facts that change the picture (checked 2026-09-19)
+
+1. **`serializeAttachment()` does not touch SQLite.** It is held with the connection by the hibernation
+   manager. It is not billed as rows. The members already ride it (§5.2) — that part of the design was
+   right for a better reason than we knew.
+2. **The cap is 16,384 bytes per socket**, not 2 KB. A room's `transport`, and a queue of roughly 40 to
+   50 `RoomEntry` values, fit inside one socket's attachment.
+
+### 20.3 The shape: the worker stays the live authority, the host is the backup
+
+- **Live state moves from storage into the attachments.** `transport` and `queue` ride the **host's**
+  socket attachment, written on every change. **Zero rows.** The DO keeps its working copy in memory
+  and re-reads the attachment after hibernation.
+- **The host's app is the recovery copy.** It already holds the whole queue — it seeded the room from
+  it (`src/room.ts:226`). If the host's socket closes, the attachment is lost with it; the reconnecting
+  host **re-seeds** the state in one message. A host reconnect is already a grace-window event (§7), so
+  this adds a payload, not a new state.
+- **Guest commands still take one hop.** Guest → worker → everyone. The worker applies the command to
+  its in-memory state and writes it to the host's attachment. **It never asks the host's app for
+  permission**, because that is the two-hop design §4 rejected: it makes a guest's Pause wait on the
+  host's network, and a sleeping host laptop freezes the room.
+- **The alarm goes away.** Every member already knows the current entry, `startedAt`, `durationMs` and
+  the queue. The next boundary is arithmetic, not an event. Each app computes the same next entry at
+  the same moment from the same numbers, and the worker computes it lazily whenever a message arrives.
+  **This is not the drift §5.5 forbids**: §5.5 bans advancing on your OWN playback position, which
+  differs per machine. Advancing on the shared schedule is the same answer everywhere.
+- **`meta` (the host token) rides the host's attachment too.** A room with no sockets is a room with no
+  host, and §3 already says such a room ends.
+
+### 20.4 What it would cost, after
+
+| Meter | Today | After §20 |
+|---|---|---|
+| Rows written, 3-hour room | ~450 | **~0** (the claim's first write, if we keep one, and nothing else) |
+| Requests, same room | ~20 | ~20, unchanged |
+| Rooms per day on the free tier | ~220 (rows) | **~5,000 (requests)** |
+
+### 20.5 What it costs us, honestly
+
+1. **A queue over ~50 songs does not fit** in 16 KB. The fallback is a storage write for the queue in
+   that case only, or a hard cap on `upcoming` that the panel explains. **This is a fork, not a
+   detail.**
+2. **A host socket drop loses live state** until the re-seed lands. Today a storage-backed room survives
+   it untouched. The grace window (§7) covers the gap, but a guest could see a stall where they see
+   none now.
+3. **Deterministic advance is new code on a stable feature.** Rooms shipped in 0.11.1, and §17.4 and
+   §18.7 is still an open desk test (§17.4 passed 2026-09-19). Rewriting its clock while that test is unrun breaks the
+   one-load-bearing-feature-in-flight rule in CLAUDE.md.
+4. **It has to be measured, not assumed.** Cloudflare's own docs are the source above; the DO metrics
+   after a real deploy are the proof. Observability is already on in `wrangler.jsonc`.
+
+### 20.6 The recommendation
+
+**Build this shape into Friends first, where it is new code and risks nothing** (FRIENDS.md §5.1 rule 4
+already says presence never touches storage). **Leave Rooms alone until §18.7 closes.**
+Then port §20 to Rooms as its own piece of work, with the queue-size fork answered.
+
+The reason is not doubt about the idea. It is that a room that plays wrongly is worse than a room that
+costs 450 rows, and we are nowhere near the limit: 220 rooms a day is more rooms than this app has
+users. **The saving is real but not yet needed; the risk is real and would land on a feature that
+works.**

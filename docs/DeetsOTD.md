@@ -1,6 +1,6 @@
 # DeetsMusic — DeetsOTD (Song of the Day)
 
-> **Status (2026-09-18): build 1 BUILT — §10 is as built. Desk test §8.11 open.**
+> **Status (2026-09-18): build 1 BUILT — §10 is as built. Desk test §8.11 PASSED 2026-09-19.**
 > Build 1 is picks + the Discord webhook, the Home shelf, Rewind › Picks, the suggestion,
 > the settings section, the agent routes and the one-time journal import. Bluesky and
 > Mastodon stay as the build 2 spec (§8.4b, §8.4c, §8.12, §8.14).
@@ -629,7 +629,7 @@ What we need from the user: **the address of their server** (for example `mastod
   Off** as the first row. No open fork blocks build 1. One deploy needs the owner's go at
   build time: the two Bluesky files on deets.solutions (§8.14).
 
-### 8.11 Desk test (after build 1)
+### 8.11 Desk test (after build 1) — PASSED 2026-09-19
 *(Steps 7a and 7c are build 2 — there is no Bluesky or Mastodon outlet yet. Step 4 reads
 "Discord" alone. Everything else stands. §10 is what was actually built.)*
 1. Right-click a song › Mark. Home shows the shelf with "Today". Right-click another song:
@@ -1263,6 +1263,34 @@ is built at send time, and Discord's message edit (`PATCH`) is not used.
 - a real Discord webhook URL is taken (every host, an optional API version, a trailing space);
 - **everything else is refused before any request is made** — another host, `http`,
   `discord.com.evil.net`, a non-numeric id, a missing token, an extra path segment.
+
+### 10.8 One send per (pick, outlet) — the claim (2026-09-19)
+
+**The race.** `post_now` has four callers: the window's Post, the *Right away* spawn, the
+set-time timer and the boot retry. Two of them can read the same `waiting` (or `failed`)
+row before either has written `sent`, and both send. A webhook is not idempotent, so the
+song went to the channel twice. Found in a race-condition sweep on 2026-09-19; not seen in
+use, but reachable by answering Yes in the window at the moment the boot retry runs.
+
+**The fix.** `send_one` takes a claim on `(pick_id, outlet)` from an in-memory set before
+the webhook call and releases it after. The second caller finds the claim held, logs
+`sotd:post:busy outlet=… id=…` and returns. The claim is a `Drop` guard, so a panic inside
+the send releases it too; without that, one panic would silence that outlet for the session.
+
+**Why in memory, not a row state.** Every caller lives in one process, and a restart cannot
+overlap with itself, so a database state adds nothing to the race. What a row state
+(`posting`) WOULD add is honesty when the app closes mid-send: today that row stays
+`waiting`, the boot retry sends again, and if the webhook went out before the close the
+song posts twice. That gap is unchanged. The owner deferred it to build 2 (Bluesky and
+Mastodon), which reworks the outbox and would carry the sixth state through the Picks
+panel, `/picks` and §8.1 in one pass. The state table in §8.1 stays at five.
+
+**Desk test (open).**
+1. Post mode *At a set time*, mark a song for a time one minute out, and within that same
+   second press **Post now** in the Picks panel. One Discord message. The log has one
+   `sotd:post:fire` and one `sotd:post:busy` for that pick.
+2. Post mode *Right away*, mark a song. One message, no `busy` line (nothing overlapped).
+3. `cargo test --lib sotd` still passes (four tests).
 
 ## 11. Cross-links
 [DEETS-REWIND.md](DEETS-REWIND.md) (plays) · [HOME.md](HOME.md) (shelves) ·

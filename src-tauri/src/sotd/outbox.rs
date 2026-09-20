@@ -12,7 +12,9 @@
 //! A failed post is retried once at the next start, never in a loop, and only while the
 //! pick's day has not ended — a post after that would count for the next day at Discord.
 
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
@@ -24,6 +26,31 @@ use crate::settings::{PostMode, Settings};
 
 /// Every arm gets a number; a timer whose number is stale exits without firing.
 static GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// The (pick, outlet) pairs a send holds right now. `post_now` has four callers — the
+/// window's Post, the Right-away spawn, the set-time timer and the boot retry — and two
+/// can read the same `waiting` row before either has written `sent`. A webhook is not
+/// idempotent, so the second would post the song twice. The claim is in memory because
+/// every caller lives in this process; a restart cannot overlap with itself.
+static SENDING: LazyLock<Mutex<HashSet<(i64, String)>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+
+/// Holds one claim; `Drop` releases it, so a panic inside the send cannot keep the outlet
+/// silent for the rest of the session.
+struct Claim(i64, String);
+
+impl Claim {
+    fn take(id: i64, outlet: &str) -> Option<Claim> {
+        let mut held = SENDING.lock().unwrap_or_else(|e| e.into_inner());
+        held.insert((id, outlet.to_string())).then(|| Claim(id, outlet.to_string()))
+    }
+}
+
+impl Drop for Claim {
+    fn drop(&mut self) {
+        let mut held = SENDING.lock().unwrap_or_else(|e| e.into_inner());
+        held.remove(&(self.0, self.1.clone()));
+    }
+}
 
 // ── what the window is told ──────────────────────────────────────────────────
 
@@ -99,6 +126,10 @@ fn message(pick: &Pick) -> String {
 
 /// Send one pick to one outlet, and write down what happened.
 async fn send_one(app: &AppHandle, pick: &Pick, outlet_name: &str) {
+    let Some(_claim) = Claim::take(pick.id, outlet_name) else {
+        crate::log::info(&format!("sotd:post:busy outlet={outlet_name} id={} (a send already holds it)", pick.id));
+        return;
+    };
     let r = outlet::post(app, outlet_name, &message(pick)).await;
     let err = match &r {
         Ok(remote) => {

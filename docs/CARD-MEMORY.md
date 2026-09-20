@@ -205,7 +205,7 @@ after you restart DeetsMusic". Needs: `settings-store.ts` default with the why, 
 
 Also: the header comment of `layout.ts` (the "negligible" line) changes to point here.
 
-## 9. Desk test
+## 9. Desk test — PASSED 2026-09-19
 
 1. Playlists: open a playlist, scroll half way. Summon a card into that slot (the NP card's
    queue button in Midi). Pick Playlists again in the title menu. The playlist is open at the

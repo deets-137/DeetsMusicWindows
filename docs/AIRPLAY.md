@@ -312,7 +312,7 @@ whenever we hold the stream, or whenever it is sending the whole PC and we are p
 Its volume slider forwards to `POST /command {kind:"volume"}`, which lands on our slider,
 which while we stream is already the speaker's own volume: one hop, never a second gain stage.
 
-**The claim guard — both directions (built 2026-09-17, awaiting desk test).** Until then this app
+**The claim guard — both directions (built 2026-09-17, desk test PASSED 2026-09-19).** Until then this app
 *wrote* a claim but did not read one, so it connected straight over a speaker DeetsAirplay held.
 Now `connect_speaker` checks `claim::on_speaker(&speaker.name)` first, **before `stop_live`**, so a
 refused pick keeps the speaker we already have. `on_speaker` skips our own pid and any holder that
@@ -338,7 +338,7 @@ Desk test (Rust changed: restart the dev runner):
 needed a `rev` bump to a crate revision at or past `deets-airplay` 0.3.0 — done for 0.6.2,
 after that crate was pushed.
 
-## 12. Speaker only: the in-page tap (designed and built 2026-09-17; desk test §12.4 open)
+## 12. Speaker only: the in-page tap (designed and built 2026-09-17; desk test §12.4 PASSED 2026-09-19)
 
 **The problem.** A speaker plays, and so does the PC. Decision 2 accepted that because the only
 copy points Windows offers (§4, §10) sit after the per-app volume: mute the app and the speaker

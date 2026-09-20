@@ -231,7 +231,7 @@ Now Playing** and nowhere else.
 - `Ctrl+Space` → `grow queue` → "Vertical" works, and so do `deetsmusic grow --card Queue` and
   the agent's `/grow` route: the card-host lookup now answers for the anchored Queue in Max.
 
-## 8. Desk test
+## 8. Desk test — PASSED 2026-09-19
 
 1. **Max, default size.** Open Max at 1100 × 950 (Settings › Window › Set current, or delete the
    stored size). The cover is a full-width square. The Queue shows the song that plays plus two

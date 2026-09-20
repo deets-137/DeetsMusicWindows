@@ -1938,6 +1938,14 @@ export async function roomResumeAt(positionMs: number, correcting = false): Prom
     // and a silent player emits none. A room that landed here stayed silent for ever
     // (2026-09-18). Re-feed the room's song from the model and START it.
     if (correcting) return; // the drift tick's song is playing by definition
+    // The re-feed plays with autoplay on, and it reads the model's CURRENT queue. A
+    // `teardown()` landing during an await above restores the user's own queue first, so
+    // without this the room you just left starts your own music (ROOMS.md §18.1). The
+    // log is deliberate: a silent early return here is what caused §17.9.
+    if (mode !== "room") {
+      diag.log("room:resumeStale", { mode, at: Math.round(positionMs) });
+      return;
+    }
     await loadFromModel(m, true, { seekMs: positionMs });
     return;
   }

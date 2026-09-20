@@ -458,7 +458,7 @@ Decided while building, inside his choices:
 - **The hide rows stay out of the agent's reach.** Hiding a tile is a gesture on the tile.
 - Sorting is by release date, newest first, and `SHELF` caps it at twelve like the others.
 
-### 10.10 Desk test
+### 10.10 Desk test — PASSED 2026-09-19
 
 1. Open Home. The three old shelves look as they did — **Recently Played especially**, which
    must not have grown new borrowed tiles.

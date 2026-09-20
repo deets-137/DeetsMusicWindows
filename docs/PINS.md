@@ -1,6 +1,6 @@
 # DeetsMusic — Pins
 
-> **Status (2026-09-18): BUILT on branch `pins-for-days`, desk test §6 open.** Forks 1–9 decided
+> **Status (2026-09-18): BUILT on branch `pins-for-days`, desk test §6 PASSED 2026-09-19.** Forks 1–9 decided
 > by the owner; the Library mockup passed before code. §7 = as built.
 
 **Terms used in this doc**
@@ -122,7 +122,7 @@ pack does not carry it.
 8. Check: `npx tsc --noEmit`, `npx vite build`, `cargo test --lib`.
 9. Compass: the verb row.
 
-## 6. Desk test (after build)
+## 6. Desk test (after build) — PASSED 2026-09-19
 
 1. Playlists › right-click a playlist › **Pin**. A Pinned shelf appears above Folders with the
    badge on the tile. Right-click the tile › **Unpin**: the shelf goes.

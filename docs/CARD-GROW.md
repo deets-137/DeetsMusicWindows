@@ -559,7 +559,7 @@ Settings › Window, after "Grown card on a new pick". Hint: "Opens a drill from
 its place, or collapses the grow first". Needs the store default, `agent-settings.ts`, AGENT.md,
 SETTINGS.md, the ONBOARDING.md ledger.
 
-### 14.8 Desk test
+### 14.8 Desk test — PASSED 2026-09-19
 
 1. Max, Playlists filled. Open a playlist and scroll. Right-click a song › Go to Album. Search
    slides in, filled, with the album. No collapse.
@@ -665,7 +665,7 @@ lose. Now a drill uses the slot you are reading, and Back walks the chain backwa
 | `cardDrill` | Card on drill | In place / Summon | In place | A drill belongs to the card you are reading; Summon is the old behavior (a grown card collapses, and a summon lands in the least recently used slot). |
 | `cardDrillBring` | Bring a card already open | On / Off | Off | A card you can already see is not worth moving two cards for. On: it comes to the card you are reading and the two exchange. |
 
-### 15.5 Desk test
+### 15.5 Desk test — PASSED 2026-09-19
 
 1. Midi, Library at an artist. Open one of Your Playlists: the Playlists card takes the
    Library's slot and the Library leaves. Back: the Library returns at that artist, scrolled

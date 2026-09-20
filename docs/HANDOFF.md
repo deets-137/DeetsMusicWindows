@@ -112,6 +112,22 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+**2026-09-19 — Friends is designed and scheduled to be built** ([FRIENDS.md](FRIENDS.md)): a friend
+code that stands for one person, presence, a friend's row as the way into a room, and broadcasting
+what you play to Discord. Decided: no heartbeat (D1), a friend's row opens a room (D2), a "busy —
+your music is not affected" toast that also fixes Rooms' raw 429 (D3), and **a new worker,
+`deetsmusic-friends`** (D4). Nine forks in §11 are still the owner's, and §10 is the build order —
+its steps 1 to 3 (identity, the local friend list, the Discord channel post) need no worker at all.
+The owner said "implement in the evening or tomorrow" (so 2026-09-19 or 2026-09-20).
+**The desk tests are clear.** On 2026-09-19 the owner confirmed every open desk test in the repo has
+been run and passed — ROOMS §16.4 and §17.4, DeetsOTD §8.11, PINS §6, HOME §10.10, COMPASS §7 (the
+§7.10a calculator included), STAGE-COLUMN §8, CARD-MEMORY §9, CARD-GROW §14.8 and §15.5, AIRPLAY §11
+and §12.4, LOCAL-DATA §11 step 9. Each doc now says PASSED with that date. **The one exception is
+ROOMS §18.7** — the four race fixes, still uncommitted in `src/room.ts` and `src/player.ts`, which is
+the one piece of open ground a Friends socket would sit beside.
+A related design that is NOT part of this build: [ROOMS.md](ROOMS.md) §20, a room that writes no
+SQLite rows (~450 rows → ~0). Build its shape in Friends first; leave the shipped Rooms alone.
+
 **2026-09-18 — 0.10.0 is live on the `deetsmusic` channel** (`main` at `5850210`; installer
 7.4 MB). It ships listening rooms ([ROOMS.md](ROOMS.md) §16), song credits and the song pane
 ([CREDITS.md](CREDITS.md) §7), the Max stage column ([STAGE-COLUMN.md](STAGE-COLUMN.md)), card
@@ -119,8 +135,8 @@ memory ([CARD-MEMORY.md](CARD-MEMORY.md)), the AirPlay speaker-only tap and its 
 permission question ([AIRPLAY.md](AIRPLAY.md) §9.5, §12), the Compass card shapes and the turning
 needle ([COMPASS.md](COMPASS.md) §2c, §12), DB write health ([DB-HEALTH.md](DB-HEALTH.md)) and the
 list-place fix ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.10.0). Published at the owner’s request
-without the hand install test of RELEASE.md §0 step 3, and with these desk tests still open, now
-running live: ROOMS §16.4 (two apps in step — the release notes announce rooms as finished, the
+without the hand install test of RELEASE.md §0 step 3, and with these desk tests then open (**all
+passed since; confirmed 2026-09-19**): ROOMS §16.4 (two apps in step — the release notes announce rooms as finished, the
 owner’s call), STAGE-COLUMN §8, CARD-MEMORY, CARD-GROW §14, COMPASS 15–25, AIRPLAY §11 (the claim
 guard). The route answers: `GET /update/deetsmusic?v=0.9.5` offers 0.10.0, and
 `/update/deetsmusic/health` is `ok`.
@@ -1022,13 +1038,13 @@ releases since 0.6.2, in short:
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
-- **AirPlay speaker only — BUILT 2026-09-17, awaiting desk test ([AIRPLAY.md §12](AIRPLAY.md), §12.4 is
+- **AirPlay speaker only — BUILT 2026-09-17, desk test PASSED 2026-09-19 ([AIRPLAY.md §12](AIRPLAY.md), §12.4 is
   the test, §12.6 is what was built).** The song is copied inside the page after the Sound graph
   (`deets-tap`), handed to Rust as raw-body chunks (`airplay_tap`), and the page's sink gain drops
   to 0: the PC goes silent, other apps stay off the speaker, the stream is bit-exact. Settings ›
   AirPlay › Send to speaker (DeetsMusic only, the default / All PC sound). Crate 0.4.0 (`85a9ff1`).
   Rust changed: restart the dev runner.
-- **The AirPlay claim guard (2026-09-15) — BUILT 2026-09-17, awaiting desk test (AIRPLAY.md §11).**
+- **The AirPlay claim guard (2026-09-15) — BUILT 2026-09-17, desk test PASSED 2026-09-19 (AIRPLAY.md §11).**
   The record below is the brief it was built from. The speaker-sharing work
   ([AIRPLAY.md §11](AIRPLAY.md)) is **one-directional**, and this is the missing half.
   DeetsAirplay (the tray sender, the same crate underneath) reads the machine-wide claim file

@@ -454,7 +454,7 @@ window. When the drop is `0px` the token is exactly what it was before.
 **Not affected.** A grown card never changes this: in midi a grown card takes row 2 only,
 and in max columns 2-3, so it neither covers the NP card nor changes its size.
 
-## 7. Desk test
+## 7. Desk test — PASSED 2026-09-19 (every step, the §7.10a calculator included)
 
 1. Ctrl+Space in Midi: the bar drops in under the title bar; the field has the focus;
    Places then Actions show. Escape closes it and the focus goes back where it was.

@@ -75,7 +75,10 @@ interface Transport {
   pausedPosition: number;
   leadUntil: number | null;
   leadPosition: number;
-  epoch: number;
+  // No `epoch`. The worker still writes one, but a single WebSocket delivers in order,
+  // so the only staleness that exists is CROSS-socket — and `connect()` now closes that
+  // at the source. Comparing an epoch here would guard nothing and would oblige every
+  // future broadcast to bump it or silently freeze the transport (ROOMS.md §18.4).
 }
 
 export interface RoomMember {
@@ -279,6 +282,19 @@ async function connect(code: string, asHost: boolean): Promise<void> {
   await roomEnter();
   return new Promise<void>((resolve, reject) => {
     let settled = false;
+    // Supersede whatever is still open BEFORE the new socket exists. Its own close
+    // listener settles the `connect()` that waits on it, so no caller is left awaiting
+    // for ever — which is why the guards below cannot simply return early (§18.3).
+    const previous = socket;
+    socket = null;
+    if (previous) {
+      diag.log("room:supersede", { code });
+      try {
+        previous.close();
+      } catch {
+        /* already gone */
+      }
+    }
     const ws = new WebSocket(socketUrl(code));
     socket = ws;
     ws.addEventListener("open", () => {
@@ -290,6 +306,12 @@ async function connect(code: string, asHost: boolean): Promise<void> {
       });
     });
     ws.addEventListener("message", (event) => {
+      // A message already queued on the event loop when this socket was superseded still
+      // arrives. The live socket owns the state; this one only settles its own promise
+      // (§18.3). `close` is guarded for the same reason, and for a second one: without it
+      // the old socket's close ran `onClose`, which nulled the NEW socket and scheduled a
+      // reconnect on top of a connection that was already coming up.
+      if (ws !== socket) return;
       onMessage(String(event.data));
       if (!settled && state.phase === "in") {
         settled = true;
@@ -308,6 +330,7 @@ async function connect(code: string, asHost: boolean): Promise<void> {
         settled = true;
         reject(new Error(event.reason || "the rooms server closed the connection"));
       }
+      if (ws !== socket) return;
       onClose(code);
     });
   });
@@ -523,7 +546,18 @@ async function step(t: Transport): Promise<void> {
     if (!t.playing) return;
     if (startsIn > 0) await sleep(startsIn);
     if (!inRoom() || stopped || playingEntryId !== entry.entryId) return;
-    await roomResumeAt(expectedPosition(t));
+    // Read the room AGAIN, do not trust the captured `t`. `follow()` serialises, so a
+    // pause that arrives during the lead is queued BEHIND this sleeping step: on the old
+    // code the sleeper woke, started sound from stale transport, and only then did the
+    // queued step hold it — a blip of music you had already cancelled (ROOMS.md §18.2).
+    // `settle()` re-reads for the same reason. A seek during the lead now lands on the
+    // NEW position, which is the behaviour change that comes with this.
+    const live = lastTransport;
+    if (!live?.playing || live.current?.entryId !== entry.entryId) {
+      diag.log("room:leadDropped", { id: entry.catalogId, playing: !!live?.playing });
+      return;
+    }
+    await roomResumeAt(expectedPosition(live));
     settle(entry.entryId);
     return;
   }

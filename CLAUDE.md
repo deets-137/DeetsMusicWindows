@@ -34,7 +34,7 @@ front-end, Rust back-end).
 - `docs/HOME.md` — the Home card: the shelves, the context-run rule, the weekday/weekend
   bucket score, and Hide (built 2026-09-15). §9 = Apple's own recents, §10 = the **New**
   shelf: releases by your top ten artists, the bulk `artist_catalog` fill that rides the
-  library sync, and the `homeApple` switch (built 2026-09-18, desk test open).
+  library sync, and the `homeApple` switch (built 2026-09-18, desk test PASSED 2026-09-19).
 - `docs/AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker, what we control,
   and `probe fidelity` (DeetsAirplay) that measures the capture's conversion (opened 2026-09-16).
 - `docs/LASTFM.md` — Last.fm scrobbling: the key built in from Deets' Secrets, the browser
@@ -42,7 +42,7 @@ front-end, Rust back-end).
   (built and desk-tested 2026-09-16).
 - `docs/LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users over an
   in-memory copy of five export tables; the WAL fix; the security layers and their tests
-  (`cargo test --lib query`); the SQL card idea (built 2026-09-16, shipped in 0.8.0; desk test steps 1–8 pass, step 9 over MCP open).
+  (`cargo test --lib query`); the SQL card idea (built 2026-09-16, shipped in 0.8.0; desk test PASSED 2026-09-19, step 9 over MCP included).
 - `docs/SOUND.md` — Advanced EQ + DeetsAdaptiveSound (match loudness, fuller at low volume,
   crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (built 2026-09-16, shipped in 0.8.0;
   the user's report from daily listening, §11, comes before any new Sound work).
@@ -61,12 +61,12 @@ front-end, Rust back-end).
   by DPAPI in `sotd-outlets.json`. Home's last shelf, Rewind › Picks, the suggestion from
   today's plays, the `/picks` agent route, and `scripts/import-sotd-journal.mjs` for the
   owner's own journal. The DeetsOTD repo stays untouched. **§10 = as built (BUILT 2026-09-18
-  on `pins-for-days`; desk test §8.11 open).** Bluesky and Mastodon are build 2 (§8.4b, §8.14). **§9 = more than one Discord
+  on `pins-for-days`; desk test §8.11 PASSED 2026-09-19).** Bluesky and Mastodon are build 2 (§8.4b, §8.14). **§9 = more than one Discord
   webhook** (paper design 2026-09-18, five forks open, not built).
 - `docs/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
   a Pinned tile shelf on the Library / Playlists / Radio roots (pin order) and Home's fifth shelf
   (by plays, all time), a corner tile badge (BUILT 2026-09-18 on branch `pins-for-days`, §7 = as
-  built, desk test §6 open).
+  built, desk test §6 PASSED 2026-09-19).
 - `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
@@ -75,6 +75,18 @@ front-end, Rust back-end).
   led by the Deets and Happy sprites (§4.0 = as built, 2026-09-18: five steps, the gesture
   advances, the sprites travel, `onboardingStep` in settings; §5 = `npm run dev:fresh` /
   `dev:fresh:in`, how to be a first-time user without losing your data).
+- `docs/FRIENDS.md` — **Friends**: a friend code that stands for one person forever, presence
+  ("what they play now"), and the tie back into Rooms; plus **broadcasting what you play to
+  Discord** (Rich Presence, and one channel message edited in place on the Song of the Day
+  webhook code). §1 = why this is a layer UNDER Rooms, not an extension of it (there is no
+  client identity in the app today); §5 = the free-tier budget and the seven app-side rules
+  that keep it there; §5.2 = the "busy, and your music is not affected" toast (it fixes Rooms'
+  raw 429 too); §13 = what the app asks of our workers today (~5 requests/install/day, nearly
+  all of it the 6-hour update check); §14 = what one room costs (~20 requests, ~450 row writes);
+  §15 = reuse the rooms worker or make a new one — **cost is identical, the free tier meters per
+  ACCOUNT**, so fork 10 closed on deploy blast radius: **a new `deetsmusic-friends` worker** (paper
+  design 2026-09-19; D1 no heartbeat, D2 a friend row opens a room, D3 the toast, D4 a new worker
+  are decided; nine forks open; not built).
 - `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
@@ -83,7 +95,18 @@ front-end, Rust back-end).
   desk test (2026-09-18)**: the host seeded an empty room and a room `play` never reached a
   held follower, both app-side and both fixed; the title bar count badge removed; the stage
   figures matched to the glyph; the panel's scrollbar gutter now opens only when it really
-  scrolls. Desk test §17.4 open. **§17.9 = the host's own room played nothing (2026-09-18)**: the seed auto-started the room so Play was really Pause, `roomResumeAt` returned in silence on a null `nowPlayingItem`, and `roomShow` rebuilt a song MusicKit already held. All three fixed, worker deployed, shipped in 0.11.1; **desk test §17.10 PASSED**. §17.10 also records that a worker deploy drops every live room socket. **§18 = four race conditions, read 2026-09-19, NONE FIXED** (the worker side is clean): a re-feed that can start your own queue after you leave, a Pause during the lead that plays a blip first, a stale socket that can still apply state, and `epoch` — incremented by the worker, never compared. §18.6 has the recommendation and the one open fork. Next session. The deets.solutions site is **out
+  scrolls. Desk test §17.4 PASSED 2026-09-19. **§17.9 = the host's own room played nothing (2026-09-18)**: the seed auto-started the room so Play was really Pause, `roomResumeAt` returned in silence on a null `nowPlayingItem`, and `roomShow` rebuilt a song MusicKit already held. All three fixed, worker deployed, shipped in 0.11.1; **desk test §17.10 PASSED**. §17.10 also records that a worker deploy drops every live room socket. **§18 = four race conditions, read 2026-09-19, NONE FIXED** (the worker side is clean): a re-feed that can start your own queue after you leave, a Pause during the lead that plays a blip first, a stale socket that can still apply state, and `epoch` — incremented by the worker, never compared. §18.6 has the recommendation and the one open fork. **§18.1-18.4 BUILT 2026-09-19** (§18.7 = as
+  built: the room guard on the re-feed, the lead re-read, the superseded-socket guard, `epoch`
+  deleted app-side; a fifth bug fell out of 18.3 — a superseded close nulled the LIVE socket.
+  **Desk test §18.7 is the ONLY open one in the repo (2026-09-19): it is uncommitted work in `src/room.ts` + `src/player.ts`.** The worker's two `epoch` lines wait for the next real deploy).
+  **§20 = a room that writes no SQLite rows** (designed 2026-09-19, NOT BUILT): live state moves from
+  `storage.put` into the host's socket attachment (16 KB, free, verified) and the per-song alarm
+  becomes arithmetic both sides compute; ~450 rows per room → ~0. The host is the RECOVERY copy, never
+  the live authority (that is the two-hop shape §4 rejected). Build it in Friends first; leave the
+  shipped Rooms alone until §17.4 and §18.7 close.
+  **§19 = telling people a worker redeploy happened** (designed 2026-09-19, A+B+C all wanted,
+  NOT BUILT): a deploy cannot apologise on its way out, so A is an app-side toast pair, B names
+  the cause from a build stamp, C warns first and needs a live-room directory + two deploys. The deets.solutions site is **out
   of scope** (§13); DeetsRadio in that doc means only the older website feature it borrows from.
   Apple terms read in §12: no clause names group listening, and §12.3 is decided (a guest's Pause
   never greys out).
@@ -94,21 +117,21 @@ front-end, Rust back-end).
   answers to; update it with `SYNONYMS` in compass.ts.
 - `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
   inline), transport verb and library item; Space for play / pause; the keyboard pass's first slice
-  (built 2026-09-17, desk test open). §2d = the
+  (built 2026-09-17, desk test PASSED 2026-09-19). §2d = the
   calculator: type a sum, the first row answers it and Enter copies (built 2026-09-18, desk
-  test §7.10a open).
+  test §7.10a PASSED 2026-09-19).
 - `docs/SECOND-SEARCH.md` — a second Search card to compare two albums side by side: the first
   card is the drill target, the second is one you place yourself; what enforces one instance
   today and the work per file (designed 2026-09-17, not built).
 - `docs/STAGE-COLUMN.md` — the Max stage column: the cover locked to a square (no measured
   constant — `100cqw` + a size-container split), the Queue's floor of "the song that plays now
   + 2.5 rows" as token arithmetic (`--max-queue-min`), the new 1100×950 default, and the Queue's
-  one upward grow over Now Playing (built 2026-09-17, desk test §8 open).
+  one upward grow over Now Playing (built 2026-09-17, desk test §8 PASSED 2026-09-19).
 - `docs/CARD-MEMORY.md` — a card comes back where you left it after a remount (summon, pick,
   Midi↔Max, the grow drill swap): keys + resolvers per card, the snapshot, a row to keep it on
-  restart, and memory-only caches of Search's catalog panes and terms (built 2026-09-17, desk test open).
+  restart, and memory-only caches of Search's catalog panes and terms (built 2026-09-17, desk test PASSED 2026-09-19).
 - `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
-  the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules (§14: a drill from a grown card swaps the target in, Back returns; built 2026-09-17, desk test open), and wide-card
+  the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules (§14: a drill from a grown card swaps the target in, Back returns; built 2026-09-17, desk test PASSED 2026-09-19), and wide-card
   layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–10 decided; BUILT 2026-09-16, §13 = as built, shipped in 0.9.0).
 
 ## How to verify your work

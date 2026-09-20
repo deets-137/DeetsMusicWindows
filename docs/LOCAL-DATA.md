@@ -139,7 +139,7 @@ Agent spec `agentHistory`: **off only**, like Agent control (AGENT.md §6).
 (`npm run cli:build`, or `cargo build` in `cli/` for the dev bridge) before `deetsmusic sql` or the
 new MCP tools exist, and restart the agent app that runs `deetsmusic mcp`.
 
-## 11. Desk test
+## 11. Desk test — PASSED 2026-09-19 (steps 1–8 on 2026-09-16; step 9, over MCP, confirmed 2026-09-19)
 
 1. **WAL:** after the restart, `deetsmusic.db-wal` and `-shm` sit beside the db, and the log has no
    `db: journal mode stayed` line.
