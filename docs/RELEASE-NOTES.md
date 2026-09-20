@@ -18,6 +18,34 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.12.0 — 2026-09-20
+
+**Friends.** Add someone by their friend code and see what they are playing — the song, the
+artist and the cover, right in the people panel beside the title bar. Your code is yours for
+good: it never changes, and it is not tied to a sign-in, because there is no account to make.
+Adding is a handshake, so nobody can watch you without your say-so: **you both have to add
+each other's code** before either of you sees anything. A friend's box carries a right-click
+menu with **Play this** and **Go to Album**, and the whole box is a **Listen Along** button —
+press it and you drop straight into what they are hearing, in a room only they can steer.
+
+**Nothing is shared until you ask.** Settings › Sharing starts with *Share activity on
+DeetsMusic* **off**, and off means the app never opens the connection at all. **Pause sharing
+for an hour** covers Friends and Discord together, because "stop telling anyone what I am
+playing" is one decision. And if you move to a new PC, Settings › Friends › **Copy my key**
+brings your friend code with you.
+
+**The people panel is now Friends.** Your name sits at the top, where both halves use it, and
+Friends and **DeetsRooms** are two sections you can fold away. Start a room and DeetsRooms
+slides up to the top, where you need it.
+
+**When a service is having a bad day, it says so in a sentence** — and says that your music is
+not affected, which it never was. Rooms used to show you a raw error number.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.11.1 — 2026-09-18
 
 **Listening rooms start when you press Play.** Starting a room filled it with what you were
