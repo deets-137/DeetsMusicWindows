@@ -1,8 +1,8 @@
 # DeetsMusic — Playlist refresh
 
 > **Status: BUILT 2026-09-20.** Designed 2026-09-19 with every fork closed (the owner's ten
-> decisions are in §3; §9 records how the last three were settled). **§11 is as built**, and
-> the desk test in §10 is open. Every claim about the code was checked against the tree.
+> decisions are in §3; §9 records how the last three were settled). **§11 is as built, and the
+> desk test in §10 PASSED 2026-09-20.** Every claim about the code was checked against the tree.
 
 Siblings: [PLAYLISTS.md](PLAYLISTS.md) (the store, the mirror, the export) ·
 [TOASTS.md](TOASTS.md) · [SETTINGS.md](SETTINGS.md).
@@ -284,7 +284,7 @@ ships unseen:
 3. A dismissed offer **does not move the stamp**, so the next check offers again. A silently
    forgotten offer would be worse than a repeated one.
 
-## 10. The desk test (after the build)
+## 10. The desk test — **PASSED 2026-09-20**
 
 1. Right-click a mirror row → **Refresh ▸** shows, with the badge matching its kind's default
    (a catalog mirror reads *Daily*, one of your own Apple playlists reads *Off*).
@@ -317,7 +317,7 @@ ships unseen:
 
 ## 11. As built (2026-09-20)
 
-Every decision D1–D10 is in. The desk test in §10 is **open**.
+Every decision D1–D10 is in. The desk test in §10 **PASSED 2026-09-20**.
 
 ### 11.1 Rust (`src-tauri/src/playlists.rs`)
 
@@ -377,3 +377,40 @@ built the same day (TOASTS.md §4a) it is an **ask** — so it jumps ahead of of
 never destroyed to make room, and it is dropped rather than shown thirty seconds late. §7.2
 was written *"a sticky toast only yields once nothing timed is left"*, which was the old
 rule. The offer is now safe in a way it could not have been on 2026-09-19.
+
+## 12. The two-level submenu bug (found and fixed 2026-09-20)
+
+**What he saw.** Right-click a playlist, hover **Refresh**, hover **Daily** — fine. Hover
+**Weekly** — the flyout goes away.
+
+**The cause was the menu primitive, not this feature.** `Refresh ▸ Weekly ▸ (day)` is the
+first submenu inside a submenu in the app. `src/context-menu.ts` held ONE latch variable,
+`openWrap`, for the whole menu, and every submenu row's `pointerenter` began by closing it.
+So hovering **Weekly** closed the **Refresh** flyout — the box Weekly sits in. The day list
+then opened inside a hidden parent, which reads as "the menu closed". **Daily** was fine
+because it is an action row, and action rows only unlatched when they were top level.
+
+**The fix (fork A, his call).** The latch is now one wrap **per depth** (`openWraps[]`):
+
+- `closeFrom(depth)` closes that level and everything deeper, never an ancestor.
+- Every row — action, field title, field, submenu — unlatches from its OWN depth on hover,
+  so a sibling still closes a flyout at any level.
+- `placeFly(fly, host)` takes the box the flyout grows out of, so a nested flyout
+  side-flips on the parent flyout's right edge, not the root menu's.
+- A flyout that holds a submenu gets `.ctx-menu__fly--deep` (`overflow: visible`):
+  `overflow-y: auto` computes overflow-x to auto as well and would clip a child flyout at
+  `left: 100%`. The trade is that such a flyout does not scroll. No flyout with a submenu
+  in it is long today.
+
+**Desk test.** Right-click a mirrored Apple playlist.
+
+1. Hover **Refresh** — the flyout opens with the current choice on the parent row.
+2. Hover **Daily**, then **Off**, then **Weekly** — the Refresh flyout STAYS open.
+3. On **Weekly**, the day list opens beside it. Move down it: Mon … Sun.
+4. Move back up to **Daily** — the day list closes, the Refresh flyout stays.
+5. Move out to a sibling top-level row (**Move to Folder**) — both flyouts close.
+6. Click **Weekly ▸ Fri** — the menu closes, the parent row reads `Weekly · Fri` next time.
+7. Right-click a playlist near the RIGHT edge of the window — Refresh opens to the left,
+   and the day list opens further left again, never off-screen.
+8. Right-click near the BOTTOM — the day list clamps up and is whole.
+

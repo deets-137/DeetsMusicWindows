@@ -13,6 +13,7 @@
 import "./styles/compass.css";
 import { registry, type CardId } from "./cards";
 import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, cardHost } from "./layout-bus";
+import { orderedScopes } from "./row-order";
 import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
 import { currentSurface, onSurfaceChange } from "./surface";
 import { makeDropdown } from "./dropdown";
@@ -124,6 +125,7 @@ export const SYNONYMS: Record<string, string[]> = {
   web: ["web"], playlistweb: ["web"],
   find: ["search"], lookup: ["search"],
   stale: ["refresh"], reread: ["refresh"],
+  arrange: ["arrange", "move"], rearrange: ["arrange", "move"], reorder: ["arrange", "move", "order"],
 };
 
 /** Damerau-Levenshtein distance, capped: 0 when equal; a typo is 1; stops early past `max`. */
@@ -414,6 +416,18 @@ function actions(all: boolean): Row[] {
     aliases: ["refresh", "stale", "update playlists", "re-read playlists"],
     run: () => void checkPlaylistRefreshNow().catch((e) => console.error("[compass] refresh", e)),
   });
+  // Movable rows (MOVABLE-ROWS.md §4.4, COMPASS.md §9): the way back to the built-in
+  // order, offered only when there is an order to drop. The confirm and the Undo are the
+  // Settings row's own, so there is one reset, reachable from two places.
+  if (orderedScopes().length) {
+    rows.push({
+      group: "Actions",
+      title: "Reset row order",
+      sub: "Sections and pinned items go back to their built-in order",
+      aliases: ["arrange", "rearrange", "move", "order", "sections"],
+      run: () => requestSetting("reset-roworder"),
+    });
+  }
   rows.push({
     group: "Actions",
     title: "Show the tour",

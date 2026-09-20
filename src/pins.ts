@@ -21,6 +21,8 @@ import { songItem, albumItem, playlistItem, stationItem, artistItem, type HomeIt
 import { menuState, MENU_CHOSEN } from "./context-menu";
 import { esc, runListAction } from "./collection-card";
 import { setting } from "./settings-store";
+import { sortByOrder, moveTo, onRowOrderChange } from "./row-order";
+import type { DragRow } from "./row-drag";
 import { playTracks, playStation } from "./player";
 import { requestOpenPlaylist } from "./playlists";
 import { requestLibraryDrill } from "./layout-bus";
@@ -53,6 +55,9 @@ export function onPinsChange(cb: () => void): () => void {
   return () => listeners.delete(cb);
 }
 const emit = () => listeners.forEach((cb) => cb());
+// A hand order IS pin order (fork 12A), so a move — or a Reset that drops one — redraws
+// every Pinned shelf through the listener the cards already have.
+onRowOrderChange(() => emit());
 
 /** The playlists the store cached, kept here so a pin resolves without an await. */
 let playlists = new Map<string, Playlist>();
@@ -82,9 +87,12 @@ export async function initPins(): Promise<void> {
 
 export const isPinned = (key: string): boolean => pins.has(key);
 
-/** Every pin, newest first (the cards' order), or only the kinds asked for. */
+/** Every pin in the order the cards show, or only the kinds asked for: the order you set
+ *  by hand first (MOVABLE-ROWS.md fork 12A — it wins on every shelf, Home included), and
+ *  under it, newest first, as it always was. A pin you never moved is unranked, so it
+ *  keeps its newest-first place and sits after the ones you placed. */
 export function pinsOf(kinds?: PinKind[]): Pin[] {
-  const all = [...pins.values()].sort((a, b) => b.pinnedAt - a.pinnedAt);
+  const all = sortByOrder("pins", [...pins.values()].sort((a, b) => b.pinnedAt - a.pinnedAt), (p) => p.key);
   return kinds ? all.filter((p) => kinds.includes(p.kind)) : all;
 }
 
@@ -359,9 +367,9 @@ export function handleUnpin(e: Event): boolean {
 
 /** One tile in a card's Pinned shelf. `data-shelf-item` routes its click and right-click to
  *  the card's `onShelf` / `shelfMenu` (collection-card.ts); `data-key` is the pin. */
-const shelfTileHTML = (it: HomeItem): string =>
-  `<div class="search__tile" data-shelf-item="pin" data-key="${esc(it.key)}" role="button" tabindex="0" title="${esc(it.title)}">` +
-  `${tileArt(it)}${pinBadgeHTML(it.key)}<span class="search__tile-name">${esc(it.title)}</span>` +
+const shelfTileHTML = (it: HomeItem, i: number): string =>
+  `<div class="search__tile" data-shelf-item="pin" data-pin-idx="${i}" data-key="${esc(it.key)}" role="button" tabindex="0" title="${esc(it.title)}">` +
+  `${tileArt(it)}${pinBadgeHTML(it.key)}${PIN_GRIP}<span class="search__tile-name">${esc(it.title)}</span>` +
   `<span class="search__tile-sub">${esc(it.sub)}</span></div>`;
 
 /** A card's Pinned shelf: the tiles under no label (the badge says it), a hairline under
@@ -371,6 +379,46 @@ export function pinnedShelfHTML(kinds: PinKind[]): string {
   if (!items.length) return "";
   return `<div class="lib-shelves lib-shelves--pins"><div class="search__scroller">${items.map(shelfTileHTML).join("")}</div></div>`;
 }
+
+// ── moving a pinned tile (MOVABLE-ROWS.md §5.2) ───────────────────────────────
+// A tile press already carries its songs to another card (DRAG-DROP.md §2), and a tile has
+// no header to hold. So the tile grows its own grip: a bar over the left of the cover,
+// three dots, shown on hover or keyboard focus (the owner, 2026-09-20). Press the bar and
+// the tile slides along its shelf; press anywhere else and nothing at all has changed.
+
+/** The grip bar. `aria-hidden`: the tile is one control, and the bar is a handle on it. */
+export const PIN_GRIP =
+  '<span class="tile-grip" data-pin-grip title="Drag to move this pinned item"><i></i><i></i><i></i></span>';
+
+/** The drag a press on a grip starts, or null when the press was somewhere else. Every
+ *  card that draws pinned tiles hands its `rowAt` through this first. */
+export function pinDragRow(target: HTMLElement): DragRow | null {
+  const grip = target.closest<HTMLElement>("[data-pin-grip]");
+  if (!grip) return null;
+  const tile = grip.closest<HTMLElement>("[data-pin-idx]");
+  const list = tile?.parentElement;
+  if (!tile || !list || !tile.dataset.key) return null;
+  const keys = [...list.querySelectorAll<HTMLElement>("[data-pin-idx]")]
+    .map((el) => el.dataset.key ?? "")
+    .filter(Boolean);
+  const key = tile.dataset.key;
+  return {
+    row: tile,
+    index: Number(tile.dataset.pinIdx),
+    list,
+    count: keys.length,
+    axis: "x", // a shelf runs sideways: an upright line, and sideways auto-scroll
+    measure: true,
+    sel: "[data-pin-idx]",
+    done: (to) => {
+      if (to != null) void moveTo("pins", keys, key, to);
+    },
+  };
+}
+
+/** A click that landed on a grip is the grip's: the tile must not act. */
+export const isPinGrip = (e: Event): boolean =>
+  e.target instanceof HTMLElement && !!e.target.closest("[data-pin-grip]");
 
 /** The tile a shelf event landed on, resolved back to its item. */
 export function pinShelfItem(el: HTMLElement): HomeItem | null {

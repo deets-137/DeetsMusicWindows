@@ -57,6 +57,7 @@ take, so a row plays at once. Times are local ISO text (`2026-09-16T14:37:14`).
 | `playlists` | `id` (`playlist:local:N` / `playlist:p.…`), `name`, `source` (DeetsMusic / Apple Music), `song_count` (songs DeetsMusic has read) | no |
 | `playlist_songs` | `playlist_id`, `position` (1 = first), `song_id` | no |
 | `pins` | `id` (the pin key: `playlist:…`, `station:…`, `album:…`, `artist:…`, `song:…`), `kind`, `pinned_at`, `act` (what a click does — `play` | `shuffle` | `open`, or NULL for the card's own rule; PINS.md §8, 2026-09-20) | no |
+| `row_order` | `scope` (`settings.sections`, `home.shelves`, `radio.sections`, `playlists.sections`, `playlists.folder:<key>`, `pins`), `id`, `rank` (0 = first) — the order the user set by hand; a scope holds ONLY the ids they moved past, and anything unnamed draws last in its card's built-in order (MOVABLE-ROWS.md, 2026-09-20) | no |
 | `plays` | `song_id`, `started_at`, `listened_s` (NULL = not finished yet), `finished`, `skipped`, `context` | **yes** |
 | `play_counts` | `song_id`, `starts`, `finishes`, `last_played` | **yes** |
 

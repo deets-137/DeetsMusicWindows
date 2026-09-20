@@ -355,6 +355,7 @@ of it is automatic; the rest is one row in `src/compass.ts`.
 | **A verb** (transport, sleep, a toggle) | One row in `actions()`: title, an optional second line, `run`. The title follows the state when the verb does (Play / Pause). | `actions()` |
 | **A data kind** with a page of its own (a library kind, a store) | Rows built once per store change in `libraryRows()` or a sibling; `run` sends to the owner through a held request on the bus (`requestLibraryDrill`, `requestOpenPlaylist`, `requestSearchTerm`: copy that shape, the card takes it on mount and while on screen); `alt` for Play; `tracks` so `queue` can take it. Add the kind to `KINDS` for a chip and to `PREFER` for the prediction. | `libraryRows()`, layout-bus.ts, the card |
 | **A data kind that only acts** (a station, a speaker) | Rows with `run` only; no chip unless it is a library kind. | its own `…Rows()` |
+| **A verb that only makes sense sometimes** (Reset row order) | The same one row in `actions()`, inside an `if`. *Reset row order* is pushed only when `orderedScopes()` is not empty, and it OPENS its Settings row rather than firing — a destructive verb from a search bar should still ask. | `actions()` (MOVABLE-ROWS.md §13.5) |
 | **A command** (`web`, `grow`, `queue`, `volume`) | A `…Row(termRaw)` that parses the text and returns one row, spread first in `query()`. A shape the user picks is `options` (Tab walks it; remember the pick in localStorage). | `query()` |
 
 Rules that hold for every row:

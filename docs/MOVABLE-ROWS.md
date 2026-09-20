@@ -1,9 +1,10 @@
 # DeetsMusic — Movable rows
 
-> **Status (2026-09-20): PAPER DESIGN. NOT BUILT.** Every statement about the code below was
-> checked against the tree on 2026-09-19. **The SCOPE is decided (§0a, the owner 2026-09-19);
-> the mechanism forks in §11 are still open.** Read §0a first — it removes about a third of
-> what the rest of this doc describes.
+> **Status (2026-09-20): BUILT, and the desk test in §12 PASSED 2026-09-20.** Every fork in §11 was decided by
+> the owner on 2026-09-20 and the whole thing was built in one hand-over — sections on all
+> four cards, playlist rows inside their section, pinned-tile order, and the Settings search
+> bar. **§13 is AS BUILT and is the section to read first**; §§1-11 are the design that led
+> there, and where they disagree with §13, §13 is the code. §0a is still the scope.
 
 **What you asked for.** Two things, in one doc because they collide in one place (§10.5):
 1. A user can press a row and drag it to a new place, so the card shows the rows in the
@@ -547,8 +548,10 @@ this one — your call.
 
 ## 11. The fork sheet
 
-**Forks 1, 2 and 8 are CLOSED** by §0a (the owner, 2026-09-19). The rest are open.
-Recommendations are named; none of the open ones is decided.
+**Forks 1, 2 and 8 were closed** by §0a (the owner, 2026-09-19). **Every other fork was
+closed by the owner on 2026-09-20**; the "I recommend" column is kept as written, and the
+answer column says what he chose. Where they differ, he wins — fork 6 and fork 7 are both
+his own shapes, not one of my options.
 
 ### 11.1 Closed
 
@@ -558,32 +561,35 @@ Recommendations are named; none of the open ones is decided.
 | 2 | Which cards? | **All four** — Home, Playlists, Radio, Settings — for section order |
 | 8 | If B, which lists? | **Pinned tiles and playlist rows.** Radio stations out, Home's other shelf tiles out |
 
-### 11.2 Open — movable rows
+### 11.2 Decided 2026-09-20 — movable rows
 
-| # | Question | Options | I recommend |
+| # | Question | I recommended | **His answer (2026-09-20)** |
 |---|---|---|---|
-| 3 | Where does a NEW section go? | 3A last · 3B beside its built-in neighbour · 3C freeze the order on the first drag | **3A** |
-| 4 | Where does the order live? | 4A localStorage per card + a `rank` column on `pins` · 4B a settings key · 4C one SQLite table for all of it · 4D localStorage for everything, pins included | **4A** — pins need the table anyway (§5.2) |
-| 5 | How does a section move? | 5A collapse on press · 5B a true block move | **5A** |
-| 6 | The gesture? **Amended by §0a** — it must now cover tiles, which have no header | 6A a grip on hover, plus a corner grip on a pinned tile · 6B press and hold · 6C an Arrange mode covering headers AND tiles · 6D a header grip + Arrange mode for tiles | **6C.** §5.2 changed my answer: a tile press already carries songs to other cards, and a mode is the one option that cannot be confused with that |
-| 7 | Reset? | 7A card menus + Settings › Reset · 7B Settings only · 7C 7A + a toast | **7C** |
-| 11 | **New.** Do Settings ROWS reorder inside their section? | no · yes | **No** — it needs per-row measurement in the primitive (§5.2) and the Compass and the new search bar are already the fast paths to a row |
-| 12 | **New.** A hand pin order vs Home's Pinned shelf, which is most-played-first (PINS.md fork 4, your own call) | 12A the hand order wins everywhere, including Home · 12B the hand order rules the roots' shelves; Home stays most-played · 12C Home's shelf gets a choice of its own | **12A** — one pin order you set by hand is easier to trust than two orders for one shelf, and it retires a sort you would otherwise have to explain |
+| 3 | Where does a NEW section go? | 3A | **3A — last, in built-in order.** The hint says so in words |
+| 4 | Where does the order live? | 4A | **4C — one SQLite table, `row_order`, for all of it** (schema v13). Pins included, so there is no `pins.rank` column |
+| 5 | How does a section move? | 5A | **5A — it folds shut as it lifts, and opens again on the drop** |
+| 6 | The gesture? | 6C | **His own shape: the HEADER ITSELF is the grip when it is HELD** (a click still folds it), with a Settings row to turn it off. No Arrange mode, no header grip. A hold of **400 ms**, the row **on** by default |
+| 6a | And a pinned tile, which has no header? | — | **His own shape: a grip bar over the left of the cover** — a rectangle most of the cover's height with three dots in it, pressed and dragged. Shown on **hover or keyboard focus**, not always |
+| 7 | Reset? | 7C | **Settings › Reset + a toast.** No per-card menu row (so 7B + the toast) |
+| 11 | Do Settings ROWS reorder inside their section? | No | **No** |
+| 12 | A hand pin order vs Home's most-played Pinned shelf | 12A | **12A — the hand order wins everywhere, Home included** |
 
-### 11.3 Open — the Settings search bar (§10)
+### 11.3 Decided 2026-09-20 — the Settings search bar (§10)
 
-| # | Question | Options | I recommend |
+| # | Question | I recommended | **His answer (2026-09-20)** |
 |---|---|---|---|
-| S1 | Placement? | 1A a header pill + slide-down field · 1B an always-visible field · 1C no bar, use the Compass | **1A** |
-| S2 | Behaviour? | 2A filter in place · 2B a result list · 2C filter + section names | **2A** |
-| S3 | Ctrl+F? | 9A Settings only · 9B every card with a search · 9C leave it dead | **9B**, possibly in the keyboard session |
-| S4 | Is the query remembered across a remount? | no · yes | **no** |
+| S1 | Placement? | 1A | **1A — a header button that opens the field under it** |
+| S2 | Behaviour? | 2A | **2A — filter in place** |
+| S3 | Ctrl+F? | 9B | **9B — every card with a search field** |
+| S4 | Is the query remembered across a remount? | no | **no** |
 
-## 12. The desk test (to be run after the build, not before)
+## 12. The desk test — **PASSED 2026-09-20**
 
-Written now so the build knows what it must satisfy.
+Written before the build; every step below is what the built code must satisfy. **Read
+§13 first — the gesture is a HOLD, so every "drag" below means "hold the header for a
+moment, then drag".** Steps 17-20 were added after the build.
 
-1. **Settings.** Drag *Sound* above *Window*. It stays there. Close and reopen the card — it
+1. **Settings.** Hold *Sound* and drag it above *Window*. It stays there. Close and reopen the card — it
    is still there. Restart the app — still there.
 2. **A hidden section keeps its place.** Put *Skin settings* between two sections, switch to
    Cyber (the section draws nothing), switch back. It is in your place, not at the end.
@@ -617,4 +623,154 @@ Written now so the build knows what it must satisfy.
     Home's Pinned shelf against fork 12's answer.
 15. **A pinned tile still drags out.** Drag a pinned tile to the Queue card — it still carries
     its songs (DRAG-DROP.md §2). This is the test that catches fork 6 being wired wrong.
-16. `npx tsc --noEmit` and `npx vite build` clean.
+16. `npx tsc --noEmit` and `npx vite build` clean. **Done 2026-09-20, both clean, and
+    `cargo check` clean.**
+17. **The hold does not steal a scroll.** Press a Settings header and move at once: the card
+    scrolls, no ghost, no fold change. Press and wait, then move: it lifts.
+18. **The row turns it off.** Settings › Window › *Move sections by holding* → Off. Hold any
+    header anywhere: it only folds, and the header's hover hint no longer mentions moving. A
+    pinned tile's grip bar still works.
+19. **The grip is not the tile.** Click a pinned tile's grip bar without moving: nothing
+    plays, nothing opens. Hover away: the bar goes.
+20. **Two cards, one order.** Move a pinned tile on the Library root; the Playlists and Radio
+    roots show the same order without a restart, and so does Home.
+
+---
+
+## 13. As built (2026-09-20)
+
+Everything below is in the tree. Where it disagrees with §§1-11, this section is the code.
+
+### 13.1 The gesture
+
+**A section header is its own grip while it is HELD.** Press a header and hold it still for
+**400 ms**: it swells, then it lifts and moves. Let go before that and it is the click it
+always was — the section folds. Move the pointer before the hold fires and the press is
+**dropped whole**, so a scroll or a drag that starts on a header is never stolen.
+
+- The hold is one Settings row: **Window › Growing and drilling › Move sections by holding**
+  (`moveSections`, default **on**). Off means no section anywhere can be moved, and no
+  header carries the hint.
+- 400 ms is the `--hold-ms` skin token. `row-order.ts holdMs()` READS that token, so the
+  swell animation and the timer can never drift apart.
+- A **pinned tile** has no header, and a tile press already carries its songs to another
+  card. So a pinned tile grows its own **grip bar**: a rectangle over the left of the cover,
+  72% of its height, three dots, shown on **hover or keyboard focus**. Press the bar to
+  move the tile; press anywhere else and the tile is exactly what it was.
+
+### 13.2 What moves, and where the order lives
+
+| Scope in `row_order` | What it orders | Built-in order under it |
+|---|---|---|
+| `settings.sections` | the Settings card's sections | the `sections` array literal |
+| `home.shelves` | Home's shelves, by `HomeShelf.id` | the push order in `homeShelves()` |
+| `radio.sections` | Radio's Featured sections, by label | Recents · For You · Live · Genres |
+| `playlists.sections` | folders and clusters, by `sectionKey` | folders A–Z, then the clusters |
+| `playlists.folder:<key>` | the playlists inside ONE section | A–Z (`byName`) |
+| `pins` | every pinned tile, on every shelf | pin time (newest first); on Home, plays |
+
+**One table, `row_order(scope, id, rank)`, schema v13** (`src-tauri/src/roworder.rs`,
+fork 4C). Three commands: `row_order_all` (one read at boot), `row_order_set` (replaces one
+scope inside a transaction), `row_order_reset`. The table is also **exported to the
+read-only SQL copy** (`query.rs`), so `select * from row_order` works from the agent and the
+`query` MCP tool.
+
+**The rank list holds only the ids you moved past.** An unranked id sorts LAST, in the
+card's own built-in order (fork 3A) — `sortByOrder` is a stable sort over the caller's own
+array, and that array IS the built-in order. A ranked id the render does not draw keeps its
+rank for free, and `writeOrder` puts it back beside the neighbour it had, so a Home bucket
+shelf that is hidden at 3 a.m. is not thrown to the end by a drag it took no part in.
+
+### 13.3 What the primitive grew
+
+`row-drag.ts`, all opt-in per `DragRow`, nothing existing changed:
+
+| Field | What it does |
+|---|---|
+| `hold` | start on a timer, not on the 6 px threshold; any movement first drops the press |
+| `measure` | measure each rendered child instead of assuming uniform, flush rows (sections are as tall as their rows) |
+| `sel` | what a measured list's children are — pinned tiles use `[data-pin-idx]`, because the collection engine reads `[data-idx]` as a row of its own list |
+| `axis: "x"` | a sideways shelf: an upright insertion line and sideways auto-scroll |
+| `begin` | the drag really started — fork 5A folds the section here, before the ghost is copied |
+| `done` | this row writes its own rank list instead of `onEnd` |
+
+`.is-holding` is the swell (`--hold-swell`); on a Settings section it is the HEADER that
+swells, not the whole block. Reduced motion drops it.
+
+### 13.4 Per card
+
+- **Settings** (`settings-card.ts`). Each section is a `<section data-idx>`; the list is the
+  card body. The hold is on `[data-fold]`. A fold shut by the hold is restored on the drop,
+  with `enterRows` as `toggleSection` does. **No move while the search field holds text**
+  (§10.5), and no move with the row off.
+- **Home** (`home-card.ts`, `home.ts`). `HomeShelf` gained the stable `id` §2 asked for, and
+  each shelf is now one `<section class="home-shelf" data-idx>` — label and scroller move
+  together. The hold is on `.search__label`. The Pinned shelf's tiles carry `data-pin-idx`
+  and the grip.
+- **Radio** and **Playlists** (through the engine). Sections are gathered into blocks and
+  emitted in the user's order, so nothing else about `shelf()` changed. The engine grew one
+  hook, `Context.holdDrag(row, index, list, view, rerender)`: the card answers with the drag
+  a hold starts, and `rerender` is the re-render fork 5A needs DURING a drag (the engine's
+  own `reload` defers while a drag runs). The engine also grew `Context.shelfDrag(target)`
+  for the pinned tiles above the list — the three roots pass `pinDragRow`.
+- **A playlist row** moves inside its OWN section and never out of it: the drop index is
+  clamped to its section's rows. Moving between folders stays Move to Folder, which says
+  what it does. A plain press and drag on a playlist row is untouched — it still carries
+  the songs to another card and still drops onto another playlist row.
+- **A drop index counts ROWS, not sections**, in the two engine cards. `sectionAt()` in
+  `row-order.ts` converts one to the other by counting the headers that end up before it.
+
+### 13.5 Reset
+
+**Settings › Reset › Row order** — one row, under every group row, above Everything. It
+asks first (`Put every row and section back in its built-in order?`), then a `success` toast
+with a 6-second **Undo** that writes the whole snapshot back. It is not a settings key, so
+it does not ride `RESET_GROUPS`; it has its own ask-confirm-undo in the same shape. The
+Compass has one row, **Reset row order**, which opens that Settings row rather than firing
+it, and it only appears when there is an order to drop.
+
+### 13.6 The Settings search bar
+
+A search button in the Settings header opens the `.lib-searchbar` field under it — the same
+markup and the same slide every other card has. Typing filters **in place**: sections with
+no match are hidden, the ones with a match are open, their matching rows keep their real
+controls, and the header count shows the matches. The index is `settingsRows()`, the
+Compass's own, so there is one list of settings. A row `when()` has gated off is never
+matched. Clearing the field restores every fold exactly. The query is **not** remembered
+across a remount (fork S4).
+
+**Ctrl+F** opens the search field of the card you last pressed in — Settings, Library,
+Playlists, Radio and Search (`src/find-key.ts`, fork S3 = 9B). With no press yet, one card
+with a field takes it; with several, nothing happens rather than the wrong one opening. A
+press inside a text box is left alone.
+
+### 13.7 What it writes to the log
+
+`diag.log("order:set", { scope, n, id, to, after })` on every committed move — the list, what
+moved, and the id it now follows — and `order:reset` / `order:restore`. That is what makes a
+"my Home is in the wrong order" report readable without guessing. A section move is its own
+frame-telemetry scene: the label is `<card>-section`, so it is separable from a row move and
+a cross-card copy.
+
+### 13.8 Decided inside his forks, while building
+
+Named here so nothing ships unseen:
+
+1. The **Settings row sits in Window › Growing and drilling**, with the other card-shape
+   gestures — not under Playback beside the pin rows.
+2. The hover hint on every section header is one line: *"Click to open or close. Hold to
+   move this section. New sections appear at the end."* It is absent while the row is off.
+3. The grip bar's own hint is *"Drag to move this pinned item."*
+4. `--tile-art` is a new skin token (96 px). The shelf tile's cover and width were two
+   hardcoded `96px` values; the grip has to measure against that cover, so it became a token
+   rather than a third copy of the number.
+5. The grip is `.tile-grip`, in the **tile badge** family it sits opposite (same fill, same
+   radius, same hover dim, same focus ring).
+6. A move writes **no toast**. The screen already shows the result (TOASTS.md §5 gains only
+   the Reset row).
+7. `row_order` is exported to the `query` MCP copy. Fork 4C's stated advantage was that the
+   agent can read it; leaving it out of the export would have made that untrue.
+8. **Playlist rows also move by hold**, not by plain drag. A plain drag on a playlist row
+   already means two things that matter (carry its songs to another card; drop onto another
+   playlist row to add them). One rule for the card — hold to move, drag to copy — keeps
+   both.

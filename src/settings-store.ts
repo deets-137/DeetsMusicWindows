@@ -270,7 +270,23 @@ export interface Settings {
    *  already exists: a verb you set on a tile is yours for ever, and a pin made before this
    *  shipped keeps its card's own rule. A song and a station always play, whatever this says.
    *  pins.ts reads it at pin time and stamps it onto the row. */
+  /** Share what you play on your Discord profile — Rich Presence (FRIENDS.md §8). OFF by
+   *  default, and off means the pipe to Discord is never opened at all: a player that
+   *  starts telling people what you play on the day it updates is the wrong surprise. */
+  shareActivityDiscord: boolean;
+  /** "Pause sharing for an hour": the ms timestamp it ends at, 0 = not paused. One row
+   *  covers every sharing row (D11) — "stop telling anyone what I am playing" is one
+   *  intention, and a pause that covered half of it would be a trap. */
+  sharePauseUntil: number;
+  /** Put a *Listen Along* button on the Discord card while you host a room. Its own switch,
+   *  not a consequence of hosting: the button carries the room CODE, and the code is the
+   *  only gate on the room (FRIENDS.md §8.5.3). OFF by default. */
+  discordRoomInvite: boolean;
   pinNewAct: "open" | "play" | "shuffle";
+  /** Press and hold a section header to move it (MOVABLE-ROWS.md fork 6). Off leaves every
+   *  header a plain fold and no section can be reordered — a pinned tile keeps its own grip
+   *  bar either way, because that is not a hold. row-order.ts reads it. */
+  moveSections: boolean;
   /** Both automatic playlist-refresh triggers: on open, and the day-change check
    *  (PLAYLIST-REFRESH.md D6). Off stops both; every per-playlist choice is REMEMBERED and
    *  resumes when this comes back on. The ⟳ button and the menu are untouched by it.
@@ -428,6 +444,10 @@ export const DEFAULTS: Settings = {
   addSquareOwned: false, // user's call 2026-09-17: most playlist and History songs are yours, so a ✓ on each hover says nothing
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
+  shareActivityDiscord: false, // private by default (FRIENDS.md §8.5.3): nothing is shared until you ask
+  sharePauseUntil: 0,
+  discordRoomInvite: false, // the button publishes the room code for as long as the card is up
+  moveSections: true, // user's call 2026-09-20: on, at a 400 ms hold — long enough that a click-to-fold never trips it
   pinNewAct: "open", // user's call 2026-09-20: albums, playlists and artists open, as all three cards do today — so nothing changes verb on update day
   playlistAutoRefresh: true, // the bug it fixes is silent: a mix serves last week until you press ⟳ (PLAYLIST-REFRESH.md §0)
   webReach: 2, // the artist's collaborators and theirs: a real web without drifting far (PLAYLIST-WEB.md §3)

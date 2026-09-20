@@ -68,6 +68,14 @@ item is gone is skipped when drawing; a deleted playlist clears its own pin (`pl
 There is no prune pass: a song or album that leaves the library keeps its pin (the snapshot,
 or nothing to draw) until you unpin it.
 
+**The order changed on 2026-09-20** ([MOVABLE-ROWS.md](MOVABLE-ROWS.md) §13, fork 12A): a
+pinned tile can be **moved by hand**, with the grip bar on its cover, and that hand order wins
+on every shelf — the three roots AND Home, which until then sorted its Pinned shelf by plays
+(fork 4 above). The order is NOT a column on `pins`; it is the `row_order` table's `pins`
+scope, so this table is unchanged. A pin never moved by hand is unranked and keeps the place
+it always had — newest first on the roots, most played on Home — after the ones that were
+placed.
+
 Commands: `pins_list() -> Vec<Pin>` (newest first), `pin_set(key, kind, data)` (a re-pin
 refreshes the snapshot and keeps its time), `pin_clear(key)`, `pin_play_counts(keys) ->
 Vec<(key, n)>`. The count is one prepared statement per key over all time — `context = key`
@@ -196,7 +204,7 @@ Decided while building, inside the owner's choices:
 
 ## 8. What a click on a pin does — On Click (designed 2026-09-19, **BUILT 2026-09-20**)
 
-> **§8.7 is as built.** The desk test in §8.6 is **OPEN** — and this section will need a pass
+> **§8.7 is as built, and the desk test in §8.6 PASSED 2026-09-20.** This section — and this section will need a pass
 > once it has been run: see §8.8.
 
 **The idea (owner, 2026-09-19):** a settings item that says what a click on a pinned tile
@@ -370,7 +378,7 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 9. Compass: the Settings row is automatic; no new verb row.
 
 
-### 8.6 Desk test (after build) — OPEN
+### 8.6 Desk test — **PASSED 2026-09-20**
 
 1. Pin an album in Library. Right-click the tile: **On Click** shows three verbs, with the
    current one marked. §6's desk test still passes unchanged.
@@ -424,10 +432,11 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 
 ### 8.8 After the desk test — the doc pass this section still needs
 
-**Written down on 2026-09-20, at the owner's instruction.** §8.6 has not been run. When it is:
+**Written down on 2026-09-20, at the owner's instruction; settled the same day.** §8.6 was run
+and **PASSED 2026-09-20** — the owner confirmed it with the three other features of that day.
+Nothing in the build changed as a result, so §8.7 stands exactly as written.
 
-- Mark §8.6 **PASSED** with the date, as every other desk test in this repo is marked, or
-  record what failed and what changed.
+- ~~Mark §8.6 **PASSED** with the date~~ — done.
 - If anything changes in the build, **§8.7 is the table that must change with it** — it is the
   record of what is true, not of what was intended.
 - §8.1's table ("what a click does today") is now **history**: it describes the four drifted

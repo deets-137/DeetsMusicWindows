@@ -82,36 +82,18 @@ front-end, Rust back-end).
   led by the Deets and Happy sprites (§4.0 = as built, 2026-09-18: five steps, the gesture
   advances, the sprites travel, `onboardingStep` in settings; §5 = `npm run dev:fresh` /
   `dev:fresh:in`, how to be a first-time user without losing your data).
-- `docs/FRIENDS.md` — **Friends**: a friend code that stands for one person forever, presence
-  ("what they play now"), and the tie back into Rooms; plus **broadcasting what you play to
-  Discord** (Rich Presence, and one channel message edited in place on the Song of the Day
-  webhook code). §1 = why this is a layer UNDER Rooms, not an extension of it (there is no
-  client identity in the app today); §5 = the free-tier budget and the seven app-side rules
-  that keep it there; §5.2 = the "busy, and your music is not affected" toast (it fixes Rooms'
-  raw 429 too); §13 = what the app asks of our workers today (~5 requests/install/day, nearly
-  all of it the 6-hour update check); §14 = what one room costs (~20 requests, ~450 row writes);
-  §15 = reuse the rooms worker or make a new one — **cost is identical, the free tier meters per
-  ACCOUNT**, so fork 10 closed on deploy blast radius: **a new `deetsmusic-friends` worker** (paper
-  design 2026-09-19; D1 no heartbeat, D2 a friend row opens a room, D3 the toast, D4 a new worker
-  are decided; nine forks open; not built). **§8.6 = Discord OAuth, asked and closed (D5, 2026-09-19)**:
-  no scope sets presence, Spotify's card is a first-party Connection with no public route, and the
-  Social SDK writes the same activity a named pipe writes; §8.6.1 reads the webhook path out of
-  `sotd/` — it posts straight from Rust, no worker. **§8.7 = the Rich Presence card (D6/D7/D8)**:
-  two buttons plus clickable `details_url`, *Listen Along* → `rooms.deets.solutions/j/<CODE>`, which
-  always serves one landing page (Open · Get) and rides the §18.7 deploy. §8.5 = Sharing › Discord and
-  its four keys. Buttons are invisible to the account that sets them, so 7A needs a two-account desk
-  test (§8.4 item 3). §8.5 = Settings: a top-level **Sharing** (two adjacent *Share activity on …*
-  rows + a pause that covers both) and a top-level **Discord**, into which the Song of the Day webhook
-  Connect row **moves** (SotD keeps its pick rows and gains a linked status line). **D14 (2026-09-19) = Rich Presence ONLY; a
-  now-playing channel post is REJECTED as spam (forks 8 and 9 fall with it, and the doc's earlier
-  "7C" was an inference, now corrected). D15 = the profile clears a minute after pause, at once on
-  quit; §8.9 is the full lifecycle table. **§8.8 = the build gate: every fork is closed; the only
-  step left before code is the three §8.4 measurements, which need Windows + the Discord desktop
-  client and cannot be run from a Mac session.** Build order after D14 is 6 → 7 → 1 → 2 → 4 → 5:
-  Rich Presence needs no friend code, no worker and no network. §2b = where a later
-  DeetsAccounts link would land (identity is **1C** + **1a-A**, decided 2026-09-19: the minted key is
-  permanent, the account link is additive, `../DeetsAccounts`'s schema already expects an
-  `identities` table).
+- `docs/FRIENDS.md` — **Friends** (paper) **+ Discord Rich Presence (BUILT + desk-tested
+  2026-09-20)**. §8.4a = the three measurements against the real client: **type 2 works**
+  ("Listening to"), **`status_display_type` is kept and ignored** (so the headline is the app
+  name), and **an https Apple cover needs no upload** — Discord's media proxy fetches it.
+  §8.10 = as built: `src-tauri/src/presence.rs` is the pipe and nothing else,
+  `src/presence.ts` is the card + the §8.9 lifecycle (4 s coalescer, a pause clears after a
+  minute, sharing off closes the pipe), plus Settings › **Sharing** and Settings › **Discord**
+  (the Song of the Day webhook rows MOVED here, §8.5.2). `scripts/discord-probe.mjs` re-asks
+  the measurements after a Discord update. **Open: the two buttons need a second Discord
+  account** (§8.4 item 3), and `/j/` waits for a worker deploy (§8.7.3). **Friends itself —
+  the friend code, presence between friends, the worker — is still paper**, nine forks open;
+  §5 = the free-tier budget, §13-§15 = what a room costs and why a new worker.
 - `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
@@ -145,14 +127,15 @@ front-end, Rust back-end).
   a day change while the app runs), one toast, one global switch. §1 = telling Apple's playlists
   from the user's, with the signals we already have (paper design 2026-09-19, **every fork closed** —
   ten decisions in §3, the last three settled in §9 — NOT BUILT; §5.1 is the one piece of Rust it needs).
-- `docs/MOVABLE-ROWS.md` — **movable rows**: drag a section (Home shelves, Playlists folders,
-  Radio sections, Settings sections) into the order you want, plus the **Settings search bar**
-  (it reads the Compass's own `settingsRows()` index). §2 = the one hard problem (an order over a
-  computed list); §0a = **the SCOPE, decided 2026-09-19** (sections everywhere; items only for
-  pinned tiles and playlist rows — radio and Home's other tiles are out); §11 = the fork sheet,
-  three closed and ten open, recommendations named. Pinned tiles need a sideways drag axis and a
-  `rank` column on `pins`, so they are their OWN hand-over, never beside `playlist_refresh`
-  (paper design 2026-09-19/20, NOT BUILT).
+- `docs/MOVABLE-ROWS.md` — **movable rows**: HOLD a section header (Home shelves, Playlists
+  folders, Radio sections, Settings sections) to move it, a grip bar to move a pinned tile, a
+  hold to move a playlist row inside its own section, plus the **Settings search bar** (it reads
+  the Compass's own `settingsRows()` index) and **Ctrl+F** in every card that has a field.
+  **§13 = AS BUILT (2026-09-20), read it first**; §13.8 lists what was decided inside his forks.
+  One `row_order(scope, id, rank)` table, **schema v13**, exported to the `query` MCP copy; an
+  unranked id draws last in its card's built-in order. Settings › Window › *Move sections by
+  holding* turns the gesture off; Settings › Reset › *Row order* undoes it all. **Desk test §12
+  (20 steps) NOT RUN** — HANDOFF.md "Test 4" is the short version.
 - `docs/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
   answers to; update it with `SYNONYMS` in compass.ts.
 - `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows

@@ -33,10 +33,16 @@ import type { DragPayload } from "./row-drag";
 import { musicCell } from "./library-card";
 import { playStation, queueStationAfter } from "./player";
 import { copyStationLinkItem } from "./copy-link";
-import { pinItem, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { pinItem, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import type { MenuItem } from "./context-menu";
 import { enterRows, rowsAfter } from "./pop";
 import type { CardDef } from "./cards";
+import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
+
+/** The hover hint that teaches the gesture (ONBOARDING.md ledger); nothing while the
+ *  Move sections row is off, because then there is no move. */
+const moveHint = (): string =>
+  sectionsMovable() ? ' title="Click to open or close. Hold to move this section. New sections appear at the end"' : "";
 
 type ShelfItem = { pos: number } & (
   | { kind: "header"; label: string; count: number }
@@ -102,15 +108,18 @@ export const radioCard: CardDef = {
     const collapsed = loadCollapsed();
 
     // Fold/unfold a shelf, persist, re-render the root pane.
-    const toggleSection = (label: string) => {
-      const opening = collapsed.has(label);
-      if (opening) collapsed.delete(label);
-      else collapsed.add(label);
+    const saveCollapsed = () => {
       try {
         localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
       } catch {
         /* storage unavailable — collapse still works for the session */
       }
+    };
+    const toggleSection = (label: string) => {
+      const opening = collapsed.has(label);
+      if (opening) collapsed.delete(label);
+      else collapsed.add(label);
+      saveCollapsed();
       card.reload(); // synchronous: the shelf's rows exist after this
       // The opened shelf's rows slide in under their header (src/pop.ts); a close stays instant.
       if (opening) enterRows(rowsAfter(host.querySelector(`[data-section="${CSS.escape(label)}"]`)));
@@ -155,10 +164,13 @@ export const radioCard: CardDef = {
       // A featured section: its header (with member count) then its rows, unless the
       // header is folded. Any non-featured view drops headers and emits the rows flat
       // regardless of collapse (so search reaches into folded shelves).
+      // The sections are gathered first and emitted after, so the user's own order can
+      // decide which comes first (MOVABLE-ROWS.md §4). The gather order below is the
+      // BUILT-IN order: a section the rank list does not name falls to the end (fork 3A).
+      const blocks: { label: string; count: number; emit: () => void }[] = [];
       const section = (label: string, count: number, emit: () => void) => {
         if (!shelved) return void emit();
-        items.push({ pos: pos++, kind: "header", label, count });
-        if (!collapsed.has(label)) emit();
+        blocks.push({ label, count, emit });
       };
 
       const recents = radioRecents();
@@ -171,8 +183,16 @@ export const radioCard: CardDef = {
         section("Genres", genres.length, () => {
           for (const g of genres) items.push({ pos: pos++, kind: "genre", genre: g });
         });
+      for (const b of sortByOrder("radio.sections", blocks, (x) => x.label)) {
+        items.push({ pos: pos++, kind: "header", label: b.label, count: b.count });
+        if (!collapsed.has(b.label)) b.emit();
+      }
       return items;
     };
+
+    /** Every section drawn now, in the order drawn — what a drop position means. */
+    const sectionIds = (items: ShelfItem[]): string[] =>
+      items.flatMap((x) => (x.kind === "header" ? [x.label] : []));
 
     // ── genre detail: that genre's stations, fetched lazily on first drill ──
     const genreCtx = (g: StationGenre): Context => {
@@ -220,6 +240,7 @@ export const radioCard: CardDef = {
       title: "Radio",
       density: true, // lines / small / large all work; headers span the grid rows
       shelves: () => pinnedShelfHTML(["station"]),
+      shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
       // A station is a stream Apple shuffles: it plays, and it is never asked for a verb
       // (PINS.md §8.2 fork 5). It goes through the shared activator all the same, so the
@@ -254,7 +275,7 @@ export const radioCard: CardDef = {
                 : false,
           render: (x, density, idx) =>
             x.kind === "header"
-              ? `<div class="lib-shelf lib-shelf--toggle${collapsed.has(x.label) ? " is-collapsed" : ""}" data-idx="${idx}" data-section="${esc(x.label)}">` +
+              ? `<div class="lib-shelf lib-shelf--toggle${collapsed.has(x.label) ? " is-collapsed" : ""}" data-idx="${idx}" data-section="${esc(x.label)}"${moveHint()}>` +
                 `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
                 `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`
               : x.kind === "station"
@@ -269,6 +290,47 @@ export const radioCard: CardDef = {
           },
         } satisfies Grouping<ShelfItem>,
       ],
+      // Hold a section header to move the section (MOVABLE-ROWS.md §4.2). Only in the
+      // Featured view with no query: any other sort flattens the headers out, so there is
+      // nothing to hold and the rank list is simply not read (§4.3). A station row is never
+      // movable — Recents is a log that reorders itself on the next play (§0a).
+      holdDrag: (row, index, list, view, rerender) => {
+        if (!sectionsMovable()) return null;
+        if (view.sortKey !== "featured" || view.sortDir !== "asc" || view.query.trim()) return null;
+        const items = view.items as ShelfItem[];
+        const x = items[index];
+        if (!x || x.kind !== "header") return null;
+        const label = x.label;
+        const ids = sectionIds(items);
+        const wasOpen = !collapsed.has(label);
+        return {
+          row, index, list, count: items.length, measure: true, hold: holdMs(),
+          // Fork 5A: the section shuts as it lifts, so one row travels.
+          begin: () => {
+            if (wasOpen) {
+              collapsed.add(label);
+              saveCollapsed();
+              rerender();
+            }
+          },
+          done: (to) => {
+            const back = () => {
+              if (!wasOpen) return void card.reload();
+              collapsed.delete(label);
+              saveCollapsed();
+              card.reload();
+              enterRows(rowsAfter(host.querySelector(`[data-section="${CSS.escape(label)}"]`)));
+            };
+            if (to == null) return back();
+            // The LIVE list, not the one read at the press: fork 5A folded this section
+            // shut as it lifted, so its members left the list and every row index after
+            // it moved. `to` counts rows in the list as it is NOW.
+            const live = view.items as ShelfItem[];
+            const at = sectionAt(live.length, (i) => live[i].kind === "header", index, to);
+            void moveTo("radio.sections", ids, label, at).then(back);
+          },
+        };
+      },
       defaults: { grouping: "shelves", density: "lines", sortKey: "featured", sortDir: "asc" },
       get emptyText() {
         return loading
@@ -302,6 +364,8 @@ export const radioCard: CardDef = {
     });
 
     const unsubPins = onPinsChange(() => card.reload());
+    // A section moved, or a Reset dropped the order: the list is rebuilt from `shelf()`.
+    const unsubOrder = onRowOrderChange(() => card.reload());
 
     // ── load (session-cached in radio.ts — a remount costs zero Apple calls) ──
     const load = () => {
@@ -353,6 +417,7 @@ export const radioCard: CardDef = {
       snapshot: () => card.snapshot(),
       destroy() {
         unsubPins();
+        unsubOrder();
         card.destroy();
         host.innerHTML = "";
       },

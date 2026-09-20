@@ -22,9 +22,11 @@ import { homeShelves, hideItem, fillArtistPhotos, refreshApple, type HomeItem, t
 import { playTracks, playStation, queueStationAfter, onPlayerState } from "./player";
 import { playlistShelfMenu } from "./artist-view";
 import { trackMenu } from "./library-card";
+import { addSongToLibraryItem, addAlbumToLibraryItem, addAlbumFromSongsItem } from "./library-add";
 import { requestOpenPlaylist, onPlaylistsChange } from "./playlists";
 import { requestDrillCard } from "./layout-bus";
-import { copyStationLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
+import { copyStationLinkItem, copyAlbumLinkFromSongItem, copyAlbumLinkItem } from "./copy-link";
+import { goToAlbumItem, goToAlbumPaneItem, goToArtistItem, requestPlaylistPane } from "./go-to";
 import { onTracksChange } from "./track-store";
 import { toast } from "./toast";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -35,7 +37,8 @@ import { enterRows } from "./pop";
 import type { Artwork, Track } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
-import { isPinned, pinItem, pinRows, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange } from "./pins";
+import { isPinned, pinItem, pinRows, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange, PIN_GRIP, pinDragRow, isPinGrip } from "./pins";
+import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs } from "./row-order";
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 import * as diag from "./diag";
 
@@ -67,15 +70,22 @@ function tileArt(it: HomeItem): string {
   return `<div class="search__tile-art search__tile-art--empty${round}" aria-hidden="true">♪</div>`;
 }
 
-/** `data-key` is the item's identity — the one thing a listener needs to find it again. */
-const tileHTML = (it: HomeItem): string =>
-  `<div class="search__tile${it.dashed ? " search__tile--offer" : ""}" data-key="${esc(it.key)}" role="button" tabindex="0" title="${esc(it.title)}">` +
-  `${tileArt(it)}${isPinned(it.key) ? pinBadgeHTML(it.key) : ""}<span class="search__tile-name">${esc(it.title)}</span>` +
+/** `data-key` is the item's identity — the one thing a listener needs to find it again.
+ *  On the Pinned shelf a tile also carries its place in that shelf and the grip that moves
+ *  it (MOVABLE-ROWS.md §5.2); everywhere else it is exactly the tile it always was. */
+const tileHTML = (it: HomeItem, i: number, pinShelf: boolean): string =>
+  `<div class="search__tile${it.dashed ? " search__tile--offer" : ""}" data-key="${esc(it.key)}"` +
+  `${pinShelf ? ` data-pin-idx="${i}"` : ""} role="button" tabindex="0" title="${esc(it.title)}">` +
+  `${tileArt(it)}${isPinned(it.key) ? pinBadgeHTML(it.key) : ""}${pinShelf ? PIN_GRIP : ""}` +
+  `<span class="search__tile-name">${esc(it.title)}</span>` +
   `<span class="search__tile-sub">${esc(it.sub)}</span></div>`;
 
-const shelfHTML = (sh: HomeShelf): string =>
+// A shelf is one block: its label and the tiles under it move together (§4.1). The label
+// is the header you hold.
+const shelfHTML = (sh: HomeShelf, i: number): string =>
+  `<section class="home-shelf" data-idx="${i}" data-shelf="${sh.id}">` +
   `<div class="search__label">${esc(sh.label)}</div>` +
-  `<div class="search__scroller">${sh.items.map(tileHTML).join("")}</div>`;
+  `<div class="search__scroller">${sh.items.map((it, n) => tileHTML(it, n, sh.id === "pinned")).join("")}</div></section>`;
 
 export const homeCard: CardDef = {
   id: "home",
@@ -94,10 +104,19 @@ export const homeCard: CardDef = {
       key ? shelves.flatMap((s) => s.items).find((i) => i.key === key) : undefined;
 
     // A rebuild keeps each shelf's sideways scroll where the user left it.
+    /** The shelves this render draws, in the user's own order (MOVABLE-ROWS.md §2). The
+     *  push order in `homeShelves()` is the built-in order; a shelf the rank list does not
+     *  name falls to the end (fork 3A). Keyed on `id`, never on the label — the bucket
+     *  shelf's label changes with the hour. */
+    const ordered = (): HomeShelf[] => sortByOrder("home.shelves", shelves, (sh) => sh.id);
+    let shownIds: string[] = [];
+
     const render = () => {
       const scrolled = [...shelfBox.querySelectorAll<HTMLElement>(".search__scroller")].map((el) => el.scrollLeft);
+      const list = ordered();
+      shownIds = list.map((sh) => sh.id);
       shelfBox.innerHTML = shelves.length
-        ? shelves.map(shelfHTML).join("")
+        ? list.map(shelfHTML).join("")
         : `<p class="lib-empty__msg">${loading ? "Looking through what you play…" : "Play something. Home fills itself."}</p>`;
       shelfBox.querySelectorAll<HTMLElement>(".search__scroller").forEach((el, i) => {
         if (scrolled[i]) el.scrollLeft = scrolled[i];
@@ -203,6 +222,9 @@ export const homeCard: CardDef = {
       }
       if (it.kind === "playlist" && it.playlist) {
         const p = it.playlist;
+        // Yours opens in the Playlists card, where you can edit it. One of Apple's, which
+        // this card has no row for, opens as a Search pane — the same pane a Featured
+        // Playlists tile opens (ARTIST-VIEW.md §5). Before 2026-09-20 it had neither.
         const open: MenuItem | null = p.libraryId
           ? {
               label: "Open in Playlists",
@@ -211,20 +233,52 @@ export const homeCard: CardDef = {
                 requestOpenPlaylist(p.libraryId as string);
               },
             }
-          : null;
+          : p.catalogId
+            ? {
+                label: "Go to Playlist",
+                run: () =>
+                  requestPlaylistPane({ id: p.catalogId as string, name: p.name, artwork: p.artwork, curatorName: p.curatorName }),
+              }
+            : null;
         const load = () => Promise.resolve(it.tracks());
         return [...playlistShelfMenu(load, it.context, false), open, ...pinRows(it.key, "playlist"), hideRow(it)].filter(Boolean) as MenuItem[];
       }
       // An album or an artist the library does not hold: its rows load the whole list (the
-      // shelf menu's loader shape), an album's link from a song, and the pin (an album's
+      // shelf menu's loader shape), the drill-ins, an album's link, and the pin (an album's
       // known songs are its snapshot; an artist's snapshot is already in the pin).
+      //
+      // Two kinds of tile land here, and they differ only in what they can hop FROM. A tile
+      // built from songs (Recently Played, Added, the bucket) hops from any song that has a
+      // catalog id. A tile built from a catalog album — the "New" shelf — holds the album's
+      // OWN id, so it opens the pane with no hop and asks Apple for the artist directly.
       if (it.whole) {
         const known = it.tracks();
         const seed = Array.isArray(known) ? known.find((t) => t.catalogId) : undefined;
+        const album = it.kind === "album";
+        const artist = it.artistName ?? it.sub;
         return [
           ...playlistShelfMenu(it.whole, it.context, false),
-          it.kind === "album" ? copyAlbumLinkFromSongItem(seed?.catalogId) : null,
-          ...pinRows(it.key, it.kind, it.kind === "album" && Array.isArray(known) ? known : undefined),
+          album
+            ? it.catalogId
+              ? goToAlbumPaneItem({ id: it.catalogId, name: it.title, artwork: it.art, artistName: it.artistName })
+              : goToAlbumItem(seed?.catalogId, it.title)
+            : null,
+          album && it.catalogId
+            ? goToArtistItem("albums", it.catalogId, artist)
+            : goToArtistItem("songs", seed?.catalogId, album ? artist : it.title),
+          album ? (it.catalogId ? copyAlbumLinkItem(it.catalogId) : copyAlbumLinkFromSongItem(seed?.catalogId)) : null,
+          // "Add to Library" (2026-09-20): by the album's own id where the tile has one —
+          // a "New" tile, which needs no hop and whose songs are not here to test, so the
+          // row stands on the toggle alone — else from the songs the tile knows.
+          album
+            ? it.catalogId
+              ? addAlbumToLibraryItem(it.catalogId, it.whole)
+              : addAlbumFromSongsItem(Array.isArray(known) ? known : [])
+            : null,
+          // A pin keeps its own snapshot of the songs (PINS.md): a tile that knows none yet
+          // — a release that is not out — has nothing to pin, so it offers no Pin row. It
+          // never did; whether an unreleased album can be pinned is its own question.
+          ...(it.catalogId ? [] : pinRows(it.key, it.kind, album && Array.isArray(known) ? known : undefined)),
           hideRow(it),
         ].filter(Boolean) as MenuItem[];
       }
@@ -241,10 +295,22 @@ export const homeCard: CardDef = {
         return [...trackMenu(Array.isArray(list) ? list : ([] as Track[]), it.context), ...pickMenu(pick)];
       }
       // Songs, albums and artists are all track lists: the shared Library menu, which
-      // brings Play Now / Next / Queue, Add to playlist, Go to…, the link and ♥.
+      // brings Play Now / Next / Queue, Add to playlist, Go to…, the link, ♥ and — for an
+      // album this card shows but the library does not hold — Add to Library.
       // (`trackMenu` carries Pin / Unpin itself, from the context tag or the one song.)
+      //
+      // A SONG's own Add to Library is not in that shared menu: every card wires it in
+      // itself (Queue, History, Now Playing, Playlists), and this card never did — so a
+      // song tile on Home could not be added anywhere (the owner, 2026-09-20). It sits
+      // where the other cards put it: after the link and the station, before ♥ and Hide.
       const list = it.tracks();
-      return [...trackMenu(Array.isArray(list) ? list : ([] as Track[]), it.context), hideRow(it)].filter(Boolean) as MenuItem[];
+      const rows = Array.isArray(list) ? list : ([] as Track[]);
+      const one = rows.length === 1 ? rows[0] : undefined;
+      return [
+        ...trackMenu(rows, it.context),
+        one ? addSongToLibraryItem(one) : null,
+        hideRow(it),
+      ].filter(Boolean) as MenuItem[];
     };
 
     const payloadFor = (it: HomeItem): DragPayload => ({
@@ -258,12 +324,34 @@ export const homeCard: CardDef = {
       play: it.kind === "station" && it.station ? () => playStation(it.station as NonNullable<typeof it.station>) : undefined,
     });
 
-    // A tile drags to any card that takes it (DRAG-DROP.md §2). Copy-only: the shelves
-    // have no order of their own to reorder.
+    // A tile drags to any card that takes it (DRAG-DROP.md §2). Three presses share the
+    // one primitive now (MOVABLE-ROWS.md): a pinned tile's grip moves it along its shelf,
+    // a HELD shelf label moves the whole shelf, and anything else is the copy it always was.
     const drag = rowDrag({
       root: body,
       label: "home",
       rowAt: (target) => {
+        const pin = pinDragRow(target);
+        if (pin) return pin;
+        const label = target.closest<HTMLElement>(".search__label");
+        if (label && sectionsMovable()) {
+          const sec = label.closest<HTMLElement>(".home-shelf");
+          const idx = sec?.dataset.idx;
+          const id = sec?.dataset.shelf;
+          if (sec && idx !== undefined && id) {
+            return {
+              row: sec,
+              index: Number(idx),
+              list: shelfBox,
+              count: shownIds.length,
+              measure: true, // a shelf is as tall as its tiles
+              hold: holdMs(),
+              done: (to) => {
+                if (to != null) void moveTo("home.shelves", shownIds, id, to);
+              },
+            };
+          }
+        }
         const el = tileAt(target);
         const it = itemOf(el?.dataset.key);
         return el && it ? { row: el, index: 0, payload: payloadFor(it) } : null;
@@ -276,6 +364,7 @@ export const homeCard: CardDef = {
 
     const onClick = (e: MouseEvent) => {
       if (handleUnpin(e)) return; // the badge unpins; the tile does not play
+      if (isPinGrip(e)) return; // the grip moves the tile; it never plays it
       if (drag.consumeClick()) return; // the tail of a drag, not a play
       const it = itemOf(tileAt(e.target)?.dataset.key);
       if (it) activate(it);
@@ -317,6 +406,9 @@ export const homeCard: CardDef = {
     const offPlaylists = onPlaylistsChange(() => build());
     const offPins = onPinsChange(() => build());
     const offSotd = onSotdChange(() => build());
+    // A move — this card's own, or a Reset — redraws the shelves. The shelves themselves
+    // are unchanged, so this is a render, not a build.
+    const offOrder = onRowOrderChange(() => { if (alive) render(); });
 
     render();
     build();
@@ -338,6 +430,7 @@ export const homeCard: CardDef = {
         offTracks();
         offPlaylists();
         offPins();
+        offOrder();
         drag.destroy();
         body.removeEventListener("click", onClick);
         body.removeEventListener("keydown", onKey);

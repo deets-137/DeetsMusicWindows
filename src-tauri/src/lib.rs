@@ -13,11 +13,13 @@ mod loudness;
 mod model;
 mod media;
 mod playlists;
+mod presence;
 mod provider;
 mod query;
 mod report;
 mod settings;
 mod rooms;
+mod roworder;
 mod smtc;
 mod sotd;
 mod tray;
@@ -203,6 +205,7 @@ pub fn run() {
             sotd::migrate_v10(&conn).expect("v10 migration failed");
             playlists::migrate_v11(&conn).expect("v11 migration failed");
             library::migrate_v12(&conn).expect("v12 migration failed");
+            roworder::migrate_v13(&conn).expect("v13 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
@@ -314,6 +317,12 @@ pub fn run() {
             playlists::playlists_song_index,
             library::play_counts,
             library::pins_list,
+            presence::presence_set,
+            presence::presence_clear,
+            presence::presence_close,
+            roworder::row_order_all,
+            roworder::row_order_set,
+            roworder::row_order_reset,
             library::pin_set,
             library::pin_clear,
             library::pin_play_counts,

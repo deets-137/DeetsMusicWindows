@@ -27,6 +27,15 @@ in [`src-tauri/src/library.rs`](../src-tauri/src/library.rs).
 | **Recently Added** | Mixed: songs, albums, playlists | `addedRank` (songs/albums), `dateAdded` (playlists), `added_at` (this app's own adds) |
 | **Weekday evening** (the bucket's own name) | Mixed: the songs and lists this kind of hour usually holds | `play_events`, last 180 days |
 
+**The shelves can be reordered (2026-09-20).** Each shelf now carries a stable `id`
+(`played` · `added` · `new` · `bucket` · `pinned` · `sotd`) and is drawn as one
+`<section class="home-shelf">`; hold a shelf's label for a moment and drag it where you want
+it. The push order in `homeShelves()` is the built-in order underneath, and a shelf a later
+version adds appears at the end ([MOVABLE-ROWS.md](MOVABLE-ROWS.md) §13). The id matters:
+the bucket shelf's LABEL changes with the hour, so an order kept by label would lose it every
+few hours. **Home's Pinned shelf now follows the hand pin order when there is one**, and
+falls back to most-played (fork 12A).
+
 **Each shelf is one row of tiles that scrolls sideways**, and the shelves stack down the
 card — the artist view's shelves ([ARTIST-VIEW.md](ARTIST-VIEW.md) §2.2), the same
 `.search__label` + `.search__scroller` + `.search__tile` markup. So all three are on screen
@@ -476,3 +485,74 @@ Decided while building, inside his choices:
    is a day. The refresh square clears it.
 10. `npm run dev:fresh` (signed out): Home mounts, no Apple call, no second sticky. Sign in.
     The library syncs, and New fills once the artist pass has run.
+
+### 10.11 The New tile's menu, and the play it never really did (fixed 2026-09-20)
+
+Step 4 above says "the normal album menu". It was not. The shelf built its items with
+`tracks: () => collectionTracks("albums", id)` — a **promise**, where every other tile on
+this card returns an array. `HomeItem.tracks` is documented as sync except for a playlist,
+and `menuFor` in home-card.ts reads it as `Array.isArray(list) ? list : []`. So a right-click
+on a New tile built its menu on an **empty list**: Play Now, Play Next, Add to Queue and Add
+to Playlist all ran on nothing, Go to Artist was suppressed for want of a catalog id, and
+only Hide worked. The same promise fed the left click, which played the songs **without the
+transient add + materialize** every other catalog list gets.
+
+**As fixed.** A New item now keeps the contract: `tracks: () => []` (nothing is known without
+a fetch) and `whole: wholeCatalogAlbum(id)` — the loader every catalog album on this card
+already used, now with the materialize step. The item also carries its own `catalogId` and
+`artistName`, so its menu reads:
+
+- **Play Now · Play Next · Add to Queue · Add to Playlist ▸**, each over the loader.
+- **Go to Album** — with the album's OWN id, so the pane opens with **no `?include=` hop**.
+- **Go to Artist** — `albums → artists`, one hop from the same id.
+- **Copy Album Link** — from the id, not from a song.
+- **Hide**.
+
+**No Pin row, deliberately.** A pin keeps its own snapshot of the songs (PINS.md), and a
+release that is not out has none. A New tile never offered Pin, and still does not. Whether
+an unreleased album can be pinned — and what its tile would play — is its own question.
+
+### 10.12 Desk test — the New tile's menu
+
+1. Right-click a **New** tile whose album is already out. Every row is there, in the order
+   above. Play Next: the whole album lands in the queue, in track order.
+2. **Go to Album** on the same tile: the Search card opens the album pane straight away.
+   The window's log shows no `?include=` hop for it.
+3. **Go to Artist**: the artist pane opens on that artist.
+4. Right-click a tile that reads **Coming MM/DD**. The same menu; the play rows do nothing,
+   because Apple returns no songs yet. Nothing errors.
+5. A left click on an out-now tile plays the album from the top, and the Queue names it.
+6. Right-click an album tile on **Recently Played** or the bucket shelf: **Go to Album** is
+   there too, and opens the album by the song→album hop.
+
+### 10.13 Add to Library, from Home (built 2026-09-20)
+
+The owner went looking for it on Recently Played and found nothing. He was right: **Home had
+no Add to Library at all**, for a song or an album, and an ALBUM could be added from the
+**Search card alone** — the only caller of `addAlbumToLibraryItem` in the app.
+
+Two causes, both now fixed (FAVORITES.md, "An album, from songs"):
+
+- A **song's** add row is wired per card (Queue, History, Now Playing, Playlists all do it),
+  and Home never did. It now sits after the link and the station, as it does elsewhere.
+- An **album's** add row did not exist outside Search, because Apple adds an album by its own
+  id and an album tile built from songs carries none. `addAlbumFromSongsItem` resolves that id
+  lazily on pick — one memoized `songs → albums` hop — and rides the shared `trackMenu`, so
+  Home, the Pinned shelves, Playlists, Queue, History and Rewind all gained it together. A
+  **New** tile needs no hop: it adds by the album id it already holds.
+
+**The row hides itself when the library already holds every song of the album.** That is not a
+preference, it is what keeps the row off every album tile on the Library card.
+
+### 10.14 Desk test — Add to Library
+
+1. Settings › Apple Music › **Library Add** is on (the default).
+2. Home › Recently Played › right-click an album you played from Search and do **not** own:
+   **Add to Library** is there. Pick it. The album appears in the Library card.
+3. Right-click that same tile again: the row is **gone** — you have it now.
+4. Right-click a **song** tile you do not own: **Add to Library** is there, between Start
+   Station and ♥. It goes after the add, the same way.
+5. Right-click any album tile on the **Library** card: no Add to Library row, ever.
+6. A **New** tile that is out: Add to Library adds the whole album. Watch the log — the add
+   names the album id, with no `songs → albums` hop before it.
+7. Turn **Library Add** off. Every row above disappears, on every card.

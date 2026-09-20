@@ -35,7 +35,7 @@ import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
 import { registerDropTarget } from "./row-drag";
 import { dropToLibrary } from "./drop-actions";
-import { libraryAddEnabled } from "./library-add";
+import { libraryAddEnabled, addAlbumFromSongsItem } from "./library-add";
 import { mosaicHTML } from "./mosaic";
 import {
   libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, playlistShelfMenu,
@@ -43,7 +43,7 @@ import {
 } from "./artist-view";
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
-import { pinRows, pinRowsFor, pinArtistRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { pinRows, pinRowsFor, pinArtistRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import { markItem } from "./sotd";
 
 // ── derived models ────────────────────────────────────────────────────────────
@@ -375,16 +375,28 @@ function dominantArtist(items: Track[], nav: LibNav): string | undefined {
   return best;
 }
 
+/** The album a list IS: one song's own album, or a longer list whose songs all share one
+ *  album name — an album tile, a pinned album, a Home shelf album. Null for a mixed list
+ *  (a genre, a playlist, a multi-select), which has no one album to go to. */
+function listAlbum(items: Track[]): Track | null {
+  const first = items[0];
+  if (!first?.albumName) return null;
+  return items.every((t) => t.albumName === first.albumName) ? first : null;
+}
+
 // The "Go to Artist" / "Go to Album" verbs for a menu — in-place over the library when
-// `nav` is present, else the catalog drill-in (Search). A song (1-track list) can go to
-// its album; an album (longer list) can only go to its artist.
+// `nav` is present, else the catalog drill-in (Search). Both a song and a whole album can
+// go to the album: the hop is from any song of it that carries a catalog id (the owner,
+// 2026-09-20 — an album tile offered "Go to Artist" alone, on every card that has no nav).
 function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
   const first = items[0];
   if (!first) return [];
+  const album = listAlbum(items);
   if (!nav) {
+    const seed = album ? items.find((t) => t.catalogId) : undefined;
     return [
       goToArtistItem("songs", first.catalogId, first.artistName),
-      items.length === 1 ? goToAlbumItem(first.catalogId, first.albumName) : null,
+      album ? goToAlbumItem(seed?.catalogId, album.albumName) : null,
       items.length === 1 ? songCreditsItem(first) : null,
     ];
   }
@@ -401,8 +413,7 @@ function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
           ? { label: "Go to Artist", run: () => nav.drillArtist(names[0]) }
           : { label: "Go to Artist", sub: () => names.map((n) => ({ label: n, run: () => nav.drillArtist(n) })) };
   }
-  const albumItem =
-    items.length === 1 && first.albumName ? { label: "Go to Album", run: () => nav.drillAlbum(first) } : null;
+  const albumItem = album ? { label: "Go to Album", run: () => nav.drillAlbum(album) } : null;
   // A nav means this card drills locally, so Song Credits stays here too — it would be odd
   // for two verbs in one menu to stay and the third to summon another card (go-to.ts).
   const creditsItem =
@@ -439,6 +450,12 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
       : copyAlbumLinkFromSongItem(items.find((t) => t.catalogId)?.catalogId),
     // A station seeds from ONE song — a longer list is an album, which has no station.
     ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
+    // "Add to Library" for the album this list IS (2026-09-20). A SONG's own add row is
+    // not here: each card adds it itself (Queue, History, Now Playing, Playlists), and a
+    // second copy from the shared menu would show it twice. The album row is new, so no
+    // card carries one, and it reaches them all from here. It is its own null when the
+    // library already holds the album — which is every album tile on the Library card.
+    ...(items.length > 1 && listAlbum(items) ? [addAlbumFromSongsItem(items)] : []),
     // ♥ — one song only (an album has no favorite here); null without consent/catalog id.
     ...(items.length === 1 ? [favoriteItem(items[0])] : []),
     // Pin / Unpin (PINS.md): the album or artist this list is, else the one song.
@@ -1131,8 +1148,17 @@ export const libraryCard: CardDef = {
       const list = it.tracks();
       const known = Array.isArray(list) ? list : [];
       if (it.whole) {
-        // Off the library: the loader rows over the whole album, then the pin row.
-        return [...playlistShelfMenu(it.whole, it.context, false), ...pinRows(it.key, "album", known)];
+        // Off the library: the loader rows over the whole album, the drill-ins — which go
+        // to the CATALOG pane, because this card's nav can only drill what the library
+        // holds — then the pin row.
+        const seed = known.find((t) => t.catalogId);
+        return [
+          ...playlistShelfMenu(it.whole, it.context, false),
+          goToAlbumItem(seed?.catalogId, it.title),
+          goToArtistItem("songs", seed?.catalogId, it.sub),
+          addAlbumFromSongsItem(known),
+          ...pinRows(it.key, "album", known),
+        ].filter(Boolean) as MenuItem[];
       }
       return trackMenu(known, it.context, libNav);
     };
@@ -1150,6 +1176,7 @@ export const libraryCard: CardDef = {
       title: "Library",
       density: true,
       shelves: () => pinnedShelfHTML(["album", "artist", "song"]),
+      shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
       onShelf: pinShelfOpen,
       shelfMenu: pinShelfMenu,

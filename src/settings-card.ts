@@ -38,6 +38,13 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
+import { rowDrag } from "./row-drag";
+import { registerFinder } from "./find-key";
+import { sharePauseLeft, pauseSharingForAnHour } from "./presence";
+import {
+  sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs,
+  resetOrder, snapshotOrders, restoreOrders, orderedScopes,
+} from "./row-order";
 import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, versionText, type OlderVersion } from "./updater";
 import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
@@ -226,10 +233,14 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
+  },
+  {
+    id: "sharing", label: "Sharing", hint: "Share activity on Discord, the hour's pause, and the room invite button. Not the webhook — that is a connection, not a setting",
+    keys: ["shareActivityDiscord", "sharePauseUntil", "discordRoomInvite"],
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
@@ -337,8 +348,27 @@ export function settingsRows(): SettingEntry[] {
 }
 
 function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts): CardInstance & { sections: Section[] } {
-  host.innerHTML = `<header class="panel__head"><h2 class="panel__title">Settings</h2></header><div class="panel__body set"></div>`;
+  // The search pill (MOVABLE-ROWS.md §10, fork S1 = 1A): the header idiom every other
+  // card has, and the same slide-down field under it. It reads `settingsRows()` — the
+  // Compass's own index — so there is one list of settings, not two.
+  host.innerHTML =
+    `<header class="panel__head"><h2 class="panel__title">Settings</h2>` +
+    `<button class="panel__action" type="button" data-set-search aria-expanded="false" aria-label="Search" title="Finds a setting by name">` +
+    `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg></button></header>` +
+    `<div class="lib-searchbar" data-frames="settings-search"><div class="lib-searchbar__inner">` +
+    `<label class="lib-search"><svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>` +
+    `<input class="lib-search__input" data-set-q type="search" placeholder="Search settings…" autocomplete="off" spellcheck="false" /></label>` +
+    `</div></div><div class="panel__body set"></div>`;
   const body = host.querySelector<HTMLElement>(".panel__body")!;
+  const searchBar = host.querySelector<HTMLElement>(".lib-searchbar")!;
+  const searchBtn = host.querySelector<HTMLButtonElement>("[data-set-search]")!;
+  const searchInput = host.querySelector<HTMLInputElement>("[data-set-q]")!;
+  /** The live query. A filter, so while it holds text no section can be moved (§10.5). */
+  let query = "";
+  let searchOpen = false;
+  /** The section titles the last render drew, in the order it drew them — what a drop
+   *  index means, and the list a move is written over (row-order.ts `moveTo`). */
+  let shownTitles: string[] = [];
 
   // Minimize to Tray and the AirPlay rows live in Rust (read there before JS can
   // answer, or at connect time); cache the values here and write through.
@@ -747,6 +777,45 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     ],
   });
 
+  // Settings › Reset: the orders you set by hand (MOVABLE-ROWS.md §4.4, fork 7 = Reset
+  // groups + a toast, the owner 2026-09-20). It is not a settings key, so it cannot ride
+  // RESET_GROUPS' snapshot — it asks and undoes in the same shape instead.
+  const orderResetRow: Row = {
+    kind: "split", id: "reset-roworder", label: "Row order",
+    hint: () => "Every section you moved by hand — in Settings, Home, Radio and Playlists — and the order of your pinned items",
+    halves: [
+      {
+        type: "action", label: "Reset", hint: "Asks first. You can undo it after",
+        run: (el) => {
+          if (!orderedScopes().length) return flash(el, "Default");
+          resetAsk?.dismiss();
+          resetAsk = toast({
+            kind: "info",
+            sticky: true,
+            text: "Put every row and section back in its built-in order?",
+            actions: [
+              {
+                label: "Confirm",
+                run: () => {
+                  resetAsk = null;
+                  const before = snapshotOrders();
+                  void resetOrder();
+                  toast({
+                    kind: "success",
+                    text: "Row order reset to the built-in order.",
+                    timeout: RESET_UNDO_MS,
+                    actions: [{ label: "Undo", run: () => void restoreOrders(before) }],
+                  });
+                },
+              },
+              { label: "Cancel", run: () => (resetAsk = null) },
+            ],
+          });
+        },
+      },
+    ],
+  };
+
   const sections: Section[] = [
     // Labels: one short active statement each; the hint (hover) only where a word is
     // missing. Section names are the shortest noun that groups the rows.
@@ -850,6 +919,9 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         },
         storeToggle("carddrillbring", "Bring a card already open", "cardDrillBring", () => "A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits"),
         storeToggle("cardmemorydisk", "Keep card places on restart", "cardMemoryDisk", () => "Opens each card where you left it, also after you restart DeetsMusic"),
+        // Movable rows (MOVABLE-ROWS.md fork 6). The row is here, beside the other
+        // card-shape gestures, and not under Playback: it changes how a card is arranged.
+        storeToggle("movesections", "Move sections by holding", "moveSections", () => "Hold a section header for a moment, then drag it where you want it. A click still opens and closes the section. New sections appear at the end"),
       ],
     },
     // Look and feel became four sections on 2026-09-18 (fork 1C). RESET_GROUPS had split it
@@ -1263,6 +1335,93 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         },
       ],
     },
+    // ── Sharing + Discord (FRIENDS.md §8.5.1) ──
+    // Sharing holds the CONSENT, Discord holds the plumbing, and they sit beside the other
+    // service sections. "Who can see what I play" is one decision, so its rows are adjacent
+    // and the pause covers all of them (D11). Every switch here starts Off (§8.5.3).
+    {
+      title: "Sharing",
+      tail: () => {
+        const left = sharePauseLeft();
+        if (left) return `<div class="set__status">Paused for another ${Math.max(1, Math.round(left / 60000))} min. Nothing is shared meanwhile.</div>`;
+        return setting("shareActivityDiscord")
+          ? `<div class="set__status">Your Discord profile shows the song, the artist, the album and a progress bar while you listen.</div>`
+          : `<div class="set__status">Nothing is shared. With this off, DeetsMusic never opens the connection to Discord at all.</div>`;
+      },
+      rows: [
+        storeToggle(
+          "shareDiscord",
+          "Share activity on Discord",
+          "shareActivityDiscord",
+          () => "Your Discord profile reads “Listening to DeetsMusic” with the song under it. Needs the Discord app open on this PC, and its Activity Privacy switch on",
+        ),
+        {
+          kind: "split", id: "sharepause",
+          get label() {
+            const left = sharePauseLeft();
+            return left ? `Sharing paused · ${Math.max(1, Math.round(left / 60000))} min left` : "Pause sharing for an hour";
+          },
+          hint: () => "Stops every sharing row above at once, then turns them back on by itself. Your settings are kept",
+          halves: [
+            {
+              type: "action",
+              get label() {
+                return sharePauseLeft() ? "Resume" : "Pause";
+              },
+              hint: "Takes effect at once",
+              run: () => {
+                if (sharePauseLeft()) setSetting("sharePauseUntil", 0);
+                else pauseSharingForAnHour();
+                render();
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      // The service section: the connection itself. The Song of the Day webhook moved here
+      // on 2026-09-20 (M1/D9) — the same three controls, re-parented, with no change to
+      // `outlet.rs`, `discord.rs` or the stored file.
+      title: "Discord",
+      rows: [
+        {
+          kind: "split", id: "sotddiscord", label: "Connect",
+          hint: () => "One channel's webhook, used by Song of the Day. Anyone who has the link can post there",
+          halves: discordHalves(),
+        },
+        {
+          // The setup field and its steps. An html row, so the field keeps what is typed
+          // while the card redraws around it (the report form's shape).
+          kind: "html", id: "sotdhook",
+          when: () => hookOpen,
+          html: () =>
+            `<div class="set__group">` +
+            `<label class="set__field"><input class="set__input" data-sotd="hook" type="text" spellcheck="false" ` +
+            `placeholder="Paste the webhook link" value="${esc(hookDraft)}" /></label>` +
+            `<div class="set__status">In Discord: the channel's gear › Integrations › Webhooks › New Webhook › ` +
+            `Copy Webhook URL. You need the Manage Webhooks permission. If you do not have it, ask a server admin to send you the link.</div>` +
+            (hookSay ? `<div class="set__status">${esc(hookSay)}</div>` : "") +
+            `</div>`,
+        },
+        {
+          kind: "html", id: "sotdpostas",
+          when: () => !!outletOf("discord")?.connected,
+          html: () =>
+            `<label class="set__field"><input class="set__input" data-sotd="postas" type="text" maxlength="80" ` +
+            `placeholder="${esc(outletOf("discord")?.defaultName || "Post as")}" value="${esc(sotdSettings().sotdPostAs)}" /></label>`,
+        },
+        storeToggle(
+          "discordroominvite",
+          "Let my profile invite people to my room",
+          "discordRoomInvite",
+          () => "While you host a listening room, your Discord card carries a Listen Along button. The button holds the room code, so anyone who sees your profile can join",
+        ),
+        // The record of what has left the app. Last in the section: it is a thing you check,
+        // not a thing you set.
+        { kind: "html", id: "sotdlog", html: postLogHTML },
+      ],
+    },
     {
       title: "Playlists",
       rows: [
@@ -1397,36 +1556,24 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: timeOptions(0, 23 * 60 + 45, 15),
           when: () => on() && sotdSettings().sotdPostMode === "time",
         },
+        // The webhook moved to Settings › Discord (FRIENDS.md §8.5.2): a service's connection
+        // belongs under the service's name. These rows are about PICKS, so they stayed. The
+        // line below is the pointer, and it opens the row it names.
         {
-          kind: "split", id: "sotddiscord", label: "Discord", group: true,
-          hint: () => "Posts the song's link in one channel through a webhook. Anyone who has the link can post there",
-          halves: discordHalves(),
+          kind: "split", id: "sotdoutlet", label: "Where picks go",
+          hint: () => "The one outlet a pick goes to. Set it up in Settings › Discord",
+          halves: [
+            {
+              type: "action",
+              get label() {
+                return outletOf("discord")?.connected ? "Discord" : "Not set up";
+              },
+              hint: "Opens the Discord section",
+              run: () => focusRow("sotddiscord"),
+            },
+          ],
           when: on,
         },
-        {
-          // The setup field and its steps. An html row, so the field keeps what is typed
-          // while the card redraws around it (the report form's shape).
-          kind: "html", id: "sotdhook",
-          when: () => on() && hookOpen,
-          html: () =>
-            `<div class="set__group">` +
-            `<label class="set__field"><input class="set__input" data-sotd="hook" type="text" spellcheck="false" ` +
-            `placeholder="Paste the webhook link" value="${esc(hookDraft)}" /></label>` +
-            `<div class="set__status">In Discord: the channel's gear › Integrations › Webhooks › New Webhook › ` +
-            `Copy Webhook URL. You need the Manage Webhooks permission. If you do not have it, ask a server admin to send you the link.</div>` +
-            (hookSay ? `<div class="set__status">${esc(hookSay)}</div>` : "") +
-            `</div>`,
-        },
-        {
-          kind: "html", id: "sotdpostas",
-          when: () => on() && !!outletOf("discord")?.connected,
-          html: () =>
-            `<label class="set__field"><input class="set__input" data-sotd="postas" type="text" maxlength="80" ` +
-            `placeholder="${esc(outletOf("discord")?.defaultName || "Post as")}" value="${esc(sotdSettings().sotdPostAs)}" /></label>`,
-        },
-        // The record of what has left the app. Last in the section: it is a thing you check,
-        // not a thing you set.
-        { kind: "html", id: "sotdlog", when: on, html: postLogHTML },
       ],
     },
     {
@@ -1539,6 +1686,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         resetRow("Look and feel", "The theme and skin, and every row of the four look sections", RESET_GROUPS.filter((g) => LOOK_AND_FEEL.includes(g.id)), "reset-lookfeel", "group"),
         ...RESET_GROUPS.filter((g) => LOOK_PARTS.includes(g.id)).map((g) => resetRow(g.label, g.hint, [g], `reset-${g.id}`, "sub")),
         ...RESET_GROUPS.filter((g) => !LOOK_AND_FEEL.includes(g.id)).map((g) => resetRow(g.label, g.hint, [g], `reset-${g.id}`)),
+        orderResetRow,
         resetRow("Everything", "Every row in this list, in one step", RESET_GROUPS, "reset-all"),
       ],
     },
@@ -1852,6 +2000,9 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
   // ── section folds: the header is a button; a collapsed section renders no rows ──
   const folds = loadFolds();
   const isOpen = (s: Section) => folds[s.title] ?? !!s.defaultOpen;
+  /** What the render draws: a section with a match is open for as long as the query holds,
+   *  and every fold comes back exactly as it was when the field is cleared (§10.3). */
+  const openNow = (s: Section) => (query ? true : isOpen(s));
   const saveFolds = () => {
     try {
       localStorage.setItem(FOLDS_KEY, JSON.stringify(folds));
@@ -1872,11 +2023,34 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const drawn = body.querySelector(`.set__section[data-sec="${CSS.escape(title)}"]`);
     if (!was) enterRows([...(drawn?.children ?? [])].slice(1));
   };
-  const headHTML = (s: Section): string => {
-    const open = isOpen(s);
-    const count = s.count ?? settingRows(s.rows).length;
+  /** The hover hint that teaches the gesture, on every section header while the row is on
+   *  (ONBOARDING.md ledger). With the row off there is no hint, because there is no move. */
+  const MOVE_HINT = sectionsMovable()
+    ? ' title="Click to open or close. Hold to move this section. New sections appear at the end"'
+    : "";
+  // ── the search (§10) ────────────────────────────────────────────────────────
+  // Every space-separated word must hit this row's own text: its label, its section's
+  // title, or its hint — the same rule the collection engine's `match` uses, so "tray min"
+  // finds Minimize to Tray. A row `when` has gated off is never matched: it cannot be
+  // shown, so a hit on it is a dead end (§10.4).
+  const rowText = (s: Section, r: Row): string => {
+    if (r.kind === "html") return ""; // markup, no label and no hint: never a match
+    const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.kind === "head" ? undefined : r.hint?.();
+    return `${r.label} ${s.title} ${hint ?? ""}`.toLowerCase();
+  };
+  const matchRow = (s: Section, r: Row): boolean => {
+    const text = rowText(s, r);
+    return query.split(/\s+/).every((w) => text.includes(w));
+  };
+  /** The rows a section draws now: its own, or only the ones the query hits. A sub-heading
+   *  is dropped while searching — it names a group that is no longer whole. */
+  const rowsOf = (s: Section): Row[] =>
+    query ? shown(s.rows).filter((r) => r.kind !== "head" && matchRow(s, r)) : shown(s.rows);
+
+  const headHTML = (s: Section, count = s.count ?? settingRows(s.rows).length): string => {
+    const open = openNow(s);
     return (
-      `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-fold="${esc(s.title)}" aria-expanded="${open}">` +
+      `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-fold="${esc(s.title)}" aria-expanded="${open}"${MOVE_HINT}>` +
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
       `<span>${esc(s.title)}</span>${count ? `<span class="lib-shelf__count">${count}</span>` : ""}</button></h3>`
     );
@@ -1890,13 +2064,27 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const caret = field ? [active!.selectionStart ?? 0, active!.selectionEnd ?? 0] : null;
     const rangeFocus = active && body.contains(active) ? active.dataset.range : undefined; // a key step keeps focus
     const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
-    body.innerHTML =
+    // The sections this render draws, in the user's own order (MOVABLE-ROWS.md §2): the
+    // rank list sorts them, and a section it does not name keeps the built-in place and
+    // falls to the end (fork 3A). The array literal is the built-in order.
+    const drawn = sortByOrder(
+      "settings.sections",
       sections
         // A section whose every row is gated off shows nothing at all — no empty header.
         // Skin settings under Cyber is the case that made this necessary (2026-09-18).
-        .filter((s) => settingRows(s.rows).length > 0 || !!tailOf(s))
-        .map((s) => `<section class="set__section" data-sec="${esc(s.title)}">${headHTML(s)}${isOpen(s) ? shown(s.rows).map(rowHTML).join("") + tailOf(s) : ""}</section>`)
-        .join("");
+        // While the field holds text, a section with no matching row goes the same way.
+        .filter((s) => (query ? rowsOf(s).length > 0 : settingRows(s.rows).length > 0 || !!tailOf(s))),
+      (s) => s.title,
+    );
+    shownTitles = drawn.map((s) => s.title);
+    body.innerHTML = drawn
+      .map((s, i) => {
+        // The tail is markup, not indexed rows, so a filtered section never shows it.
+        const inside = openNow(s) ? rowsOf(s).map(rowHTML).join("") + (query ? "" : tailOf(s)) : "";
+        const count = query ? rowsOf(s).length : undefined;
+        return `<section class="set__section" data-sec="${esc(s.title)}" data-idx="${i}">${headHTML(s, count)}${inside}</section>`;
+      })
+      .join("");
     if (field && caret) {
       const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(
         `[data-report="${field}"], [data-sotd="${field}"]`,
@@ -1952,6 +2140,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const t = e.target as HTMLElement;
     const fold = t.closest<HTMLElement>("[data-fold]")?.dataset.fold;
     if (fold !== undefined) {
+      // The click that trails a section drag is not a fold (MOVABLE-ROWS.md §4.2).
+      if (sections_drag.consumeClick()) return;
       toggleSection(fold);
       return;
     }
@@ -2160,6 +2350,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
   const focusRow = (id: string) => {
     const s = sections.find((x) => x.rows.some((r) => r.id === id));
     if (!s) return;
+    // A request names one row: the search that hid the rest is over (§10.3).
+    if (query) {
+      query = "";
+      searchInput.value = "";
+      searchOpen = false;
+      paintSearch();
+    }
     if (!isOpen(s)) {
       folds[s.title] = true; // an unfold like the user's own: it persists
       saveFolds();
@@ -2175,6 +2372,97 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     if (id) focusRow(id);
   };
   const unsubRequest = onSettingRequest(takeRequest); // a request while this card is on-screen
+
+  // ── moving a section (MOVABLE-ROWS.md §4) ───────────────────────────────────
+  // The header IS the grip: hold it still and it lifts; click it and it folds, exactly as
+  // it always did (fork 6, the owner 2026-09-20). Any movement before the hold fires drops
+  // the press, so a scroll that starts on a header is never stolen.
+  let foldBefore: { title: string; open: boolean } | null = null;
+  const sections_drag = rowDrag({
+    root: body,
+    label: "settings",
+    rowAt: (target) => {
+      // Not while the field holds text: a filtered list has no order to save (§10.5).
+      if (query || !sectionsMovable()) return null;
+      if (!target.closest("[data-fold]")) return null; // the header only, never a row
+      const el = target.closest<HTMLElement>(".set__section");
+      const idx = el?.dataset.idx;
+      if (!el || idx === undefined) return null;
+      const title = el.dataset.sec!;
+      return {
+        row: el,
+        index: Number(idx),
+        list: body,
+        count: shownTitles.length,
+        measure: true, // sections are as tall as their rows — never uniform
+        hold: holdMs(),
+        // Fork 5A: the section shuts as it lifts, so one header-sized block travels and
+        // the list under it does not jump about. It opens again on the drop.
+        begin: () => {
+          foldBefore = { title, open: isOpen(sections.find((x) => x.title === title)!) };
+          if (foldBefore.open) {
+            folds[title] = false;
+            render();
+          }
+        },
+        done: (to) => {
+          const back = foldBefore;
+          foldBefore = null;
+          const finish = () => {
+            if (back?.open) {
+              folds[back.title] = true;
+              saveFolds();
+              render();
+              const el2 = body.querySelector(`.set__section[data-sec="${CSS.escape(back.title)}"]`);
+              if (el2) enterRows([...el2.children].slice(1));
+            } else {
+              render();
+            }
+          };
+          if (to == null) return finish();
+          void moveTo("settings.sections", shownTitles, title, to).then(finish);
+        },
+      };
+    },
+  });
+
+  // ── the search bar (§10) ────────────────────────────────────────────────────
+  const paintSearch = () => {
+    searchBar.classList.toggle("is-open", searchOpen);
+    searchBtn.setAttribute("aria-expanded", String(searchOpen));
+    searchBtn.classList.toggle("is-active", !!query);
+  };
+  /** Open the field and put the caret in it — the pill, and Ctrl+F (fork S3 = 9B). */
+  const openSearch = () => {
+    searchOpen = true;
+    paintSearch();
+    searchInput.focus();
+    searchInput.select();
+  };
+  const closeSearch = () => {
+    searchOpen = false;
+    const had = !!query;
+    query = "";
+    searchInput.value = "";
+    paintSearch();
+    if (had) render(); // the folds come back exactly as they were
+  };
+  searchBtn.addEventListener("click", () => (searchOpen ? closeSearch() : openSearch()));
+  searchInput.addEventListener("input", () => {
+    query = searchInput.value.trim().toLowerCase();
+    paintSearch();
+    render();
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      closeSearch();
+    }
+  });
+  const unsubFind = registerFinder(host, openSearch);
+
+  // Another card's move, or a Reset, repaints this one.
+  const unsubOrder = onRowOrderChange(() => { if (alive) render(); });
 
   render();
   takeRequest(); // this card was mounted BY a request
@@ -2196,6 +2484,9 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       unsubLook();
       void lastfmUnlisten.then((un) => un());
       unsubRequest();
+      unsubOrder();
+      unsubFind();
+      sections_drag.destroy();
       dropMenus();
       window.removeEventListener("resize", closeMenus);
       scrollObserver.disconnect();

@@ -1294,7 +1294,14 @@ Also for C:
 
 **A first, on its own.** It closes the real gap and waits on nothing. **B rides the next
 worker deploy that happens for a real reason** — §18.7 already parks the `epoch` cleanup
-for that same deploy, so the two should travel together. **C last**, and only if deploys
+for that same deploy, so the two should travel together.
+
+> **That deploy now has a third passenger (2026-09-20).** The `/j/<CODE>` landing page for the
+> Discord card's *Listen Along* button (FRIENDS.md §8.7.2) is **written and committed in
+> `../DeetsMusicRooms`, and NOT deployed**. It is one route, one HTML page, no Durable Object
+> read and no room lookup, so it changes nothing that a live room depends on — but the deploy
+> that carries it still drops every live socket (§17.10), which is why it waits. Until it is
+> deployed the button 404s, so `discordRoomInvite` should stay off. **C last**, and only if deploys
 become routine enough to be worth a directory.
 
 ### 19.6 The build checklist for this section

@@ -33,6 +33,7 @@ import { setting, setSetting } from "./settings-store";
 import { trouble } from "./apple-health";
 import { isConnected } from "./apple";
 import { pinnedItems, pinsOf, pinPlayCounts } from "./pins";
+import { sortByOrder } from "./row-order";
 import { sotdOn, pickTiles, suggestionTile } from "./sotd";
 
 // ── the windows ───────────────────────────────────────────────────────────────
@@ -112,9 +113,21 @@ export interface HomeItem {
    *  then the catalog album; both memoized for the session). `tracks()` is only the songs
    *  the tile knew. A press and a pin use this (owner, 2026-09-18: pins are not the library). */
   whole?: () => Promise<Track[]>;
+  /** The item's OWN catalog id, where the tile was built from a catalog resource and not
+   *  from songs (the "New" shelf's albums). It is what "Go to Album" opens with no hop,
+   *  and what "Go to Artist" hops from (go-to.ts). */
+  catalogId?: string;
+  /** The credited artist, where `sub` is not it (a coming release reads "Coming 09/25 ·
+   *  Name"). The drill-in names the pane with it until the resolved name lands. */
+  artistName?: string;
 }
 
 export interface HomeShelf {
+  /** The shelf's stable identity, for the order the user sets (MOVABLE-ROWS.md §2). It
+   *  is NOT the label: the fourth shelf's label is `bucketLabel()`, which changes with
+   *  the hour and the day, so an order keyed on the label would lose that shelf every
+   *  few hours. */
+  id: "played" | "added" | "new" | "bucket" | "pinned" | "sotd";
   label: string;
   items: HomeItem[];
 }
@@ -236,6 +249,17 @@ export function albumItem(key: string, fallback: Track[]): HomeItem | null {
     whole: mine.length ? undefined : () => wholeAlbum(list),
   };
 }
+
+/** The whole album we already know the catalog id of (a "New" tile): one read, memoized in
+ *  search.ts, and the songs are made playable the way every catalog list is — a transient
+ *  add + materialize. Without that step the songs play from nothing (they are not in the
+ *  library and not in the store), which is what the shelf did before 2026-09-20. */
+export const wholeCatalogAlbum = (id: string) => (): Promise<Track[]> =>
+  collectionTracks("albums", id).then((ts) => {
+    addTransientTracks(ts);
+    ts.forEach(materializeTrack);
+    return ts;
+  });
 
 /** The whole album for songs the library does not hold: one song→album hop, then the
  *  catalog album, both memoized in search.ts. The songs are made playable (a transient
@@ -844,7 +868,15 @@ function newShelf(limit: number): HomeItem[] {
         sub: coming ? `${comingMark(new Date(at))} · ${al.artistName}` : al.artistName,
         art: al.artwork,
         context: `search-albums:${id}`,
-        tracks: () => collectionTracks("albums", id),
+        // Nothing is known without a fetch: the shelf is built from Apple's release list,
+        // which carries no songs. `tracks()` stays SYNC (the type's contract — async only
+        // for a playlist), and the whole album rides `whole`, as every other catalog album
+        // on this card does. Before 2026-09-20 `tracks()` returned a promise here, and
+        // every menu built on it silently fell back to an empty list.
+        tracks: () => [],
+        whole: wholeCatalogAlbum(id),
+        catalogId: id,
+        artistName: al.artistName,
         count: al.trackCount,
       },
     });
@@ -929,12 +961,14 @@ export async function homeShelves(): Promise<HomeShelf[]> {
   const sotd = await sotdShelf();
 
   const shelves: HomeShelf[] = [];
-  if (played.length) shelves.push({ label: "Recently Played", items: played });
-  if (added.length) shelves.push({ label: "Recently Added", items: added });
-  if (fresh.length) shelves.push({ label: "New", items: fresh });
-  if (scored.length) shelves.push({ label: bucketLabel(), items: scored });
-  if (pinned.length) shelves.push({ label: "Pinned", items: pinned });
-  if (sotd.length) shelves.push({ label: "Songs of the Day", items: sotd });
+  // This push order is the BUILT-IN order: a shelf the user's rank list does not name
+  // keeps its place here and falls to the end of the card (MOVABLE-ROWS.md fork 3A).
+  if (played.length) shelves.push({ id: "played", label: "Recently Played", items: played });
+  if (added.length) shelves.push({ id: "added", label: "Recently Added", items: added });
+  if (fresh.length) shelves.push({ id: "new", label: "New", items: fresh });
+  if (scored.length) shelves.push({ id: "bucket", label: bucketLabel(), items: scored });
+  if (pinned.length) shelves.push({ id: "pinned", label: "Pinned", items: pinned });
+  if (sotd.length) shelves.push({ id: "sotd", label: "Songs of the Day", items: sotd });
   return shelves;
 }
 
@@ -948,13 +982,17 @@ async function sotdShelf(): Promise<HomeItem[]> {
   return suggestion ? [suggestion, ...tiles] : tiles;
 }
 
-/** The fifth shelf: the pinned tiles, most played first (PINS.md fork 4). */
+/** The fifth shelf: the pinned tiles, most played first (PINS.md fork 4) — UNDER the order
+ *  the user set by hand, which wins on every shelf including this one (MOVABLE-ROWS.md
+ *  fork 12A, the owner 2026-09-20). A pin never moved by hand is unranked, so it keeps the
+ *  most-played place it has always had, after the ones that were placed. */
 async function pinnedShelf(): Promise<HomeItem[]> {
   const items = pinnedItems();
   if (!items.length) return [];
   const counts = await pinPlayCounts(items.map((i) => i.key)).catch(() => new Map<string, number>());
   const at = new Map(pinsOf().map((p) => [p.key, p.pinnedAt]));
-  return items
-    .sort((a, b) => (counts.get(b.key) ?? 0) - (counts.get(a.key) ?? 0) || (at.get(b.key) ?? 0) - (at.get(a.key) ?? 0))
-    .slice(0, SHELF);
+  const byPlays = items.sort(
+    (a, b) => (counts.get(b.key) ?? 0) - (counts.get(a.key) ?? 0) || (at.get(b.key) ?? 0) - (at.get(a.key) ?? 0),
+  );
+  return sortByOrder("pins", byPlays, (i) => i.key).slice(0, SHELF);
 }

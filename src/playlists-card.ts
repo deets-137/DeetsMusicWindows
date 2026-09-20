@@ -27,7 +27,8 @@ import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
 import { playlistShelfMenu } from "./artist-view";
-import { pinRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { pinRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
+import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
 import { onGrowChange } from "./card-grow";
@@ -122,6 +123,11 @@ type PlRow = { pos: number } & (
   | { kind: "cluster"; key: string; label: string; count: number }
   | { kind: "playlist"; p: Playlist }
 );
+
+/** The hover hint that teaches the gesture (ONBOARDING.md ledger); nothing while the
+ *  Move sections row is off. A playlist row inside a section moves the same way. */
+const moveHint = (): string =>
+  sectionsMovable() ? ' title="Click to open or close. Hold to move this section. New sections appear at the end"' : "";
 
 const sectionKey = (x: PlRow) => (x.kind === "folder" ? `folder:${x.id}` : x.kind === "cluster" ? x.key : "");
 
@@ -741,35 +747,49 @@ export const playlistsCard: CardDef = {
         for (const p of sorted) rows.push({ pos: pos++, kind: "playlist", p });
         return rows;
       }
-      const section = (header: PlRow, members: Playlist[]) => {
-        rows.push(header);
-        if (!collapsed.has(sectionKey(header))) for (const p of members) rows.push({ pos: pos++, kind: "playlist", p });
-      };
+      // The sections are gathered first and emitted after, so the user's own order can
+      // decide which comes first (MOVABLE-ROWS.md §4). The gather order below — folders
+      // A-Z, then the clusters — is the BUILT-IN order: a section the rank list does not
+      // name keeps its place here and falls to the end (fork 3A), which is exactly what a
+      // folder made after the last drag should do.
+      const blocks: { header: PlRow; members: Playlist[] }[] = [];
       // Folders always render, even empty — a just-emptied folder must stay
       // reachable for rename/delete. Empty auto-clusters just hide.
       for (const f of [...folders].sort(byName)) {
         const members = sorted.filter((p) => p.folderId === f.id);
-        section({ pos: pos++, kind: "folder", id: f.id, label: f.name, count: members.length }, members);
+        blocks.push({ header: { pos: 0, kind: "folder", id: f.id, label: f.name, count: members.length }, members });
       }
       const unfiled = sorted.filter((p) => p.folderId == null);
       for (const c of CLUSTERS) {
         const members = unfiled.filter((p) => clusterOf(p) === c.key);
         if (!members.length) continue;
-        section({ pos: pos++, kind: "cluster", key: c.key, label: c.label, count: members.length }, members);
+        blocks.push({ header: { pos: 0, kind: "cluster", key: c.key, label: c.label, count: members.length }, members });
+      }
+      for (const b of sortByOrder("playlists.sections", blocks, (x) => sectionKey(x.header))) {
+        const key = sectionKey(b.header);
+        rows.push({ ...b.header, pos: pos++ } as PlRow);
+        if (collapsed.has(key)) continue;
+        // The playlists INSIDE the section take their own hand order (§0a): A-Z is the
+        // built-in order under it, so a playlist never moved keeps the place it had.
+        for (const p of sortByOrder(`playlists.folder:${key}`, b.members, (x) => pid(x)))
+          rows.push({ pos: pos++, kind: "playlist", p });
       }
       return rows;
     };
 
-    const toggleSection = (key: string) => {
-      const opening = collapsed.has(key);
-      frames.during("fold", 250, opening ? "open" : "close");
-      if (opening) collapsed.delete(key);
-      else collapsed.add(key);
+    const saveCollapsed = () => {
       try {
         localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
       } catch {
         /* storage unavailable — collapse still works for the session */
       }
+    };
+    const toggleSection = (key: string) => {
+      const opening = collapsed.has(key);
+      frames.during("fold", 250, opening ? "open" : "close");
+      if (opening) collapsed.delete(key);
+      else collapsed.add(key);
+      saveCollapsed();
       card.reload(); // synchronous: the section's rows exist after this
       // The opened section's rows slide in under their header; a close stays instant.
       if (opening) enterRows(rowsAfter(host.querySelector(`[data-section="${CSS.escape(key)}"]`)));
@@ -777,7 +797,7 @@ export const playlistsCard: CardDef = {
 
     // Section header cell: the Radio .lib-shelf voice + a collapse chevron and count.
     const shelfCell = (x: PlRow & { label: string; count: number }, idx: number) =>
-      `<div class="lib-shelf lib-shelf--toggle${collapsed.has(sectionKey(x)) ? " is-collapsed" : ""}" data-idx="${idx}" data-section="${esc(sectionKey(x))}">` +
+      `<div class="lib-shelf lib-shelf--toggle${collapsed.has(sectionKey(x)) ? " is-collapsed" : ""}" data-idx="${idx}" data-section="${esc(sectionKey(x))}"${moveHint()}>` +
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
       `<span>${esc(x.label)}</span><span class="lib-shelf__count">${x.count}</span></div>`;
 
@@ -787,6 +807,7 @@ export const playlistsCard: CardDef = {
       title: "Playlists",
       density: true,
       shelves: () => pinnedShelfHTML(["playlist"]),
+      shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
       // The pin's own verb decides (PINS.md §8.4); this card opens a playlist in place.
       onShelf: (el) => {
@@ -881,6 +902,88 @@ export const playlistsCard: CardDef = {
           },
         } satisfies Grouping<PlRow>,
       ],
+      // Hold a row to move it (MOVABLE-ROWS.md fork 6, the owner 2026-09-20). A section
+      // header moves its whole section; a playlist row moves inside its OWN section, and
+      // never out of it — moving between folders is the menu's Move to Folder, which says
+      // what it does. A plain press and drag is untouched: it still carries the playlist's
+      // songs to another card, and still drops onto another playlist row (DRAG-DROP.md §2).
+      // Only in the Folders view with no query: any other sort has no sections (§4.3).
+      holdDrag: (row, index, list, view, rerender) => {
+        if (!sectionsMovable()) return null;
+        if (view.sortKey !== "folders" || view.sortDir !== "asc" || view.query.trim()) return null;
+        const items = view.items as PlRow[];
+        const x = items[index];
+        if (!x) return null;
+        const isHead = (i: number) => items[i].kind !== "playlist";
+        const base = { row, index, list, count: items.length, measure: true, hold: holdMs() };
+
+        if (x.kind !== "playlist") {
+          const key = sectionKey(x);
+          const ids = items.flatMap((r) => (r.kind === "playlist" ? [] : [sectionKey(r)]));
+          const wasOpen = !collapsed.has(key);
+          return {
+            ...base,
+            // Fork 5A: the section shuts as it lifts, so one row travels.
+            begin: () => {
+              if (wasOpen) {
+                collapsed.add(key);
+                saveCollapsed();
+                rerender();
+              }
+            },
+            done: (to) => {
+              const back = () => {
+                if (!wasOpen) return void card.reload();
+                collapsed.delete(key);
+                saveCollapsed();
+                card.reload();
+                enterRows(rowsAfter(host.querySelector(`[data-section="${CSS.escape(key)}"]`)));
+              };
+              if (to == null) return back();
+              // The LIVE list, not the one read at the press: fork 5A folded this section
+              // shut as it lifted, so its members left the list and every row index after
+              // it moved. `to` counts rows in the list as it is NOW.
+              const live = view.items as PlRow[];
+              const at = sectionAt(live.length, (i) => live[i].kind !== "playlist", index, to);
+              void moveTo("playlists.sections", ids, key, at).then(back);
+            },
+          };
+        }
+
+        // A playlist row: its own section's members are the list it moves in. Nothing
+        // folds here, so the list does not change under the drag — but it is read at the
+        // DROP all the same, so a sync that landed meanwhile cannot shift the answer.
+        if (!isHead(index) && index > 0) {
+          const section = (rows: PlRow[], at: number) => {
+            let head = at;
+            while (head >= 0 && rows[head].kind === "playlist") head--;
+            if (head < 0) return null;
+            const first = head + 1;
+            let last = first;
+            while (last < rows.length && rows[last].kind === "playlist") last++;
+            return {
+              key: sectionKey(rows[head]),
+              first,
+              members: rows.slice(first, last).flatMap((r) => (r.kind === "playlist" ? [pid(r.p)] : [])),
+            };
+          };
+          if (!section(items, index)) return null; // a flat list has no section to stay inside
+          const id = pid(x.p);
+          return {
+            ...base,
+            done: (to) => {
+              if (to == null) return;
+              const live = view.items as PlRow[];
+              const at = live[index] === x ? section(live, index) : null;
+              if (!at) return void card.reload();
+              // The drop is clamped to this section: a hold never files a playlist elsewhere.
+              const pos = Math.max(at.first, Math.min(to, at.first + at.members.length - 1)) - at.first;
+              void moveTo(`playlists.folder:${at.key}`, at.members, id, pos).then(() => card.reload());
+            },
+          };
+        }
+        return null;
+      },
       defaults: { grouping: "playlists", density: "lines", sortKey: "folders", sortDir: "asc" },
     });
 
@@ -921,6 +1024,8 @@ export const playlistsCard: CardDef = {
     });
 
     const unsubPins = onPinsChange(() => card.reload());
+    // A section or a folder's rows moved, or a Reset dropped the order: rebuild `shelf()`.
+    const unsubOrder = onRowOrderChange(() => card.reload());
 
     // ── load + sync (stale-while-revalidate, like songs) ──
     const load = () =>
@@ -1084,7 +1189,8 @@ export const playlistsCard: CardDef = {
         unsubChanges();
         unsubOpen();
         unsubGrow();
-      unsubPins();
+        unsubPins();
+        unsubOrder();
         unmountWeb?.();
         card.destroy();
         host.innerHTML = "";

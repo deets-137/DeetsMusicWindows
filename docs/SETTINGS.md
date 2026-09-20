@@ -87,6 +87,13 @@ A sub-heading is not a setting: it is left out of the header's count and out of 
 A section whose every row is gated off is **not drawn at all** — no empty header. Skin settings
 under Cyber is the case (Cyber sets nothing of its own).
 
+**The sections can be reordered, and the card has a search bar (2026-09-20).** Hold a section
+header for 400 ms and drag it; the order lives in the `row_order` table, not in localStorage
+beside the folds. The header's search button filters the card in place, over the same
+`settingsRows()` index the Compass reads, and while the field holds text no section can be
+moved. Both are [MOVABLE-ROWS.md](MOVABLE-ROWS.md) §13; Settings › Reset › *Row order* is the
+way back.
+
 Folds persist by section **title** (`deets.settings.folds`), so a renamed or new section starts
 folded once for a user who had folded the old one. Harmless; say it in the release note.
 
@@ -111,6 +118,11 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Window | Keep view when grown (A card that grows keeps the view you are in; the tile size still follows the card's size) — pills *Keep* / *Per size* (2026-09-17, [CARD-GROW.md](CARD-GROW.md) §13a) | `cardGrowView` | **keep** / size | `collection-card.ts` `reload()` on a size change |
 | Window | Card on drill (A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot) — pills *In place* / *Summon* (2026-09-17, [CARD-GROW.md](CARD-GROW.md) §15; replaced `cardGrowDrill`, whose `swap` reads as `inplace`) | `cardDrill` | **inplace** / summon | `layout.ts` `drillSlot` + `drillInPlace` + `returnFrom` |
 | Window | Bring a card already open (A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits) | `cardDrillBring` | on / **off** | `layout.ts` `drillSlot` (`visibleSlotOf`) |
+| Sharing | Share activity on Discord (Your Discord profile reads “Listening to DeetsMusic” with the song under it. Needs the Discord app open on this PC, and its Activity Privacy switch on) (2026-09-20, [FRIENDS.md](FRIENDS.md) §8.10) | `shareActivityDiscord` | on / **off** | `presence.ts` — off means the pipe to Discord is never opened at all |
+| Sharing | Pause sharing for an hour (Stops every sharing row above at once, then turns them back on by itself. Your settings are kept) — the label counts down and the half becomes Resume | `sharePauseUntil` | ms, **0** | `presence.ts` (D11: one pause covers every sharing row) |
+| Discord | Connect (One channel's webhook, used by Song of the Day) + the paste field + Post as + the post log — **moved here from Song of the Day on 2026-09-20** ([FRIENDS.md](FRIENDS.md) §8.5.2) | `sotd-outlets.json` (Rust) | not connected | `outlet.rs` / `discord.rs`, both unchanged by the move |
+| Discord | Let my profile invite people to my room (While you host a listening room, your Discord card carries a Listen Along button. The button holds the room code, so anyone who sees your profile can join) | `discordRoomInvite` | on / **off** | `presence.ts` — its own switch, because the button publishes the CODE, not just the fact of hosting |
+| Window | Move sections by holding (Hold a section header for a moment, then drag it where you want it. A click still opens and closes the section. New sections appear at the end) (2026-09-20, [MOVABLE-ROWS.md](MOVABLE-ROWS.md) §13.1); under *Growing and drilling* | `moveSections` | **on** / off | `row-order.ts` `sectionsMovable()`, read by the four cards' drag wiring. Off leaves a pinned tile's grip bar working — that is a control, not a hold |
 | Window | Keep card places on restart (Opens each card where you left it, also after you restart DeetsMusic) (2026-09-17, [CARD-MEMORY.md](CARD-MEMORY.md) §7); last row of Window | `cardMemoryDisk` | on / **off** | `card-memory.ts` (the map is in memory either way; on = it is also written to `deets.cardMemory`) |
 | Look schedule | Change look at (Changes between a day look and a night look. Sun times come from your time zone, not your location) — menu *Sunrise and sunset* / *Set times* / *Windows mode* / *Off* (2026-09-15) | `lookSchedule` | **off** / sun / clock / windows | `look-schedule.ts` ([LOOK-SCHEDULE.md](LOOK-SCHEDULE.md)); the rows below show only while it is on |
 | Look schedule | Day look · Night look — split: theme menu \| skin menu | `dayTheme` `daySkin` · `nightTheme` `nightSkin` | **lilac press** · **black-red cyber** | `look-schedule.ts` `applyLook` |

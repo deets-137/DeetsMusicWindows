@@ -374,6 +374,15 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   and `roomsUrl` are text, and this route has no text kind, so they are the panel's and the
   Settings card's alone. An agent in a room needs no new verb: `play`, `queue` and `control` pass
   through the same bridge every click does, so they become room commands (ROOMS.md §16.2).
+- **`shareActivityDiscord`** "Share activity on Discord" (on | off, 2026-09-20, FRIENDS.md §8.10)
+  and **`discordRoomInvite`** "Let my profile invite people to my room" (on | off). Both are
+  **off** by default and both are pure consent: with the first off the app never opens the pipe
+  to Discord. `sharePauseUntil` is a timestamp the *Pause sharing for an hour* row writes; an
+  agent can clear it (0) or set it forward, and clearing it resumes sharing at once.
+- **`moveSections`** "Move sections by holding" (on | off, 2026-09-20, MOVABLE-ROWS.md §13.1).
+  Off means no section anywhere can be dragged. The ORDER itself is not a setting — it is the
+  `row_order` table, which the agent reads with `query` (`select * from row_order`) and cannot
+  write. Moving a section is a gesture, so there is no verb for it.
 - **`cardMemoryDisk`** "Keep card places on restart" (on | off, 2026-09-17, CARD-MEMORY.md §7).
   Where a card is has no agent verb; the card comes back where the user left it.
 - A bad value → `400` that says what the setting takes.

@@ -11,6 +11,12 @@
 // Rows are uniform height and flush, so an insertion index is row math on the list's scroll
 // position — it holds when the list is windowed (collection-window.ts). Every card holds its
 // re-renders while any drag runs (`isDragging` / `onDragEnd`). Escape cancels.
+//
+// Movable rows (MOVABLE-ROWS.md) added three opt-in modes to the same primitive, and
+// changed nothing that was here: `hold` (the press starts the drag only after it is held
+// still, and any movement before that drops the press — how a section header becomes its
+// own grip), `measure` (children of any height, for sections), and `axis: "x"` (a sideways
+// shelf — a Pinned tile). A row with `done` writes its own rank list instead of `onEnd`.
 
 import * as frames from "./frames";
 import type { Track } from "./library";
@@ -53,6 +59,27 @@ export interface DragRow {
   /** How many rows the list has in all (rendered or not). */
   count?: number;
   payload?: DragPayload;
+  // ── movable rows (MOVABLE-ROWS.md) ──────────────────────────────────────────
+  /** Which way the list runs. `"x"` is a sideways shelf — a Pinned tile shelf. Default `"y"`. */
+  axis?: "x" | "y";
+  /** MEASURE each rendered `[data-idx]` instead of assuming uniform, flush rows. Sections
+   *  are not uniform (a Settings section is as tall as its rows, a Home shelf as its
+   *  tiles), so they need this. It costs one pass over the rendered children per move, so
+   *  a long windowed list keeps the fast path by leaving it off. */
+  measure?: boolean;
+  /** What a measured list's children are, when they are not `[data-idx]`. A pinned tile
+   *  uses `[data-pin-idx]`: the collection engine reads `[data-idx]` as a row of its own
+   *  list, and a tile is not one. */
+  sel?: string;
+  /** Start only after the pointer is held still this long (ms), not on the 6 px threshold.
+   *  A move before it cancels the press outright, so a scroll or a fold click is never
+   *  stolen (MOVABLE-ROWS.md fork 6, the owner 2026-09-20). */
+  hold?: number;
+  /** The drag really started — the caller collapses the section here (fork 5A). */
+  begin?: () => void;
+  /** This row's own commit, when it does not use `onEnd` (a section move writes a rank
+   *  list, not a splice). `to` is splice semantics; null for a cancel or a drop in place. */
+  done?: (to: number | null) => void;
 }
 
 export interface RowDragOptions {
@@ -142,6 +169,54 @@ function slotAt(list: HTMLElement, y: number, count: number): { ins: number; top
   const contentY = y - lr.top - list.clientTop + list.scrollTop;
   const ins = Math.max(0, Math.min(count, Math.round((contentY - firstTop) / rowH)));
   return { ins, top: firstTop + ins * rowH };
+}
+
+/** The same answer for a list whose children are NOT uniform (`measure`), and for a list
+ *  that runs sideways (`axis: "x"`): every rendered `[data-idx]` is measured, and the
+ *  pointer falls on the near side or the far side of each child's middle. `pos` is the
+ *  line's offset in the list's content coordinates, on the list's own axis. */
+function slotMeasured(
+  list: HTMLElement,
+  x: number,
+  y: number,
+  axis: "x" | "y",
+  sel = "[data-idx]",
+): { ins: number; pos: number } | null {
+  // Direct children first: a section holds rows that carry `data-idx` of their own, and
+  // only the sections are the list here.
+  const direct = [...list.querySelectorAll<HTMLElement>(`:scope > ${sel}`)];
+  const kids = direct.length ? direct : [...list.querySelectorAll<HTMLElement>(sel)];
+  if (!kids.length) return null;
+  const lr = list.getBoundingClientRect();
+  const horiz = axis === "x";
+  const at = horiz ? x - lr.left - list.clientLeft + list.scrollLeft : y - lr.top - list.clientTop + list.scrollTop;
+  let ins = kids.length;
+  let pos = 0;
+  for (let i = 0; i < kids.length; i++) {
+    const el = kids[i];
+    const r = el.getBoundingClientRect();
+    const start = horiz
+      ? r.left - lr.left - list.clientLeft + list.scrollLeft
+      : r.top - lr.top - list.clientTop + list.scrollTop;
+    const size = (horiz ? r.width : r.height) || 1;
+    if (at < start + size / 2) {
+      ins = i;
+      pos = start;
+      break;
+    }
+    pos = start + size;
+  }
+  return { ins, pos };
+}
+
+/** The element that really scrolls for this list. A list of SECTIONS is often a plain block
+ *  inside the card's scroller (Home's shelf box), so the edge auto-scroll has to walk up to
+ *  find the box that moves. */
+function scrollerOf(list: HTMLElement | undefined): HTMLElement | undefined {
+  for (let el = list; el && el !== document.body; el = el.parentElement ?? undefined) {
+    if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) return el;
+  }
+  return list;
 }
 
 const inside = (el: HTMLElement, x: number, y: number) => {
@@ -239,8 +314,15 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
   let pending: (DragRow & { startX: number; startY: number }) | null = null;
   let suppressClick = false;
   let endFrames = () => {};
+  /** The press-and-hold timer (fork 6): a header becomes a grip once it is held still. */
+  let holdTimer = 0;
+  const holdOff = () => {
+    if (holdTimer) window.clearTimeout(holdTimer);
+    holdTimer = 0;
+    pending?.row.classList.remove("is-holding");
+  };
 
-  const placeLine = (d: Drag, list: HTMLElement | null, top = 0) => {
+  const placeLine = (d: Drag, list: HTMLElement | null, pos = 0, axis: "x" | "y" = "y") => {
     if (d.lineList !== list) {
       if (d.lineList && d.lineList !== d.src.list) d.lineList.classList.remove("is-reordering");
       d.line.remove();
@@ -250,7 +332,16 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
         list.appendChild(d.line);
       }
     }
-    if (list) d.line.style.top = `${top}px`;
+    if (!list) return;
+    // A sideways shelf gets an upright line: same primitive, the other axis.
+    d.line.classList.toggle("drop-line--x", axis === "x");
+    if (axis === "x") {
+      d.line.style.left = `${pos}px`;
+      d.line.style.top = "";
+    } else {
+      d.line.style.top = `${pos}px`;
+      d.line.style.left = "";
+    }
   };
   const light = (d: Drag, el: HTMLElement | null) => {
     if (d.lit === el) return;
@@ -280,10 +371,15 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     if (d.reordering) {
       d.hit = null;
       light(d, null);
-      const s = slotAt(src.list!, d.lastY, src.count ?? 0);
+      const axis = src.axis ?? "y";
+      const s =
+        src.measure || axis === "x"
+          ? slotMeasured(src.list!, d.lastX, d.lastY, axis, src.sel)
+          : slotAt(src.list!, d.lastY, src.count ?? 0);
       if (s) {
-        d.to = s.ins <= src.index ? s.ins : s.ins - 1;
-        placeLine(d, src.list!, s.top);
+        const ins = "ins" in s ? s.ins : 0;
+        d.to = ins <= src.index ? ins : ins - 1;
+        placeLine(d, src.list!, "pos" in s ? s.pos : s.top, axis);
       }
       d.ghost.classList.remove("is-nodrop");
       document.documentElement.classList.remove("is-drag-nodrop");
@@ -310,13 +406,21 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
   const autoScroll = () => {
     const d = drag;
     if (!d) return;
-    const el = d.reordering ? d.src.list : d.hit?.scroll;
+    const el = d.reordering ? scrollerOf(d.src.list) : d.hit?.scroll;
     if (el?.isConnected) {
       const r = el.getBoundingClientRect();
-      const dy = d.lastY < r.top + EDGE ? -STEP : d.lastY > r.bottom - EDGE ? STEP : 0;
-      if (dy && d.lastX >= r.left && d.lastX <= r.right) {
-        el.scrollTop += dy;
-        update();
+      if (d.reordering && (d.src.axis ?? "y") === "x") {
+        const dx = d.lastX < r.left + EDGE ? -STEP : d.lastX > r.right - EDGE ? STEP : 0;
+        if (dx && d.lastY >= r.top && d.lastY <= r.bottom) {
+          el.scrollLeft += dx;
+          update();
+        }
+      } else {
+        const dy = d.lastY < r.top + EDGE ? -STEP : d.lastY > r.bottom - EDGE ? STEP : 0;
+        if (dy && d.lastX >= r.left && d.lastX <= r.right) {
+          el.scrollTop += dy;
+          update();
+        }
       }
     }
     d.raf = requestAnimationFrame(autoScroll);
@@ -326,13 +430,25 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     if (!pending) return;
     const p = pending;
     pending = null;
+    holdOff();
+    // Fold first, copy second: with fork 5A the ghost must be the SHUT section, one row
+    // tall. A caller that re-renders here hands us a new element for the same index.
+    if (p.begin) {
+      p.begin();
+      if (!p.row.isConnected && p.list) {
+        const again = p.list.querySelector<HTMLElement>(`[data-idx="${p.index}"]`);  // a re-render replaced it
+        if (again) p.row = again;
+      }
+    }
     const { root, ghost } = makeGhost(p.row, p.payload);
     p.row.classList.add("is-drag-source");
     document.documentElement.classList.add("is-row-dragging");
     window.getSelection()?.removeAllRanges(); // a press can start a text selection before the threshold
     const line = document.createElement("div");
     line.className = "drop-line";
-    endFrames = frames.begin("drag", p.list ? opts.label : "cross");
+    // A section move is its own scene in the frame log (§7 item 7), never mixed in with a
+    // row move or a cross-card copy.
+    endFrames = frames.begin("drag", p.hold != null ? `${opts.label}-section` : p.list ? opts.label : "cross");
     active = true;
     drag = {
       src: p, startX: p.startX, startY: p.startY, lastX: p.startX, lastY: p.startY,
@@ -351,6 +467,14 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
       update();
       e.preventDefault(); // no text selection while dragging
     } else if (pending && Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) > DRAG_THRESHOLD) {
+      // A hold source never starts on movement: moving means the press was a scroll, a
+      // text drag or a miss, and the press is dropped whole. Only the timer starts it.
+      if (pending.hold != null) {
+        holdOff();
+        pending = null;
+        unlisten();
+        return;
+      }
       begin();
     }
   };
@@ -378,6 +502,7 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
 
   function end(commit: boolean) {
     unlisten();
+    holdOff();
     pending = null;
     if (!drag) return; // never crossed the threshold → it was a click
     const d = drag;
@@ -394,11 +519,11 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     swallowClick = true;
     active = false;
     endSubs.forEach((cb) => cb());
-    if (d.reordering) {
-      opts.onEnd?.(d.src.index, commit && d.to !== d.src.index ? d.to : null);
-      return;
-    }
-    opts.onEnd?.(d.src.index, null);
+    const to = commit && d.to !== d.src.index ? d.to : null;
+    // A section or a tile writes a rank list of its own (row-order.ts), so it takes the
+    // commit itself — `onEnd` is the flat-list reorder and stays exactly as it was.
+    if (d.src.done) d.src.done(d.reordering ? to : null);
+    else opts.onEnd?.(d.src.index, d.reordering ? to : null);
     if (commit && d.hit?.drop && d.src.payload) d.hit.drop(d.hit.slots ? d.slot : null);
   }
 
@@ -409,6 +534,12 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     if (!hit) return;
     pending = { ...hit, startX: e.clientX, startY: e.clientY };
     listen();
+    if (hit.hold != null) {
+      // The press swells while it is held, so the gesture teaches itself: something is
+      // happening, and letting go now still just folds the section.
+      pending.row.classList.add("is-holding");
+      holdTimer = window.setTimeout(begin, hit.hold);
+    }
   };
   opts.root.addEventListener("pointerdown", onDown);
 
@@ -422,6 +553,8 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     destroy() {
       // destroyed mid-drag: the ghost and the document listeners would outlive the card
       if (drag) end(false);
+      holdOff();
+      pending = null;
       unlisten();
       opts.root.removeEventListener("pointerdown", onDown);
     },

@@ -1,7 +1,8 @@
 # DeetsMusic — Toasts
 
-> Built 2026-09-13 (branch `claude/deetsmusic-toast-impl-rfw6ch`), **awaiting the first
-> desk test** — the test script is [DEBUGGING.md §Toasts](DEBUGGING.md#toasts). Code:
+> Built 2026-09-13 (branch `claude/deetsmusic-toast-impl-rfw6ch`). **The sticky queue's desk
+> test (§4a.7) PASSED 2026-09-20** — the owner ran it with the three other features of that
+> day and confirmed all of them. The 2026-09-13 primitive's own first desk test — the test script is [DEBUGGING.md §Toasts](DEBUGGING.md#toasts). Code:
 > `src/toast.ts` (the primitive), `src/styles/toast.css` (the host + strip), the `toasts`
 > key in `settings-store.ts`, the "Show notices" row in `settings-card.ts`. Design
 > history and the candidate ledger: [FUTURE-SETTINGS §18](FUTURE-SETTINGS.md).
@@ -216,7 +217,7 @@ wanted, since a queued notice then crosses a surface change it was not raised in
    below.
 9. **Compass.** Nothing.
 
-### 4a.7 The desk test
+### 4a.7 The desk test — **PASSED 2026-09-20**
 
 1. `__toast.queue(4)` in the console. Three show; the fourth waits (`__toast.waiting()` lists
    it). Dismiss one — the fourth appears. **Before this build the FIRST one was destroyed
@@ -362,6 +363,7 @@ token without MusicKit's logout call.
 | `drop-actions.ts` — a drop on Now Playing | — | (none) | The song starting is the feedback; a failed play is `playTracks`'s toast. |
 | `replay.ts` — the weekly make | success | Replay updated: N songs from this week. | `all` tier. |
 | `settings-card.ts` — Settings › Bugs › Send | sticky success **with an action** | Bug sent. Copy the link to find it again. / Suggestion sent. Copy the link to find it again. **[Copy link] [Dismiss]** | Added 2026-09-15 (LOGGING.md §The report form). Sticky with its own action, so it shows under every tier and never times out: the link is the only way back to the post. **The link is never in the text** — toast text reaches the diag ring and the log, and the code is a credential. [Copy link] uses `copy-link.ts` ("Link copied."). The report also appears under My reports. |
+| `settings-card.ts` — Reset › **Row order** | info (sticky) → success (6 s) | Put every row and section back in its built-in order? [Confirm] [Cancel] → Row order reset to the built-in order. [Undo] | Added 2026-09-20 ([MOVABLE-ROWS.md](MOVABLE-ROWS.md) §13.5). Not a settings key, so it does not ride `RESET_GROUPS`: Confirm clears the `row_order` table, Undo writes the whole snapshot back. Offered only when there IS an order; with none, the button flashes *Default*. **A move itself has no toast** — the screen already shows the result. |
 | `settings-card.ts` — Reset › any row | info (sticky) → success (6 s) | Reset {group} to the defaults? [Confirm] [Cancel] → {group} reset to the defaults. [Undo] | Added 2026-09-15. Confirm takes the snapshot, then writes `DEFAULTS` (and the first-launch theme and skin); Undo writes the snapshot back. The Undo toast shows under every tier (§4). |
 | `settings-card.ts` — My reports › Refresh / Close | warn | Couldn't reach the support server. Check the connection and try again. / Too many requests in a short time. Wait a minute and try again. / Reports are switched off for now. Try again later. / The support server didn't close the report. Try again later. | Added 2026-09-15. The text is `report.rs`'s error. Refresh warns only when no report could be checked; a partial failure keeps the last known tags. |
 | `room.ts` — a room command the host keeps | info | The host keeps that control in this room. | Added 2026-09-17 (ROOMS.md §8). The worker answers `denied`; the app greys the control too, so this is the rare race. |

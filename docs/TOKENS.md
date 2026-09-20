@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 418 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 428 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -611,6 +611,16 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--drag-nodrop-opacity` | `0.5` | — | the copy over a place that takes no drop |
 | `--drag-source-opacity` | `0.4` | — | the pressed row, left in place while its copy moves |
 | `--drop-line-w` | `2px` | press, cyber | insertion-indicator + drop-target outline thickness |
+| `--hold-ms` | `400ms` | — | -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its own grip, and the grip bar on a pinned tile -- — how long a header is held before it can be moved |
+| `--hold-swell` | `1.015` | — | the held header swells, so the hold is visible |
+| `--tile-art` | `96px` | — | a shelf tile's cover (styles.css .search__tile-art) |
+| `--grip-w` | `18px` | — | the dotted bar over a pinned tile's left edge |
+| `--grip-inset` | `2px` | — | how far in from the cover's edge the bar sits |
+| `--grip-height` | `0.72` | — | of the cover's height, centred on it (a factor, so calc can use it) |
+| `--grip-radius` | `var(--radius-control)` | — |  |
+| `--grip-dot` | `3px` | — | one of the three dots |
+| `--grip-dot-gap` | `4px` | — |  |
+| `--grip-bg-alpha` | `62%` | — | of --canvas, so the artwork still reads under it |
 | `--disabled-alpha` | `0.6` | — | a control that keeps its place with nothing to act on |
 
 ### the empty-pane invite slot (a row-shaped drop target; styles.css .lib-empty__slot)

@@ -2222,6 +2222,37 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   pointer-events: none;
   z-index: 3;
 }
+/* The same line stood upright, for a sideways shelf — a Pinned tile (MOVABLE-ROWS.md). */
+.drop-line--x {
+  left: auto;
+  right: auto;
+  top: 0;
+  bottom: 0;
+  width: var(--drop-line-w);
+  height: auto;
+}
+/* A header held down: the press swells while the hold runs, so the gesture teaches itself
+   and letting go early still just folds the section (MOVABLE-ROWS.md fork 6). */
+.is-holding {
+  transform: scale(var(--hold-swell));
+  transform-origin: center left;
+  transition: transform var(--hold-ms) var(--ease-ui);
+}
+/* A Settings section is as tall as its rows: the swell belongs to the header you are
+   holding, not to every row under it. */
+.set__section.is-holding { transform: none; }
+.set__section.is-holding .set__head {
+  transform: scale(var(--hold-swell));
+  transform-origin: center left;
+  transition: transform var(--hold-ms) var(--ease-ui);
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-holding,
+  .set__section.is-holding .set__head { transform: none; }
+}
+/* The Settings header's search button, while the field holds text (the pill idiom's
+   `is-active`, in the icon-square family this header already uses). */
+.panel__action.is-active { background: var(--picked); border-color: var(--title); color: var(--title); }
 
 /* Picked rows (multi-select, NEXT-VERSION §19). A FILL, not the outline: `is-selected`
    already owns the outline, and it means something else — the one row you drilled in
@@ -2345,6 +2376,11 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 }
 .ctx-menu__fly.is-left { left: auto; right: 100%; }
 .ctx-menu__fly[hidden] { display: none; }
+/* A flyout that itself holds a submenu row (Refresh ▸ Weekly ▸ Fri). `overflow-y: auto`
+   computes overflow-x to auto as well, which would clip the child flyout at left: 100%.
+   Set by context-menu.ts when the resolved items contain a submenu; the trade is that
+   this one flyout does not scroll. */
+.ctx-menu__fly--deep { overflow: visible; }
 .ctx-menu__fly::-webkit-scrollbar { width: var(--scrollbar-w); }
 .ctx-menu__fly::-webkit-scrollbar-track { background: transparent; }
 .ctx-menu__fly::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
@@ -2475,6 +2511,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 /* An artist hero's shelves (ARTIST-VIEW.md §2.2): Featured / Your Playlists scrollers
    between the hero and the rows; a grid-density view spans them like the hero. */
 .lib-shelves { display: flex; flex-direction: column; padding: 0 var(--space-2) var(--space-2); min-width: 0; }
+/* One Home shelf as one block: its label and its tiles move together (MOVABLE-ROWS.md). */
+.home-shelf { display: flex; flex-direction: column; min-width: 0; }
 .lib-grid .lib-shelves { grid-column: 1 / -1; }
 /* A toolbar below the hero (Context.toolbarBelow): the head (hero + shelves), then the bar
    (section label + Sort / View / Search) right above the rows they act on. The bar sticks to
@@ -2767,7 +2805,20 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   font-size: var(--fs-subtext); color: var(--subtext);
   opacity: var(--credit-flat-opacity);
 }
-.search__scroller { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
+/* A sideways shelf of tiles (Home, Artist view, Search, Library Albums, Pinned). The bar
+   this draws is a REAL bar, not an overlay: it takes --scrollbar-w the moment it appears.
+   So the gutter is reserved up front and the shelf's height never changes (CLAUDE.md build
+   checklist 6a; the owner saw the Home "New" shelf jump, 2026-09-20). `overflow-y: hidden`
+   is load-bearing next to it: `overflow-x: auto` alone makes the BLOCK axis compute from
+   `visible` to `auto`, so each shelf was a scroll container both ways — a stray vertical
+   bar could appear on the right, narrow the row, and push the tiles into sideways overflow
+   that was not there before. One axis, one reserved gutter, no jitter. */
+.search__scroller {
+  display: flex; gap: var(--space-2);
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-gutter: stable;
+  padding-bottom: var(--space-1);
+}
 .search__scroller::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
 .search__scroller::-webkit-scrollbar-track { background: transparent; }
 .search__scroller::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
@@ -2833,7 +2884,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    Featured / Your Playlists 8px right of Albums, Top Songs and the rows. */
 .spane .lib-shelves { padding-left: 0; padding-right: 0; }
 
-.search__tile { position: relative; flex: 0 0 auto; width: 96px; display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
+.search__tile { position: relative; flex: 0 0 auto; width: var(--tile-art); display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
 /* The tile badge (PINS.md fork 6A; the family in UI-ARCHITECTURE.md §2a): a small square in the
    art's top-right corner, on the surface color, cut to the tile's own radius. It marks a
    pinned tile on every shelf, so the card shelves need no "Pinned" label. */
@@ -2850,10 +2901,50 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__tile-badge:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .search__tile-badge svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
 .search__tile-badge svg path:first-child { fill: currentColor; }
+/* The grip bar on a pinned tile (MOVABLE-ROWS.md §5.2, the owner 2026-09-20): a bar over
+   the left edge of the cover, three dots, press it to move the tile along its shelf. It
+   joins the TILE BADGE family it sits opposite — same fill, same radius, same hover dim,
+   same focus ring — and shows only on hover or keyboard focus, so the artwork is never
+   covered until you reach for it. */
+.tile-grip {
+  position: absolute;
+  /* Centred on the COVER, not on the tile: the name and the sub line sit under the cover
+     and are not part of what you grab. */
+  top: calc(var(--tile-art) * (1 - var(--grip-height)) / 2);
+  left: var(--grip-inset);
+  width: var(--grip-w);
+  height: calc(var(--tile-art) * var(--grip-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--grip-dot-gap);
+  border-radius: var(--grip-radius);
+  background: color-mix(in srgb, var(--surface) var(--grip-bg-alpha), transparent);
+  color: var(--title);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-ui);
+}
+.tile-grip i {
+  width: var(--grip-dot);
+  height: var(--grip-dot);
+  border-radius: 50%;
+  background: currentColor;
+}
+.search__tile:hover .tile-grip,
+.search__tile:focus-visible .tile-grip,
+.search__tile:focus-within .tile-grip { opacity: 1; }
+.tile-grip:hover { filter: brightness(0.97); }
+html.is-row-dragging .tile-grip { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) {
+  .tile-grip { transition: none; }
+}
+
 /* A card's Pinned shelf (PINS.md fork 8): no label, and one hairline under it. Everything
    below the line is the card as it was. */
 .lib-shelves--pins { border-bottom: 1px solid var(--border); margin-bottom: var(--space-2); }
-.search__tile-art { width: 96px; height: 96px; border-radius: var(--lib-tile-radius); object-fit: cover; }
+.search__tile-art { width: var(--tile-art); height: var(--tile-art); border-radius: var(--lib-tile-radius); object-fit: cover; }
 .search__tile-art--round { border-radius: 50%; } /* an artist on a shelf (Home), as .lib-tile__cover--round */
 .search__tile-art--empty { display: grid; place-items: center; background: var(--surface-hover); color: var(--subtext); font-size: var(--np-cover-glyph); }
 .search__tile-art--mosaic { overflow: hidden; } /* a playlist with no artwork, on an artist shelf */

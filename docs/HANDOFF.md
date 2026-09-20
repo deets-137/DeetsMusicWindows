@@ -112,22 +112,31 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
-### Tomorrow's desk tests (2026-09-21)
+### Desk tests — ALL PASSED 2026-09-20
 
-**Three features were built on 2026-09-20 and all three wait for your eyes.** They share one
-sitting and one dev app. Run them in this order — the toast queue first, because playlist
-refresh's own offer is a sticky toast and step R11 leans on the queue being right; pins last,
-because it is the only one whose gestures are all yours.
+> **DONE. The owner desk-tested all four on 2026-09-20 and confirmed them**, and Discord Rich
+> Presence — built the same day, after them — was confirmed live from the app as well
+> (*"Playing, I see it accurately on discord"*). **There is no open desk test in this repo**,
+> with one exception named below: the Rich Presence BUTTONS cannot be seen by the account that
+> sets them, so they wait for a second Discord account (FRIENDS.md §8.4 item 3).
+>
+> The four scripts are kept below. They are how these features get re-tested after a change,
+> and they are the record of what "passed" meant.
 
-**Read this before you start.** Two of the three write to the schema — `playlist_refresh` is
-**v11**, `pins.act` is **v12** — and they are in **one untested tree**, which is the case the
-one-load-bearing-feature rule exists to prevent. You asked for it that way and it is built that
+**Four features were built on 2026-09-20 and all four were confirmed the same day.** They share
+one sitting and one dev app. Run them in this order if you run them again — the toast queue
+first, because playlist refresh's own offer is a sticky toast and step R11 leans on the queue
+being right; then pins, then **movable rows**, the two whose gestures are all yours.
+
+**Read this before you start.** Three of the four write to the schema — `playlist_refresh` is
+**v11**, `pins.act` is **v12**, `row_order` is **v13** — and they are in **one untested tree**,
+which is the case the one-load-bearing-feature rule exists to prevent. You asked for it that way and it is built that
 way; the cost is that if something goes wrong on a real database, the first question is *which
 migration*. Both are additive and idempotent, and neither touches a row that already exists.
 
-**Every doc still needs a pass after these tests** (PINS.md §8.8 spells out what the pins one
-needs). Until each is marked PASSED with a date, the as-built sections — TOASTS §4a.8,
-PLAYLIST-REFRESH §11, PINS §8.7 — record what was BUILT, not what has been SEEN to work.
+**The doc pass is done** (2026-09-20): TOASTS §4a.7, PLAYLIST-REFRESH §10, PINS §8.6 and
+MOVABLE-ROWS §12 are each marked **PASSED 2026-09-20**, and their as-built sections now record
+what has been seen to work, not only what was built.
 
 Start once, and leave it running for both:
 
@@ -252,6 +261,89 @@ each one, and `__refresh` is not involved.
 
 I can also confirm P11 and the storage from outside: the agent's SQL now exports the column,
 so `select id, kind, act from pins` reads every verb.
+
+---
+
+#### Test 4 — movable rows + the Settings search bar (MOVABLE-ROWS.md §13)
+
+**Built 2026-09-20, in the same sitting as the three above.** Read
+[MOVABLE-ROWS.md §13](MOVABLE-ROWS.md) before you start — it is the as-built section, and the
+full desk test is §12 (20 steps). What follows is the short version and the things only you
+can judge.
+
+**The gesture is your own shape, so the first thing to check is the feel of it.** A section
+header is its own grip **while it is held**: press it, hold still for **400 ms**, and it
+swells, then lifts. Let go early and it just folds, exactly as before. Move early and the
+press is dropped whole, so a scroll that starts on a header is never stolen. A pinned tile
+has no header, so it carries a **grip bar** over the left of its cover — three dots, shown on
+hover, pressed and dragged sideways.
+
+**It writes to the schema: `row_order` is v13.** That is the fourth migration in this tree
+(v11 playlist_refresh, v12 pins.act, v13 row_order). Additive, idempotent, and nothing that
+exists is touched.
+
+| # | You do | You confirm |
+|---|---|---|
+| **M1** | Hold a **Settings** section header, drag it above another, let go | It folds shut as it lifts, lands where the line showed, and opens again |
+| **M2** | Close the card and summon it again; then restart the app | Your order is still there (it is in SQLite, not localStorage) |
+| **M3** | Press a header and move **at once** | The card scrolls. No ghost, no fold change |
+| **M4** | Press a header and let go **before** it swells | It folds, as it always did |
+| **M5** | **Home**: hold a shelf's label, move *Pinned* to the top. Then play a song | The order holds across the rebuild. Leave it running past an hour boundary: the bucket shelf changes its label and keeps your place |
+| **M6** | **Radio** (Featured view): move *Genres* above *Recents*. Switch to A–Z and back | The headers flatten out with no grip and no crash; your order is there on the way back |
+| **M7** | **Playlists**: move a folder above another. Then hold a **playlist row** inside a folder and move it | The row stays inside its own section — it will not jump to another folder. A plain drag on that row still carries its songs to the Queue |
+| **M8** | **Pinned tiles**: hover a pinned tile, press the grip bar, drag it one seat sideways | It moves. The same order shows on the Library, Playlists and Radio roots **and on Home**, which now follows your hand order instead of play counts (fork 12A) |
+| **M9** | Drag a pinned tile by the **cover**, not the grip, onto the Queue card | It still carries its songs. This is the step that catches the gesture being wired wrong |
+| **M10** | Settings › Window › **Move sections by holding** → Off | No header moves anywhere; the hover hint stops mentioning it. The tile grip still works |
+| **M11** | Settings header's **search button**; type `tray` | Only *Minimize to Tray* shows, its section open, everything else hidden. No header can be moved while the field has text. Clear it: your folds are exactly as they were |
+| **M12** | With **Cyber** on, search `glass` | The Glass-only rows do not appear — a row you cannot reach is never a result |
+| **M13** | Press inside Library, then **Ctrl+F** | Library's own search field opens. Same in Playlists, Radio, Search and Settings |
+| **M14** | Settings › Reset › **Row order** → Reset → Confirm | Everything goes back to its built-in order, and the toast's **Undo** puts your whole arrangement back |
+
+**What I decided inside your forks** is listed in MOVABLE-ROWS.md §13.8 — eight items, the
+two worth your eye being that the Settings row sits in *Window › Growing and drilling* (not
+Playback), and that a **playlist row also moves by hold**, not by plain drag, because a plain
+drag on that row already means two other things.
+
+---
+
+#### Discord Rich Presence — built and confirmed 2026-09-20 (FRIENDS.md §8.10)
+
+Your Discord profile reads **Listening to DeetsMusic**, with the song, the artist, the album,
+the cover and a progress bar under it. It was measured against the real client before any code
+was written (§8.4a), then built, then confirmed live from the app the same day.
+
+**What the measurements settled**, because two of them shaped the build:
+
+- **`type: 2` works** — the headline says *Listening to*, not *Playing*.
+- **`status_display_type` is kept by Discord and ignored by the client.** Tried at 1 and at 2.
+  So the headline is the **application's name**, which is the one thing you agreed to that did
+  not come true (§8.4 item 1 warned it might not). Everything under the headline is Spotify's
+  shape.
+- **The Apple cover needs no upload.** Discord's media proxy took the plain `https` URL and
+  rewrote it to `mp:external/…`. No asset keys, no extra Apple call, no logo fallback.
+
+**Two gotchas worth keeping:**
+
+1. Discord hides RPC activity unless **its own** Settings › Activity Privacy › *Share your
+   detected activities with others* is on. The app cannot see that switch, so the Settings row's
+   hint names it. A card that does not appear is this before it is anything else.
+2. The card lives exactly as long as the pipe. Quitting DeetsMusic takes it down by itself.
+
+**The one thing still open in the whole repo:** the two buttons (*Play on Apple Music*,
+*Listen Along*) and the clickable song title are **invisible to the account that sets them** —
+Discord's own guide says so, and the probe confirmed they are accepted. Reading them needs a
+**second Discord account or a second person**, the way ROOMS.md §17 needed a second app. Until
+then they are proven sent, not proven readable.
+
+**And one thing waiting on you, not on me:** *Listen Along* points at
+`https://rooms.deets.solutions/j/<CODE>`. That route is **written and committed in
+`../DeetsMusicRooms` and NOT deployed** — a worker deploy drops every live room socket, so it
+is your call when it goes out (it would carry the two parked `epoch` lines from ROOMS.md §18.7
+at the same time). Until it is deployed, leave *Let my profile invite people to my room* off,
+or the button leads to a 404.
+
+`node scripts/discord-probe.mjs --id <app id> --case full --hold 120` re-asks every measurement
+against a future Discord update without touching the app.
 
 ---
 

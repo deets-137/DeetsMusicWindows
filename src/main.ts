@@ -42,6 +42,8 @@ import { initLoudness } from "./sound-loudness";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
 import { initPins } from "./pins";
+import { initRowOrder } from "./row-order";
+import { initPresence } from "./presence";
 import { initSotd } from "./sotd";
 import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
@@ -427,6 +429,8 @@ window.addEventListener("DOMContentLoaded", () => {
   initTrackStore();
   void initFavorites(); // the ♥ mirror (favorites.ts) — local, zero Apple calls
   void initPins(); // the pins mirror (pins.ts, PINS.md) — local, zero Apple calls
+  void initRowOrder(); // the saved row order (row-order.ts, MOVABLE-ROWS.md) — local, one read
+  initPresence(); // Discord Rich Presence (presence.ts, FRIENDS.md §8) — opens nothing until you switch it on
   void initSotd(); // Song of the Day (sotd.ts, DeetsOTD.md) — the picks mirror, the Ask toast
                    // and the posts that were left waiting. Local, zero Apple calls.
   const restored = initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch

@@ -31,6 +31,12 @@ nothing about authoring changed when the box did.
 
 | Where | Control | Hint | Set in |
 |---|---|---|---|
+| Settings › Sharing | Share activity on Discord | Your Discord profile reads “Listening to DeetsMusic” with the song under it. Needs the Discord app open on this PC, and its Activity Privacy switch on | settings-card.ts (FRIENDS.md §8.10) |
+| Settings › Sharing | Pause / Resume | Takes effect at once | settings-card.ts |
+| Settings › Discord | Let my profile invite people to my room | While you host a listening room, your Discord card carries a Listen Along button. The button holds the room code, so anyone who sees your profile can join | settings-card.ts |
+| Any section header (Settings, Radio, Playlists) | the header itself | Click to open or close. Hold to move this section. New sections appear at the end | settings-card.ts, radio-card.ts, playlists-card.ts — **absent while Settings › Window › Move sections by holding is off** (MOVABLE-ROWS.md §13.1) |
+| A Pinned tile | the grip bar on its cover | Drag to move this pinned item | pins.ts `PIN_GRIP` |
+| Settings header | the search button | Finds a setting by name | settings-card.ts (MOVABLE-ROWS.md §13.6) |
 | Title bar | DeetsMusic (the title) | Opens the menu: theme, skin, window size, account, and Settings | index.html |
 | Title menu | each Theme | Light/Dark + its two colors ("Light. Purple and mint") | index.html |
 | Title menu | each Skin | one line on the idiom ("A print shop: ink on paper, square corners. The cover can be a record") | index.html |
@@ -219,7 +225,7 @@ a song appears (`trackMenu`, library-card.ts).
 | Surface | Item | Menu |
 |---|---|---|
 | Library | song | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several) · Go to Album · **Song Credits** · Copy Link · Start Station · Favorite |
-| Library | album tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Copy Link |
+| Library | album tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · **Go to Album** (2026-09-20) · Copy Link |
 | Library | artist tile | the album menu shape on the artist's songs |
 | Any card | a **pinned** tile or row | the item's usual menu, plus **On Click ▸** (Play · Shuffle · Open) above Pin / Unpin — album, artist and playlist pins only (PINS.md §8, 2026-09-20) |
 | Playlists | playlist | Rename (field, hand-made only) · Keep Playlist (a temporary web playlist, 2026-09-17) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · **Refresh ▸** (Daily · Weekly ▸ Mon…Sun · Off — every Apple mirror, and a local playlist that has been exported; 2026-09-20) · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
@@ -236,6 +242,12 @@ a song appears (`trackMenu`, library-card.ts).
 | Search | song · album · playlist · artist | the song menu (with **Song Credits**) · the album menu (+ Add to Library) · the playlist menu · Go to Artist · Start Station |
 | Search · Radio | **station** (2026-09-15) | Play Now · Add to Queue (plays when the queue runs dry) · Copy Link. A station also drags: to the Queue card (after the queue) or Now Playing (now) |
 | Artist view | shelf playlist | Play Now · Play Next · Add to Queue · Add to Playlist ▸ |
+| Home | song tile | the song menu, then **Add to Library** (2026-09-20) · Hide |
+| Home | album · artist tile (2026-09-20) | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Go to Album** · Go to Artist · Copy Link · **Add to Library** · Pin / Unpin · Hide. An album the library holds keeps the song menu's shape; one it does not holds its rows over a loader (the whole album is fetched when a row runs) |
+| Home | **New** shelf tile (2026-09-20) | the album tile menu, built on the album's OWN catalog id: Go to Album and Add to Library both work with no id hop, and there is no Pin row — a release that is not out yet knows no songs to pin |
+| Any card | an **album-shaped** list (an album tile, an album's songs picked together) | the song menu, plus **Add to Library** for the whole album (2026-09-20) — absent when the library already holds every song of it, which is why no Library album tile shows it |
+| Home | playlist tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Open in Playlists** (yours) or **Go to Playlist** (one of Apple's, as a Search pane; 2026-09-20) · Pin / Unpin · Hide |
+| Home | station tile | Play Now · Add to Queue · Copy Link · Pin / Unpin · Hide |
 | **Pins** (2026-09-18, PINS.md) | a song anywhere the song menu appears · a Library album or artist tile · the Library artist view's cover · a Search artist row · the Search artist pane's hero · a playlist row · a station row · the Now Playing cover · a Home tile | **Pin** / **Unpin**, the last row of each menu. A pinned Home tile has no Hide row. The badge on a pinned tile is a button: a press unpins. |
 | **Pinned shelf** (Library · Playlists · Radio root) | a pinned tile | the item's own row menu (the song / album / artist menu, the playlist menu, the station menu). A click does what the row does: an album or artist drills, a playlist opens, a song or a station plays. |
 | **Song of the Day** (2026-09-18, DeetsOTD.md) | a song anywhere the song menu appears | **Mark as Song of the Day**, the last row — or **Replace Today's Pick** at the limit, or **Unmark Song of the Day** when it is already today's. Left out with the feature off, and left out for a song Apple has no catalog id for. |

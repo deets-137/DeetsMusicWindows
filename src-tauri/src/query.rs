@@ -39,7 +39,7 @@ const TIME_MAX: Duration = Duration::from_secs(2);
 const ROWS_MAX: usize = 500;
 const CELL_MAX: usize = 1000;
 
-const TABLES: &[&str] = &["songs", "playlists", "playlist_songs", "pins"];
+const TABLES: &[&str] = &["songs", "playlists", "playlist_songs", "pins", "row_order"];
 const HISTORY_TABLES: &[&str] = &["plays", "play_counts"];
 /// The one refusal that is a setting, not a bad query: the bridge answers it 403 (CLI exit 6).
 pub const HISTORY_OFF: &str = "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections.";
@@ -93,6 +93,9 @@ INSERT INTO playlist_songs SELECT 'playlist:' || x.playlist_id, x.position + 1,
 CREATE TABLE pins(id TEXT, kind TEXT, pinned_at TEXT, act TEXT);
 INSERT INTO pins SELECT p.key, p.kind,
   strftime('%Y-%m-%dT%H:%M:%S', p.pinned_at / 1000, 'unixepoch', 'localtime'), p.act FROM src.pins p;
+
+CREATE TABLE row_order(scope TEXT, id TEXT, rank INTEGER);
+INSERT INTO row_order SELECT r.scope, r.id, r.rank FROM src.row_order r;
 ";
 
 const BUILD_HISTORY: &str = "
@@ -457,6 +460,8 @@ mod tests {
                 INSERT INTO play_stats VALUES('111', 3, 2, 1789594440820);
                 CREATE TABLE pins(key TEXT PRIMARY KEY, kind TEXT, data TEXT, pinned_at INTEGER, act TEXT);
                 INSERT INTO pins VALUES('song:111', 'song', NULL, 1789594440820, NULL);
+                CREATE TABLE row_order(scope TEXT, id TEXT, rank INTEGER, PRIMARY KEY(scope, id));
+                INSERT INTO row_order VALUES('home.shelves', 'pinned', 0);
                 CREATE TABLE meta(key TEXT, value TEXT);
                 INSERT INTO meta VALUES('secret', 'internal');
                 "#,
@@ -489,6 +494,8 @@ mod tests {
         assert_eq!(v["rows"], json!([["song:111", 1, 0], ["song:222", 0, 1]]));
         let v = q("select id, kind from pins").unwrap();
         assert_eq!(v["rows"], json!([["song:111", "song"]]));
+        let v = q("select scope, id, rank from row_order").unwrap();
+        assert_eq!(v["rows"], json!([["home.shelves", "pinned", 0]]));
         assert!(q("with recursive r(n) as (select 1 union all select n + 1 from r where n < 5) select count(*) from r").is_ok());
         assert!(q("select name from sqlite_schema").is_ok());
     }

@@ -321,6 +321,19 @@ more than that in memory. `GET /diag` reads the window's ring as it is now.
 | `search-card.ts`, a pane row | `{at:"<context>", do:"row", i, n}` |
 | `home-card.ts`, a tile | `{at:"home", do:"tile", kind, n}` |
 
+`presence.ts` logs what your Discord profile is told (FRIENDS.md §8.10): `presence:set
+{why, song, sent}` — `sent: false` means Discord is not running, which is the ordinary state
+of most PCs and not an error — plus `presence:clear`, `presence:off` and the
+`presence:pause-arm` / `presence:pause-cancel` pair. The song title is content, and it is here
+on purpose: it is the one line that answers "why did my profile say that", and it never leaves
+this machine any more than the profile does.
+
+Beside the trail, `row-order.ts` logs every committed MOVE (MOVABLE-ROWS.md §13.7):
+`order:set {scope, n, id, to, after}` — which list, how long it is, what moved, the index it
+landed on and the id it now follows — plus `order:reset {scope}` and `order:restore {n}`. That
+is what makes "my Home is in the wrong order" readable rather than guessed. `scope` and `id`
+are our own names (`home.shelves` / `pinned`), except a playlist's id, which is its libraryId.
+
 `n` is what the gesture ACTS ON, which is the fact that reads a bug: a Home song tile
 logs `n:1`, and the album's Play under it logs `n:6`. Reading the play that follows
 without this is guesswork — it was, on 2026-09-18.

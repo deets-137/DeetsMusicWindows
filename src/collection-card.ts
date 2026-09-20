@@ -16,7 +16,8 @@ import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
-import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload } from "./row-drag";
+import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload, type DragRow } from "./row-drag";
+import { registerFinder } from "./find-key";
 import { isAddSquare } from "./add-square";
 import { rowPick, canPick, picksText, objectId } from "./row-pick";
 import { shuffleInPlace } from "./queue";
@@ -157,11 +158,21 @@ export interface Context {
    *  PINS.md fork 9B). */
   shelvesFirst?: boolean;
   onShelf?: (item: HTMLElement) => void;
+  /** A press inside the shelves that starts a drag of its own — the grip on a pinned tile
+   *  (MOVABLE-ROWS.md §5.2). Null when the press was somewhere else. */
+  shelfDrag?: (target: HTMLElement) => DragRow | null;
   shelfMenu?: (item: HTMLElement) => MenuItem[];
   /** Draw the Sort / View / Search toolbar inside the scroll, under the hero and shelves,
    *  with this section label — for a context whose toolbar acts only on its rows (the Library
    *  artist view's Songs). Absent → the toolbar stays at the top of the pane. */
   toolbarBelow?: string;
+  /** Press and hold a row to MOVE it (MOVABLE-ROWS.md fork 6, the owner 2026-09-20): a
+   *  section header, or a playlist row inside its own section. The engine hands over the
+   *  row, its index, the list element and a re-render it can call during the drag (fork
+   *  5A folds the section shut as it lifts); the card answers with the drag that starts,
+   *  or null when a hold means nothing there. A plain press and drag is untouched — it is
+   *  the copy it has always been (DRAG-DROP.md §2). */
+  holdDrag?: (row: HTMLElement, index: number, list: HTMLElement, view: ViewState & { items: any[] }, rerender: () => void) => DragRow | null;
   groupings: Grouping[]; // >= 1; >1 → View shows a grouping column
   density: boolean; // whether the density column applies
   /** An optional icon toggle between View and Search (Library: ♥ favorites only). The
@@ -1178,11 +1189,17 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       if (animating || isAddSquare(target)) return null; // a press on the + adds; it never drags the row
       const pane = target.closest<HTMLElement>(".coll-pane");
       if (!pane || pane !== curPane) return null;
+      // A pinned tile's grip, in the shelves above the list (MOVABLE-ROWS.md §5.2).
+      const shelfHit = cur().ctx.shelfDrag?.(target);
+      if (shelfHit) return shelfHit;
       const row = target.closest<HTMLElement>("[data-idx]");
       const list = pane.querySelector<HTMLElement>("[data-view]");
       if (!row || !list) return null;
       const f = cur();
       const index = Number(row.dataset.idx);
+      // Movable rows: a HOLD moves the row, when this context offers one (§4.2).
+      const held = f.ctx.holdDrag?.(row, index, list, f, () => rerenderInPlace(curPane!, cur()));
+      if (held) return held;
       const x = f.items[index];
       if (x === undefined) return null;
       const g0 = groupingOf(f);
@@ -1199,6 +1216,21 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   });
   const unsubDragEnd = onDragEnd(() => {
     if (reloadPending) reload();
+  });
+
+  // Ctrl+F opens this card's own search field (MOVABLE-ROWS.md §10.7, fork S3 = 9B).
+  // In a release build the key does nothing at all today — the browser accelerators are
+  // off (DRAG-DROP.md §6) — so this gives a Windows user the key back.
+  const unsubFind = registerFinder(opts.root, () => {
+    const pane = curPane;
+    const f = cur();
+    if (!pane || !f) return;
+    f.searchOpen = true;
+    pane.querySelector(".lib-searchbar")?.classList.add("is-open");
+    pane.querySelector('[data-pop="search"]')?.setAttribute("aria-expanded", "true");
+    const input = pane.querySelector<HTMLInputElement>("[data-search]");
+    input?.focus();
+    input?.select();
   });
 
   // Drops (DRAG-DROP.md §3): an item that takes songs (`dropOn`, a playlist row), or the
@@ -1583,6 +1615,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // the host subtree, so they're discarded when the card clears its host on unmount.
     destroy() {
       release();
+      unsubFind();
       opts.root.removeEventListener("pointerdown", onHoldDown, { capture: true });
       drag.destroy(); // a drag's document listeners would outlive the card
       unsubDragEnd();

@@ -1,8 +1,11 @@
 # DeetsMusic — Friends (and telling Discord what you play)
 
-> **Paper design, 2026-09-19. Nothing is built yet — the owner has scheduled the build for the
-> evening of 2026-09-19 or for 2026-09-20.** Four decisions are closed (§0a); the nine forks in §11
-> are still his.
+> **Status (2026-09-20): step 6 — RICH PRESENCE — is BUILT and DESK-TESTED.** §8.4a has the three
+> measurements, §8.10 is as built, and the owner confirmed the live card from the app on
+> 2026-09-20 (*"Playing, I see it accurately on discord"*). One item is still open, and only one:
+> the two BUTTONS cannot be seen by the account that sets them, so they need a second Discord
+> account (§8.4 item 3). **Friends itself — steps 1, 2, 4, 5 — is still paper**, and the nine forks
+> in §11 are still his.
 > Two asks in one doc, because they share one question ("who am I, to someone else?"):
 > 1. **Friends** — add a person with a friend code, see what they play, and listen together.
 > 2. **Broadcast** — put what you play into a Discord channel or your Discord profile.
@@ -340,6 +343,20 @@ same 20-second coalescing rule as §5.1 applies here, for a different reason.
 
 ### 8.4 What must be measured before 7A is called "one file"
 
+> **MEASURED 2026-09-20** on this Windows PC, against the real Discord desktop client, with
+> `scripts/discord-probe.mjs` and the owner's own application id (`1551307746115059883`, named
+> **DeetsMusic**). The probe speaks the same pipe the app will speak, prints Discord's own
+> normalized answer — a refused field is simply missing from it — and HOLDS the connection open,
+> because the presence exists only while the pipe does. §8.4a has the results; the three items
+> below are kept as written so the questions can be re-asked after a Discord update.
+>
+> **Two gotchas found while measuring, both worth keeping:**
+> 1. Discord hides RPC activity unless **Settings › Activity Privacy › Share your detected
+>    activities with others** is on. A card that does not appear is this switch before it is
+>    anything else — the app cannot detect it, so the desk test must name it.
+> 2. Two probes holding at once make the older one's clear wipe the newer one's card. One
+>    connection at a time.
+
 Three items. The first two are claims I will not make without checking. The third is not a claim — it is
 a fact from Discord's own documentation that changes **how 7A is desk-tested**.
 
@@ -365,6 +382,32 @@ build is blocked in the meantime; the doc work is complete without them.
    §8.7 buttons **cannot be desk-tested from one account**. The test needs a second Discord account or a
    second person, exactly like the two-app room test in ROOMS.md §17. Write this into the desk test
    before the build starts, or the first run will read as a failure when it is not.
+
+### 8.4a The results (2026-09-20)
+
+| # | Question | Answer | What it means for the build |
+|---|---|---|---|
+| 1a | Activity **type 2** ("Listening to") | **YES** | The headline reads *Listening to …*, not *Playing …*. No fallback needed |
+| 1b | **`status_display_type`** puts the song on the headline | **NO — kept, and ignored** | Discord echoes the field back (tried at **1** = state and at **2** = details) and the client still draws *Listening to DeetsMusic*. It is sent anyway: it costs nothing and a later client may honour it |
+| 2 | A plain **`https` artwork URL** | **YES, and it needs no upload** | Discord rewrote `large_image` to `mp:external/<hash>/https/is1-ssl.mzstatic.com/…` — its media proxy fetches the Apple cover itself. **No asset keys, no extra Apple call, no logo fallback** |
+| 3 | **Buttons** visible to their own author | **NO** (as Discord documents) | The §8.7 buttons still need a second account. Everything else was desk-tested from one |
+| — | `details_url` / `state_url` | **kept** | Whether they make the text clickable is a second-account check too |
+| — | Three text lines | **YES** | A Listening card draws **details / state / `large_text`** as three lines: *Blue Monday* · *New Order* · *Power, Corruption & Lies*. So `large_text` is the ALBUM line, not a tooltip |
+| — | The progress bar | **YES** | `timestamps.start` + `.end` draw Spotify's bar (`00:44 ─── 03:00`) |
+
+**So the card as built reads:**
+
+```
+Listening to DeetsMusic
+[cover]  Blue Monday
+         New Order
+         Power, Corruption & Lies
+         00:44 ──────────── 03:00
+```
+
+**The one thing the owner agreed to that did not come true is 1b** — he chose the card knowing the
+headline might stay on the app name (§8.4 item 1 said so), and it did. Everything under the headline
+is exactly Spotify's shape.
 
 ### 8.5 Where the switches live (D8, D9, D10, D11 — 2026-09-19)
 
@@ -574,7 +617,10 @@ the fire and the cancel, per CLAUDE.md checklist item 6.
 OAuth (D5), 11 (D6), L (D7), privacy (D8), M (D9), S (D10), Pause (D11), B at **B1** (D15).
 **Nothing in the broadcast half waits on a decision.**
 
-**One step remains before code: the three measurements of §8.4** — activity type 2,
+**CLEARED 2026-09-20: the three measurements are done (§8.4a), so the build gate is open.**
+The build may start; only the button half of the desk test still waits for a second account.
+
+~~One step remains before code: the three measurements of §8.4~~ — activity type 2,
 `status_display_type`, and whether a plain `https` artwork URL is accepted. All three need **Windows**,
 a dev build and the **Discord desktop client on the same PC**, so they cannot be done from a Mac
 session. They are the first thing to run at the Windows machine, and all three change 7A's shape, so
@@ -594,6 +640,68 @@ no 7A code is written before them.
 | The §8.5.2 move of Song of the Day's Connect row | tidiness, still the owner's to cancel |
 | The `/j/` landing route, on the next rooms deploy | §8.7.2 |
 | Desk test — needs the owner's friend, because §8.4 item 3 | §8.4 |
+
+---
+
+### 8.10 As built (2026-09-20)
+
+**Two files, and neither holds the other's job.**
+
+| File | What it is |
+|---|---|
+| `src-tauri/src/presence.rs` | The pipe, and nothing else: open `\\.\pipe\discord-ipc-N` (0-9, first that answers), handshake with the application id, `SET_ACTIVITY`, clear, close. A **reader thread drains Discord's replies** — unread replies fill the pipe's buffer and would eventually block a write. Discord quitting drops the handle, and the next call reconnects. **No policy.** |
+| `src/presence.ts` | The card and the lifecycle (§8.7.1, §8.9), beside the settings that decide them. With sharing off it calls nothing at all, so the pipe is never opened — the one privacy rule that cannot live in Rust. |
+
+**The application id is `1551307746115059883`**, a constant in `presence.rs`. It is public by design
+(§8.6), it is not a secret, and its NAME is the card's headline — so it is not interchangeable.
+
+**What the card carries, and why each piece is there:**
+
+- `type: 2` → "Listening to". `status_display_type: 2` → sent although today's client ignores it
+  (§8.4a): it costs nothing and a later client may honour it.
+- `details` = the song, `state` = the artist, `assets.large_text` = the album — the three lines a
+  Listening card draws. `assets.large_image` = the cover at **512 px**, from Apple's own URL with the
+  size segment rewritten; Discord's media proxy fetches it, so there is **no upload and no Apple call**.
+- `timestamps.start/end` = the progress bar, from the live progress. A **live station gets none**,
+  because it has no length and a bar that lies is worse than no bar.
+- `details_url` / `state_url` = the Apple Music link, which spends no button slot.
+- Buttons: **Play on Apple Music** always (when the song has a catalog id), **Listen Along** only
+  while hosting a room **and** `discordRoomInvite` is on.
+
+**The coalescer** is a 4-second floor with a trailing edge: a settled song change fires at once,
+a run of skips sends once. **The pause** arms a 60-second timer that clears the card; playing again
+inside the minute cancels it and sends nothing (§8.9's quiet case). Sharing off, or the hour's pause,
+calls `presence_close` — the pipe itself goes, at once.
+
+**Settings, as built** (§8.5.1): **Sharing** (*Share activity on Discord*, *Pause sharing for an hour*
+with a live "N min left" label and a Resume half) and **Discord** (*Connect* + the paste field +
+*Post as*, *Let my profile invite people to my room*, the post log). Song of the Day's three Discord
+rows **moved** into it (§8.5.2), and Song of the Day gained a *Where picks go* row that opens the
+moved Connect row. Three keys, all **Off / 0** by default, with agent specs, an AGENT.md line and a
+`Settings › Reset › Sharing` group.
+
+**The log** (CLAUDE.md checklist item 6): `presence:set {why, song, sent}` — `sent: false` is Discord
+not running, which is not an error and gets no toast and no retry loop — plus `presence:clear`,
+`presence:off`, and the `presence:pause-arm` / `presence:pause-cancel` pair.
+
+**`scripts/discord-probe.mjs` is kept.** It is how §8.4a was measured, and it is how the same
+questions get re-asked after a Discord update, without touching the app.
+
+#### 8.10.1 The desk test — PASSED 2026-09-20, except the buttons
+
+The owner turned *Share activity on Discord* on in the dev app, played a song, and read his own
+profile: **"Playing, I see it accurately on discord."** The diag ring agrees —
+`presence:set {"sent":true,"song":"DIZZY","why":"song"}` — and the pause pair fired and cancelled
+around it.
+
+**Still open, and only this:** the two buttons and the clickable `details_url` are invisible to the
+account that sets them (§8.4 item 3), so they need a **second Discord account or a second person**.
+Until then, what is proven is that they are ACCEPTED, not that they read well.
+
+**Two things the desk test taught, for the release note and the hint:**
+1. Discord hides RPC activity unless **Settings › Activity Privacy › Share your detected activities
+   with others** is on. The app cannot see that switch, so the row's hint names it.
+2. The card lives exactly as long as the connection. Quitting DeetsMusic takes it down by itself.
 
 ---
 
@@ -624,6 +732,10 @@ from their payload. Only **Play this** (3B) uses a call, and that is the call th
 
 **After D14, the real order is 6 → 7 → 1 → 2 → 4 → 5.** Rich Presence is independent of Friends, and
 it is what the owner asked for on the first day.
+
+**Step 6 is DONE (2026-09-20, §8.10). Step 7's code is written and NOT DEPLOYED** — the `/j/` route
+is committed in `../DeetsMusicRooms` and waits for the owner's word, because a deploy drops every
+live room socket (§8.7.3). Steps 1, 2, 4 and 5 are untouched.
 
 Steps 1 to 3 ship with **zero Cloudflare cost**, and they are most of what the idea feels like.
 

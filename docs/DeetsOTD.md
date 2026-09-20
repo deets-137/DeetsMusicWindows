@@ -486,7 +486,16 @@ Status lines under the rows, one per outlet: "Discord: posts to #song-of-the-day
 What we need from the user: **one webhook URL for the channel.** Nothing else — no bot, no
 token, no developer portal, no sign-in.
 
-1. Settings › Song of the Day › Discord › **Set up**. A field opens in the row with two lines
+> **Moved 2026-09-20** (FRIENDS.md §8.5.2, M1/D9): these three controls — Connect, *Post as*
+> and the post log — now live in **Settings › Discord**, a top-level service section, because
+> the app gained a second Discord feature (Rich Presence) and a service's connection belongs
+> under the service's name. **Nothing about the webhook itself changed**: `outlet.rs`,
+> `discord.rs` and `sotd-outlets.json` are untouched, and the steps below are the same steps.
+> Song of the Day keeps its pick rows and gained a *Where picks go* row that opens the moved
+> Connect row.
+
+1. Settings › **Discord** › **Set up** (until 2026-09-20: Settings › Song of the Day › Discord).
+   A field opens in the row with two lines
    of steps under it (an html row, `enterRows`):
    *"In Discord: the channel's gear › Integrations › Webhooks › New Webhook › Copy Webhook URL.
    You need the Manage Webhooks permission. If you do not have it, ask a server admin to
@@ -1263,6 +1272,18 @@ is built at send time, and Discord's message edit (`PATCH`) is not used.
 - a real Discord webhook URL is taken (every host, an optional API version, a trailing space);
 - **everything else is refused before any request is made** — another host, `http`,
   `discord.com.evil.net`, a non-numeric id, a missing token, an extra path segment.
+
+### 10.7a The Settings rows moved (2026-09-20)
+
+The webhook's three controls left this feature's section for a **Discord** section of their
+own (FRIENDS.md §8.5.2). It is a re-parenting and nothing more — same ids (`sotddiscord`,
+`sotdhook`, `sotdpostas`, `sotdlog`), same handlers, same Rust, same stored file, so
+`requestSetting` and the Compass still reach them by name. Two small consequences:
+
+- The rows no longer hide when *Song of the Day* is off. A connection is a connection whether
+  or not the feature that uses it is on.
+- Song of the Day gained **Where picks go**, a row whose half reads *Discord* or *Not set up*
+  and whose press jumps to the moved Connect row.
 
 ### 10.8 One send per (pick, outlet) — the claim (2026-09-19)
 
