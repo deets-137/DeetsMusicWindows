@@ -18,6 +18,25 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.12.1 — 2026-09-20
+
+**Section titles fold again.** In 0.12.0, holding a section title for a moment picks the
+section up so you can move it. But a relaxed click often lasts that long too, so in Playlists
+and Settings a click on a title could pick the section up and put it back instead of folding
+it. Now holding only gets the title ready — it grows a little — and the section moves only
+when you then move the mouse. Let go without moving and the section folds, however long you
+held it.
+
+**Glass shows the cover's color again.** The glow around the cover on the Now Playing card
+could come out grey. Apple describes each cover with three colors, and the app always put the
+same one under the cover, where you cannot see it. For many covers that hidden color was the
+bright one. The glow now puts the most colorful of the three around the cover, so a lilac
+cover glows lilac. The tray panel's glow follows the same rule.
+
+**Ocean's waves stay in view while you drag.** With **Draw card edges** set to **Sand**,
+dragging a song or a section painted the card's color over the whole window and hid the sea
+until you let go.
+
 ## 0.12.0 — 2026-09-20
 
 **Friends.** Add someone by their friend code and see what they are playing — the song, the
