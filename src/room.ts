@@ -32,6 +32,7 @@ import {
   type RoomBridge,
 } from "./player";
 import { toast } from "./toast";
+import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
 
 // ── the wire (mirrors DeetsMusicRooms/src/protocol.js, its own repo) ─────────
@@ -131,6 +132,10 @@ const OFF: RoomState = {
  */
 const ROOMS_URL_DEFAULT = "https://rooms.deets.solutions";
 
+/** The name the busy toast uses — what the panel is called, not what the worker is
+ *  called (FRIENDS.md §5.2, and `src/busy.ts`). */
+const SERVICE = "DeetsRooms";
+
 /** Correct the local player when it is this far from the room (§9.3). */
 const DRIFT_MS = 1750;
 /** At most one correction this often, so a busy machine is not fought (§9.3). */
@@ -202,8 +207,14 @@ export function setRoomName(name: string): void {
 
 // ── start / join / leave ─────────────────────────────────────────────────────
 
-/** Start a room from what this app is playing now (§7). */
-export async function startRoom(): Promise<void> {
+/**
+ * Start a room from what this app is playing now (§7).
+ *
+ * `controls` overrides the stored guest controls for THIS room only, without changing
+ * what the panel's pills say for the next one. Friends' Listen Along passes a host-only
+ * set, so the person who pressed the button simply hears what you hear (FRIENDS.md §7).
+ */
+export async function startRoom(controls?: GuestControls): Promise<void> {
   if (inRoom()) return;
   state = { ...OFF, phase: "starting" };
   emit();
@@ -211,9 +222,18 @@ export async function startRoom(): Promise<void> {
     const response = await fetch(`${baseUrl()}/room`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: roomName() || "Host", guestControls: storedControls() }),
+      body: JSON.stringify({ name: roomName() || "Host", guestControls: controls ?? storedControls() }),
     });
-    if (!response.ok) throw new Error(`the rooms server answered ${response.status}`);
+    if (!response.ok) {
+      // The status number is not the user's problem (FRIENDS.md §5.2). `busy` turns a 429
+      // or the kill switch into one sentence that also says the music is unaffected; the
+      // number itself stays in the log, where it is useful. It replaces the raw
+      // "the rooms server answered 429" this line used to put on screen.
+      diag.warn("room:failed", { where: "start", status: response.status });
+      busy(SERVICE, causeOf(response.status));
+      teardown("failed");
+      return;
+    }
     const made = (await response.json()) as { code?: string; hostToken?: string };
     if (!made.code || !made.hostToken) throw new Error("the rooms server sent no code");
     hostToken = made.hostToken;
@@ -316,6 +336,9 @@ async function connect(code: string, asHost: boolean): Promise<void> {
       if (!settled && state.phase === "in") {
         settled = true;
         attempt = 0;
+        // Back in. Clear the busy floor, so the NEXT outage is told about at once rather
+        // than swallowed by a window that began during this one.
+        busyOver(SERVICE);
         resolve();
       }
     });
@@ -346,6 +369,9 @@ function onClose(code: string): void {
   const wait = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
   attempt += 1;
   diag.log("room:reconnect", { code, attempt, wait });
+  // Not on the first retry — a flaky second is not a busy service — and never per retry
+  // after that, because `busy` has its own ten-minute floor (FRIENDS.md §5.2, rule 1).
+  if (attempt === 3) busy(SERVICE, "gone");
   window.clearTimeout(reconnectTimer);
   reconnectTimer = window.setTimeout(() => {
     connect(code, state.isHost).catch(() => onClose(code));

@@ -57,6 +57,15 @@ tauri-plugin-updater = "2"
 # family sha2 already brings.
 md-5 = "0.10"
 
+# Friends identity (docs/FRIENDS.md §2). The friend code is the public half of an Ed25519
+# key pair, so the worker can check that a socket is really you WITHOUT holding anything
+# secret of yours — the property that keeps "the worker stores no secrets" true. Workers'
+# own WebCrypto verifies Ed25519 natively, so there is nothing to ship on the server side.
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast"] }
+# The friend code is SHA-256(public key) in Crockford base32. Already in the tree through
+# the digest family; naming it here makes it a direct dependency rather than a lucky one.
+sha2 = "0.10"
+
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;
 # and our own media session (smtc.rs: `Media`). Already in the dependency tree

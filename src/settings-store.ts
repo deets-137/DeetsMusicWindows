@@ -155,6 +155,11 @@ export interface Settings {
    *  launch — point it at a `npx wrangler dev --port <n>` worker to try a room with
    *  no deploy (ROOMS.md §16.3). */
   roomsUrl: string;
+  /** The DeetsMusicFriends worker (its own repo). Empty = the built-in address
+   *  (musicfriends.deets.solutions). DEV-ONLY, exactly like `roomsUrl`: no Settings row,
+   *  set from the DevTools console, read at the next launch — point it at a
+   *  `npx wrangler dev --port <n>` worker to try Friends with no deploy. */
+  friendsUrl: string;
   // ── sound (SOUND.md; sound.ts, sound-panel.ts) — every effect off by default ──
   /** The equalizer is on. */
   soundEq: boolean;
@@ -274,6 +279,21 @@ export interface Settings {
    *  default, and off means the pipe to Discord is never opened at all: a player that
    *  starts telling people what you play on the day it updates is the wrong surprise. */
   shareActivityDiscord: boolean;
+  /** Share what you play with the friends you added — Friends presence (FRIENDS.md §3,
+   *  fork P1). OFF by default, and off means your home socket is never opened, so nothing
+   *  you play leaves this PC. Watching is separate: a person who shares nothing can still
+   *  see their friends, and the panel says on its face that they cannot see you. */
+  shareActivityApp: boolean;
+  /** Let a friend press *Listen Along* on your box, which starts a room they can hear but
+   *  not steer (FRIENDS.md §7, his design 2026-09-20). ON by default, and it is the only
+   *  sharing row that is: it sits UNDER `shareActivityApp`, which is Off, and only a
+   *  mutual friend can reach the button — two gates is enough, and a third Off switch
+   *  would mean the feature never works for anyone who does not go hunting. */
+  friendsListenAlong: boolean;
+  /** Put your room code in the presence your friends see, so their box can join it. Its
+   *  own switch for the reason `discordRoomInvite` is: the code is the only gate on the
+   *  room (FRIENDS.md §8.5.3). OFF by default. */
+  friendsRoomInvite: boolean;
   /** "Pause sharing for an hour": the ms timestamp it ends at, 0 = not paused. One row
    *  covers every sharing row (D11) — "stop telling anyone what I am playing" is one
    *  intention, and a pause that covered half of it would be a trap. */
@@ -398,6 +418,7 @@ export const DEFAULTS: Settings = {
   roomName: "", // asked for in the Room panel the first time, then remembered
   roomGuestControls: { playPause: "everyone", skip: "everyone", seek: "everyone", add: "everyone", changeQueue: "everyone" },
   roomsUrl: "",
+  friendsUrl: "",
   soundEq: false, // user's call 2026-09-16: every effect ships off (Apple DPLA §3.3.6.D, SOUND.md §0)
   soundEqPreset: "flat",
   soundEqCustom: { name: "Custom", bands: [], design: "matched" },
@@ -445,6 +466,9 @@ export const DEFAULTS: Settings = {
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
   shareActivityDiscord: false, // private by default (FRIENDS.md §8.5.3): nothing is shared until you ask
+  shareActivityApp: false, // the same rule: your friends see nothing until you say so
+  friendsListenAlong: true, // the one sharing row that starts On, and §8.5.3's two-gates reason is in the type
+  friendsRoomInvite: false, // the room code is a door, not a fact
   sharePauseUntil: 0,
   discordRoomInvite: false, // the button publishes the room code for as long as the card is up
   moveSections: true, // user's call 2026-09-20: on, at a 400 ms hold — long enough that a click-to-fold never trips it

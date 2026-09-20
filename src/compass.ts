@@ -48,6 +48,7 @@ import { webQuick, type WebRequest } from "./web";
 import { openSoundPanel } from "./sound-panel";
 import { openRoomPanel } from "./room-panel";
 import { inRoom, leaveRoom, endRoom, roomState, startRoom, isStopped, listenAgain, stopListening } from "./room";
+import { friendsState } from "./friends";
 import * as diag from "./diag";
 import { toast } from "./toast";
 import { parseSum } from "./compass-math";
@@ -126,6 +127,9 @@ export const SYNONYMS: Record<string, string[]> = {
   find: ["search"], lookup: ["search"],
   stale: ["refresh"], reread: ["refresh"],
   arrange: ["arrange", "move"], rearrange: ["arrange", "move"], reorder: ["arrange", "move", "order"],
+  // Friends and the listening room share one panel, so every word for either reaches it.
+  friend: ["friends"], buddies: ["friends"], people: ["friends"],
+  together: ["friends", "listening room"],
 };
 
 /** Damerau-Levenshtein distance, capped: 0 when equal; a typo is 1; stops early past `max`. */
@@ -337,6 +341,18 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
     group: "Places",
     title: "Listening room",
     sub: inRoom() ? `In room ${roomState().code}` : "Listen with friends",
+    run: () => openRoomPanel(),
+  });
+  // Friends is the same panel's other half (FRIENDS.md §6, fork 5A), so it is its own row
+  // rather than a synonym — "friends" and "listening room" are two things a person means.
+  rows.push({
+    group: "Places",
+    title: "Friends",
+    sub: (() => {
+      const f = friendsState();
+      const playing = f.rows.filter((r) => r.presence).length;
+      return playing ? `${playing} playing now` : f.rows.length ? `${f.rows.length} added` : "Add a friend by code";
+    })(),
     run: () => openRoomPanel(),
   });
   return rows;

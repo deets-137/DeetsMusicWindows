@@ -378,7 +378,22 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   and **`discordRoomInvite`** "Let my profile invite people to my room" (on | off). Both are
   **off** by default and both are pure consent: with the first off the app never opens the pipe
   to Discord. `sharePauseUntil` is a timestamp the *Pause sharing for an hour* row writes; an
-  agent can clear it (0) or set it forward, and clearing it resumes sharing at once.
+  agent can clear it (0) or set it forward, and clearing it resumes sharing at once. The pause
+  covers **every** sharing row, Friends included (FRIENDS.md D11).
+- **`shareActivityApp`** "Share activity on DeetsMusic" (on | off, 2026-09-20, FRIENDS.md §3).
+  **Off** by default. It governs Friends presence: off means the app never opens its own socket,
+  so nothing you play leaves the PC. Watching is separate — a person who shares nothing still
+  sees their friends, and the panel says on its face that they cannot see you.
+- **`friendsListenAlong`** "Let friends listen along" (on | off, 2026-09-20, FRIENDS.md §7).
+  **On** by default — the one sharing-adjacent row that is, because it sits under
+  `shareActivityApp` (off) and only a mutual friend can reach the button. Off means a friend's
+  ask is refused with a reason and no room is started.
+- **`friendsRoomInvite`** "Put my room code on my box" (on | off). **Off** by default. It puts
+  your room code in the presence your friends see, the way `discordRoomInvite` puts it on the
+  Discord card — the code is the only gate on a room, so it rides its own switch either way.
+- The **friend list itself is not a setting** and has no agent verb. It is a list of people in
+  an encrypted file (`friends.json`), and adding somebody is a decision about a person. `friendsUrl`
+  is a dev-only text route, like `roomsUrl`, and this route has no text kind.
 - **`moveSections`** "Move sections by holding" (on | off, 2026-09-20, MOVABLE-ROWS.md §13.1).
   Off means no section anywhere can be dragged. The ORDER itself is not a setting — it is the
   `row_order` table, which the agent reads with `query` (`select * from row_order`) and cannot

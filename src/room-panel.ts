@@ -13,9 +13,12 @@
 // its rows slide in with enterRows (CLAUDE.md pre-build checklist).
 
 import { makeDropdown, keepInWindow, type DropdownHandle } from "./dropdown";
+import { buildFriends } from "./friends-panel";
+import { ensureIdentity, onFriendsChange } from "./friends";
 import { enterRows } from "./pop";
 import { toast } from "./toast";
 import { onMeter, soundStatus } from "./sound";
+import * as frames from "./frames";
 import {
   DEFAULT_CONTROLS,
   endRoom,
@@ -34,8 +37,11 @@ import {
   type RoomState,
 } from "./room";
 
-/** The name over the panel. */
-const TITLE = "DeetsRadio";
+/** The name over the panel. It says **Friends**, because that is what you open it for
+ *  (his call, 2026-09-20); the rooms half is a section inside it. */
+const TITLE = "Friends";
+/** The heading over the rooms half — Start a room and Join, under one name. */
+const TITLE_ROOMS = "DeetsRooms";
 
 /**
  * The stage: silhouettes of the people listening, you at the front, everyone who
@@ -103,6 +109,10 @@ export function initRoomPanel(): void {
     trigger: btn,
     panel,
     onOpen: () => {
+      // Opening the panel is the moment Friends is wanted, so it is one of the three doors
+      // that mints a friend code (FRIENDS.md §16.5). It writes one small file and makes no
+      // network call; the panel repaints through onFriendsChange when the code arrives.
+      void ensureIdentity();
       render(roomState());
       keepInWindow(root, panel!); // a narrow window must not push the panel off the edge
       // A shut fold is display:none: it would take the class and never hear the
@@ -115,6 +125,13 @@ export function initRoomPanel(): void {
     if (state.phase === "off") permsOpen = false; // a new room starts with the fold shut
     paintButton(state);
     if (!panel!.hidden) render(state);
+  });
+
+  // A friend started a song, went offline or was added: repaint only while the panel is
+  // open. Nothing here costs anything when it is shut — reading is a side effect of being
+  // connected (FRIENDS.md §5.1 rule 5), so no work is done for a panel nobody is looking at.
+  onFriendsChange(() => {
+    if (!panel!.hidden) render(roomState());
   });
   paintButton(roomState());
 
@@ -214,13 +231,112 @@ function note(text: string): HTMLElement {
 
 function render(state: RoomState): void {
   if (!panel) return;
+  // Where the two parts sit RIGHT NOW, read before the panel is rebuilt. It is what the
+  // slide below plays back from (`slideParts`).
+  const before = new Map<string, number>();
+  if (!panel.hidden) {
+    for (const part of panel.querySelectorAll<HTMLElement>("[data-part]")) {
+      before.set(part.dataset.part ?? "", part.getBoundingClientRect().top);
+    }
+  }
+
   panel.replaceChildren();
+  gated.length = 0; // the buttons are rebuilt below; the old ones are gone
   const inRoom = state.phase === "in" || state.phase === "reconnecting";
+  // "A room is open or actively joined" — starting and joining count, so the section
+  // travels up the moment you press the button rather than when the socket lands.
+  const roomLive = state.phase !== "off";
+
   panel.append(head(state, inRoom));
   panel.append(buildStage(state, inRoom));
-  if (inRoom) renderInRoom(state);
-  else renderOutOfRoom(state);
+  // Your name first, and REQUIRED (his call, 2026-09-20). It is not a room setting: it is
+  // what a friend's box and a room's member list BOTH call you, so it sits above the two
+  // halves rather than inside one of them — and nothing that publishes it works until it
+  // is filled in.
+  panel.append(nameRow(state));
+
+  const friends = part("friends", "Friends", "The people you added, and what they are playing");
+  buildFriends(friends.body, (b) => gateOnName(b));
+
+  const rooms = part("rooms", TITLE_ROOMS, "Start a room, or join one with a code");
+  if (inRoom) renderInRoom(state, rooms.body);
+  else renderOutOfRoom(state, rooms.body);
+
+  // In a room, the room is what you came for, so it goes first (his call, 2026-09-20).
+  // Out of one, Friends is the part you look at.
+  if (roomLive) panel.append(rooms.box, friends.box);
+  else panel.append(friends.box, rooms.box);
+
+  slideParts(before);
   requestAnimationFrame(measureGutters); // the rows are in place; ask what really overflows
+}
+
+/**
+ * Is a part open? Both start **open** (his call, 2026-09-20) and the state lives here
+ * rather than in the DOM, because the panel is rebuilt on every room change and every
+ * friend's song — a fold that lived in the markup would spring shut under your hand.
+ *
+ * It is deliberately NOT a stored setting: it is how the panel is arranged this session,
+ * not a preference about the app.
+ */
+const partOpen: Record<string, boolean> = { friends: true, rooms: true };
+
+/**
+ * One collapsible part: a heading that folds, and the box under it. The heading is the
+ * `.room__fold-btn` family the Permissions fold already uses — same size, same colour,
+ * same turning caret — so the panel has one idiom for "this opens", not two.
+ */
+function part(id: string, label: string, hint: string): { box: HTMLElement; body: HTMLElement } {
+  const box = el("div", "room__part");
+  box.dataset.part = id;
+  const body = el("div", "room__part-body");
+  body.hidden = !partOpen[id];
+  const button = el("button", "room__fold-btn room__fold-btn--part", label);
+  button.type = "button";
+  button.title = hint;
+  button.setAttribute("aria-expanded", String(partOpen[id]));
+  button.addEventListener("click", () => {
+    partOpen[id] = body.hidden;
+    body.hidden = !partOpen[id];
+    button.setAttribute("aria-expanded", String(partOpen[id]));
+    if (partOpen[id] && !reduced()) enterRows(Array.from(body.children) as HTMLElement[]);
+    requestAnimationFrame(measureGutters);
+  });
+  box.append(button, body);
+  return { box, body };
+}
+
+/** How long the two parts take to change places. */
+const SLIDE_MS = 260;
+
+/**
+ * The gentle slide when the parts change places (his call, 2026-09-20). A FLIP: each part
+ * is put back where it was with a transform, then released to travel to where it now is.
+ *
+ * It fires only when a part really moved, so the ordinary rebuild — a friend's song
+ * changing, a member joining — animates nothing. Reduced motion snaps, as everywhere else.
+ */
+function slideParts(before: Map<string, number>): void {
+  if (!panel || before.size < 2 || reduced()) return;
+  const moving: [HTMLElement, number][] = [];
+  for (const part of panel.querySelectorAll<HTMLElement>("[data-part]")) {
+    const was = before.get(part.dataset.part ?? "");
+    if (was === undefined) return; // a part that was not there cannot slide from anywhere
+    moving.push([part, was - part.getBoundingClientRect().top]);
+  }
+  if (!moving.some(([, delta]) => Math.abs(delta) > 1)) return;
+
+  for (const [part, delta] of moving) {
+    part.style.transition = "none";
+    part.style.transform = `translateY(${delta}px)`;
+  }
+  frames.during("room-part-slide", SLIDE_MS);
+  requestAnimationFrame(() => {
+    for (const [part] of moving) {
+      part.style.transition = ""; // back to the token in styles.css
+      part.style.transform = "";
+    }
+  });
 }
 
 /**
@@ -237,7 +353,11 @@ function render(state: RoomState): void {
  */
 function measureGutters(): void {
   if (!panel || panel.hidden) return;
-  const boxes: (HTMLElement | null)[] = [panel, panel.querySelector(".room__members")];
+  const boxes: (HTMLElement | null)[] = [
+    panel,
+    panel.querySelector(".room__members"),
+    panel.querySelector(".friend__list"),
+  ];
   for (const box of boxes) {
     if (!box) continue;
     const scrolls = box.scrollHeight > box.clientHeight + 1;
@@ -332,43 +452,83 @@ function head(state: RoomState, inRoom: boolean): HTMLElement {
     );
     leave.addEventListener("click", () => (state.isHost ? endRoom() : leaveRoom()));
     end.append(leave);
-  } else {
-    end.append(el("span", "room__head-note", "Listen together"));
   }
+  // Out of a room the head end is EMPTY (his call, 2026-09-20). "Listen together" was a
+  // subtitle for a panel called DeetsRooms; a panel called Friends does not need one.
   h.append(end);
   return h;
 }
 
-function renderOutOfRoom(state: RoomState): void {
-  const busy = state.phase === "starting" || state.phase === "joining";
+/** Is there a name to publish? Everything that puts you in front of somebody else needs
+ *  one, so this gates Start a room, Join and Add a friend. */
+const haveName = (): boolean => roomName().length > 0;
 
-  const nameField = field("The name the other members see", "room__field--name");
+/**
+ * *Your name*, at the top and required. Shown in a room as well as out of one: a friend's
+ * box reads it live, so it is never irrelevant. Renaming inside a room reaches your
+ * friends at once and that room's member list at the next join — the hint says so.
+ */
+function nameRow(state: RoomState): HTMLElement {
+  const inRoom = state.phase === "in" || state.phase === "reconnecting";
+  const nameField = field(
+    inRoom
+      ? "What your friends and the other members call you. A change here reaches your friends at once, and this room at the next join"
+      : "What your friends and the other members call you. It is needed before you can add a friend or start a room",
+    "room__field--name",
+  );
   nameField.maxLength = 24;
   nameField.value = roomName();
-  nameField.placeholder = "Listener";
-  nameField.addEventListener("change", () => setRoomName(nameField.value));
-  panel!.append(row("Your name", nameField));
-
-  const start = chip("Start a room", "Makes a room from what you play now and shows its code", "room__chip--wide");
-  start.disabled = busy;
-  start.addEventListener("click", () => {
+  nameField.placeholder = "Type a name";
+  nameField.required = true;
+  nameField.toggleAttribute("data-empty", !haveName());
+  // `input`, not `change`: the gated buttons unlock on the first letter rather than when
+  // the field happens to lose focus. It must NOT re-render — a rebuilt field loses the
+  // caret half way through a name.
+  nameField.addEventListener("input", () => {
     setRoomName(nameField.value);
-    void startRoom();
+    const have = haveName();
+    nameField.toggleAttribute("data-empty", !have);
+    for (const b of gated) b.disabled = !have || b.dataset.busy === "1";
   });
-  panel!.append(start);
+  return row("Your name", nameField, "room__row--name");
+}
 
-  panel!.append(el("div", "room__divider", "or join one"));
+/**
+ * The buttons that publish your name: Start a room, Join, and Friends' own Add. They are
+ * collected per render and unlocked by the name field above, so the rule lives in one
+ * place instead of three.
+ */
+const gated: HTMLButtonElement[] = [];
+function gateOnName(button: HTMLButtonElement, busy = false): HTMLButtonElement {
+  button.dataset.busy = busy ? "1" : "0";
+  button.disabled = busy || !haveName();
+  if (!haveName()) button.title = `${button.title}. Type your name first`;
+  gated.push(button);
+  return button;
+}
 
+function renderOutOfRoom(state: RoomState, into: HTMLElement): void {
+  const busy = state.phase === "starting" || state.phase === "joining";
+
+  // Your name moved to the top of the panel (his call, 2026-09-20) — it is not a room
+  // setting, and Friends needs it too.
+  const start = gateOnName(
+    chip("Start a room", "Makes a room from what you play now and shows its code", "room__chip--wide"),
+    busy,
+  );
+  start.addEventListener("click", () => void startRoom());
+  into.append(start);
+
+  // No "or join one" divider: Start a room and Join are one section now, DeetsRooms.
   const codeField = field(
     "The 8-character code the host reads out. Upper or lower case, with or without the dash",
     "room__field--code",
   );
   codeField.maxLength = 9;
   codeField.placeholder = "K7QM-4XHT";
-  const go = chip("Join", "Joins the room with that code");
-  go.disabled = busy;
+  const go = gateOnName(chip("Join", "Joins the room with that code"), busy);
   const doJoin = () => {
-    setRoomName(nameField.value);
+    if (go.disabled) return;
     void joinRoom(codeField.value);
   };
   codeField.addEventListener("keydown", (e) => {
@@ -377,16 +537,16 @@ function renderOutOfRoom(state: RoomState): void {
   go.addEventListener("click", doJoin);
   const join = el("div", "room__row room__row--join");
   join.append(codeField, go);
-  panel!.append(join);
+  into.append(join);
 
-  if (busy) panel!.append(note(state.phase === "starting" ? "Making the room…" : "Joining…"));
+  if (busy) into.append(note(state.phase === "starting" ? "Making the room…" : "Joining…"));
 }
 
-function renderInRoom(state: RoomState): void {
+function renderInRoom(state: RoomState, into: HTMLElement): void {
   // The code, the panel's one piece of large type, with the two copies under it.
   const code = el("div", "room__code", formatCode(state.code));
   code.title = "The code a friend types to join this room";
-  panel!.append(code);
+  into.append(code);
 
   const copies = el("div", "room__row room__row--copies");
   const copyCode = chip("Copy code", "Copies the room code");
@@ -394,14 +554,14 @@ function renderInRoom(state: RoomState): void {
   const copyLink = chip("Copy invite link", "Copies a link that opens DeetsMusic and joins this room");
   copyLink.addEventListener("click", () => copy(inviteLink(), "Invite link copied."));
   copies.append(copyCode, copyLink);
-  panel!.append(copies);
+  into.append(copies);
 
-  if (state.phase === "reconnecting") panel!.append(note("Reconnecting…"));
-  else if (!state.hostConnected) panel!.append(note("Waiting for the host"));
-  if (state.stopped) panel!.append(note("You stopped listening. The room plays on."));
+  if (state.phase === "reconnecting") into.append(note("Reconnecting…"));
+  else if (!state.hostConnected) into.append(note("Waiting for the host"));
+  if (state.stopped) into.append(note("You stopped listening. The room plays on."));
 
   // The members.
-  panel!.append(el("div", "room__section", state.members.length === 1 ? "Listening" : `Listening (${state.members.length})`));
+  into.append(el("div", "room__section", state.members.length === 1 ? "Listening" : `Listening (${state.members.length})`));
   const list = el("div", "room__members app-scroll");
   for (const member of state.members) {
     const line = el("div", "room__member");
@@ -416,7 +576,7 @@ function renderInRoom(state: RoomState): void {
     }
     list.append(line);
   }
-  panel!.append(list);
+  into.append(list);
 
   // The host's controls, in one fold (§8, §16.7). The Sound panel's fold: a row with a
   // turning caret, and the rows in a tinted box under it.
@@ -427,7 +587,7 @@ function renderInRoom(state: RoomState): void {
   for (const control of CONTROL_ROWS) {
     body.append(controlRow(control, state.guestControls[control.key] ?? DEFAULT_CONTROLS[control.key]));
   }
-  panel!.append(foldButton("Permissions", "Shows what a guest may do: play, skip, seek, add songs and reorder Up Next", body), body);
+  into.append(foldButton("Permissions", "Shows what a guest may do: play, skip, seek, add songs and reorder Up Next", body), body);
 }
 
 /** A fold: the button and the box it opens (`.sound__fold-btn`, sound-panel.ts). */

@@ -120,6 +120,13 @@ extension's icons are LANCZOS resizes of the same file.
 > with one exception named below: the Rich Presence BUTTONS cannot be seen by the account that
 > sets them, so they wait for a second Discord account (FRIENDS.md §8.4 item 3).
 >
+> **Then FRIENDS ITSELF was built, later on 2026-09-20 (FRIENDS.md §16), so there is ONE open
+> desk test again: FRIENDS.md §17.** Steps 1–6 need one PC; steps 7–14 need **two** — two PCs,
+> or the dev app beside the installed app, which have separate data dirs and therefore separate
+> friend codes. The `deetsmusic-friends` worker is already deployed at
+> `musicfriends.deets.solutions`, and `../DeetsMusicFriends/scripts/check.mjs` passes 18 of 18
+> against it, so what §17 tests is the APP, not the wire.
+>
 > The four scripts are kept below. They are how these features get re-tested after a change,
 > and they are the record of what "passed" meant.
 

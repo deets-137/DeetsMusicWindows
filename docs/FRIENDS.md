@@ -1,11 +1,14 @@
 # DeetsMusic — Friends (and telling Discord what you play)
 
-> **Status (2026-09-20): step 6 — RICH PRESENCE — is BUILT and DESK-TESTED.** §8.4a has the three
-> measurements, §8.10 is as built, and the owner confirmed the live card from the app on
-> 2026-09-20 (*"Playing, I see it accurately on discord"*). One item is still open, and only one:
-> the two BUTTONS cannot be seen by the account that sets them, so they need a second Discord
-> account (§8.4 item 3). **Friends itself — steps 1, 2, 4, 5 — is still paper**, and the nine forks
-> in §11 are still his.
+> **Status (2026-09-20): EVERY step is now BUILT. §16 is as built; §17 is the desk test, NOT RUN.**
+> Step 6 (Rich Presence) was built and desk-tested earlier the same day — §8.4a has the three
+> measurements, §8.10 is as built, and the owner confirmed the live card (*"Playing, I see it
+> accurately on discord"*); its two BUTTONS still need a second Discord account (§8.4 item 3).
+> **Steps 1, 2, 4 and 5 — Friends itself — were built on 2026-09-20 after the owner walked all
+> seven open forks (§16.1).** The `deetsmusic-friends` worker is **deployed** at
+> `musicfriends.deets.solutions` and its protocol test passes 18 of 18 against live. Step 7's
+> `/j/` route is still written-and-not-deployed in `../DeetsMusicRooms`.
+> **Every fork in §11 is closed.** What remains is §17, and the owner runs it.
 > Two asks in one doc, because they share one question ("who am I, to someone else?"):
 > 1. **Friends** — add a person with a friend code, see what they play, and listen together.
 > 2. **Broadcast** — put what you play into a Discord channel or your Discord profile.
@@ -733,9 +736,10 @@ from their payload. Only **Play this** (3B) uses a call, and that is the call th
 **After D14, the real order is 6 → 7 → 1 → 2 → 4 → 5.** Rich Presence is independent of Friends, and
 it is what the owner asked for on the first day.
 
-**Step 6 is DONE (2026-09-20, §8.10). Step 7's code is written and NOT DEPLOYED** — the `/j/` route
-is committed in `../DeetsMusicRooms` and waits for the owner's word, because a deploy drops every
-live room socket (§8.7.3). Steps 1, 2, 4 and 5 are untouched.
+**Steps 6, 1, 2, 4 and 5 are all DONE (2026-09-20).** Step 6 is §8.10; steps 1, 2, 4 and 5 are
+§16, and the `deetsmusic-friends` worker is deployed. **Step 7's code is written and NOT
+DEPLOYED** — the `/j/` route is committed in `../DeetsMusicRooms` and waits for the owner's word,
+because a deploy drops every live room socket (§8.7.3). It is now the only step left.
 
 Steps 1 to 3 ship with **zero Cloudflare cost**, and they are most of what the idea feels like.
 
@@ -747,12 +751,12 @@ Steps 1 to 3 ship with **zero Cloudflare cost**, and they are most of what the i
 |---|---|---|
 | ~~1~~ | ~~What a friend code is~~ | **CLOSED 2026-09-19 (D12): 1C** — 1A's minted key now, a DeetsAccounts link later as an option (§2b). |
 | ~~1a~~ | ~~Moving to a new PC~~ | **CLOSED 2026-09-19 (D13): 1a-A** — Copy my key / Paste a key, with the warning that the key IS you. |
-| 2 | How a friend is added | 2A mutual add, and 2C invite link |
-| 3 | What a friend sees | 3A + 3B + 3C, one full row |
-| P | Privacy control | P1 — one switch and a pause |
-| 4 | Transport | 4A — sockets, with §5.1 · **D1 (no heartbeat) is decided** |
-| 5 | Where it lives | 5A — the Rooms title bar item, then 5C |
-| 6 | Ask to listen along | 6B — later. **D2 is decided**: a friend's row is how you reach a room. Fork 6 is only the case where they host none yet. |
+| ~~2~~ | ~~How a friend is added~~ | **CLOSED 2026-09-20: 2A + 2C** — mutual add, and the invite link. |
+| ~~3~~ | ~~What a friend sees~~ | **CLOSED 2026-09-20: 3A, re-cut** — a box with a cover; *Play this* / *Go to Album* on the right-click menu; **no Join button**; one **Listen Along** button instead (§16.2). |
+| ~~P~~ | ~~Privacy control~~ | **CLOSED 2026-09-20: P1** — one switch and the hour's pause. |
+| ~~4~~ | ~~Transport~~ | **CLOSED 2026-09-20: 4A** — sockets, with §5.1. |
+| ~~5~~ | ~~Where it lives~~ | **CLOSED 2026-09-20: 5A** — the boxes sit above the DeetsRooms section in the people panel, and below it while a room is live. 5C (a Home shelf) was not asked for and is not scheduled. |
+| ~~6~~ | ~~Ask to listen along~~ | **REPLACED 2026-09-20.** Neither 6A nor 6B: a SETTING answers the ask, not a prompt (§16.2). |
 | ~~7~~ | ~~Discord mechanism~~ | **CLOSED 2026-09-19 (D14): 7A only.** A channel post is spam. The doc's earlier "7C" was an inference, not his decision. |
 | ~~8~~ | ~~The flood rule~~ | **REJECTED with D14.** There is no channel post. |
 | ~~9~~ | ~~What the message says~~ | **REJECTED with D14.** 9A was approved before 7B was dropped; it is now moot. |
@@ -764,7 +768,7 @@ Steps 1 to 3 ship with **zero Cloudflare cost**, and they are most of what the i
 | ~~M~~ | ~~Whether the Song of the Day webhook moves (§8.5.2)~~ | **CLOSED 2026-09-19 (D9): M1** — the connection moves to `Discord`, the pick rows stay, a linked status line replaces the old group. |
 | ~~Pause~~ | ~~What *Pause* covers~~ | **CLOSED 2026-09-19 (D11): both rows**, and it lives in `Sharing`. |
 | ~~10~~ | ~~Reuse the rooms worker, or a new one (§15)~~ | **CLOSED 2026-09-19 (D4): a new worker.** |
-| T | The busy toast's words (§5.2) | The two sentences in §5.2 |
+| ~~T~~ | ~~The busy toast's words (§5.2)~~ | **CLOSED 2026-09-20: the two sentences**, in `src/busy.ts`, which Rooms now shares. |
 | ~~B~~ | ~~What the profile does when you pause~~ | **CLOSED 2026-09-19 (D15): B1.** The full lifecycle is §8.9. |
 
 ---
@@ -918,3 +922,269 @@ the rooms worker on day one; they will drift, and that is the price of the isola
 
 **The one cost of this choice, written down:** two workers to deploy, and two copies of three small
 files. Not two budgets — there is only ever one (§13).
+
+---
+
+## 16. As built (2026-09-20) — steps 1, 2, 4 and 5
+
+**Every fork in §11 is closed.** The owner walked all seven on 2026-09-20; §16.1 is what he
+chose, and §16.7 lists what was decided INSIDE those choices so nothing ships unseen.
+
+### 16.1 The decisions of 2026-09-20
+
+| # | Question | Decided |
+|---|---|---|
+| 2 | How a friend is added | **2A + 2C** — mutual add, and the invite link |
+| 3 | What a friend sees | **3A, and the rest re-cut** (§16.2) — a rectangle with a cover, *Play this* and *Go to Album* on the right-click menu, **no Join button**, and one **Listen Along** button instead |
+| P | Privacy control | **P1** — one switch and the hour's pause |
+| 4 | Transport | **4A** — sockets, with the seven rules of §5.1 |
+| 5 | Where it lives | **5A** — the boxes sit in the people panel, above the DeetsRooms section |
+| 6 | Ask to listen along | **Replaced.** Not 6A and not 6B: the ask is answered by a SETTING, not by a prompt (§16.2) |
+| T | The busy toast's words | **The two sentences of §5.2**, in a helper Rooms now shares |
+| — | Where the list lives on disk | A **DPAPI file**, not a SQLite table (§16.4) |
+| — | The worker's name | `deetsmusic-friends` at **`musicfriends.deets.solutions`** — `friends.` is left free for the wider site |
+
+### 16.2 Listen Along, as he designed it
+
+Fork 3C's "in a room · Join" is **gone**, and fork 6's consent prompt with it. One button does
+the whole thing:
+
+> A friend presses **Listen Along** on your box. Their app asks yours. **Your app answers by
+> itself**, from *Settings › Friends › Let friends listen along* — no prompt, nothing to
+> answer mid-song. If you host no room, your app starts one with **every guest control set to
+> `host`**, so they hear what you hear and can change nothing. You get one toast: *"Sam is
+> listening along."*
+
+Three consequences, each deliberate:
+
+- **Already hosting → they join that room AS IT IS**, with whatever controls you chose when you
+  started it. Overriding your own choice because somebody arrived by a different door would be
+  surprising, and it would change the room for everyone already in it.
+- **A guest in somebody else's room hands out nothing.** The code is the host's to give, and a
+  guest passing it on is exactly the door §8.5.3 refuses to open. The asker is told why.
+- **Silent means uninterrupted, not invisible.** They appear in the member list like anybody
+  else, so the host can always see who is there and use **Remove**. A listener nobody can see
+  is a listener the host cannot revoke.
+
+**The lock costs no worker code.** `guestControls` already accepts `"host"` for all five verbs
+and `POST /room` already takes the set (`DeetsMusicRooms/src/room.js:102`), so Listen Along is
+a parameter: `startRoom(controls?)` in `room.ts` is the only change on the Rooms side.
+
+### 16.3 The identity, and the one thing §2 did not specify
+
+§2 said "16 random bytes". As built it is an **Ed25519 key pair**, because of what the worker
+has to do with it. A shared secret has to be SENT to the server to be checked, which would put
+a credential of yours in our hands and break §1's line — "the worker holds no secrets and no
+user data". A key pair does not: the DO sends a nonce, the app signs it, the DO verifies the
+signature against the public key, and then checks that the public key **hashes to the friend
+code being claimed**. Both checks must pass. A full copy of everything the worker holds lets
+nobody be anybody.
+
+- **The friend code is `SHA-256(public key)[0..5]`** as 8 Crockford characters — 40 bits,
+  exactly 8 characters, the same alphabet and length as a room code, so `rooms.rs::normalize`
+  reads both and there is one answer to "is this a code".
+- **The two implementations are checked against each other.** `friends.rs::agrees_with_the_worker`
+  pins a fixed key to a fixed code, and `codes.js::codeForKey` gives the same answer for the
+  same key. Change one side and every friend code in the world changes meaning, so the vector
+  is a test, not a comment.
+- **Nothing on the server may mint a friend code.** `codes.js` here has no `mintCode`; if it
+  could invent a code, it could invent a person.
+- New crates: `ed25519-dalek` and `sha2`. Workers' own WebCrypto verifies Ed25519, so the
+  server side ships nothing.
+
+### 16.4 Where it lives on disk
+
+`<app_data>/friends.json`, DPAPI-encrypted under the current Windows user — the road
+`sotd-outlets.json` takes. The seed and the friend list are in that one file.
+
+**Not a SQLite table** — the owner's choice on 2026-09-20, and three things make it the right
+one:
+
+1. **The key is a credential, and credentials live in DPAPI here.** It has to be in that file
+   whatever happens to the list, so putting the list beside it means one file, one lock, one
+   thing to get right.
+2. **`query` cannot read it, and should not.** A friend list is people, not library data. Every
+   other export table describes music.
+3. **It does not need SQL.** ~50 rows that change a few times a year, always read whole.
+
+It also keeps the schema still. `row_order` took **v13** the same day (MOVABLE-ROWS.md §13), and
+although its desk test passed on 2026-09-20, a v14 that buys nothing is a migration nobody needs.
+
+A decrypt that fails — another Windows account, a copied file — is **one warn and no identity**,
+and **the file is left alone**. Overwriting it would destroy a key that is somebody's only copy;
+§2a's *Paste a key* is the way back.
+
+### 16.5 The files
+
+| File | What |
+|---|---|
+| `src-tauri/src/friends.rs` | The identity and the list, and nothing else. 8 commands; the seed leaves Rust by exactly one door, `friend_key_export`, and is registered with `log::register_secret`. 6 tests. |
+| `src/friends.ts` | The transport: one home socket, one per friend, the coalescer, the sleep rule, the reconnect, and Listen Along's two halves. Mirrors the worker's protocol by hand. |
+| `src/friends-panel.ts` | The boxes, the right-click menu, your code, the add field, and the two key rows. |
+| `src/busy.ts` | §5.2's toast, shared with Rooms. |
+| `../DeetsMusicFriends` | The worker: `index.js`, `friends.js` (the DO), and `codes.js` / `protocol.js` / `sanitize.js` copied from the rooms worker per §15. `scripts/check.mjs` is its protocol test. |
+
+**Minting is lazy, and it stays lazy.** A person who never opens Friends never has an
+identity. Three doors mint one, and no other code path does: **opening the people panel**,
+**adding a friend**, and **switching *Share activity on DeetsMusic* on**. A launch mints only
+when this PC already has friends or already shares — `initFriends` reads the list first,
+because the list needs no key. Minting writes one small file and makes no network call.
+
+Changed: `rooms.rs` (`normalize` and the alphabet are now shared), `lib.rs` (the module, the
+setup, the 8 commands, the `friend` link route), `room.ts` (`startRoom(controls?)`, and the
+busy helper replacing two raw status numbers), `room-panel.ts` (the Friends half), `settings-*`,
+`compass.ts`, `agent-settings.ts`, `main.ts`, `styles.css`, `skin.css`.
+
+### 16.6 The worker, as built
+
+Deployed 2026-09-20. One Durable Object class `Friends`, one instance per person, named by their
+friend code. **It never touches `this.ctx.storage`, and it sets no alarm** — presence and the
+friend list ride the socket attachment, which is kept beside the connection and is not billed as
+rows (§14.2). So a Friends DO writes **zero** of the account's 100,000 daily row writes. This is
+the ROOMS.md §20 shape, built here first exactly as §20 recommends: here it is new code, not
+surgery on a shipped feature.
+
+Two consequences follow from holding nothing, and both are correct rather than tolerated:
+**your presence dies with your socket**, which is what "offline" means; and **your friend list is
+re-sent on every connect**, which costs one message inside a connection that just happened.
+
+| Route | What |
+|---|---|
+| `GET /` · `/health` | `{ok, v, minV}`. Answers before the rate limit, and reports `KILL_FRIENDS`. |
+| `GET /f/:code/ws?as=home&me=<CODE>` | Your own socket. `me` must equal `:code`. |
+| `GET /f/:code/ws?as=watch&me=<CODE>` | A friend's socket onto that person. |
+
+**There is deliberately no peek route.** A room code is an invitation you hand out; a friend
+code is a person, and their presence is readable only by somebody they added back.
+
+**Mutual is enforced in both directions.** The worker feeds a watcher only if the home socket's
+list holds them; the watching app draws only people on its own list. Neither side can be watched
+by somebody it did not add.
+
+`scripts/check.mjs` drives two people and four sockets against the real worker: a key that is
+not that code is refused, a stranger is denied, removing a friend cuts them off mid-session and
+adding them back restores it, the ask reaches the host and the answer reaches the asker, a
+stranger's ask reaches nobody, a second sign-in replaces the first, and going offline reaches the
+watcher. **18 of 18 passed against live, 2026-09-20.**
+
+### 16.7 Decided inside his choices (nothing shipped unseen)
+
+1. **Ed25519, not 16 opaque bytes** — §16.3 has the reason.
+2. **`friendsUrl`**, a dev-only settings route with no card row, exactly like `roomsUrl`.
+3. **Watching and sharing are different switches.** *Share what I play* governs the HOME socket
+   only. A person who shares nothing still sees their friends, and the panel says so on its
+   face: *"You are not sharing, so your friends cannot see you."* with a **Turn on** link.
+4. **A friend's box is a `button`.** Every state — offline, not playing, not added back — is a
+   disabled button that still carries its right-click menu.
+5. **A stale presence stops pretending.** Past 30 minutes with no word the box says the time
+   rather than a song, so a friend whose PC slept does not look like they are still listening.
+6. **The coalescer is 20 seconds**, not the Discord card's 4. The billing is 20:1 and a
+   skipping run is the only thing that approaches it.
+7. **The reconnect is gentler than a room's** — `[2s, 5s, 15s, 60s, 300s]` against Rooms'
+   `[0.5s … 8s]`. A room is a live conversation; a friend's row is not, and one launch opens up
+   to 51 sockets.
+8. **The busy toast fires on the home socket's third failure only.** One friend's socket going
+   quiet is that friend's row going quiet, which the row already shows.
+9. **`friendsRoomInvite`** — a second switch beside `discordRoomInvite`, for the same reason:
+   the room code is a door, not a fact, so it is Off by default in both places.
+10. **A Settings › Friends section**, beside Discord. Sharing holds consent; a named section
+    holds a service's plumbing. The friend LIST is not there — a list is not a setting.
+11. **The panel is called Friends, and the rooms half is a section in it** (his call, on
+    seeing it, 2026-09-20). The head said *DeetsRadio* with *Listen together* beside it; it
+    now says **Friends** with an empty head end, and the rooms half is one section heading
+    over *Start a room* and *Join* — the "or join one" divider is gone, because they were
+    never two things.
+
+    **That section is called DeetsRooms**, renamed from DeetsRadio the same day at his word
+    (*"mistakenly said Radio the first time"*). It is the better name twice over: the app
+    already has a **Radio** card of Apple stations, and ROOMS.md §0 reserves "DeetsRadio"
+    for the older website feature this one borrows from. The busy toast's service name
+    follows it, so a 429 now reads *"DeetsRooms is busy right now…"*.
+12. **An `invite` asks; an `answer` does not.** You asked for the answer, so it joins. An invite
+    you did not ask for gets a sticky toast with Join / Not now — the rule the
+    `deetsmusic://room?code=…` link already follows.
+13. **An answer is only accepted for a minute, and only from the person you asked.** An unasked
+    "answer" moves nothing.
+14. **Rooms' two raw status numbers are gone.** `busy()` replaces "the rooms server answered
+    429" with a sentence, and clears its own floor when a room reconnects.
+15. ***Your name* moved to the top of the panel, and is REQUIRED** (his call, 2026-09-20). It
+    is not a room setting — a friend's box reads it too — so it sits above both halves and is
+    shown in a room as well as out of one. Empty, it is marked with the panel's own accent and
+    **Start a room**, **Join** and **Add** are all disabled; the first letter typed unlocks
+    them. One rule, `gateOnName`, in one place instead of three. The gate does **not**
+    re-render: a rebuilt field would lose the caret half way through a name.
+16. **The sharing line waits for a friend.** *"You are not sharing, so your friends cannot see
+    you"* appears only once the list has somebody on it (his call, 2026-09-20) — with an empty
+    list it asks a person to switch something on for nobody.
+17. **`buildFriends` takes the name gate as an argument** rather than importing it, so the two
+    panels stay one-directional: the room panel knows about Friends, not the other way round.
+18. **The `/j/` landing page shows the code hyphenated** (`K7QM-4XHT`), matching the panel.
+    `normalizeCode` strips the dash and the page was not putting it back. The LINK keeps the
+    bare form, which `rooms.rs::normalize` reads either way.
+19. **Both halves are collapsible, and both start open** (his call, 2026-09-20). The heading
+    is the `.room__fold-btn` family the Permissions fold already uses — same size, same
+    colour, same turning caret — so the panel has one idiom for "this opens", not two. The
+    open/shut state is module state, **not a setting**: it is how the panel is arranged this
+    session, not a preference about the app. It cannot live in the DOM either, because the
+    panel is rebuilt on every friend's song.
+20. **DeetsRooms travels above Friends while a room is live**, and slides (his call,
+    2026-09-20). "Live" is `phase !== "off"`, so the section moves the moment you press
+    *Start a room* rather than when the socket lands. The motion is a **FLIP**: each part is
+    put back where it was with a transform and released, so only the transform animates and
+    the travel is compositor work. It runs **only when a part really moved** — the ordinary
+    rebuild on a friend's song animates nothing — and reduced motion skips the measuring
+    entirely rather than measuring for an animation that is off. `--room-part-slide` is
+    260 ms, and `frames.during("room-part-slide")` times it.
+21. **The empty state names the handshake.** *"You and your friend need to add each other's
+    code to add friend!"* — his words, 2026-09-20. The first wording ("Add a friend with
+    their code and you will see what they are playing") read as a one-sided add, and then
+    nothing happens and nobody knows why.
+
+---
+
+## 17. The desk test (NOT RUN)
+
+Steps 1–6 need one PC. Steps 7–10 need **two** — two PCs, or the dev app and the installed app,
+which have separate data dirs and therefore separate friend codes (`npm run dev:app`).
+
+0. **Nothing was minted behind your back.** On a machine that has never opened Friends,
+   `<app_data>\friends.json` does **not** exist after a launch. It appears the moment you open
+   the people panel (§16.5).
+1. **A code exists.** Open the people item in the title bar. Under **Friends**, *Your code* shows
+   8 characters as `K7QM-4XHT`. Click it: the toast says it is copied.
+2. **It is the same code next time.** Quit and reopen. The same code.
+3. **The empty state names the handshake.** With no friends, the panel says *"You and your
+   friend need to add each other's code to add friend!"*
+4. **Nothing is shared yet.** The panel says *"You are not sharing, so your friends cannot see
+   you."* Settings › Sharing shows *Share activity on DeetsMusic* **Off**.
+5. **Bad input is refused kindly.** Type `ABC` and press Add → *"That is not a friend code."*
+   Type your own code → *"That is your own code."*
+6. **Settings.** Settings › Friends shows your code in its status line, *Let friends listen
+   along* **On**, *Put my room code on my box* **Off**, and a *Your key* row with **Copy my key**
+   / **Paste a key**. Copy my key → a sticky warning that the key IS you.
+6a. **The two sections.** **Friends** and **DeetsRooms** each have a heading with a turning
+    caret; both start open. Click each: it folds, and the caret turns. Now press **Start a
+    room** — **DeetsRooms slides up above Friends**, gently, and slides back when you end
+    the room. With Windows' *Show animations* off, it changes places without travelling.
+7. **Mutual add.** On PC B, add PC A's code. PC A's panel still shows nothing new; PC B's box for
+   A reads *"Waiting for them to add you"*. Now add B's code on A. Both boxes go live.
+8. **Presence.** Turn *Share activity on DeetsMusic* on both. Play a song on A. Within a second
+   B's box shows the cover, the title, the artist and *"just now"*. Skip five songs quickly on A:
+   B's box updates **once**, about 20 seconds after the skipping stops (§5.1 rule 2).
+9. **The menu.** Right-click A's box on B: *Play this*, *Go to Album*, *Copy their code*,
+   *Rename*, *Remove*. Play this plays that song on B. Remove offers **Undo**.
+10. **Listen Along.** With A playing and hosting no room, press A's box on B. A gets one toast,
+    *"<B> is listening along."* B joins a room and hears A's song. **On B, every transport
+    control is refused** — it is a host-only room. A's room panel lists B, and A's **Remove**
+    works. Then turn *Let friends listen along* **off** on A and press again: B is told *"A is
+    not letting people listen along right now."*, and no room is started.
+11. **Offline is honest.** Quit A. B's box goes to *"Offline"* within a second or two.
+12. **The pause covers both.** Press *Pause sharing for an hour*. A's box on B empties, and the
+    Discord card goes at the same time (D11). Press **Resume**: both come back.
+13. **The busy toast.** Set `KILL_FRIENDS` to `1` in `../DeetsMusicFriends/wrangler.jsonc` and
+    deploy. Restart the app: after the launch quiet period, **one** toast — *"Friends is switched
+    off right now. Your music is not affected."* — and **not one per retry**. Music keeps playing
+    and every control still works. Empty it and deploy again.
+14. **The log.** `deetsmusic diag` shows `friends:home`, `friends:push`, `friends:ask`,
+    `friends:listen-allowed`, `friends:sleep-arm` and, on step 13, `busy:told` then
+    `busy:quiet {why:"floor"}`.

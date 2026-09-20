@@ -583,7 +583,7 @@ call, 2026-09-17):
 
 The panel is now the Sound panel's width (`--room-panel-w: var(--sound-panel-w)`), with its
 head (title at the left, one action at the right), its label-left / control-right rows, and
-its chip and pill shapes. The title reads **DeetsRadio**.
+its chip and pill shapes. The panel title reads **Friends** and the rooms half is a section headed **DeetsRooms** (renamed from DeetsRadio 2026-09-20, which freed the name for the older website feature this doc means by it).
 
 **The glyph** was redrawn the same day. Three whole figures crossed their strokes and read as
 a knot of arcs at 16 px; now the middle figure is a whole silhouette and the two behind show
@@ -1312,7 +1312,19 @@ fire of A's timer get `diag.log` lines; no new Settings key is proposed (the exi
 
 ---
 
-## 20. A room that writes no SQLite rows (designed 2026-09-19, NOT BUILT)
+## 20. A room that writes no SQLite rows (designed 2026-09-19, NOT BUILT HERE — but BUILT in Friends)
+
+> **2026-09-20: the shape is now proven, in `../DeetsMusicFriends`.** This section's own advice was
+> "build it in Friends first; leave the shipped Rooms alone", and that is exactly what happened. A
+> Friends Durable Object never calls `storage.put` and never sets an alarm: presence and the friend
+> list ride `serializeAttachment`, and the 18-step protocol test passes against live
+> (FRIENDS.md §16.6). So the two claims this section rests on — that attachments are free, and that
+> a DO can hold live state in them across hibernation — are **measured, not assumed**.
+>
+> What that does NOT settle is the hard half. Friends has no queue, no clock and no alarm to
+> replace with arithmetic, so §20.3's per-song alarm and §20.4's recovery copy are still paper.
+> Rooms stays untouched, and §17.4 / §18.7 are both closed, so this is now a scheduling choice
+> rather than a blocked one.
 
 The owner's question, while designing Friends (FRIENDS.md §14): **can a room avoid SQLite writes if
 the host's queue is treated as the accurate one, and everyone else's changes edit the host's queue?**

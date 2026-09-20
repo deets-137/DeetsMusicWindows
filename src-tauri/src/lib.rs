@@ -6,6 +6,7 @@ mod credits;
 mod dbhealth;
 mod enrich;
 mod favorites;
+mod friends;
 mod lastfm;
 mod library;
 mod log;
@@ -41,6 +42,10 @@ pub fn run() {
             // `<scheme>://lastfm?token=…` is Last.fm's link back after Allow (LASTFM.md §4).
             if lastfm::is_link(link) {
                 lastfm::handle_link(link);
+            } else if friends::is_link(link) {
+                // `<scheme>://friend?code=…` is a friend invite (FRIENDS.md §3, fork 2C).
+                // Like the room link it only fills a field; the person presses Add.
+                friends::handle_link(app, link);
             } else if rooms::is_link(link) {
                 // `<scheme>://room?code=…` is an invite (ROOMS.md §1). It carries no
                 // power: the code is all it holds, and the front end asks before joining.
@@ -218,6 +223,9 @@ pub fn run() {
             // Song of the Day (docs/DeetsOTD.md): the outlets that are set up, and the posts
             // that were still waiting when the app last closed.
             sotd::setup(app.handle(), dir.clone());
+            // Friends (docs/FRIENDS.md §2): the key file, if this PC already has one. It
+            // mints nothing here — a first key waits for the first ask.
+            friends::setup(dir.clone());
             airplay::setup(&dir);
             // Sound (SOUND.md §2.2): the Windows output, its form factor and volume.
             audio_out::setup(app.handle());
@@ -320,6 +328,15 @@ pub fn run() {
             presence::presence_set,
             presence::presence_clear,
             presence::presence_close,
+            // Friends (docs/FRIENDS.md §2, §3). The seed leaves Rust only by `friend_key_export`.
+            friends::friend_me,
+            friends::friend_sign,
+            friends::friend_key_export,
+            friends::friend_key_import,
+            friends::friend_list,
+            friends::friend_add,
+            friends::friend_rename,
+            friends::friend_remove,
             roworder::row_order_all,
             roworder::row_order_set,
             roworder::row_order_reset,

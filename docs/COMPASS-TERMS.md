@@ -15,7 +15,8 @@
 | **press**, **ocean**, **glass**, **cyber** (skin, look) | The skin |
 | **sound** (eq, equalizer) | The Sound panel |
 | **sleep timer** (timer, alarm) | The sleep panel |
-| **listening room** (room, friends, together) | The Room panel |
+| **listening room** (room, together) | The Room panel |
+| **friends** (friend, buddies, people, together) | The same panel's Friends half — its own row, because "friends" and "listening room" are two things a person means (FRIENDS.md §16.7) |
 
 ### 1a. How a card opens (a shape word before or after its name)
 

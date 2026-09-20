@@ -510,7 +510,6 @@ body {
   color: var(--title); letter-spacing: var(--room-title-tracking);
 }
 .room__head-end { display: flex; align-items: center; gap: var(--space-1); }
-.room__head-note { color: var(--subtext); }
 
 /* The stage: the room as silhouettes, you at the front (ROOMS.md §16.6). The heads
    ride --room-bob, which room-panel.ts writes from the loudness meter's 100 ms hops
@@ -594,6 +593,11 @@ body {
   padding: var(--space-1) var(--space-2);
 }
 .room__field { width: var(--room-field-w); min-width: 0; flex: 0 0 auto; }
+/* *Your name* is required (FRIENDS.md §16.7): Start a room, Join and Add all wait for it.
+   An empty field is MARKED, not alarming — the accent the panel already uses, so it reads
+   as "this one first" rather than as an error, and no new color role is needed. */
+.room__field--name[data-empty] { border-color: var(--title); }
+.room__field--name[data-empty]::placeholder { color: var(--title); opacity: 0.75; }
 /* The code is typed into the wide half of its row; Join keeps its own width. */
 .room__field--code { flex: 1 1 auto; letter-spacing: var(--room-code-space); text-transform: uppercase; }
 .room__field:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
@@ -638,6 +642,69 @@ body {
 .room__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room__tag { color: var(--title); }
 
+/* ── Friends (FRIENDS.md §3, §6; friends-panel.ts) ───────────────────────────────────
+   A friend is a rectangle with a cover in it, not a row of text (his design, 2026-09-20).
+   The whole box is the Listen Along button, so every state a box can be in — offline, not
+   playing, not added back — is a disabled button that still carries its right-click menu.
+   The gutter follows the member list's trick: it reaches OUT into the panel's own padding
+   by the bar's width, so the boxes keep their width whether it is there or not. */
+.friend__list {
+  max-height: var(--friend-list-max-h);
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-1);
+  transition: margin-right var(--room-gutter-open) var(--ease-ui);
+}
+.friend__list[data-scrolls] {
+  scrollbar-gutter: stable;
+  margin-right: calc(-1 * var(--scrollbar-w));
+}
+.friend__box {
+  display: flex; align-items: center; gap: var(--friend-gap);
+  width: 100%; box-sizing: border-box; text-align: left;
+  padding: var(--space-1);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1.25;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--friend-radius);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui), border-color var(--dur-fast) var(--ease-ui);
+}
+.friend__box:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--title); }
+.friend__box:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* Disabled is the ordinary state here — offline is not a failure — so it dims rather than
+   greys out, and the box keeps its menu and its pointer. */
+.friend__box:disabled { cursor: default; }
+.friend__box[data-offline] { opacity: var(--friend-dim); }
+.friend__art {
+  flex: 0 0 auto; width: var(--friend-art); height: var(--friend-art);
+  border-radius: calc(var(--friend-radius) - 2px);
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.friend__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.friend__lines { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.friend__name { color: var(--title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend__song { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend__song--quiet, .friend__sub { color: var(--subtext); }
+.friend__sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend__tag { flex: 0 0 auto; color: var(--title); font-size: var(--fs-subtext); }
+/* Your own code: large enough to read out loud, and a button because it copies. */
+.friend__code {
+  font-family: var(--font-title); font-weight: var(--fw-title);
+  letter-spacing: var(--room-code-space); font-variant-numeric: tabular-nums;
+  color: var(--title); background: transparent; border: 1px solid transparent;
+  padding: 0 var(--space-1); margin-left: auto; cursor: pointer;
+}
+.friend__code:hover { text-decoration: underline; }
+.friend__code:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* A link inside a sentence, not a chip: it sits in running text and must not become a
+   second control family (UI-ARCHITECTURE §2a). */
+.friend__inline {
+  font: inherit; color: var(--title); background: none; border: 0; padding: 0;
+  text-decoration: underline; cursor: pointer;
+}
+.friend__quiet { text-align: center; }
+
 /* The Permissions fold (.sound__fold-btn / .sound__fold, sound-panel.ts): the rows the host
    rarely changes, behind one row with a turning caret. */
 .room__fold-btn {
@@ -652,6 +719,20 @@ body {
 .room__fold-btn::before { content: "›"; display: inline-block; margin-right: var(--space-1); transition: transform var(--dur-fast) var(--ease-ui); }
 .room__fold-btn[aria-expanded="true"]::before { transform: rotate(90deg); }
 .room__fold-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* A top-level part of the panel — Friends, DeetsRooms — as a fold (his call, 2026-09-20).
+   Same button family as Permissions, so the panel has ONE idiom for "this opens": the
+   part heading is only a fold button that reads like a section heading, and its body is
+   plain rather than tinted, because a whole half of the panel is not an aside. */
+.room__part { display: flex; flex-direction: column; gap: var(--space-2); }
+.room__part-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.room__fold-btn--part { color: var(--subtext); margin-top: 0; }
+.room__fold-btn--part[aria-expanded="true"] { color: var(--text); }
+
+/* The two parts change places when a room opens (FRIENDS.md §16.7). A FLIP does the
+   travel: room-panel.ts puts each part back where it was and releases it, so only the
+   transform animates and the slide is compositor work. */
+.room__part { transition: transform var(--room-part-slide) var(--ease-ui); }
+
 .room__fold {
   display: flex; flex-direction: column; gap: var(--space-2);
   padding: var(--space-2);
@@ -687,6 +768,9 @@ body {
   .room__fig-body, .room__fig-head { transition: none; }
   .room__btn[data-away] svg { animation: none; }
   .room__half, .room__fold-btn, .room__fold-btn::before { transition: none; }
+  /* The parts still change places — they just arrive rather than travel. room-panel.ts
+     also skips the FLIP outright, so nothing is measured for an animation that is off. */
+  .room__part { transition: none; }
   /* The gutter still opens — it just arrives rather than travels. */
   .room__panel, .room__members { transition: none; }
 }

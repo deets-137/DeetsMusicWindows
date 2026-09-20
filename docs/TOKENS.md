@@ -7,7 +7,7 @@
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 428 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 435 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -142,7 +142,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--room-half-pad-x` | `var(--space-1)` | — | the pill halves are one width; the padding only sets how tight |
 | `--room-fold-bg` | `var(--sound-fold-bg)` | — | the Permissions box, the Sound fold's tint |
 | `--room-dim` | `var(--sound-dim)` | — |  |
-| `--room-stage-h` | `104px` | — | The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. |
+| `--friend-radius` | `var(--room-radius)` | — | The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. Friends (FRIENDS.md §3, §6). ALIASES, not raw values: a friend's box lives inside the room panel, so a skin that restyles that panel restyles this with it. Only the three that describe the box's own shape are new. |
+| `--friend-chip-min-w` | `var(--room-chip-min-w)` | — |  |
+| `--friend-list-max-h` | `180px` | — | about three boxes before the list scrolls |
+| `--friend-art` | `38px` | — | the cover square; the box is two text lines tall |
+| `--friend-gap` | `var(--space-2)` | — |  |
+| `--friend-dim` | `var(--room-dim)` | — | an offline box, and every quiet line |
+| `--room-part-slide` | `260ms` | — | Friends and DeetsRooms changing places when a room opens. Longer than a hover and shorter than the card swap: it is a nudge, not a journey. |
+| `--room-stage-h` | `104px` | — |  |
 | `--room-fig-w` | `62px` | — | the front figure; each rank behind is smaller |
 | `--room-fig-step-x` | `34px` | — | how far each rank behind steps to its side |
 | `--room-fig-stroke` | `3.2px` | — | the figures are line work, like the title bar glyph |

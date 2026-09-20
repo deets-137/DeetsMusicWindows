@@ -41,6 +41,8 @@ import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { rowDrag } from "./row-drag";
 import { registerFinder } from "./find-key";
 import { sharePauseLeft, pauseSharingForAnHour } from "./presence";
+import { formatFriendCode, friendsState } from "./friends";
+import { copyMyKey, pasteAKey } from "./friends-panel";
 import {
   sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs,
   resetOrder, snapshotOrders, restoreOrders, orderedScopes,
@@ -239,8 +241,12 @@ const RESET_GROUPS: ResetGroup[] = [
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
   },
   {
-    id: "sharing", label: "Sharing", hint: "Share activity on Discord, the hour's pause, and the room invite button. Not the webhook — that is a connection, not a setting",
-    keys: ["shareActivityDiscord", "sharePauseUntil", "discordRoomInvite"],
+    id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
+    keys: ["shareActivityApp", "shareActivityDiscord", "sharePauseUntil", "discordRoomInvite"],
+  },
+  {
+    id: "friends", label: "Friends", hint: "Your friend code and its key, Listen Along, and whether your box carries your room code. Not your friend list — that is a list, not a setting",
+    keys: ["friendsListenAlong", "friendsRoomInvite"],
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
@@ -1344,11 +1350,23 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       tail: () => {
         const left = sharePauseLeft();
         if (left) return `<div class="set__status">Paused for another ${Math.max(1, Math.round(left / 60000))} min. Nothing is shared meanwhile.</div>`;
-        return setting("shareActivityDiscord")
-          ? `<div class="set__status">Your Discord profile shows the song, the artist, the album and a progress bar while you listen.</div>`
-          : `<div class="set__status">Nothing is shared. With this off, DeetsMusic never opens the connection to Discord at all.</div>`;
+        const said: string[] = [];
+        if (setting("shareActivityApp")) said.push("Your friends see what you play.");
+        if (setting("shareActivityDiscord")) said.push("Your Discord profile shows the song, the artist, the album and a progress bar.");
+        return said.length
+          ? `<div class="set__status">${said.join(" ")}</div>`
+          : `<div class="set__status">Nothing is shared. With these off, DeetsMusic never opens either connection at all.</div>`;
       },
       rows: [
+        // The two "Share activity on …" rows are adjacent ON PURPOSE (§8.5.1): "who can
+        // see what I play" is one decision with two answers, and a person must be able to
+        // read both without leaving the row they are on.
+        storeToggle(
+          "shareApp",
+          "Share activity on DeetsMusic",
+          "shareActivityApp",
+          () => "The friends you added see the song, the artist and the cover while you listen. Only people whose code you added, and who added yours",
+        ),
         storeToggle(
           "shareDiscord",
           "Share activity on Discord",
@@ -1375,6 +1393,42 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
                 render();
               },
             },
+          ],
+        },
+      ],
+    },
+    {
+      // Friends' own plumbing, beside Discord's, for the same reason: Sharing holds the
+      // consent, a named section holds the connection (FRIENDS.md §8.5.1). The friend
+      // LIST is not here — a list is not a setting, and it lives in the people panel.
+      title: "Friends",
+      tail: () =>
+        `<div class="set__status">Your friend code is <b>${esc(formatFriendCode(friendsState().me))}</b>. ` +
+        `A friend adds it, you add theirs, and then you can see each other — one code on its own shows nothing.</div>`,
+      rows: [
+        storeToggle(
+          "friendslisten",
+          "Let friends listen along",
+          "friendsListenAlong",
+          () =>
+            "A friend presses your box and hears what you hear. It starts a room only they can listen in — they cannot skip, seek or change the queue. You get one notice when somebody joins",
+        ),
+        storeToggle(
+          "friendsroominvite",
+          "Put my room code on my box",
+          "friendsRoomInvite",
+          () =>
+            "While you host a room, your friends' boxes carry its code so they can join it. The code is the only gate on a room, so this is its own switch",
+        ),
+        {
+          // §2a, fork 1a-A. Moving to a new PC, and the warning that the key IS you. A
+          // split row, the shape "Pause sharing for an hour" uses one section up.
+          kind: "split", id: "friendskey", label: "Your key",
+          hint: () =>
+            "The key behind your friend code. Copy it to keep the same code on another PC. Anybody who has it can be you, so it goes nowhere but DeetsMusic",
+          halves: [
+            { type: "action", label: "Copy my key", hint: "Puts it on the clipboard, with a warning", run: () => copyMyKey() },
+            { type: "action", label: "Paste a key", hint: "Replaces this PC's friend code with the key on the clipboard", run: () => pasteAKey() },
           ],
         },
       ],

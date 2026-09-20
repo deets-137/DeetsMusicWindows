@@ -18,10 +18,11 @@ front-end, Rust back-end).
   the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, Authenticode signing,
   publish, the self-updater, install, uninstall (§0 = commands, secrets and keys on one page).
 - `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
-  call site; `__toast.demo()` in the console shows one of each kind. **§4a = the sticky queue**
-  (designed 2026-09-19, not built, three forks open): past the cap of 3 a sticky toast is
-  DESTROYED with its actions unrun, so §4's "a question always shows" and "an Undo always shows"
-  can both break today — a queue is what makes them true.
+  call site; `__toast.demo()` in the console shows one of each kind. **§4a = the sticky queue,
+  BUILT 2026-09-20 (§4a.8 = as built, desk test §4a.7 PASSED the same day)**: past the cap of 3
+  a sticky toast used to be DESTROYED with its actions unrun, which could break both of §4's
+  promises — "a question always shows" and "an Undo always shows". The queue is what makes
+  them true.
 - `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
 - `docs/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
@@ -82,8 +83,7 @@ front-end, Rust back-end).
   led by the Deets and Happy sprites (§4.0 = as built, 2026-09-18: five steps, the gesture
   advances, the sprites travel, `onboardingStep` in settings; §5 = `npm run dev:fresh` /
   `dev:fresh:in`, how to be a first-time user without losing your data).
-- `docs/FRIENDS.md` — **Friends** (paper) **+ Discord Rich Presence (BUILT + desk-tested
-  2026-09-20)**. §8.4a = the three measurements against the real client: **type 2 works**
+- `docs/FRIENDS.md` — **Friends + Discord Rich Presence, both BUILT 2026-09-20.** §8.4a = the three measurements against the real client: **type 2 works**
   ("Listening to"), **`status_display_type` is kept and ignored** (so the headline is the app
   name), and **an https Apple cover needs no upload** — Discord's media proxy fetches it.
   §8.10 = as built: `src-tauri/src/presence.rs` is the pipe and nothing else,
@@ -91,9 +91,21 @@ front-end, Rust back-end).
   minute, sharing off closes the pipe), plus Settings › **Sharing** and Settings › **Discord**
   (the Song of the Day webhook rows MOVED here, §8.5.2). `scripts/discord-probe.mjs` re-asks
   the measurements after a Discord update. **Open: the two buttons need a second Discord
-  account** (§8.4 item 3), and `/j/` waits for a worker deploy (§8.7.3). **Friends itself —
-  the friend code, presence between friends, the worker — is still paper**, nine forks open;
-  §5 = the free-tier budget, §13-§15 = what a room costs and why a new worker.
+  account** (§8.4 item 3), and `/j/` waits for a worker deploy (§8.7.3).
+  **FRIENDS ITSELF IS BUILT (2026-09-20) — §16 = as built, §17 = the desk test, NOT RUN.**
+  Every fork in §11 is closed; §16.1 is what he chose and §16.7 is what was decided inside
+  those choices. The identity is an **Ed25519 key pair** in a DPAPI `friends.json` (NOT a
+  schema change — §16.4 says why), and the friend code is `SHA-256(pub)[0..5]` in the room
+  code's own alphabet, pinned by a test on both sides (§16.3). The worker is its own private
+  repo `../DeetsMusicFriends`, **deployed** at `musicfriends.deets.solutions`, and it
+  **writes zero SQLite rows** — presence and the friend list ride the socket attachment,
+  the ROOMS.md §20 shape built here first (§16.6); `scripts/check.mjs` is its protocol test,
+  18/18 against live. **Listen Along (§16.2) is his own design**: one button, a SETTING
+  answers it rather than a prompt, and a room made for it has every guest control on `host`.
+  `src/busy.ts` is §5.2's toast, shared with Rooms — a raw "answered 429" no longer reaches
+  anyone. The panel is titled **Friends**, with *Your name* (required) on top and two
+  collapsible sections, **Friends** and **DeetsRooms** (renamed from DeetsRadio), the rooms
+  one sliding above Friends while a room is live (§16.7 items 11, 15-21). §5 = the free-tier budget, §13-§15 = what a room costs and why a new worker.
 - `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
@@ -135,7 +147,7 @@ front-end, Rust back-end).
   One `row_order(scope, id, rank)` table, **schema v13**, exported to the `query` MCP copy; an
   unranked id draws last in its card's built-in order. Settings › Window › *Move sections by
   holding* turns the gesture off; Settings › Reset › *Row order* undoes it all. **Desk test §12
-  (20 steps) NOT RUN** — HANDOFF.md "Test 4" is the short version.
+  (20 steps) PASSED 2026-09-20** (HANDOFF.md "Test 4" is the short version and records it).
 - `docs/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
   answers to; update it with `SYNONYMS` in compass.ts.
 - `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows

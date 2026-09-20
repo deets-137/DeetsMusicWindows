@@ -44,18 +44,26 @@ nothing about authoring changed when the box did.
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
 | Title bar | the cog (right of the compass) | Opens Settings at full size | index.html |
-| Title bar | the Room item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
-| Room panel | the stage (the silhouettes) | Everyone listening. The heads move with the music → "…when Sound is on" while nothing is routed → out of a room: "Start a room and the others join here" | room-panel.ts |
-| Room panel | Your name | The name the other members see | room-panel.ts |
-| Room panel | Start a room | Makes a room from what you play now and shows its code | room-panel.ts |
-| Room panel | the code field | The 8-character code the host reads out. Upper or lower case, with or without the dash | room-panel.ts |
-| Room panel | Join | Joins the room with that code | room-panel.ts |
-| Room panel | the code | The code a friend types to join this room | room-panel.ts |
-| Room panel | Copy code · Copy invite link | Copies the room code / Copies a link that opens DeetsMusic and joins this room | room-panel.ts |
-| Room panel | Remove (per guest) | Removes {name} from the room | room-panel.ts |
-| Room panel | Permissions (the fold) | Shows what a guest may do: play, skip, seek, add songs and reorder Up Next | room-panel.ts |
-| Room panel | each guest-control pill | what the control hands over ("Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app") | room-panel.ts |
-| Room panel | Leave room · End room | Leaves the room / Ends the room for everyone. Your own queue comes back | room-panel.ts |
+| Title bar | the Friends item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
+| Friends panel | the stage (the silhouettes) | Everyone listening. The heads move with the music → "…when Sound is on" while nothing is routed → out of a room: "Start a room and the others join here" | room-panel.ts |
+| Friends panel | the **Friends** heading (a fold) | The people you added, and what they are playing | room-panel.ts |
+| Friends panel | the **DeetsRooms** heading (a fold) | Start a room, or join one with a code | room-panel.ts |
+| Friends | a friend's box | Listen along — they host a room and you hear what they hear → "They have not added your code yet…" / "They are not online right now" / "They are online but not playing anything" | friends-panel.ts |
+| Friends | Your code | Your friend code. A friend types it to add you — and you must add theirs before either of you sees anything | friends-panel.ts |
+| Friends | Link | Copies a link that opens DeetsMusic with your code filled in | friends-panel.ts |
+| Friends | the code field | Their 8-character friend code. Upper or lower case, with or without the dash | friends-panel.ts |
+| Friends | Add | Adds them. They must add your code too before either of you sees anything | friends-panel.ts |
+| Friends | Turn on (in the quiet line) | Starts sharing what you play with the friends you added | friends-panel.ts |
+| Friends panel | Your name (top, required) | What your friends and the other members call you. It is needed before you can add a friend or start a room → in a room: "…A change here reaches your friends at once, and this room at the next join" | room-panel.ts |
+| Friends panel › DeetsRooms | Start a room | Makes a room from what you play now and shows its code | room-panel.ts |
+| Friends panel › DeetsRooms | the code field | The 8-character code the host reads out. Upper or lower case, with or without the dash | room-panel.ts |
+| Friends panel › DeetsRooms | Join | Joins the room with that code | room-panel.ts |
+| Friends panel › DeetsRooms | the code | The code a friend types to join this room | room-panel.ts |
+| Friends panel › DeetsRooms | Copy code · Copy invite link | Copies the room code / Copies a link that opens DeetsMusic and joins this room | room-panel.ts |
+| Friends panel › DeetsRooms | Remove (per guest) | Removes {name} from the room | room-panel.ts |
+| Friends panel › DeetsRooms | Permissions (the fold) | Shows what a guest may do: play, skip, seek, add songs and reorder Up Next | room-panel.ts |
+| Friends panel › DeetsRooms | each guest-control pill | what the control hands over ("Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app") | room-panel.ts |
+| Friends panel › DeetsRooms | Leave room · End room | Leaves the room / Ends the room for everyone. Your own queue comes back | room-panel.ts |
 | Compass bar | a Settings row | the row's own hint (settings-card.ts, through `settingsRows()`) | compass.ts |
 | Compass bar | a theme, skin or surface row | the title menu button's own hint | compass.ts |
 | Compass bar | Open · Play (a song, album, artist or playlist row) | Enter · Ctrl+Enter | compass.ts |

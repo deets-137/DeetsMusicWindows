@@ -11,8 +11,11 @@
 use tauri::{AppHandle, Emitter};
 
 /// Crockford base32, the room code's alphabet (§6). No I, L, O or U.
-const ALPHABET: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const CODE_LEN: usize = 8;
+/// A FRIEND code uses the same alphabet and the same length (FRIENDS.md §2), so
+/// `normalize` below is shared rather than copied — one reading of "is this a code",
+/// for both kinds.
+pub(crate) const ALPHABET: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+pub(crate) const CODE_LEN: usize = 8;
 
 /// Is this the room route? (`<scheme>://room?code=…`)
 pub fn is_link(raw: &str) -> bool {
@@ -24,7 +27,7 @@ pub fn is_link(raw: &str) -> bool {
 
 /// A code as typed or as sent: any case, with or without the dash, with the misread
 /// letters mapped back (`O`→`0`, `I`/`L`→`1`). `None` when it is not a code.
-fn normalize(raw: &str) -> Option<String> {
+pub(crate) fn normalize(raw: &str) -> Option<String> {
     let cleaned: String = raw
         .to_ascii_uppercase()
         .chars()
