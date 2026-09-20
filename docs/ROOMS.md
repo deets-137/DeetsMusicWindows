@@ -1325,6 +1325,11 @@ fire of A's timer get `diag.log` lines; no new Settings key is proposed (the exi
 > replace with arithmetic, so §20.3's per-song alarm and §20.4's recovery copy are still paper.
 > Rooms stays untouched, and §17.4 / §18.7 are both closed, so this is now a scheduling choice
 > rather than a blocked one.
+>
+> **This section is NOT about adding a queue.** Rooms already has one — `queue: {upcoming,
+> history}`, `MAX_QUEUE` 500, with `add`, `remove`, `move`, `next` and `previous` on the wire.
+> §20 is a **storage-cost** change, and as written it would make that queue **smaller**, not
+> bigger (§20.2's measurement, §20.5 item 1). Asked and answered 2026-09-20.
 
 The owner's question, while designing Friends (FRIENDS.md §14): **can a room avoid SQLite writes if
 the host's queue is treated as the accurate one, and everyone else's changes edit the host's queue?**
@@ -1350,6 +1355,27 @@ About **450 rows for a 3-hour room** (§3.2), and rows are the meter that runs o
    right for a better reason than we knew.
 2. **The cap is 16,384 bytes per socket**, not 2 KB. A room's `transport`, and a queue of roughly 40 to
    50 `RoomEntry` values, fit inside one socket's attachment.
+
+   **MEASURED 2026-09-20, and fact 2 was optimistic.** A `RoomEntry` was serialized exactly as
+   `sanitize.js` builds it, at the field sizes of the owner's own 3,930-song library
+   (average title 14.5, artist 12.2, album 20.0; longest 88 / 92 / 110), against the real
+   `meta` + `transport` overhead:
+
+   | Entry at | One entry | Fits in 16 KB |
+   |---|---|---|
+   | the library's **average** song | 423 B | **36** |
+   | a long-ish song (30/25/40) | 471 B | 32 |
+   | the library's **longest** song | 666 B | 22 |
+   | `sanitize.js`'s own caps (120/120/120) | 736 B | **20** |
+
+   So the honest number is **20 guaranteed, about 36 typical** — not 40 to 50. `MAX_QUEUE` is
+   **500** today.
+
+   **And a harder finding, which §20.3 missed: `history` alone does not fit.** `queue` is
+   `{upcoming, history}`, and `MAX_HISTORY` is 50 — about **21 KB at the average size**, over
+   the cap before a single upcoming entry is added. Previous reaches back through that history
+   (§5.2). So "the queue rides the attachment" is not a size fork with a generous answer; it is
+   a **redesign of what a room remembers**.
 
 ### 20.3 The shape: the worker stays the live authority, the host is the backup
 
@@ -1382,9 +1408,18 @@ About **450 rows for a 3-hour room** (§3.2), and rows are the meter that runs o
 
 ### 20.5 What it costs us, honestly
 
-1. **A queue over ~50 songs does not fit** in 16 KB. The fallback is a storage write for the queue in
-   that case only, or a hard cap on `upcoming` that the panel explains. **This is a fork, not a
-   detail.**
+1. **A queue over ~20 songs does not fit** in 16 KB, and `history` does not fit at all (§20.2,
+   measured 2026-09-20). Going from `MAX_QUEUE` 500 to about 20, and losing or shrinking
+   Previous, is a **product** change paid for a cost saving nobody needs yet. **This is a fork,
+   not a detail** — and the measurement makes it a much worse trade than the estimate did.
+
+   **20a — the split that §20 did not consider (2026-09-20).** The rows are not evenly spread.
+   `transport` changes on *every* command; `queue` changes only on add, remove, move and an
+   advance; and the alarm is one row per song. So **move `transport` to the attachment and drop
+   the alarm, and leave `queue` in storage.** That takes out the great majority of the rows,
+   keeps `MAX_QUEUE` at 500, keeps Previous whole, and keeps the 16 KB cap irrelevant — a
+   `transport` with one entry in it is about 1 KB. It gives up "~0 rows" for "few rows", which
+   is the part of §20 nobody is actually short of.
 2. **A host socket drop loses live state** until the re-seed lands. Today a storage-backed room survives
    it untouched. The grace window (§7) covers the gap, but a guest could see a stall where they see
    none now.
@@ -1405,3 +1440,15 @@ The reason is not doubt about the idea. It is that a room that plays wrongly is 
 costs 450 rows, and we are nowhere near the limit: 220 rooms a day is more rooms than this app has
 users. **The saving is real but not yet needed; the risk is real and would land on a feature that
 works.**
+
+**Updated 2026-09-20, after the measurement.** The recommendation stands and is now firmer, and
+the shape of the work has changed:
+
+- **Full §20 is the wrong trade today.** It buys ~0 rows at the price of `MAX_QUEUE` 500 → ~20 and
+  a Previous that no longer fits (§20.2). Nobody is short of rows.
+- **§20.5a is the piece worth building when the time comes**: `transport` in the attachment, the
+  alarm replaced by arithmetic, `queue` left in storage. Most of the saving, none of the product
+  cost, and the deterministic-advance work — the genuinely hard and genuinely valuable part — is
+  the same either way.
+- **The blocker is the one-feature-in-flight rule, not a doubt.** FRIENDS.md §17 is open, so
+  §20.5a starts after it passes.
