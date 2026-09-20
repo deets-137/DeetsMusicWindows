@@ -378,6 +378,44 @@ async fn fetch_apple_tracks(provider: &AppleProvider, apple_id: &str) -> Result<
     Ok(all)
 }
 
+/// Replace a mirror's content cache with `all`, teach the overview row its count, and
+/// seed the favorites mirror when this is Apple's Favorite Songs. One transaction, shared
+/// by the first open (`apple_playlist_tracks`) and by a refresh (`playlist_refetch`) so the
+/// two paths can never write the cache differently.
+fn store_tracks(conn: &mut Connection, id: &str, all: &[Track]) -> Result<(), String> {
+    let tx = conn.transaction().map_err(err)?;
+    tx.execute("DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1", [id])
+        .map_err(err)?;
+    {
+        let mut ins = tx
+            .prepare_cached("INSERT INTO apple_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
+            .map_err(err)?;
+        for (i, t) in all.iter().enumerate() {
+            let json = serde_json::to_string(t).map_err(err)?;
+            ins.execute(rusqlite::params![id, i as i64, json]).map_err(err)?;
+        }
+    }
+    // Teach the overview row its real count.
+    let row: Option<String> = tx
+        .query_row("SELECT json FROM apple_playlists WHERE playlist_id = ?1", [id], |r| r.get(0))
+        .ok();
+    if let Some(mut p) = row.and_then(|s| serde_json::from_str::<Playlist>(&s).ok()) {
+        p.track_count = Some(all.len() as u32);
+        tx.execute(
+            "UPDATE apple_playlists SET json = ?2 WHERE playlist_id = ?1",
+            rusqlite::params![id, serde_json::to_string(&p).map_err(err)?],
+        )
+        .map_err(err)?;
+        // Apple's generated Favorite Songs list is the only list-all of ♥ we get:
+        // seed the favorites mirror from it (favorites.rs), same transaction.
+        if crate::favorites::is_favorite_songs(&p) {
+            let n = crate::favorites::seed_from_playlist(&tx, all)?;
+            crate::log::info(&format!("favorites: seeded {n} from Favorite Songs"));
+        }
+    }
+    tx.commit().map_err(err)
+}
+
 /// The songs export can match: those with a catalog id. Rows without one can't be
 /// matched, and Apple can't remove them anyway.
 fn matchable(tracks: &[Track]) -> Vec<(usize, ExportRow)> {
@@ -497,25 +535,36 @@ pub struct GetSongsResult {
     apple_id: Option<String>,
     /// Titles of the songs added to the end of the local playlist, in Apple's order.
     added_titles: Vec<String>,
+    /// The songs themselves, only under `dry_run` (PLAYLIST-REFRESH.md §5.1). They ride
+    /// the offer toast's own closure, so pressing [Get them] writes what was already read
+    /// and the whole gesture costs ONE Apple read whether or not it is pressed.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tracks: Vec<Track>,
 }
 
 /// Get New Songs (PLAYLISTS.md §10.4, fork A): add the songs that are on the Apple copy but
 /// not in the local playlist, at the end. `export_diff` with the sides swapped — the extra
 /// Apple occurrences are the additions. Matched by catalog id. Nothing local is removed or
 /// moved, so there is no confirm. One Apple read per 100 songs; the write is local only.
+///
+/// `dry_run` (PLAYLIST-REFRESH.md D9) reads and DOES NOT WRITE: the automatic refresh peeks,
+/// then offers. "Re-read a cache" and "silently add songs to my playlist" are different
+/// promises, and only the first is safe to make while nobody is watching.
 #[tauri::command]
 pub async fn playlist_get_apple_songs(
     id: i64,
+    dry_run: Option<bool>,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<GetSongsResult, String> {
+    let dry = dry_run.unwrap_or(false);
     let (local, apple_id) = {
         let conn = db.lock();
         let (rows, _) = export_rows(&conn, id)?;
         (rows, live_copy(&conn, id)?)
     };
     let Some(apple_id) = apple_id else {
-        return Ok(GetSongsResult { apple_id: None, added_titles: vec![] });
+        return Ok(GetSongsResult { apple_id: None, added_titles: vec![], tracks: vec![] });
     };
 
     let dev = apple::developer_token()?;
@@ -526,12 +575,24 @@ pub async fn playlist_get_apple_songs(
 
     let (add, _, _) = export_diff(&apple_rows, &local);
     let tracks: Vec<Track> = add.iter().map(|&i| apple_tracks[index[i]].clone()).collect();
+    if dry {
+        crate::log::info(&format!("playlists: peeked {} new song(s) on {apple_id} for local:{id}", tracks.len()));
+        return Ok(GetSongsResult {
+            apple_id: Some(apple_id),
+            added_titles: tracks.iter().map(|t| t.title.clone()).collect(),
+            tracks,
+        });
+    }
     if !tracks.is_empty() {
         let mut conn = db.lock();
         append_local(&mut conn, id, &tracks)?;
     }
     crate::log::info(&format!("playlists: got {} song(s) from {apple_id} into local:{id}", tracks.len()));
-    Ok(GetSongsResult { apple_id: Some(apple_id), added_titles: tracks.into_iter().map(|t| t.title).collect() })
+    Ok(GetSongsResult {
+        apple_id: Some(apple_id),
+        added_titles: tracks.into_iter().map(|t| t.title).collect(),
+        tracks: vec![],
+    })
 }
 
 #[derive(serde::Serialize)]
@@ -898,6 +959,11 @@ pub async fn apple_playlists_sync(
                 [id.as_str()],
             )
             .map_err(err)?;
+            tx.execute(
+                "DELETE FROM playlist_refresh WHERE playlist_key = ?1",
+                [id.as_str()],
+            )
+            .map_err(err)?;
         }
     }
     tx.commit().map_err(err)?;
@@ -1036,57 +1102,172 @@ pub async fn apple_playlist_tracks(
         .ok_or("not connected to Apple Music")?;
     let provider = AppleProvider::new(dev, user);
 
-    let mut all: Vec<Track> = Vec::new();
-    let mut offset = 0u32;
-    for _ in 0..100 {
-        let page = provider.playlist_tracks_page(&id, offset, 100).await?;
-        all.extend(page.items); // post-filter (videos skipped); offset steps by limit regardless
-        match page.next_offset {
-            Some(next) if next > offset => offset = next,
-            _ => break,
-        }
-    }
+    let all = fetch_apple_tracks(&provider, &id).await?;
+    store_tracks(&mut db.lock(), &id, &all)?;
+    stamp_refresh(&db.lock(), &id);
+    Ok(all)
+}
 
-    let mut conn = db.lock();
-    let tx = conn.transaction().map_err(err)?;
-    tx.execute(
-        "DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1",
-        [id.as_str()],
+// -- Refresh (docs/PLAYLIST-REFRESH.md) ---------------------------------------
+
+/// v11 (2026-09-20): the `playlist_refresh` table. It cannot live on `apple_playlists` --
+/// that table is DELETEd whole and rebuilt on every sync, so a preference stored there is
+/// wiped weekly. Keyed like `playlist_folder_members`, which survives a sync for the same
+/// reason. NO ROW means "the default for this playlist's kind" (PLAYLIST-REFRESH.md D2), so
+/// a mix Apple adds next month is on Daily without anything being written.
+pub fn migrate_v11(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS playlist_refresh (
+            playlist_key TEXT PRIMARY KEY,
+            mode         TEXT NOT NULL,
+            weekday      INTEGER,
+            fetched_at   INTEGER
+        );",
+    )
+    .map_err(|e| format!("create playlist_refresh: {e}"))?;
+    crate::library::meta_set(conn, "schema_version", "11")
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RefreshRow {
+    /// A mirror's libraryId, or `local:<id>`.
+    key: String,
+    /// `daily` | `weekly` | `off` -- or `default`, written by a stamp on a playlist the
+    /// user never chose for, which still means "this playlist's kind decides".
+    mode: String,
+    /// 0..6, weekly only (0 = Sunday, the way `Date.getDay()` counts).
+    weekday: Option<i64>,
+    /// When this playlist's songs were last read from Apple (ms).
+    fetched_at: Option<i64>,
+}
+
+/// Every stored choice and stamp. A playlist with no row is on its kind's default, which
+/// the front end works out -- nothing is written until the user chooses or a refresh runs.
+#[tauri::command]
+pub fn playlist_refresh_rows(db: State<'_, Db>) -> Result<Vec<RefreshRow>, String> {
+    let conn = db.lock();
+    let mut stmt = conn
+        .prepare_cached("SELECT playlist_key, mode, weekday, fetched_at FROM playlist_refresh")
+        .map_err(err)?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(RefreshRow {
+                key: r.get(0)?,
+                mode: r.get(1)?,
+                weekday: r.get(2)?,
+                fetched_at: r.get(3)?,
+            })
+        })
+        .map_err(err)?;
+    rows.collect::<Result<_, _>>().map_err(err)
+}
+
+/// Set one playlist's choice. The stamp is kept: changing Daily to Weekly must not make a
+/// playlist that was read an hour ago look unread.
+#[tauri::command]
+pub fn playlist_refresh_set(
+    key: String,
+    mode: String,
+    weekday: Option<i64>,
+    db: State<'_, Db>,
+) -> Result<(), String> {
+    if !matches!(mode.as_str(), "daily" | "weekly" | "off") {
+        return Err(format!("unknown refresh mode: {mode}"));
+    }
+    let conn = db.lock();
+    conn.execute(
+        "INSERT INTO playlist_refresh(playlist_key, mode, weekday, fetched_at)
+         VALUES(?1, ?2, ?3, NULL)
+         ON CONFLICT(playlist_key) DO UPDATE SET mode = ?2, weekday = ?3",
+        rusqlite::params![key, mode, weekday],
     )
     .map_err(err)?;
-    {
-        let mut ins = tx
-            .prepare_cached("INSERT INTO apple_playlist_tracks(playlist_id, position, json) VALUES(?1, ?2, ?3)")
+    Ok(())
+}
+
+/// Mark a playlist read now, without touching its mode. Best effort: a missing stamp only
+/// costs one extra read on the next trigger, so a failure here must never fail the read
+/// that earned it.
+fn stamp_refresh(conn: &Connection, key: &str) {
+    let _ = conn.execute(
+        "INSERT INTO playlist_refresh(playlist_key, mode, weekday, fetched_at)
+         VALUES(?1, 'default', NULL, ?2)
+         ON CONFLICT(playlist_key) DO UPDATE SET fetched_at = ?2",
+        rusqlite::params![key, now_ms()],
+    );
+}
+
+/// The stamp alone, for the read-only path: an exported local playlist that was peeked
+/// (PLAYLIST-REFRESH.md D9). A dismissed offer never calls this, so the next check offers
+/// again.
+#[tauri::command]
+pub fn playlist_refresh_stamp(key: String, db: State<'_, Db>) -> Result<(), String> {
+    stamp_refresh(&db.lock(), &key);
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RefetchResult {
+    /// Songs on the playlist now.
+    total: u32,
+    /// Songs in the new list that were not in the old one. A mix REPLACES rather than
+    /// appends, so this is the only count that means anything.
+    added: u32,
+}
+
+/// Re-read a mirror's songs from Apple, whatever the cache holds (PLAYLIST-REFRESH.md §5).
+/// One Apple read per 100 songs. On a failure the old cache AND the old stamp both stay, so
+/// the next trigger tries again rather than waiting another day.
+#[tauri::command]
+pub async fn playlist_refetch(
+    id: String,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<RefetchResult, String> {
+    let before: std::collections::HashSet<String> = {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT json FROM apple_playlist_tracks WHERE playlist_id = ?1")
             .map_err(err)?;
-        for (i, t) in all.iter().enumerate() {
-            let json = serde_json::to_string(t).map_err(err)?;
-            ins.execute(rusqlite::params![id, i as i64, json]).map_err(err)?;
-        }
-    }
-    // Teach the overview row its real count.
-    let row: Option<String> = tx
-        .query_row(
-            "SELECT json FROM apple_playlists WHERE playlist_id = ?1",
-            [id.as_str()],
-            |r| r.get(0),
-        )
-        .ok();
-    if let Some(mut p) = row.and_then(|s| serde_json::from_str::<Playlist>(&s).ok()) {
-        p.track_count = Some(all.len() as u32);
-        tx.execute(
-            "UPDATE apple_playlists SET json = ?2 WHERE playlist_id = ?1",
-            rusqlite::params![id, serde_json::to_string(&p).map_err(err)?],
-        )
-        .map_err(err)?;
-        // Apple's generated Favorite Songs list is the only list-all of ♥ we get:
-        // seed the favorites mirror from it (favorites.rs), same transaction.
-        if crate::favorites::is_favorite_songs(&p) {
-            let n = crate::favorites::seed_from_playlist(&tx, &all)?;
-            crate::log::info(&format!("favorites: seeded {n} from Favorite Songs"));
-        }
-    }
-    tx.commit().map_err(err)?;
-    Ok(all)
+        let rows = stmt
+            .query_map([id.as_str()], |r| r.get::<_, String>(0))
+            .map_err(err)?;
+        rows.filter_map(|r| r.ok())
+            .filter_map(|j| serde_json::from_str::<Track>(&j).ok())
+            .map(|t| track_key(&t))
+            .collect()
+    };
+
+    let dev = apple::developer_token()?;
+    let user = apple_state
+        .user_token
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("not connected to Apple Music")?;
+    let provider = AppleProvider::new(dev, user);
+    let all = fetch_apple_tracks(&provider, &id).await?;
+
+    let added = all.iter().filter(|t| !before.contains(&track_key(t))).count() as u32;
+    store_tracks(&mut db.lock(), &id, &all)?;
+    stamp_refresh(&db.lock(), &id);
+    crate::log::info(&format!(
+        "playlists: refetched {id} -- {} song(s), {added} new",
+        all.len()
+    ));
+    Ok(RefetchResult { total: all.len() as u32, added })
+}
+
+/// What counts as "the same song" across two reads. The catalog id when there is one (a
+/// mix's songs always have one), the library id next, and title + artist as the last
+/// resort, which is all a library-only row gives us.
+fn track_key(t: &Track) -> String {
+    t.catalog_id
+        .clone()
+        .or_else(|| t.library_id.clone())
+        .unwrap_or_else(|| format!("{}|{}", t.title.to_lowercase(), t.artist_name.to_lowercase()))
 }
 
 // ── Local CRUD (all SQLite, zero Apple calls; UI callers arrive with creation UX) ──

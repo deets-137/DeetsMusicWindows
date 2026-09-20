@@ -1155,10 +1155,36 @@ socket` guard on `close` fixes that as well. It was reachable from the same `joi
 **One deliberate behaviour change, from 18.2:** a seek during the 1.5 s lead now lands on
 the NEW position, not the stale one. That is the correct reading of the room.
 
-**The crumb left on purpose.** `src/room.js:446` and `src/room.js:564` in
-`../DeetsMusicRooms` still do `epoch += 1`, and `src/protocol.js:60` still carries the
-field. Nothing reads it on either side now. Delete those three when a worker deploy next
-happens for a real reason — never as a deploy of its own.
+**The crumb left on purpose — and cleared 2026-09-20.** `src/room.js:446` and
+`src/room.js:564` in `../DeetsMusicRooms` still did `epoch += 1`, and `src/protocol.js:60`
+still carried the field. Nothing read it on either side. The rule written here was *delete
+those three when a worker deploy next happens for a real reason — never as a deploy of its
+own*, because a deploy drops every live room socket (§17.10).
+
+**The owner set that rule aside on 2026-09-20**, asked for it now, and the reason it existed
+does not apply today: the rule assumed people in live rooms, and there are none. The cleanup
+is **four** places, not three — the doc missed `src/room.js:42`, where `epoch: 0` seeded the
+transport shape:
+
+| File | Line | Gone |
+|---|---|---|
+| `src/room.js` | 42 | `epoch: 0,` in the empty transport |
+| `src/room.js` | 446 | `this.transport.epoch += 1;` after a command |
+| `src/room.js` | 564 | `t.epoch += 1;` on the song-end alarm |
+| `src/protocol.js` | 60 | the field in the shape comment, replaced by a note saying why it is not coming back |
+
+A stored room's `transport` may still carry an `epoch` key it was saved with. Nothing reads
+it, and it costs one number in a row that is rewritten on the next command.
+
+**Deployed 2026-09-20**, version `e9aefe41-c9e1-4415-8418-cb9eeda6ab0c`, wrangler 4.135.0.
+`rooms.deets.solutions/health` answers `{"ok":true,"v":1,"minV":1}`. No live room was
+verified empty first — there is no room directory to read (that is §19's part C), so the
+deploy went out on the reasoning that nobody but the owner uses rooms today.
+
+**FRIENDS.md §8.7.3 loses its rider.** The `/j/` landing route was going to travel with this
+deploy; it now needs a deploy of its own when Rich Presence is built. That is one deploy, on
+a worker with no live rooms in it, and §19 (the deploy notice) is the real answer to the
+cost.
 
 **Desk test. PASSED 2026-09-19**, by the owner. §18 is closed, and with §17.4 and §17.10
 already passed there is **no open desk test left in Rooms**.

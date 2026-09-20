@@ -1022,10 +1022,7 @@ export function mountWeb(btn: HTMLElement): () => void {
     const t = e.target as HTMLElement;
     const hit = t.closest<HTMLElement>(".web__hit[data-i]");
     if (hit) {
-      // Next task: picking rebuilds the rows, and the dropdown's document click must still
-      // find the pressed row inside the panel, or it closes the panel.
-      const r = rows[Number(hit.dataset.i)];
-      window.setTimeout(() => activate(r));
+      activate(rows[Number(hit.dataset.i)]);
       return;
     }
     if (t.closest("[data-days]")) return stepDays(1);

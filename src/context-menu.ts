@@ -44,7 +44,24 @@ export interface InputItem {
 export interface SubmenuItem {
   label: string;
   sub: () => MenuItem[] | Promise<MenuItem[]>;
+  /** Trusted markup shown between the label and the flyout chevron — what this submenu
+   *  is currently set to (`Refresh ▸  Weekly · Fri`). Build it with `menuState`. */
+  badge?: string;
 }
+
+/** A trailing state mark for a menu row: the current choice on a submenu parent, or the
+ *  tick on the chosen row inside it. It is the same secondary treatment the flyout chevron
+ *  already carries on the same row family, so it needs no color role and no token of its
+ *  own. Text is escaped — it goes in as markup. */
+export function menuState(text: string): string {
+  const span = document.createElement("span");
+  span.className = "ctx-menu__state";
+  span.textContent = text;
+  return span.outerHTML;
+}
+
+/** The mark on the chosen row inside a choice flyout. */
+export const MENU_CHOSEN = menuState("\u2713");
 export type MenuItem = ActionItem | InputItem | SubmenuItem;
 
 let openEl: HTMLElement | null = null;
@@ -110,7 +127,9 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
         chev.className = "ctx-menu__chev";
         chev.textContent = "›";
         chev.setAttribute("aria-hidden", "true");
-        row.append(lbl, chev);
+        row.append(lbl);
+        if (item.badge) row.insertAdjacentHTML("beforeend", item.badge);
+        row.append(chev);
         const fly = document.createElement("div");
         fly.className = "ctx-menu__fly";
         fly.setAttribute("role", "menu");

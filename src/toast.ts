@@ -30,7 +30,10 @@
 // truth for what happened (every call logs `toast` or `toast:muted`).
 //
 // Stack: newest nearest the edge it grew from, capped at 3. Past the cap the oldest
-// TIMED toast yields first; sticky ones go only when nothing timed is left.
+// TIMED toast yields first. A sticky toast is never destroyed to make room: when every
+// live toast is sticky, the arrival WAITS (the queue, TOASTS.md §4a). That is what makes
+// "a question always shows" and "an Undo always shows" true — before the queue, the
+// oldest sticky was removed with its buttons and their closures unrun.
 // Main window only: the tray panel and the extension popup keep the console.
 
 import { setting } from "./settings-store";
@@ -53,7 +56,18 @@ export interface ToastOptions {
   dismissKey?: string;
   /** A notice that shows ONCE: any button press silences the key. Ends with "Got it". */
   onceKey?: string;
+  /**
+   * Queue rank, and how long this toast may wait when the stack is full. DEFAULT: "ask"
+   * for a sticky toast carrying the caller's own actions, "offer" for everything else —
+   * so no call site needs to say it unless it wants the other answer. An "ask" jumps
+   * ahead of offers in the queue and is DROPPED rather than shown late; an "offer" waits
+   * as long as it must. Only sticky toasts ever queue, so this is inert on a timed one.
+   */
+  priority?: ToastPriority;
 }
+
+/** What a queued toast is: a question that goes stale, or an offer that does not. */
+export type ToastPriority = "ask" | "offer";
 
 export interface ToastHandle {
   /** Retire the toast now (a "Reconnecting…" that dies on reconnect). */
@@ -62,6 +76,8 @@ export interface ToastHandle {
   update(text: string): void;
   /** False when the tier or a `dismissKey` already at "off" swallowed the call. */
   readonly shown: boolean;
+  /** True while it waits for a slot: it is admitted, but not on screen yet (§4a.3). */
+  readonly queued: boolean;
 }
 
 const CAP = 3;
@@ -69,7 +85,14 @@ const DEFAULT_MS = 3200;
 const MIN_RESUME_MS = 400; // leaving the hover with almost no time left still reads
 const REAP_FALLBACK_MS = 600; // transitionend lost (reduced motion, display:none) → reap anyway
 
-const INERT: ToastHandle = { dismiss() {}, update() {}, shown: false };
+const INERT: ToastHandle = { dismiss() {}, update() {}, shown: false, queued: false };
+
+// The queue's own bounds (§4a.4). Failures arrive without bound, so every layer caps itself.
+const QUEUE_CAP = 10; // a user holding three notices plus ten waiting learns nothing from a fourteenth
+const ASK_WAIT_MS = 30_000; // a question answered after you forgot you asked it acts on a stale intent
+
+/** The log copy drops every “quoted” name — LOGGING.md §Ids, never titles. */
+const strip = (t: string): string => t.replace(/“[^”]*”/g, "“…”");
 
 let host: HTMLElement | null = null;
 function ensureHost(): HTMLElement {
@@ -113,6 +136,57 @@ function silenceNotice(key: string): void {
   }
 }
 
+// ── the sticky queue (TOASTS.md §4a) ─────────────────────────────────────────────────
+// Only STICKY toasts queue. A timed toast's information is momentary — "Link copied."
+// arriving eight seconds late is worse than not arriving — so timed toasts keep exactly
+// the old behaviour. Admission: room under the cap → show it; full with a timed toast
+// live → evict the oldest timed one; full with every live toast sticky → wait here.
+
+interface Queued {
+  /** A question (stale-able) rather than an offer: it jumps the line and it expires. */
+  readonly ask: boolean;
+  /** Live text — `update()` rewrites it while it waits, so what shows is current. */
+  readonly text: string;
+  readonly logged: string;
+  readonly noticeKey?: string;
+  /** Put the built element in the host. */
+  place(): void;
+  /** Tell the handle it is no longer waiting. */
+  dequeued(): void;
+  wait?: number;
+}
+
+const queue: Queued[] = [];
+
+/** Toasts on screen. One already retiring does not hold a slot. */
+const liveToasts = (h: HTMLElement): HTMLElement[] =>
+  [...h.children].filter((c): c is HTMLElement => c instanceof HTMLElement && !c.classList.contains("toast--out"));
+
+/** Take `q` out of the queue: it never appears. Every drop is traceable, by design. */
+function unqueue(q: Queued, why: string): void {
+  const i = queue.indexOf(q);
+  if (i < 0) return;
+  queue.splice(i, 1);
+  if (q.wait !== undefined) window.clearTimeout(q.wait);
+  diag.log("toast:dropped", { text: q.logged, why });
+}
+
+/** A slot freed (a dismiss, a press, a timer): show what has been waiting longest. */
+function drain(h: HTMLElement): void {
+  while (queue.length && liveToasts(h).length < CAP) {
+    const q = queue.shift()!;
+    if (q.wait !== undefined) window.clearTimeout(q.wait);
+    // A notice silenced from another instance while it waited must not appear (§4a.3).
+    if (q.noticeKey && noticeOff(q.noticeKey)) {
+      diag.log("toast:dropped", { text: q.logged, why: "notice-off" });
+      continue;
+    }
+    q.dequeued();
+    diag.log("toast:dequeued", { text: q.logged });
+    q.place();
+  }
+}
+
 // Observers see EVERY call — before the tier and notice gates — so a consumer that is
 // not the user (the agent reply, np-bus.ts) learns of a failure the user has muted.
 type ToastObserver = (t: { kind: ToastKind; text: string }) => void;
@@ -138,7 +212,7 @@ export function toast(opts: ToastOptions): ToastHandle {
   const text = String(opts.text ?? "");
   // The log copy drops every “quoted” name — playlists, songs, artists, stations, speakers
   // (LOGGING.md §Ids, never titles; a bug report sends these lines). Callers quote names.
-  const logged = text.replace(/“[^”]*”/g, "“…”");
+  const logged = strip(text);
   // A failure the user was told about (or would have been, under a muted tier) belongs in
   // the log file too — it is the line a bug report starts from. A question (sticky with the
   // caller's actions: the red delete confirm) is not a failure; its `toast` line below is enough.
@@ -178,6 +252,8 @@ export function toast(opts: ToastOptions): ToastHandle {
   let timer: number | undefined;
   let deadline = 0;
   let remaining = 0;
+  let current = text; // `update()` rewrites this; the queue reads it at dequeue
+  let mine: Queued | null = null; // this toast's queue entry, while it waits
 
   const dismiss = (): void => {
     if (gone) return;
@@ -186,10 +262,18 @@ export function toast(opts: ToastOptions): ToastHandle {
       window.clearTimeout(timer);
       timer = undefined;
     }
+    // Still waiting: leave the queue instead. This is the "Reconnecting…" case — the cause
+    // cleared while it waited, so it must never appear (§4a.3).
+    if (mine) {
+      unqueue(mine, "dismissed");
+      mine = null;
+      return;
+    }
     el.classList.add("toast--out");
     const reap = (): void => el.remove();
     el.addEventListener("transitionend", reap, { once: true });
     window.setTimeout(reap, REAP_FALLBACK_MS);
+    drain(h); // the slot is free the moment it starts leaving
   };
 
   // Buttons: the caller's actions, then the notice's own close ("Got it" for a once-notice,
@@ -246,23 +330,74 @@ export function toast(opts: ToastOptions): ToastHandle {
     });
   }
 
-  // Past the cap the oldest timed toast yields; sticky ones only when nothing timed is left.
-  // DOM order is oldest-first; CSS decides which end is the edge.
-  const live = (): HTMLElement[] =>
-    [...h.children].filter((c): c is HTMLElement => c instanceof HTMLElement && !c.classList.contains("toast--out"));
-  while (live().length >= CAP) {
-    const kids = live();
-    const victim = kids.find((k) => k.querySelector(".toast__bar")) ?? kids[0];
-    victim.remove();
+  // Past the cap a TIMED toast yields (`.toast__bar` is the timer bar). DOM order is
+  // oldest-first; CSS decides which end is the edge. A timed arrival with nothing timed to
+  // evict goes one over the cap for its few seconds rather than take a question's place —
+  // before the queue it took `kids[0]`, which is how a question could be destroyed unread.
+  const place = (): void => {
+    while (liveToasts(h).length >= CAP) {
+      const victim = liveToasts(h).find((k) => k.querySelector(".toast__bar"));
+      if (!victim) break;
+      victim.remove();
+    }
+    h.appendChild(el);
+  };
+
+  const ask = (opts.priority ?? (asks ? "ask" : "offer")) === "ask";
+  const kids = liveToasts(h);
+  if (sticky && kids.length >= CAP && !kids.some((k) => k.querySelector(".toast__bar"))) {
+    // Identical text does not queue twice (§4a.4). The repeating-failure case is the real
+    // overflow risk, and one line saying it once is the whole of its information.
+    if (kids.some((k) => k.querySelector(".toast__text")?.textContent === current) || queue.some((q) => q.text === current)) {
+      diag.log("toast:dupe", { text: logged });
+      return INERT;
+    }
+    if (queue.length >= QUEUE_CAP) {
+      diag.log("toast:dropped", { text: logged, why: "queue-full" });
+      return INERT;
+    }
+    const q: Queued = {
+      ask,
+      get text() {
+        return current;
+      },
+      get logged() {
+        return strip(current);
+      },
+      noticeKey,
+      place,
+      dequeued: () => (mine = null),
+    };
+    // An ask jumps the line: behind the asks already waiting, ahead of every offer. What
+    // gates an action is never stuck behind two harmless offers.
+    let at = queue.length;
+    if (ask) {
+      at = 0;
+      for (let i = 0; i < queue.length; i++) if (queue[i].ask) at = i + 1;
+    }
+    queue.splice(at, 0, q);
+    mine = q;
+    // An ask is dropped rather than shown late; an offer waits as long as it must.
+    if (ask)
+      q.wait = window.setTimeout(() => {
+        unqueue(q, "stale");
+        mine = null;
+      }, ASK_WAIT_MS);
+    diag.log("toast:queued", { text: logged, ask, at, waiting: queue.length });
+  } else {
+    place();
   }
-  h.appendChild(el);
 
   return {
     dismiss,
     update: (t: string) => {
-      p.textContent = String(t ?? "");
+      current = String(t ?? "");
+      p.textContent = current;
     },
     shown: true,
+    get queued() {
+      return mine !== null;
+    },
   };
 }
 
@@ -276,6 +411,20 @@ export function toast(opts: ToastOptions): ToastHandle {
     toast({ kind: "success", text: "Success — link copied." });
     toast({ kind: "warn", text: "Warn — a routine failure, nothing to do." });
     toast({ kind: "error", text: "Error — sticky until you press Dismiss." });
+  },
+  /**
+   * The queue (TOASTS.md §4a.7): push `n` sticky toasts. Three show, the rest wait.
+   * `__toast.queue(4)` is step 1 of the desk test; `__toast.queue(4, "ask")` makes them
+   * questions, which jump the line and expire after 30 s.
+   */
+  queue(n = 4, priority?: ToastPriority): ToastHandle[] {
+    return Array.from({ length: n }, (_, i) =>
+      toast({ kind: "info", sticky: true, text: `Sticky ${i + 1} of ${n}.`, priority }),
+    );
+  },
+  /** How many are waiting, and what they are. */
+  waiting(): { ask: boolean; text: string }[] {
+    return queue.map((q) => ({ ask: q.ask, text: q.text }));
   },
   /** A one-time notice, keyed for the test run only (clear with __toast.reset()). */
   notice(): ToastHandle {

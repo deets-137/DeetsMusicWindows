@@ -112,17 +112,175 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
-**2026-09-20 — four features designed on branch `twelve`, none built.** One session, three docs,
-no code. In the order they should be built:
+### Tomorrow's desk tests (2026-09-21)
+
+**Three features were built on 2026-09-20 and all three wait for your eyes.** They share one
+sitting and one dev app. Run them in this order — the toast queue first, because playlist
+refresh's own offer is a sticky toast and step R11 leans on the queue being right; pins last,
+because it is the only one whose gestures are all yours.
+
+**Read this before you start.** Two of the three write to the schema — `playlist_refresh` is
+**v11**, `pins.act` is **v12** — and they are in **one untested tree**, which is the case the
+one-load-bearing-feature rule exists to prevent. You asked for it that way and it is built that
+way; the cost is that if something goes wrong on a real database, the first question is *which
+migration*. Both are additive and idempotent, and neither touches a row that already exists.
+
+**Every doc still needs a pass after these tests** (PINS.md §8.8 spells out what the pins one
+needs). Until each is marked PASSED with a date, the as-built sections — TOASTS §4a.8,
+PLAYLIST-REFRESH §11, PINS §8.7 — record what was BUILT, not what has been SEEN to work.
+
+Start once, and leave it running for both:
+
+```bash
+npm run dev:app
+```
+
+Everything below that says *I fire* is `node scripts/webview-eval.mjs "<expr>"` from this
+session, which runs one expression in the dev app's webview exactly as if it were typed into
+its console (DEBUGGING.md §Driving the webview). **You can type any of them yourself** — they
+are all on `window.__toast` and `window.__refresh`. Set Settings › Menus, hints and notices ›
+Show notices to **Everything** before you start.
+
+---
+
+#### Test 1 — the sticky toast queue (TOASTS.md §4a.7)
+Past the cap of 3, a sticky toast used to be **destroyed** with its buttons unrun — a Reset
+Undo, a delete confirm, the export question. It now **waits**. One file, `src/toast.ts`; no
+schema, no token, no setting, and no call site changed.
+
+Past the cap of 3, a sticky toast used to be **destroyed** with its buttons unrun — a Reset
+Undo, a delete confirm, the export question. It now waits. Two read-back calls carry the proof,
+and I read them, not you: `__toast.waiting()` lists what is in the queue, ask-first, and
+`deetsmusic diag` shows `toast:queued` · `toast:dequeued` · `toast:dupe` · `toast:dropped {why}`.
+
+| # | I fire | You confirm on screen |
+|---|---|---|
+| 1 | `__toast.queue(4)` | **Three** toasts, not four. Dismiss one → the fourth arrives, with the normal slide. Before this build the FIRST was destroyed instead |
+| 2 | `__toast.queue(3)` then `__toast.push({text:"timed"})` | The timed one shows and **no sticky disappears**. Four are up for its ~3 s, then it goes by itself |
+| 3 | `__toast.demo()` ×3 | Three timed, then a sticky: the oldest **timed** yields, exactly as before |
+| 4 | queue one, then `dismiss()` it before a slot frees | It **never appears**, even after you dismiss two |
+| 5 | queue one, `update()` it, then free a slot | The **new** text shows, not the original |
+| 6 | queue a `dismissKey` notice, silence that key, free a slot | It does **not** appear |
+| 7 | the same text twenty times | **Three** show (they fill the stack as any three do); nothing queues behind them |
+| 8 | twenty different stickies | Three show, ten wait, seven are dropped — dismiss repeatedly and count ten arrivals |
+| 9 | fill the stack + queue, then switch surface (title menu › Surface, midi → max) | The stack moves with the surface **and the queue survives** — keep dismissing, they keep arriving |
+| 10 | Windows *Show animations* off, then free a slot | A waiting toast still arrives, **without the slide** |
+| 11 | `__toast.queue(3)`, `__toast.queue(2)`, `__toast.queue(1,"ask")` | Free a slot: the **ask** appears before the two offers that were queued ahead of it |
+| 12 | fill the stack, queue one ask, wait 30 s | Free a slot → **nothing appears**. Repeat with an offer → it still appears after a minute |
+
+Steps 1, 2, 7, 11 and 12 are the ones that can only be judged by eye. The rest I can also
+confirm from the diag ring if you would rather watch fewer.
+
+---
+
+#### Test 2 — playlist refresh (PLAYLIST-REFRESH.md §10)
+
+The bug: a mirrored Apple playlist cached its songs **once, ever**, so New Music Mix served
+last Friday's songs until you pressed ⟳. Three read-backs are mine:
+
+| I run | It says |
+|---|---|
+| `__refresh.all()` | every covered playlist: its mode, whether that is a stored choice or its kind's default, when it was last read, and whether it is due |
+| `__refresh.due()` | just the ones due right now |
+| `__refresh.check()` | runs the day-change check on demand, whatever the date says |
+
+**A note on the very first run.** Nothing has ever been stamped, so **every covered playlist
+is due**. That is correct and it is also the loudest the feature will ever be: the first
+`__refresh.check()` will read up to 25 playlists from Apple. Expect it to take a moment and to
+end with one toast. After that, stamps exist and the rest of the test is quiet.
+
+| # | I fire | You confirm on screen |
+|---|---|---|
+| **R1** | — | Right-click a playlist from **Apple Mixes**: a **Refresh ▸** row, badge reading **Daily**. Right-click one of **Your Apple Playlists**: the same row, badge **Off** |
+| **R2** | — | On that mix, open **Refresh ▸ Weekly ▸ Fri**. The parent badge now reads **Weekly · Fri**, and re-opening shows the tick on **Fri**. Open **Weekly ▸** with the window at its RIGHT edge: the second flyout flips to the left instead of running off |
+| **R3** | — | Re-open the menu — still *Weekly · Fri*. Restart the app — still *Weekly · Fri*. Press **⟳** in the Playlists header, then re-open: **still there**. R3 is the step that catches a preference stored in the table the sync wipes |
+| **R4** | `__refresh.all()` | (I read it.) That playlist reads `mode: "weekly"`, `set: true`; the others read their kind's default with `set: false` |
+| **R5** | — | Set it back to **Daily**. Open a catalog mix that has never been opened: it reads from Apple **before** its rows draw, and if its songs changed a toast names it and the count. Open it again at once: **no** second read, rows are instant |
+| **R6** | `__refresh.check()` | With several due: one toast, either *“…” has N new songs.* for a single playlist or *N playlists updated.* for several. **Never one toast per playlist** |
+| **R7** | `__refresh.check()` | Run it twice in a row. The second time: **no toast at all** — due, refetched, nothing changed is silent by design |
+| **R8** | — | Settings › Playlists › **Refresh playlists by themselves** → off. `__refresh.check()` does nothing and opening a due playlist does not read. Switch it back on: every per-playlist choice is still there |
+| **R9** | — | Turn the Wi-Fi off, then open a due playlist: a **warn** toast, the old songs still show, and nothing is lost. Wi-Fi back on, open it again: it reads and the warn does not repeat |
+| **R10** | — | Right-click a playlist you made here that was **never exported**: there is **no Refresh row**. Export it to Apple once — the row appears, reading **Off** |
+| **R11** | — | Set that exported playlist to **Daily**, add a song to its Apple copy from the Music app, then `__refresh.check()`: a **sticky** toast offers *“…” has 1 new song on Apple Music.* with **[Get them]**, and your playlist is **unchanged** until you press. Press **Dismiss** and run the check again — it offers **again**. Press **[Get them]** — the song lands |
+| **R12** | — | Ctrl+Space, type **refresh** → *Refresh playlists now* runs the same check. Typing **stale** finds it too |
+| **R13** | — | The 25-per-check cap only shows with 30+ due mirrors. If your library has that many, `__refresh.check()` reads 25 and the rest read when opened. If it does not, skip R13 and say so |
+
+**What neither of us can fake cheaply.** The *day change itself* — R6 and R7 use
+`__refresh.check()`, which forces a check; only a real date change proves the hourly tick
+notices one. If you want that covered, move the Windows clock forward one day with the app
+open and watch for the toast within the hour. Otherwise it stays untested and the doc will
+say so.
+
+**If I need to make something stale** (to re-run R5 or R6 after the stamps are fresh), it is a
+write to the dev database, so the app must be **closed** first:
+
+```bash
+python -c "import sqlite3,os; d=sqlite3.connect(os.path.expandvars(r'%APPDATA%\com.deetsmusic.dev\deetsmusic.db')); d.execute('UPDATE playlist_refresh SET fetched_at = fetched_at - 3*86400000'); d.commit(); print(d.total_changes)"
+```
+
+---
+
+---
+
+#### Test 3 — pins, On Click (PINS.md §8.6)
+
+Every pinned tile now carries its own verb: **Play · Shuffle · Open**, on a right-click **On
+Click** row above Pin / Unpin. One pin, one verb, in all four Pinned shelves. A song pin and a
+station pin are not asked — they play.
+
+**Nothing changes until you change it.** Every pin that exists today has no verb, and no verb
+means the rule its card already followed, which is Open for an album, a playlist and an artist.
+That is the whole point of the default you chose.
+
+These gestures are all yours; I read the `pin:act` and `ui:act` lines from the diag ring after
+each one, and `__refresh` is not involved.
+
+| # | You do | You confirm |
+|---|---|---|
+| **P1** | Right-click a pinned **album** tile in Library | **On Click ▸** above Pin / Unpin, badge reading **Open**, and the tick on Open inside |
+| **P2** | Set it to **Play** | The tile plays instead of drilling |
+| **P3** | Set it to **Shuffle** | It starts on a song that is not track 1 (try three times). With Settings › Playback › *Shuffle button stays on*, the toolbar Shuffle is **lit** afterwards — the same as pressing a card's own Shuffle |
+| **P4** | Set it back to **Open** | It drills again |
+| **P5** | Find the same pin on **Home** | It obeys the same verb. On **Open**, Home hops to the **Library** card at that album — Home has no detail of its own |
+| **P6** | A pinned **playlist**, set to Play, then Open | Play plays; Open drills — in Playlists it opens in place, from Home it hops to the Playlists card |
+| **P7** | Right-click a pinned **song** and a pinned **station** | **No On Click row.** Both still play on click |
+| **P8** | A pinned album that is **not in your library** (pinned from Search), set to **Open** | It plays whole — there is no detail to open — and the log shows no error |
+| **P9** | Re-pin something that has a verb set (Unpin is not involved: pin it again from its menu elsewhere) | The verb holds, and so does its place in the shelf (§7) |
+| **P10** | Settings › Playback › **New pins open on click** = **Play**, then pin something new | The new pin plays on click. **An old pin keeps its own verb** |
+| **P11** | Restart the app | Every per-pin verb is still there |
+| **P12** | **Unpin** something, then pin it again from scratch | It starts on the Settings default again, not its old verb |
+
+I can also confirm P11 and the storage from outside: the agent's SQL now exports the column,
+so `select id, kind, act from pins` reads every verb.
+
+---
+
+**Both workers went out 2026-09-20 and are committed and pushed** — `deets-support`
+(`2e36602`, the refreshed sign-in token sheets) and `deetsmusic-rooms` (`16e4421`, the `epoch`
+deletion, ROOMS.md §18.7).
+
+**2026-09-20 — four features designed on branch `twelve`. A and B are now BUILT.**
 
 | | Feature | Doc | State |
 |---|---|---|---|
-| **A** | **The sticky toast queue** | [TOASTS.md](TOASTS.md) §4a | 3 forks open. **One file** (`src/toast.ts`), no schema |
-| **B** | **Playlist refresh** | [PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) | **Every fork closed** (ten decisions, §3). Ten pieces, §§4–8. Ready to build |
+| **A** | **The sticky toast queue** | [TOASTS.md](TOASTS.md) §4a | **BUILT 2026-09-20** (§4a.8). Desk test open — the table above |
+| **B** | **Playlist refresh** | [PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) | **BUILT 2026-09-20** (§11). Desk test open (§10, 13 steps). Schema **v11** |
 | **C** | **Movable rows** | [MOVABLE-ROWS.md](MOVABLE-ROWS.md) | Scope closed (§0a), 10 mechanism forks open (§11.2) |
+| **P** | **Pins › On Click** | [PINS.md](PINS.md) §8 | **BUILT 2026-09-20** (§8.7). Desk test open (§8.6). Schema **v12** |
 | **D** | **A Settings search bar** | [MOVABLE-ROWS.md](MOVABLE-ROWS.md) §10 | 4 forks open (§11.3). Cheap — it reads the Compass's own `settingsRows()` index |
 
-**Why A comes before B even though B is the decided one.** A fixes a live bug, not just a
+**Also closed on 2026-09-20: PINS.md §8.2a** — a new pin starts on **Play** for a song or a
+station and **Open** for an album, playlist or artist (option C). Every fork in PINS §8 is now
+closed, and it is the next thing that can be built; its `pins.act` column is **v12**, not the
+v10 the doc used to say (v10 is Song of the Day, v11 is now `playlist_refresh`).
+
+**What playlist refresh needs at the desk.** Steps 4, 5 and 12 of
+[PLAYLIST-REFRESH.md §10](PLAYLIST-REFRESH.md) need a stamp moved back in SQLite or the
+machine's clock moved forward a day — I can do both from this session (`query` over
+`playlist_refresh`, and the clock is yours). Step 3 is the one that catches a preference
+stored in the wrong table: set a choice, press **⟳**, re-open the menu.
+
+**Why A came before B even though B was the decided one.** A fixes a live bug, not just a
 missing feature: past the cap of 3, `toast.ts` **destroys** the loser (`victim.remove()`,
 [toast.ts:256](../src/toast.ts)), and when all three live toasts are sticky the oldest sticky
 goes **with its actions unrun**. So TOASTS.md §4's promises — *"a question always shows"* and
@@ -137,7 +295,7 @@ until you press ⟳. The owner hit this on 2026-09-19. PLAYLIST-REFRESH.md §0 h
 the code comment that predicted it.
 
 **Two schema-touching pieces must not share a tree** (the one-load-bearing-feature rule):
-B's `playlist_refresh` table (§6) and C's `rank` column on `pins` (§5.2). C's pinned tiles are
+B's `playlist_refresh` table (§6, now v11) and C's `rank` column on `pins` (§5.2). C's pinned tiles are
 its own hand-over for that reason, and they also need a **sideways** drag axis that
 `row-drag.ts` does not have.
 
@@ -179,10 +337,12 @@ owner’s call), STAGE-COLUMN §8, CARD-MEMORY, CARD-GROW §14, COMPASS 15–25,
 guard). The route answers: `GET /update/deetsmusic?v=0.9.5` offers 0.10.0, and
 `/update/deetsmusic/health` is `ok`.
 
-**Not done with this release:** `npm run signin:assets` and a DeetsSupport `wrangler deploy`. The
-hosted sign-in page serves a COPY of the app’s look, and skin.css gained tokens since 0.9.5
-(`--room-half-pad-x`, `--room-fold-bg` and the card-grow set). The app never needs the Worker for a
-release; run it before the next Worker deploy (RELEASE.md §1).
+~~**Not done with this release:** `npm run signin:assets` and a DeetsSupport `wrangler deploy`.~~
+**DONE 2026-09-20.** `signin:assets` copied one changed file (`skin.css`, +46/−4 — the
+`--room-*` and card-grow tokens) into `../DeetsSupport/src/signin/`, and the worker is
+deployed (`ff345ccb-f770-4662-a470-6c04d29a6c17`; `music-api.deets.solutions/signin` = 200).
+The rooms worker went out the same day with the `epoch` cleanup (ROOMS.md §18.7). Both
+worker trees are **deployed but not committed**.
 
 **Small, ready to do (owner takes it next dev cycle, 2026-09-17).** `src/web.ts:1028` defers a
 row press with `window.setTimeout(() => activate(r))` for one reason only: picking rebuilt the

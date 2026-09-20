@@ -14,8 +14,11 @@ import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
   playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, addToPlaylistItem, onPlaylistsChange,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
-  onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest,
+  onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
 } from "./playlists";
+import {
+  covered, choiceOf, choiceLabel, reloadRefreshRows, refreshOnOpen, WEEKDAYS, type RefreshMode,
+} from "./playlist-refresh";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, queueTracksNext, queueTracksLater } from "./player";
@@ -24,11 +27,11 @@ import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
 import { playlistShelfMenu } from "./artist-view";
-import { pinItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { pinRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
 import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
 import { onGrowChange } from "./card-grow";
-import { openContextMenuUnder, type MenuItem } from "./context-menu";
+import { openContextMenuUnder, menuState, MENU_CHOSEN, type MenuItem } from "./context-menu";
 import { appleMusicItem } from "./playlist-export";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { enterRows, rowsAfter } from "./pop";
@@ -256,7 +259,12 @@ export const playlistsCard: CardDef = {
       const id = pid(p);
       if (trackCache.has(id) || pending.has(id)) return;
       pending.add(id);
-      tracksOf(p)
+      // PLAYLIST-REFRESH.md trigger 1: a playlist that is DUE re-reads its songs from Apple
+      // on the way in, so an opened playlist is never stale. Not due — the usual case —
+      // resolves at once and costs nothing.
+      refreshOnOpen(p)
+        .catch(() => false)
+        .then(() => tracksOf(p))
         .then((ts) => { reconcile(ts); card.reload(); }) // ♥ state for rows the mirror hasn't seen
         .catch((e) => console.error("[playlists] tracks", e))
         .finally(() => pending.delete(id));
@@ -496,6 +504,36 @@ export const playlistsCard: CardDef = {
         }),
     });
 
+    // "Refresh ▸" (PLAYLIST-REFRESH.md §2) — how often this playlist re-reads its songs
+    // from Apple. A submenu, not a split pill: the menu primitive has no split, no toggle
+    // and no checked state, and this is the same grammar as "Move to Folder ▸" above. The
+    // current choice rides the parent row, and the chosen row inside carries the tick.
+    const refreshItem = (p: Playlist): MenuItem => {
+      const c = choiceOf(p);
+      const set = (mode: RefreshMode, weekday?: number) =>
+        void refreshSet(p, mode, weekday)
+          .then(reloadRefreshRows)
+          .catch((e) => console.error("[playlists] refresh set", e));
+      return {
+        label: "Refresh",
+        badge: menuState(choiceLabel(c)),
+        sub: () => [
+          { label: "Daily", badge: c.mode === "daily" ? MENU_CHOSEN : "", run: () => set("daily") },
+          {
+            label: "Weekly",
+            badge: c.mode === "weekly" ? menuState(WEEKDAYS[c.weekday]) : "",
+            sub: () =>
+              WEEKDAYS.map((name, i) => ({
+                label: name,
+                badge: c.mode === "weekly" && c.weekday === i ? MENU_CHOSEN : "",
+                run: () => set("weekly", i),
+              })),
+          },
+          { label: "Off", badge: c.mode === "off" ? MENU_CHOSEN : "", run: () => set("off") },
+        ],
+      };
+    };
+
     // Folder headers: rename in place, delete unfiles the members (playlists untouched).
     const folderMenu = (id: number): MenuItem[] => [
       {
@@ -665,7 +703,8 @@ export const playlistsCard: CardDef = {
         // self-excluded so a playlist can't append to itself.
         addToPlaylistItem(() => tracksOf(p), p.libraryId),
         moveToFolderItem(p),
-        pinItem(ctxTag, "playlist"),
+        ...(covered(p) ? [refreshItem(p)] : []), // no remote copy to re-read = no row (D3)
+        ...pinRows(ctxTag, "playlist"),
       ];
       if (p.source === "apple") items.push(importItem(p));
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
@@ -749,9 +788,10 @@ export const playlistsCard: CardDef = {
       density: true,
       shelves: () => pinnedShelfHTML(["playlist"]),
       shelvesFirst: true,
+      // The pin's own verb decides (PINS.md §8.4); this card opens a playlist in place.
       onShelf: (el) => {
         const it = pinShelfItem(el);
-        if (it?.playlist) card.drill(detail(it.playlist));
+        if (it) pinActivate(it, "playlists", { openPlaylist: (p) => card.drill(detail(p)) });
       },
       shelfMenu: (el) => {
         const it = pinShelfItem(el);

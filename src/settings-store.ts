@@ -266,6 +266,16 @@ export interface Settings {
   /** How a new playlist's cover starts: its letters or a ♪ drawn in the current theme and
    *  saved, or the derived mosaic (not saved). playlists.ts `playlistCreate` reads it. */
   newPlaylistCover: "letters" | "mosaic" | "note";
+  /** The verb a NEW pinned tile starts with (PINS.md §8). It never touches a pin that
+   *  already exists: a verb you set on a tile is yours for ever, and a pin made before this
+   *  shipped keeps its card's own rule. A song and a station always play, whatever this says.
+   *  pins.ts reads it at pin time and stamps it onto the row. */
+  pinNewAct: "open" | "play" | "shuffle";
+  /** Both automatic playlist-refresh triggers: on open, and the day-change check
+   *  (PLAYLIST-REFRESH.md D6). Off stops both; every per-playlist choice is REMEMBERED and
+   *  resumes when this comes back on. The ⟳ button and the menu are untouched by it.
+   *  playlist-refresh.ts reads it. */
+  playlistAutoRefresh: boolean;
   /** How far a playlist web goes, in steps from the artist (PLAYLIST-WEB.md). web.ts reads it. */
   webReach: 1 | 2 | 3;
   /** How many songs a playlist web gets (PLAYLIST-WEB.md §4). */
@@ -418,6 +428,8 @@ export const DEFAULTS: Settings = {
   addSquareOwned: false, // user's call 2026-09-17: most playlist and History songs are yours, so a ✓ on each hover says nothing
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
+  pinNewAct: "open", // user's call 2026-09-20: albums, playlists and artists open, as all three cards do today — so nothing changes verb on update day
+  playlistAutoRefresh: true, // the bug it fixes is silent: a mix serves last week until you press ⟳ (PLAYLIST-REFRESH.md §0)
   webReach: 2, // the artist's collaborators and theirs: a real web without drifting far (PLAYLIST-WEB.md §3)
   webSize: 50, // an afternoon of music; 100 at reach 3 is where unrelated artists start to show
   webPrefer: "mix", // no lean until you pick one: a web is both a comfort list and a find

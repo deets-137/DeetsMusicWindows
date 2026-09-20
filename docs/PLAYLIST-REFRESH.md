@@ -1,8 +1,8 @@
 # DeetsMusic — Playlist refresh
 
-> **Status (2026-09-19): PAPER DESIGN, NOT BUILT — but every fork is CLOSED.** The owner's ten
-> decisions are in §3; §9 records how the last three were settled. What is left is the build.
-> Every claim about the code was checked against the tree on this date.
+> **Status: BUILT 2026-09-20.** Designed 2026-09-19 with every fork closed (the owner's ten
+> decisions are in §3; §9 records how the last three were settled). **§11 is as built**, and
+> the desk test in §10 is open. Every claim about the code was checked against the tree.
 
 Siblings: [PLAYLISTS.md](PLAYLISTS.md) (the store, the mirror, the export) ·
 [TOASTS.md](TOASTS.md) · [SETTINGS.md](SETTINGS.md).
@@ -312,3 +312,68 @@ ships unseen:
 12. Thirty due catalog mirrors at one day change: 25 refetch, one toast counts them, and the
     remaining five refetch when opened (D10).
 13. `npx tsc --noEmit` and `npx vite build` clean.
+
+---
+
+## 11. As built (2026-09-20)
+
+Every decision D1–D10 is in. The desk test in §10 is **open**.
+
+### 11.1 Rust (`src-tauri/src/playlists.rs`)
+
+| Piece | What it is |
+|---|---|
+| `migrate_v11` | The `playlist_refresh` table exactly as §6 drew it. **v10 was already taken by Song of the Day**, so this is v11 — and PINS.md §8's `pins.act` will be **v12**, not the v10 it says |
+| `playlist_refresh_rows` | Every stored choice and stamp, in one read |
+| `playlist_refresh_set` | The upsert. It **keeps the stamp**: changing Daily → Weekly must not make a playlist that was read an hour ago look unread |
+| `playlist_refresh_stamp` | The stamp alone, for the read-only path |
+| `playlist_refetch` | Drops that playlist's cache, re-reads it, and returns `{ total, added }`. `added` counts songs in the new list that were not in the old one, keyed on catalog id → library id → title+artist |
+| `store_tracks` | **New shared helper.** The cache write, the learned count and the Favorite Songs seed were inline in `apple_playlist_tracks`; the refetch needs the same three, and two copies would drift |
+| `playlist_get_apple_songs(dry_run)` | D9's read-only path. Under `dry_run` it returns the TRACKS and writes nothing |
+| The delete sweep | A playlist gone from Apple drops its `playlist_refresh` row beside its folder row |
+
+### 11.2 Front end
+
+| Piece | What it is |
+|---|---|
+| `src/playlist-refresh.ts` | **New.** The defaults by kind, the due arithmetic, both triggers, the two toasts, the `diag` lines |
+| `playlists-card.ts` | `Refresh ▸` in the playlist menu (only where `covered`), and trigger 1 inside `ensureTracks` — the drill-in loader, so a due playlist re-reads before its rows draw |
+| `context-menu.ts` | `SubmenuItem.badge`, plus `menuState()` and `MENU_CHOSEN` |
+| `settings-card.ts` · `settings-store.ts` · `agent-settings.ts` | D6's switch, `playlistAutoRefresh`, default **on** |
+| `compass.ts` | **Refresh playlists now**, and the `stale` / `reread` synonyms |
+
+### 11.3 Decided inside his choice
+
+Nothing here was a fork he saw.
+
+1. **The submenu parent needed a `badge` field; it had none.** §2 said `ActionItem.badge`
+   "shows the state for free", but the parent row of a submenu is a `SubmenuItem`, and that
+   type carried only `label` and `sub`. It now takes a `badge` too, rendered between the
+   label and the flyout chevron. One CSS rule, `.ctx-menu__state`, in the same `--subtext`
+   treatment the chevron already had — no new color role and no new token.
+2. **The chosen row inside the flyout is marked with a tick** (`MENU_CHOSEN`), and *Weekly ▸*
+   carries the day it is set to. The menu has no checked state, so the mark IS the state.
+3. **§8 item 3 asked for a hover hint on the `Refresh ▸` row. It cannot have one:** no
+   context-menu row anywhere in the app carries a `title`, and the primitive has no field for
+   it. Giving the menu a hint system is its own piece of work, not part of this. The badge
+   says what the row is set to, and the Settings row carries the sentence instead.
+4. **Second-level nesting works.** §2 flagged *Weekly ▸* as untested, because nothing in the
+   app had a flyout inside a flyout. It resolves by the types and lays out by the same
+   `placeFly` clamp; watch it at the window's right edge in the desk test.
+5. **A background refetch failure is silent; an open one speaks.** §7.1's `warn` row fires
+   only on the path the user is watching. A daily check that failed writes
+   `diag.warn("playlist:refresh")` and tries again next trigger — a notice for something
+   nobody asked for, about a playlist nobody opened, is noise.
+6. **A `default` mode string.** `stamp_refresh` writes a row for a playlist the user never
+   chose for, so the stamp has somewhere to live; `mode = 'default'` means "this playlist's
+   kind decides", which is what no row means. The front end treats the two the same.
+7. **The offer is one toast whatever the trigger** — the open path offers for one playlist,
+   the check offers for all of them at once.
+
+### 11.4 What the sticky queue does for this
+
+§7.2's offer is a **question**: sticky, with the caller's own actions. Under the queue
+built the same day (TOASTS.md §4a) it is an **ask** — so it jumps ahead of offers, it is
+never destroyed to make room, and it is dropped rather than shown thirty seconds late. §7.2
+was written *"a sticky toast only yields once nothing timed is left"*, which was the old
+rule. The offer is now safe in a way it could not have been on 2026-09-19.

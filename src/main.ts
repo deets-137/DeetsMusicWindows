@@ -33,6 +33,7 @@ import { initLookSchedule, noteHandPick } from "./look-schedule";
 import { initSleep } from "./sleep";
 import { initCompass, compassOpen, CARD_KEYS } from "./compass";
 import { initPlaylistExpiry } from "./playlist-expiry";
+import { initPlaylistRefresh } from "./playlist-refresh";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
 import { initRoomPanel } from "./room-panel";
@@ -578,6 +579,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initRoomPanel(); // the title bar's Room item (ROOMS.md §1)
   initCompass(); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   initPlaylistExpiry(); // temporary web playlists (PLAYLIST-WEB.md §10)
+  initPlaylistRefresh(); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)
 
   // The skins' scrubber motion (UI-ARCHITECTURE §3 SCRUBBERS) runs only while music plays:
   // one attribute on <html>, so the CSS loops never tick over a paused player.

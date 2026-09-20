@@ -17,8 +17,8 @@ with a "Don't show again" button.
 
 ```ts
 import { toast } from "./toast";
-const h = toast({ kind, text, sticky, timeout, actions, dismissKey });
-h.dismiss(); h.update("new text"); h.shown;
+const h = toast({ kind, text, sticky, timeout, actions, dismissKey, priority });
+h.dismiss(); h.update("new text"); h.shown; h.queued;
 ```
 
 | Field | Meaning |
@@ -29,7 +29,10 @@ h.dismiss(); h.update("new text"); h.shown;
 | `timeout` | ms for timed toasts. Default 3200. Hover pauses the bar and the timer together. |
 | `actions` | `[{ label, run? }]`. Any press runs `run`, then dismisses. |
 | `dismissKey` | Makes a **notice**: sticky, admitted under the `failures` tier whatever its kind, a "Don't show again" button writes `"off"` to that localStorage key, and the call is inert once that is written. `noticeOff(key)` reads the flag. |
+| `priority` | `"ask"` \| `"offer"` — the **queue** rank (§4a), and how long this toast may wait when the stack is full. **Default: `"ask"` when a sticky toast carries the caller's own actions, `"offer"` otherwise**, so no call site says it unless it wants the other answer. An ask jumps ahead of offers in the queue and is dropped after 30 s rather than shown late; an offer waits as long as it must. Inert on a timed toast, which never queues. |
 | `onceKey` | Makes a **once-notice** (2026-09-14): sticky, shows under every tier, ends with **Got it** instead of Dismiss, and **any** button press writes `"off"` to the key — it has been seen. Used where the notice also points to Settings (a **[Settings]** action → `requestSetting`). |
+
+`queued` is `true` while the toast waits for a slot: admitted, but not on screen yet (§4a).
 
 `shown` is `false` when the tier or a silenced notice swallowed the call. The call site's
 console/diag logging is untouched either way — **diag stays the source of truth** (every
@@ -85,10 +88,10 @@ delete confirm). A question with its own **Cancel** button gets no extra Dismiss
 **An Undo always shows too (2026-09-15):** a toast with an action labelled *Undo* is admitted
 under every tier, timed or sticky, because a muted one would lose the undo (Settings › Reset).
 
-## 4a. The sticky queue (designed 2026-09-19, NOT BUILT)
+## 4a. The sticky queue (designed 2026-09-19, **BUILT 2026-09-20**)
 
 > Asked for by the owner on 2026-09-19: *"can we set up queues for sticky toasts so they can
-> appear after space opens up?"* Forks are in §4a.5 and are **open**.
+> appear after space opens up?"* Every fork is closed (§4a.5). **§4a.8 is as built.**
 
 ### 4a.1 The hole it closes
 
@@ -161,7 +164,25 @@ Failures arrive without bound, and §Recovery bounds says every layer caps itsel
   `toast:dropped`), because the queue acts on its own — CLAUDE.md checklist item 6. A dropped
   sticky **must** be traceable, or this feature hides the very thing it set out to fix.
 
-### 4a.5 Open forks
+### 4a.5 The forks, closed 2026-09-20
+
+| # | Question | His answer |
+|---|---|---|
+| Q1 | Does a queued sticky go stale? | **A named `priority`, with the default derived.** The owner rejected a raw `maxWait` in ms while it was being built: a number at twenty call sites says nothing about what it means. `priority: "ask" \| "offer"` instead, defaulting to `"ask"` when a sticky toast carries the caller's own actions — so **no call site had to change**. An ask waits 30 s, an offer waits for ever. |
+| Q2 | Is a waiting notice visible? | **Q2a — nothing.** The queue drains as fast as you dismiss, and a counter is a new control with its own family rules. |
+| Q3 | Does the queue survive a surface switch? | **Yes.** The live toasts already move with the surface (one host, CSS places it); the queue is module state and survives with them. A queued question is still a question you owe an answer to. |
+| Order | FIFO, or does rank decide? | **An ask jumps the line** — behind the asks already waiting, ahead of every offer. What gates an action is never stuck behind two harmless offers. |
+
+**A fact found in the call sites while building, which changes what Q1 was about.** Every
+**Undo** toast in the app is **timed**, not sticky — Settings › Reset, Home › Hide, the sleep
+timer, Song of the Day, playlist expiry. A timed toast never queues, so *"an Undo surfaces two
+minutes late"* — the hazard Q1 was written around — **cannot happen**. The sticky call sites are
+really three classes: questions that act on a stale intent (the two playlist delete confirms, the
+Reset ask, the two agent-write consents), offers that are harmless late (the update offer, the
+export retries, the planned `[Get them]`), and status notices. The derived default sorts them
+without a single call site being edited.
+
+### 4a.5a The original fork sheet (kept as the record)
 
 **Q1 — does a queued sticky ever go stale?** An Undo that surfaces two minutes after the reset
 is a hazard: the user has moved on and may press it without the context. A `[Get them]` offer
@@ -197,8 +218,9 @@ wanted, since a queued notice then crosses a surface change it was not raised in
 
 ### 4a.7 The desk test
 
-1. Push four sticky toasts from the console. Three show; the fourth waits. Dismiss one — the
-   fourth appears. **Today the first one is destroyed instead**, which is the before/after.
+1. `__toast.queue(4)` in the console. Three show; the fourth waits (`__toast.waiting()` lists
+   it). Dismiss one — the fourth appears. **Before this build the FIRST one was destroyed
+   instead**, with its buttons unrun: that is the before/after.
 2. Push three stickies, then a timed one: the timed one shows and a sticky is **not** evicted
    (rule 2 only sacrifices timed toasts). Verify against today's behaviour.
 3. Push three timed, then a sticky: the oldest timed yields, exactly as today.
@@ -206,11 +228,53 @@ wanted, since a queued notice then crosses a surface change it was not raised in
 5. Queue a sticky, `update()` it, free a slot → the **new** text shows.
 6. Queue a `dismissKey` notice, silence the same key from another instance, free a slot → it
    does not appear.
-7. Push the same text twenty times → one shows, none queue behind it, and the `diag` ring
-   shows the dedupe, not twenty drops.
+7. Push the same text twenty times → **three show** (they fill the stack as any three
+   stickies do), none queue behind them, and the `diag` ring shows `toast:dupe`, not
+   seventeen drops. *This line said "one shows" while it was a paper design. The dedupe is a
+   **queue** bound (§4a.4): making it a live-stack bound would change how every duplicate
+   toast in the app behaves, which is well outside "a queue for sticky toasts". Say the word
+   if you want the stricter rule.*
 8. Push twenty different stickies → three show, ten queue, seven log `toast:dropped`.
-9. Switch surface (mini → max) with a full stack and a queue → Q3's answer holds.
+9. Switch surface (mini → max) with a full stack and a queue → the queue survives (Q3), and
+   the waiting toasts still appear as slots free.
 10. Reduced motion on → a dequeued toast still arrives, without the slide.
+11. **The line-jump.** `__toast.queue(3)` to fill the stack, then `__toast.queue(2)` (two
+    offers), then `__toast.queue(1, "ask")`. `__toast.waiting()` shows the ask **first**.
+    Free a slot: the ask appears before the two offers.
+12. **The expiry.** Fill the stack, push one ask, wait 30 s without freeing a slot →
+    `toast:dropped` `{ why: "stale" }`, and freeing a slot then shows nothing. Repeat with an
+    offer → it is still waiting after a minute, and it appears when a slot frees.
+
+### 4a.8 As built (2026-09-20)
+
+One file, `src/toast.ts`. No schema, no token, no setting, no new Compass row, no new call
+site — and **no existing call site changed**, because the priority default is derived from
+what a toast already declares.
+
+| Piece | What it does |
+|---|---|
+| `priority?: "ask" \| "offer"` | The one new option. Default derived from `asks`, which the module already computed for the tier gate. |
+| `handle.queued` | True while it waits. `shown` stays `true` (§4a.3): it is admitted, and it will show. |
+| `place()` | The old eviction loop, with one change: it evicts **only** a timed toast now. `?? kids[0]` — the line that destroyed a question — is gone. |
+| The queue | Module state: `Queued[]`, cap 10, ask-before-offer insertion, `unqueue()` and `drain()`. |
+| `drain(h)` | Called at the end of every `dismiss()`, the moment a slot frees. A queued notice re-reads `noticeOff` on the way out and is dropped if it was silenced while it waited. |
+| `dismiss()` while queued | Leaves the queue and returns. The element is never inserted, so it never appears. |
+| `update()` while queued | Rewrites the pending text through a live getter, so what finally shows is current — and the dedupe compares the current text, not the original. |
+| `__toast.queue(n, priority?)` · `__toast.waiting()` | Console handles for the desk test above. |
+| `toast:queued` · `toast:dequeued` · `toast:dropped` · `toast:dupe` | The diag lines. Every drop names its reason: `stale`, `dismissed`, `notice-off`, `queue-full`. |
+
+**Decided inside his choice**, none of it a fork he saw:
+
+1. **A timed arrival with nothing timed to evict goes one over the cap** for its few seconds,
+   rather than take a sticky toast's place. §4a.7 step 2 asked for exactly this ("the timed one
+   shows and a sticky is **not** evicted"), and it is the only reading where rule 2's *"a sticky
+   outranks a timed toast"* survives contact with a full sticky stack.
+2. **The dedupe is a queue bound, not a stack bound** — see step 7 above.
+3. **The queue cap drops the incoming toast, ask or not.** Ten waiting is already past the
+   point where a fourteenth teaches anything, and an ask that evicts a queued offer would be a
+   second eviction rule to explain.
+4. **`strip()` is now a module helper**, so a queued toast's log copy drops “quoted” names on
+   the way out of the queue exactly as it does on the way in (LOGGING.md §Ids).
 
 ---
 
@@ -218,6 +282,11 @@ wanted, since a queued notice then crosses a surface change it was not raised in
 
 | Where | Kind | Text | Notes |
 |---|---|---|---|
+| `playlist-refresh.ts` — a mirror changed, one | success | *“New Music Mix” has 12 new songs.* | The day-change check, or the open (PLAYLIST-REFRESH.md §7.1). Due, refetched and nothing changed is SILENT |
+| `playlist-refresh.ts` — several mirrors changed | success | *3 playlists updated.* | One toast for the check, never one per playlist |
+| `playlist-refresh.ts` — a refetch failed | warn | *Couldn't re-read “New Music Mix” from Apple Music.* | The old cache and the old stamp both stay, so the next trigger tries again. Only the OPEN path says it: a background failure is a `diag` line, not a notice |
+| `playlist-refresh.ts` — an exported local playlist has new songs | info, **sticky**, `[Get them]` | *“Road Trip” has 3 new songs on Apple Music.* / *“Road Trip” (3) and “Gym” (1) have new songs…* / *4 playlists have new songs on Apple Music.* | The offer (D9). A question, so it shows under every tier and WAITS in the queue (§4a) rather than being destroyed. Dismiss writes nothing and moves no stamp, so the next check offers again |
+| `playlist-refresh.ts` — the offer was taken | success / warn | *Added 3 songs.* / *Couldn't add the songs to one playlist.* | The write is local and needs no second Apple read (§5.1) |
 | `start-station.ts` — seed with no station | warn | Apple Music has no station for this song / artist. | The motivating case (2026-07-03). Artist tiles: "Couldn't find *Name* on Apple Music." when the artist id doesn't resolve. A throw in the seed or artist lookup: "Couldn't start the station." A failed play is `playStation`'s toast (next row), so it never shows twice. |
 | `player.ts` `playStation` — any station play fails | warn | Couldn't start *Station name*. | Radio, Search, Start Station, the agent, and the launch-time station resume. |
 | `copy-link.ts` — clipboard | success / warn | Link copied. / Couldn't copy the link. | Success is `all`-tier: the clipboard shows nothing otherwise. A library album with no catalog page: "This album has no Apple Music page to link." |

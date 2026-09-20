@@ -311,6 +311,17 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   played and added elsewhere, and the "New" shelf of your artists' releases. Off, every shelf
   still builds from this machine alone. The hide rows are not exposed: hiding a tile is a
   gesture on the tile.
+- **Playback › New pins open on click** (2026-09-20, PINS.md §8): `pinNewAct`
+  (Open | Play | Shuffle). The verb a NEW pinned tile starts with. It never touches a pin that
+  already exists — a verb set on a tile is kept for ever, and a pin made before this shipped
+  keeps its card's own rule. A song pin and a station pin always play and have no verb. The
+  per-pin verb itself has no agent verb: it is the **On Click** row on the tile's right-click
+  menu.
+- **Playlists › Refresh playlists by themselves** (2026-09-20, PLAYLIST-REFRESH.md): `playlistAutoRefresh`
+  (on | off). Off stops BOTH automatic triggers — the one on open and the day-change check — and
+  every per-playlist choice is remembered and resumes when it comes back on. The per-playlist
+  choice itself (Refresh ▸ Daily · Weekly · Off) has no agent verb: it is a right-click row on
+  the playlist.
 - **Playlists › Web reach / Web size / Web prefers songs** (2026-09-16, PLAYLIST-WEB.md): `webReach`
   (1 | 2 | 3), `webSize` (25 | 50 | 100), `webPrefer` (Familiar | Discover | Mix) and `webSeedFilter`
   ("Web genre chips filter": All songs | Keep 5 | Web only) and `webMakeMotion` ("Web panel closes":

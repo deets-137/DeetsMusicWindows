@@ -4,7 +4,7 @@
 > by the owner; the Library mockup passed before code. §7 = as built.
 > **§8 (2026-09-19): On Click — a per-pin verb (Play · Shuffle · Open) on a right-click row.
 > Forks 1-7 decided by the owner; §8.2a (what verb a NEW pin starts with) is the one open
-> fork. NOT BUILT.**
+> fork — CLOSED 2026-09-20, §8.2a. NOT BUILT.**
 
 **Terms used in this doc**
 - **Pin** — one item you chose to keep in view: a playlist, a station, an album, an artist or
@@ -194,7 +194,10 @@ Decided while building, inside the owner's choices:
 
 ---
 
-## 8. What a click on a pin does — On Click (designed 2026-09-19, DECIDED, NOT BUILT)
+## 8. What a click on a pin does — On Click (designed 2026-09-19, **BUILT 2026-09-20**)
+
+> **§8.7 is as built.** The desk test in §8.6 is **OPEN** — and this section will need a pass
+> once it has been run: see §8.8.
 
 **The idea (owner, 2026-09-19):** a settings item that says what a click on a pinned tile
 does — **play**, **shuffle** or **open** the album, playlist, artist or station.
@@ -247,7 +250,37 @@ Three more facts the code fixes:
 
 **Wording (owner, 2026-09-19):** the menu row is **On Click**.
 
-### 8.2a One fork still open
+### 8.2a CLOSED 2026-09-20 — C, per kind
+
+**The owner's words:** *"New pin starts with play for songs / radios and open for albums /
+playlists by default."* That is **C**, and it agrees with fork 5 — a song and a station play,
+and they are not offered the row at all. An **artist** is not named in his answer; it takes
+**Open**, with the albums and playlists it sits beside, because opening the artist view is
+what all three cards do today.
+
+| Pin kind | Starts with | Has an On Click row |
+|---|---|---|
+| song | **Play** | no (fork 5 — the hint says *Played on click*) |
+| station | **Play** | no (fork 5) |
+| album | **Open** | yes |
+| playlist | **Open** | yes |
+| artist | **Open** | yes |
+
+So `pins.act` is `NULL` for every pin that exists on update day, and `NULL` means "the card's
+rule", which is the table above. **Nothing visibly changes when this ships** — which is the
+reason C was the recommendation.
+
+**And the smaller question that rode on it:** the Settings row changes **only new pins**. His
+wording settles it — *"new pin starts with"*. A verb set by hand on a tile is never overwritten
+by a Settings row, and a pin never set reads its card's rule for ever. The row is honestly
+**New pins open on click**, which is the label §8.3 already uses.
+
+**Status: BUILT 2026-09-20.** Every fork in §8 was closed first. It was built the same day
+as playlist refresh at the owner's instruction, so **two schema migrations (v11 and v12) share
+one untested tree** — the case the one-load-bearing-feature rule warns about. It is written
+down here so that, if a desk test goes wrong, the first question asked is *which of the two*.
+
+### 8.2a-old The fork as it was asked (kept as the record)
 
 **What verb does a NEW pin start with?** The per-pin row needs a starting value, and the
 Settings row (fork 7) is what sets it.
@@ -290,7 +323,7 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 
 - **Storage: the `pins` row, not a settings key.** The verb belongs to the pin, and the pin is
   a row (§3, fork 1B). Add a nullable column: `ALTER TABLE pins ADD COLUMN act TEXT` in a new
-  migration **v10**; `NULL` = never set = the card's rule (8.2a C). `pin_set` keeps an existing
+  migration **v12** (v10 is Song of the Day, and v11 became `playlist_refresh` on 2026-09-20); `NULL` = never set = the card's rule (8.2a C). `pin_set` keeps an existing
   `act` on a re-pin, exactly as it keeps `pinned_at` (§7). A new command `pin_act(key, act)`
   writes it; `Pin` gains `act: Option<String>`. `query.rs` exports the column so the agent's
   SQL sees it (LOCAL-DATA.md), and `TABLES` gains the `act` line.
@@ -336,7 +369,8 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 8. Check: `npx tsc --noEmit`, `npx vite build`, `cargo test --lib query`.
 9. Compass: the Settings row is automatic; no new verb row.
 
-### 8.6 Desk test (after build)
+
+### 8.6 Desk test (after build) — OPEN
 
 1. Pin an album in Library. Right-click the tile: **On Click** shows three verbs, with the
    current one marked. §6's desk test still passes unchanged.
@@ -355,3 +389,48 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 9. Restart the app: every per-pin verb holds (`pins.act`). The agent's `query` over `pins`
    reads the `act` column.
 10. Unpin and re-pin from scratch: the verb is the Settings default again.
+
+### 8.7 As built (2026-09-20)
+
+| Piece | What it is |
+|---|---|
+| `migrate_v12` (`library.rs`) | `ALTER TABLE pins ADD COLUMN act TEXT`. Additive and idempotent. **v12, not the v10 the design said** — v10 is Song of the Day and v11 became `playlist_refresh` the same day |
+| `pin_set(…, act)` | The verb a NEW row starts with. `ON CONFLICT` does **not** touch `act`, so a verb set by hand survives a re-pin exactly as `pinned_at` does (§8.6 step 7) |
+| `pin_act(key, act)` | Sets the verb. An unknown key is a no-op, not an error: the tile can be unpinned from another surface while the menu is open |
+| `query.rs` | The `pins` export carries `act`, so the agent's SQL sees it. The `TABLES` fixture and its test moved with it (`cargo test --lib query`: 9 passed) |
+| `pinAct(key, kind)` | The one resolver: the pin's verb, else `open` — which is what every album, playlist and artist pin did before this shipped |
+| `pinActivate(it, at, nav?)` | **The one click rule.** It replaced the four hand-written shelf bodies that had drifted into two different answers (§8.1). A card that can open a kind in place passes a handler; a card that cannot leaves it out and the hop takes over |
+| `pinRows` · `pinArtistRows` · `pinRowsFor` | Each returns **On Click** (when the pin is one that is asked) followed by Pin / Unpin, which stays the last row of every menu |
+| `pinNewAct` | Settings › Playback › **New pins open on click**, default **Open**. Stamped onto the row at pin time, so it can never reach a pin that already exists |
+
+**Decided inside his choice:**
+
+1. **The Settings default is stamped at pin time, not read at click time.** It is the only
+   shape where *"a verb you set by hand is yours for ever"* and *"a pin made after the setting
+   changed starts on the new verb"* are both true, and it needs no "when was this pin made"
+   comparison anywhere.
+2. **`requestLibraryDrill` already existed** (`layout-bus.ts`) and does exactly what §8.4's
+   hop describes, including summoning the card. I wrote a second bus in `go-to.ts` before
+   finding it, and deleted it. Home's Open on an album or artist pin uses the existing one;
+   its playlist pin uses `requestOpenPlaylist`, as its own menu row already did.
+3. **Shuffle goes through `runListAction`** (`collection-card.ts`), the card Shuffle button's
+   own helper — so "Shuffle button stays on" behaves identically from a pin and from a card,
+   which §8.1 fact 3 asked for without naming the helper.
+4. **A station still routes through `pinActivate`** although it can only play. One click path
+   means one `ui:act` line on all four shelves, and the log is what a complaint is read from.
+5. **`pinNewAct` and `playlistAutoRefresh` were both added to `RESET_GROUPS`** — Playback and
+   Playlists. Nothing checks that a new key is in a reset group, and the refresh key had
+   already been missed once that day.
+
+### 8.8 After the desk test — the doc pass this section still needs
+
+**Written down on 2026-09-20, at the owner's instruction.** §8.6 has not been run. When it is:
+
+- Mark §8.6 **PASSED** with the date, as every other desk test in this repo is marked, or
+  record what failed and what changed.
+- If anything changes in the build, **§8.7 is the table that must change with it** — it is the
+  record of what is true, not of what was intended.
+- §8.1's table ("what a click does today") is now **history**: it describes the four drifted
+  bodies that `pinActivate` replaced. Leave it, but it should say so once the test passes.
+- Check the two migrations against each other. `pins.act` (v12) and `playlist_refresh` (v11)
+  shipped in one tree; the desk test is the first time both run on a real database.

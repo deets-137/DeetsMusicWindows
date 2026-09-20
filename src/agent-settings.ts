@@ -278,6 +278,7 @@ const SPECS: Spec[] = [
   // ── Playback ──
   storeChoice("Playback", "streamQuality", "Stream quality", [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }]),
   storeChoice("Playback", "playNowScope", "Play Now plays", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
+  storeChoice("Playback", "pinNewAct", "New pins open on click", [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }]),
   storeChoice("Playback", "dropPlayQueue", "Drop on Now Playing", [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }]),
   storeChoice("Playback", "previousReach", "Previous rewinds", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
@@ -312,6 +313,7 @@ const SPECS: Spec[] = [
   rustToggle("Last.fm", "lastfmNowPlaying", "Show now playing", async () => (await rustSettings()).lastfmNowPlaying, (on) => invoke("settings_set_lastfm_now_playing", { on }), { offOnly: true }),
   // ── Playlists ──
   storeToggle("Playlists", "playlistEagerCounts", "Show playlist counts"),
+  storeToggle("Playlists", "playlistAutoRefresh", "Refresh playlists by themselves"),
   storeChoice("Playlists", "playlistCreateSummon", "New playlist opens Search", [{ value: "notmini", label: "Not in mini" }, { value: "always", label: "Always" }, { value: "off", label: "Never" }]),
   storeChoice("Playlists", "nowPlayingCover", "Show cover", [{ value: "album", label: "Album" }, { value: "playlist", label: "Playlist" }]),
   storeChoice("Playlists", "newPlaylistCover", "New cover", [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }]),

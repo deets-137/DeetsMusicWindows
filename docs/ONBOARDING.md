@@ -221,7 +221,8 @@ a song appears (`trackMenu`, library-card.ts).
 | Library | song | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several) · Go to Album · **Song Credits** · Copy Link · Start Station · Favorite |
 | Library | album tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Copy Link |
 | Library | artist tile | the album menu shape on the artist's songs |
-| Playlists | playlist | Rename (field, hand-made only) · Keep Playlist (a temporary web playlist, 2026-09-17) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
+| Any card | a **pinned** tile or row | the item's usual menu, plus **On Click ▸** (Play · Shuffle · Open) above Pin / Unpin — album, artist and playlist pins only (PINS.md §8, 2026-09-20) |
+| Playlists | playlist | Rename (field, hand-made only) · Keep Playlist (a temporary web playlist, 2026-09-17) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · **Refresh ▸** (Daily · Weekly ▸ Mon…Sun · Off — every Apple mirror, and a local playlist that has been exported; 2026-09-20) · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
 | Playlists | a picked set of playlists (Ctrl/Shift+click) | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Delete N playlists** (the local ones in the pick, 2026-09-17) |
 | Playlists | song in a playlist | the song menu + Add to Library · Remove from Playlist (hand-made) |
 | Playlists | folder header | Rename (field) · Delete Folder |

@@ -56,7 +56,7 @@ take, so a row plays at once. Times are local ISO text (`2026-09-16T14:37:14`).
 | `songs` | `id` (`song:…`), `title`, `artist`, `album`, `length_s`, `genre` (comma list), `release_date`, `in_library` (1 = synced library, 0 = a song only seen), `added_rank` (higher = added later), `added_at` (only for songs added through DeetsMusic) | no |
 | `playlists` | `id` (`playlist:local:N` / `playlist:p.…`), `name`, `source` (DeetsMusic / Apple Music), `song_count` (songs DeetsMusic has read) | no |
 | `playlist_songs` | `playlist_id`, `position` (1 = first), `song_id` | no |
-| `pins` | `id` (the pin key: `playlist:…`, `station:…`, `album:…`, `artist:…`, `song:…`), `kind`, `pinned_at` (PINS.md, 2026-09-18) | no |
+| `pins` | `id` (the pin key: `playlist:…`, `station:…`, `album:…`, `artist:…`, `song:…`), `kind`, `pinned_at`, `act` (what a click does — `play` | `shuffle` | `open`, or NULL for the card's own rule; PINS.md §8, 2026-09-20) | no |
 | `plays` | `song_id`, `started_at`, `listened_s` (NULL = not finished yet), `finished`, `skipped`, `context` | **yes** |
 | `play_counts` | `song_id`, `starts`, `finishes`, `last_played` | **yes** |
 

@@ -184,17 +184,61 @@ export interface GetSongsResult {
   appleId: string | null;
   /** Songs added to the end of the local playlist. */
   addedTitles: string[];
+  /** Only under `dryRun`: the songs themselves, so the offer can write them with no
+   *  second Apple read (PLAYLIST-REFRESH.md §5.1). */
+  tracks?: Track[];
 }
 
 /** Get New Songs (PLAYLISTS.md §10.4): add the songs only the Apple copy has, at the end.
- *  One Apple read per 100 songs; the write is local. */
-export function playlistGetAppleSongs(p: Playlist): Promise<GetSongsResult> {
+ *  One Apple read per 100 songs; the write is local.
+ *
+ *  `dryRun` reads and writes NOTHING (PLAYLIST-REFRESH.md D9) — it is how the automatic
+ *  refresh peeks at an exported local playlist before it offers. */
+export function playlistGetAppleSongs(p: Playlist, dryRun = false): Promise<GetSongsResult> {
   const id = localId(p);
   if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
-  return invoke<GetSongsResult>("playlist_get_apple_songs", { id }).then((r) => {
-    if (r.addedTitles.length) emitChange(id);
+  return invoke<GetSongsResult>("playlist_get_apple_songs", { id, dryRun }).then((r) => {
+    if (!dryRun && r.addedTitles.length) emitChange(id);
     return r;
   });
+}
+
+// ── Refresh (PLAYLIST-REFRESH.md) ─────────────────────────────────────────────
+
+/** A stored choice and stamp. No row for a playlist means its kind's default (D2). */
+export interface RefreshRow {
+  key: string;
+  mode: string;
+  weekday: number | null;
+  fetchedAt: number | null;
+}
+
+export function refreshRows(): Promise<RefreshRow[]> {
+  return invoke<RefreshRow[]>("playlist_refresh_rows");
+}
+
+export function refreshSet(p: Playlist, mode: "daily" | "weekly" | "off", weekday?: number): Promise<void> {
+  if (!p.libraryId) return Promise.reject(new Error(`playlist "${p.name}" has no library id`));
+  return invoke<void>("playlist_refresh_set", {
+    key: p.libraryId,
+    mode,
+    weekday: mode === "weekly" ? (weekday ?? 5) : null,
+  });
+}
+
+/** Mark a playlist read now, without touching its mode. */
+export function refreshStamp(key: string): Promise<void> {
+  return invoke<void>("playlist_refresh_stamp", { key });
+}
+
+export interface RefetchResult {
+  total: number;
+  added: number;
+}
+
+/** Re-read a mirror's songs from Apple, whatever the cache holds. One read per 100 songs. */
+export function playlistRefetch(key: string): Promise<RefetchResult> {
+  return invoke<RefetchResult>("playlist_refetch", { id: key });
 }
 
 /** Compare a LOCAL playlist with its Apple copy. One Apple read per 100 songs; no writes. */

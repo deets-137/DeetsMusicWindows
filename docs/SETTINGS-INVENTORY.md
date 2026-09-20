@@ -333,7 +333,9 @@ behind both. The dial and the three live ends are only in the panel.
 
 | Control | What it does | Choices |
 |---|---|---|
+| New pins open on click | The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click | **Open** / Play / Shuffle |
 | Show playlist counts | Fills in the song count on the overview. One small request per playlist, once | **on** / off |
+| Refresh playlists by themselves | Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting | **on** / off |
 | New playlist opens Search | Puts Search beside the new playlist. Mini shows one card, so Search would hide it | **Not in mini** / Always / Never |
 | Cover while playing | For a song played from a playlist: the cover shown in Now Playing, in mini and in the tray panel | **Album** / Playlist |
 | New cover | How a new playlist's cover starts. Letters and Note keep the theme you made it in | **Letters** / Mosaic / Note |

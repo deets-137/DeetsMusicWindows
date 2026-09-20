@@ -2315,6 +2315,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    survives typing; side-flip (.is-left) + vertical clamp are measured there too. */
 .ctx-menu__sub { position: relative; }
 .ctx-menu__chev { color: var(--subtext); }
+/* What a row is currently set to (SubmenuItem.badge), and the tick on the chosen row
+   inside its flyout. `margin-left: auto` keeps it beside the chevron rather than adrift
+   in the middle of a space-between row. */
+.ctx-menu__state { color: var(--subtext); margin-left: auto; }
 .ctx-menu__item--sub,
 .ctx-menu__item--badged { /* a trailing accessory: the flyout chevron, or the Apple Music sigil */
   display: flex;

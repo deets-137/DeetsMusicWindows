@@ -201,6 +201,8 @@ pub fn run() {
             library::migrate_v8(&conn).expect("v8 migration failed");
             library::migrate_v9(&conn).expect("v9 migration failed");
             sotd::migrate_v10(&conn).expect("v10 migration failed");
+            playlists::migrate_v11(&conn).expect("v11 migration failed");
+            library::migrate_v12(&conn).expect("v12 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
@@ -350,6 +352,11 @@ pub fn run() {
             playlists::playlist_export_plan,
             playlists::playlist_export_apple,
             playlists::playlist_get_apple_songs,
+            playlists::playlist_refresh_rows,
+            playlists::playlist_refresh_set,
+            playlists::playlist_refresh_stamp,
+            playlists::playlist_refetch,
+            library::pin_act,
             playlists::playlist_import,
             playlists::apple_playlist_add,
             playlists::playlist_delete,

@@ -33,7 +33,7 @@ import type { DragPayload } from "./row-drag";
 import { musicCell } from "./library-card";
 import { playStation, queueStationAfter } from "./player";
 import { copyStationLinkItem } from "./copy-link";
-import { pinItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { pinItem, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
 import type { MenuItem } from "./context-menu";
 import { enterRows, rowsAfter } from "./pop";
 import type { CardDef } from "./cards";
@@ -221,9 +221,12 @@ export const radioCard: CardDef = {
       density: true, // lines / small / large all work; headers span the grid rows
       shelves: () => pinnedShelfHTML(["station"]),
       shelvesFirst: true,
+      // A station is a stream Apple shuffles: it plays, and it is never asked for a verb
+      // (PINS.md §8.2 fork 5). It goes through the shared activator all the same, so the
+      // click trail reads the same on all four shelves.
       onShelf: (el) => {
         const it = pinShelfItem(el);
-        if (it?.station) startStation(it.station);
+        if (it) pinActivate(it, "radio");
       },
       shelfMenu: (el) => {
         const it = pinShelfItem(el);

@@ -1015,13 +1015,26 @@ The toast primitive ([TOASTS.md](TOASTS.md)) exposes `window.__toast` in every b
 | Call | Does |
 |---|---|
 | `__toast.demo()` | one toast of each kind at once — info, success, warn, error (the error stays until Dismiss) |
-| `__toast.push({ kind, text, sticky, timeout, actions, dismissKey })` | the raw API, returns `{ dismiss, update, shown }` |
+| `__toast.push({ kind, text, sticky, timeout, actions, dismissKey, priority })` | the raw API, returns `{ dismiss, update, shown, queued }` |
+| `__toast.queue(n = 4, priority?)` | push `n` sticky toasts: three show, the rest queue (TOASTS.md §4a.7). `"ask"` makes them questions, which jump the line and expire after 30 s |
+| `__toast.waiting()` | what is in the queue right now, ask-first |
+
+**Playlist refresh** (PLAYLIST-REFRESH.md) has its own handle, `window.__refresh`:
+`all()` lists every covered playlist with its mode, whether that mode is a stored choice or
+its kind's default, when it was last read and whether it is due; `due()` lists only the due
+ones; `rows()` is the stored table raw; `check()` runs the day-change check on demand
+(the same work as the Compass verb *Refresh playlists now*). Its diag key is
+`playlist:refresh` — `arm`, each `fire` with how many were due, `open`, `offer`, `took`,
+and a `warn` per failed read.
 | `__toast.notice()` | a one-time notice under the throwaway key `deets.notice.demo` |
 | `__toast.reset()` | forgets that demo key, so the notice shows again |
 
 Every call lands in the diag buffer as `toast` `{ kind, text, sticky, notice }` or
 `toast:muted` `{ why: "tier-off" \| "tier-failures" \| "notice-off" }`, so
-`__diag.dump()` (or `__diag.echo(true)`) shows what fired and what the tier swallowed.
+`__diag.dump()` (or `__diag.echo(true)`) shows what fired and what the tier swallowed. The
+queue (TOASTS.md §4a) adds `toast:queued`, `toast:dequeued`, `toast:dupe` and `toast:dropped`
+`{ why: "stale" \| "dismissed" \| "notice-off" \| "queue-full" }` — a sticky toast that never
+reached the screen is always traceable, which is the point of the feature.
 `__diag.flush()` writes the buffer to `deetsmusic.log`, so a driver outside the webview
 can read it: `grep "toast" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail`.
 

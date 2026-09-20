@@ -229,11 +229,11 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
-    keys: ["playlistEagerCounts", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webMakeMotion"],
+    keys: ["playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webMakeMotion"],
   },
   {
     id: "sound", label: "Sound", hint: "The equalizer, adaptive sound and their choices. Not your saved presets",
@@ -1075,6 +1075,11 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
           options: [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }],
         },
         {
+          kind: "choice", id: "pinnewact", label: "New pins open on click", key: "pinNewAct",
+          hint: "The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click",
+          options: [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }],
+        },
+        {
           kind: "choice", id: "dropplay", label: "Drop on Now Playing", key: "dropPlayQueue",
           hint: "Songs dragged onto Now Playing play at once; Up Next can stay after them",
           options: [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }],
@@ -1262,6 +1267,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       title: "Playlists",
       rows: [
         storeToggle("eagercounts", "Show playlist counts", "playlistEagerCounts", () => "One small request per playlist, once"),
+        storeToggle("autorefresh", "Refresh playlists by themselves", "playlistAutoRefresh", () => "Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting"),
         {
           kind: "choice", id: "createsummon", label: "New playlist opens Search", key: "playlistCreateSummon",
           hint: "Puts the Search card beside the new playlist. Mini shows one card, so Search would hide it",

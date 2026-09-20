@@ -35,7 +35,7 @@ import { enterRows } from "./pop";
 import type { Artwork, Track } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
-import { isPinned, pinItem, pinBadgeHTML, handleUnpin, onPinsChange } from "./pins";
+import { isPinned, pinItem, pinRows, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange } from "./pins";
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 import * as diag from "./diag";
 
@@ -151,6 +151,15 @@ export const homeCard: CardDef = {
 
     // ── acting on a tile ──
     const activate = (it: HomeItem) => {
+      // A PINNED tile obeys the verb the pin carries, here as in the three cards (PINS.md
+      // §8.2 fork 4: one pin, one verb, in all four Pinned shelves). Home has no detail of
+      // its own, so an Open hops to the card that holds the item — `pinActivate` with no
+      // nav does exactly that.
+      if (isPinned(it.key)) {
+        pinActivate(it, "home");
+        if (it.kind === "station") build();
+        return;
+      }
       // The click trail (LOGGING.md §The click trail): which tile, and what it stands for
       // — a song tile queues ONE song, an album tile queues the album, and the two lead
       // to very different queues from the same gesture.
@@ -204,7 +213,7 @@ export const homeCard: CardDef = {
             }
           : null;
         const load = () => Promise.resolve(it.tracks());
-        return [...playlistShelfMenu(load, it.context, false), open, pinItem(it.key, "playlist"), hideRow(it)].filter(Boolean) as MenuItem[];
+        return [...playlistShelfMenu(load, it.context, false), open, ...pinRows(it.key, "playlist"), hideRow(it)].filter(Boolean) as MenuItem[];
       }
       // An album or an artist the library does not hold: its rows load the whole list (the
       // shelf menu's loader shape), an album's link from a song, and the pin (an album's
@@ -215,7 +224,7 @@ export const homeCard: CardDef = {
         return [
           ...playlistShelfMenu(it.whole, it.context, false),
           it.kind === "album" ? copyAlbumLinkFromSongItem(seed?.catalogId) : null,
-          pinItem(it.key, it.kind, it.kind === "album" && Array.isArray(known) ? known : undefined),
+          ...pinRows(it.key, it.kind, it.kind === "album" && Array.isArray(known) ? known : undefined),
           hideRow(it),
         ].filter(Boolean) as MenuItem[];
       }

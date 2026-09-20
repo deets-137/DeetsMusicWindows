@@ -90,9 +90,9 @@ INSERT INTO playlist_songs SELECT 'playlist:local:' || x.playlist_id, x.position
 INSERT INTO playlist_songs SELECT 'playlist:' || x.playlist_id, x.position + 1,
   'song:' || coalesce(json_extract(x.json, '$.catalogId'), json_extract(x.json, '$.libraryId')) FROM src.apple_playlist_tracks x;
 
-CREATE TABLE pins(id TEXT, kind TEXT, pinned_at TEXT);
+CREATE TABLE pins(id TEXT, kind TEXT, pinned_at TEXT, act TEXT);
 INSERT INTO pins SELECT p.key, p.kind,
-  strftime('%Y-%m-%dT%H:%M:%S', p.pinned_at / 1000, 'unixepoch', 'localtime') FROM src.pins p;
+  strftime('%Y-%m-%dT%H:%M:%S', p.pinned_at / 1000, 'unixepoch', 'localtime'), p.act FROM src.pins p;
 ";
 
 const BUILD_HISTORY: &str = "
@@ -455,8 +455,8 @@ mod tests {
                 INSERT INTO play_events VALUES(2, '222', 1789594540820, 5000, 0, 'library', NULL);
                 CREATE TABLE play_stats(track_id TEXT PRIMARY KEY, partial_count INTEGER, full_count INTEGER, last_played INTEGER);
                 INSERT INTO play_stats VALUES('111', 3, 2, 1789594440820);
-                CREATE TABLE pins(key TEXT PRIMARY KEY, kind TEXT, data TEXT, pinned_at INTEGER);
-                INSERT INTO pins VALUES('song:111', 'song', NULL, 1789594440820);
+                CREATE TABLE pins(key TEXT PRIMARY KEY, kind TEXT, data TEXT, pinned_at INTEGER, act TEXT);
+                INSERT INTO pins VALUES('song:111', 'song', NULL, 1789594440820, NULL);
                 CREATE TABLE meta(key TEXT, value TEXT);
                 INSERT INTO meta VALUES('secret', 'internal');
                 "#,

@@ -33,6 +33,7 @@ import {
 } from "./player";
 import { sleepIn, sleepOff, sleepArmed, sleepAtEnd, openSleepPanel } from "./sleep";
 import { restartWalk } from "./walk";
+import { checkPlaylistRefreshNow } from "./playlist-refresh";
 import { presetOptions, selectPreset } from "./sound";
 import { getUpcoming, getRecentlyPlayed, getCurrent } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
@@ -122,6 +123,7 @@ export const SYNONYMS: Record<string, string[]> = {
   lists: ["playlists"], list: ["playlists"],
   web: ["web"], playlistweb: ["web"],
   find: ["search"], lookup: ["search"],
+  stale: ["refresh"], reread: ["refresh"],
 };
 
 /** Damerau-Levenshtein distance, capped: 0 when equal; a typo is 1; stops early past `max`. */
@@ -403,6 +405,15 @@ function actions(all: boolean): Row[] {
   if (sleepArmed()) rows.push({ group: "Actions", title: "Sleep timer off", run: () => sleepOff() });
   // The first-run walk again (ONBOARDING.md §4, COMPASS.md §9). Settings › Tips has the same
   // row; a stranger who wants it back is more likely to ask the bar than to read Settings.
+  // Playlist refresh (PLAYLIST-REFRESH.md §8 item 9): the day-change check, on demand. It
+  // is the cheap verb — only the playlists that are DUE read anything.
+  rows.push({
+    group: "Actions",
+    title: "Refresh playlists now",
+    sub: "Re-reads the playlists that are due",
+    aliases: ["refresh", "stale", "update playlists", "re-read playlists"],
+    run: () => void checkPlaylistRefreshNow().catch((e) => console.error("[compass] refresh", e)),
+  });
   rows.push({
     group: "Actions",
     title: "Show the tour",

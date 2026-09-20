@@ -43,9 +43,8 @@ import {
 } from "./artist-view";
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
-import { pinItem, pinItemFor, pinArtistItem, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
+import { pinRows, pinRowsFor, pinArtistRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange } from "./pins";
 import { markItem } from "./sotd";
-import { playTracks as playList } from "./player";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -443,7 +442,7 @@ export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFr
     // ♥ — one song only (an album has no favorite here); null without consent/catalog id.
     ...(items.length === 1 ? [favoriteItem(items[0])] : []),
     // Pin / Unpin (PINS.md): the album or artist this list is, else the one song.
-    pinItemFor(items, context),
+    ...pinRowsFor(items, context),
     // Mark as Song of the Day (DeetsOTD.md §8.5) — one song with a catalog id, and only
     // while the feature is on. The row itself says Replace or Unmark where that is what it does.
     markItem(items, context),
@@ -621,7 +620,7 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
             .tracksFor(a.name)
             .map((t) => t.catalogId),
         ),
-        pinItem(`artist:${a.name}`, "artist"), // PINS.md: the artist tile's own pin row
+        ...pinRows(`artist:${a.name}`, "artist"), // PINS.md: the artist tile's own pin + On Click rows
       ].filter(Boolean) as MenuItem[],
     drag: (a) => ({
       source: "library",
@@ -838,7 +837,7 @@ export const libraryCard: CardDef = {
             cover: heroCover(info?.artwork ?? ts.find((t) => t.artwork)?.artwork, a.name, undefined, undefined, true),
             // The cover's menu (PINS.md): pin the artist. The snapshot carries the catalog id
             // and photo, so the pin outlives the artist's songs leaving the library.
-            coverMenu: () => [pinArtistItem({ name: a.name, artwork: info?.artwork, catalogId: info?.catalogId })],
+            coverMenu: () => pinArtistRows({ name: a.name, artwork: info?.artwork, catalogId: info?.catalogId }),
             title: a.name,
             meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
           };
@@ -1133,20 +1132,19 @@ export const libraryCard: CardDef = {
       const known = Array.isArray(list) ? list : [];
       if (it.whole) {
         // Off the library: the loader rows over the whole album, then the pin row.
-        return [...playlistShelfMenu(it.whole, it.context, false), pinItem(it.key, "album", known)];
+        return [...playlistShelfMenu(it.whole, it.context, false), ...pinRows(it.key, "album", known)];
       }
       return trackMenu(known, it.context, libNav);
     };
+    // One rule for every Pinned shelf (PINS.md §8.4): the pin's own verb decides, and this
+    // card can open an album or an artist in place, so it says so.
     const pinShelfOpen = (el: HTMLElement) => {
       const it = pinShelfItem(el);
       if (!it) return;
-      const list = it.tracks();
-      const ts = Array.isArray(list) ? list : [];
-      // An album the library does not hold has nothing to drill into: it plays, whole.
-      if (it.whole) void it.whole().then((all) => (all.length ? playList(all, 0, it.context) : undefined)).catch((e) => console.error("[library] play pin", e));
-      else if (it.kind === "album" && ts[0]) libNav.drillAlbum(ts[0]);
-      else if (it.kind === "artist") libNav.drillArtist(it.title);
-      else if (ts.length) void playList(ts, 0, it.context).catch((e) => console.error("[library] play pin", e));
+      pinActivate(it, "library", {
+        openAlbum: (t) => libNav.drillAlbum(t),
+        openArtist: () => libNav.drillArtist(it.title),
+      });
     };
     const rootContext = (): Context => ({
       title: "Library",

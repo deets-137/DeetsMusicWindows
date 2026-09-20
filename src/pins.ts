@@ -18,7 +18,12 @@ import { tracks as allTracks, addTransientTracks } from "./track-store";
 import { playlistsCached, onPlaylistsChange } from "./playlists";
 import { pid } from "./rewind";
 import { songItem, albumItem, playlistItem, stationItem, artistItem, type HomeItem, type HomeKind } from "./home";
-import { esc } from "./collection-card";
+import { menuState, MENU_CHOSEN } from "./context-menu";
+import { esc, runListAction } from "./collection-card";
+import { setting } from "./settings-store";
+import { playTracks, playStation } from "./player";
+import { requestOpenPlaylist } from "./playlists";
+import { requestLibraryDrill } from "./layout-bus";
 import { mosaicHTML } from "./mosaic";
 import * as diag from "./diag";
 
@@ -29,7 +34,12 @@ export interface Pin {
   kind: PinKind;
   data?: string | null;
   pinnedAt: number;
+  /** What a click does (PINS.md §8). Absent = never chosen = the card's own rule. */
+  act?: string | null;
 }
+
+/** The three verbs a pinned tile can carry. */
+export type PinAct = "play" | "shuffle" | "open";
 
 /** The pin glyph — Search's term pins and the grow bar draw the same one. */
 export const ICON_PIN =
@@ -82,10 +92,113 @@ export function pinsOf(kinds?: PinKind[]): Pin[] {
 export const songKey = (t: Track): string => `song:${t.catalogId ?? t.libraryId ?? t.title}`;
 
 export async function setPin(key: string, kind: PinKind, data?: unknown): Promise<void> {
-  const row = await invoke<Pin>("pin_set", { key, kind, data: data == null ? null : JSON.stringify(data) });
+  // A NEW pin starts on the Settings default; Rust keeps an existing `act`, so a verb set
+  // by hand survives a re-pin (PINS.md §8.4). A song and a station always play, so they
+  // carry no verb at all.
+  const act = hasAct(kind) ? setting("pinNewAct") : null;
+  const row = await invoke<Pin>("pin_set", { key, kind, data: data == null ? null : JSON.stringify(data), act });
   pins.set(row.key, row);
-  diag.log("pin:set", { key });
+  diag.log("pin:set", { key, act: row.act ?? null });
   emit();
+}
+
+// ── On Click (PINS.md §8) ─────────────────────────────────────────────────────
+
+/** Is this kind offered the On Click row? A song has one song, and a station is a stream
+ *  Apple shuffles — both always play, so neither is asked (fork 5). */
+export const hasAct = (kind: PinKind): boolean => kind === "album" || kind === "artist" || kind === "playlist";
+
+/** What a click on this pin does: the verb it carries, else its card's own rule. Every pin
+ *  made before v12 has no verb, which is why nothing changed on update day (§8.2a). */
+export function pinAct(key: string, kind: PinKind): PinAct {
+  if (!hasAct(kind)) return "play";
+  const a = pins.get(key)?.act;
+  return a === "play" || a === "shuffle" || a === "open" ? a : "open";
+}
+
+/** Set what a click does. */
+export async function setPinAct(key: string, act: PinAct): Promise<void> {
+  await invoke<boolean>("pin_act", { key, act });
+  const p = pins.get(key);
+  if (p) pins.set(key, { ...p, act });
+  diag.log("pin:act", { key, act });
+  emit();
+}
+
+/** The On Click row: the three verbs, the current one ticked. Null for a kind that is not
+ *  asked, and for a key that is not pinned (the row belongs to the pin, not the item). */
+export function pinActItem(key: string, kind: PinKind): MenuItem | null {
+  if (!hasAct(kind) || !pins.has(key)) return null;
+  const now = pinAct(key, kind);
+  const verb = (act: PinAct, label: string) => ({
+    label,
+    badge: now === act ? MENU_CHOSEN : "",
+    run: () => void setPinAct(key, act).catch((e) => console.error("[pins] act", e)),
+  });
+  return {
+    label: "On Click",
+    badge: menuState(now === "play" ? "Play" : now === "shuffle" ? "Shuffle" : "Open"),
+    sub: () => [verb("play", "Play"), verb("shuffle", "Shuffle"), verb("open", "Open")],
+  };
+}
+
+/** How the card that owns this tile opens an item in place. A card that cannot open a kind
+ *  leaves its handler out, and the hop to the card that CAN takes over — which is what
+ *  Home does for every kind, having no detail of its own. */
+export interface PinNav {
+  openAlbum?: (t: Track) => void;
+  openArtist?: (name: string) => void;
+  openPlaylist?: (p: Playlist) => void;
+}
+
+/** A click on a pinned tile, everywhere. This is the one rule: it replaced four
+ *  hand-written shelf bodies that had drifted into two different answers (§8.1). */
+export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
+  const act = pinAct(it.key, it.kind);
+  // The click trail (LOGGING.md §The click trail): a complaint about this is read, not
+  // guessed — which tile, and which verb it ran.
+  diag.log("ui:act", { at, do: "pin", kind: it.kind, act });
+  const err = (what: string) => (e: unknown) => console.error(`[pins] ${what}`, e);
+
+  // A station is a stream: it plays, whatever anything says (fork 5).
+  if (it.kind === "station" && it.station) {
+    void playStation(it.station).catch(err("play station"));
+    return;
+  }
+
+  if (act === "open") {
+    if (it.kind === "playlist" && it.playlist) {
+      if (nav?.openPlaylist) nav.openPlaylist(it.playlist);
+      else if (it.playlist.libraryId) requestOpenPlaylist(it.playlist.libraryId);
+      return;
+    }
+    if (it.kind === "artist") {
+      if (nav?.openArtist) nav.openArtist(it.title);
+      else requestLibraryDrill({ kind: "artist", name: it.title });
+      return;
+    }
+    if (it.kind === "album") {
+      const known = it.tracks();
+      const seed = Array.isArray(known) ? known[0] : undefined;
+      // An album the library does not hold has nothing to drill into: it plays, whole —
+      // the exception the Library shelf already made (§8.4).
+      if (seed && !it.whole) {
+        if (nav?.openAlbum) nav.openAlbum(seed);
+        else requestLibraryDrill({ kind: "album", track: seed });
+        return;
+      }
+    }
+    // Every other Open falls through to Play: a song, or an item with no view to open.
+  }
+
+  void (it.whole?.() ?? Promise.resolve(it.tracks()))
+    .then((ts) => {
+      if (!ts.length) return;
+      // The house rule (§8.1 fact 3): Shuffle plays a shuffled COPY, and with "Shuffle
+      // button stays on" it turns the mode on, exactly as a card's Shuffle button does.
+      runListAction(act === "shuffle" ? "shuffle" : "play", ts, (list) => void playTracks(list, 0, it.context).catch(err("play")));
+    })
+    .catch(err("activate"));
 }
 
 export async function clearPin(key: string): Promise<void> {
@@ -107,6 +220,25 @@ export function pinItem(key: string, kind: PinKind, data?: unknown): MenuItem {
     label: on ? "Unpin" : "Pin",
     run: () => void togglePin(key, kind, data).catch((e) => console.error("[pins] toggle", e)),
   };
+}
+
+/** The pin rows a menu adds: **On Click** (only when the item is pinned and its kind is
+ *  asked), then Pin / Unpin — which stays the LAST row of every menu (§7). */
+export function pinRows(key: string, kind: PinKind, data?: unknown): MenuItem[] {
+  const act = pinActItem(key, kind);
+  return act ? [act, pinItem(key, kind, data)] : [pinItem(key, kind, data)];
+}
+
+/** `pinArtistItem` with its On Click row. */
+export const pinArtistRows = (a: Artist): MenuItem[] =>
+  pinRows(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId });
+
+/** `pinItemFor` with its On Click row (empty when the list has no pin of its own). */
+export function pinRowsFor(items: Track[], context?: string): MenuItem[] {
+  if (context?.startsWith("album:")) return pinRows(context, "album", items);
+  if (context?.startsWith("artist:")) return pinRows(context, "artist");
+  if (items.length === 1) return pinRows(songKey(items[0]), "song", items[0]);
+  return [];
 }
 
 /** The pin row for an artist known by name and catalog id (a Search result, the artist
