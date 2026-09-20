@@ -13,9 +13,9 @@
 // re-renders while any drag runs (`isDragging` / `onDragEnd`). Escape cancels.
 //
 // Movable rows (MOVABLE-ROWS.md) added three opt-in modes to the same primitive, and
-// changed nothing that was here: `hold` (the press starts the drag only after it is held
-// still, and any movement before that drops the press — how a section header becomes its
-// own grip), `measure` (children of any height, for sections), and `axis: "x"` (a sideways
+// changed nothing that was here: `hold` (a press held still arms, and only a move after
+// that starts the drag; any movement before it drops the press, and a still release is the
+// click — how a section header becomes its own grip), `measure` (children of any height, for sections), and `axis: "x"` (a sideways
 // shelf — a Pinned tile). A row with `done` writes its own rank list instead of `onEnd`.
 
 import * as frames from "./frames";
@@ -71,9 +71,10 @@ export interface DragRow {
    *  uses `[data-pin-idx]`: the collection engine reads `[data-idx]` as a row of its own
    *  list, and a tile is not one. */
   sel?: string;
-  /** Start only after the pointer is held still this long (ms), not on the 6 px threshold.
-   *  A move before it cancels the press outright, so a scroll or a fold click is never
-   *  stolen (MOVABLE-ROWS.md fork 6, the owner 2026-09-20). */
+  /** Arm only after the pointer is held still this long (ms); the drag then starts on the
+   *  next move past the 6 px threshold. A move before it cancels the press outright, and a
+   *  release without a move is the click, so a scroll or a fold click is never stolen
+   *  (MOVABLE-ROWS.md fork 6 and §13.1a, the owner 2026-09-20). */
   hold?: number;
   /** The drag really started — the caller collapses the section here (fork 5A). */
   begin?: () => void;
@@ -244,7 +245,8 @@ const songsText = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
  * The ghost: a copy of the row on <body>. Card styles are scoped by ancestors (`.qcard .qrow`,
  * `.lib-view[data-grid] .lib-tile`, card tokens), so the copy sits inside shells that repeat
  * the row's ancestor chain — same tags, classes and data attributes — with `display: contents`:
- * the selectors and inherited tokens still match, and the shells draw no box.
+ * the selectors and inherited tokens still match, and the shells draw no box. Their
+ * pseudo-elements are switched off too (`.drag-shell`, styles.css): those would still draw.
  */
 export function makeGhost(row: HTMLElement, p: DragPayload | undefined): { root: HTMLElement; ghost: HTMLElement } {
   const chain: HTMLElement[] = [];
@@ -256,6 +258,10 @@ export function makeGhost(row: HTMLElement, p: DragPayload | undefined): { root:
     for (const at of Array.from(a.attributes))
       if (at.name === "class" || (at.name.startsWith("data-") && at.name !== "data-tauri-drag-region")) shell.setAttribute(at.name, at.value);
     shell.classList.remove("is-reordering", "is-drop-target");
+    // `display: contents` draws no box, but a shell's ::before / ::after still draw — and
+    // with no positioned ancestor they fill the WINDOW. Ocean's sand edges are exactly that
+    // on `.panel`: every drag out of a card laid the card's fill over the sea (2026-09-20).
+    shell.classList.add("drag-shell");
     shell.style.setProperty("display", "contents", "important");
     shell.setAttribute("aria-hidden", "true");
     if (parent) parent.appendChild(shell);
@@ -316,9 +322,14 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
   let endFrames = () => {};
   /** The press-and-hold timer (fork 6): a header becomes a grip once it is held still. */
   let holdTimer = 0;
+  /** The hold ran its time: the header is a grip now, and the next move lifts it. A still
+   *  press never lifts — letting go is still the click, however slow (2026-09-20: at 400 ms
+   *  with no move needed, a relaxed click folded, lifted and unfolded, and did nothing). */
+  let armed = false;
   const holdOff = () => {
     if (holdTimer) window.clearTimeout(holdTimer);
     holdTimer = 0;
+    armed = false;
     pending?.row.classList.remove("is-holding");
   };
 
@@ -467,9 +478,9 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
       update();
       e.preventDefault(); // no text selection while dragging
     } else if (pending && Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) > DRAG_THRESHOLD) {
-      // A hold source never starts on movement: moving means the press was a scroll, a
-      // text drag or a miss, and the press is dropped whole. Only the timer starts it.
-      if (pending.hold != null) {
+      // A hold source starts only on a move AFTER the hold: a move before it means the
+      // press was a scroll, a text drag or a miss, and the press is dropped whole.
+      if (pending.hold != null && !armed) {
         holdOff();
         pending = null;
         unlisten();
@@ -538,7 +549,11 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
       // The press swells while it is held, so the gesture teaches itself: something is
       // happening, and letting go now still just folds the section.
       pending.row.classList.add("is-holding");
-      holdTimer = window.setTimeout(begin, hit.hold);
+      // The swell stays while it is armed: it says "move now to lift this".
+      holdTimer = window.setTimeout(() => {
+        holdTimer = 0;
+        armed = true;
+      }, hit.hold);
     }
   };
   opts.root.addEventListener("pointerdown", onDown);

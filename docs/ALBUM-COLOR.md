@@ -105,6 +105,17 @@ radial-gradient(at <cover-center>,
 every stop is a `color-mix(... , transparent)` and may additionally mix toward `--surface`,
 so a blown-out Apple `bgColor` can't nuke legibility on dark themes (moonlight / black-yellow).
 
+**The stops are filled by colorfulness, not by Apple's names (2026-09-20).** The
+`--album-bg` stop sits under the cover and is hidden; `--album-c1` is the visible rim;
+`--album-c2` is the halo and the orbiting highlight. Apple's `bgColor` is the art's main
+field — vivid as often as dark — and its `textColor1/2` are near grey on 677 of 1,368 cached
+palettes. Filled by name, a lilac cover (The Chainsmokers, *So Far So Good*: bg `#bc92ec`,
+c1 `#19191a`, c2 `#24202c`) hid its lilac under the art and glowed grey. `auroraSlots`
+(`src/album-slots.ts`) ranks the three by OKLCH chroma: the most colorful goes on the rim,
+the next on the halo (or the rim's color again when the next is grey, chroma < 0.04), and the
+least under the cover. An all-grey cover stays grey. The NP card and the tray panel both
+use it. The NP text (below) still reads Apple's `c1` / `c2` as named.
+
 ---
 
 ## Motion — the rotating highlight ✅

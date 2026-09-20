@@ -23,36 +23,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { onPlayerState } from "./player";
 import { getCurrent } from "./queue";
 import { trackById } from "./track-store";
-
-interface AlbumPalette {
-  bg?: string; // "#rrggbb" — normalized in Rust
-  c1?: string; // Apple's textColor1
-  c2?: string; // Apple's textColor2
-}
+import { auroraSlots, fromOKLCH, lin, parseColor, toOKLCH, type AlbumPalette, type RGB } from "./album-slots";
 
 const PROPS = ["--album-bg", "--album-c1", "--album-c2"] as const;
 const TEXT_PROPS = ["--np-title", "--np-subtext", "--np-accent"] as const;
 
-// ── color math (sRGB ⇄ OKLCH, WCAG 2 contrast) ─────────────────────────────────
-type RGB = [number, number, number]; // 0..1
-
-function parseColor(s: string): RGB | null {
-  const m = /^#([0-9a-f]{6})$/i.exec(s.trim());
-  if (m) {
-    const n = parseInt(m[1], 16);
-    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-  }
-  const r = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(s.trim());
-  if (r) return [Number(r[1]) / 255, Number(r[2]) / 255, Number(r[3]) / 255];
-  return null;
-}
+// ── WCAG 2 contrast (the OKLCH math is in album-slots.ts) ───────────────────────
 /** Alpha of an rgba() string (1 for anything else). */
 const alphaOf = (s: string): number => {
   const m = /rgba?\([^)]*[,/]\s*([\d.]+)\s*\)$/i.exec(s.trim());
   return m ? Number(m[1]) : 1;
 };
-const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-const gam = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
 const luminance = ([r, g, b]: RGB) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const contrast = (a: RGB, b: RGB) => {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
@@ -62,30 +43,6 @@ const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const hex = ([r, g, b]: RGB) =>
   "#" + [r, g, b].map((c) => Math.round(clamp01(c) * 255).toString(16).padStart(2, "0")).join("");
-
-type LCH = [number, number, number];
-function toOKLCH([r, g, b]: RGB): LCH {
-  const [lr, lg, lb] = [lin(r), lin(g), lin(b)];
-  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
-  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
-  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
-  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
-  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
-  const bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
-  return [L, Math.hypot(a, bb), Math.atan2(bb, a)];
-}
-function fromOKLCH([L, C, h]: LCH): RGB {
-  const a = C * Math.cos(h);
-  const bb = C * Math.sin(h);
-  const l = (L + 0.3963377774 * a + 0.2158037573 * bb) ** 3;
-  const m = (L - 0.1055613458 * a - 0.0638541728 * bb) ** 3;
-  const s = (L - 0.0894841775 * a - 1.291485548 * bb) ** 3;
-  return [
-    gam(clamp01(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)),
-    gam(clamp01(-1.2684380046 * l + 2.6097574011 * m - 0.6368000104 * s)),
-    gam(clamp01(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)),
-  ];
-}
 
 /**
  * The guard: keep hue and chroma, move lightness away from the backdrop until every
@@ -166,12 +123,11 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   };
 
   const apply = (p: AlbumPalette) => {
-    if (p.bg) card.style.setProperty("--album-bg", p.bg);
-    else card.style.removeProperty("--album-bg");
-    if (p.c1) card.style.setProperty("--album-c1", p.c1);
-    else card.style.removeProperty("--album-c1");
-    if (p.c2) card.style.setProperty("--album-c2", p.c2);
-    else card.style.removeProperty("--album-c2");
+    const slots = auroraSlots(p);
+    PROPS.forEach((prop, i) => {
+      if (slots[i]) card.style.setProperty(prop, slots[i]!);
+      else card.style.removeProperty(prop);
+    });
     card.classList.add("np--album");
     livePalette = p;
     applyText();

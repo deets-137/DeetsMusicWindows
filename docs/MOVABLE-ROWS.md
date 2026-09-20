@@ -644,9 +644,17 @@ Everything below is in the tree. Where it disagrees with §§1-11, this section 
 ### 13.1 The gesture
 
 **A section header is its own grip while it is HELD.** Press a header and hold it still for
-**400 ms**: it swells, then it lifts and moves. Let go before that and it is the click it
-always was — the section folds. Move the pointer before the hold fires and the press is
-**dropped whole**, so a scroll or a drag that starts on a header is never stolen.
+**400 ms**: it swells. Now move the pointer and it lifts and moves. Let go without a move —
+before the swell or after it — and it is the click it always was: the section folds. Move
+the pointer before the hold fires and the press is **dropped whole**, so a scroll or a drag
+that starts on a header is never stolen.
+
+**§13.1a — hold, then move (changed 2026-09-20, the owner's choice).** As first built, the
+header lifted the moment the 400 ms ran out, with no move needed. A relaxed click is often
+longer than 400 ms, so the section folded, lifted, unfolded on the release and swallowed
+the click: in Playlists and Settings a fold click did nothing. Now the timer only ARMS the
+header (the swell stays on while it is armed), and the lift waits for a move past the 6 px
+threshold. `--hold-ms` is unchanged.
 
 - The hold is one Settings row: **Window › Growing and drilling › Move sections by holding**
   (`moveSections`, default **on**). Off means no section anywhere can be moved, and no

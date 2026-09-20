@@ -2281,6 +2281,11 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   font-size: var(--fs-subtext);
   white-space: nowrap;
 }
+/* The ghost's ancestor shells (makeGhost) repeat a card's classes with display: contents.
+   Their pseudo-elements would still draw, sized to the whole window — Ocean's sand
+   .panel::before laid the card fill over the sea for the length of every drag. */
+.drag-shell::before,
+.drag-shell::after { content: none !important; }
 /* The pressed row stays in place and dims while its copy moves. */
 .is-drag-source.is-drag-source { opacity: var(--drag-source-opacity); }
 /* Whole page while a drag runs: no text selection, the grab cursor everywhere. */
@@ -3193,10 +3198,11 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   width: calc(var(--np-cover) * var(--album-aurora-reach));
   aspect-ratio: 1;
   transform: translate(-50%, -50%) rotate(0turn);
-  /* Cover edge sits at 1/(2·reach) of the layer width (~17% at reach 3). Apple's
-     bgColor is the art's BACKGROUND field — usually dark — so it stays hidden under
-     the cover; the vivid textColor accents own the visible rim. Every stop is mixed
-     toward transparent, so a blown-out palette can't nuke legibility. */
+  /* Cover edge sits at 1/(2·reach) of the layer width (~17% at reach 3). The
+     --album-bg stop stays hidden under the cover; --album-c1 owns the visible rim,
+     --album-c2 the halo. album-color.ts fills them by colorfulness, not by Apple's
+     role names (auroraSlots). Every stop is mixed toward transparent, so a
+     blown-out palette can't nuke legibility. */
   background:
     radial-gradient(circle at 50% 50%,
       color-mix(in srgb, var(--album-bg) var(--album-aurora-strength), transparent) 0%,

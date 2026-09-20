@@ -23,6 +23,7 @@ import { onSettingsChange } from "./settings-store";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
 import type { NpState } from "./np-bus";
+import { auroraSlots, type AlbumPalette } from "./album-slots";
 import type { Track } from "./library";
 
 interface WinNowPlaying {
@@ -136,12 +137,14 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!template) return clearPalette();
     if (template === paletteKey) return;
     paletteKey = template;
-    invoke<{ bg?: string; c1?: string; c2?: string } | null>("album_palette", { coverUrl: template, catalogId: catalogId ?? null })
+    invoke<AlbumPalette | null>("album_palette", { coverUrl: template, catalogId: catalogId ?? null })
       .then((p) => {
         if (paletteKey !== template || !p) return;
-        if (p.bg) npEl.style.setProperty("--album-bg", p.bg);
-        if (p.c1) npEl.style.setProperty("--album-c1", p.c1);
-        if (p.c2) npEl.style.setProperty("--album-c2", p.c2);
+        // Ranked by colorfulness, as on the NP card (album-color.ts auroraSlots).
+        const slots = auroraSlots(p);
+        PROPS.forEach((prop, i) => {
+          if (slots[i]) npEl.style.setProperty(prop, slots[i]!);
+        });
         npEl.classList.add("np--album");
       })
       .catch(() => {});
