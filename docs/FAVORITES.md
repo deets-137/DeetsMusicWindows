@@ -30,8 +30,10 @@ the [Playlists export decision](PLAYLISTS.md)):
 **Favorite ≠ Add to Library** — independent actions (you can favorite without adding, and vice versa).
 
 ### Where the buttons live
-- **Add to Library** (active step) — a right-click item on **Search** (song rows + album tiles) and
-  **Playlists** (detail song rows), shown only when the track isn't already in the library and only
+- **Add to Library** (active step) — a right-click item on **Search** (song rows + album tiles),
+  **Playlists** (detail song rows), **Home** (song tiles, 2026-09-20) and — since 2026-09-20 —
+  **any album-shaped list on any card** (`addAlbumFromSongsItem`, below), shown only when the
+  track isn't already in the library and only
   while the [Library Add setting](#the-library-add-setting-the-gate) is on. **Since 2026-09-10 also a
   square on Now Playing** (right cluster, before the queue summon; `#np-add`) with the tray
   panel's four states: hidden (toggle off / no catalog id) · **+** to add · spinner while adding ·
@@ -86,6 +88,18 @@ be one-click without risking accidental account writes, given there's **no remov
   next right-click reflects any change. Hover-Menu, by contrast, must push `setDropdownMode` to
   every live dropdown instance. So the wiring is just: read the flag when assembling the menu — no
   re-render, no registry.
+- **An album, from songs (2026-09-20).** `addAlbumFromSongsItem(items)` is the third builder, and
+  the one that ended a two-year gap: until this date an ALBUM could be added from the **Search card
+  alone**, because Apple adds an album by its own id and an album-shaped list of songs carries none.
+  The owner found it on Home ("Can I right-click an album and add to library? I didn't notice it").
+  The builder resolves the album id **lazily, on pick** — one `songs → albums` hop, memoized in
+  search.ts beside the one `wholeAlbum()` makes, so a tile already played or drilled costs no call.
+  A failed hop falls back to adding the songs themselves. It returns `null` when the toggle is off,
+  when no song carries a catalog id, or when **every** song is already in the library — that last
+  rule is what keeps the row off every album tile on the Library card, where the answer is always
+  "you have it". It rides `trackMenu` (library-card.ts), so one line reached Home, the Pinned
+  shelves, Playlists, Queue, History and Rewind at once. A **song's** add stays per-card: each card
+  wires `addSongToLibraryItem` itself, and a second copy in the shared menu would show it twice.
 - **Shared builder.** `addSongToLibraryItem(t)` / `addAlbumToLibraryItem(id, getTracks)` (siblings of
   `addToPlaylistItem` in `playlists.ts`) return the `MenuItem` **or `null`** — `null` when (a) the
   toggle is off, (b) the song is **actually in the synced library** (`inLibrary(catalogId||libraryId)`

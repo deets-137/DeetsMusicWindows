@@ -14,7 +14,9 @@
 //  - `SubmenuItem` — a `›` row that opens a side FLYOUT (the settings-menu grammar,
 //    see index.html/.flyout) holding its own items. The reveal is JS-LATCHED, not
 //    CSS :hover — once open it stays while you type in a flyout field, and closes
-//    when a sibling row is hovered, another submenu opens, or the menu goes away.
+//    when a SIBLING row is hovered, another submenu at the same depth opens, or the
+//    menu goes away. A submenu can hold another submenu (Refresh ▸ Weekly ▸ Fri):
+//    the latch is one wrap per depth, so a nested row never closes its own parent.
 //    The flyout side-flips near the right edge and clamps/scrolls vertically.
 //    `sub` resolves lazily (sync or async) the first time the flyout opens.
 //
@@ -88,30 +90,38 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
   menu.setAttribute("role", "menu");
   menu.addEventListener("contextmenu", (e) => e.preventDefault()); // no native menu over ours
 
-  // ── flyout latch (one open at a time) ──
-  let openWrap: HTMLElement | null = null;
-  const closeFly = () => {
-    if (!openWrap) return;
-    const fly = openWrap.querySelector<HTMLElement>(".ctx-menu__fly");
-    if (fly) fly.hidden = true;
-    openWrap.classList.remove("is-open");
-    openWrap = null;
+  // ── flyout latch (one open PER LEVEL) ──
+  // `openWraps[d]` is the submenu wrap whose flyout is open at depth d, so a menu can
+  // stand several levels deep (Refresh ▸ Weekly ▸ Fri). Hovering any row closes its OWN
+  // level and everything deeper, and never its ancestors — a single latch closed the
+  // parent flyout the moment you reached a nested row inside it.
+  const openWraps: HTMLElement[] = [];
+  const closeFrom = (depth: number) => {
+    while (openWraps.length > depth) {
+      const wrap = openWraps.pop()!;
+      // `:scope >` — a deeper flyout is a descendant too, and must not be taken for this one.
+      const fly = wrap.querySelector<HTMLElement>(":scope > .ctx-menu__fly");
+      if (fly) fly.hidden = true;
+      wrap.classList.remove("is-open");
+    }
   };
 
-  // Side-flip + vertical clamp, measured against the live viewport. The flyout is
-  // row-relative (offsetParent = the .ctx-menu__sub wrap), so the vertical fix is a
-  // plain offsetTop shift; max-height in CSS keeps it scrollable when very long.
-  const placeFly = (fly: HTMLElement) => {
+  // Side-flip + vertical clamp, measured against the live viewport. `host` is the box the
+  // flyout grows out of (the menu itself, or the parent flyout), so a nested flyout flips
+  // on its own right edge. The flyout is row-relative (offsetParent = the .ctx-menu__sub
+  // wrap), so the vertical fix is a plain offsetTop shift; max-height in CSS keeps it
+  // scrollable when very long.
+  const placeFly = (fly: HTMLElement, host: HTMLElement) => {
     fly.classList.remove("is-left");
     fly.style.top = "";
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
-    if (menu.getBoundingClientRect().right + fly.offsetWidth + PAD > vw) fly.classList.add("is-left");
+    if (host.getBoundingClientRect().right + fly.offsetWidth + PAD > vw) fly.classList.add("is-left");
     const over = fly.getBoundingClientRect().bottom - (vh - PAD);
     if (over > 0) fly.style.top = `${fly.offsetTop - over}px`;
   };
 
-  const appendItems = (host: HTMLElement, list: MenuItem[], topLevel: boolean) => {
+  const appendItems = (host: HTMLElement, list: MenuItem[], depth: number) => {
     for (const item of list) {
       if ("sub" in item) {
         const wrap = document.createElement("div");
@@ -137,20 +147,24 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
         wrap.append(row, fly);
 
         const open = () => {
-          if (openWrap === wrap) return;
-          closeFly();
-          openWrap = wrap;
+          if (openWraps[depth] === wrap) return;
+          closeFrom(depth); // this level and deeper; the ancestors that hold us stay open
+          openWraps.push(wrap);
           wrap.classList.add("is-open");
           const show = () => {
-            if (openWrap !== wrap) return; // latch moved on while items resolved
+            if (openWraps[depth] !== wrap) return; // latch moved on while items resolved
             fly.hidden = false;
-            placeFly(fly);
+            placeFly(fly, host);
           };
           if (fly.dataset.built) show();
           else
             Promise.resolve(item.sub())
               .then((subItems) => {
-                appendItems(fly, subItems, false);
+                appendItems(fly, subItems, depth + 1);
+                // A flyout that holds a submenu must not clip it: `overflow-y: auto` also
+                // clips horizontally, and a child flyout sits at left: 100%. The cost is
+                // that this one flyout no longer scrolls when very long.
+                if (subItems.some((i) => "sub" in i)) fly.classList.add("ctx-menu__fly--deep");
                 fly.dataset.built = "1";
                 show();
               })
@@ -168,7 +182,7 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
           const title = document.createElement("div");
           title.className = "ctx-menu__label";
           title.textContent = item.input.label;
-          if (topLevel) title.addEventListener("pointerenter", closeFly);
+          title.addEventListener("pointerenter", () => closeFrom(depth));
           host.appendChild(title);
         }
         const wrap = document.createElement("div");
@@ -187,7 +201,7 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
           item.input.onSubmit(v);
         });
         wrap.appendChild(inp);
-        if (topLevel) wrap.addEventListener("pointerenter", closeFly);
+        wrap.addEventListener("pointerenter", () => closeFrom(depth));
         host.appendChild(wrap);
         continue;
       }
@@ -211,11 +225,11 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
           diag.log("ui:act", { do: "menu", what: item.label.slice(0, 40) });
           item.run();
         });
-      if (topLevel) btn.addEventListener("pointerenter", closeFly); // hovering a sibling unlatches
+      btn.addEventListener("pointerenter", () => closeFrom(depth)); // hovering a sibling unlatches
       host.appendChild(btn);
     }
   };
-  appendItems(menu, items, true);
+  appendItems(menu, items, 0);
 
   // Mount hidden so we can measure, then clamp to the live viewport and reveal.
   menu.style.visibility = "hidden";

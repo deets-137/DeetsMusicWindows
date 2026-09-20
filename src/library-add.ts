@@ -18,6 +18,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
 import type { MenuItem } from "./context-menu";
 import { inLibrary, loadTracks } from "./track-store";
+import { catalogRelated } from "./search";
 import { toast, noticeOff } from "./toast";
 import { requestSetting } from "./layout-bus";
 
@@ -137,6 +138,39 @@ export function addSongToLibraryItem(t: Track): MenuItem | null {
  * pick (usually already cached from enrichment / a drill-in). Returns `null` when the
  * toggle is off or there's no catalog id.
  */
+/**
+ * "Add to Library" for the album a LIST is — the album-shaped menus every card builds
+ * through `trackMenu` (Home's shelves, the Pinned shelves, Playlists, Queue, History).
+ * Until 2026-09-20 an album could be added from the Search card alone, because Apple adds
+ * an album by its OWN id and a list of songs carries none.
+ *
+ * The id is resolved LAZILY, on pick: one `songs → albums` hop, the same one `wholeAlbum()`
+ * makes and memoized beside it in search.ts, so a tile the user has already played or
+ * drilled costs no call at all. If the hop fails the songs themselves are added, which is
+ * the outcome the user asked for either way.
+ *
+ * Null when the toggle is off, when no song of the list carries a catalog id, or when the
+ * library already holds every song — that last rule is what keeps the row off every album
+ * tile on the Library card, where the answer is always "you have it".
+ */
+export function addAlbumFromSongsItem(items: Track[]): MenuItem | null {
+  if (!enabled || !items.length) return null;
+  const seed = items.find((t) => t.catalogId);
+  if (!seed?.catalogId) return null;
+  if (items.every(alreadyInLibrary)) return null;
+  return {
+    label: "Add to Library",
+    run: () =>
+      void catalogRelated("songs", seed.catalogId!, "albums")
+        .then((ref) => {
+          if (ref) return addToLibrary("albums", [ref.id], items);
+          const fresh = items.filter((t) => t.catalogId && !alreadyInLibrary(t));
+          return fresh.length ? addToLibrary("songs", fresh.map((t) => t.catalogId!), fresh) : undefined;
+        })
+        .catch((e) => console.error("[library-add] album from songs", e)),
+  };
+}
+
 export function addAlbumToLibraryItem(catalogId: string, getTracks: () => Promise<Track[]>): MenuItem | null {
   if (!enabled || !catalogId) return null;
   return {

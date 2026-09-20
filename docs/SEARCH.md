@@ -120,6 +120,17 @@ gapless [enqueue path](QUEUE.md#manual-queueing--play-next--add-to-queue):
   artist or album, an album to its artist. In the Search card they push a catalog detail pane in
   place; the same verbs are now on **every** card (Library, Playlists, Rewind, Queue, History, Now
   Playing) — see the As-built note and [FUTURE-SETTINGS §20](FUTURE-SETTINGS.md#20-drill-in-target--in-place-local-vs-search-card-catalog).
+- **Go to Album on an ALBUM** ✅ (2026-09-20) — until this date the verb existed only for a
+  **song**: `goToAlbumItem` hops `songs → albums`, and `goToItems` (library-card.ts) built the
+  row only for a one-song list. So an album tile anywhere — a Home shelf, a pinned tile, a
+  Queue album selection — offered *Go to Artist* alone, and Apple's own "New" tiles, which
+  hold the album id and no songs at all, offered nothing. Two changes fix it:
+  - `goToItems` now shows the row for **any list that IS one album** (every song shares the
+    album name), hopping from whichever of its songs carries a catalog id. That reaches
+    Library, Playlists, Rewind, Queue, History and Now Playing through the one shared menu.
+  - `go-to.ts` gains an **album pane intent** — `requestAlbumPane` / `goToAlbumPaneItem`, the
+    sibling the playlist pane has had since ARTIST-VIEW §5. A caller that already holds the
+    album's catalog id opens the pane with **no hop at all**. Home's New shelf uses it.
 - **Station** → **Play** (no queue-insert — stations are their own mode). ⬜ with the stations type.
 - **Add to Library** writes via the catalog id (create/append, gated — consistent with the
   [Playlists export decision](PLAYLISTS.md)); on library-only surfaces this stays the one Apple write.

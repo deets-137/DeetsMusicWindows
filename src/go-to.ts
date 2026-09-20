@@ -119,6 +119,48 @@ export function requestPlaylistPane(intent: PlaylistPaneIntent): void {
   pendingPane = null;
 }
 
+/** A catalog ALBUM to open as a Search pane, by its OWN id — the sibling the playlist pane
+ *  had and the album did not (the owner, 2026-09-20: "why can't I go to any of the albums").
+ *  A Home "New" tile, a pinned album and a Search album tile all hold the album id already,
+ *  so this opens the pane with no `?include=` hop at all. A caller that holds only songs
+ *  keeps the song→album hop below. */
+export interface AlbumPaneIntent {
+  id: string;
+  name: string;
+  artwork?: Artwork;
+  artistName?: string;
+  releaseDate?: string;
+}
+const albumSubs = new Set<(intent: AlbumPaneIntent) => void>();
+let pendingAlbum: { intent: AlbumPaneIntent; at: number } | null = null;
+
+/** Search-card side: subscribe to catalog album panes. Returns an unsubscribe fn. */
+export function onAlbumPaneRequest(cb: (intent: AlbumPaneIntent) => void): () => void {
+  albumSubs.add(cb);
+  return () => albumSubs.delete(cb);
+}
+
+/** Search-card side: take the waiting album pane (null when none, or too old). */
+export function takeAlbumPaneRequest(): AlbumPaneIntent | null {
+  const p = pendingAlbum;
+  pendingAlbum = null;
+  return p && Date.now() - p.at < HOLD_TTL_MS ? p.intent : null;
+}
+
+/** Summon the Search card and open a catalog album pane there. */
+export function requestAlbumPane(intent: AlbumPaneIntent): void {
+  pendingAlbum = { intent, at: Date.now() };
+  requestDrillCard("search");
+  if (pendingAlbum) albumSubs.forEach((cb) => cb(intent));
+  pendingAlbum = null;
+}
+
+/** "Go to Album" from the ALBUM's own catalog id — `null` without one. */
+export function goToAlbumPaneItem(intent: AlbumPaneIntent | null): MenuItem | null {
+  if (!intent?.id) return null;
+  return { label: "Go to Album", run: () => requestAlbumPane(intent) };
+}
+
 /** "Go to Album" from a song's catalog id — `null` without one. */
 export function goToAlbumItem(songCatalogId?: string | null, albumName?: string): MenuItem | null {
   if (!songCatalogId) return null;

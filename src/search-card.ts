@@ -16,7 +16,7 @@ import { favoriteItem, reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { copySongLinkItem, copyAlbumLinkItem, copyStationLinkItem } from "./copy-link";
 import { makeDropdown } from "./dropdown";
-import { onDrillRequest, onPlaylistPaneRequest, onSongPaneRequest, songCreditsItem, takeDrillRequest, takePlaylistPaneRequest, takeSongPaneRequest, type DrillIntent, type PlaylistPaneIntent, type SongPaneIntent } from "./go-to";
+import { onAlbumPaneRequest, onDrillRequest, onPlaylistPaneRequest, onSongPaneRequest, songCreditsItem, takeAlbumPaneRequest, takeDrillRequest, takePlaylistPaneRequest, takeSongPaneRequest, type AlbumPaneIntent, type DrillIntent, type PlaylistPaneIntent, type SongPaneIntent } from "./go-to";
 import {
   creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
   CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
@@ -888,6 +888,13 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     openCollection("playlists", i.id, { title: i.name, artwork: i.artwork, curatorName: i.curatorName }, i.tracks);
   };
   const unsubPlaylistPane = onPlaylistPaneRequest(runPane);
+  // An album opened by its OWN id, from any card that holds one (go-to.ts): no hop, the
+  // pane fills straight away.
+  const runAlbumPane = (i: AlbumPaneIntent) => {
+    tookRequest = true;
+    openCollection("albums", i.id, { title: i.name, artwork: i.artwork, artistName: i.artistName, releaseDate: i.releaseDate });
+  };
+  const unsubAlbumPane = onAlbumPaneRequest(runAlbumPane);
   // "Song Credits" from any card's right-click menu (go-to.ts).
   const runSongPane = (i: SongPaneIntent) => {
     tookRequest = true;
@@ -1125,6 +1132,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   if (heldDrill) runDrill(heldDrill);
   const heldPane = takePlaylistPaneRequest();
   if (heldPane) runPane(heldPane);
+  const heldAlbum = takeAlbumPaneRequest();
+  if (heldAlbum) runAlbumPane(heldAlbum);
   const heldSong = takeSongPaneRequest();
   if (heldSong) runSongPane(heldSong);
 
@@ -1184,6 +1193,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted
       unsubPlaylistPane();
+      unsubAlbumPane();
       unsubSongPane();
       headerCbs.clear();
       host.innerHTML = "";
