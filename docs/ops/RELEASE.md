@@ -37,7 +37,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 | 1 | set the version, write the notes | the same version in the seven files (§1: four are checked, three are not), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
 | 3 | install + test | the installed build, by hand, from `installers/` | — |
-| 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update | `../DeetsSupport` checkout, wrangler login |
+| 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update. Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; `../DeetsSolutions` on master |
 | — | `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release` then `npm run release:publish -- --channel deetsmusic-test` | the same, on the test channel (§6.8) | — |
 
 **The secrets and keys:**

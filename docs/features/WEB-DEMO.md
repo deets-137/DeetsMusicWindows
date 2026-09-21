@@ -105,7 +105,7 @@ alias. Events (`listen` / `emit`) run on a local table in the shim. §2's alias 
 | `demo/musickit.ts` | The fake MusicKit: `setQueue` (items, songs, station), play / pause / stop / seek, next / previous, `changeToMediaAtIndex`, `playNext` / `playLater`, `queue.splice`, the four events, `PlaybackStates`, `MediaItem`. A 250 ms timer moves the clock. At the end of the window it reports no item and `completed`, like MusicKit. An unknown id rejects with MusicKit's "could not be resolved" text, so the app's dead-id path still works. |
 | `demo/catalog.ts` | 5 artists, 8 albums, 60 songs, 3 live + 15 genre stations, 2 Apple playlists, 3 starting local playlists. Every name is invented. Covers and artist portraits are SVG data URLs drawn in code, with `{w}{h}{f}` in the URL fragment so the app's template fill works unchanged. |
 | `vite.demo.config.ts` | The real `index.html`, served with the MusicKit CDN script removed, the shim added before `main.ts`, and a head script that seeds the app's look from the site's. `base: "./"`, out to `dist-web/`. It fails the build if `index.html` changes shape. |
-| `scripts/demo-publish.mjs` | Builds, then copies `dist-web/` to `../DeetsSolutions/deetsmusic/demo/app/`. It never commits or deploys. |
+| `scripts/demo-publish.mjs` | Builds, then copies `dist-web/` to `../DeetsSolutions/deetsmusic/demo/app/`. With `--push` it also commits that folder on DeetsSolutions `master` and pushes (§9.8). |
 | `demo/tsconfig.json`, `demo/env.d.ts` | `tsc -p demo` typechecks the demo against the real `src/` types. |
 
 ### 9.3 What the visitor starts with
@@ -138,6 +138,16 @@ alias. Events (`listen` / `emit`) run on a local table in the shim. §2's alias 
   walk starts again.
 - `strings.js`: every string, approved by him 2026-09-21 (no `[ph]` left).
 - `styles/main.css`: one `.dmd-*` block, tokens only.
+
+### 9.8 A release updates the live demo (his call, 2026-09-21)
+`release:publish` on the live channel ends with `demo-publish.mjs --push`: build, copy to
+`../DeetsSolutions/deetsmusic/demo/app/`, commit that folder alone on `master`
+("DeetsMusic demo: the build from X"), push. The push deploys deets.solutions. Guards: it
+runs only when DeetsSolutions is on `master` and fast-forwards cleanly; it stages nothing
+outside `app/`; an unchanged build commits nothing. When a guard stops it, the files are
+still copied, the publish still stands, and it says why. Retry: `npm run demo:publish -- --push`.
+A new back-end command answers `null` in the demo until it gets a handler in
+`demo/handlers.ts`, so a new feature can look empty there until then.
 
 ### 9.6 Checked in a browser (2026-09-21, Chrome)
 Boot, Now Playing, the Queue, Home shelves, Library, Playlists, Search card mounted, Play and
