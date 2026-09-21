@@ -15,6 +15,8 @@ the app can do any of these things.
   (artist, album, browse, your account), for a future session.
 - [LinuxPort.md](LinuxPort.md) — a Linux (and macOS) release: the DRM + AAC block on Linux,
   the Tauri CEF / castLabs ECS paths around it, and the Windows-only parts to replace.
+- [MatterLights.md](MatterLights.md) — an on/off panel for Matter lights, in one process:
+  native Rust vs our own TypeScript, costs, the AirPlay reuse, forks (researched 2026-09-21).
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).
