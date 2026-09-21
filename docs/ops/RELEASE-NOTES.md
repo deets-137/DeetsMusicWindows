@@ -32,6 +32,34 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.13.0 — 2026-09-21
+
+**The cog opens a quick settings panel.** Press the cog in the title bar and a row of squares
+drops down: Apple Music, Discord, Connections, Fun things, Look, Help and playback, Window,
+Updates and bugs, and Reset.
+Press a square and its settings open right there, without leaving what you were doing. They
+are the same settings as the Settings card, so a change in one shows in the other. The last
+square is a cog of its own: it opens Settings at full size, and closes it again.
+
+**New things wear an N.** A square you have not tried yet shows a small N. So does the cog in
+the title bar, until you first open the panel. When a later version adds a setting, the N
+comes back beside its name, and on the cog and the square that hold it, until you rest the
+pointer on it. Settings › Tips › **Show the tour again** puts the square badges back.
+
+**Right-click a term in Search.** A recent search term offers **Pin** and **Remove from
+Recent**; a pinned one offers **Unpin**.
+
+**Roll back lists the older versions again.** If the app started in the minutes before a new
+version was published, the list in Roll back could stay empty for the whole session.
+
+**Settings › Discord › Connect** is now named **Connect a Discord SOTD channel**, so it is
+clear what it connects.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.12.2 — 2026-09-20
 
 **Sharing to Discord no longer freezes the app.** In 0.12.0 and 0.12.1, turning on **Share

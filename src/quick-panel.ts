@@ -12,7 +12,7 @@
 
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
-import { mountSettingsParts, unseenNewIn, seedNewMarks, type SettingsPart } from "./settings-card";
+import { mountSettingsParts, unseenNewIn, unseenNewAny, seedNewMarks, type SettingsPart } from "./settings-card";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { requestCard, requestSetting } from "./layout-bus";
 import { setting, setSetting, onSettingsChange } from "./settings-store";
@@ -205,8 +205,12 @@ export function initQuickPanel(): void {
   const idOf = (el: HTMLElement) => el.dataset.quick ?? "all"; // the panel's cog has no part
   // A square also shows its N again while a row or section inside it is new and not yet
   // hovered (§10, his call), so the badge leads you to the new row.
+  // The title bar cog wears one too (§11, his call 2026-09-21): until the first press on it,
+  // for everyone, an upgrade included; and again while any New mark is unseen. Its key is
+  // "cog", so Show the tour again puts it back with the squares.
   const paintNew = () => {
     const seen = setting("quickSeen");
+    cog.toggleAttribute("data-new", !seen.includes("cog") || unseenNewAny());
     for (const el of squares) {
       const part = el.dataset.quick as Part | undefined;
       el.toggleAttribute("data-new", !seen.includes(idOf(el)) || (!!part && unseenNewIn(PARTS[part])));
@@ -215,8 +219,12 @@ export function initQuickPanel(): void {
   seedNewMarks(); // a brand-new install: today's New marks are not new to them (§10)
   paintNew();
   onSettingsChange((k) => { if (k === "quickSeen") paintNew(); });
+  cog.addEventListener("click", () => {
+    const seen = setting("quickSeen");
+    if (!seen.includes("cog")) setSetting("quickSeen", [...seen, "cog"]);
+  });
   panel.addEventListener("click", (e) => {
-    const sq = (e.target as HTMLElement).closest<HTMLElement>(".quick__logo");
+    const sq =(e.target as HTMLElement).closest<HTMLElement>(".quick__logo");
     if (!sq) return;
     const seen = setting("quickSeen");
     if (!seen.includes(idOf(sq))) setSetting("quickSeen", [...seen, idOf(sq)]);

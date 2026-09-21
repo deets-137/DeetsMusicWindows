@@ -163,8 +163,8 @@ body {
    other; the ring is the panel's own surface, so the disc stands off the square's border. */
 /* The same disc also sits inline after the name of a new Settings row or section
    (`.new-badge`, §10), in the Settings card and in the panel alike. */
-.quick__logo { position: relative; }
-.quick__logo[data-new]::after, .new-badge {
+.quick__logo, .cog__btn { position: relative; }
+.quick__logo[data-new]::after, .cog__btn[data-new]::after, .new-badge {
   box-sizing: border-box; width: var(--new-badge-size); height: var(--new-badge-size);
   place-items: center;
   border-radius: 50%;
@@ -178,6 +178,14 @@ body {
   position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
   display: grid;
   box-shadow: 0 0 0 var(--new-badge-ring) var(--menu-surface);
+}
+/* The title bar cog's N (§11): the same disc on its top right corner. The title bar has
+   no surface of its own to ring it with, so it has no ring. It sits on the button, not the
+   svg, so it does not turn with the cog. */
+.cog__btn[data-new]::after {
+  content: "N";
+  position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
+  display: grid;
 }
 .new-badge {
   display: inline-grid; flex: 0 0 auto;

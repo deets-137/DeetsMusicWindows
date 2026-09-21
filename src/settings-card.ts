@@ -174,6 +174,8 @@ export function unseenNewIn(parts: SettingsPart[]): boolean {
     (m) => unseen(markKey(m)) && parts.some((p) => p.title === m.section && (!m.row ? !p.rows : !p.rows || p.rows.includes(m.row))),
   );
 }
+/** Does any New mark anywhere still wear its N? (the title bar cog shows its own N then) */
+export const unseenNewAny = (): boolean => NEW_MARKS.some((m) => unseen(markKey(m)));
 /** The header's count and the Compass index both mean settings, not sub-headings. */
 const settingRows = (rows: Row[]): Row[] => shown(rows).filter((r) => r.kind !== "head");
 const headRow = (id: string, label: string): HeadRow => ({ kind: "head", id, label });

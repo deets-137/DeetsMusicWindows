@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/quick-panel.ts]
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 # Quick settings — the cog's panel
 
@@ -233,3 +233,28 @@ The badge outlives the panel's own onboarding: it is how a NEW setting announces
 3. Press Discord. *Share activity on Discord* has an N after its name; the *Sharing* heading has none. Rest the pointer on the row: it goes, and the Discord square's N goes.
 4. `npm run dev:fresh`: a brand-new user sees N on every square, and NO N beside Friends or Share activity on Discord.
 5. Settings card: with `quickSeen` cleared by hand (the dev app's localStorage), Settings › Friends and Settings › Sharing › Share activity on Discord show the same Ns; a hover there clears the panel's too.
+
+## 11. The N on the title bar cog
+
+> **Part:** built · 2026-09-21
+
+The Settings panel helps a new user most, so the title bar cog (`#cog-open`) wears the N too.
+The onboarding walk does not change.
+
+- **On (his call, 2026-09-21):** until the first press on the cog, and again while any mark
+  in `NEW_MARKS` is unseen (`unseenNewAny()`, settings-card.ts).
+- **Off:** the first press on the cog adds `cog` to `quickSeen`. A New mark keeps it on until
+  that mark is hovered.
+- **Existing users (his call):** they see it once after the update too. `cog` is not seeded
+  by `seedNewMarks`. *Show the tour again* puts it back with the square badges (walk.ts keeps
+  only `row:` / `sec:` keys).
+- **Look:** the corner disc of §8 on the button's top right corner, with no ring: the title
+  bar has no surface of its own. The disc sits on the button, not the svg, so it does not
+  turn with the cog.
+
+### 11.1 Desk test
+
+1. `npm run dev:fresh`: the title bar cog shows an N. Press it: the N goes. The squares keep theirs.
+2. An existing profile: the cog shows an N once. With Friends still unseen, it stays after the press; hover the Friends rows and it goes.
+3. Press the cog several times: the gear turns, and the N (while on) does not turn.
+4. Settings › Tips › Show the tour again: the cog's N comes back.
