@@ -5,10 +5,11 @@
 //   2. every mention names a real file  "TOASTS.md" in prose or `code`, by basename
 //   3. every section pointer resolves   "TOASTS.md §4a" → a heading numbered 4a in TOASTS.md
 //   4. front matter present and valid   the fields and values of DOCS-ORG.md §5
-//   5. versions agree                   the six version files; every shipped_in is a real,
+//   5. versions agree                   the seven version files; every shipped_in is a real,
 //                                       published release no newer than the current version
 //  11. nothing in ideas/ is above `idea`
 //  18. every generated copy (docs-copies.mjs) matches its original — added with step 3
+//  19. every docs path a shipped app opens still exists (SHIPPED_LINKS) — added 2026-09-21
 // Checks 6-10 (the suspicions) wait for the first report (§11 step 2).
 //
 //   node scripts/docs-check.mjs          report; exit 1 on any fact
@@ -47,6 +48,11 @@ const OTHER_REPO = /^(\.\.\/(?!src|docs|scripts|extension|cli|crates|README|CLAU
 const NAMES_REPO = /\bDeets(?!Music\b)[A-Z][A-Za-z]+|\bdeets\.solutions\b|\bdeets-137\//;
 const RETIRED = { "VALUES.md": "LESSONS.md" };
 const PLANS = ["project", "designed", "idea"];
+// Check 19: every docs path an installed build opens. Append only; never remove a line.
+const SHIPPED_LINKS = [
+  "docs/AGENT-SETUP.md", // the Guide button (settings.rs) up to 0.12.2
+  "docs/integrations/AGENT-SETUP.md", // the Guide button from 0.13.0
+];
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n");
 // Private docs: a docs/*.md line in .gitignore. The file may not exist in this checkout.
@@ -178,12 +184,26 @@ export function check() {
     if (!existsSync(join(ROOT, to)) || read(to) !== renderCopy(from, to)) fail(18, to, 0, `stale copy of ${from} — run npm run docs:copies`);
   }
 
+  // 19. Doc paths a shipped app opens (a button's GitHub link) still exist. An installed build
+  //     keeps its link for good, so a move needs a stub at the old path (`moved_to`, check 4).
+  //     SHIPPED_LINKS is append-only: a link the code no longer holds is still in old installs.
+  const linked = new Map();
+  for (const f of files.filter((f) => /^(src|src-tauri\/src|cli\/src|extension)\/.*\.(ts|js|rs|html|json)$/.test(f))) {
+    for (const m of read(f).matchAll(/github\.com\/deets-137\/DeetsMusicWindows\/blob\/[\w.-]+\/(docs\/[\w./-]+\.md)/g)) linked.set(m[1], f);
+  }
+  for (const [p, f] of linked) {
+    if (!SHIPPED_LINKS.includes(p)) fail(19, f, 0, `links to ${p} — add it to SHIPPED_LINKS in docs-check.mjs, so a later move keeps a stub`);
+  }
+  for (const p of SHIPPED_LINKS) {
+    if (!existsSync(join(ROOT, p))) fail(19, p, 0, `a shipped app opens ${p} — leave a stub there (moved_to) when you move it`);
+  }
+
   return { facts, docs: docs.length };
 }
 
 export function report({ facts, docs }) {
   const lines = [];
-  const names = { 1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies" };
+  const names = { 1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links" };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);
     lines.push(`check ${n} — ${names[n]}: ${mine.length ? `${mine.length} FAIL` : "ok"}`);

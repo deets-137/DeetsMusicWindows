@@ -34,7 +34,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 
 | Step | Command | What it does | Needs |
 |---|---|---|---|
-| 1 | set the version, write the notes | the same version in the four files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
+| 1 | set the version, write the notes | the same version in the seven files (§1: four are checked, three are not), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
 | 3 | install + test | the installed build, by hand, from `installers/` | — |
 | 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update | `../DeetsSupport` checkout, wrangler login |
@@ -55,9 +55,41 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 the Worker, R2 or the DNS record. Authenticode gives the installer a publisher name that Windows
 and users can check, and it opens a possible second lock (§6.6).
 
+## 0a. What went out (the release log)
+
+One row per build published to the `deetsmusic` channel since the first public one. The text
+of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
+
+| Version | Date | Commit | Hand test | Notes |
+|---|---|---|---|---|
+| 0.4.3 | 2026-09-14 | — | — | the first release on the channel |
+| 0.5.0 | 2026-09-15 | `eecec19` | — | `yupdates` fast-forwarded into `main` |
+| 0.9.0 | 2026-09-17 | — | — | 7.71 MB |
+| 0.9.5 | 2026-09-17 | `7691a66` | — | 7.4 MB |
+| 0.10.0 | 2026-09-18 | `5850210` | skipped, his call | rooms, credits, stage column, card memory |
+| 0.10.1 | 2026-09-18 | `1ff8c56` | skipped, his call | the ten commits 0.10.0 missed |
+| 0.11.0 | 2026-09-18 | `3893ff1` | skipped, his call | Song of the Day, Pins, the bar's sums |
+| 0.12.0 | 2026-09-20 | — | skipped | Friends. **Withdrawn**: froze with Discord sharing on |
+| 0.12.1 | 2026-09-20 | `d81f312` | skipped | hotfix. **Withdrawn**, same freeze |
+| 0.12.2 | 2026-09-20 | `53a5858` | — | the Discord freeze fixed; carries the whole 0.12 line's notes |
+
+What the log taught:
+- **A withdrawal is not a fix.** The updater offers only a NEWER version, so an install
+  already on a withdrawn build is offered nothing until a hotfix ships. Withdrawn rows stay on
+  the website with their reason (which users read, so he picks the wording).
+- **A withdrawn version's notes never reach an update offer.** The release that replaces it
+  carries the whole line's notes (DOCS-ORG.md §12 is the real fix; not built).
+- **The signing service fails now and then.** A single "failed to run node.exe" while signing
+  an NSIS plugin means nothing; run `npm run release` again before you dig.
+- **A release deploys no worker.** After a theme, skin, palette or font change, run
+  `npm run signin:assets` and deploy DeetsSupport by hand. After any worker deploy, curl the
+  route: `node --check` passes an unresolved import that returns 1101 live.
+- **Check a publish** with `curl https://music-api.deets.solutions/update/deetsmusic?v=<old>`
+  and `/update/deetsmusic/health`.
+
 ## 1. Cut a build
 
-**Six files hold the version**, and only four of them are checked (2026-09-18).
+**Seven files hold the version**, and only four of them are checked (2026-09-18).
 
 | File | Checked by | If it is stale |
 |---|---|---|
@@ -507,7 +539,7 @@ stored with `\n` line endings whatever the checkout uses:
 **How to run the spike (test channel, never reaches a real install):**
 1. Deploy the Worker (`npx wrangler deploy` in DeetsSupport); smoke `/token`, then
    `GET /update/deetsmusic-test?v=0.0.1` → 204 (empty index).
-2. Set the version to a test number (e.g. `0.4.2-t1`) in the four files.
+2. Set the version to a test number (e.g. `0.4.2-t1`) in the seven files (§1).
    `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release`, then
    `npm run release:publish -- --channel deetsmusic-test`. Install that setup exe by hand; pin it.
 3. Bump to `0.4.2-t2`, build and publish the same way. Do not install it.

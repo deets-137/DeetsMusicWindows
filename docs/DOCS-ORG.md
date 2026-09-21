@@ -571,6 +571,22 @@ docs/
   findings are DEBUGGING.md's "What the 2026-09-17 health check found").
 - SEARCH.md and TRAY.md pointed at "Next up"; they now point at Open now and at WORKLOG.
 
+### 11.6a The first real sitting after the re-org (2026-09-21)
+
+The owner asked how the re-org did in a real sitting, before `main` takes it. WORKLOG.md's
+2026-09-21 (later) entry has the whole account. It helped (one CLAUDE.md line led to the right
+code and section) and it missed four things. Three are fixed:
+- HANDOFF's "Ship it" said the version lives in four files; RELEASE.md §0 and a runbook step
+  said the same. All now say seven, and point at RELEASE.md §1.
+- The release log lived only in Claude's memory. It is now RELEASE.md §0a.
+- **Check 19 (shipped links).** A move broke the Guide button of shipped apps until the
+  `AGENT-SETUP.md` stub. `SHIPPED_LINKS` in `docs-check.mjs` lists every docs path an installed
+  build opens, append only. The check fails when a listed path has no file, and when the code
+  links to a docs path that is not in the list.
+
+Not fixed: nothing makes a sitting read HANDOFF first or write its WORKLOG entry. Both are
+rules in CLAUDE.md only.
+
 ---
 
 ## 12. Release notes: hotfixes must hang off their feature release

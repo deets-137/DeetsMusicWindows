@@ -85,11 +85,11 @@ Things that bite:
 
 - **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
   stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
-- **The version lives in FOUR files** — `package.json`, `src-tauri/tauri.conf.json`,
-  `src-tauri/Cargo.toml` and **`cli/Cargo.toml`** (what `deetsmusic --version` reports) — and
-  they must all agree or `release-check` fails, *after* the bundle is already built and
-  signed. This note said "three" until 2026-09-15, when the 0.6.3 build tripped over the
-  fourth; [RELEASE.md §2](ops/RELEASE.md) always listed all four.
+- **The version lives in SEVEN files** — the list is [RELEASE.md §1](ops/RELEASE.md).
+  `release-check` compares four of them (`package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml`, `cli/Cargo.toml`) and fails *after* the bundle is built and signed.
+  Nothing checks the other three (`extension/manifest.json` and both `Cargo.lock` files), so
+  bump them by hand in the same commit.
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).
@@ -114,13 +114,10 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Releases and branches**
 - **Published: 0.12.2** (2026-09-20). 0.12.0 and 0.12.1 are withdrawn. The first public release
-  was 0.4.3; nothing before it shipped.
-- **Branch `thirteen` — NOT RELEASED:** the cog's quick panel, the New badges and the
-  search-term right-click (QUICK-SETTINGS.md). **Desk test §10.1 (the row N) is not run.** He
-  wants one more thing done before that release — ask him what it is. The release notes must
-  say the cog now opens the quick panel, not Settings.
-- **Branch `dockin` — the docs re-org, NOT MERGED** into `thirteen`. He merges it after he has
-  felt out the effects (DOCS-ORG.md §11).
+  was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **0.13.0 — being cut from `dockin` (2026-09-21):** the cog's quick panel, the New badges
+  (now on the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, and the
+  docs re-org. **Desk tests §10.1 and §11.1 are not run.** `main` fast-forwards to `dockin`.
 
 **Desk tests not run**
 - **Friends** — FRIENDS.md §17.

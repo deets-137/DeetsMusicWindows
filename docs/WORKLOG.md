@@ -12,6 +12,25 @@ updated: 2026-09-21
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-21 (later) — the N on the title bar cog, and 0.13.0
+
+- **The cog's N** (QUICK-SETTINGS.md §11). The panel helps a new user most, and the walk stays
+  as it is. His calls: the N shows until the first press on the cog, and again while any
+  `NEW_MARKS` entry is unseen; the first press clears it; existing users see it once too.
+  Inside that: the corner disc of §8 with no ring (the title bar has no surface), on the
+  button so it does not turn with the gear; *Show the tour again* brings it back. **§11.1 is
+  not run.**
+- **The re-org, felt out in a real sitting.** It helped: the CLAUDE.md line led straight to
+  `NEW_MARKS` and §10, the part marker rule, a fast `docs:check`. It missed: this sitting
+  started without HANDOFF or WORKLOG; HANDOFF's "Ship it" still said the version lives in
+  four files (RELEASE.md §1 and `docs:check` knew seven); the release log lived only in
+  Claude's memory; and moving `AGENT-SETUP.md` broke the Guide button of shipped apps until
+  the stub. Fixed: HANDOFF's line, RELEASE.md §0 and §6 say seven, the log is RELEASE.md §0a,
+  and `docs:check` now fails when a path a shipped app opens has no file (check 19).
+- **0.13.0** — the quick panel, the New badges, the search-term right-click, the Roll back
+  list fix, and the re-org. Cut from `dockin`; `main` fast-forwards to it. Publish waits for
+  his word on the hand install test (§0 step 3).
+
 ## 2026-09-21 — the docs re-org, steps 1–5 (branch `dockin`)
 
 DOCS-ORG.md §11.1a–§11.5a has the whole record. In short: every doc has front matter (status,
