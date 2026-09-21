@@ -8,6 +8,14 @@ shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md
 So keep the body to paragraphs and **bold**, and use absolute links only: a relative link
 works on GitHub and breaks on the site.
 
+**A hotfix currently outranks the feature release it repairs** — 0.12.1's three bug fixes sit
+above 0.12.0's Friends, here, on the website, and in the update offer, which shows the target
+version's notes ONLY. So an install that jumps 0.11.1 → 0.12.1 is never told it is getting
+Friends. The fix is designed in [DOCS-ORG.md §12](DOCS-ORG.md) (a derived `line` field, a
+grouped website, and an offer that joins every version you missed). **Not built. Until it is,
+keep the flat `## <version> — <date>` shape: `publish-update.mjs` parses it, and a `###` ends
+an entry.**
+
 **For the next entry:** installers after 0.4.3 are code-signed (RELEASE.md §6.9), but a signed
 file still starts with no download reputation. Checked 2026-09-15 with 0.5.0: Microsoft Edge
 warned "isn't commonly downloaded" (Keep › Show more › Keep anyway). Checked again 2026-09-15

@@ -3,7 +3,9 @@
 > **Status (2026-09-20): PAPER DESIGN. NOTHING MOVED.** No file is renamed, no link is
 > rewritten, no script exists yet. Every number in §1 was measured against the tree on
 > 2026-09-20. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks are
-> open (§10). Build order is §11.
+> open (§10). Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
+> work that rides this re-org: release notes, where a hotfix outranks the feature release
+> it repairs. Four more forks, all open.**
 
 **What you asked for.** Three things:
 1. A high-level overview that a new reader meets first.
@@ -347,6 +349,98 @@ Nothing here is started.
 4. **`CLAUDE.md`** rewritten to one line per doc.
 5. **The `HANDOFF` / `WORKLOG` split.**
 6. **The sweep skill**, last, because it is worth nothing until the checker exists.
+7. **Release-note grouping (§12).** Independent of steps 1–6: it touches
+   `scripts/publish-update.mjs`, the update Worker and `../DeetsSolutions`, and only one
+   line of `docs/`. It can go first, or between any two steps. It wants its own release to
+   ride on, because the Worker change is only visible on the next update offer.
 
 Step 1 collides with no feature work. Step 3 collides with any branch that edits a doc, so it
 wants a quiet tree. Branch `twelve` has 11 modified docs uncommitted today.
+
+---
+
+## 12. Release notes: hotfixes must hang off their feature release
+
+> Added 2026-09-20, after 0.12.1. **Paper design. Nothing built. Four forks open (§12.5).**
+> This is docs work, so it rides this re-org; but it touches `scripts/publish-update.mjs`,
+> the update Worker and the website, not only `docs/`. `RELEASE.md` §6.2 and §6.7 are the
+> siblings.
+
+### 12.1 The problem, in one sentence
+
+A hotfix is a peer of the feature release it repairs, everywhere the notes are read — so
+**0.12.1, three bug fixes, sits above 0.12.0, which shipped Friends**, and Friends is what
+scrolls away.
+
+Two readers lose, in different ways:
+
+- **The website** (`deets.solutions/deetsmusic/`) prints the rows of `index.json` newest
+  first, flat. After a few hotfixes, a feature release is below the fold. A reader who lands
+  there today meets three bug fixes and no Friends.
+- **The update offer in the app** is worse, and it is the one that matters. The offer shows
+  the notes of the **target version only**. An install on 0.11.1 that updates straight to
+  0.12.1 is told about a fold click, a grey glow and the sea. It is never told that it is
+  also getting Friends, Listen Along and the Sharing switch. **The bigger the jump, the less
+  the user is told.**
+
+### 12.2 What the code does today (read 2026-09-20, not guessed)
+
+- `scripts/publish-update.mjs` `releaseNotes()` finds `^## <version>` in
+  `docs/RELEASE-NOTES.md` and takes the body **up to the first `##` or `###` that follows**.
+  So the file is a flat list of `## <version> — <date>` headings by contract, and a `###`
+  ends an entry. `### Installing` is the intended terminator.
+- The same file is parsed a second way by `--history`:
+  `^## (\d+\.\d+\.\d+…)\s+\S+\s+(\d{4}-\d{2}-\d{2})$`. Any heading that stops matching that
+  shape stops being a release.
+- A missing entry used to publish `notes: ""` (0.6.3 and 0.7.0 went live blank), so the
+  script now refuses to publish without one. Whatever we change must keep that refusal.
+- `index.json` rows carry `{ version, group, notes, pub_date, size, signature, file }` —
+  **no field says which release line a version belongs to.** Nothing downstream can group.
+
+**The consequence for any design: nesting hotfixes under a feature release *inside the file*
+with `###` breaks both parsers at once.** The grouping cannot be Markdown depth.
+
+### 12.3 What we want
+
+1. A reader of the website sees **0.12** as one thing: what it added, and what was fixed
+   after it.
+2. An update offer tells the user **everything they are getting**, not only the last patch.
+3. The writing burden does not grow. One entry per published version, as today.
+4. The refusal to publish blank notes survives.
+
+### 12.4 The shape that fits (recommendation)
+
+**The line is derived, not written.** `0.12.1` belongs to line `0.12`. No new heading, no
+new file layout, no parser change: `publish-update.mjs` computes `line: "0.12"` and writes it
+on every `index.json` row. One field carries the whole idea.
+
+Then each reader uses it:
+
+- **Website**: group rows by `line`, newest line first. The line's **feature release is the
+  heading and the body**; its hotfixes are a short, collapsed *Fixed after release* list
+  under it. A line with no hotfixes looks exactly as it does now.
+- **Update offer**: the Worker already knows the caller's version (`?v=`). It returns the
+  notes of **every row newer than the caller**, newest first, joined — so 0.11.1 → 0.12.1
+  reads the 0.12.1 fixes *and* the Friends entry. An install that is one version behind sees
+  one entry, as today, so the common case does not change.
+- **`RELEASE-NOTES.md`**: unchanged in shape. A hotfix entry gains one optional first line
+  naming its line, for the human reading the file on GitHub.
+
+### 12.5 Forks (open — the owner decides)
+
+| # | fork | recommendation |
+|---|---|---|
+| **R1** | Where does grouping live: a derived `line` field, or a written one (a `line:` line in each entry)? | **Derived.** A written field is a seventh place to forget a version number ([[deetsmusic-version-four-files]] is already six) |
+| **R2** | Does the update offer join every missed version's notes, or only name them ("also includes 0.12.0 — Friends")? | **Join them.** The notes are already written; a name with no body sells nothing. Cap the join at, say, five entries |
+| **R3** | Is a hotfix's own entry allowed to be short (three sentences, as 0.12.1), or does it repeat the line's headline feature? | **Short.** The join in R2 is what carries the feature; repeating it ages badly |
+| **R4** | Does `docs:check` (§8) gain a rule — "a patch version has an entry, and a line has exactly one feature release"? | **Yes, as a warning.** It catches the 0.6.3 blank-notes failure class one step earlier than the publish refusal |
+
+### 12.6 Cost
+
+`publish-update.mjs`: one derived field, a few lines. The Worker: one filter and a join, plus
+a re-read of the index shape. The website (`../DeetsSolutions`): the grouping, which is the
+real work. `RELEASE-NOTES.md` itself: nothing today, one line per future hotfix. **No existing
+row needs a rewrite** — `line` is derivable for every version already in `index.json`, so one
+`--notes-only`-style pass backfills them all.
+
+---
