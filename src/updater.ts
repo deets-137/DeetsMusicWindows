@@ -177,10 +177,17 @@ export async function restartNow(): Promise<void> {
   }
 }
 
-/** Older versions in this version's channel group, newest first. One request per session. */
+/** Older versions in this version's channel group, newest first. One request per session.
+ *  Only a non-empty list is kept: a build that starts before it is published is unknown to
+ *  the Worker (`current: null`, no versions), and keeping that empty answer hid Roll back's
+ *  list for the whole session (0.12.2, 2026-09-20). */
 export function olderVersions(): Promise<OlderVersion[]> {
   older ??= invoke<{ versions?: OlderVersion[] }>("update_versions")
-    .then((r) => (Array.isArray(r?.versions) ? r.versions : []))
+    .then((r) => {
+      const list = Array.isArray(r?.versions) ? r.versions : [];
+      if (!list.length) older = null; // ask again next time the card opens
+      return list;
+    })
     .catch((e) => {
       diag.warn("update:versions", { error: String(e) });
       older = null; // try again next time the card opens

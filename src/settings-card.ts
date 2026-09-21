@@ -1440,7 +1440,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       title: "Discord",
       rows: [
         {
-          kind: "split", id: "sotddiscord", label: "Connect",
+          kind: "split", id: "sotddiscord", label: "Connect a Discord SOTD channel",
           hint: () => "One channel's webhook, used by Song of the Day. Anyone who has the link can post there",
           halves: discordHalves(),
         },

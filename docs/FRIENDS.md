@@ -446,7 +446,7 @@ and a person must be able to read both without leaving the row they are on.
 
 | Row | Kind | Default | Key | Governs |
 |---|---|---|---|---|
-| **Connect** (+ *Post as*, the post log) | the Song of the Day outlet UI, **moved** (D9/M1) | not connected | `sotd-outlets.json` (unchanged) | The one webhook. Paste the URL (D5). |
+| **Connect a Discord SOTD channel** (renamed from *Connect* 2026-09-20) (+ *Post as*, the post log) | the Song of the Day outlet UI, **moved** (D9/M1) | not connected | `sotd-outlets.json` (unchanged) | The one webhook. Paste the URL (D5). |
 | *Let my profile invite people to my room* | toggle | **Off** | `discordRoomInvite` | The **Listen Along** button, §8.7.1. Off means the button is never sent, even while hosting. |
 
 #### 8.5.2 The webhook moves, the behaviour does not (M1, D9)
