@@ -95,7 +95,11 @@ npm run release     # secrets → cli:build → sign cli → tauri build (signed
    `vinyl.ts` ride `TELEMETRY` in `src/telemetry-on.ts`, which `VITE_PERF=1` turns ON so a
    release-shaped bundle can be measured — a stray `VITE_PERF` in the release environment
    would otherwise ship a rAF loop and a log-writing observer to every user),
-   pin and updater settings intact, the `.sig` present, the CLI and installer signed.
+   pin and updater settings intact, the `.sig` present, the CLI and installer signed, and
+   **no synchronous `#[tauri::command]` that blocks the UI thread** (check 9, 2026-09-20:
+   a sync command runs on the thread that paints, so a wait in one freezes the window —
+   FRIENDS.md §8.11. It walks calls inside the same file three deep and skips bodies handed
+   to `spawn`/`spawn_blocking`; checked against the 0.12.0 `presence.rs`, which it names).
 5. **`scripts/archive-installer.mjs`** — copies the exe and `.sig` into `installers/` (a
    pre-release version such as `0.4.4-t1` goes to `installers/dev/`).
 

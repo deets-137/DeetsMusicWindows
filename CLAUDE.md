@@ -92,6 +92,18 @@ front-end, Rust back-end).
   (the Song of the Day webhook rows MOVED here, §8.5.2). `scripts/discord-probe.mjs` re-asks
   the measurements after a Discord update. **Open: the two buttons need a second Discord
   account** (§8.4 item 3), and `/j/` waits for a worker deploy (§8.7.3).
+  **§8.11 = the 0.12.0 FREEZE and the pipe rebuilt (2026-09-20).** Turning Discord sharing on
+  hung the whole window (`AppHangB1`, no panic). Three faults: the commands were SYNCHRONOUS
+  (a sync `#[tauri::command]` runs on the UI thread — `media.rs:11` already said never do
+  this), the pipe I/O had NO DEADLINE, and a lock was held ACROSS that I/O so the one thread
+  that could free it was queued behind it. Now: one `presence` thread owns an OVERLAPPED
+  handle, every call has a timeout and cancels what it started, and no lock is held across
+  any I/O. A wedged Discord costs a stale card, never a frozen app. **0.12.0 and 0.12.1 are
+  WITHDRAWN from the channel; 0.12.2 is the hotfix. §17a = its desk test, NOT RUN.**
+  Two guards came out of it: **`release-check` check 9** fails a build where a sync command
+  can reach a blocking call (proven against the 0.12.0 file), and **`src-tauri/src/watchdog.rs`**
+  (LOGGING.md) writes the line a frozen app cannot write, naming the command in flight — it
+  SHIPS. `autostart_get`/`autostart_set` were the one other offender and are fixed.
   **FRIENDS ITSELF IS BUILT (2026-09-20) — §16 = as built, §17 = the desk test, NOT RUN.**
   Every fork in §11 is closed; §16.1 is what he chose and §16.7 is what was decided inside
   those choices. The identity is an **Ed25519 key pair** in a DPAPI `friends.json` (NOT a

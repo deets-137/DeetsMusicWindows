@@ -112,6 +112,24 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+### FIRST: 0.12.2, the hotfix for a freeze on live (2026-09-20)
+
+> **0.12.0 and 0.12.1 are WITHDRAWN from the `deetsmusic` channel.** Turning on *Share activity
+> on Discord* froze the whole window — `AppHangB1`, twice, on the owner's own install. The cause
+> and the rebuild are **FRIENDS.md §8.11**; the short version is that the three `presence`
+> commands were synchronous, so they ran their blocking named-pipe I/O on the UI thread, with no
+> deadline, under a lock that the one thread that could have freed them also needed.
+>
+> **Built, not yet tested:** `src-tauri/src/presence.rs` is rebuilt around one owner thread and
+> overlapped I/O with timeouts. Both crates compile, `npx tsc --noEmit` and `npx vite build` are
+> clean. All six version files are at **0.12.2** and RELEASE-NOTES.md has its entry.
+>
+> **What is left, in order:** run **FRIENDS.md §17a** (9 steps; step 4 — suspend the Discord
+> process and skip a song — is the one that reproduces the freeze), then `npm run release`,
+> install and test, then `npm run release:publish`. Until 0.12.2 is published, **anyone already
+> on 0.12.x is offered nothing** (the updater only offers a newer version), so they are stuck on
+> a build that can freeze.
+
 ### Desk tests — ALL PASSED 2026-09-20
 
 > **DONE. The owner desk-tested all four on 2026-09-20 and confirmed them**, and Discord Rich

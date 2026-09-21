@@ -317,15 +317,24 @@ pub fn autostart_write(on: bool) -> Result<(), String> {
     Ok(())
 }
 
+// Both of these SPAWN `reg.exe` and wait for it to exit. A sync command runs on the UI
+// thread, so that wait is a wait the window cannot paint through (FRIENDS.md §8.11 is what
+// this rule cost us). `reg.exe` always exits, usually in tens of milliseconds — but process
+// creation is not ours to bound: antivirus inspects it, and a loaded machine queues it.
+
 #[tauri::command]
-pub fn autostart_get() -> bool {
-    autostart_enabled()
+pub async fn autostart_get() -> bool {
+    tauri::async_runtime::spawn_blocking(autostart_enabled).await.unwrap_or(false)
 }
 
 #[tauri::command]
-pub fn autostart_set(on: bool) -> Result<bool, String> {
-    autostart_write(on)?;
-    Ok(autostart_enabled())
+pub async fn autostart_set(on: bool) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        autostart_write(on)?;
+        Ok(autostart_enabled())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 // ── the agent setup text (AGENT-SETUP.md §2) ──

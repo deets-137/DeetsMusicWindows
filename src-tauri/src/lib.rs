@@ -25,6 +25,7 @@ mod smtc;
 mod sotd;
 mod tray;
 mod update;
+mod watchdog;
 mod web;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -292,10 +293,13 @@ pub fn run() {
                     win.open_devtools();
                 }
             }
+            // A freeze cannot report itself: the thread that would write the line is the
+            // thread that is stuck. This watches from outside (watchdog.rs, FRIENDS.md §8.11).
+            watchdog::start(app.handle());
             Ok(())
         })
         .on_window_event(|win, ev| tray::on_window_event(win, ev))
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(invoke_with_watchdog(tauri::generate_handler![
             apple::apple_developer_token,
             apple::apple_remote_config,
             apple::apple_begin_auth,
@@ -495,7 +499,28 @@ pub fn run() {
             report::report_refresh,
             report::report_close,
             report::report_clear,
-        ])
+        ]))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Wrap the generated handler so every command records its name while it runs
+/// (`watchdog.rs`). The wrapper costs one mutex on each side of a call.
+///
+/// The timing is what makes it worth having. An **async** command returns here almost at
+/// once, because `spawn_blocking` moved the body off this thread — so it clears its name and
+/// the watchdog sees nothing. A **synchronous** command does not return until its body is
+/// done. A name still sitting here after five seconds therefore names a sync command that is
+/// blocking the thread that paints, which is precisely the 0.12.0 fault (FRIENDS.md §8.11).
+fn invoke_with_watchdog<R: tauri::Runtime, F>(handler: F) -> impl Fn(tauri::ipc::Invoke<R>) -> bool
+where
+    F: Fn(tauri::ipc::Invoke<R>) -> bool,
+{
+    move |invoke| {
+        let name = invoke.message.command().to_string();
+        watchdog::entered(&name);
+        let handled = handler(invoke);
+        watchdog::left();
+        handled
+    }
 }

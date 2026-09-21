@@ -26,6 +26,59 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.12.2 — 2026-09-20
+
+**Sharing to Discord no longer freezes the app.** In 0.12.0 and 0.12.1, turning on **Share
+activity on Discord** could lock the window up for good — Windows would offer to wait or to
+close it, and closing it was the only way out. The app asked Discord to show your song on the
+same thread that draws the window, then waited for an answer that never came. It now talks to
+Discord on a thread of its own, and every exchange gives up after two seconds. If Discord
+stops answering, the card on your profile goes stale and the music and the window carry on.
+**0.12.0 and 0.12.1 have been withdrawn**; this release replaces both, so everything they
+brought is below.
+
+**Friends.** Add someone by their friend code and see what they are playing — the song, the
+artist and the cover, right in the people panel beside the title bar. Your code is yours for
+good: it never changes, and it is not tied to a sign-in, because there is no account to make.
+Adding is a handshake, so nobody can watch you without your say-so: **you both have to add
+each other's code** before either of you sees anything. A friend's box carries a right-click
+menu with **Play this** and **Go to Album**, and the whole box is a **Listen Along** button —
+press it and you drop straight into what they are hearing, in a room only they can steer.
+
+**Nothing is shared until you ask.** Settings › Sharing starts with *Share activity on
+DeetsMusic* **off**, and off means the app never opens the connection at all. **Pause sharing
+for an hour** covers Friends and Discord together, because "stop telling anyone what I am
+playing" is one decision. And if you move to a new PC, Settings › Friends › **Copy my key**
+brings your friend code with you.
+
+**The people panel is now Friends.** Your name sits at the top, where both halves use it, and
+Friends and **DeetsRooms** are two sections you can fold away. Start a room and DeetsRooms
+slides up to the top, where you need it.
+
+**When a service is having a bad day, it says so in a sentence** — and says that your music is
+not affected, which it never was. Rooms used to show you a raw error number.
+
+**Section titles fold again.** Holding a section title for a moment picks the section up so
+you can move it. But a relaxed click often lasts that long too, so in Playlists and Settings a
+click on a title could pick the section up and put it back instead of folding it. Now holding
+only gets the title ready — it grows a little — and the section moves only when you then move
+the mouse. Let go without moving and the section folds, however long you held it.
+
+**Glass shows the cover's color again.** The glow around the cover on the Now Playing card
+could come out grey. Apple describes each cover with three colors, and the app always put the
+same one under the cover, where you cannot see it. For many covers that hidden color was the
+bright one. The glow now puts the most colorful of the three around the cover, so a lilac
+cover glows lilac. The tray panel's glow follows the same rule.
+
+**Ocean's waves stay in view while you drag.** With **Draw card edges** set to **Sand**,
+dragging a song or a section painted the card's color over the whole window and hid the sea
+until you let go.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.12.1 — 2026-09-20
 
 **Section titles fold again.** In 0.12.0, holding a section title for a moment picks the

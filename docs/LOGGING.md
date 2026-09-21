@@ -342,3 +342,38 @@ without this is guesswork — it was, on 2026-09-18.
 characters. The label is the gesture; it is a UI word, not a song title, and the trail is
 worth nothing without it. A submenu row can carry a playlist name the user wrote. Nothing
 else in the trail carries content — the rest is counts, indices and surface names.
+
+---
+
+## The freeze watchdog (BUILT 2026-09-20)
+
+`src-tauri/src/watchdog.rs`. **A freeze is the one failure that cannot report itself**: the
+thread that would write the line is the thread that is stuck. On 2026-09-20 the app froze on
+live for 36 minutes and wrote nothing at all — the log simply stopped mid-session, and the
+only evidence was `AppHangB1` in the Windows Application log, found hours later
+(FRIENDS.md §8.11).
+
+So a thread outside the event loop watches it. Every **2 s** it posts a closure to the UI
+thread with `run_on_main_thread` and walks away — posting is not waiting, so the watcher is
+never caught by what it is watching. If that closure has not run for **5 s**, the UI thread is
+wedged, and the watcher can still write, because logging never touches the event loop:
+
+```
+WARN  ui: the window stopped answering 7.2 s ago — inside command `presence_set` for 7.4 s
+INFO  ui: the window is answering again
+```
+
+**It names the command because `lib.rs` wraps the invoke handler** (`invoke_with_watchdog`):
+every command records its name on the way in and clears it on the way out. The timing is the
+whole point — an **async** command returns almost at once, because `spawn_blocking` moved its
+body off this thread, so it clears its name and is never blamed. A name still sitting there
+after five seconds is a **synchronous** command blocking the thread that paints. That is the
+0.12.0 fault exactly, and this line names it in one second instead of an afternoon.
+`— no command was in flight` means the stall is not an invoke: a paint, a plugin, or the OS.
+
+**It ships.** This is not dev-only telemetry like `frames.ts`: the failure it catches happened
+to a user on a release build. It costs one wake every 2 s and two atomics. The thresholds are
+deliberately slack — a slow frame, a big sort or a cold paint must never write this line.
+
+The gate that stops the cause reaching a build at all is `release-check` check 9
+(RELEASE.md §1). The watchdog is the second layer, for a stall the gate cannot see.

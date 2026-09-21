@@ -21,6 +21,10 @@
 //  6. docs/TOKENS.md is current.
 //  7. The Last.fm API key is built in (LASTFM.md §2).
 //  8. The build key is built in (RELEASE.md §7a).
+//  9. No synchronous `#[tauri::command]` blocks the UI thread (FRIENDS.md §8.11). Added
+//     2026-09-20 after 0.12.0 froze on live: a sync command runs on the thread that paints,
+//     and `presence_set` waited on a named pipe there. Checked against that exact file — it
+//     names `presence_set` through three levels of helpers.
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -157,8 +161,106 @@ if (signed.length) {
   else if (existsSync(exe) && !readFileSync(exe).includes(Buffer.from(key))) failures.push("the release exe has no build key — rebuild with deetsmusic-build-key.txt in place (RELEASE.md §7a)");
 }
 
+// ── 9. No synchronous command may block the UI thread (docs/FRIENDS.md §8.11) ────
+// A synchronous `#[tauri::command]` runs on the UI thread, because WebView2 delivers the IPC
+// message there. Anything in it that waits — a process, a socket, a pipe, a channel, a sleep
+// — is a wait the window cannot paint through. That is how 0.12.0 froze: `presence_set` was
+// `pub fn`, so its blocking named-pipe write ran on the thread that paints, and Windows
+// reported AppHangB1. An `async fn` + `spawn_blocking` is the fix, and the rule was already
+// written down in media.rs and airplay.rs — nothing enforced it.
+//
+// The walk follows calls INSIDE the same file, up to three deep, because the wait is usually
+// a helper away (`autostart_get` → `autostart_enabled` → `reg` → Command::new). Bodies handed
+// to `spawn`/`spawn_blocking` are skipped: that is precisely the "not on this thread" move.
+{
+  const srcDir = join(root, "src-tauri", "src");
+  // Blank comments and string contents, keeping length so offsets still line up with the raw
+  // text. Structure is read from the blanked copy; the patterns are matched on the raw one.
+  const blankOut = (s) => {
+    const out = s.split("");
+    const pad = (a, b) => { for (let i = a; i < b && i < out.length; i++) if (out[i] !== "\n") out[i] = " "; };
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === "/" && s[i + 1] === "/") { const e = s.indexOf("\n", i); pad(i, e < 0 ? s.length : e); i = e < 0 ? s.length : e; }
+      else if (s[i] === "/" && s[i + 1] === "*") { const e = s.indexOf("*/", i); pad(i, e < 0 ? s.length : e + 2); i = e < 0 ? s.length : e + 1; }
+      else if (s[i] === '"') { let j = i + 1; while (j < s.length && !(s[j] === '"' && s[j - 1] !== "\\")) j++; pad(i, j + 1); i = j; }
+      else if (s[i] === "#" && /r#*"/.test(s.slice(i - 1, i + 3))) { const e = s.indexOf('"#', i); pad(i, e < 0 ? s.length : e + 2); i = e < 0 ? s.length : e + 1; }
+    }
+    return out.join("");
+  };
+  const balanced = (s, i, open, close) => {
+    let d = 0;
+    for (let j = i; j < s.length; j++) {
+      if (s[j] === open) d++;
+      else if (s[j] === close && --d === 0) return j;
+    }
+    return -1;
+  };
+  const BLOCKERS = [
+    [/\bCommand::new\b/, "spawns a process and waits for it"],
+    [/\breqwest::blocking\b/, "makes a blocking HTTP call"],
+    [/\bthread::sleep\b/, "sleeps"],
+    [/\.recv\(\)/, "waits on a channel with no timeout"],
+    [/\bTcpStream::connect\b/, "opens a socket"],
+    [/\\\\\.\\pipe/, "opens a named pipe"],
+    [/\bblock_on\b/, "blocks on a future"],
+    [/\bWaitForSingleObject\b/, "waits on a Windows handle"],
+    [/\.join\(\)/, "waits for a thread to end"],
+  ];
+  // Anything listed here is a sync command we have decided is safe. Give the reason: the next
+  // reader has to be able to check it. An empty list is the healthy state.
+  const ALLOW = new Map();
+  const blocking = [];
+  for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".rs"))) {
+    const raw = readFileSync(join(srcDir, file), "utf8");
+    const code = blankOut(raw);
+    const fns = new Map();
+    for (const m of code.matchAll(/\bfn\s+([A-Za-z_]\w*)/g)) {
+      const p = code.indexOf("(", m.index);
+      if (p < 0) continue;
+      const pe = balanced(code, p, "(", ")");
+      const b = pe < 0 ? -1 : code.indexOf("{", pe);
+      const be = b < 0 ? -1 : balanced(code, b, "{", "}");
+      if (be > 0) fns.set(m[1], [b, be]);
+    }
+    // Ranges handed to spawn/spawn_blocking run on another thread — skip them.
+    const offThread = [];
+    for (const m of code.matchAll(/\bspawn(_blocking)?\s*\(/g)) {
+      const e = balanced(code, code.indexOf("(", m.index), "(", ")");
+      if (e > 0) offThread.push([m.index, e]);
+    }
+    const onThisThread = (i) => !offThread.some(([a, b]) => i >= a && i <= b);
+    const scan = (name, seen, depth) => {
+      const at = fns.get(name);
+      if (!at || seen.has(name) || depth > 3) return null;
+      seen.add(name);
+      const [b, e] = at;
+      for (const [re, why] of BLOCKERS) {
+        for (const hit of raw.slice(b, e).matchAll(new RegExp(re, "g"))) {
+          if (onThisThread(b + hit.index)) return { name, why };
+        }
+      }
+      for (const call of code.slice(b, e).matchAll(/\b([A-Za-z_]\w*)\s*\(/g)) {
+        if (!onThisThread(b + call.index)) continue;
+        const deeper = scan(call[1], seen, depth + 1);
+        if (deeper) return deeper;
+      }
+      return null;
+    };
+    for (const m of code.matchAll(/#\[tauri::command\]/g)) {
+      const fnAt = code.indexOf("fn ", m.index);
+      if (fnAt < 0) continue;
+      if (/\basync\b/.test(code.slice(m.index, fnAt))) continue; // its body is off this thread
+      const name = /fn\s+(\w+)/.exec(code.slice(fnAt))?.[1];
+      if (!name || ALLOW.has(`${file}:${name}`)) continue;
+      const hit = scan(name, new Set(), 0);
+      if (hit) blocking.push(`${file}: the sync command \`${name}\` ${hit.name === name ? "" : `reaches \`${hit.name}\`, which `}${hit.why} — make it \`async fn\` + \`tauri::async_runtime::spawn_blocking\` (FRIENDS.md §8.11)`);
+    }
+  }
+  for (const b of blocking) failures.push(b);
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread`);

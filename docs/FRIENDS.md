@@ -4,6 +4,11 @@
 > Step 6 (Rich Presence) was built and desk-tested earlier the same day — §8.4a has the three
 > measurements, §8.10 is as built, and the owner confirmed the live card (*"Playing, I see it
 > accurately on discord"*); its two BUTTONS still need a second Discord account (§8.4 item 3).
+> **§8.11 (2026-09-20, later the same day): Rich Presence FROZE the app on live and the pipe was
+> rebuilt.** 0.12.0 and 0.12.1 are WITHDRAWN; the fix ships as 0.12.2. Three faults — synchronous
+> Tauri commands on the UI thread, blocking pipe I/O with no deadline, and a lock held across that
+> I/O. §8.11 has the evidence and what was built; **§17a is its desk test, NOT RUN.** Read §8.11
+> before touching `src-tauri/src/presence.rs`.
 > **Steps 1, 2, 4 and 5 — Friends itself — were built on 2026-09-20 after the owner walked all
 > seven open forks (§16.1).** The `deetsmusic-friends` worker is **deployed** at
 > `musicfriends.deets.solutions` and its protocol test passes 18 of 18 against live. Step 7's
@@ -708,6 +713,93 @@ Until then, what is proven is that they are ACCEPTED, not that they read well.
 
 ---
 
+### 8.11 The 0.12.0 freeze, and the rebuild it forced (2026-09-20)
+
+**What happened.** 0.12.0 shipped at 16:30. At 16:42:16 the owner turned *Share activity on Discord*
+on from the Compass. The app connected, sent one card, and then froze — the whole window, for 36
+minutes, until Windows was told to close it. It happened a second time on the next attempt, and that
+time the card never reached Discord at all.
+
+**The evidence, in the order it was read** (CLAUDE.md: a complaint about the app he is running is read,
+never guessed):
+
+| Read | What it said |
+|---|---|
+| `deetsmusic.log` | last line `presence:set {"why":"sharing on","song":"History","sent":true}`, then nothing. The diag ring flushes every 5 minutes; the 16:47:46 flush never came. |
+| Windows Application log | `AppHangB1`, `DeetsMusic.exe 0.12.0.0` — "stopped interacting with Windows". **A hang, not a panic**: there is no `ERROR panic:` line, because nothing threw. |
+| `settings.json` | `shareActivityDiscord` was never written. The freeze beat the settings write to disk, which is how close to the toggle it was. |
+
+**Three faults, all in this file, all now fixed.** Each one alone was survivable; together they made a
+freeze that nothing in the process could recover from.
+
+1. **The commands were synchronous.** `pub fn presence_set`, not `pub async fn`. A synchronous Tauri
+   command runs on the UI thread, because WebView2 delivers the IPC message there. Every blocking pipe
+   call was made on the thread that paints. → the commands are `async` and hand their work to
+   `spawn_blocking`. **`media.rs:11` had already written this rule down** ("callers run these on
+   `spawn_blocking` — never on the main thread"); presence.rs was the one module that broke it. It was
+   also the only synchronous command in the crate that waited on another *process*: the other 100-odd
+   sync commands do bounded local work (SQLite, settings), and the network ones were already async.
+2. **The I/O had no deadline.** A named pipe opened through `std::fs::OpenOptions` is in blocking mode.
+   If Discord stops reading, `write_all` never returns — not after a minute, not ever. → every read and
+   write is **overlapped**, waits with a timeout, and cancels what it started. `WaitNamedPipeW` takes the
+   busy-pipe wait out of `CreateFileW`, which would have waited for as long as it took.
+3. **A lock was held across the I/O.** `CONN` was locked for the whole write, and the reader thread
+   needed that same lock to report the pipe was gone. Once the write wedged, the one thread that could
+   have freed it was queued behind it. → **one thread owns the pipe** and no lock is held across any I/O.
+   The only mutex left guards a channel sender, and it is locked to clone it and for nothing else.
+
+**As built.** `Job` (`Set(Option<Value>)` / `Close`) goes down a bounded channel to a thread named
+`presence`; the thread owns a `Pipe` (an overlapped handle plus the event its calls wait on, both closed
+by `Drop`). Timeouts: 200 ms for a busy pipe, 2 s for any one read or write, 100 ms for a drain that may
+find nothing, 5 s for a command waiting on the thread. Every one of them ends in `sent: false`, which
+`src/presence.ts` already treats as "Discord is not running" — no toast, no retry loop (§8.9). **A
+wedged Discord now costs a stale card, never a frozen app.** A full job queue means the thread is stuck
+on something Windows would not cancel, and that too answers `false` instead of waiting.
+
+**What the cancel-then-wait is for.** `CancelIoEx` only *asks*. Until the kernel answers, the operation
+may still write into an `OVERLAPPED` that lives on the caller's stack, so every timeout path waits for
+the cancellation with `GetOverlappedResult(..., true)` before it returns. `Drop` does the same before
+closing the handle.
+
+**Withdrawn.** 0.12.0 and 0.12.1 were both withdrawn from the `deetsmusic` channel the same day, with
+the reason "Turning on Share activity on Discord could freeze the app. Use 0.11.1 until the fix ships."
+The updater only ever offers a NEWER version (`DeetsSupport/src/update.js`, the `pick` line), so
+withdrawing protected every install still on 0.11.1 but left anyone already on 0.12.x with nothing
+offered. **0.12.2 is what unsticks them**, and its notes carry the whole 0.12 line, because a withdrawn
+version's notes never reach an update offer.
+
+**Two guards were added so this class cannot come back quietly** (the owner chose both,
+2026-09-20). The rule already existed — `media.rs:11` and `airplay.rs:13` both write it down —
+and nothing enforced it:
+
+1. **`release-check` check 9** (RELEASE.md §1) fails the build when a synchronous
+   `#[tauri::command]` can reach a blocking call. It walks calls inside the same file three
+   deep, and skips bodies handed to `spawn`/`spawn_blocking`, because that is the "not on this
+   thread" move. **Checked against the real thing:** run over the 0.12.0 `presence.rs` it
+   names `presence_set` and `presence_clear` through three levels of helpers. It is quiet on
+   the tree as it stands.
+2. **The freeze watchdog** (`src-tauri/src/watchdog.rs`, LOGGING.md) writes the line a frozen
+   app cannot write for itself, and names the command in flight. It ships in release builds.
+
+**One more sync command was found and fixed** in the same pass: `autostart_get` and
+`autostart_set` (`settings.rs`) spawned `reg.exe` and waited for it on the UI thread. Small —
+`reg.exe` always exits — but the same shape, and process creation is not ours to bound. The
+UAC path in `airplay_firewall_prompt` was checked and was already correct.
+
+**A refusal is no longer thrown away.** `drain()` discarded every reply from Discord, so a
+frame Discord REFUSED looked exactly like one it accepted. That cost an hour on 2026-09-20,
+chasing a card that would not appear; it took `scripts/discord-probe.mjs` to prove the pipe
+was fine. `drain()` now logs `presence: discord refused the frame — <message> (code N)` and
+treats opcode 2 as Discord hanging up, with its reason. The original code had the same blind
+spot. (The card in that hunt was being held by a **wedged 0.12.1 process** that had not been
+killed: Discord keeps one activity per application id, and a frozen app still owns its pipe.
+Two lessons — kill the zombie first, and only one connection per app id at a time, which is
+the §8.10 note about probes.)
+
+**Desk test: see §17a.**
+
+---
+
 ## 9. What this costs in Apple calls
 
 **Nothing.** Presence is the song we already fetched in order to play it: id, title, artist, artwork
@@ -1188,3 +1280,40 @@ which have separate data dirs and therefore separate friend codes (`npm run dev:
 14. **The log.** `deetsmusic diag` shows `friends:home`, `friends:push`, `friends:ask`,
     `friends:listen-allowed`, `friends:sleep-arm` and, on step 13, `busy:told` then
     `busy:quiet {why:"floor"}`.
+
+---
+
+## 17a. The desk test for the presence rebuild (§8.11) — NOT RUN
+
+The point of every step is the same: **the window keeps painting.** A stale card is a pass; a
+window that stops answering is a fail, whatever the card says.
+
+1. **The plain case.** Discord running, a song playing. Settings › Sharing → *Share activity on
+   Discord* **on**. The card appears within a second or two. The log says `presence: connected to
+   Discord`, and the ring says `presence:set {sent: true}`. **Then keep using the app for five
+   minutes** across at least three song changes — scroll the library, open the Compass, switch a
+   skin. Nothing stutters, and the 5-minute diag flush lands on time. *(This is the exact path
+   that froze 0.12.0.)*
+2. **No Discord at all.** Quit Discord. Turn sharing off and on again. One log line, `presence: no
+   Discord (...)`, `sent: false`, **no toast**, and the app does not pause even for a moment. The
+   ten pipe numbers are tried with a 200 ms ceiling each, so the worst case is about two seconds —
+   and it is on the blocking pool, so you cannot feel it.
+3. **Discord quits mid-song.** With the card showing, quit Discord. The next song change logs
+   `presence: dropped the pipe (...)` and `sent: false`. Start Discord again and skip a song: it
+   reconnects by itself, with a fresh `presence: connected to Discord`.
+4. **Discord is wedged, not gone — the fault this rebuild exists for.** Suspend the Discord process
+   (`Suspend-Process` in Process Explorer, or a debugger break) while a song is playing. Skip a
+   song. **Expect: the app carries on.** Two seconds later the ring shows `sent: false` and the log
+   shows a `dropped the pipe (discord did not take the frame in 2000 ms)`. Resume Discord and skip
+   again: it reconnects. **Before this fix that step froze the window for good.**
+5. **Sharing off takes the card down at once.** Turn *Share activity on Discord* off. The card goes
+   from your profile immediately, and the log says `presence: closed`. Not "within a minute" — a
+   privacy switch that takes a minute is not a privacy switch (§8.9).
+6. **Quit clears it.** With the card showing, quit the app from the tray. The card goes, because
+   the pipe closed with the process.
+7. **The pause still covers both.** `Pause sharing for an hour` → the Discord card and the friends
+   box go together (D11, §17 step 12).
+8. **A second client.** Start a second Discord (or leave a game's overlay connected) so
+   `discord-ipc-0` is busy, and confirm the app takes `discord-ipc-1` without a pause you can feel.
+9. **Nothing leaked.** After all of the above, check the process has no growing handle count in
+   Task Manager (Details › Handles). Each failed connect closes both handles on the way out.
