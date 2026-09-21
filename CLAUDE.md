@@ -99,7 +99,9 @@ front-end, Rust back-end).
   that could free it was queued behind it. Now: one `presence` thread owns an OVERLAPPED
   handle, every call has a timeout and cancels what it started, and no lock is held across
   any I/O. A wedged Discord costs a stale card, never a frozen app. **0.12.0 and 0.12.1 are
-  WITHDRAWN from the channel; 0.12.2 is the hotfix. §17a = its desk test, NOT RUN.**
+  WITHDRAWN from the channel; 0.12.2 is the hotfix — §17a PASSED and it is PUBLISHED
+  (2026-09-20). A withdrawn version's notes never reach an update offer, so 0.12.2's notes
+  carry the whole 0.12 line.**
   Two guards came out of it: **`release-check` check 9** fails a build where a sync command
   can reach a blocking call (proven against the 0.12.0 file), and **`src-tauri/src/watchdog.rs`**
   (LOGGING.md) writes the line a frozen app cannot write, naming the command in flight — it

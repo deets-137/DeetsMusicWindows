@@ -112,23 +112,25 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
-### FIRST: 0.12.2, the hotfix for a freeze on live (2026-09-20)
+### 0.12.2 — the freeze on live, fixed, desk-tested and PUBLISHED (2026-09-20)
 
-> **0.12.0 and 0.12.1 are WITHDRAWN from the `deetsmusic` channel.** Turning on *Share activity
-> on Discord* froze the whole window — `AppHangB1`, twice, on the owner's own install. The cause
-> and the rebuild are **FRIENDS.md §8.11**; the short version is that the three `presence`
-> commands were synchronous, so they ran their blocking named-pipe I/O on the UI thread, with no
-> deadline, under a lock that the one thread that could have freed them also needed.
+> **DONE.** Turning on *Share activity on Discord* froze the whole window — `AppHangB1`, three
+> times, on the owner's own install. The cause and the rebuild are **FRIENDS.md §8.11**: the
+> three `presence` commands were synchronous, so they ran their blocking named-pipe I/O on the
+> UI thread, with no deadline, under a lock that the one thread that could have freed them also
+> needed. `presence.rs` is rebuilt around one owner thread and overlapped I/O with timeouts.
 >
-> **Built, not yet tested:** `src-tauri/src/presence.rs` is rebuilt around one owner thread and
-> overlapped I/O with timeouts. Both crates compile, `npx tsc --noEmit` and `npx vite build` are
-> clean. All six version files are at **0.12.2** and RELEASE-NOTES.md has its entry.
+> **Desk test §17a PASSED 2026-09-20** (the owner). **0.12.2 published the same day**;
+> 0.12.0 and 0.12.1 stay **WITHDRAWN**, listed with their reason and no download. Checked
+> against the live worker: an install on 0.11.1, 0.12.0 **or** 0.12.1 is now offered 0.12.2, so
+> the frozen builds are unstuck.
 >
-> **What is left, in order:** run **FRIENDS.md §17a** (9 steps; step 4 — suspend the Discord
-> process and skip a song — is the one that reproduces the freeze), then `npm run release`,
-> install and test, then `npm run release:publish`. Until 0.12.2 is published, **anyone already
-> on 0.12.x is offered nothing** (the updater only offers a newer version), so they are stuck on
-> a build that can freeze.
+> **Two guards came out of it, and they are the part that outlives this bug:**
+> `release-check` **check 9** fails a build where a synchronous `#[tauri::command]` can reach a
+> blocking call — verified by running it against the 0.12.0 `presence.rs`, which it names
+> through three levels of helpers — and **`src-tauri/src/watchdog.rs`** (LOGGING.md) writes the
+> line a frozen app cannot write for itself, naming the command in flight. The watchdog SHIPS.
+> `autostart_get`/`autostart_set` were the one other offender and are fixed.
 
 ### Desk tests — ALL PASSED 2026-09-20
 

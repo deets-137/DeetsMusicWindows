@@ -7,7 +7,7 @@
 > **§8.11 (2026-09-20, later the same day): Rich Presence FROZE the app on live and the pipe was
 > rebuilt.** 0.12.0 and 0.12.1 are WITHDRAWN; the fix ships as 0.12.2. Three faults — synchronous
 > Tauri commands on the UI thread, blocking pipe I/O with no deadline, and a lock held across that
-> I/O. §8.11 has the evidence and what was built; **§17a is its desk test, NOT RUN.** Read §8.11
+> I/O. §8.11 has the evidence and what was built; **§17a PASSED 2026-09-20 and 0.12.2 is PUBLISHED.** Read §8.11
 > before touching `src-tauri/src/presence.rs`.
 > **Steps 1, 2, 4 and 5 — Friends itself — were built on 2026-09-20 after the owner walked all
 > seven open forks (§16.1).** The `deetsmusic-friends` worker is **deployed** at
@@ -796,7 +796,7 @@ killed: Discord keeps one activity per application id, and a frozen app still ow
 Two lessons — kill the zombie first, and only one connection per app id at a time, which is
 the §8.10 note about probes.)
 
-**Desk test: see §17a.**
+**Desk test: §17a, PASSED 2026-09-20. 0.12.2 published the same day.**
 
 ---
 
@@ -1283,7 +1283,7 @@ which have separate data dirs and therefore separate friend codes (`npm run dev:
 
 ---
 
-## 17a. The desk test for the presence rebuild (§8.11) — NOT RUN
+## 17a. The desk test for the presence rebuild (§8.11) — PASSED 2026-09-20
 
 The point of every step is the same: **the window keeps painting.** A stale card is a pass; a
 window that stops answering is a fail, whatever the card says.
