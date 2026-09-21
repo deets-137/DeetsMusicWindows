@@ -158,11 +158,16 @@ pub struct NpCommand {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
+    /// Who sent it: tray | windows (media keys, headset, flyout) | airplay. The main
+    /// window logs it on a pause, so a pause names its source (DEBUGGING.md).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
 }
 
 /// Tray → main window transport. Emitted to the main window, which owns MusicKit.
 #[tauri::command]
-pub fn np_command(cmd: NpCommand, app: AppHandle) {
+pub fn np_command(mut cmd: NpCommand, app: AppHandle) {
+    cmd.from.get_or_insert_with(|| "tray".into());
     log(&format!("np-command {} {:?}", cmd.kind, cmd.value));
     let _ = app.emit_to("main", "np-command", cmd);
 }

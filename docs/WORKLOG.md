@@ -12,6 +12,17 @@ updated: 2026-09-21
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-21 (late) — pause-source telemetry (for 0.13.1)
+
+- **Why:** his music paused 14 s into "new trick" with no gesture in the ring. No
+  `np-bus:command` either, so the tray, media keys and HomePod were unlikely; the pause
+  source could not be named.
+- **Built:** `player:pause {why, …}` on every playing → paused/stopped change, and
+  `player:exit` on `pagehide` (DEBUGGING.md §Why did it pause). Rust stamps `from` on
+  `np-command`. `outside` = no note from our code: MusicKit or WebView2 itself.
+- Decided inside his ask: the 5 s note window; the `why` words; `room:<source>` for our own
+  press inside a room. Ships with 0.13.1, not released. Desk test in that section, not run.
+
 ## 2026-09-21 (evening) — the web demo (branch `demo-time`)
 
 - **Designed and built in one sitting** (WEB-DEMO.md). His forks: the real `src/` with a shim

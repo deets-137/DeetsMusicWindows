@@ -177,7 +177,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const takes = target?.closest("button, a, [role='button'], [role='slider'], [role='switch'], [role='menuitem'], [role='menuitemradio'], [tabindex]");
       if (takes && takes !== document.body && !takes.hasAttribute("data-list-keys")) return; // a list's box is a tab stop, not a control
       e.preventDefault();
-      void playPause().catch((err) => console.error("[keys] space", err));
+      void playPause("space").catch((err) => console.error("[keys] space", err));
       return;
     }
     if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;

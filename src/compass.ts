@@ -383,7 +383,7 @@ function settingRows(): Row[] {
 
 function actions(all: boolean): Row[] {
   const rows: Row[] = [
-    { group: "Actions", title: isPlayingNow() ? "Pause" : "Play", side: "Space", aliases: ["play", "pause", "resume", "stop"], run: () => void playPause().catch((e) => console.error("[compass] play", e)) },
+    { group: "Actions", title: isPlayingNow() ? "Pause" : "Play", side: "Space", aliases: ["play", "pause", "resume", "stop"], run: () => void playPause("compass").catch((e) => console.error("[compass] play", e)) },
     { group: "Actions", title: "Next song", aliases: ["skip", "forward"], run: () => void nextTrack().catch((e) => console.error("[compass] next", e)) },
     { group: "Actions", title: "Previous song", aliases: ["back", "prev", "rewind"], run: () => void prevTrack().catch((e) => console.error("[compass] prev", e)) },
   ];

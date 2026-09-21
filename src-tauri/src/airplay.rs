@@ -234,7 +234,7 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
                 RemoteCommand::Next => "next",
                 RemoteCommand::Previous => "previous",
             };
-            let _ = handle.emit_to("main", "np-command", NpCommand { kind: kind.to_string(), value: None });
+            let _ = handle.emit_to("main", "np-command", NpCommand { kind: kind.to_string(), value: None, from: Some("airplay".into()) });
         })),
     };
     // Not the name ("<Name>'s HomePod") or the LAN address: a bug report sends this line.

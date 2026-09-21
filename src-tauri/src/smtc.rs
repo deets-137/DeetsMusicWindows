@@ -44,7 +44,7 @@ const fn ticks(secs: f64) -> TimeSpan {
 }
 
 fn send(app: &AppHandle, kind: &str, value: Option<f64>) {
-    let _ = app.emit_to("main", "np-command", NpCommand { kind: kind.to_string(), value });
+    let _ = app.emit_to("main", "np-command", NpCommand { kind: kind.to_string(), value, from: Some("windows".into()) });
 }
 
 /// Register the session on the main window. Call once from `setup`, on the

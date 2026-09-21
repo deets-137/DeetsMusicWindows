@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 # DeetsMusic — Debugging tools
 
@@ -1199,6 +1199,38 @@ answer it, in this order, and none of them needs a restart.
 **What NOT to do:** do not guess between code paths from reading the source. Two paths
 that look identical in the file can behave differently because of the queue's state at
 the moment of the click. Read what happened.
+
+## Why did it pause — `player:pause` (2026-09-21)
+
+> **Part:** built · 2026-09-21
+
+Before this, a pause left no trace of its source (the 2026-09-21 "new trick" pause, 14 s
+into the song, could not be explained). Now every time MusicKit leaves `playing` for
+`paused` or `stopped`, the ring gets one line:
+
+`player:pause {why, state, id, at, mode}` — `at` is the song position in seconds.
+
+| `why` | Source |
+|---|---|
+| `button` | the Now Playing / mini play button |
+| `space` · `compass` | the Space key · the Ctrl+Space bar |
+| `tray` | the tray panel |
+| `windows` | the Windows media session: a media key, a headset or Bluetooth button, the volume flyout (smtc.rs) |
+| `airplay` | the HomePod: its touch surface, Siri, the Home app (airplay.rs) |
+| `agent` | the MCP / CLI / bridge |
+| `sleep` | the sleep timer |
+| `load` · `station` · `station-stop` | our own pause before a new list or a station |
+| `room` · `room-hold` · `room:<source>` | a listening room: the host's command, a hold, or our own press sent to the room |
+| `outside` | no note from our code in the last 5 s: MusicKit paused by itself, or WebView2's own media-key handling |
+
+How it works: each pause we cause calls `notePause(why)` in player.ts first; the
+`playbackStateDidChange` handler reads the note. Rust stamps `from` on every `np-command`
+(bridge.rs `NpCommand`). `player:exit` is logged on `pagehide` if a song was playing
+(best effort: the flush may not finish before the window dies).
+
+**Desk test:** play a song, then pause it once from each of: the play button, Space, the
+tray panel, a keyboard media key, and the HomePod (if routed). `deetsmusic diag --tag
+player:pause` shows five lines with `button`, `space`, `tray`, `windows`, `airplay`.
 
 ## MusicKit quirks learned (so we don't relearn them)
 - **`music.queue.position` is empty in this build** — use `music.nowPlayingItemIndex`

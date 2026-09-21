@@ -71,6 +71,7 @@ export interface NpState {
 interface NpCommand {
   kind: string;
   value?: number;
+  from?: string; // tray | windows | airplay (bridge.rs NpCommand)
 }
 
 let lastState: PlayerState = { playing: false, repeat: "off", shuffle: false };
@@ -146,12 +147,12 @@ async function run(cmd: NpCommand): Promise<void> {
   log("np-bus:command", cmd);
   switch (cmd.kind) {
     case "play-pause":
-      return playPause();
+      return playPause(cmd.from ?? "tray");
     case "play": // a HomePod's touch surface / Siri, relayed by airplay.rs
-      if (!lastState.playing) return playPause();
+      if (!lastState.playing) return playPause(cmd.from ?? "tray");
       return;
     case "pause":
-      if (lastState.playing) return playPause();
+      if (lastState.playing) return playPause(cmd.from ?? "tray");
       return;
     case "next":
       return nextTrack();
@@ -204,9 +205,9 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
       const k = String(payload?.kind ?? "");
       const v = typeof payload?.value === "number" ? payload.value : undefined;
       switch (k) {
-        case "play-pause": await playPause(); break;
-        case "play": if (!lastState.playing) await playPause(); break;
-        case "pause": if (lastState.playing) await playPause(); break;
+        case "play-pause": await playPause("agent"); break;
+        case "play": if (!lastState.playing) await playPause("agent"); break;
+        case "pause": if (lastState.playing) await playPause("agent"); break;
         case "next": await nextTrack(); break;
         case "previous": await prevTrack(); break;
         case "seek": await seekToFraction(v ?? 0); break;

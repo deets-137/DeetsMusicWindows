@@ -665,7 +665,46 @@ function maybeFinishQueue(): void {
   queue.advance();
 }
 
+// ── Pause source ─────────────────────────────────────────────────────────────
+// Every pause we cause names itself first (notePause); when MusicKit then leaves
+// `playing` for paused/stopped, one `player:pause` line says who did it. A pause
+// with no fresh note came from outside our code: MusicKit itself, or WebView2's own
+// media-key handling. DEBUGGING.md §Why did it pause.
+const PAUSE_NOTE_MS = 5000;
+let pauseNote: { why: string; at: number } | null = null;
+let wasPlaying = false;
+
+function notePause(why: string): void {
+  pauseNote = { why, at: performance.now() };
+}
+
+function logPauseSource(): void {
+  const S = window.MusicKit?.PlaybackStates;
+  if (!S || !music) return;
+  const st = music.playbackState;
+  const playing = st === S.playing;
+  if (wasPlaying && (st === S.paused || st === S.stopped)) {
+    const fresh = pauseNote && performance.now() - pauseNote.at < PAUSE_NOTE_MS;
+    diag.log("player:pause", {
+      why: fresh ? pauseNote!.why : "outside",
+      state: S[st],
+      id: music.nowPlayingItem?.id ?? null,
+      at: Math.round(music.currentPlaybackTime ?? 0),
+      mode,
+    });
+    pauseNote = null;
+  }
+  if (st !== S.waiting && st !== S.loading) wasPlaying = playing;
+}
+
+window.addEventListener("pagehide", () => {
+  if (!music?.isPlaying) return;
+  diag.log("player:exit", { id: music.nowPlayingItem?.id ?? null, at: Math.round(music.currentPlaybackTime ?? 0) });
+  void diag.flush();
+});
+
 function onPlaybackStateChange(): void {
+  logPauseSource();
   // Dev telemetry: the clicked song is audible once MusicKit reports `playing` for it.
   const S = window.MusicKit?.PlaybackStates;
   if (S && music?.playbackState === S.playing) perf.sound(music.nowPlayingItem?.id);
@@ -1258,6 +1297,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     // stop()/pause()" while already playing. Normally pause() is enough; leaving a STATION
     // needs a full stop() (`stopFirst`) — pausing a continuous controller leaves it primed
     // to advance, and that advance interrupts our setQueue/play (AbortError).
+    notePause("load");
     if (opts.stopFirst && typeof m.stop === "function") await m.stop();
     else if (m.isPlaying && typeof m.pause === "function") await m.pause();
     perf.mark("quiet");
@@ -1334,6 +1374,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
       diag.log("player:itemsPlayFailed", { e: String(e) });
       perf.event("itemsPlayFailed", { e: String(e) });
       console.warn("[player] descriptor-fed play failed; re-feeding by ids:", e);
+      notePause("load");
       if (m.isPlaying && typeof m.pause === "function") await m.pause();
       fed = await feed(false);
       windowPos = pos;
@@ -1527,6 +1568,7 @@ export async function playStation(s: Station): Promise<void> {
   // No loading report here: a station has no length, and emitProgress holds the old song's
   // ticks back while `loading` is true, so its clock stops rather than runs on.
   try {
+    notePause("station");
     if (m.isPlaying && typeof m.pause === "function") await m.pause();
     await setStationQueue(m, s);
     if (!m.isPlaying) await m.play();
@@ -1563,6 +1605,7 @@ export async function stopStation(): Promise<void> {
   exitRadio();
   resumeStation = null;
   try {
+    notePause("station-stop");
     if (m.isPlaying && typeof m.pause === "function") await m.pause();
   } catch (e) {
     console.warn("[player] stop station:", e);
@@ -1909,7 +1952,7 @@ export async function roomShow(handle: TrackHandle, positionMs: number, play: bo
     // Match the room, whichever way it points: a seeded room that has not started yet
     // must HOLD this song, not leave it playing from before the room existed.
     if (play && !m.isPlaying) await m.play();
-    else if (!play && m.isPlaying && typeof m.pause === "function") await m.pause();
+    else if (!play && m.isPlaying && typeof m.pause === "function") { if (!pauseNote) notePause("room"); await m.pause(); } // keep "room:<source>" when we sent it
     return;
   }
   // The model already holds the room's queue (room.ts wrote it); play its head.
@@ -1919,6 +1962,7 @@ export async function roomShow(handle: TrackHandle, positionMs: number, play: bo
 /** Pause without leaving the room: the room's clock runs on. */
 export async function roomHold(): Promise<void> {
   const m = music;
+  notePause("room-hold");
   if (m?.isPlaying && typeof m.pause === "function") await m.pause();
 }
 
@@ -1969,7 +2013,8 @@ export function roomHasSong(): boolean {
 // ── Transport ────────────────────────────────────────────────────────────────
 
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */
-export async function playPause(): Promise<void> {
+export async function playPause(why = "button"): Promise<void> {
+  if (music?.isPlaying) notePause(roomBridge ? `room:${why}` : why);
   if (roomBridge) return roomBridge.playPause(); // a room command (ROOMS.md §10)
   if (!music?.isPlaying) await requireSignIn(); // pausing never needs a sign-in
   const m = await initPlayer();
@@ -2435,8 +2480,9 @@ export function getAppliedGain(): number {
 }
 
 /** Pause, if anything plays. No sign-in check: pausing never needs one. */
-export async function pausePlayback(): Promise<void> {
+export async function pausePlayback(why = "sleep"): Promise<void> {
   if (!music?.isPlaying) return;
+  notePause(why);
   await music.pause();
 }
 
