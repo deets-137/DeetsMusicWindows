@@ -6,10 +6,11 @@ updated: 2026-09-21
 ---
 # DeetsMusic — Docs organization
 
-> **Status (2026-09-21): STEPS 1, 2 AND 3 DONE on branch `dockin` — every doc has front matter
+> **Status (2026-09-21): STEPS 1–5 DONE on branch `dockin` — every doc has front matter
 > (§11.1a), `npm run docs:check` passes with 0 facts (§11.2a; the release check warns until
-> 2026-09-28), and the docs are in their area folders (§11.3a — read it for the tree as built;
-> §4 below is the plan that led there).** Every number in §1 was measured against the tree on
+> 2026-09-28), the docs are in their area folders (§11.3a — read it for the tree as built;
+> §4 below is the plan that led there), `CLAUDE.md` is one line per doc with no state
+> (§11.4a), and HANDOFF.md is split from WORKLOG.md (§11.5a). Steps 6–8 are left.** Every number in §1 was measured against the tree on
 > 2026-09-20, before the move. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks were
 > open (§10); F1–F5 are decided, F6 is open. Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
 > work that rides this re-org: release notes, where a hotfix outranks the feature release
@@ -406,8 +407,8 @@ Nothing here is started.
 3. **The move**, plus the link rewrite, plus `docs:index`. One commit. The checker proves it.
    **DONE 2026-09-21 (§11.3a), without `docs:index`** — the generated README is its own step
    (§6.2), after F6.
-4. **`CLAUDE.md`** rewritten to one line per doc.
-5. **The `HANDOFF` / `WORKLOG` split.**
+4. **`CLAUDE.md`** rewritten to one line per doc. **DONE 2026-09-21 (§11.4a).**
+5. **The `HANDOFF` / `WORKLOG` split.** **DONE 2026-09-21 (§11.5a).**
 6. **The sweep skill**, last, because it is worth nothing until the checker exists.
 7. **Release-note grouping (§12).** Independent of steps 1–6: it touches
    `scripts/publish-update.mjs`, the update Worker and `../DeetsSolutions`, and only one
@@ -532,8 +533,43 @@ docs/
   every folder and never proposes a version before 0.4.3.
 - **Not checked here:** `npx tsc` cannot run in the `dockin` worktree (no `node_modules`). Every
   changed line under `src/` is inside a comment; `settings.rs` changed one string and one
-  comment. Other repos that name a DeetsMusic doc path (DeetsSolutions `docs/support.md`) were
-  not touched — a bare doc name there still reads right; a path does not.
+  comment. `tsc` passed once the branch was checked out in the main folder.
+- **Other repos, re-pointed the same day** (the owner asked): 23 paths such as
+  `DeetsMusic/docs/ROOMS.md` → `DeetsMusic/docs/integrations/ROOMS.md` in DeetsSolutions (3
+  docs), DeetsMusicRooms (8 files), DeetsMusicFriends (8), DeetsSupport (4) and DeetsSandbox
+  (2) — comments, READMEs and docs only, so no worker needs a deploy. `DeetsLogs` (session
+  transcripts) was left as a record.
+- **The worktree was temporary.** `dockin` was first checked out in `../DeetsMusic-dockin`
+  because another session was still working in the main folder on `thirteen`. When it was
+  done, the worktree was removed and the main folder switched to `dockin`.
+
+### 11.4a Step 4 as built (2026-09-21) — `CLAUDE.md`
+
+- **30.5 KB → 20 KB.** The "Start here" list of long status paragraphs became: four entry
+  points (HANDOFF, WORKLOG, LESSONS, DOCS-ORG), a "The docs" block with the rules (state lives
+  in front matter, never in `CLAUDE.md`; run `docs:check`; move with `docs-move.mjs`; edit a
+  generated doc's source), and one line per doc under its folder. The §6.1 estimate of 9 KB
+  was wrong: the sections that stay (How to verify, Working style) are about 11 KB alone.
+- **Rules that were buried in status paragraphs moved to Conventions:** a sync
+  `#[tauri::command]` runs on the UI thread; the workers use wrangler 4 and a deploy drops every
+  live room; a withdrawn version's notes never reach an update offer. The TOKENS and
+  COMPASS-TERMS rules stay on their doc's line.
+- `AGENTS.md` (the short guide for other AI tools) got the same entry points and rules.
+
+### 11.5a Step 5 as built (2026-09-21) — HANDOFF and WORKLOG
+
+- **HANDOFF.md, 1,631 → 580 lines.** It keeps Run it, Ship it, State of play, Measuring
+  graphics, Known gotchas, Key decisions and File map, and gains **Open now**: the short list of
+  what is not finished, each item naming where its detail is. When an item closes, delete it
+  there and write the day in WORKLOG. Its header now says which file holds what.
+- **WORKLOG.md, 1,118 lines.** "Next up" moved across **verbatim**; only its headings changed:
+  the three 2026-09-20 sections became dated `##` entries, and the older bold-dated paragraphs
+  sit under one `## Before 2026-09-21` heading as HANDOFF held them. A new top entry records
+  this re-org. From now on: one dated `##` per sitting, newest first.
+- **Two stale items were found while sorting**, and left out of Open now: `web.ts:1028`'s
+  deferred `activate` is already gone, and the 2026-09-17 health check already ran (its
+  findings are DEBUGGING.md's "What the 2026-09-17 health check found").
+- SEARCH.md and TRAY.md pointed at "Next up"; they now point at Open now and at WORKLOG.
 
 ---
 

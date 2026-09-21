@@ -164,7 +164,7 @@ The user may revert this after testing it. Decisions: 1A (hover only), 2B (drill
   reload after an add, the Library Add toggle and `addSquareOwned` repaint every square on the page.
 - **Code:** `src/add-square.ts` (`addSquareHTML`, `isAddSquare`); CSS `.search__add`, `.add-square`.
 - **Keyboard:** Tab reaches the row, then the square. Full keyboard polish is a pre-release item
-  ([HANDOFF.md § Next up](../HANDOFF.md#next-up)).
+  ([HANDOFF.md § Open now](../HANDOFF.md#open-now), "Keyboard").
 
 #### In Playlists, Queue and History (2026-09-17)
 Decisions: 1A (no ✓ by default; the Settings row turns it on), 2A (no room until hover), 3B (the

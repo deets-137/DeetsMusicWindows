@@ -148,6 +148,6 @@ Known limits, both accepted:
 - Theme/skin pre-paint on the panel already follows the shared `deets.theme` / `deets.skin`
   keys (same origin); live changes ride the `appearance` event.
 - "Read Windows media" is only in the tray menu; a mirror in the Settings card when that
-  card lands (HANDOFF → Next up #1).
+  card lands (the v1 push, item 1, in WORKLOG.md's older entries).
 - Per-app volume for the Windows source would need the WASAPI session enumerator
   (`IAudioSessionManager2`) matched by process — skipped for v1.
