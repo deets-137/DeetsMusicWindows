@@ -222,6 +222,9 @@ user guide for deets.solutions (DOCS-ORG.md §13).
   9. **Compass:** a new card, Settings row or verb is reachable from Ctrl+Space by the rules
      in COMPASS.md §9 (a card and a store-backed row are automatic; a panel exports an
      opener; a verb, a data kind or a command is one row in `src/compass.ts`).
+- **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
+  change since the last release is low risk to the app's integrity (no hang, music plays).
+  Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.
 - **Everything is token-based**: never hardcode a color, px, font, or motion value in a
   component — add/route through the palette → theme → skin tiers. Color → theme role;
   geometry/type/spacing/motion → skin token.

@@ -113,11 +113,11 @@ The short list of what is not finished, as of 2026-09-21. Each item names where 
 When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Releases and branches**
-- **Published: 0.12.2** (2026-09-20). 0.12.0 and 0.12.1 are withdrawn. The first public release
+- 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
-- **0.13.0 — being cut from `dockin` (2026-09-21):** the cog's quick panel, the New badges
-  (now on the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, and the
-  docs re-org. **Desk tests §10.1 and §11.1 are not run.** `main` fast-forwards to `dockin`.
+- **Published: 0.13.0** (2026-09-21, from `main` = `dockin`): the quick panel, the New badges
+  (the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, the docs re-org.
+  He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
 **Desk tests not run**
 - **Friends** — FRIENDS.md §17.

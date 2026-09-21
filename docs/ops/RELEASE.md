@@ -72,6 +72,30 @@ of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
 | 0.12.0 | 2026-09-20 | — | skipped | Friends. **Withdrawn**: froze with Discord sharing on |
 | 0.12.1 | 2026-09-20 | `d81f312` | skipped | hotfix. **Withdrawn**, same freeze |
 | 0.12.2 | 2026-09-20 | `53a5858` | — | the Discord freeze fixed; carries the whole 0.12 line's notes |
+| 0.13.0 | 2026-09-21 | `0091992` | skipped, his call (small reach, tested in dev) | the quick panel, the N badges, the docs re-org |
+
+### 0b. When Claude may publish without the hand test (his rule, 2026-09-21)
+
+Step 3 (the hand install test) may be skipped, and Claude publishes on its own after
+`npm run release`, **only when every change since the last published version is low risk to
+the app's integrity**: no hang, no freeze, and music still plays. A UI-only change is low
+risk. Read the whole diff from the last row of §0a, not only the commit messages.
+
+**High risk — stop, do not publish, and tell him it needs a hand test:**
+- any Rust change that runs in the app (`src-tauri/src/`, `crates/`), above all a
+  `#[tauri::command]`, a thread, a lock, a pipe or a socket (0.12.0 froze this way);
+- playback: `player.ts`, `queue.ts`, MusicKit calls, the audio graph (`sound`, AirPlay, vinyl
+  clock), the media keys;
+- anything networked that runs by itself: rooms, Friends, Discord, Last.fm, the updater;
+- the database schema or migrations, the settings store's shape, the startup path;
+- a feature whose own desk test was never run where it could reach playback (rooms 0.10.0 is
+  the example: it was never tested with two apps).
+
+**Low risk — publish, then report:** CSS, tokens, markup and render code of a card or panel,
+hover hints, wording, docs, scripts that do not ship.
+
+When in doubt, it is high risk. The report names the version, the risk call and why, and the
+checks run (health route, update offer).
 
 What the log taught:
 - **A withdrawal is not a fix.** The updater offers only a NEWER version, so an install

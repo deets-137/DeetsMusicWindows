@@ -86,7 +86,7 @@ function writeIndex(index) {
 }
 
 function releaseNotes(version) {
-  const md = readFileSync(join(root, "docs", "RELEASE-NOTES.md"), "utf8").replace(/\r\n/g, "\n");
+  const md = readFileSync(join(root, "docs", "ops", "RELEASE-NOTES.md"), "utf8").replace(/\r\n/g, "\n");
   const start = md.search(new RegExp(`^## ${version.replace(/\./g, "\\.")}\\b`, "m"));
   if (start === -1) return "";
   const body = md.slice(start).split("\n").slice(1).join("\n");
@@ -123,7 +123,7 @@ if (notesOnly !== null) {
 if (history) {
   // Every "## <version> — <date>" heading the index lacks, except the version being built:
   // that one is published for real, with its installer.
-  const md = readFileSync(join(root, "docs", "RELEASE-NOTES.md"), "utf8");
+  const md = readFileSync(join(root, "docs", "ops", "RELEASE-NOTES.md"), "utf8");
   const heads = [...md.matchAll(/^## (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\s+\S+\s+(\d{4}-\d{2}-\d{2})\s*$/gm)];
   const added = [];
   for (const [, v, date] of heads) {
