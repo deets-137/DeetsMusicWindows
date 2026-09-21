@@ -15,6 +15,7 @@
 | **press**, **ocean**, **glass**, **cyber** (skin, look) | The skin |
 | **sound** (eq, equalizer) | The Sound panel |
 | **sleep timer** (timer, alarm) | The sleep panel |
+| **quick settings** | The quick panel under the cog: every setting, by what it is for (2026-09-20) |
 | **listening room** (room, together) | The Room panel |
 | **friends** (friend, buddies, people, together) | The same panel's Friends half — its own row, because "friends" and "listening room" are two things a person means (FRIENDS.md §16.7) |
 

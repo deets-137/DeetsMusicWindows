@@ -146,11 +146,11 @@
             <span class="menu__chev" aria-hidden="true">›</span>
             <div class="flyout flyout--account" role="menu" aria-label="Account">
               <div class="account">
-                <button class="account__btn" id="account-action" type="button" data-state="out">
+                <button class="account__btn" id="account-action" data-acct-btn type="button" data-state="out">
                   <span class="account__label">Apple Music</span>
-                  <span class="account__icon" id="account-icon" aria-hidden="true"></span>
+                  <span class="account__icon" id="account-icon" data-acct-icon aria-hidden="true"></span>
                 </button>
-                <div class="account__status" id="account-status">Not signed in</div>
+                <div class="account__status" id="account-status" data-acct-status>Not signed in</div>
               </div>
               <!-- Last.fm (docs/LASTFM.md §4): the same button + status shape; src/lastfm.ts wires it. -->
               <div class="account" id="lastfm-account">
@@ -169,12 +169,47 @@
            is the hand-drawn compass the owner gave (a face, a needle, two ticks). -->
       <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
 
-      <!-- The cog (SETTINGS.md, CARD-GROW.md §17): the title bar's own way into the Settings
-           card, right of the Compass. It summons the card AND opens it as wide as the window
-           allows (expandCard); a second press collapses it. Six teeth, so the 120-degree turn
-           each press adds lands on an identical tooth and the glyph never looks crooked.
-           src/main.ts wires it. -->
-      <button class="cog__btn" id="cog-open" type="button" aria-label="Settings" title="Opens Settings at full size"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.41 2.96A9.4 9.4 0 0 1 14.59 2.96L14.75 6.11A6.5 6.5 0 0 1 15.73 6.68L18.53 5.24A9.4 9.4 0 0 1 21.12 9.73L18.48 11.43A6.5 6.5 0 0 1 18.48 12.57L21.12 14.27A9.4 9.4 0 0 1 18.53 18.76L15.73 17.32A6.5 6.5 0 0 1 14.75 17.89L14.59 21.04A9.4 9.4 0 0 1 9.41 21.04L9.25 17.89A6.5 6.5 0 0 1 8.27 17.32L5.47 18.76A9.4 9.4 0 0 1 2.88 14.27L5.52 12.57A6.5 6.5 0 0 1 5.52 11.43L2.88 9.73A9.4 9.4 0 0 1 5.47 5.24L8.27 6.68A6.5 6.5 0 0 1 9.25 6.11L9.41 2.96Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <!-- The cog (QUICK-SETTINGS.md): the title bar's own way into settings, right of the
+           Compass. It opens the quick panel: a strip of service logos (Apple Music, Discord)
+           and "All settings", which opens the Settings card as wide as the window allows
+           (the cog's own job until 2026-09-20). A logo shows that service's rows, drawn by
+           the Settings card's own code. Six teeth, so the 120-degree turn each press adds
+           lands on an identical tooth and the glyph never looks crooked. src/quick-panel.ts
+           wires it. -->
+      <div class="quick" id="quick">
+      <button class="cog__btn" id="cog-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Quick settings" title="Quick settings, grouped by what they are for, and the way to all of Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.41 2.96A9.4 9.4 0 0 1 14.59 2.96L14.75 6.11A6.5 6.5 0 0 1 15.73 6.68L18.53 5.24A9.4 9.4 0 0 1 21.12 9.73L18.48 11.43A6.5 6.5 0 0 1 18.48 12.57L21.12 14.27A9.4 9.4 0 0 1 18.53 18.76L15.73 17.32A6.5 6.5 0 0 1 14.75 17.89L14.59 21.04A9.4 9.4 0 0 1 9.41 21.04L9.25 17.89A6.5 6.5 0 0 1 8.27 17.32L5.47 18.76A9.4 9.4 0 0 1 2.88 14.27L5.52 12.57A6.5 6.5 0 0 1 5.52 11.43L2.88 9.73A9.4 9.4 0 0 1 5.47 5.24L8.27 6.68A6.5 6.5 0 0 1 9.25 6.11L9.41 2.96Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <div class="quick__panel pop app-scroll" id="quick-panel" role="group" aria-label="Quick settings" data-frames="quick" hidden>
+          <!-- Tips stay in the Settings card; this line takes you there (quick-panel.ts). -->
+          <button class="quick__tips" type="button" data-quick-tips title="Opens Settings at Tips">Tips are in the Settings card itself!</button>
+          <div class="quick__bar">
+            <!-- The logos are filled in by quick-panel.ts (the official files' paths). -->
+            <button class="quick__logo" type="button" data-quick="apple" aria-pressed="false" aria-label="Apple Music" title="Apple Music: your sign-in and the Apple Music settings"></button>
+            <button class="quick__logo" type="button" data-quick="discord" aria-pressed="false" aria-label="Discord" title="Discord: your profile's activity and the Song of the Day channel"></button>
+            <!-- The middle group runs from the fewest rows to the most (QUICK-SETTINGS.md §9): Connections 4, Fun 4–10, Look 5–14, Help 14–16, Window 19. -->
+            <button class="quick__logo" type="button" data-quick="agents" aria-pressed="false" aria-label="Connections" title="Connections: the browser extension and AI agents"></button>
+            <button class="quick__logo" type="button" data-quick="fun" aria-pressed="false" aria-label="Fun things" title="Fun things: Song of the Day and Friends"></button>
+            <button class="quick__logo" type="button" data-quick="look" aria-pressed="false" aria-label="Look" title="Look: the day and night looks, this skin's own settings, and motion"></button>
+            <button class="quick__logo" type="button" data-quick="help" aria-pressed="false" aria-label="Help and playback" title="Help and playback: menus, hints and notices, and how songs play"></button>
+            <button class="quick__logo" type="button" data-quick="window" aria-pressed="false" aria-label="Window" title="Window: the tray, the sizes, keep on top, and growing cards"></button>
+            <!-- The right cluster: the app's own upkeep, then the cog. -->
+            <button class="quick__logo quick__right" type="button" data-quick="bugs" aria-pressed="false" aria-label="Updates and bugs" title="Updates and bugs: how updates arrive, roll back, and send a report"></button>
+            <button class="quick__logo" type="button" data-quick="reset" aria-pressed="false" aria-label="Reset" title="Reset: put a group of settings, or all of them, back as they came"></button>
+            <!-- The cog's glyph, copied in by quick-panel.ts. -->
+            <button class="quick__logo quick__all" type="button" id="quick-all" aria-pressed="false" aria-label="All settings" title="All settings: opens Settings at full size"></button>
+          </div>
+          <div class="quick__body" id="quick-body" hidden>
+            <!-- The second copy of title menu › Account › Apple Music. main.ts paints both. -->
+            <div class="account quick__acct" data-quick-part="apple" hidden>
+              <button class="account__btn" data-acct-btn type="button" data-state="out">
+                <span class="account__label">Apple Music</span>
+                <span class="account__icon" data-acct-icon aria-hidden="true"></span>
+              </button>
+              <div class="account__status" data-acct-status>Not signed in</div>
+            </div>
+            <div id="quick-rows"></div>
+          </div>
+        </div>
+      </div>
 
       <div class="drag-region" data-tauri-drag-region></div>
 

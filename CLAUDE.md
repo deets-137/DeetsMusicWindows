@@ -162,6 +162,11 @@ front-end, Rust back-end).
   unranked id draws last in its card's built-in order. Settings › Window › *Move sections by
   holding* turns the gesture off; Settings › Reset › *Row order* undoes it all. **Desk test §12
   (20 steps) PASSED 2026-09-20** (HANDOFF.md "Test 4" is the short version and records it).
+- `docs/QUICK-SETTINGS.md` — **the cog's quick panel**: a strip of icons (Apple Music, Discord,
+  Window, Look, Help, Connections, Fun | Updates and bugs, Reset) + a cog = All settings / Collapse (the cog's old job). A logo grows the panel and shows that
+  service's rows, drawn by the Settings card's own code (`mountSettingsParts`); the Apple
+  sign-in row has two copies, both painted by main.ts. Every square wears a New badge until its first press (`quickSeen`); a NEW setting wears the same N beside its name until hovered (`NEW_MARKS`, §10). What's new comes later. **BUILT
+  2026-09-20 on `thirteen`; desk test §10.1 (the row N) NOT RUN; the rest tried in the dev app 2026-09-20.**
 - `docs/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
   answers to; update it with `SYNONYMS` in compass.ts.
 - `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
@@ -285,6 +290,11 @@ front-end, Rust back-end).
   4. **Toasts:** every new `toast()` call is a row in TOASTS.md §5.
   5. **Settings keys:** a new key in `settings-store.ts` gets a default with the "why", a
      spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md.
+  5a. **New badge:** a new Settings row or section gets one line in `NEW_MARKS`
+     (settings-card.ts), so it wears the N until the pointer first rests on it, and its quick
+     panel square shows the N again (QUICK-SETTINGS.md §10, his wish 2026-09-20). Never
+     take a line out: a mark stays until that user clears it. A brand-new install starts
+     with every listed mark seen, so only settings added AFTER it installed read as new.
   6. **Log lines:** `diag.log` the arm / fire / off of anything that acts on its own.
   6a. **Scrollbars:** anything that can scroll (`overflow: auto/scroll`, a `max-height` panel)
      gets the `app-scroll` class, or it shows the grey OS bar, and `scrollbar-gutter: stable` so its

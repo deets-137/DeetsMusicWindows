@@ -6,8 +6,8 @@
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 37 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 435 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 445 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -24,6 +24,9 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--ink-2` | `var(--go)` | every theme | Second-plate fallback: a theme that never names --ink-2 still prints Press's offset in its own "go" accent. |
 | `--picked` | `color-mix(in srgb, var(--title) var(--picked-strength), transparent)` | — | Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own --title ink at the strength the SKIN sets, so a block of picks reads as one shape in every theme. Derived once here — no theme block names a picked color of its own. |
 | `--apple-music-mark` | `light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white))` | — | Apple Music icon fill: Apple's black file on light themes, the white file on dark. light-dark() follows each theme's own color-scheme, so no theme block repeats it. |
+| `--discord-mark` | `var(--apple-music-mark)` | — | Discord's symbol (the quick panel): its brand kit has the same black and white files, and the same rule, so it follows the Apple Music mark. |
+| `--new-badge` | `var(--apple-music-mark)` | — | The quick panel's New badge (QUICK-SETTINGS.md §8): black on a light theme, white on a dark one, the N the other — the same black and white pair as the marks beside it. |
+| `--new-badge-ink` | `light-dark(var(--paint-apple-music-white), var(--paint-apple-music-black))` | — |  |
 | `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
 | `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
 | `--eq-grid` | `color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent)` | — |  |
@@ -178,6 +181,16 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--cog-btn-size` | `var(--traffic-size)` | — | The cog (SETTINGS.md): the title bar button right of the Compass. Six teeth, so --cog-step lands on an identical tooth and the glyph never rests crooked. |
 | `--cog-step` | `120deg` | — | one click's turn |
 | `--cog-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — |  |
+| `--quick-icons` | `10` | — | The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or shut, so an icon press grows it down and never sideways. The width is the row's own sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. |
+| `--quick-panel-w` | `calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w))` | — |  |
+| `--quick-panel-max-h` | `var(--sound-panel-max-h)` | — |  |
+| `--quick-panel-pad` | `var(--sound-panel-pad)` | — |  |
+| `--quick-logo-size` | `var(--icon-lg)` | — | the logo button: the Sound tabs' height |
+| `--quick-mark-size` | `var(--icon-sm)` | — | the glyph inside it |
+| `--new-badge-size` | `11px` | — | The New badge (QUICK-SETTINGS.md §8, §10): on a quick panel square's corner, and inline after a new Settings row's or section's name. — the disc: big enough for its N, small beside a 24 px square |
+| `--new-badge-fs` | `8px` | — | its N |
+| `--new-badge-off` | `-4px` | — | how far it hangs past the square's top right corner |
+| `--new-badge-ring` | `1.5px` | — | the ring of panel surface that stands it off the square's border |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |

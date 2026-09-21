@@ -43,7 +43,9 @@ nothing about authoring changed when the box did.
 | Title menu | Mini · Player · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
-| Title bar | the cog (right of the compass) | Opens Settings at full size | index.html |
+| Title bar | the cog (right of the compass) | Quick settings, grouped by what they are for, and the way to all of Settings (was *Opens Settings at full size* until 2026-09-20, QUICK-SETTINGS.md) | index.html |
+| Quick panel (2026-09-20) | the Tips line over the icons | Opens Settings at Tips | index.html |
+| Quick panel (2026-09-20) | the Apple Music logo · the Discord logo · the Window icon · the brush · the helipad · the robot · the net · the beetle · the ring · the panel's cog | Apple Music: your sign-in and the Apple Music settings · Discord: your profile's activity and the Song of the Day channel · Window: the tray, the sizes, keep on top, and growing cards · Look: the day and night looks, this skin's own settings, and motion · Help and playback: menus, hints and notices, and how songs play · Connections: the browser extension and AI agents · Fun things: Song of the Day and Friends · Updates and bugs: how updates arrive, roll back, and send a report · Reset: put a group of settings, or all of them, back as they came · All settings: opens Settings at full size → while Settings is grown, Collapse settings: puts Settings back in its place | index.html, quick-panel.ts |
 | Title bar | the Friends item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
 | Friends panel | the stage (the silhouettes) | Everyone listening. The heads move with the music → "…when Sound is on" while nothing is routed → out of a room: "Start a room and the others join here" | room-panel.ts |
 | Friends panel | the **Friends** heading (a fold) | The people you added, and what they are playing | room-panel.ts |
@@ -247,6 +249,7 @@ a song appears (`trackMenu`, library-card.ts).
 | Queue | station row | Stop Station / Don't resume |
 | Now Playing | cover · title · artist | the Queue now-hero menu |
 | History · Rewind | row | Play Now · Play Next · Add to Queue (+ Go to Artist / Album / **Song Credits**, where a catalog id exists) |
+| Search | a search term pill (2026-09-20) | a **Recent** term: Pin · Remove from Recent · a **Pinned** term: Unpin |
 | Search | song · album · playlist · artist | the song menu (with **Song Credits**) · the album menu (+ Add to Library) · the playlist menu · Go to Artist · Start Station |
 | Search · Radio | **station** (2026-09-15) | Play Now · Add to Queue (plays when the queue runs dry) · Copy Link. A station also drags: to the Queue card (after the queue) or Now Playing (now) |
 | Artist view | shelf playlist | Play Now · Play Next · Add to Queue · Add to Playlist ▸ |

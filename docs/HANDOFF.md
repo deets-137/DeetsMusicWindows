@@ -112,6 +112,22 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Next up
 
+### Branch `thirteen` — the quick panel, NOT RELEASED (2026-09-20)
+
+> Built, committed and pushed on `thirteen`, not in any release yet. He wants **one more
+> thing done in another session before the release**; ask him what it is.
+>
+> - **The cog's quick panel** (QUICK-SETTINGS.md): ten squares (Apple Music, Discord, then
+>   five app icons from his sketches in `docs/assets/quick-settings/`, then Updates and
+>   bugs, Reset and a cog = All settings). A square shows its Settings rows through the
+>   card's own code (`mountSettingsParts`). He tried it in the dev app on 2026-09-20.
+> - **New badges:** an N on each square until its first press (`quickSeen`), and an N beside
+>   a NEW setting until hovered (`NEW_MARKS`, §10; CLAUDE.md checklist 5a). **§10.1 is the
+>   one desk test NOT RUN.**
+> - **Search:** a right-click on a search term pill: Pin / Remove from Recent, or Unpin.
+> - **The cog changed its job:** it used to open Settings at full size. Release notes must
+>   say so, because a user who presses it gets the panel now.
+
 ### 0.12.2 — the freeze on live, fixed, desk-tested and PUBLISHED (2026-09-20)
 
 > **DONE.** Turning on *Share activity on Discord* froze the whole window — `AppHangB1`, three

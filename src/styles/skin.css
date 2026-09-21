@@ -149,6 +149,22 @@
   --cog-btn-size:            var(--traffic-size);
   --cog-step:                120deg; /* one click's turn */
   --cog-spin:                0.42s cubic-bezier(0.34, 1.26, 0.64, 1);
+  /* The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or
+     shut, so an icon press grows it down and never sideways. The width is the row's own
+     sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the
+     border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. */
+  --quick-icons:             10;
+  --quick-panel-w:           calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w));
+  --quick-panel-max-h:       var(--sound-panel-max-h);
+  --quick-panel-pad:         var(--sound-panel-pad);
+  --quick-logo-size:         var(--icon-lg);   /* the logo button: the Sound tabs' height */
+  --quick-mark-size:         var(--icon-sm);   /* the glyph inside it */
+  /* The New badge (QUICK-SETTINGS.md §8, §10): on a quick panel square's corner, and inline
+     after a new Settings row's or section's name. */
+  --new-badge-size:          11px;   /* the disc: big enough for its N, small beside a 24 px square */
+  --new-badge-fs:            8px;    /* its N */
+  --new-badge-off:           -4px;   /* how far it hangs past the square's top right corner */
+  --new-badge-ring:          1.5px;  /* the ring of panel surface that stands it off the square's border */
   --sound-title-tracking:    0.02em;
   --sound-chip-radius:       var(--radius-control);
   --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */

@@ -54,7 +54,7 @@ The bar has one text field at the top and groups of rows under it. The groups, i
 
 | Group | Rows | Enter | Ctrl+Enter |
 |---|---|---|---|
-| **Places** | Every card in the registry but Now Playing (it is always on screen); Rewind only while its gate is on. Then the four surfaces (Mini, Player, Midi, Max), the six themes, the four skins, Sound, Sleep timer. | `requestCard`, `applySurface`, `applyTheme` / `applySkin` under the appearance transition, or the Sound / Sleep panel opens. | — |
+| **Places** | Every card in the registry but Now Playing (it is always on screen); Rewind only while its gate is on. Then the four surfaces (Mini, Player, Midi, Max), the six themes, the four skins, Sound, Sleep timer, Quick settings (2026-09-20). | `requestCard`, `applySurface`, `applyTheme` / `applySkin` under the appearance transition, or the Sound / Sleep / quick panel opens. | — |
 | **Settings** | Every Settings row (label, its section as the second line, its hint on hover). `when` rows show only while they apply (skin rows). Store-backed rows are inline (§3). | Inline: the toggle flips, or the highlighted option applies. Others: the Settings card opens at the row (`requestSetting`). | — |
 | **Actions** | Play / Pause (the label follows the state), Next song, Previous song, Shuffle on/off, Repeat (off › all › one), Mute / Unmute, Sleep in 15 · 30 · 45 · 60 min, Sleep timer off. | Runs it. The bar closes. | — |
 | **Sound** | The equalizer presets: built-in, Custom, yours; the one in force says On. | Selects it (`selectPreset`, the per-output memory included). | — |

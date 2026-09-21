@@ -76,9 +76,9 @@ body {
    count never resets, so the cog keeps turning the same way for as long as the
    app runs. Six teeth means 120 degrees looks identical, so it never rests
    crooked and there is nothing to unwind. */
+.quick { position: relative; display: flex; align-items: center; margin-left: var(--space-2); }
 .cog__btn {
   width: var(--cog-btn-size); height: var(--cog-btn-size);
-  margin-left: var(--space-2);
   padding: 0; border: none; background: none;
   color: var(--subtext); cursor: pointer;
   display: grid; place-items: center;
@@ -89,6 +89,101 @@ body {
 .cog__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .cog__btn svg { transform: rotate(var(--cog-angle, 0deg)); transition: transform var(--cog-spin); }
 @media (prefers-reduced-motion: reduce) { .cog__btn svg { transition: none; } }
+
+/* ── The quick panel (QUICK-SETTINGS.md) ──────────────────────
+   The cog's panel: the Sound / Sleep / Rooms panel family (menu surface, panel radius,
+   panel shadow), hung from the cog's LEFT edge because the cog sits on the left of the
+   title bar. Shut, it is one row: the logos and All settings. A logo press grows it down. */
+.quick__panel {
+  position: absolute; top: 100%; left: 0;
+  --pop-origin: top left;
+  margin-top: var(--space-1);
+  width: var(--quick-panel-w);
+  max-height: var(--quick-panel-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--quick-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.quick__panel[hidden], .quick__panel [hidden] { display: none; }
+.quick__panel.is-growing { overflow: hidden; } /* quick-panel.ts animates the height */
+.quick__bar { display: flex; align-items: center; gap: var(--space-2); }
+/* The logos and All settings: the panel chip family (the Sound panel's pills). A pressed
+   logo takes the picked fill; the glyph keeps its brand black or white. */
+.quick__logo, .quick__all {
+  box-sizing: border-box; height: var(--quick-logo-size);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--sound-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.quick__logo { width: var(--quick-logo-size); padding: 0; display: grid; place-items: center; }
+.quick__right { margin-left: auto; }   /* the right cluster (Updates and bugs, Reset, the cog) sits apart */
+.quick__logo:hover { background: var(--surface-hover); }
+.quick__logo[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.quick__logo:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.quick__mark { display: block; width: var(--quick-mark-size); height: var(--quick-mark-size); }
+/* The app's own icons (Window, the brush, the cog): stroked in the ink, --text, and --title
+   when pressed. The Window icon's back pane stays --subtext so it reads as behind. */
+.quick__glyph, .quick__all svg {
+  display: block; width: var(--quick-mark-size); height: var(--quick-mark-size);
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.quick__glyph-back { stroke: var(--subtext); }
+.quick__glyph-fill { fill: currentColor; stroke: none; }   /* the Reset ring's two arrowheads */
+.quick__mark--apple { fill: var(--apple-music-mark); }   /* official asset: black or white only */
+.quick__mark--discord { fill: var(--discord-mark); }     /* official asset: black or white here */
+.quick__body { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The Tips pointer over the row: the account row's text link (.account__link), a line of
+   --subtext that underlines and goes --title on hover. */
+.quick__tips {
+  align-self: flex-start;
+  padding: 0; border: 0; background: none;
+  font-family: var(--font-body); font-size: var(--fs-subtext);
+  color: var(--subtext); text-decoration: underline; cursor: pointer;
+}
+.quick__tips:hover { color: var(--title); }
+.quick__tips:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* The New badge (QUICK-SETTINGS.md §8): an N in a disc on a square's top right corner
+   until its first press. Black on a light theme, white on a dark one, the letter the
+   other; the ring is the panel's own surface, so the disc stands off the square's border. */
+/* The same disc also sits inline after the name of a new Settings row or section
+   (`.new-badge`, §10), in the Settings card and in the panel alike. */
+.quick__logo { position: relative; }
+.quick__logo[data-new]::after, .new-badge {
+  box-sizing: border-box; width: var(--new-badge-size); height: var(--new-badge-size);
+  place-items: center;
+  border-radius: 50%;
+  background: var(--new-badge); color: var(--new-badge-ink);
+  font-family: var(--font-body); font-size: var(--new-badge-fs); font-weight: 600; line-height: 1;
+  letter-spacing: 0; text-transform: none; text-decoration: none;
+  pointer-events: none;
+}
+.quick__logo[data-new]::after {
+  content: "N";
+  position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
+  display: grid;
+  box-shadow: 0 0 0 var(--new-badge-ring) var(--menu-surface);
+}
+.new-badge {
+  display: inline-grid; flex: 0 0 auto;
+  margin-left: var(--space-1);
+  vertical-align: middle;
+}
 
 /* ── Settings menu + flyout ─────────────────────────────────── */
 .menu {
@@ -3077,6 +3172,8 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 .search__recent-pin[aria-pressed="true"] { color: var(--title); }
 .search__recent-pin[aria-pressed="true"] svg path:first-child { fill: currentColor; }
 .search__recent-term:hover, .search__recent-pin:hover { background: var(--surface-hover); color: var(--title); }
+/* The right-clicked Recent pill while its menu is open: the same outline the result rows wear. */
+.search__recent.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 
 @media (prefers-reduced-motion: reduce) {
   .spane { transition: none; }

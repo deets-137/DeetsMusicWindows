@@ -17,7 +17,7 @@ import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
-import { setting, setSetting, onSettingsChange, onOwnedSettingChange, DEFAULTS, type Settings } from "./settings-store";
+import { setting, setSetting, onSettingsChange, onOwnedSettingChange, isFreshInstall, DEFAULTS, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, applySkin, defaultSkin, type SkinName } from "./skin";
 import { applyTheme, defaultTheme, type ThemeName } from "./theme";
 import { withAppearanceTransition } from "./appearance";
@@ -137,6 +137,43 @@ interface RangeRow {
 }
 type Row = (ToggleRow | ChoiceRow | SplitRow | HtmlRow | RangeRow | HeadRow) & { when?: () => boolean };
 const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
+
+// ── New marks (QUICK-SETTINGS.md §10): a row or a section that is new wears the N badge
+//    beside its name, in the Settings card and in the quick panel alike, until the pointer
+//    first rests on it. To flag a new setting, add one line here, and never take it out:
+//    a mark stays until THIS user clears it (his call 2026-09-20). A brand-new install
+//    starts with every mark in this list seen (`seedNewMarks`) — nothing here is new to
+//    them. The seen marks share the quick panel's `quickSeen` list, as "row:<id>" and
+//    "sec:<title>". ──
+const NEW_MARKS: { section: string; row?: string }[] = [
+  { section: "Friends" }, // Friends, built 2026-09-20
+  { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
+];
+const markKey = (m: { section: string; row?: string }) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
+const unseen = (key: string) => !setting("quickSeen").includes(key);
+const newRow = (id: string) => NEW_MARKS.some((m) => m.row === id && unseen(`row:${id}`));
+const newSection = (title: string) => NEW_MARKS.some((m) => !m.row && m.section === title && unseen(`sec:${title}`));
+/** The N itself, inline after a name. `key` is what the first hover marks seen. */
+const newBadge = (key: string) => `<span class="new-badge" data-new-mark="${esc(key)}" aria-label="New">N</span>`;
+/** Mark one New badge seen (the first hover on its row or heading). */
+function seeNew(key: string): void {
+  const seen = setting("quickSeen");
+  if (!seen.includes(key)) setSetting("quickSeen", [...seen, key]);
+}
+/** On a brand-new install, mark every New mark that exists today seen: a setting that was
+ *  there before the user arrived is not new to them. A mark added in a later version is. */
+export function seedNewMarks(): void {
+  if (!isFreshInstall()) return;
+  const seen = setting("quickSeen");
+  const add = NEW_MARKS.map(markKey).filter((k) => !seen.includes(k));
+  if (add.length) setSetting("quickSeen", [...seen, ...add]);
+}
+/** Does anything in these parts still wear a New badge? (a quick panel square shows its own N then) */
+export function unseenNewIn(parts: SettingsPart[]): boolean {
+  return NEW_MARKS.some(
+    (m) => unseen(markKey(m)) && parts.some((p) => p.title === m.section && (!m.row ? !p.rows : !p.rows || p.rows.includes(m.row))),
+  );
+}
 /** The header's count and the Compass index both mean settings, not sub-headings. */
 const settingRows = (rows: Row[]): Row[] => shown(rows).filter((r) => r.kind !== "head");
 const headRow = (id: string, label: string): HeadRow => ({ kind: "head", id, label });
@@ -353,22 +390,38 @@ export function settingsRows(): SettingEntry[] {
   return entries;
 }
 
-function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts): CardInstance & { sections: Section[] } {
+/** One section of the quick panel (QUICK-SETTINGS.md): a Settings section by title, whole,
+ *  or only the rows `rows` names (then without its tail, which speaks for the whole). */
+export interface SettingsPart {
+  title: string;
+  rows?: string[];
+}
+
+/** The quick panel's rows (QUICK-SETTINGS.md §3): the Settings card's own sections, drawn by
+ *  the same code into `host`, so a row there and a row here can never disagree. No header,
+ *  no search, no folds, no section move, and it never answers a row request (the card does). */
+export function mountSettingsParts(host: HTMLElement, parts: SettingsPart[]): CardInstance {
+  return mountSettings(host, false, undefined, parts);
+}
+
+function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, parts?: SettingsPart[]): CardInstance & { sections: Section[] } {
   // The search pill (MOVABLE-ROWS.md §10, fork S1 = 1A): the header idiom every other
   // card has, and the same slide-down field under it. It reads `settingsRows()` — the
   // Compass's own index — so there is one list of settings, not two.
-  host.innerHTML =
-    `<header class="panel__head"><h2 class="panel__title">Settings</h2>` +
-    `<button class="panel__action" type="button" data-set-search aria-expanded="false" aria-label="Search" title="Finds a setting by name">` +
-    `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg></button></header>` +
-    `<div class="lib-searchbar" data-frames="settings-search"><div class="lib-searchbar__inner">` +
-    `<label class="lib-search"><svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>` +
-    `<input class="lib-search__input" data-set-q type="search" placeholder="Search settings…" autocomplete="off" spellcheck="false" /></label>` +
-    `</div></div><div class="panel__body set"></div>`;
-  const body = host.querySelector<HTMLElement>(".panel__body")!;
-  const searchBar = host.querySelector<HTMLElement>(".lib-searchbar")!;
-  const searchBtn = host.querySelector<HTMLButtonElement>("[data-set-search]")!;
-  const searchInput = host.querySelector<HTMLInputElement>("[data-set-q]")!;
+  host.innerHTML = parts
+    ? `<div class="set quick__rows"></div>`
+    : `<header class="panel__head"><h2 class="panel__title">Settings</h2>` +
+      `<button class="panel__action" type="button" data-set-search aria-expanded="false" aria-label="Search" title="Finds a setting by name">` +
+      `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg></button></header>` +
+      `<div class="lib-searchbar" data-frames="settings-search"><div class="lib-searchbar__inner">` +
+      `<label class="lib-search"><svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>` +
+      `<input class="lib-search__input" data-set-q type="search" placeholder="Search settings…" autocomplete="off" spellcheck="false" /></label>` +
+      `</div></div><div class="panel__body set"></div>`;
+  const body = host.querySelector<HTMLElement>(".set")!;
+  // The quick panel has no search: detached stand-ins keep the wiring below unchanged.
+  const searchBar = host.querySelector<HTMLElement>(".lib-searchbar") ?? document.createElement("div");
+  const searchBtn = host.querySelector<HTMLButtonElement>("[data-set-search]") ?? document.createElement("button");
+  const searchInput = host.querySelector<HTMLInputElement>("[data-set-q]") ?? document.createElement("input");
   /** The live query. A filter, so while it holds text no section can be moved (§10.5). */
   let query = "";
   let searchOpen = false;
@@ -1941,7 +1994,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     if (r.kind === "head") return `<h4 class="set__sub-head">${esc(r.label)}</h4>`;
     const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
-    const label = `<span class="set__label">${esc(r.label)}</span>`;
+    const label = `<span class="set__label">${esc(r.label)}${newRow(r.id) ? newBadge(`row:${r.id}`) : ""}</span>`;
     const fx = flashOf(r.id);
     const mark = ` data-set-row="${r.id}"${fx.style}`;
     if (r.kind === "range") {
@@ -2106,7 +2159,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     return (
       `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-fold="${esc(s.title)}" aria-expanded="${open}"${MOVE_HINT}>` +
       `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
-      `<span>${esc(s.title)}</span>${count ? `<span class="lib-shelf__count">${count}</span>` : ""}</button></h3>`
+      `<span>${esc(s.title)}</span>${newSection(s.title) ? newBadge(`sec:${s.title}`) : ""}` +
+      `${count ? `<span class="lib-shelf__count">${count}</span>` : ""}</button></h3>`
     );
   };
 
@@ -2118,6 +2172,24 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     const caret = field ? [active!.selectionStart ?? 0, active!.selectionEnd ?? 0] : null;
     const rangeFocus = active && body.contains(active) ? active.dataset.range : undefined; // a key step keeps focus
     const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
+    if (parts) {
+      // The quick panel: each part under a plain sub-heading, always open, in the order
+      // the panel asked for. A part with nothing to show is left out, heading and all.
+      body.innerHTML = parts
+        .map((p) => {
+          const s = sections.find((x) => x.title === p.title);
+          if (!s) return "";
+          // A sub-heading that repeats the section's name (Window's first) would read twice.
+          const rows = shown(s.rows).filter(
+            (r) => (!p.rows || p.rows.includes(r.id)) && !(r.kind === "head" && r.label === s.title),
+          );
+          const inside = rows.map(rowHTML).join("") + (p.rows ? "" : tailOf(s));
+          if (!inside) return "";
+          const fresh = !p.rows && newSection(s.title) ? newBadge(`sec:${s.title}`) : "";
+          return `<section class="set__section" data-sec="${esc(s.title)}"><h4 class="set__sub-head">${esc(s.title)}${fresh}</h4>${inside}</section>`;
+        })
+        .join("");
+    } else {
     // The sections this render draws, in the user's own order (MOVABLE-ROWS.md §2): the
     // rank list sorts them, and a section it does not name keeps the built-in place and
     // falls to the end (fork 3A). The array literal is the built-in order.
@@ -2139,6 +2211,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
         return `<section class="set__section" data-sec="${esc(s.title)}" data-idx="${i}">${headHTML(s, count)}${inside}</section>`;
       })
       .join("");
+    }
     if (field && caret) {
       const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(
         `[data-report="${field}"], [data-sotd="${field}"]`,
@@ -2252,6 +2325,16 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       const r = byId(toggle.dataset.row);
       if (r?.kind === "toggle") r.set(!r.get());
     }
+  });
+
+  // A New badge goes the first time the pointer rests on its row, or anywhere in its
+  // section (QUICK-SETTINGS.md §10, his call: hover, not a press). Every open copy redraws.
+  body.addEventListener("mouseover", (e) => {
+    const t = e.target as HTMLElement;
+    const row = t.closest<HTMLElement>("[data-set-row]")?.querySelector<HTMLElement>("[data-new-mark]")?.dataset.newMark;
+    if (row) seeNew(row);
+    const sec = t.closest<HTMLElement>(".set__section")?.querySelector<HTMLElement>(":scope > .set__head [data-new-mark], :scope > .set__sub-head [data-new-mark]")?.dataset.newMark;
+    if (sec) seeNew(sec);
   });
 
   // My reports › right-click: the row's buttons, plus Clear (this PC only; the post stays).
@@ -2422,6 +2505,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     body.querySelector<HTMLElement>(`[data-set-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
   };
   const takeRequest = () => {
+    if (parts) return; // a toast's [Settings] opens the card; the quick panel never takes it
     const id = takeSettingRequest();
     if (id) focusRow(id);
   };
@@ -2437,7 +2521,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
     label: "settings",
     rowAt: (target) => {
       // Not while the field holds text: a filtered list has no order to save (§10.5).
-      if (query || !sectionsMovable()) return null;
+      if (parts || query || !sectionsMovable()) return null; // the quick panel has no order to move
       if (!target.closest("[data-fold]")) return null; // the header only, never a row
       const el = target.closest<HTMLElement>(".set__section");
       const idx = el?.dataset.idx;
@@ -2513,7 +2597,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts):
       closeSearch();
     }
   });
-  const unsubFind = registerFinder(host, openSearch);
+  const unsubFind = parts ? () => {} : registerFinder(host, openSearch);
 
   // Another card's move, or a Reset, repaints this one.
   const unsubOrder = onRowOrderChange(() => { if (alive) render(); });

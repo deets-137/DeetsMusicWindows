@@ -80,6 +80,11 @@ function pushRecent(term: string): void {
   const r = [term, ...loadRecents().filter((t) => t !== term)].slice(0, RECENTS_CAP);
   try { localStorage.setItem(RECENTS_KEY, JSON.stringify(r)); } catch { /* session-only */ }
 }
+/** Takes one term out of the ring (a right-click on a Recent pill). */
+function removeRecent(term: string): void {
+  const r = loadRecents().filter((t) => t !== term);
+  try { localStorage.setItem(RECENTS_KEY, JSON.stringify(r)); } catch { /* session-only */ }
+}
 interface Pin { term: string; types: SearchType[] }
 function loadPins(): Pin[] {
   try {
@@ -1011,6 +1016,23 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   });
   root.addEventListener("contextmenu", (e) => {
     const t = e.target as HTMLElement;
+    // A term pill: a Recent one offers Pin + Remove from Recent, a pinned one Unpin. The
+    // whole pill wears the outline, both halves.
+    const pill = t.closest<HTMLElement>(".search__recent");
+    if (pill) {
+      const term = pill.querySelector<HTMLElement>("[data-recent]")?.dataset.recent;
+      if (!term) return;
+      e.preventDefault();
+      pill.classList.add("is-context");
+      const items: MenuItem[] = pill.classList.contains("is-pinned")
+        ? [{ label: "Unpin", run: () => togglePin(term) }]
+        : [
+            { label: "Pin", run: () => togglePin(term) },
+            { label: "Remove from Recent", run: () => { removeRecent(term); renderEmpty(); } },
+          ];
+      openContextMenu(e.clientX, e.clientY, items, () => pill.classList.remove("is-context"));
+      return;
+    }
     const song = t.closest<HTMLElement>("[data-song]");
     if (song) {
       const track = songsById.get(song.dataset.song!);

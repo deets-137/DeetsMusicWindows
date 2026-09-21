@@ -50,7 +50,7 @@ import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
-import { expandCard, isGrownCard, collapseGrow } from "./card-grow";
+import { initQuickPanel } from "./quick-panel";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -125,29 +125,14 @@ window.addEventListener("DOMContentLoaded", () => {
     close();
   });
 
-  // ── The cog (title bar, right of the Compass) → Settings, as big as the window allows. ──
-  // Someone who presses the cog wants Settings, so the card does not arrive at card size:
-  // it fills all four in Max and opens over its neighbor in Midi (expandCard). A second
-  // press collapses it again. In Mini nothing can grow, so the card simply arrives.
+  // ── The cog (title bar, right of the Compass) → the quick panel (QUICK-SETTINGS.md). ──
+  // Its old job, Settings as big as the window allows, is the panel's "All settings"
+  // button. Before the Account row below: the panel holds its second copy.
   //
   // The angle only grows: every press adds --cog-step and nothing resets it, so the cog
   // always turns the same way, whether it is opening or collapsing. The glyph has six
   // teeth, so each step ends on an identical tooth. The CSS transition does the motion.
-  const cog = document.getElementById("cog-open");
-  if (cog) {
-    let cogTurns = 0;
-    cog.addEventListener("click", () => {
-      cogTurns += 1;
-      cog.style.setProperty("--cog-angle", `calc(var(--cog-step) * ${cogTurns})`);
-      close(); // the title menu, if the pointer opened it on the way past
-      if (isGrownCard("settings")) {
-        void collapseGrow("cog");
-        return;
-      }
-      requestCard("settings");
-      void expandCard("settings", "cog");
-    });
-  }
+  initQuickPanel();
 
   // Theme choices — the launch animation (appearance.ts); the menu closes under the
   // opaque cover, so the rise never shows it half-closed.
@@ -259,9 +244,11 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // ── Account (Apple Music — loopback browser auth) ────────────
-  const acctStatus = document.getElementById("account-status");
-  const acctBtn = document.getElementById("account-action");
-  const acctIcon = document.getElementById("account-icon");
+  // Two copies of the row: the title menu › Account and the quick panel's Apple Music part
+  // (QUICK-SETTINGS.md §4). Both are painted and both answer a click, so they cannot differ.
+  const acctStatuses = [...document.querySelectorAll<HTMLElement>("[data-acct-status]")];
+  const acctBtns = [...document.querySelectorAll<HTMLElement>("[data-acct-btn]")];
+  const acctIcons = [...document.querySelectorAll<HTMLElement>("[data-acct-icon]")];
 
   const ICON_CHECK =
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -273,12 +260,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // `fallback`: the hosted sign-in is waiting in the browser; offer the loopback page
   // under the note (DATA-ARCHITECTURE §2a fork 5 — a Worker outage or a blocked domain).
   const setAccount = (state: AcctState, note?: string, fallback?: () => void) => {
-    if (acctIcon) acctIcon.innerHTML = state === "in" ? ICON_CHECK : state === "out" ? ICON_X : ICON_SPINNER;
-    if (acctBtn) {
+    for (const acctIcon of acctIcons) acctIcon.innerHTML = state === "in" ? ICON_CHECK : state === "out" ? ICON_X : ICON_SPINNER;
+    for (const acctBtn of acctBtns) {
       acctBtn.dataset.state = state === "loading" ? acctBtn.dataset.state ?? "out" : state;
       acctBtn.toggleAttribute("disabled", state === "loading");
     }
-    if (acctStatus) {
+    for (const acctStatus of acctStatuses) {
       acctStatus.textContent =
         note ?? (state === "in" ? "Connected" : state === "out" ? "Not connected" : "Working…");
       if (fallback) {
@@ -340,7 +327,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const mine = ++signInSeq;
     signInPending = true;
     setAccount("loading", "Continue in your browser, or click again to cancel.", local ? undefined : () => void signIn(true));
-    acctBtn?.removeAttribute("disabled"); // the second click cancels (below)
+    for (const b of acctBtns) b.removeAttribute("disabled"); // the second click cancels (below)
     try {
       await connect(local);
       if (mine !== signInSeq) return;
@@ -387,11 +374,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  acctBtn?.addEventListener("click", async () => {
-    if (signInPending) return void cancelPending();
-    const signedIn = (await isConnected()) && acctTrouble !== "signin";
-    void (signedIn ? signOut() : signIn());
-  });
+  for (const acctBtn of acctBtns)
+    acctBtn.addEventListener("click", async () => {
+      if (signInPending) return void cancelPending();
+      const signedIn = (await isConnected()) && acctTrouble !== "signin";
+      void (signedIn ? signOut() : signIn());
+    });
   window.addEventListener("deets:sign-in", () => void signIn()); // the "Sign in" toast button
   void paintAccount();
   initLastfm(); // the flyout's second account (LASTFM.md §4)

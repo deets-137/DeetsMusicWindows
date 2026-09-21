@@ -343,6 +343,10 @@ export interface Settings {
    *  once-key (owner's call 2026-09-18): it survives a localStorage clear, the agent
    *  can read it, and Settings › Tips offers the walk again by writing 1 here. */
   onboardingStep: number;
+  /** The quick panel's icons already pressed (QUICK-SETTINGS.md §8), by `data-quick` id
+   *  ("all" = the panel's cog). An icon not listed wears the New badge. A settings key for
+   *  the same reasons as onboardingStep; Settings › Tips › Show the tour again clears it. */
+  quickSeen: string[];
   // ── connections ──
   /** A settings change from an agent (AGENT.md §6): apply it, ask in the window each time,
    *  or refuse. Agents can never change this one. agent-settings.ts reads it. */
@@ -484,6 +488,7 @@ export const DEFAULTS: Settings = {
   rewindCard: false,
   rewindAutoShown: false,
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
+  quickSeen: [], // user's call 2026-09-20: every icon starts New, on an upgrade too — the panel is new to everyone
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
   updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
   updateSkip: "",
@@ -564,9 +569,17 @@ function load(): Settings {
  * is written: every other absent key must stay absent, so a later change to a DEFAULT still
  * reaches them.
  */
+let freshInstall = false;
+/** True only on the launch that found a brand-new install (the answer above, decided now).
+ *  The New marks read it: a setting that already exists is not new to a new user. */
+export function isFreshInstall(): boolean {
+  return freshInstall;
+}
+
 function seedOnboarding(stored: Partial<Settings>): void {
   if (stored.onboardingStep !== undefined) return;
   stored.onboardingStep = localStorage.getItem("deets.theme") === null ? 1 : 0;
+  freshInstall = stored.onboardingStep === 1;
   try {
     const raw = localStorage.getItem(KEY);
     const blob = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};

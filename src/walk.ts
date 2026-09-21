@@ -174,6 +174,9 @@ export async function initWalk(): Promise<void> {
 export async function restartWalk(): Promise<void> {
   if (live) return;
   setSetting("onboardingStep", 1);
+  // The quick panel's square badges come back too (QUICK-SETTINGS.md §8). A new setting's
+  // mark ("row:" / "sec:", §10) does not: the tour is about the app, not about what is new.
+  setSetting("quickSeen", setting("quickSeen").filter((k) => k.startsWith("row:") || k.startsWith("sec:")));
   run(await past1(1));
 }
 
