@@ -79,6 +79,7 @@ old installs' Guide button opens.
 - `ONBOARDING.md` — the hover-hint ledger (every `title`), right-click coverage, Settings ›
   Tips, the first-run walk (`npm run dev:fresh` to be a first-time user).
 - `QUICK-SETTINGS.md` — the cog's quick panel and the New badges (`NEW_MARKS`).
+- `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with mock tracks.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
