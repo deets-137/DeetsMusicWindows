@@ -31,7 +31,7 @@ it to force a fresh sign-in.
 
 **A release build never uses a local key** (changed 2026-09-13). It always fetches its
 developer token from the mint (`music-api.deets.solutions/token`,
-[RELEASE.md](../../docs/RELEASE.md) §7) and caches it in `<app_data>/developer-token.json` —
+[RELEASE.md](../../docs/ops/RELEASE.md) §7) and caches it in `<app_data>/developer-token.json` —
 exactly like a stranger's install. The repo path below is compiled out of release builds,
 and `npm run release` fails if the exe still contains it (`scripts/release-check.mjs`).
 

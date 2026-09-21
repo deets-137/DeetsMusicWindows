@@ -9,9 +9,9 @@ updated: 2026-09-14
 > Turn the weather outside into what's playing. Our Apple key has **WeatherKit** access, so we
 > can read the local forecast and shape a **station** (endless, evolving) or a **library queue**
 > (finite, snapshot) from it. Architecturally this is **not a new playback path** — a weather
-> station is an [own-station](../STATIONS.md#4c-our-own-station-engine) recipe whose `rules` come
-> from a **weather snapshot**. Read with [STATIONS.md](../STATIONS.md) (the engine this rides),
-> [DATA-ARCHITECTURE.md](../DATA-ARCHITECTURE.md) (provider/JWT/cache), [ALBUM-COLOR.md](../ALBUM-COLOR.md)
+> station is an [own-station](../features/STATIONS.md#4c-our-own-station-engine) recipe whose `rules` come
+> from a **weather snapshot**. Read with [STATIONS.md](../features/STATIONS.md) (the engine this rides),
+> [DATA-ARCHITECTURE.md](../architecture/DATA-ARCHITECTURE.md) (provider/JWT/cache), [ALBUM-COLOR.md](../features/ALBUM-COLOR.md)
 > (an optional UI tie-in). Status: ✅ decided · 🔵 open · ⬜ later.
 
 ---
@@ -101,7 +101,7 @@ later ([FUTURE-SETTINGS](../FUTURE-SETTINGS.md) candidate).
 
 > **Reality check on available data (important, don't over-promise).** We have **BPM** (Deezer),
 > **genre** (`Track.genreNames`), **release era**, and **play-stats** — but **no energy / valence
-> / mood vectors** (Deezer doesn't give them; [STATIONS §4a](../STATIONS.md)). So the honest mapping
+> / mood vectors** (Deezer doesn't give them; [STATIONS §4a](../features/STATIONS.md)). So the honest mapping
 > today is **genre-set + BPM band + era + popularity/play-stats** — **genre is the workhorse**,
 > BPM adds tempo shaping. Richer mood (energy/valence, harmonic key) needs local
 > **preview-analysis** embeddings — the same upgrade the stations spec defers. Design the mapping
@@ -146,7 +146,7 @@ later behind a setting. Persist the choice (`deets.weather.location`).
 
 - **Entry point:** a **Weather** station in the Stations browser (its own tile / under *My
   Stations*), whose header shows the live condition glyph + temp — e.g. **"☔ 52° · Rainy-day
-  mix."** Picking it starts radio mode; the [radio-mode display](../STATIONS.md#3-the-station-cards)
+  mix."** Picking it starts radio mode; the [radio-mode display](../features/STATIONS.md#3-the-station-cards)
   shows the weather context instead of a generic station name.
 - **Attribution (REQUIRED, compliance):** displaying Apple weather data obligates us to show the
   **Apple Weather** trademark/logo **and** the legal link from the **Attribution API** (and, if we
@@ -155,7 +155,7 @@ later behind a setting. Persist the choice (`deets.weather.location`).
   ([attribution](https://developer.apple.com/documentation/weatherkit/weatherservice/attribution),
   [data sources](https://developer.apple.com/weatherkit/data-source-attribution/))
 - **Optional flourish** ⬜ — let weather tint the UI: a rainy palette, or feed the condition into
-  the [album-color aurora](../ALBUM-COLOR.md)'s strength/hue. Tempting but scope-creep; note and defer.
+  the [album-color aurora](../features/ALBUM-COLOR.md)'s strength/hue. Tempting but scope-creep; note and defer.
 
 ---
 

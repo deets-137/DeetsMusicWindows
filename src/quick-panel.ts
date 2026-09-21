@@ -1,4 +1,4 @@
-// The quick panel (docs/QUICK-SETTINGS.md): the cog's panel. A Tips line, then one row of
+// The quick panel (docs/features/QUICK-SETTINGS.md): the cog's panel. A Tips line, then one row of
 // squares: Apple Music and Discord, five app icons sorted by how many rows they hold, and a
 // right cluster (Updates and bugs, Reset, the cog = All settings). A press on a square makes
 // the panel taller and shows its settings; a press on the same square shuts them again, a

@@ -1,4 +1,4 @@
-// `node scripts/release-check.mjs` — the release gate (docs/RELEASE.md §1a, "Stranger
+// `node scripts/release-check.mjs` — the release gate (docs/ops/RELEASE.md §1a, "Stranger
 // parity"). Runs inside `npm run release`, after `tauri build` and before the archive step,
 // and FAILS the release when the built exe could behave differently on the machine that
 // built it than on a stranger's PC.
@@ -18,7 +18,7 @@
 //     installer has its signature.
 //  4. Authenticode: a valid, timestamped publisher signature.
 //  5. No dev telemetry in the shipped JS (a stray VITE_PERF would ship a rAF loop).
-//  6. docs/TOKENS.md is current.
+//  6. docs/architecture/TOKENS.md is current.
 //  7. The Last.fm API key is built in (LASTFM.md §2).
 //  8. The build key is built in (RELEASE.md §7a).
 //  9. No synchronous `#[tauri::command]` blocks the UI thread (FRIENDS.md §8.11). Added
@@ -125,7 +125,7 @@ if (signed.length) {
 }
 
 // ── 6. The token catalog is current ─────────────────────────────────────────
-// docs/TOKENS.md is generated from the three token files (scripts/tokens.mjs). A stale copy
+// docs/architecture/TOKENS.md is generated from the three token files (scripts/tokens.mjs). A stale copy
 // is the kind of doc drift the catalog exists to end, so the gate refuses it.
 {
   const { render, TARGET } = await import("./tokens.mjs");
@@ -134,7 +134,7 @@ if (signed.length) {
   if (have !== want) failures.push(`${TARGET} is stale — run npm run tokens and commit it`);
 }
 
-// ── 7. Last.fm is in the build (docs/LASTFM.md §2) ───────────────────────────────
+// ── 7. Last.fm is in the build (docs/integrations/LASTFM.md §2) ───────────────────────────────
 // build.rs builds the key in from Deets' Secrets; with no key the build still succeeds and the
 // Account row says "Not in this build". The gate refuses to ship that. The key is not printed.
 {
@@ -149,7 +149,7 @@ if (signed.length) {
   else if (existsSync(exe) && !readFileSync(exe).includes(Buffer.from(key))) failures.push("the release exe has no Last.fm API key — rebuild after filling in lastfm.json (LASTFM.md §2)");
 }
 
-// ── 8. The build key is in the build (docs/RELEASE.md §7a) ──────────────────────
+// ── 8. The build key is in the build (docs/ops/RELEASE.md §7a) ──────────────────────
 // build.rs builds it in from Deets' Secrets; without it the app still runs on a local .p8, but a
 // public install would be refused by the mint once the worker's check is on. The key is not printed.
 {
@@ -164,7 +164,7 @@ if (signed.length) {
   else if (existsSync(exe) && !readFileSync(exe).includes(Buffer.from(key))) failures.push("the release exe has no build key — rebuild with deetsmusic-build-key.txt in place (RELEASE.md §7a)");
 }
 
-// ── 9. No synchronous command may block the UI thread (docs/FRIENDS.md §8.11) ────
+// ── 9. No synchronous command may block the UI thread (docs/integrations/FRIENDS.md §8.11) ────
 // A synchronous `#[tauri::command]` runs on the UI thread, because WebView2 delivers the IPC
 // message there. Anything in it that waits — a process, a socket, a pipe, a channel, a sleep
 // — is a wait the window cannot paint through. That is how 0.12.0 froze: `presence_set` was

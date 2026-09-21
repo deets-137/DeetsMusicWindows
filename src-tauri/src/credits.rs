@@ -1,4 +1,4 @@
-//! Writer credits, collected from every Apple song read (docs/CREDITS.md).
+//! Writer credits, collected from every Apple song read (docs/features/CREDITS.md).
 //!
 //! Apple's public API gives `composerName` on a song: the writers as ONE flat
 //! string, with no roles ("JENNIE, Daniel Aged, Deb Never, Romil Hemnani, Jelli &
@@ -8,7 +8,7 @@
 //!
 //! This module writes what those reads carry into one table, and reads it back
 //! for `credits_stats`. It decides nothing. The producer-web idea it feeds
-//! (docs/CREDITS.md §5) is designed, not built: this is the data pass that has to
+//! (docs/features/CREDITS.md §5) is designed, not built: this is the data pass that has to
 //! run first, so the decision is made on real coverage instead of a guess.
 //!
 //! One row per catalog song we have seen. `composer` is NULL when Apple sent

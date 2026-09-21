@@ -39,7 +39,7 @@ const MINI_CEIL = 460;
 const MIDI_CEIL = 820;
 const HYST = 40; // must drag this far past the midi/max threshold before the surface flips
 const MINI_HYST = 5; // the mini edge is tight on purpose: in below 455, out above 465
-// Height matters for max alone (2026-09-17, docs/STAGE-COLUMN.md §5). Max's stage column needs
+// Height matters for max alone (2026-09-17, docs/cards/STAGE-COLUMN.md §5). Max's stage column needs
 // height for the square cover AND the Queue's rows; below MAX_FLOOR_H it cannot hold both, and
 // a short-and-wide window is a Midi, not a Max. So the band reads BOTH sides: a Max dragged
 // under this becomes Midi in place, and a Midi only becomes Max when it is wide enough AND
@@ -53,7 +53,7 @@ export const MIN_SIZES: Record<SizeSlot, { w: number; h: number }> = {
   mini: { w: 385, h: 550 },
   player: { w: 404, h: 550 },
   midi: { w: 495, h: 670 },
-  // max: 750 tall is the owner's floor (2026-09-17, docs/STAGE-COLUMN.md §5). Below it the
+  // max: 750 tall is the owner's floor (2026-09-17, docs/cards/STAGE-COLUMN.md §5). Below it the
   // stage column cannot hold a fair cover AND the Queue's rows at the same time: the cover
   // falls to its --np-cover floor and the Queue starts giving up rows.
   max: { w: 495, h: 750 },

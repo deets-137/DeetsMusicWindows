@@ -1,4 +1,4 @@
-//! Discord Rich Presence — the local pipe, and nothing else (docs/FRIENDS.md §8).
+//! Discord Rich Presence — the local pipe, and nothing else (docs/integrations/FRIENDS.md §8).
 //!
 //! The Discord desktop client listens on a named pipe, `\\.\pipe\discord-ipc-N`. A client
 //! opens it, sends a handshake carrying an **application id**, and then sends an activity
@@ -256,7 +256,7 @@ enum Job {
 
 /// The only shared state left. It is locked to clone the sender and for nothing else, so
 /// no lock is ever held across I/O (§8.11 fault 3). Poison is stepped over the way
-/// `Db::lock` steps over it (docs/DB-HEALTH.md): a panic elsewhere must not take the card
+/// `Db::lock` steps over it (docs/ops/DB-HEALTH.md): a panic elsewhere must not take the card
 /// down with it.
 static TX: Mutex<Option<SyncSender<(Job, SyncSender<bool>)>>> = Mutex::new(None);
 

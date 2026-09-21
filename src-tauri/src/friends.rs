@@ -1,4 +1,4 @@
-//! Friends — who you are, and who you have added (docs/FRIENDS.md §2, §3).
+//! Friends — who you are, and who you have added (docs/integrations/FRIENDS.md §2, §3).
 //!
 //! This file is the **bottom layer** the rest of Friends stands on, and it talks to no
 //! network at all. It does three things:

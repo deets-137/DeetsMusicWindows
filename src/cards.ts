@@ -1,5 +1,5 @@
 // The card registry — the foundation of the swappable-slot system (see
-// docs/SURFACES-AND-CARDS.md). Every card is a self-contained, mountable module: it
+// docs/architecture/SURFACES-AND-CARDS.md). Every card is a self-contained, mountable module: it
 // builds its own markup into a host element and returns a handle that tears it down
 // (so a slot can swap cards without leaking listeners). The layout manager (Phase 2)
 // mounts cards into slots from a persisted assignment; for now main.ts mounts the same

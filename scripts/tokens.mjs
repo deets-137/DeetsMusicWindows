@@ -1,4 +1,4 @@
-// `npm run tokens` — writes docs/TOKENS.md from the three token files, so the catalog can
+// `npm run tokens` — writes docs/architecture/TOKENS.md from the three token files, so the catalog can
 // never drift from the code: palette.css (the paints), themes.css (the color roles) and the
 // `[data-skin]` base block of skin.css (every skin token, its base value, its comment, and
 // which skins override it). The release check (release-check.mjs §6) fails when the file on
@@ -156,7 +156,7 @@ export function render() {
   return out.join("\n");
 }
 
-export const TARGET = "docs/TOKENS.md";
+export const TARGET = "docs/architecture/TOKENS.md";
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const text = render();

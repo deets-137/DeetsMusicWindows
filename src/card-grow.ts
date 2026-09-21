@@ -1,4 +1,4 @@
-// Card grow (docs/CARD-GROW.md) — a content card takes more space for a while. It opens over
+// Card grow (docs/cards/CARD-GROW.md) — a content card takes more space for a while. It opens over
 // its neighbor (Grow: wide or tall) or over all four content cards in Max (Fill). The bento
 // grid does not change: the grown panel gets a span and a higher z-index and the covered
 // panels stay mounted under it, so a Collapse shows exactly what was there.
@@ -30,7 +30,7 @@ import { TELEMETRY } from "./telemetry-on";
 
 /** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
  *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
- *  (docs/STAGE-COLUMN.md §7). */
+ *  (docs/cards/STAGE-COLUMN.md §7). */
 export type Slot = "left" | "right" | "c" | "d" | "np" | "queue";
 /** The stage column's slots: they grow inside their own column and never offer Fill. */
 const STAGE: Slot[] = ["np", "queue"];

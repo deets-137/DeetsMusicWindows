@@ -1,4 +1,4 @@
-//! Is the database still writable? (docs/DB-HEALTH.md)
+//! Is the database still writable? (docs/ops/DB-HEALTH.md)
 //!
 //! The app had no answer to that question. A failed write was warned about in 73 places,
 //! swallowed in 4, and handed to the front end in 14 — where it was mostly logged and

@@ -1,4 +1,4 @@
-//! The outbox (docs/DeetsOTD.md §8.2, §8.5) — when a pick is sent, and what happens when it
+//! The outbox (docs/integrations/DeetsOTD.md §8.2, §8.5) — when a pick is sent, and what happens when it
 //! could not be.
 //!
 //! Three modes, one rule each:

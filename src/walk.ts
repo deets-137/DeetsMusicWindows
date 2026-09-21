@@ -1,4 +1,4 @@
-// The first-run walk (docs/ONBOARDING.md §4) — how the app explains itself to a stranger.
+// The first-run walk (docs/features/ONBOARDING.md §4) — how the app explains itself to a stranger.
 //
 // Deets (32×64) and Happy (32×32), the sprites from deets.solutions, travel to the control
 // each step names, stand under it, and a speech card holds the sentence. Five steps, decided

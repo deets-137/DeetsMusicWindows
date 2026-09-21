@@ -1,0 +1,351 @@
+---
+status: shipped
+shipped_in: 0.4.3
+desk_test: none
+sources: [src/search-card.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts]
+updated: 2026-09-20
+---
+# DeetsMusic — Search card (catalog search)
+
+> A midi content card that searches **Apple Music's catalog** — songs · albums · playlists ·
+> stations (music videos skipped) — with a search bar and right-click **queue** actions. This is
+> roadmap **#4**. It **reuses the [collection-card engine](../architecture/UI-ARCHITECTURE.md#4a-the-collection-card-navigable-browser-engine)**
+> (drill-in, play-on-click, right-click menus, pane-slide nav come for free) — the one new muscle
+> is a search bar that drives a **server query** instead of a client-side filter. Siblings:
+> [STATIONS.md](STATIONS.md) (station results + radio playback), [PLAYLISTS.md](PLAYLISTS.md)
+> (playlist model), [QUEUE.md](QUEUE.md) (the enqueue path), [DATA-ARCHITECTURE.md](../architecture/DATA-ARCHITECTURE.md)
+> (provider/model/storefront). Status: ✅ decided · 🔵 open · ⬜ later.
+
+---
+
+## What it is & where it fits
+
+The Library card browses **your synced library** (client-side). The Search card browses the
+**whole catalog** (server-side): the user types, we query Apple, and results normalize into our
+model — **catalog objects**, carrying real art, **previews (30s)**, **ISRC**, and **palette** for
+free (so Search doubles as a lazy-enrichment source; see [roadmap #7](../HANDOFF.md) / the
+[Album-Color](ALBUM-COLOR.md) + [Stations](STATIONS.md) data paths). It's also the **discovery
+surface** that a `scope:"catalog"` [own-station](STATIONS.md#4c-our-own-station-engine) leans on.
+
+> **Search *card* ≠ the Search *pill*.** The Library card's toolbar has a **Search pill** that
+> slides down an inline bar and **filters the already-loaded list** (client-side substring). The
+> Search **card** is different: its bar is **always-on** and drives a **catalog API query**. Don't
+> conflate them — the card does *not* use the client-side Search pill.
+
+---
+
+## Categories ✅
+
+Query these five Apple `types`, presented as a **category selector** (a pill row under the bar):
+
+**Songs · Albums · Artists · Playlists · Stations** — `types=songs,albums,artists,playlists,stations`.
+
+- **Skip music videos** ✅ — never request `music-videos`.
+- **Artists** ✅ — a full category: an artist result **drills into their albums + top songs**, like
+  Library's Artist context (catalog fetch for the artist's releases; the artist **photo** rides the
+  catalog object for free — no separate lookup).
+
+Each category maps to a **collection-card grouping** (exactly how Library switches
+Songs/Albums/Artists), so the selector *is* the engine's grouping control — minimal new code.
+
+---
+
+## The search flow
+
+```
+search bar (always-on)  ──debounce──▶  provider.search(term, types)  ──normalize──▶
+   results per category  ──▶  the engine renders the selected category's grouping
+```
+
+- **Debounced, metered** ✅ (stewardship): fire on a **~300 ms** debounce, **min 1 char**
+  (lowered from 2 on 2026-07-06 — single-letter artists like "Q" are real queries, and the
+  debounce already guards the keystroke storm), and **cancel the in-flight request** when the
+  term changes — no per-keystroke calls. Optionally cache the last few terms in-session.
+- **Storefront** (prerequisite): catalog search is `/v1/catalog/{storefront}/search`. Fetch the
+  user's storefront once (`/v1/me/storefront`) and **cache** it (rarely changes); the provider
+  needs it for every catalog call — Search, and later enrichment, share it.
+- **The API:** `GET /v1/catalog/{sf}/search?term=…&types=songs,albums,artists,playlists,stations&limit=25`.
+  Response is a `results` object keyed by type, each `{ data[], href, next }` for **pagination**
+  (load-more as the user scrolls a category). Normalize in Rust to `Track` / `Album` / `Artist` /
+  `Playlist` / `Station` (playlists/stations per [PLAYLISTS](PLAYLISTS.md) / [STATIONS](STATIONS.md);
+  add the normalized types if absent). **Front-end only ever sees our model**, never raw Apple shapes.
+
+### Presentation ✅ (decided 2026-07-01 — user call, supersedes the pill-row MVP)
+**Blended sectioned results**: a single scrolling body of **vertical sections divided by a
+bar — Artists first, then Songs, then Albums, then Playlists** — each section a **horizontal
+scroller ~2 rows tall** (Apple-Music-mobile style: e.g. songs as h-scrolling columns of 2,
+artists as round thumbs, albums as tiles). A **filter control next to the search bar** lets the
+user narrow which categories are searched (default: all; narrowing also trims the `types=`
+param — fewer bytes fetched). **Stations stays hidden** until the station-playback probe passes
+(the 2026-07-01 probe returned HTTP 400). Empty state: **prompt + recent searches** (a small
+localStorage ring, tappable). Song tap plays **just the one** (interject) — queue-the-rest is
+recorded as a future setting (FUTURE-SETTINGS §1 sibling).
+
+**Architecture ✅ (user call, 2026-07-01): Search is a STANDALONE card** (like the Qcard), not a
+collection-card context. The screen taxonomy is **collections** (the engine: browse/sort/filter) ·
+**queues** (Qcard: a live ordered stream) · **searches** (this card: blended discovery) — each
+archetype owns its display idiom, sharing the primitives (row/tile CSS, context-menu,
+`playContext`, track-store, dropdown, the `--nav-*` motion tokens so drill-in feels identical).
+The future Stations browser's sectioned root follows the search idiom, not the engine.
+
+---
+
+## Interactions
+
+### Tap (left-click / Enter) — per type
+- **Song** → **plays in full** (you're authorized → full DRM playback, proven). 🔵 **Queue scope:**
+  play just the one (interject — my default for a discovery surface) vs. play it + queue the rest of
+  the Songs results (mirrors Library's "play this list, starting here"). Recommend **just the one**;
+  it's a sibling of the [Play-Now-scope setting](../FUTURE-SETTINGS.md#1-play-now-scope-right-click-menu).
+- **Album / Playlist** → **drill in** (`open`) to its tracks — a **catalog fetch** for that
+  collection's tracks (`/v1/catalog/{sf}/albums/{id}` or `…/playlists/{id}` with `?include=tracks`)
+  — then a track tap plays. Same pane-slide drill the Library uses.
+- **Artist** → **drill in** to their **albums + top songs** (catalog fetch), like Library's Artist
+  context; from there tap a track to play or an album to drill further.
+- **Station** → **play it** → enters **radio mode** ([STATIONS §1–2](STATIONS.md)). ✅ Wired
+  2026-09-10: `stations` is a fifth search type (Rust `ALLOWED` + a `Station` bucket on
+  `SearchResults`), a last "Stations" tile section (sub-line: "Live" or the tagline), tap →
+  `playStation`. No drill, no queue, no context menu. The bridge remembers station hits so
+  `play station:<id>` resolves after a `/search`; the CLI/MCP station search asks the catalog
+  first, then falls back to the featured/genre name match. A filter saved before this date
+  lacks `stations` until the user ticks it (the stored list is honored as-is).
+
+### Right-click menu ✅ (the queue actions you asked for)
+Rides the existing `menu()` grouping accessor → [context-menu.ts](../../src/context-menu.ts), and the
+gapless [enqueue path](QUEUE.md#manual-queueing--play-next--add-to-queue):
+- **Song** → **Play Now · Play Next · Add to Queue** (+ **Add to Playlist ▸ · Go to Artist ·
+  Go to Album · Start Station · Add to Library**). Straight to `playContext` /
+  `queueTracksNext` / `queueTracksLater`.
+- **Album / Playlist** → same actions, but **fetch the collection's tracks first, then enqueue** the
+  block (an album/playlist is its tracks in order — the wrappers already accept a `Track[]`). One
+  catalog fetch on demand; note the tiny latency (cover with the loading state). Albums also offer
+  **Go to Artist**.
+- **Artist** → **Go to Artist** (drill) · **Start Station** ✅ (seed an Apple station from the
+  artist, [STATIONS §2](STATIONS.md)). An artist isn't directly queueable, so no
+  Play-Next/Add-to-Queue — matching Library, where Artist tiles offer only Start Station.
+- **Go to Artist / Go to Album** ✅ (2026-07-06) are the **drill-in verbs**: a song hops to its
+  artist or album, an album to its artist. In the Search card they push a catalog detail pane in
+  place; the same verbs are now on **every** card (Library, Playlists, Rewind, Queue, History, Now
+  Playing) — see the As-built note and [FUTURE-SETTINGS §20](../FUTURE-SETTINGS.md#20-drill-in-target--in-place-local-vs-search-card-catalog).
+- **Go to Album on an ALBUM** ✅ (2026-09-20) — until this date the verb existed only for a
+  **song**: `goToAlbumItem` hops `songs → albums`, and `goToItems` (library-card.ts) built the
+  row only for a one-song list. So an album tile anywhere — a Home shelf, a pinned tile, a
+  Queue album selection — offered *Go to Artist* alone, and Apple's own "New" tiles, which
+  hold the album id and no songs at all, offered nothing. Two changes fix it:
+  - `goToItems` now shows the row for **any list that IS one album** (every song shares the
+    album name), hopping from whichever of its songs carries a catalog id. That reaches
+    Library, Playlists, Rewind, Queue, History and Now Playing through the one shared menu.
+  - `go-to.ts` gains an **album pane intent** — `requestAlbumPane` / `goToAlbumPaneItem`, the
+    sibling the playlist pane has had since ARTIST-VIEW §5. A caller that already holds the
+    album's catalog id opens the pane with **no hop at all**. Home's New shelf uses it.
+- **Station** → **Play** (no queue-insert — stations are their own mode). ⬜ with the stations type.
+- **Add to Library** writes via the catalog id (create/append, gated — consistent with the
+  [Playlists export decision](PLAYLISTS.md)); on library-only surfaces this stays the one Apple write.
+
+### Add-to-Library square (2026-09-13, on trial)
+The user may revert this after testing it. Decisions: 1A (hover only), 2B (drill panes too), keyboard focus yes.
+- **Where:** every song row with a catalog id — the root **Songs** grid (`.search__song`) and the
+  track rows in album / playlist / artist drill panes (`.search__row`). A `.panel__action` square
+  (`--icon-lg`, the Now Playing "+" geometry) at the row's right end, after the explicit mark.
+- **States:** **+** (not in the library) · the + turning while adding · **✓ "In your library"**
+  (`aria-disabled`, a press does nothing) only with Settings › Apple Music › **Show ✓ on songs you
+  have** on (`addSquareOwned`, default off since 2026-09-17: before, the ✓ always showed). Off, a song
+  you have shows no square. Hidden when the Library Add setting is off.
+- **Visibility:** only while the row is hovered or has keyboard focus (`:focus-visible` on the row or
+  the square), or while an add runs. The space is always reserved, so titles do not jump on hover.
+  Not `:focus-within` (changed 2026-09-17): a press or a drag's start focuses the row, and the
+  square stayed visible after a drag to the Queue took the pointer away.
+- **The press** is the consent, like the NP square: `addTrackToLibrary(t)`. One capture-phase click
+  listener on the document stops the press from also playing, jumping or picking the row. `rowAt`
+  returns null on the square (`isAddSquare`), so a press there never starts a drag. Membership comes
+  from the local store, so rendering costs no Apple call.
+- **State in the HTML:** `addSquareHTML` writes the state when the row is drawn (a windowed list
+  draws rows while it scrolls; the Queue card redraws its whole body on a queue change). The store
+  reload after an add, the Library Add toggle and `addSquareOwned` repaint every square on the page.
+- **Code:** `src/add-square.ts` (`addSquareHTML`, `isAddSquare`); CSS `.search__add`, `.add-square`.
+- **Keyboard:** Tab reaches the row, then the square. Full keyboard polish is a pre-release item
+  ([HANDOFF.md § Next up](../HANDOFF.md#next-up)).
+
+#### In Playlists, Queue and History (2026-09-17)
+Decisions: 1A (no ✓ by default; the Settings row turns it on), 2A (no room until hover), 3B (the
+heroes too), 4A (History keyboard waits for the keyboard pass).
+- **Where:** Playlists — a playlist's songs in Lines view, after the explicit mark (tiles have no
+  room). Queue — Up Next rows and the now hero. History — rows (after the time) and the latest-play
+  hero. Rewind, Home and the Library card have no square.
+- **Room:** `display: none` until the row is hovered or has keyboard focus. A hovered long title
+  ends one square earlier. Search keeps its reserved space.
+- **Keyboard:** Queue rows take focus (Tab → row → square). Playlist and History rows do not, so
+  Tab does not reach the square there yet.
+
+**Desk test** (dev app, Library Add on):
+1. Open a playlist with songs you do not have (a Playlists web playlist, or an added Apple
+   playlist). Hover a row: the + shows at the right end. Move off: it goes.
+2. Press the +: it turns, the "Added" toast shows, then the square goes (Show ✓ off). The song
+   does not play.
+3. Press the + and move the pointer: no drag starts. Drag the row by its title: the drag works.
+4. Queue: hover an Up Next row and the now hero; press + on one. The song does not jump.
+5. History: hover a row and the hero; press +. No row gets picked.
+6. Settings › Apple Music › Show ✓ on songs you have → On: hovering a song you have shows ✓ in
+   all four cards at once. Off: no square.
+7. Add to Library and ♥ → Off: no square anywhere.
+
+### Row parity with the other cards (2026-09-17)
+What Library / Queue / History rows had and Search rows lacked, now added:
+1. **Hover fade:** `.search__song` / `.search__row` fade their background and lift over `--dur-fast`;
+   tiles and artists fade their lift.
+2. **Row hint:** `.search__row` (a drill pane's song list) joined hint.ts `SHAPES`.
+3. **Right-click outline:** every Search menu opens through `menuAt`, which puts `is-context` on the
+   row, tile or artist until the menu closes. The CSS also serves the `.search__tile` shelves in
+   Home and the Library artist view, which already set the class but had no rule for it.
+4. **Focus ring:** `:focus-visible` on rows, tiles and artists draws the Queue row's outline.
+5. **Reduced motion:** the hover lift is off on all four, as on `.lib-row` / `.qrow`.
+
+Not changed: Enter/Space to play (the keyboard pass), the row padding and height, and the
+engine's Sort / View / find (Search is standalone by design).
+
+**Desk test:** hover a Songs result and a row in an album pane (a soft fade, and after a moment the
+name hint on the pane row) · right-click a song, an album tile and an artist (outline while the
+menu is open) · Tab through the results (a ring on each) · Windows reduced motion on: no lift.
+
+---
+
+## Empty state 🔵
+Before a query, the body can show **recent searches** (local, tap to re-run) and/or a simple prompt.
+Recents are a nice, cheap touch (a small `localStorage` ring); a curated "browse/for-you" landing is
+a later, fetch-heavier idea. Recommend **recents + prompt** for MVP.
+
+---
+
+## Decisions
+
+**Closed ✅**
+- Categories: **Songs / Albums / Artists / Playlists / Stations**; **music videos skipped**.
+  Artist result drills into albums + top songs (like Library's Artist context).
+- **Reuses the collection-card engine** (categories = groupings; drill-in, play-on-click,
+  right-click menus, nav all inherited). The search bar is an **always-on server query**, not the
+  client-side Search pill.
+- **Debounced + min-length + cancel-in-flight**, over a **cached storefront**; results are catalog
+  objects (carry art/preview/ISRC/palette → enrichment shortcut).
+- **Tap:** song → full playback; album/playlist → drill (catalog fetch); station → radio mode.
+- **Right-click:** Play Now / Play Next / Add to Queue (+ Add to Library) for song/album/playlist
+  (albums/playlists fetch-then-enqueue); stations play, not queue.
+- Front-end sees only the normalized model; Rust owns the `search` provider method + normalization.
+
+**Open 🔵**
+- **Presentation** — category-selector MVP vs. blended Top-results overview (recommend selector).
+- **Song-tap queue scope** — just-the-one vs. queue-the-rest (recommend just-the-one).
+- **Empty state** — recents + prompt vs. a browse landing (recommend recents).
+- **30s preview audition** — a tap-to-preview mode is deferred (full playback is the default, per
+  the roadmap #4 decision); revisit if wanted.
+
+---
+
+## Risks / verify
+- **Storefront fetch** — a hard prerequisite for every catalog call; get + cache it before the card
+  can query. Missing storefront = every search 404s.
+- **Station results depend on the MusicKit-JS station probe** ([STATIONS](STATIONS.md)) — if that
+  playback path isn't proven, ship Search with the Stations category **display-only** (or hidden)
+  until it is.
+- **Album/playlist enqueue latency** — "Add to Queue" on a collection needs a tracks fetch first;
+  keep it snappy and show the loading state, don't freeze the menu.
+- **Rate/quotas** — debounce + min-length + cancel-in-flight are the guard; verify no keystroke
+  storms in `__diag`. Paginate (`next`) rather than over-fetching a big `limit`.
+- **Model completeness** — normalized `Artist` / `Playlist` / `Station` types must exist (or be
+  added) so search results have somewhere to land; keep raw Apple shapes out of the front-end.
+  (Library *derives* artists from songs; a catalog `Artist` object — with a real photo — is a
+  distinct shape, so confirm it normalizes cleanly.)
+
+---
+
+## As built (2026-07-01)
+- `src-tauri/src/apple.rs` — catalog normalizers (`track_from_catalog_song` / album / artist /
+  playlist), the `search` trait method (URL-encoded term, category whitelist, never
+  music-videos), and three commands: `catalog_search`, `catalog_collection_tracks` (album/playlist
+  tracks, follows `next` pagination capped at 10 pages, skips music videos),
+  `catalog_artist` (`views=top-songs,full-albums`). All three **piggyback results into the
+  enrichment caches** (`enrich::cache_tracks`) — every search warms palette/ISRC/preview.
+  **This is not a result cache.** `track_catalog` holds only the ISRC, preview URL and cover URL
+  per song id; it cannot draw a row. Each open of an album, catalog playlist or artist pane is a
+  new Apple call (1 per album or artist, 1 per 100 songs of a playlist). The only memo is
+  `relatedCache` in `search.ts` (the "Go to" id hop). Checked 2026-09-17; the memory-only
+  cache for these panes is CARD-MEMORY.md §6.
+- `src-tauri/src/model.rs` — `Playlist` reshaped (both ids optional, like Track; + curator,
+  trackCount), `SearchResults`, `ArtistDetail`, `Track.preview_url`, `play_params` defaulted on
+  deserialize (Tracks round-trip through the frontend for `materialize_track`).
+- `src/search.ts` — TS wrappers + types. `src/search-card.ts` — the standalone card: debounced
+  (300ms / 1-char min / stale-token-guarded) bar, filter popover (persisted `deets.search.types`;
+  narrowing trims the `types=` param) — rides the shared `makeDropdown` primitive so it follows the
+  global click/hover menu mode (Hover-Menu setting), sectioned root (songs = a 2-row h-scroll grid; artists =
+  round thumbs; albums/playlists = tiles), recents empty state (`deets.search.recents`), drill
+  panes on the shared `--nav-*` tokens, right-click menus, `onHeaderChange` so the slot picker
+  disables while drilled.
+- **Semantics as built:** a *result* song tap plays just-the-one; a row tap inside a
+  *detail pane* (album/playlist/artist top songs) plays that list from the row — Library
+  semantics, an album is its tracks. Catalog tracks are `addTransientTracks`'d into the
+  track-store (session display: Qcard/album-color resolve) **and** `materialize_track`'d
+  (durable stats join) on play *and* enqueue — the cheap end of FAVORITES' open trigger fork.
+- Styling under the "Search card" block in `styles.css` (theme roles + skin tokens only).
+- **UI polish (2026-07-02) — aligned to the Library card for consistency:**
+  - **Search bar mirrors Library's `.lib-search`**: a `--canvas`-filled well (border +
+    `--radius-control`) holding a leading magnifier + a *borderless, transparent* input
+    (no per-input box/focus-ring — the well is the box).
+  - **Themed clear button** (`.search__clear`) replaces the native (blue)
+    `::-webkit-search-cancel-button`, which is suppressed; it shows only when there's text
+    and sits at the input's trailing edge, with the **busy dot to its left**. Both use
+    theme roles (`--subtext` → `--title`).
+  - **Filter button matches `.lib-pill--icon`** (surface fill, `--lib-pill-radius`, `--text`
+    icon at stroke 1.6, bg-only hover).
+  - **Scrollbars** (vertical panes + horizontal section scrollers) use the same
+    `--scrollbar-*` treatment as `.lib-view`.
+  - **Empty state**: flavor prompt removed; recents (`deets.search.recents`) stack vertically.
+  - **Right-click fix**: album tiles in the **artist drill pane** now open our `collectionMenu`
+    (Play Now / Play Next / Add to Queue, fetch-then-enqueue). They live outside `root`, so the
+    root's delegated right-click never reached them and the native menu showed instead.
+  - *(Sibling Library tweaks: the Library toolbar's search pill is now a circle sized to the
+    sort/view pill height — `aspect-ratio:1` on the flex **cell**, not the inner pill; and
+    `.lib-grid { align-content: start }` stops sparse tile grids from stretching tiles to full
+    pane height — see HANDOFF gotchas.)*
+- **Add to Library** is deliberately absent until Favorites (item 5) lands the gated write path.
+
+## As built (2026-07-06) — single-char search + drill-in verbs everywhere
+- **Single-character search** — `MIN_CHARS` lowered 2 → 1 in `src/search-card.ts` (empty input
+  still resets to recents; the 300 ms debounce already meters keystrokes). Single-letter artists
+  ("Q") now resolve.
+- **Go to Artist / Go to Album** drill-ins, app-wide. The resolve hop is a generic Rust command
+  `catalog_related(kind, id, rel)` (`apple.rs` — one `include=` fetch → `{id, name}`, e.g.
+  `songs/{id}?include=artists`), wrapped by a session-cached `catalogRelated` in `search.ts`.
+  - **In the Search card**: a song's/album's menu drills to the catalog artist/album — the pane
+    opens immediately on a fallback title, resolves the id, then fills (`drillRelated` in
+    `search-card.ts`, reusing the extracted `fillArtist`/`fillCollection`).
+  - **From every other card** (Queue, History, Now Playing — which gained its first right-click
+    menu — plus Playlists & Rewind): shared menu-item builders `goToArtistItem`/`goToAlbumItem`
+    (`src/go-to.ts`, siblings of `startStationItem`) summon the Search card (`requestCard`) and
+    hand it the intent over a tiny drill-intent bus; the Search card runs the same `drillRelated`.
+    So the Search card is the app's canonical **catalog** detail surface and resolution/caching
+    live in one place.
+  - **The Library card drills IN-PLACE instead** (user call): its song/album/artist menus push the
+    same context the tile would, over the **user's library** — collab songs list each credited
+    artist as a submenu, album tiles target the dominant credited artist. Mechanism: `trackMenu`
+    gained an optional `nav?: LibNav` (`library-card.ts`) — present → local drill, absent →
+    catalog. In-place vs Search is recorded as **[FUTURE-SETTINGS §20](../FUTURE-SETTINGS.md#20-drill-in-target--in-place-local-vs-search-card-catalog)**.
+
+## As built (2026-09-17) — the card header is the drill header
+
+The panes used to draw their own head inside themselves: a bare "‹" character and the level's
+name, both sliding with the pane. The Library and Playlists cards put a real button
+(`.panel__back`: bordered, rounded, an SVG chevron) and the level's kind in the CARD header, and
+let the hero carry the name. Search now does the same (the user's call, forks 1A + 2A):
+
+- **The card header owns the level.** While a pane is open the title reads the kind — "Album",
+  "Artist", "Playlist" — and the Back button shows. At the root it reads "Search" and the button
+  hides. A drill-in relabels the header when the id resolves (`setTitle`), and only while that
+  pane is on top.
+- **The hero keeps the name**, as on the other cards (ARTIST-VIEW.md §5). The header never
+  repeats it.
+- **The search field stays live under the header** while a pane is open (fork 2A). Typing still
+  drops the panes and searches again, so nothing you could do before is gone.
+- **A pane is now only its scroller** (`.spane__scroll`). `.spane__head`, `.spane__back` and
+  `.spane__title` are gone from styles.css.
+- **The drill swap's hint rides the same button** ("Goes back to Playlists", CARD-GROW.md §14.4).
+- The slot picker was already inert while a pane is open, because the card reports `atRoot`; now
+  the title it reports is the live one.

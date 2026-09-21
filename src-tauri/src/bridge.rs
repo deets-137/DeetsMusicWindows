@@ -994,7 +994,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                 origin,
             )
         }
-        // ── Song of the Day (docs/DeetsOTD.md §8.8; sotd.ts, agent-writes.ts) ──
+        // ── Song of the Day (docs/integrations/DeetsOTD.md §8.8; sotd.ts, agent-writes.ts) ──
         // The reads are free; a mark asks the user once, and is refused while the feature
         // is off. The window runs both, so the shelf, Rewind and the outbox all follow.
         (Method::Get, "/picks") => {

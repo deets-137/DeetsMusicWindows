@@ -1,4 +1,4 @@
-// When a social service is busy, or switched off (docs/FRIENDS.md §5.2).
+// When a social service is busy, or switched off (docs/integrations/FRIENDS.md §5.2).
 //
 // **The rule: a social feature may fail, and the music must not notice.** Friends,
 // DeetsRooms and the Discord card all talk to something that is not us. Apple playback

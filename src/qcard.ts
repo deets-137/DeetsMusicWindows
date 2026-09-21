@@ -2,7 +2,7 @@
 // temporarily occupies the Playlists panel slot (title swapped to "Queue"). Up Next rows
 // support left-click/Enter to jump, and a right-click menu (Play Now / Move to Top / Move
 // to Bottom / Remove, + Start Station / Add to Library) — the queue-edit ops live in
-// player.ts (gapless; see docs/QUEUE.md).
+// player.ts (gapless; see docs/features/QUEUE.md).
 
 import { wireListKeys } from "./list-keys";
 import "./styles/qcard.css";
@@ -67,7 +67,7 @@ function mountQueue(host: HTMLElement): CardInstance {
 
     // Now Playing. While a jump is buffering, optimistically show the model's new
     // current (instant feedback); otherwise prefer MusicKit's live metadata. This is
-    // the interim cover-up for the buffer gap (see docs/UX-COVERUPS.md).
+    // the interim cover-up for the buffer gap (see docs/architecture/UX-COVERUPS.md).
     const curTrack = current ? resolve(current) : undefined;
     const loading = !!lastState?.loading;
     const npTitle = (loading ? curTrack?.title : lastState?.title ?? curTrack?.title) ?? "";

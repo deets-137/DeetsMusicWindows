@@ -1,4 +1,4 @@
-// The Room item in the title bar and its panel (docs/ROOMS.md §1).
+// The Room item in the title bar and its panel (docs/integrations/ROOMS.md §1).
 //
 // The glyph is three figures side by side, the middle one a little higher and in front.
 // In a room it fills (the AirPlay square's idiom) and carries the member count.

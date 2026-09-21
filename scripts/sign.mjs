@@ -1,5 +1,5 @@
 // `node scripts/sign.mjs <file>...` — Authenticode-sign files with Azure Artifact Signing
-// (docs/RELEASE.md §6.9). Called by release.mjs for the CLI and, through the tauri build's
+// (docs/ops/RELEASE.md §6.9). Called by release.mjs for the CLI and, through the tauri build's
 // signCommand, for DeetsMusic.exe and the installer.
 //
 // signtool (Windows SDK, x64) loads Microsoft's Artifact Signing dlib

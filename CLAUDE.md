@@ -8,66 +8,66 @@ front-end, Rust back-end).
 - **`docs/LESSONS.md`** — what the owner tends to want: the mission, the three stop rules, the
   lessons with their evidence, and the tie-breakers. It shapes the option you RECOMMEND. It
   never closes a fork — he does (see Working style).
-- `docs/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
-  `docs/TOKENS.md` — every token, generated (`npm run tokens`; the release check fails when
+- `docs/architecture/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
+  `docs/architecture/TOKENS.md` — every token, generated (`npm run tokens`; the release check fails when
   stale). Regenerate it in the same commit as any change to palette.css / themes.css / skin.css.
-- `docs/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
+- `docs/architecture/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
 - `docs/DESIGN.md` — product intent.
-- `docs/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/EXTENSION.md` — browser
-  extension + the loopback bridge (`extension/` is the MV3 source); `docs/AGENT.md` —
-  the agent/CLI routes on that bridge; `docs/RELEASE.md` — build, Authenticode signing,
+- `docs/features/TRAY.md` — tray icon/panel + minimize-to-tray; `docs/integrations/EXTENSION.md` — browser
+  extension + the loopback bridge (`extension/` is the MV3 source); `docs/integrations/AGENT.md` —
+  the agent/CLI routes on that bridge; `docs/ops/RELEASE.md` — build, Authenticode signing,
   publish, the self-updater, install, uninstall (§0 = commands, secrets and keys on one page).
-- `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
+- `docs/architecture/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
   call site; `__toast.demo()` in the console shows one of each kind. **§4a = the sticky queue,
   BUILT 2026-09-20 (§4a.8 = as built, desk test §4a.7 PASSED the same day)**: past the cap of 3
   a sticky toast used to be DESTROYED with its actions unrun, which could break both of §4's
   promises — "a question always shows" and "an Undo always shows". The queue is what makes
   them true.
-- `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
+- `docs/ops/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11); the support
   back end that consumes it is `DeetsSolutions/docs/support.md`.
-- `docs/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
+- `docs/features/LOOK-SCHEDULE.md` — the day/night look schedule (sun times from the time zone,
   set times, Windows mode) and its pre-paint in `index.html`.
-- `docs/PROVIDERS.md` — Apple Music + Spotify at once, one merged library. **Parked
+- `docs/integrations/PROVIDERS.md` — Apple Music + Spotify at once, one merged library. **Parked
   2026-09-15**: Spotify's dev-mode terms block it (§9 has the checked facts). Kept as a record.
-- `docs/VINYL.md` — Press "Record player": the cover as a turning record (`src/vinyl.ts`), the
+- `docs/features/VINYL.md` — Press "Record player": the cover as a turning record (`src/vinyl.ts`), the
   upright-start-and-end angle math, the slide on song change, the Apple artwork-rule reading.
-- `docs/CARD-SWAP.md` — card swap motion: swap, summon and replace animate in each skin's own
+- `docs/cards/CARD-SWAP.md` — card swap motion: swap, summon and replace animate in each skin's own
   `--swap-*` shape (built 2026-09-15; Animate card swaps on by default since 2026-09-16).
-- `docs/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
+- `docs/features/ARTIST-VIEW.md` — artist views: round hero, Featured / Your Playlists shelves, the
   Apple call table, the chip flight to another card, the `requestCard` no-swap fix (2026-09-15).
-- `docs/HOME.md` — the Home card: the shelves, the context-run rule, the weekday/weekend
+- `docs/features/HOME.md` — the Home card: the shelves, the context-run rule, the weekday/weekend
   bucket score, and Hide (built 2026-09-15). §9 = Apple's own recents, §10 = the **New**
   shelf: releases by your top ten artists, the bulk `artist_catalog` fill that rides the
   library sync, and the `homeApple` switch (built 2026-09-18, desk test PASSED 2026-09-19).
-- `docs/AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker, what we control,
+- `docs/features/AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker, what we control,
   and `probe fidelity` (DeetsAirplay) that measures the capture's conversion (opened 2026-09-16).
-- `docs/LASTFM.md` — Last.fm scrobbling: the key built in from Deets' Secrets, the browser
+- `docs/integrations/LASTFM.md` — Last.fm scrobbling: the key built in from Deets' Secrets, the browser
   connect under Account, `play_events.lastfm` as the queue, the error table, the desk test
   (built and desk-tested 2026-09-16).
-- `docs/LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users over an
+- `docs/integrations/LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users over an
   in-memory copy of five export tables; the WAL fix; the security layers and their tests
   (`cargo test --lib query`); the SQL card idea (built 2026-09-16, shipped in 0.8.0; desk test PASSED 2026-09-19, step 9 over MCP included).
-- `docs/SOUND.md` — Advanced EQ + DeetsAdaptiveSound (match loudness, fuller at low volume,
+- `docs/features/SOUND.md` — Advanced EQ + DeetsAdaptiveSound (match loudness, fuller at low volume,
   crossfeed) on one Web Audio graph; Apple DPLA §3.3.6.D "modify" clause is fork 0 (built 2026-09-16, shipped in 0.8.0;
   the user's report from daily listening, §11, comes before any new Sound work).
-- `docs/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
+- `docs/features/PLAYLIST-WEB.md` — a playlist built from an artist and their collaborators (the
   Playlists web button): reach in degrees, genre chips, nearest-first cap, the Apple-call
   measurements (built and desk-tested 2026-09-16). §9: a song or album as the seed (built 2026-09-17, shipped in 0.9.0). §10: temporary web playlists, Keep · Temp | N days under Make playlist (built 2026-09-17, shipped in 0.9.0). The unused Apple data list for a later session: `docs/ideas/AppleData.md`.
-- `docs/CREDITS.md` — writer credits: Apple's `composerName` (what it really returns, measured),
+- `docs/features/CREDITS.md` — writer credits: Apple's `composerName` (what it really returns, measured),
   the collection that rides every song read at zero extra calls (`song_credits`, `credits_stats`),
   and the **song pane** — right-click Song Credits, the hint's third line, clickable writers
   (§7, built 2026-09-17). §5 (the producer web) is designed, not built.
-- `docs/DB-HEALTH.md` — is the database still writable: the poison-proof `Db::lock`, the
+- `docs/ops/DB-HEALTH.md` — is the database still writable: the poison-proof `Db::lock`, the
   10-minute canary, the failure counters and `db_health`, and why there is no write queue
   (built 2026-09-17).
-- `docs/DeetsOTD.md` — Song of the Day: one song you mark for one day (`picks`, `pick_posts`),
+- `docs/integrations/DeetsOTD.md` — Song of the Day: one song you mark for one day (`picks`, `pick_posts`),
   sent out through an **outlet** — build 1 has one, the Discord webhook, with its URL encrypted
   by DPAPI in `sotd-outlets.json`. Home's last shelf, Rewind › Picks, the suggestion from
   today's plays, the `/picks` agent route, and `scripts/import-sotd-journal.mjs` for the
   owner's own journal. The DeetsOTD repo stays untouched. **§10 = as built (BUILT 2026-09-18
   on `pins-for-days`; desk test §8.11 PASSED 2026-09-19).** Bluesky and Mastodon are build 2 (§8.4b, §8.14). **§9 = more than one Discord
   webhook** (paper design 2026-09-18, five forks open, not built).
-- `docs/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
+- `docs/features/PINS.md` — Pins: a playlist, station, album, artist or song kept in view; a `pins` table,
   a Pinned tile shelf on the Library / Playlists / Radio roots (pin order) and Home's fifth shelf
   (by plays, all time), a corner tile badge (BUILT 2026-09-18 on branch `pins-for-days`, §7 = as
   built, desk test §6 PASSED 2026-09-19). **§8 = On Click**, what a click on a pinned tile does:
@@ -75,15 +75,15 @@ front-end, Rust back-end).
   over one shared resolver that replaces the four hand-written `onShelf` bodies; a Settings ›
   Playback row sets what a NEW pin starts with. **BUILT 2026-09-20** (§8.2a closed the same
   day); desk test §10 PASSED 2026-09-20.
-- `docs/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
+- `docs/features/SUGGEST-LESS.md` — Suggest Less (Apple's −1 read from calls we already make + our own
   marks, sent back behind the ♥ consent), artist/album marks, proactive skips in queues and
   stations with a gain safety net; the web drops marked songs (designed 2026-09-17, not built).
-- `docs/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
+- `docs/features/ONBOARDING.md` — how the app explains itself: the hover-hint ledger (every `title`),
   the right-click coverage table, Settings › Tips (built 2026-09-15), and the **first-run walk**
   led by the Deets and Happy sprites (§4.0 = as built, 2026-09-18: five steps, the gesture
   advances, the sprites travel, `onboardingStep` in settings; §5 = `npm run dev:fresh` /
   `dev:fresh:in`, how to be a first-time user without losing your data).
-- `docs/FRIENDS.md` — **Friends + Discord Rich Presence, both BUILT 2026-09-20.** §8.4a = the three measurements against the real client: **type 2 works**
+- `docs/integrations/FRIENDS.md` — **Friends + Discord Rich Presence, both BUILT 2026-09-20.** §8.4a = the three measurements against the real client: **type 2 works**
   ("Listening to"), **`status_display_type` is kept and ignored** (so the headline is the app
   name), and **an https Apple cover needs no upload** — Discord's media proxy fetches it.
   §8.10 = as built: `src-tauri/src/presence.rs` is the pipe and nothing else,
@@ -120,7 +120,7 @@ front-end, Rust back-end).
   anyone. The panel is titled **Friends**, with *Your name* (required) on top and two
   collapsible sections, **Friends** and **DeetsRooms** (renamed from DeetsRadio), the rooms
   one sliding above Friends while a room is live (§16.7 items 11, 15-21). §5 = the free-tier budget, §13-§15 = what a room costs and why a new worker.
-- `docs/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
+- `docs/integrations/ROOMS.md` — **DeetsMusicRooms** (listening rooms): a title bar item, an 8-character code,
   guest controls, follower mode. The worker is **its own private repo**, `../DeetsMusicRooms`
   (plain JS, no build step, `npx wrangler` — the house shape DeetsAccounts and DeetsSupport use;
   **wrangler 4**, or the rate limit is silently dropped), and its Durable Object keeps the room
@@ -143,17 +143,17 @@ front-end, Rust back-end).
   of scope** (§13); DeetsRadio in that doc means only the older website feature it borrows from.
   Apple terms read in §12: no clause names group listening, and §12.3 is decided (a guest's Pause
   never greys out).
-- `docs/MCP-INSTALL.md` — connect AI apps: a shared `mcp_install` crate behind `deetsmusic mcp
+- `docs/integrations/MCP-INSTALL.md` — connect AI apps: a shared `mcp_install` crate behind `deetsmusic mcp
   install` and a Settings panel; client detection, config table, the Claude Desktop MSIX path trap
   (designed 2026-09-16, forks open, not built).
-- `docs/PLAYLIST-REFRESH.md` — **how often a mirrored Apple playlist re-reads its songs**:
+- `docs/features/PLAYLIST-REFRESH.md` — **how often a mirrored Apple playlist re-reads its songs**:
   today the answer is ONCE, EVER (the sync evicts only on an attribute change, and Apple rewrites
   New Music Mix without changing one — §0 is the bug, ⟳ is the only fix today). A *Refresh ▸
   Daily · Weekly ▸ (day) · Off* submenu per playlist, defaults by `kind`, two triggers (on open +
   a day change while the app runs), one toast, one global switch. §1 = telling Apple's playlists
   from the user's, with the signals we already have. **BUILT 2026-09-20** (designed 2026-09-19,
   ten decisions in §3, the last three settled in §9); desk test §10 PASSED 2026-09-20.
-- `docs/MOVABLE-ROWS.md` — **movable rows**: HOLD a section header (Home shelves, Playlists
+- `docs/features/MOVABLE-ROWS.md` — **movable rows**: HOLD a section header (Home shelves, Playlists
   folders, Radio sections, Settings sections) to move it, a grip bar to move a pinned tile, a
   hold to move a playlist row inside its own section, plus the **Settings search bar** (it reads
   the Compass's own `settingsRows()` index) and **Ctrl+F** in every card that has a field.
@@ -162,29 +162,29 @@ front-end, Rust back-end).
   unranked id draws last in its card's built-in order. Settings › Window › *Move sections by
   holding* turns the gesture off; Settings › Reset › *Row order* undoes it all. **Desk test §12
   (20 steps) PASSED 2026-09-20** (HANDOFF.md "Test 4" is the short version and records it).
-- `docs/QUICK-SETTINGS.md` — **the cog's quick panel**: a strip of icons (Apple Music, Discord,
+- `docs/features/QUICK-SETTINGS.md` — **the cog's quick panel**: a strip of icons (Apple Music, Discord,
   Window, Look, Help, Connections, Fun | Updates and bugs, Reset) + a cog = All settings / Collapse (the cog's old job). A logo grows the panel and shows that
   service's rows, drawn by the Settings card's own code (`mountSettingsParts`); the Apple
   sign-in row has two copies, both painted by main.ts. Every square wears a New badge until its first press (`quickSeen`); a NEW setting wears the same N beside its name until hovered (`NEW_MARKS`, §10). What's new comes later. **BUILT
   2026-09-20 on `thirteen`; desk test §10.1 (the row N) NOT RUN; the rest tried in the dev app 2026-09-20.**
-- `docs/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
+- `docs/features/COMPASS-TERMS.md` — the user-guide list of every place, verb, command and synonym the bar
   answers to; update it with `SYNONYMS` in compass.ts.
-- `docs/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
+- `docs/features/COMPASS.md` — Ctrl+Space: a bar under the title bar that reaches every card, setting (store rows
   inline), transport verb and library item; Space for play / pause; the keyboard pass's first slice
   (built 2026-09-17, desk test PASSED 2026-09-19). §2d = the
   calculator: type a sum, the first row answers it and Enter copies (built 2026-09-18, desk
   test §7.10a PASSED 2026-09-19).
-- `docs/SECOND-SEARCH.md` — a second Search card to compare two albums side by side: the first
+- `docs/features/SECOND-SEARCH.md` — a second Search card to compare two albums side by side: the first
   card is the drill target, the second is one you place yourself; what enforces one instance
   today and the work per file (designed 2026-09-17, not built).
-- `docs/STAGE-COLUMN.md` — the Max stage column: the cover locked to a square (no measured
+- `docs/cards/STAGE-COLUMN.md` — the Max stage column: the cover locked to a square (no measured
   constant — `100cqw` + a size-container split), the Queue's floor of "the song that plays now
   + 2.5 rows" as token arithmetic (`--max-queue-min`), the new 1100×950 default, and the Queue's
   one upward grow over Now Playing (built 2026-09-17, desk test §8 PASSED 2026-09-19).
-- `docs/CARD-MEMORY.md` — a card comes back where you left it after a remount (summon, pick,
+- `docs/cards/CARD-MEMORY.md` — a card comes back where you left it after a remount (summon, pick,
   Midi↔Max, the grow drill swap): keys + resolvers per card, the snapshot, a row to keep it on
   restart, and memory-only caches of Search's catalog panes and terms (built 2026-09-17, desk test PASSED 2026-09-19).
-- `docs/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
+- `docs/cards/CARD-GROW.md` — grow a card over its neighbor (Grow) or over all four in Max (Fill) from
   the gaps; clip-opening motion, Collapse/Pin/outside click, covered-card rules (§14: a drill from a grown card swaps the target in, Back returns; built 2026-09-17, desk test PASSED 2026-09-19), and wide-card
   layout ideas per card. Reviewed the same day: Grow button in the header, MVP = Library letter rail + song columns (§9a), no memory, resting 4-card layout stays pixel-identical (§0); the other big panels are hand-designed after the MVP (forks 1–10 decided; BUILT 2026-09-16, §13 = as built, shipped in 0.9.0).
 
@@ -207,7 +207,7 @@ front-end, Rust back-end).
   Cold start: stop the dev exe (the runner exits with it), relaunch, wait for the
   `start:` log line. Limits: the MCP plays a list from its first song (the 3,895-row
   library click is a hand test) and its round trip is ~1 s (Previous within 3 s of a
-  click can't be reached). Full reference: `docs/DEBUGGING.md`. This is dev-only
+  click can't be reached). Full reference: `docs/ops/DEBUGGING.md`. This is dev-only
   telemetry (`src/perf.ts`, Vite `DEV` flag) — the release bundle carries none of it.
   **Knowing the dev app is up:** wait for `start: DeetsMusic` in the runner's output with
   `grep -a` (the file has non-ASCII). Never match `Running .*deetsmusic`: cargo's color codes
@@ -333,7 +333,7 @@ npm run dev:app       # same, isolated from the INSTALLED app (own identifier/da
 npm run dev:perf      # dev:app with DevTools held shut (it renders in the app's own GPU process)
 npm run dev:built     # release-shaped bundle + DevTools shut — the honest graphics measurement
 npm run bench appearance -- --passes 3   # repeatable switch benchmark; refuses to run on a noisy machine
-npm run release       # build + sign the installer (→ installers/; see docs/RELEASE.md §0)
+npm run release       # build + sign the installer (→ installers/; see docs/ops/RELEASE.md §0)
 npm run release:publish   # after testing the install: put it on the update channel
 npx tsc --noEmit      # front-end typecheck
 ```

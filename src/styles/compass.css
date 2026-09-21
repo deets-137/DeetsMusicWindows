@@ -1,4 +1,4 @@
-/* ── The Compass (docs/COMPASS.md, src/compass.ts) ────────────────────────────
+/* ── The Compass (docs/features/COMPASS.md, src/compass.ts) ────────────────────────────
    Ctrl+Space's bar: it hangs from the title bar over the cards, in every surface. The
    field on top, then groups of rows. It wears the menu material (the title bar panels'
    idiom); color through theme roles, geometry through the --compass-* skin tokens. The

@@ -1,4 +1,4 @@
-//! The Discord webhook outlet (docs/DeetsOTD.md §8.3, §8.4a).
+//! The Discord webhook outlet (docs/integrations/DeetsOTD.md §8.3, §8.4a).
 //!
 //! What the user gives us is one webhook URL for their channel. No bot, no token, no
 //! developer portal, no sign-in. The URL is a credential — anyone who holds it can post in

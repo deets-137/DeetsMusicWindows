@@ -1,4 +1,4 @@
-// Writer credits, front-end side (docs/CREDITS.md §7).
+// Writer credits, front-end side (docs/features/CREDITS.md §7).
 //
 // Rust collects Apple's `composerName` on every song read (credits.rs). This module is the
 // read side: a memory map the hover hint can ask SYNCHRONOUSLY, and the two async reads the

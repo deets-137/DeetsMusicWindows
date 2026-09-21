@@ -1,4 +1,4 @@
-// The Compass calculator (docs/COMPASS.md §2c). Type a sum into the bar — `1+1`, `log(1000)`,
+// The Compass calculator (docs/features/COMPASS.md §2c). Type a sum into the bar — `1+1`, `log(1000)`,
 // `2^10`, `sin(30)` — and one "Answer" row shows `1 + 1 = 2`. Enter copies the answer.
 //
 // The bar is a search box first, so the grammar is strict on purpose: the WHOLE term must

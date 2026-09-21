@@ -1,4 +1,4 @@
-//! Song of the Day (docs/DeetsOTD.md §8) — one song you mark for one day, kept here and,
+//! Song of the Day (docs/integrations/DeetsOTD.md §8) — one song you mark for one day, kept here and,
 //! if you set an outlet up, sent out once.
 //!
 //! Three parts, all in Rust so the rules hold whoever asks (the window, an agent, a missed

@@ -51,7 +51,7 @@ reads/writes go to `api.music.apple.com` over `reqwest`.
   fetches its token the same way the installed app does.
 
 To use the app, you do not need any of this. You need Windows 11, an Apple Music
-subscription, and the installer ([docs/RELEASE-NOTES.md](docs/RELEASE-NOTES.md)).
+subscription, and the installer ([docs/ops/RELEASE-NOTES.md](docs/ops/RELEASE-NOTES.md)).
 
 ## Running it
 
@@ -65,14 +65,14 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 
 [docs/HANDOFF.md](docs/HANDOFF.md) — status, gotchas, next steps ·
 [docs/DESIGN.md](docs/DESIGN.md) — product design and backlog ·
-[docs/UI-ARCHITECTURE.md](docs/UI-ARCHITECTURE.md) — themes, skins, panels, chrome ·
-[docs/DATA-ARCHITECTURE.md](docs/DATA-ARCHITECTURE.md) — auth, model, provider, cache ·
-[docs/RELEASE-NOTES.md](docs/RELEASE-NOTES.md) — what each version brings, and how to install ·
-[docs/RELEASE.md](docs/RELEASE.md) — build, install, uninstall ·
-[docs/TRAY.md](docs/TRAY.md) — tray, panel, window lifecycle ·
-[docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) — connect Claude Desktop, Claude Code, Cursor, or a terminal (plain words) ·
-[docs/AGENT.md](docs/AGENT.md) — the CLI / MCP surface ·
-[docs/ideas/](docs/ideas/) — feature ideas that are **not built**
+[docs/architecture/UI-ARCHITECTURE.md](docs/architecture/UI-ARCHITECTURE.md) — themes, skins, panels, chrome ·
+[docs/architecture/DATA-ARCHITECTURE.md](docs/architecture/DATA-ARCHITECTURE.md) — auth, model, provider, cache ·
+[docs/ops/RELEASE-NOTES.md](docs/ops/RELEASE-NOTES.md) — what each version brings, and how to install ·
+[docs/ops/RELEASE.md](docs/ops/RELEASE.md) — build, install, uninstall ·
+[docs/features/TRAY.md](docs/features/TRAY.md) — tray, panel, window lifecycle ·
+[docs/integrations/AGENT-SETUP.md](docs/integrations/AGENT-SETUP.md) — connect Claude Desktop, Claude Code, Cursor, or a terminal (plain words) ·
+[docs/integrations/AGENT.md](docs/integrations/AGENT.md) — the CLI / MCP surface ·
+[docs/ideas/](docs/ideas) — feature ideas that are **not built**
 
 ## Layout
 
@@ -88,7 +88,7 @@ The roadmap is in [docs/HANDOFF.md](docs/HANDOFF.md). Releases after 0.4.3 are
 **Authenticode-signed** (publisher *Aditya Sundaram*), and since 0.4.3 the app **updates
 itself** from `music-api.deets.solutions`, with each installer checked against a signature
 compiled into the app. How builds are signed, published and updated:
-[docs/RELEASE.md](docs/RELEASE.md) ("The release pipeline at a glance").
+[docs/ops/RELEASE.md](docs/ops/RELEASE.md) ("The release pipeline at a glance").
 
 ## Support and requests
 
@@ -100,7 +100,7 @@ This repository is the source, published so the app can be read and audited. It 
 where the project is run: GitHub Issues and Discussions are off, and pull requests are not
 reviewed or merged. The source is MIT-licensed, so forks are fine. A fork must bring its own
 back end: the token mint, update channel and report intake at `deets.solutions` serve
-DeetsMusic builds only ([docs/RELEASE.md](docs/RELEASE.md) §7a).
+DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
 
 ## Privacy
 

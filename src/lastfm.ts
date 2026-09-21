@@ -1,4 +1,4 @@
-// Last.fm — the Account flyout's second row (docs/LASTFM.md §4). Rust does the work
+// Last.fm — the Account flyout's second row (docs/integrations/LASTFM.md §4). Rust does the work
 // (lastfm.rs): the connect, now playing, the scrobble queue. This module paints the row,
 // starts and cancels the connect, and says how it ended. The scrobble trigger itself is
 // stats.ts `lastfmHeard`.

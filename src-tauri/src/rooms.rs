@@ -1,4 +1,4 @@
-//! Listening rooms: the invite link (docs/ROOMS.md §1, §9.1).
+//! Listening rooms: the invite link (docs/integrations/ROOMS.md §1, §9.1).
 //!
 //! `deetsmusic://room?code=K7QM4XHT` opens the app and offers to join. The browser
 //! starts the exe with the link as an argument and the single-instance plugin hands it

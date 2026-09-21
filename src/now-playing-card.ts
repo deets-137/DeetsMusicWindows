@@ -185,7 +185,7 @@ export const nowPlayingCard: CardDef = {
     let onStation = false; // radio mode → the menu offers Stop Station
     let artKey = ""; // what the cover box currently shows — rebuilt only on change
     let lastState: PlayerState | undefined;
-    // The cover box's art slot: the Press record player where it is on (docs/VINYL.md),
+    // The cover box's art slot: the Press record player where it is on (docs/features/VINYL.md),
     // the plain cover everywhere else.
     const vinyl = npArt ? mountVinyl(npArt, GLYPH_NOTE) : null;
     let liveNow = false;

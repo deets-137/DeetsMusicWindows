@@ -1,5 +1,5 @@
 //! `deetsmusic` — the command-line and MCP client for the DeetsMusic bridge
-//! (docs/AGENT.md). A thin, stateless HTTP client: every subcommand is one or two
+//! (docs/integrations/AGENT.md). A thin, stateless HTTP client: every subcommand is one or two
 //! requests to the app's loopback server, formatted for a human (default) or a
 //! machine (`--json`). `deetsmusic mcp` serves the same operations as MCP tools over
 //! stdio — every tool by default, or `--small` for the ten a small local model handles.
@@ -156,7 +156,7 @@ enum Cmd {
         #[arg(long, default_value = "")]
         tag: String,
     },
-    /// Song of the Day: the picks, or mark / unmark one (docs/DeetsOTD.md).
+    /// Song of the Day: the picks, or mark / unmark one (docs/integrations/DeetsOTD.md).
     Pick(PickArgs),
     /// Add to your Apple Music library: an id, or the playing song.
     Add { id: Option<String> },

@@ -5,7 +5,7 @@
 //        --glass-tint (a %), --glass-canvas; `glassCanvasDim` → --glass-canvas-dim.
 //        `glassFancy` → `data-glass-fancy`; off publishes GLASS_LOCKED instead of the sliders.
 // Press: `pressVinyl` / `pressVinylWhere` → `data-press-vinyl` / `data-press-vinyl-where`
-//        (docs/VINYL.md); the tray panel applies these two as well.
+//        (docs/features/VINYL.md); the tray panel applies these two as well.
 // The skin blocks in skin.css read them; other skins ignore them.
 
 import { setting, onSettingsChange, GLASS_LOCKED } from "./settings-store";

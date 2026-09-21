@@ -237,7 +237,7 @@
   --hint-fs:        var(--fs-subtext);
   --hint-shift:     3px;    /* the rise on show; a skin may zero it */
 
-  /* -- toasts (src/toast.ts, styles/toast.css; docs/TOASTS.md) -------- */
+  /* -- toasts (src/toast.ts, styles/toast.css; docs/architecture/TOASTS.md) -------- */
   /* The strip wears the menu material above; these are its own geometry.
      Color comes from the theme's traffic lights (success --go, warn --pause,
      error --stop; info --panel-border). */
@@ -339,7 +339,7 @@
   --np-chip-strength: 82%;          /* how opaque that chip's panel wash is */
   --np-vol-gap:     var(--space-2); /* transport row ↔ the stage volume row (max) */
 
-  /* -- record player (Press "Record player"; docs/VINYL.md) -- */
+  /* -- record player (Press "Record player"; docs/features/VINYL.md) -- */
   /* Whether each place draws the cover as a record: 1 or 0. A skin turns them on from
      the two rows' attributes (see the Press rules below). Base: off everywhere. The
      geometry is written here once; radii are a % of the disc's radius. */
@@ -401,7 +401,7 @@
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-glyph: 96px;           /* placeholder ♪ on the stage */
   --qcard-now-art:  48px;           /* the Queue card's now-playing cover (--max-queue-min reads it) */
-  /* The stage column's Queue floor (docs/STAGE-COLUMN.md §4.3): in max the Queue always keeps
+  /* The stage column's Queue floor (docs/cards/STAGE-COLUMN.md §4.3): in max the Queue always keeps
      the song that plays now plus --max-queue-rows Up Next rows, and Now Playing's cover takes
      only the height that is left. It is arithmetic over the Queue card's own parts — panel
      padding, the header, the now-playing block, the card's two gaps, the UP NEXT label, then

@@ -1,4 +1,4 @@
-// Import a Song of the Day journal into DeetsMusic, once (docs/DeetsOTD.md §8.13).
+// Import a Song of the Day journal into DeetsMusic, once (docs/integrations/DeetsOTD.md §8.13).
 //
 // A journal feed is a personal tool: only the owner has one, so no feed code ships in the
 // app. This script is how eight months of picks come in, by hand, one time. It only READS

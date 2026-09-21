@@ -9,16 +9,16 @@ updated: 2026-09-17
 > **Status: roadmap idea, not scheduled.** A possible way for DeetsRadio / DeetsMusic to make
 > its own recommendations from *who made the music*, not from listening behaviour.
 >
-> **2026-09-17 — read [CREDITS.md](../CREDITS.md) first.** §2.1 below says "Apple cannot supply
+> **2026-09-17 — read [CREDITS.md](../features/CREDITS.md) first.** §2.1 below says "Apple cannot supply
 > the credits". That is right for producer credits and typed roles, and **wrong for writers**:
 > Apple's `composerName` gives them on every song, at no extra call, and producers appear in it
 > whenever they take a writing split. The app now collects that field on every read. The
 > producer web it feeds needs no MusicBrainz and no mirror. This doc stays as the record of what
 > MusicBrainz would add on top (roles, aliases, samples, band membership) — CREDITS.md §6.
 > Status legend: ✅ decided · 🔵 open · ⬜ later.
-> Siblings: [STATIONS](../STATIONS.md) (Apple stations; the old own-station engine was dropped —
+> Siblings: [STATIONS](../features/STATIONS.md) (Apple stations; the old own-station engine was dropped —
 > this doc is a different engine, fed by credits, not audio features),
-> [DATA-ARCHITECTURE](../DATA-ARCHITECTURE.md) (provider + SQLite cache).
+> [DATA-ARCHITECTURE](../architecture/DATA-ARCHITECTURE.md) (provider + SQLite cache).
 
 ---
 
@@ -41,7 +41,7 @@ updated: 2026-09-17
   `artists` relationship, and `composerName` (one flat string).
 - It gives **no producer credits and no typed roles**.
 - The Apple Music app shows full credits through the private `amp-api`. **Rejected** — it
-  needs the web player's privileged token and cookies (see [PLAYLISTS](../PLAYLISTS.md) and the
+  needs the web player's privileged token and cookies (see [PLAYLISTS](../features/PLAYLISTS.md) and the
   2026-07-01 decision). Same reasons apply here.
 
 ### 2.2 The credits come from outside; ISRC is the join key ✅

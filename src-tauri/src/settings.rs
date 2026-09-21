@@ -21,7 +21,7 @@ pub enum AirplayCapture {
     System,
 }
 
-/// When a marked Song of the Day goes out (docs/DeetsOTD.md §8.4). One mode for every
+/// When a marked Song of the Day goes out (docs/integrations/DeetsOTD.md §8.4). One mode for every
 /// outlet: the Ask toast names them all at once.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -87,7 +87,7 @@ pub struct SettingsData {
     /// Tell Last.fm what plays now, for the profile's "listening now" line. Separate from
     /// scrobbling: it changes only the profile, never the charts.
     pub lastfm_now_playing: bool,
-    // ── Song of the Day (docs/DeetsOTD.md §8.4) ──
+    // ── Song of the Day (docs/integrations/DeetsOTD.md §8.4) ──
     // Rust owns these five because Rust is what enforces them: the per-day limit must hold
     // for an agent too, and the day rule is read by a timer that fires with no window up.
     // "Suggest today's pick" is the one row Rust never needs, so it stays in the front-end
@@ -229,7 +229,7 @@ pub fn settings_set_lastfm_scrobble(on: bool, settings: tauri::State<'_, Setting
     settings.update(|d| d.lastfm_scrobble = on)
 }
 
-// ── Song of the Day (docs/DeetsOTD.md §8.4) ───────────────────────────────────
+// ── Song of the Day (docs/integrations/DeetsOTD.md §8.4) ───────────────────────────────────
 
 #[tauri::command]
 pub fn settings_set_sotd(on: bool, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
@@ -380,7 +380,8 @@ pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
 pub fn agent_open_guide(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     app.opener()
-        .open_url("https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/AGENT-SETUP.md", None::<String>)
+        // Moved from docs/AGENT-SETUP.md on 2026-09-21; a stub there still serves installs up to 0.12.2.
+        .open_url("https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/integrations/AGENT-SETUP.md", None::<String>)
         .map_err(|e| e.to_string())
 }
 

@@ -8,6 +8,7 @@
 //   5. versions agree                   the six version files; every shipped_in is a real,
 //                                       published release no newer than the current version
 //  11. nothing in ideas/ is above `idea`
+//  18. every generated copy (docs-copies.mjs) matches its original — added with step 3
 // Checks 6-10 (the suspicions) wait for the first report (§11 step 2).
 //
 //   node scripts/docs-check.mjs          report; exit 1 on any fact
@@ -28,6 +29,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join, posix } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { COPIES, render as renderCopy } from "./docs-copies.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const GRACE_END = "2026-09-28"; // F5: the release check fails on facts from this date
@@ -36,6 +38,9 @@ const STATUS = ["shipped", "built", "designed", "project", "parked", "idea", "fo
 const KEYS = ["status", "shipped_in", "desk_test", "sources", "updated", "generated"];
 // Until release tags exist (DOCS-ORG §14, T2), the withdrawn versions are named here.
 const WITHDRAWN = ["0.12.0", "0.12.1"];
+// The first public release (RELEASE.md §6: the first on the update channel). Every version
+// before it was built on this PC only, so nothing "shipped" in it.
+const FIRST_PUBLIC = "0.4.3";
 // A path that starts with one of these points into another repo, and is not ours to check.
 const OTHER_REPO = /^(\.\.\/(?!src|docs|scripts|extension|cli|crates|README|CLAUDE|AGENTS)|Deets[A-Za-z]+\/|DeetsSolutions)/;
 // Another repo named in prose: any Deets* name but this app's own, or the website.
@@ -114,7 +119,7 @@ export function check() {
         continue;
       }
       if (!sec) continue;
-      const target = hits.find((h) => h.startsWith("docs/")) ?? hits[0];
+      const target = hits.find((h) => h.startsWith("docs/") && !frontMatter(read(h))?.moved_to) ?? hits[0];
       const nums = headingNumbers(read(target));
       const ok = nums.has(sec) || [...nums].some((n) => n.startsWith(sec + "."));
       if (!ok) fail(3, file, line, `${name} §${sec} — no heading numbered ${sec} in ${target}`);
@@ -125,6 +130,11 @@ export function check() {
   for (const file of docs) {
     const fm = frontMatter(texts.get(file));
     if (!fm) { fail(4, file, 1, "no front matter"); continue; }
+    // A stub left at an old path for an old link (an app button, a bookmark): it only points on.
+    if (fm.moved_to) {
+      if (!existsSync(join(ROOT, posix.dirname(file), fm.moved_to))) fail(4, file, 1, `moved_to ${fm.moved_to} does not exist`);
+      continue;
+    }
     for (const k of Object.keys(fm)) if (!KEYS.includes(k)) fail(4, file, 1, `unknown key "${k}"`);
     if (!STATUS.includes(fm.status)) fail(4, file, 1, `status "${fm.status ?? ""}" is not one of ${STATUS.join(" ")}`);
     if (fm.status === "shipped" && !fm.shipped_in) fail(4, file, 1, "status shipped needs shipped_in");
@@ -152,7 +162,7 @@ export function check() {
   };
   const current = versions["package.json"];
   for (const [f, v] of Object.entries(versions)) if (v !== current) fail(5, f, 0, `version ${v ?? "(none)"} — package.json says ${current}`);
-  const released = new Set([...read("docs/RELEASE-NOTES.md").matchAll(/^## (\d+\.\d+\.\d+)\b/gm)].map((m) => m[1]));
+  const released = new Set([...read("docs/ops/RELEASE-NOTES.md").matchAll(/^## (\d+\.\d+\.\d+)\b/gm)].map((m) => m[1]));
   const cmp = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
   for (const file of docs) {
     const v = frontMatter(texts.get(file))?.shipped_in;
@@ -160,6 +170,12 @@ export function check() {
     if (!released.has(v)) fail(5, file, 1, `shipped_in ${v} has no entry in RELEASE-NOTES.md`);
     else if (WITHDRAWN.includes(v)) fail(5, file, 1, `shipped_in ${v} was withdrawn — use the release that replaced it`);
     else if (cmp(v, current) > 0) fail(5, file, 1, `shipped_in ${v} is newer than the current version ${current}`);
+    else if (cmp(v, FIRST_PUBLIC) < 0) fail(5, file, 1, `shipped_in ${v} is before the first public release ${FIRST_PUBLIC}`);
+  }
+
+  // 18. Generated copies are current (docs-copies.mjs).
+  for (const [from, to] of COPIES) {
+    if (!existsSync(join(ROOT, to)) || read(to) !== renderCopy(from, to)) fail(18, to, 0, `stale copy of ${from} — run npm run docs:copies`);
   }
 
   return { facts, docs: docs.length };
@@ -167,7 +183,7 @@ export function check() {
 
 export function report({ facts, docs }) {
   const lines = [];
-  const names = { 1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/" };
+  const names = { 1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies" };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);
     lines.push(`check ${n} — ${names[n]}: ${mine.length ? `${mine.length} FAIL` : "ok"}`);

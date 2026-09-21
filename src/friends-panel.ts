@@ -1,4 +1,4 @@
-// The Friends half of the people panel (docs/FRIENDS.md §3, §6 fork 5A).
+// The Friends half of the people panel (docs/integrations/FRIENDS.md §3, §6 fork 5A).
 //
 // The title bar item Rooms already owns becomes the people item: one glyph, one panel,
 // two parts. **Friends** is the list of boxes at the top — his design, 2026-09-20: a

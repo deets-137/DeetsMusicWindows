@@ -1,5 +1,5 @@
 # Writes one Generic credential's password from Windows Credential Manager to stdout, for
-# scripts/release.mjs (docs/RELEASE.md §6.6). Never run it where stdout is shown or logged.
+# scripts/release.mjs (docs/ops/RELEASE.md §6.6). Never run it where stdout is shown or logged.
 #   powershell -NoProfile -File scripts/cred-read.ps1 -Target DeetsMusicUpdaterKey
 param([Parameter(Mandatory = $true)][string]$Target)
 

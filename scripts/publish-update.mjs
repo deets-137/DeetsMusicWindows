@@ -1,5 +1,5 @@
 // `npm run release:publish` — put the archived installer on an update channel
-// (docs/RELEASE.md §6.7). Publishing is what makes installs update: run it only after the
+// (docs/ops/RELEASE.md §6.7). Publishing is what makes installs update: run it only after the
 // installed build passed its checks.
 //
 //   npm run release:publish                              package.json's version → "deetsmusic"
@@ -17,7 +17,7 @@
 // Uploads installers/DeetsMusic_<v>_x64-setup.exe to R2 (deetsmusic-releases/<channel>/), then
 // rewrites <channel>/index.json with { version, group, notes, pub_date, size, signature, file }.
 // `group` is package.json `deetsmusic.updateGroup` (§6.5); `notes` is the version's entry in
-// docs/RELEASE-NOTES.md, up to its first subsection. Wrangler runs from ../DeetsSupport, whose
+// docs/ops/RELEASE-NOTES.md, up to its first subsection. Wrangler runs from ../DeetsSupport, whose
 // account owns the bucket.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
@@ -113,7 +113,7 @@ if (notesOnly !== null) {
   const entry = index.releases.find((r) => r.version === notesOnly);
   if (!entry) die(`${notesOnly} is not in ${channel}/index.json`);
   const notes = releaseNotes(notesOnly);
-  if (!notes) die(`no "## ${notesOnly}" entry in docs/RELEASE-NOTES.md`);
+  if (!notes) die(`no "## ${notesOnly}" entry in docs/ops/RELEASE-NOTES.md`);
   entry.notes = notes;
   writeIndex(index);
   console.log(`[publish] ${notesOnly} notes refreshed on ${channel}`);
@@ -150,7 +150,7 @@ if (!existsSync(exe) || !existsSync(`${exe}.sig`)) die(`need ${sub}/${file} and 
 // A missing entry used to publish `notes: ""`, and 0.6.3 and 0.7.0 went live with a blank row
 // on the website and in the update offer. The test channel's spike builds carry no notes.
 if (channel === "deetsmusic" && !releaseNotes(version)) {
-  die(`no "## ${version} — <date>" entry in docs/RELEASE-NOTES.md; write it before publishing (RELEASE.md §0 step 1)`);
+  die(`no "## ${version} — <date>" entry in docs/ops/RELEASE-NOTES.md; write it before publishing (RELEASE.md §0 step 1)`);
 }
 if (index.releases.some((r) => r.version === version && !r.history) && !replace) {
   die(`${version} is already in ${channel}/index.json (pass --replace to overwrite)`);

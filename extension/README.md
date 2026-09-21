@@ -7,7 +7,7 @@ match with its cover, title, artist, album, and a **+** that adds it to your lib
 It never touches Apple directly. All credentials stay in the app; the extension only
 talks to DeetsMusic over loopback (`127.0.0.1`, port 47825–47828); the app trusts the
 extension's `Origin` header, so there is nothing to pair.
-Design + protocol: [`docs/EXTENSION.md`](../docs/EXTENSION.md).
+Design + protocol: [`docs/integrations/EXTENSION.md`](../docs/integrations/EXTENSION.md).
 
 ## Install (unpacked, until it's on the Web Store)
 
@@ -23,7 +23,7 @@ title menu → **Extension → Install guide…** opens it too. Short version:
 ```
 manifest.json          MV3, Chrome-first (activeTab + scripting + storage; deliberately
                        NO host_permissions — one would strip the Origin header the app
-                       pairs on, see docs/EXTENSION.md §3)
+                       pairs on, see docs/integrations/EXTENSION.md §3)
 src/common/shared.js   settings, bridge client, title heuristics, log
 src/readers.js         page readers injected on click (YouTube DOM, MAIN world, YT Music)
 src/bg/service-worker.js  opens settings on first install; otherwise idle

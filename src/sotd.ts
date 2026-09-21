@@ -1,4 +1,4 @@
-// Song of the Day (docs/DeetsOTD.md) — the window's half. One song you mark for one day;
+// Song of the Day (docs/integrations/DeetsOTD.md) — the window's half. One song you mark for one day;
 // it shows on Home's last shelf and in Rewind, and goes out through the outlets you set up.
 //
 // The rules live in Rust (sotd/): the journal day, the per-day limit, when a post goes, and

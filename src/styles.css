@@ -1777,7 +1777,7 @@ body {
 }
 /* The max-only hosts (anchored queue + slots c/d) don't exist outside max. */
 .panel[data-slot="queue"], .panel[data-slot="c"], .panel[data-slot="d"] { display: none; }
-/* The stage wrapper (docs/STAGE-COLUMN.md §4.1) is NOT a box outside max: its two panels are
+/* The stage wrapper (docs/cards/STAGE-COLUMN.md §4.1) is NOT a box outside max: its two panels are
    direct grid items of .bento, in document order — midi, mini and the NP player view lay out
    exactly as they did before it existed. */
 .stage { display: contents; }
@@ -1793,7 +1793,7 @@ body {
     "stage left  right"
     "stage c     d";
 }
-/* The stage column (docs/STAGE-COLUMN.md): one grid item over both rows, with its OWN two
+/* The stage column (docs/cards/STAGE-COLUMN.md): one grid item over both rows, with its OWN two
    rows — Now Playing is locked to the height its full-width square cover needs, and the Queue
    takes every other pixel. It is a size container so its children can read its height; that is
    safe because the stage's own height comes from the bento row, never from its contents. */
@@ -3050,7 +3050,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    earlier. At the row's right end: after the explicit mark (Playlists), after the time
    (History). `:not([hidden])` keeps a song you have (with the ✓ setting off) square-less. */
 .lib-row > .add-square, .qrow > .add-square, .qnow > .add-square { display: none; margin-left: auto; }
-/* The withdraw square (Rewind's picks board, docs/DeetsOTD.md §10.6) wears the add-square's
+/* The withdraw square (Rewind's picks board, docs/integrations/DeetsOTD.md §10.6) wears the add-square's
    shape but NOT its hover reveal (owner, 2026-09-18): it shows whenever the pick is really
    posted, so the way to pull a post back is visible without hunting for it. It is only
    rendered on a posted pick, so its room is never taken for nothing. */
@@ -3493,7 +3493,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   line-height: 1; /* the inherited 1.45 line box is what sat the 96px glyph low of center */
 }
 
-/* ── Record player (Press "Record player"; docs/VINYL.md, src/vinyl.ts) ──────
+/* ── Record player (Press "Record player"; docs/features/VINYL.md, src/vinyl.ts) ──────
    The cover box holds its art in a slot (.vinyl): a plate, the art that turns
    (.vinyl__spin, a Web Animation), and a sheen that does not turn. --vinyl on the box
    says whether this place draws a record (1) or the plain cover (0); the skin sets the
@@ -3687,7 +3687,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch;
   /* An INLINE-size container: the cover reads the card's content width as 100cqw. Only the
      width is contained, so the card's height still follows its content — which is what makes
-     the stage's row 1 size itself (docs/STAGE-COLUMN.md §4.2). */
+     the stage's row 1 size itself (docs/cards/STAGE-COLUMN.md §4.2). */
   container-type: inline-size;
 }
 /* The cover is a SQUARE, always (STAGE-COLUMN.md §4.2). Its preferred height is the card's own
@@ -3828,7 +3828,7 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
 @keyframes boot-safety-cover { to { opacity: 0; visibility: hidden; } } /* hidden takes no clicks; pointer-events can't animate */
 @keyframes boot-safety-panel { to { opacity: 1; transform: none; } }
 
-/* ── Card grow (src/card-grow.ts, docs/CARD-GROW.md) ─────────────────────────
+/* ── Card grow (src/card-grow.ts, docs/cards/CARD-GROW.md) ─────────────────────────
    Nothing here applies at rest (§0): every rule is scoped under data-grow, is-grown,
    is-covered, the zone layer (it paints nothing until a zone is hovered) or the Grow
    button, which is not in the DOM until the header is hovered. */
@@ -4040,7 +4040,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   .panel.is-grow-rows > :not(.panel__head) { animation: none; }
 }
 
-/* ── The drill swap's slide (layout.ts, docs/CARD-GROW.md §14.6) ──────────────
+/* ── The drill swap's slide (layout.ts, docs/cards/CARD-GROW.md §14.6) ──────────────
    A drill from a grown card swaps the target card into its place. The leaving card's
    body stays on as a still copy while the new one slides in over the same box, on the
    card's own --nav-* tokens. Reduced motion: layout.ts plays no slide at all. */

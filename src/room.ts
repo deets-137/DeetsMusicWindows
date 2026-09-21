@@ -1,4 +1,4 @@
-// Listening rooms — the app's side of DeetsMusicRooms (docs/ROOMS.md).
+// Listening rooms — the app's side of DeetsMusicRooms (docs/integrations/ROOMS.md).
 //
 // A room is a shared queue and clock that several DeetsMusic apps follow. Each app
 // plays the songs through its own MusicKit and its own Apple Music subscription:

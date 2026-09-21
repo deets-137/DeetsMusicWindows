@@ -16,7 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-# build.rs reads the Last.fm key file (docs/LASTFM.md §2). Already in the tree.
+# build.rs reads the Last.fm key file (docs/integrations/LASTFM.md §2). Already in the tree.
 serde_json = "1"
 
 [dependencies]
@@ -53,11 +53,11 @@ base64 = "0.22"
 webview2-com = "0.38"
 # The updater (RELEASE.md §6, update.rs): signed installers from music-api.deets.solutions/update.
 tauri-plugin-updater = "2"
-# Last.fm signs every call with MD5 (docs/LASTFM.md §3). One small crate on the digest 0.10
+# Last.fm signs every call with MD5 (docs/integrations/LASTFM.md §3). One small crate on the digest 0.10
 # family sha2 already brings.
 md-5 = "0.10"
 
-# Friends identity (docs/FRIENDS.md §2). The friend code is the public half of an Ed25519
+# Friends identity (docs/integrations/FRIENDS.md §2). The friend code is the public half of an Ed25519
 # key pair, so the worker can check that a socket is really you WITHOUT holding anything
 # secret of yours — the property that keeps "the worker stores no secrets" true. Workers'
 # own WebCrypto verifies Ed25519 natively, so there is nothing to ship on the server side.
@@ -87,10 +87,10 @@ features = [
   "Win32_Foundation",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
-  # DPAPI for the Song of the Day outlet secrets (docs/DeetsOTD.md §8.15). A feature of the
+  # DPAPI for the Song of the Day outlet secrets (docs/integrations/DeetsOTD.md §8.15). A feature of the
   # `windows` crate the app already has; no new download.
   "Win32_Security_Cryptography",
-  # The Discord Rich Presence pipe (docs/FRIENDS.md §8.11). Overlapped named-pipe I/O, so
+  # The Discord Rich Presence pipe (docs/integrations/FRIENDS.md §8.11). Overlapped named-pipe I/O, so
   # a wedged Discord client can never hold a thread: Storage_FileSystem = CreateFileW /
   # ReadFile / WriteFile, System_Pipes = WaitNamedPipeW, System_IO = OVERLAPPED and
   # CancelIoEx, System_Threading = the event each call waits on. All four are features of

@@ -12,7 +12,7 @@ export function resolveEntry(e: QueueEntry): Track | undefined {
   return trackById(e.catalogId) ?? trackById(e.libraryId);
 }
 
-/** The pixel size the Now Playing cover asks Apple for (docs/STAGE-COLUMN.md §6). The stage
+/** The pixel size the Now Playing cover asks Apple for (docs/cards/STAGE-COLUMN.md §6). The stage
  *  cover is the card's content width, 316 CSS px — 474 device px at Windows' usual 150% scale,
  *  632 at 200%. Apple serves the same picture at any size we put in the template, so this
  *  costs a bigger download on a dense screen and no extra API call. */

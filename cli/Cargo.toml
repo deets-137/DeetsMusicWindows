@@ -2,7 +2,7 @@
 name = "deetsmusic-cli"
 version = "0.12.2"
 edition = "2021"
-description = "Command-line + MCP client for the DeetsMusic bridge (docs/AGENT.md)."
+description = "Command-line + MCP client for the DeetsMusic bridge (docs/integrations/AGENT.md)."
 
 # The shipped command is `deetsmusic` (installed to <app>\cli\ so it can't collide with
 # DeetsMusic.exe on case-insensitive Windows). Standalone crate on purpose — no workspace

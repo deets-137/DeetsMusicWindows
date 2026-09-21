@@ -18,6 +18,7 @@
     "release:check": "node scripts/release-check.mjs",
     "tokens": "node scripts/tokens.mjs",
     "docs:check": "node scripts/docs-check.mjs",
+    "docs:copies": "node scripts/docs-copies.mjs",
     "signin:assets": "node scripts/signin-assets.mjs",
     "dev:perf": "node scripts/dev-app.mjs --perf",
     "dev:built": "node scripts/dev-app.mjs --built",

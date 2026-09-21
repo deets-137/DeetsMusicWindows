@@ -3,7 +3,7 @@
    ROWS share the Library's row tokens (--lib-row-art / --lib-row-art-radius) so
    both song lists keep one shape + density and a skin restyles them together.
    The Now-Playing cover (--qcard-now-art) moved to skin.css base on 2026-09-17: the stage
-   column's Queue floor (--max-queue-min, docs/STAGE-COLUMN.md) is arithmetic over this card's
+   column's Queue floor (--max-queue-min, docs/cards/STAGE-COLUMN.md) is arithmetic over this card's
    parts, and a token it reads cannot live inside the card. */
 .qcard {
   --qcard-label-spacing: 0.06em;
@@ -25,7 +25,7 @@
   border-radius: var(--radius-control);
 }
 .qnow--idle { opacity: var(--qcard-idle-dim); }
-/* Buffering a jump — dim the cover (docs/UX-COVERUPS.md §1); a skin may set the depth. */
+/* Buffering a jump — dim the cover (docs/architecture/UX-COVERUPS.md §1); a skin may set the depth. */
 .qnow--loading .qnow__art { opacity: var(--qcard-loading-dim); }
 .qnow__art {
   flex: 0 0 auto;

@@ -40,7 +40,7 @@ export interface Settings {
   /** A click outside the Compass bar closes it (COMPASS.md §4). Off: Escape, the button or a pick. */
   compassCloseAway: boolean;
   /** A pick in a grown card's title picker: keep the grow on the slot, or collapse first. */
-  /** A Max window dragged shorter than the stage column can hold (docs/STAGE-COLUMN.md §5):
+  /** A Max window dragged shorter than the stage column can hold (docs/cards/STAGE-COLUMN.md §5):
    *  "flip" turns it into Midi, which is built for short windows; "floor" stops the drag at
    *  Max's own 750 px. Only "flip" needs `surfaceAutoFlip` on. */
   maxShortWindow: "flip" | "floor";
@@ -93,7 +93,7 @@ export interface Settings {
    *  (their frost undoes the dim). skin-settings.ts publishes it as --glass-canvas-dim. */
   glassCanvasDim: number;
   /** Press only: the cover becomes a record that turns while music plays, a record that holds
-   *  still, or the plain cover (docs/VINYL.md). skin-settings.ts applies it as `data-press-vinyl`. */
+   *  still, or the plain cover (docs/features/VINYL.md). skin-settings.ts applies it as `data-press-vinyl`. */
   pressVinyl: "spin" | "still" | "off";
   /** Press record only: where it shows — the stage (max, mini player view), the stage and the
    *  Now Playing card, or those and the tray panel. `data-press-vinyl-where` on <html>. */
@@ -102,7 +102,7 @@ export interface Settings {
    *  alone, as large as the box allows. `data-press-vinyl-plate` on <html>. */
   pressVinylPlate: boolean;
   /** Press record only, spin only: how fast the record turns, in turns each minute — the three
-   *  real record speeds. vinyl.ts turns it into the period (docs/VINYL.md §4). */
+   *  real record speeds. vinyl.ts turns it into the period (docs/features/VINYL.md §4). */
   pressVinylSpeed: "33" | "45" | "78";
   /** Hover hints (ONBOARDING.md §1; src/hint.ts): the themed box every `title` becomes.
    *  Off = no hover text at all, of either kind. */
@@ -327,7 +327,7 @@ export interface Settings {
   /** A temporary web playlist's days: deleted this long after its last play. The web panel's
    *  Temp | N days button remembers it; every new web starts on Temp. No Settings row (PLAYLIST-WEB.md §10). */
   webTempDays: 1 | 3 | 5 | 7 | 30;
-  // ── Song of the Day (docs/DeetsOTD.md §8.4) ──
+  // ── Song of the Day (docs/integrations/DeetsOTD.md §8.4) ──
   /** Offer today's most-played song on the Home shelf, before the picks, with a dashed rim.
    *  Off by default: people prefer to find what they like themselves (owner's words). The
    *  feature's other five rows live in Rust (settings.rs), which is what enforces them. */
@@ -337,7 +337,7 @@ export interface Settings {
   rewindCard: boolean;
   /** The one-shot auto-enable already fired (so a later "off" sticks). */
   rewindAutoShown: boolean;
-  // ── onboarding (docs/ONBOARDING.md §4) ──
+  // ── onboarding (docs/features/ONBOARDING.md §4) ──
   /** How far through the first-run walk the user is: the NEXT step to show, 1-based.
    *  0 = the walk is over (finished or skipped). A settings key, not a localStorage
    *  once-key (owner's call 2026-09-18): it survives a localStorage clear, the agent
@@ -375,7 +375,7 @@ export const DEFAULTS: Settings = {
   sizePlayer: "405x675", // NP: 404 px wide is where the Press record stopped jittering
   sizeMidi: "495x670",
   sizeMax: "1100x950", // 2026-09-17: 948 is the tallest skin's (Press) need for a full-width
-                       // square cover AND the Queue's 2.5 rows (docs/STAGE-COLUMN.md §5);
+                       // square cover AND the Queue's 2.5 rows (docs/cards/STAGE-COLUMN.md §5);
                        // 950 clears every skin and still fits a 1080p work area (1032).
   cardGrow: true, // new and easy to turn off (CARD-GROW.md §8)
   cardGrowOutside: true, // a grow is temporary; Pin covers "keep it"

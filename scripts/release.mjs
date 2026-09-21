@@ -1,5 +1,5 @@
 // `npm run release` — cli:build → signed tauri build → release-check → archive
-// (docs/RELEASE.md §1, §6.6).
+// (docs/ops/RELEASE.md §1, §6.6).
 //
 // The updater needs every installer signed with the updater key: `bundle.createUpdaterArtifacts`
 // writes the .sig next to the setup exe. The key file comes from Deets' Secrets (override with

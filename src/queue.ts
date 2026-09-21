@@ -103,7 +103,7 @@ function setCurrent(entry: QueueEntry | null): QueueEntry | null {
  *    clicked, so Previous can walk back into them even though you jumped into the
  *    middle. EPHEMERAL: it belongs only to the current context and is REBUILT here,
  *    never appended. (Appending it every click is what stacked duplicate ids into the
- *    fed window and desynced playback — see docs/QUEUE.md.)
+ *    fed window and desynced playback — see docs/features/QUEUE.md.)
  *
  * Layout after this call: `history = [lookback…, heard…]`, so Previous pops the most
  * recently *heard* song first, then descends into the lookback. The clicked song's id
@@ -319,7 +319,7 @@ export function jumpTo(index: number): QueueEntry | null {
   return state.current;
 }
 /**
- * Listening rooms (docs/ROOMS.md §9.1): the room's queue becomes this model, so Now
+ * Listening rooms (docs/integrations/ROOMS.md §9.1): the room's queue becomes this model, so Now
  * Playing, Up Next, the Queue card and History all show the room with no card of their
  * own. `handles[0]` is the room's current song; the rest is its Up Next.
  *

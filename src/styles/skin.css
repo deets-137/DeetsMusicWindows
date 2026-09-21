@@ -270,7 +270,7 @@
   --hint-fs:        var(--fs-subtext);
   --hint-shift:     3px;    /* the rise on show; a skin may zero it */
 
-  /* -- toasts (src/toast.ts, styles/toast.css; docs/TOASTS.md) -------- */
+  /* -- toasts (src/toast.ts, styles/toast.css; docs/architecture/TOASTS.md) -------- */
   /* The strip wears the menu material above; these are its own geometry.
      Color comes from the theme's traffic lights (success --go, warn --pause,
      error --stop; info --panel-border). */
@@ -279,7 +279,7 @@
   --toast-bar:    2px;     /* the countdown bar on timed toasts */
   --toast-shift:  30%;     /* fly-in / fly-out travel; a skin may zero it */
 
-  /* -- the first-run walk (src/walk.ts, styles/walk.css; docs/ONBOARDING.md §4) --
+  /* -- the first-run walk (src/walk.ts, styles/walk.css; docs/features/ONBOARDING.md §4) --
      Deets and Happy lead a stranger through the app. The speech card joins the
      TOAST family (§2a) — same material, same button idiom — so these are aliases,
      not new values; only the walker's own geometry is new. The frame sizes are the
@@ -393,7 +393,7 @@
   --np-chip-strength: 82%;          /* how opaque that chip's panel wash is */
   --np-vol-gap:     var(--space-2); /* transport row ↔ the stage volume row (max) */
 
-  /* -- record player (Press "Record player"; docs/VINYL.md) -- */
+  /* -- record player (Press "Record player"; docs/features/VINYL.md) -- */
   /* Whether each place draws the cover as a record: 1 or 0. A skin turns them on from
      the two rows' attributes (see the Press rules below). Base: off everywhere. The
      geometry is written here once; radii are a % of the disc's radius. */
@@ -441,7 +441,7 @@
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
-  /* The Song of the Day record scrolls past five rows (docs/DeetsOTD.md §10.6). A row is
+  /* The Song of the Day record scrolls past five rows (docs/integrations/DeetsOTD.md §10.6). A row is
      --set-row-h plus its own padding, so five of them plus the hairlines. */
   --set-log-rows:    5;
   --set-log-max-h:   calc((var(--set-row-h) + var(--space-2)) * var(--set-log-rows));
@@ -461,7 +461,7 @@
   --qcard-now-art:  48px;           /* the Queue card's now-playing cover */
   --qcard-idle-dim: 0.6;            /* the now-playing row with nothing to play */
   --qcard-loading-dim: 0.55;        /* its cover while a jump buffers (UX-COVERUPS.md §1) */
-  /* The stage column (docs/STAGE-COLUMN.md) needs no floor token: Now Playing is locked to
+  /* The stage column (docs/cards/STAGE-COLUMN.md) needs no floor token: Now Playing is locked to
      its natural height and the Queue takes the rest, so nothing inside the column competes.
      The window's own height band (surface.ts MAX_FLOOR_H) is what keeps the Queue usable. */
 
@@ -688,7 +688,7 @@
   --icon-lg: 24px;
 
   /* A header action that carries WORDS instead of a glyph (Rewind's SOTD button,
-     docs/DeetsOTD.md §10.5). Same family as .panel__action — same fill, border, height,
+     docs/integrations/DeetsOTD.md §10.5). Same family as .panel__action — same fill, border, height,
      radius and hover — so it only needs the side room and the type the letters take.
      Aliases, never new raw values (UI-ARCHITECTURE.md §2a). */
   --action-text-pad:    var(--space-2);

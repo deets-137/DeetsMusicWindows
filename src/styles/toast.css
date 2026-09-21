@@ -1,4 +1,4 @@
-/* ── Toasts (src/toast.ts; docs/TOASTS.md) ───────────────────────────────
+/* ── Toasts (src/toast.ts; docs/architecture/TOASTS.md) ───────────────────────────────
    A fixed top-right column, newest on top, flying in from the right. In mini
    and midi it hangs under the Now Playing card (--toast-top, measured by
    toast.ts) so the song stays readable; in max, whose stage is on the left,

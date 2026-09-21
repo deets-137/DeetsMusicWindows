@@ -1,4 +1,4 @@
-// Card swap motion (Settings › Animate card swaps; docs/CARD-SWAP.md).
+// Card swap motion (Settings › Animate card swaps; docs/cards/CARD-SWAP.md).
 // layout.ts hands each pick here in two steps:
 //   out — a skin with an out phase (--swap-out-dur > 0, Cyber) plays the leaving
 //         cards out first; the remount waits for it. Other skins remount at once.

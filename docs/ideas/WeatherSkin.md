@@ -10,8 +10,8 @@ updated: 2026-09-14
 > layer — falling rain, tumbling snow, a real moon), **fonts and motion that shift per
 > condition**, and a companion **Weather theme** that recolors the roles to match. Rides the
 > same `WeatherSnapshot` as [DeetsWeather](DeetsWeather.md) — **zero new API surface**; this
-> is a *second consumer* of `weather.rs`. Read with [UI-ARCHITECTURE](../UI-ARCHITECTURE.md)
-> (token tiers, skin doctrine) and [ALBUM-COLOR.md](../ALBUM-COLOR.md) (the runtime-value
+> is a *second consumer* of `weather.rs`. Read with [UI-ARCHITECTURE](../architecture/UI-ARCHITECTURE.md)
+> (token tiers, skin doctrine) and [ALBUM-COLOR.md](../features/ALBUM-COLOR.md) (the runtime-value
 > precedent this extends). Status: ✅ decided · 🔵 open · ⬜ later.
 
 ---

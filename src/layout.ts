@@ -202,7 +202,7 @@ export function initLayout(): void {
 
   const queueHost = document.querySelector<HTMLElement>('[data-slot="queue"]');
   // The four content slots, plus max's two anchored hosts: card grow needs them so the Queue
-  // can grow up over Now Playing (docs/STAGE-COLUMN.md §7). They are NOT in comp.slots, so
+  // can grow up over Now Playing (docs/cards/STAGE-COLUMN.md §7). They are NOT in comp.slots, so
   // nothing else here treats them as content slots.
   const hosts: Record<Slot, HTMLElement | null> = {
     left: document.querySelector<HTMLElement>('[data-slot="left"]'),
@@ -520,7 +520,7 @@ export function initLayout(): void {
     if (comp.queueSlot && queueHost && registry.queue) {
       queueInst = registry.queue.mount(queueHost);
       // The anchored Queue takes the Grow button and its edge strips too — one of them acts:
-      // the top one, up over Now Playing (docs/STAGE-COLUMN.md §7).
+      // the top one, up over Now Playing (docs/cards/STAGE-COLUMN.md §7).
       queueGrow = attachGrowButton("queue", queueHost);
     }
     refreshGrowZones(); // the zones' hints name the mounted cards
@@ -595,7 +595,7 @@ export function initLayout(): void {
     const s = visibleSlotOf(id);
     if (s) return hosts[s];
     // max's anchored Queue is on screen but has no content slot: Compass's "grow queue" and
-    // the handoff need its host (docs/STAGE-COLUMN.md §7).
+    // the handoff need its host (docs/cards/STAGE-COLUMN.md §7).
     if (id === "queue" && comp.queueSlot) return queueHost;
     return null;
   });

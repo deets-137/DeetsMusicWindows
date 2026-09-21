@@ -152,7 +152,7 @@
                 </button>
                 <div class="account__status" id="account-status" data-acct-status>Not signed in</div>
               </div>
-              <!-- Last.fm (docs/LASTFM.md §4): the same button + status shape; src/lastfm.ts wires it. -->
+              <!-- Last.fm (docs/integrations/LASTFM.md §4): the same button + status shape; src/lastfm.ts wires it. -->
               <div class="account" id="lastfm-account">
                 <button class="account__btn" id="lastfm-action" type="button" data-state="out" title="Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile">
                   <span class="account__label">Last.fm</span>
@@ -398,7 +398,7 @@
            each slot from the persisted assignment; the two content slots are swappable via
            their title picker. Now Playing is anchored to the top slot. -->
       <div class="bento" data-screen="home">
-        <!-- The stage column (docs/STAGE-COLUMN.md): Now Playing over the anchored Queue.
+        <!-- The stage column (docs/cards/STAGE-COLUMN.md): Now Playing over the anchored Queue.
              OUTSIDE max this wrapper is `display: contents` — the two panels are then direct
              grid items of .bento, in document order, exactly as they were before it existed.
              In max it is the column-1 grid item and carries its own two rows, so the stage

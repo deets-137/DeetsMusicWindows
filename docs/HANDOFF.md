@@ -16,17 +16,17 @@ updated: 2026-09-20
 > **The Apple-radio line is done.** Next: the **v1 push** — see [Next up](#next-up).
 
 Deeper docs, by area:
-[DESIGN.md](DESIGN.md) (product) · [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) (front-end tokens/cards) ·
-[DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) (back-end/data) · [QUEUE.md](QUEUE.md) (queue model +
-playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGING.md](DEBUGGING.md)
-(`__diag` log) · [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) (card system + surface seam) ·
-[FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](SETTINGS.md) (the settings store + card) ·
-[UX-COVERUPS.md](UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](SEARCH.md) ·
-[PLAYLISTS.md](PLAYLISTS.md) · [STATIONS.md](STATIONS.md) · [HOME.md](HOME.md) (the landing card — three shelves, all local) · [FAVORITES.md](FAVORITES.md) ·
-[ALBUM-COLOR.md](ALBUM-COLOR.md) · [DEETS-REWIND.md](DEETS-REWIND.md) · [TRAY.md](TRAY.md) · [EXTENSION.md](EXTENSION.md) · [AGENT.md](AGENT.md) ·
-[AIRPLAY.md](AIRPLAY.md) (play on a HomePod — the shared sender crate, and §11 sharing a speaker with DeetsAirplay) ·
-[PROVIDERS.md](PROVIDERS.md) (Apple Music + Spotify at once — parked 2026-09-15, Spotify's dev-mode terms block it) ·
-[TOASTS.md](TOASTS.md) (the notice primitive + every call site) · [CARD-SWAP.md](CARD-SWAP.md) (card swap motion, per-skin `--swap-*` tokens) · [ONBOARDING.md](ONBOARDING.md) (hover hints, right-click coverage, Settings › Tips, the sprite-led first run) · [RELEASE.md](RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
+[DESIGN.md](DESIGN.md) (product) · [UI-ARCHITECTURE.md](architecture/UI-ARCHITECTURE.md) (front-end tokens/cards) ·
+[DATA-ARCHITECTURE.md](architecture/DATA-ARCHITECTURE.md) (back-end/data) · [QUEUE.md](features/QUEUE.md) (queue model +
+playback windowing — **read before touching queue.ts/player.ts**) · [DEBUGGING.md](ops/DEBUGGING.md)
+(`__diag` log) · [SURFACES-AND-CARDS.md](architecture/SURFACES-AND-CARDS.md) (card system + surface seam) ·
+[FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) (behaviors hardcoded now, to expose as toggles) · [SETTINGS.md](architecture/SETTINGS.md) (the settings store + card) ·
+[UX-COVERUPS.md](architecture/UX-COVERUPS.md) (latency/jank ledger). Feature specs: [SEARCH.md](features/SEARCH.md) ·
+[PLAYLISTS.md](features/PLAYLISTS.md) · [STATIONS.md](features/STATIONS.md) · [HOME.md](features/HOME.md) (the landing card — three shelves, all local) · [FAVORITES.md](features/FAVORITES.md) ·
+[ALBUM-COLOR.md](features/ALBUM-COLOR.md) · [DEETS-REWIND.md](features/DEETS-REWIND.md) · [TRAY.md](features/TRAY.md) · [EXTENSION.md](integrations/EXTENSION.md) · [AGENT.md](integrations/AGENT.md) ·
+[AIRPLAY.md](integrations/AIRPLAY.md) (play on a HomePod — the shared sender crate, and §11 sharing a speaker with DeetsAirplay) ·
+[PROVIDERS.md](integrations/PROVIDERS.md) (Apple Music + Spotify at once — parked 2026-09-15, Spotify's dev-mode terms block it) ·
+[TOASTS.md](architecture/TOASTS.md) (the notice primitive + every call site) · [CARD-SWAP.md](cards/CARD-SWAP.md) (card swap motion, per-skin `--swap-*` tokens) · [ONBOARDING.md](features/ONBOARDING.md) (hover hints, right-click coverage, Settings › Tips, the sprite-led first run) · [RELEASE.md](ops/RELEASE.md) (build, Authenticode signing, publish, the updater, install / uninstall — §0 is the overview). Ideas, not built:
 [ideas/](ideas/README.md) (DeetsWeather, WeatherSkin, DeetsOTD, DeetsRecommends, AppleData, LinuxPort).
 
 ---
@@ -58,7 +58,7 @@ Seed the dev dir once by copying `deetsmusic.db` + `user-token.txt` from the rel
 Devtools **auto-open in dev** (`lib.rs` setup). Debug the player in the console:
 `__diag.dump()` / `__diag.copy()` (ring buffer of transport + MusicKit events + desyncs,
 auto-captures uncaught errors), `__music` (live instance), `__player.snap()`. Full reference:
-[DEBUGGING.md](DEBUGGING.md).
+[DEBUGGING.md](ops/DEBUGGING.md).
 
 **Dev telemetry + driving the app from a session (2026-09-12).** In dev every song click
 (and Next) prints `[perf] click→sound N ms · model+render · setQueue · stream` to the
@@ -67,7 +67,7 @@ console and writes the same line, plus MusicKit's own request list, to the dev l
 (`play` returns after the song starts), so a session can run a play, tail the log, and
 read the stage split without the devtools — that is how the click-to-sound pass was
 measured and verified (cold vs warm, natural advance via `control seek 97`, dead ids,
-the queue restore via a restart). Recipe and limits: [DEBUGGING.md](DEBUGGING.md)
+the queue restore via a restart). Recipe and limits: [DEBUGGING.md](ops/DEBUGGING.md)
 "Driving it from outside" and `CLAUDE.md` "How to verify your work". None of it ships:
 `src/perf.ts` is gated on Vite's `DEV` flag.
 
@@ -75,7 +75,7 @@ the queue restore via a restart). Recipe and limits: [DEBUGGING.md](DEBUGGING.md
 
 Full procedure — version sync, the build stages, Authenticode signing (§6.9), the NSIS hooks,
 install, uninstall, publishing and the updater (§6, shipped in 0.4.3) — is in
-**[RELEASE.md](RELEASE.md)**; §0 is the one-page overview of commands, secrets and keys. The
+**[RELEASE.md](ops/RELEASE.md)**; §0 is the one-page overview of commands, secrets and keys. The
 short version:
 
 ```bash
@@ -98,7 +98,7 @@ Things that bite:
   `src-tauri/Cargo.toml` and **`cli/Cargo.toml`** (what `deetsmusic --version` reports) — and
   they must all agree or `release-check` fails, *after* the bundle is already built and
   signed. This note said "three" until 2026-09-15, when the 0.6.3 build tripped over the
-  fourth; [RELEASE.md §2](RELEASE.md) always listed all four.
+  fourth; [RELEASE.md §2](ops/RELEASE.md) always listed all four.
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).
@@ -316,7 +316,7 @@ so `select id, kind, act from pins` reads every verb.
 #### Test 4 — movable rows + the Settings search bar (MOVABLE-ROWS.md §13)
 
 **Built 2026-09-20, in the same sitting as the three above.** Read
-[MOVABLE-ROWS.md §13](MOVABLE-ROWS.md) before you start — it is the as-built section, and the
+[MOVABLE-ROWS.md §13](features/MOVABLE-ROWS.md) before you start — it is the as-built section, and the
 full desk test is §12 (20 steps). What follows is the short version and the things only you
 can judge.
 
@@ -404,11 +404,11 @@ deletion, ROOMS.md §18.7).
 
 | | Feature | Doc | State |
 |---|---|---|---|
-| **A** | **The sticky toast queue** | [TOASTS.md](TOASTS.md) §4a | **BUILT 2026-09-20** (§4a.8). Desk test open — the table above |
-| **B** | **Playlist refresh** | [PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) | **BUILT 2026-09-20** (§11). Desk test open (§10, 13 steps). Schema **v11** |
-| **C** | **Movable rows** | [MOVABLE-ROWS.md](MOVABLE-ROWS.md) | Scope closed (§0a), 10 mechanism forks open (§11.2) |
-| **P** | **Pins › On Click** | [PINS.md](PINS.md) §8 | **BUILT 2026-09-20** (§8.7). Desk test open (§8.6). Schema **v12** |
-| **D** | **A Settings search bar** | [MOVABLE-ROWS.md](MOVABLE-ROWS.md) §10 | 4 forks open (§11.3). Cheap — it reads the Compass's own `settingsRows()` index |
+| **A** | **The sticky toast queue** | [TOASTS.md](architecture/TOASTS.md) §4a | **BUILT 2026-09-20** (§4a.8). Desk test open — the table above |
+| **B** | **Playlist refresh** | [PLAYLIST-REFRESH.md](features/PLAYLIST-REFRESH.md) | **BUILT 2026-09-20** (§11). Desk test open (§10, 13 steps). Schema **v11** |
+| **C** | **Movable rows** | [MOVABLE-ROWS.md](features/MOVABLE-ROWS.md) | Scope closed (§0a), 10 mechanism forks open (§11.2) |
+| **P** | **Pins › On Click** | [PINS.md](features/PINS.md) §8 | **BUILT 2026-09-20** (§8.7). Desk test open (§8.6). Schema **v12** |
+| **D** | **A Settings search bar** | [MOVABLE-ROWS.md](features/MOVABLE-ROWS.md) §10 | 4 forks open (§11.3). Cheap — it reads the Compass's own `settingsRows()` index |
 
 **Also closed on 2026-09-20: PINS.md §8.2a** — a new pin starts on **Play** for a song or a
 station and **Open** for an album, playlist or artist (option C). Every fork in PINS §8 is now
@@ -416,7 +416,7 @@ closed, and it is the next thing that can be built; its `pins.act` column is **v
 v10 the doc used to say (v10 is Song of the Day, v11 is now `playlist_refresh`).
 
 **What playlist refresh needs at the desk.** Steps 4, 5 and 12 of
-[PLAYLIST-REFRESH.md §10](PLAYLIST-REFRESH.md) need a stamp moved back in SQLite or the
+[PLAYLIST-REFRESH.md §10](features/PLAYLIST-REFRESH.md) need a stamp moved back in SQLite or the
 machine's clock moved forward a day — I can do both from this session (`query` over
 `playlist_refresh`, and the clock is yours). Step 3 is the one that catches a preference
 stored in the wrong table: set a choice, press **⟳**, re-open the menu.
@@ -449,7 +449,7 @@ how to tell Apple's playlists from the user's — `canEdit` and `globalId` give 
 
 **Not started, and not to be started without an answer:** every fork listed above.
 
-**2026-09-19 — Friends is designed and scheduled to be built** ([FRIENDS.md](FRIENDS.md)): a friend
+**2026-09-19 — Friends is designed and scheduled to be built** ([FRIENDS.md](integrations/FRIENDS.md)): a friend
 code that stands for one person, presence, a friend's row as the way into a room, and broadcasting
 what you play to Discord. Decided: no heartbeat (D1), a friend's row opens a room (D2), a "busy —
 your music is not affected" toast that also fixes Rooms' raw 429 (D3), and **a new worker,
@@ -462,16 +462,16 @@ been run and passed — ROOMS §16.4 and §17.4, DeetsOTD §8.11, PINS §6, HOME
 and §12.4, LOCAL-DATA §11 step 9. Each doc now says PASSED with that date. **The one exception is
 ROOMS §18.7** — the four race fixes, still uncommitted in `src/room.ts` and `src/player.ts`, which is
 the one piece of open ground a Friends socket would sit beside.
-A related design that is NOT part of this build: [ROOMS.md](ROOMS.md) §20, a room that writes no
+A related design that is NOT part of this build: [ROOMS.md](integrations/ROOMS.md) §20, a room that writes no
 SQLite rows (~450 rows → ~0). Build its shape in Friends first; leave the shipped Rooms alone.
 
 **2026-09-18 — 0.10.0 is live on the `deetsmusic` channel** (`main` at `5850210`; installer
-7.4 MB). It ships listening rooms ([ROOMS.md](ROOMS.md) §16), song credits and the song pane
-([CREDITS.md](CREDITS.md) §7), the Max stage column ([STAGE-COLUMN.md](STAGE-COLUMN.md)), card
-memory ([CARD-MEMORY.md](CARD-MEMORY.md)), the AirPlay speaker-only tap and its in-panel
-permission question ([AIRPLAY.md](AIRPLAY.md) §9.5, §12), the Compass card shapes and the turning
-needle ([COMPASS.md](COMPASS.md) §2c, §12), DB write health ([DB-HEALTH.md](DB-HEALTH.md)) and the
-list-place fix ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.10.0). Published at the owner’s request
+7.4 MB). It ships listening rooms ([ROOMS.md](integrations/ROOMS.md) §16), song credits and the song pane
+([CREDITS.md](features/CREDITS.md) §7), the Max stage column ([STAGE-COLUMN.md](cards/STAGE-COLUMN.md)), card
+memory ([CARD-MEMORY.md](cards/CARD-MEMORY.md)), the AirPlay speaker-only tap and its in-panel
+permission question ([AIRPLAY.md](integrations/AIRPLAY.md) §9.5, §12), the Compass card shapes and the turning
+needle ([COMPASS.md](features/COMPASS.md) §2c, §12), DB write health ([DB-HEALTH.md](ops/DB-HEALTH.md)) and the
+list-place fix ([RELEASE-NOTES.md](ops/RELEASE-NOTES.md) 0.10.0). Published at the owner’s request
 without the hand install test of RELEASE.md §0 step 3, and with these desk tests then open (**all
 passed since; confirmed 2026-09-19**): ROOMS §16.4 (two apps in step — the release notes announce rooms as finished, the
 owner’s call), STAGE-COLUMN §8, CARD-MEMORY, CARD-GROW §14, COMPASS 15–25, AIRPLAY §11 (the claim
@@ -499,7 +499,7 @@ Playing alone is called three things today, and a hover hint papers over the gap
 closing it: the Surface menu says **NP**, the tray row and Keep on top offer **Player**, Settings
 says **Player (NP) opens at** with the hint "called NP in the Surface menu", and the Compass says
 **Player (NP)**. One thing, one name: **Player** everywhere. Found in the 2026-09-18 wording pass
-over [SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md); it is the only naming slip a user can trip
+over [SETTINGS-INVENTORY.md](architecture/SETTINGS-INVENTORY.md); it is the only naming slip a user can trip
 over.
 
 The Surface menu also changes shape. `Mini | NP` is one flyout item cut in two
@@ -522,7 +522,7 @@ Where the name lives, all user-facing:
   options already read **Player**; leave them.
 - `src/compass.ts:318` — the `name === "NP" ? "Player (NP)" : name` special case goes away once
   the menu itself says Player. Update `SYNONYMS` so **NP** still FINDS it (an old habit must keep
-  working), and add the term to [COMPASS-TERMS.md](COMPASS-TERMS.md).
+  working), and add the term to [COMPASS-TERMS.md](features/COMPASS-TERMS.md).
 - `src/styles.css` — the `.flyout__split` comment says "Mini takes three quarters, NP one";
   rewrite it with the new ratio and the new name.
 - Store keys stay `sizePlayer` / `player`: they already say Player, and a key rename is a stored
@@ -530,7 +530,7 @@ Where the name lives, all user-facing:
 
 **As built.** All of the above, plus: `SYNONYMS` in `compass.ts` gained `np` and `nowplaying`
 → `player`, so an old habit still finds it, and the pair is listed in
-[COMPASS-TERMS.md](COMPASS-TERMS.md). The name was updated in ONBOARDING.md's hint ledger,
+[COMPASS-TERMS.md](features/COMPASS-TERMS.md). The name was updated in ONBOARDING.md's hint ledger,
 COMPASS.md, SURFACES-AND-CARDS.md, SETTINGS.md §3 and SETTINGS-INVENTORY.md (the glossary keeps
 an **NP** entry that points at Player, so a search for the old word lands somewhere).
 **"NP card" is left alone everywhere** — that is shorthand for the Now Playing card, which is a
@@ -545,7 +545,7 @@ the window becomes the player alone. Settings › Window reads
 
 **BUILT 2026-09-18 — the Settings card is regrouped.** The wording pass shipped first; this is
 the organization. He decided all four forks on 2026-09-18: **1C, 2A, 3C, 4A**.
-[SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md) and [SETTINGS.md](SETTINGS.md) §3 are rewritten
+[SETTINGS-INVENTORY.md](architecture/SETTINGS-INVENTORY.md) and [SETTINGS.md](architecture/SETTINGS.md) §3 are rewritten
 around it. No store key changed, so there is no migration.
 
 **What he chose.**
@@ -660,7 +660,7 @@ there is a room command, not a setting.
 never defines (found in the same review). He looked at it on 2026-09-18 and does not mind it.
 
 **DUE: a full system health check (owner's call, 2026-09-17).** Two parts, in this order, both
-from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".
+from [DEBUGGING.md](ops/DEBUGGING.md) "What the tools cannot yet see — the 2026-09-17 review".
 
 1. **Build the tooling first** (the owner builds it in an evening session): items 1–3 together —
    heaviness rows with context (skin, surface, playing, AirPlay mode, Sound, record player, tray)
@@ -687,7 +687,7 @@ from [DEBUGGING.md](DEBUGGING.md) "What the tools cannot yet see — the 2026-09
 
 **2026-09-17 — bulk delete local playlists, and the list stopped jumping to the top.**
 The owner asked for one thing and the work found two bugs under it.
-- **Bulk delete** ([PLAYLISTS.md §10.3](PLAYLISTS.md)): Ctrl/Shift+click a run of playlists,
+- **Bulk delete** ([PLAYLISTS.md §10.3](features/PLAYLISTS.md)): Ctrl/Shift+click a run of playlists,
   right-click, *Delete N playlists*. Only the **local** ones go — an Apple mirror has no delete
   path, so it is counted and named, not touched. One red sticky question for the whole set
   (**always**, even when every playlist is empty: one gesture removes many rows), the deletes
@@ -717,11 +717,11 @@ The owner asked for one thing and the work found two bugs under it.
 
 **2026-09-17 — 0.9.5 is live on the `deetsmusic` channel** (`main` at `7691a66`; installer 7.4 MB).
 It ships the Compass and its commands, the list keys, the Genres view and the collection sorts, card
-memory ([CARD-MEMORY.md](CARD-MEMORY.md)), and the dev-only sound rate override
-([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.9.5). Published at the user's request without the hand
+memory ([CARD-MEMORY.md](cards/CARD-MEMORY.md)), and the dev-only sound rate override
+([RELEASE-NOTES.md](ops/RELEASE-NOTES.md) 0.9.5). Published at the user's request without the hand
 install test of RELEASE.md §0 step 3; he tests on the live channel and polishes as he goes.
 
-**2026-09-17 — the Compass: BUILT, shipped in 0.9.5, the desk test runs live ([COMPASS.md](COMPASS.md)).**
+**2026-09-17 — the Compass: BUILT, shipped in 0.9.5, the desk test runs live ([COMPASS.md](features/COMPASS.md)).**
 Ctrl+Space (or Ctrl+Shift+Space) drops a bar under the title bar in every surface: the cards,
 surfaces, themes and skins; every Settings row (store-backed toggles and short choices act inline);
 play / pause, next, previous, shuffle, repeat, mute, sleep in N minutes; the library's songs,
@@ -734,7 +734,7 @@ index, the empty state, the caps (§1 "Decided alone").
 **2026-09-17 — 0.9.0 is live on the `deetsmusic` channel** (published 01:52 PDT; `main` at
 `14111a7`, fast-forwarded from `grower-not-shower`). It ships card grow, song and album playlist
 webs, temporary web playlists, the Add-to-Library + on song rows and the Cyber skin name
-([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.9.0). Installer 7.71 MB (0.8.0: 7.62 MB). Published at the
+([RELEASE-NOTES.md](ops/RELEASE-NOTES.md) 0.9.0). Installer 7.71 MB (0.8.0: 7.62 MB). Published at the
 user's request without the hand install test of RELEASE.md §0 step 3: the user tests it on the
 live channel. Open for 2026-09-18: the web build's name-search cap (PLAYLIST-WEB.md §5b; read the
 `search N` part of the `web: built` log lines first).
@@ -764,11 +764,11 @@ MusicKit and its own Apple Music subscription — no audio passes between apps.
 - The deets.solutions site is **out of scope** (§13); the site's own status row for the worker
   is written up in `DeetsSolutions/docs/rooms-status.md`, designed and not built.
 
-As built, end to end: **[ROOMS.md](ROOMS.md) §16**.
+As built, end to end: **[ROOMS.md](integrations/ROOMS.md) §16**.
 
 **2026-09-16 — 0.8.0 is live on the `deetsmusic` channel** (published 17:26 PDT; `main` =
 `wakin-up` at `209c007`). It ships Sound, Last.fm, the playlist web, Stream quality, Fancy Glass
-and the library reads for AI apps ([RELEASE-NOTES.md](RELEASE-NOTES.md) 0.8.0). Published at the
+and the library reads for AI apps ([RELEASE-NOTES.md](ops/RELEASE-NOTES.md) 0.8.0). Published at the
 user's request without the hand install test of RELEASE.md §0 step 3. The user confirmed on
 2026-09-17: 0.8.0 is installed and works well.
 
@@ -785,7 +785,7 @@ auth, where the link is the only way to finish).
 
 **2026-09-16 — Sound: the user lives with it after it goes live, then reports back.** The Sound
 panel (EQ + DeetsAdaptiveSound, phases 1–5) is built, committed and shipped in 0.8.0
-([SOUND.md](SOUND.md) §10–§11). Before any more Sound work: now that it has shipped, the user tests it in daily
+([SOUND.md](features/SOUND.md) §10–§11). Before any more Sound work: now that it has shipped, the user tests it in daily
 listening, gets a feel for each part (Equalizer, Match loudness, Fuller at low volume, Headphone
 crossfeed, Compare) and reports back. Their report decides what stays, what changes and what goes
 (SOUND.md §7 step 4). Do not start new Sound features until that report exists.
@@ -826,7 +826,7 @@ the platform sound and the loop thin. Scoped with forks in
    (pressed look, Up Next shuffles), click a song in an album (the rest shuffled), press
    again (off; the next click plays in order); turn the row off and press (one-shot).
 4. **Space for play / pause** — folds into the keyboard pass below (not a separate item).
-5. ✅ **A Home card** — §15, **DESIGNED + BUILT 2026-09-15** ([HOME.md](HOME.md)): three mixed
+5. ✅ **A Home card** — §15, **DESIGNED + BUILT 2026-09-15** ([HOME.md](features/HOME.md)): three mixed
    shelves (Recently Played from context runs · Recently Added, interleaved by kind, no dates ·
    a weekday/weekend × part-of-day bucket), right-click › Hide with undo, Settings › Home.
    Local but for a first-time artist photo (one call each, once ever). New in Rust:
@@ -869,7 +869,7 @@ panel does the same job in-app, SOUND.md §3A.) Spotify (PROVIDERS.md) is parked
 (VINYL.md) waits behind items 1–3.
 
 **2026-09-15 — Authenticode signing (Azure Artifact Signing): WORKING, tested —
-[RELEASE.md §6.9](RELEASE.md).** Signed 0.4.4-t1 and t2 were built and published to
+[RELEASE.md §6.9](ops/RELEASE.md).** Signed 0.4.4-t1 and t2 were built and published to
 `deetsmusic-test`; t1 was installed by hand and updated to t2 by itself; all installed exes are
 Valid. `release-check` §4 no longer checks `target\release\DeetsMusic.exe` (Tauri writes the
 unsigned original back after bundling). (That test build is long gone: the PC has run real
@@ -884,7 +884,7 @@ after `cli:build` and passes the exe/installer `signCommand` in a temp `--config
 with CN = publisher on all three; `scripts/cred-write.ps1` saves a secret safely.
 `artifact-signing-cli` was rejected (needs the Azure CLI). Committed; every release since 0.5.0 is signed this way.
 
-**2026-09-14 — playlists §10.9, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10.9](PLAYLISTS.md).**
+**2026-09-14 — playlists §10.9, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10.9](features/PLAYLISTS.md).**
 Import to Edit (a mirror row's right-click or its hero cover; your own Apple playlist stays
 linked as one row), Add to Playlist ▸ lists your own Apple playlists with the sigil (the
 first add asks once), and the list splits into Made Here / Your Apple Playlists. New
@@ -893,7 +893,7 @@ test: import one of your own playlists (one row, Send New Songs), import an Appl
 (unlinked), add a song to a throwaway Apple playlist (a REAL Apple write, the question
 first), turn Export playlists off (the Apple rows leave the menu).
 
-**2026-09-14 — the playlists wrap-up, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10](PLAYLISTS.md)
+**2026-09-14 — the playlists wrap-up, BUILT, desk-tested, shipped in 0.4.1: [PLAYLISTS.md §10](features/PLAYLISTS.md)
 "As built".** Drag to reorder (`src/row-drag.ts`, now shared with the queue), rename, the
 *Apple Music ▸* menu (Send New Songs · Get New Songs · Make a New Copy), a red delete confirm,
 named skipped uploads, covers served as `http://cover.localhost/` links, the README note, and
@@ -908,16 +908,16 @@ separate Made Here section (§10.9). Idea raised: drag songs from any card into 
 `optimus-deets`). The hero cover of a local playlist is a button (Choose Image… / Remove
 Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](NEXT-VERSION.md)). Export ▸
 makes an Apple copy or adds new songs to it, and asks before a write Apple can't fully copy
-([PLAYLISTS.md §6](PLAYLISTS.md)). Settings › Apple Music › **Export playlists** (default on).
-Settings › Show notices lost **Off**; a toast that asks always shows ([TOASTS.md §4](TOASTS.md)).
+([PLAYLISTS.md §6](features/PLAYLISTS.md)). Settings › Apple Music › **Export playlists** (default on).
+Settings › Show notices lost **Off**; a toast that asks always shows ([TOASTS.md §4](architecture/TOASTS.md)).
 Same session: **Settings regrouped** (Window / Look and feel / Playback / Apple Music / Playlists /
 Rewind / Connections / Bugs / About) and **`requestSetting(rowId)`** opens the card at a row
 (unfold, scroll, highlight); the Add to Library and Export notices are once-notices with a
-**[Settings]** button ([SETTINGS.md §3](SETTINGS.md), TOASTS.md `onceKey`).
+**[Settings]** button ([SETTINGS.md §3](architecture/SETTINGS.md), TOASTS.md `onceKey`).
 Also: **a network drop** showed MusicKit's own in-page error box ("loadSegmentError", `MKDialog`,
 not an `alert()`) beside our offline toast. Fixed with `suppressErrorDialog: true` in both
 `MusicKit.configure` calls, and the stopped song now **resumes where it stopped** when Apple
-health next finds the network back ([TOASTS.md](TOASTS.md) §Apple health, offline row). Shipped in
+health next finds the network back ([TOASTS.md](architecture/TOASTS.md) §Apple health, offline row). Shipped in
 0.4.1; no test against a real Wi-Fi drop is on record.
 **Rust + `tauri.conf.json` changed: restart the dev runner.** An export is a REAL Apple
 write — test with a throwaway playlist and delete its copies in the Music app.
@@ -927,7 +927,7 @@ one row (the local one; the linked Apple copy is hidden), with the Apple Music s
 copy's Apple artwork when it has no cover of its own, and "Exported on <date>" in its hero.
 
 **2026-09-13 — Apple terms + D.7 pass, built, Worker deployed, app part shipped in 0.3.1** (branch
-`toast-time`; decisions and the origin probe in [RELEASE.md §7](RELEASE.md) "Revised
+`toast-time`; decisions and the origin probe in [RELEASE.md §7](ops/RELEASE.md) "Revised
 2026-09-13"). App: Apple Music icon on the playlist badge, Settings › About notice, README
 privacy + trademarks, real MusicKit `app.build`, MUT redacted in the log, `Origin:
 http://tauri.localhost` on every Rust call to Apple, sign-in on fixed ports 47831–47833,
@@ -952,7 +952,7 @@ Rust call triggered the token refetch). Built: `apple_check` (which token Apple 
 the bounded heal) + `apple_auth_status` (the page reports failures) in `apple.rs`;
 `apple-health.ts` (one toast per cause, Account row states, 5-min recheck while Apple-side);
 `requireSignIn` on every play path; every MusicKit `alert()` routed to player.ts; play retry
-after a heal; the Worker `notice` shown at launch. Bounds and copy: [TOASTS.md](TOASTS.md)
+after a heal; the Worker `notice` shown at launch. Bounds and copy: [TOASTS.md](architecture/TOASTS.md)
 §Apple health rows. **Rust changed: restart the dev runner.** Test: sign out → play (toast +
 Sign in button); sign in; the installed 0.3.0 stays as it is until a new installer. The
 hosted sign-in (DATA-ARCHITECTURE §2a, another session) can reuse `apple_auth_status`.
@@ -988,7 +988,7 @@ for 15+ min) does not end in a saved dead token. Test each one on purpose before
 **2026-09-13 — Library virtualization (option A, windowing): BUILT on `optimus-deets`,
 measured, scripted checks pass, desk-tested and shipped (7dbf56f).** `src/collection-window.ts`; how it
 works: UI-ARCHITECTURE.md §"Long lists: windowing"; before/after and the hand-test list:
-**[LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md)** §Results (skin flip 395–558 →
+**[LIBRARY-VIRTUALIZATION.md](architecture/LIBRARY-VIRTUALIZATION.md)** §Results (skin flip 395–558 →
 16–40 ms; cold grid drag 75–82% dropped with 345 ms long tasks → 1–4%, worst 8–21 ms; DOM
 23k → ~1k nodes). **Next RAM lever, documented not built:** WebView2 `MemoryUsageTargetLevel`
 Low while hidden / minimized — DEBUGGING.md §"Memory: where the installed app's ~386 MB goes". Proven fallback if A stalls: option B (`content-visibility: auto` on rows / 60-tile
@@ -1001,7 +1001,7 @@ backgrounds** — both need a fresh installer to reach the installed app.
 `https://music-api.deets.solutions/signin` (the Worker's `/health` answering), else the
 loopback page. The page returns the MUT with a `deetsmusic://auth?n=<nonce>&mut=…` link
 (a debug build: `deetsmusic-dev://`), so the MUT never passes through the Worker. As built,
-with the differences from the plan: **[DATA-ARCHITECTURE.md §2a](DATA-ARCHITECTURE.md)**;
+with the differences from the plan: **[DATA-ARCHITECTURE.md §2a](architecture/DATA-ARCHITECTURE.md)**;
 test seams: DEBUGGING.md §Sign-in. Files: `apple.rs` (`begin_hosted`, `handle_link`,
 `accept_token`), `lib.rs` (single-instance argv → `handle_link`; debug registers its
 scheme), `plugins.deep-link` in both Tauri configs, `apple.ts`/`main.ts` (`connect(local)`,
@@ -1038,7 +1038,7 @@ secret audit is clean (the `.p8`/MUT/`dev-dumps` were never committed in any bra
 blocker is that a MusicKit key needs a **paid Apple membership**, so no ordinary subscriber can
 run the app. Fix: a **Cloudflare Worker on deets.solutions mints the developer token** — long
 lifetime, open endpoint rate-limited by IP, local signing kept as the dev seam. Full build
-order, across all three repos, is **[RELEASE.md](RELEASE.md) §7**. Also still needed before
+order, across all three repos, is **[RELEASE.md](ops/RELEASE.md) §7**. Also still needed before
 posting: **screenshots** (there are none anywhere), a **GitHub Release** with the installer
 attached (none exist), and a plain note about SmartScreen (installers are signed from the
 first release after 0.4.3, but a browser download can still warn until reputation builds —
@@ -1046,7 +1046,7 @@ RELEASE.md §6.9).
 
 **Before release: polished keyboard control (added 2026-09-13; first slice built 2026-09-17).**
 Every action a mouse can do must also work from the keyboard, with a visible focus ring. Built
-2026-09-17 ([COMPASS.md](COMPASS.md)): **Space plays / pauses** when nothing that takes Space has
+2026-09-17 ([COMPASS.md](features/COMPASS.md)): **Space plays / pauses** when nothing that takes Space has
 the focus; Enter / Space on the Search card's rows; **Ctrl+Space, the Compass** — a bar that
 reaches every card, setting, transport verb and library item; and, later the same day, the
 **list keys** (`src/list-keys.ts`, COMPASS.md §5): Tab into any list, arrows, Home / End,
@@ -1080,7 +1080,7 @@ design and the report fields are the user's own pass.
 log, the incremental sync, deets-airplay 0.2.1 (its log rotates too; DeetsAirplay 0.1.2 was
 built the same night). Branch `polish`, not yet merged to `main`.
 
-**Logging: steps 1–4 of [LOGGING.md](LOGGING.md) built 2026-09-11, all four desk-verified
+**Logging: steps 1–4 of [LOGGING.md](ops/LOGGING.md) built 2026-09-11, all four desk-verified
 (the flush blocks, the unload flush, the incremental line `1 new in 1 page(s)`).**
 `src-tauri/src/log.rs` is the rolling `<app_data>/deetsmusic.log` (512 KB × 2, dated lines,
 three levels, a panic hook, JWT / `Bearer` scrubbed at the write boundary); the old
@@ -1097,7 +1097,7 @@ dev:app` opened TWO full windows — the dev overlay's bare `windows` array repl
 (JSON merge patch), so the tray label lost `tray.html` and loaded the app; the launcher now
 stamps "(dev)" onto the full window objects.
 
-**AirPlay: in v0.2.0, desk-tested in dev.** See [AIRPLAY.md](AIRPLAY.md): the sender is the
+**AirPlay: in v0.2.0, desk-tested in dev.** See [AIRPLAY.md](integrations/AIRPLAY.md): the sender is the
 shared `deets-airplay` crate (git dependency on DeetsAirplay, pinned by `rev`; read that
 repo's CLAUDE.md "Never" list before touching wire code). Decisions are locked in §5; v1 =
 "All PC sound", the per-process path is parked for v2 (§10). **0.2.1 is desk-tested installed:
@@ -1105,9 +1105,9 @@ prompt shown, speaker plays.** Open: the firewall prompt frightens a first-time 
 it with an in-app confirmation or a toast (AIRPLAY.md §9 item 5; toasts exist now, TOASTS.md).
 
 **2026-09-12 — the click-to-sound pass (branch `polish`, desk-tested via the MCP).**
-Dev-only telemetry (`src/perf.ts`, [DEBUGGING.md](DEBUGGING.md)) measured every stage
+Dev-only telemetry (`src/perf.ts`, [DEBUGGING.md](ops/DEBUGGING.md)) measured every stage
 from click to the media element's `playing` event, then five changes landed
-([QUEUE.md](QUEUE.md) windowing, [UX-COVERUPS.md](UX-COVERUPS.md) §4–5): the track
+([QUEUE.md](features/QUEUE.md) windowing, [UX-COVERUPS.md](architecture/UX-COVERUPS.md) §4–5): the track
 store notifies only when a transient ingest added something and the Library card ignores
 transient ingests (a full 3,895-row re-render on every click, 100–370 ms, gone); the click
 click feeds the clicked song alone as a MediaItem descriptor from the cached play
@@ -1122,7 +1122,7 @@ next levers were settled 2026-09-13: hover pre-insert **skipped**; the launch st
 setting, [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) §22 *Play on launch* (last song / a
 station / a playlist in order or shuffled / a song or album, plus starred playlists as a
 random pool), documented, not built. Library windowing (option A) is **built** — see the
-2026-09-13 entry above and [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md) §Results.
+2026-09-13 entry above and [LIBRARY-VIRTUALIZATION.md](architecture/LIBRARY-VIRTUALIZATION.md) §Results.
 **Same day, built and verified:** the queue **restores across sessions** — one JSON blob
 in the cache db's `meta` (`queue-persist.ts`, QUEUE.md "Restore across sessions"), the
 **Restore on launch** settings row (*Last song* default / *Up Next* / *Nothing*), Play
@@ -1132,7 +1132,7 @@ UX-COVERUPS.md §4), so the first Play still pays the cold cost.
 
 **The v1 push** — sequence discussed 2026-07-03 (each item still wants its own design/confirm
 pass before building; the user directs):
-1. ✅ **Settings card** — built 2026-09-10 as the **hybrid** ([SETTINGS.md](SETTINGS.md)):
+1. ✅ **Settings card** — built 2026-09-10 as the **hybrid** ([SETTINGS.md](architecture/SETTINGS.md)):
    the title menu keeps Theme / Skin / Surface / Account + one **Settings…** row that
    summons the card; the card hosts the rehomed toggles (Always on Top, Minimize to Tray,
    hover menus, Library Add, the Extension block), eight FUTURE-SETTINGS rows (§1 §4 §5a
@@ -1149,8 +1149,8 @@ pass before building; the user directs):
    events the tray panel sends. In use.
 
 **Built 2026-09-08, in use** (each has its own doc — read it before
-touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](TRAY.md));
-the **browser extension + loopback bridge** ([EXTENSION.md](EXTENSION.md), source in
+touching the area): the **tray icon + panel** and **Minimize to Tray** ([TRAY.md](features/TRAY.md));
+the **browser extension + loopback bridge** ([EXTENSION.md](integrations/EXTENSION.md), source in
 `extension/`, shipped inside the NSIS installer with a post-install prompt). The app icon is
 now the DM mark (`app-icon.png` → `npx tauri icon`). The Web Store listing is the user's step.
 **2026-09-09 polish:** tray left-click now pops the *app* as mini at the cursor
@@ -1164,29 +1164,29 @@ card under Now Playing (user-led from here). **Surfaces:** all three width cutof
 flip into mini is actually reachable) — the user is evaluating resize-into-mini alongside
 the tray flyout and the menu pick. **Next:** the mini composition, piece by piece.
 **2026-09-09, branch `maxmaxxing` (merged):** the **max composition** (stage + anchored
-queue + 2×2 bento, [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) build order #4); the
+queue + 2×2 bento, [SURFACES-AND-CARDS.md](architecture/SURFACES-AND-CARDS.md) build order #4); the
 mini transport row stacks its side buttons when they'd overflow; and the **agent/CLI
-routes** on the bridge (`/command` `/play` `/queue` `/history`, [AGENT.md](AGENT.md)) —
+routes** on the bridge (`/command` `/play` `/queue` `/history`, [AGENT.md](integrations/AGENT.md)) —
 plus the `deetsmusic` CLI + MCP binary in `cli/` and `npm run dev:app` for dev alongside the installed app.
 **2026-09-09, 0.1.3 (installer line, user-tested):** **one instance only** — the pinned
 taskbar button now activates the running app instead of starting a second process
-([TRAY.md](TRAY.md) §5); *Open DeetsMusic* is one **clean cut** (hide → resize hidden →
+([TRAY.md](features/TRAY.md) §5); *Open DeetsMusic* is one **clean cut** (hide → resize hidden →
 place → show) instead of a visible grow-and-travel; the window **position survives** × and
 restart (`settings.json` → `windowPos`); and the NSIS installer **stops the bundled CLI**
 before install/uninstall, which is what a half-uninstall of 0.1.2 cost us
-([RELEASE.md](RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
+([RELEASE.md](ops/RELEASE.md)). `npm run release` now archives each setup exe into `installers/`.
 
 **2026-09-10, branch `release-prep` (merged):** **stations in Search** (a fifth search type,
-[SEARCH.md](SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
-**radio UX pass** ([STATIONS.md](STATIONS.md) §3b — the station is Up Next's last row, Stop
+[SEARCH.md](features/SEARCH.md)); the **native Windows media session** (`smtc.rs`, item 3 above); the
+**radio UX pass** ([STATIONS.md](features/STATIONS.md) §3b — the station is Up Next's last row, Stop
 Station in three right-click menus, the station resumes after a break-out block, Stop leaves
 the last song paused); **Library Add now defaults ON**. Second batch, same day: the **Add to
-Library square** on Now Playing (+ / spinner / ✓, [FAVORITES.md](FAVORITES.md)); the **max
+Library square** on Now Playing (+ / spinner / ✓, [FAVORITES.md](features/FAVORITES.md)); the **max
 stage volume row** (mute · slider · a hidden AirPlay square; the titlebar pill stays;
 `onVolumeChange` in `player.ts` keeps every control in step); the **Settings card + hybrid
-menu** ([SETTINGS.md](SETTINGS.md) — one `deets.settings` store, the v1 rows, the Rewind gate
+menu** ([SETTINGS.md](architecture/SETTINGS.md) — one `deets.settings` store, the v1 rows, the Rewind gate
 at 50 play starts; **Play Now now defaults to "Song and rest of list"**). Third batch, same day: **AirPlay**
-([AIRPLAY.md](AIRPLAY.md)) — `../DeetsAirplay` is now a library crate (`crates/airplay`) this app
+([AIRPLAY.md](integrations/AIRPLAY.md)) — `../DeetsAirplay` is now a library crate (`crates/airplay`) this app
 depends on (git, pinned by `rev`); the "Play on" panel behind the AirPlay square (pill
 panel in mini/midi, stage row in max), **v1 = "All PC sound"** (loopback of the default
 output; the PC keeps playing), one volume slider driving the speaker, now-playing text +
@@ -1195,7 +1195,7 @@ cover to the speaker, no Settings rows. **Connected and played on the desk.** Th
 (AIRPLAY.md §10 lists the five things learned about it). Also that evening: **per-speaker
 remembered volume** (20 % on a speaker's first use), **Settings › Agents** (Agent control
 switch, default on, gating the six agent routes with a 403; "Copy setup for" Claude Desktop /
-Claude Code / Cursor / Other; the plain-words [AGENT-SETUP.md](AGENT-SETUP.md)), and
+Claude Code / Cursor / Other; the plain-words [AGENT-SETUP.md](integrations/AGENT-SETUP.md)), and
 **Start with Windows** (HKCU Run key, `--tray` launch starts hidden; seeded once on the first
 installed run, DeetsAirplay pattern).
 
@@ -1209,15 +1209,15 @@ get large).
 ## State of play
 
 **Live: 0.9.0** (2026-09-17, `deetsmusic` channel; `main` at `14111a7`, every branch merged).
-What each version added is in [RELEASE-NOTES.md](RELEASE-NOTES.md); the newest work is at the
+What each version added is in [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the
 top of "Next up" above. The list below is the long-lived foundation plus dated entries. The
 releases since 0.6.2, in short:
-- **0.9.0** — card grow (Grow / Fill, [CARD-GROW.md](CARD-GROW.md)), song and album web seeds and
-  temporary web playlists ([PLAYLIST-WEB.md](PLAYLIST-WEB.md) §9–§10), the Add to Library square
+- **0.9.0** — card grow (Grow / Fill, [CARD-GROW.md](cards/CARD-GROW.md)), song and album web seeds and
+  temporary web playlists ([PLAYLIST-WEB.md](features/PLAYLIST-WEB.md) §9–§10), the Add to Library square
   on song rows, Retro-Future renamed Cyber, Last.fm `LINK_BACK = false`.
-- **0.8.0** — Sound (EQ + DeetsAdaptiveSound, [SOUND.md](SOUND.md)), Last.fm scrobbling
-  ([LASTFM.md](LASTFM.md)), the playlist web, Stream quality, Fancy Glass and composited card
-  lists, library reads and read-only SQL for AI apps ([LOCAL-DATA.md](LOCAL-DATA.md)), the
+- **0.8.0** — Sound (EQ + DeetsAdaptiveSound, [SOUND.md](features/SOUND.md)), Last.fm scrobbling
+  ([LASTFM.md](integrations/LASTFM.md)), the playlist web, Stream quality, Fancy Glass and composited card
+  lists, library reads and read-only SQL for AI apps ([LOCAL-DATA.md](integrations/LOCAL-DATA.md)), the
   AirPlay capture's sinc resampler (crate `rev` 4989dfb).
 - **0.7.0** — the sleep timer, the volume pill that grows in place, fancy scrubbers, the
   hover-hint pass, the graphics ruler (NEXT-VERSION §17, §20, §21).
@@ -1230,7 +1230,7 @@ releases since 0.6.2, in short:
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.
 - **Themes** (palette → theme → skin, all CSS-variable driven): `lilac`, `green`, `sepia`,
   `moonlight`, `black-yellow`, `black-red`. Title menu (click the title) with Theme / Skin /
-  Surface flyouts, a **Settings…** row (summons the Settings card, [SETTINGS.md](SETTINGS.md)),
+  Surface flyouts, a **Settings…** row (summons the Settings card, [SETTINGS.md](architecture/SETTINGS.md)),
   and the Account row. A first launch with
   no saved choice follows the OS light/dark preference, landing on Press × Lilac or
   Cyber × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`/`retro-future`)
@@ -1242,7 +1242,7 @@ releases since 0.6.2, in short:
   trains), `glass` (frosted, drifting aurora), `cyber` (lightning storm layer).
   Shared `[data-skin]` base + per-skin deltas; nav/motion/geometry fully tokenized (new
   capabilities like `--hover-lift` / `--panel-backdrop` default to no-ops).
-- **Card + slot system** (`cards.ts`, `layout.ts`; [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md)):
+- **Card + slot system** (`cards.ts`, `layout.ts`; [SURFACES-AND-CARDS.md](architecture/SURFACES-AND-CARDS.md)):
   every card is a mountable registry module. Midi bento = anchored **Now Playing** + **two
   swappable content slots**, each slot's **title is a card picker** (persisted, root-only).
   **Surface seam** (`data-surface` mini/midi/max) exists with size-band resize + per-surface
@@ -1252,7 +1252,7 @@ releases since 0.6.2, in short:
   configures MusicKit JS in the webview, injects the captured MUT directly (no `authorize()`
   popup), plays. Live drag-to-seek scrubber + volume (shared `slider.ts`, persisted). Catalog→
   library id fallback; **dead-id self-healing** (stale catalog ids don't sink a feed batch).
-- **Queue model** (`queue.ts`, [QUEUE.md](QUEUE.md)): history / current / upcoming of lightweight
+- **Queue model** (`queue.ts`, [QUEUE.md](features/QUEUE.md)): history / current / upcoming of lightweight
   handles; origin-based stacking (manual picks survive a new context); backgrounded pre-click
   backlog reachable via Previous. Player keeps it **live-synced to MusicKit** (model-follow) and
   feeds MusicKit a bounded **window** with gapless **re-windowing** (forward top-up +
@@ -1269,9 +1269,9 @@ releases since 0.6.2, in short:
     credits ("Drake & Future" → both; "Earth, Wind & Fire" stays whole), multi-indexed so a
     collab lands under every credited artist (placement toggle: FUTURE-SETTINGS §19). True
     catalog artist identity is still the post-v1 hydrate below.
-  - **Search** ([SEARCH.md](SEARCH.md)) — standalone sectioned discovery (songs/albums/artists/
+  - **Search** ([SEARCH.md](features/SEARCH.md)) — standalone sectioned discovery (songs/albums/artists/
     playlists), enrichment piggyback, transient + materialized catalog tracks.
-  - **Playlists** ([PLAYLISTS.md](PLAYLISTS.md)) — Apple mirror + local store; overview → detail;
+  - **Playlists** ([PLAYLISTS.md](features/PLAYLISTS.md)) — Apple mirror + local store; overview → detail;
     New Playlist, Add to Playlist ▸ submenu, remove-track, empty-only delete. **Folders**
     (2026-07-03, §3a): manual folders + kind auto-clusters (Your Playlists / Apple Mixes /
     Saved from Apple Music) as collapsible sections under the Folders sort; Move to Folder ▸ files
@@ -1279,9 +1279,9 @@ releases since 0.6.2, in short:
     delete with songs, mosaic covers and export / import all built 2026-09-14 (PLAYLISTS.md §10).
   - **Queue** (`qcard.ts`) + **History** (`history-card.ts`) — Now Playing + Up Next / session
     play log; shared row markup (`queue-rows.ts`).
-  - **Rewind** ([DEETS-REWIND.md](DEETS-REWIND.md)) — listening leaderboard (stat × time-window)
+  - **Rewind** ([DEETS-REWIND.md](features/DEETS-REWIND.md)) — listening leaderboard (stat × time-window)
     over the play-event log.
-  - **Radio** ([STATIONS.md](STATIONS.md)) — Apple's live / My Station / Discovery / genre
+  - **Radio** ([STATIONS.md](features/STATIONS.md)) — Apple's live / My Station / Discovery / genre
     stations as shelves (Recently Played · For You · Live · Genres); activate → **radio-mode
     playback** (station queue owned by MusicKit; break-out to a finite queue at the song
     boundary; transport caps + LIVE marker; station plays populate History/Rewind durably).
@@ -1292,19 +1292,19 @@ releases since 0.6.2, in short:
     builders, session-cached). **The own-station generator engine (Deezer BPM, scope toggle,
     thumbs) is DROPPED** — Apple curated is the whole radio story; §4 of the spec is
     research-record only.
-- **Album Color** ([ALBUM-COLOR.md](ALBUM-COLOR.md)): real Apple palettes → `--album-*` runtime
+- **Album Color** ([ALBUM-COLOR.md](features/ALBUM-COLOR.md)): real Apple palettes → `--album-*` runtime
   roles → the rotating Now-Playing aurora (Glass-only display).
-- **Add to Library** ([FAVORITES.md](FAVORITES.md)): ➕ add a catalog song/album to iCloud Music
+- **Add to Library** ([FAVORITES.md](features/FAVORITES.md)): ➕ add a catalog song/album to iCloud Music
   Library, gated behind the **Library Add** settings toggle (default on since 2026-09-10), on Search / Playlists /
   **Queue / History** right-click menus (incl. the now-playing hero). Apple's API is add-only.
-- **Go to Artist / Go to Album** (2026-07-06, [SEARCH.md](SEARCH.md)): drill-in right-click verbs on
+- **Go to Artist / Go to Album** (2026-07-06, [SEARCH.md](features/SEARCH.md)): drill-in right-click verbs on
   **every** song/album surface (Search, Library, Playlists, Rewind, Queue, History, Now Playing —
   NP gained its first menu). Shared builders in `src/go-to.ts`; the id hop is `catalog_related` in
   `apple.rs` (session-cached via `catalogRelated`). Most surfaces route to the **catalog** detail in
   the Search card; the **Library drills IN-PLACE** over the user's library (`LibNav` in
   `library-card.ts`). In-place vs Search is a toggle: FUTURE-SETTINGS §20.
 
-- **2026-09-15 — one hover-hint box** ([ONBOARDING.md](ONBOARDING.md) §1a): `src/hint.ts`
+- **2026-09-15 — one hover-hint box** ([ONBOARDING.md](features/ONBOARDING.md) §1a): `src/hint.ts`
   replaced the native `title` tooltip everywhere — a themed box in the menu material, with a
   second line, so a cut-off song row shows the full song AND artist. **Central by adoption:**
   no call site changed. The engine sweeps every `title` into `data-hint`, removes the
@@ -1313,7 +1313,7 @@ releases since 0.6.2, in short:
   shape table (`SHAPES`), one delegated handler covering Library, Search, Queue, Rewind,
   History, Home, the Artist shelves and Now Playing. Three Settings rows: Show hover hints,
   Hints appear after, Name songs on hover. Shipped in 0.7.0 (2026-09-16).
-- **2026-09-15 — Press record player** ([VINYL.md](VINYL.md)): Record player Spin / Still / Off
+- **2026-09-15 — Press record player** ([VINYL.md](features/VINYL.md)): Record player Spin / Still / Off
   (default Off), Show record on, Spin speed (33⅓ / 45 / 78, default 33⅓), Show record plate. The
   cover (Now Playing + tray panel) turns at the chosen rate, locked to the song so each disc starts
   and ends upright at any speed; song changes slide the discs.
@@ -1321,19 +1321,19 @@ releases since 0.6.2, in short:
   song`, `__vinyl.sample`) and a computed-transform angle trace (VINYL.md §8–§9). Open: the frame
   cost of a full-rate spin (its own optimization session); Apple artwork-rule reading in §10.
   Committed db65b5c, shipped.
-- **2026-09-15 — skin-only settings** ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only
-  settings*, [SETTINGS.md](SETTINGS.md) §3): Look and feel rows that show only under their
+- **2026-09-15 — skin-only settings** ([UI-ARCHITECTURE.md](architecture/UI-ARCHITECTURE.md) §3 *Skin-only
+  settings*, [SETTINGS.md](architecture/SETTINGS.md) §3): Look and feel rows that show only under their
   skin (`when` + `onSkinChange`), a new **range** (slider) row kind, and `src/skin-settings.ts`.
   **Glass** (user: "perfect"): Canvas glow · Dim canvas · Backlight · Tint cards. **Ocean**: Draw
   card edges Soft / Sand (grainy card edges, off by default) + Sand width. Committed
   c978fc6, shipped in 0.5.0.
-- **2026-09-14/15 — self-update + signed releases** ([RELEASE.md](RELEASE.md) §0, §6, §6.9):
+- **2026-09-14/15 — self-update + signed releases** ([RELEASE.md](ops/RELEASE.md) §0, §6, §6.9):
   `tauri-plugin-updater` behind the DeetsSupport Worker + R2 (`deetsmusic` and `deetsmusic-test`
   channels; Settings › Updates Automatic / Ask / Off, Skip, Roll back within a channel group,
   `minVersion` for a required update); shipped in 0.4.3. Every build is signed twice: the
   updater `.sig` (minisign key) and Authenticode via Azure Artifact Signing (`scripts/sign.mjs`).
   Tested end to end with a signed t1 → t2 update on the test channel.
-- **2026-09-13 — toasts** ([TOASTS.md](TOASTS.md)): the primitive, the `toasts` tier
+- **2026-09-13 — toasts** ([TOASTS.md](architecture/TOASTS.md)): the primitive, the `toasts` tier
   setting, and the ten call sites above. Desk-tested and shipped; every later call site is a row in TOASTS.md §5.
 - **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
   search pins · playlist covers (user / Apple / mosaic; schema v3 `cover`) · ♥ favorites
@@ -1344,7 +1344,7 @@ releases since 0.6.2, in short:
   (fork B) was tried and walked back the same day (NEXT-VERSION §10). **Next talk: the
   playlist creation flow** (NEXT-VERSION §11).
 
-- **2026-09-17 — the Max stage column** ([STAGE-COLUMN.md](STAGE-COLUMN.md)). The album cover is
+- **2026-09-17 — the Max stage column** ([STAGE-COLUMN.md](cards/STAGE-COLUMN.md)). The album cover is
   locked to a square and is never cropped (`100cqw` on the cover inside an inline-size `.np`, so
   there is no measured constant); **Now Playing is locked** to its full-width square plus its
   rows and the **Queue absorbs every other pixel** — the owner's rule after stress-testing:
@@ -1361,16 +1361,16 @@ releases since 0.6.2, in short:
 ### Not built yet ⬜
 - **The New Music Mix staleness (2026-09-19)** — a mirrored Apple playlist caches its songs once,
   forever; ⟳ in the Playlists card header is the only fix today. Designed in
-  **[PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md)** (every fork closed), not built.
+  **[PLAYLIST-REFRESH.md](features/PLAYLIST-REFRESH.md)** (every fork closed), not built.
 - **The sticky toast queue (2026-09-19)** — past the cap of 3, a sticky toast is destroyed with
-  its actions unrun, so an Undo or a question can vanish unseen. **[TOASTS.md](TOASTS.md) §4a**,
+  its actions unrun, so an Undo or a question can vanish unseen. **[TOASTS.md](architecture/TOASTS.md) §4a**,
   three forks open, not built.
 - **Movable rows + a Settings search bar (2026-09-19)** — drag a section into the order you want
   across Home, Playlists, Radio and Settings, plus hand order for pinned tiles and playlist rows.
-  **[MOVABLE-ROWS.md](MOVABLE-ROWS.md)**: scope closed in §0a, ten mechanism forks open in §11.2,
+  **[MOVABLE-ROWS.md](features/MOVABLE-ROWS.md)**: scope closed in §0a, ten mechanism forks open in §11.2,
   four search-bar forks in §11.3. Not built.
 - **Two services, one library (2026-09-15) — PARKED.** Designed in the morning
-  (**[PROVIDERS.md](PROVIDERS.md)**), stopped the same day after the Spotify facts were checked
+  (**[PROVIDERS.md](integrations/PROVIDERS.md)**), stopped the same day after the Spotify facts were checked
   (its §9): the owner needs Premium, the ISRC is gone so there is no merge key, search is capped
   at 10, and Developer Policy III.5 forbids mixing another service's content. Reopen only if
   Spotify's dev-mode terms change.
@@ -1387,7 +1387,7 @@ releases since 0.6.2, in short:
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
-- **AirPlay speaker only — BUILT 2026-09-17, desk test PASSED 2026-09-19 ([AIRPLAY.md §12](AIRPLAY.md), §12.4 is
+- **AirPlay speaker only — BUILT 2026-09-17, desk test PASSED 2026-09-19 ([AIRPLAY.md §12](integrations/AIRPLAY.md), §12.4 is
   the test, §12.6 is what was built).** The song is copied inside the page after the Sound graph
   (`deets-tap`), handed to Rust as raw-body chunks (`airplay_tap`), and the page's sink gain drops
   to 0: the PC goes silent, other apps stay off the speaker, the stream is bit-exact. Settings ›
@@ -1395,7 +1395,7 @@ releases since 0.6.2, in short:
   Rust changed: restart the dev runner.
 - **The AirPlay claim guard (2026-09-15) — BUILT 2026-09-17, desk test PASSED 2026-09-19 (AIRPLAY.md §11).**
   The record below is the brief it was built from. The speaker-sharing work
-  ([AIRPLAY.md §11](AIRPLAY.md)) is **one-directional**, and this is the missing half.
+  ([AIRPLAY.md §11](integrations/AIRPLAY.md)) is **one-directional**, and this is the missing half.
   DeetsAirplay (the tray sender, the same crate underneath) reads the machine-wide claim file
   and refuses — or offers a **Take over** on — a speaker this app is holding. This app *writes*
   a claim but never *reads* one, so it will still connect straight over a speaker DeetsAirplay
@@ -1425,10 +1425,10 @@ releases since 0.6.2, in short:
   - **The limit, deliberately:** we can offer no "Take over" of our own. DeetsAirplay has no
     bridge for us to ask, so the guard can only name the holder and leave the user to disconnect
     it there. Giving it a listener is a bigger decision than this entry — don't smuggle it in.
-- **Designed, not built (2026-09-16/17):** listening rooms ([ROOMS.md](ROOMS.md)), connect AI
-  apps ([MCP-INSTALL.md](MCP-INSTALL.md), forks open), Suggest Less
-  ([SUGGEST-LESS.md](SUGGEST-LESS.md)), the sprite-led first-run walk
-  ([ONBOARDING.md](ONBOARDING.md) §4). Ideas with no schedule: [ideas/](ideas/README.md).
+- **Designed, not built (2026-09-16/17):** listening rooms ([ROOMS.md](integrations/ROOMS.md)), connect AI
+  apps ([MCP-INSTALL.md](integrations/MCP-INSTALL.md), forks open), Suggest Less
+  ([SUGGEST-LESS.md](features/SUGGEST-LESS.md)), the sprite-led first-run walk
+  ([ONBOARDING.md](features/ONBOARDING.md) §4). Ideas with no schedule: [ideas/](ideas/README.md).
 - Built since this list was written, so no longer here: the hosted sign-in page + deep link
   (2026-09-13), the CLI / agent control, the mini and max compositions, library windowing,
   playlist rename / drag-reorder / export, and every item of the listening loop but the keyboard.
@@ -1487,12 +1487,12 @@ b59e575, shipped in 0.8.0; the checks below are still open:
   again: second tray icon, second writer on the SQLite file, bridge failed over to port
   47826. Fixed by `tauri-plugin-single-instance`, which **must stay FIRST in the builder**
   (`lib.rs`) or the duplicate opens the DB and takes a port before it's turned away. Its
-  callback is `tray::show_main`. See [TRAY.md](TRAY.md) §5 — including why two DeetsMusic
+  callback is `tray::show_main`. See [TRAY.md](features/TRAY.md) §5 — including why two DeetsMusic
   taskbar icons in dev are expected, and why a debug build flashes a console.
 - **A running `deetsmusic mcp` blocks install and uninstall** — Windows won't replace or
   delete an open file, and the CLI is long-lived (an MCP session lasts as long as the agent).
   Uninstalling 0.1.2 removed the registry entry and then left every file on disk. The NSIS
-  `PREINSTALL`/`PREUNINSTALL` hooks stop it by path; see [RELEASE.md](RELEASE.md) §3.
+  `PREINSTALL`/`PREUNINSTALL` hooks stop it by path; see [RELEASE.md](ops/RELEASE.md) §3.
 - **No in-app OAuth popups** (Tauri/WebView2) — auth is browser-loopback by design (via
   `tauri-plugin-opener`, cross-platform); don't try to "fix" `authorize()` in the webview.
 - **Liberation + skin fonts aren't on Windows** — bundled locally; the loopback page serves them
@@ -1514,7 +1514,7 @@ b59e575, shipped in 0.8.0; the checks below are still open:
     else propagates.
 - **Stale catalog ids reject whole feed batches** — `setQueue`/`playNext`/`playLater` are
   all-or-nothing; the player self-heals (session denylist + library-id fallback + rebuild/retry;
-  `player:deadIds` diag). See [QUEUE.md §Dead ids](QUEUE.md).
+  `player:deadIds` diag). See [QUEUE.md §Dead ids](features/QUEUE.md).
 - **Catalog tracks resolve through two layers** — the track-store `transient` map (session
   display) and Rust `source='seen'` rows (durable stats joins). `handlesFrom` feeds both on every
   play; `loadTracks` ingests seen rows at startup. Station plays go through `stationFollow`, whose
@@ -1530,7 +1530,7 @@ b59e575, shipped in 0.8.0; the checks below are still open:
   thing that recovers a sleep/wake-killed image.
 - **Transport latency to cover up** — nav within MusicKit's window is gapless; anything **outside**
   it (rewind past the backlog, seek, scrub a DRM stream) forces a fresh `setQueue` and **buffers**.
-  Needs a UX cover-up (loading state / optimistic icon), not a silent freeze. See [UX-COVERUPS.md](UX-COVERUPS.md).
+  Needs a UX cover-up (loading state / optimistic icon), not a silent freeze. See [UX-COVERUPS.md](architecture/UX-COVERUPS.md).
 - **Collection-card CSS traps** — the list/grid density hook is `data-grid`, NOT `data-density`
   (the buttons use `data-density`; reusing it makes the click handler swallow every tile click).
   Restore scroll *after* a pane mounts (in `slide()`), never while detached. `.coll-pane`'s

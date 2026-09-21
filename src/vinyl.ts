@@ -1,4 +1,4 @@
-// Press "Record player" (docs/VINYL.md). The cover box keeps its art in a slot (.vinyl):
+// Press "Record player" (docs/features/VINYL.md). The cover box keeps its art in a slot (.vinyl):
 // a plate, the art that turns (.vinyl__spin), and a sheen that does not. CSS decides whether
 // the slot looks like a record in this place (--vinyl on .np__art: the skin, the rows and
 // the surface); everywhere else it draws the plain square cover. The Now Playing card and the

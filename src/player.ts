@@ -415,7 +415,7 @@ export interface PlayerState {
   album?: string;
   artworkUrl?: string;
   /** True while a (re)window is buffering — a jump/seek out of the gapless window.
-   *  The UX cover-up hook (see docs/UX-COVERUPS.md); natural play never sets it. */
+   *  The UX cover-up hook (see docs/architecture/UX-COVERUPS.md); natural play never sets it. */
   loading?: boolean;
   /** Set while an Apple station owns the queue (radio mode). `live` drives the
    *  transport caps: no seek, no skip, LIVE indicator (STATIONS.md §1). */
@@ -1142,7 +1142,7 @@ const liveIds = (hs: TrackHandle[]): string[] =>
  * doLoadFromModel's setQueue: the insert is all-or-nothing, so bank the ids MusicKit
  * names as unresolvable, rebuild the id list (playId swaps in library-id fallbacks or
  * drops the handle), retry. Ends silently once nothing playable is left — the model
- * keeps its entries; the window builders skip dead ones. See docs/QUEUE.md.
+ * keeps its entries; the window builders skip dead ones. See docs/features/QUEUE.md.
  */
 async function insertWithRetry(
   where: string,
@@ -1583,7 +1583,7 @@ export async function stopStation(): Promise<void> {
 // the insert never moves `current`, `windowPos` and model-follow stay aligned (the
 // inserted items just appear at windowPos+1…, mirrored in both). When nothing is
 // playing yet there's no `current` to insert after, so we bootstrap by playing the
-// block as a fresh context. See docs/QUEUE.md.
+// block as a fresh context. See docs/features/QUEUE.md.
 
 /** Shared core: filter to playable handles, bootstrap if idle, else mutate model + MusicKit. */
 async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise<void> {
@@ -1689,7 +1689,7 @@ function queueFailed(e: unknown): never {
 // queue mutator — the old `queue.remove` was deprecated in v3 and just forwarded to
 // `splice(i, 1)` anyway.) Remove splices the item out; Move composes a splice-out + the
 // documented `playNext`/`playLater` inserts. We update the model first (instant Qcard
-// re-render), then mirror into MusicKit. See docs/QUEUE.md.
+// re-render), then mirror into MusicKit. See docs/features/QUEUE.md.
 
 /**
  * MusicKit-queue index of the upcoming entry at model index `k`. The window feeds
@@ -1749,7 +1749,7 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
  * (`remove` everything from the first mismatch to the end, then `playLater` the model's
  * upcoming from there). Both ops leave `current` untouched, so no `setQueue`, no buffer.
  * Bounded by `WINDOW_FWD` (MusicKit only ever holds the forward window). This is the general
- * sync primitive — drag-reorder uses it, and re-windowing (roadmap) will too. See docs/QUEUE.md.
+ * sync primitive — drag-reorder uses it, and re-windowing (roadmap) will too. See docs/features/QUEUE.md.
  */
 export async function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
   // Radio: MusicKit's queue is station-owned; a break-out block edit is model-only.
@@ -1838,7 +1838,7 @@ export async function toggleShuffle(): Promise<void> {
   if (on) await shuffleQueue();
 }
 
-// ── Listening rooms (docs/ROOMS.md) ──────────────────────────────────────────
+// ── Listening rooms (docs/integrations/ROOMS.md) ──────────────────────────────────────────
 //
 // In a room the transport, the queue edits and every play are the ROOM's, not this
 // app's (§10). Rather than teach each of the dozens of call sites about rooms, the

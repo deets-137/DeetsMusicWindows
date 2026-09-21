@@ -1,4 +1,4 @@
-//! Outlets (docs/DeetsOTD.md §8.2, §8.15) — the places a pick is sent to, and the one file
+//! Outlets (docs/integrations/DeetsOTD.md §8.2, §8.15) — the places a pick is sent to, and the one file
 //! that holds their secrets.
 //!
 //! Build 1 has one outlet, the Discord webhook. Every other part of the feature (the outbox,

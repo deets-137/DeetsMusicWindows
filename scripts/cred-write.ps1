@@ -1,5 +1,5 @@
 # Saves a secret to Windows Credential Manager as a Generic credential, read back by
-# scripts/cred-read.ps1 (docs/RELEASE.md §6.6, §6.9). Run it in your own terminal:
+# scripts/cred-read.ps1 (docs/ops/RELEASE.md §6.6, §6.9). Run it in your own terminal:
 #   powershell -NoProfile -File scripts/cred-write.ps1 -Target DeetsMusicAzureSigning -Kind azure
 # Why not `cmdkey /pass`: its hidden prompt accepted a paste with extra characters
 # (2026-09-15) and gave no way to see it. This one trims, checks the shape, and never echoes.

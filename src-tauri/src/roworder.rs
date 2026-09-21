@@ -1,5 +1,5 @@
 //! Row order — the user's own order for the sections and items of a card
-//! (docs/MOVABLE-ROWS.md). One table for all of it (fork 4C, the owner 2026-09-20).
+//! (docs/features/MOVABLE-ROWS.md). One table for all of it (fork 4C, the owner 2026-09-20).
 //!
 //! A **scope** is one ordered list: `settings.sections`, `home.shelves`,
 //! `radio.sections`, `playlists.sections`, `playlists.folder:<key>` (the playlists inside

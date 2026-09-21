@@ -348,7 +348,7 @@ const SPECS: Spec[] = [
     { value: "fri", label: "Fri" }, { value: "sat", label: "Sat" }, { value: "sun", label: "Sun" },
   ]),
   storeToggle("Rewind", "replayKeep", "Keep every Replay"),
-  // ── Song of the Day (docs/DeetsOTD.md §8.8) ──
+  // ── Song of the Day (docs/integrations/DeetsOTD.md §8.8) ──
   // Five rows live in Rust; the sixth (the suggestion) is a view preference in the store.
   // The switch itself is OFF ONLY: an agent may take the feature away, never give it (§5 2B).
   // The webhook link has no spec at all — no route reads or writes a secret.

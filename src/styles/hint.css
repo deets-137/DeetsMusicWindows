@@ -1,4 +1,4 @@
-/* ── Hover hints (src/hint.ts; docs/ONBOARDING.md §1) ─────────────────────
+/* ── Hover hints (src/hint.ts; docs/features/ONBOARDING.md §1) ─────────────────────
    One box, positioned in fixed coordinates by hint.ts. It wears the FLOATING
    material (--menu-surface / --menu-backdrop / --shadow-panel), the same as a
    menu and a toast, so it is in-family under every theme and skin; its own

@@ -1,4 +1,4 @@
-// Toasts — the app's one transient-notice primitive (docs/TOASTS.md; the design
+// Toasts — the app's one transient-notice primitive (docs/architecture/TOASTS.md; the design
 // history is FUTURE-SETTINGS §18). A port of the Deets.Solutions toast
 // (DeetsSolutions/js/toast.js): same API, same four kinds, same traffic-light
 // stripe, same hover-holds-the-clock behaviour. What is new here: the `toasts`

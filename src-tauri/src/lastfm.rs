@@ -1,4 +1,4 @@
-//! Last.fm scrobbling (docs/LASTFM.md).
+//! Last.fm scrobbling (docs/integrations/LASTFM.md).
 //!
 //! Three jobs, all in Rust, none of them an Apple call:
 //! - **Connect** — Last.fm's desktop auth: `auth.getToken`, the browser at `last.fm/api/auth`,

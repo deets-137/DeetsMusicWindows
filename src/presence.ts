@@ -1,4 +1,4 @@
-// Discord Rich Presence — what the card says, and when (docs/FRIENDS.md §8).
+// Discord Rich Presence — what the card says, and when (docs/integrations/FRIENDS.md §8).
 //
 // Your Discord profile reads "Listening to DeetsMusic", with the song, the artist, the
 // album, the cover and a progress bar under it — the shape §8.4a measured against the real

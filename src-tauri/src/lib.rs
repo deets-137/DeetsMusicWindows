@@ -221,10 +221,10 @@ pub fn run() {
             app.manage(settings::Settings::load(dir.clone()));
             // Last.fm (LASTFM.md): the saved session, and the scrobbles still waiting.
             lastfm::setup(app.handle(), dir.clone());
-            // Song of the Day (docs/DeetsOTD.md): the outlets that are set up, and the posts
+            // Song of the Day (docs/integrations/DeetsOTD.md): the outlets that are set up, and the posts
             // that were still waiting when the app last closed.
             sotd::setup(app.handle(), dir.clone());
-            // Friends (docs/FRIENDS.md §2): the key file, if this PC already has one. It
+            // Friends (docs/integrations/FRIENDS.md §2): the key file, if this PC already has one. It
             // mints nothing here — a first key waits for the first ask.
             friends::setup(dir.clone());
             airplay::setup(&dir);
@@ -332,7 +332,7 @@ pub fn run() {
             presence::presence_set,
             presence::presence_clear,
             presence::presence_close,
-            // Friends (docs/FRIENDS.md §2, §3). The seed leaves Rust only by `friend_key_export`.
+            // Friends (docs/integrations/FRIENDS.md §2, §3). The seed leaves Rust only by `friend_key_export`.
             friends::friend_me,
             friends::friend_sign,
             friends::friend_key_export,
@@ -412,7 +412,7 @@ pub fn run() {
             settings::settings_set_agent_history,
             settings::settings_set_lastfm_scrobble,
             settings::settings_set_lastfm_now_playing,
-            // Song of the Day (docs/DeetsOTD.md §8.2)
+            // Song of the Day (docs/integrations/DeetsOTD.md §8.2)
             settings::settings_set_sotd,
             settings::settings_set_sotd_day_start,
             settings::settings_set_sotd_picks_per_day,

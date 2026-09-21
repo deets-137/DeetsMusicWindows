@@ -1,0 +1,453 @@
+---
+status: foundation
+desk_test: none
+sources: [src/player.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts]
+updated: 2026-09-18
+---
+# DeetsMusic — Queue model & playback windowing
+
+> How a click becomes playback, and why the queue model is shaped the way it is.
+> Code: [`src/queue.ts`](../../src/queue.ts) (the model) + [`src/player.ts`](../../src/player.ts)
+> (MusicKit feeding). Read this before touching either — the interplay is subtle and has
+> bitten us. Diagnostics: [DEBUGGING.md](../ops/DEBUGGING.md) (`__diag`, `__player.snap()`).
+
+---
+
+## The two layers
+
+**The queue model is the source of truth** for what plays; it's decoupled from MusicKit.
+The player feeds MusicKit only a *bounded window* of the model, for cheap `setQueue` and
+native gapless playback, then mirrors MusicKit's live position back onto the model
+("model-follow").
+
+```
+            queue model (full plan, lightweight id handles)
+   history[]            →   current   →   upcoming[]
+   (heard + lookback)       (now)         (the plan)
+                     │
+                     │  player.ts feeds a window:
+                     ▼
+   [ …WINDOW_BACK behind │ current │ WINDOW_FWD ahead… ]  → MusicKit.setQueue
+```
+
+Entries are lightweight `TrackHandle`s (`catalogId`/`libraryId` + `origin` + `played`),
+never full `Track`s — a queue over a 10k-song library stays a few hundred KB of strings.
+Metadata for display/playback is resolved through the shared track store.
+
+---
+
+## `history` holds two different things
+
+This is the crux of the whole design. `history[]` mixes two kinds of entry, and they
+must be treated differently:
+
+| | flag | lifetime | purpose |
+|---|---|---|---|
+| **Heard trail** | `played: true` | **durable** — survives across contexts (capped at `HISTORY_CAP`) | what you actually listened to; powers Previous + recently-played across album/library/playlist hops |
+| **Parked lookback** | `played: false` | **ephemeral** — belongs to the current context, rebuilt on each new play | the songs *before* the one you clicked, so Previous can walk back into them even though you jumped into the middle of a list |
+
+`getRecentlyPlayed()` filters on `played`, so the lookback stays hidden until you actually
+hear it. An entry "graduates" from lookback → heard automatically: `setCurrent()` flips
+`played: true` the moment it becomes current.
+
+### Layout after `setContext`
+
+```
+history = [ lookback…(played:false) , heard…(played:true) ]   current   upcoming = [ manual… , auto-tail… ]
+```
+
+So **Previous pops the most recently *heard* song first**, then descends into the
+lookback. `upcoming` keeps the user's `manual` play-next picks stacked on top of the
+fresh auto-tail.
+
+---
+
+## `setContext` — the rule that keeps it correct
+
+When you click a song, `setContext(handles, startIndex)`:
+
+1. **Keep** `manual` play-next picks from the old `upcoming`.
+2. Build the **heard trail**: prior `played` entries + the song that was playing (it
+   counts as heard) — **minus** any copy of the song you're about to play.
+3. **Rebuild** (never append) the **lookback** from `handles[0..startIndex-1]`, skipping
+   any id already in the heard trail or the clicked song itself.
+4. `history = [lookback…, heard…]`, capped; set `current`; `upcoming = manual + autoTail`.
+
+The load-bearing word is **rebuild**. The lookback is replaced every call, so it can't
+accumulate. The heard trail is the only thing that grows, and it's bounded + deduped.
+
+### Worked example
+
+Library sorted A–Z: `AAAHH MEN!`(0) · `Aasa Kooda`(1) · `Abq`(2) · `Acapella`(3) ·
+`Add Up My Love`(4) · `Adderall`(5).
+
+- **Click `Abq` (idx 2):** lookback `[AAAHH MEN!, Aasa Kooda]`, current `Abq`,
+  upcoming `[Acapella, Add Up My Love, Adderall, …]`. Window `pos = 2`. ✅
+- **Then click `Adderall` (idx 5):** heard trail `[Abq]` (it played); lookback rebuilt
+  as idx 0–4 minus the heard `Abq` → `[AAAHH MEN!, Aasa Kooda, Acapella, Add Up My Love]`.
+  `history = [AAAHH MEN!, Aasa Kooda, Acapella, Add Up My Love, Abq]` — **no duplicates** —
+  current `Adderall`. Previous walks `Abq` → `Add Up My Love` → `Acapella` → … ✅
+
+Starting a brand-new context **drops the previous context's unheard lookback** (it was
+never heard, so it's disposable). Anything you *did* hear stays in the trail.
+
+---
+
+## Windowing — `loadFromModel`
+
+The window is fed in **three steps** (2026-09-12, the click-to-sound pass — `src/perf.ts`):
+
+1. **The click feed is the clicked song alone**, as a MediaItem **descriptor** built by
+   `describe()` from the cached Track's play parameters (`setQueue({ items })`). MusicKit
+   skips its resolve round trip entirely: ~5 ms, against 130–250 ms for 8 ids and
+   500–1300 ms for 200 ids by id. **No back window**: Previous from a freshly clicked song
+   re-windows (`prevRewindow`), which costs the same ~1 s as MusicKit's native skip, since
+   MusicKit preloads no license or bytes for neighbours anyway. Previous after a natural
+   advance or a Next is still native — MusicKit keeps its played items.
+2. **`growNow()`** — the moment play resolves, the next `GROW_NOW = 8` upcoming ids are
+   appended **by id** (one `playLater`, ~130 ms, off the click path). This is what natural
+   song-to-song advance needs: **MusicKit's auto-advance cannot load a descriptor-fed
+   item** (measured: it goes to `ended` with no now-playing item), but it advances fine
+   from a descriptor current into an id-resolved next. Dead ids are caught here by the
+   NOT_FOUND retry, so none ever enter the queue.
+3. **`scheduleGrow()`** — `GROW_DELAY_MS = 1500` later, the same low-water top-up
+   (`maybeTopUpWindow` → one batched `playLater`) brings the forward side up to
+   `WINDOW_FWD = 200`. A second click inside the delay cancels the pending grow; one
+   that lands mid-grow awaits the in-flight `topUp` promise (≤ ~130 ms for step 2), so a
+   stale `playLater` can never append into a queue that `setQueue` has since replaced.
+
+The id form (`setQueue({ songs: ids })`, `current` + `ID_FALLBACK_FWD = 5` ahead) stays as
+the fallback: when the current has no Track in the store, when the MusicKit build rejects
+the descriptor form (`itemsMode` remembers that for the session), and when a
+descriptor-fed *play* fails — the window is re-fed by ids once, which runs the NOT_FOUND
+dead-id retry below, so a dead clicked song still yields the next live one.
+`player:loadWindow` logs which form took (`fed`).
+
+The full plan stays in the model; the window gives native gapless + Previous-into-backlog
+around the click. Jumps/seeks that land *outside* the live window force a fresh `setQueue`
+and **buffer** (the documented latency; `isLoading`/`PlayerState.loading` is the cover-up
+hook — see [UX-COVERUPS.md](../architecture/UX-COVERUPS.md)).
+
+### Re-windowing (roadmap #3 — built 2026-07-02)
+
+Without a top-up, a long context would dead-end at the window edge (song #201 of a
+1000-song plan never plays). Two edges, two mechanisms:
+
+- **Forward (gapless):** `maybeTopUpWindow()` runs on every settled
+  `nowPlayingItemDidChange`. When MusicKit's remaining upcoming drains below
+  `REWINDOW_LOW = 50` while the model has more, it calls `reconcileUpcoming()` — the
+  matched prefix stays put, the model's missing tail is appended in **one batched
+  `playLater`** (capped to `WINDOW_FWD`). `current` never moves: no `setQueue`, no
+  buffer. Hysteresis means one refill per ~150 songs, not one per track. A `toppingUp`
+  flag stops a second top-up stacking on an in-flight one; `player:topUp` is the diag
+  breadcrumb. Dead ids self-heal inside `reconcileUpcoming` as usual.
+- **Backward (buffered, by necessity):** MusicKit has no "play-earlier" insert, so
+  Previous past the fed back-window can't be gapless. `prevTrack` detects the edge
+  (MusicKit index 0 + the model still holds history), replays `queue.previous()`, and
+  re-windows via `loadFromModel` — the documented outside-window buffer, `loading`
+  covers it. Logged as `player:prevRewindow`. Before this, Previous at the edge
+  silently no-opped.
+
+Known-and-accepted: MusicKit's `items` array grows over a very long session (played
+items + appended top-ups never trim). Ids are cheap; if it ever bites, a full re-window
+at a natural pause would trim it — `player:topUp` logs `mkLen` so we'd see it coming.
+
+**The window is deduped (belt-and-suspenders).** MusicKit's `setQueue` collapses repeated
+song ids, which makes its real queue shorter than ours and desyncs the index
+`changeToMediaAtIndex` jumps to — landing on the wrong song. `loadFromModel` builds a
+duplicate-free id list (first id wins) and inserts `current` first-class so its index
+`pos` is always exact. `setContext` already avoids most dupes; this catches the remaining
+case where a *heard* song reappears later in the forward context.
+
+Sequence (order matters — learned the hard way, see gotchas):
+**pause → `setQueue` → `changeToMediaAtIndex(pos)` → `play()`**. `changeToMediaAtIndex`
+already starts playback, so `play()` is guarded by `!isPlaying` (only really needed on the
+`pos === 0` path); calling `play()` while playing throws *"play() without a previous
+stop()/pause()"*.
+
+**`pos === 0` skips `changeToMediaAtIndex` — deliberately.** `setQueue` already leaves the
+queue at index 0, and calling `changeToMediaAtIndex(0)` anyway makes MusicKit race *itself*:
+its internal event handler fires a second `play()` on top of the in-flight one → an uncaught
+*"play() without a previous stop()/pause()"* rejection in the console (observed 2026-07-02,
+queueing an album from idle). Plain `play()` is sufficient at 0. (This guard was briefly
+removed chasing a "fresh context at the top doesn't start" symptom whose real cause was the
+dead-id NOT_FOUND rejection below — don't remove it again.)
+
+---
+
+## Idempotent re-click
+
+Clicking the song that's **already current** does **not** rebuild the queue. `playContext`
+detects `playId(target) === playId(current)` and just `seekToTime(0)` (+ `play()` if
+paused) — what people expect from re-clicking, and it avoids a needless buffer. Logged as
+`player:reclick`.
+
+**It must be the same LIST, not only the same song (2026-09-18).** The id test alone made
+this guard swallow whole contexts. The user's report: a Home song tile plays ONE song; the
+album that song opens starts with it; **Play** on the album therefore read as a re-click,
+seeked to 0:00 and returned before `setContext` — so only that one song ever played, with
+nothing in Up Next. The fix (the owner's fork 1A, and 2A for the audio): `playContext`
+also asks `sameContext()`, which compares the click's handles against `queue.getPlan()`
+position by position. A different list always rebuilds. The song restarts at 0:00, because
+Play on an album means "play this album from the top".
+
+`getPlan()` is empty after a restart and after a station, so the comparison fails and the
+click rebuilds — the safe way round.
+
+---
+
+## Model-follow
+
+MusicKit owns transport *within* its fed window (native prev/next). `windowPos` is the
+MusicKit index the model's `current` is aligned to. On `nowPlayingItemDidChange`,
+`syncModelToMusicKit()` replays `advance()`/`previous()` to walk the model to MusicKit's
+`nowPlayingItemIndex` (NOT `queue.position` — empty in this build). Suppressed by
+`loadingContext` while we're (re)building the queue, so our own `setQueue`/`change…`
+churn doesn't drive the model. `player:desync` logs if the model's `current` ever stops
+matching MusicKit's now-playing item.
+
+---
+
+## Manual queueing — Play Next / Add to Queue
+
+Inserting into the queue is **gapless** and never rebuilds: `enqueueNext` / `enqueueLater`
+(`player.ts`) use MusicKit's documented `playNext` / `playLater` ops, which mutate the
+**upcoming** queue in place — no `setQueue`, no buffer. We keep the model in lockstep:
+
+- **Model side** (`queue.ts`): `playNextMany` unshifts the block onto `upcoming` (order
+  preserved); `addToQueueMany` pushes it on the end. Both tag entries `origin: "manual"`,
+  so a later `setContext` (new play) keeps them (the stacking rule). The singles
+  `playNext`/`addToQueue` just delegate to the batch versions.
+- **Why model-follow doesn't break:** the insert is **after** `current`, so `current`'s
+  index never moves — `windowPos` stays valid and `nowPlayingItemIndex` is unchanged. The
+  new items simply appear at `windowPos+1…` in *both* MusicKit and the model. (Contrast a
+  `setQueue` rebuild, which re-buffers `current`.)
+- **Bootstrap:** with nothing playing there's no `current` to insert after, so both ops
+  fall back to `playContext(block, 0)` — start the block fresh.
+
+`queueTracksNext` / `queueTracksLater` are the `Track[]` wrappers the Library uses (a song
+is a 1-track list; an album is its tracks in disc/track order). The right-click **menu**
+lives in the collection-card engine (`menu()` grouping accessor → `src/context-menu.ts`);
+see [UI-ARCHITECTURE §4a](../architecture/UI-ARCHITECTURE.md).
+
+> **One thing to confirm on real runs (logged as `player:enqueue` `libOnly`):** whether
+> `playNext`/`playLater` accept **library-only** ids (`l.xxxx`, no catalog id) in the
+> `{ songs: [...] }` descriptor, the same fallback `setQueue` rides. If a library-only
+> song silently doesn't enqueue, that's the place to look.
+
+### Editing Up Next — Remove / Move to Top / Move to Bottom
+
+The Qcard's right-click menu edits **upcoming** entries (`removeFromQueue` / `moveInQueue`
+in `player.ts`). Because the edits only touch items *after* `current`, `current`'s index
+never moves — `windowPos` and model-follow stay valid.
+
+- **Remove** uses `music.queue.splice(mkIndex, 1)` — a **gapless live mutation** (current
+  keeps playing, only `queueItemsDidChange` fires, *not* `nowPlayingItemDidChange`, so
+  model-follow isn't disturbed). No `setQueue`, no buffer. (`splice` is MusicKit JS v3's
+  supported queue mutator; the old `queue.remove(i)` was deprecated and just forwarded to
+  `splice(i, 1)`.)
+- **Move to Top / Bottom** compose a `splice`-out + the documented `playNext` / `playLater`
+  inserts — all gapless.
+- **Index translation:** an upcoming entry at model index `k` sits at MusicKit index
+  `nowPlayingItemIndex + 1 + k` (`items` = `[history…, current, upcoming…]`). `mkUpcomingIndex`
+  computes that, **id-verifies** it, and falls back to a forward id-search if `setQueue`'s
+  dedup drifted things; `-1` (not in the window) → the edit is model-only and reconciles on
+  the next re-window.
+- **Order:** model first (instant Qcard re-render), then MusicKit. The menu captures the
+  **entry**, not the index, and re-resolves the live index per action — so an edit stays
+  correct even if playback advances while the menu is open.
+
+> **Edge:** "Move to Bottom" appends at the end of MusicKit's *window* via `playLater`;
+> if the model's `upcoming` is longer than the window, that's not the model's true bottom
+> (it reconciles on re-window). Fine for typical queues.
+
+### Arbitrary reorder — `reconcileUpcoming` (drag-and-drop)
+
+Top/Bottom hit fixed positions, so they compose from `playNext`/`playLater`. An **arbitrary**
+reorder (drag-drop to any slot) has no documented MusicKit op — so instead of the undocumented
+`splice`, we **reflect the model into MusicKit by rebuilding only the divergent suffix**:
+
+1. Reorder the model (`queue.move(from, to)`) — it's the source of truth.
+2. `reconcileUpcoming()`: compute the model's expected upcoming (deduped against what MusicKit
+   holds up to `current`, capped to `WINDOW_FWD`), find the **first index `d`** where MusicKit's
+   live upcoming diverges, `splice` out MusicKit's upcoming `[d..end]` (one contiguous removal),
+   then `playLater` the model's `[d..end]`.
+
+`splice` + `playLater` both leave `current` untouched → **gapless, no `setQueue`, no buffer**.
+The divergent suffix is contiguous, so it's one `splice(np+1+d, count)` (a single
+`queueItemsDidChange`) + one batched `playLater`, regardless of how far the drop reached. This
+is the **general sync primitive**: drag-reorder and the forward window top-up
+(§Re-windowing above) both ride it. The `player:misalign` canary validates every reconcile.
+
+The drag UI itself lives in `qcard.ts` over the shared `row-drag.ts` (whole-row
+press-and-drag, insertion-line feedback, render suspended mid-drag so a queue/track change
+can't yank the row — see [UI-ARCHITECTURE §4b](../architecture/UI-ARCHITECTURE.md) and
+[DRAG-DROP.md](../architecture/DRAG-DROP.md)).
+
+### Insert at a position — a drop from another card (2026-09-14)
+
+A song or collection dropped on the Queue card lands at the insertion line
+(`insertInQueue(at, handles)` / `queueTracksAt` in `player.ts`). The model takes the block
+with `queue.insertManyAt(at, …)` (`origin: "manual"`), then `reconcileUpcoming()` mirrors the
+new order into MusicKit — the same gapless suffix rebuild as a reorder. Radio mode: model
+only, with the break-out flag (as Play Next). Nothing playing: `playContext(block, 0)`.
+Logged as `player:insert { at, n }`.
+
+---
+
+## Dead ids — NOT_FOUND self-healing (2026-07-02)
+
+**The failure.** A library's cached `catalogId`s go stale (region pulls, catalog
+takedowns). Every MusicKit feed op — `setQueue`, `playNext`, `playLater` — is
+**all-or-nothing**: one unresolvable id in the batch rejects the *whole* call with
+`NOT_FOUND: One or more items could not be resolved: <ids>`, and nothing plays/inserts.
+Whole-library windows (idle shuffle, the play-button bootstrap) made this near-certain;
+any 200-song window could hit it.
+
+**The healing (player.ts).** The rejection *names* the offenders, so:
+
+1. **`deadIds`** — a session-scoped denylist. Every id MusicKit reports unresolvable is
+   banked (logged as `player:deadIds`).
+2. **`playId` is deadIds-aware** — the fallback chain per handle is now
+   **catalog id → library id → skip**. A dead catalog id makes the handle ride its
+   library id (the user's owned copy usually still plays); a handle with no live id
+   left is skipped by every window/insert builder.
+3. **Retry, rebuilt** — `doLoadFromModel`'s `setQueue` and `insertWithRetry` (wrapping
+   `playNext`/`playLater` in `enqueue`, `moveInQueue`, and `reconcileUpcoming`'s tail)
+   catch NOT_FOUND, bank, **rebuild their id list**, and retry (≤3 attempts). Non-resolve
+   errors and persistent failures still throw.
+
+**Net behavior:** invisible to the user — first contact with a dead id costs one extra
+round-trip, then the session denylist makes every later window/insert skip it up front.
+The queue **model** never drops entries: a fully-dead song still shows in the Qcard but
+is silently absent from what MusicKit is fed (it reconciles as model-only, same as any
+beyond-window entry — the alignment invariant treats MK as a subsequence, so no
+`player:misalign`).
+
+**Persisted (2026-09-12).** `markDead` writes every banked id to the cache db's `dead_ids`
+table (`dead_ids_mark`: `reason` = `not-found` | `unavailable`, `first_seen`, `marked_at`);
+`loadDeadIds` reads the marks from the last 7 days (`dead_ids_cached`) at the idle
+warm-up and at `initPlayer`. After 7 days a mark is ignored, so a song Apple restores is
+tried once more; a new rejection refreshes `marked_at` but keeps `first_seen`.
+`dead_ids_mark` returns the ids with no earlier row (logged as `player:deadFresh`) — the
+trigger for the dead-song toast (`noteDeadSongs`, [TOASTS.md](../architecture/TOASTS.md) §5). Deleting
+the cache clears the marks.
+
+**Future work:** let catalog hydrate repair or clear stale `catalogId`s at the source.
+
+---
+
+### Dead ids surface at play time in the descriptor form (2026-09-12)
+
+The descriptor-fed window is never resolved up front, so a stale catalog id is not caught
+by `setQueue` — it is caught when MusicKit reaches it. Two shapes, one heal:
+
+- **Explicit Next** into a dead item: `skipToNextItem` rejects with
+  `CONTENT_UNAVAILABLE: This song is currently unavailable.` and MusicKit stays on the
+  old song.
+- **Auto-advance** into a dead item: MusicKit emits **no error at all** — `playbackState`
+  goes to `ended` with **no now-playing item** while the model still has upcoming songs
+  (`mediaPlaybackError` never fired). `onEndedWithoutItem` keys on exactly that shape. The
+  same shape with MusicKit's own queue exhausted means the song ended inside the grow
+  delay (nothing is dead): the model advances and re-windows (`player:windowDry`).
+
+`healDeadNext` jumps the model to the first upcoming entry that still has a live play id
+(entries in between are discarded like any jump) and **re-windows through
+`loadFromModel`** — the same load every click takes, so `windowPos` and model-follow stay
+exact. (Reconciling MusicKit's upcoming in place and skipping again was tried first and
+left the index-based follow one song off.) It **banks the id in `deadIds` only on
+MusicKit's own word** — the skip rejection or a `mediaPlaybackError`. The end-of-song
+shape also follows a transient failure (a `MEDIA_LICENSE` hiccup was observed), and banking
+there skipped *live* songs for the session; an unbanked re-window onto a truly dead song
+fails into the id re-feed, whose NOT_FOUND retry banks it properly. Since the grow feeds
+by id, dead ids no longer reach MusicKit's queue at all in normal play — these paths are
+the belt-and-suspenders. Logged as `player:deadNext` (`bank` says which).
+
+## Restore across sessions (2026-09-12)
+
+`src/queue-persist.ts`. The three zones are saved as **one JSON blob** in the cache db's
+`meta` table (`queue_state`, Rust `queue_state_get/set`) — debounced 500 ms on every
+`onQueueChange` and flushed on `beforeunload` — and read back once at launch per the
+`restoreQueue` setting: **song** (default) = last session's current comes back as the
+model's `current`, so Now Playing shows it *paused* with its cover, Up Next and the
+Previous chain intact; **queue** = the song is parked at the head of upcoming and Now
+Playing stays idle (the placeholder cover); **off** = start empty (still written).
+`queue.restore` deliberately does NOT go through `setCurrent`: restoring is not playing,
+so `played` flags and the play log stay as saved. **Nothing is fed to MusicKit at
+launch** — the first Play (`playPause` with no MusicKit item but a model current →
+`loadFromModel`; with only upcoming → `jumpToUpcoming(0)`) or any click loads through the
+normal path, so windowing and model-follow gain no new cases. Radio mode has no plan to
+restore; a station is not remembered. Names and art resolve through the track store (the
+durable `seen` rows cover catalog-only songs), and Now Playing repaints once the store's
+first load lands.
+
+## The session play log (the Previous chain's honest twin)
+
+> **2026-09-15: the History card no longer reads this log.** It reads the durable
+> `play_events` table, so it survives a restart ([NEXT-VERSION §16](../NEXT-VERSION.md)). The
+> session log below still exists and is still append-only; nothing renders it today.
+
+`history[]` serves **Previous** — it's deduped and mutated (setContext rebuilds, `previous()`
+pops), so it can't honestly answer "what did I listen to?". For that, `queue.ts` keeps a
+separate **append-only play log** (`getPlayLog()`, capped at `PLAY_LOG_CAP = 200`,
+session-scoped): an entry is logged (as a copy) the moment a song **stops being current**
+— in `pushHistory` (advance/jump) and in `setContext` (the outgoing song). Repeats are
+real: a song heard three times appears three times, and re-queueing a song from History
+never removes its earlier rows — the window dedup in `loadFromModel` handles playback
+correctness; the log is display-only.
+
+The **History card** (`history-card.ts`) keeps that shape over the durable rows: hero block
+(most recent, mirrors the Qcard's Now Playing) + "Previously" list, newest first. Read-only
+rows; right-click → Play Now / Play Next / Add to Queue via the handle-level ops
+(`playContext` / `enqueueNext` / `enqueueLater`), stamped `context: "history"`. Row
+markup/resolution is shared with the Qcard via `queue-rows.ts`.
+
+**What it reads.** `play_events_since(now − 14 days)` at mount (one SQLite call, no Apple
+calls), newest first, 200 rows held. After that, **every write to the log re-reads the last
+two hours** (`onPlayEvent` in `stats.ts`, fired when `record_event_start` and
+`record_event_end` land): a start puts a new row on top, and a finalize turns the row above
+it into a skip mark. **Names** come from the track store, not from the event row — a played
+track that is not in your library is materialized as a `seen` row, and those load into the
+store at launch for exactly this (`track-store.ts` `loadTracks`). **Each row** carries the
+clock time on the right, and the Next glyph when the song was cut short (hint: *You skipped
+this one*). Settings › Playback › **Show the day in History** (default off) adds Today /
+Yesterday / the date to the row's own subtitle line — never as a divider, so the card keeps
+its shape.
+
+---
+
+## The bug this design fixed (so we don't regress)
+
+**Symptom:** clicking the same song repeatedly (or re-playing any row from a list you'd
+already played from) played a *different* song after the first click.
+
+**Cause:** the old `setContext` was **append-only** — it pushed the old current *and*
+re-seeded the entire pre-click lookback into `history` on every call. Re-clicking stacked
+duplicate ids into the fed window; MusicKit collapsed them on `setQueue`, so
+`changeToMediaAtIndex(pos)` (with an ever-growing `pos`) landed on the wrong slot. The
+`__diag` `player:loadWindow` log showed `pos` climbing `2 → 5 → 8 → 11 …` on identical
+clicks — the tell.
+
+**Fix:** ephemeral-rebuild lookback in `setContext` (no accumulation) + window dedup in
+`loadFromModel` (exact index regardless) + idempotent re-click guard (no rebuild at all
+for the already-playing song).
+
+---
+
+## Quick reference
+
+| Want to… | Look at |
+|---|---|
+| change Previous / lookback semantics | `setContext` in [queue.ts](../../src/queue.ts) |
+| change window size / dedup / load sequence | `loadFromModel` in [player.ts](../../src/player.ts) |
+| change re-click behaviour | `playContext` in [player.ts](../../src/player.ts) |
+| change Repeat all (the lap) / Repeat one | `refillFromPlan` in [queue.ts](../../src/queue.ts) + `maybeFinishQueue` / `applyRepeatToMusicKit` in [player.ts](../../src/player.ts) — NEXT-VERSION §12 |
+| change the shuffle mode (a context starts shuffled) | `setContext(…, shuffle)` in [queue.ts](../../src/queue.ts); `isShuffleOn` / `toggleShuffle` in [player.ts](../../src/player.ts) — NEXT-VERSION §14 |
+| change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../../src/player.ts), `*Many` in [queue.ts](../../src/queue.ts) |
+| change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../../src/player.ts) |
+| change drag-reorder sync / re-windowing | `reconcileUpcoming` + `maybeTopUpWindow` (+ the `prevTrack` edge) in [player.ts](../../src/player.ts) |
+| change the drag interaction (Qcard) | the drag block in [qcard.ts](../../src/qcard.ts) |
+| change the History card / play log | [history-card.ts](../../src/history-card.ts) / `getPlayLog`+`logPlay` in [queue.ts](../../src/queue.ts) |
+| change queue-row markup (Qcard + History) | [queue-rows.ts](../../src/queue-rows.ts) |
+| change the right-click menu items | `menu()` in [library-card.ts](../../src/library-card.ts) (library) / the `contextmenu` handler in [qcard.ts](../../src/qcard.ts) (queue); popover in [context-menu.ts](../../src/context-menu.ts) |
+| debug a wrong-song / frozen-queue issue | `__diag.dump()`; watch `player:loadWindow` `pos`, `player:desync`, `player:reclick`, `player:enqueue` |

@@ -5,16 +5,16 @@ front-end, Rust back-end).
 
 ## Start here
 - **`docs/HANDOFF.md`** — cold-start: state of play, how to run, roadmap, gotchas.
-- `docs/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
-- `docs/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
+- `docs/architecture/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
+- `docs/architecture/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
 - `docs/DESIGN.md` — product intent.
-- `docs/TRAY.md` — tray icon/panel, minimize-to-tray, window lifecycle (single instance);
-  `docs/EXTENSION.md` — browser extension + the loopback bridge (`extension/` is the MV3
-  source); `docs/AGENT.md` — the agent/CLI routes on that bridge; `docs/RELEASE.md` — build,
+- `docs/features/TRAY.md` — tray icon/panel, minimize-to-tray, window lifecycle (single instance);
+  `docs/integrations/EXTENSION.md` — browser extension + the loopback bridge (`extension/` is the MV3
+  source); `docs/integrations/AGENT.md` — the agent/CLI routes on that bridge; `docs/ops/RELEASE.md` — build,
   install, uninstall.
-- `docs/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
+- `docs/architecture/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
   call site; `__toast.demo()` in the console shows one of each kind.
-- `docs/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11).
+- `docs/ops/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11).
 - `docs/ideas/` — feature ideas that are **not built**.
 
 ## How to verify your work
@@ -28,7 +28,7 @@ front-end, Rust back-end).
   test rather than scaffolding a harness.
 - Playback, frame smoothness, and heaviness can be measured from a session (dev-only
   telemetry, `[perf]` lines in `%APPDATA%\com.deetsmusic.dev\deetsmusic.log`). Recipes:
-  `docs/DEBUGGING.md`.
+  `docs/ops/DEBUGGING.md`.
 
 ## Working style (the user directs the architecture)
 - For non-trivial features, **design on paper / talk it through first**, surface the
@@ -57,7 +57,7 @@ front-end, Rust back-end).
 npm install
 npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 window
 npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
-npm run release       # build the installer (→ installers/; see docs/RELEASE.md)
+npm run release       # build the installer (→ installers/; see docs/ops/RELEASE.md)
 npx tsc --noEmit      # front-end typecheck
 ```
 Devtools auto-open in dev (`src-tauri/src/lib.rs`).

@@ -6,11 +6,12 @@ updated: 2026-09-21
 ---
 # DeetsMusic — Docs organization
 
-> **Status (2026-09-21): STEPS 1 AND 2 DONE on branch `dockin` — every doc has front matter
-> (§11.1a) and `npm run docs:check` passes with 0 facts (§11.2a); the release check warns until 2026-09-28.
-> NOTHING MOVED.** No file is renamed and no link is rewritten. Every number in §1 was measured against the tree on
-> 2026-09-20. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks are
-> open (§10). Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
+> **Status (2026-09-21): STEPS 1, 2 AND 3 DONE on branch `dockin` — every doc has front matter
+> (§11.1a), `npm run docs:check` passes with 0 facts (§11.2a; the release check warns until
+> 2026-09-28), and the docs are in their area folders (§11.3a — read it for the tree as built;
+> §4 below is the plan that led there).** Every number in §1 was measured against the tree on
+> 2026-09-20, before the move. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks were
+> open (§10); F1–F5 are decided, F6 is open. Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
 > work that rides this re-org: release notes, where a hotfix outranks the feature release
 > it repairs. Four more forks, all open. §13 (2026-09-21) is the user guide on
 > deets.solutions: all nine of its forks closed (U1–U9). §14 (2026-09-21) = release tags
@@ -22,7 +23,7 @@ updated: 2026-09-21
 3. A skill that brings every doc up to date, flags staleness and version mismatches,
    and fixes them.
 
-Siblings: [HANDOFF.md](HANDOFF.md) · [LESSONS.md](LESSONS.md) · [RELEASE.md](RELEASE.md)
+Siblings: [HANDOFF.md](HANDOFF.md) · [LESSONS.md](LESSONS.md) · [RELEASE.md](ops/RELEASE.md)
 (the release check is where §8 runs).
 
 ---
@@ -32,7 +33,7 @@ Siblings: [HANDOFF.md](HANDOFF.md) · [LESSONS.md](LESSONS.md) · [RELEASE.md](R
 Define these once. The rest of the doc uses them exactly.
 
 - A **doc** is one `.md` file under `docs/`.
-- A **link** is a markdown link to another doc: `[TOASTS.md](TOASTS.md)`. There are 476.
+- A **link** is a markdown link to another doc: `[TOASTS.md](architecture/TOASTS.md)`. There are 476.
   A link carries a path, so a move breaks it.
 - A **mention** is a doc named in prose with no link: `TOASTS.md §5`. There are about
   1,000. A mention carries no path, so a move does **not** break it.
@@ -60,7 +61,7 @@ Define these once. The rest of the doc uses them exactly.
 | Largest docs | ROOMS 1,388 · DeetsOTD 1,300 · DEBUGGING 1,227 · FUTURE-SETTINGS 1,177 |
 
 The two broken links are `docs/ideas/README.md → DeetsOTD.md` and
-`docs/STATIONS.md → ideas/DeetsOTD.md`. Both were made by one move: `DeetsOTD.md` left
+`docs/features/STATIONS.md → ideas/DeetsOTD.md`. Both were made by one move: `DeetsOTD.md` left
 `ideas/` when it was built. Nothing caught them for two days. This is the whole argument of
 §4.1 in one example.
 
@@ -321,7 +322,7 @@ of a day belongs in WORKLOG.** A desk test is a record of a day. A gotcha is sti
 ## 8. The checker — `npm run docs:check`
 
 Deterministic, fast, free. No model runs. It joins the release check
-([RELEASE.md](RELEASE.md)) next to the stale-`TOKENS.md` gate.
+([RELEASE.md](ops/RELEASE.md)) next to the stale-`TOKENS.md` gate.
 
 | # | check | what it catches today |
 |---|---|---|
@@ -383,10 +384,10 @@ tree. The repo has a `.claude/` already, with only `settings.local.json` in it.
 
 | # | fork | recommendation |
 |---|---|---|
-| **F1** | Folder names: `architecture/` or `techniques/` | `architecture/` — the folder holds `DATA-ARCHITECTURE.md` and the token system, which are not techniques |
-| **F2** | Do the card docs (`CARD-GROW`, `CARD-SWAP`, `CARD-MEMORY`, `STAGE-COLUMN`) sit in `architecture/`, or in their own `cards/`? | `architecture/`. Four docs is not a folder. Ask again at seven |
-| **F3** | `NEXT-VERSION.md` and `FUTURE-SETTINGS.md` — root, or a `backlog/` folder? | Root. 45 links point at the two of them, and they are entry points, not area docs |
-| **F4** | `ONBOARDING.md` — `architecture/` (it is the hint ledger, and every `title` in the app is a row in it) or `features/` (it is the first-run walk)? | `architecture/`. The ledger is the load-bearing half |
+| **F1** | Folder names: `architecture/` or `techniques/` | **DECIDED 2026-09-21: `architecture/`** |
+| **F2** | Do the card docs (`CARD-GROW`, `CARD-SWAP`, `CARD-MEMORY`, `STAGE-COLUMN`) sit in `architecture/`, or in their own `cards/`? | **DECIDED 2026-09-21: their own `cards/`**, plus a generated copy of `SURFACES-AND-CARDS.md` (the owner: "for ease of dev"; the `architecture/` one is the one true copy) |
+| **F3** | `NEXT-VERSION.md` and `FUTURE-SETTINGS.md` — root, or a `backlog/` folder? | **DECIDED 2026-09-21: root** |
+| **F4** | `ONBOARDING.md` — `architecture/` (it is the hint ledger, and every `title` in the app is a row in it) or `features/` (it is the first-run walk)? | **DECIDED 2026-09-21: `features/`** (the owner: "onboarding can go to shipped") |
 | **F5** | Does the checker fail the release check on day one, or warn for a week first? | **DECIDED (the owner, 2026-09-21): warn for a week** — `GRACE_END = 2026-09-28` in `docs-check.mjs` |
 | **F6** | Does `docs/README.md` replace the `CLAUDE.md` pointer list, or do both exist? | Both. The `CLAUDE.md` list is what a session has without opening a file. `docs/README.md` is what a human browses |
 
@@ -403,6 +404,8 @@ Nothing here is started.
    first report before writing checks 6–10 — the report says which suspicions are worth the
    code. **DONE 2026-09-21 (§11.2a).**
 3. **The move**, plus the link rewrite, plus `docs:index`. One commit. The checker proves it.
+   **DONE 2026-09-21 (§11.3a), without `docs:index`** — the generated README is its own step
+   (§6.2), after F6.
 4. **`CLAUDE.md`** rewritten to one line per doc.
 5. **The `HANDOFF` / `WORKLOG` split.**
 6. **The sweep skill**, last, because it is worth nothing until the checker exists.
@@ -481,6 +484,57 @@ faults (the rules above). The 14 real ones, fixed in the docs in the same commit
 suspicions and need their own first run. Checks 6 and 8 need `sources`, which step 1 left
 rough; build check 8 first and read its noise before trusting check 6.
 
+### 11.3a Step 3 as built (2026-09-21) — the tree
+
+```
+docs/
+  HANDOFF.md  LESSONS.md  DESIGN.md  DOCS-ORG.md       entry points and SOP
+  NEXT-VERSION.md  FUTURE-SETTINGS.md                  the two backlogs (F3)
+  AGENT-SETUP.md                                       a stub: moved_to integrations/ (below)
+  TASTE.md                                             private, git-ignored
+  architecture/  10  UI-ARCHITECTURE · DATA-ARCHITECTURE · SURFACES-AND-CARDS · TOKENS ·
+                     SETTINGS · SETTINGS-INVENTORY · TOASTS · DRAG-DROP · UX-COVERUPS ·
+                     LIBRARY-VIRTUALIZATION
+  cards/          5  CARD-GROW · CARD-SWAP · CARD-MEMORY · STAGE-COLUMN ·
+                     SURFACES-AND-CARDS (generated copy)
+  features/      25  PLAYLISTS · PLAYLIST-WEB · PLAYLIST-REFRESH · HOME · QUEUE · SEARCH ·
+                     SECOND-SEARCH · STATIONS · FAVORITES · PINS · ARTIST-VIEW · CREDITS ·
+                     SOUND · AUDIO-QUALITY · VINYL · DEETS-REWIND · LOOK-SCHEDULE · COMPASS ·
+                     COMPASS-TERMS · TRAY · SUGGEST-LESS · ALBUM-COLOR · MOVABLE-ROWS ·
+                     ONBOARDING · QUICK-SETTINGS
+  integrations/  11  AGENT · AGENT-SETUP · MCP-INSTALL · EXTENSION · LASTFM · AIRPLAY ·
+                     ROOMS · FRIENDS · DeetsOTD · PROVIDERS · LOCAL-DATA
+  ops/            5  RELEASE · RELEASE-NOTES · DEBUGGING · LOGGING · DB-HEALTH
+  ideas/          7  unchanged (MatterLights added)
+  guide/             the user guide (§13): the template only
+  assets/            images
+```
+
+- **`scripts/docs-move.mjs NAME=area …`** did it, and stays as the tool for every later move
+  (an idea that gets built moves out of `ideas/` with one command). It moved 55 docs with
+  `git mv`, re-pointed 447 relative links in every tracked `.md`, and rewrote 218
+  `docs/NAME.md` paths in 133 files — code comments, scripts (`tokens.mjs` TARGET,
+  `publish-update.mjs`, the checker), `CLAUDE.md`, `AGENTS.md`, `README.md`, `.toml`
+  descriptions. A path after another folder name is another repo's and is left alone; this
+  repo's own GitHub URL (`…/DeetsMusicWindows/blob/main/docs/…`) is rewritten.
+- **The one live URL.** The Agent card's **Guide** button opens
+  `…/blob/main/docs/AGENT-SETUP.md` on GitHub (`settings.rs` `agent_open_guide`). It now opens
+  `docs/integrations/AGENT-SETUP.md` from the next release. **`docs/AGENT-SETUP.md` stays as a
+  stub** (the owner, 2026-09-21) with `moved_to:` in its front matter, so installs up to 0.12.2
+  still land on a page that points on. The checker checks a stub only for its target, and
+  never resolves a section pointer into a stub.
+- **The card copy (F2).** `scripts/docs-copies.mjs` (`npm run docs:copies`) writes
+  `cards/SURFACES-AND-CARDS.md` from `architecture/SURFACES-AND-CARDS.md`: links re-pointed for
+  `cards/`, `generated:` in its front matter, a line under the title naming the original.
+  **Check 18** fails a stale copy (tested: one changed byte in the original fails it).
+- **Decided inside the owner's picks:** `QUICK-SETTINGS` (newer than §4.2's list) went to
+  `features/`; `DOCS-ORG` stays at the root beside HANDOFF; `docs-frontmatter.mjs` now walks
+  every folder and never proposes a version before 0.4.3.
+- **Not checked here:** `npx tsc` cannot run in the `dockin` worktree (no `node_modules`). Every
+  changed line under `src/` is inside a comment; `settings.rs` changed one string and one
+  comment. Other repos that name a DeetsMusic doc path (DeetsSolutions `docs/support.md`) were
+  not touched — a bare doc name there still reads right; a path does not.
+
 ---
 
 ## 12. Release notes: hotfixes must hang off their feature release
@@ -510,7 +564,7 @@ Two readers lose, in different ways:
 ### 12.2 What the code does today (read 2026-09-20, not guessed)
 
 - `scripts/publish-update.mjs` `releaseNotes()` finds `^## <version>` in
-  `docs/RELEASE-NOTES.md` and takes the body **up to the first `##` or `###` that follows**.
+  `docs/ops/RELEASE-NOTES.md` and takes the body **up to the first `##` or `###` that follows**.
   So the file is a flat list of `## <version> — <date>` headings by contract, and a `###`
   ends an entry. `### Installing` is the intended terminator.
 - The same file is parsed a second way by `--history`:

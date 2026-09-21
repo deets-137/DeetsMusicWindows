@@ -1,4 +1,4 @@
-// How often a mirrored Apple playlist re-reads its songs (docs/PLAYLIST-REFRESH.md).
+// How often a mirrored Apple playlist re-reads its songs (docs/features/PLAYLIST-REFRESH.md).
 //
 // The bug this closes: `apple_playlist_tracks` is cache-first with no time check, and the
 // once-per-session sync evicts a playlist only when its flat-list JSON changed. Apple

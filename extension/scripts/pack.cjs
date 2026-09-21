@@ -4,7 +4,7 @@
    app's palette → theme → skin sheets; never edit the copies), stages what ships
    into extension/dist/deetsmusic-<version>/, and zips it. No secrets exist to
    leak — the extension holds no credential at all: the app trusts its Origin
-   header (docs/EXTENSION.md §3). Keep manifest.version equal to the app's. */
+   header (docs/integrations/EXTENSION.md §3). Keep manifest.version equal to the app's. */
 "use strict";
 
 const fs = require("fs");

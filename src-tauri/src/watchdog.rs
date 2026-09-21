@@ -1,4 +1,4 @@
-//! Is the window still answering? (docs/LOGGING.md · FRIENDS.md §8.11)
+//! Is the window still answering? (docs/ops/LOGGING.md · FRIENDS.md §8.11)
 //!
 //! On 2026-09-20 the app froze on live and stayed frozen for 36 minutes. It wrote **nothing**
 //! about it. The log simply stopped, and the only proof of what had happened came from the

@@ -21,7 +21,7 @@ use crate::provider::MusicProvider;
 pub struct Db(pub Mutex<Connection>);
 
 impl Db {
-    /// The connection, through a poison-proof lock (docs/DB-HEALTH.md §2).
+    /// The connection, through a poison-proof lock (docs/ops/DB-HEALTH.md §2).
     ///
     /// A Rust `Mutex` **poisons** when a thread panics while it holds the lock. With
     /// `.lock().unwrap()` at ~88 call sites, one panic anywhere in a write path made every

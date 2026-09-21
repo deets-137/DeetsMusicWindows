@@ -467,7 +467,7 @@ async function update(payload: any): Promise<Reply> {
   }
 }
 
-// ── /picks (docs/DeetsOTD.md §8.8) ───────────────────────────────────────────
+// ── /picks (docs/integrations/DeetsOTD.md §8.8) ───────────────────────────────────────────
 
 /** The first agent mark asks in the window. Allow once, and later marks go through. */
 const SOTD_NOTICE_KEY = "deets.notice.sotdAgentMark";

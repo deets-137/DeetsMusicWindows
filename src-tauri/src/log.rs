@@ -1,4 +1,4 @@
-//! The rolling app log — `<app_data>/deetsmusic.log` (docs/LOGGING.md).
+//! The rolling app log — `<app_data>/deetsmusic.log` (docs/ops/LOGGING.md).
 //!
 //! Hand-rolled, no crate. One line per event, three levels, always on, bounded:
 //! rotate at 512 KB, keep one generation (`deetsmusic.1.log`), so the file can

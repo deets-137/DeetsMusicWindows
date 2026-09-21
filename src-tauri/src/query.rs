@@ -1,5 +1,5 @@
 //! Read-only SQL over the user's own data, for agents and the `deetsmusic sql` command
-//! (docs/LOCAL-DATA.md). Zero Apple calls.
+//! (docs/integrations/LOCAL-DATA.md). Zero Apple calls.
 //!
 //! **The security model (LOCAL-DATA.md §5).** The user writes the SQL, so the danger is what
 //! that SQL can reach, not injection into our own queries. Every query runs on a FRESH

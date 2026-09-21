@@ -4,7 +4,7 @@ fn main() {
     tauri_build::build()
 }
 
-/// The Last.fm API account (docs/LASTFM.md §2): built into the exe, as Last.fm expects of a
+/// The Last.fm API account (docs/integrations/LASTFM.md §2): built into the exe, as Last.fm expects of a
 /// desktop app. Read from `Documents\Deets' Secrets\lastfm.json` (or the file that
 /// `DEETSMUSIC_LASTFM` names) and handed to `lastfm.rs` as `option_env!` values. Only the two
 /// values reach the exe, never the path. A missing file or an unfilled `PASTE_…` value builds
@@ -34,7 +34,7 @@ fn lastfm_key() {
     }
 }
 
-/// The build key (docs/RELEASE.md §7a): one line in `Documents\Deets' Secrets\deetsmusic-build-key.txt`
+/// The build key (docs/ops/RELEASE.md §7a): one line in `Documents\Deets' Secrets\deetsmusic-build-key.txt`
 /// (or the file `DEETSMUSIC_BUILD_KEY` names), handed to the app as `option_env!("DEETS_BUILD_KEY")`.
 /// The app sends it as the `X-Deets-Build` header on the token mint and on report intake, and the
 /// DeetsSupport worker refuses a request without a listed key once its `BUILD_KEYS` secret is set.

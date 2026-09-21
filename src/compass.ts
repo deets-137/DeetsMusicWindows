@@ -1,4 +1,4 @@
-// The Compass (docs/COMPASS.md) — Ctrl+Space's bar under the title bar, in every surface.
+// The Compass (docs/features/COMPASS.md) — Ctrl+Space's bar under the title bar, in every surface.
 //
 // Type a few letters and the bar lists what matches: the cards, surfaces, themes and skins
 // (Places), every Settings row (store-backed rows inline), the transport and sleep verbs
@@ -101,7 +101,7 @@ interface Row {
 
 /** Words a person may type for a thing the app names otherwise. Applied to the typed term:
  *  each word is tried as itself and as each of its synonyms. Mirrored in
- *  docs/COMPASS-TERMS.md; change both. */
+ *  docs/features/COMPASS-TERMS.md; change both. */
 export const SYNONYMS: Record<string, string[]> = {
   preferences: ["settings"], options: ["settings"], prefs: ["settings"],
   skip: ["next"], forward: ["next"],

@@ -1,5 +1,5 @@
 // `npm run signin:assets` — copy the app's look into the DeetsSupport Worker, for the
-// hosted sign-in page (docs/DATA-ARCHITECTURE.md §2a fork 2). The page at
+// hosted sign-in page (docs/architecture/DATA-ARCHITECTURE.md §2a fork 2). The page at
 // music-api.deets.solutions/signin links the same token sheets and fonts the app uses,
 // so it matches the app pixel for pixel — but only as of the last copy. Run this before
 // every Worker deploy that follows a theme, skin, palette or font change (RELEASE.md §1).

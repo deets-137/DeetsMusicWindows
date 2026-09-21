@@ -1,4 +1,4 @@
-//! AirPlay (docs/AIRPLAY.md): play what this app plays on a HomePod. The sender
+//! AirPlay (docs/integrations/AIRPLAY.md): play what this app plays on a HomePod. The sender
 //! is the shared `deets-airplay` crate; this file owns the one live session,
 //! the capture choice, the automatic delay, the now-playing metadata, and the
 //! transport commands the speaker relays back.

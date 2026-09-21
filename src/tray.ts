@@ -116,7 +116,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let seekHold = -1; // where a seek was let go, until the position reaches it
   let seekHoldUntil = 0;
 
-  // The cover box (docs/VINYL.md): the Press record when "Show record on" is Everywhere.
+  // The cover box (docs/features/VINYL.md): the Press record when "Show record on" is Everywhere.
   // The two rows come from the shared settings store; a change in the main window arrives
   // as a `storage` event (settings-store.ts).
   applyVinylAttrs();

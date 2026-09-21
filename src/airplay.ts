@@ -1,4 +1,4 @@
-// AirPlay (docs/AIRPLAY.md): the "Play on" dropdown behind the AirPlay square.
+// AirPlay (docs/integrations/AIRPLAY.md): the "Play on" dropdown behind the AirPlay square.
 // Two squares exist — the titlebar Vol. pill's panel (mini/midi) and the stage
 // volume row (max); CSS shows exactly one per surface. Both mount through
 // `mountAirplay` and share this module's one state, so whichever is visible

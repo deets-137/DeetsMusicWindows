@@ -461,7 +461,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const waiting = s.waiting ? ` · ${s.waiting} waiting to send` : "";
     return `Connected as ${s.name}${waiting}`;
   };
-  // ── Song of the Day (docs/DeetsOTD.md §8.4) ──
+  // ── Song of the Day (docs/integrations/DeetsOTD.md §8.4) ──
   // The five Rust-owned rows and the outlet states are read live from sotd.ts, which already
   // mirrors them and redraws this card when they change — so the card caches nothing of its own.
   const on = () => sotdSettings().sotd;
@@ -551,7 +551,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     return halves;
   };
 
-  // What has left the app (docs/DeetsOTD.md §10.7). A user-facing record, in the My-reports
+  // What has left the app (docs/integrations/DeetsOTD.md §10.7). A user-facing record, in the My-reports
   // idiom: a bordered group with a heading and a Copy square. It holds names and states only
   // — never a webhook link, a token or a message id.
   let postRecords: PostRecord[] = [];
@@ -1612,7 +1612,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       ],
     },
     {
-      // Song of the Day (docs/DeetsOTD.md §8.4). The first row is the whole feature; every
+      // Song of the Day (docs/integrations/DeetsOTD.md §8.4). The first row is the whole feature; every
       // other row shows only while it is on. Five of the six live in Rust (settings.rs) —
       // Rust is what enforces them, for an agent and for a timer with no window up.
       title: "Song of the Day",

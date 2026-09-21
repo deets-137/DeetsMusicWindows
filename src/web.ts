@@ -1,4 +1,4 @@
-// The playlist web (docs/PLAYLIST-WEB.md): the Playlists card's web button opens a panel
+// The playlist web (docs/features/PLAYLIST-WEB.md): the Playlists card's web button opens a panel
 // that builds a playlist from one artist and the artists they make songs with.
 //
 // Rust (`web_build`, web.rs) reads the artists and returns candidate songs with their degree.

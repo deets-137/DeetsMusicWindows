@@ -13,7 +13,7 @@
 // --write only adds a block to a doc that has none; it never edits one that is there.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,10 +22,12 @@ const DOCS = join(ROOT, "docs");
 const WITHDRAWN = new Set(["0.12.0", "0.12.1"]);
 const git = (...a) => execFileSync("git", a, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 }).trim();
 
+// Every doc under docs/ in any folder, relative to docs/ (the guide and templates excluded).
 function docList() {
-  const top = readdirSync(DOCS).filter((f) => f.endsWith(".md")).map((f) => f);
-  const ideas = readdirSync(join(DOCS, "ideas")).filter((f) => f.endsWith(".md")).map((f) => `ideas/${f}`);
-  return [...top, ...ideas];
+  return git("ls-files", "-co", "--exclude-standard", "docs")
+    .split("\n")
+    .filter((f) => f.endsWith(".md") && !f.startsWith("docs/guide/") && !f.split("/").pop().startsWith("_"))
+    .map((f) => f.slice("docs/".length));
 }
 
 // Every commit that changed package.json's version, oldest first: [{ version, commit }].
@@ -36,7 +38,9 @@ function releases() {
     const v = JSON.parse(git("show", `${c}:package.json`)).version;
     if (!out.some((r) => r.version === v)) out.push({ version: v, commit: c });
   }
-  return out.filter((r) => !WITHDRAWN.has(r.version));
+  // 0.4.3 is the first public release (RELEASE.md §6); nothing shipped before it.
+  const first = out.findIndex((r) => r.version === "0.4.3");
+  return out.slice(Math.max(0, first)).filter((r) => !WITHDRAWN.has(r.version));
 }
 
 const PATH = /\b((?:src-tauri\/src|src|scripts|crates|extension|cli\/src)\/[\w./-]+\.(?:ts|rs|mjs|js|css|html|json|toml))\b/g;

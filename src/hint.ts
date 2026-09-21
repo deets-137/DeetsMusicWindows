@@ -1,4 +1,4 @@
-// Hover hints — the app's one hover-text primitive (docs/ONBOARDING.md §1).
+// Hover hints — the app's one hover-text primitive (docs/features/ONBOARDING.md §1).
 //
 // Until 2026-09-15 every hint was the native `title` box: the Windows tooltip, about a
 // second of delay, no theme, one line only. This module replaces all of them with a

@@ -1,4 +1,4 @@
-//! Playlists — the local-first store + the read-only Apple mirror (docs/PLAYLISTS.md).
+//! Playlists — the local-first store + the read-only Apple mirror (docs/features/PLAYLISTS.md).
 //!
 //! **Local playlists** live in SQLite and are the only fully-editable copy (the public
 //! Apple API can only create/append — the write ceiling). Each track row keeps a
@@ -1108,7 +1108,7 @@ pub async fn apple_playlist_tracks(
     Ok(all)
 }
 
-// -- Refresh (docs/PLAYLIST-REFRESH.md) ---------------------------------------
+// -- Refresh (docs/features/PLAYLIST-REFRESH.md) ---------------------------------------
 
 /// v11 (2026-09-20): the `playlist_refresh` table. It cannot live on `apple_playlists` --
 /// that table is DELETEd whole and rebuilt on every sync, so a preference stored there is

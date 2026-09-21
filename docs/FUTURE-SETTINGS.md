@@ -13,7 +13,7 @@ updated: 2026-09-17
 >
 > Each entry: the behavior, the options, the current hardcoded default, where the
 > toggle would live, and any wiring notes. **The pattern for a shipped setting is now the
-> Settings card + the `deets.settings` store — see [SETTINGS.md](SETTINGS.md)** (2026-09-10;
+> Settings card + the `deets.settings` store — see [SETTINGS.md](architecture/SETTINGS.md)** (2026-09-10;
 > the old title-menu `.menu__row--toggle` idiom is retired for preferences).
 >
 > **Built into the Settings card 2026-09-10 (v1 cut):** §1 (`playNowScope`), §4
@@ -39,11 +39,11 @@ updated: 2026-09-17
 - **Window / surface** — §8 Surface switching
 - **Skin looks** — §11 Title underline behavior · §12 Glass pop intensity (skin-specific) ·
   §13 Cyber storm dials (skin-specific). **The skin-only settings surface exists
-  (2026-09-15)**: [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only settings*.
+  (2026-09-15)**: [UI-ARCHITECTURE.md](architecture/UI-ARCHITECTURE.md) §3 *Skin-only settings*.
 - **Playlists** — §14 Eager playlist-count backfill · §15 Add-to-Playlist submenu sort ·
   §16 New-Playlist Search summon
 - **Radio** — §17 Resume station after break-out
-- **Feedback & notices** — §18 Quiet-failure feedback (toast system) — **built, [TOASTS.md](TOASTS.md)**
+- **Feedback & notices** — §18 Quiet-failure feedback (toast system) — **built, [TOASTS.md](architecture/TOASTS.md)**
 
 ---
 
@@ -125,7 +125,7 @@ trades a little clutter for clarity. Likely a single toggle (`deets.qcard.dragMo
 
 **Behavior.** What the **Previous** button is allowed to walk back into.
 
-**Current default (hardcoded).** The two-layer history (see [QUEUE.md](QUEUE.md)): a durable
+**Current default (hardcoded).** The two-layer history (see [QUEUE.md](features/QUEUE.md)): a durable
 **heard trail** (songs actually played, surviving across contexts) *plus* a **parked
 lookback** — the tracks that sat *before* the one you clicked in a list, seeded so Previous
 can rewind "up" into them even though you jumped into the middle. Previous pops the
@@ -237,7 +237,7 @@ Likely a small **Playback** / **Stats** subsection in the settings menu once one
 ## 8. Surface switching — trigger & resize allowance
 
 **Behavior.** How the app moves between the three surfaces (`mini` / `midi` / `max`; see
-[SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) §4) and how much free window resizing is
+[SURFACES-AND-CARDS.md](architecture/SURFACES-AND-CARDS.md) §4) and how much free window resizing is
 tolerated before the surface *flips*.
 
 **Decided model (the default to build toward).**
@@ -556,7 +556,7 @@ intensity knobs of one skin*, hardcoded in the `[data-skin="glass"]` block. If a
 only while Glass is active.
 
 > **Partly built 2026-09-15.** The surface exists: skin-only rows in Settings › Look and
-> feel ([UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) §3 *Skin-only settings*). Glass got four
+> feel ([UI-ARCHITECTURE.md](architecture/UI-ARCHITECTURE.md) §3 *Skin-only settings*). Glass got four
 > sliders instead of the preset below: **Canvas glow** (the aurora heat knob, as a 0–100
 > scale), **Dim canvas**, **Backlight**, and **Tint cards** (the panel alpha). Still
 > hardcoded: frost saturation, drift, the album aurora, menu frost.
@@ -741,7 +741,7 @@ Radio settings tenant.
 
 ## 18. Quiet-failure feedback — the toast system
 
-> **BUILT 2026-09-13 — see [TOASTS.md](TOASTS.md)** (the spec, the sticky rule, every call
+> **BUILT 2026-09-13 — see [TOASTS.md](architecture/TOASTS.md)** (the spec, the sticky rule, every call
 > site, and what was investigated and not built). Setting: `toasts` = `all` (default since 2026-09-13)
 > · `failures` · `off`, Settings › Window › Show notices. Decisions taken that day: mini/midi
 > bottom-centred, max top-right; a stack of 3; `error` sticky by default; notices show under
@@ -993,7 +993,7 @@ automatic). Possibly a second switch: incremental at startup on/off.
 
 **Status (2026-09-13): documented, not built.** Decided in the click-to-sound follow-up: the
 hover pre-insert lever is skipped; the launch story is a setting instead. Build in a later
-session after [LIBRARY-VIRTUALIZATION.md](LIBRARY-VIRTUALIZATION.md).
+session after [LIBRARY-VIRTUALIZATION.md](architecture/LIBRARY-VIRTUALIZATION.md).
 
 **Behavior today.** *Restore on launch* (`restoreQueue`, SETTINGS.md) puts last session's
 song back in Now Playing **paused**, with Up Next and Previous intact. Nothing is fed to
