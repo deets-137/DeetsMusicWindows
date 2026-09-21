@@ -216,7 +216,7 @@ Room → clients: `state {v, serverNow, meta-lite, transport, queue, members}` (
 change) · `denied {command, reason}` · `ended {reason: "host-left"|"host-ended"}` ·
 `kicked` · `error {code}`.
 
-Every broadcast carries `serverNow`, so each app keeps a clock offset (radio.md "Sync details").
+Every broadcast carries `serverNow`, so each app keeps a clock offset (DeetsSolutions `docs/radio.md` "Sync details").
 
 ### 5.5 Transport rules (ported from DeetsRadio)
 

@@ -511,7 +511,7 @@ cover · title · subtitle · meta. No transport verb anywhere on the pane. To p
 user clicks its first song (Play Now = "Song and rest of list"); to shuffle a playlist the
 user clicks a song, then presses Shuffle on Now Playing. Heroes exist on: Library album
 (`library-card.ts` ~491), Library artist (~606, the only context with `toolbarBelow`, whose
-bar sticks to the top of the scroll — ARTIST-VIEW.md §2.2), local and Apple playlist detail
+bar sticks to the top of the scroll — ARTIST-VIEW.md §1), local and Apple playlist detail
 (`playlists-card.ts` ~362), Search album / artist detail (`search-card.ts` ~429). Every other
 context's toolbar (Sort · View · Search · the ♥ filter) lives in the card head, which never
 scrolls.

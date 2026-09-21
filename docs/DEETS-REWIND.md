@@ -1,6 +1,6 @@
 ---
 status: shipped
-shipped_in: 0.1.1
+shipped_in: 0.1.3
 desk_test: none
 sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts]
 updated: 2026-09-10

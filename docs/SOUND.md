@@ -365,7 +365,7 @@ One switch, three parts. Each part adapts to one thing and has its own on/off (a
 | 5 | 3A Match loudness (worklet meter, schema migration). | The most code. |
 
 ## 5. What is not in scope
-- Bit-perfect / exclusive-mode output: blocked until a virtual output device exists (AIRPLAY.md §10.4).
+- Bit-perfect / exclusive-mode output: blocked until a virtual output device exists (AIRPLAY.md §10, item 4).
 - Room correction with a microphone.
 - Linear-phase EQ (latency and pre-ringing for no audible gain on music).
 - Spatial / surround upmixing.

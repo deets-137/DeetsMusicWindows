@@ -6,7 +6,8 @@ updated: 2026-09-21
 ---
 # DeetsMusic — Docs organization
 
-> **Status (2026-09-21): STEP 1 DONE on branch `dockin` — every doc has front matter (§11.1a).
+> **Status (2026-09-21): STEPS 1 AND 2 DONE on branch `dockin` — every doc has front matter
+> (§11.1a) and `npm run docs:check` passes with 0 facts (§11.2a); the release check warns until 2026-09-28.
 > NOTHING MOVED.** No file is renamed and no link is rewritten. Every number in §1 was measured against the tree on
 > 2026-09-20. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks are
 > open (§10). Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
@@ -386,7 +387,7 @@ tree. The repo has a `.claude/` already, with only `settings.local.json` in it.
 | **F2** | Do the card docs (`CARD-GROW`, `CARD-SWAP`, `CARD-MEMORY`, `STAGE-COLUMN`) sit in `architecture/`, or in their own `cards/`? | `architecture/`. Four docs is not a folder. Ask again at seven |
 | **F3** | `NEXT-VERSION.md` and `FUTURE-SETTINGS.md` — root, or a `backlog/` folder? | Root. 45 links point at the two of them, and they are entry points, not area docs |
 | **F4** | `ONBOARDING.md` — `architecture/` (it is the hint ledger, and every `title` in the app is a row in it) or `features/` (it is the first-run walk)? | `architecture/`. The ledger is the load-bearing half |
-| **F5** | Does the checker fail the release check on day one, or warn for a week first? | Warn first. The first run will be loud, and release day is the wrong day to meet a loud new gate |
+| **F5** | Does the checker fail the release check on day one, or warn for a week first? | **DECIDED (the owner, 2026-09-21): warn for a week** — `GRACE_END = 2026-09-28` in `docs-check.mjs` |
 | **F6** | Does `docs/README.md` replace the `CLAUDE.md` pointer list, or do both exist? | Both. The `CLAUDE.md` list is what a session has without opening a file. `docs/README.md` is what a human browses |
 
 ---
@@ -400,7 +401,7 @@ Nothing here is started.
    and it is the only step that touches every file. **DONE 2026-09-21 (§11.1a).**
 2. **The checker**, `scripts/docs-check.mjs`, with checks 1–5 and 11 only. Run it. Read the
    first report before writing checks 6–10 — the report says which suspicions are worth the
-   code.
+   code. **DONE 2026-09-21 (§11.2a).**
 3. **The move**, plus the link rewrite, plus `docs:index`. One commit. The checker proves it.
 4. **`CLAUDE.md`** rewritten to one line per doc.
 5. **The `HANDOFF` / `WORKLOG` split.**
@@ -439,6 +440,46 @@ wants a quiet tree. Branch `twelve` has 11 modified docs uncommitted today.
   GitHub, which shows front matter as a small table above the title.
 - **Not done here:** part markers (§5.1) on CREDITS, DeetsOTD and ROOMS — the sweep adds them
   when the checker exists. `sources` is rough; the sweep sharpens it.
+
+### 11.2a Step 2 as built (2026-09-21)
+
+- **`scripts/docs-check.mjs`**, `npm run docs:check`. Checks 1–5 and 11, all facts. Exit 1 on a
+  fact; `--warn` always exits 0. It exports `check()` and `report()`.
+- **In the release check** as its check 10. Until `GRACE_END` (2026-09-28, F5) a failing fact
+  prints a WARNING and the release goes on; from that date it fails the release. The line
+  at the end says `docs check clean` or `docs check WARNED (n facts)`.
+- **What it reads:** every tracked `docs/**/*.md` (not `docs/guide/`, not a `_` file), plus
+  `CLAUDE.md`, `README.md`, `AGENTS.md` for checks 1–3. Fenced code blocks are skipped.
+- **Check 5 reads SEVEN version files**, not four: the four the release check knows, both
+  `Cargo.lock` files and `extension/manifest.json` (the memory note's "six" + the manifest).
+  Every `shipped_in` must have a `## x.y.z` entry in RELEASE-NOTES.md, must not be withdrawn
+  (named in the script until tags exist, §14 T2) and must not be newer than package.json.
+- **When a mention is not a fault** (each rule came from the first report, not from a guess):
+  the path, paragraph or section heading names another repo (DeetsSolutions, DeetsAirplay,
+  the DeetsRadio worker); it sits in a URL; it is a retired name kept as a record
+  (`VALUES.md`, and a pointer into it is not checked either); it is a private doc listed in
+  `.gitignore` (`TASTE.md` — the `dockin` worktree has no copy, so the list comes from
+  `.gitignore`, not the disk); or the doc is a plan (`project`, `designed`, `idea`), which
+  names files not made yet. The other-repo rule applies ONLY to a name this repo does not
+  have: a paragraph that names DeetsRadio still has its pointer into ROOMS checked (FRIENDS' stale "§0" was found that way).
+- **A link to a code line** (`../src/room.ts:344`) resolves to the file.
+- **Section pointers** match a heading's leading number (`## 5.`, `### 5.1`, `## 4a.`), or a
+  deeper heading under it (`§4` is fine when only `4.1` exists).
+
+**The first report and what was fixed.** 72 facts on the first run; 58 were the checker's own
+faults (the rules above). The 14 real ones, fixed in the docs in the same commit:
+- the two DeetsOTD links of §1 (STATIONS.md now links `DeetsOTD.md`; ideas/README.md drops
+  the entry — it is built);
+- two DeetsSolutions docs named bare (`support.md`, `radio.md`), now qualified;
+- five stale section pointers: FRIENDS → DeetsOTD §4 item 6 (was §6) and ROOMS' opening note
+  (was §0); NEXT-VERSION → ARTIST-VIEW §1 (was §2.2); SOUND → AIRPLAY §10 item 4 (was §10.4);
+  TOASTS → FRIENDS §7 item 1 (was §7.1);
+- five `shipped_in: 0.1.1` → `0.1.3`, the first version with release notes (0.1.1 was never
+  given an entry).
+
+**For checks 6–10 (next).** The first report says nothing about them yet — they are
+suspicions and need their own first run. Checks 6 and 8 need `sources`, which step 1 left
+rough; build check 8 first and read its noise before trusting check 6.
 
 ---
 

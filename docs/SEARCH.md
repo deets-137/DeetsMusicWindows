@@ -1,6 +1,6 @@
 ---
 status: shipped
-shipped_in: 0.1.1
+shipped_in: 0.1.3
 desk_test: none
 sources: [src/search-card.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts]
 updated: 2026-09-20

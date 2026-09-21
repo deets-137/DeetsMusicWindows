@@ -1,6 +1,6 @@
 ---
 status: shipped
-shipped_in: 0.1.1
+shipped_in: 0.1.3
 desk_test: none
 sources: [src/start-station.ts, src/radio-card.ts, src/radio.ts]
 updated: 2026-09-15
@@ -352,7 +352,7 @@ Add-to-Library decisions.)
 
 Related taste signals already in the app — `play_stats` (behavioural), **♥/👎 [ratings](FAVORITES.md)**
 (explicit — and the app's **dedicated Favorite/Dislike buttons** *are* the thumbs), and
-[Song of the Day](ideas/DeetsOTD.md) (an idea, not built; curated) — feed the *same* weighting; thumbs is the **in-station
+[Song of the Day](DeetsOTD.md) (built since 0.11.0; curated) — feed the *same* weighting; thumbs is the **in-station
 expression** of one shared taste model.
 
 ---

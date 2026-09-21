@@ -876,7 +876,7 @@ Steps 1 to 3 ship with **zero Cloudflare cost**, and they are most of what the i
 
 - **Reading friends' presence FROM Discord.** It needs a bot in a shared server with the presence
   intent, or a user token. A user token is against Discord's terms — the wall DeetsOTD already hit
-  (DeetsOTD.md §6, "D2 as a user token. Ruled out"). A bot needs a host that holds a gateway socket,
+  (DeetsOTD.md §4, item 6, "D2 as a user token. Ruled out"). A bot needs a host that holds a gateway socket,
   which a Cloudflare Worker is not built for.
 - **A friend feed or history** ("what they played today"). It is a store that grows, on a free tier that
   charges for rows. Presence is one value per person, and that is the point.
@@ -1196,7 +1196,7 @@ watcher. **18 of 18 passed against live, 2026-09-20.**
 
     **That section is called DeetsRooms**, renamed from DeetsRadio the same day at his word
     (*"mistakenly said Radio the first time"*). It is the better name twice over: the app
-    already has a **Radio** card of Apple stations, and ROOMS.md §0 reserves "DeetsRadio"
+    already has a **Radio** card of Apple stations, and ROOMS.md's opening note reserves "DeetsRadio"
     for the older website feature this one borrows from. The busy toast's service name
     follows it, so a 429 now reads *"DeetsRooms is busy right now…"*.
 12. **An `invite` asks; an `answer` does not.** You asked for the answer, so it joins. An invite

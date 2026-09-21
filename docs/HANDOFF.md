@@ -1088,7 +1088,7 @@ three levels, a panic hook, JWT / `Bearer` scrubbed at the write boundary); the 
 Startup, token source, every Apple ≥ 400 (status + path), library sync, enrich batches,
 AirPlay, sign-in outcomes, migration and the bridge now write to it. `diag.flush()` appends the
 front-end ring on an uncaught error, on unload and from **Settings › Bugs › Open log folder**.
-Still to do: step 5, the report form + My reports (support.md). **The log's first catch:** the
+Still to do: step 5, the report form + My reports (DeetsSolutions `docs/support.md`). **The log's first catch:** the
 startup library sync was a full ~40-request pass on every launch; it is now **incremental**
 inside a six-hour window (newest-first, stop at the first cached song, upsert only; the
 refresh button and a stale cache still run the full pass, which stamps `meta.full_sync_at`

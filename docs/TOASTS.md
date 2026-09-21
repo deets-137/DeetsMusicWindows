@@ -386,7 +386,7 @@ token without MusicKit's logout call.
 | `friends.ts` — asking to listen along | info | Asking to listen along… | Added 2026-09-20 (FRIENDS.md §16.2). |
 | `friends.ts` — somebody is listening along | info | {Name} is listening along. | Added 2026-09-20. The host is TOLD, never asked — the setting already answered (FRIENDS.md §16.2). |
 | `friends.ts` — they are not offering it | info | {Name} is not letting people listen along right now. / {Name} is in somebody else's room, so there is nothing to join yet. | Added 2026-09-20. Two reasons, because "nothing happened" is not an answer. |
-| `friends.ts` — a friend invites you by name | info **(sticky, with actions)** | {Name} asked you to listen along. **[Join] [Not now]** | Added 2026-09-20 (FRIENDS.md §7.1). An INVITE was not asked for, so it asks — the rule the `deetsmusic://room?code=…` link follows. |
+| `friends.ts` — a friend invites you by name | info **(sticky, with actions)** | {Name} asked you to listen along. **[Join] [Not now]** | Added 2026-09-20 (FRIENDS.md §7, item 1). An INVITE was not asked for, so it asks — the rule the `deetsmusic://room?code=…` link follows. |
 | `friends.ts` — they are offline | info | They are not online right now. | Added 2026-09-20. |
 | `friends.ts` — added / removed a friend | info | {Name} will appear here once they add you back. / {Name} is off your list. **[Undo]** | Added 2026-09-20 (FRIENDS.md §3, mutual add). The Undo is timed, so it never queues (§4a). |
 | `friends.ts` — an app below `minV` | warn (sticky) | Update DeetsMusic to use Friends. | Added 2026-09-20. |

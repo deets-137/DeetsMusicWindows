@@ -17,6 +17,7 @@
     "release:publish": "node scripts/publish-update.mjs",
     "release:check": "node scripts/release-check.mjs",
     "tokens": "node scripts/tokens.mjs",
+    "docs:check": "node scripts/docs-check.mjs",
     "signin:assets": "node scripts/signin-assets.mjs",
     "dev:perf": "node scripts/dev-app.mjs --perf",
     "dev:built": "node scripts/dev-app.mjs --built",

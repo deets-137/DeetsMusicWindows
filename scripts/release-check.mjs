@@ -25,6 +25,9 @@
 //     2026-09-20 after 0.12.0 froze on live: a sync command runs on the thread that paints,
 //     and `presence_set` waited on a named pipe there. Checked against that exact file — it
 //     names `presence_set` through three levels of helpers.
+// 10. The docs checker (DOCS-ORG.md §8): links, mentions, section pointers, front matter,
+//     versions, ideas/. Added 2026-09-21. It WARNS until docs-check.mjs GRACE_END (a week,
+//     F5), then a failing fact fails the release.
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -259,8 +262,21 @@ if (signed.length) {
   for (const b of blocking) failures.push(b);
 }
 
+// ── 10. The docs checker ───────────────────────────────────────────────────────────
+let docsNote = "docs check clean";
+{
+  const { check, report, GRACE_END } = await import("./docs-check.mjs");
+  const r = check();
+  if (r.facts.length) {
+    docsNote = `docs check WARNED (${r.facts.length} facts)`;
+    const today = new Date().toISOString().slice(0, 10);
+    if (today >= GRACE_END) failures.push(`docs: ${r.facts.length} failing — run npm run docs:check\n${report(r)}`);
+    else console.warn(`[release-check] WARNING (fails from ${GRACE_END}): docs have ${r.facts.length} failing facts\n${report(r)}`);
+  }
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; ${docsNote}`);
