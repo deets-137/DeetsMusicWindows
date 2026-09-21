@@ -4,7 +4,12 @@ A lightweight Apple Music player for Windows 11 (Tauri v2 + WebView2, vanilla TS
 front-end, Rust back-end).
 
 ## Start here
-- **`docs/HANDOFF.md`** — cold-start: state of play, how to run, roadmap, gotchas.
+- **`docs/HANDOFF.md`** — cold-start: how to run, **Open now** (what is not finished), gotchas.
+  **`docs/WORKLOG.md`** — the record of each sitting, newest first.
+- The docs sit in folders by area: `architecture/ cards/ features/ integrations/ ops/ ideas/`.
+  Each doc's state is in its front matter (`status`, `shipped_in`, `desk_test`). Run
+  `npm run docs:check` after a doc edit; move a doc only with `scripts/docs-move.mjs`
+  (DOCS-ORG.md).
 - `docs/architecture/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
 - `docs/architecture/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
 - `docs/DESIGN.md` — product intent.
@@ -14,7 +19,7 @@ front-end, Rust back-end).
   install, uninstall.
 - `docs/architecture/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
   call site; `__toast.demo()` in the console shows one of each kind.
-- `docs/ops/LOGGING.md` — the rolling log file + `diag.ts` (built 2026-09-11).
+- `docs/ops/LOGGING.md` — the rolling log file + `diag.ts`.
 - `docs/ideas/` — feature ideas that are **not built**.
 
 ## How to verify your work
