@@ -5,7 +5,8 @@
 > 2026-09-20. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks are
 > open (§10). Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
 > work that rides this re-org: release notes, where a hotfix outranks the feature release
-> it repairs. Four more forks, all open.**
+> it repairs. Four more forks, all open. §13 (2026-09-21) is the user guide on
+> deets.solutions: all nine of its forks closed (U1–U9).**
 
 **What you asked for.** Three things:
 1. A high-level overview that a new reader meets first.
@@ -354,6 +355,9 @@ Nothing here is started.
    line of `docs/`. It can go first, or between any two steps. It wants its own release to
    ride on, because the Worker change is only visible on the next update offer.
 
+8. **The user guide (§13).** Needs steps 1 and 2 (front matter and the checker). It does
+   not need the move. §13.8 has its own order.
+
 Step 1 collides with no feature work. Step 3 collides with any branch that edits a doc, so it
 wants a quiet tree. Branch `twelve` has 11 modified docs uncommitted today.
 
@@ -442,5 +446,181 @@ a re-read of the index shape. The website (`../DeetsSolutions`): the grouping, w
 real work. `RELEASE-NOTES.md` itself: nothing today, one line per future hotfix. **No existing
 row needs a rewrite** — `line` is derivable for every version already in `index.json`, so one
 `--notes-only`-style pass backfills them all.
+
+---
+
+## 13. The user guide on deets.solutions
+
+> Added 2026-09-21. **Paper design. Nothing built. Every fork closed** — U1–U6 (§13.2) and
+> U7–U9 (§13.9), the owner, 2026-09-21. This replaces the `USER-GUIDE.md` plan of the 2026-09-14
+> public-docs audit: same content, a different home.
+
+### 13.1 What is there today (read 2026-09-21)
+
+- The site's `deetsmusic/` page has five boxes: Install, Status, Release notes,
+  Suggestions, Known issues. **There is no user guide.** The release notes are the only
+  feature text a stranger can read.
+- The release notes already travel the **publish pipe**: `RELEASE-NOTES.md` →
+  `scripts/publish-update.mjs` → `index.json` in R2 → `music-api.deets.solutions/update/deetsmusic/releases`
+  → `deetsmusic/deetsmusic.js`. The site stores none of it. The guide uses the same pipe.
+- The site has no build step and no dependencies. A site string without a `[ph]` prefix is
+  the owner's own words (`DeetsSolutions/CLAUDE.md`).
+- The site's header nav is **hand-copied into every page** (12 pages link `/deetsmusic/`).
+  DeetsMusic is a plain link today; Blog, Games, Utilities and About Me are `nav-group`
+  dropdowns. So the dropdown (U4) is an existing control family, and adding it is an edit
+  to all 12 navs.
+- The Settings rows exist only at run time: `settingsRows()` (`src/settings-card.ts`) mounts
+  the Settings card into a detached `div` and reads its rows. There are about 120 row hints.
+  A Node script cannot read them without the app. §13.5 says how the reference gets them.
+
+### 13.2 Decisions (the owner, 2026-09-21)
+
+| # | fork | decided |
+|---|---|---|
+| **U1** | Where the source lives | **In this repo**, `docs/guide/`, a sixth area |
+| **U2** | When the site changes | **On each publish.** The guide always describes the version the Download button gives |
+| **U3** | Who writes it | **Claude keeps the outline; the owner writes every word.** Claude lists what needs documenting, page by page. The owner writes the prose |
+| **U4** | Where it sits on the site | **Its own page**, `deetsmusic/guide/`, reached from a **dropdown on the DeetsMusic tab** in the header |
+| **U5** | The Settings reference | **Generated**, to be thorough — every row, every hint |
+| **U6** | A shipped feature with no guide page | **Publish warns**, and does not refuse |
+
+### 13.3 The shape
+
+```
+docs/guide/
+  README.md            generated: the guide's page list, with each page's state (§13.4)
+  get-started.md       install, sign in, the first-run walk, the window sizes
+  play.md              play, queue, shuffle, repeat, the Compass, the keys
+  library.md           Library, Playlists, Pins, Home, Search, History
+  look.md              themes, skins, the look schedule, the record player
+  share.md             Friends, Rooms, Discord, Song of the Day
+  connect.md           Last.fm, AI apps (MCP), the browser extension
+  sound.md             EQ, adaptive sound, AirPlay
+  fix.md               troubleshooting, the Bugs form, uninstall
+  settings.json        generated: the Settings reference (§13.5)
+```
+
+Pages are **tasks a user has**, not our feature names. One page covers several internal
+docs, so this list is a starting point for the owner, not a decision (U9 in §13.9).
+
+### 13.4 How the outline and the prose share one file (U3)
+
+Every guide page has front matter, like every other doc (§5), with two more fields:
+
+```yaml
+---
+state: outline | written
+covers: [features/PINS.md, features/HOME.md]   # the internal docs this page explains
+updated: 2026-09-21
+---
+```
+
+- **Claude writes the outline.** It is a block at the top of the page, between
+  `<!-- outline -->` and `<!-- /outline -->`. It lists, for each shipped feature the page
+  covers: what the user can do, the exact gesture or control, the Settings path, and what
+  changed in which version. It is a to-do list, not prose.
+- **The owner writes the prose** under the block. Claude never edits the prose. This is the
+  `[ph]` rule of the site, carried into this repo: no word reaches a stranger that the owner
+  did not write.
+- **The build strips the outline block.** A stranger never sees it.
+- **`state: written`** is set by the owner. Only `written` pages publish (U8).
+
+**How it stays current.** `covers` is to the guide what `sources` is to an internal doc
+(§5). When a covered doc's `updated` is newer than the guide page's `updated`, the checker
+flags the page. The sweep (§9) then **adds a line to that page's outline** ("0.13.0: Pins
+gained On Click — right-click a pinned tile") and stops. The owner writes the sentence.
+The sweep never closes the gap in his words.
+
+### 13.5 The generated Settings reference (U5)
+
+- A dev-only export, `__settings.dump()` beside `settingsRows()`, returns every section,
+  every row label, its hint, its choices, and its `only` condition ("Ocean only").
+  `scripts/webview-eval.mjs` calls it on the running dev app and writes
+  `docs/guide/settings.json`. `npm run guide:settings`. It is committed.
+- The words are the app's own: the labels and the hover hints already shipped. No new
+  wording, so U3 is kept.
+- The checker warns when `settings-card.ts` or `settings-store.ts` is newer than
+  `settings.json`. It cannot refuse: it needs the dev app running, and the checker runs
+  without it.
+- The same file automates what the 2026-09-14 audit did by hand (it fixed stale Settings
+  paths): every
+  `Settings › Section › Row` path written in a guide page must be a real row in
+  `settings.json`. That check is a **fact** and fails the build.
+
+### 13.6 The pipe (U1, U2)
+
+1. `npm run guide:build` turns each `state: written` page into a simple HTML fragment:
+   headings, paragraphs, lists, links, `kbd`, images, and a `> **Tip:**` quote — exactly
+   what `docs/guide/_template.md` uses, and nothing more. The outline block is stripped.
+   Images point at `docs/assets/`; how they reach the site is fork **U10** (open). The HTML
+   uses the site's existing `.prose` class and no inline style, so it takes every theme
+   and skin on the site.
+2. `publish-update.mjs` writes `guide.json` (`{ version, pages: [{ slug, title, html }],
+   settings }`) next to `index.json`, **in the same publish**. So the guide and the
+   Download button change at one moment.
+3. The music Worker serves it: `GET /update/deetsmusic/guide`. One new route, read from R2,
+   the same shape as `/releases`.
+4. `DeetsSolutions/deetsmusic/guide/index.html` fetches it and shows it: a page list on the
+   left, the chosen page on the right, and the Settings reference as its own page with a
+   filter field. No build step and no dependency on the site side.
+5. `--notes-only` gains a `--guide-only` twin: fix a typo in the guide without a new
+   installer.
+
+### 13.7 The checks this adds to §8
+
+| # | check | kind |
+|---|---|---|
+| 12 | a doc with `status: shipped` is in no guide page's `covers` | **suspicion** — this is U6, the warn |
+| 13 | a guide page's `covers` doc is newer than the page | suspicion — the sweep's input |
+| 14 | a `Settings › …` path in a guide page is not in `settings.json` | **fact** |
+| 15 | `settings.json` is older than `settings-card.ts` | suspicion |
+| 16 | a `written` page still has an outline line marked new since its `updated` | suspicion |
+
+`publish-update.mjs` prints checks 12 and 16 before it publishes (U6: warn, never refuse).
+The existing refusal for blank release notes is untouched.
+
+### 13.8 Build order
+
+1. **Steps 1 and 2 of §11 first** (front matter, the checker). §13 needs both.
+2. `__settings.dump()` + `guide:settings`. The owner reads `settings.json` once: it is the
+   first honest list of everything the app can be told.
+3. `docs/guide/` with every page at `state: outline` and a full outline. **This is the
+   hand-over: the owner writes from here.** Checks 12–16.
+4. `guide:build`, `guide.json` in the publish, the Worker route. Rides a release.
+5. The site: `deetsmusic/guide/`, and the DeetsMusic tab becomes a dropdown (App · Guide,
+   the label a link, §13.9 U7) in all 12 navs and the phone menu.
+6. The sweep skill (§9) learns step 3a: after an internal doc is repaired, add the change
+   to the outline of every guide page that `covers` it.
+
+Steps 2 and 3 collide with nothing. Step 5 is a DeetsSolutions commit.
+
+### 13.9 The small forks (the owner, 2026-09-21)
+
+**U7 — The DeetsMusic tab is a dropdown like Games, and its label is a link.** The menu has
+two items, **App** (today's `deetsmusic/` page) and **Guide**, as Games lists DeetsCities
+and DeetsMahjong. A click on the word *DeetsMusic* itself opens the app page.
+- The other groups' labels are `<button>`s. This one is an `<a>` with the
+  `nav-group__label` look. That works because a `nav-group` opens on `:hover` and
+  `:focus-within` (`styles/chrome.css:460`), not on a click, so the click is free to
+  navigate.
+- On a touch screen there is no hover: a tap on the label opens the app page at once. So
+  the app page also links to the Guide itself (a link in its page bar), and the phone menu
+  (`.nav-menu`) lists App and Guide as two plain items.
+- `aria-current="page"` goes on App or Guide, so the group label lights on both pages
+  (`chrome.css:430` already does this).
+
+**U8 — Hidden until the owner verifies it.** A page publishes only when he sets
+`state: written`. Nothing on the site says a page is missing.
+
+**U9 — Start from the eight pages in §13.3.** The owner merges or splits them. A page may
+also become a **subsection** of another page when it is too thin to stand alone. So the
+build treats `##` headings inside a page as its sub-entries in the guide's page list, and a
+page that becomes a subsection keeps its `covers` list (it moves with the text), so the
+staleness check still finds it.
+
+**U10 — OPEN (2026-09-21): how guide images reach the site.** **A** `publish-update.mjs`
+uploads each image a written page uses to R2 beside `guide.json`, and the build rewrites the
+path — version-locked like the text. **B** the page links the image on GitHub `main` — no
+upload, but a picture can show a newer app than the Download button. Recommendation: **A**.
 
 ---
