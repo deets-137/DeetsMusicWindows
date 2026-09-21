@@ -1,3 +1,9 @@
+---
+status: idea
+desk_test: none
+sources: [src-tauri/src/enrich.rs]
+updated: 2026-09-17
+---
 # DeetsRecommends — a credit-graph recommendation engine
 
 > **Status: roadmap idea, not scheduled.** A possible way for DeetsRadio / DeetsMusic to make

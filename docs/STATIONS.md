@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.1.1
+desk_test: none
+sources: [src/start-station.ts, src/radio-card.ts, src/radio.ts]
+updated: 2026-09-15
+---
 # DeetsMusic — Stations (radio) & audio-feature enrichment
 
 > **✅ THE APPLE-RADIO LINE IS DONE (2026-07-03).** The Radio card (Apple's live / My Station /

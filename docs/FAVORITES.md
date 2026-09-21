@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.3.0
+desk_test: none
+sources: [src/library-add.ts, src/track-store.ts, src-tauri/src/apple.rs, src-tauri/src/library.rs, src-tauri/src/lib.rs, src/main.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Favorites & library writes
 
 > **➕ Add to Library** and a **♥ Favorite**, everywhere a track shows up (Now Playing · Library ·

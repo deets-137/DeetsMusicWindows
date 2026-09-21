@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: [src/surface.ts, src/main.ts, src/layout-bus.ts, src/layout.ts]
+updated: 2026-09-18
+---
 # DeetsMusic — Surfaces & the Card System
 
 > How the midi-player composes **swappable cards**, and how one webview will serve three

@@ -1,3 +1,9 @@
+---
+status: parked
+desk_test: none
+sources: []
+updated: 2026-09-15
+---
 # DeetsMusic — Two services, one library (Apple Music + Spotify)
 
 > **Status (2026-09-15): PARKED — not built, not planned.** Designed as option **B** (both

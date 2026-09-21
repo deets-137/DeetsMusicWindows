@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.9.0
+desk_test: passed 2026-09-19
+sources: [src/card-grow.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
+updated: 2026-09-19
+---
 # DeetsMusic — growing a card
 
 **Designed 2026-09-16. BUILT 2026-09-16 on branch `grower-not-shower`, desk-tested (§11), polished

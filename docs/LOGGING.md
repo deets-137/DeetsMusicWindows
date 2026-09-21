@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.3.2
+desk_test: none
+sources: [src/diag.ts, src-tauri/src/log.rs, src-tauri/src/bridge.rs, src-tauri/src/report.rs, src-tauri/src/watchdog.rs]
+updated: 2026-09-20
+---
 # Logging — the rolling log file
 
 What the app writes down, so a fault a user cannot reproduce is still

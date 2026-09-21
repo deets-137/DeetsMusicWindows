@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.1.3
+desk_test: passed 2026-09-08
+sources: [src-tauri/src/bridge.rs, src/np-bus.ts, extension/src/readers.js, extension/install.html]
+updated: 2026-09-17
+---
 # Browser extension + the local bridge
 
 > Design agreed 2026-09-08. Status: **built and user-tested** (the first test is what

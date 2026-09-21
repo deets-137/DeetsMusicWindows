@@ -1,3 +1,9 @@
+---
+status: designed
+desk_test: none
+sources: []
+updated: 2026-09-17
+---
 # A second Search card — compare two albums side by side
 
 Designed 2026-09-17 (the owner's model). **Not built.** Build it on a clean tree, after the

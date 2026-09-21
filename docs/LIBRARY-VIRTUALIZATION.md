@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.4.0
+desk_test: passed 2026-09-13
+sources: [src/collection-window.ts, src/collection-card.ts, src/styles.css, src/styles/skin.css, src/library-card.ts, src/playlists-card.ts]
+updated: 2026-09-17
+---
 # Library virtualization — option A (windowing) brief
 
 Status 2026-09-13 (late): **BUILT on branch `optimus-deets`, measured, scripted checks pass;

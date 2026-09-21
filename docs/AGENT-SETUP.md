@@ -1,3 +1,9 @@
+---
+status: guide
+desk_test: none
+sources: []
+updated: 2026-09-18
+---
 # Control DeetsMusic from an AI app or the command line
 
 DeetsMusic can take instructions from other programs on this PC: an AI app such as Claude

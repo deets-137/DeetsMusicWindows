@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.8.0
+desk_test: open
+sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts]
+updated: 2026-09-18
+---
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
 > **Designed 2026-09-16. BUILT the same day: the graph + worklet (§1, §8.1 tests pass), the Sound panel

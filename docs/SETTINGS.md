@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: [src/settings-store.ts, src/settings-card.ts, src/styles/settings.css, src/agent-settings.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Settings: the machinery
 
 > **Looking for what a setting does?** [SETTINGS-INVENTORY.md](SETTINGS-INVENTORY.md) is the

@@ -1,3 +1,9 @@
+---
+status: guide
+desk_test: none
+sources: [src/compass.ts]
+updated: 2026-09-20
+---
 # Compass — everything the bar answers to
 
 > The user-guide list for Ctrl+Space ([COMPASS.md](COMPASS.md)). Written 2026-09-17 from the

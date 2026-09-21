@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [src/room-panel.ts]
+updated: 2026-09-19
+---
 # LESSONS — what the owner tends to want in DeetsMusic
 
 Written 2026-09-17 as VALUES.md, a rulebook that let a session decide a fork the way the owner
@@ -6,8 +12,8 @@ closes a fork. It is a record of taste and of lessons already paid for, so that 
 build and the option you bring him are both better.
 
 Read `docs/TASTE.md` with it: his favorite works and dislikes, and what each one means for look,
-voice, motion and scale. Both files are on this PC only (in `.gitignore`); never commit, push or
-quote them in a public doc.
+voice, motion and scale. `TASTE.md` is on this PC only (in `.gitignore`); never commit, push or
+quote it in a public doc. This file is tracked since 2026-09-19 (`0071b67`), so it is public.
 
 **Terms used here**
 - **Fork:** a choice between two or more ways to build something.

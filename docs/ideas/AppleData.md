@@ -1,3 +1,9 @@
+---
+status: idea
+desk_test: none
+sources: []
+updated: 2026-09-16
+---
 # Apple data DeetsMusic does not use yet
 
 Collected 2026-09-16. None of these endpoints, views or attributes are called in `apple.rs`,

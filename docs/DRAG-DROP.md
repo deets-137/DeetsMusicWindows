@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.4.1
+desk_test: passed 2026-09-14
+sources: [src/row-drag.ts, src/row-pick.ts]
+updated: 2026-09-17
+---
 # DeetsMusic — Drag and drop between cards
 
 > **Status (2026-09-14): BUILT the same day, tested, committed de12ec3, shipped in 0.4.1.** Everything below was checked

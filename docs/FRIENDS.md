@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.12.2
+desk_test: open
+sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Friends (and telling Discord what you play)
 
 > **Status (2026-09-20): EVERY step is now BUILT. §16 is as built; §17 is the desk test, NOT RUN.**

@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.3.1
+desk_test: passed 2026-09-20
+sources: [src/toast.ts, src/styles/toast.css]
+updated: 2026-09-20
+---
 # DeetsMusic — Toasts
 
 > Built 2026-09-13 (branch `claude/deetsmusic-toast-impl-rfw6ch`). **The sticky queue's desk

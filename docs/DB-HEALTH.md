@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.10.0
+desk_test: none
+sources: [src-tauri/src/dbhealth.rs, src-tauri/src/library.rs, src/stats.ts]
+updated: 2026-09-17
+---
 # DeetsMusic — is the database still writable?
 
 What happens when a SQLite write fails, what we now measure, and why there is no queue.

@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.6.0
+desk_test: passed 2026-09-15
+sources: [src/handoff.ts, src/layout.ts]
+updated: 2026-09-18
+---
 # Card swap motion — designed and built 2026-09-15
 
 Recorded as an idea 2026-09-15; designed and built the same day. Tested and committed

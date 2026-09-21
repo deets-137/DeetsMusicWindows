@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.5.0
+desk_test: passed 2026-09-15
+sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts]
+updated: 2026-09-18
+---
 # DeetsMusic — Look schedule (day look / night look)
 
 > Built 2026-09-15. Code: `src/look-schedule.ts`, `src/sun-zones.ts` (generated),

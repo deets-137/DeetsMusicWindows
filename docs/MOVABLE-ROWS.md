@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.12.2
+desk_test: passed 2026-09-20
+sources: [src/home.ts, src/row-drag.ts, src/collection-card.ts, src/home-card.ts, src/playlists-card.ts, src/radio-card.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Movable rows
 
 > **Status (2026-09-20): BUILT, and the desk test in §12 PASSED 2026-09-20.** Every fork in §11 was decided by

@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.6.1
+desk_test: passed 2026-09-15
+sources: [src/vinyl.ts, scripts/webview-eval.mjs, src/now-playing-card.ts, src/tray.ts, src/skin-settings.ts, src/settings-store.ts]
+updated: 2026-09-15
+---
 # Press record player (vinyl cover)
 
 Designed and built 2026-09-15 (`src/vinyl.ts`). Press only. Desk-tested in four rounds the same

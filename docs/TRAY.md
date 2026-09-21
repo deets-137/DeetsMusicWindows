@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.1.3
+desk_test: passed 2026-09-09
+sources: [src-tauri/src/tray.rs, src-tauri/src/lib.rs, src-tauri/src/media.rs, src/tray.ts, src/np-bus.ts, src-tauri/src/settings.rs]
+updated: 2026-09-15
+---
 # Tray panel + minimize-to-tray
 
 > Design agreed 2026-09-08. Status: **built and user-tested** through 0.1.3; the window

@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.2.0
+desk_test: passed 2026-09-19
+sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
+updated: 2026-09-19
+---
 # DeetsMusic — AirPlay (play on a HomePod)
 
 > Scoped and **built 2026-09-10** on branch `release-prep`; **connected and played on the desk**

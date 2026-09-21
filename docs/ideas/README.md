@@ -1,3 +1,9 @@
+---
+status: idea
+desk_test: none
+sources: []
+updated: 2026-09-17
+---
 # Ideas — not built
 
 The docs in this folder describe features that **do not exist in DeetsMusic**. They are

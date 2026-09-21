@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.8.0
+desk_test: passed 2026-09-16
+sources: [scripts/release-check.mjs, src-tauri/src/lastfm.rs, src/stats.ts, src/lastfm.ts, src/settings-card.ts, src/agent-settings.ts]
+updated: 2026-09-17
+---
 # Last.fm scrobbling
 
 Built 2026-09-16. **Desk-tested 2026-09-16 in the dev app: complete.** Connect, now playing and

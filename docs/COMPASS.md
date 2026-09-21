@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.9.5
+desk_test: passed 2026-09-19
+sources: [src/compass.ts, src/styles/compass.css, src/compass-math.ts, src/list-keys.ts, src/styles/skin.css, src/main.ts]
+updated: 2026-09-20
+---
 # Compass — go anywhere from the keyboard
 
 > **Ctrl+Space** opens a bar under the title bar, in every surface. Type a few letters and

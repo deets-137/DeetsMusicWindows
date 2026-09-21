@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: []
+updated: 2026-09-17
+---
 # DeetsMusic — Design Doc
 
 > Living document. We design on paper here first, then build against it.

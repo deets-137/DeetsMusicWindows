@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [src/player.ts, src/stats.ts, src/playlists-card.ts, src/queue.ts, src/layout.ts, src/surface.ts]
+updated: 2026-09-17
+---
 # DeetsMusic — Future Settings (deferred toggles)
 
 > A ledger of behaviors we've **deliberately hardcoded for now** but intend to expose

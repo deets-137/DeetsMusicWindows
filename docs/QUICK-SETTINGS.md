@@ -1,3 +1,9 @@
+---
+status: built
+desk_test: open
+sources: [src/quick-panel.ts]
+updated: 2026-09-20
+---
 # Quick settings — the cog's panel
 
 **BUILT 2026-09-20 on branch `thirteen`. The owner tried §1–§9 in the dev app the same day (58 `quick:part` lines in the dev log). §10's desk test (§10.1) is NOT RUN.**

@@ -1,3 +1,9 @@
+---
+status: idea
+desk_test: none
+sources: []
+updated: 2026-09-17
+---
 # DeetsMusic on Linux (and macOS)
 
 Written 2026-09-16. Not built. The user wants a stable Linux release at some point. This doc

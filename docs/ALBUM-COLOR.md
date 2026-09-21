@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.1.1
+desk_test: none
+sources: [src/album-slots.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Album Color (the radiant Now-Playing aurora)
 
 > How the current track's artwork tints the player. The Now Playing card grows an

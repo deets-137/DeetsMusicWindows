@@ -1,3 +1,9 @@
+---
+status: guide
+desk_test: none
+sources: []
+updated: 2026-09-20
+---
 # Every control in DeetsMusic
 
 The full catalogue: every setting, menu item, group and folder, and what each one does.

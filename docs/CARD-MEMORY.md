@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.9.5
+desk_test: passed 2026-09-19
+sources: [src/card-memory.ts, src/collection-card.ts, src/layout.ts, src/search.ts, src/search-card.ts, scripts/webview-profile.mjs]
+updated: 2026-09-19
+---
 # Card memory — a card comes back where you left it
 
 Designed 2026-09-17. **BUILT the same day** (§11 = as built). Forks decided the same day (§10).

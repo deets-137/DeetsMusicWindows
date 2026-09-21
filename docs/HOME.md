@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.6.3
+desk_test: passed 2026-09-19
+sources: [src/home.ts, src-tauri/src/library.rs, src-tauri/src/apple.rs, src/home-card.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — the Home card
 
 **Built 2026-09-15.** Designed in one session (the forks and the decisions are §7).

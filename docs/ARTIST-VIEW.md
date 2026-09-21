@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.6.0
+desk_test: passed 2026-09-15
+sources: []
+updated: 2026-09-17
+---
 # Artist view — hero, Featured Playlists, Your Playlists
 
 Designed with the user 2026-09-15, built the same day. Status: **BUILT, desk-tested, shipped (80ac7bb).**

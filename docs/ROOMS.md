@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.10.0
+desk_test: passed 2026-09-19
+sources: [src/room.ts, src/room-panel.ts, src/player.ts, src/queue.ts, src-tauri/src/rooms.rs, src-tauri/src/lib.rs]
+updated: 2026-09-20
+---
 # DeetsMusic — DeetsMusicRooms (listening rooms)
 
 > **Named DeetsMusicRooms (2026-09-17).** The feature, the worker and its repo all carry this

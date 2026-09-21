@@ -1,3 +1,9 @@
+---
+status: idea
+desk_test: none
+sources: [src/styles/fonts.css]
+updated: 2026-09-14
+---
 # DeetsMusic — WeatherSkin (weather-reactive dynamic skin + theme)
 
 > The weather outside restyles the player: an **animated canvas** (gradient sky + a particle

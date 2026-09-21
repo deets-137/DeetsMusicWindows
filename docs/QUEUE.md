@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: [src/player.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts]
+updated: 2026-09-18
+---
 # DeetsMusic — Queue model & playback windowing
 
 > How a click becomes playback, and why the queue model is shaped the way it is.

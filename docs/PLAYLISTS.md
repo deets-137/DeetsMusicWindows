@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.1.1
+desk_test: none
+sources: [src/context-menu.ts, src-tauri/src/playlists.rs, src/playlists-card.ts, src/playlists.ts, src-tauri/src/model.rs, src/collection-card.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Playlists
 
 > A **local-first** playlist store, a **read-only mirror** of the user's Apple Music

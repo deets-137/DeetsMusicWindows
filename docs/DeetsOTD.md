@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.11.0
+desk_test: passed 2026-09-19
+sources: [src/home-card.ts, scripts/import-sotd-journal.mjs, src-tauri/src/sotd/outlet.rs, src-tauri/src/sotd/discord.rs, src-tauri/src/sotd/outbox.rs, src/sotd.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — DeetsOTD (Song of the Day)
 
 > **Status (2026-09-18): build 1 BUILT — §10 is as built. Desk test §8.11 PASSED 2026-09-19.**

@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/archive-installer.mjs, scripts/cli-dist.mjs]
+updated: 2026-09-20
+---
 # Release, install, uninstall
 
 > Status (2026-09-15): **installer, updater and Authenticode signing are all live and tested.**

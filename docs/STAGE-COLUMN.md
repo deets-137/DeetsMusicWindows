@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.9.5
+desk_test: passed 2026-09-19
+sources: []
+updated: 2026-09-19
+---
 # The stage column (Max)
 
 Built 2026-09-17. The left column of the Max surface: the Now Playing card over the anchored

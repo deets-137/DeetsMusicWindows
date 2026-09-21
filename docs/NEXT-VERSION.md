@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [src/styles.css, src/search-card.ts, src/now-playing-card.ts, src/styles/skin.css, src/row-pick.ts, src-tauri/src/playlists.rs]
+updated: 2026-09-18
+---
 # DeetsMusic — Next version (feature notes)
 
 > Aditya's feature notes for the version after 0.2.2, captured 2026-09-11. This file is

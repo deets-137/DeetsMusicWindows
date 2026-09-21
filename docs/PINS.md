@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.11.0
+desk_test: passed 2026-09-20
+sources: [src/pins.ts, src/home-card.ts, src/library-card.ts, src/playlists-card.ts, src/radio-card.ts, src-tauri/src/library.rs]
+updated: 2026-09-20
+---
 # DeetsMusic — Pins
 
 > **Status (2026-09-18): BUILT on branch `pins-for-days`, desk test §6 PASSED 2026-09-19.** Forks 1–9 decided

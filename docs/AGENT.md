@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.5.0
+desk_test: passed 2026-09-14
+sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts]
+updated: 2026-09-20
+---
 # Agent / CLI control — `deetsmusic`
 
 > Design agreed 2026-09-09 (DESIGN.md X4). Playback control built and tested. **The write pass

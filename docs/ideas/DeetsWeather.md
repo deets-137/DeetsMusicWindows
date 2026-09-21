@@ -1,3 +1,9 @@
+---
+status: idea
+desk_test: none
+sources: [src-tauri/src/apple.rs]
+updated: 2026-09-14
+---
 # DeetsMusic — DeetsWeather (weather-driven stations & queues)
 
 > Turn the weather outside into what's playing. Our Apple key has **WeatherKit** access, so we

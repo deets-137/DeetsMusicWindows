@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.8.0
+desk_test: passed 2026-09-16
+sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts]
+updated: 2026-09-18
+---
 # DeetsMusic — the playlist web
 
 A **web** is a playlist built from one artist and the artists they make songs with. You give

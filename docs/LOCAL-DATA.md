@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.8.0
+desk_test: passed 2026-09-19
+sources: [src-tauri/src/lib.rs, src-tauri/src/query.rs, src-tauri/src/bridge.rs, cli/src/main.rs]
+updated: 2026-09-20
+---
 # Local data for agents and users — the library tool and read-only SQL
 
 Designed and **built 2026-09-16**, shipped in 0.8.0. Desk test (§11): steps 1–8 passed

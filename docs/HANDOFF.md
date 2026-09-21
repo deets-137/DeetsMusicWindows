@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [src/toast.ts, src/player.ts, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Handoff / Status
 
 > Cold-start guide — read first. A lightweight Apple Music player for Windows 11:

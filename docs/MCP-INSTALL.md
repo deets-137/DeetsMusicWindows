@@ -1,3 +1,9 @@
+---
+status: project
+desk_test: none
+sources: []
+updated: 2026-09-16
+---
 # DeetsMusic — connect AI apps (`mcp_install`)
 
 > **Designed 2026-09-16. Not built. The forks in §2 are open.** The user asked for a Rust module that

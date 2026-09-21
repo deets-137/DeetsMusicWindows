@@ -1,3 +1,9 @@
+---
+status: designed
+desk_test: none
+sources: [src-tauri/src/favorites.rs, src/player.ts, src/favorites.ts, src/queue.ts]
+updated: 2026-09-17
+---
 # DeetsMusic — Suggest Less and proactive skips
 
 Designed 2026-09-17. **Not built.** The station timing is measured when we build (§8).

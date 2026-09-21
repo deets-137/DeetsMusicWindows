@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: [src/skin-settings.ts, src/skin.ts, src/main.ts, src/library-card.ts, src/styles.css, src/hint.ts]
+updated: 2026-09-18
+---
 # DeetsMusic — UI Architecture
 
 > How the front-end is structured. Read this before adding a theme, a skin, or a

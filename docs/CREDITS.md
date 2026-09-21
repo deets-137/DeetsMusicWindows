@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.10.0
+desk_test: none
+sources: [src/credits.ts, src-tauri/src/credits.rs, src/library.ts]
+updated: 2026-09-17
+---
 # DeetsMusic — writer credits
 
 How the app gets the people who **wrote** a song, what Apple's data really looks like, and

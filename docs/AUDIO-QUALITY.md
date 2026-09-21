@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [scripts/webview-eval.mjs]
+updated: 2026-09-17
+---
 # DeetsMusic — audio quality
 
 > Opened 2026-09-16. Goal (user's words): the highest possible quality, AirPlay or otherwise.

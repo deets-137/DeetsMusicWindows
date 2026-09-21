@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: []
+updated: 2026-09-20
+---
 # Release notes
 
 The text for each GitHub Release. Newest first. Plain words, for the person installing.

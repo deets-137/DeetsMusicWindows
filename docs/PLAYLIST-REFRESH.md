@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.12.2
+desk_test: passed 2026-09-20
+sources: [src-tauri/src/playlists.rs, src-tauri/src/apple.rs, src/context-menu.ts, src/playlists-card.ts, src/playlist-expiry.ts, src/look-schedule.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Playlist refresh
 
 > **Status: BUILT 2026-09-20.** Designed 2026-09-19 with every fork closed (the owner's ten

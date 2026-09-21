@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: [src/stats.ts]
+updated: 2026-09-16
+---
 # DeetsMusic — Data Architecture
 
 > The back-end half: how we authenticate, model music, fetch it, and cache it.

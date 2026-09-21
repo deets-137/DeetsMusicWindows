@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
+updated: 2026-09-20
+---
 # DeetsMusic — Debugging tools
 
 > In-app diagnostics for the player and beyond. Lives in `src/diag.ts`; instrumented

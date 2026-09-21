@@ -1,3 +1,9 @@
+---
+status: sop
+desk_test: none
+sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts]
+updated: 2026-09-18
+---
 # UX Cover-ups — latency & jank ledger
 
 > A running list of places where the app has unavoidable latency or jank that we

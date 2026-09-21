@@ -1,3 +1,10 @@
+---
+status: shipped
+shipped_in: 0.6.1
+desk_test: none
+sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
+updated: 2026-09-20
+---
 # Onboarding — how the app explains itself
 
 > Three layers, cheapest first: **hover hints** on every control (§1), **right-click menus**

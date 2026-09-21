@@ -1,12 +1,19 @@
+---
+status: project
+desk_test: none
+sources: [scripts/publish-update.mjs, src/toast.ts, src-tauri/src/playlists.rs, src/settings-card.ts, scripts/webview-eval.mjs]
+updated: 2026-09-21
+---
 # DeetsMusic — Docs organization
 
-> **Status (2026-09-20): PAPER DESIGN. NOTHING MOVED.** No file is renamed, no link is
-> rewritten, no script exists yet. Every number in §1 was measured against the tree on
+> **Status (2026-09-21): STEP 1 DONE on branch `dockin` — every doc has front matter (§11.1a).
+> NOTHING MOVED.** No file is renamed and no link is rewritten. Every number in §1 was measured against the tree on
 > 2026-09-20. **Five decisions are closed (§3, the owner, 2026-09-20).** Six forks are
 > open (§10). Build order is §11. **§12 (added after 0.12.1) is a second piece of docs
 > work that rides this re-org: release notes, where a hotfix outranks the feature release
 > it repairs. Four more forks, all open. §13 (2026-09-21) is the user guide on
-> deets.solutions: all nine of its forks closed (U1–U9).**
+> deets.solutions: all nine of its forks closed (U1–U9). §14 (2026-09-21) = release tags
+> and a derived SQLite tasks index, forks T1–T4 and X1–X4 open.**
 
 **What you asked for.** Three things:
 1. A high-level overview that a new reader meets first.
@@ -30,8 +37,8 @@ Define these once. The rest of the doc uses them exactly.
   1,000. A mention carries no path, so a move does **not** break it.
 - A **section pointer** is a mention with a section number: `TOASTS.md §4a`. There are 178
   unique ones.
-- **Front matter** is a YAML block at the top of a doc, between two `---` lines. No doc has
-  one today.
+- **Front matter** is a YAML block at the top of a doc, between two `---` lines. Every doc
+  has one since 2026-09-21 (§11.1a).
 - The **checker** is a script (§8). The **sweep** is the skill that reads the checker's
   report (§9).
 
@@ -187,7 +194,7 @@ Every doc gets this block, first thing in the file, above the `#` title.
 
 ```yaml
 ---
-status: shipped | built | designed | parked | idea
+status: shipped | built | designed | project | parked | idea | foundation | sop | guide
 shipped_in: 0.11.0          # omit unless status is shipped
 desk_test: passed 2026-09-19 | open | none
 sources: [src/toast.ts, src-tauri/src/playlists.rs]
@@ -195,15 +202,62 @@ updated: 2026-09-20
 ---
 ```
 
-The five values of `status`, defined once:
+The values of `status`, defined once (S1 and S2 added the last four, the owner, 2026-09-21):
 
 | value | meaning |
 |---|---|
 | `shipped` | in a published installer, and in someone's hands |
 | `built` | in the tree, not yet in a published installer |
 | `designed` | every fork closed, no code |
+| `project` | started, not complete: forks still open, or a build begun and not finished (MCP-INSTALL, DOCS-ORG) |
 | `parked` | designed and deliberately stopped; kept as a record (PROVIDERS) |
 | `idea` | not designed. Everything in `ideas/` |
+| `foundation` | the engine the features run on (§5.2) |
+| `sop` | a standard operating procedure: how the work is done (§5.2) |
+| `guide` | written for the user (§5.2, §13) |
+
+### 5.1 Part markers — a doc with more than one state (S3, the owner, 2026-09-21)
+
+Some docs hold a built part and an unbuilt part: CREDITS (the producer web, §5), DeetsOTD
+(§9, more webhooks), ROOMS (§19, §20). Front matter gives the state of **the part that works
+today**. Every other part carries a **part marker**: one line, directly under its `##` or
+`###` heading, in one fixed shape a script can scan for:
+
+```
+## 5. The producer web
+> **Part:** designed · 2026-09-17
+```
+
+- The shape is `> **Part:** <status> · <date>`, with the same status values as the table.
+  An optional third field names the open forks: `> **Part:** project · 2026-09-18 · forks §9.6`.
+- A heading with no marker has the doc's own status.
+- The checker reads every marker (check 17): a marker with a value not in the table fails;
+  a marker that says `designed` on a part whose code exists is a suspicion, like check 6.
+- The tasks index (§14.2) takes every marker as one row, so "what is half-built" is one query.
+
+### 5.2 S1 — the docs that are not one feature (the owner, 2026-09-21: three values)
+
+The owner calls them foundational or SOP docs. **Three status values, one per group** —
+`guide` has its own because the user guide (§13) already exists as a plan:
+
+| value | meaning | stale when |
+|---|---|---|
+| `foundation` | the engine the features run on | its `sources` change (check 8) |
+| `sop` | how the work is done | the process changes; the sweep asks, a script cannot tell |
+| `guide` | written for the user, not for us | a doc it covers changes (check 13) |
+
+A generated doc (`TOKENS.md`) carries `generated: npm run tokens` and no `updated`: its
+generator writes the front matter itself, so the release check's byte-for-byte compare still
+holds, and check 10's rule (regenerate, never hand-edit) covers it.
+
+The groups, as read on 2026-09-21:
+
+- **Foundation** (the engine the features run on): UI-ARCHITECTURE · DATA-ARCHITECTURE ·
+  SURFACES-AND-CARDS · QUEUE · TOKENS · SETTINGS · DESIGN
+- **SOP** (how the work is done): HANDOFF · LESSONS · RELEASE · RELEASE-NOTES · DEBUGGING ·
+  NEXT-VERSION · FUTURE-SETTINGS · UX-COVERUPS · AUDIO-QUALITY
+- **User-facing** (they already read like the guide, §13): AGENT-SETUP · COMPASS-TERMS ·
+  SETTINGS-INVENTORY
 
 `sources` is the load-bearing field. It is what lets the checker compare a doc's date
 against the git history of the code that doc describes (§8, check 8). Without it, "is this
@@ -281,6 +335,7 @@ Deterministic, fast, free. No model runs. It joins the release check
 | 9 | front matter disagrees with the `> **Status …**` block | the two shapes of the truth drifting apart |
 | 10 | `docs/README.md` is stale against the front matter | the generated index not regenerated |
 | 11 | a doc in `ideas/` with a status above `idea` | the exact DeetsOTD failure, caught in one second |
+| 17 | a part marker (§5.1) with a status not in the table; or `designed` on a part whose code exists | a half-built doc whose other half landed unseen (the first half is a fact, the second a suspicion) |
 
 Checks 1, 2, 3, 5, 7 and 11 are **facts**. They fail the build.
 Checks 6, 8, 9 and 10 are **suspicions**. They print and do not fail, because a doc can be
@@ -342,7 +397,7 @@ Each step is its own sitting and its own commit. Steps 1 and 2 are mechanical an
 Nothing here is started.
 
 1. **Front matter on all 66 docs.** No moves. This step makes every later step checkable,
-   and it is the only step that touches every file.
+   and it is the only step that touches every file. **DONE 2026-09-21 (§11.1a).**
 2. **The checker**, `scripts/docs-check.mjs`, with checks 1–5 and 11 only. Run it. Read the
    first report before writing checks 6–10 — the report says which suspicions are worth the
    code.
@@ -360,6 +415,30 @@ Nothing here is started.
 
 Step 1 collides with no feature work. Step 3 collides with any branch that edits a doc, so it
 wants a quiet tree. Branch `twelve` has 11 modified docs uncommitted today.
+
+### 11.1a Step 1 as built (2026-09-21)
+
+- **Where:** branch `dockin`, cut from `thirteen` at `86d144f`, in its own worktree
+  (`../DeetsMusic-dockin`) so a session working on `thirteen` is not switched under. It
+  merges back into `thirteen` once the owner has felt out the effects.
+- **How:** `scripts/docs-frontmatter.mjs` proposed a block per doc from the doc's own header
+  words, the code paths it names most (up to six, the ones that exist) and its last commit
+  date; `shipped_in` came from the first published version commit that holds the doc's newest
+  source (0.12.0 and 0.12.1 withdrawn, so skipped). Every row was then corrected by hand
+  against the doc's header, and the owner decided S1–S3 (§5, §5.1, §5.2). `--write` adds a
+  block only to a doc that has none.
+- **Count:** 66 docs + `TOKENS.md`. shipped 36 · built 1 (Quick Settings) · designed 2 ·
+  project 2 · parked 1 · idea 6 · foundation 7 · sop 9 · guide 3. Open desk tests: Friends,
+  Sound, Quick Settings.
+- **Left out:** `TASTE.md` (git-ignored, private) and `ideas/MatterLights.md` (another
+  session's new file on `thirteen`; it gets its block when it lands).
+- **`TOKENS.md`** gets its block from `scripts/tokens.mjs`, with `generated:` in place of
+  `updated:`, so the release check's byte-for-byte compare still passes (checked).
+- **Checked unchanged:** `publish-update.mjs` still finds every `## <version>` entry in
+  `RELEASE-NOTES.md`. No app code reads a doc; the Agent card opens `AGENT-SETUP.md` on
+  GitHub, which shows front matter as a small table above the title.
+- **Not done here:** part markers (§5.1) on CREDITS, DeetsOTD and ROOMS — the sweep adds them
+  when the checker exists. `sources` is rough; the sweep sharpens it.
 
 ---
 
@@ -622,5 +701,76 @@ staleness check still finds it.
 uploads each image a written page uses to R2 beside `guide.json`, and the build rewrites the
 path — version-locked like the text. **B** the page links the image on GitHub `main` — no
 upload, but a picture can show a newer app than the Download button. Recommendation: **A**.
+
+---
+
+## 14. Release tags and the tasks index
+
+> Added 2026-09-21, from the owner's questions during step 1. **Paper design. Nothing built.
+> Forks T1–T4 and X1–X4 open (§14.3).**
+
+### 14.1 Release tags
+
+The repo has **no git tags**. Step 1 had to find each release by the commits that changed
+`package.json`'s version (29 of them), and then ask git whether a feature's first commit
+sits before one. That works, but it is a guess about which commit was built.
+
+A git tag names **one commit**, not a file. `v0.12.2` on the 0.12.2 commit marks the whole
+tree as it was at that release. That is exactly what `shipped_in` needs:
+
+- `git tag --contains <commit>` answers "which releases hold this feature" in one call.
+- `git diff v0.12.2 -- docs/` answers "which docs changed since the last release" — the
+  sweep's best input.
+- Check 5 (versions) compares against the newest tag instead of six files.
+
+Two parts:
+1. **Backfill.** Tag the 29 past version commits. A withdrawn version (0.12.0, 0.12.1) gets a
+   tag too, **annotated** "withdrawn: <reason>", because it is history. The checker reads the
+   annotation and never counts it as shipped.
+2. **From now on.** `publish-update.mjs` makes the tag when it publishes, so *published* and
+   *tagged* are the same event. `--withdraw` rewrites the annotation.
+
+### 14.2 The tasks index — a SQLite file nobody writes by hand
+
+**What it is.** One SQLite file, **derived** from the docs and git and **rebuilt from scratch**
+every time. It is never edited. It is never the truth: the docs are. It answers "what is open"
+in one query instead of reading 60 docs, or `CLAUDE.md`'s status paragraphs.
+
+**Tables.**
+
+| table | one row per | from |
+|---|---|---|
+| `docs` | doc | front matter (§5) |
+| `parts` | part marker | §5.1 markers |
+| `desk_tests` | desk test named open | front matter + part markers |
+| `forks` | open fork | a part marker's `forks §…` field (not table scraping: fork tables have no shared shape) |
+| `releases` | tag | `git tag` + annotations |
+| `guide` | guide page | `docs/guide/` front matter (§13.4) |
+
+**Built with** `node:sqlite` (in Node 24, checked 2026-09-21). No new dependency.
+
+**Passively maintained** means nobody runs it on purpose:
+- a **post-commit hook** rebuilds it after every commit (a tracked `.githooks/` folder and
+  `core.hooksPath`, so the hook travels with the repo);
+- `npm run docs:check` rebuilds it too;
+- a Claude Code **SessionStart hook** prints a ten-line summary from it (open desk tests,
+  `project` docs, `built`-not-shipped). This is what replaces the state paragraphs that
+  D2 takes out of `CLAUDE.md`: the same facts, generated, and never stale.
+
+**Reading it.** `npm run tasks` prints the open list. `npm run tasks -- "<SQL>"` runs a
+read-only query. The file is git-ignored.
+
+### 14.3 Open forks
+
+| # | fork | recommendation |
+|---|---|---|
+| **T1** | Tag names | **`v0.12.2`** — the common shape, and what GitHub Releases expect |
+| **T2** | Backfill all 29, withdrawn ones included (annotated)? | **Yes** |
+| **T3** | Push the tags to GitHub (public, and hard to take back)? | **Yes**, after you read the list once |
+| **T4** | `publish-update.mjs` tags on publish from now on? | **Yes** |
+| **X1** | The tables in §14.2 — right set? | **Yes**, and `forks` only from markers |
+| **X2** | Rebuild by post-commit hook + `docs:check`? | **Yes** |
+| **X3** | Where the file lives | **`.claude/tasks.db`**, git-ignored — beside the session settings that read it |
+| **X4** | A SessionStart summary from it? | **Yes**, capped at ten lines |
 
 ---
