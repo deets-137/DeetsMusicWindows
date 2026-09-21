@@ -24,7 +24,10 @@
     "dev:built": "node scripts/dev-app.mjs --built",
     "dev:fresh": "node scripts/dev-app.mjs --fresh",
     "dev:fresh:in": "node scripts/dev-app.mjs --fresh=keep",
-    "bench": "node scripts/bench.mjs"
+    "bench": "node scripts/bench.mjs",
+    "demo": "vite --config vite.demo.config.ts",
+    "demo:build": "tsc --noEmit -p demo && vite build --config vite.demo.config.ts",
+    "demo:publish": "node scripts/demo-publish.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

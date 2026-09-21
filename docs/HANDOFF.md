@@ -120,6 +120,8 @@ When an item closes, delete it here and write the day in WORKLOG.md.
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
 **Desk tests not run**
+- **Web demo** — WEB-DEMO.md §10, on branch `demo-time`. The DeetsSolutions half is a local
+  `demo-time` branch there, not pushed. One open fork (§9.7).
 - **Friends** — FRIENDS.md §17.
 - **Quick settings** — QUICK-SETTINGS.md §10.1 (above).
 - **Sound** — SOUND.md §10.4 steps 4–10, and his report from daily listening (§11) comes

@@ -45,3 +45,6 @@ scripts/heaviness-samples.log
 # The owner's taste profile (what Claude RECOMMENDS; he decides). Kept on this PC.
 # docs/LESSONS.md is tracked since 2026-09-19.
 docs/TASTE.md
+
+# The web demo build (docs/features/WEB-DEMO.md)
+dist-web

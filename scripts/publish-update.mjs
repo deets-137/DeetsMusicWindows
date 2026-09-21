@@ -171,3 +171,10 @@ const entry = {
 index.releases = [...index.releases.filter((r) => r.version !== version), entry];
 writeIndex(index);
 console.log(`[publish] ${version} (group ${group}, ${(entry.size / 1024 / 1024).toFixed(1)} MB) is live on ${channel}`);
+
+// The web demo follows each live release (WEB-DEMO.md §6): build it and copy it into
+// ../DeetsSolutions. It only writes files there; a failure here never undoes the publish.
+if (channel === "deetsmusic") {
+  const demo = spawnSync(process.execPath, [join(root, "scripts", "demo-publish.mjs")], { cwd: root, stdio: "inherit" });
+  if (demo.status !== 0) console.warn("[publish] the web demo was not copied (npm run demo:publish to retry)");
+}

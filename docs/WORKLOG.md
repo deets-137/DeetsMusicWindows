@@ -12,6 +12,23 @@ updated: 2026-09-21
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-21 (evening) — the web demo (branch `demo-time`)
+
+- **Designed and built in one sitting** (WEB-DEMO.md). His forks: the real `src/` with a shim
+  (1A), every surface, skin and theme (2A), a silent clock (3A), `deets.solutions/deetsmusic/demo`
+  (4A), a plain box in each skin's card style, the copy step inside `release:publish`, the app's
+  own hover hints.
+- **The seam turned out smaller than planned:** `@tauri-apps/api` talks to Rust through one
+  global, so the shim defines it and no import is aliased. **No file in `src/` changed.**
+- Checked in Chrome, in the site frame too (§9.6). Desk test §10 is not run.
+- `../DeetsSolutions` has a local `demo-time` branch with the page and the copied build, not
+  committed and not pushed: that repo deploys from `master`, so the page goes live only when
+  he says.
+- Open: Settings shows every section, not only the look rows (§9.7).
+- His pass on the page, same sitting: the look reaches the app's box only; the size buttons
+  went (the walk and the cog's N guide instead); *Start over* stays; his line; *App page* +
+  *GitHub* in the page bar; no `[ph]` left.
+
 ## 2026-09-21 (later) — the N on the title bar cog, and 0.13.0
 
 - **The cog's N** (QUICK-SETTINGS.md §11). The panel helps a new user most, and the walk stays
