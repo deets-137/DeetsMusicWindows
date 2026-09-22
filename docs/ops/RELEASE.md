@@ -73,6 +73,7 @@ of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
 | 0.12.1 | 2026-09-20 | `d81f312` | skipped | hotfix. **Withdrawn**, same freeze |
 | 0.12.2 | 2026-09-20 | `53a5858` | — | the Discord freeze fixed; carries the whole 0.12 line's notes |
 | 0.13.0 | 2026-09-21 | `0091992` | skipped, his call (small reach, tested in dev) | the quick panel, the N badges, the docs re-org |
+| 0.13.1 | 2026-09-22 | `d86bf00` | skipped, his call ("release and publish"): §0b reads it high risk (player.ts + `np_command` in de31ff7, logging only) | Web in the title bar; `player:pause` names who paused; the web demo |
 
 ### 0b. When Claude may publish without the hand test (his rule, 2026-09-21)
 
