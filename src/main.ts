@@ -37,6 +37,7 @@ import { initPlaylistRefresh } from "./playlist-refresh";
 import { initSound } from "./sound";
 import { initSoundPanel } from "./sound-panel";
 import { initRoomPanel } from "./room-panel";
+import { initTitleWeb } from "./web";
 import { formatCode, joinRoom, inRoom } from "./room";
 import { initLoudness } from "./sound-loudness";
 import * as frames from "./frames";
@@ -573,6 +574,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSoundPanel(); // the title bar's Sound item (SOUND.md §2.3)
   initSleep();
   initRoomPanel(); // the title bar's Room item (ROOMS.md §1)
+  initTitleWeb(); // the title bar's Web item (PLAYLIST-WEB.md §1a)
   initCompass(); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   initPlaylistExpiry(); // temporary web playlists (PLAYLIST-WEB.md §10)
   initPlaylistRefresh(); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)

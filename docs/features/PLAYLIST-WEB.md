@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
 sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts]
-updated: 2026-09-18
+updated: 2026-09-22
 ---
 # DeetsMusic — the playlist web
 
@@ -35,6 +35,35 @@ four lines from the user's sketch, drawn by `iconSvg()` so the lines stop short 
 Like +, it shows only at the card's root.
 
 Not built: a right-click **Make a Web…** on an artist.
+
+### 1a. The title bar's Web item
+> **Part:** built · 2026-09-22
+
+The same icon in the title bar, left of the room figures: **Web** · room · sound · sleep
+(user's calls 2026-09-22). It is in the room / sound / sleep icon family: `--web-top-btn-size`
+(the lights' size), the subtext color, the text color on hover, the larger click area.
+
+- **Its own panel.** `mountWeb(btn, "Web")` makes a second panel, headed **Web**. It keeps its
+  own seed, web and chips; the Playlists card's button keeps its own (user's call: two panels,
+  not one shared). The settings (Reach, Size, Prefer, the Temp days) are shared, because they
+  are settings. Each panel's element ids carry its own prefix (`web1-hits`, `web2-hits`).
+- **Always there.** The card's button shows only at the card's root; this one shows in every
+  surface.
+- **Make playlist** flies the row to the Playlists card as before: `handOff` calls
+  `requestDrillCard("playlists")`, so the card comes on screen when it was not.
+- **The Compass:** the **Web** row in Places opens this panel (`openTitleWeb`). "web" with a
+  seed is still the Actions row (COMPASS.md §2b).
+
+Desk test:
+1. Point at the Web icon: the hint reads "Web: makes a playlist…". The icon matches the room
+   and sound icons in size and color, in each skin.
+2. Press it: the panel, headed "Web", drops under the icon, its right edge at the icon's.
+   Build a web and make the playlist: the row flies to the Playlists card, which opens it.
+3. Show a card other than Playlists, then make a web from the title bar: the Playlists card
+   comes on screen and the playlist opens.
+4. Pick a seed in the title bar panel, then open the Playlists card's panel: it has its own
+   (empty) state. Change Size in one: the other shows the new Size.
+5. Ctrl+Space, type "web": the Web row opens the title bar panel.
 
 ## 2. The panel
 

@@ -32,6 +32,23 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.13.1 — 2026-09-22
+
+**Web is in the title bar.** The web of rings now sits left of the listening room icon. Press
+it to make a playlist from an artist, a song or an album and the artists around it, from any
+card. The Web button in the Playlists card works as before, with a panel of its own. Press
+Ctrl + Space and type **web** to open it too.
+
+**A pause now says where it came from.** When the music pauses, the app notes what paused it:
+a button, a key, Windows' media controls, the tray, a HomePod, the sleep timer, or something
+outside the app. If your music pauses and you did not pause it, send a report from Settings ›
+Updates and bugs, and the note goes with it.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.13.0 — 2026-09-21
 
 **The cog opens a quick settings panel.** Press the cog in the title bar and a row of squares

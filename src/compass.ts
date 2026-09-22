@@ -44,7 +44,7 @@ import { resolveEntry } from "./queue-rows";
 import { isPinned, songKey, togglePin } from "./pins";
 import { requestSongPane } from "./go-to";
 import { speakersKnown, connectSpeaker, scanSpeakers, isScanning } from "./airplay";
-import { webQuick, type WebRequest } from "./web";
+import { webQuick, openTitleWeb, type WebRequest } from "./web";
 import { openSoundPanel } from "./sound-panel";
 import { openQuickPanel } from "./quick-panel";
 import { openRoomPanel } from "./room-panel";
@@ -338,6 +338,7 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   });
   rows.push({ group: "Places", title: "Sound", sub: "The equalizer and adaptive sound", run: () => openSoundPanel() });
   rows.push({ group: "Places", title: "Sleep timer", sub: "The alarm clock", run: () => openSleepPanel() });
+  rows.push({ group: "Places", title: "Web", sub: "Makes a playlist from an artist and the artists around them", run: () => openTitleWeb() });
   rows.push({ group: "Places", title: "Quick settings", sub: "Every setting, by what it is for", run: () => openQuickPanel() });
   rows.push({
     group: "Places",

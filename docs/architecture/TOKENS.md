@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 445 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 446 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -271,6 +271,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--web-chip-radius` | `var(--radius-control)` | — |  |
 | `--web-title-tracking` | `0.06em` | — | the panel title, the create menu's label voice |
 | `--web-icon-stroke` | `1.8` | — | thinner than the header's 2: five small rings stay open at 16px |
+| `--web-top-btn-size` | `var(--traffic-size)` | — | the title bar's Web item: level with the other title bar icons |
 | `--web-link-offset` | `2px` | — | Retry / Read again: the underline clears the descenders |
 | `--web-shrink-dur` | `0.32s` | — | "Shrink to chip": the panel closing in on the artist row (a plain time: JS reads it) |
 | `--web-shrink-ease` | `var(--pop-ease)` | — |  |

@@ -21,6 +21,7 @@ updated: 2026-09-20
 | **press**, **ocean**, **glass**, **cyber** (skin, look) | The skin |
 | **sound** (eq, equalizer) | The Sound panel |
 | **sleep timer** (timer, alarm) | The sleep panel |
+| **web** (playlist web) | The title bar's Web panel (2026-09-22). "web" and a seed is the Actions row instead (§2b of COMPASS.md) |
 | **quick settings** | The quick panel under the cog: every setting, by what it is for (2026-09-20) |
 | **listening room** (room, together) | The Room panel |
 | **friends** (friend, buddies, people, together) | The same panel's Friends half — its own row, because "friends" and "listening room" are two things a person means (FRIENDS.md §16.7) |

@@ -215,7 +215,7 @@ export const playlistsCard: CardDef = {
     const refreshBtn = host.querySelector<HTMLElement>("#playlists-refresh");
     const addBtn = host.querySelector<HTMLElement>("#playlists-add");
     const webBtn = host.querySelector<HTMLElement>("#playlists-web");
-    const unmountWeb = webBtn ? mountWeb(webBtn) : null; // PLAYLIST-WEB.md
+    const unmountWeb = webBtn ? mountWeb(webBtn).destroy : null; // PLAYLIST-WEB.md
 
     let lists: Playlist[] = [];
     let folders: PlaylistFolder[] = [];

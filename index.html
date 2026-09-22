@@ -218,6 +218,18 @@
       <div class="compass pop app-scroll" id="compass" role="dialog" aria-label="Go anywhere" hidden></div>
 
       <div class="chrome-right">
+        <!-- Web (PLAYLIST-WEB.md §1a, src/web.ts): the Playlists card's web button again, with
+             its own panel headed "Web". The icon and the panel are built by web.ts. -->
+        <div class="web-top" id="web-top">
+          <button
+            class="web-top__btn"
+            id="web-btn"
+            type="button"
+            aria-label="Web"
+            title="Web: makes a playlist from an artist and the artists they make songs with"
+          ></button>
+        </div>
+
         <!-- Listening rooms (ROOMS.md §1, src/room-panel.ts): three figures side by side.
              In a room the glyph fills and carries the member count. The panel is built by
              room-panel.ts: your name, Start a room and Join out of a room; the code, the

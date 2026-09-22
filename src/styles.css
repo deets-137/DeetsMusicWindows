@@ -1189,6 +1189,28 @@ body {
    The panel is portaled to <body> (a Glass card is a stacking context; web.ts places it).
    Its controls wear the sleep panel's chip look: one control voice for pop panels. */
 .panel__action.web-btn svg { stroke-width: var(--web-icon-stroke); } /* beats .panel__action svg, later in the file */
+/* The title bar's Web item (§1a): the room / sound / sleep icon family — the subtext color,
+   the text color on hover, the larger click area, the title-colored focus ring. */
+.web-top { position: relative; display: flex; align-items: center; }
+.web-top__btn {
+  width: var(--web-top-btn-size); height: var(--web-top-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  position: relative;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.web-top__btn:hover { color: var(--text); }
+.web-top__btn::before {
+  content: ""; position: absolute;
+  inset: calc(-1 * var(--title-hit-y)) calc(-1 * var(--title-hit-x));
+}
+.web-top__btn svg {
+  width: 100%; height: 100%;
+  fill: none; stroke: currentColor; stroke-width: var(--web-icon-stroke);
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.web-top__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .web {
   position: fixed;                  /* JS sets top/left under the button */
   margin-top: var(--space-1);       /* the gap under the button — JS reads it back */

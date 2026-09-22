@@ -378,28 +378,32 @@ export function pickSongs(r: WebResult, genres: Set<string>, size: number, prefe
   return out.slice(0, full);
 }
 
-/** Mount the web button's panel. Returns a teardown for the card's destroy. */
-export function mountWeb(btn: HTMLElement): () => void {
+let mounts = 0; // each panel's own element ids: the Playlists card's and the title bar's are both on <body>
+
+/** Mount a web button's panel. Each button has its own panel, with its own seed and web
+ *  (user's call 2026-09-22). `heading`: the panel's title. Returns open and a teardown. */
+export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: () => void; destroy: () => void } {
   btn.innerHTML = iconSvg();
   btn.setAttribute("aria-haspopup", "dialog");
   btn.setAttribute("aria-expanded", "false");
+  const uid = `web${++mounts}`;
 
   const panel = document.createElement("div");
   panel.className = "web pop";
   panel.dataset.frames = "web";
   panel.hidden = true;
   panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-label", "Playlist web");
+  panel.setAttribute("aria-label", heading);
   panel.innerHTML = `
-    <div class="web__title">Playlist web</div>
+    <div class="web__title">${esc(heading)}</div>
     <div class="web__row" title="Start the web from an artist, a song or an album">
       <span class="web__label">Start</span>
       <div class="web__seg" data-seg="kind">${KINDS.map((o) => `<button class="web__opt" type="button" data-value="${o.value}" aria-pressed="false">${o.label}</button>`).join("")}</div>
     </div>
     <input class="web__input" data-artist type="text" placeholder="Find an artist" spellcheck="false" autocomplete="off"
-      role="combobox" aria-expanded="false" aria-controls="web-hits" aria-autocomplete="list"
+      role="combobox" aria-expanded="false" aria-controls="${uid}-hits" aria-autocomplete="list"
       title="Finds an artist in your library, or searches Apple Music" />
-    <div class="web__hits" id="web-hits" role="listbox" aria-label="Seeds" hidden></div>
+    <div class="web__hits" id="${uid}-hits" role="listbox" aria-label="Seeds" hidden></div>
     <div class="web__row" title="1 reaches the artist's collaborators. Each step reaches one circle further">
       <span class="web__label">Reach</span>
       <div class="web__seg" data-seg="reach">${REACHES.map((n) => `<button class="web__opt" type="button" data-value="${n}" aria-pressed="false">${n}</button>`).join("")}</div>
@@ -649,14 +653,14 @@ export function mountWeb(btn: HTMLElement): () => void {
             tip = "In your library. Starts the web here";
           }
           return `<button class="web__hit${r.kind === "search" ? " web__hit--search" : ""}${i === active ? " is-active" : ""}" type="button" role="option"
-            id="web-hit-${i}" data-i="${i}" aria-selected="${i === active}" tabindex="-1" title="${tip}">${pic}<span class="web__hit-name">${name}</span>${sub ? `<span class="web__hit-sub${line ? " web__hit-sub--line" : ""}">${sub}</span>` : ""}${tail}</button>`;
+            id="${uid}-hit-${i}" data-i="${i}" aria-selected="${i === active}" tabindex="-1" title="${tip}">${pic}<span class="web__hit-name">${name}</span>${sub ? `<span class="web__hit-sub${line ? " web__hit-sub--line" : ""}">${sub}</span>` : ""}${tail}</button>`;
         })
         .join("");
     }
     const open = hitsEl.children.length > 0;
     show(hitsEl, open);
     artistInput.setAttribute("aria-expanded", String(open && !hitsEl.querySelector("[data-picked]")));
-    if (rows[active]) artistInput.setAttribute("aria-activedescendant", `web-hit-${active}`);
+    if (rows[active]) artistInput.setAttribute("aria-activedescendant", `${uid}-hit-${active}`);
     else artistInput.removeAttribute("aria-activedescendant");
     if (animate && !panel.hidden) enterRows(hitsEl.children);
   };
@@ -670,7 +674,7 @@ export function mountWeb(btn: HTMLElement): () => void {
       el.setAttribute("aria-selected", String(on));
       if (on) el.scrollIntoView({ block: "nearest" });
     });
-    artistInput.setAttribute("aria-activedescendant", `web-hit-${active}`);
+    artistInput.setAttribute("aria-activedescendant", `${uid}-hit-${active}`);
   };
 
   /** What the field lists for the text typed, for the Start row's kind: earlier webs' seeds
@@ -1128,12 +1132,26 @@ export function mountWeb(btn: HTMLElement): () => void {
   const onResize = () => place();
   window.addEventListener("resize", onResize);
 
-  return () => {
-    building++;
-    offSettings();
-    unlisten?.();
-    window.removeEventListener("resize", onResize);
-    dropdown.destroy();
-    panel.remove();
+  return {
+    open: () => dropdown.open(),
+    destroy: () => {
+      building++;
+      offSettings();
+      unlisten?.();
+      window.removeEventListener("resize", onResize);
+      dropdown.destroy();
+      panel.remove();
+    },
   };
+}
+
+// ── The title bar's Web item (PLAYLIST-WEB.md §1a): its own panel, headed "Web" ──
+let titleWeb: { open: () => void } | null = null;
+export function initTitleWeb(): void {
+  const btn = document.getElementById("web-btn");
+  if (btn) titleWeb = mountWeb(btn, "Web");
+}
+/** The Compass's "Web" place: opens the title bar's panel. */
+export function openTitleWeb(): void {
+  titleWeb?.open();
 }
