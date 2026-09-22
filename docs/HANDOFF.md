@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 # DeetsMusic — Handoff
 
@@ -109,7 +109,7 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-09-21. Each item names where the detail is.
+The short list of what is not finished, as of 2026-09-22. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Releases and branches**
@@ -120,20 +120,14 @@ When an item closes, delete it here and write the day in WORKLOG.md.
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
 **Desk tests not run**
-- **Web demo** — WEB-DEMO.md §10, on branch `demo-time`. The DeetsSolutions half is a local
-  `demo-time` branch there, not pushed. One open fork (§9.7).
-- **Friends** — FRIENDS.md §17.
+- **Web demo** — WEB-DEMO.md §10. The app half is merged into `main`; the page is live on
+  deets.solutions/deetsmusic/demo (DeetsSolutions `master`). One open fork (§9.7).
 - **Quick settings** — QUICK-SETTINGS.md §10.1 (above).
 - **Sound** — SOUND.md §10.4 steps 4–10, and his report from daily listening (§11) comes
   before any new Sound work.
 - **Discord's two buttons** (*Play on Apple Music*, *Listen Along*) are proven sent, not proven
   readable: they are invisible to the account that sets them, so reading them needs a second
   Discord account (FRIENDS.md §8.4, item 3).
-
-**Waiting on a deploy (his call — a worker deploy drops every live room socket)**
-- **`rooms.deets.solutions/j/<CODE>`**, the *Listen Along* landing, is written and committed in
-  `../DeetsMusicRooms` and not deployed. Until it is, leave *Let my profile invite people to my
-  room* off, or the button leads to a 404 (FRIENDS.md §8.7.3).
 
 **Designed, not built** (front matter `designed` or `project`, or a part marker)
 - SUGGEST-LESS.md · SECOND-SEARCH.md · MCP-INSTALL.md (forks open) · ROOMS.md §19 (redeploy
@@ -156,10 +150,11 @@ with the installer, and the user guide (DOCS-ORG.md §13).
 
 ## State of play
 
-**Live: 0.9.0** (2026-09-17, `deetsmusic` channel; `main` at `14111a7`, every branch merged).
-What each version added is in [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the
-top of "Next up" above. The list below is the long-lived foundation plus dated entries. The
-releases since 0.6.2, in short:
+**Live: 0.13.0** (2026-09-21, `deetsmusic` channel). Every release is in the log at
+[RELEASE.md §0a](ops/RELEASE.md); what each version added is in
+[RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
+[WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The
+releases from 0.6.2 to 0.9.0, in short:
 - **0.9.0** — card grow (Grow / Fill, [CARD-GROW.md](cards/CARD-GROW.md)), song and album web seeds and
   temporary web playlists ([PLAYLIST-WEB.md](features/PLAYLIST-WEB.md) §9–§10), the Add to Library square
   on song rows, Retro-Future renamed Cyber, Last.fm `LINK_BACK = false`.
@@ -307,26 +302,11 @@ releases since 0.6.2, in short:
   not the 106 the other skins get — move the band to 755 if that reads short.
 
 ### Not built yet ⬜
-- **The New Music Mix staleness (2026-09-19)** — a mirrored Apple playlist caches its songs once,
-  forever; ⟳ in the Playlists card header is the only fix today. Designed in
-  **[PLAYLIST-REFRESH.md](features/PLAYLIST-REFRESH.md)** (every fork closed), not built.
-- **The sticky toast queue (2026-09-19)** — past the cap of 3, a sticky toast is destroyed with
-  its actions unrun, so an Undo or a question can vanish unseen. **[TOASTS.md](architecture/TOASTS.md) §4a**,
-  three forks open, not built.
-- **Movable rows + a Settings search bar (2026-09-19)** — drag a section into the order you want
-  across Home, Playlists, Radio and Settings, plus hand order for pinned tiles and playlist rows.
-  **[MOVABLE-ROWS.md](features/MOVABLE-ROWS.md)**: scope closed in §0a, ten mechanism forks open in §11.2,
-  four search-bar forks in §11.3. Not built.
 - **Two services, one library (2026-09-15) — PARKED.** Designed in the morning
   (**[PROVIDERS.md](integrations/PROVIDERS.md)**), stopped the same day after the Spotify facts were checked
   (its §9): the owner needs Premium, the ISRC is gone so there is no merge key, search is capped
   at 10, and Developer Policy III.5 forbids mixing another service's content. Reopen only if
   Spotify's dev-mode terms change.
-- **The keyboard pass, with Space for play / pause (2026-09-15)** — the one listening-loop item
-  still open. The others (repeat, Play / Shuffle on a collection, the shuffle mode, the Home
-  card, the durable History card, the playlist creation flow, the sleep timer) are built and
-  shipped: **[NEXT-VERSION.md §12–§19](NEXT-VERSION.md)** and "Next up" above. (NEXT-VERSION §1–§8 are built; ♥ favorites shipped there 2026-09-12.
-  **Ratings / 👎 are off the roadmap.**)
 - **Real album/artist data + artist photos in the Library card** — Library's Albums/Artists are
   derived from song artwork + initials (Search's artist drill already shows real photos). Scoped
   2026-07-03: **bigger than it looks** — the Artists overview shows hundreds at once, so lazy
@@ -335,51 +315,20 @@ releases since 0.6.2, in short:
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
-- **AirPlay speaker only — BUILT 2026-09-17, desk test PASSED 2026-09-19 ([AIRPLAY.md §12](integrations/AIRPLAY.md), §12.4 is
-  the test, §12.6 is what was built).** The song is copied inside the page after the Sound graph
-  (`deets-tap`), handed to Rust as raw-body chunks (`airplay_tap`), and the page's sink gain drops
-  to 0: the PC goes silent, other apps stay off the speaker, the stream is bit-exact. Settings ›
-  AirPlay › Send to speaker (DeetsMusic only, the default / All PC sound). Crate 0.4.0 (`85a9ff1`).
-  Rust changed: restart the dev runner.
-- **The AirPlay claim guard (2026-09-15) — BUILT 2026-09-17, desk test PASSED 2026-09-19 (AIRPLAY.md §11).**
-  The record below is the brief it was built from. The speaker-sharing work
-  ([AIRPLAY.md §11](integrations/AIRPLAY.md)) is **one-directional**, and this is the missing half.
-  DeetsAirplay (the tray sender, the same crate underneath) reads the machine-wide claim file
-  and refuses — or offers a **Take over** on — a speaker this app is holding. This app *writes*
-  a claim but never *reads* one, so it will still connect straight over a speaker DeetsAirplay
-  has, and the user gets a SETUP failure with nothing in it to act on. A receiver takes one
-  sender; whoever loses that race loses it silently.
-  - **Already done, so this is a one-function job:** the pin is at crate **0.3.0**
-    (`d735d14` for 0.6.2, now `4989dfb`, the same crate version) so `claim` is in scope, and
-    `start_live` already calls `session.describe_send(...)` — `Send::All` for the default-output
-    capture, `Send::Apps([exe])` for the per-process path. We write a complete claim. We simply
-    never look at anyone else's.
-  - **The guard**, in `connect_speaker` (`src-tauri/src/airplay.rs`, right after the
-    `AirplayState` is taken and before `stop_live`) — the mirror of the one in DeetsAirplay's
-    own `src-tauri/src/lib.rs`:
-    ```rust
-    if let Some(other) = claim::on_speaker(&speaker.name) {
-        return Err(format!("{} is already playing on {}.", other.app, speaker.name));
-    }
-    ```
-    `connect_speaker` already funnels a failure into `state.error`, which the dropdown's state
-    line shows, so the sentence reaches the user with no UI work. `claim` reports only a process
-    that is *actually alive* (pid **and** exe name must match), so a crashed sender never leaves
-    a speaker looking taken, and `on_speaker` never returns our own claim.
-  - **Say it better than a refusal:** the claim carries `send`, so when the holder is
-    DeetsAirplay sending `Send::All`, our audio is *already on that speaker* — the honest line is
-    nearer "DeetsAirplay is already sending this PC's sound to Living Room" than "you can't".
-    `other.send.carries("deetsmusic.exe")` answers that directly.
-  - **The limit, deliberately:** we can offer no "Take over" of our own. DeetsAirplay has no
-    bridge for us to ask, so the guard can only name the holder and leave the user to disconnect
-    it there. Giving it a listener is a bigger decision than this entry — don't smuggle it in.
-- **Designed, not built (2026-09-16/17):** listening rooms ([ROOMS.md](integrations/ROOMS.md)), connect AI
-  apps ([MCP-INSTALL.md](integrations/MCP-INSTALL.md), forks open), Suggest Less
-  ([SUGGEST-LESS.md](features/SUGGEST-LESS.md)), the sprite-led first-run walk
-  ([ONBOARDING.md](features/ONBOARDING.md) §4). Ideas with no schedule: [ideas/](ideas/README.md).
-- Built since this list was written, so no longer here: the hosted sign-in page + deep link
-  (2026-09-13), the CLI / agent control, the mini and max compositions, library windowing,
-  playlist rename / drag-reorder / export, and every item of the listening loop but the keyboard.
+- **Off the roadmap:** ratings / 👎 (the ♥ favorites shipped instead, 2026-09-12).
+- **The agent's "Later" list** ([AGENT.md §7](integrations/AGENT.md)): the installer PATH entry,
+  connect AI apps ([MCP-INSTALL.md](integrations/MCP-INSTALL.md), forks open), `artist:` ids for
+  `play`, durable history as a second history source, a small-model test of `mcp --small`.
+- **Designed, not built:** Suggest Less ([SUGGEST-LESS.md](features/SUGGEST-LESS.md)), a second
+  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)). Ideas with no schedule:
+  [ideas/](ideas/README.md).
+- Built since this list was written, so no longer here (2026-09-22 sweep): playlist refresh and
+  movable rows (0.12.2), the sticky toast queue (TOASTS.md §4a), the keyboard pass with Space
+  (COMPASS.md §5), listening rooms (0.10.0), Friends (0.12.2), the AirPlay speaker-only send and
+  claim guard (AIRPLAY.md §11–§12, desk test passed 2026-09-19), the first-run walk
+  (`src/walk.ts`), the web demo; earlier: the hosted sign-in page + deep link, the CLI / agent
+  control, the mini and max compositions, library windowing, playlist rename / drag-reorder /
+  export, and the rest of the listening loop.
 
 ---
 

@@ -1,12 +1,16 @@
 ---
 status: shipped
 shipped_in: 0.12.2
-desk_test: open
+desk_test: passed 2026-09-22
 sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts]
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
+> **Status (2026-09-22): DONE. The owner ran the §17 desk test and confirmed it on 2026-09-22, and the
+> `/j/` route (step 7) is deployed.** The only item left is the Discord buttons' second-account check
+> (§8.4 item 3).
+>
 > **Status (2026-09-20): EVERY step is now BUILT. §16 is as built; §17 is the desk test, NOT RUN.**
 > Step 6 (Rich Presence) was built and desk-tested earlier the same day — §8.4a has the three
 > measurements, §8.10 is as built, and the owner confirmed the live card (*"Playing, I see it
@@ -19,8 +23,8 @@ updated: 2026-09-20
 > **Steps 1, 2, 4 and 5 — Friends itself — were built on 2026-09-20 after the owner walked all
 > seven open forks (§16.1).** The `deetsmusic-friends` worker is **deployed** at
 > `musicfriends.deets.solutions` and its protocol test passes 18 of 18 against live. Step 7's
-> `/j/` route is still written-and-not-deployed in `../DeetsMusicRooms`.
-> **Every fork in §11 is closed.** What remains is §17, and the owner runs it.
+> `/j/` route in `../DeetsMusicRooms` is deployed (the owner, 2026-09-22).
+> **Every fork in §11 is closed.** §17 passed (the owner, 2026-09-22).
 > Two asks in one doc, because they share one question ("who am I, to someone else?"):
 > 1. **Friends** — add a person with a friend code, see what they play, and listen together.
 > 2. **Broadcast** — put what you play into a Discord channel or your Discord profile.
@@ -836,9 +840,8 @@ from their payload. Only **Play this** (3B) uses a call, and that is the call th
 it is what the owner asked for on the first day.
 
 **Steps 6, 1, 2, 4 and 5 are all DONE (2026-09-20).** Step 6 is §8.10; steps 1, 2, 4 and 5 are
-§16, and the `deetsmusic-friends` worker is deployed. **Step 7's code is written and NOT
-DEPLOYED** — the `/j/` route is committed in `../DeetsMusicRooms` and waits for the owner's word,
-because a deploy drops every live room socket (§8.7.3). It is now the only step left.
+§16, and the `deetsmusic-friends` worker is deployed. **Step 7 is deployed too (the owner,
+2026-09-22):** the `/j/` route in `../DeetsMusicRooms` is live, so every step is done.
 
 Steps 1 to 3 ship with **zero Cloudflare cost**, and they are most of what the idea feels like.
 
@@ -1241,7 +1244,7 @@ watcher. **18 of 18 passed against live, 2026-09-20.**
 
 ---
 
-## 17. The desk test (NOT RUN)
+## 17. The desk test (PASSED 2026-09-22)
 
 Steps 1–6 need one PC. Steps 7–10 need **two** — two PCs, or the dev app and the installed app,
 which have separate data dirs and therefore separate friend codes (`npm run dev:app`).

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
 sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts]
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -131,6 +131,7 @@ deetsmusic np | status
 deetsmusic search "<query>" [--albums|--artists|--playlists|--stations] [-n 5]
 deetsmusic stations [--genres | --genre <id>]
 deetsmusic playlists
+deetsmusic tracks <album:…|playlist:…>   # the numbered tracklist, a read
 deetsmusic play <id> [--keep]           # song:… album:… playlist:… station:… (free text = top song hit); --keep keeps Up Next
 deetsmusic queue                        # now + numbered up next
 deetsmusic queue <id> [--later | --at N]
@@ -148,6 +149,10 @@ deetsmusic playlist show|create|add|remove|move|rename|delete|cover|export|new-c
 deetsmusic folder list | create <name> | rename <name> <new> | delete <name>
 deetsmusic update [status|check|install|versions|rollback <v>|mode auto|ask|off|skip <v>|none]
 deetsmusic settings [list [section]] | get <key> | set <key> <value>   # §6
+deetsmusic pick [list [--window day|week|month|ytd|year] | mark <id|current> [--note "…"] | unmark N]   # DeetsOTD.md §8.8
+deetsmusic diag [-n 100] [--since N] [--tag player]   # the window's live diag ring, §3
+deetsmusic go [place]                   # a card, the Sound panel, the Sleep timer (COMPASS.md §10)
+deetsmusic grow [card|slot] [right|left|up|down|full] | grow collapse|pin|unpin|state   # CARD-GROW.md
 deetsmusic mcp [--small]                # serve the tools over stdio
 --json on anything
 ```
@@ -184,6 +189,7 @@ subset a tool server needs, no SDK. Tools:
 | `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
 | `picks` | `action: list\|mark\|unmark`, `id?`, `index?`, `note?`, `window?` | full | Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `mark` takes a `song:…` id or `current`; `unmark` takes the row from `list`. Refused while the feature is off; the first mark is `pending` until the user allows it in the window |
 | `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
+| `diag` | `limit?` (1–300, default 100), `since?`, `tag?` | full | the window's live diag ring, oldest first (`GET /diag`, §3); what the app just did, with no flush or restart. CLI: `deetsmusic diag` |
 
 Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp`. The
 **Copy setup for** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: passed 2026-09-19
 sources: [src/room.ts, src/room-panel.ts, src/player.ts, src/queue.ts, src-tauri/src/rooms.rs, src-tauri/src/lib.rs]
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 # DeetsMusic — DeetsMusicRooms (listening rooms)
 
@@ -15,6 +15,9 @@ updated: 2026-09-20
 > **Apple terms read 2026-09-17 (§12).** No clause in the agreement names group listening. The
 > design holds on every clause that touches it. The one item it raised is decided: **a guest's Pause
 > never greys out** — under Host only it stops that guest's own app (§12.3, §8).
+>
+> **Status (2026-09-22): shipped in 0.10.0, the worker is deployed, and the desk tests passed
+> 2026-09-19 (§16.4, §17.4).** The paragraph below is the 2026-09-17 record.
 >
 > **BUILT 2026-09-17 (§16 = as built). Not deployed, and not desk-tested.** The worker
 > runs locally (its own repo, `../DeetsMusicRooms`; 23 protocol checks pass, §16.1) and the app
@@ -1303,6 +1306,9 @@ Also for C:
 worker deploy that happens for a real reason** — §18.7 already parks the `epoch` cleanup
 for that same deploy, so the two should travel together.
 
+> **Update (2026-09-22): the `/j/` page is deployed** (the owner). The record below is from
+> 2026-09-20.
+>
 > **That deploy now has a third passenger (2026-09-20).** The `/j/<CODE>` landing page for the
 > Discord card's *Listen Along* button (FRIENDS.md §8.7.2) is **written and committed in
 > `../DeetsMusicRooms`, and NOT deployed**. It is one route, one HTML page, no Durable Object

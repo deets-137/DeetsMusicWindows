@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,17 @@ updated: 2026-09-21
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-09-22 — docs sweep against `main`
+
+- **Why:** a cloud session checked the docs against the code on `main` (0.13.0, `de31ff7`).
+  His local commits since then (0.13.1) were not pushed, so they were not checked.
+- **Fixed:** HANDOFF's State of play said Live 0.9.0; its Not built yet list held shipped work
+  (playlist refresh, movable rows, the sticky toast queue, the keyboard pass, rooms, AirPlay);
+  Open now still named the web demo's unpushed branch. AGENT.md §4 gained `tracks`, `pick`,
+  `diag`, `go`, `grow`, and its MCP table the `diag` tool.
+- **His word, 2026-09-22:** the Friends desk test (FRIENDS.md §17) PASSED, and the `/j/` Listen
+  Along page is deployed on the rooms worker. FRIENDS.md, ROOMS.md and HANDOFF say so now.
 
 ## 2026-09-21 (late) — pause-source telemetry (for 0.13.1)
 
