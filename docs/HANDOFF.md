@@ -115,6 +115,8 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.13.1** (2026-09-22, from `main`, `d86bf00`): Web in the title bar,
+  `player:pause` names who paused, the web demo. The §0b hand test was skipped by his call.
 - **Published: 0.13.0** (2026-09-21, from `main` = `dockin`): the quick panel, the New badges
   (the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, the docs re-org.
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
@@ -150,7 +152,7 @@ with the installer, and the user guide (DOCS-ORG.md §13).
 
 ## State of play
 
-**Live: 0.13.0** (2026-09-21, `deetsmusic` channel). Every release is in the log at
+**Live: 0.13.1** (2026-09-22, `deetsmusic` channel). Every release is in the log at
 [RELEASE.md §0a](ops/RELEASE.md); what each version added is in
 [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The

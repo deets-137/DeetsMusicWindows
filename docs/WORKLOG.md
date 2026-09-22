@@ -22,6 +22,8 @@ updated: 2026-09-22
   `diag`, `go`, `grow`, and its MCP table the `diag` tool.
 - **His word, 2026-09-22:** the Friends desk test (FRIENDS.md §17) PASSED, and the `/j/` Listen
   Along page is deployed on the rooms worker. FRIENDS.md, ROOMS.md and HANDOFF say so now.
+- **Merged into `main`** after his 0.13.1 commits were pushed. The merge was clean; HANDOFF now
+  says Live 0.13.1.
 
 ## 2026-09-21 (late) — pause-source telemetry (for 0.13.1)
 
