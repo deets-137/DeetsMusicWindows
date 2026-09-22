@@ -48,3 +48,6 @@ docs/TASTE.md
 
 # The web demo build (docs/features/WEB-DEMO.md)
 dist-web
+
+# Raw notes for the new-app template (local only until synthesized)
+docs/ops/deetsapp-template.md
