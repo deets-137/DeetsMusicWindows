@@ -1,6 +1,7 @@
 ---
-status: built
-desk_test: open
+status: shipped
+shipped_in: 0.14.0
+desk_test: passed 2026-09-23
 sources: [src/ocean.ts, src/ocean-texture.ts, src/ocean-worker.ts, src/styles.css, src/styles/skin.css, index.html, src/skin-settings.ts, src/settings-card.ts]
 updated: 2026-09-23
 ---

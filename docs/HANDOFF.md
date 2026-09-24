@@ -115,35 +115,35 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.14.0** (2026-09-23, `62d516a`, then `oceanic-schmoves` fast-forwarded into
+  `main`): one right-click menu per media type, Start a Web, the Ocean heavy swell and album
+  light, tray Pin / Start Station. The first release that went beta first:
+  **0.14.0-beta.2** on `deetsmusic-test` the same day. His word: "Desk tests all look good";
+  the §0b hand test of the installed build was skipped by his call.
 - **Published: 0.13.1** (2026-09-22, from `main`, `d86bf00`): Web in the title bar,
   `player:pause` names who paused, the web demo. The §0b hand test was skipped by his call.
 - **Published: 0.13.0** (2026-09-21, from `main` = `dockin`): the quick panel, the New badges
   (the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, the docs re-org.
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
-- **DeetsMusic Beta** (2026-09-23, built on `oceanic-schmoves`, not committed) — a second installed
-  app on `deetsmusic-test`; every release goes beta first. Not done: withdraw the two spike rows
-  (§4.3), the first `-beta.1` build, the desk test (§8). The DeetsSupport change (sign-in scheme +
-  version order, BETA.md §5) is written, uncommitted in `../DeetsSupport`, and HELD by his call.
+- **DeetsMusic Beta** (2026-09-23, in `main` since 0.14.0) — a second installed app on
+  `deetsmusic-test`; every release goes beta first. **0.14.0-beta.2 is published there.** Not
+  done: withdraw the two spike rows (BETA.md §4.3 — an R2 write, needs his go-ahead; until then
+  the beta's Other versions… list can offer builds with the FULL app's identity). The
+  DeetsSupport change (sign-in scheme + version order, BETA.md §5) is written, uncommitted in
+  `../DeetsSupport`, and HELD by his call.
 - **Add a room member as a friend** — his ask, 2026-09-23. Designed, forks decided (F1A–F5A:
   offer on press, ask toast, mint on Add, silent Not now, no setting), not built: FRIENDS.md §18.
   Needs a rooms-worker deploy (the item below).
-- **DeetsMusic Beta 0.14.0-beta.1 is BUILT** (signed, release check ok) at
-  `installers/beta/DeetsMusic_0.14.0-beta.1_x64-setup.exe`, with Ocean in it. Installed on the
-  dev PC 2026-09-23 (BETA.md §8 step 2 passed; the rest open). Not published. The version files now say `0.14.0-beta.1` (not the manifest, BETA.md §4.1).
 - **Deploy a worker without dropping connections** — his ask, 2026-09-23. Open, not researched:
   ideas/WorkerDeploy.md. First step is to measure what a rooms deploy really does.
 
 **Desk tests not run**
-- **One right-click menu per media type** (2026-09-23, `media-menu.ts`, not committed) —
-  CONTEXT-MENUS.md §8. Includes Start a Web from a menu and the tray's Pin (a Rust field:
-  restart the dev runner).
-- **The Ocean sea** (second round: the heavy swell) — OCEAN.md §5, on branch
-  `oceanic-schmoves` (not committed). Then the bench (§6). The beta is meant to carry it.
-- **Ocean album light** (2026-09-23, the neon crests slider): he likes it ("Its perfect
-  actually"). Still open: the desk test in OCEAN.md §7, and **the perf check** in OCEAN.md §6
-  (at 0 and at 100, with music, on `dev:built`, with and without the GPU). The first read on
-  `dev:app` showed about the same weight as before.
+- **Ocean perf check** — the right-click menus, the heavy swell, the album light and the beta
+  passed his desk test on 2026-09-23 ("Desk tests all look good") and shipped in 0.14.0. Still
+  open: **the perf check** in OCEAN.md §6 (the album light at 0 and at 100, with music, on
+  `dev:built`, with and without the GPU). The first read on `dev:app` showed about the same
+  weight as before.
 - **Web demo** — WEB-DEMO.md §10. The app half is merged into `main`; the page is live on
   deets.solutions/deetsmusic/demo (DeetsSolutions `master`). One open fork (§9.7).
 - **Quick settings** — QUICK-SETTINGS.md §10.1 (above).
@@ -174,7 +174,7 @@ with the installer, and the user guide (DOCS-ORG.md §13).
 
 ## State of play
 
-**Live: 0.13.1** (2026-09-22, `deetsmusic` channel). Every release is in the log at
+**Live: 0.14.0** (2026-09-23, `deetsmusic` channel; beta `0.14.0-beta.2` on `deetsmusic-test`). Every release is in the log at
 [RELEASE.md §0a](ops/RELEASE.md); what each version added is in
 [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The

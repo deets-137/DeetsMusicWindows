@@ -1,6 +1,7 @@
 ---
-status: built
-desk_test: open
+status: shipped
+shipped_in: 0.14.0
+desk_test: passed 2026-09-23
 sources: [src/media-menu.ts, src/context-menu.ts, src/web.ts, src/copy-link.ts, src/go-to.ts, src/pins.ts, src/np-bus.ts, src/tray.ts]
 updated: 2026-09-23
 ---
@@ -121,7 +122,7 @@ Play Now · Add to Queue · Copy Link · Pin. A station has no view, so no Go to
 
 ## 4. Start a Web
 
-> **Part:** built · 2026-09-23
+> **Part:** shipped · 2026-09-23
 
 A row in group 4 on songs, albums and artists (the owner, 2026-09-23: "Start a Web", after
 Start Station). One press makes a web playlist with no panel (`startWebItem`, web.ts):

@@ -12,6 +12,22 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-23 — 0.14.0 released, beta first; `oceanic-schmoves` into `main`
+
+- **His word:** "Desk tests all look good. Publish main to 0.14.0 (and 0.14.0-beta.2 for the
+  beta) please. Then merge into main."
+- **Beta:** `0.14.0-beta.2` (`e0b3d77`) built with `release -- --beta`, published to
+  `deetsmusic-test`. Its offer answers from `-beta.1`. Its `/health` answers `no_installer`, as
+  designed: that check counts only non-pre-release rows, and the beta channel has none.
+- **Full:** `0.14.0` (`62d516a`), all seven version files (the manifest too), notes in
+  RELEASE-NOTES.md. Release check clean. Published; the offer answers from 0.13.1 and
+  `/health` says 0.14.0. The web demo went to DeetsSolutions master (only its own path).
+- **Risk call:** §0b reads it high risk (Rust `NpState.pinned`); published on his explicit
+  word, the installed-build hand test skipped by his call (RELEASE.md §0a).
+- **Merge:** `main` fast-forwarded to the branch (no commits of its own; a trial merge was clean).
+- **Still open:** the spike rows on `deetsmusic-test` (BETA.md §4.3, needs his go-ahead); the
+  Ocean perf check (OCEAN.md §6).
+
 ## 2026-09-23 — One right-click menu per media type (branch `oceanic-schmoves`)
 
 - **His ask:** "right clicking on the same media type should have the same menu open across
