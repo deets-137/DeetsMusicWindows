@@ -42,10 +42,17 @@
   System::Call 'kernel32::SetEnvironmentVariable(t "DEETS_PATH", t "${path}")i'
 !macroend
 
+; THE PATH COMES FROM WMI, NEVER FROM Get-Process (2026-09-24, RELEASE.md §4a). The installer is
+; a 32-bit program, so nsExec starts the 32-bit PowerShell, and a 32-bit process cannot read the
+; path of a 64-bit one: Get-Process's `.Path` is EMPTY for every DeetsMusic process. The 0.14.0
+; update aborted on "Can't write …\cli\deetsmusic.exe" that way — four MCP CLIs matched nothing
+; and held the file. Win32_Process.ExecutablePath is read by the WMI service, whatever the caller's
+; bitness. Before 0.14.0 the template's kill by name hid this: DeetsStopCli never matched anything.
+
 !macro DeetsStopCli
   DetailPrint "Stopping the ${PRODUCTNAME} CLI..."
   !insertmacro DeetsPathEnv "$INSTDIR\cli\"
-  nsExec::ExecToLog 'powershell -NoProfile -NonInteractive -Command "Get-Process -Name deetsmusic,deetsmusic-beta -ErrorAction SilentlyContinue | Where-Object { $$_.Path -and $$_.Path.StartsWith($$env:DEETS_PATH, [StringComparison]::OrdinalIgnoreCase) } | Stop-Process -Force; exit 0"'
+  nsExec::ExecToLog 'powershell -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$env:DEETS_PATH, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }; exit 0"'
   Pop $0
   ; Stop-Process returns before the OS releases the handle — give it a moment.
   Sleep 600
@@ -61,8 +68,9 @@
 ; (a dev build, DeetsMusic Beta, the other app's CLI) is left running.
 ; `${productName}` is shown exactly as the template shows it. $R0–$R3 are the template's registers.
 !macro DeetsCountApp
-  nsExec::ExecToStack 'powershell -NoProfile -NonInteractive -Command "@(Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($$env:DEETS_PATH)) -ErrorAction SilentlyContinue | Where-Object { $$_.Path -and [string]::Equals($$_.Path, $$env:DEETS_PATH, [StringComparison]::OrdinalIgnoreCase) }).Count"'
-  Pop $R0
+  ; The count comes back as the EXIT CODE: nsExec reads PowerShell's printed output as "?" here,
+  ; which IntOp turned into 0, so the app was never seen as open (tested 2026-09-24).
+  nsExec::ExecToLog 'powershell -NoProfile -NonInteractive -Command "exit @(Get-CimInstance Win32_Process | Where-Object { $$_.ExecutablePath -and [string]::Equals($$_.ExecutablePath, $$env:DEETS_PATH, [StringComparison]::OrdinalIgnoreCase) }).Count"'
   Pop $R0
   IntOp $R0 $R0 + 0
 !macroend
@@ -84,7 +92,7 @@
     ${IfThen} $PassiveMode != 1 ${|} MessageBox MB_OKCANCEL $R2 IDOK deets_kill_${UniqueID} IDCANCEL deets_cancel_${UniqueID} ${|}
     deets_kill_${UniqueID}:
       DetailPrint "Closing ${productName}..."
-      nsExec::ExecToLog 'powershell -NoProfile -NonInteractive -Command "Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($$env:DEETS_PATH)) -ErrorAction SilentlyContinue | Where-Object { $$_.Path -and [string]::Equals($$_.Path, $$env:DEETS_PATH, [StringComparison]::OrdinalIgnoreCase) } | Stop-Process -Force; exit 0"'
+      nsExec::ExecToLog 'powershell -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { $$_.ExecutablePath -and [string]::Equals($$_.ExecutablePath, $$env:DEETS_PATH, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }; exit 0"'
       Pop $R0
       Sleep 500
       !insertmacro DeetsCountApp

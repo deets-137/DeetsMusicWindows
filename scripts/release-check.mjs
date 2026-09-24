@@ -298,6 +298,9 @@ let docsNote = "docs check clean";
   const code = hooks.split("\n").filter((l) => !l.trim().startsWith(";")).join("\n");
   if (!/!macroundef CheckIfAppIsRunning/.test(code)) failures.push("hooks.nsh no longer replaces CheckIfAppIsRunning: the installer would close processes by name again (RELEASE.md §4a)");
   if (/KillProcess|taskkill/i.test(code)) failures.push("hooks.nsh stops a process by name (KillProcess / taskkill): match by path inside $INSTDIR (RELEASE.md §4a)");
+  // The installer's PowerShell is 32-bit: Get-Process's `.Path` is empty for a 64-bit process, so
+  // a match on it matches nothing (the 0.14.0 update abort, 2026-09-24). The path comes from WMI.
+  if (/Get-Process|\$\$_\.Path\b/.test(code)) failures.push("hooks.nsh reads a process path through Get-Process: empty in the installer's 32-bit PowerShell. Use Get-CimInstance Win32_Process ExecutablePath (RELEASE.md §4a)");
   for (const m of code.matchAll(/Stop-Process/g)) {
     const line = code.slice(code.lastIndexOf("\n", m.index) + 1, code.indexOf("\n", m.index));
     if (!line.includes("$$env:DEETS_PATH")) failures.push(`hooks.nsh has a Stop-Process not filtered by DEETS_PATH: ${line.trim().slice(0, 120)}`);

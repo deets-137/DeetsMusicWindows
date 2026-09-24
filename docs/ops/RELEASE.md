@@ -372,6 +372,21 @@ name cannot break the quoting. `DeetsStopCli` uses the same variable.
 It also applies to the uninstaller and to an updater install (`/UPDATE`, passive): both use the
 same two macros.
 
+**The 0.14.0 abort (2026-09-24), and why the path comes from WMI.** The 0.14.0 update stopped
+with *Can't write …\DeetsMusic\cli\deetsmusic.exe*: four MCP CLIs of open Claude sessions held
+the file. The installer is a **32-bit** program, so nsExec starts the 32-bit PowerShell, and a
+32-bit process cannot read a 64-bit process's path: `Get-Process`'s `.Path` was EMPTY for every
+DeetsMusic process, and the by-path match matched nothing. `DeetsStopCli` had never matched
+anything since it was written; the template's kill by name had hidden it until 0.14.0 removed
+that. Two more faults hid in the same place: the app's count read PowerShell's printed output,
+which nsExec returns as "?" (so the app was never seen as open), and so a manual install over a
+running app, or an uninstall, would not have closed it. **Fixed in 0.14.1:** every path comes
+from `Get-CimInstance Win32_Process` (`ExecutablePath`, read by the WMI service at any bitness),
+each stop is `Stop-Process -Id`, and the count is the exit code. Tested from a 32-bit NSIS test
+installer outside the Claude package: 4 of 4 CLIs matched; a scratch 64-bit process in a test
+folder stopped; the CLIs outside it kept running. release-check 11 now fails `Get-Process` or
+`$$_.Path` in hooks.nsh.
+
 **What still stops.** An update of an app stops ITS OWN CLIs: Windows will not replace an exe that
 a process holds open. An AI app that had that CLI open loses its DeetsMusic tools until it starts
 them again.

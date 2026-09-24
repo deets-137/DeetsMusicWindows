@@ -32,6 +32,36 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.14.1 — 2026-09-24
+
+**Updates finish again when an AI app is using DeetsMusic.** The 0.14.0 update could stop
+with "Installation Aborted" if an AI app (such as Claude) had the DeetsMusic tools open. Setup
+now closes those tools first, and only the ones that belong to this install. If your update to
+0.14.0 stopped, this one fixes it: let it install.
+
+Everything 0.14.0 brought is in this update too:
+
+**One right-click menu for each kind of thing.** Right-click a song, an album, an artist, a
+playlist or a station, and you get the same menu in every card: the same rows, in the same
+order. Rows that remove something (Remove, Hide, Delete) are always at the bottom. Artists
+can now play from their menu, playlists and artists have **Copy Link**, and Search results
+can be pinned. **Pin** on a song pins that song, even inside an album.
+
+**Start a Web from any menu.** Right-click a song, an album or an artist and choose **Start
+a Web**. It makes a web playlist in one step, with the settings you last used in the Web
+panel, and opens it in Playlists.
+
+**The Ocean skin has a heavier sea.** The swell rolls slower and deeper, in three bands. A new
+slider, Settings › Skin settings › **Album light**, lights the waves in the album's color. Turn
+it up and the crests glow like neon.
+
+**The tray icon's song menu** now has **Start Station** and **Pin** too.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.14.0 — 2026-09-23
 
 **One right-click menu for each kind of thing.** Right-click a song, an album, an artist, a
