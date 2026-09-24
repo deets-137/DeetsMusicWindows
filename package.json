@@ -1,7 +1,7 @@
 {
   "name": "deetsmusic",
   "private": true,
-  "version": "0.14.1-beta.1",
+  "version": "0.14.1",
   "type": "module",
   "deetsmusic": {
     "updateGroup": 1
