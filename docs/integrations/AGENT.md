@@ -95,6 +95,7 @@ deliberately **no `withdraw`**: pulling a message back out of a channel is the u
 | `GET /diag[?limit=100&since=0&tag=]` | `{events:[{n, t, tag, data}], dropped}` — the window's **live** diag ring, oldest first ([LOGGING.md](../ops/LOGGING.md) §Reading it from outside). What the app just did, without a flush or a restart: `ui:act` gestures, `player:*`, drills, toasts. `since` takes the `n` of an event already read; `tag` keeps the tags that start with it. Behind the Agent control switch, like every agent read. CLI: `deetsmusic diag -n 50 --tag player`. MCP tool: `diag` (full pack only) |
 | `POST /songs` | `{sort?, order?, limit?, artist?, genre?, shorterThan?, longerThan?}` → `{songs:[{id, title, artist, album, length_s, starts?, finishes?, last_played?, skips?}]}` — the library, sorted and filtered, zero Apple calls ([LOCAL-DATA.md](LOCAL-DATA.md) §6). Token callers only |
 | `POST /query` | `{sql}` → `{columns, rows, truncated, ms}` — one read-only SELECT over the export tables in a sandbox ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7). Token callers only |
+| `POST /beta/pull` | `{}` → `{ok, restarting}` — **DeetsMusic Beta only**: take a fresh copy of the full app's data, then restart ([BETA.md](../ops/BETA.md) §2.2). Token callers only; not an agent route and not an MCP tool. A full build answers 404. CLI: `deetsmusic-beta pull` (the beta's own CLI, which reaches only the beta, §6) |
 | `GET /stations?group=` | `featured` (My Station · Discovery · live) · `genres` · `genre:<id>` → `{stations, genres}` |
 | `GET /playlists` | `{playlists:[Playlist…]}` — Apple mirror + local, zero Apple calls |
 | `POST /search` | `{term, types:["songs","albums","artists","playlists"]}` → `SearchResults`. Without `types` it's the extension's popup shape |
@@ -352,6 +353,8 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `[Glass only, with Fancy Glass on]`: while `glassFancy` is off they store a value but the look
   holds the locked values (65 / 85 / 40 / 10).
 - `glassFancy` (on | off, 2026-09-16) `[Glass only]`: the live frost and the moving background.
+- `oceanCardOpacity` (0–100, 2026-09-23) `[Ocean only]`: how solid the sunken cards are
+  (100 = solid, the default).
 - The **Sound** section (2026-09-16, SOUND.md): `soundEq` and `soundAdaptive` are **off only** —
   every effect ships off (Apple DPLA §3.3.6.D) and turning one on is the user's own choice in the
   Sound panel; `set … on` → `403`. Since 2026-09-18 nine of this section's rows are rows of

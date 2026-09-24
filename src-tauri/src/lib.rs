@@ -1,6 +1,7 @@
 mod airplay;
 mod audio_out;
 mod apple;
+mod beta;
 mod bridge;
 mod credits;
 mod dbhealth;
@@ -30,6 +31,11 @@ mod web;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // DeetsMusic Beta only: take the full app's data on the first start or after a pull
+    // (beta.rs, docs/ops/BETA.md §2). Before the Builder, because Tauri opens the config
+    // windows — and their localStorage — before the setup hook runs.
+    beta::before_start();
+
     // FIRST plugin on purpose: a second process must be turned away BEFORE any setup
     // runs, or it opens the same SQLite file and takes the next bridge port. The
     // callback activates the window we already have — the same path as the tray menu's
@@ -87,6 +93,7 @@ pub fn run() {
             std::fs::create_dir_all(&dir).ok();
             // The rolling log first (LOGGING.md): everything below may need to write.
             log::init(&dir);
+            beta::log_notes();
             let db_path = dir.join("deetsmusic.db");
 
             // First launch of the DEV identifier (`npm run dev:app`, HANDOFF → Run it): seed

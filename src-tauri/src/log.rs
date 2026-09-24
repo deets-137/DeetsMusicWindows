@@ -127,7 +127,11 @@ pub fn init(dir: &Path) {
         default(info);
     }));
 
-    let which = if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev") { "dev" } else { "release" };
+    let which = match dir.file_name().and_then(|n| n.to_str()) {
+        Some("com.deetsmusic.dev") => "dev",
+        Some("com.deetsmusic.beta") => "beta",
+        _ => "release",
+    };
     info(&format!(
         // The UTC offset: line times are local, the Worker's are UTC.
         "start: DeetsMusic {} · Windows {} · data dir {which} · UTC{}",

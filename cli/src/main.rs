@@ -17,13 +17,25 @@ use std::time::Duration;
 const PORTS: [u16; 4] = [47825, 47826, 47827, 47828];
 // A debug build (`cargo build` / `cargo run` in cli/) reads the DEV token only, so it can
 // never pair with the installed app's bridge while both run (AGENT.md §4). Release reads both.
-const IDS: &[&str] = if cfg!(debug_assertions) { &["com.deetsmusic.dev"] } else { &["com.deetsmusic.app", "com.deetsmusic.dev"] };
+// The beta CLI (`--features beta`, shipped as `deetsmusic-beta`) reads the BETA token only, so
+// each CLI reaches only its own app when both run (docs/ops/BETA.md §6).
+const IDS: &[&str] = if cfg!(feature = "beta") {
+    &["com.deetsmusic.beta"]
+} else if cfg!(debug_assertions) {
+    &["com.deetsmusic.dev"]
+} else {
+    &["com.deetsmusic.app", "com.deetsmusic.dev"]
+};
+/// The command's name, which is also the MCP server's name.
+const BIN: &str = if cfg!(feature = "beta") { "deetsmusic-beta" } else { "deetsmusic" };
+/// The app this CLI reaches, as the messages name it.
+const APP: &str = if cfg!(feature = "beta") { "DeetsMusic Beta" } else { "DeetsMusic" };
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // ── CLI surface ───────────────────────────────────────────────────────────────
 
 #[derive(Parser)]
-#[command(name = "deetsmusic", version, about = "Control DeetsMusic from the shell (or serve it as MCP tools).")]
+#[command(name = BIN, version, about = "Control DeetsMusic from the shell (or serve it as MCP tools).")]
 struct Cli {
     /// Machine output: the bridge's JSON, untouched.
     #[arg(long, global = true)]
@@ -199,6 +211,10 @@ enum Cmd {
         #[arg(long)]
         small: bool,
     },
+    /// Replace this beta's library, sign-in and settings with a fresh copy of the full
+    /// DeetsMusic's. The beta restarts to take it.
+    #[cfg(feature = "beta")]
+    Pull,
 }
 
 #[derive(Subcommand)]
@@ -336,9 +352,9 @@ fn connect(port: Option<u16>, token: Option<String>) -> Result<Client, Failure> 
     Err(Failure {
         status: 0,
         message: if tokens.is_empty() {
-            "no bridge token found — is DeetsMusic installed? (or pass --token)".into()
+            format!("no bridge token found — is {APP} installed? (or pass --token)")
         } else {
-            "DeetsMusic isn't running (no bridge on 127.0.0.1:47825–47828)".into()
+            format!("{APP} isn't running (no bridge on 127.0.0.1:47825–47828)")
         },
     })
 }
@@ -1184,7 +1200,7 @@ fn serve_mcp(port: Option<u16>, token: Option<String>, small: bool) {
                 json!({
                     "protocolVersion": params.get("protocolVersion").and_then(Value::as_str).unwrap_or("2025-06-18"),
                     "capabilities": { "tools": {} },
-                    "serverInfo": { "name": "deetsmusic", "version": VERSION },
+                    "serverInfo": { "name": BIN, "version": VERSION },
                     "instructions": "Control DeetsMusic. Always search (or list stations) first, then play or queue by the returned id (song:… album:… playlist:… station:…). When a reply says it is waiting for the user, tell the user to answer the question in DeetsMusic."
                 }),
             ),
@@ -1281,6 +1297,26 @@ fn op_picks(c: &Client, a: &PickArgs) -> Result<(String, Value), Failure> {
     }
 }
 
+/// `pull` with the beta closed (BETA.md §2): leave the same mark the running beta writes, then
+/// start the beta. It copies before it opens anything. The exe sits one folder above this CLI.
+#[cfg(feature = "beta")]
+fn pull_while_closed() {
+    let Some(appdata) = std::env::var_os("APPDATA") else {
+        eprintln!("no APPDATA");
+        std::process::exit(1);
+    };
+    let dir = std::path::Path::new(&appdata).join("com.deetsmusic.beta");
+    if let Err(e) = std::fs::create_dir_all(&dir).and_then(|_| std::fs::write(dir.join("pull-requested"), "0")) {
+        eprintln!("could not mark the pull: {e}");
+        std::process::exit(1);
+    }
+    let exe = std::env::current_exe().ok().and_then(|p| Some(p.parent()?.parent()?.join("DeetsMusicBeta.exe")));
+    match exe.filter(|p| p.is_file()).map(|p| std::process::Command::new(p).spawn()) {
+        Some(Ok(_)) => println!("DeetsMusic Beta was closed. It is starting now and takes the copy first."),
+        _ => println!("DeetsMusic Beta is closed. It takes the copy the next time it starts."),
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
     if let Cmd::Mcp { small } = cli.cmd {
@@ -1289,6 +1325,11 @@ fn main() {
     }
     let c = match connect(cli.port, cli.token) {
         Ok(c) => c,
+        #[cfg(feature = "beta")]
+        Err(_) if matches!(cli.cmd, Cmd::Pull) => {
+            pull_while_closed();
+            return;
+        }
         Err(f) => {
             eprintln!("{}", f.message);
             std::process::exit(f.exit_code());
@@ -1404,6 +1445,8 @@ fn main() {
         Cmd::Grow { target, dir } => op_grow(&c, target.as_deref().unwrap_or("state"), dir.as_deref()),
         Cmd::Go { target } => op_go(&c, &target.join(" ")),
         Cmd::Mcp { .. } => unreachable!(),
+        #[cfg(feature = "beta")]
+        Cmd::Pull => c.post("/beta/pull", json!({})).map(|v| ("Pulling from the full DeetsMusic. The beta restarts to take the copy.".to_string(), v)),
     };
     match res {
         Ok((text, v)) => {

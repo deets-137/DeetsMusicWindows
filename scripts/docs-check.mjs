@@ -167,9 +167,14 @@ export function check() {
     "extension/manifest.json": JSON.parse(read("extension/manifest.json")).version,
   };
   const current = versions["package.json"];
+  // A DeetsMusic Beta version (0.14.0-beta.1, BETA.md §4.1) cannot go in the extension manifest:
+  // Chrome takes numbers and dots only. It stays on the last full version until the full release.
+  const beta = /-beta\.\d+$/.test(current);
+  if (beta) delete versions["extension/manifest.json"];
   for (const [f, v] of Object.entries(versions)) if (v !== current) fail(5, f, 0, `version ${v ?? "(none)"} — package.json says ${current}`);
   const released = new Set([...read("docs/ops/RELEASE-NOTES.md").matchAll(/^## (\d+\.\d+\.\d+)\b/gm)].map((m) => m[1]));
-  const cmp = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
+  // x.y.z only: a pre-release tag (`-beta.1`) is cut off, so a beta compares as its release.
+  const cmp = (a, b) => { const x = a.split("-")[0].split(".").map(Number), y = b.split("-")[0].split(".").map(Number); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
   for (const file of docs) {
     const v = frontMatter(texts.get(file))?.shipped_in;
     if (!v) continue;

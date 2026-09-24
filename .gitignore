@@ -30,9 +30,12 @@ dev-dumps/
 *.sln
 *.sw?
 
-# Generated dev config (scripts/dev-app.mjs) + the CLI crate's build dir
+# Generated dev + beta configs (scripts/dev-app.mjs, scripts/release.mjs --beta) + the CLI
+# crate's build dirs (the beta CLI builds apart, so neither overwrites the other)
 src-tauri/.tauri.dev.gen.json
+src-tauri/.tauri.beta.gen.json
 cli/target/
+cli/target-beta/
 
 # Local archive of shipped NSIS installers (scripts/archive-installer.mjs), kept the
 # way DeetsAirplay keeps its installers/ — handy to re-install an older build, too big

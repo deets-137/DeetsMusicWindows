@@ -292,7 +292,10 @@ pub fn settings_set_lastfm_now_playing(on: bool, settings: tauri::State<'_, Sett
 // ── start with Windows (HKCU Run key via reg.exe; DeetsAirplay / DeetsRGB pattern) ──
 
 const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
-const RUN_VALUE: &str = "DeetsMusic";
+/// The Run value's name: "DeetsMusic", or "DeetsMusic Beta" so the two apps never share one (BETA.md).
+fn run_value() -> &'static str {
+    crate::beta::app_name()
+}
 
 pub(crate) fn reg(args: &[&str]) -> Result<String, String> {
     use std::os::windows::process::CommandExt;
@@ -302,7 +305,7 @@ pub(crate) fn reg(args: &[&str]) -> Result<String, String> {
 }
 
 pub fn autostart_enabled() -> bool {
-    reg(&["query", RUN_KEY, "/v", RUN_VALUE]).map(|s| s.contains(RUN_VALUE)).unwrap_or(false)
+    reg(&["query", RUN_KEY, "/v", run_value()]).map(|s| s.contains(run_value())).unwrap_or(false)
 }
 
 /// Registers `"<exe>" --tray`: a login launch starts in the tray, not on screen.
@@ -310,9 +313,9 @@ pub fn autostart_write(on: bool) -> Result<(), String> {
     if on {
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;
         let cmd = format!("\"{}\" --tray", exe.display());
-        reg(&["add", RUN_KEY, "/v", RUN_VALUE, "/t", "REG_SZ", "/d", &cmd, "/f"])?;
+        reg(&["add", RUN_KEY, "/v", run_value(), "/t", "REG_SZ", "/d", &cmd, "/f"])?;
     } else {
-        reg(&["delete", RUN_KEY, "/v", RUN_VALUE, "/f"])?;
+        reg(&["delete", RUN_KEY, "/v", run_value(), "/f"])?;
     }
     Ok(())
 }
@@ -345,14 +348,25 @@ pub async fn autostart_set(on: bool) -> Result<bool, String> {
 /// fail to launch a command written that way, so the copied text drops it.
 fn cli_path(app: &tauri::AppHandle) -> String {
     use tauri::Manager;
+    let exe = format!("{}.exe", cli_name());
     if let Ok(dir) = app.path().resource_dir() {
-        let p = dir.join("cli").join("deetsmusic.exe");
+        let p = dir.join("cli").join(&exe);
         if p.is_file() {
             return p.display().to_string().trim_start_matches(r"\\?\").to_string();
         }
     }
     let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| r"C:\Users\you\AppData\Local".into());
-    format!(r"{local}\DeetsMusic\cli\deetsmusic.exe")
+    format!(r"{local}\{}\cli\{exe}", crate::beta::app_name())
+}
+
+/// The CLI's name, which is also the MCP entry's name: DeetsMusic Beta ships its own
+/// `deetsmusic-beta`, which reaches only the beta, so an AI app can hold both (BETA.md §6).
+fn cli_name() -> &'static str {
+    if crate::beta::is_beta() {
+        "deetsmusic-beta"
+    } else {
+        "deetsmusic"
+    }
 }
 
 /// The text the Settings card copies for one client: `claude-desktop`, `claude-code`,
@@ -363,12 +377,13 @@ pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
     let path = cli_path(&app);
     let small = client == "other-small";
     let json = format!(
-        "{{\n  \"mcpServers\": {{\n    \"deetsmusic\": {{\n      \"command\": \"{}\",\n      \"args\": [{}]\n    }}\n  }}\n}}",
+        "{{\n  \"mcpServers\": {{\n    \"{}\": {{\n      \"command\": \"{}\",\n      \"args\": [{}]\n    }}\n  }}\n}}",
+        cli_name(),
         path.replace('\\', "\\\\"),
         if small { "\"mcp\", \"--small\"" } else { "\"mcp\"" }
     );
     match client.as_str() {
-        "claude-code" => format!("claude mcp add deetsmusic -- \"{path}\" mcp"),
+        "claude-code" => format!("claude mcp add {} -- \"{path}\" mcp", cli_name()),
         "claude-desktop" | "cursor" => json,
         _ if small => format!("Command: {path}\nArguments: mcp --small\n\nAs JSON for an MCP config file:\n{json}"),
         _ => format!("Command: {path}\nArgument: mcp\n\nAs JSON for an MCP config file:\n{json}"),

@@ -27,8 +27,12 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
   not match it. It protects **updates** (§6.6).
 - **Authenticode signature** — the Windows signature that puts a publisher name on an exe. It
   comes from Azure Artifact Signing. It protects **first installs and trust in Windows** (§6.9).
-- **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (spike builds). Compiled into
-  the build; an install only ever sees its own channel.
+- **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (DeetsMusic Beta since
+  2026-09-23; the old spike rows stay there, withdrawn). Compiled into the build; an install only
+  ever sees its own channel.
+- **Beta first (2026-09-23).** Every release goes to DeetsMusic Beta before the steps below:
+  `npm run release -- --beta` on a `-beta.N` version, then `npm run release:publish -- --beta`.
+  [BETA.md](BETA.md) §4.
 
 **The commands, in order:**
 
@@ -38,7 +42,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
 | 3 | install + test | the installed build, by hand, from `installers/` | — |
 | 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update. Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; `../DeetsSolutions` on master |
-| — | `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release` then `npm run release:publish -- --channel deetsmusic-test` | the same, on the test channel (§6.8) | — |
+| 0 | `npm run release -- --beta` then `npm run release:publish -- --beta` | DeetsMusic Beta on `deetsmusic-test`, before step 1 ([BETA.md](BETA.md) §4.1) | the same as step 2 |
 
 **The secrets and keys:**
 
@@ -330,11 +334,55 @@ then offers the extension walkthrough.
 - **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
   falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the install
   self-contained — see `src-tauri/secrets/README.md`.
-- **An install closes a running dev build too** (seen 2026-09-14, an updater install of
-  0.4.2-t2): Tauri's installer closes processes by the name `DeetsMusic.exe`, and Windows
-  matches `target\debug\deetsmusic.exe` without case. The dev runner then exits with code 1.
-  Restart it after the install; nothing is damaged. It does share the installed build's identifier and data dir, though — see
-  [TRAY.md](../features/TRAY.md) §6 on the single-instance guard, and use `npm run dev:app` to separate them.
+- **An install closed a running dev build too** (seen 2026-09-14, an updater install of
+  0.4.2-t2): Tauri's installer closed processes by the name `DeetsMusic.exe`, and Windows
+  matches `target\debug\deetsmusic.exe` without case. **Fixed 2026-09-23 (§4a)**: the installer
+  now closes only the exe inside its own folder. A plain `tauri dev` still shares the installed
+  build's identifier and data dir — see [TRAY.md](../features/TRAY.md) §6 on the single-instance
+  guard, and use `npm run dev:app` to separate them.
+
+### 4a. What an install, an update and an uninstall stop (2026-09-23)
+
+**The rule: by full path inside `$INSTDIR`, never by name.** Several related processes run on
+this PC at once: the full app, DeetsMusic Beta ([BETA.md](BETA.md)), the dev build, and a
+`deetsmusic` CLI for every AI app that has the MCP open. An install must stop only its own.
+
+**What was wrong.** Tauri's template closes the app with `CheckIfAppIsRunning`, which finds and
+kills processes by NAME (`nsis_tauri_utils::KillProcessCurrentUser`), and Windows compares names
+without case. The full app's installer looks for `DeetsMusic.exe`, so it also killed:
+- the dev build, `target\debug\deetsmusic.exe`;
+- **every `deetsmusic.exe` CLI on the PC**, wherever it ran. On 2026-09-23 there were five, all
+  MCP servers of open Claude sessions. `DeetsStopCli` had spared them by path; the template's
+  close ran right after it and killed them by name.
+
+The beta was never exposed: `DeetsMusicBeta.exe` matches no other name.
+
+**The fix** (`src-tauri/nsis/hooks.nsh`). Tauri includes hooks.nsh after its `utils.nsh`, so the
+hooks `!macroundef CheckIfAppIsRunning` and define it again. The new one keeps the template's
+prompt, messages and Abort paths, but finds and stops only `$INSTDIR\<exe>`, by full path. The
+path reaches PowerShell in the `DEETS_PATH` environment variable, so an apostrophe in a user
+name cannot break the quoting. `DeetsStopCli` uses the same variable.
+
+| Installer | Stops | Leaves running |
+|---|---|---|
+| Full app | `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe`, CLIs in `…\DeetsMusic\cli\` | the beta, the dev build, CLIs anywhere else |
+| Beta | `%LOCALAPPDATA%\DeetsMusic Beta\DeetsMusicBeta.exe`, CLIs in `…\DeetsMusic Beta\cli\` | the full app, the dev build, CLIs anywhere else |
+
+It also applies to the uninstaller and to an updater install (`/UPDATE`, passive): both use the
+same two macros.
+
+**What still stops.** An update of an app stops ITS OWN CLIs: Windows will not replace an exe that
+a process holds open. An AI app that had that CLI open loses its DeetsMusic tools until it starts
+them again.
+
+**The gate.** release-check 11 fails the build when hooks.nsh stops anything by name, when a
+`Stop-Process` is not filtered by `DEETS_PATH`, or when the generated `installer.nsi` /
+`utils.nsh` no longer define and insert `CheckIfAppIsRunning` — a Tauri upgrade that renames the
+macro would otherwise turn the fix off without a word.
+
+**Desk test.** With the full app, its MCP CLIs and a `dev:app` running, install the beta. All of
+them are still running afterwards (`Get-Process DeetsMusic*,deetsmusic*`). Then quit nothing, and
+install the beta again over itself: only the beta closes, and it starts again.
 
 ## 5. Uninstall
 

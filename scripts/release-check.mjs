@@ -28,6 +28,9 @@
 // 10. The docs checker (DOCS-ORG.md §8): links, mentions, section pointers, front matter,
 //     versions, ideas/. Added 2026-09-21. It WARNS until docs-check.mjs GRACE_END (a week,
 //     F5), then a failing fact fails the release.
+// 11. The installer stops processes by PATH inside its own folder, never by name (RELEASE.md
+//     §4a). Added 2026-09-23: Tauri's own close matched `DeetsMusic.exe` without case, so it also
+//     closed the dev build and every `deetsmusic` CLI, the MCP servers of open AI apps included.
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -36,9 +39,14 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
+// `--beta` checks DeetsMusic Beta's build (docs/ops/BETA.md): its own exe, installer, CLI and names.
+const BETA = process.argv.includes("--beta");
+const betaConf = BETA ? JSON.parse(readFileSync(join(root, "src-tauri", "tauri.beta.conf.json"), "utf8")) : {};
+const EXE_NAME = BETA ? betaConf.mainBinaryName : "DeetsMusic";
+const PRODUCT = BETA ? betaConf.productName : "DeetsMusic";
 
 // ── 1. No repo paths in the exe ─────────────────────────────────────────────────────
-const exe = join(root, "src-tauri", "target", "release", "DeetsMusic.exe");
+const exe = join(root, "src-tauri", "target", "release", `${EXE_NAME}.exe`);
 if (!existsSync(exe)) {
   failures.push(`no release exe at ${exe} (run tauri build first)`);
 } else {
@@ -79,16 +87,20 @@ if (new Set(Object.values(versions)).size !== 1) {
 // ── 3. The pin and the updater (RELEASE.md §6.8) ──────────────────────────────────────
 // A pinned taskbar button points at %LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe. An update keeps
 // the pin only while the product name, the exe name and the per-user install stay the same.
+// The beta's are fixed the same way ("DeetsMusic Beta" / DeetsMusicBeta, BETA.md §3).
 const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
 const installMode = conf.bundle?.windows?.nsis?.installMode;
-if (conf.productName !== "DeetsMusic" || conf.mainBinaryName !== "DeetsMusic" || installMode !== "currentUser") {
+const product = BETA ? betaConf.productName : conf.productName;
+const binary = BETA ? betaConf.mainBinaryName : conf.mainBinaryName;
+const [wantProduct, wantBinary] = BETA ? ["DeetsMusic Beta", "DeetsMusicBeta"] : ["DeetsMusic", "DeetsMusic"];
+if (product !== wantProduct || binary !== wantBinary || installMode !== "currentUser") {
   failures.push(
-    `productName / mainBinaryName / installMode changed (${conf.productName} / ${conf.mainBinaryName} / ${installMode}): ` +
+    `productName / mainBinaryName / installMode changed (${product} / ${binary} / ${installMode}): ` +
       "every pinned taskbar button would break on the update",
   );
 }
 if (!conf.plugins?.updater?.pubkey) failures.push("plugins.updater.pubkey is empty: no install could verify an update");
-const setup = join(root, "src-tauri", "target", "release", "bundle", "nsis", `DeetsMusic_${versions["package.json"]}_x64-setup.exe`);
+const setup = join(root, "src-tauri", "target", "release", "bundle", "nsis", `${PRODUCT}_${versions["package.json"]}_x64-setup.exe`);
 if (existsSync(setup) && !existsSync(`${setup}.sig`)) {
   failures.push("the installer has no .sig next to it (build with npm run release, which signs it)");
 }
@@ -99,7 +111,7 @@ if (existsSync(setup) && !existsSync(`${setup}.sig`)) {
 // Not target\release\DeetsMusic.exe: tauri build signs a patched copy for the installer, then
 // puts the unsigned original back (seen 2026-09-15, the exe rewritten after the setup exe). The
 // installed exe is checked after an install instead (RELEASE.md §6.9).
-const signed = [join(root, "cli", "dist", "deetsmusic.exe"), setup].filter((f) => existsSync(f));
+const signed = [join(root, "cli", "dist", BETA ? "deetsmusic-beta.exe" : "deetsmusic.exe"), setup].filter((f) => existsSync(f));
 if (signed.length) {
   const ps = `$ErrorActionPreference='Stop'; @(${signed.map((f) => `'${f.replaceAll("'", "''")}'`).join(",")}) | ForEach-Object { $s = Get-AuthenticodeSignature -LiteralPath $_; [pscustomobject]@{ file = $_; status = [string]$s.Status; subject = [string]$s.SignerCertificate.Subject; stamped = [bool]$s.TimeStamperCertificate } } | ConvertTo-Json -Compress`;
   const out = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8" });
@@ -275,8 +287,36 @@ let docsNote = "docs check clean";
   }
 }
 
+// ── 11. The installer stops processes by PATH only (RELEASE.md §4a) ───────────────────
+// hooks.nsh replaces Tauri's CheckIfAppIsRunning (a match by process NAME, without case, that
+// closed the dev build and every `deetsmusic` CLI on the PC). The replacement only works while
+// the template still defines and inserts a macro of that name, so this reads the installer
+// script the build just generated. A Tauri upgrade that renames it fails here, not on a user's PC.
+{
+  const nsisDir = join(root, "src-tauri", "target", "release", "nsis", "x64");
+  const hooks = readFileSync(join(root, "src-tauri", "nsis", "hooks.nsh"), "utf8");
+  const code = hooks.split("\n").filter((l) => !l.trim().startsWith(";")).join("\n");
+  if (!/!macroundef CheckIfAppIsRunning/.test(code)) failures.push("hooks.nsh no longer replaces CheckIfAppIsRunning: the installer would close processes by name again (RELEASE.md §4a)");
+  if (/KillProcess|taskkill/i.test(code)) failures.push("hooks.nsh stops a process by name (KillProcess / taskkill): match by path inside $INSTDIR (RELEASE.md §4a)");
+  for (const m of code.matchAll(/Stop-Process/g)) {
+    const line = code.slice(code.lastIndexOf("\n", m.index) + 1, code.indexOf("\n", m.index));
+    if (!line.includes("$$env:DEETS_PATH")) failures.push(`hooks.nsh has a Stop-Process not filtered by DEETS_PATH: ${line.trim().slice(0, 120)}`);
+  }
+  const nsi = existsSync(join(nsisDir, "installer.nsi")) ? readFileSync(join(nsisDir, "installer.nsi"), "utf8") : "";
+  const utils = existsSync(join(nsisDir, "utils.nsh")) ? readFileSync(join(nsisDir, "utils.nsh"), "utf8") : "";
+  if (!nsi) failures.push(`no generated installer script at ${nsisDir} (run tauri build first)`);
+  else {
+    const hooksAt = nsi.indexOf("hooks.nsh");
+    const utilsAt = nsi.indexOf('!include "utils.nsh"');
+    if (!/!macro CheckIfAppIsRunning\b/.test(utils)) failures.push("Tauri's utils.nsh no longer defines CheckIfAppIsRunning: check what the new template uses to close the app, and replace THAT in hooks.nsh");
+    if (!/!insertmacro CheckIfAppIsRunning\b/.test(nsi)) failures.push("Tauri's installer.nsi no longer inserts CheckIfAppIsRunning: the hooks.nsh replacement is not in use");
+    if (hooksAt < 0 || utilsAt < 0 || hooksAt < utilsAt) failures.push("hooks.nsh must be included after utils.nsh, or its CheckIfAppIsRunning replacement does not apply");
+    if (/KillProcess/.test(nsi)) failures.push("the generated installer.nsi calls KillProcess outside the replaced macro");
+  }
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; ${docsNote}`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the installer stops processes by path only; ${docsNote}`);

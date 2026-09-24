@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic-cli"
-version = "0.13.1"
+version = "0.14.0-beta.1"
 edition = "2021"
 description = "Command-line + MCP client for the DeetsMusic bridge (docs/integrations/AGENT.md)."
 
@@ -10,6 +10,11 @@ description = "Command-line + MCP client for the DeetsMusic bridge (docs/integra
 [[bin]]
 name = "deetsmusic"
 path = "src/main.rs"
+
+[features]
+# DeetsMusic Beta's CLI (docs/ops/BETA.md §6): `npm run release -- --beta` builds it into
+# cli/target-beta and stages it as deetsmusic-beta.exe. It reads only the beta's token and adds `pull`.
+beta = []
 
 [dependencies]
 clap = { version = "4", features = ["derive", "env"] }

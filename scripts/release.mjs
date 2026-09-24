@@ -16,9 +16,12 @@
 // --config file (absolute paths; the repo path has spaces), so a plain `tauri build` stays
 // unsigned.
 //
-// A test build for the update spike compiles in the test channel (update.rs `channel()`):
-//   DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release
-//   npm run release:publish -- --channel deetsmusic-test
+// `--beta` builds DeetsMusic Beta (docs/ops/BETA.md): DEETSMUSIC_FLAVOR=beta (beta.rs; the channel
+// is then always deetsmusic-test), the beta CLI (`--features beta`, into cli/target-beta), and
+// tauri.beta.conf.json merged with the windows retitled — Tauri merges an overlay as a JSON merge
+// patch, so the windows array must be the whole array (the same trap dev-app.mjs notes). The
+// version must be a beta one (0.14.0-beta.1), so a beta build can never share a full version's
+// number. Then `npm run release:publish -- --beta`.
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -35,6 +38,7 @@ const AZURE_SIGNING = {
   AZURE_CLIENT_ID: "436ce300-2b76-486f-800c-e6207a3e4720", // app registration "Deets Release Signing"
 };
 const SIGN_SCRIPT = join(root, "scripts", "sign.mjs");
+const BETA = process.argv.includes("--beta");
 
 function step(label, command, env = process.env) {
   console.log(`[release] ${label}`);
@@ -71,19 +75,41 @@ const key = readFileSync(KEY_FILE, "utf8").trim();
 const password = readCredential(CREDENTIAL, "RELEASE.md §6.6");
 const signEnv = { ...process.env, ...AZURE_SIGNING, AZURE_CLIENT_SECRET: readCredential(AZURE_CREDENTIAL, "RELEASE.md §6.9") };
 
-console.log(`[release] update channel: ${process.env.DEETSMUSIC_UPDATE_CHANNEL || "deetsmusic"}`);
-step("cli:build", "npm run cli:build");
-step("sign cli", `node "${SIGN_SCRIPT}" "${join(root, "cli", "dist", "deetsmusic.exe")}"`, signEnv);
+const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+if (BETA !== /-beta\.\d+$/.test(version)) {
+  die(BETA ? `--beta needs a beta version like 0.14.0-beta.1 (package.json has ${version}; BETA.md §4)` : `${version} is a beta version: build it with --beta`);
+}
+if (BETA && process.env.DEETSMUSIC_UPDATE_CHANNEL && process.env.DEETSMUSIC_UPDATE_CHANNEL !== "deetsmusic-test") {
+  die("a beta build is always on deetsmusic-test; unset DEETSMUSIC_UPDATE_CHANNEL");
+}
+const buildEnv = BETA ? { ...signEnv, DEETSMUSIC_FLAVOR: "beta" } : signEnv;
+console.log(`[release] ${BETA ? "DeetsMusic Beta" : "DeetsMusic"} ${version} · update channel: ${BETA ? "deetsmusic-test" : process.env.DEETSMUSIC_UPDATE_CHANNEL || "deetsmusic"}`);
+const cliExe = BETA ? "deetsmusic-beta.exe" : "deetsmusic.exe";
+if (BETA) {
+  step("cli:build (beta)", "cargo build --release --features beta --manifest-path cli/Cargo.toml --target-dir cli/target-beta && node scripts/cli-dist.mjs --beta");
+} else {
+  step("cli:build", "npm run cli:build");
+}
+step("sign cli", `node "${SIGN_SCRIPT}" "${join(root, "cli", "dist", cliExe)}"`, signEnv);
 const signConfig = join(tmpdir(), `deetsmusic-sign-${process.pid}.json`);
 writeFileSync(
   signConfig,
   JSON.stringify({ bundle: { windows: { signCommand: { cmd: process.execPath, args: [SIGN_SCRIPT, "%1"] } } } }),
 );
 process.on("exit", () => rmSync(signConfig, { force: true }));
-step("tauri build (signed)", `npx tauri build --config "${signConfig}"`, {
-  ...signEnv,
+let configs = `--config "${signConfig}"`;
+if (BETA) {
+  const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+  const overlay = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.beta.conf.json"), "utf8"));
+  overlay.app = { windows: conf.app.windows.map((w) => ({ ...w, title: overlay.productName })) };
+  const gen = join(root, "src-tauri", ".tauri.beta.gen.json");
+  writeFileSync(gen, JSON.stringify(overlay, null, 2));
+  configs = `--config "${gen}" ${configs}`;
+}
+step("tauri build (signed)", `npx tauri build ${configs}`, {
+  ...buildEnv,
   TAURI_SIGNING_PRIVATE_KEY: key,
   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password,
 });
-step("release-check", "node scripts/release-check.mjs");
-step("archive", "node scripts/archive-installer.mjs");
+step("release-check", `node scripts/release-check.mjs${BETA ? " --beta" : ""}`);
+step("archive", `node scripts/archive-installer.mjs${BETA ? " --beta" : ""}`);

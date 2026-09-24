@@ -75,6 +75,7 @@ old installs' Guide button opens.
 - `TRAY.md` — the tray icon, the tray panel, minimize to tray.
 - `SUGGEST-LESS.md` — Apple's −1 plus our own marks; proactive skips.
 - `ALBUM-COLOR.md` — the album-colored aurora and text.
+- `OCEAN.md` — the Ocean sea: the heavy swell in perspective, the glow from the deep, heave, ripples.
 - `MOVABLE-ROWS.md` — hold a header to move a section; the Settings search bar; Ctrl+F.
 - `ONBOARDING.md` — the hover-hint ledger (every `title`), right-click coverage, Settings ›
   Tips, the first-run walk (`npm run dev:fresh` to be a first-time user).
@@ -98,6 +99,8 @@ old installs' Guide button opens.
 - `RELEASE.md` — build, Authenticode signing, publish, the updater, install, uninstall
   (§0 = the commands, secrets and keys on one page).
 - `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update offer.
+- `BETA.md` — DeetsMusic Beta: a second installed app beside the full one (`release -- --beta`),
+  the data copy and `deetsmusic-beta pull`, every release goes beta first.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
@@ -267,7 +270,8 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
   fails a build that does it; 0.12.0 froze on live this way (FRIENDS.md §8.11).
 - **The workers** (`../DeetsMusicRooms`, `../DeetsMusicFriends`, `../DeetsSupport`) are plain
   JS with no build step, deployed with `npx wrangler` **4** — wrangler 3 drops the rate limit
-  without a word. A worker deploy drops every live room socket, so a deploy is the owner's call.
+  without a word. A deploy is always the owner's call. A rooms or friends deploy drops every live
+  socket; DeetsSupport holds none (docs/ideas/WorkerDeploy.md, 2026-09-23).
 - **A withdrawn version's notes never reach an update offer**, so the release that replaces
   it carries the whole line's notes in its own entry (RELEASE-NOTES.md).
 - Commit only when the user asks. Co-author trailer — name the model that did the work

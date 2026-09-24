@@ -116,9 +116,12 @@ const LINK_TTL: Duration = Duration::from_secs(300);
 /// `dev:app` never takes `deetsmusic://` from the installed app (§2a fork 4). Windows
 /// keeps one exe per scheme (HKCU\Software\Classes\<scheme>): the release installer
 /// writes `deetsmusic`, and `lib.rs` registers `deetsmusic-dev` at every debug launch.
+/// DeetsMusic Beta owns `deetsmusic-beta` the same way; its installer writes it (BETA.md §5).
 pub fn link_scheme() -> &'static str {
     if cfg!(debug_assertions) {
         "deetsmusic-dev"
+    } else if crate::beta::is_beta() {
+        "deetsmusic-beta"
     } else {
         "deetsmusic"
     }

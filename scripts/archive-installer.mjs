@@ -10,7 +10,12 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const name = `DeetsMusic_${version}_x64-setup.exe`;
-const from = join(root, "src-tauri", "target", "release", "bundle", "nsis", name);
+// DeetsMusic Beta (`--beta`, BETA.md §4): Tauri names its installer after the product
+// ("DeetsMusic Beta_…"). It is archived under the plain name, which is the one the Worker serves
+// (update.js FILE), in installers/beta/ so it never mixes with a real release.
+const BETA = process.argv.includes("--beta");
+const built = BETA ? `DeetsMusic Beta_${version}_x64-setup.exe` : name;
+const from = join(root, "src-tauri", "target", "release", "bundle", "nsis", built);
 
 if (!existsSync(from)) {
   // A version mismatch across package.json / tauri.conf.json / Cargo.toml is the usual
@@ -22,7 +27,7 @@ if (!existsSync(from)) {
 
 // A pre-release version (0.4.2-t1, the update spike) goes to installers/dev/, so the top
 // folder holds only real releases.
-const sub = version.includes("-") ? "installers/dev" : "installers";
+const sub = BETA ? "installers/beta" : version.includes("-") ? "installers/dev" : "installers";
 const dir = join(root, sub);
 mkdirSync(dir, { recursive: true });
 copyFileSync(from, join(dir, name));

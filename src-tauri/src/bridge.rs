@@ -730,7 +730,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                 req,
                 200,
                 serde_json::json!({
-                    "ok": true, "app": "DeetsMusic", "version": env!("CARGO_PKG_VERSION"),
+                    "ok": true, "app": crate::beta::app_name(), "version": env!("CARGO_PKG_VERSION"),
                     "connected": connected, "paired": paired, "theme": a.theme, "skin": a.skin,
                     "agent": settings.agent_control,
                     "surface": a.surface, "sound": a.sound, "vinyl": a.vinyl,
@@ -742,6 +742,15 @@ async fn handle(app: AppHandle, mut req: Request) {
         (_, "/health") => json(req, 405, serde_json::json!({ "error": "method" }), origin),
         _ if !paired => json(req, 401, serde_json::json!({ "error": "unpaired" }), origin),
         _ if agent_off => json(req, 403, serde_json::json!({ "error": "Agent control is off. Turn it on in DeetsMusic › Settings › Connections." }), origin),
+
+        // ── DeetsMusic Beta: take a fresh copy of the full app's data (beta.rs, BETA.md §2) ──
+        // The CLI's token only: never a browser Origin, and never an agent route — it replaces
+        // this app's library and settings, so the MCP has no tool for it. A full build has no
+        // such route.
+        (Method::Post, "/beta/pull") if crate::beta::is_beta() && origin.is_none() => match crate::beta::request_pull(&app) {
+            Ok(()) => json(req, 200, serde_json::json!({ "ok": true, "restarting": true }), origin),
+            Err(e) => json(req, 409, serde_json::json!({ "error": e }), origin),
+        },
 
         (Method::Get, "/now-playing") => {
             let np = app.state::<Hub>().np.lock().unwrap().clone();

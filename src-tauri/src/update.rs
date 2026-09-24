@@ -28,9 +28,13 @@ const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(600);
 const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 
-/// The update channel, fixed at compile time. A test build reads its own index:
-/// `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release` (RELEASE.md §6.8).
+/// The update channel, fixed at compile time. DeetsMusic Beta always reads `deetsmusic-test`
+/// (BETA.md §4), so a beta can never take a full release and replace itself with the other
+/// app. Any other build reads `DEETSMUSIC_UPDATE_CHANNEL`, else the real channel.
 fn channel() -> &'static str {
+    if crate::beta::is_beta() {
+        return "deetsmusic-test";
+    }
     option_env!("DEETSMUSIC_UPDATE_CHANNEL").unwrap_or("deetsmusic")
 }
 

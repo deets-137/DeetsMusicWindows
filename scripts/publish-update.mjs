@@ -4,6 +4,7 @@
 //
 //   npm run release:publish                              package.json's version → "deetsmusic"
 //   npm run release:publish -- --channel deetsmusic-test  a test build (§6.8)
+//   npm run release:publish -- --beta                    DeetsMusic Beta (BETA.md §4): installers/beta → deetsmusic-test
 //   npm run release:publish -- --replace                 overwrite an entry already in the index
 //   npm run release:publish -- --withdraw 0.5.1          hide a release; the Worker stops offering it
 //   npm run release:publish -- --withdraw 0.5.1 --reason "…"   …and say why, on the website
@@ -35,7 +36,9 @@ const flag = (name) => {
   const i = argv.indexOf(name);
   return i === -1 ? null : (argv[i + 1] ?? "");
 };
-const channel = flag("--channel") ?? "deetsmusic";
+const BETA = argv.includes("--beta");
+if (BETA && flag("--channel") && flag("--channel") !== "deetsmusic-test") die("--beta publishes to deetsmusic-test only");
+const channel = BETA ? "deetsmusic-test" : flag("--channel") ?? "deetsmusic";
 const withdraw = flag("--withdraw");
 const reason = flag("--reason");
 const notesOnly = flag("--notes-only");
@@ -144,7 +147,11 @@ const version = pkg.version;
 const group = pkg.deetsmusic?.updateGroup;
 if (!Number.isInteger(group)) die("package.json deetsmusic.updateGroup must be an integer (RELEASE.md §6.5)");
 const file = `DeetsMusic_${version}_x64-setup.exe`;
-const sub = version.includes("-") ? "installers/dev" : "installers"; // archive-installer.mjs's rule
+// archive-installer.mjs's rule. A beta is always a -beta.N version, and a -beta.N version is
+// always a beta: the real channel never takes one, and --beta never takes anything else.
+const betaVersion = /-beta\.\d+$/.test(version);
+if (BETA !== betaVersion) die(BETA ? `--beta needs a beta version like 0.14.0-beta.1 (package.json has ${version})` : `${version} is a beta version: publish it with --beta`);
+const sub = BETA ? "installers/beta" : version.includes("-") ? "installers/dev" : "installers";
 const exe = join(root, sub, file);
 if (!existsSync(exe) || !existsSync(`${exe}.sig`)) die(`need ${sub}/${file} and its .sig (run npm run release first)`);
 // A missing entry used to publish `notes: ""`, and 0.6.3 and 0.7.0 went live with a blank row

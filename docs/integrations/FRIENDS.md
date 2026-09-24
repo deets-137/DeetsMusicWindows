@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
 sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts]
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
@@ -1327,3 +1327,88 @@ window that stops answering is a fail, whatever the card says.
    `discord-ipc-0` is busy, and confirm the app takes `discord-ipc-1` without a pause you can feel.
 9. **Nothing leaked.** After all of the above, check the process has no growing handle count in
    Task Manager (Details › Handles). Each failed connect closes both handles on the way out.
+
+---
+
+## 18. Add a room member as a friend
+
+> **Part:** designed · 2026-09-23. The owner's ask: "an easy way to add other listeners in the
+> room as friends". **Forks decided the same day: F1A, F2A, F3A, F4A + F5A** (the ⭐ options in
+> §18.3). **Nothing is built.** It waits on a rooms-worker deploy (§18.4).
+
+### 18.1 What the code allows today (read 2026-09-23)
+
+- **A room member carries no friend code.** The rooms worker's member view is `memberId`, `name`,
+  `isHost`, `joinedAt` (`src/room.ts` `RoomMember`, `DeetsMusicRooms/src/room.js` `memberViews`).
+  The join message carries a name and a host token, nothing else.
+- **So every version of this needs a rooms-worker change**, and a rooms deploy drops every live
+  room socket (ROOMS.md §17.10). That is the open question in
+  [WorkerDeploy.md](../ideas/WorkerDeploy.md). This feature is the first to need it answered, or a
+  quiet moment to deploy.
+- **The change is additive.** The app's room handler ignores a message type it does not know
+  (`room.ts`, the `default:` case), so an older app in the same room sees nothing new and breaks
+  nothing. An older app never sends a friend code, so it simply shows no button.
+- **Friends is a mutual add (§16.1, 2A).** One side adding a code gives a box that reads *"Waiting
+  for them to add you"* (`friends-panel.ts`). The other side is never told. The room can close that
+  gap: it is a live channel between the two people at the moment they want it.
+- **Minting is lazy (§16.5).** A person who never opened Friends has no friend code. Joining a room
+  is not one of the three doors that mint one.
+
+### 18.2 The shape (the part that is not a fork)
+
+- Each other member's row in the room panel's member list gets a way to add them. It is not on
+  your own row, and not on a person who is already your friend (their row can say *Friend* instead).
+- Adding a member does YOUR half of the mutual add at once: their box appears with *"Waiting for
+  them to add you"*. The room carries your code to them, so they can do their half in one press.
+- When both halves are done, the Friends worker does the rest, the same as a pasted code.
+- One offer per person per room: pressing again sends nothing new.
+
+### 18.3 Forks (open — the owner decides)
+
+**Fork F1 — how the codes travel.**
+- **F1A ⭐ Offer on press.** Your code leaves your app only when you press *Add friend* on a
+  member. The worker relays one new message, `friendOffer {to: memberId, code}`, to that one member,
+  stamped with your `memberId` and name. It is never broadcast. Your code reaches only the people
+  you chose.
+- F1B Codes ride the join. Every member's code sits in the member list, and anyone can press Add on
+  anyone. The worker change is smaller (one field on the join and the view). But your code reaches
+  everyone in every room you join, whether you want them as friends or not. A code alone shows
+  nothing (the add is mutual), but the other person is still never told that you added them.
+
+**Fork F2 — how the ask arrives.**
+- **F2A ⭐ A toast with a button.** *"Sam wants to add you as a friend."* **Add** · **Not now**. The
+  toast is an `ask`, so it takes the queue's priority (TOASTS.md). One press finishes the mutual add.
+- F2B A mark on Sam's row in the member list (an *Add back* chip). Quieter, but a person with the
+  panel closed never sees it.
+
+**Fork F3 — who gets a friend code when the ask arrives.** A person who never opened Friends has none.
+- **F3A ⭐ Mint on Add.** Pressing **Add** on the ask mints the identity. Pressing *Add friend* is
+  already a mint door (§16.5); this makes the answer one too. No extra step.
+- F3B Open the people panel instead, and let them add from there.
+
+**Fork F4 — Not now.**
+- **F4A ⭐ Silent.** The asker's box stays on *"Waiting for them to add you"*, the same as a pasted
+  code nobody added back. No "they said no" message.
+- F4B Tell the asker, *"Sam did not add you back."* One more message type, and a refusal said out loud.
+
+**Fork F5 — a switch.**
+- **F5A ⭐ No setting.** Rooms are invite-only already, and the offer is one per person per room.
+- F5B A Settings › Friends row, *Let room members ask to be friends* (on by default).
+
+### 18.4 What it would touch (for F1A + F2A + F3A + F4A + F5A)
+
+| Where | What |
+|---|---|
+| `../DeetsMusicRooms/src/room.js` | `friendOffer`: check that `to` is a joined member of this room and that `code` is a friend code (`codes.js`), limit one per sender and target, then send `{type: "friendOffer", from, name, code}` to that one socket |
+| `../DeetsMusicRooms/src/sanitize.js`, `protocol.js`, `scripts/check.mjs` | the shape, and the checks (relay to one member only, a bad code refused, the limit) |
+| `src/room.ts` | `sendFriendOffer(memberId)`, and the `friendOffer` case, which hands the offer on to Friends |
+| `src/room-panel.ts` | the chip on a member row (the `Remove` chip's family, `room__chip--small`), or *Friend* for a friend |
+| `src/friends.ts` / `friends-panel.ts` | add by code from an offer; the ask toast; mint on Add |
+| TOASTS.md §5, ONBOARDING.md | the new toast and the new hover hint |
+
+No new Friends-worker code: the mutual add is what the Friends worker already does. No new Apple
+calls. No schema change: the list lives in `friends.json`.
+
+**Deploy:** the rooms worker, once, at a time the owner picks (WorkerDeploy.md). The app half can
+ship before the deploy: with no relay, the chip does your half only and says the room could not carry
+the ask.

@@ -12,6 +12,78 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-23 — DeetsMusic Beta: a second installed app (branch `oceanic-schmoves`)
+
+- **His ask:** a permanent beta build, installed beside the full app. Its first job is Ocean.
+- **Found first:** a test-channel build changed only the channel. It shared the identifier,
+  install folder, link scheme, Run value and installer paths, so it would have replaced the full
+  app. The spike rows `0.4.4-t1/t2` are live in group 1 on `deetsmusic-test`, so a beta's
+  rollback list would have offered a build with the full app's identity.
+- **His forks** (BETA.md §1): copy once + `deetsmusic-beta pull` (stage, then restart); copy db +
+  Apple sign-in + settings + Last.fm, not Friends; reuse `deetsmusic-test`, spike rows withdrawn
+  as relics; beta first for every release; `-beta.N` versions; teal color-shifted icon; own CLI and
+  MCP name; own `deetsmusic-beta://` scheme.
+- **Built:** `beta.rs` (flavor, the copy before the Builder, the pull, the wait for the old
+  process), `tauri.beta.conf.json`, `icons-beta/` from `scripts/beta-icon.ps1`, the flavor in
+  `update.rs` / `apple.rs` / `log.rs` / `settings.rs` / `bridge.rs`, the CLI `beta` feature with
+  `pull`, `--beta` in release / release-check / archive / publish, `hooks.nsh` made flavor-neutral.
+  DeetsSupport: `signin.js` takes `deetsmusic-beta`; `update.js` orders `beta.10` after `beta.9`.
+- **Decided inside his choices** (listed for him at hand-off): the beta keeps its own bridge
+  token, firewall exe path and window position; it never enrolls in Launch at startup; the beta
+  installer never asks about the extension; `DeetsMusicBeta.exe` has no space; the beta
+  installer is archived under the plain `DeetsMusic_<v>` name (the Worker's `FILE` rule) in
+  `installers/beta/`; beta release notes are optional.
+- **Checked:** `cargo check` (app, CLI, beta CLI) clean. Nothing built or installed yet.
+- **Left:** the two `--withdraw` runs (an R2 write), the first `-beta.1` build, desk test
+  BETA.md §8. The DeetsSupport deploy is HELD (his call).
+- **Correction, same sitting:** I told him a DeetsSupport deploy drops room sockets. It does not:
+  only the rooms and friends workers hold sockets. He asked for a way to deploy a worker without
+  dropping connections ("perhaps a backup / second path"); written up as ideas/WorkerDeploy.md.
+- **Add a room member as a friend** (his ask): a member carries no friend code, so it needs a
+  rooms-worker relay. Designed in FRIENDS.md §18; he chose F1A offer on press, F2A ask toast, F3A
+  mint on Add, F4A silent Not now, F5A no setting. Not built; waits on a rooms deploy.
+- **First beta built:** `0.14.0-beta.1` (`npm run release -- --beta`), signed, release check ok,
+  archived in `installers/beta/`. The docs checker wanted the extension manifest on `-beta.1`,
+  which Chrome refuses; `docs-check.mjs` now skips the manifest on a beta version and compares
+  `shipped_in` on x.y.z only.
+- **Installer stops by path only** (his ask before installing: "every update / install of the beta
+  doesn't kill all related processes"). Found: the beta was safe, but the FULL installer's Tauri
+  close matched `DeetsMusic.exe` by name without case, so it killed the dev build and every
+  `deetsmusic.exe` CLI on the PC (five MCP servers were running at the time). hooks.nsh now
+  replaces `CheckIfAppIsRunning` with a full-path match inside `$INSTDIR`; release-check 11 guards
+  it. RELEASE.md §4a. The beta was rebuilt with it.
+- **Installed (him):** the rebuilt `0.14.0-beta.1`, with the full app, its CLIs and the rest
+  running — "everything still running". BETA.md §8 step 2 passed; the other steps are open.
+
+## 2026-09-23 — the Ocean sea, second round: the heavy swell (branch `oceanic-schmoves`)
+
+- **His word on the first round:** "looks more like a swimming pool now. i prefered the older
+  ocean that felt deep, ominous, and powerful."
+- **His forks:** the old swell made heavier · "Card opacity" slider, default solid ("the old
+  cards were designed to be sunken to give that deep ocean feel") · keep the heave, the ripples
+  and album color as a glow from the deep · Fancy Ocean dropped. OCEAN.md §2.
+- **Built:** `seaRows` + `swellLayer` (Gerstner crests in perspective, opaque wave bodies in the
+  water's color, three bands at 360 / 720 / 1200 px), the band markup and CSS, the glow
+  (`@property --ocean-glow-color`), flattened ripples in the crest ink, `oceanCardOpacity`
+  (replaces `oceanFancy` and `oceanClarity`, which never shipped). The caustics are gone.
+- **Desk test:** OCEAN.md §5. **Open:** the bench (OCEAN.md §6).
+
+## 2026-09-22 — the Ocean sea (branch `oceanic-schmoves`)
+
+- **Why:** he asked whether Ocean's SVGs were worth a redo. The review found the swell hidden
+  behind opaque cards (it showed only in the 12 px gaps), no real depth, and six full-window
+  masked layers that were Ocean's whole cost without a graphics card. A shimmer I predicted
+  from the 1 px crest is not there (his check). Verdict: redo the swell, keep the skin.
+- **His forks:** under the cards (see-through) · caustics + swell · album color as light in the
+  water · breathes with the music, hold calm when the Sound graph is not routed · ripples on
+  play + drop · Water clarity slider · Fancy Ocean toggle (like Fancy Glass), on by default,
+  off = still light + rolling swell. OCEAN.md §2.
+- **Built:** `ocean-texture.ts` (photon-mapped caustics, lit swell crests, both tile),
+  `ocean-worker.ts`, `ocean.ts`, new `.ocean` markup and CSS (no masks), `oceanFancy` /
+  `oceanClarity` with New marks and agent specs, `onPlayIntent` (player.ts), `onDragLand`
+  (row-drag.ts), `lookupPalette` shared by the NP card and the sea (album-color.ts).
+- **Desk test:** OCEAN.md §5. **Open:** the bench for Fancy Ocean's cost line (OCEAN.md §6).
+
 ## 2026-09-22 — docs sweep against `main`
 
 - **Why:** a cloud session checked the docs against the code on `main` (0.13.0, `de31ff7`).

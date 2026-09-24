@@ -121,7 +121,22 @@ When an item closes, delete it here and write the day in WORKLOG.md.
   (the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, the docs re-org.
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
+- **DeetsMusic Beta** (2026-09-23, built on `oceanic-schmoves`, not committed) — a second installed
+  app on `deetsmusic-test`; every release goes beta first. Not done: withdraw the two spike rows
+  (§4.3), the first `-beta.1` build, the desk test (§8). The DeetsSupport change (sign-in scheme +
+  version order, BETA.md §5) is written, uncommitted in `../DeetsSupport`, and HELD by his call.
+- **Add a room member as a friend** — his ask, 2026-09-23. Designed, forks decided (F1A–F5A:
+  offer on press, ask toast, mint on Add, silent Not now, no setting), not built: FRIENDS.md §18.
+  Needs a rooms-worker deploy (the item below).
+- **DeetsMusic Beta 0.14.0-beta.1 is BUILT** (signed, release check ok) at
+  `installers/beta/DeetsMusic_0.14.0-beta.1_x64-setup.exe`, with Ocean in it. Installed on the
+  dev PC 2026-09-23 (BETA.md §8 step 2 passed; the rest open). Not published. The version files now say `0.14.0-beta.1` (not the manifest, BETA.md §4.1).
+- **Deploy a worker without dropping connections** — his ask, 2026-09-23. Open, not researched:
+  ideas/WorkerDeploy.md. First step is to measure what a rooms deploy really does.
+
 **Desk tests not run**
+- **The Ocean sea** (second round: the heavy swell) — OCEAN.md §5, on branch
+  `oceanic-schmoves` (not committed). Then the bench (§6). The beta is meant to carry it.
 - **Web demo** — WEB-DEMO.md §10. The app half is merged into `main`; the page is live on
   deets.solutions/deetsmusic/demo (DeetsSolutions `master`). One open fork (§9.7).
 - **Quick settings** — QUICK-SETTINGS.md §10.1 (above).

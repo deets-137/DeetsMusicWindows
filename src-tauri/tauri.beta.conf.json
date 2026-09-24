@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DeetsMusic Beta",
+  "mainBinaryName": "DeetsMusicBeta",
+  "identifier": "com.deetsmusic.beta",
+  "bundle": {
+    "icon": [
+      "icons-beta/32x32.png",
+      "icons-beta/128x128.png",
+      "icons-beta/128x128@2x.png",
+      "icons-beta/icon.icns",
+      "icons-beta/icon.ico"
+    ],
+    "resources": {
+      "../cli/dist/deetsmusic.exe": null,
+      "../cli/dist/deetsmusic-beta.exe": "cli/deetsmusic-beta.exe"
+    },
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons-beta/icon.ico"
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "deetsmusic-beta"
+        ]
+      }
+    }
+  }
+}
