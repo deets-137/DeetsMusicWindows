@@ -447,6 +447,15 @@ export function onPlayerState(cb: Listener): () => void {
   return () => listeners.delete(cb);
 }
 
+const intentSubs = new Set<() => void>();
+/** Fires when a gesture asks for a song to start (a play, a jump, a station, next, previous),
+ *  at the ask, before the song loads. The Ocean ripple rides it (ocean.ts). */
+export function onPlayIntent(cb: () => void): () => void {
+  intentSubs.add(cb);
+  return () => intentSubs.delete(cb);
+}
+const playIntent = () => intentSubs.forEach((cb) => cb());
+
 export interface PlayerProgress {
   progress: number; // 0..1
   currentTime: number; // seconds
@@ -1456,6 +1465,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
 /** Jump to an Up Next entry by index (skipped songs are dropped). Re-windows → buffers. */
 export async function jumpToUpcoming(index: number): Promise<void> {
   if (roomBridge) return roomBridge.jumpTo(index);
+  playIntent();
   perf.click("jump", index + 1);
   await requireSignIn();
   const m = await initPlayer();
@@ -1468,6 +1478,7 @@ export async function jumpToUpcoming(index: number): Promise<void> {
 
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
 export function playTracks(tracks: Track[], startIndex: number, context = "library"): Promise<void> {
+  playIntent();
   perf.click(context, tracks.length); // BEFORE the ingest — stage A includes it
   const handles = handlesFrom(tracks, context);
   const play = () => playContext(handles, startIndex);
@@ -1553,6 +1564,7 @@ async function setStationQueue(m: any, s: Station): Promise<void> {
  */
 export async function playStation(s: Station): Promise<void> {
   if (roomBridge && !roomBridge.station()) return;
+  playIntent();
   await requireSignIn();
   const m = await initPlayer();
   diag.log("player:playStation", { id: s.id, live: s.isLive });
@@ -2062,6 +2074,7 @@ export async function playPause(why = "button"): Promise<void> {
 /** Skip forward (native within the fed window). */
 export async function nextTrack(): Promise<void> {
   if (roomBridge) return roomBridge.next();
+  playIntent();
   const m = await initPlayer();
   diag.log("player:next", snap());
   // Dev telemetry: a native skip is the preloaded path — time it like a click so the
@@ -2283,6 +2296,7 @@ if (import.meta.env.DEV) {
 /** Restart the song if we're past the intro, otherwise skip back. */
 export async function prevTrack(): Promise<void> {
   if (roomBridge) return roomBridge.previous();
+  playIntent();
   const m = await initPlayer();
   const at = Math.round(m.currentPlaybackTime ?? 0);
   diag.log("player:prev", { at, ...snap() });

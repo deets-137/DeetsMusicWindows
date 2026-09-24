@@ -76,6 +76,9 @@ export interface Settings {
   oceanEdges: "sand" | "soft";
   /** Ocean sand only, 0–100: how far the sand band reaches into a card (--sand-reach-min…max). */
   oceanSand: number;
+  /** Ocean only, 0–100: how solid the sunken cards are (100 = solid, the skin's design; lower
+   *  lets the swell show through). skin-settings.ts publishes it as --ocean-card-opacity. */
+  oceanCardOpacity: number;
   /** Glass only: the live frost. On = a real blur behind each card, the aurora drifts, and the
    *  four Glass sliders show. Off = the frost is painted into each card (no blur to redraw),
    *  the aurora holds still, and the sliders hold GLASS_LOCKED. `data-glass-fancy` on <html>. */
@@ -364,7 +367,6 @@ const KEY = "deets.settings";
 /** The Glass slider values while Fancy Glass is off (user's call 2026-09-16). They are also the
  *  sliders' defaults, so turning Fancy Glass on starts from the same look. */
 export const GLASS_LOCKED = { glassTint: 65, glassBacklight: 85, glassCanvasGlow: 40, glassCanvasDim: 10 } as const;
-
 export const DEFAULTS: Settings = {
   alwaysOnTop: "off",
   trayView: "cards",
@@ -393,6 +395,7 @@ export const DEFAULTS: Settings = {
   backgroundMotion: "on",
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
+  oceanCardOpacity: 100, // user's call 2026-09-23: solid — the sunken cards are the deep-ocean feel
   glassFancy: false, // user's call 2026-09-16: the painted frost; the live blur failed on software drawing (DEBUGGING.md)
   glassTint: 65, // user's call 2026-09-16: GLASS_LOCKED, the look Glass holds with Fancy Glass off
   glassBacklight: 85,

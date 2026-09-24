@@ -223,6 +223,7 @@ under Cyber the whole section is gone.
 
 | Control | What it does | Choices |
 |---|---|---|
+| Card opacity | How solid the sunken cards are. Lower lets the swell show through | 0–100%, **100** |
 | Draw card edges | The card edges break into grains of sand, or a soft glow | Sand / **Soft** |
 | Sand width | How far the sand reaches into a card | 0–100%, **15** |
 

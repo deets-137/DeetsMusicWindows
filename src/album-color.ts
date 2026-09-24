@@ -72,6 +72,26 @@ function guard(color: RGB, backdrops: RGB[], target: number): RGB {
   return second.ratio > first.ratio ? second.c : first.c;
 }
 
+// One lookup per cover however many watchers ask (the NP card and the Ocean sea both do, in
+// the same player tick): a miss asks Apple once, and the second asker shares that promise.
+const inFlight = new Map<string, Promise<AlbumPalette | null>>();
+/** The palette for a cover: the Rust cache first, then one Apple lookup (`album_palette`). */
+export function lookupPalette(coverUrl: string, catalogId: string | null): Promise<AlbumPalette | null> {
+  let p = inFlight.get(coverUrl);
+  if (!p) {
+    p = invoke<AlbumPalette | null>("album_palette", { coverUrl, catalogId }).finally(() => inFlight.delete(coverUrl));
+    inFlight.set(coverUrl, p);
+  }
+  return p;
+}
+
+/** The current song's cover and catalog id, the key both palette watchers use. */
+export function currentCover(): { cover: string | null; catalogId: string | null } {
+  const cur = getCurrent();
+  const track = trackById(cur?.catalogId ?? cur?.libraryId);
+  return { cover: track?.artwork?.urlTemplate ?? null, catalogId: cur?.catalogId ?? track?.catalogId ?? null };
+}
+
 /** Watch playback and tint `card` (the .np element) with the current album's palette. */
 export function watchAlbumColor(card: HTMLElement): () => void {
   let liveKey: string | null = null; // the cover the card currently reflects
@@ -134,9 +154,7 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   };
 
   const unsub = onPlayerState(() => {
-    const cur = getCurrent();
-    const track = trackById(cur?.catalogId ?? cur?.libraryId);
-    const cover = track?.artwork?.urlTemplate ?? null;
+    const { cover, catalogId } = currentCover();
 
     if (cover === liveKey) return; // same album (or still nothing) — no work
     liveKey = cover;
@@ -148,10 +166,7 @@ export function watchAlbumColor(card: HTMLElement): () => void {
     // Theme fallback shows until (unless) a palette arrives — never stall the UI.
     clear();
     const requestedKey = cover;
-    invoke<AlbumPalette | null>("album_palette", {
-      coverUrl: cover,
-      catalogId: cur?.catalogId ?? track?.catalogId ?? null,
-    })
+    lookupPalette(cover, catalogId)
       .then((p) => {
         if (liveKey !== requestedKey) return; // track changed while fetching — stale
         if (p) apply(p);

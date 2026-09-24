@@ -251,9 +251,9 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   since Plex Mono runs wide at the 480px midi width. Anton (title, one weight — `--fw-title`
   drops to 400) + IBM Plex Mono (body). **Retired the `desk` skin** it replaced; a saved
   `desk` id migrates via `RETIRED` in `skin.ts`.
-- **`ocean`** — deep/abyssal: recessed soft-edged cards (`color-mix`) on a surface of three
-  rolling **SVG wave trains** (the ocean layer, below), a sink/rise nav, Cinzel (title) +
-  Spectral (body). Optional **sand card edges** with a width slider (§Sand edges; off by default).
+- **`ocean`** — deep/abyssal: sunken recessed cards (`color-mix`, Card opacity) over a heavy
+  **swell** in perspective with a glow of the album's color from the deep (the ocean layer,
+  below; [OCEAN.md](../features/OCEAN.md)), a sink/rise nav, Cinzel (title) + Spectral (body). Optional **sand card edges** with a width slider (§Sand edges; off by default).
   Pairs best with light themes (its black-mix cards + shadows are faint on dark canvases — a
   per-theme `--surface-sunken` role is the documented upgrade if Ocean needs true depth there).
 - **`glass`** — frosted glassmorphism: translucent panels (`color-mix` alpha of `--surface`)
@@ -295,36 +295,33 @@ Cyber 200% of one core at idle; after: 12 / 20 / 17 (DEBUGGING.md has the table)
    when the window is minimized or hidden; a new loop joins the selector in `styles.css`.
    WebView2 does not fire `visibilitychange` for either state.
 
-### The ocean layer (opt-in rolling swell)
+### The ocean layer (opt-in sea)
+> **Part:** built · 2026-09-22
+
 The same opt-in doctrine as the storm layer, for a *surface* rather than strokes: a
-`<div class="ocean">` in `.app-body` behind the bento, holding three wave trains. Inert
-unless a skin flips `--ocean-display` (only Ocean does). Each train is a `.ocean__bob` box
-around a `.ocean__roll` box; the roll's `::before` (fill) and `::after` (crest) are masked by
-SVG tile data URLs (`--swell-fill` / `--swell-crest` in `styles.css`). The fill masks
-roughly double the GPU cost per frame (measured), so avoid adding more masked trains.
+`<div class="ocean">` in `.app-body` behind the bento. Inert unless a skin flips
+`--ocean-display` (only Ocean does). The intent, the decisions and the desk test are
+[OCEAN.md](../features/OCEAN.md); this is the engine.
 
-Each tile is **one full sine period** — `M0 c Q W/4 (c−a) W/2 c T W c`, the `T`
-mirroring the `Q` — so the curve's **value and tangent** both match at the tile edge and
-the horizontal seam is invisible. Each train paints an **opaque `--canvas` fill** beneath
-its hairline crest, so a nearer swell *occludes* the ones behind it instead of three
-see-through lines crossing. Atmospheric perspective is three skin tokens: `--ocean-ink-1`
-is full `--border`, `-2` / `-3` mix it toward `--canvas` (70% / 45%), so far waves recede
-into haze.
+- **Layers**, back to front: `.ocean` paints `--ocean-deep`; three bands (far, mid, near), each
+  `.ocean__heave` › `.ocean__bob` › `.ocean__train`; `.ocean__glow`; `.ocean__ripples`.
+- **Painted, not masked.** `src/ocean.ts` has a worker (`ocean-worker.ts`) paint each band
+  (`ocean-texture.ts`) at the sea's full height, and sets the PNG as a plain background. The old
+  swell masked six full-window boxes, which cost a second surface on every frame. Here the
+  compositor only moves finished layers. The wave bodies are opaque water, so a nearer band
+  hides the one behind it.
+- **Seamless by whole tiles.** Every row has a whole number of waves across its band's tile;
+  `ocean.ts` sets the tile as `--tw`, the box is one tile wider than the body and rolls one tile
+  per loop (`ocean-roll`). The heave, bob and roll are three boxes, so the transforms compose.
+- **Runtime values on `.ocean`:** `--ocean-glow-color` (the album's glow, a registered color
+  that crossfades) and `--ocean-breath` (−1…1, from the music). Everything else is a skin token
+  (`--ocean-*`).
 
-Motion is split across **two elements** so the transforms compose rather than overwrite:
-`ocean-roll` translates the roll box (linear), `ocean-bob` the wrapping bob box (a sine
-sampled into keyframes, alternate). Per-layer distances come from `--roll-dist` / `--bob-amp`, resolved
-*inside* the shared keyframes per element. Each train rolls an **integer number of its own
-tile width** per 16s loop (144 = 3×48, 128 = 2×64, 80 = 1×80), nearest fastest, so the wrap
-never shows; the middle train bobs counter-phase so the sea breathes rather than pumps, and
-9s·2 vs 16s never sync (LCM 144s). The roll box is oversized +320px and shifted −160px so a
-full roll never drags its own edge into view; the mask origin (`160px 8px`) puts the tile
-grid back at the body corner.
-
-This **replaced** a radial-gradient version, where the scallop arcs crossed at tile corners
-and scattered chevron artifacts across the canvas — the reason the tiles are SVG paths. It
-then replaced an inline `<svg>` with `<pattern>` fills, whose moving children repainted
-every frame (rule 1 above).
+History: a radial-gradient version (its scallop arcs crossed at tile corners and scattered
+chevrons), then an inline `<svg>` with `<pattern>` fills (moving children repainted every frame,
+rule 1 above), then three masked SVG wave trains (2026-07 to 2026-09-22; one size of wave
+everywhere, and the most cost without a graphics card), then for one day caustic light (read
+as a swimming pool, not the sea).
 Under `prefers-reduced-motion` the ocean stays *visible* and merely stops (unlike the storm,
 which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
 

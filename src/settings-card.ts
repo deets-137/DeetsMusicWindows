@@ -148,6 +148,7 @@ const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
 const NEW_MARKS: { section: string; row?: string }[] = [
   { section: "Friends" }, // Friends, built 2026-09-20
   { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
+  { section: "Skin settings", row: "oceancards" }, // Ocean card opacity, built 2026-09-23
 ];
 const markKey = (m: { section: string; row?: string }) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -266,8 +267,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "The three Animate rows and Fancy scrubber", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean edges and sand, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanEdges", "oceanSand", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, edges and sand, Fancy Glass and its four sliders, and the Press record player",
+    keys: ["oceanCardOpacity", "oceanEdges", "oceanSand", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -1049,6 +1050,12 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       // that sets nothing (Cyber today).
       title: "Skin settings",
       rows: [
+        {
+          kind: "range", id: "oceancards", label: "Card opacity", key: "oceanCardOpacity", min: 0, max: 100, unit: "%",
+          hint: "Ocean only. How solid the sunken cards are. Lower: the sea shows through",
+          preview: (v) => previewSkin("oceanCardOpacity", v),
+          when: () => currentSkin() === "ocean",
+        },
         {
           kind: "choice", id: "oceanedges", label: "Draw card edges", key: "oceanEdges",
           hint: "Ocean only. Sand: the card edges break into grains, like a dark beach",

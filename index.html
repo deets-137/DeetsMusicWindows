@@ -375,15 +375,17 @@
            transform or a background-position repaints every frame: ~25–45% of a core idle).
            src/ambient.ts pauses them while the window cannot be seen. -->
 
-      <!-- Ocean — three seamless wave trains. Each train is a bob <div> (rise and fall)
-           around a roll <div> (drift), so the two transforms compose. The tile shapes
-           (one full sine period each, so no seam) are SVG masks in src/styles.css: an
-           opaque --canvas fill under a hairline crest, so a nearer swell occludes the ones
-           behind it. Farthest (3) paints first. -->
+      <!-- Ocean — the sea. Three depth bands of swell (far at the horizon, then middle,
+           then near), each a heave <div> (the music) around a bob <div> (rise and fall)
+           around a roll <div> (drift), so the transforms compose; then the album's glow
+           from the deep and the ripples. src/ocean.ts paints the bands and sets them as
+           backgrounds; src/styles.css moves them. Back first. -->
       <div class="ocean" aria-hidden="true">
-        <div class="ocean__bob ocean__bob--3"><div class="ocean__roll ocean__roll--3"></div></div>
-        <div class="ocean__bob ocean__bob--2"><div class="ocean__roll ocean__roll--2"></div></div>
-        <div class="ocean__bob ocean__bob--1"><div class="ocean__roll ocean__roll--1"></div></div>
+        <div class="ocean__heave ocean__heave--far"><div class="ocean__bob ocean__bob--far"><div class="ocean__train ocean__train--far"></div></div></div>
+        <div class="ocean__heave ocean__heave--mid"><div class="ocean__bob ocean__bob--mid"><div class="ocean__train ocean__train--mid"></div></div></div>
+        <div class="ocean__heave ocean__heave--near"><div class="ocean__bob ocean__bob--near"><div class="ocean__train ocean__train--near"></div></div></div>
+        <div class="ocean__glow"></div>
+        <div class="ocean__ripples"></div>
       </div>
 
       <!-- Aurora — one <div> per blob, so each drifts on its own transform. -->

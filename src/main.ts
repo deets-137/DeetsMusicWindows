@@ -4,6 +4,7 @@ import { applySkin, initSkin, type SkinName } from "./skin";
 import { applySurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, onNarrowChange, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
+import { initOcean } from "./ocean";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
 import { initHints } from "./hint";
@@ -64,6 +65,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initLookSchedule(); // a day/night schedule overrides the saved look (LOOK-SCHEDULE.md)
   initSurface();
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
+  initOcean(); // the Ocean sea's textures, album light, breath and ripples; inert under other skins
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
   initSound(); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)

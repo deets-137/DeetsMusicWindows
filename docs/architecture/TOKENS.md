@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 446 tokens · overrides: vanilla 3, press 64, ocean 39, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 468 tokens · overrides: vanilla 3, press 64, ocean 41, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -330,7 +330,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--walk-card-gap` | `var(--space-2)` | — | between the sprites and the speech card |
 | `--walk-point` | `14px` | — | the arm/arrow that names the target |
 | `--walk-pair-gap` | `4px` | — | between Deets and Happy |
-| `--spane-bg` | `var(--panel)` | glass, cyber | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
+| `--spane-bg` | `var(--panel)` | ocean, glass, cyber | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
 
 ### bento panels
 
@@ -380,14 +380,36 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 |---|---|---|---|
 | `--ambient-fps` | `30` | — | The endless decorative loops (ocean / aurora / storm / NP aurora) step at this rate instead of the display's, so the compositor draws step at this rate instead of the display's, so the compositor draws a new frame only when a layer moves. Measured 2026-09-13: Ocean a new frame only when a layer moves. Measured 2026-09-13: Ocean 36% → 15% of a core at 30 vs 60 fps. The loops move ≤ ~10 px/s 36% → 15% of a core at 30 vs 60 fps. The loops move ≤ ~10 px/s (the storm wipe excepted), so 30 reads smooth. A unitless integer. |
 
-### ocean layer (rolling swell behind the cards)
+### ocean layer (the sea behind the cards)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--ocean-display` | `none` | ocean | Three masked wave-train <div>s in .app-body that a skin opts into — same doctrine as --storm-*. The tile geometry is fixed (styles.css); same doctrine as --storm-*. The tile geometry is fixed (styles.css); the ink fades with distance via these roles, so far swells recede the ink fades with distance via these roles, so far swells recede into haze. Base is inert. — ocean opts in |
-| `--ocean-ink-1` | `var(--border)` | ocean |  |
-| `--ocean-ink-2` | `var(--border)` | ocean |  |
-| `--ocean-ink-3` | `var(--border)` | ocean |  |
+| `--ocean-display` | `none` | ocean | A swell in perspective, a glow from the deep and ripples, in .app-body, that a skin opts into — same doctrine as --storm-*. src/ocean.ts paints that a skin opts into — same doctrine as --storm-*. src/ocean.ts paints the three depth bands (in a worker) with these colors; every box then the three depth bands (in a worker) with these colors; every box then only moves (transform) or fades (opacity). Base is inert; the values only moves (transform) or fades (opacity). Base is inert; the values are Ocean's (docs/features/OCEAN.md). — ocean opts in |
+| `--ocean-water-top` | `var(--canvas)` | ocean | the water at the horizon … |
+| `--ocean-water-bottom` | `var(--canvas)` | ocean | … and at the bottom (the deepest) |
+| `--ocean-deep` | `linear-gradient(to bottom, var(--ocean-water-top), var(--ocean-water-bottom))` | — |  |
+| `--ocean-swell-ink` | `var(--border)` | ocean | the crest line |
+| `--ocean-trough` | `0.35` | — | how much darker a trough is under its crest, on dark water |
+| `--ocean-trough-light` | `0.12` | — | the same on light water (more reads as sand dunes) |
+| `--ocean-roll-far` | `90` | — | s for a band to roll one tile (unitless: steps() needs a number); |
+| `--ocean-roll-mid` | `90` | — | the tiles are 360 / 720 / 1200 px (ocean-texture.ts BANDS), |
+| `--ocean-roll-near` | `100` | — | so the near swell moves fastest |
+| `--ocean-bob-far` | `13` | — | s for one rise of a band |
+| `--ocean-bob-mid` | `11` | — |  |
+| `--ocean-bob-near` | `9` | — |  |
+| `--ocean-heave-far` | `1.5px` | — | how far a band rises at the music's loudest |
+| `--ocean-heave-mid` | `5px` | — |  |
+| `--ocean-heave-near` | `10px` | — |  |
+| `--ocean-breath-dur` | `1.1s` | — | the heave follows the music this smoothly |
+| `--ocean-breath-ease` | `cubic-bezier(0.37, 0, 0.63, 1)` | — |  |
+| `--ocean-glow` | `0.28` | — | the album's glow from the deep, at rest |
+| `--ocean-glow-fade` | `2.4s` | — | a new album's glow fades in |
+| `--ocean-ripple-size` | `520px` | — | a ripple's widest ring |
+| `--ocean-ripple-flat` | `0.32` | — | its height over its width: a ring on the water, seen from above the swell |
+| `--ocean-ripple-dur` | `3.4s` | — |  |
+| `--ocean-ripple-gap` | `0.35s` | — | the second ring follows the first |
+| `--ocean-ripple-alpha` | `0.5` | — |  |
+| `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — |  |
 
 ### sand edges (Ocean "Draw card edges: Sand")
 
@@ -541,7 +563,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hero-cover-hover` | `0.85` | — | brightness of a clickable hero cover on hover / file drag |
 | `--hero-artist-radius` | `50%` | — | an artist hero's photo (ARTIST-VIEW.md §1) |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
-| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |
+| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |
 | `--lib-row-art-radius` | `4px` | press, glass, cyber | its corner — a skin shape lever (round still wins) |
 
 ### scrollbar (our own; color is a theme role)

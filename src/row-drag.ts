@@ -140,6 +140,13 @@ export function onDragEnd(cb: () => void): () => void {
   endSubs.add(cb);
   return () => endSubs.delete(cb);
 }
+const landSubs = new Set<(x: number, y: number) => void>();
+/** Fires after a drag lands somewhere (a drop on a target, or a move within its list), with
+ *  the pointer's viewport point. A cancel or a drop in place does not fire. The Ocean ripple. */
+export function onDragLand(cb: (x: number, y: number) => void): () => void {
+  landSubs.add(cb);
+  return () => landSubs.delete(cb);
+}
 
 // The click that trails a drag's pointerup lands on whatever sits under the pointer (a row
 // in another card, a play). One capture listener swallows it for every card — also after an
@@ -536,6 +543,9 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     if (d.src.done) d.src.done(d.reordering ? to : null);
     else opts.onEnd?.(d.src.index, d.reordering ? to : null);
     if (commit && d.hit?.drop && d.src.payload) d.hit.drop(d.hit.slots ? d.slot : null);
+    if ((commit && d.hit?.drop && d.src.payload) || (d.reordering && to != null)) {
+      landSubs.forEach((cb) => cb(d.lastX, d.lastY));
+    }
   }
 
   const onDown = (e: PointerEvent) => {

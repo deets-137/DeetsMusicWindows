@@ -1631,12 +1631,15 @@ body {
   background: rgb(0 0 0 / var(--canvas-dim));
 }
 
-/* ── Ocean layer (rolling swell behind the cards) ───────────── */
-/* Inert unless a skin opts in (--ocean-display; Ocean). The fill is the theme's
-   --canvas and the crest inks are skin tokens that fade with distance. The roll and
-   bob keyframes (skin.css) read per-layer distances from the --roll-dist / --bob-amp
-   custom properties set here. Only transform animates: the compositor moves the
-   rasterized trains, so an idle sea costs no main-thread paint. */
+/* ── Ocean layer (the sea behind the cards) ─────────────────── */
+/* Inert unless a skin opts in (--ocean-display; Ocean). src/ocean.ts paints each depth
+   band once (in a worker) at the sea's height and sets it as a plain background, with
+   its tile width as --tw. After that nothing is painted again: the boxes only move
+   (transform) and fade (opacity), so the compositor carries every frame. No masks: a
+   masked box costs a second surface on every frame (the old swell measured about
+   double). Paint order, back to front: the water (--ocean-deep), the far band, the
+   middle band, the near band, the glow from the deep, the ripples. Each band's wave
+   bodies are opaque water, so a nearer swell hides the water behind it. */
 .ocean {
   display: var(--ocean-display, none);
   position: absolute;
@@ -1644,70 +1647,81 @@ body {
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  background: var(--ocean-deep);
+  --ocean-breath: 0;              /* −1…1, from the music (ocean.ts); 0 = calm */
 }
+/* The heave: each band rises with the music, the near one most (--ocean-breath). */
+.ocean__heave {
+  position: absolute;
+  inset: 0;
+  transform: translateY(calc(var(--ocean-breath) * var(--heave) * -1));
+  transition: transform var(--ocean-breath-dur) var(--ocean-breath-ease);
+}
+.ocean__heave--far  { --heave: var(--ocean-heave-far); }
+.ocean__heave--mid  { --heave: var(--ocean-heave-mid); }
+.ocean__heave--near { --heave: var(--ocean-heave-near); }
 .ocean__bob {
   position: absolute;
   inset: 0;
-  /* stepped at --ambient-fps; 5 keyframe segments of 1.8s each (the ease lives in
-     the sine-sampled keyframes, since steps() replaces the easing) */
-  animation: ocean-bob 9s steps(round(9 * var(--ambient-fps) / 5)) infinite alternate;
+  /* stepped at --ambient-fps; 5 keyframe segments (the ease lives in the sine-sampled
+     keyframes, since steps() replaces the easing) */
+  animation: ocean-bob calc(var(--bob-s) * 1s) steps(round(var(--bob-s) * var(--ambient-fps) / 5)) infinite alternate;
   will-change: transform;
 }
-/* Oversized and left-shifted so a full roll cycle (≤144px) never drags the
-   box's own edge into view; the tiles just repeat across the slack. */
-.ocean__roll {
+/* The bands bob against each other, so the sea breathes rather than pumps. */
+.ocean__bob--far  { --bob-s: var(--ocean-bob-far);  --bob-amp:  1px; }
+.ocean__bob--mid  { --bob-s: var(--ocean-bob-mid);  --bob-amp: -2px; }
+.ocean__bob--near { --bob-s: var(--ocean-bob-near); --bob-amp:  3px; }
+/* A band: one tile wider than the body, rolling right by one tile per loop. Its picture
+   is the sea's full height (ocean.ts repaints it when the height changes). */
+.ocean__train {
   position: absolute;
-  left: -160px;
-  top: -8px;
-  width: calc(100% + 320px);
-  height: calc(100% + 16px);
-  animation: ocean-roll 16s steps(round(16 * var(--ambient-fps))) infinite;
+  left: calc(-1 * var(--tw, 0px));
+  top: 0;
+  width: calc(100% + var(--tw, 0px));
+  height: 100%;
+  background-repeat: repeat-x;
+  --roll-dist: var(--tw, 0px);
+  animation: ocean-roll calc(var(--roll-s) * 1s) steps(round(var(--roll-s) * var(--ambient-fps))) infinite;
   will-change: transform;
+  opacity: 0;
+  transition: opacity var(--ocean-glow-fade) var(--ocean-breath-ease);
 }
-/* Fill and crest are two masked pseudo-boxes (a mask on the roll itself would
-   also clip the crest to the fill shape). The mask origin offsets the roll's
-   own shift, so the tile grid starts at the body corner. */
-.ocean__roll::before,
-.ocean__roll::after {
-  content: "";
+.ocean__train[data-on] { opacity: 1; }
+.ocean__train--far  { --roll-s: var(--ocean-roll-far); }
+.ocean__train--mid  { --roll-s: var(--ocean-roll-mid); }
+.ocean__train--near { --roll-s: var(--ocean-roll-near); }
+/* The album's color, glowing up from the deep (ocean.ts sets --ocean-glow-color on .ocean;
+   transparent with no album). It swells a little with the music. The color crossfades as
+   a registered property, which repaints this one box while it fades (once per album). */
+@property --ocean-glow-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+.ocean__glow {
   position: absolute;
   inset: 0;
-  mask-size: var(--swell-tile);
-  mask-repeat: repeat;
-  mask-position: 160px 8px;
+  background: radial-gradient(ellipse 80% 60% at 50% 115%, var(--ocean-glow-color), transparent 75%);
+  opacity: calc(var(--ocean-glow) * (1 + var(--ocean-breath) * 0.5));
+  transition: --ocean-glow-color var(--ocean-glow-fade) var(--ocean-breath-ease),
+              opacity var(--ocean-breath-dur) var(--ocean-breath-ease);
 }
-.ocean__roll::before { background: var(--canvas);    mask-image: var(--swell-fill); }
-.ocean__roll::after  { background: var(--swell-ink); mask-image: var(--swell-crest); }
-/* Tiles: each is ONE full sine period (Q + T reflection), so the curve's value AND
-   tangent match at the tile edge. Crest = the same curve, 1px stroke.
-   Roll: each train drifts an INTEGER number of its own tile width per 16s
-   loop (144=3×48, 128=2×64, 80=1×80) so the wrap is invisible, the nearest
-   moving fastest. Bob: amplitudes shrink with distance; the middle train is
-   counter-phase (negative) so the sea breathes rather than pumps. */
-.ocean__roll--1 {
-  --roll-dist: 144px;
-  --swell-tile: 48px 30px;
-  --swell-ink: var(--ocean-ink-1);
-  --swell-fill:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='30'%3E%3Cpath d='M0 17 Q12 11 24 17 T48 17 L48 30 L0 30 Z'/%3E%3C/svg%3E");
-  --swell-crest: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='30'%3E%3Cpath d='M0 17 Q12 11 24 17 T48 17' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+/* A ripple: two flattened rings on the water from the point of a play or a drop
+   (ocean.ts adds and removes them), in the crest ink. */
+.ocean__ripple {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--ocean-ripple-size);
+  height: calc(var(--ocean-ripple-size) * var(--ocean-ripple-flat));
+  margin: calc(var(--ocean-ripple-size) * var(--ocean-ripple-flat) / -2) 0 0 calc(var(--ocean-ripple-size) / -2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, transparent 86%, var(--ocean-swell-ink) 94%, transparent);
+  opacity: 0;
+  animation: ocean-ripple var(--ocean-ripple-dur) var(--ocean-ripple-ease) var(--delay, 0s) forwards;
+  will-change: transform, opacity;
 }
-.ocean__roll--2 {
-  --roll-dist: 128px;
-  --swell-tile: 64px 38px;
-  --swell-ink: var(--ocean-ink-2);
-  --swell-fill:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='38'%3E%3Cpath d='M0 22 Q16 17 32 22 T64 22 L64 38 L0 38 Z'/%3E%3C/svg%3E");
-  --swell-crest: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='38'%3E%3Cpath d='M0 22 Q16 17 32 22 T64 22' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
-}
-.ocean__roll--3 {
-  --roll-dist: 80px;
-  --swell-tile: 80px 46px;
-  --swell-ink: var(--ocean-ink-3);
-  --swell-fill:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='46'%3E%3Cpath d='M0 26 Q20 22 40 26 T80 26 L80 46 L0 46 Z'/%3E%3C/svg%3E");
-  --swell-crest: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='46'%3E%3Cpath d='M0 26 Q20 22 40 26 T80 26' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
-}
-.ocean__bob--1  { --bob-amp:  3px; }
-.ocean__bob--2  { --bob-amp: -2px; }
-.ocean__bob--3  { --bob-amp:  1px; }
 
 /* ── Aurora layer (drifting blobs behind the cards) ─────────── */
 /* Inert unless a skin opts in (--aurora-display; Glass). The blob gradients and
@@ -2094,7 +2108,8 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   .aurora__blob { animation: none; }  /* freeze the Glass aurora drift */
   /* Ocean stays VISIBLE, just still: a motionless sea is still a sea (unlike
      a half-drawn bolt), so the skin keeps its surface instead of going blank. */
-  .ocean__roll, .ocean__bob { animation: none; }
+  .ocean__train, .ocean__bob { animation: none; }
+  .ocean__heave, .ocean__glow { transition: none; }
   .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
   /* no hover-lift jump when motion is reduced */
   .lib-row:hover, .lib-tile:hover, .qrow:hover,
@@ -2105,9 +2120,9 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
    turns "Animate backgrounds" off — the endless decorative loops hold still.
    play-state keeps each loop's position, so they resume in place with no jump and no
    restart cost. */
-:root[data-ambient="paused"] :is(.ocean__bob, .ocean__roll, .aurora__blob, .storm__strike, .storm__hold),
+:root[data-ambient="paused"] :is(.ocean__bob, .ocean__train, .aurora__blob, .storm__strike, .storm__hold),
 :root[data-ambient="paused"] .np__aurora::before,
-:root[data-bg-motion="off"] :is(.ocean__bob, .ocean__roll, .aurora__blob),
+:root[data-bg-motion="off"] :is(.ocean__bob, .ocean__train, .aurora__blob),
 :root[data-bg-motion="off"] .np__aurora::before {
   animation-play-state: paused;
 }

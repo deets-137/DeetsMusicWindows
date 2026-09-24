@@ -1,6 +1,7 @@
 // Skin-only settings (Settings › Skin settings; each row shows only under its skin).
 // Ocean: `oceanEdges` → `data-ocean-edges` on <html>; skin.css turns the card edges to sand.
 //        `oceanSand` (0–100) → --ocean-sand, the sand band's width.
+//        `oceanCardOpacity` (0–100) → --ocean-card-opacity, how solid the sunken cards are.
 // Glass: `glassBacklight` / `glassTint` / `glassCanvasGlow` (0–100) → --glass-backlight,
 //        --glass-tint (a %), --glass-canvas; `glassCanvasDim` → --glass-canvas-dim.
 //        `glassFancy` → `data-glass-fancy`; off publishes GLASS_LOCKED instead of the sliders.
@@ -10,19 +11,20 @@
 
 import { setting, onSettingsChange, GLASS_LOCKED } from "./settings-store";
 
-type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "oceanSand";
+type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "oceanSand" | "oceanCardOpacity";
 const PROPS: Record<SliderKey, [string, string]> = {
   glassTint: ["--glass-tint", "%"],
   glassBacklight: ["--glass-backlight", ""],
   glassCanvasGlow: ["--glass-canvas", ""],
   glassCanvasDim: ["--glass-canvas-dim", ""],
   oceanSand: ["--ocean-sand", ""],
+  oceanCardOpacity: ["--ocean-card-opacity", ""],
 };
 const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
 const isSlider = (k: string): k is SliderKey => k in PROPS;
 /** The value a slider publishes: a Glass slider holds its locked value while Fancy Glass is off. */
 const sliderValue = (k: SliderKey): number =>
-  k !== "oceanSand" && !setting("glassFancy") ? GLASS_LOCKED[k] : setting(k);
+  k !== "oceanSand" && k !== "oceanCardOpacity" && !setting("glassFancy") ? GLASS_LOCKED[k] : setting(k);
 
 /** Show a skin slider value without writing the store (a slider drag). */
 export function previewSkin(key: SliderKey, v: number): void {
