@@ -31,9 +31,9 @@ import {
 import { initCollectionCard, esc, type Context, type Density, type Grouping, type ViewState } from "./collection-card";
 import type { DragPayload } from "./row-drag";
 import { musicCell } from "./library-card";
-import { playStation, queueStationAfter } from "./player";
-import { copyStationLinkItem } from "./copy-link";
-import { pinItem, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
+import { playStation } from "./player";
+import { stationMenu as stationMenuFor } from "./media-menu";
+import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import type { MenuItem } from "./context-menu";
 import { enterRows, rowsAfter } from "./pop";
 import type { CardDef } from "./cards";
@@ -132,15 +132,10 @@ export const radioCard: CardDef = {
         .then(() => card.reload())
         .catch((e) => console.error("[radio] play station", e));
 
-    // A station's right-click (2026-09-15): play it, let it follow the queue
-    // (player.ts queueStationAfter), or copy Apple's share link (null without one).
+    // A station's right-click: the station menu (CONTEXT-MENUS.md §3.5). Play Now redraws
+    // the root after it starts (the Recents shelf gained a row).
     const stationMenu = (s: Station): MenuItem[] =>
-      [
-        { label: "Play Now", run: () => startStation(s) },
-        { label: "Add to Queue", run: () => void queueStationAfter(s).catch((e) => console.error("[radio] queue station", e)) },
-        copyStationLinkItem(s.url),
-        pinItem(`station:${s.id}`, "station", s),
-      ].filter(Boolean) as MenuItem[];
+      stationMenuFor(s, { context: `station:${s.id}`, play: () => startStation(s) });
     // A station drags (DRAG-DROP.md §2, 2026-09-15): to the Queue card it plays after the
     // queue, to Now Playing it plays now. No songs — the playlist and library targets refuse it.
     const stationDrag = (s: Station): DragPayload => ({

@@ -18,6 +18,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { makeDropdown } from "./dropdown";
+import { menuSource, type MenuItem } from "./context-menu";
 import { enterRows } from "./pop";
 import { searchCatalog, type Album, type Artist, type SearchResults, type SearchType } from "./search";
 import { playlistCreate, playlistAddTracks, requestOpenPlaylist } from "./playlists";
@@ -52,7 +53,7 @@ interface WebArtist {
 }
 type SeedKind = "artist" | "song" | "album";
 /** Where a web starts (web.rs `WebSeed`). A library album has no catalog id: `songId` finds it. */
-type WebSeed = { kind: "artist"; artist: Artist } | { kind: "song"; track: Track } | { kind: "album"; album: Album; songId?: string };
+export type WebSeed = { kind: "artist"; artist: Artist } | { kind: "song"; track: Track } | { kind: "album"; album: Album; songId?: string };
 interface WebResult {
   kind: SeedKind;
   /** The seed artist; for a song or an album, its artist line. */
@@ -158,6 +159,18 @@ export async function webQuick(r: WebRequest, status: (text: string) => void, ch
   status("Finding the start…");
   const seed = await quickSeed(r);
   if (!seed) throw new Error(`Nothing found for “${r.term}”`);
+  return webFrom(seed, r, status, chip, "compass");
+}
+
+/** Build, pick and make the playlist from a known seed: the Compass's path after its seed
+ *  search, and the right-click "Start a Web" row's whole path. */
+async function webFrom(
+  seed: WebSeed,
+  r: { reach?: 1 | 2 | 3; genres?: string[] },
+  status: (text: string) => void,
+  chip: () => HTMLElement | null,
+  from: string,
+): Promise<void> {
   const wanted = r.reach ?? setting("webReach");
   const reach = seed.kind === "album" ? Math.min(ALBUM_MAX_REACH, wanted) : wanted;
   status(`Reading the web of ${seedName(seed)}…`);
@@ -176,11 +189,44 @@ export async function webQuick(r: WebRequest, status: (text: string) => void, ch
   const id = await playlistCreate(name, undefined, expireDays);
   await playlistAddTracks(id, list);
   diag.log("web:expiry", { arm: id, days: expireDays });
-  diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from: "compass", reach });
+  diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from, reach });
   const open = () => requestOpenPlaylist(`local:${id}`, list);
   const el = chip();
-  if (el) handOff(el, "playlists", () => Promise.resolve(list), open, list.length, true);
+  if (el?.isConnected) handOff(el, "playlists", () => Promise.resolve(list), open, list.length, true);
   else { requestCard("playlists"); open(); }
+}
+
+/**
+ * "Start a Web" (CONTEXT-MENUS.md §4): a right-click row on a song, an album or an artist.
+ * One press makes the web with no panel, on the settings the panel uses (Reach, Size,
+ * Prefer, the Temp days — a change in the panel IS a change of these settings, so the row
+ * always uses the last values). A song or album seed picks its own genres, as the panel does.
+ * An info toast shows the step; the right-clicked row flies to the Playlists card, which
+ * opens the new playlist. `seed` resolves on the press: an artist from the library needs
+ * its catalog id first. Null when the item can never seed a web (no catalog id to start from).
+ */
+export function startWebItem(seed: () => WebSeed | null | Promise<WebSeed | null>, canSeed: boolean): MenuItem | null {
+  if (!canSeed) return null;
+  return {
+    label: "Start a Web",
+    run: () => {
+      const from = menuSource(); // the right-clicked row, read before anything re-renders it
+      const note = toast({ kind: "info", text: "Starting a web…", sticky: true });
+      void Promise.resolve(seed())
+        .then((s) => {
+          if (!s) throw new Error("Apple Music has nothing to start a web from here.");
+          note.update(`Reading the web of ${seedName(s)}…`);
+          return webFrom(s, {}, (text) => note.update(text), () => from, "menu");
+        })
+        .then(() => note.dismiss())
+        .catch((e) => {
+          note.dismiss();
+          console.error("[web] menu", e);
+          const text = e instanceof Error && e.message ? e.message : "Couldn't make the web.";
+          toast({ kind: "warn", text: text.endsWith(".") ? text : `${text}.` });
+        });
+    },
+  };
 }
 
 /** The panel's Apple searches, by kind and text, until the app closes: the same search again

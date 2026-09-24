@@ -25,11 +25,7 @@ import { esc } from "./collection-card";
 import { artURL, rowHTML } from "./queue-rows";
 import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
-import { addSongToLibraryItem } from "./library-add";
-import { startStationItem } from "./start-station";
-import { goToArtistItem, goToAlbumItem, songCreditsItem } from "./go-to";
-import { copySongLinkItem } from "./copy-link";
-import { addToPlaylistItem } from "./playlists";
+import { songMenu, setMenu } from "./media-menu";
 import { rowPick, picksText } from "./row-pick";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
@@ -183,44 +179,33 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     const e = p.handle;
     const h = { catalogId: e.catalogId, libraryId: e.libraryId, context: "history" };
     const err = (what: string) => (x: unknown) => console.error(`[history] ${what}`, x);
-    const t = trackOf(p); // supplies fallback pane titles for the drill-ins
-    const items: MenuItem[] = [
-      { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")) },
-      { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
-      { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
-    ];
-    // Add to Playlist, in `trackMenu`'s place: after the play verbs, before Go to….
-    // It needs the resolved track, which a played song always has (`seen` rows
-    // materialize catalog-only plays), so a station song files like any other.
-    if (t) items.push(addToPlaylistItem(() => [t]));
-    // Go to Artist/Album + Start Station + Add to Library — gated builders (null when
-    // they shouldn't offer). Apply to the hero too: it shares this handler via data-idx="0".
-    const goA = goToArtistItem("songs", e.catalogId, t?.artistName);
-    if (goA) items.push(goA);
-    const goAl = goToAlbumItem(e.catalogId, t?.albumName);
-    if (goAl) items.push(goAl);
-    const credits = songCreditsItem(t);
-    if (credits) items.push(credits);
-    const link = copySongLinkItem(e.catalogId);
-    if (link) items.push(link);
-    const start = startStationItem("songs", e.catalogId);
-    if (start) items.push(start);
-    const add = t ? addSongToLibraryItem(t) : null;
-    if (add) items.push(add);
-    return items;
+    // The resolved track (a played song always has one: `seen` rows materialize
+    // catalog-only plays) feeds the song menu; the play verbs use the record's handle.
+    // The hero shares this handler via data-idx="0".
+    const t = trackOf(p);
+    return songMenu(t, {
+      context: "history",
+      catalogId: e.catalogId,
+      play: [
+        { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")) },
+        { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
+        { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
+      ],
+    });
   };
   /** The menu for a picked set of plays (§19). */
   const menuForSet = (set: Play[]): MenuItem[] => {
     const err = (what: string) => (x: unknown) => console.error(`[history] ${what}`, x);
     const hs = set.map((p) => ({ catalogId: p.handle.catalogId, libraryId: p.handle.libraryId, context: "history" }));
     const ts = set.map(trackOf).filter(Boolean) as Track[];
-    const items: MenuItem[] = [
-      { label: `Play ${picksText(set.length)}`, run: () => void playContext(hs, 0).catch(err("play set")) },
-      { label: "Play Next", run: () => void enqueueNext(hs).catch(err("play next")) },
-      { label: "Add to Queue", run: () => void enqueueLater(hs).catch(err("add to queue")) },
-    ];
-    if (ts.length) items.push(addToPlaylistItem(() => ts));
-    return items;
+    return setMenu(() => ts, set.length, "song", {
+      context: "history",
+      play: [
+        { label: `Play ${picksText(set.length)}`, run: () => void playContext(hs, 0).catch(err("play set")) },
+        { label: "Play Next", run: () => void enqueueNext(hs).catch(err("play next")) },
+        { label: "Add to Queue", run: () => void enqueueLater(hs).catch(err("add to queue")) },
+      ],
+    });
   };
 
   // A history row has never done anything on a plain click, and still doesn't. Ctrl and

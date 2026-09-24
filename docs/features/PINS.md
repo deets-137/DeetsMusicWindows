@@ -191,10 +191,14 @@ Decided while building, inside the owner's choices:
   the web tables all keep the front-end model as one JSON TEXT column beside the real columns
   SQL needs (ids, positions, times), so the schema never chases the model
   (DATA-ARCHITECTURE.md §tracks). A pin's `data` is the same idea.
-- **Pin / Unpin is the last row** of every menu, after ♥. On Home a pinned tile has no Hide row.
-- **The song menu derives the pin from its context tag**: a Library album tile's menu pins the
-  album, an artist tile's pins the artist. A genre list, a picked set and a playlist's rows get
-  no pin row — nothing to name.
+- **Pin / Unpin is the last row of the Keep group**, after ♥ and Mark. Since 2026-09-23 only the
+  take-away rows (Remove, Hide, Delete) come after it (CONTEXT-MENUS.md §2, fork 1A). On Home a
+  pinned tile has no Hide row.
+- **Each menu pins what it is** (CONTEXT-MENUS.md §3, 2026-09-23): a song row pins the song —
+  inside an album view too (fork 3A; before, a song there pinned the album) — an album tile
+  the album, an artist tile the artist. A genre and a picked set get no pin row: nothing to name.
+- **One of Apple's playlists pins from Search** (2026-09-23): the pin keeps the playlist as its
+  snapshot (`catalogPlaylistTile`), a press plays its songs, and Open opens its Search pane.
 - **Pinning again refreshes the snapshot but keeps the time**, so a re-pin does not jump to the
   front of the card's shelf.
 - **The Compass row acts on the playing song only** — the cards' own rows are automatic.
@@ -323,7 +327,7 @@ cards. A new row **On Click**, holding the three verbs with the current one mark
 
 > Play · Shuffle · Open
 
-Placement: above Pin / Unpin, which stays the last row of every menu (§7). It is offered for
+Placement: above Pin / Unpin, which ends the Keep group (§7, CONTEXT-MENUS.md §2). It is offered for
 **playlist, album and artist** pins only — see 8.2
 fork 5: a `song:` and a `station:` pin get no On Click row.
 
@@ -415,7 +419,7 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 | `query.rs` | The `pins` export carries `act`, so the agent's SQL sees it. The `TABLES` fixture and its test moved with it (`cargo test --lib query`: 9 passed) |
 | `pinAct(key, kind)` | The one resolver: the pin's verb, else `open` — which is what every album, playlist and artist pin did before this shipped |
 | `pinActivate(it, at, nav?)` | **The one click rule.** It replaced the four hand-written shelf bodies that had drifted into two different answers (§8.1). A card that can open a kind in place passes a handler; a card that cannot leaves it out and the hop takes over |
-| `pinRows` · `pinArtistRows` · `pinRowsFor` | Each returns **On Click** (when the pin is one that is asked) followed by Pin / Unpin, which stays the last row of every menu |
+| `pinRows` · `pinArtistRows` | Each returns **On Click** (when the pin is one that is asked) followed by Pin / Unpin, which ends the Keep group. The menu builders in `media-menu.ts` call them (2026-09-23); `pinRowsFor` is gone with `trackMenu` |
 | `pinNewAct` | Settings › Playback › **New pins open on click**, default **Open**. Stamped onto the row at pin time, so it can never reach a pin that already exists |
 
 **Decided inside his choice:**

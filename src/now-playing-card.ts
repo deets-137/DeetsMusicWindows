@@ -17,18 +17,14 @@ import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
 import * as queue from "./queue";
 import { resolveEntry, artURL, stageArtPx } from "./queue-rows";
-import { openContextMenu, type MenuItem } from "./context-menu";
-import { addSongToLibraryItem, addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
-import { favoriteItem, favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
-import { pinItem, songKey } from "./pins";
+import { openContextMenu } from "./context-menu";
+import { addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
+import { favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
+import { songMenu } from "./media-menu";
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
-import { startStationItem } from "./start-station";
-import { copySongLinkItem } from "./copy-link";
-import { addToPlaylistItem } from "./playlists";
 import { explicitBadge } from "./library-card";
-import { goToArtistItem, goToAlbumItem, songCreditsItem } from "./go-to";
 import type { CardDef } from "./cards";
 import { rowDrag, registerDropTarget } from "./row-drag";
 import { dropToPlay } from "./drop-actions";
@@ -446,20 +442,17 @@ export const nowPlayingCard: CardDef = {
       const cur = queue.getCurrent();
       if (!cur) return; // nothing playing → let the native menu through
       const t = resolveEntry(cur);
-      const items = [
-        t ? addToPlaylistItem(() => [t]) : null,
-        goToArtistItem("songs", cur.catalogId, t?.artistName),
-        goToAlbumItem(cur.catalogId, t?.albumName),
-        songCreditsItem(t),
-        copySongLinkItem(cur.catalogId),
-        startStationItem("songs", cur.catalogId),
-        t ? addSongToLibraryItem(t) : null,
-        favoriteItem(t),
-        t ? pinItem(songKey(t), "song", t) : null,
-        onStation
-          ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
-          : null,
-      ].filter(Boolean) as MenuItem[];
+      // The song that is playing: the song menu without the Play group (CONTEXT-MENUS.md §3.1).
+      const items = songMenu(t, {
+        context: "now-playing",
+        catalogId: cur.catalogId,
+        play: null,
+        own: [
+          onStation
+            ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
+            : null,
+        ],
+      });
       if (!items.length) return;
       e.preventDefault();
       openContextMenu(e.clientX, e.clientY, items);

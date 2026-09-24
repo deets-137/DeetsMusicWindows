@@ -12,17 +12,15 @@
 // Artists group by PARSED credit (artist-credit.ts), so collabs/features land
 // under every credited artist instead of fragmenting into one tile per credit.
 
-import { setting } from "./settings-store";
 import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange } from "./track-store";
-import { playTracks, queueTracksNext, queueTracksLater } from "./player";
-import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
+import { playTracks } from "./player";
+import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
-import { startStationItem, startArtistStationItem } from "./start-station";
-import { favoriteItem, isLoved, onFavoritesChange } from "./favorites";
-import { goToArtistItem, goToAlbumItem, songCreditsItem, requestPlaylistPane } from "./go-to";
-import { copySongLinkItem, copyAlbumLinkFromSongItem } from "./copy-link";
+import { isLoved, onFavoritesChange } from "./favorites";
+import { requestPlaylistPane } from "./go-to";
+import { songMenu, albumMenu, artistMenu, playlistMenu, listMenu, setMenu, tileMenu, type AlbumSubject } from "./media-menu";
 import {
   creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
   CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
@@ -35,16 +33,15 @@ import type { MenuItem } from "./context-menu";
 import type { CardDef } from "./cards";
 import { registerDropTarget } from "./row-drag";
 import { dropToLibrary } from "./drop-actions";
-import { libraryAddEnabled, addAlbumFromSongsItem } from "./library-add";
+import { libraryAddEnabled } from "./library-add";
 import { mosaicHTML } from "./mosaic";
 import {
-  libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, playlistShelfMenu,
+  libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML,
   playCounts, type LibraryArtistInfo, type YourPlaylists, type CheckProgress, type PlayCount,
 } from "./artist-view";
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
-import { pinRows, pinRowsFor, pinArtistRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
-import { markItem } from "./sotd";
+import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -344,7 +341,7 @@ export const artistOrder = (ts: Track[]): Track[] =>
   );
 
 /**
- * In-place drill navigation for a card's right-click menus. When passed to `trackMenu`
+ * In-place drill navigation for a card's right-click menus. When passed to a media-menu.ts builder
  * (the Library card supplies it), "Go to Artist/Album" pushes the SAME context an
  * artist/album tile would — over the user's library, staying in this card's stack.
  * Absent (Playlists/Rewind), the verbs fall back to the shared catalog drill-in
@@ -360,111 +357,15 @@ export interface LibNav {
   drillSong: (t: Track) => void;
 }
 
-// The album's dominant credited artist (mode of each track's leading credit) — the
-// "Go to Artist" target for an album tile, where a per-track featured guest shouldn't
-// win. Always a credited name, so it resolves to a real library artist group.
-function dominantArtist(items: Track[], nav: LibNav): string | undefined {
-  const counts = new Map<string, number>();
-  for (const t of items) {
-    const primary = nav.artistNames(t)[0];
-    if (primary) counts.set(primary, (counts.get(primary) ?? 0) + 1);
-  }
-  let best: string | undefined;
-  let top = 0;
-  for (const [name, c] of counts) if (c > top) { top = c; best = name; }
-  return best;
-}
-
-/** The album a list IS: one song's own album, or a longer list whose songs all share one
- *  album name — an album tile, a pinned album, a Home shelf album. Null for a mixed list
- *  (a genre, a playlist, a multi-select), which has no one album to go to. */
-function listAlbum(items: Track[]): Track | null {
-  const first = items[0];
-  if (!first?.albumName) return null;
-  return items.every((t) => t.albumName === first.albumName) ? first : null;
-}
-
-// The "Go to Artist" / "Go to Album" verbs for a menu — in-place over the library when
-// `nav` is present, else the catalog drill-in (Search). Both a song and a whole album can
-// go to the album: the hop is from any song of it that carries a catalog id (the owner,
-// 2026-09-20 — an album tile offered "Go to Artist" alone, on every card that has no nav).
-function goToItems(items: Track[], nav?: LibNav): (MenuItem | null)[] {
-  const first = items[0];
-  if (!first) return [];
-  const album = listAlbum(items);
-  if (!nav) {
-    const seed = album ? items.find((t) => t.catalogId) : undefined;
-    return [
-      goToArtistItem("songs", first.catalogId, first.artistName),
-      album ? goToAlbumItem(seed?.catalogId, album.albumName) : null,
-      items.length === 1 ? songCreditsItem(first) : null,
-    ];
-  }
-  let artistItem: MenuItem | null;
-  if (items.length > 1) {
-    const dom = dominantArtist(items, nav);
-    artistItem = dom ? { label: "Go to Artist", run: () => nav.drillArtist(dom) } : null;
-  } else {
-    const names = nav.artistNames(first);
-    artistItem =
-      names.length === 0
-        ? null
-        : names.length === 1
-          ? { label: "Go to Artist", run: () => nav.drillArtist(names[0]) }
-          : { label: "Go to Artist", sub: () => names.map((n) => ({ label: n, run: () => nav.drillArtist(n) })) };
-  }
-  const albumItem = album ? { label: "Go to Album", run: () => nav.drillAlbum(album) } : null;
-  // A nav means this card drills locally, so Song Credits stays here too — it would be odd
-  // for two verbs in one menu to stay and the third to summon another card (go-to.ts).
-  const creditsItem =
-    items.length === 1 && first.catalogId
-      ? { label: "Song Credits", run: () => nav.drillSong(first) }
-      : null;
-  return [artistItem, albumItem, creditsItem];
-}
-
-/** The list a song sits in, for "Play Now → the song, then the list" (SETTINGS.md / §1). */
-export interface ListFrom {
-  items: Track[];
-  idx: number;
-}
-
-export function trackMenu(items: Track[], context?: string, nav?: LibNav, listFrom?: ListFrom): MenuItem[] {
-  const err = (what: string) => (e: unknown) => console.error(`[library] ${what}`, e);
-  // Play Now scope: the song then the rest of its list (default — the same play a
-  // left-click does), or just the song(s). Only a single song inside a list can widen.
-  const playNow =
-    listFrom && items.length === 1 && setting("playNowScope") === "list"
-      ? () => playTracks(listFrom.items, listFrom.idx, context)
-      : () => playTracks(items, 0, context);
-  return [
-    { label: "Play Now", run: () => void playNow().catch(err("play now")) },
-    { label: "Play Next", run: () => void queueTracksNext(items, context).catch(err("play next")) },
-    { label: "Add to Queue", run: () => void queueTracksLater(items, context).catch(err("add to queue")) },
-    addToPlaylistItem(() => items),
-    ...goToItems(items, nav),
-    // One song → its own link; a longer list is an album tile → the album's link,
-    // resolved from any of its songs that has a catalog id.
-    items.length === 1
-      ? copySongLinkItem(items[0].catalogId)
-      : copyAlbumLinkFromSongItem(items.find((t) => t.catalogId)?.catalogId),
-    // A station seeds from ONE song — a longer list is an album, which has no station.
-    ...(items.length === 1 ? [startStationItem("songs", items[0].catalogId)] : []),
-    // "Add to Library" for the album this list IS (2026-09-20). A SONG's own add row is
-    // not here: each card adds it itself (Queue, History, Now Playing, Playlists), and a
-    // second copy from the shared menu would show it twice. The album row is new, so no
-    // card carries one, and it reaches them all from here. It is its own null when the
-    // library already holds the album — which is every album tile on the Library card.
-    ...(items.length > 1 && listAlbum(items) ? [addAlbumFromSongsItem(items)] : []),
-    // ♥ — one song only (an album has no favorite here); null without consent/catalog id.
-    ...(items.length === 1 ? [favoriteItem(items[0])] : []),
-    // Pin / Unpin (PINS.md): the album or artist this list is, else the one song.
-    ...pinRowsFor(items, context),
-    // Mark as Song of the Day (DeetsOTD.md §8.5) — one song with a catalog id, and only
-    // while the feature is on. The row itself says Replace or Unmark where that is what it does.
-    markItem(items, context),
-  ].filter(Boolean) as MenuItem[];
-}
+/** A library album (its songs in disc/track order) as the menu builders take it
+ *  (media-menu.ts, CONTEXT-MENUS.md). `pinKey`: the tile's own key, where it has one. */
+export const libAlbum = (ts: Track[], pinKey?: string): AlbumSubject => ({
+  title: ts[0]?.albumName ?? "Album",
+  artistName: ts[0]?.artistName,
+  artwork: ts[0]?.artwork,
+  known: ts,
+  pinKey,
+});
 
 // ── groupings ─────────────────────────────────────────────────────────────────
 interface SongOpts {
@@ -558,14 +459,14 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     playAll: o.actionTitles ?? true, // the Play / Shuffle row (NEXT-VERSION §13)
     // Right-click → act on this song; Play Now's scope (just it, or it then the list)
     // is the setting (SETTINGS.md / FUTURE-SETTINGS §1).
-    menu: (t, idx, items) => trackMenu([t], o.context, o.nav, { items, idx }),
+    menu: (t, idx, items) => songMenu(t, { context: o.context, nav: o.nav, listFrom: { items, idx } }),
     drag: (t) => ({ source: "library", kind: "song", tracks: () => [t], context: o.context }),
     // Multi-select (NEXT-VERSION §19). Keyed by the SONG, so a sort, a filter or a sync
     // keeps the picks. The set's menu is the ordinary track menu over many songs, which
     // is where "Add to Playlist ▸ New Playlist…" builds a list from a hand-picked set.
     pick: {
       id: trackId,
-      menu: (ts) => trackMenu(ts, o.context, o.nav),
+      menu: (ts) => setMenu(() => ts, ts.length, "song", { context: o.context }),
       drag: (ts) => ({ source: "library", kind: "song", count: ts.length, tracks: () => ts, context: o.context }),
       play: (ts) => void playTracks(ts, 0, o.context).catch((e) => console.error("[library] play picked", e)),
     },
@@ -587,7 +488,7 @@ function albumsGrouping(
     render: (a, density, idx) => musicCell(density, idx, a.artwork, a.name, a.artist),
     open: openDetail,
     // Right-click → act on the whole album, tracks in disc/track order.
-    menu: (a) => trackMenu(albumOrder(list().filter((t) => albumKey(t) === a.key)), `album:${a.key}`, nav),
+    menu: (a) => albumMenu(libAlbum(albumOrder(list().filter((t) => albumKey(t) === a.key))), { context: `album:${a.key}`, nav }),
     drag: (a) => ({
       source: "library",
       kind: "album",
@@ -600,7 +501,7 @@ function albumsGrouping(
     pick: {
       noun: "album",
       id: (a) => a.key,
-      menu: (as) => trackMenu(albumsTracks(as, list), "albums:picked", nav),
+      menu: (as) => setMenu(() => albumsTracks(as, list), as.length, "album", { context: "albums:picked" }),
       drag: (as) => {
         const ts = albumsTracks(as, list);
         return { source: "library", kind: "album", count: ts.length, tracks: () => ts, context: "albums:picked" };
@@ -616,7 +517,7 @@ function albumsTracks(as: AlbumGroup[], list: () => Track[]): Track[] {
   return as.flatMap((a) => albumOrder(all.filter((t) => albumKey(t) === a.key)));
 }
 
-function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Context): Grouping<ArtistGroup> {
+function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Context, nav?: LibNav): Grouping<ArtistGroup> {
   return {
     key: "artists",
     label: "Artists",
@@ -629,16 +530,13 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
     open: openDetail,
     // Right-click → Start Station (the artist seed resolves lazily via one of their
     // songs — derived groups carry no catalog artist id; see start-station.ts).
+    // The station and the link resolve the artist lazily via one of their songs (derived
+    // groups carry no catalog artist id; see start-station.ts).
     menu: (a) =>
-      [
-        startArtistStationItem(
-          a.name,
-          creditIndex(list())
-            .tracksFor(a.name)
-            .map((t) => t.catalogId),
-        ),
-        ...pinRows(`artist:${a.name}`, "artist"), // PINS.md: the artist tile's own pin + On Click rows
-      ].filter(Boolean) as MenuItem[],
+      artistMenu(
+        { name: a.name, artwork: a.artwork, songs: artistOrder(creditIndex(list()).tracksFor(a.name)), inLibrary: true },
+        { context: `artist:${a.name}`, nav },
+      ),
     drag: (a) => ({
       source: "library",
       kind: "artist",
@@ -650,7 +548,7 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
     pick: {
       noun: "artist",
       id: (a) => a.name,
-      menu: (as) => trackMenu(artistsTracks(as, list), "artists:picked"),
+      menu: (as) => setMenu(() => artistsTracks(as, list), as.length, "artist", { context: "artists:picked" }),
       drag: (as) => {
         const ts = artistsTracks(as, list);
         return { source: "library", kind: "artist", count: ts.length, tracks: () => ts, context: "artists:picked" };
@@ -673,12 +571,13 @@ function genresGrouping(list: () => Track[], openDetail: (g: GenreGroup) => Cont
     match: (g, q) => g.name.toLowerCase().includes(q),
     render: (g, density, idx) => musicCell(density, idx, undefined, g.name, sub(g), { mosaic: g.covers, mosaicSeed: g.name }),
     open: openDetail,
-    menu: (g) => trackMenu(genreTracks(list(), g.name), `genre:${g.name}`),
+    // A genre is a list, not one album or artist: play it, queue it, file it (no link).
+    menu: (g) => listMenu(() => genreTracks(list(), g.name), { context: `genre:${g.name}` }),
     drag: (g) => ({ source: "library", kind: "artist", count: g.songCount, tracks: () => genreTracks(list(), g.name), context: `genre:${g.name}` }),
     pick: {
       noun: "genre",
       id: (g) => g.name,
-      menu: (gs) => trackMenu(gs.flatMap((g) => genreTracks(list(), g.name)), "genres:picked"),
+      menu: (gs) => setMenu(() => gs.flatMap((g) => genreTracks(list(), g.name)), gs.length, "genre", { context: "genres:picked" }),
       drag: (gs) => {
         const ts = gs.flatMap((g) => genreTracks(list(), g.name));
         return { source: "library", kind: "artist", count: ts.length, tracks: () => ts, context: "genres:picked" };
@@ -852,9 +751,14 @@ export const libraryCard: CardDef = {
           const albums = groupAlbums(ts).length;
           return {
             cover: heroCover(info?.artwork ?? ts.find((t) => t.artwork)?.artwork, a.name, undefined, undefined, true),
-            // The cover's menu (PINS.md): pin the artist. The snapshot carries the catalog id
-            // and photo, so the pin outlives the artist's songs leaving the library.
-            coverMenu: () => pinArtistRows({ name: a.name, artwork: info?.artwork, catalogId: info?.catalogId }),
+            // The cover's menu: the artist's own menu, without Go to Artist (you are there).
+            // The pin's snapshot carries the catalog id and photo, so it outlives the
+            // artist's songs leaving the library (PINS.md).
+            coverMenu: () =>
+              artistMenu(
+                { name: a.name, catalogId: info?.catalogId, artwork: info?.artwork, songs: artistOrder(ts), inLibrary: true },
+                { context: `artist:${a.name}`, here: true },
+              ),
             title: a.name,
             meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
           };
@@ -900,14 +804,15 @@ export const libraryCard: CardDef = {
           const i = Number(el.dataset.shelfIdx);
           if (el.dataset.shelfItem === "album") {
             const al = albumList[i];
-            return al ? trackMenu(albumOrder(tracks().filter((t) => albumKey(t) === al.key)), `album:${al.key}`, libNav) : [];
+            return al ? albumMenu(libAlbum(albumOrder(tracks().filter((t) => albumKey(t) === al.key))), { context: `album:${al.key}`, nav: libNav, inArtist: true }) : [];
           }
           if (el.dataset.shelfItem === "featured") {
-            const id = info?.featuredPlaylists?.[i]?.catalogId;
-            return id ? playlistShelfMenu(() => collectionTracks("playlists", id), `search-playlists:${id}`, true) : [];
+            const p = info?.featuredPlaylists?.[i];
+            const id = p?.catalogId;
+            return p && id ? playlistMenu(p, () => collectionTracks("playlists", id), { context: `search-playlists:${id}`, catalog: true }) : [];
           }
           const p = el.dataset.shelfItem === "yours" ? yours?.hits[i]?.p : undefined;
-          return p ? playlistShelfMenu(() => playlistTracks(p), `playlist:${p.libraryId}`, false) : [];
+          return p ? playlistMenu(p, () => playlistTracks(p), { context: `playlist:${p.libraryId}` }) : [];
         },
         density: true,
         // The Albums shelf replaces the old Albums grouping; the rows are the artist's songs.
@@ -1099,7 +1004,7 @@ export const libraryCard: CardDef = {
                 console.error("[library] play writer song", e),
               );
             },
-            menu: (s: WriterSong) => (s.track ? trackMenu([s.track], `writer:${name}`, libNav) : []),
+            menu: (s: WriterSong) => (s.track ? songMenu(s.track, { context: `writer:${name}`, nav: libNav }) : []),
           } as Grouping<WriterSong>,
         ],
         defaults: { density: "lines", sortKey: "yours" },
@@ -1127,7 +1032,7 @@ export const libraryCard: CardDef = {
         groupings: [
           songsGrouping(list, { context: `genre:${g.name}`, nav: libNav, plays: () => rootPlays }),
           albumsGrouping(list, albumDetail, libNav),
-          artistsGrouping(list, artistDetail),
+          artistsGrouping(list, artistDetail, libNav),
         ],
         defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
       };
@@ -1145,22 +1050,9 @@ export const libraryCard: CardDef = {
     const pinShelfMenu = (el: HTMLElement): MenuItem[] => {
       const it = pinShelfItem(el);
       if (!it) return [];
-      const list = it.tracks();
-      const known = Array.isArray(list) ? list : [];
-      if (it.whole) {
-        // Off the library: the loader rows over the whole album, the drill-ins — which go
-        // to the CATALOG pane, because this card's nav can only drill what the library
-        // holds — then the pin row.
-        const seed = known.find((t) => t.catalogId);
-        return [
-          ...playlistShelfMenu(it.whole, it.context, false),
-          goToAlbumItem(seed?.catalogId, it.title),
-          goToArtistItem("songs", seed?.catalogId, it.sub),
-          addAlbumFromSongsItem(known),
-          ...pinRows(it.key, "album", known),
-        ].filter(Boolean) as MenuItem[];
-      }
-      return trackMenu(known, it.context, libNav);
+      // Off the library (`whole`), the drill-ins go to the CATALOG pane, because this
+      // card's nav can only drill what the library holds.
+      return tileMenu(it, it.whole ? {} : { nav: libNav });
     };
     // One rule for every Pinned shelf (PINS.md §8.4): the pin's own verb decides, and this
     // card can open an album or an artist in place, so it says so.
@@ -1183,7 +1075,7 @@ export const libraryCard: CardDef = {
       groupings: [
         songsGrouping(source, { context: "library", nav: libNav, plays: () => rootPlays }),
         albumsGrouping(source, albumDetail, libNav),
-        artistsGrouping(source, artistDetail),
+        artistsGrouping(source, artistDetail, libNav),
         genresGrouping(source, genreDetail),
       ],
       defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },

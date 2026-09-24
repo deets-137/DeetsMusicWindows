@@ -117,6 +117,7 @@ nothing about authoring changed when the box did.
 | Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway | settings-card.ts |
 | Settings › Motion | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Settings › Skin settings | Card opacity | Ocean only. How solid the sunken cards are. Lower: the sea shows through | settings-card.ts |
+| Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon | settings-card.ts |
 | Settings › Skin settings | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | "Play on" panel | Scan for speakers · Not now · Continue | Scan for speakers · Keep the speaker list open and ask again later · Show the Windows permission prompt, then play on the speaker | airplay.ts (the last two show once, before the first connect) |
@@ -238,44 +239,36 @@ removing the attribute takes nothing from a screen reader.
 ## 2. Right-click — the coverage table
 
 One shared menu, cursor-anchored; the native menu is blocked everywhere except text fields
-(Cut / Copy / Paste / Select All, `browser-defaults.ts`). The song menu has one shape wherever
-a song appears (`trackMenu`, library-card.ts).
+(Cut / Copy / Paste / Select All, `browser-defaults.ts`). **Every media type has one menu, the
+same in every card** (2026-09-23): the rows, their order and each card's own rows are
+[CONTEXT-MENUS.md](../architecture/CONTEXT-MENUS.md) §2–§5 (`src/media-menu.ts`).
 
 | Surface | Item | Menu |
 |---|---|---|
-| Library | song | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several) · Go to Album · **Song Credits** · Copy Link · Start Station · Favorite |
-| Library | album tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · **Go to Album** (2026-09-20) · Copy Link |
-| Library | artist tile | the album menu shape on the artist's songs |
-| Any card | a **pinned** tile or row | the item's usual menu, plus **On Click ▸** (Play · Shuffle · Open) above Pin / Unpin — album, artist and playlist pins only (PINS.md §8, 2026-09-20) |
-| Playlists | playlist | Rename (field, hand-made only) · Keep Playlist (a temporary web playlist, 2026-09-17) · Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Move to Folder ▸ · **Refresh ▸** (Daily · Weekly ▸ Mon…Sun · Off — every Apple mirror, and a local playlist that has been exported; 2026-09-20) · Import to Edit (Apple) · Set/Change Cover… ▸ · Delete Playlist (local) |
-| Playlists | a picked set of playlists (Ctrl/Shift+click) | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Delete N playlists** (the local ones in the pick, 2026-09-17) |
-| Playlists | song in a playlist | the song menu + Add to Library · Remove from Playlist (hand-made) |
+| Any card | a **song** (a row, a tile, a pick on Home or Rewind, a writer's song) | the song menu (CONTEXT-MENUS.md §3.1): Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album · Song Credits · Start Station · **Start a Web** · Copy Link · Add to Library · Favorite · Mark as Song of the Day · Pin |
+| Any card | an **album** | §3.2: Play · Add to Playlist ▸ · Go to Artist · Go to Album · Start a Web · Copy Link · Add to Library · On Click ▸ · Pin |
+| Any card | an **artist** | §3.3: Play (your songs, or Apple's Top Songs) · Add to Playlist ▸ · Go to Artist · Start Station · Start a Web · Copy Link · On Click ▸ · Pin |
+| Any card | a **playlist** | §3.4: Play · Add to Playlist ▸ · Go to Playlist · Copy Link (Apple's, public) · On Click ▸ · Pin |
+| Any card | a **station** | §3.5: Play Now · Add to Queue · Copy Link · Pin |
+| Any card | a **genre** · a **picked set** (Ctrl/Shift+click) | §3.6: Play Now (or *Play N songs*) · Play Next · Add to Queue · Add to Playlist ▸ · the card's Remove / Delete N |
+| Any card | a **pinned** tile or row | the item's own menu; **On Click ▸** (Play · Shuffle · Open) sits above Pin for album, artist and playlist pins (PINS.md §8) |
+| Playlists | playlist row | Rename (field, hand-made only) above the playlist menu; its own rows: Move to Folder ▸ · **Refresh ▸** · Import to Edit (Apple) · Keep Playlist · the cover rows; last: Delete Playlist (local) |
+| Playlists | song in a playlist | the song menu; last: Remove from Playlist (hand-made) |
 | Playlists | folder header | Rename (field) · Delete Folder |
 | Playlists | hero cover | Rename · Keep Playlist (temporary) · the cover items · Apple Music ▸ |
 | Playlist web panel | the days button of Temp \| N days (2026-09-17) | no menu: a right-click steps the days back (30 → 7 → 5 → 3 → 1 → 30); a press steps forward |
-| Queue | upcoming row | Play Now · Move to Top · Move to Bottom · Remove · Go to Artist · Go to Album · **Song Credits** · Copy Link · Start Station · Add to Library · Favorite |
-| Queue | now hero | Go to Artist · Go to Album · **Song Credits** · Copy Link · Start Station · Add to Library · Favorite · Stop Station |
+| Queue | upcoming row | the song menu; group 1 is Play Now (jumps to the row); own rows: Move to Top · Move to Bottom; last: Remove |
+| Queue | picked rows | Add to Playlist ▸ · Remove *N songs* |
+| Queue · Now Playing | now hero · cover, title, artist | the song menu without the Play group, plus Stop Station while a station plays |
 | Queue | station row | Stop Station / Don't resume |
-| Now Playing | cover · title · artist | the Queue now-hero menu |
-| History · Rewind | row | Play Now · Play Next · Add to Queue (+ Go to Artist / Album / **Song Credits**, where a catalog id exists) |
 | Search | a search term pill (2026-09-20) | a **Recent** term: Pin · Remove from Recent · a **Pinned** term: Unpin |
-| Search | song · album · playlist · artist | the song menu (with **Song Credits**) · the album menu (+ Add to Library) · the playlist menu · Go to Artist · Start Station |
-| Search · Radio | **station** (2026-09-15) | Play Now · Add to Queue (plays when the queue runs dry) · Copy Link. A station also drags: to the Queue card (after the queue) or Now Playing (now) |
-| Artist view | shelf playlist | Play Now · Play Next · Add to Queue · Add to Playlist ▸ |
-| Home | song tile | the song menu, then **Add to Library** (2026-09-20) · Hide |
-| Home | album · artist tile (2026-09-20) | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Go to Album** · Go to Artist · Copy Link · **Add to Library** · Pin / Unpin · Hide. An album the library holds keeps the song menu's shape; one it does not holds its rows over a loader (the whole album is fetched when a row runs) |
-| Home | **New** shelf tile (2026-09-20) | the album tile menu, built on the album's OWN catalog id: Go to Album and Add to Library both work with no id hop, and there is no Pin row — a release that is not out yet knows no songs to pin |
-| Any card | an **album-shaped** list (an album tile, an album's songs picked together) | the song menu, plus **Add to Library** for the whole album (2026-09-20) — absent when the library already holds every song of it, which is why no Library album tile shows it |
-| Home | playlist tile | Play Now · Play Next · Add to Queue · Add to Playlist ▸ · **Open in Playlists** (yours) or **Go to Playlist** (one of Apple's, as a Search pane; 2026-09-20) · Pin / Unpin · Hide |
-| Home | station tile | Play Now · Add to Queue · Copy Link · Pin / Unpin · Hide |
-| **Pins** (2026-09-18, PINS.md) | a song anywhere the song menu appears · a Library album or artist tile · the Library artist view's cover · a Search artist row · the Search artist pane's hero · a playlist row · a station row · the Now Playing cover · a Home tile | **Pin** / **Unpin**, the last row of each menu. A pinned Home tile has no Hide row. The badge on a pinned tile is a button: a press unpins. |
-| **Pinned shelf** (Library · Playlists · Radio root) | a pinned tile | the item's own row menu (the song / album / artist menu, the playlist menu, the station menu). A click does what the row does: an album or artist drills, a playlist opens, a song or a station plays. |
-| **Song of the Day** (2026-09-18, DeetsOTD.md) | a song anywhere the song menu appears | **Mark as Song of the Day**, the last row — or **Replace Today's Pick** at the limit, or **Unmark Song of the Day** when it is already today's. Left out with the feature off, and left out for a song Apple has no catalog id for. |
-| **Songs of the Day shelf** (Home) | a pick tile | the song menu, then **Add a note** (a field) · **Post Now** (while an outlet is on and it has not gone) · **Withdraw the post** (only while it is really posted) · **Unmark Song of the Day** (*Remove from Songs of the Day* for an imported pick) |
+| Search · Radio · Home | station | the station menu. A station also drags: to the Queue card (after the queue) or Now Playing (now) |
+| Home | any tile | its kind's menu; last: **Hide** (none on a pinned tile). A **New** shelf album has no Pin row: a release that is not out yet knows no songs |
+| **Song of the Day** (2026-09-18, DeetsOTD.md) | a song | **Mark as Song of the Day** in the Keep group — or **Replace Today's Pick** at the limit, or **Unmark Song of the Day** when it is already today's. Left out with the feature off, and for a song with no catalog id |
+| **Songs of the Day shelf** (Home) · **Rewind › Picks** | a pick | the song menu, then the pick's own rows: **Add a note** (a field) · **Post Now** · **Withdraw the post** · **Unmark Song of the Day**. A posted pick in Rewind also carries the **withdraw square** at the row's end, on hover |
 | **Songs of the Day shelf** (Home) | the suggestion tile (dashed rim) | **Mark as Song of the Day** first, then the song menu |
-| **Rewind › Picks** | a pick row | the song menu, then the pick's own rows (as the shelf tile). A posted pick also carries the **withdraw square** at the row's end, on hover — the same verb without the menu |
-| Settings | My reports row | Open · Copy link · Close · Clear |
-| **Tray panel** | song (2026-09-15) | Add to Library · Favorite / Unfavorite · Copy Link |
+| Settings | My reports row | Open · Copy Link · Close · Clear |
+| **Tray panel** | song | Start Station · Copy Link · Add to Library · Favorite / Unfavorite · Pin / Unpin (2026-09-23; the main window runs each one) |
 | **Queue header (Max)** | the title, or the Grow button (2026-09-17, STAGE-COLUMN.md) | Grow ▸ (*Up, over Now Playing* — the only direction the stage column has) · while grown: Pin / Unpin · Collapse. No Fill row. |
 | **Card header** | the title, or the Grow button (2026-09-16, CARD-GROW.md) | Grow ▸ (*Right, over Search* · *Down, over Playlists* — the directions that exist in this slot) · Fill (Max) · while grown: Pin / Unpin (with Collapse on outside click on) · Collapse |
 

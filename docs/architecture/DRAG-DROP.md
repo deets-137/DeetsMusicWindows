@@ -62,7 +62,7 @@ lazy `tracks()` that runs only at the drop (so a Search album costs no fetch unt
 | Playlists | a playlist row (overview) · a song row (detail) | `playlistTracks(p)` · the song |
 | Queue | an Up Next row · the Now Playing hero | the entry's handle |
 | History | a row · the hero | the entry's handle |
-| Rewind | songs · albums · playlists | as its right-click menu (`trackMenu` lists, lazy playlist fetch) |
+| Rewind | songs · albums · playlists | as its right-click menu (media-menu.ts builders, lazy playlist fetch) |
 | Now Playing | the cover | the current song |
 | **A picked set** (2026-09-15) | anything picked with Ctrl / Shift — song rows anywhere, Library album and artist tiles, playlist rows, Search results and panes, Rewind | every picked item's songs, as ONE payload (`count` = how many) |
 

@@ -19,14 +19,9 @@
 
 import { wireListKeys } from "./list-keys";
 import { homeShelves, hideItem, fillArtistPhotos, refreshApple, type HomeItem, type HomeShelf } from "./home";
-import { playTracks, playStation, queueStationAfter, onPlayerState } from "./player";
-import { playlistShelfMenu } from "./artist-view";
-import { trackMenu } from "./library-card";
-import { addSongToLibraryItem, addAlbumToLibraryItem, addAlbumFromSongsItem } from "./library-add";
-import { requestOpenPlaylist, onPlaylistsChange } from "./playlists";
-import { requestDrillCard } from "./layout-bus";
-import { copyStationLinkItem, copyAlbumLinkFromSongItem, copyAlbumLinkItem } from "./copy-link";
-import { goToAlbumItem, goToAlbumPaneItem, goToArtistItem, requestPlaylistPane } from "./go-to";
+import { playTracks, playStation, onPlayerState } from "./player";
+import { stationMenu, tileMenu } from "./media-menu";
+import { onPlaylistsChange } from "./playlists";
 import { onTracksChange } from "./track-store";
 import { toast } from "./toast";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -34,10 +29,10 @@ import { rowDrag, type DragPayload } from "./row-drag";
 import { mosaicHTML } from "./mosaic";
 import { esc } from "./collection-card";
 import { enterRows } from "./pop";
-import type { Artwork, Track } from "./library";
+import type { Artwork } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
-import { isPinned, pinItem, pinRows, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange, PIN_GRIP, pinDragRow, isPinGrip } from "./pins";
+import { isPinned, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange, PIN_GRIP, pinDragRow, isPinGrip } from "./pins";
 import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs } from "./row-order";
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 import * as diag from "./diag";
@@ -209,108 +204,24 @@ export const homeCard: CardDef = {
       },
     });
 
+    // Every tile's menu is its kind's menu (CONTEXT-MENUS.md), then Hide, the last row.
     const menuFor = (it: HomeItem): MenuItem[] => {
+      const away = [hideRow(it)];
+      // A station redraws the shelves after it starts (the Recently Played shelf moves).
       if (it.kind === "station" && it.station) {
         const s = it.station;
-        return [
-          { label: "Play Now", run: () => void playStation(s).then(build).catch(err("play station")) },
-          { label: "Add to Queue", run: () => void queueStationAfter(s).catch(err("queue station")) },
-          copyStationLinkItem(s.url),
-          pinItem(it.key, "station", s),
-          hideRow(it),
-        ].filter(Boolean) as MenuItem[];
-      }
-      if (it.kind === "playlist" && it.playlist) {
-        const p = it.playlist;
-        // Yours opens in the Playlists card, where you can edit it. One of Apple's, which
-        // this card has no row for, opens as a Search pane — the same pane a Featured
-        // Playlists tile opens (ARTIST-VIEW.md §5). Before 2026-09-20 it had neither.
-        const open: MenuItem | null = p.libraryId
-          ? {
-              label: "Open in Playlists",
-              run: () => {
-                requestDrillCard("playlists");
-                requestOpenPlaylist(p.libraryId as string);
-              },
-            }
-          : p.catalogId
-            ? {
-                label: "Go to Playlist",
-                run: () =>
-                  requestPlaylistPane({ id: p.catalogId as string, name: p.name, artwork: p.artwork, curatorName: p.curatorName }),
-              }
-            : null;
-        const load = () => Promise.resolve(it.tracks());
-        return [...playlistShelfMenu(load, it.context, false), open, ...pinRows(it.key, "playlist"), hideRow(it)].filter(Boolean) as MenuItem[];
-      }
-      // An album or an artist the library does not hold: its rows load the whole list (the
-      // shelf menu's loader shape), the drill-ins, an album's link, and the pin (an album's
-      // known songs are its snapshot; an artist's snapshot is already in the pin).
-      //
-      // Two kinds of tile land here, and they differ only in what they can hop FROM. A tile
-      // built from songs (Recently Played, Added, the bucket) hops from any song that has a
-      // catalog id. A tile built from a catalog album — the "New" shelf — holds the album's
-      // OWN id, so it opens the pane with no hop and asks Apple for the artist directly.
-      if (it.whole) {
-        const known = it.tracks();
-        const seed = Array.isArray(known) ? known.find((t) => t.catalogId) : undefined;
-        const album = it.kind === "album";
-        const artist = it.artistName ?? it.sub;
-        return [
-          ...playlistShelfMenu(it.whole, it.context, false),
-          album
-            ? it.catalogId
-              ? goToAlbumPaneItem({ id: it.catalogId, name: it.title, artwork: it.art, artistName: it.artistName })
-              : goToAlbumItem(seed?.catalogId, it.title)
-            : null,
-          album && it.catalogId
-            ? goToArtistItem("albums", it.catalogId, artist)
-            : goToArtistItem("songs", seed?.catalogId, album ? artist : it.title),
-          album ? (it.catalogId ? copyAlbumLinkItem(it.catalogId) : copyAlbumLinkFromSongItem(seed?.catalogId)) : null,
-          // "Add to Library" (2026-09-20): by the album's own id where the tile has one —
-          // a "New" tile, which needs no hop and whose songs are not here to test, so the
-          // row stands on the toggle alone — else from the songs the tile knows.
-          album
-            ? it.catalogId
-              ? addAlbumToLibraryItem(it.catalogId, it.whole)
-              : addAlbumFromSongsItem(Array.isArray(known) ? known : [])
-            : null,
-          // A pin keeps its own snapshot of the songs (PINS.md): a tile that knows none yet
-          // — a release that is not out — has nothing to pin, so it offers no Pin row. It
-          // never did; whether an unreleased album can be pinned is its own question.
-          ...(it.catalogId ? [] : pinRows(it.key, it.kind, album && Array.isArray(known) ? known : undefined)),
-          hideRow(it),
-        ].filter(Boolean) as MenuItem[];
+        return stationMenu(s, { context: it.context, away, play: () => void playStation(s).then(build).catch(err("play station")) });
       }
       // A Song of the Day tile: the pick's own rows (a note, Post Now, Unmark) after the
       // song's, and the suggestion, whose first row is the Mark it exists for (§8.6).
       if (it.key === SUGGEST_KEY) {
         const list = it.tracks();
         const one = Array.isArray(list) ? list[0] : undefined;
-        return one ? [suggestMarkItem(one), ...trackMenu([one], it.context)] : [];
+        return one ? tileMenu(it, { lead: [suggestMarkItem(one)] }) : [];
       }
       const pick = it.key.startsWith("pick:") ? pickByKey(it.key) : undefined;
-      if (pick) {
-        const list = it.tracks();
-        return [...trackMenu(Array.isArray(list) ? list : ([] as Track[]), it.context), ...pickMenu(pick)];
-      }
-      // Songs, albums and artists are all track lists: the shared Library menu, which
-      // brings Play Now / Next / Queue, Add to playlist, Go to…, the link, ♥ and — for an
-      // album this card shows but the library does not hold — Add to Library.
-      // (`trackMenu` carries Pin / Unpin itself, from the context tag or the one song.)
-      //
-      // A SONG's own Add to Library is not in that shared menu: every card wires it in
-      // itself (Queue, History, Now Playing, Playlists), and this card never did — so a
-      // song tile on Home could not be added anywhere (the owner, 2026-09-20). It sits
-      // where the other cards put it: after the link and the station, before ♥ and Hide.
-      const list = it.tracks();
-      const rows = Array.isArray(list) ? list : ([] as Track[]);
-      const one = rows.length === 1 ? rows[0] : undefined;
-      return [
-        ...trackMenu(rows, it.context),
-        one ? addSongToLibraryItem(one) : null,
-        hideRow(it),
-      ].filter(Boolean) as MenuItem[];
+      if (pick) return tileMenu(it, { own: pickMenu(pick) });
+      return tileMenu(it, { away });
     };
 
     const payloadFor = (it: HomeItem): DragPayload => ({

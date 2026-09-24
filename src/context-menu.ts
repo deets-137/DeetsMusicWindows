@@ -69,6 +69,20 @@ export type MenuItem = ActionItem | InputItem | SubmenuItem;
 let openEl: HTMLElement | null = null;
 let cleanup: (() => void) | null = null;
 
+// The element the last right-click landed on (a keyboard menu key dispatches one on the
+// row too). A row that acts later — "Start a Web" flies the row to the Playlists card —
+// reads it, so no card has to pass its row element into a shared menu builder.
+let sourceEl: HTMLElement | null = null;
+window.addEventListener("contextmenu", (e) => { sourceEl = e.target instanceof HTMLElement ? e.target : null; }, true);
+
+/** The row, tile or hero the open menu was opened on (null when it is gone). */
+export function menuSource(): HTMLElement | null {
+  const el = sourceEl?.closest<HTMLElement>(
+    "[data-idx], [data-row], [data-song], [data-album], [data-artist], [data-playlist], [data-station], [data-shelf-item], .qrow, .qnow, .lib-hero, .np__art",
+  ) ?? sourceEl;
+  return el?.isConnected ? el : null;
+}
+
 /** Close the open menu (if any) and run its teardown (listeners + caller's onClose). */
 export function closeContextMenu(): void {
   cleanup?.();

@@ -140,7 +140,7 @@ export function addSongToLibraryItem(t: Track): MenuItem | null {
  */
 /**
  * "Add to Library" for the album a LIST is — the album-shaped menus every card builds
- * through `trackMenu` (Home's shelves, the Pinned shelves, Playlists, Queue, History).
+ * through the menu builders in media-menu.ts (Home's shelves, the Pinned shelves, Playlists, Queue, History).
  * Until 2026-09-20 an album could be added from the Search card alone, because Apple adds
  * an album by its OWN id and a list of songs carries none.
  *

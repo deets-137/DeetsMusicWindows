@@ -19,12 +19,7 @@ import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
-import { addSongToLibraryItem } from "./library-add";
-import { favoriteItem } from "./favorites";
-import { startStationItem } from "./start-station";
-import { goToArtistItem, goToAlbumItem, songCreditsItem } from "./go-to";
-import { copySongLinkItem } from "./copy-link";
-import { addToPlaylistItem } from "./playlists";
+import { songMenu, setMenu } from "./media-menu";
 import { rowPick, picksText } from "./row-pick";
 import type { Track } from "./library";
 import type { CardDef, CardInstance } from "./cards";
@@ -175,52 +170,39 @@ function mountQueue(host: HTMLElement): CardInstance {
       if (pick.size() && pick.isPicked(entry)) {
         const set = pick.picked();
         const ts = set.map(resolve).filter(Boolean) as Track[];
-        const setItems: MenuItem[] = [];
-        if (ts.length) setItems.push(addToPlaylistItem(() => ts));
-        setItems.push({
-          label: `Remove ${picksText(set.length)}`,
-          run: () => {
-            const live = queue.getUpcoming();
-            const idxs = set.map((x) => live.indexOf(x)).filter((i) => i >= 0).sort((a, b) => b - a);
-            void idxs
-              .reduce((chain, i) => chain.then(() => removeFromQueue(i)), Promise.resolve())
-              .then(() => pick.clear())
-              .catch((err) => console.error("[qcard] remove picked", err));
-          },
+        // Already in the queue: no Play group, only file them or take them out.
+        const setItems = setMenu(() => ts, set.length, "song", {
+          play: [],
+          away: [{
+            label: `Remove ${picksText(set.length)}`,
+            run: () => {
+              const live = queue.getUpcoming();
+              const idxs = set.map((x) => live.indexOf(x)).filter((i) => i >= 0).sort((a, b) => b - a);
+              void idxs
+                .reduce((chain, i) => chain.then(() => removeFromQueue(i)), Promise.resolve())
+                .then(() => pick.clear())
+                .catch((err) => console.error("[qcard] remove picked", err));
+            },
+          }],
         });
         e.preventDefault();
         row.classList.add("is-context");
         openContextMenu(e.clientX, e.clientY, setItems, () => row.classList.remove("is-context"));
         return;
       }
-      const items: MenuItem[] = [
-        { label: "Play Now", run: act(jumpToUpcoming, "play now") },
-        { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
-        { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
-        { label: "Remove", run: act(removeFromQueue, "remove") },
-      ];
-      // Add to Playlist sits where `trackMenu` puts it — after the play/queue verbs,
-      // before the Go to… drill-ins. It needs the RESOLVED track (the builder takes
-      // Track[], not a queue handle), so a row still resolving simply doesn't offer it.
-      // A station song resolves as a transient, so it files like any other song.
-      if (t) items.push(addToPlaylistItem(() => [t]));
-      // Go to Artist/Album + Start Station key off the entry's catalog id directly —
-      // the resolved track (t) only supplies fallback pane titles, so they work even
-      // before the store has resolved the row.
-      const goA = goToArtistItem("songs", entry.catalogId, t?.artistName);
-      if (goA) items.push(goA);
-      const goAl = goToAlbumItem(entry.catalogId, t?.albumName);
-      if (goAl) items.push(goAl);
-      const credits = songCreditsItem(t);
-      if (credits) items.push(credits);
-      const link = copySongLinkItem(entry.catalogId);
-      if (link) items.push(link);
-      const start = startStationItem("songs", entry.catalogId);
-      if (start) items.push(start);
-      const add = t ? addSongToLibraryItem(t) : null;
-      if (add) items.push(add);
-      const fav = favoriteItem(t);
-      if (fav) items.push(fav);
+      // The song menu (CONTEXT-MENUS.md §5). Play Now jumps to the row; the Go to and
+      // station rows key off the entry's catalog id, so they work before the store has
+      // resolved the row (the rows that need the track leave themselves out till then).
+      const items = songMenu(t, {
+        context: "queue",
+        catalogId: entry.catalogId,
+        play: [{ label: "Play Now", run: act(jumpToUpcoming, "play now") }],
+        own: [
+          { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
+          { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
+        ],
+        away: [{ label: "Remove", run: act(removeFromQueue, "remove") }],
+      });
       openContextMenu(e.clientX, e.clientY, items, () => row.classList.remove("is-context"));
       return;
     }
@@ -229,19 +211,20 @@ function mountQueue(host: HTMLElement): CardInstance {
     if (!hero) return;
     const cur = queue.getCurrent();
     const t = cur ? resolve(cur) : undefined;
-    const items = [
-      t ? addToPlaylistItem(() => [t]) : null,
-      goToArtistItem("songs", cur?.catalogId, t?.artistName),
-      goToAlbumItem(cur?.catalogId, t?.albumName),
-      songCreditsItem(t),
-      copySongLinkItem(cur?.catalogId),
-      startStationItem("songs", cur?.catalogId), // "more like what's playing"
-      t ? addSongToLibraryItem(t) : null,
-      favoriteItem(t),
-      lastState?.station
-        ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[qcard] stop station", err)) }
-        : null,
-    ].filter(Boolean) as MenuItem[];
+    // The song that is playing: the song menu without the Play group (the Now Playing
+    // card's menu too), plus Stop Station while a station plays.
+    const items = cur
+      ? songMenu(t, {
+          context: "queue",
+          catalogId: cur.catalogId,
+          play: null,
+          own: [
+            lastState?.station
+              ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[qcard] stop station", err)) }
+              : null,
+          ],
+        })
+      : [];
     if (!items.length) return; // nothing to offer for the current song
     e.preventDefault();
     hero.classList.add("is-context");

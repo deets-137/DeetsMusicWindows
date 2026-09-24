@@ -23,6 +23,7 @@ import { applyTheme, defaultTheme, type ThemeName } from "./theme";
 import { withAppearanceTransition } from "./appearance";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
+import { setAlbumLight } from "./ocean";
 
 /** Fancy Glass's hover hint. The cost is the 2026-09-16 bench (DEBUGGING.md §Fancy Glass). */
 const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
@@ -149,6 +150,7 @@ const NEW_MARKS: { section: string; row?: string }[] = [
   { section: "Friends" }, // Friends, built 2026-09-20
   { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
   { section: "Skin settings", row: "oceancards" }, // Ocean card opacity, built 2026-09-23
+  { section: "Skin settings", row: "oceanlight" }, // Ocean album light, built 2026-09-23
 ];
 const markKey = (m: { section: string; row?: string }) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -267,8 +269,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "The three Animate rows and Fancy scrubber", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, edges and sand, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanCardOpacity", "oceanEdges", "oceanSand", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, Fancy Glass and its four sliders, and the Press record player",
+    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -1054,6 +1056,15 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           kind: "range", id: "oceancards", label: "Card opacity", key: "oceanCardOpacity", min: 0, max: 100, unit: "%",
           hint: "Ocean only. How solid the sunken cards are. Lower: the sea shows through",
           preview: (v) => previewSkin("oceanCardOpacity", v),
+          when: () => currentSkin() === "ocean",
+        },
+        {
+          kind: "range", id: "oceanlight", label: "Album light", key: "oceanLight", min: 0, max: 100, unit: "%",
+          hint: "Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon",
+          preview: (v) => {
+            previewSkin("oceanLight", v);
+            setAlbumLight(v); // the first move above 0 paints the neon, so the drag shows it
+          },
           when: () => currentSkin() === "ocean",
         },
         {
@@ -2365,7 +2376,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
             })
             .catch((err) => console.error("[report] open", err)),
       },
-      { label: "Copy link", run: () => void copyLink(r.url) },
+      { label: "Copy Link", run: () => void copyLink(r.url) },
       ...(done ? [] : [{ label: "Close", run: () => { closeArmed = code; void closeReport(code); } }]),
       {
         label: "Clear",

@@ -5,14 +5,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Artwork, Track } from "./library";
 import type { Playlist } from "./search";
-import { materializeTrack } from "./search";
 import { creditIndex } from "./artist-credit";
-import { tracks as libraryTracks, addTransientTracks } from "./track-store";
-import { playlistsCached, playlistSongIndex, playlistTracks, addToPlaylistItem, songs } from "./playlists";
-import { playTracks, queueTracksNext, queueTracksLater } from "./player";
+import { tracks as libraryTracks } from "./track-store";
+import { playlistsCached, playlistSongIndex, playlistTracks, songs } from "./playlists";
 import { esc } from "./collection-card";
 import { mosaicHTML } from "./mosaic";
-import type { MenuItem } from "./context-menu";
 
 // ── the Library artist's catalog facts (§4) ─────────────────────────────────────
 export interface LibraryArtistInfo {
@@ -176,24 +173,3 @@ export function artistShelvesHTML(
   return body ? `<div class="lib-shelves">${body}</div>` : "";
 }
 
-/** A shelf playlist's right-click: play or queue its songs, or add them to a playlist.
- *  `catalog` songs join the store first, as a Search play does. */
-export function playlistShelfMenu(load: () => Promise<Track[]>, context: string, catalog: boolean): MenuItem[] {
-  const run = (how: "now" | "next" | "later") => () =>
-    void load()
-      .then((ts) => {
-        if (!ts.length) return;
-        if (catalog) {
-          addTransientTracks(ts);
-          ts.forEach(materializeTrack);
-        }
-        return how === "now" ? playTracks(ts, 0, context) : how === "next" ? queueTracksNext(ts, context) : queueTracksLater(ts, context);
-      })
-      .catch((e) => console.error("[artist] shelf menu", e));
-  return [
-    { label: "Play Now", run: run("now") },
-    { label: "Play Next", run: run("next") },
-    { label: "Add to Queue", run: run("later") },
-    addToPlaylistItem(load),
-  ].filter(Boolean) as MenuItem[];
-}

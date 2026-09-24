@@ -105,6 +105,9 @@ pub struct NpState {
     /// ♥ state for the tray panel's right-click: None = not offered (no consent / no
     /// catalog id), Some(true) = loved (2026-09-15).
     pub loved: Option<bool>,
+    /// Pin state for the tray panel's right-click: None = no song to pin, Some(true) =
+    /// pinned (CONTEXT-MENUS.md §3.1, 2026-09-23).
+    pub pinned: Option<bool>,
     pub live: bool,
     pub progress: f64,
     pub current_time: f64,

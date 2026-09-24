@@ -321,7 +321,7 @@ export const postNow = (id: number): Promise<void> => invoke<void>("pick_post", 
 
 // ── the menu rows ─────────────────────────────────────────────────────────────
 
-/** The one row `trackMenu` adds (§8.5). Null when the feature is off, or when the song has
+/** The one row the song menu adds (media-menu.ts) (§8.5). Null when the feature is off, or when the song has
  *  no catalog id — there would be nothing to post and nothing Apple could resolve. */
 export function markItem(items: Track[], context?: string): MenuItem | null {
   if (!conf.sotd || items.length !== 1) return null;

@@ -12,14 +12,15 @@ import "./styles/qcard.css";
 import "./styles/rewind.css";
 import * as queue from "./queue";
 import type { Track } from "./library";
-import { playTracks, queueTracksNext, queueTracksLater } from "./player";
 import { onTracksChange, tracks as libraryTracks } from "./track-store";
 import { esc } from "./collection-card";
-import { trackMenu, albumOrder } from "./library-card";
+import { albumOrder, artistOrder, libAlbum } from "./library-card";
+import { songMenu, albumMenu, artistMenu, playlistMenu, setMenu } from "./media-menu";
+import { creditIndex } from "./artist-credit";
 import { rowPick, picksText } from "./row-pick";
 import { artURL } from "./queue-rows";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
-import { onPlaylistsChange, playlistsCached, playlistTracks, addToPlaylistItem } from "./playlists";
+import { onPlaylistsChange, playlistsCached, playlistTracks } from "./playlists";
 import {
   topBy, fmtListen, fmtPlays, albumKey, pid, STAT_LABELS, WINDOW_LABELS,
   type RewindRow, type RewindStat, type RewindWindow,
@@ -242,7 +243,7 @@ function mountRewind(host: HTMLElement): CardInstance {
   });
 
   // ── right-click menus (Play Now / Play Next / Add to Queue / Add to Playlist) ──
-  // Songs + albums ride the library card's shared trackMenu over a concrete Track[];
+  // Songs + albums ride the shared menu builders (media-menu.ts) over a concrete Track[];
   // a playlist row's list is fetched LAZILY (only a picked action pays the mirror
   // fetch). Artists stay read-only — "play an artist" has no obvious order.
 
@@ -264,19 +265,13 @@ function mountRewind(host: HTMLElement): CardInstance {
       return playlistTracks(p);
     });
 
-  const playlistMenuFor = (row: RewindRow): MenuItem[] => {
-    const ctx = `playlist:${row.key}`; // plays keep attributing to this playlist
-    const getTracks = () => playlistTracksOf(row);
-    const err = (what: string) => (x: unknown) => console.error(`[rewind] ${what}`, x);
-    const run = (what: string, go: (ts: Track[]) => Promise<void>) => () =>
-      void getTracks().then((ts) => (ts.length ? go(ts) : undefined)).catch(err(what));
-    return [
-      { label: "Play Now", run: run("play now", (ts) => playTracks(ts, 0, ctx)) },
-      { label: "Play Next", run: run("play next", (ts) => queueTracksNext(ts, ctx)) },
-      { label: "Add to Queue", run: run("add to queue", (ts) => queueTracksLater(ts, ctx)) },
-      addToPlaylistItem(getTracks, row.key), // a playlist can't bulk-add to itself
-    ];
-  };
+  // A playlist row's menu needs the playlist itself (its link, its pin): the cached list
+  // resolves it, then the menu opens. Plays keep attributing to this playlist.
+  const playlistMenuFor = (row: RewindRow): Promise<MenuItem[]> =>
+    playlistsCached().then((all) => {
+      const p = all.find((x) => pid(x) === row.key);
+      return p ? playlistMenu(p, () => playlistTracks(p), { context: `playlist:${row.key}` }) : [];
+    });
 
   /** What one row is, for the count: the stat's own name without its "s". */
   const nounOf = () =>
@@ -293,17 +288,16 @@ function mountRewind(host: HTMLElement): CardInstance {
     ).then((a) => a.flat());
 
   /** The menu for a picked set (§19): play, queue or file every row's songs at once. */
-  const menuForPicks = (rows: RewindRow[]): MenuItem[] => {
-    const ctx = `rewind:picked`;
-    const err = (what: string) => (x: unknown) => console.error(`[rewind] ${what}`, x);
-    const run = (what: string, go: (ts: Track[]) => Promise<void>) => () =>
-      void picksTracks(rows).then((ts) => (ts.length ? go(ts) : undefined)).catch(err(what));
-    return [
-      { label: `Play ${picksText(rows.length, nounOf())}`, run: run("play picked", (ts) => playTracks(ts, 0, ctx)) },
-      { label: "Play Next", run: run("play next", (ts) => queueTracksNext(ts, ctx)) },
-      { label: "Add to Queue", run: run("add to queue", (ts) => queueTracksLater(ts, ctx)) },
-      addToPlaylistItem(() => picksTracks(rows)),
-    ];
+  const menuForPicks = (rows: RewindRow[]): MenuItem[] =>
+    setMenu(() => picksTracks(rows), rows.length, nounOf(), { context: "rewind:picked" });
+
+  /** An artist row: the artist menu over their songs in your library (CONTEXT-MENUS.md §3.3). */
+  const artistMenuFor = (row: RewindRow): MenuItem[] => {
+    const songs = artistOrder(creditIndex(libraryTracks()).tracksFor(row.title));
+    return artistMenu(
+      { name: row.title, songs: songs.length ? songs : row.tracks, inLibrary: songs.length > 0, artwork: songs[0]?.artwork },
+      { context: `artist:${row.title}` },
+    );
   };
 
   // A Rewind row has never done anything on a plain click, and still doesn't. Ctrl and
@@ -353,19 +347,24 @@ function mountRewind(host: HTMLElement): CardInstance {
     if (!el) return;
     const row = view[Number(el.dataset.idx)];
     if (!row) return;
-    let items: MenuItem[] | null = null;
+    let items: MenuItem[] | Promise<MenuItem[]> | null = null;
     if (picks.size() && picks.isPicked(row)) items = menuForPicks(picks.picked());
     else if (pick.stat === "picks" && row.pickId) {
       const p = pickById(row.pickId);
-      items = p ? [...trackMenu(row.tracks, "picks"), ...pickMenu(p)] : trackMenu(row.tracks, "rewind");
+      if (row.tracks[0]) items = songMenu(row.tracks[0], { context: p ? "picks" : "rewind", own: p ? pickMenu(p) : [] });
     }
-    else if (pick.stat === "songs" && row.tracks.length) items = trackMenu(row.tracks, "rewind");
-    else if (pick.stat === "albums" && row.tracks.length) items = trackMenu(albumTracksOf(row), `album:${row.key}`);
+    else if (pick.stat === "songs" && row.tracks[0]) items = songMenu(row.tracks[0], { context: "rewind" });
+    else if (pick.stat === "albums" && row.tracks.length) items = albumMenu(libAlbum(albumTracksOf(row), `album:${row.key}`), { context: `album:${row.key}` });
+    else if (pick.stat === "artists" && row.title) items = artistMenuFor(row);
     else if (pick.stat === "playlists") items = playlistMenuFor(row);
-    if (!items) return; // artists, or an uncached "Unknown" row — nothing playable
+    if (!items) return; // an uncached "Unknown" row — nothing playable
     e.preventDefault();
     el.classList.add("is-context");
-    openContextMenu(e.clientX, e.clientY, items, () => el.classList.remove("is-context"));
+    const { clientX: x, clientY: y } = e;
+    void Promise.resolve(items).then((list) => {
+      if (list.length) openContextMenu(x, y, list, () => el.classList.remove("is-context"));
+      else el.classList.remove("is-context");
+    });
   });
 
   // Drag a row to another card (DRAG-DROP.md §2) — the same lists as its right-click menu.

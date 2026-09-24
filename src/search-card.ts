@@ -5,18 +5,16 @@
 // as the empty state; drill-in panes riding the same --nav-* motion tokens as the
 // engine (shared idiom, not shared code).
 
-import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter } from "./player";
+import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
 import { addTransientTracks } from "./track-store";
-import { addToPlaylistItem, requestOpenPlaylist, playlistTracks } from "./playlists";
+import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import * as frames from "./frames";
-import { addSongToLibraryItem, addAlbumToLibraryItem } from "./library-add";
 import { addSquareHTML, isAddSquare } from "./add-square";
-import { startStationItem } from "./start-station";
-import { favoriteItem, reconcile } from "./favorites";
+import { reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
-import { copySongLinkItem, copyAlbumLinkItem, copyStationLinkItem } from "./copy-link";
+import { songMenu, albumMenu, artistMenu, playlistMenu, stationMenu, setMenu } from "./media-menu";
 import { makeDropdown } from "./dropdown";
-import { onAlbumPaneRequest, onDrillRequest, onPlaylistPaneRequest, onSongPaneRequest, songCreditsItem, takeAlbumPaneRequest, takeDrillRequest, takePlaylistPaneRequest, takeSongPaneRequest, type AlbumPaneIntent, type DrillIntent, type PlaylistPaneIntent, type SongPaneIntent } from "./go-to";
+import { onAlbumPaneRequest, onArtistPaneRequest, onDrillRequest, onPlaylistPaneRequest, onSongPaneRequest, takeAlbumPaneRequest, takeArtistPaneRequest, takeDrillRequest, takePlaylistPaneRequest, takeSongPaneRequest, type AlbumPaneIntent, type ArtistPaneIntent, type DrillIntent, type PlaylistPaneIntent, type SongPaneIntent } from "./go-to";
 import {
   creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
   CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
@@ -29,21 +27,21 @@ import * as diag from "./diag";
 import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
-  ALL_TYPES, type SearchType, type SearchResults, type Artist,
+  ALL_TYPES, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
 } from "./search";
 import type { Track, Artwork } from "./library";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { rowDrag } from "./row-drag";
 import { rowPick, picksText } from "./row-pick";
 import {
-  yourPlaylistsFor, checkPlaylists, artistShelvesHTML, playlistShelfMenu, type YourPlaylists, type CheckProgress,
+  yourPlaylistsFor, checkPlaylists, artistShelvesHTML, type YourPlaylists, type CheckProgress,
 } from "./artist-view";
 import { handOff } from "./handoff";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
 const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
-import { ICON_PIN, pinArtistRows } from "./pins"; // one pin glyph for the app (PINS.md)
+import { ICON_PIN } from "./pins"; // one pin glyph for the app (PINS.md)
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
@@ -250,12 +248,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
 
   /** The menu for a picked set of songs (§19). */
   const picksMenu = (ts: Track[], context: string): MenuItem[] =>
-    [
-      { label: `Play ${picksText(ts.length)}`, run: () => enqueue(ts, "now", context) },
-      { label: "Play Next", run: () => enqueue(ts, "next", context) },
-      { label: "Add to Queue", run: () => enqueue(ts, "later", context) },
-      addToPlaylistItem(() => ts),
-    ] as MenuItem[];
+    setMenu(() => ts, ts.length, "song", { context, catalog: true });
 
   // A right-clicked row or tile wears `is-context` (the outline) while its menu is open, as
   // in the Library, Queue and History cards.
@@ -593,7 +586,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         menuAt(e, picksMenu(picks.picked(), context));
         return;
       }
-      if (t) trackMenu(e, t);
+      if (t) songMenuAt(e, t);
     });
   };
 
@@ -705,28 +698,29 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           // reach them — wire the same menus here (else the native menu shows).
           body.addEventListener("contextmenu", (e) => {
             const t = e.target as HTMLElement;
-            // The hero (PINS.md): pin the artist, or start their station.
+            // The hero: the artist's own menu, without Go to Artist (you are there).
             if (t.closest(".lib-hero")) {
               e.preventDefault();
-              menuAt(e, [...pinArtistRows(d.artist), startStationItem("artists", id)].filter(Boolean) as MenuItem[]);
+              menuAt(e, artistMenu({ name: d.artist.name, catalogId: id, artwork: d.artist.artwork }, { context: `search-artist:${id}`, here: true }));
               return;
             }
             const shelf = t.closest<HTMLElement>("[data-shelf-item]");
             if (shelf) {
               const i = Number(shelf.dataset.shelfIdx);
               if (shelf.dataset.shelfItem === "featured") {
-                const cid = d.featuredPlaylists[i]?.catalogId;
-                if (cid) { e.preventDefault(); collectionMenu(e, "playlists", cid, `search-playlists:${cid}`); }
+                const p = d.featuredPlaylists[i];
+                if (p?.catalogId) { e.preventDefault(); playlistMenuAt(e, p); }
               } else if (shelf.dataset.shelfItem === "yours") {
                 const p = yours?.hits[i]?.p;
-                if (p) { e.preventDefault(); menuAt(e, playlistShelfMenu(() => playlistTracks(p), `playlist:${p.libraryId}`, false)); }
+                if (p) { e.preventDefault(); menuAt(e, playlistMenu(p, () => playlistTracks(p), { context: `playlist:${p.libraryId}` })); }
               }
               return;
             }
             const tile = t.closest<HTMLElement>("[data-album]");
-            if (!tile?.dataset.album) return;
+            const al = tile?.dataset.album ? d.albums.find((a) => a.catalogId === tile.dataset.album) : undefined;
+            if (!al) return;
             e.preventDefault();
-            collectionMenu(e, "albums", tile.dataset.album, `search-albums:${tile.dataset.album}`);
+            albumMenuAt(e, al, true);
           });
         })
         .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
@@ -900,6 +894,12 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     openCollection("albums", i.id, { title: i.name, artwork: i.artwork, artistName: i.artistName, releaseDate: i.releaseDate });
   };
   const unsubAlbumPane = onAlbumPaneRequest(runAlbumPane);
+  // An artist opened by its OWN id (a Search artist tile's "Go to Artist", a pinned artist).
+  const runArtistPane = (i: ArtistPaneIntent) => {
+    tookRequest = true;
+    openArtist(i.id, i.name);
+  };
+  const unsubArtistPane = onArtistPaneRequest(runArtistPane);
   // "Song Credits" from any card's right-click menu (go-to.ts).
   const runSongPane = (i: SongPaneIntent) => {
     tookRequest = true;
@@ -917,48 +917,22 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       : queueTracksLater(tracks, context);
     p.catch((e) => console.error("[search] enqueue", e));
   };
-  const trackMenu = (e: MouseEvent, t: Track) => {
-    menuAt(e, [
-      { label: "Play Now", run: () => enqueue([t], "now", "search") },
-      { label: "Play Next", run: () => enqueue([t], "next", "search") },
-      { label: "Add to Queue", run: () => enqueue([t], "later", "search") },
-      // Catalog tracks land as denormalised snapshots — no library/queue
-      // materialization needed; the local store is self-contained by design.
-      addToPlaylistItem(() => [t]),
-      t.catalogId ? { label: "Go to Artist", run: () => goToArtist("songs", t.catalogId!, t.artistName) } : null,
-      t.catalogId && t.albumName
-        ? { label: "Go to Album", run: () => goToAlbum(t.catalogId!, t.albumName!) }
-        : null,
-      songCreditsItem(t),
-      copySongLinkItem(t.catalogId),
-      startStationItem("songs", t.catalogId),
-      addSongToLibraryItem(t), // null unless the Library Add toggle is on
-      favoriteItem(t), // same consent
-    ].filter(Boolean) as MenuItem[]);
+  // The menus are the shared ones (CONTEXT-MENUS.md). Catalog songs join the store before
+  // they play (`catalog`), as a Search play always did.
+  const songMenuAt = (e: MouseEvent, t: Track) => menuAt(e, songMenu(t, { context: "search", catalog: true }));
+  // `inArtist`: an album tile INSIDE an artist pane, where Go to Artist would go where you are.
+  const albumMenuAt = (e: MouseEvent, al: Album, inArtist = false) => {
+    const id = al.catalogId;
+    if (!id) return;
+    menuAt(e, albumMenu(
+      { title: al.title, artistName: al.artistName, artwork: al.artwork, catalogId: id, known: [], whole: () => collectionTracks("albums", id), catalog: true },
+      { context: `search-albums:${id}`, inArtist },
+    ));
   };
-  // `artistName` is supplied only where the album's artist isn't already on screen
-  // (root results) — omitting it suppresses the redundant "Go to Artist" on album
-  // tiles shown INSIDE an artist pane.
-  const collectionMenu = (
-    e: MouseEvent, kind: "albums" | "playlists", id: string, ctx: string, artistName?: string,
-  ) => {
-    const fetchThen = (how: "now" | "next" | "later") =>
-      collectionTracks(kind, id)
-        .then((tracks) => { if (tracks.length) enqueue(tracks, how, ctx); })
-        .catch((err) => console.error("[search] collection enqueue", err));
-    menuAt(e, [
-      { label: "Play Now", run: () => void fetchThen("now") },
-      { label: "Play Next", run: () => void fetchThen("next") },
-      { label: "Add to Queue", run: () => void fetchThen("later") },
-      addToPlaylistItem(() => collectionTracks(kind, id)), // fetch-then-add, lazy on pick
-      kind === "albums" && artistName
-        ? { label: "Go to Artist", run: () => goToArtist("albums", id, artistName) }
-        : null,
-      kind === "albums" ? copyAlbumLinkItem(id) : null,
-      // Albums add as a library resource (fork A: graduates the album's tracks so they
-      // appear right away). Playlists have no add-to-library path here.
-      kind === "albums" ? addAlbumToLibraryItem(id, () => collectionTracks(kind, id)) : null,
-    ].filter(Boolean) as MenuItem[]);
+  const playlistMenuAt = (e: MouseEvent, p: Playlist) => {
+    const id = p.catalogId;
+    if (!id) return;
+    menuAt(e, playlistMenu(p, () => collectionTracks("playlists", id), { context: `search-playlists:${id}`, catalog: true }));
   };
 
   // ── root interactions (delegated; survive re-renders) ──
@@ -1041,40 +1015,39 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         menuAt(e, picksMenu(picks.picked(), "search"));
         return;
       }
-      if (track) { e.preventDefault(); trackMenu(e, track); }
+      if (track) { e.preventDefault(); songMenuAt(e, track); }
       return;
     }
     const album = t.closest<HTMLElement>("[data-album]");
     if (album?.dataset.album) {
       e.preventDefault();
       const al = results?.albums.find((x) => x.catalogId === album.dataset.album);
-      collectionMenu(e, "albums", album.dataset.album, `search-albums:${album.dataset.album}`, al?.artistName);
+      if (al) albumMenuAt(e, al);
       return;
     }
     const pl = t.closest<HTMLElement>("[data-playlist]");
-    if (pl?.dataset.playlist) { e.preventDefault(); collectionMenu(e, "playlists", pl.dataset.playlist, `search-playlists:${pl.dataset.playlist}`); return; }
+    if (pl?.dataset.playlist) {
+      e.preventDefault();
+      const p = results?.playlists.find((x) => x.catalogId === pl.dataset.playlist);
+      if (p) playlistMenuAt(e, p);
+      return;
+    }
     const artist = t.closest<HTMLElement>("[data-artist]");
     if (artist?.dataset.artist) {
       e.preventDefault();
-      const a = results?.artists.find((x) => x.catalogId === artist.dataset.artist);
-      menuAt(e, [
-        { label: "Go to Artist", run: () => openArtist(artist.dataset.artist!, a?.name ?? "Artist") },
-        startStationItem("artists", artist.dataset.artist),
-        ...(a ? pinArtistRows(a) : []), // PINS.md: an artist off the library pins from here
-      ].filter(Boolean) as MenuItem[]);
+      const id = artist.dataset.artist;
+      const a = results?.artists.find((x) => x.catalogId === id);
+      // An artist off the library plays Apple's Top Songs, and pins with its snapshot.
+      menuAt(e, artistMenu({ name: a?.name ?? "Artist", catalogId: id, artwork: a?.artwork }, { context: `search-artist:${id}` }));
       return;
     }
-    // A station tile (2026-09-15): the Radio card's menu — play, follow the queue, copy the link.
+    // A station tile: the station menu, as on the Radio card.
     const st = t.closest<HTMLElement>("[data-station]");
     if (st?.dataset.station) {
       const s = results?.stations.find((x) => x.id === st.dataset.station);
       if (!s) return;
       e.preventDefault();
-      menuAt(e, [
-        { label: "Play Now", run: () => void playStation(s).catch((err) => console.error("[search] play station", err)) },
-        { label: "Add to Queue", run: () => void queueStationAfter(s).catch((err) => console.error("[search] queue station", err)) },
-        copyStationLinkItem(s.url),
-      ].filter(Boolean) as MenuItem[]);
+      menuAt(e, stationMenu(s, { context: `station:${s.id}` }));
     }
   });
 
@@ -1156,6 +1129,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   if (heldPane) runPane(heldPane);
   const heldAlbum = takeAlbumPaneRequest();
   if (heldAlbum) runAlbumPane(heldAlbum);
+  const heldArtist = takeArtistPaneRequest();
+  if (heldArtist) runArtistPane(heldArtist);
   const heldSong = takeSongPaneRequest();
   if (heldSong) runSongPane(heldSong);
 
@@ -1216,6 +1191,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       unsubDrill(); // stop receiving remote drill intents once unmounted
       unsubPlaylistPane();
       unsubAlbumPane();
+      unsubArtistPane();
       unsubSongPane();
       headerCbs.clear();
       host.innerHTML = "";

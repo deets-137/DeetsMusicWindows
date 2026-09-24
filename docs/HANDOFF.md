@@ -135,8 +135,15 @@ When an item closes, delete it here and write the day in WORKLOG.md.
   ideas/WorkerDeploy.md. First step is to measure what a rooms deploy really does.
 
 **Desk tests not run**
+- **One right-click menu per media type** (2026-09-23, `media-menu.ts`, not committed) —
+  CONTEXT-MENUS.md §8. Includes Start a Web from a menu and the tray's Pin (a Rust field:
+  restart the dev runner).
 - **The Ocean sea** (second round: the heavy swell) — OCEAN.md §5, on branch
   `oceanic-schmoves` (not committed). Then the bench (§6). The beta is meant to carry it.
+- **Ocean album light** (2026-09-23, the neon crests slider): he likes it ("Its perfect
+  actually"). Still open: the desk test in OCEAN.md §7, and **the perf check** in OCEAN.md §6
+  (at 0 and at 100, with music, on `dev:built`, with and without the GPU). The first read on
+  `dev:app` showed about the same weight as before.
 - **Web demo** — WEB-DEMO.md §10. The app half is merged into `main`; the page is live on
   deets.solutions/deetsmusic/demo (DeetsSolutions `master`). One open fork (§9.7).
 - **Quick settings** — QUICK-SETTINGS.md §10.1 (above).
@@ -483,7 +490,7 @@ src/layout-bus.ts           card-summon bus (requestCard/onCardRequest)
 src/now-playing-card.ts     Now Playing transport strip (+ radio LIVE caps)
 src/collection-card.ts      reusable navigable browser engine (contexts/groupings, Sort/View/
                             Search, push/pop pane-slide, list(view) state hook)
-src/library-card.ts         Library contexts/groupings + drill-in; shared musicCell + trackMenu
+src/library-card.ts         Library contexts/groupings + drill-in; shared musicCell + libAlbum
 src/artist-credit.ts        credit-string parser: vocabulary-gated split → consolidated Artists
 src/search.ts / search-card.ts    catalog search data + Search card (SEARCH.md)
 src/playlists.ts / playlists-card.ts   playlists data + card (PLAYLISTS.md); Add-to-Playlist ▸

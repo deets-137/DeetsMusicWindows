@@ -231,7 +231,7 @@ function menuFor(row: FriendRow, live: boolean): MenuItem[] {
 
   if (p?.catalogId) {
     items.push({
-      label: "Play this",
+      label: "Play Now",
       run: () => void playContext([{ catalogId: p.catalogId!, context: `friend:${row.code}` }], 0),
     });
     const album = goToAlbumItem(p.catalogId, p.album || undefined);

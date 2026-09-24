@@ -12,7 +12,7 @@ import * as frames from "./frames";
 import { setting } from "./settings-store";
 import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
-  playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, addToPlaylistItem, onPlaylistsChange,
+  playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
 } from "./playlists";
@@ -21,15 +21,14 @@ import {
 } from "./playlist-refresh";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
-import { playTracks, queueTracksNext, queueTracksLater } from "./player";
-import { addSongToLibraryItem } from "./library-add";
+import { playTracks } from "./player";
 import { initFavorites, reconcile } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
-import { playlistShelfMenu } from "./artist-view";
-import { pinRows, pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
+import { songMenu, playlistMenu, setMenu, tileMenu } from "./media-menu";
+import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
-import { musicCell, trackMenu, explicitBadge, heroCover } from "./library-card";
+import { musicCell, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
 import { onGrowChange } from "./card-grow";
 import { openContextMenuUnder, menuState, MENU_CHOSEN, type MenuItem } from "./context-menu";
@@ -377,13 +376,12 @@ export const playlistsCard: CardDef = {
         // twice, so each ROW is its own pick (object identity).
         pick: {
           menu: (ts) => {
-            const base = trackMenu(ts, ctxTag);
-            if (!handMade(p)) return base; // mirrors have no remove path
+            const where = { context: ctxTag, exclude: p.libraryId };
+            if (!handMade(p)) return setMenu(() => ts, ts.length, "song", where); // mirrors have no remove path
             // Remove a whole set: resolve every row's position FIRST, then delete from the
             // bottom up, one after the other. Each delete renumbers the rows below it, so a
             // descending walk is the only order where the positions still to go stay true.
-            return [
-              ...base,
+            return setMenu(() => ts, ts.length, "song", { ...where, away: [
               {
                 label: `Remove ${picksText(ts.length)} from Playlist`,
                 run: () => {
@@ -398,28 +396,27 @@ export const playlistsCard: CardDef = {
                     });
                 },
               },
-            ];
+            ] });
           },
           drag: (ts) => ({ source: "playlists", kind: "song", count: ts.length, tracks: () => ts, context: ctxTag, playlistId: p.libraryId }),
           play: (ts) => void playTracks(ts, 0, ctxTag).catch((e) => console.error("[playlists] play picked", e)),
         },
-        menu: (t) => {
-          // Add-to-Library rides after the shared actions (null unless the toggle is on
-          // and the track is catalog-only); Remove stays destructive-last on locals.
-          const base = [...trackMenu([t], ctxTag), addSongToLibraryItem(t)].filter(Boolean) as MenuItem[];
-          if (!handMade(p)) return base; // mirrors have no remove path; a Replay isn't edited by hand
-          return [
-            ...base,
-            {
-              label: "Remove from Playlist",
-              run: () => {
-                const i = (trackCache.get(id) ?? []).indexOf(t);
-                if (i >= 0)
-                  void playlistRemoveTrack(p, i).catch((e) => console.error("[playlists] remove track", e));
-              },
-            },
-          ];
-        },
+        // Remove is the take-away row, last, on hand-made playlists only: mirrors have no
+        // remove path, and a Replay isn't edited by hand.
+        menu: (t) =>
+          songMenu(t, {
+            context: ctxTag,
+            away: handMade(p)
+              ? [{
+                  label: "Remove from Playlist",
+                  run: () => {
+                    const i = (trackCache.get(id) ?? []).indexOf(t);
+                    if (i >= 0)
+                      void playlistRemoveTrack(p, i).catch((e) => console.error("[playlists] remove track", e));
+                  },
+                }]
+              : [],
+          }),
       };
       return {
         title: p.name,
@@ -698,28 +695,22 @@ export const playlistsCard: CardDef = {
     };
 
     const listMenu = (p: Playlist): MenuItem[] => {
-      const ctxTag = `playlist:${pid(p)}`;
-      const err = (what: string) => (e: unknown) => console.error(`[playlists] ${what}`, e);
-      const items: MenuItem[] = [
-        ...(handMade(p) ? [renameItem(p)] : []), // the field first, ready to type
-        { label: "Play Now", run: () => void tracksOf(p).then((ts) => { if (ts.length) return playTracks(ts, 0, ctxTag); }).catch(err("play now")) },
-        { label: "Play Next", run: () => void tracksOf(p).then((ts) => { if (ts.length) return queueTracksNext(ts, ctxTag); }).catch(err("play next")) },
-        { label: "Add to Queue", run: () => void tracksOf(p).then((ts) => { if (ts.length) return queueTracksLater(ts, ctxTag); }).catch(err("add to queue")) },
-        // Bulk add — works from mirrors too (a partial import, snapshot semantics);
-        // self-excluded so a playlist can't append to itself.
-        addToPlaylistItem(() => tracksOf(p), p.libraryId),
-        moveToFolderItem(p),
-        ...(covered(p) ? [refreshItem(p)] : []), // no remote copy to re-read = no row (D3)
-        ...pinRows(ctxTag, "playlist"),
-      ];
-      if (p.source === "apple") items.push(importItem(p));
+      // The playlist menu (CONTEXT-MENUS.md §3.4), with this card's own rows. Rename is the
+      // field first, ready to type (hand-made only). Go to Playlist drills in place.
+      const own: MenuItem[] = [moveToFolderItem(p)];
+      if (covered(p)) own.push(refreshItem(p)); // no remote copy to re-read = no row (D3)
+      if (p.source === "apple") own.push(importItem(p));
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
       // The change bus (below) handles the cache eviction + list reload.
-      if (p.source === "local") {
-        items.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…", false));
-        items.push({ label: "Delete Playlist", run: () => confirmDelete(p) });
-      }
-      return items;
+      const local = p.source === "local";
+      if (local) own.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…", false));
+      return playlistMenu(p, () => tracksOf(p), {
+        context: `playlist:${pid(p)}`,
+        lead: handMade(p) ? [renameItem(p)] : [],
+        open: () => card.drill(detail(p)),
+        own,
+        away: local ? [{ label: "Delete Playlist", run: () => confirmDelete(p) }] : [],
+      });
     };
 
     // "Added Date" mirrors Library's semantics: ascending (the default ↑) puts the
@@ -816,7 +807,8 @@ export const playlistsCard: CardDef = {
       },
       shelfMenu: (el) => {
         const it = pinShelfItem(el);
-        return it?.playlist ? listMenu(it.playlist) : [];
+        // One of Apple's, pinned from Search, is no row of this card: its kind's own menu.
+        return it?.playlist ? listMenu(it.playlist) : it ? tileMenu(it, {}) : [];
       },
       groupings: [
         {
@@ -874,19 +866,16 @@ export const playlistsCard: CardDef = {
             can: (x) => x.kind === "playlist",
             id: (x) => (x.kind === "playlist" ? pid(x.p) : ""),
             menu: (xs) => {
-              const base = playlistShelfMenu(() => pickedTracks(xs), "playlists:picked", false);
               // Delete the local ones in the pick, destructive-last (the single-row menu's
               // order). Mirrors cannot be deleted, so a pick of mirrors alone has no item.
               const ps = xs.flatMap((x) => (x.kind === "playlist" ? [x.p] : []));
               const locals = ps.filter((p) => p.source === "local");
-              if (!locals.length) return base;
-              return [
-                ...base,
-                {
-                  label: `Delete ${picksText(locals.length, "playlist")}`,
-                  run: () => confirmDeleteMany(locals, ps.length - locals.length),
-                },
-              ];
+              return setMenu(() => pickedTracks(xs), ps.length, "playlist", {
+                context: "playlists:picked",
+                away: locals.length
+                  ? [{ label: `Delete ${picksText(locals.length, "playlist")}`, run: () => confirmDeleteMany(locals, ps.length - locals.length) }]
+                  : [],
+              });
             },
             drag: (xs) => ({
               source: "playlists",

@@ -12,6 +12,43 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-23 — One right-click menu per media type (branch `oceanic-schmoves`)
+
+- **His ask:** "right clicking on the same media type should have the same menu open across
+  the app". An audit found six cards that built song menus by hand, no common artist menu,
+  and three bugs (a song in an album view pinned the album; Copy Link on artist, genre and
+  picked lists copied the first song's album; a Library pick read "Play Now").
+- **His forks** (CONTEXT-MENUS.md §6): 1A take-away rows last · 2B a tile goes to its own kind,
+  a song does not · 3A a song row pins the song · 4A an artist off the library plays Apple's
+  Top Songs · 5A Copy Link for artists and public playlists · 6A the tray gets Pin and Start
+  Station · 7B the card title's "Pin" stays. Plus **Start a Web** on songs, albums and
+  artists: that label, a toast then the flight, after Start Station.
+- **Built:** `src/media-menu.ts` (song · album · artist · playlist · station · list · set ·
+  tile builders, one 7-group order); every card moved onto it and `trackMenu` is gone.
+  `startWebItem` / `webFrom` (web.ts), `menuSource` (context-menu.ts), the artist pane request
+  (go-to.ts), `copyArtistLinkItem` / `copyPlaylistLinkItem`, catalog playlist pins
+  (`catalogPlaylistTile`), tray `pin` / `start-station` commands and `NpState.pinned` (Rust).
+- **Checks:** `npx tsc --noEmit`, `npx vite build`, `cargo check`, `docs:check` pass. The Rust
+  field needs a dev-runner restart.
+- **Desk test:** CONTEXT-MENUS.md §8. Not run yet.
+
+## 2026-09-23 — Ocean album light (branch `oceanic-schmoves`)
+
+- **His ask:** the album color heavier under the waves. A slider: neon lines and glows at the
+  maximum, today's sea at the minimum.
+- **His forks** (OCEAN.md §7): neon crests + a stronger deep glow on one slider; all rows, near
+  brightest; pulses with the heave; "Album light", default 0.
+- **Built:** a neon mode in `ocean-texture.ts` (lines only, each body erases the light behind),
+  two `.ocean__neon` layers per band for the crossfade, `paintNeon` / `asNeon` /
+  `setAlbumLight` in `ocean.ts`, `oceanLight` key + row + N mark + agent spec, three tokens.
+- **Caught on the way:** importing ocean.ts from skin-settings.ts grew the chunk that the tray
+  panel loads from 44 kB to 250 kB. ocean.ts now reads the key itself.
+- **His word at the desk:** "Its perfect actually".
+- **Then:** the sea took Apple's `textColor1` by name (near grey on half the library). Now it
+  calls `albumColor()` (album-slots.ts), the most colorful of the three, the same ranking as the
+  NP aurora's rim. The rule for future uses is ALBUM-COLOR.md §The album's one color.
+- **Left:** a bench at 100 on `dev:built`.
+
 ## 2026-09-23 — DeetsMusic Beta: a second installed app (branch `oceanic-schmoves`)
 
 - **His ask:** a permanent beta build, installed beside the full app. Its first job is Ocean.

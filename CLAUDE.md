@@ -42,6 +42,7 @@ old installs' Guide button opens.
 - `TOASTS.md` — the notice primitive, its tiers, the sticky queue, every call site
   (`__toast.demo()` shows one of each kind).
 - `DRAG-DROP.md` — drag and drop between cards.
+- `CONTEXT-MENUS.md` — one right-click menu per media type (`media-menu.ts`); the row order.
 - `UX-COVERUPS.md` — the ledger of latency and jank we cover instead of remove.
 - `LIBRARY-VIRTUALIZATION.md` — windowing for long lists.
 

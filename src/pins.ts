@@ -11,7 +11,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
-import { artistDetail, materializeTrack, type Playlist, type Artist } from "./search";
+import { artistDetail, collectionTracks, materializeTrack, type Playlist, type Artist } from "./search";
+import { requestPlaylistPane } from "./go-to";
 import type { Station } from "./radio";
 import type { MenuItem } from "./context-menu";
 import { tracks as allTracks, addTransientTracks } from "./track-store";
@@ -180,6 +181,10 @@ export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
       else if (it.playlist.libraryId) requestOpenPlaylist(it.playlist.libraryId);
       return;
     }
+    if (it.kind === "playlist" && it.catalogId) {
+      requestPlaylistPane({ id: it.catalogId, name: it.title, artwork: it.art, curatorName: it.sub });
+      return;
+    }
     if (it.kind === "artist") {
       if (nav?.openArtist) nav.openArtist(it.title);
       else requestLibraryDrill({ kind: "artist", name: it.title });
@@ -231,39 +236,11 @@ export function pinItem(key: string, kind: PinKind, data?: unknown): MenuItem {
 }
 
 /** The pin rows a menu adds: **On Click** (only when the item is pinned and its kind is
- *  asked), then Pin / Unpin — which stays the LAST row of every menu (§7). */
+ *  asked), then Pin / Unpin — the end of the menu's Keep group (CONTEXT-MENUS.md §2). The
+ *  builders in media-menu.ts call it with the key of what each menu IS. */
 export function pinRows(key: string, kind: PinKind, data?: unknown): MenuItem[] {
   const act = pinActItem(key, kind);
   return act ? [act, pinItem(key, kind, data)] : [pinItem(key, kind, data)];
-}
-
-/** `pinArtistItem` with its On Click row. */
-export const pinArtistRows = (a: Artist): MenuItem[] =>
-  pinRows(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId });
-
-/** `pinItemFor` with its On Click row (empty when the list has no pin of its own). */
-export function pinRowsFor(items: Track[], context?: string): MenuItem[] {
-  if (context?.startsWith("album:")) return pinRows(context, "album", items);
-  if (context?.startsWith("artist:")) return pinRows(context, "artist");
-  if (items.length === 1) return pinRows(songKey(items[0]), "song", items[0]);
-  return [];
-}
-
-/** The pin row for an artist known by name and catalog id (a Search result, the artist
- *  pane, the Library artist view): the snapshot lets an artist off the library draw. */
-export const pinArtistItem = (a: Artist): MenuItem =>
-  pinItem(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId });
-
-/** The pin row for a song menu (`trackMenu`, library-card.ts), read from the list's queue
- *  context: an album's or an artist's list pins that container; a single song pins the song.
- *  Null for a list the pin has no name for (a genre, a picked set, a playlist's rows). */
-export function pinItemFor(items: Track[], context?: string): MenuItem | null {
-  // An album's songs ride the pin: an album not in your library (played from Search, or on
-  // your phone) has no other record here, and the tile must still draw and play.
-  if (context?.startsWith("album:")) return pinItem(context, "album", items);
-  if (context?.startsWith("artist:")) return pinItem(context, "artist");
-  if (items.length === 1) return pinItem(songKey(items[0]), "song", items[0]);
-  return null;
 }
 
 /** Plays per pin key, all time (fork 5). */
@@ -298,7 +275,7 @@ export function pinTile(p: Pin): HomeItem | null {
       return artistItem(id) ?? artistSnapshotTile(parse<Artist>(p.data));
     case "playlist": {
       const pl = playlists.get(id);
-      return pl ? playlistItem(pl) : null;
+      return pl ? playlistItem(pl) : catalogPlaylistTile(parse<Playlist>(p.data));
     }
     case "station": {
       const s = parse<Station>(p.data);
@@ -327,6 +304,33 @@ function artistSnapshotTile(a: Artist | null): HomeItem | null {
     art: a.artwork,
     round: true,
     context: `artist:${a.name}`,
+    catalogId: a.catalogId, // Go to Artist opens its pane with no hop (CONTEXT-MENUS.md §3.3)
+    tracks: () => [],
+    whole,
+  };
+}
+
+/** One of Apple's playlists, pinned from Search (CONTEXT-MENUS.md §3): the library does not
+ *  hold it, so the tile is the pin's snapshot. A press plays its songs (one memoized catalog
+ *  read, made playable as Search does); Open opens its Search pane. No `playlist` field: the
+ *  Playlists card's own rows (folder, cover, delete) are for playlists it holds. */
+function catalogPlaylistTile(p: Playlist | null): HomeItem | null {
+  if (!p?.catalogId) return null;
+  const id = p.catalogId;
+  const whole = async (): Promise<Track[]> => {
+    const ts = await collectionTracks("playlists", id);
+    addTransientTracks(ts);
+    ts.forEach(materializeTrack);
+    return ts;
+  };
+  return {
+    key: `playlist:${id}`,
+    kind: "playlist",
+    title: p.name,
+    sub: p.curatorName ?? "Apple Music",
+    art: p.artwork,
+    context: `playlist:${id}`,
+    catalogId: id,
     tracks: () => [],
     whole,
   };

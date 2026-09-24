@@ -155,6 +155,36 @@ export function requestAlbumPane(intent: AlbumPaneIntent): void {
   pendingAlbum = null;
 }
 
+/** A catalog ARTIST to open as a Search pane, by its OWN id (CONTEXT-MENUS.md §3): an
+ *  artist tile from Search, or an artist pinned off the library. No hop. */
+export interface ArtistPaneIntent {
+  id: string;
+  name: string;
+}
+const artistSubs = new Set<(intent: ArtistPaneIntent) => void>();
+let pendingArtist: { intent: ArtistPaneIntent; at: number } | null = null;
+
+/** Search-card side: subscribe to catalog artist panes. Returns an unsubscribe fn. */
+export function onArtistPaneRequest(cb: (intent: ArtistPaneIntent) => void): () => void {
+  artistSubs.add(cb);
+  return () => artistSubs.delete(cb);
+}
+
+/** Search-card side: take the waiting artist pane (null when none, or too old). */
+export function takeArtistPaneRequest(): ArtistPaneIntent | null {
+  const p = pendingArtist;
+  pendingArtist = null;
+  return p && Date.now() - p.at < HOLD_TTL_MS ? p.intent : null;
+}
+
+/** Summon the Search card and open a catalog artist pane there. */
+export function requestArtistPane(intent: ArtistPaneIntent): void {
+  pendingArtist = { intent, at: Date.now() };
+  requestDrillCard("search");
+  if (pendingArtist) artistSubs.forEach((cb) => cb(intent));
+  pendingArtist = null;
+}
+
 /** "Go to Album" from the ALBUM's own catalog id — `null` without one. */
 export function goToAlbumPaneItem(intent: AlbumPaneIntent | null): MenuItem | null {
   if (!intent?.id) return null;

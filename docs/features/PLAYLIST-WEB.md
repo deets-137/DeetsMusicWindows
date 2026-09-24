@@ -34,7 +34,9 @@ The **web button** in the Playlists card header, between **+** and **Sync** (use
 four lines from the user's sketch, drawn by `iconSvg()` so the lines stop short of the rings.
 Like +, it shows only at the card's root.
 
-Not built: a right-click **Make a Web…** on an artist.
+**Start a Web** (2026-09-23): a right-click row on every song, album and artist, after Start
+Station. One press makes the web with no panel, on the panel's settings; the row flies to the
+Playlists card. CONTEXT-MENUS.md §4.
 
 ### 1a. The title bar's Web item
 > **Part:** built · 2026-09-22

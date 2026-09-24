@@ -29,6 +29,8 @@ import * as queue from "./queue";
 import { resolveEntry } from "./queue-rows";
 import { addTrackToLibrary } from "./library-add";
 import { favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
+import { isPinned, songKey, togglePin, onPinsChange } from "./pins";
+import { startStationItem } from "./start-station";
 import { inLibrary, loadTracks, onTracksChange } from "./track-store";
 import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, playStation, reconcileUpcoming } from "./player";
 import { toggleShuffle, setShuffleMode, cycleRepeat, setRepeat, getRepeat, isShuffleOn } from "./player";
@@ -57,6 +59,8 @@ export interface NpState {
   inLibrary: boolean;
   /** ♥ for the tray panel's right-click: null = not offered (no consent / no catalog id). */
   loved: boolean | null;
+  /** Pin / Unpin for the tray panel's right-click: null = no song to pin. */
+  pinned: boolean | null;
   live: boolean;
   progress: number;
   currentTime: number;
@@ -97,6 +101,7 @@ function snapshot(): NpState {
     catalogId,
     inLibrary: inLibrary(catalogId) || inLibrary(cur?.libraryId),
     loved: favoriteOffered(t) ? isLoved(t) : null,
+    pinned: t ? isPinned(songKey(t)) : null,
     live: !!lastState.station?.live,
     progress: lastProgress.progress,
     currentTime: lastProgress.currentTime,
@@ -179,6 +184,23 @@ async function run(cmd: NpCommand): Promise<void> {
       if (!favoriteOffered(t)) throw new Error("no current track to favorite");
       await toggleLoved(t);
       return publish(true);
+    }
+    // The tray panel's right-click Pin / Unpin and Start Station (CONTEXT-MENUS.md §3.1):
+    // the same rows as the song menu, run here because the main window owns the store.
+    case "pin": {
+      const cur = queue.getCurrent();
+      const t = cur ? resolveEntry(cur) : undefined;
+      if (!t) throw new Error("no current track to pin");
+      await togglePin(songKey(t), "song", t);
+      return publish(true);
+    }
+    case "start-station": {
+      const cur = queue.getCurrent();
+      const t = cur ? resolveEntry(cur) : undefined;
+      const row = startStationItem("songs", cur?.catalogId ?? t?.catalogId);
+      if (!row) throw new Error("no catalog id to seed a station");
+      if ("run" in row) row.run();
+      return;
     }
     default:
       console.warn("[np-bus] unknown command", cmd);
@@ -342,6 +364,7 @@ export function initNpBus(): void {
   // Library membership changes (sync, an add from the tray/extension) flip the "+".
   onTracksChange(() => publish(true), "np-bus.publish");
   onFavoritesChange(() => publish(true)); // the tray's ♥ label follows a ♥ set anywhere
+  onPinsChange(() => publish(true)); // and its Pin / Unpin label a pin set anywhere
   // "Show cover" flipped or a playlist's cover changed: the tray panel's cover follows.
   onPlaylistCoverChange(() => publish(true));
 
