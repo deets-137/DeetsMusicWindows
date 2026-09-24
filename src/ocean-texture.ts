@@ -39,6 +39,15 @@ export interface LayerSpec {
   /** 0–1: how much darker the trough is right under a crest. */
   shade: number;
   seed: number;
+  /** The album light (OCEAN.md §7): paint only the crest lines, as neon, over nothing. Each
+   *  row's body erases the light behind it, so a nearer swell still hides the rows behind. The
+   *  same seed gives the same crests as the band, so the neon lies on the band's lines. */
+  neon?: {
+    /** The line's core (the album color lifted toward white on dark water). */
+    core: [number, number, number];
+    /** The bloom around it (the album color). */
+    bloom: [number, number, number];
+  };
 }
 
 /** The three depth bands. Each rolls at its own speed; the tile widths (CSS px) are wide so a
@@ -125,6 +134,10 @@ export function swellLayer(s: LayerSpec): { w: number; h: number; data: Uint8Cla
       const set = 0.62 + 0.38 * Math.sin((tau * setK * x) / w + setPh);
       const yc = y0 - amp * set * Math.cos(th);
       const lo = Math.max(0, Math.floor(yc - 4 * px)), hi = Math.min(h - 1, Math.ceil(yc + body));
+      if (s.neon) {
+        neonColumn(s.neon, row, x, yc, px, w, h, r, g, b, a, over);
+        continue;
+      }
       for (let y = lo; y <= hi; y++) {
         const d = y - yc;
         const i = y * w + x;
@@ -145,6 +158,48 @@ export function swellLayer(s: LayerSpec): { w: number; h: number; data: Uint8Cla
       }
     }
   }
+  return unpremultiply(w, h, r, g, b, a);
+}
+
+/** One column of one row, in neon: erase the light the row's body covers, then the bloom
+ *  (reaching further above the crest than below it, onto the row's own water), then the core.
+ *  The bloom is wider and the line brighter on the near rows, as the band's own line is. */
+function neonColumn(
+  n: NonNullable<LayerSpec["neon"]>,
+  row: Row,
+  x: number,
+  yc: number,
+  px: number,
+  w: number,
+  h: number,
+  r: Float32Array,
+  g: Float32Array,
+  b: Float32Array,
+  a: Float32Array,
+  over: (i: number, cr: number, cg: number, cb: number, ca: number) => void,
+): void {
+  const body = row.body * px, line = row.line * px * 1.3;
+  const sigma = (2 + 7 * row.lit) * px;
+  const lo = Math.max(0, Math.floor(yc - 3 * sigma)), hi = Math.min(h - 1, Math.ceil(yc + body));
+  for (let y = lo; y <= hi; y++) {
+    const d = y - yc;
+    const i = y * w + x;
+    if (d >= 0) {
+      const keep = smooth(body * 0.55, body, d);
+      r[i] *= keep;
+      g[i] *= keep;
+      b[i] *= keep;
+      a[i] *= keep;
+    }
+    const glow = 0.55 * row.lit * Math.exp(-((d / (d < 0 ? sigma : sigma * 0.5)) ** 2));
+    if (glow > 0.002) over(i, n.bloom[0], n.bloom[1], n.bloom[2], glow);
+    const core = row.lit * Math.exp(-((d / line) ** 2));
+    if (core > 0.002) over(i, n.core[0], n.core[1], n.core[2], core);
+  }
+}
+
+/** Premultiplied float planes → straight RGBA bytes. */
+function unpremultiply(w: number, h: number, r: Float32Array, g: Float32Array, b: Float32Array, a: Float32Array) {
   const data = new Uint8ClampedArray(w * h * 4);
   for (let i = 0, j = 0; i < a.length; i++, j += 4) {
     const al = a[i];

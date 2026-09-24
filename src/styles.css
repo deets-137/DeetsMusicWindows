@@ -1638,7 +1638,8 @@ body {
    (transform) and fade (opacity), so the compositor carries every frame. No masks: a
    masked box costs a second surface on every frame (the old swell measured about
    double). Paint order, back to front: the water (--ocean-deep), the far band, the
-   middle band, the near band, the glow from the deep, the ripples. Each band's wave
+   middle band, the near band (each with its neon crests on top), the glow from the
+   deep, the ripples. Each band's wave
    bodies are opaque water, so a nearer swell hides the water behind it. */
 .ocean {
   display: var(--ocean-display, none);
@@ -1649,6 +1650,9 @@ body {
   z-index: 0;
   background: var(--ocean-deep);
   --ocean-breath: 0;              /* −1…1, from the music (ocean.ts); 0 = calm */
+  /* 0…1: Settings › Album light (skin-settings.ts sets --ocean-light, 0–100, on <html>).
+     0 is the plain sea; it lights the crests in neon and raises the glow from the deep. */
+  --ocean-lit: calc(var(--ocean-light, 0) / 100);
 }
 /* The heave: each band rises with the music, the near one most (--ocean-breath). */
 .ocean__heave {
@@ -1691,6 +1695,19 @@ body {
 .ocean__train--far  { --roll-s: var(--ocean-roll-far); }
 .ocean__train--mid  { --roll-s: var(--ocean-roll-mid); }
 .ocean__train--near { --roll-s: var(--ocean-roll-near); }
+/* The album light: the band's crest lines in the album's color, with a bloom (ocean.ts paints
+   them only while Album light is above 0). Two per band: the new album's lines fade in on one
+   while the old one fades out. Each is its own layer (will-change), so a fade never re-rasters
+   the band; it rolls with the band because it sits inside it. It brightens with the heave. */
+.ocean__neon {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat-x;
+  opacity: 0;
+  will-change: opacity;
+  transition: opacity var(--ocean-breath-dur) var(--ocean-breath-ease);
+}
+.ocean__neon[data-on] { opacity: calc(var(--ocean-lit) * (1 + var(--ocean-breath) * var(--ocean-neon-pulse))); }
 /* The album's color, glowing up from the deep (ocean.ts sets --ocean-glow-color on .ocean;
    transparent with no album). It swells a little with the music. The color crossfades as
    a registered property, which repaints this one box while it fades (once per album). */
@@ -1702,8 +1719,11 @@ body {
 .ocean__glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 115%, var(--ocean-glow-color), transparent 75%);
-  opacity: calc(var(--ocean-glow) * (1 + var(--ocean-breath) * 0.5));
+  /* Album light raises it: stronger (--ocean-glow → --ocean-light-glow) and taller */
+  background: radial-gradient(ellipse 80% calc(60% + var(--ocean-light-reach) * var(--ocean-lit)) at 50% 115%,
+                              var(--ocean-glow-color), transparent 75%);
+  opacity: calc((var(--ocean-glow) + (var(--ocean-light-glow) - var(--ocean-glow)) * var(--ocean-lit))
+                * (1 + var(--ocean-breath) * 0.5));
   transition: --ocean-glow-color var(--ocean-glow-fade) var(--ocean-breath-ease),
               opacity var(--ocean-breath-dur) var(--ocean-breath-ease);
 }
@@ -2109,7 +2129,7 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   /* Ocean stays VISIBLE, just still: a motionless sea is still a sea (unlike
      a half-drawn bolt), so the skin keeps its surface instead of going blank. */
   .ocean__train, .ocean__bob { animation: none; }
-  .ocean__heave, .ocean__glow { transition: none; }
+  .ocean__heave, .ocean__glow, .ocean__neon { transition: none; }
   .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
   /* no hover-lift jump when motion is reduced */
   .lib-row:hover, .lib-tile:hover, .qrow:hover,

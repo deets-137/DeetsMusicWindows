@@ -355,6 +355,8 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - `glassFancy` (on | off, 2026-09-16) `[Glass only]`: the live frost and the moving background.
 - `oceanCardOpacity` (0–100, 2026-09-23) `[Ocean only]`: how solid the sunken cards are
   (100 = solid, the default).
+- `oceanLight` (0–100, 2026-09-23) `[Ocean only]`: the album light. 0 = the plain sea (the
+  default); higher lights the wave crests in the album's color as neon and raises the glow.
 - The **Sound** section (2026-09-16, SOUND.md): `soundEq` and `soundAdaptive` are **off only** —
   every effect ships off (Apple DPLA §3.3.6.D) and turning one on is the user's own choice in the
   Sound panel; `set … on` → `403`. Since 2026-09-18 nine of this section's rows are rows of

@@ -378,12 +378,14 @@
       <!-- Ocean — the sea. Three depth bands of swell (far at the horizon, then middle,
            then near), each a heave <div> (the music) around a bob <div> (rise and fall)
            around a roll <div> (drift), so the transforms compose; then the album's glow
-           from the deep and the ripples. src/ocean.ts paints the bands and sets them as
-           backgrounds; src/styles.css moves them. Back first. -->
+           from the deep and the ripples. Each roll <div> holds two neon layers (the album
+           light's crest lines; two, so a new album crossfades) that roll with it.
+           src/ocean.ts paints the bands and sets them as backgrounds; src/styles.css moves
+           them. Back first. -->
       <div class="ocean" aria-hidden="true">
-        <div class="ocean__heave ocean__heave--far"><div class="ocean__bob ocean__bob--far"><div class="ocean__train ocean__train--far"></div></div></div>
-        <div class="ocean__heave ocean__heave--mid"><div class="ocean__bob ocean__bob--mid"><div class="ocean__train ocean__train--mid"></div></div></div>
-        <div class="ocean__heave ocean__heave--near"><div class="ocean__bob ocean__bob--near"><div class="ocean__train ocean__train--near"></div></div></div>
+        <div class="ocean__heave ocean__heave--far"><div class="ocean__bob ocean__bob--far"><div class="ocean__train ocean__train--far"><i class="ocean__neon"></i><i class="ocean__neon"></i></div></div></div>
+        <div class="ocean__heave ocean__heave--mid"><div class="ocean__bob ocean__bob--mid"><div class="ocean__train ocean__train--mid"><i class="ocean__neon"></i><i class="ocean__neon"></i></div></div></div>
+        <div class="ocean__heave ocean__heave--near"><div class="ocean__bob ocean__bob--near"><div class="ocean__train ocean__train--near"><i class="ocean__neon"></i><i class="ocean__neon"></i></div></div></div>
         <div class="ocean__glow"></div>
         <div class="ocean__ripples"></div>
       </div>

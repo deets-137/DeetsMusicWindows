@@ -224,6 +224,7 @@ under Cyber the whole section is gone.
 | Control | What it does | Choices |
 |---|---|---|
 | Card opacity | How solid the sunken cards are. Lower lets the swell show through | 0–100%, **100** |
+| Album light | How strongly the album's color lights the sea. 0 is the plain sea; high lights the wave crests as neon and raises the glow from the deep | 0–100%, **0** |
 | Draw card edges | The card edges break into grains of sand, or a soft glow | Sand / **Soft** |
 | Sand width | How far the sand reaches into a card | 0–100%, **15** |
 

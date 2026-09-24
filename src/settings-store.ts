@@ -79,6 +79,10 @@ export interface Settings {
   /** Ocean only, 0–100: how solid the sunken cards are (100 = solid, the skin's design; lower
    *  lets the swell show through). skin-settings.ts publishes it as --ocean-card-opacity. */
   oceanCardOpacity: number;
+  /** Ocean only, 0–100: the album light. 0 = the plain sea (the glow from the deep at rest);
+   *  higher lights the crest lines in the album's color as neon and raises the glow.
+   *  skin-settings.ts publishes it as --ocean-light; ocean.ts paints the neon while it is > 0. */
+  oceanLight: number;
   /** Glass only: the live frost. On = a real blur behind each card, the aurora drifts, and the
    *  four Glass sliders show. Off = the frost is painted into each card (no blur to redraw),
    *  the aurora holds still, and the sliders hold GLASS_LOCKED. `data-glass-fancy` on <html>. */
@@ -396,6 +400,7 @@ export const DEFAULTS: Settings = {
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   oceanCardOpacity: 100, // user's call 2026-09-23: solid — the sunken cards are the deep-ocean feel
+  oceanLight: 0, // user's call 2026-09-23: 0 is today's sea, so the neon is opt-in (and costs nothing until then)
   glassFancy: false, // user's call 2026-09-16: the painted frost; the live blur failed on software drawing (DEBUGGING.md)
   glassTint: 65, // user's call 2026-09-16: GLASS_LOCKED, the look Glass holds with Fancy Glass off
   glassBacklight: 85,

@@ -12,6 +12,9 @@
 //    With every effect off there is nothing to read and the sea stays calm (his call
 //    2026-09-22, the room heads' rule).
 //  - Ripples. A play or a drop sends two flattened rings out across the water.
+//  - The album light (Settings › Album light, OCEAN.md §7). Above 0, the worker also paints each
+//    band's crest lines alone, as neon in the album's color, onto a layer inside the band. CSS
+//    sets how bright (the slider) and raises the glow. At 0 nothing is painted.
 //
 // Only while Ocean is the skin. Animate backgrounds Off, reduced motion or a hidden window: no
 // heave and no ripples (the bands also hold still, in CSS).
@@ -20,8 +23,9 @@ import { onSkinChange, currentSkin } from "./skin";
 import { onPlayerState, onPlayIntent, isPlayingNow } from "./player";
 import { onMeter } from "./sound";
 import { onDragLand } from "./row-drag";
+import { setting, onSettingsChange } from "./settings-store";
 import { currentCover, lookupPalette } from "./album-color";
-import { fromOKLCH, toOKLCH, type RGB } from "./album-slots";
+import { albumColor, fromOKLCH, toOKLCH, type RGB } from "./album-slots";
 import { BANDS, seaRows } from "./ocean-texture";
 import type { LayerJob } from "./ocean-worker";
 import type { LayerSpec } from "./ocean-texture";
@@ -88,6 +92,17 @@ const isDark = (c: RGB) => toOKLCH(c)[0] < 0.55;
 function asGlow(c: RGB, darkWater: boolean): RGB {
   const [L, C, h] = toOKLCH(c);
   return fromOKLCH([darkWater ? Math.min(Math.max(L, 0.45), 0.6) : Math.min(Math.max(L, 0.55), 0.7), Math.min(C, 0.14), h]);
+}
+
+/** Album color → the neon crest: the bloom in the color made more vivid, and a core lifted
+ *  toward white on dark water (a lit tube). On light water a bright line vanishes, so both
+ *  go deeper. A grey cover stays grey: the chroma is scaled, never invented. */
+function asNeon(c: RGB, darkWater: boolean): { core: RGB; bloom: RGB } {
+  const [, C, h] = toOKLCH(c);
+  const vivid = Math.min(C * 1.5, 0.2);
+  return darkWater
+    ? { bloom: fromOKLCH([0.72, vivid, h]), core: fromOKLCH([0.92, vivid * 0.45, h]) }
+    : { bloom: fromOKLCH([0.62, vivid, h]), core: fromOKLCH([0.45, vivid, h]) };
 }
 
 // ── the bands ───────────────────────────────────────────────────────────────────
@@ -159,7 +174,73 @@ async function paintSwell(): Promise<void> {
       el.toggleAttribute("data-on", true);
     }),
   );
-  if (mine === paintSeq) diag.log("ocean:paint", { ms: Math.round(performance.now() - t0), height, dpr });
+  if (mine !== paintSeq) return;
+  diag.log("ocean:paint", { ms: Math.round(performance.now() - t0), height, dpr });
+  // new rows (a height, a scale or a theme): the neon must lie on them
+  neonPainted = "";
+  void paintNeon();
+}
+
+// ── the album light ─────────────────────────────────────────────────────────────
+/** Settings › Album light, 0–100 (the stored key, and each step of a slider drag). */
+let lightLevel = 0;
+/** What the lit neon layers show (color, height, scale); "" = nothing current. */
+let neonPainted = "";
+let neonSeq = 0;
+
+export function setAlbumLight(v: number): void {
+  const was = lightLevel;
+  lightLevel = v;
+  if (v > 0 && was === 0) void paintNeon();
+  if ((v > 0) !== (was > 0)) diag.log("ocean:light", { on: v > 0 });
+}
+
+const neonLayers = (band: string) => [...(sea?.querySelectorAll<HTMLElement>(`.ocean__train--${band} .ocean__neon`) ?? [])];
+
+/** Paint the crest lines in the album's color and crossfade to them: the new lines go on the
+ *  unlit layer of each band, then all three bands swap at once. No album: the neon fades out. */
+async function paintNeon(): Promise<void> {
+  if (!active() || lightLevel <= 0 || !paintedHeight) return;
+  if (!glowSource) {
+    sea!.querySelectorAll(".ocean__neon[data-on]").forEach((n) => n.removeAttribute("data-on"));
+    neonPainted = "";
+    return;
+  }
+  const water = resolve("var(--ocean-water-bottom)") ?? [0, 0, 0];
+  const { core, bloom } = asNeon(glowSource, isDark(water));
+  const height = paintedHeight;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const key = `${hex(core)}${hex(bloom)}|${height}|${dpr}`;
+  if (key === neonPainted) return;
+  neonPainted = key;
+  const mine = ++neonSeq;
+  const rows = seaRows(height);
+  const t0 = performance.now();
+  const next: HTMLElement[] = [];
+  await Promise.all(
+    BANDS.map(async (band, i) => {
+      const blob = await draw({
+        w: Math.round(band.tile * dpr),
+        h: Math.round(height * dpr),
+        px: dpr,
+        rows: rows[band.name],
+        ink: [0, 0, 0],
+        top: [0, 0, 0],
+        bottom: [0, 0, 0],
+        shade: 0,
+        seed: 3 + i * 8, // the band's seed: the same crests
+        neon: { core: to255(core), bloom: to255(bloom) },
+      });
+      const layers = neonLayers(band.name);
+      const off = layers.find((n) => !n.hasAttribute("data-on")) ?? layers[0];
+      if (!blob || !off || mine !== neonSeq) return;
+      await setImage(off, blob, `${band.tile}px 100%`);
+      next.push(off);
+    }),
+  );
+  if (mine !== neonSeq) return;
+  for (const band of BANDS) neonLayers(band.name).forEach((n) => n.toggleAttribute("data-on", next.includes(n)));
+  diag.log("ocean:neon", { ms: Math.round(performance.now() - t0), height, dpr });
 }
 
 // ── the glow from the deep ──────────────────────────────────────────────────────
@@ -184,14 +265,18 @@ function followAlbum(): void {
   if (!cover) {
     glowSource = null;
     applyGlow();
+    void paintNeon();
     return;
   }
   lookupPalette(cover, catalogId)
     .then((p) => {
       if (liveCover !== cover) return; // the song changed meanwhile
-      // Apple's first text color is the cover's strongest accent; its background the fallback
-      glowSource = (p?.c1 && toRGB(p.c1)) || (p?.bg && toRGB(p.bg)) || null;
+      // the most colorful of the three, as the NP aurora's rim (Apple's names say nothing
+      // about which is vivid: its text colors are near grey on half the library)
+      const c = albumColor(p);
+      glowSource = (c && toRGB(c)) || null;
       applyGlow();
+      void paintNeon();
     })
     .catch((e) => diag.warn("ocean:palette", { err: String(e) }));
 }
@@ -270,6 +355,11 @@ function enter(): void {
 export function initOcean(): void {
   sea = document.querySelector<HTMLElement>(".ocean");
   if (!sea) return;
+  // the stored album light; a slider drag also calls setAlbumLight (settings-card.ts)
+  setAlbumLight(setting("oceanLight"));
+  onSettingsChange((k) => {
+    if (k === "oceanLight") setAlbumLight(setting("oceanLight"));
+  });
 
   if (currentSkin() === "ocean") enter();
   onSkinChange((name) => {

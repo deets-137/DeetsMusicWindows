@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 468 tokens · overrides: vanilla 3, press 64, ocean 41, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 471 tokens · overrides: vanilla 3, press 64, ocean 40, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -388,7 +388,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ocean-water-top` | `var(--canvas)` | ocean | the water at the horizon … |
 | `--ocean-water-bottom` | `var(--canvas)` | ocean | … and at the bottom (the deepest) |
 | `--ocean-deep` | `linear-gradient(to bottom, var(--ocean-water-top), var(--ocean-water-bottom))` | — |  |
-| `--ocean-swell-ink` | `var(--border)` | ocean | the crest line |
+| `--ocean-swell-ink` | `var(--border)` | — | the crest line |
 | `--ocean-trough` | `0.35` | — | how much darker a trough is under its crest, on dark water |
 | `--ocean-trough-light` | `0.12` | — | the same on light water (more reads as sand dunes) |
 | `--ocean-roll-far` | `90` | — | s for a band to roll one tile (unitless: steps() needs a number); |
@@ -404,6 +404,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ocean-breath-ease` | `cubic-bezier(0.37, 0, 0.63, 1)` | — |  |
 | `--ocean-glow` | `0.28` | — | the album's glow from the deep, at rest |
 | `--ocean-glow-fade` | `2.4s` | — | a new album's glow fades in |
+| `--ocean-light-glow` | `0.7` | — | the glow at full Album light (--ocean-glow at 0) |
+| `--ocean-light-reach` | `35%` | — | how much taller the glow rises at full Album light |
+| `--ocean-neon-pulse` | `0.35` | — | how much the neon crests brighten with the heave |
 | `--ocean-ripple-size` | `520px` | — | a ripple's widest ring |
 | `--ocean-ripple-flat` | `0.32` | — | its height over its width: a ring on the water, seen from above the swell |
 | `--ocean-ripple-dur` | `3.4s` | — |  |

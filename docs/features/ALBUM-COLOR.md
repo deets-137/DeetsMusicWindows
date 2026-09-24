@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/album-slots.ts]
-updated: 2026-09-20
+updated: 2026-09-23
 ---
 # DeetsMusic — Album Color (the radiant Now-Playing aurora)
 
@@ -122,6 +122,28 @@ c1 `#19191a`, c2 `#24202c`) hid its lilac under the art and glowed grey. `aurora
 the next on the halo (or the rim's color again when the next is grey, chroma < 0.04), and the
 least under the cover. An all-grey cover stays grey. The NP card and the tray panel both
 use it. The NP text (below) still reads Apple's `c1` / `c2` as named.
+
+---
+
+## The album's one color (the rule for every new use)
+> **Part:** built · 2026-09-23
+
+**When a feature needs "the album's color" (one color), it calls `albumColor(palette)` from
+`src/album-slots.ts`.** Never pick `c1`, `c2` or `bg` by name. `albumColor` returns the most
+colorful of the three by OKLCH chroma (`rankByColor`, the same ranking as `auroraSlots`), so it
+is the color on the NP aurora's rim. An all-grey cover gives its least-grey color, so the
+feature stays grey instead of inventing a hue.
+
+- **Why:** Apple's names do not say which color is vivid. `textColor1` is near grey on about half
+  the library (see above), so a pick by name makes a lilac cover glow grey.
+- **Get the palette** through `lookupPalette(cover, catalogId)` (album-color.ts), with
+  `currentCover()` as the key. A cover then costs one Apple lookup, however many features ask.
+- **Shape it after the pick:** each feature sets its own lightness and chroma cap for its
+  backdrop (the Ocean's `asGlow` / `asNeon`). Scale the chroma; never raise it from zero.
+- **Users today:** the NP aurora and the tray panel (the rim, via `auroraSlots`), and the Ocean's
+  glow from the deep and its neon crests (OCEAN.md §3, §7).
+- **The exception:** text keeps Apple's `c1` / `c2` by name (§Text & accent), because Apple chose
+  them to read on that cover.
 
 ---
 

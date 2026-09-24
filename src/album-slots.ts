@@ -49,6 +49,26 @@ export function fromOKLCH([L, C, h]: LCH): RGB {
   ];
 }
 
+// ── the album's color, by colorfulness ─────────────────────────────────────────
+
+/** The palette's colors, most colorful first (OKLCH chroma). Apple's names say nothing
+ *  about which one is vivid (see auroraSlots), so every "the album's color" reads this. */
+export function rankByColor(p: AlbumPalette): { s: string; chroma: number }[] {
+  return [p.bg, p.c1, p.c2]
+    .flatMap((s) => {
+      const rgb = s ? parseColor(s) : null;
+      return rgb ? [{ s: s!, chroma: toOKLCH(rgb)[1] }] : [];
+    })
+    .sort((a, b) => b.chroma - a.chroma);
+}
+
+/** THE album color: the most colorful of the three (ALBUM-COLOR.md §The album's one color).
+ *  An all-grey cover gives its least-grey color, so it stays grey. The aurora's rim (the NP
+ *  card, the tray panel) and the Ocean's glow and neon all show this one. */
+export function albumColor(p: AlbumPalette | null | undefined): string | undefined {
+  return p ? rankByColor(p)[0]?.s : undefined;
+}
+
 // ── the aurora's stops ─────────────────────────────────────────────────────────
 
 /** Below this OKLCH chroma a color reads as grey on the aurora. */
@@ -67,13 +87,7 @@ const GREY_CHROMA = 0.04;
  * glow is ranked.
  */
 export function auroraSlots(p: AlbumPalette): [string | undefined, string | undefined, string | undefined] {
-  const ranked = [p.bg, p.c1, p.c2]
-    .flatMap((s) => {
-      const rgb = s ? parseColor(s) : null;
-      return rgb ? [{ s: s!, chroma: toOKLCH(rgb)[1] }] : [];
-    })
-    .sort((a, b) => b.chroma - a.chroma);
-  const [first, second, third] = ranked;
+  const [first, second, third] = rankByColor(p);
   if (!first) return [undefined, undefined, undefined];
   const halo = second && (second.chroma >= GREY_CHROMA || first.chroma < GREY_CHROMA) ? second.s : first.s;
   return [third?.s ?? second?.s, first.s, halo];
