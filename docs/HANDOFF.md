@@ -115,6 +115,11 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.14.1** (2026-09-24, `e2d8e3d`; beta `0.14.1-beta.1` first): the installer
+  fix. The 0.14.0 update aborted when an AI app's DeetsMusic CLI held `cli\deetsmusic.exe`:
+  the 32-bit installer's PowerShell read every process path as empty (RELEASE.md §4a).
+  **Not yet seen end to end:** a real update over running MCP CLIs. His own PC is the first
+  one: its app is 0.14.0 with the 9/22 CLI, and the updater should offer 0.14.1.
 - **Published: 0.14.0** (2026-09-23, `62d516a`, then `oceanic-schmoves` fast-forwarded into
   `main`): one right-click menu per media type, Start a Web, the Ocean heavy swell and album
   light, tray Pin / Start Station. The first release that went beta first:
@@ -127,10 +132,8 @@ When an item closes, delete it here and write the day in WORKLOG.md.
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
 - **DeetsMusic Beta** (2026-09-23, in `main` since 0.14.0) — a second installed app on
-  `deetsmusic-test`; every release goes beta first. **0.14.0-beta.2 is published there.** Not
-  done: withdraw the two spike rows (BETA.md §4.3 — an R2 write, needs his go-ahead; until then
-  the beta's Other versions… list can offer builds with the FULL app's identity). The
-  DeetsSupport change (sign-in scheme + version order, BETA.md §5) is written, uncommitted in
+  `deetsmusic-test`; every release goes beta first. **0.14.1-beta.1 is published there.** The
+  two spike rows were withdrawn 2026-09-24 (BETA.md §4.3). The DeetsSupport change (sign-in scheme + version order, BETA.md §5) is written, uncommitted in
   `../DeetsSupport`, and HELD by his call.
 - **Add a room member as a friend** — his ask, 2026-09-23. Designed, forks decided (F1A–F5A:
   offer on press, ask toast, mint on Add, silent Not now, no setting), not built: FRIENDS.md §18.
@@ -174,7 +177,7 @@ with the installer, and the user guide (DOCS-ORG.md §13).
 
 ## State of play
 
-**Live: 0.14.0** (2026-09-23, `deetsmusic` channel; beta `0.14.0-beta.2` on `deetsmusic-test`). Every release is in the log at
+**Live: 0.14.1** (2026-09-24, `deetsmusic` channel; beta `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
 [RELEASE.md §0a](ops/RELEASE.md); what each version added is in
 [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The

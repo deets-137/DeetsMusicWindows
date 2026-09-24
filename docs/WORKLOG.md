@@ -12,6 +12,24 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-24 — 0.14.1: the installer could not stop the MCP CLIs
+
+- **His report:** the 0.14.0 install aborted: *Can't write …\DeetsMusic\cli\deetsmusic.exe*.
+  "Is this caused by our new guard?"
+- **Read, not guessed:** four `deetsmusic.exe` CLIs (MCP servers of four Claude sessions, all
+  started before the install) held the file, and none was stopped. A 32-bit NSIS test
+  installer running the hook's exact command found all four and matched none: the installer's
+  PowerShell is 32-bit and reads every 64-bit process's `.Path` as empty. So `DeetsStopCli` had
+  never matched anything; the template's kill by name hid it until the new guard removed that.
+  The app count was blind too (nsExec returned PowerShell's output as "?").
+- **Fixed** (`hooks.nsh`, RELEASE.md §4a): the path from `Win32_Process.ExecutablePath`,
+  `Stop-Process -Id`, the count as the exit code. Tested in the 32-bit test installer: 4 of 4
+  CLIs counted; a scratch process in a test folder stopped; the CLIs outside it untouched.
+  release-check 11 now fails `Get-Process` / `$$_.Path` in hooks.nsh.
+- **Shipped:** `0.14.1-beta.1` on `deetsmusic-test`, then `0.14.1` (`e2d8e3d`), notes carrying
+  0.14.0's. Offer and `/health` checked. The spike rows `0.4.4-t1/t2` were withdrawn (his go).
+- **Open:** a real update over running MCP CLIs — his PC is the first one.
+
 ## 2026-09-23 — 0.14.0 released, beta first; `oceanic-schmoves` into `main`
 
 - **His word:** "Desk tests all look good. Publish main to 0.14.0 (and 0.14.0-beta.2 for the
