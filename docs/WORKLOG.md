@@ -29,6 +29,9 @@ updated: 2026-09-22
 - **Shipped:** `0.14.1-beta.1` on `deetsmusic-test`, then `0.14.1` (`e2d8e3d`), notes carrying
   0.14.0's. Offer and `/health` checked. The spike rows `0.4.4-t1/t2` were withdrawn (his go).
 - **Open:** a real update over running MCP CLIs — his PC is the first one.
+- **Then:** it passed. His PC updated 0.14.0 → 0.14.1 over five running MCP CLIs: "Update
+  installed fine, no abort this time." The demo at deets.solutions/deetsmusic/demo serves the
+  0.14.1 build (`main-WnFJWdVY.js`, DeetsSolutions `668009c`).
 
 ## 2026-09-23 — 0.14.0 released, beta first; `oceanic-schmoves` into `main`
 

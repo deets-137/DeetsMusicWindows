@@ -118,8 +118,8 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 - **Published: 0.14.1** (2026-09-24, `e2d8e3d`; beta `0.14.1-beta.1` first): the installer
   fix. The 0.14.0 update aborted when an AI app's DeetsMusic CLI held `cli\deetsmusic.exe`:
   the 32-bit installer's PowerShell read every process path as empty (RELEASE.md §4a).
-  **Not yet seen end to end:** a real update over running MCP CLIs. His own PC is the first
-  one: its app is 0.14.0 with the 9/22 CLI, and the updater should offer 0.14.1.
+  **Seen end to end 2026-09-24:** his PC updated 0.14.0 → 0.14.1 over five running MCP CLIs
+  with no abort ("Update installed fine").
 - **Published: 0.14.0** (2026-09-23, `62d516a`, then `oceanic-schmoves` fast-forwarded into
   `main`): one right-click menu per media type, Start a Web, the Ocean heavy swell and album
   light, tray Pin / Start Station. The first release that went beta first:
