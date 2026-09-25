@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 477 tokens · overrides: vanilla 3, press 64, ocean 40, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 484 tokens · overrides: vanilla 3, press 64, ocean 40, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -289,6 +289,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 |---|---|---|---|
 | `--shadow-panel` | `0 8px 24px rgba(0, 0, 0, 0.18)` | press |  |
 | `--menu-min-w` | `122px` | — |  |
+| `--menu-search-w` | `calc(var(--menu-min-w) * 2.3)` | — | A menu with a searching field (context-menu.ts `onInput`, the Diary's New entry): wide enough for an album name, and its results area grows as the answers arrive. |
+| `--menu-results-max-h` | `calc(var(--lib-row-art) * 8)` | — | about seven result rows, then it scrolls |
+| `--menu-grow-dur` | `var(--pop-in)` | — |  |
+| `--menu-grow-ease` | `var(--pop-ease)` | — |  |
+| `--menu-result-art` | `var(--lib-row-art)` | — |  |
 | `--menu-surface` | `var(--surface)` | press, glass | Menu material — same doctrine as --panel/--panel-backdrop, for the FLOATING tier (.menu, .flyout, popovers, ctx-menu, pickers). Base is opaque theme surface + no frost; Glass opts into a translucent mix + blur. A skin points these at roles/derivations, never a hex. |
 | `--menu-backdrop` | `none` | glass |  |
 
@@ -674,6 +679,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--diary-new-size` | `calc(var(--tile-art) * 1.5)` | — | the + cover: a shelf tile, half again as big |
+| `--diary-morph-dur` | `calc(var(--nav-dur) * 1.4)` | — | the + cover becoming the search bar: the skin's own nav motion, |
+| `--diary-morph-ease` | `var(--nav-ease)` | — | a little slower, because the shape travels farther than a pane |
 | `--diary-score-w` | `5ch` | — | a score field holds "2.6767" |
 | `--diary-num-w` | `2ch` | — | the track number column |
 | `--diary-note-min-h` | `var(--set-textarea-min-h)` | — | a note: the Bugs details field's five lines |

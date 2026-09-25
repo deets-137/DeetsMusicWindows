@@ -170,6 +170,10 @@ enum Cmd {
     },
     /// Song of the Day: the picks, or mark / unmark one (docs/integrations/DeetsOTD.md).
     Pick(PickArgs),
+    /// The Diary (docs/features/DIARY.md): list (default) · show N · export N · add album:… ·
+    /// note N [--song S] TEXT · score N [--song S] X · date N [--song S] YYYY-MM-DD · done N [on|off].
+    /// Needs Settings › Connections › Agents use the Diary.
+    Diary(DiaryArgs),
     /// Add to your Apple Music library: an id, or the playing song.
     Add { id: Option<String> },
     /// ♥ a song (the playing song by default).
@@ -1048,6 +1052,13 @@ fn tools(small: bool) -> Value {
               "index": { "type": "number", "description": "unmark: the row from list (1 = the newest pick)." },
               "note": { "type": "string", "description": "mark: a line posted under the song." },
               "window": { "type": "string", "enum": ["day", "week", "month", "ytd", "year"], "description": "list: only this window (leave it out for every pick)." } } } }));
+    list.push(json!({ "name": "diary", "description": "The user's Diary: albums they review, with a note and a score for each song and for the album, on a scale they chose. list shows every entry with its id. show reads one entry as text (the same text the user's Export copies). add puts an album in the Diary (album:… from search). note, score and date write to an entry: song is the track number; leave it out for the album itself; an empty value clears. A score must be a number from 0 to the entry's scale. done marks it finished (value off puts it back in progress). Refused unless the user turned on Agents use the Diary in DeetsMusic.",
+          "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
+              "action": { "type": "string", "enum": ["list", "show", "add", "note", "score", "date", "done"] },
+              "id": { "type": "number", "description": "show, note, score, date, done: the entry's id from list." },
+              "album": { "type": "string", "description": "add: an album:… id from search." },
+              "song": { "type": "number", "description": "note, score, date: the song's track number (leave out for the album)." },
+              "value": { "type": "string", "description": "note: the text · score: a number, e.g. 7.5 · date: YYYY-MM-DD or today · done: on or off." } } } }));
     list.push(json!({ "name": "query", "description": "One read-only SQL SELECT over the user's DeetsMusic data (SQLite). No Apple calls. Tables: songs(id, title, artist, album, length_s, genre, release_date, in_library, added_rank, added_at) · playlists(id, name, source, song_count) · playlist_songs(playlist_id, position, song_id) · plays(song_id, started_at, listened_s, finished, skipped, context) · play_counts(song_id, starts, finishes, last_played). ids are song:… / playlist:…, ready for play and queue. Times are local ISO text. song_count counts the songs DeetsMusic has read. plays and play_counts exist only while the user allows agents to read play history. Only SELECT, one statement, 2 s, 500 rows. For a simple sorted list, list what=library is easier.",
           "inputSchema": { "type": "object", "required": ["sql"], "additionalProperties": false, "properties": {
               "sql": { "type": "string", "description": "e.g. SELECT s.title, c.starts FROM play_counts c JOIN songs s ON s.id = c.song_id ORDER BY c.starts DESC LIMIT 10" } } } }));
@@ -1062,7 +1073,7 @@ fn tools(small: bool) -> Value {
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag", "diary"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -1170,6 +1181,14 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             },
         )?
         .0,
+        "diary" => {
+            let action = if str_arg("action").is_empty() { "list".to_string() } else { str_arg("action") };
+            let target = match action.as_str() {
+                "add" => Some(str_arg("album")),
+                _ => num_arg("id").map(|n| n.to_string()),
+            };
+            op_diary(c, &DiaryArgs { action, target, value: vec![str_arg("value")], song: num_arg("song") })?.0
+        }
         other => return Err(Failure { status: 400, message: format!("unknown tool {other:?}") }),
     };
     Ok(text)
@@ -1259,6 +1278,59 @@ struct PickArgs {
     /// list: day · week · month · ytd · year (leave it out for every pick).
     #[arg(long)]
     window: Option<String>,
+}
+
+#[derive(clap::Args)]
+struct DiaryArgs {
+    /// list (the default) · show · export · add · note · score · date · done
+    #[arg(default_value = "list")]
+    action: String,
+    /// The entry's id (from `diary list`); for add, an album:… id from search.
+    target: Option<String>,
+    /// note: the text · score: a number (empty clears) · date: YYYY-MM-DD, today, or clear · done: on | off.
+    value: Vec<String>,
+    /// The song, by its track number. Leave it out for the album itself.
+    #[arg(long)]
+    song: Option<u32>,
+}
+
+/// `deetsmusic diary` — the Diary, read and write (DIARY.md §10). The bridge refuses it (403,
+/// exit 6) while Settings › Connections › Agents use the Diary is off.
+fn op_diary(c: &Client, a: &DiaryArgs) -> Result<(String, Value), Failure> {
+    let id = || a.target.clone().filter(|t| !t.is_empty()).ok_or_else(|| bad(format!("usage: diary {} N  (N from `deetsmusic diary list`)", a.action)));
+    let value = a.value.join(" ");
+    match a.action.as_str() {
+        "list" => {
+            let v = c.get("/diary")?;
+            let lines: Vec<String> = arr(&v, "entries")
+                .iter()
+                .map(|e| {
+                    let score = s(e, "score");
+                    let score = if score.is_empty() { String::new() } else { format!("  {score}") };
+                    let state = if e.get("done").and_then(Value::as_bool).unwrap_or(false) { "done" } else { "in progress" };
+                    let folder = s(e, "folder");
+                    let folder = if folder.is_empty() { String::new() } else { format!(" · {folder}") };
+                    let written = format!("{}/{} songs", e.get("songsWritten").and_then(Value::as_i64).unwrap_or(0), e.get("songCount").and_then(Value::as_i64).unwrap_or(0));
+                    format!("[{}] {} — {}{score}  ({state}{folder} · {written})", e.get("id").and_then(Value::as_i64).unwrap_or(0), s(e, "title"), s(e, "artist"))
+                })
+                .collect();
+            Ok((if lines.is_empty() { "The Diary is empty.".into() } else { lines.join("\n") }, v))
+        }
+        "show" | "export" => {
+            let v = c.get(&format!("/diary?id={}", id()?))?;
+            let text = s(&v, "text").to_string();
+            Ok((if text.is_empty() { "That entry has nothing written yet.".into() } else { text }, v))
+        }
+        "add" => {
+            let v = c.post("/diary", json!({ "action": "add", "album": id()? }))?;
+            Ok((s(&v, "message").to_string(), v))
+        }
+        "note" | "score" | "date" | "done" => {
+            let v = c.post("/diary", json!({ "action": a.action, "id": id()?, "song": a.song, "value": value }))?;
+            Ok((s(&v, "message").to_string(), v))
+        }
+        other => Err(bad(format!("{other:?} is not a diary action — use list, show, export, add, note, score, date or done"))),
+    }
 }
 
 /// `deetsmusic pick` — the Song of the Day list, and the two verbs (DeetsOTD.md §8.8).
@@ -1393,6 +1465,7 @@ fn main() {
         Cmd::History { limit } => op_history(&c, limit),
         Cmd::Diag { limit, since, tag } => op_diag(&c, limit, since, &tag),
         Cmd::Pick(a) => op_picks(&c, &a),
+        Cmd::Diary(a) => op_diary(&c, &a),
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),
         Cmd::Love { id } => op_library(&c, "favorite", id.as_deref().unwrap_or("")),
         Cmd::Unlove { id } => op_library(&c, "unfavorite", id.as_deref().unwrap_or("")),

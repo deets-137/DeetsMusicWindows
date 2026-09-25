@@ -24,22 +24,36 @@ import { tracks as storeTracks, addTransientTracks } from "./track-store";
 import { albumKey } from "./rewind";
 import { albumOrder, heroCover } from "./library-card";
 import { esc, actionsRowHTML, runListAction } from "./collection-card";
-import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, type MenuItem } from "./context-menu";
-import { albumMenu } from "./media-menu";
+import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, type MenuItem, type ActionItem } from "./context-menu";
+import { albumMenu, songMenu } from "./media-menu";
+import { growCardTaller, isGrownCard, collapseGrow } from "./card-grow";
 import { playTracks } from "./player";
 import * as queue from "./queue";
-import { registerDropTarget, type DragPayload } from "./row-drag";
-import { takeDiaryAlbum, onDiaryAlbum, type DiaryRequest } from "./layout-bus";
+import { registerDropTarget, rowDrag, type DragPayload } from "./row-drag";
+import { takeDiaryAlbum, onDiaryAlbum, takeDiaryEntry, onDiaryEntry, type DiaryRequest } from "./layout-bus";
 import { enterRows } from "./pop";
 import { toast } from "./toast";
 import { setting } from "./settings-store";
-import { unreleasedHint } from "./release";
+import { unreleasedHint, unreleasedToast } from "./release";
 import * as diag from "./diag";
 import {
   diaryList, diaryGet, diaryOpen, diaryUpdate, diarySongSet, diaryRescale, diaryDelete, onDiaryChange,
   songKeyOf, parseScore, fmtNum, fmtScore, fmtDay, today,
-  type DiaryEntry, type DiarySummary, type DiarySong,
+  diarySetDone, diaryFolders, diaryFolderCreate, diaryFolderRename, diaryFolderDelete, diaryFile,
+  copyDiaryExport, onDiaryOutside, withAlbumId,
+  type DiaryEntry, type DiarySummary, type DiarySong, type DiaryFolder,
 } from "./diary";
+import { sortByOrder, moveTo, writeOrder, onRowOrderChange, sectionsMovable, holdFor } from "./row-order";
+
+const COLLAPSE_KEY = "deets.diary.collapsed";
+/** The rows the user folded shut (a view preference, as the Playlists folds are). */
+function loadCollapsed(): Set<string> {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+}
 
 const TILE_PX = 240;
 const ROW_PX = 72;
@@ -48,7 +62,7 @@ const PICK_LIB_CAP = 8;
 const PICK_CAT_CAP = 10;
 const NOTE_SAVE_MS = 600;
 /** The scale presets (fork 7). Any other top is typed into the menu's field. */
-const SCALES = [10, 5, 100];
+const SCALES = [5, 10, 100];
 
 const art = (tmpl: string | undefined, px: number): string | null =>
   tmpl ? tmpl.replace("{w}", String(px)).replace("{h}", String(px)).replace("{f}", "jpg") : null;
@@ -59,7 +73,8 @@ const coverHTML = (url: string | null, cls: string): string =>
 
 const ICON_BACK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>';
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
-const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>';
+const ICON_PLAY ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
 const ICON_NOTE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10M3 6.5h10M3 10h6" /></svg>';
 const ICON_SEARCH = '<svg class="search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>';
 const ICON_CLEAR =
@@ -113,9 +128,13 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     <header class="panel__head">
       <button class="panel__back" id="diary-back" type="button" aria-label="Back" title="Goes back one step" hidden>${ICON_BACK}</button>
       <h2 class="panel__title">Diary</h2>
+      <button class="panel__action" id="diary-add" type="button" aria-label="New" aria-haspopup="true" title="Starts a new entry or makes a new folder">${ICON_PLUS}</button>
+      <button class="panel__action" id="diary-done" type="button" aria-pressed="false" hidden>${ICON_CHECK}</button>
     </header>
     <div class="panel__body diary"></div>`;
   const backEl = host.querySelector<HTMLButtonElement>("#diary-back")!;
+  const addBtn = host.querySelector<HTMLButtonElement>("#diary-add")!;
+  const doneBtn = host.querySelector<HTMLButtonElement>("#diary-done")!;
   const titleEl = host.querySelector<HTMLElement>(".panel__title")!;
   const body = host.querySelector<HTMLElement>(".diary")!;
 
@@ -130,24 +149,75 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   /** A song change that waits while the user is typing in the foot. */
   let pendingSel: string | null = null;
   let destroyed = false;
+  /** The open entry grew the card itself (Grow on open), so Back may collapse it. */
+  let grewForEntry = false;
   const headerSubs = new Set<(h: { title: string; atRoot: boolean }) => void>();
 
   const setHeader = () => {
     const atRoot = !entry;
-    titleEl.textContent = atRoot ? "Diary" : "Entry";
+    // His call (2026-09-24): "Diary: <album name>" while an entry is open. The title's own
+    // ellipsis cuts a long name, so the header never wraps.
+    titleEl.textContent = atRoot || !entry ? "Diary" : `Diary: ${entry.album.title}`;
+    titleEl.title = atRoot ? "" : titleEl.textContent;
     backEl.hidden = atRoot;
+    // The + is the home page's (new entry, new folder); the check is the entry's (Done).
+    addBtn.hidden = !atRoot;
+    doneBtn.hidden = atRoot;
+    paintDone();
     headerSubs.forEach((cb) => cb({ title: titleEl.textContent ?? "Diary", atRoot }));
   };
 
-  // ── the root: the + cover (or the picker) and the shelf ────────────────────────
-  const tileHTML = (s: DiarySummary): string => {
+  // ── the root: the + cover (or the picker), then the rows (DIARY.md §9) ─────────
+  // Two built-in rows drawn from Done — In progress, Completed — then the user's folders,
+  // oldest first. His calls (2026-09-24): the two status rows always show EVERY entry, and a
+  // folder is an extra group (an entry filed in one shows there too). Every row header moves
+  // by hold; a new folder starts at the end. Tiles move inside a row, and into another row.
+  let folders: DiaryFolder[] = [];
+  interface Row { key: string; label: string; folderId?: number; items: DiarySummary[]; empty: string }
+  let rows: Row[] = [];
+  const collapsed = loadCollapsed();
+  const rowScope = (key: string) => `diary.row:${key}` as const;
+
+  const buildRows = (): Row[] => {
+    const byRow = (key: string, xs: DiarySummary[]) => sortByOrder(rowScope(key), xs, (s) => String(s.id));
+    const built: Row[] = [
+      { key: "progress", label: "In progress", items: byRow("progress", list.filter((s) => !s.doneAt)), empty: "Nothing in progress. Add an album to start" },
+      { key: "done", label: "Completed", items: byRow("done", list.filter((s) => s.doneAt)), empty: "Press the check on an entry when you finish it" },
+      ...folders.map((f) => ({
+        key: `folder:${f.id}`,
+        label: f.name,
+        folderId: f.id,
+        items: byRow(`folder:${f.id}`, list.filter((s) => s.folderId === f.id)),
+        empty: "Drag an entry here, or right-click one › Move to Folder",
+      })),
+    ];
+    return sortByOrder("diary.sections", built, (r) => r.key);
+  };
+
+  const tileHTML = (s: DiarySummary, i: number, row: Row): string => {
     const score = fmtScore(s.score, s.scaleMax);
     const done = s.songCount ? `${s.songsDone} of ${s.songCount} songs` : "";
     const sub = [score, done].filter(Boolean).join(" · ") || s.album.artistName;
-    return `<div class="search__tile" data-entry="${s.id}" role="button" tabindex="0" title="${esc(`${s.album.title} — ${s.album.artistName}`)}">
-      ${coverHTML(art(s.album.artwork?.urlTemplate, TILE_PX), "search__tile-art")}
+    // In a folder row, a finished entry wears a check (the status rows say it already).
+    const badge = row.folderId != null && s.doneAt ? `<span class="search__tile-badge diary__tile-done" aria-label="Completed">${ICON_CHECK}</span>` : "";
+    return `<div class="search__tile" data-entry="${s.id}" data-tile data-tile-idx="${i}" role="button" tabindex="0" title="${esc(`${s.album.title} — ${s.album.artistName}`)}">
+      ${coverHTML(art(s.album.artwork?.urlTemplate, TILE_PX), "search__tile-art")}${badge}
       <span class="search__tile-name">${esc(s.album.title)}</span><span class="search__tile-sub">${esc(sub)}</span>
     </div>`;
+  };
+  const rowHTML = (r: Row, i: number): string => {
+    const shut = collapsed.has(r.key);
+    const hint = sectionsMovable() ? "Click to open or close. Hold to move this row. New folders appear at the end" : "Click to open or close";
+    const head =
+      `<div class="lib-shelf lib-shelf--toggle${shut ? " is-collapsed" : ""}" data-sec-head title="${esc(hint)}">` +
+      `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+      `<span>${esc(r.label)}</span><span class="lib-shelf__count">${r.items.length}</span></div>`;
+    const body = shut
+      ? ""
+      : r.items.length
+        ? `<div class="search__scroller diary__shelf" data-shelf-key="${esc(r.key)}">${r.items.map((s, j) => tileHTML(s, j, r)).join("")}</div>`
+        : `<div class="diary__shelf diary__shelf--empty" data-shelf-key="${esc(r.key)}"><p class="qcard__empty">${esc(r.empty)}</p></div>`;
+    return `<section class="diary__sec" data-sec="${esc(r.key)}" data-sec-idx="${i}">${head}${body}</section>`;
   };
   const newHTML = () =>
     `<button class="diary__new" type="button" data-new title="Pick an album to write about">
@@ -165,14 +235,19 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   const renderRoot = () => {
     const seq = ++rootSeq;
-    diaryList()
-      .then((l) => {
+    Promise.all([diaryList(), diaryFolders()])
+      .then(([l, fs]) => {
         if (destroyed || entry || seq !== rootSeq) return;
         list = l;
-        const shelf = l.length
-          ? `<div class="qcard__label">Your entries</div><div class="search__scroller diary__shelf">${l.map(tileHTML).join("")}</div>`
-          : `<p class="qcard__empty">Pick an album, listen, and write about each song.</p>`;
-        body.innerHTML = `<div class="diary__root app-scroll">${picking ? pickerHTML() : newHTML()}${shelf}</div>`;
+        folders = fs;
+        rows = buildRows();
+        const keepScroll = body.querySelector<HTMLElement>(".diary__root")?.scrollTop ?? 0;
+        const lead = l.length ? "" : `<p class="qcard__empty">Pick an album, listen, and write about each song.</p>`;
+        body.innerHTML =
+          `<div class="diary__root app-scroll">${picking ? pickerHTML() : newHTML()}${lead}` +
+          `<div class="diary__secs" data-secs>${rows.map(rowHTML).join("")}</div></div>`;
+        const rootEl = body.querySelector<HTMLElement>(".diary__root");
+        if (rootEl) rootEl.scrollTop = keepScroll;
         if (picking) {
           const input = body.querySelector<HTMLInputElement>("[data-pick-input]")!;
           input.focus();
@@ -193,6 +268,45 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       ${coverHTML(art(a.artwork?.urlTemplate, ROW_PX), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(a.title)}</span><span class="search__song-artist">${esc(sub)}</span></div>
     </div>`;
+  // One finder for both searches (the home page's field and the + menu's New entry): your
+  // library first, at zero Apple calls, then one catalog search.
+  const libMatches = (q: string) =>
+    libraryAlbums()
+      .filter((x) => x.album.title.toLowerCase().includes(q) || x.album.artistName.toLowerCase().includes(q))
+      .slice(0, PICK_LIB_CAP);
+  const catMatches = (term: string): Promise<Album[]> =>
+    searchCatalog(term.trim(), ["albums"]).then((r) => r.albums.filter((a) => a.catalogId).slice(0, PICK_CAT_CAP));
+  const catIn1 = (a: Album): AlbumIn => ({ album: { ...a, genres: [] }, tracks: () => collectionTracks("albums", a.catalogId ?? "") });
+
+  /** The + menu's New entry field (his ask, 2026-09-24): the Playlists + look — a labelled
+   *  field — and it searches as you type; the menu grows downward with the answers. Enter
+   *  opens the first answer. */
+  let menuFirst: AlbumIn | null = null;
+  const menuSearch = (v: string, show: (rows: ActionItem[] | string) => void) => {
+    const q = v.toLowerCase();
+    const row = (a: AlbumIn, note: string): ActionItem => ({
+      label: a.album.title,
+      note,
+      art: art(a.album.artwork?.urlTemplate, ROW_PX) ?? undefined,
+      run: () => openAlbum(a, "menu-search"),
+    });
+    const lib = libMatches(q).map((x) => ({ album: x.album, tracks: () => x.tracks }) as AlbumIn);
+    const libRows = lib.map((a) => row(a, `${a.album.artistName} · In your library`));
+    menuFirst = lib[0] ?? null;
+    show(libRows.length ? libRows : "Searching Apple Music…");
+    catMatches(v)
+      .then((cat) => {
+        const catRows = cat.map((a) => row(catIn1(a), [a.artistName, a.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
+        menuFirst ??= cat[0] ? catIn1(cat[0]) : null;
+        const all = [...libRows, ...catRows];
+        show(all.length ? all : "No album found.");
+      })
+      .catch((e) => {
+        console.warn("[diary] menu search", e);
+        if (!libRows.length) show("Couldn't search Apple Music.");
+      });
+  };
+
   const runPick = (term: string) => {
     const results = body.querySelector<HTMLElement>("[data-pick-results]");
     if (!results) return;
@@ -201,13 +315,11 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       results.innerHTML = `<p class="qcard__empty">Type an album or an artist. Your library shows first, then Apple Music.</p>`;
       return;
     }
-    const lib = libraryAlbums()
-      .filter((x) => x.album.title.toLowerCase().includes(q) || x.album.artistName.toLowerCase().includes(q))
-      .slice(0, PICK_LIB_CAP);
+    const lib = libMatches(q);
     pickFound = lib.map((x) => ({ album: x.album, tracks: () => x.tracks }));
     const draw = (cat: Album[] | null) => {
       if (!body.contains(results)) return;
-      const catIn: AlbumIn[] = (cat ?? []).map((a) => ({ album: { ...a, genres: [] }, tracks: () => collectionTracks("albums", a.catalogId ?? "") }));
+      const catIn: AlbumIn[] = (cat ?? []).map(catIn1);
       pickFound = [...lib.map((x) => ({ album: x.album, tracks: () => x.tracks })), ...catIn];
       const libHTML = lib.length
         ? `<div class="qcard__label">In your library</div>${lib.map((x, i) => pickRow(x.album, i, x.album.artistName)).join("")}`
@@ -225,19 +337,92 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     };
     draw(null);
     const seq = ++pickSeq;
-    searchCatalog(term.trim(), ["albums"])
-      .then((r) => {
-        if (seq === pickSeq && !destroyed) draw(r.albums.filter((a) => a.catalogId).slice(0, PICK_CAT_CAP));
+    catMatches(term)
+      .then((cat) => {
+        if (seq === pickSeq && !destroyed) draw(cat);
       })
       .catch((e) => {
         console.warn("[diary] search", e);
         if (seq === pickSeq && !destroyed) draw([]);
       });
   };
+  // ── the morph (his ask, 2026-09-24): the empty cover's square becomes the search bar ──
+  // A stand-in box on <body> (fixed, so a grown card's clip cannot cut it) takes the start
+  // shape — its place, size, corner and fill — and animates to the end shape, while the
+  // real control waits invisible under it and fades in as the box lands. The skin's own
+  // navigation motion (`--diary-morph-dur` / `--diary-morph-ease`). Reduced motion: it snaps.
+  // A motion token read through a REAL property: a custom property keeps `calc()` as text
+  // ("calc(0.26s * 1.4)"), which parseFloat reads as nothing — the morph ran in 0 ms and was
+  // never seen (2026-09-24). `transition-*` on the element computes it.
+  const tokenMotion = (el: HTMLElement, dur: string, ease: string): { ms: number; easing: string } => {
+    el.style.transitionDuration = `var(${dur})`;
+    el.style.transitionTimingFunction = `var(${ease})`;
+    const cs = getComputedStyle(el);
+    const raw = cs.transitionDuration.split(",")[0].trim(); // "0.364s"
+    const ms = (parseFloat(raw) || 0) * (raw.endsWith("ms") ? 1 : 1000);
+    // One value, whole: a comma split would cut "cubic-bezier(0.4, 0, 0.2, 1)" in half.
+    const easing = cs.transitionTimingFunction.trim() || "ease";
+    el.style.transitionDuration = "";
+    el.style.transitionTimingFunction = "";
+    return { ms, easing };
+  };
+  const morph = (from: HTMLElement, swap: () => HTMLElement | null, done?: () => void) => {
+    const a = from.getBoundingClientRect();
+    const sa = getComputedStyle(from);
+    const start = { radius: sa.borderRadius, bg: sa.backgroundColor, border: sa.borderColor };
+    const to = swap();
+    if (!to || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done?.();
+    const b = to.getBoundingClientRect();
+    const sb = getComputedStyle(to);
+    const box = document.createElement("div");
+    box.className = "diary__morph";
+    box.setAttribute("aria-hidden", "true");
+    document.body.appendChild(box);
+    const { ms: dur, easing } = tokenMotion(box, "--diary-morph-dur", "--diary-morph-ease");
+    to.style.opacity = "0";
+    const frame = (r: DOMRect, radius: string, bg: string, border: string) => ({
+      left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+      borderRadius: radius, backgroundColor: bg, borderColor: border,
+    });
+    const anim = box.animate(
+      [frame(a, start.radius, start.bg, start.border), frame(b, sb.borderRadius, sb.backgroundColor, sb.borderColor)],
+      { duration: dur, easing, fill: "forwards" },
+    );
+    const land = () => {
+      box.remove();
+      to.style.opacity = "";
+      to.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur / 2, easing });
+      done?.();
+    };
+    anim.finished.then(land, land);
+  };
+  const openPicker = () => {
+    const cover = body.querySelector<HTMLElement>(".diary__new-art");
+    const btn = body.querySelector<HTMLElement>("[data-new]");
+    picking = true;
+    diag.log("ui:act", { at: "diary", do: "pick-open" });
+    if (!cover || !btn) return renderRoot();
+    morph(
+      cover,
+      () => {
+        btn.outerHTML = pickerHTML();
+        return body.querySelector<HTMLElement>(".diary__pick .search__field");
+      },
+      () => body.querySelector<HTMLInputElement>("[data-pick-input]")?.focus(),
+    );
+    body.querySelector<HTMLInputElement>("[data-pick-input]")?.focus();
+  };
   const closePicker = () => {
+    const field = body.querySelector<HTMLElement>(".diary__pick .search__field");
+    const pick = body.querySelector<HTMLElement>(".diary__pick");
     picking = false;
     pickTerm = "";
-    renderRoot();
+    ++pickSeq; // an Apple search still on its way must not draw into the bar that left
+    if (!field || !pick) return renderRoot();
+    morph(field, () => {
+      pick.outerHTML = newHTML();
+      return body.querySelector<HTMLElement>(".diary__new-art");
+    });
   };
 
   // ── opening an album (all three ways in land here) ─────────────────────────────
@@ -246,8 +431,10 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     pickTerm = "";
     body.innerHTML = `<p class="qcard__empty">Opening ${esc(a.album.title)}…</p>`;
     diag.log("ui:act", { at: "diary", do: "open", how });
+    // A library album finds its catalog id first (one memoized hop), so the entry is keyed by
+    // it and the export ends with the album's link (DIARY.md §10).
     Promise.resolve(a.tracks())
-      .then((ts) => diaryOpen(a.album, ts))
+      .then(async (ts) => diaryOpen(await withAlbumId(a.album, ts), ts))
       .then((e) => showEntry(e))
       .catch((e) => {
         console.error("[diary] open", e);
@@ -281,15 +468,22 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     return t ? songKeyOf(t) : null;
   };
 
+  // A score is a split pill (his call, 2026-09-24): the number you type on the left, the
+  // scale on the right. On the album's pill the right half is the scale's menu; a song's
+  // pill shows the same scale as text (one scale per entry, set on the album).
   const scoreFieldHTML = (which: "album" | "song", value: number | undefined, max: number, label: string) => {
     const over = value != null && value > max;
-    return `<label class="diary__score${over ? " is-over" : ""}" title="${esc(
-      over ? `Above this scale's top of ${fmtNum(max)}. Type a new score, or rescale` : `${label}: any number from 0 to ${fmtNum(max)}`,
-    )}">
+    const max$ = esc(fmtNum(max));
+    const right =
+      which === "album"
+        ? `<button class="diary__score-max diary__scale" type="button" data-scale aria-haspopup="true" title="The scale for this album: its songs and the album use it">/ ${max$}${CARET}</button>`
+        : `<span class="diary__score-max">/ ${max$}</span>`;
+    return `<div class="diary__score${over ? " is-over" : ""}">
       <input class="diary__score-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
-        data-score="${which}" value="${value == null ? "" : esc(fmtNum(value))}" placeholder="–" aria-label="${esc(label)}" />
-      <span class="diary__score-max">/ ${esc(fmtNum(max))}</span>
-    </label>`;
+        data-score="${which}" value="${value == null ? "" : esc(fmtNum(value))}" placeholder="–" aria-label="${esc(label)}"
+        title="${esc(over ? `Above this scale's top of ${fmtNum(max)}. Type a new score, or rescale` : `${label}: any number from 0 to ${fmtNum(max)}`)}" />
+      ${right}
+    </div>`;
   };
   const dateHTML = (which: "album" | "song", day: string | undefined, hint: string) =>
     `<button class="lib-pill diary__date" type="button" data-date="${which}" aria-haspopup="true" title="${esc(hint)}">
@@ -321,12 +515,10 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       <div class="diary__foot-head">
         <button class="panel__action diary__foot-play" type="button" data-foot-play aria-label="Play from this song" title="Plays the album from this song">${ICON_PLAY}</button>
         <span class="diary__foot-title" title="${esc(follow ? "The song that plays. The panel follows it" : "The row you picked")}">${esc(`${t.trackNumber ?? ""}${t.trackNumber ? " · " : ""}${t.title}`)}</span>
+        ${dateHTML("song", n?.noteDate, "The day of this note. It is set when you first write one")}
         ${scoreFieldHTML("song", n?.score, entry.scaleMax, `Score for ${t.title}`)}
       </div>
       <textarea class="diary__note app-scroll" data-note="song" rows="3" placeholder="What you hear in this song" spellcheck="true">${esc(n?.note ?? "")}</textarea>
-      <div class="diary__foot-line">
-        ${dateHTML("song", n?.noteDate, "The day of this note. It is set when you first write one")}
-      </div>
     </div>`;
   };
 
@@ -338,9 +530,6 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const album = `<div class="diary__album">
       <div class="diary__line">
         ${scoreFieldHTML("album", e.score, e.scaleMax, "Score for the album")}
-        <button class="lib-pill diary__scale" type="button" data-scale aria-haspopup="true" title="The scale for this album: its songs and the album use it">
-          <span class="lib-pill__label">Out of ${esc(fmtNum(e.scaleMax))}</span>${CARET}
-        </button>
         ${dateHTML("album", e.reviewDate, "The day of this review")}
       </div>
       <textarea class="diary__note app-scroll" data-note="album" rows="3" placeholder="What you think of the album" spellcheck="true">${esc(e.note)}</textarea>
@@ -379,7 +568,12 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     if (old) {
       if (html) old.outerHTML = html;
       else old.remove();
-    } else if (html) body.querySelector(".diary__entry")?.insertAdjacentHTML("beforeend", html);
+    } else if (html) {
+      // The foot arrives with the first pick: it slides in as a part that appears later does.
+      body.querySelector(".diary__entry")?.insertAdjacentHTML("beforeend", html);
+      const foot = body.querySelector<HTMLElement>("[data-foot]");
+      if (foot) enterRows([foot]);
+    }
   };
 
   const select = (key: string | null) => {
@@ -390,15 +584,39 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       return;
     }
     selKey = key;
-    renderRows();
+    paintSel();
     renderFoot();
+  };
+  /** Move the selected mark WITHOUT rebuilding the rows: a rebuild between the two clicks of a
+   *  double-click puts the second click on a new element, and the browser then sends no dblclick. */
+  const paintSel = () => {
+    if (!entry) return;
+    body.querySelectorAll<HTMLElement>("[data-song-i]").forEach((el) => {
+      const t = entry!.tracks[Number(el.dataset.songI)];
+      const on = !!t && songKeyOf(t) === selKey;
+      el.classList.toggle("is-sel", on);
+      if (on) el.setAttribute("aria-current", "true");
+      else el.removeAttribute("aria-current");
+    });
   };
 
   const showEntry = (e: DiaryEntry) => {
     if (destroyed) return;
     const first = entry?.id !== e.id;
     entry = e;
-    if (first) selKey = playingKey() ?? (e.tracks[0] ? songKeyOf(e.tracks[0]) : null);
+    if (first) {
+      // The foot waits for a song (his call, 2026-09-24): a new entry starts on its first song,
+      // because the card grows for it and has room; a reopened one on the song that plays, if
+      // it is on this album, else on none.
+      selKey = e.created && e.tracks[0] ? songKeyOf(e.tracks[0]) : playingKey();
+      const grow = setting("diaryGrow");
+      if (grow === "every" || (grow === "new" && e.created)) {
+        void growCardTaller("diary", "diary-open").then((grew) => {
+          if (grew && entry?.id === e.id) grewForEntry = true;
+          diag.log("ui:act", { at: "diary", do: "grow", grew, why: e.created ? "new" : "every" });
+        });
+      }
+    }
     setHeader();
     renderEntry(first);
     // A pre-release album: ask Apple once for the songs that came out since (release.ts).
@@ -423,7 +641,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const label = input.closest<HTMLElement>(".diary__score");
     const bad = (msg: string) => {
       label?.setAttribute("data-bad", "");
-      if (label) label.title = msg;
+      input.title = msg;
     };
     if (v !== null && (Number.isNaN(v) || v > e.scaleMax)) {
       bad(`Type a number from 0 to ${fmtNum(e.scaleMax)}`);
@@ -541,12 +759,12 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   const scaleMenu = (): MenuItem[] => {
     const cur = entry?.scaleMax;
+    // His call (2026-09-24): the rows are 5, 10, 100 and a field — nothing else.
     return [
-      ...SCALES.map((m) => ({ label: `Out of ${m}`, badge: cur === m ? MENU_CHOSEN : undefined, run: () => changeScale(m) })),
+      ...SCALES.map((m) => ({ label: String(m), badge: cur === m ? MENU_CHOSEN : undefined, run: () => changeScale(m) })),
       {
         input: {
-          label: "Your own top",
-          placeholder: "Any number above 0",
+          placeholder: "Another top",
           value: cur != null && !SCALES.includes(cur) ? fmtNum(cur) : "",
           onSubmit: (raw: string) => {
             const v = parseScore(raw);
@@ -631,15 +849,97 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       ],
     });
 
-  const entryMenu = (s: { id: number; album: Album; tracks: () => Track[] | Promise<Track[]> }): MenuItem[] =>
+  /** Move to Folder ▸ (the Playlists row's submenu): a new folder, each other folder, and
+   *  Remove from Folder when it is filed. One folder per entry. */
+  const folderSub = (id: number, filed: number | undefined): MenuItem[] => [
+    { input: { placeholder: "New folder…", onSubmit: (name) => newFolder(name, (fid) => void diaryFile(id, fid).catch(saveFailed)) } },
+    ...folders.filter((f) => f.id !== filed).map((f) => ({ label: f.name, run: () => void diaryFile(id, f.id).catch(saveFailed) })),
+    ...(filed != null ? [{ label: "Remove from Folder", run: () => void diaryFile(id, null).catch(saveFailed) }] : []),
+  ];
+  const entryMenu = (s: { id: number; album: Album; doneAt?: number; folderId?: number; tracks: () => Track[] | Promise<Track[]> }): MenuItem[] =>
     albumMenu(
       { title: s.album.title, artistName: s.album.artistName, artwork: s.album.artwork, catalogId: s.album.catalogId, known: [], whole: () => Promise.resolve(s.tracks()), catalog: !!s.album.catalogId, pinKey: null },
-      { context: `diary:${s.id}`, inDiary: true, away: [{ label: "Delete entry", run: () => askDelete(s.id, s.album.title) }] },
+      {
+        context: `diary:${s.id}`,
+        inDiary: true,
+        own: [
+          // Export (his ask, 2026-09-24): the entry as text on the clipboard (diary.rs `export_text`).
+          { label: "Export", run: () => void copyDiaryExport(s.id) },
+          { label: s.doneAt ? "Mark in progress" : "Mark as done", run: () => void setDone(s.id, !s.doneAt) },
+          { label: "Move to Folder", sub: () => folderSub(s.id, s.folderId) },
+        ],
+        away: [{ label: "Delete entry", run: () => askDelete(s.id, s.album.title) }],
+      },
     );
+  /** A folder row's header: rename it, delete it (its entries stay, in In progress or Completed). */
+  const folderMenu = (f: DiaryFolder): MenuItem[] => [
+    { input: { placeholder: "Rename folder…", value: f.name, onSubmit: (name) => void diaryFolderRename(f.id, name).catch(saveFailed) } },
+    { label: "Delete Folder", run: () => void diaryFolderDelete(f.id).catch(saveFailed) },
+  ];
 
   // ── events ─────────────────────────────────────────────────────────────────────
+  // ── Done (the check, his call 2026-09-24: it toggles) ─────────────────────────
+  function paintDone() {
+    const on = !!entry?.doneAt;
+    doneBtn.classList.toggle("is-active", on);
+    doneBtn.setAttribute("aria-pressed", String(on));
+    doneBtn.setAttribute("aria-label", on ? "Mark in progress" : "Mark as done");
+    doneBtn.title = on ? "Done. Press again to put it back in progress" : "Marks this entry done. It moves to Completed";
+  }
+  const setDone = (id: number, done: boolean) => {
+    diag.log("ui:act", { at: "diary", do: done ? "done" : "undone" });
+    if (entry?.id === id) {
+      entry.doneAt = done ? Date.now() : undefined;
+      paintDone();
+    }
+    return diarySetDone(id, done)
+      .then((at) => {
+        if (entry?.id === id) {
+          entry.doneAt = at ?? undefined;
+          paintDone();
+        }
+      })
+      .catch(saveFailed);
+  };
+  doneBtn.addEventListener("click", () => {
+    if (entry) void setDone(entry.id, !entry.doneAt);
+  });
+
+  // ── the + (home page): a new entry, or a new folder ───────────────────────────
+  const newFolder = (name: string, then?: (id: number) => void) =>
+    void diaryFolderCreate(name)
+      .then((id) => then?.(id))
+      .catch((e) => {
+        console.error("[diary] new folder", e);
+        toast({ kind: "warn", text: "Couldn't make the folder." });
+      });
+  addBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    addBtn.setAttribute("aria-expanded", "true");
+    openContextMenuUnder(
+      addBtn,
+      [
+        {
+          input: {
+            label: "Entry",
+            placeholder: "Find an album or an artist",
+            onInput: menuSearch,
+            onSubmit: () => {
+              if (menuFirst) openAlbum(menuFirst, "menu-enter");
+            },
+          },
+        },
+        { input: { label: "Folder", placeholder: "Folder name", onSubmit: (name) => newFolder(name) } },
+      ],
+      () => addBtn.setAttribute("aria-expanded", "false"),
+    );
+  });
+
   backEl.addEventListener("click", () => {
     flushNote();
+    // A grow the entry made ends with the entry; a grow the user made stays.
+    if (grewForEntry && isGrownCard("diary")) void collapseGrow("diary-back");
+    grewForEntry = false;
     entry = null;
     selKey = null;
     setHeader();
@@ -649,9 +949,24 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   body.addEventListener("click", (ev) => {
     const target = ev.target as HTMLElement;
     if (!entry) {
+      const head = target.closest<HTMLElement>("[data-sec-head]");
+      if (head) {
+        const key = head.closest<HTMLElement>("[data-sec]")?.dataset.sec;
+        if (!key) return;
+        const opening = collapsed.has(key);
+        if (opening) collapsed.delete(key);
+        else collapsed.add(key);
+        try {
+          localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
+        } catch { /* a fold that does not persist is still a fold */ }
+        const sec = head.closest<HTMLElement>("[data-sec]")!;
+        const r = rows.find((x) => x.key === key);
+        if (r) sec.outerHTML = rowHTML(r, Number(sec.dataset.secIdx));
+        if (opening) enterRows(body.querySelectorAll(`[data-sec="${CSS.escape(key)}"] [data-tile]`));
+        return;
+      }
       if (target.closest("[data-new]")) {
-        picking = true;
-        renderRoot();
+        openPicker();
         return;
       }
       if (target.closest("[data-pick-close]")) {
@@ -705,7 +1020,16 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   body.addEventListener("dblclick", (ev) => {
     const row = (ev.target as HTMLElement).closest<HTMLElement>("[data-song-i]");
     if (!row || !entry) return;
-    playFrom(entry, entry.tracks, Number(row.dataset.songI));
+    const i = Number(row.dataset.songI);
+    const t = entry.tracks[i];
+    if (!t) return;
+    // A song that is not out: say when, as the Search album page does (release.ts).
+    if (t.unreleased) {
+      toast({ kind: "warn", text: unreleasedToast(t) });
+      return;
+    }
+    diag.log("ui:act", { at: "diary", do: "row", i, n: entry.tracks.length });
+    playFrom(entry, entry.tracks, i);
   });
 
   body.addEventListener("input", (ev) => {
@@ -775,7 +1099,40 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       const s = list.find((x) => x.id === Number(tile.dataset.entry));
       if (!s) return;
       ev.preventDefault();
-      openContextMenu(ev.clientX, ev.clientY, entryMenu({ id: s.id, album: s.album, tracks: () => diaryGet(s.id).then((e) => e.tracks) }));
+      tile.classList.add("is-context");
+      openContextMenu(
+        ev.clientX,
+        ev.clientY,
+        entryMenu({ ...s, tracks: () => diaryGet(s.id).then((e) => e.tracks) }),
+        () => tile.classList.remove("is-context"),
+      );
+      return;
+    }
+    const head = target.closest<HTMLElement>("[data-sec-head]");
+    if (head && !entry) {
+      const key = head.closest<HTMLElement>("[data-sec]")?.dataset.sec ?? "";
+      const f = folders.find((x) => `folder:${x.id}` === key);
+      if (!f) return; // In progress and Completed are not yours to rename or delete
+      ev.preventDefault();
+      openContextMenu(ev.clientX, ev.clientY, folderMenu(f));
+      return;
+    }
+    // A song row: the song menu (his ask, 2026-09-24). Play Now plays the album from it when
+    // Settings says so (listFrom); an unreleased song gets Go to Artist only (media-menu.ts).
+    const row = target.closest<HTMLElement>("[data-song-i]");
+    if (entry && row) {
+      const e = entry;
+      const i = Number(row.dataset.songI);
+      const t = e.tracks[i];
+      if (!t) return;
+      ev.preventDefault();
+      row.classList.add("is-context");
+      openContextMenu(
+        ev.clientX,
+        ev.clientY,
+        songMenu(t, { context: `diary:${e.id}`, listFrom: { items: e.tracks.filter((x) => !x.unreleased), idx: Math.max(0, e.tracks.filter((x, j) => j < i && !x.unreleased).length) }, catalog: !t.libraryId }),
+        () => row.classList.remove("is-context"),
+      );
       return;
     }
     if (entry && target.closest(".lib-hero")) {
@@ -794,6 +1151,26 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     }
   };
   const unsubRequest = onDiaryAlbum(takeRequest);
+  // The Compass's Diary rows open an entry by id (DIARY.md §10).
+  const takeEntry = () => {
+    const id = takeDiaryEntry();
+    if (id == null) return;
+    flushNote();
+    picking = false;
+    void openEntry(id);
+  };
+  const unsubEntry = onDiaryEntry(takeEntry);
+  // An agent wrote (DIARY.md §10): an open entry reads itself again — unless you are typing
+  // in it, when your own words win and the next open shows theirs.
+  const unsubOutside = onDiaryOutside(() => {
+    if (!entry || body.contains(document.activeElement)) return;
+    const id = entry.id;
+    void diaryGet(id)
+      .then((e) => {
+        if (entry?.id === id) showEntry(e);
+      })
+      .catch((err) => console.warn("[diary] outside refresh", err));
+  });
 
   /** A dropped album's own facts come from its first song: a drag carries songs, not the album. */
   const openDrop = (p: DragPayload) => {
@@ -812,6 +1189,113 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   const unregisterDrop = registerDropTarget({
     el: host,
     over: (_under, _x, _y, p) => (p.kind === "album" && p.source !== "diary" ? { highlight: host, drop: () => openDrop(p) } : null),
+  });
+
+  // ── arranging the home page (the Playlists idioms, DIARY.md §9) ────────────────
+  // A row header: hold, then move — the whole row moves among the rows (row order scope
+  // `diary.sections`). A tile: a plain drag. Inside its own row it moves along the row;
+  // over another Diary row it lands there (his call: menu AND drag); over another card it is
+  // the album, as any album tile is (Now Playing plays it, a playlist takes its songs).
+  const tilePayload = (s: DiarySummary, rowKey: string): DragPayload => ({
+    source: "diary",
+    kind: "album",
+    count: s.songCount,
+    tracks: () => diaryGet(s.id).then((e) => e.tracks.filter((t) => !t.unreleased)),
+    context: `diary:${s.id}`,
+    diaryId: s.id,
+    diaryRow: rowKey,
+  });
+  const drag = rowDrag({
+    root: body,
+    label: "diary",
+    rowAt: (target) => {
+      if (entry) return null;
+      const secs = body.querySelector<HTMLElement>("[data-secs]");
+      const head = target.closest<HTMLElement>("[data-sec-head]");
+      if (head && secs) {
+        const hold = holdFor();
+        const sec = head.closest<HTMLElement>("[data-sec]");
+        if (!hold || !sec) return null;
+        const ids = rows.map((r) => r.key);
+        const key = sec.dataset.sec ?? "";
+        return {
+          row: sec,
+          index: Number(sec.dataset.secIdx),
+          list: secs,
+          count: ids.length,
+          measure: true,
+          sel: "[data-sec]",
+          ...hold,
+          done: (to) => {
+            if (to != null) void moveTo("diary.sections", ids, key, to);
+          },
+        };
+      }
+      const tile = target.closest<HTMLElement>("[data-tile]");
+      const shelf = tile?.closest<HTMLElement>("[data-shelf-key]");
+      if (!tile || !shelf) return null;
+      const rowKey = shelf.dataset.shelfKey ?? "";
+      const r = rows.find((x) => x.key === rowKey);
+      const s = r?.items[Number(tile.dataset.tileIdx)];
+      if (!r || !s) return null;
+      const ids = r.items.map((x) => String(x.id));
+      return {
+        row: tile,
+        index: Number(tile.dataset.tileIdx),
+        list: shelf,
+        count: ids.length,
+        axis: "x",
+        measure: true,
+        sel: "[data-tile]",
+        payload: tilePayload(s, rowKey),
+        done: (to) => {
+          if (to != null) void moveTo(rowScope(rowKey), ids, String(s.id), to);
+        },
+      };
+    },
+  });
+
+  /** Where a tile dropped at `x` lands among a row's tiles (the near side of each middle). */
+  const insAt = (shelf: HTMLElement | null, x: number): number => {
+    const tiles = shelf ? [...shelf.querySelectorAll<HTMLElement>("[data-tile]")] : [];
+    const i = tiles.findIndex((t) => {
+      const b = t.getBoundingClientRect();
+      return x < b.left + b.width / 2;
+    });
+    return i < 0 ? tiles.length : i;
+  };
+  /** A tile dropped into another row: the row says what that means. Completed marks it done,
+   *  In progress marks it in progress, a folder files it there (and out of its old folder).
+   *  Then it takes its place in that row's order. */
+  const dropInto = (rowKey: string, id: number, at: number) => {
+    const s = list.find((x) => x.id === id);
+    const r = rows.find((x) => x.key === rowKey);
+    if (!s || !r) return;
+    diag.log("ui:act", { at: "diary", do: "drop-row", row: rowKey.startsWith("folder:") ? "folder" : rowKey });
+    const ids = r.items.map((x) => String(x.id)).filter((x) => x !== String(id));
+    ids.splice(Math.min(at, ids.length), 0, String(id));
+    const act =
+      rowKey === "done" ? (s.doneAt ? Promise.resolve() : setDone(id, true))
+      : rowKey === "progress" ? (s.doneAt ? setDone(id, false) : Promise.resolve())
+      : r.folderId != null && s.folderId !== r.folderId ? diaryFile(id, r.folderId)
+      : Promise.resolve();
+    void Promise.resolve(act)
+      .then(() => writeOrder(rowScope(rowKey), ids, { id: String(id), to: at }))
+      .catch(saveFailed);
+  };
+  const unregisterRows = registerDropTarget({
+    el: body,
+    over: (under, x, _y, p) => {
+      if (entry || p.diaryId == null) return null;
+      const sec = under.closest<HTMLElement>("[data-sec]");
+      const rowKey = sec?.dataset.sec;
+      if (!sec || !rowKey || p.diaryRow === rowKey) return null; // its own row: a move, not a drop
+      const id = p.diaryId;
+      return { highlight: sec, drop: () => dropInto(rowKey, id, insAt(sec.querySelector("[data-shelf-key]"), x)) };
+    },
+  });
+  const unsubOrder = onRowOrderChange(() => {
+    if (!entry && !picking) renderRoot();
   });
 
   // ── live updates ───────────────────────────────────────────────────────────────
@@ -833,6 +1317,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   if (mem?.entry) void openEntry(mem.entry);
   else renderRoot();
   takeRequest();
+  takeEntry();
 
   return {
     destroy() {
@@ -840,9 +1325,14 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       destroyed = true;
       window.clearTimeout(pickTimer);
       unsubRequest();
+      unsubEntry();
+      unsubOutside();
       unsubQueue();
       unsubDiary();
       unregisterDrop();
+      unregisterRows();
+      unsubOrder();
+      drag.destroy();
       headerSubs.clear();
       host.innerHTML = "";
     },

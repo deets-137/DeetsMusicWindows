@@ -48,6 +48,10 @@ export interface DragPayload {
   playlistId?: string;
   /** Overrides the Now Playing drop's play (an Up Next row jumps, as its menu's Play Now). */
   play?: () => Promise<void>;
+  /** A Diary entry tile (DIARY.md §9): a Diary row takes it as a move between rows. */
+  diaryId?: number;
+  /** The Diary row the tile left: a drop back on it is its own row's move, not a drop. */
+  diaryRow?: string;
 }
 
 export interface DragRow {

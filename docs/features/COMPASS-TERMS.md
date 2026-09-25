@@ -81,6 +81,8 @@ Any other row opens the Settings card at that row. Examples: **hover hints**, **
 | **sleep in 15 / 30 / 45 / 60** · **sleep at end of song** · **sleep at end of up next** · **sleep timer off** | The sleep timer |
 | **pin this song** / **unpin this song** (pin, pinned) | Pins the playing song: a tile on Home's Pinned shelf and the Library's (PINS.md, 2026-09-18) |
 | **reset row order** (arrange, rearrange, move, order, sections) | Opens Settings › Reset › Row order — the way back to the built-in order of every section and every pinned item (MOVABLE-ROWS.md, 2026-09-20). Shown only when you have moved something |
+| **add to diary** (diary, review, journal, rate album, write about) | Puts the playing song's album in the Diary and opens its entry (DIARY.md §10, 2026-09-24). Shown while a song plays |
+| an album in your **Diary** (diary, entry, review) | Opens its entry in the Diary; **Ctrl+Enter** copies its Export (DIARY.md §10, 2026-09-24) |
 | **refresh playlists now** (refresh, stale, update playlists, re-read playlists) | Re-reads the playlists that are DUE — the day-change check, on demand (PLAYLIST-REFRESH.md, 2026-09-20) |
 | **start a listening room** (room, listen together, share) | Starts a room from what you play now |
 | **leave room** / **end room** (in a room) | Leaves it, or ends it for everyone |

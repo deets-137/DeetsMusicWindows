@@ -77,6 +77,7 @@ nothing about authoring changed when the box did.
 | Compass bar | a theme, skin or surface row | the title menu button's own hint | compass.ts |
 | Compass bar | Open · Play (a song, album, artist or playlist row) | Enter · Ctrl+Enter | compass.ts |
 | Settings › Connections | Agents read play history | Lets a connected agent see what you played, when, and what you skipped | settings-card.ts |
+| Settings › Connections (2026-09-24) | Agents use the Diary | Lets a connected agent read your Diary and write notes, scores and dates in it | settings-card.ts (DIARY.md §10) |
 | Title menu › Account | Last.fm | Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile · connected: Disconnects Last.fm. Songs you hear stop going to your profile · no key: Last.fm is not in this build of DeetsMusic | index.html / lastfm.ts |
 | Title menu › Account | the Last.fm name ("Connected as *name*") | Opens your Last.fm profile in your browser | lastfm.ts |
 | Settings › Last.fm | Scrobble plays · Show now playing | Sends each song to your Last.fm profile once you hear half of it or 4 minutes · Your Last.fm profile shows the song while it plays | settings-card.ts |
@@ -145,10 +146,12 @@ nothing about authoring changed when the box did.
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
 | Diary (2026-09-24) | the + cover · the picker's × | Pick an album to write about · Closes the album search | diary-card.ts (DIARY.md §4) |
 | Diary | an entry tile | the album and its artist ("OPIA — VITA") | diary-card.ts `tileHTML` |
-| Diary entry | the scale pill · the review-date pill · the album score field | The scale for this album: its songs and the album use it · The day of this review · Score for the album: any number from 0 to 10 → marked: Type a number from 0 to 10 / Above this scale's top of 5. Type a new score, or rescale | diary-card.ts |
+| Diary header (2026-09-24) | the + (home) · the check (entry) | Starts a new entry or makes a new folder · Marks this entry done. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b) |
+| Diary home | a row header (In progress, Completed, a folder) | Click to open or close. Hold to move this row. New folders appear at the end → hold off: Click to open or close | diary-card.ts `rowHTML` |
+| Diary entry | the score pill's right half ("/ 10 ▾") · the review-date pill · the score pill's number field | The scale for this album: its songs and the album use it · The day of this review · Score for the album: any number from 0 to 10 → marked: Type a number from 0 to 10 / Above this scale's top of 5. Type a new score, or rescale | diary-card.ts |
 | Diary entry | a song row | Shows this song's note below. Double-click plays the album from here → unreleased: the Search pane's "Not out yet" hint | diary-card.ts `songRowHTML` |
 | Diary foot | the play square · the song title · the note-day pill | Plays the album from this song · The song that plays. The panel follows it / The row you picked · The day of this note. It is set when you first write one | diary-card.ts `footHTML` |
-| Settings › Diary | Rescale scores | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5 | settings-card.ts |
+| Settings › Diary | Rescale scores · Grow on open | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5 · The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi | settings-card.ts |
 | Search album pane (2026-09-24) | a dimmed row (a song not out yet) | Not out yet — coming 09/25 → past its date: Not on Apple Music yet | search-card.ts `listRow`, release.ts `unreleasedHint` (SEARCH.md §Unreleased songs) |
 | Any list | Sort · View · magnifier | Changes the order of this list · Changes what the list groups by and how big the rows are · Finds a name in this list | collection-card.ts |
 | Sort popover | ↑ · ↓ | First to last: A to Z, newest first · Last to first: Z to A, oldest first | collection-card.ts |

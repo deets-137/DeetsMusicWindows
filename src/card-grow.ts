@@ -327,6 +327,27 @@ export async function expandCard(card: string, cause: string): Promise<boolean> 
   return true;
 }
 
+/**
+ * Grow `card` over ONE neighbour, taller first: up or down in Max, left or right in Midi (the
+ * only way Midi grows). The Diary's way in (DIARY.md §4a): a journal page wants height for its
+ * song list and its note panel, not all four cards. Same rules as `expandCard`: it obeys "Grow
+ * cards from edges", waits for the summon's swap, does nothing in Mini, and leaves a card that
+ * is already grown as it is. Returns true when the card is grown after the call.
+ */
+export async function growCardTaller(card: string, cause: string): Promise<boolean> {
+  if (!enabled()) return false;
+  await whenSwapSettled();
+  const slot = opts?.slotOf(card) ?? null;
+  if (!slot) return false;
+  if (state?.slot === slot) return true;
+  const dirs = growDirs(slot);
+  const dir = dirs.find((d) => d === "up" || d === "down") ?? dirs[0] ?? null;
+  if (!dir) return false;
+  growCard(slot, dir, cause);
+  await settled;
+  return state?.slot === slot;
+}
+
 export function collapseGrow(cause: string, withMotion = true): Promise<void> {
   if (!state || !opts) return Promise.resolve();
   if (animating) return settled.then(() => collapseGrow(cause, withMotion));

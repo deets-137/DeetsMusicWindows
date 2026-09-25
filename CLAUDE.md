@@ -61,6 +61,7 @@ old installs' Guide button opens.
 - `QUEUE.md` — the queue model and MusicKit windowing. Read it before queue.ts / player.ts.
 - `SEARCH.md` — the catalog Search card.
 - `SECOND-SEARCH.md` — a second Search card to compare two albums.
+- `SEARCH-FIELDS.md` — one `searchField()` for all six search boxes: ×, Escape, Ctrl+F, delay, keys.
 - `STATIONS.md` — Apple stations and radio mode.
 - `FAVORITES.md` — Add to Library and ♥; the store of every track we touch.
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.

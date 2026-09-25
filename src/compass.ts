@@ -12,7 +12,9 @@
 
 import "./styles/compass.css";
 import { registry, type CardId } from "./cards";
-import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, cardHost } from "./layout-bus";
+import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, requestDiaryAlbum, requestDiaryEntry, cardHost } from "./layout-bus";
+import { diaryCachedList, diaryGet, copyDiaryExport, fmtScore } from "./diary";
+import { catalogRelated, collectionTracks } from "./search";
 import { orderedScopes } from "./row-order";
 import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
 import { currentSurface, onSurfaceChange } from "./surface";
@@ -58,7 +60,7 @@ import { parseSum } from "./compass-math";
 
 type Group =
   | "Answer" | "Places" | "Settings" | "Actions" | "Sound" | "Up Next" | "Recently Played" | "Speakers"
-  | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music";
+  | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music" | "Diary";
 /** Rows per group, and for the shown library kind, by surface: Mini is a small window
  *  (the user's call 2026-09-17: three there). */
 const perGroup = (): number => (currentSurface() === "mini" ? 3 : 6);
@@ -179,6 +181,8 @@ const GLYPH: Record<Group, string> = {
   Playlists: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h12M4 12h12M4 18h8M18 12v6M15.5 18a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z"/></svg>',
   Stations: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.7 4.7a10.3 10.3 0 0 0 0 14.6M19.3 4.7a10.3 10.3 0 0 1 0 14.6"/></svg>',
   "Apple Music": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>',
+  // A bound book with its lines: the Diary (DIARY.md §10).
+  Diary: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H6z"/><path d="M6 3.5v17M9.5 8h6M9.5 11.5h6M9.5 15h4"/></svg>',
 };
 const COMPASS_GLYPH =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg>';
@@ -382,6 +386,40 @@ function settingRows(): Row[] {
     });
 }
 
+/** The playing song's album into the Diary. A catalog song hops to its album once (memoized in
+ *  search.ts) and the Diary loads the album's songs; a library song with no catalog id brings
+ *  the album's songs the library holds. */
+function addPlayingToDiary(t: Track): void {
+  const cid = t.catalogId;
+  const lib = () => albumOrder(tracks().filter((x) => albumKey(x) === albumKey(t)));
+  const album = { title: t.albumName ?? "Unknown Album", artistName: t.artistName, artwork: t.artwork };
+  if (!cid) return requestDiaryAlbum({ album, tracks: lib });
+  void catalogRelated("songs", cid, "albums")
+    .then((ref) =>
+      requestDiaryAlbum(
+        ref ? { album: { ...album, title: ref.name || album.title, catalogId: ref.id }, tracks: () => collectionTracks("albums", ref.id) } : { album, tracks: lib },
+      ),
+    )
+    .catch((e) => {
+      console.warn("[compass] diary album", e);
+      requestDiaryAlbum({ album, tracks: lib });
+    });
+}
+
+/** The Diary's entries (DIARY.md §10): Enter opens one, Ctrl+Enter copies its export. From the
+ *  list the Diary last read — a write drops it, and the next open reads it again. */
+function diaryRows(): Row[] {
+  return diaryCachedList().map((s): Row => ({
+    group: "Diary",
+    title: s.album.title,
+    sub: [s.album.artistName, fmtScore(s.score, s.scaleMax), s.doneAt ? "Completed" : "In progress"].filter(Boolean).join(" · "),
+    aliases: ["diary", "entry", "review"],
+    run: () => requestDiaryEntry(s.id),
+    alt: { label: "Export", run: () => void copyDiaryExport(s.id) },
+    tracks: () => diaryGet(s.id).then((e) => e.tracks.filter((x) => !x.unreleased)),
+  }));
+}
+
 function actions(all: boolean): Row[] {
   const rows: Row[] = [
     { group: "Actions", title: isPlayingNow() ? "Pause" : "Play", side: "Space", aliases: ["play", "pause", "resume", "stop"], run: () => void playPause("compass").catch((e) => console.error("[compass] play", e)) },
@@ -417,6 +455,18 @@ function actions(all: boolean): Row[] {
       sub: playingTrack.title,
       aliases: ["pin", "unpin", "pinned"],
       run: () => void togglePin(key, "song", playingTrack).catch((e) => console.error("[compass] pin", e)),
+    });
+  }
+  // Add to Diary (DIARY.md §10, his call 2026-09-24): the playing song's album, as the album
+  // menu's row does — the Diary comes on screen at its entry, made the first time.
+  if (playingTrack?.albumName) {
+    const t = playingTrack;
+    rows.push({
+      group: "Actions",
+      title: "Add to Diary",
+      sub: `${t.albumName} · the playing album`,
+      aliases: ["diary", "review", "journal", "rate album", "write about"],
+      run: () => addPlayingToDiary(t),
     });
   }
   rows.push(
@@ -926,7 +976,7 @@ function query(termRaw: string, kind: Group | null): Result {
     }
     if (h.length) blocks.push({ best: h[0].s, rows: h.map((x) => x.r) });
   }
-  for (const pool of [settingRows(), actions(true), soundRows(), upNextRows(), recentRows(), speakerRows(term)]) {
+  for (const pool of [settingRows(), actions(true), soundRows(), upNextRows(), recentRows(), speakerRows(term), diaryRows()]) {
     const h = hitsOf(pool, words, term).slice(0, perGroup());
     if (h.length) blocks.push({ best: h[0].s, rows: h.map((x) => x.r) });
   }

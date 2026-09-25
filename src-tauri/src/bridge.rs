@@ -681,7 +681,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
-        "/picks", "/diag",
+        "/picks", "/diag", "/diary",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -974,6 +974,31 @@ async fn handle(app: AppHandle, mut req: Request) {
             match res {
                 Ok(v) => json(req, 200, v, origin),
                 Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e }), origin),
+            }
+        }
+        // ── the Diary (DIARY.md §10) — read and write, behind its own switch, agents only ──
+        (Method::Get, "/diary") | (Method::Post, "/diary") if origin.is_some() => {
+            json(req, 403, serde_json::json!({ "error": "This route is for agents with the bridge token, not extensions." }), origin)
+        }
+        (Method::Get, "/diary") | (Method::Post, "/diary") if !settings.agent_diary => {
+            json(req, 403, serde_json::json!({ "error": crate::diary::AGENT_OFF }), origin)
+        }
+        (Method::Get, "/diary") => {
+            let id = query_param(&url, "id").and_then(|v| v.parse::<i64>().ok());
+            let res = crate::diary::agent_read(&app.state::<crate::library::Db>().lock(), id);
+            match res {
+                Ok(v) => json(req, 200, v, origin),
+                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+            }
+        }
+        (Method::Post, "/diary") => {
+            let b: serde_json::Value = match serde_json::from_str(&body) {
+                Ok(v) => v,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            match crate::diary::agent_write(&app, &b).await {
+                Ok(v) => json(req, 200, v, origin),
+                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
             }
         }
         (Method::Get, "/history") if origin.is_none() && !settings.agent_history => json(

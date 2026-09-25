@@ -69,6 +69,10 @@ pub struct SettingsData {
     /// control is already the consent to reach the app; this row lets a user keep control and
     /// still hide their listening habits.
     pub agent_history: bool,
+    /// Agents may read and write the Diary (DIARY.md §10): `/diary`, `deetsmusic diary`, the
+    /// MCP `diary` tool. OFF by default — a diary is private writing — and only the user can
+    /// turn it on (the agent's own settings route may only turn it off).
+    pub agent_diary: bool,
     /// First installed run enrolled the app in Launch-at-startup (once, like
     /// DeetsAirplay); the Settings toggle owns it from then on.
     pub autostart_seeded: bool,
@@ -118,6 +122,7 @@ impl Default for SettingsData {
             minimize_to_tray: true,
             agent_control: true,
             agent_history: true,
+            agent_diary: false, // his call 2026-09-24: behind a switch the user turns on
             autostart_seeded: false,
             read_windows_media: true,
             bridge_token: String::new(),
@@ -222,6 +227,11 @@ pub fn settings_set_agent_control(on: bool, settings: tauri::State<'_, Settings>
 #[tauri::command]
 pub fn settings_set_agent_history(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
     settings.update(|d| d.agent_history = on)
+}
+
+#[tauri::command]
+pub fn settings_set_agent_diary(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+    settings.update(|d| d.agent_diary = on)
 }
 
 #[tauri::command]

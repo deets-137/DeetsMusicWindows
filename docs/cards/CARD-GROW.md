@@ -713,6 +713,10 @@ Rules, all decided by the owner on 2026-09-18:
 - **It waits for `whenSwapSettled()`** before it grows. The card has to be in its slot first,
   or the clip-path has no box to open from.
 
+**`growCardTaller(card, cause)`** (2026-09-24, DIARY.md §4a) is the one-neighbour sibling:
+up or down in Max, left or right in Midi, never Fill. The Diary uses it when an entry opens.
+Same rules as `expandCard` (the flag, the swap wait, Mini does nothing, a grown card stays).
+
 The cog turns 120° on every press, open or collapse, so the turn reads as "you pressed it"
 and never as "it is open". Six teeth means each step ends on an identical tooth.
 

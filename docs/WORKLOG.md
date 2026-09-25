@@ -42,6 +42,15 @@ updated: 2026-09-22
   (Ask default), Add to Diary on every album menu. The 6B foot panel was chosen from a mockup
   of three layouts. What I decided inside his calls: DIARY.md §6. Desk test: DIARY.md §8.
 - Not committed. Both features need his desk test.
+- **Later the same sitting** (committed `99fbddf` first, then polish): the score split pill
+  (5 · 10 · 100 · a field), dates moved right; Grow on open (`diaryGrow`, `growCardTaller`);
+  the foot waits for a song; song right-click menu; double-click plays (the row rebuild ate the
+  dblclick); header "Diary: <album>"; Done button + In progress / Completed rows + folders and
+  arranging (schema v15); the + menu's searching Entry field (`InputItem.onInput`) and the
+  cover → search-bar morph (two bugs: a custom property keeps `calc()` as text, and a comma
+  split cut `cubic-bezier`); Export (Rust `export_text`), the Compass Diary group and Add to
+  Diary, and `/diary` + `deetsmusic diary` + the MCP `diary` tool behind Agents use the Diary
+  (off by default). Desk tests: DIARY.md §8.
 
 ## 2026-09-24 — 0.14.1: the installer could not stop the MCP CLIs
 

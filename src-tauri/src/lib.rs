@@ -221,6 +221,7 @@ pub fn run() {
             library::migrate_v12(&conn).expect("v12 migration failed");
             roworder::migrate_v13(&conn).expect("v13 migration failed");
             diary::migrate_v14(&conn).expect("v14 migration failed");
+            diary::migrate_v15(&conn).expect("v15 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
@@ -361,6 +362,14 @@ pub fn run() {
             diary::diary_song_set,
             diary::diary_rescale,
             diary::diary_delete,
+            diary::diary_set_done,
+            diary::diary_folders,
+            diary::diary_folder_create,
+            diary::diary_folder_rename,
+            diary::diary_folder_delete,
+            diary::diary_file,
+            diary::diary_export,
+            settings::settings_set_agent_diary,
             library::pin_set,
             library::pin_clear,
             library::pin_play_counts,

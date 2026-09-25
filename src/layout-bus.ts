@@ -118,6 +118,12 @@ export const requestDiaryAlbum = (r: DiaryRequest): void => diaryAlbum.request(r
 export const takeDiaryAlbum = (): DiaryRequest | null => diaryAlbum.take();
 export const onDiaryAlbum = (cb: () => void): (() => void) => diaryAlbum.on(cb);
 
+/** The Diary card at one entry, by id (the Compass's Diary rows, DIARY.md §10). */
+const diaryEntry = heldRequest<number>("diary");
+export const requestDiaryEntry = (id: number): void => diaryEntry.request(id);
+export const takeDiaryEntry = (): number | null => diaryEntry.take();
+export const onDiaryEntry = (cb: () => void): (() => void) => diaryEntry.on(cb);
+
 /** The Search card with a term typed and its search running. */
 const searchTerm = heldRequest<string>("search");
 export const requestSearchTerm = (term: string): void => searchTerm.request(term);

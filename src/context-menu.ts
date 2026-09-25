@@ -24,6 +24,7 @@
 
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { enterRows } from "./pop";
 
 export interface ActionItem {
   label: string;
@@ -31,6 +32,10 @@ export interface ActionItem {
   disabled?: boolean;
   /** Trusted markup shown at the row's end (the Apple Music sigil on an Apple playlist). */
   badge?: string;
+  /** A cover at the row's start (an image URL) — a search result row (`InputItem.onInput`). */
+  art?: string;
+  /** A second, quieter line under the label (the artist of an album result). */
+  note?: string;
 }
 export interface InputItem {
   /** `label` is an optional non-interactive title rendered above the field (e.g. the
@@ -41,8 +46,17 @@ export interface InputItem {
     /** Text the field opens with (Rename: the current name). */
     value?: string;
     onSubmit: (value: string) => void;
+    /**
+     * A field that SEARCHES (the Diary's New entry, 2026-09-24): called on each pause in the
+     * typing (`SEARCH_PAUSE_MS`). `show` fills a results area right under the field — rows,
+     * or a line of text — and the area grows to fit, animated, so the menu opens downward
+     * as the answers arrive. Empty text empties it. A stale call's `show` does nothing.
+     */
+    onInput?: (value: string, show: (rows: ActionItem[] | string) => void) => void;
   };
 }
+/** The pause in typing before a searching field asks (the Search card's own debounce). */
+const SEARCH_PAUSE_MS = 300;
 export interface SubmenuItem {
   label: string;
   sub: () => MenuItem[] | Promise<MenuItem[]>;
@@ -93,6 +107,72 @@ export function closeContextMenu(): void {
 
 const PAD = 6;
 type Place = (w: number, h: number, vw: number, vh: number) => { left: number; top: number };
+
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Fill a searching field's results area (`InputItem.onInput`) and grow or shrink it to fit.
+ *  The height change is the `--menu-grow-dur` / `--menu-grow-ease` skin tokens; the new rows
+ *  slide in with `enterRows` (the dropdown rule). Reduced motion: it snaps. */
+function fillResults(results: HTMLElement, rows: ActionItem[] | string): void {
+  const from = results.offsetHeight;
+  results.replaceChildren();
+  if (typeof rows === "string") {
+    const p = document.createElement("div");
+    p.className = "ctx-menu__note";
+    p.textContent = rows;
+    results.append(p);
+  } else {
+    for (const item of rows) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ctx-menu__item ctx-menu__item--result";
+      btn.setAttribute("role", "menuitem");
+      if (item.art) {
+        const img = document.createElement("img");
+        img.className = "ctx-menu__art";
+        img.src = item.art;
+        img.alt = "";
+        img.decoding = "async";
+        btn.append(img);
+      }
+      const text = document.createElement("span");
+      text.className = "ctx-menu__text";
+      const lbl = document.createElement("span");
+      lbl.className = "ctx-menu__line";
+      lbl.textContent = item.label;
+      text.append(lbl);
+      if (item.note) {
+        const note = document.createElement("span");
+        note.className = "ctx-menu__line ctx-menu__line--note";
+        note.textContent = item.note;
+        text.append(note);
+      }
+      btn.append(text);
+      btn.addEventListener("click", () => {
+        closeContextMenu();
+        diag.log("ui:act", { do: "menu", what: "search result" });
+        item.run();
+      });
+      results.append(btn);
+    }
+  }
+  results.classList.toggle("has-rows", results.childElementCount > 0);
+  const to = results.offsetHeight; // its natural height, capped by --menu-results-max-h
+  if (from !== to && !reducedMotion()) {
+    // Read through real properties: a custom property keeps a `calc()` or a `var()` chain as
+    // text, which parseFloat cannot read (the Diary morph ran in 0 ms that way, 2026-09-24).
+    results.style.transitionDuration = "var(--menu-grow-dur)";
+    results.style.transitionTimingFunction = "var(--menu-grow-ease)";
+    const cs = getComputedStyle(results);
+    const raw = cs.transitionDuration.split(",")[0].trim();
+    const easing = cs.transitionTimingFunction.trim() || "ease"; // whole: cubic-bezier has commas
+    results.style.transitionDuration = "";
+    results.style.transitionTimingFunction = "";
+    const dur = (parseFloat(raw) || 0) * (raw.endsWith("ms") ? 1 : 1000);
+    results.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: dur, easing });
+  }
+  if (Array.isArray(rows)) enterRows(results.querySelectorAll(".ctx-menu__item"));
+}
 
 function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
   closeContextMenu(); // never stack two
@@ -217,6 +297,28 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
         wrap.appendChild(inp);
         wrap.addEventListener("pointerenter", () => closeFrom(depth));
         host.appendChild(wrap);
+        const search = item.input.onInput;
+        if (search) {
+          // The results area: empty (zero tall) until the first answer, then it grows.
+          const results = document.createElement("div");
+          results.className = "ctx-menu__results app-scroll";
+          results.addEventListener("pointerenter", () => closeFrom(depth));
+          host.appendChild(results);
+          menu.classList.add("ctx-menu--search");
+          let seq = 0;
+          let timer = 0;
+          inp.addEventListener("input", () => {
+            window.clearTimeout(timer);
+            const mine = ++seq;
+            const v = inp.value.trim();
+            const show = (rows: ActionItem[] | string) => {
+              if (mine !== seq || !results.isConnected) return;
+              fillResults(results, rows);
+            };
+            if (!v) return show([]);
+            timer = window.setTimeout(() => search(v, show), SEARCH_PAUSE_MS);
+          });
+        }
         continue;
       }
       const btn = document.createElement("button");

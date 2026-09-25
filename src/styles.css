@@ -2589,6 +2589,17 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   cursor: default;
 }
 .ctx-menu__label:first-child { padding-top: var(--space-1); }
+/* A searching field's results (InputItem.onInput): under the field, zero tall until the first
+   answer, then as tall as its rows up to a cap. The height change animates in JS. */
+.ctx-menu--search { width: var(--menu-search-w); }
+.ctx-menu__results { max-height: var(--menu-results-max-h); overflow-y: auto; scrollbar-gutter: stable; }
+.ctx-menu__results.has-rows { padding-top: var(--space-1); }
+.ctx-menu__item--result { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); }
+.ctx-menu__art { flex: 0 0 auto; width: var(--menu-result-art); height: var(--menu-result-art); border-radius: var(--lib-tile-radius); object-fit: cover; }
+.ctx-menu__text { min-width: 0; display: flex; flex-direction: column; }
+.ctx-menu__line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-menu__line--note { font-size: var(--fs-subtext); color: var(--subtext); }
+.ctx-menu__note { padding: var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
 /* Submenu (Add to Playlist ▸): a settings-flyout twin scoped to the ctx-menu — same
    surface recipe as .flyout, but rows keep ctx-menu chrome (not the theme-chip look).
    Reveal is JS-latched in context-menu.ts (not :hover) so a flyout text field

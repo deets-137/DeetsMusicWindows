@@ -348,6 +348,10 @@ export interface Settings {
    *  scores — "ask" (a toast: Rescale / Keep numbers), "always" (move them in proportion,
    *  7/10 → 3.5/5), "never" (the numbers stay as typed; a score above the top is marked). */
   diaryRescale: "ask" | "always" | "never";
+  /** Diary (DIARY.md §4a): when an entry opens, grow the card over one neighbour — taller in
+   *  Max, wider in Midi. "new" = only the first open of a new entry, "every" = every entry
+   *  that opens, "never". Obeys Settings › Window › Grow cards from edges. */
+  diaryGrow: "new" | "every" | "never";
   // ── onboarding (docs/features/ONBOARDING.md §4) ──
   /** How far through the first-run walk the user is: the NEXT step to show, 1-based.
    *  0 = the walk is over (finished or skipped). A settings key, not a localStorage
@@ -500,6 +504,7 @@ export const DEFAULTS: Settings = {
   rewindCard: false,
   rewindAutoShown: false,
   diaryRescale: "ask", // user's call 2026-09-24 (7B): never change a number the user typed without telling them
+  diaryGrow: "new", // user's call 2026-09-24: a new entry opens with room for its songs and the note panel
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
   quickSeen: [], // user's call 2026-09-20: every icon starts New, on an upgrade too — the panel is new to everyone
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates

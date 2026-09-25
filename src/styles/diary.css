@@ -32,33 +32,73 @@
 .diary__new-art svg { width: var(--icon-lg); height: var(--icon-lg); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .diary__new-label { font-size: var(--fs-subtext); }
 .diary__pick { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The morph's stand-in box (diary-card.ts `morph`): the cover's square travelling into the
+   search bar. Its place, size, corner and fill are keyframed in JS from the two real
+   controls, so it carries only what they share. Above the cards, under menus and toasts. */
+.diary__morph {
+  position: fixed; z-index: 80; pointer-events: none; box-sizing: border-box;
+  border: 1px solid var(--border);
+}
 .diary__pick .search__input { padding-right: 0; }
 .diary__pick .search__clear { position: static; transform: none; flex: 0 0 auto; }
 .diary__results { display: flex; flex-direction: column; }
 .diary__shelf { flex: 0 0 auto; }
+
+/* ── the rows (DIARY.md §9): In progress, Completed, your folders ── */
+.diary__secs { display: flex; flex-direction: column; gap: var(--space-2); }
+.diary__sec { display: flex; flex-direction: column; border-radius: var(--radius-control); }
+/* An empty row still takes a drop: its hint holds the height of a line. */
+.diary__shelf--empty .qcard__empty { text-align: left; padding: var(--space-1) 0; }
+/* A row is as tall as its tiles: the hold swell belongs to its header (the Settings rule). */
+.diary__sec.is-holding { transform: none; }
+.diary__sec.is-holding .lib-shelf {
+  transform: scale(var(--hold-swell));
+  transform-origin: center left;
+  transition: transform var(--hold-ms) var(--ease-ui);
+}
+@media (prefers-reduced-motion: reduce) {
+  .diary__sec.is-holding .lib-shelf { transform: none; }
+}
+/* A finished entry in a folder row: the tile badge's place and shape, not a button. */
+.diary__tile-done { cursor: default; pointer-events: none; }
+.diary__tile-done svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.diary__tile-done svg path:first-child { fill: none; }
 
 /* ── the entry: a scrolling list over a fixed foot (fork 6B) ── */
 .diary__entry { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .diary__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
 .diary__album { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
 .diary__line { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-/* The pills size to their words (a .lib-pill fills its cell by default). */
-.diary__scale, .diary__date { width: auto; flex: 0 0 auto; white-space: nowrap; position: relative; }
+/* The date pill sizes to its words (a .lib-pill fills its cell by default) and sits at the
+   right end of its line, beside the score (his call, 2026-09-24). */
+.diary__date { width: auto; flex: 0 0 auto; white-space: nowrap; position: relative; }
+.diary__line .diary__date { margin-left: auto; }
 
-/* A score: the search well holding a short number field and its "/ 10". */
+/* A score: a split pill (the Settings split idiom — one border, halves cut by a hairline) in
+   the .lib-pill shape beside it. Left: the number you type. Right: the scale — on the album,
+   the scale's menu (5 · 10 · 100 · a field); on a song, the same scale as text. */
 .diary__score {
-  display: inline-flex; align-items: center; gap: var(--space-1); flex: 0 0 auto;
-  padding: var(--space-1) var(--space-2);
-  background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius-control);
-  cursor: text;
+  display: inline-flex; align-items: stretch; flex: 0 0 auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--lib-pill-radius);
+  overflow: hidden;
 }
 .diary__score-input {
   width: var(--diary-score-w); min-width: 0;
+  padding: var(--space-1) var(--space-2);
   background: transparent; border: none; outline: none; text-align: right;
-  font-family: var(--font-body); font-size: var(--fs-text); color: var(--text);
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--text);
 }
 .diary__score-input::placeholder { color: var(--subtext); }
-.diary__score-max { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
+.diary__score-max {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-left: 1px solid var(--border);
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap;
+}
+button.diary__score-max { background: none; border-top: none; border-right: none; border-bottom: none; color: var(--text); cursor: pointer; }
+button.diary__score-max:hover { background: var(--surface-hover); }
+button.diary__score-max:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.diary__scale[aria-expanded="true"] .lib-pill__caret { transform: rotate(180deg); }
 /* Not a number, or past the top: MARKED in the accent, as the room's empty name field is
    (it reads "this one first", not an alarm). The hint says what to type. */
 .diary__score[data-bad], .diary__score.is-over { border-color: var(--title); }
@@ -98,7 +138,6 @@
 .diary__foot-title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .diary__foot-play { flex: 0 0 auto; }
 .diary__foot .diary__note { min-height: var(--diary-foot-note-min-h); }
-.diary__foot-line { display: flex; align-items: center; gap: var(--space-2); }
 
 /* The system date picker opens from a field nobody sees. */
 .diary__date-input { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

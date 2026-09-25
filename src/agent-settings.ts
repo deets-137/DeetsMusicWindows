@@ -97,7 +97,7 @@ const storeSize = (slot: SizeSlot, label: string): Spec => ({
 const sotdRust = () =>
   invoke<{ sotd: boolean; sotdDayStart: number; sotdPicksPerDay: number; sotdPostMode: string; sotdPostAt: string }>("settings_get");
 const rustSettings = () =>
-  invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }>("settings_get");
+  invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; agentDiary: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }>("settings_get");
 const rustToggle = (section: string, key: string, label: string, get: () => Promise<boolean>, set: (on: boolean) => Promise<unknown>, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
   get: async () => ((await get()) ? "on" : "off"),
@@ -352,6 +352,7 @@ const SPECS: Spec[] = [
   storeToggle("Rewind", "replayKeep", "Keep every Replay"),
   // ── Diary (docs/features/DIARY.md §5) ──
   storeChoice("Diary", "diaryRescale", "Rescale scores", [{ value: "ask", label: "Ask" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]),
+  storeChoice("Diary", "diaryGrow", "Grow on open", [{ value: "new", label: "New entries" }, { value: "every", label: "Every entry" }, { value: "never", label: "Never" }]),
   // ── Song of the Day (docs/integrations/DeetsOTD.md §8.8) ──
   // Five rows live in Rust; the sixth (the suggestion) is a view preference in the store.
   // The switch itself is OFF ONLY: an agent may take the feature away, never give it (§5 2B).
@@ -406,6 +407,11 @@ const SPECS: Spec[] = [
   rustToggle("Connections", "agentHistory", "Agents read play history", async () => (await rustSettings()).agentHistory, (on) => invoke("settings_set_agent_history", { on }), {
     offOnly: true,
     note: (v) => (v === "off" ? "Play history is hidden from agents now. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
+  }),
+  // DIARY.md §10: a privacy gate over private writing, so off only, like the two above.
+  rustToggle("Connections", "agentDiary", "Agents use the Diary", async () => (await rustSettings()).agentDiary, (on) => invoke("settings_set_agent_diary", { on }), {
+    offOnly: true,
+    note: (v) => (v === "off" ? "The Diary is closed to agents now. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
   }),
   // ── Updates ──
   storeChoice("Updates", "updateMode", "Get updates", [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }]),

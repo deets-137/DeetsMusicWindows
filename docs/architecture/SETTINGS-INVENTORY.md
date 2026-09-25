@@ -367,6 +367,7 @@ behind both. The dial and the three live ends are only in the panel.
 | Control | What it does | Choices |
 |---|---|---|
 | Rescale scores | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5. **Ask** shows a notice with Rescale and Keep numbers | **Ask** / Always / Never |
+| Grow on open | The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi. Back collapses it | **New entries** / Every entry / Never |
 
 ### Connections
 
@@ -375,6 +376,7 @@ behind both. The dial and the three live ends are only in the panel.
 | Agent control | Lets a command line or an AI app drive DeetsMusic on this PC. **Guide** opens the setup page | on / off |
 | Agent changes settings | An agent changing these settings. Agents can never change this row itself | Allow / **Ask** / Off |
 | Agents read play history | Lets a connected agent see what you played, when, and what you skipped | on / off |
+| Agents use the Diary | Lets a connected agent read your Diary and write notes, scores and dates in it. Only you can turn it on | on / **off** |
 | Copy setup for | Copies the exact setup text for that app | Claude Desktop / Claude Code / Cursor / Other (Full) / **Other (Small)** |
 | The extension block | Whether the browser bridge and the agent are running | — |
 

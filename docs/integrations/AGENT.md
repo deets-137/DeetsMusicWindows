@@ -90,6 +90,7 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `GET /picks[?window=]` · `POST /picks` | `{ok, day, picks:[{row, day, title, artist, id, note?, posted:[…]}]}` · `{action: mark \| unmark, id?, index?, value?}` → `{ok, message}` / `pending` — Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `window` is Rewind's (day · week · month · ytd · year); without it, every pick. `mark` takes `song:…` or `current` and `value` as the note; `unmark` takes the row from the list (1 = the newest) and deletes the post it made. There is
 deliberately **no `withdraw`**: pulling a message back out of a channel is the user's own call
 (DeetsOTD.md §10.6). **403 while Song of the Day is off**, and the first mark asks the user in the window (G2). CLI: `deetsmusic pick list` · `pick mark song:123 --note "…"` · `pick unmark 2`. MCP tool: `picks` (full pack only) |
+| `GET /diary[?id=]` · `POST /diary` | `{entries:[{id, title, artist, score?, done, folder?, reviewDate?, songsWritten, songCount}]}` · with `id`: `{entry:{…, songs:[{n, title, score?, note?, noteDate?, unreleased}]}, text}` (`text` = the Export) · `{action: add \| note \| score \| date \| done, id?, album?, song?, value?}` → `{ok, message}` — the Diary ([DIARY.md](../features/DIARY.md) §10). **403 unless Settings › Connections › Agents use the Diary is on** (off by default; agents may only turn it off). `song` is the track number; without it the album itself. An empty `value` clears; a score must be 0 to the entry's scale. Agents only: an extension is refused. Every write tells the window (`diary-changed`). CLI: `deetsmusic diary` · `diary show 3` · `diary add album:123` · `diary note 3 --song 2 "…"` · `diary score 3 7.5` · `diary date 3 today` · `diary done 3 off`. MCP tool: `diary` (full pack only) |
 | `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
 | `GET /diag[?limit=100&since=0&tag=]` | `{events:[{n, t, tag, data}], dropped}` — the window's **live** diag ring, oldest first ([LOGGING.md](../ops/LOGGING.md) §Reading it from outside). What the app just did, without a flush or a restart: `ui:act` gestures, `player:*`, drills, toasts. `since` takes the `n` of an event already read; `tag` keeps the tags that start with it. Behind the Agent control switch, like every agent read. CLI: `deetsmusic diag -n 50 --tag player`. MCP tool: `diag` (full pack only) |
@@ -188,6 +189,7 @@ subset a tool server needs, no SDK. Tools:
 | `queue_edit` | `action: remove\|move\|jump`, `index`, `to?` | full | replies with the fresh queue |
 | `folder` | `action: list\|create\|rename\|delete`, `name`, `new_name?` | full | by name |
 | `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
+| `diary` | `action: list\|show\|add\|note\|score\|date\|done`, `id?`, `album?`, `song?`, `value?` | full | The Diary ([DIARY.md](../features/DIARY.md) §10). Refused unless the user turned on Agents use the Diary |
 | `picks` | `action: list\|mark\|unmark`, `id?`, `index?`, `note?`, `window?` | full | Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `mark` takes a `song:…` id or `current`; `unmark` takes the row from `list`. Refused while the feature is off; the first mark is `pending` until the user allows it in the window |
 | `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
 | `diag` | `limit?` (1–300, default 100), `since?`, `tag?` | full | the window's live diag ring, oldest first (`GET /diag`, §3); what the app just did, with no flush or restart. CLI: `deetsmusic diag` |
@@ -345,7 +347,8 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   (1 | 3 | 5 | 7 | 30). No Settings row: it is the web panel's Temp | N days button under Make
   playlist, and sets the next web playlist only. Every new web starts on Temp.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
-  What happens to the scores already on a Diary entry when its scale changes. An agent has no
+  What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
+  `diaryGrow` (New entries | Every entry | Never). An agent has no
   Diary verb, and the entries are not in the `query` export.
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),

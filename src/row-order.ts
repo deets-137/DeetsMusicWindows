@@ -26,7 +26,11 @@ export type OrderScope =
   | "radio.sections"
   | "playlists.sections"
   | "pins"
-  | `playlists.folder:${string}`;
+  | `playlists.folder:${string}`
+  // The Diary home (DIARY.md §9): its rows, and the entries inside each row
+  // (`diary.row:progress`, `diary.row:done`, `diary.row:folder:<id>`).
+  | "diary.sections"
+  | `diary.row:${string}`;
 
 interface Row {
   scope: string;
