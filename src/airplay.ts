@@ -11,9 +11,10 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
-import { setVolumeSink, reflectExternalVolume } from "./player";
+import { setVolumeSink, reflectExternalVolume, pausePlayback, isPlayingNow, playPause } from "./player";
 import { enterRows } from "./pop";
 import { setAirplayOutput, armTap, setSink } from "./sound";
+import { toast } from "./toast";
 import * as diag from "./diag";
 
 export interface Speaker {
@@ -94,10 +95,10 @@ const applyTakeover = (c: Connected | null) => {
   // change, and disarmed when no tap session is live.
   if (c?.tap) {
     void armTap(true).then((armed) => armed && setSink(0));
-  } else {
+  } else if (c || !recovery) {
     setSink(1);
     void armTap(false);
-  }
+  } // else: a dropped speaker is being reconnected; the PC stays silent (recover, below)
   if (c && !takenOver) {
     takenOver = true;
     setVolumeSink(
@@ -121,9 +122,12 @@ let openPanels = 0;
 let pollTimer = 0;
 const refresh = async () => {
   try {
+    const was = status.connected;
     const s = await api.status();
-    const wasConnected = !!status.connected;
+    const wasConnected = !!was;
     status = s;
+    // Connected a moment ago, gone now, and Rust says why: the speaker dropped the session.
+    if (was && !s.connected && s.error && !recovery) void recover(was.speaker);
     applyTakeover(s.connected);
     if (wasConnected && !s.connected && s.error) note = s.error; // "Lost Living Room."
     if (!s.firewallSeeded && !note) note = null;
@@ -153,7 +157,60 @@ const scan = async () => {
   }
 };
 
-const connect = async (sp: Speaker) => {
+// ── a dropped speaker (AIRPLAY.md §13.3, his calls 2026-09-25) ──
+// The crate ends a session after 3 failed keep-alives (a PC sleep, a Wi-Fi drop). Pause, so
+// the PC plays nothing; reconnect to the same speaker, 3 tries over about 30 s (after a wake
+// the network can take a while); a toast either way. A pick in the panel ends the tries.
+const RECONNECT_WAITS_MS = [0, 10_000, 20_000];
+let recovery: { speaker: string } | null = null;
+
+const recover = async (sp: Speaker) => {
+  const mine = { speaker: sp.name };
+  recovery = mine; // before any await: refresh's applyTakeover reads it to keep the PC silent
+  const paused = isPlayingNow();
+  if (paused) await pausePlayback("airplay:lost");
+  diag.warn("airplay:lost", { speaker: sp.name, paused });
+  const resume = () => {
+    if (paused && !isPlayingNow()) void playPause("airplay:reconnected");
+  };
+  for (const [i, wait] of RECONNECT_WAITS_MS.entries()) {
+    if (wait) await new Promise((r) => window.setTimeout(r, wait));
+    if (recovery !== mine) return; // the user picked an output meanwhile
+    diag.log("airplay:reconnect", { speaker: sp.name, try: i + 1 });
+    await connect(sp, true);
+    if (recovery !== mine) return;
+    if (sameSpeaker(status.connected?.speaker, sp)) {
+      recovery = null;
+      diag.log("airplay:reconnected", { speaker: sp.name, try: i + 1 });
+      resume();
+      toast({ kind: "info", text: `Reconnected to ${sp.name}.` });
+      return;
+    }
+  }
+  recovery = null;
+  setSink(1); // the next play is heard on this computer
+  void armTap(false);
+  diag.warn("airplay:gaveUp", { speaker: sp.name, tries: RECONNECT_WAITS_MS.length });
+  note = `Lost ${sp.name}.`;
+  repaint();
+  toast({
+    kind: "error",
+    text: paused ? `Lost ${sp.name}. The music is paused.` : `Lost ${sp.name}.`,
+    actions: [
+      {
+        label: "Try again",
+        run: () =>
+          void connect(sp).then(() => {
+            if (sameSpeaker(status.connected?.speaker, sp)) resume();
+          }),
+      },
+    ],
+  });
+};
+
+/** `auto`: a reconnect try from `recover`. Any other connect is the user's pick and ends the tries. */
+const connect = async (sp: Speaker, auto = false) => {
+  if (!auto) recovery = null;
   if (busy) return;
   // The Windows permission prompt arrives with `netsh` as the program, which a first-time
   // user has no reason to trust (AIRPLAY.md §9.5). The panel asks first; "Not now" leaves
@@ -204,6 +261,7 @@ const declineFirewall = () => {
 };
 
 const disconnect = async () => {
+  recovery = null; // "This computer" during the tries: stop trying
   if (busy) return;
   busy = true;
   repaint();
@@ -235,7 +293,10 @@ export function speakersKnown(): Speaker[] {
 export const scanSpeakers = (): Promise<Speaker[]> => scan().then(speakersKnown);
 export const isScanning = (): boolean => scanning;
 /** Play on this speaker (the "Play on" panel's row). */
-export const connectSpeaker = (s: Speaker): Promise<void> => api.connect({ name: s.name, ip: s.ip, port: s.port });
+export const connectSpeaker = (s: Speaker): Promise<void> => {
+  recovery = null; // a pick from the Compass ends a reconnect in progress
+  return api.connect({ name: s.name, ip: s.ip, port: s.port });
+};
 
 export interface AirplayMount {
   /** The "Play on" panel (portaled to <body>): a parent dropdown counts clicks in it as inside. */
@@ -454,8 +515,8 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     const sp = speakerOf.get(k)!;
     if (sp) {
       if (!sameSpeaker(sp, status.connected?.speaker)) void connect(sp);
-    } else if (status.connected || status.connecting) {
-      void disconnect();
+    } else if (status.connected || status.connecting || recovery) {
+      void disconnect(); // during a reconnect's wait too: it ends the tries
     }
   });
 

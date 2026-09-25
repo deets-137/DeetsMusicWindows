@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-19
 sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 # DeetsMusic — AirPlay (play on a HomePod)
 
@@ -554,9 +554,53 @@ cause cannot be read, for three reasons:
 baseline first. A draft to react to: speaker → PC under 300 ms of silence, PC → speaker under
 2 s to sound, speaker → speaker under 2.5 s.
 
-### 13.3 After the PC sleeps — to find out
+### 13.3 After the PC sleeps — found, then built
 
-> **Part:** idea · 2026-09-24
+> **Part:** built · desk test passed 2026-09-25 · crate 0.4.1 at `6fe2922`
+
+**Found 2026-09-25 (the logs, no desk test needed).** After the 2026-09-24 17:00 wake, every
+SET_PARAMETER failed with os error 10054 for two minutes, until the owner picked the speaker
+again at 17:06:40. The crate's keep-alive (`POST /feedback` every 2 s) only logged each failure,
+so `alive()` stayed true and the panel said connected. Nothing reconnected: the app reconnects
+only on the retune and on a Settings change (`reconnect` in airplay.rs).
+
+**His calls (2026-09-25):** notice the drop by failed keep-alives (not the Windows wake event);
+reconnect by itself, 3 tries; the PC silent during the tries, the music paused if they all fail;
+a toast both when it reconnects and when it gives up.
+
+**As built:**
+- **The crate (0.4.1):** 3 failed keep-alives in a row (about 6 s; up to about 20 s when each
+  request waits out its 5 s read timeout) end the keep-alive thread, so `alive()` turns false.
+  `airplay.log`: `[session] keep-alive failed (N in a row)`, then `the receiver dropped the
+  session; ending it`. DeetsAirplay's tray app gets the same drop.
+- **airplay.rs:** the existing dead-session path in `airplay_status` logs
+  `airplay: drop <speaker> after N s`, stops the session and sets "Lost <speaker>."
+- **airplay.ts `recover`:** the poll (2 s while connected) sees the drop. It pauses the music
+  if it plays (`player:pause` why `airplay:lost`) and keeps the PC silent. It reconnects to the
+  same speaker at once, after 10 s and after 20 s more. Success: the music plays again if it
+  was paused here, and the toast "Reconnected to <speaker>." (info). All three fail: the PC
+  output comes back for the next play, the panel note "Lost <speaker>.", and the sticky toast
+  "Lost <speaker>. The music is paused." with **Try again** (error). Any pick in the Play on
+  panel (a speaker or This computer) or from the Compass ends the tries.
+- `diag`: `airplay:lost`, `airplay:reconnect` (per try), `airplay:reconnected`, `airplay:gaveUp`.
+- Decided inside his calls: the waits 0 / 10 / 20 s; pause at the drop rather than play
+  muted (the song keeps its place); the give-up toast is `error` (sticky: it may come while
+  nobody watches, for example overnight); Try again also plays the music again when it
+  connects; "This computer" in the panel works during the wait between tries.
+
+**Desk test (restart: new Rust and a crate change):**
+1. Play on the HomePod. Turn the PC's Wi-Fi off for about 15 s, then on. Within about 40 s:
+   the music pauses, then plays on the HomePod again, and "Reconnected to <speaker>." shows.
+   The PC speakers never play.
+2. Play on the HomePod. Put the PC to sleep for 1 minute or more, then wake it. The same result.
+3. Play on the HomePod. Turn Wi-Fi off and leave it off for more than 40 s. The toast "Lost
+   <speaker>. The music is paused." shows and stays. Turn Wi-Fi on, press **Try again**: the
+   music plays on the HomePod.
+4. During the tries (step 3, Wi-Fi off), open the Play on panel and pick This computer. The
+   tries stop. Play: the music is on the PC speakers.
+5. With the music paused, turn Wi-Fi off for 15 s. After the reconnect, the music stays paused.
+
+**The earlier plan (kept as the record):**
 
 **The suspected fault:** after the PC wakes, AirPlay shows **connected** when it is not. It fits
 the code: a session counts as dead only when its threads die (`session.alive()`,

@@ -512,7 +512,15 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         // Drop a session whose threads died (the speaker went away).
         let dead = state.live.lock_or_recover().as_ref().map(|l| !l.session.alive()).unwrap_or(false);
         if dead {
-            let name = state.live.lock_or_recover().as_ref().map(|l| l.speaker.name.clone()).unwrap_or_default();
+            let (name, secs) = state
+                .live
+                .lock_or_recover()
+                .as_ref()
+                .map(|l| (l.speaker.name.clone(), l.session.stats().seconds))
+                .unwrap_or_default();
+            // AIRPLAY.md §13.3: the crate ends a session after 3 failed keep-alives, so this
+            // is how a speaker that dropped us (a PC sleep) is found. airplay.ts reconnects.
+            log(&format!("drop {name} after {secs} s (the session's threads ended)"));
             stop_live(&state);
             *state.error.lock_or_recover() = Some(format!("Lost {name}."));
         }

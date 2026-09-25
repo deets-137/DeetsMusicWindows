@@ -145,12 +145,6 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 **Waiting on him**
 - **Sound: keep it at all?** The desk test passed 2026-09-24; he is weighing keep, keep some, or
   remove (SOUND.md §11). No Sound work before his call.
-- **AirPlay after the PC sleeps — a real bug (AIRPLAY.md §13.3), found 2026-09-25.** After the
-  2026-09-24 17:00 wake, every send failed with os error 10054 for two minutes, until his own
-  reconnect at 17:06:40 (output picks in the ring the same seconds; he half-remembers it). The
-  app reconnects only on the retune and on a Settings change (`reconnect` in airplay.rs),
-  never after a failed send. Next: bring him the forks (reconnect on the wake line or on the
-  first 10054; how many tries; a toast or not), after the No MusicKit desk test.
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release

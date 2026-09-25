@@ -64,6 +64,13 @@ updated: 2026-09-25
   on and wait up to 30 s. Click a song: it plays. The log has `player:musicKitRetry`.
   **Passed** the same day (the log: `player:configured` 224 s after that page load).
 - **Merged:** `clode-eval` into `main` (fast-forward) and pushed, by his word.
+- **AirPlay after sleep (AIRPLAY.md §13.3):** the code settled what he could not remember.
+  Nothing in the app reconnects after a failed send, so the 17:06:40 connect was his. The crate's
+  keep-alive only logged its failures, so the session never died. His calls: detect by 3 failed
+  keep-alives (crate 0.4.1), reconnect 3 tries, silent then pause, a toast both ways. Built;
+  the decisions inside his calls and the desk test are in §13.3. **Desk test passed** the
+  same day. DeetsAirplay committed and pushed (`6fe2922`, crate 0.4.1; the tray app builds),
+  the `rev` bumped, the local `[patch]` file deleted.
 
 ## 2026-09-25 — the codebase evaluation and the consistency pass
 - **Read:** two sessions (the repo health read and the app consistency read) merged into one
