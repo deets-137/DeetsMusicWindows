@@ -81,6 +81,7 @@ of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
 | 0.13.1 | 2026-09-22 | `d86bf00` | skipped, his call ("release and publish"): §0b reads it high risk (player.ts + `np_command` in de31ff7, logging only) | Web in the title bar; `player:pause` names who paused; the web demo |
 | 0.14.0 | 2026-09-23 | `62d516a` | skipped, his call ("Desk tests all look good. Publish"): §0b reads it high risk (Rust `NpState.pinned`, np-bus tray commands, the beta flavor) | one right-click menu per media type, Start a Web, the Ocean heavy swell + album light. The first release after beta `0.14.0-beta.2` (published the same day on `deetsmusic-test`) |
 | 0.14.1 | 2026-09-24 | `e2d8e3d` | skipped, his call ("Ship as 0.14.1"); the hook commands were tested from a 32-bit NSIS test installer (§4a) | hotfix: the 0.14.0 update aborted while MCP CLIs held `cli\deetsmusic.exe` (§4a). Beta `0.14.1-beta.1` first. Its notes carry 0.14.0's |
+| 0.14.5 | 2026-09-25 | `1e19a9b` | skipped, his call ("good enough to publish all of this"): §0b reads it high risk (Rust `diary.rs` schema v14–v15, `wallpaper.rs`, `favorites.rs`, `bridge.rs`; `player.ts` queue alignment). The features were desk-tested in dev | the Diary card, Full \| Lib, the Glass canvas (Covers / Picture), unreleased songs dimmed, album and playlist favorites, the queue fix. 7.9 MB. **No beta**: beta-first paused from this release (§0) |
 
 ### 0b. When Claude may publish without the hand test (his rule, 2026-09-21)
 
