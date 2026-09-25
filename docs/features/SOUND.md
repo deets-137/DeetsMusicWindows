@@ -648,7 +648,7 @@ starts before the report.
 
 ## 11a. Adaptive sound hidden; the Equalizer stays (2026-09-25)
 
-> **Part:** built · 2026-09-25 (desk test below, open)
+> **Part:** built · desk test passed 2026-09-25
 
 **His call (the §7 step 4 answer):** keep the Equalizer, remove all of DeetsAdaptiveSound (§3:
 Match loudness, Fuller at low volume, Headphone crossfeed). Then, for the removal: hide the

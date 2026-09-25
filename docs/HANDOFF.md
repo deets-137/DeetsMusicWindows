@@ -112,9 +112,9 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-25. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**Next (his word, 2026-09-24; order confirmed 2026-09-25):** the telemetry pass (below), after
-the Sound desk test (Waiting on him). The 429 toast's words and tier are decided
-(APPLE-CALLS.md §3).
+**Next (his word, 2026-09-24; order confirmed 2026-09-25):** the telemetry pass (below). The
+429 toast's words and tier are decided (APPLE-CALLS.md §3). The next release notes must say
+Adaptive sound is gone (RELEASE-NOTES.md, "For the next entry"; SOUND.md §11a).
 
 **Desk tests open (on `main`; every local branch is merged into it as of 2026-09-25)**
 - **Cover Wallpaper** (built and committed 2026-09-24, `5650dd3`) — COVER-WALLPAPER.md §6. He
@@ -142,11 +142,6 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
   `player:stall` pause fixes (DEBUGGING.md §Why did it pause), AirPlay stall and switch timing
   (AIRPLAY.md §13.2).
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
-
-**Waiting on him**
-- **Sound: Adaptive sound hidden, the Equalizer kept** (his call 2026-09-25, SOUND.md §11a).
-  Built and committed 2026-09-25; desk test open (§11a). The next release notes must say it
-  (RELEASE-NOTES.md, "For the next entry").
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release

@@ -77,7 +77,7 @@ updated: 2026-09-25
   hidden behind a DevTools flag, the `loudness` table left, a release-note line only. Found on
   the way: the Ocean heave and the Room bob read the meter, which ran only with Adaptive sound.
   His call: the meter follows the graph (the Equalizer or the AirPlay tap). Built, desk test in
-  §11a (open), committed with the docs sweep.
+  §11a, committed with the docs sweep. **Desk test passed** the same day; merged into `main`.
 - **Docs sweep (his ask):** HANDOFF said "Live: 0.14.1", "every release goes beta first" and
   "branch `darn-critics`": now 0.14.5 live, beta-first paused, every local branch merged into
   `main`, and a line for what is on `main` and not released. Also: CLAUDE.md's co-author
