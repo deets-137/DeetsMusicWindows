@@ -118,11 +118,11 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 **Desk tests open (on `main`; every local branch is merged into it as of 2026-09-25)**
 - **Diary: Done copies the Export** (built and committed 2026-09-24) — DIARY.md §8 step 11f.
 - The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP). It needs
-  an installed build with the Diary CLI; beta is paused, so it runs on the installed app once
-  0.14.6 is in (0.14.5 already carries the Diary).
+  an installed build with the Diary CLI; beta is paused, so it runs on the installed app
+  (0.14.5 and 0.14.6 both carry the Diary).
 
-**The consistency pass (2026-09-25)** — desk test passed and merged to `main` 2026-09-25, not
-in a release yet. The same merge carries the watchdog sleep line, the rejection stack, the
+**The consistency pass (2026-09-25)** — desk test passed, merged to `main`, and shipped in
+0.14.6. The same release carries the watchdog sleep line, the rejection stack, the
 No MusicKit retry (TOASTS.md §5) and the Cover Wallpaper dim of 15. It holds: the destructive-action
 rule (TOASTS.md §6), `lock_or_recover` (src-tauri/src/lock.rs), empty states with a period,
 **the database thread** (DB-HEALTH.md §2a; 73 commands, check 9 now hard), the scrollbar
@@ -143,13 +143,15 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.14.6** (2026-09-25, `5f1abb5`, straight to live): the consistency pass (the
+  database thread, `lock_or_recover`, Undo), the watchdog sleep line, the rejection stack, the
+  No MusicKit retry, the AirPlay reconnect (crate 0.4.1), the Cover Wallpaper dim of 15,
+  Adaptive sound hidden. The §0b hand test was skipped by his call; every part was desk-tested
+  in dev.
 - **Published: 0.14.5** (2026-09-25, `1e19a9b`, straight to live: beta-first is paused from
   this release, RELEASE.md §0): the Diary card, Full | Lib, the Glass canvas (Covers /
   Picture), unreleased songs dimmed, album and playlist favorites, the queue fix. The §0b hand
   test was skipped by his call.
-- **On `main`, not released (2026-09-25):** the consistency pass, the watchdog sleep line,
-  the rejection stack, the No MusicKit retry, the AirPlay reconnect (crate 0.4.1), the Cover
-  Wallpaper dim of 15, Adaptive sound hidden.
 - **Published: 0.14.1** (2026-09-24, `e2d8e3d`; beta `0.14.1-beta.1` first): the installer
   fix. The 0.14.0 update aborted when an AI app's DeetsMusic CLI held `cli\deetsmusic.exe`:
   the 32-bit installer's PowerShell read every process path as empty (RELEASE.md §4a).
@@ -208,7 +210,7 @@ with the installer, and the user guide (DOCS-ORG.md §13).
 
 ## State of play
 
-**Live: 0.14.5** (2026-09-25, `deetsmusic` channel; the last beta is `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
+**Live: 0.14.6** (2026-09-25, `deetsmusic` channel; the last beta is `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
 [RELEASE.md §0a](ops/RELEASE.md); what each version added is in
 [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The

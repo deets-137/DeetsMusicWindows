@@ -78,6 +78,11 @@ updated: 2026-09-25
   the way: the Ocean heave and the Room bob read the meter, which ran only with Adaptive sound.
   His call: the meter follows the graph (the Equalizer or the AirPlay tap). Built, desk test in
   §11a, committed with the docs sweep. **Desk test passed** the same day; merged into `main`.
+- **Cover Wallpaper:** his word, "It looks good as is": the "As built" review is done;
+  COVER-WALLPAPER.md is shipped (0.14.5), desk test passed.
+- **0.14.6 published** (`5f1abb5`), by his word; the hand test skipped by his call ("I've tested
+  adequately"). Release check clean, 8.4 MB; the update route answers `latest: 0.14.6`; the
+  demo pushed to DeetsSolutions (`6c0a946`). RELEASE.md §0a has the row.
 - **Docs sweep (his ask):** HANDOFF said "Live: 0.14.1", "every release goes beta first" and
   "branch `darn-critics`": now 0.14.5 live, beta-first paused, every local branch merged into
   `main`, and a line for what is on `main` and not released. Also: CLAUDE.md's co-author
