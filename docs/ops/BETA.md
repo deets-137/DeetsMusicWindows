@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src-tauri/src/beta.rs, src-tauri/tauri.beta.conf.json, src-tauri/icons-beta/, scripts/beta-icon.ps1, scripts/release.mjs, scripts/release-check.mjs, scripts/archive-installer.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/nsis/hooks.nsh, cli/src/main.rs]
-updated: 2026-09-23
+updated: 2026-09-24
 ---
 # DeetsMusic Beta — a second app beside the full one
 
@@ -25,7 +25,7 @@ updated: 2026-09-23
 | Pull on demand | `deetsmusic-beta pull`: the running beta marks the pull and restarts itself. It also works when the beta is closed (§2.2) |
 | What the copy takes | Library db + Apple sign-in, settings (settings.json AND localStorage), Last.fm login. **Not** `friends.json` |
 | Update channel | Reuse `deetsmusic-test`. The old spike rows stay as relics, marked withdrawn (§4.3) |
-| Release flow | Every release goes to the beta first (§4) |
+| Release flow | Every release goes to the beta first (§4). **Paused 2026-09-24 (the owner): releases go straight to live from 0.14.5, for the foreseeable future.** The beta app and channel stay as they are. |
 | Version numbers | `0.14.0-beta.1`, `-beta.2` …, then the same code ships as `0.14.0` |
 | Look | "DeetsMusic Beta" and a color-shifted icon: teal D, deep teal M (§3) |
 | CLI and MCP | Its own `deetsmusic-beta` CLI that reaches only the beta; MCP entry `deetsmusic-beta` (§6) |

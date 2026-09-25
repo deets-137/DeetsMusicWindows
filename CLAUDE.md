@@ -105,7 +105,8 @@ old installs' Guide button opens.
   (§0 = the commands, secrets and keys on one page).
 - `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update offer.
 - `BETA.md` — DeetsMusic Beta: a second installed app beside the full one (`release -- --beta`),
-  the data copy and `deetsmusic-beta pull`, every release goes beta first.
+  the data copy and `deetsmusic-beta pull`. Beta-first is PAUSED since 2026-09-24: releases go
+  straight to live.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.

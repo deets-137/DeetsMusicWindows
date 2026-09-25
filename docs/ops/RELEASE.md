@@ -30,9 +30,10 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 - **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (DeetsMusic Beta since
   2026-09-23; the old spike rows stay there, withdrawn). Compiled into the build; an install only
   ever sees its own channel.
-- **Beta first (2026-09-23).** Every release goes to DeetsMusic Beta before the steps below:
-  `npm run release -- --beta` on a `-beta.N` version, then `npm run release:publish -- --beta`.
-  [BETA.md](BETA.md) §4.
+- **Beta is paused (the owner, 2026-09-24).** Releases go straight to the live channel. Too few
+  features are built in parallel to need a beta. From 0.14.5 on, step 0 is skipped until he
+  says otherwise. When it runs: `npm run release -- --beta` on a `-beta.N` version, then
+  `npm run release:publish -- --beta` ([BETA.md](BETA.md) §4).
 
 **The commands, in order:**
 

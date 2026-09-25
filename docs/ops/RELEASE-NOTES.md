@@ -32,6 +32,36 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.14.5 — 2026-09-24
+
+**The Diary card.** Keep a journal of the albums you listen to. Each song and the album get a
+note and a score, on the scale you choose (5, 10, 100 or your own). Add an album from its
+right-click menu, or drop it on the card. Mark an entry done, and its text is copied, ready to
+paste. Sort your entries into folders, and find them from Ctrl+Space.
+
+**See the whole album from your Library.** On an album or an artist in the Library, press
+**Full** at the top right to see Apple Music's whole album or artist page, in the same card.
+Songs you have show a ✓; the others have a **+** to add them. Press **Lib** to go back to only
+your songs.
+
+**Your covers as the Glass background.** Settings › Skin settings › **Canvas** (Glass): show
+the playing album large, with the albums coming up in your queue around it, or a picture of
+your own. The aurora can take its colors (Aurora color › Cover).
+
+**Albums that are not out yet** show their songs dimmed, with the release date.
+
+**Favorite albums and playlists**, and **Shuffle** in every album and playlist menu. A
+right-click anywhere on an album, artist or playlist page opens its menu. Apple Music
+playlists can be added to your library.
+
+**The queue keeps its songs.** A song dragged into the queue that had already played could be
+skipped, and the queue could lose its place. Fixed.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.14.1 — 2026-09-24
 
 **Updates finish again when an AI app is using DeetsMusic.** The 0.14.0 update could stop
