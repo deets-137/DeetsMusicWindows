@@ -22,7 +22,6 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 use serde::Serialize;
-use tauri::State;
 
 use crate::library::Db;
 
@@ -169,18 +168,21 @@ pub struct DbHealth {
 
 /// Run the canary now and report everything counted this session. No Apple call.
 #[tauri::command]
-pub fn db_health(db: State<'_, Db>) -> Result<DbHealth, String> {
-    let result = check(&db);
-    Ok(DbHealth {
-        writable: result.is_ok(),
-        error: result.err(),
-        canary_runs: CANARY_RUNS.load(Ordering::Relaxed),
-        canary_fails: CANARY_FAILS.load(Ordering::Relaxed),
-        writes_failed: WRITES_FAILED.load(Ordering::Relaxed),
-        poisoned: POISONED.load(Ordering::Relaxed),
-        last_fail_at: LAST_FAIL_AT.load(Ordering::Relaxed),
-        last_error: LAST_ERROR.lock().ok().and_then(|l| l.clone()),
+pub async fn db_health(app: tauri::AppHandle) -> Result<DbHealth, String> {
+    crate::db_thread::run(&app, move |db| {
+        let result = check(&db);
+        Ok(DbHealth {
+            writable: result.is_ok(),
+            error: result.err(),
+            canary_runs: CANARY_RUNS.load(Ordering::Relaxed),
+            canary_fails: CANARY_FAILS.load(Ordering::Relaxed),
+            writes_failed: WRITES_FAILED.load(Ordering::Relaxed),
+            poisoned: POISONED.load(Ordering::Relaxed),
+            last_fail_at: LAST_FAIL_AT.load(Ordering::Relaxed),
+            last_error: LAST_ERROR.lock().ok().and_then(|l| l.clone()),
+        })
     })
+    .await
 }
 
 #[cfg(test)]

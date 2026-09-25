@@ -10,6 +10,7 @@
 //! webview that mirrors the Now Playing card and never touches MusicKit — it reads
 //! the hub in `bridge.rs` and sends transport back through it.
 
+use crate::lock::LockExt;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{
@@ -46,7 +47,7 @@ const REPOP_GUARD: Duration = Duration::from_millis(300);
 const BLUR_GUARD: Duration = Duration::from_millis(500);
 
 fn state(app: &AppHandle) -> std::sync::MutexGuard<'_, Inner> {
-    app.state::<TrayState>().inner().0.lock().unwrap()
+    app.state::<TrayState>().inner().0.lock_or_recover()
 }
 
 /// Remember where the REAL app window sits, in `Inner` and in settings.json. Called

@@ -1205,7 +1205,7 @@ function render(): void {
       sideHTML(r, i) +
       `</div>`;
   });
-  list.innerHTML = html || `<div class="compass__empty">Nothing here yet</div>`;
+  list.innerHTML = html || `<div class="compass__empty">Nothing here yet.</div>`;
   input?.setAttribute("aria-activedescendant", rows.length ? `compass-row-${active}` : "");
   list.querySelectorAll<HTMLElement>(".compass__row").forEach((el) => (el.id = `compass-row-${el.dataset.i}`));
 }

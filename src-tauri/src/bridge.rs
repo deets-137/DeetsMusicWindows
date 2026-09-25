@@ -53,6 +53,7 @@
 //! Debug: `log()` is an alias onto the app log (log.rs, LOGGING.md): the 400-line ring
 //! served at `/log` plus the rolling `<app_data>/deetsmusic.log`.
 
+use crate::lock::LockExt;
 use crate::model::{Album, Station, Track};
 use futures::channel::oneshot;
 use serde::{Deserialize, Serialize};
@@ -143,7 +144,7 @@ pub struct Hub {
 
 #[tauri::command]
 pub fn np_publish(state: NpState, app: AppHandle, hub: tauri::State<'_, Hub>) {
-    *hub.np.lock().unwrap() = state.clone();
+    *hub.np.lock_or_recover() = state.clone();
     crate::smtc::update(&state);
     crate::airplay::on_np_state(&app, &state);
     let _ = app.emit_to("tray", "np", state);
@@ -151,7 +152,7 @@ pub fn np_publish(state: NpState, app: AppHandle, hub: tauri::State<'_, Hub>) {
 
 #[tauri::command]
 pub fn np_snapshot(hub: tauri::State<'_, Hub>) -> NpState {
-    hub.np.lock().unwrap().clone()
+    hub.np.lock_or_recover().clone()
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -192,7 +193,7 @@ pub fn appearance_publish(
         sound: sound.unwrap_or(false),
         vinyl: vinyl.unwrap_or_default(),
     };
-    *hub.appearance.lock().unwrap() = a.clone();
+    *hub.appearance.lock_or_recover() = a.clone();
     let _ = app.emit_to("tray", "appearance", a);
 }
 
@@ -231,13 +232,13 @@ async fn ask_for(
 ) -> Result<serde_json::Value, String> {
     let id = NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let (tx, rx) = oneshot::channel();
-    PENDING.lock().unwrap().insert(id, tx);
+    PENDING.lock_or_recover().insert(id, tx);
     log(&format!("agent #{id} {kind} ({}b)", payload.to_string().len()));
     app.emit_to("main", "agent-request", AgentRequest { id, kind: kind.into(), payload: payload.clone() })
         .map_err(|e| e.to_string())?;
     std::thread::spawn(move || {
         std::thread::sleep(timeout);
-        if let Some(tx) = PENDING.lock().unwrap().remove(&id) {
+        if let Some(tx) = PENDING.lock_or_recover().remove(&id) {
             let _ = tx.send(Err("the app window did not answer".into()));
         }
     });
@@ -250,7 +251,7 @@ async fn ask_for(
 /// The main window's answer to an `agent-request`.
 #[tauri::command]
 pub fn agent_reply(id: u64, ok: bool, result: Option<serde_json::Value>, error: Option<String>) {
-    if let Some(tx) = PENDING.lock().unwrap().remove(&id) {
+    if let Some(tx) = PENDING.lock_or_recover().remove(&id) {
         let _ = tx.send(if ok {
             Ok(result.unwrap_or(serde_json::Value::Null))
         } else {
@@ -270,7 +271,7 @@ pub struct BridgeInfo {
 /// What the settings menu shows: the live port + the pairing token.
 #[tauri::command]
 pub fn bridge_info(hub: tauri::State<'_, Hub>, settings: tauri::State<'_, crate::settings::Settings>) -> BridgeInfo {
-    BridgeInfo { port: *hub.port.lock().unwrap(), token: settings.get().bridge_token, ports: PORTS.to_vec() }
+    BridgeInfo { port: *hub.port.lock_or_recover(), token: settings.get().bridge_token, ports: PORTS.to_vec() }
 }
 
 #[tauri::command]
@@ -318,7 +319,7 @@ pub fn start(app: AppHandle) {
         crate::log::error("bridge: no port free — extension bridge OFF");
         return;
     };
-    *app.state::<Hub>().port.lock().unwrap() = Some(port);
+    *app.state::<Hub>().port.lock_or_recover() = Some(port);
     log(&format!("listening on 127.0.0.1:{port}"));
     std::thread::Builder::new()
         .name("deets-bridge".into())
@@ -463,7 +464,7 @@ async fn cover_image(app: &AppHandle, value: &str) -> Result<Option<String>, Str
     }
     let (bytes, mime) = if v == "current" || v.starts_with("song:") || v.starts_with("album:") {
         let template = if v == "current" {
-            app.state::<Hub>().np.lock().unwrap().artwork_template.clone()
+            app.state::<Hub>().np.lock_or_recover().artwork_template.clone()
         } else {
             match resolve_id(app, v).await? {
                 Target::Tracks(ts) => ts.iter().find_map(|t| t.artwork.as_ref().map(|a| a.url_template.clone())),
@@ -512,7 +513,7 @@ static STATIONS: std::sync::LazyLock<Mutex<HashMap<String, Station>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn remember_stations(list: &[Station]) {
-    let mut m = STATIONS.lock().unwrap();
+    let mut m = STATIONS.lock_or_recover();
     for s in list {
         m.insert(s.id.clone(), s.clone());
     }
@@ -564,7 +565,7 @@ async fn resolve_id(app: &AppHandle, id: &str) -> Result<Target, String> {
         "playlist" => {
             let tracks = if let Some(n) = rest.strip_prefix("local:") {
                 let n: i64 = n.parse().map_err(|_| format!("bad local playlist id {id:?}"))?;
-                crate::playlists::local_playlist_tracks(n, db)?
+                crate::playlists::local_playlist_tracks(n, app.clone()).await?
             } else if rest.starts_with("p.") {
                 crate::playlists::apple_playlist_tracks(rest.to_string(), apple, db).await?
             } else {
@@ -573,7 +574,7 @@ async fn resolve_id(app: &AppHandle, id: &str) -> Result<Target, String> {
             Ok(Target::Tracks(tracks))
         }
         "station" => {
-            let cached = STATIONS.lock().unwrap().get(rest).cloned();
+            let cached = STATIONS.lock_or_recover().get(rest).cloned();
             match cached {
                 Some(s) => Ok(Target::Station(s)),
                 None => Err(format!("unknown station {id:?} — list stations first")),
@@ -710,13 +711,13 @@ async fn handle(app: AppHandle, mut req: Request) {
 
     match (method, path.as_str()) {
         (Method::Get, "/health") => {
-            let connected = app.state::<crate::apple::AppleState>().user_token.lock().unwrap().is_some();
-            let a = app.state::<Hub>().appearance.lock().unwrap().clone();
+            let connected = app.state::<crate::apple::AppleState>().user_token.lock_or_recover().is_some();
+            let a = app.state::<Hub>().appearance.lock_or_recover().clone();
             // Context, not content: what the app is DOING, never what it is playing. The
             // heaviness sampler reads this line without a token so a heavy sample can be
             // attributed (DEBUGGING.md §2026-09-17 review, item 1); a title or an artist
             // would make an unauthenticated route leak the listening, so none is here.
-            let playing = app.state::<Hub>().np.lock().unwrap().playing;
+            let playing = app.state::<Hub>().np.lock_or_recover().playing;
             let air = match crate::airplay::held_speaker(&app) {
                 None => "off",
                 Some(_) => match settings.airplay_capture {
@@ -756,7 +757,7 @@ async fn handle(app: AppHandle, mut req: Request) {
         },
 
         (Method::Get, "/now-playing") => {
-            let np = app.state::<Hub>().np.lock().unwrap().clone();
+            let np = app.state::<Hub>().np.lock_or_recover().clone();
             json(req, 200, serde_json::to_value(np).unwrap_or_default(), origin)
         }
         // AIRPLAY.md §11. Read: which speaker we are holding, so the other
@@ -936,7 +937,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                 }
             }
         }
-        (Method::Get, "/playlists") => match crate::playlists::playlists_cached(app.state::<crate::library::Db>()) {
+        (Method::Get, "/playlists") => match crate::playlists::playlists_cached(app.clone()).await {
             Ok(list) => json(req, 200, serde_json::json!({ "playlists": list }), origin),
             Err(e) => json(req, 502, serde_json::json!({ "error": e }), origin),
         },

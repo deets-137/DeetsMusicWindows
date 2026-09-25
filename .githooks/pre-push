@@ -1,0 +1,9 @@
+#!/bin/sh
+# Before a push: the typecheck, the tests, the docs check and the Rust check and tests
+# (`npm run check`, his call 2026-09-25). `npm install` points git here (the `prepare`
+# script). To push past it once: git push --no-verify.
+echo "pre-push: npm run check"
+npm run check --silent || {
+  echo "pre-push: npm run check failed. Nothing was pushed."
+  exit 1
+}

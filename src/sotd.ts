@@ -222,13 +222,14 @@ export async function mark(t: Track, opts?: { replace?: boolean; note?: string }
     await reloadSotd();
     // A replaced pick had already gone out: offer to take the posts down too (9d).
     if (r.orphans.length) {
+      // A deleted post cannot come back, so it asks first (the destructive-action rule, 2026-09-25).
       toast({
-        kind: "info",
+        kind: "warn",
         sticky: true,
         text: "Also delete the posts of the pick you replaced?",
         actions: [
           { label: "Delete", run: () => void invoke("pick_delete_posts", { orphans: r.orphans }).catch(err("delete posts")) },
-          { label: "Keep" },
+          { label: "Cancel" },
         ],
       });
     }
@@ -283,7 +284,7 @@ export function unmarkAsking(p: Pick): void {
 export function withdrawAsking(p: Pick): void {
   const where = outletsText(p.posts.filter((x) => x.state === "sent").map((x) => x.outlet));
   toast({
-    kind: "info",
+    kind: "warn",
     sticky: true,
     text: `Take the ${where} post for “${p.meta.title}” down? Your pick stays.`,
     actions: [
@@ -301,7 +302,7 @@ export function withdrawAsking(p: Pick): void {
               toast({ kind: "warn", text: "Couldn't take the post down." });
             }),
       },
-      { label: "Keep" },
+      { label: "Cancel" },
     ],
   });
 }

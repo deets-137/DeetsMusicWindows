@@ -123,6 +123,17 @@ The 429 toast for a user call is decided (APPLE-CALLS.md §3); bring him the wor
 - The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP), which
   runs on the installed beta after the next beta release.
 
+**The consistency pass (2026-09-25, uncommitted)** — WORKLOG.md 2026-09-25 has the desk test.
+Every fork in it is decided and built: the destructive-action rule (TOASTS.md §6),
+`lock_or_recover` (src-tauri/src/lock.rs), empty states with a period, **the database
+thread** (DB-HEALTH.md §2a; 73 commands, check 9 now hard), the scrollbar gutter left as is
+(CLAUDE.md checklist 6a), and **unit tests on Node's own runner** (`npm test`, `npm run
+check`, the pre-push hook). **The database thread is load-bearing: desk-test it before new
+work that touches the schema or the bridge.**
+- Later, not decided: tests for `media-menu.ts` need a stub map in `tests/setup.mjs` (it
+  loads the player and MusicKit); a release-check row for `extension/manifest.json`'s
+  version (0.11.0 shipped with it stale).
+
 **Designed, not built (2026-09-24)**
 - The telemetry pass: Apple call counter + 429 back-off (APPLE-CALLS.md), the `songEnd` /
   `player:stall` pause fixes (DEBUGGING.md §Why did it pause), AirPlay stall and switch timing

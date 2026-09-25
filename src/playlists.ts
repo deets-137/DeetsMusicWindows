@@ -156,6 +156,21 @@ export function playlistSetCover(p: Playlist, cover: string | null): Promise<voi
   return invoke<void>("playlist_set_cover", { id, cover }).then(() => emitChange(id));
 }
 
+/** The playlist's own cover as a data URL, read back from its cover link; null when it has
+ *  none. What a Remove Cover holds for its Undo (the destructive-action rule, 2026-09-25). */
+export async function playlistCoverData(p: Playlist): Promise<string | null> {
+  if (!ownCover(p) || !p.artwork) return null;
+  const res = await fetch(p.artwork.urlTemplate);
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
+    r.onerror = () => resolve(null);
+    r.readAsDataURL(blob);
+  });
+}
+
 /** What an export would do (PLAYLISTS.md §6), computed before any Apple write. */
 export interface ExportPlan {
   /** The Apple copy compared against; null when there is none (it was deleted on Apple). */

@@ -14,6 +14,7 @@ import * as sound from "./sound";
 import * as loudness from "./sound-loudness";
 import { getVolume, getDuck, onPlayerState, onPlayerProgress } from "./player";
 import * as diag from "./diag";
+import { el } from "./dom";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -77,12 +78,6 @@ function icon(bands: Band[], on: boolean): string {
 }
 
 // ── Small builders ──────────────────────────────────────────────────────────────────
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: string): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
 function pill(title: string): HTMLButtonElement {
   const b = el("button", "sound__pill");
   b.type = "button";

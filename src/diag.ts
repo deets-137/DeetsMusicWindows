@@ -164,6 +164,43 @@ window.addEventListener("unhandledrejection", (e) => {
     flushOnError();
   }, 0);
 });
+// ── console.error / console.warn land here too (the consistency read, 2026-09-25) ──────
+// About 200 failures were reported with `console.error` alone, which reaches DevTools and
+// nothing else: a playlist, library, settings, tray or Now Playing failure never appeared
+// in a bug report, while a player or room failure did. The console keeps printing; this
+// only adds a copy. An error writes a line to the log file now (deduped and rate-limited
+// like `error()`); a warning goes to the ring only and reaches the file with the next flush.
+const CONSOLE_TEXT_MAX = 500;
+function consoleText(args: unknown[]): string {
+  const parts = args.map((a) => {
+    if (a instanceof Error) return a.message;
+    if (typeof a === "string") return a;
+    try {
+      return JSON.stringify(a);
+    } catch {
+      return String(a);
+    }
+  });
+  return parts.join(" ").slice(0, CONSOLE_TEXT_MAX);
+}
+let inConsoleHook = false; // a failed `log_event` must not come back through here
+for (const level of ["error", "warn"] as const) {
+  const original = console[level].bind(console);
+  console[level] = (...args: unknown[]) => {
+    original(...args);
+    if (inConsoleHook) return;
+    const msg = consoleText(args);
+    if (msg.startsWith("[diag]")) return; // this file's own complaints
+    inConsoleHook = true;
+    try {
+      if (level === "error") error("console:error", { msg });
+      else log("console:warn", { msg });
+    } finally {
+      inConsoleHook = false;
+    }
+  };
+}
+
 // On unload, whatever the timer has not written yet — at most one interval of events,
 // because `flush` carries a since-cursor. (Before that cursor, this had to be gated on
 // `dirty`: writing all 300 events on every reload filled the 512 KB file and rotated

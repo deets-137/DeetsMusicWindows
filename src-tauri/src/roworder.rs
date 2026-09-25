@@ -18,9 +18,7 @@
 //! can be read by the `query` MCP tool (LOCAL-DATA.md).
 
 use rusqlite::Connection;
-use tauri::State;
 
-use crate::library::Db;
 
 fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
@@ -50,49 +48,58 @@ pub struct OrderRow {
 /// Every saved order, in one read. The front end asks once at start and keeps the map
 /// (src/row-order.ts): a sort must never wait on the database, and these lists are short.
 #[tauri::command]
-pub fn row_order_all(db: State<'_, Db>) -> Result<Vec<OrderRow>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT scope, id, rank FROM row_order ORDER BY scope, rank")
-        .map_err(err)?;
-    let rows = stmt
-        .query_map([], |r| Ok(OrderRow { scope: r.get(0)?, id: r.get(1)?, rank: r.get(2)? }))
-        .map_err(err)?;
-    rows.collect::<Result<_, _>>().map_err(err)
+pub async fn row_order_all(app: tauri::AppHandle) -> Result<Vec<OrderRow>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT scope, id, rank FROM row_order ORDER BY scope, rank")
+            .map_err(err)?;
+        let rows = stmt
+            .query_map([], |r| Ok(OrderRow { scope: r.get(0)?, id: r.get(1)?, rank: r.get(2)? }))
+            .map_err(err)?;
+        rows.collect::<Result<_, _>>().map_err(err)
+    })
+    .await
 }
 
 /// Replace one scope's whole list. The caller sends the order it wants to see, so the
 /// write is a delete plus an insert inside ONE transaction — a half-written order would
 /// read as a shuffled card.
 #[tauri::command]
-pub fn row_order_set(scope: String, ids: Vec<String>, db: State<'_, Db>) -> Result<(), String> {
-    if scope.is_empty() {
-        return Err("row_order: empty scope".into());
-    }
-    let mut conn = db.lock();
-    let tx = conn.transaction().map_err(err)?;
-    tx.execute("DELETE FROM row_order WHERE scope = ?1", [&scope]).map_err(err)?;
-    {
-        let mut ins = tx
-            .prepare("INSERT INTO row_order(scope, id, rank) VALUES(?1, ?2, ?3)")
-            .map_err(err)?;
-        for (i, id) in ids.iter().enumerate() {
-            ins.execute(rusqlite::params![scope, id, i as i64]).map_err(err)?;
+pub async fn row_order_set(scope: String, ids: Vec<String>, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        if scope.is_empty() {
+            return Err("row_order: empty scope".into());
         }
-    }
-    tx.commit().map_err(err)?;
-    Ok(())
+        let mut conn = db.lock();
+        let tx = conn.transaction().map_err(err)?;
+        tx.execute("DELETE FROM row_order WHERE scope = ?1", [&scope]).map_err(err)?;
+        {
+            let mut ins = tx
+                .prepare("INSERT INTO row_order(scope, id, rank) VALUES(?1, ?2, ?3)")
+                .map_err(err)?;
+            for (i, id) in ids.iter().enumerate() {
+                ins.execute(rusqlite::params![scope, id, i as i64]).map_err(err)?;
+            }
+        }
+        tx.commit().map_err(err)?;
+        Ok(())
+    })
+    .await
 }
 
 /// Forget one scope's order, or every scope (Settings › Reset, MOVABLE-ROWS.md §4.4).
 /// Forgetting is the whole reset: with no rows, every id is unranked and the card draws
 /// its built-in order again.
 #[tauri::command]
-pub fn row_order_reset(scope: Option<String>, db: State<'_, Db>) -> Result<(), String> {
-    let conn = db.lock();
-    match scope {
-        Some(s) => conn.execute("DELETE FROM row_order WHERE scope = ?1", [&s]).map_err(err)?,
-        None => conn.execute("DELETE FROM row_order", []).map_err(err)?,
-    };
-    Ok(())
+pub async fn row_order_reset(scope: Option<String>, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        match scope {
+            Some(s) => conn.execute("DELETE FROM row_order WHERE scope = ?1", [&s]).map_err(err)?,
+            None => conn.execute("DELETE FROM row_order", []).map_err(err)?,
+        };
+        Ok(())
+    })
+    .await
 }

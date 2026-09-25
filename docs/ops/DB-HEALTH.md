@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.10.0
 desk_test: none
-sources: [src-tauri/src/dbhealth.rs, src-tauri/src/library.rs, src/stats.ts]
-updated: 2026-09-17
+sources: [src-tauri/src/dbhealth.rs, src-tauri/src/library.rs, src-tauri/src/db_thread.rs, src/stats.ts]
+updated: 2026-09-25
 ---
 # DeetsMusic — is the database still writable?
 
@@ -60,6 +60,29 @@ Recovering is safe here because every write is one statement or an explicit tran
 panic cannot leave a half-applied multi-step invariant in the connection, and SQLite rolls
 back an interrupted statement itself. All 88 sites now call it. The first poisoning is
 logged and counted, because a panic still happened and somebody should know.
+
+## 2a. The database thread (built 2026-09-25)
+
+Every Tauri command that takes the lock runs on one thread, `db`, through
+`crate::db_thread::run(&app, move |db| { … })` (`src-tauri/src/db_thread.rs`). 73
+commands moved there on 2026-09-25. Release-check check 9 now fails a build where a sync
+command reaches `db.lock()` (RELEASE.md §1).
+
+- **Why off the UI thread.** A sync command runs on the thread that paints. The library
+  sync and the playlist refresh hold the lock for whole write batches, so a click that
+  needed it during one froze the window. Now the window paints while the call waits. The
+  answer still comes only when the sync lets the lock go.
+- **Why one thread, not `spawn_blocking`** (his call, 2026-09-25). A pool gives each call a
+  thread, and they all wait on the one lock. Windows does not hand a waiting lock out in
+  arrival order, so a Diary score tapped 7 then 8 during a sync could be stored as 7. The
+  `db` thread takes jobs from one queue, first in, first out. The commands already ran one
+  at a time behind the lock, so nothing parallel became serial.
+- **A job never makes a network call.** It would hold every database command behind it.
+  `lastfm_heard` queues the scrobble on the thread and `flush` sends it from its own task.
+- **A job that panics** is caught on the thread; its caller gets an error and the next job
+  runs. The lock recovers as in §2.
+- This is not the queue §5 turns down. That one would keep a failed write for later; this
+  one only orders calls, and a failed write still fails to its caller.
 
 ## 3. What is measured
 

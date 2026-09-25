@@ -73,7 +73,7 @@ A patch changes only the keys it holds; `null` clears.
 
 **Root.** The + cover (a shelf tile with no art, half again as big: `--diary-new-size`), then
 "Your entries": a sideways shelf, the newest touched first. A tile reads "7.5/10 · 5 of 12 songs".
-Right-click a tile: the album menu, and **Delete entry** last.
+Right-click a tile: the album menu, and **Delete Entry** last.
 
 **Entry.** The header reads "Diary: <album name>" with Back (his call 2026-09-24; the title's
 ellipsis cuts a long name, and its hover hint gives the whole name). In the scroll: the hero (cover, title, artist,
@@ -141,8 +141,8 @@ when its first word goes in; the pill changes it (Today · Pick a date… · No 
   along its row to reorder it (`diary.row:<key>`). Drag it into another row: Completed marks it
   done, In progress marks it in progress, a folder files it there (out of its old folder); it
   lands where you dropped it. Over another card, the tile is the album (Now Playing plays it).
-- **Right-click a tile:** the album menu, then Mark as done / Mark in progress and **Move to
-  Folder ▸** (a New folder field, the other folders, Remove from Folder), then Delete entry.
+- **Right-click a tile:** the album menu, then Mark as Done / Mark in Progress and **Move to
+  Folder ▸** (a New folder field, the other folders, Remove from Folder), then Delete Entry.
   **Right-click a folder header:** Rename (a field), Delete Folder — its entries stay in their
   status rows. The built-in headers have no menu.
 
@@ -276,4 +276,4 @@ you type a new one or rescale.
     clipboard keeps the old text. Drag an In progress tile into Completed: the toast again. Drag
     it back into In progress: no toast.
 11. Restart the dev app: the entry, notes, scores and dates are all there. Right-click the tile ›
-    Delete entry › Delete: it is gone.
+    Delete Entry › Delete: it is gone.

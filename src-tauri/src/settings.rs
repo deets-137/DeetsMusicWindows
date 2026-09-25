@@ -7,6 +7,7 @@
 //! Persisted as JSON at `<app_data>/settings.json`. Every field has a default so a
 //! missing or stale file never blocks startup.
 
+use crate::lock::LockExt;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -174,7 +175,7 @@ impl Settings {
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let json = serde_json::to_string_pretty(&*self.data.lock().unwrap()).map_err(|e| e.to_string())?;
+        let json = serde_json::to_string_pretty(&*self.data.lock_or_recover()).map_err(|e| e.to_string())?;
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent).ok();
         }
@@ -182,12 +183,12 @@ impl Settings {
     }
 
     pub fn get(&self) -> SettingsData {
-        self.data.lock().unwrap().clone()
+        self.data.lock_or_recover().clone()
     }
 
     pub fn update(&self, f: impl FnOnce(&mut SettingsData)) -> Result<SettingsData, String> {
         let out = {
-            let mut d = self.data.lock().unwrap();
+            let mut d = self.data.lock_or_recover();
             f(&mut d);
             d.clone()
         };

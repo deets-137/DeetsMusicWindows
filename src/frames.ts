@@ -35,6 +35,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { TELEMETRY } from "./telemetry-on";
+import { nextPeriod } from "./frame-period";
 
 const ON = TELEMETRY; // dev, or a VITE_PERF=1 release-shaped build (telemetry-on.ts)
 const SCROLL_IDLE_MS = 150; // a scroll window closes this long after the last scroll event
@@ -184,16 +185,13 @@ function sampleHz(): void {
     if (last) gaps.push(now - last);
     last = now;
     if (gaps.length < HZ_SAMPLES) return void requestAnimationFrame(step);
-    gaps.sort((a, b) => a - b);
-    // The 20th percentile, not the median: fast enough to shrug off a busy stretch, not so
-    // fast that one freak sub-period gap (timer jitter) becomes the answer.
-    const p20 = gaps[Math.floor(gaps.length * 0.2)];
-    // The first valid sample is taken as-is (a display slower than the 60 Hz default is
-    // real); after that only a FASTER reading can win, since gaps never run short.
-    if (p20 > 2 && p20 < 100 && (!sampled || p20 < period)) {
+    // The 20th percentile, and only ever DOWN after the first valid sample: frame-period.ts,
+    // under test.
+    const next = nextPeriod(gaps, period, sampled);
+    if (next != null) {
       sampled = true;
-      period = p20;
-      hz = Math.round(1000 / p20);
+      period = next;
+      hz = Math.round(1000 / next);
     }
     const line = `[perf] display ${hz} Hz (period ${period.toFixed(2)} ms)`;
     console.info(line);

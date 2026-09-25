@@ -220,11 +220,16 @@ if (signed.length) {
     [/\bblock_on\b/, "blocks on a future"],
     [/\bWaitForSingleObject\b/, "waits on a Windows handle"],
     [/\.join\(\)/, "waits for a thread to end"],
+    // The library sync and the playlist refresh hold this lock for whole write batches, so a
+    // click that needs it waits for them (added 2026-09-25, the consistency read). The fix is
+    // not `spawn_blocking` but `crate::db_thread::run`, which keeps the calls in order.
+    [/\bdb\.lock\(\)/, "takes the database lock, which a sync can hold for seconds (use `crate::db_thread::run`)"],
   ];
   // Anything listed here is a sync command we have decided is safe. Give the reason: the next
   // reader has to be able to check it. An empty list is the healthy state.
   const ALLOW = new Map();
   const blocking = [];
+  const soft = [];
   for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".rs"))) {
     const raw = readFileSync(join(srcDir, file), "utf8");
     const code = blankOut(raw);
@@ -249,17 +254,22 @@ if (signed.length) {
       if (!at || seen.has(name) || depth > 3) return null;
       seen.add(name);
       const [b, e] = at;
-      for (const [re, why] of BLOCKERS) {
+      // A hard hit wins over a soft one, so a warning never hides a failure.
+      let softHit = null;
+      for (const [re, why, opts] of BLOCKERS) {
         for (const hit of raw.slice(b, e).matchAll(new RegExp(re, "g"))) {
-          if (onThisThread(b + hit.index)) return { name, why };
+          if (!onThisThread(b + hit.index)) continue;
+          if (!opts?.soft) return { name, why, soft: false };
+          softHit ??= { name, why, soft: true };
         }
       }
       for (const call of code.slice(b, e).matchAll(/\b([A-Za-z_]\w*)\s*\(/g)) {
         if (!onThisThread(b + call.index)) continue;
         const deeper = scan(call[1], seen, depth + 1);
-        if (deeper) return deeper;
+        if (deeper && !deeper.soft) return deeper;
+        softHit ??= deeper;
       }
-      return null;
+      return softHit;
     };
     for (const m of code.matchAll(/#\[tauri::command\]/g)) {
       const fnAt = code.indexOf("fn ", m.index);
@@ -268,10 +278,13 @@ if (signed.length) {
       const name = /fn\s+(\w+)/.exec(code.slice(fnAt))?.[1];
       if (!name || ALLOW.has(`${file}:${name}`)) continue;
       const hit = scan(name, new Set(), 0);
-      if (hit) blocking.push(`${file}: the sync command \`${name}\` ${hit.name === name ? "" : `reaches \`${hit.name}\`, which `}${hit.why} — make it \`async fn\` + \`tauri::async_runtime::spawn_blocking\` (FRIENDS.md §8.11)`);
+      if (!hit) continue;
+      const line = `${file}: the sync command \`${name}\` ${hit.name === name ? "" : `reaches \`${hit.name}\`, which `}${hit.why} — make it \`async fn\` + \`tauri::async_runtime::spawn_blocking\` (FRIENDS.md §8.11)`;
+      (hit.soft ? soft : blocking).push(line);
     }
   }
   for (const b of blocking) failures.push(b);
+  if (soft.length) console.warn(`[release-check] WARNING: ${soft.length} sync commands take the database lock on the UI thread (check 9, soft):\n  ${soft.join("\n  ")}`);
 }
 
 // ── 10. The docs checker ───────────────────────────────────────────────────────────

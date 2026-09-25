@@ -99,10 +99,24 @@
   --room-chip-min-w:     var(--sound-pill-min-w);  /* Join, Copy code, Remove: one shape */
   --room-members-max-h:  132px;  /* about five rows before the list scrolls */
   --room-radius:         var(--sound-chip-radius);
+  --room-gutter-open:    var(--dur-med);  /* the scrollbar's gutter widening the panel open */
   --room-half-pad-x:     var(--space-1);  /* the pill halves are one width; the padding only sets how tight */
   --room-fold-bg:        var(--sound-fold-bg);  /* the Permissions box, the Sound fold's tint */
   --room-dim:            var(--sound-dim);
   /* The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. */
+  /* Friends (FRIENDS.md §3, §6). ALIASES, not raw values: a friend's box lives inside
+     the room panel, so a skin that restyles that panel restyles this with it. Only the
+     three that describe the box's own shape are new. */
+  --friend-radius:       var(--room-radius);
+  --friend-chip-min-w:   var(--room-chip-min-w);
+  --friend-list-max-h:   180px;  /* about three boxes before the list scrolls */
+  --friend-art:          38px;   /* the cover square; the box is two text lines tall */
+  --friend-gap:          var(--space-2);
+  --friend-dim:          var(--room-dim);   /* an offline box, and every quiet line */
+  /* Friends and DeetsRooms changing places when a room opens. Longer than a hover and
+     shorter than the card swap: it is a nudge, not a journey. */
+  --room-part-slide:     260ms;
+
   --room-stage-h:        104px;
   --room-fig-w:          62px;   /* the front figure; each rank behind is smaller */
   --room-fig-step-x:     34px;   /* how far each rank behind steps to its side */
@@ -112,8 +126,6 @@
   --room-fig-step-s:     0.14;   /* and how much smaller it gets */
   --room-fig-dim:        0.34;   /* the rank behind you, before its own depth fade */
   --room-bob-glide:      120ms;  /* a meter hop is 100 ms; the head glides between them */
-  --room-count-size:     14px;   /* the member count over the glyph */
-  --room-count-fs:       9px;
   --room-fill:           0.28s var(--ease-ui);   /* the glyph filling when a room starts */
 
   /* -- sound (src/sound-panel.ts, SOUND.md §2.3) ------------- */
@@ -130,8 +142,29 @@
   --compass-field-h:         36px;   /* the text field's height */
   --compass-row-h:           34px;   /* one result row; a two-line row (a song and its artist) */
   --compass-icon:            16px;   /* a row's leading glyph */
-  --compass-btn-size:        20px;   /* the title bar button, right of the title */
+  --compass-btn-size:        var(--traffic-size);   /* the title bar button, right of the title. One height for the whole row (2026-09-18; 20 was the row's only outlier) */
   --compass-spin:            0.42s cubic-bezier(0.34, 1.26, 0.64, 1); /* the needle's half turn as the bar opens, and back or on through as it closes (COMPASS.md §12) */
+  /* The cog (SETTINGS.md): the title bar button right of the Compass. Six teeth, so
+     --cog-step lands on an identical tooth and the glyph never rests crooked. */
+  --cog-btn-size:            var(--traffic-size);
+  --cog-step:                120deg; /* one click's turn */
+  --cog-spin:                0.42s cubic-bezier(0.34, 1.26, 0.64, 1);
+  /* The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or
+     shut, so an icon press grows it down and never sideways. The width is the row's own
+     sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the
+     border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. */
+  --quick-icons:             10;
+  --quick-panel-w:           calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w));
+  --quick-panel-max-h:       var(--sound-panel-max-h);
+  --quick-panel-pad:         var(--sound-panel-pad);
+  --quick-logo-size:         var(--icon-lg);   /* the logo button: the Sound tabs' height */
+  --quick-mark-size:         var(--icon-sm);   /* the glyph inside it */
+  /* The New badge (QUICK-SETTINGS.md §8, §10): on a quick panel square's corner, and inline
+     after a new Settings row's or section's name. */
+  --new-badge-size:          11px;   /* the disc: big enough for its N, small beside a 24 px square */
+  --new-badge-fs:            8px;    /* its N */
+  --new-badge-off:           -4px;   /* how far it hangs past the square's top right corner */
+  --new-badge-ring:          1.5px;  /* the ring of panel surface that stands it off the square's border */
   --sound-title-tracking:    0.02em;
   --sound-chip-radius:       var(--radius-control);
   --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */
@@ -143,8 +176,8 @@
   --sound-tabs-pad:          2px;    /* the tab strip's inset around the two tabs */
   --sound-tab-radius:        calc(var(--radius-control) - 2px); /* nested inside the strip's radius */
   --sound-foot-fs:           11px;   /* the footer line: review date and the limiter, quieter than a row */
-  --sound-reset-w:           56px;   /* Reset and Undo share one width */
   --sound-foot-pill-w:       64px;   /* Keep: 7 days / 14 days / Never, one width, text centred */
+  --sound-reset-w:           56px;   /* Reset and Undo share one width */
   --sound-meter-w:           172px;  /* "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box */
   --sound-meter-pad-y:       2px;
   --sound-dim:               0.5;    /* a part while its switch is off */
@@ -204,6 +237,7 @@
   --web-chip-radius:    var(--radius-control);
   --web-title-tracking: 0.06em; /* the panel title, the create menu's label voice */
   --web-icon-stroke:    1.8;    /* thinner than the header's 2: five small rings stay open at 16px */
+  --web-top-btn-size:   var(--traffic-size); /* the title bar's Web item: level with the other title bar icons */
   --web-link-offset:    2px;    /* Retry / Read again: the underline clears the descenders */
   --web-shrink-dur:     0.32s;  /* "Shrink to chip": the panel closing in on the artist row (a plain time: JS reads it) */
   --web-shrink-ease:    var(--pop-ease);
@@ -215,6 +249,13 @@
   /* -- floating panels (menus / popovers) -------------------- */
   --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.18);
   --menu-min-w:   122px;
+  /* A menu with a searching field (context-menu.ts `onInput`, the Diary's New entry): wide
+     enough for an album name, and its results area grows as the answers arrive. */
+  --menu-search-w:       calc(var(--menu-min-w) * 2.3);
+  --menu-results-max-h:  calc(var(--lib-row-art) * 8);  /* about seven result rows, then it scrolls */
+  --menu-grow-dur:       var(--pop-in);
+  --menu-grow-ease:      var(--pop-ease);
+  --menu-result-art:     var(--lib-row-art);
   /* Menu material — same doctrine as --panel/--panel-backdrop, for the
      FLOATING tier (.menu, .flyout, popovers, ctx-menu, pickers). Base is
      opaque theme surface + no frost; Glass opts into a translucent mix +
@@ -230,6 +271,7 @@
   --hint-row-max-w: 290px;  /* a song row: two lines, both of them names */
   --hint-credit-gap: var(--space-1);  /* the blank line before a song's writers */
   --credit-flat-opacity: 0.6;  /* a credited song the app holds no track for */
+  --unreleased-opacity: var(--credit-flat-opacity);  /* an album song that is not out yet: the same "a row that does not play" */
   --hint-pad-x:     var(--space-2);
   --hint-pad-y:     calc(var(--space-1) + 1px);
   --hint-radius:    var(--radius-control);
@@ -245,6 +287,27 @@
   --toast-stripe: 3px;     /* the kind stripe on the leading edge */
   --toast-bar:    2px;     /* the countdown bar on timed toasts */
   --toast-shift:  30%;     /* fly-in / fly-out travel; a skin may zero it */
+
+  /* -- the first-run walk (src/walk.ts, styles/walk.css; docs/features/ONBOARDING.md §4) --
+     Deets and Happy lead a stranger through the app. The speech card joins the
+     TOAST family (§2a) — same material, same button idiom — so these are aliases,
+     not new values; only the walker's own geometry is new. The frame sizes are the
+     art's, not a choice: the sprite sheets are 32-wide frames (ONBOARDING §4.1). */
+  --walk-card-w:    var(--toast-w);
+  --walk-card-pad:  var(--space-2) var(--space-3);
+  --walk-scale:     2;        /* pixel art doubled; the site renders it the same way */
+  --walk-frame-w:   32px;   /* one frame in a *_side.png strip — both sheets use 32 */
+  --walk-deets-w:   32px;
+  --walk-deets-h:   64px;
+  --walk-happy-w:   32px;
+  --walk-happy-h:   32px;
+  --walk-frames:    4;        /* frames in a *_side.png strip */
+  --walk-cycle:     0.571s;   /* the site's own rate: steps(4) at 7 fps */
+  --walk-travel:    0.75s;    /* one stop to the next; the sprite's legs set the feel */
+  --walk-gap:       10px;     /* clearance between a sprite's head and its target */
+  --walk-card-gap:  var(--space-2); /* between the sprites and the speech card */
+  --walk-point:     14px;     /* the arm/arrow that names the target */
+  --walk-pair-gap:  4px;      /* between Deets and Happy */
 
   /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
      base paints the panel material — an opaque slide masks the pane beneath.
@@ -301,6 +364,22 @@
   --aurora-dur:     60s;
   --aurora-drift:   aurora-drift;    /* the drift's keyframes; none holds the blobs at rest (Glass with Fancy Glass off) */
 
+  /* -- wallpaper layer (Glass › Canvas: Covers / Picture; COVER-WALLPAPER.md) -- */
+  /* A picture under the aurora: the album's cover and the queue's next albums as tiles, or one
+     picture the user chose. src/wallpaper.ts lays the tiles and reads these; only Glass shows
+     the layer (styles.css). The painted frost lays a blurred copy under each card. */
+  --wallpaper-anchor-share: 0.6;      /* the playing album's tile, as a share of the window's short side */
+  --wallpaper-anchor-rise:  0.3;      /* where it sits: 0 = the top, 0.5 = the middle */
+  --wallpaper-tile-dur:     0.9s;     /* one tile's picture changes: fade + a small scale */
+  --wallpaper-tile-ease:    cubic-bezier(0.4, 0, 0.2, 1);
+  --wallpaper-tile-scale:   1.04;
+  --wallpaper-fade-dur:     0.8s;     /* the whole layer in or out; the cards' frost; the aurora colors */
+  --wallpaper-fade-ease:    ease;
+  --wallpaper-blur:         28px;     /* the cards' copy; wide enough to erase the tile seams */
+  --wallpaper-diffusion-max: 20px;    /* the gaps' blur at Diffusion 100% (Settings › Diffusion, --glass-diffusion) */
+  --wallpaper-bleed:        48px;     /* the picture runs this far past the window, so a blurred edge never fades to black (≥ 2 × the max blur) */
+  --wallpaper-canvas-dim:   35;       /* the locked Dim canvas (0–100) with Fancy Glass off; set at the desk test (§6.4) */
+
   /* -- ambient motion rate ------------------------------------ */
   /* The endless decorative loops (ocean / aurora / storm / NP aurora)
      step at this rate instead of the display's, so the compositor draws
@@ -309,15 +388,41 @@
      (the storm wipe excepted), so 30 reads smooth. A unitless integer. */
   --ambient-fps: 30;
 
-  /* -- ocean layer (rolling swell behind the cards) ----------- */
-  /* Three masked wave-train <div>s in .app-body that a skin opts into —
-     same doctrine as --storm-*. The tile geometry is fixed (styles.css);
-     the ink fades with distance via these roles, so far swells recede
-     into haze. Base is inert. */
-  --ocean-display: none;             /* ocean opts in */
-  --ocean-ink-1:   var(--border);
-  --ocean-ink-2:   var(--border);
-  --ocean-ink-3:   var(--border);
+  /* -- ocean layer (the sea behind the cards) ------------------ */
+  /* A swell in perspective, a glow from the deep and ripples, in .app-body,
+     that a skin opts into — same doctrine as --storm-*. src/ocean.ts paints
+     the three depth bands (in a worker) with these colors; every box then
+     only moves (transform) or fades (opacity). Base is inert; the values
+     are Ocean's (docs/features/OCEAN.md). */
+  --ocean-display:      none;             /* ocean opts in */
+  --ocean-water-top:    var(--canvas);    /* the water at the horizon … */
+  --ocean-water-bottom: var(--canvas);    /* … and at the bottom (the deepest) */
+  --ocean-deep:         linear-gradient(to bottom, var(--ocean-water-top), var(--ocean-water-bottom));
+  --ocean-swell-ink:    var(--border);    /* the crest line */
+  --ocean-trough:       0.35;             /* how much darker a trough is under its crest, on dark water */
+  --ocean-trough-light: 0.12;             /* the same on light water (more reads as sand dunes) */
+  --ocean-roll-far:     90;               /* s for a band to roll one tile (unitless: steps() needs a number); */
+  --ocean-roll-mid:     90;               /*   the tiles are 360 / 720 / 1200 px (ocean-texture.ts BANDS), */
+  --ocean-roll-near:    100;              /*   so the near swell moves fastest */
+  --ocean-bob-far:      13;               /* s for one rise of a band */
+  --ocean-bob-mid:      11;
+  --ocean-bob-near:     9;
+  --ocean-heave-far:    1.5px;            /* how far a band rises at the music's loudest */
+  --ocean-heave-mid:    5px;
+  --ocean-heave-near:   10px;
+  --ocean-breath-dur:   1.1s;             /* the heave follows the music this smoothly */
+  --ocean-breath-ease:  cubic-bezier(0.37, 0, 0.63, 1);
+  --ocean-glow:         0.28;             /* the album's glow from the deep, at rest */
+  --ocean-glow-fade:    2.4s;             /* a new album's glow fades in */
+  --ocean-light-glow:   0.7;              /* the glow at full Album light (--ocean-glow at 0) */
+  --ocean-light-reach:  35%;              /* how much taller the glow rises at full Album light */
+  --ocean-neon-pulse:   0.35;             /* how much the neon crests brighten with the heave */
+  --ocean-ripple-size:  520px;            /* a ripple's widest ring */
+  --ocean-ripple-flat:  0.32;             /* its height over its width: a ring on the water, seen from above the swell */
+  --ocean-ripple-dur:   3.4s;
+  --ocean-ripple-gap:   0.35s;            /* the second ring follows the first */
+  --ocean-ripple-alpha: 0.5;
+  --ocean-ripple-ease:  cubic-bezier(0.2, 0.6, 0.35, 1);
 
   /* -- sand edges (Ocean "Draw card edges: Sand") ------------- */
   /* .panel paints --panel-paint. A skin with sand edges sets it transparent
@@ -387,6 +492,10 @@
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */
+  /* The Song of the Day record scrolls past five rows (docs/integrations/DeetsOTD.md §10.6). A row is
+     --set-row-h plus its own padding, so five of them plus the hairlines. */
+  --set-log-rows:    5;
+  --set-log-max-h:   calc((var(--set-row-h) + var(--space-2)) * var(--set-log-rows));
   --set-range-w:     120px;            /* a range row's slider (Glass's Tint / Frost) */
   --set-range-val-w: 3.5em;            /* its value, "100%" fits */
   --set-pill-pad:    var(--space-1) var(--space-2);
@@ -400,19 +509,12 @@
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-glyph: 96px;           /* placeholder ♪ on the stage */
-  --qcard-now-art:  48px;           /* the Queue card's now-playing cover (--max-queue-min reads it) */
-  /* The stage column's Queue floor (docs/cards/STAGE-COLUMN.md §4.3): in max the Queue always keeps
-     the song that plays now plus --max-queue-rows Up Next rows, and Now Playing's cover takes
-     only the height that is left. It is arithmetic over the Queue card's own parts — panel
-     padding, the header, the now-playing block, the card's two gaps, the UP NEXT label, then
-     the rows — so every skin keeps the same PROMISE at its own type size, and a skin that
-     changes its type or its row height moves with it.
-     The 1px panel border of Press / Cyber / Sand is deliberately NOT in the sum: the base
-     --panel-border-width is a UNITLESS 0, and calc() cannot add a bare number to a length —
-     the whole token would be invalid, and with it the cap that keeps the Queue's rows. Two
-     pixels of a 300 px floor is not worth that. */
-  --max-queue-rows: 2.5;            /* 2.5 = two whole rows and half of the third's cover */
-  --max-queue-min:  calc(2 * var(--panel-pad) + var(--fs-title) * var(--lh-text) + var(--space-2) + var(--qcard-now-art) + 2 * var(--space-2) + 2 * var(--space-3) + var(--fs-subtext) * var(--lh-text) + var(--max-queue-rows) * var(--lib-row-h)); /* the Queue's floor in the max stage column */
+  --qcard-now-art:  48px;           /* the Queue card's now-playing cover */
+  --qcard-idle-dim: 0.6;            /* the now-playing row with nothing to play */
+  --qcard-loading-dim: 0.55;        /* its cover while a jump buffers (UX-COVERUPS.md §1) */
+  /* The stage column (docs/cards/STAGE-COLUMN.md) needs no floor token: Now Playing is locked to
+     its natural height and the Queue takes the rest, so nothing inside the column competes.
+     The window's own height band (surface.ts MAX_FLOOR_H) is what keeps the Queue usable. */
 
   /* -- album aurora (Now Playing; ALBUM-COLOR.md) ------------- */
   /* Expression knobs only — the COLORS are the runtime --album-*
@@ -469,6 +571,9 @@
   --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
   --lib-tile-large:    132px;       /* min tile width — large squares */
   --lib-tile-radius:   8px;
+  --tile-badge-size:   20px;        /* the tile badge (PINS.md): a pinned tile's corner square */
+  --tile-badge-inset:  var(--space-1);
+  --tile-badge-radius: var(--lib-tile-radius); /* cut to the tile's own corner */
   --lib-tile-lh:       1.3em;       /* a tile's text line; its meta block is pinned to two of
                                        these so every tile in a grid row is one height */
   --lib-row-art:        36px;       /* mini-cover size on density lines */
@@ -602,6 +707,26 @@
   --drag-nodrop-opacity: 0.5;       /* the copy over a place that takes no drop */
   --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
   --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
+  /* -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its
+        own grip, and the grip bar on a pinned tile -- */
+  --hold-ms:    400ms;              /* how long a header is held before it can be moved */
+  --hold-swell: 1.015;              /* the held header swells, so the hold is visible */
+  --tile-art:     96px;             /* a shelf tile's cover (styles.css .search__tile-art) */
+  /* -- the Diary card (DIARY.md §4): families it joins, by alias -- */
+  --diary-new-size:   calc(var(--tile-art) * 1.5);  /* the + cover: a shelf tile, half again as big */
+  --diary-morph-dur:  calc(var(--nav-dur) * 1.4);    /* the + cover becoming the search bar: the skin's own nav motion, */
+  --diary-morph-ease: var(--nav-ease);               /*   a little slower, because the shape travels farther than a pane */
+  --diary-score-w:    5ch;                          /* a score field holds "2.6767" */
+  --diary-num-w:      2ch;                          /* the track number column */
+  --diary-note-min-h: var(--set-textarea-min-h);    /* a note: the Bugs details field's five lines */
+  --diary-foot-note-min-h: calc(var(--set-textarea-min-h) * 0.75);  /* the foot's note, so the list keeps its room */
+  --grip-w:       18px;             /* the dotted bar over a pinned tile's left edge */
+  --grip-inset:   2px;              /* how far in from the cover's edge the bar sits */
+  --grip-height:  0.72;             /* of the cover's height, centred on it (a factor, so calc can use it) */
+  --grip-radius:  var(--radius-control);
+  --grip-dot:     3px;              /* one of the three dots */
+  --grip-dot-gap: 4px;
+  --grip-bg-alpha: 62%;             /* of --canvas, so the artwork still reads under it */
   --disabled-alpha: 0.6;            /* a control that keeps its place with nothing to act on */
 
   /* -- the empty-pane invite slot (a row-shaped drop target; styles.css .lib-empty__slot) -- */
@@ -620,6 +745,22 @@
   --icon-sm: 14px;
   --icon-md: 16px;
   --icon-lg: 24px;
+
+  /* A header action that carries WORDS instead of a glyph (Rewind's SOTD button,
+     docs/integrations/DeetsOTD.md §10.5). Same family as .panel__action — same fill, border, height,
+     radius and hover — so it only needs the side room and the type the letters take.
+     Aliases, never new raw values (UI-ARCHITECTURE.md §2a). */
+  --action-text-pad:    var(--space-2);
+  --action-text-fs:     var(--fs-subtext);
+  --action-text-weight: var(--fw-title);
+  /* The split pill (split-pill.ts): that worded action cut in two, "Full | Lib" in the Library
+     (FULL-LIB.md) and the Search card (SEARCH-FIELDS.md §6). Aliases, so a skin can move the
+     pill alone. The dim is the disabled header action's. */
+  --split-pill-radius:  var(--radius-control);
+  --split-pill-pad:     var(--action-text-pad);
+  --split-pill-fs:      var(--action-text-fs);
+  --split-pill-weight:  var(--action-text-weight);
+  --split-pill-dim:     0.6;   /* = .panel__action[disabled] */
 
   /* -- spacing scale ----------------------------------------- */
   --space-1: 4px;
@@ -774,8 +915,14 @@
   --fs-title:   18px;               /* all-caps reads large; size down */
 
   /* cards — a RECESSED surface, darker than the canvas. Derived in
-     the skin from the theme's surface (no new theme variable). */
-  --panel:              color-mix(in srgb, var(--surface), black 18%);
+     the skin from the theme's surface (no new theme variable). Settings ›
+     Card opacity (src/skin-settings.ts) sets --ocean-card-opacity (0–100)
+     on <html>; 100 is the solid sunken card, lower lets the swell through. */
+  --panel:              color-mix(in srgb, color-mix(in srgb, var(--surface), black 18%) calc(var(--ocean-card-opacity, 100) * 1%), transparent);
+  /* the card is see-through, so a pane or a stuck bar must not paint a second fill over it
+     (Cyber's rule); the bar blurs the rows under it instead */
+  --spane-bg:            transparent;
+  --sticky-bar-backdrop: blur(10px);
   --panel-border-width: 0;
   /* soft border = a diffuse ring in the theme hairline color + depth */
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
@@ -785,20 +932,21 @@
   --grow-zone-bar-glow:   0 0 6px var(--grow-zone-bar);
   --panel-radius:       14px;       /* softer, water-smoothed corners */
 
-  /* surface — the rolling swell, an SVG layer (.ocean in styles.css;
-     wave-train markup in index.html). Three opaque wave trains,
-     each crest a hairline over a --canvas fill, so a nearer swell occludes
-     the ones behind it instead of three see-through lines crossing.
-     Atmospheric perspective: the front crest is full --border; middle and
-     back fade toward --canvas (70% / 45% ink), so far waves recede into
-     haze. (This replaced the old radial-gradient scallops, whose arcs
-     crossed at tile corners and scattered chevron artifacts across the
-     canvas — each SVG tile is one full sine period, so the curve's value
-     AND tangent match at the seam.) */
-  --ocean-display: block;
-  --ocean-ink-1:   var(--border);
-  --ocean-ink-2:   color-mix(in srgb, var(--border) 70%, var(--canvas));
-  --ocean-ink-3:   color-mix(in srgb, var(--border) 45%, var(--canvas));
+  /* surface — the sea (.ocean in styles.css, markup in index.html, textures
+     in src/ocean.ts). A heavy swell in perspective: rows crowd into haze at
+     the horizon (the top) and grow tall and sharp toward the bottom, each
+     wave's dark body hiding the water behind it. The water is darkest at
+     the bottom, where the album's glow rises. The other values are the
+     base block's. */
+  --ocean-display:      block;
+  --ocean-water-top:    color-mix(in srgb, var(--canvas), var(--border) 10%);
+  --ocean-water-bottom: color-mix(in srgb, var(--canvas), black 22%);
+  /* The crest line (and the ripples). On a light theme, lifted toward the title
+     color so it reads on pale water. On a dark theme, sunk toward the canvas: the
+     border lifted toward the title glowed on dark water (his word, 2026-09-23:
+     "too bright for dark modes"). light-dark() follows the theme's color-scheme. */
+  --ocean-swell-ink:    light-dark(color-mix(in srgb, var(--border) 80%, var(--title)),
+                                   color-mix(in srgb, var(--border) 55%, var(--canvas)));
 
   /* micro-motion — cards float on the surface; a touch buoys them up */
   --hover-lift: translateY(-1px);
@@ -861,19 +1009,19 @@
   --spane-bg:     transparent;
 }
 
-/* Ocean's swell — motion for the injected layer. All trains roll the SAME
-   direction, nearest fastest, each by an INTEGER number of its own tile
-   width over one loop (144=3×48, 128=2×64, 80=1×80), so the seam is
-   invisible. Roll owns the horizontal drift (linear, on the inner
-   .ocean__roll), bob the rise-and-fall (sine-sampled keyframes, alternate,
-   on the wrapping .ocean__bob — the ease is in the keyframes because the
-   stepped timing, see --ambient-fps, replaces any easing) — separate elements, so the two transforms compose instead of
-   overwriting each other. Per-layer distances come from --roll-dist /
-   --bob-amp, set on the elements in styles.css and resolved inside these
-   keyframes per element. 9s·2 vs 16s never sync (LCM 144s) — the pattern
-   doesn't visibly repeat. Only Ocean animates them (via --ocean-display). */
+/* Ocean's sea — motion for the layer. Roll carries a depth band sideways by exactly
+   one of its own tiles per loop (ocean.ts sets --tw to the tile), so the wrap never
+   shows; bob its rise-and-fall (sine-sampled keyframes, alternate, on a wrapping
+   box — the ease is in the keyframes because the stepped timing, see --ambient-fps,
+   replaces any easing — so the two transforms compose instead of overwriting each
+   other). Per-band distances are resolved inside these keyframes per element. Only
+   Ocean shows them (via --ocean-display). */
 @keyframes ocean-roll {
   to { transform: translateX(var(--roll-dist, 0px)); }
+}
+@keyframes ocean-ripple {
+  from { opacity: var(--ocean-ripple-alpha); transform: scale(0.06); }
+  to   { opacity: 0; transform: scale(1); }
 }
 /* (1 − cos πt) / 2 sampled at fifths ≈ the old ease-in-out */
 @keyframes ocean-bob {
@@ -940,7 +1088,19 @@
   --glass-frost-layer:  calc(-1 * var(--aurora-slack)) calc(var(--titlebar-h) - var(--aurora-slack)) /
                         calc(100% + 2 * var(--aurora-slack)) calc(100% - var(--titlebar-h) + 2 * var(--aurora-slack))
                         no-repeat fixed;
-  --glass-frost-paint:
+  /* the aurora's colors: the theme's go / stop / pause, or the album's (or the chosen picture's)
+     while the wallpaper shows (wallpaper.ts sets --canvas-go/-stop/-pause on <html>) */
+  --canvas-go:    var(--go);
+  --canvas-stop:  var(--stop);
+  --canvas-pause: var(--pause);
+  /* the frost's layers: the aurora copy, then the wallpaper's soft copy (a transparent stand-in
+     when there is none, so the layer count never changes and a change can crossfade), then the
+     ground. --wallpaper-at is the canvas box, set by wallpaper.ts. */
+  --glass-frost-paint: var(--glass-frost-glow),
+    var(--wallpaper-soft, linear-gradient(transparent, transparent)) var(--wallpaper-at, 0 0 / 100% 100%) no-repeat fixed,
+    var(--glass-frost-ground);
+  --glass-frost-ground: oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-glow:
     radial-gradient(42% 52% at 16% 10%,
       color-mix(in srgb, var(--glass-frost-go) min(100%, 50% * var(--glass-glow)), transparent),
       color-mix(in srgb, var(--glass-frost-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%)
@@ -952,13 +1112,12 @@
     radial-gradient(52% 52% at 60% 96%,
       color-mix(in srgb, var(--glass-frost-pause) min(100%, 38% * var(--glass-glow)), transparent),
       color-mix(in srgb, var(--glass-frost-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%)
-      var(--glass-frost-layer),
-    oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
+      var(--glass-frost-layer);
   /* the aurora's own hues, saturated the way the live frost's saturate() does (keep the three
      gradients above in step with --aurora-1..3 below) */
-  --glass-frost-go:    oklch(from var(--go) l calc(c * var(--glass-frost-sat)) h);
-  --glass-frost-stop:  oklch(from var(--stop) l calc(c * var(--glass-frost-sat)) h);
-  --glass-frost-pause: oklch(from var(--pause) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-go:    oklch(from var(--canvas-go) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-stop:  oklch(from var(--canvas-stop) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-pause: oklch(from var(--canvas-pause) l calc(c * var(--glass-frost-sat)) h);
   /* the stuck list bar keeps a real blur in both forms: it frosts the rows under it */
   --sticky-bar-backdrop: blur(14px) saturate(var(--glass-frost-sat));
 
@@ -1046,16 +1205,16 @@
        no abrupt slope change (Mach band) rimming the hotter blobs. */
   --aurora-1:
     radial-gradient(42% 52% at 16% 10%,
-      color-mix(in srgb, var(--go) min(100%, 50% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%);
+      color-mix(in srgb, var(--canvas-go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--canvas-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%);
   --aurora-2:
     radial-gradient(46% 56% at 86% 22%,
-      color-mix(in srgb, var(--stop) min(100%, 44% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%);
+      color-mix(in srgb, var(--canvas-stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--canvas-stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%);
   --aurora-3:
     radial-gradient(52% 52% at 60% 96%,
-      color-mix(in srgb, var(--pause) min(100%, 38% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%);
+      color-mix(in srgb, var(--canvas-pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--canvas-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%);
   --aurora-display: block;
   --aurora-slack:   64px;            /* blobs 128px oversized; every drift stays within ±64 */
   /* each blob wanders a different way and returns */
@@ -1092,6 +1251,12 @@
   --panel-isolation: auto;
   --aurora-drift:    aurora-drift;
   --panel-paint:     var(--glass-backlight-paint);
+}
+
+/* Glass with a wallpaper (COVER-WALLPAPER.md row 7): a picture is louder than the aurora, so
+   with Fancy Glass off the canvas dim locks to a higher value (the cards keep their brightness). */
+[data-skin="glass"][data-wallpaper]:not([data-glass-fancy="on"]) {
+  --glass-dim: calc(var(--wallpaper-canvas-dim) / 100 * 0.9);
 }
 
 /* ============================================================

@@ -25,6 +25,7 @@ import { isShuffleOn, setShuffleMode } from "./player";
 import { setting } from "./settings-store";
 import { enterRows } from "./pop";
 import { splitPillHTML, splitPick } from "./split-pill";
+import { esc } from "./dom";
 import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
 
@@ -375,8 +376,7 @@ interface Frame {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-export const esc = (s: string) =>
-  s.replace(/[&<>"]/g, (c) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }) as Record<string, string>)[c]);
+export { esc }; // from dom.ts; its older callers import it from here
 
 // One collator, built once. `a.localeCompare(b, undefined, {…})` builds one per CALL: the
 // library's 3,895 rows make ~100,000 of them in a single sort, which measured 204 ms against

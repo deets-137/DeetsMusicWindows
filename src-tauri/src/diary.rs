@@ -18,7 +18,6 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use serde_json::Value;
-use tauri::State;
 
 use crate::library::Db;
 use crate::model::{Album, Track};
@@ -169,8 +168,11 @@ pub struct DiaryFolder {
 
 /// Every entry, the newest touched first (the shelf's order).
 #[tauri::command]
-pub fn diary_list(db: State<'_, Db>) -> Result<Vec<DiarySummary>, String> {
-    list_entries(&db.lock())
+pub async fn diary_list(app: tauri::AppHandle) -> Result<Vec<DiarySummary>, String> {
+    crate::db_thread::run(&app, move |db| {
+        list_entries(&db.lock())
+    })
+    .await
 }
 
 fn list_entries(conn: &Connection) -> Result<Vec<DiarySummary>, String> {
@@ -267,16 +269,22 @@ fn read_entry(conn: &Connection, id: i64) -> Result<DiaryEntry, String> {
 }
 
 #[tauri::command]
-pub fn diary_get(id: i64, db: State<'_, Db>) -> Result<DiaryEntry, String> {
-    read_entry(&db.lock(), id)
+pub async fn diary_get(id: i64, app: tauri::AppHandle) -> Result<DiaryEntry, String> {
+    crate::db_thread::run(&app, move |db| {
+        read_entry(&db.lock(), id)
+    })
+    .await
 }
 
 /// Open the album's entry, making it when there is none. An existing entry takes the new
 /// song list (a pre-release album gains its songs this way); its notes and scores stay.
 /// `today` is the user's local day: a new entry's review date starts on it (fork 8B).
 #[tauri::command]
-pub fn diary_open(album: Album, tracks: Vec<Track>, today: Option<String>, db: State<'_, Db>) -> Result<DiaryEntry, String> {
-    open_entry(&db.lock(), &album, &tracks, today)
+pub async fn diary_open(album: Album, tracks: Vec<Track>, today: Option<String>, app: tauri::AppHandle) -> Result<DiaryEntry, String> {
+    crate::db_thread::run(&app, move |db| {
+        open_entry(&db.lock(), &album, &tracks, today)
+    })
+    .await
 }
 
 fn open_entry(conn: &Connection, album: &Album, tracks: &[Track], today: Option<String>) -> Result<DiaryEntry, String> {
@@ -357,8 +365,11 @@ fn day_of(v: &Value) -> Result<Option<String>, String> {
 /// Change the album's own fields. Only the keys present in `patch` change; null clears.
 /// Keys: `score`, `note`, `reviewDate`, `scaleMax` (the scale alone — the scores stay).
 #[tauri::command]
-pub fn diary_update(id: i64, patch: Value, db: State<'_, Db>) -> Result<(), String> {
-    update_entry(&db.lock(), id, &patch)
+pub async fn diary_update(id: i64, patch: Value, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        update_entry(&db.lock(), id, &patch)
+    })
+    .await
 }
 
 fn update_entry(conn: &Connection, id: i64, patch: &Value) -> Result<(), String> {
@@ -383,8 +394,11 @@ fn update_entry(conn: &Connection, id: i64, patch: &Value) -> Result<(), String>
 /// Change one song's note, score or note date. Same patch rules as `diary_update`
 /// (keys `score`, `note`, `noteDate`). A song with nothing left is deleted.
 #[tauri::command]
-pub fn diary_song_set(entry_id: i64, song_key: String, patch: Value, db: State<'_, Db>) -> Result<(), String> {
-    set_song(&mut db.lock(), entry_id, &song_key, &patch)
+pub async fn diary_song_set(entry_id: i64, song_key: String, patch: Value, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        set_song(&mut db.lock(), entry_id, &song_key, &patch)
+    })
+    .await
 }
 
 fn set_song(conn: &mut Connection, entry_id: i64, song_key: &str, patch: &Value) -> Result<(), String> {
@@ -439,30 +453,36 @@ fn set_song(conn: &mut Connection, entry_id: i64, song_key: &str, patch: &Value)
 /// setting (fork 7B). `from_max` is explicit because the ask comes AFTER the scale changed:
 /// the entry already reads the new top while the toast waits.
 #[tauri::command]
-pub fn diary_rescale(id: i64, from_max: f64, to_max: f64, db: State<'_, Db>) -> Result<(), String> {
-    let ok = |x: f64| x.is_finite() && x > 0.0;
-    if !ok(to_max) || !ok(from_max) {
-        return Err("diary: a scale's top is a number above 0".into());
-    }
-    let k = to_max / from_max;
-    let mut conn = db.lock();
-    let tx = conn.transaction().map_err(err)?;
-    tx.execute(
-        "UPDATE diary_entries SET scale_max = ?1, score = score * ?2, updated_at = ?3 WHERE id = ?4",
-        params![to_max, k, now_ms(), id],
-    )
-    .map_err(err)?;
-    tx.execute("UPDATE diary_songs SET score = score * ?1 WHERE entry_id = ?2", params![k, id]).map_err(err)?;
-    tx.commit().map_err(err)?;
-    crate::log::info(&format!("diary: rescaled entry {id}"));
-    Ok(())
+pub async fn diary_rescale(id: i64, from_max: f64, to_max: f64, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let ok = |x: f64| x.is_finite() && x > 0.0;
+        if !ok(to_max) || !ok(from_max) {
+            return Err("diary: a scale's top is a number above 0".into());
+        }
+        let k = to_max / from_max;
+        let mut conn = db.lock();
+        let tx = conn.transaction().map_err(err)?;
+        tx.execute(
+            "UPDATE diary_entries SET scale_max = ?1, score = score * ?2, updated_at = ?3 WHERE id = ?4",
+            params![to_max, k, now_ms(), id],
+        )
+        .map_err(err)?;
+        tx.execute("UPDATE diary_songs SET score = score * ?1 WHERE entry_id = ?2", params![k, id]).map_err(err)?;
+        tx.commit().map_err(err)?;
+        crate::log::info(&format!("diary: rescaled entry {id}"));
+        Ok(())
+    })
+    .await
 }
 
 /// Mark an entry done (now) or in progress again (the check button toggles, his call
 /// 2026-09-24). Returns the new `done_at`. Other triggers will hang off this later (§9).
 #[tauri::command]
-pub fn diary_set_done(id: i64, done: bool, db: State<'_, Db>) -> Result<Option<i64>, String> {
-    mark_done(&db.lock(), id, done)
+pub async fn diary_set_done(id: i64, done: bool, app: tauri::AppHandle) -> Result<Option<i64>, String> {
+    crate::db_thread::run(&app, move |db| {
+        mark_done(&db.lock(), id, done)
+    })
+    .await
 }
 
 fn mark_done(conn: &Connection, id: i64, done: bool) -> Result<Option<i64>, String> {
@@ -479,66 +499,84 @@ fn mark_done(conn: &Connection, id: i64, done: bool) -> Result<Option<i64>, Stri
 
 /// The user's folders, oldest first (a new folder appears at the end, his call 2026-09-24).
 #[tauri::command]
-pub fn diary_folders(db: State<'_, Db>) -> Result<Vec<DiaryFolder>, String> {
-    let conn = db.lock();
-    let mut stmt = conn.prepare("SELECT id, name, created_at FROM diary_folders ORDER BY created_at, id").map_err(err)?;
-    let rows = stmt
-        .query_map([], |r| Ok(DiaryFolder { id: r.get(0)?, name: r.get(1)?, created_at: r.get(2)? }))
-        .map_err(err)?;
-    rows.collect::<Result<_, _>>().map_err(err)
+pub async fn diary_folders(app: tauri::AppHandle) -> Result<Vec<DiaryFolder>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn.prepare("SELECT id, name, created_at FROM diary_folders ORDER BY created_at, id").map_err(err)?;
+        let rows = stmt
+            .query_map([], |r| Ok(DiaryFolder { id: r.get(0)?, name: r.get(1)?, created_at: r.get(2)? }))
+            .map_err(err)?;
+        rows.collect::<Result<_, _>>().map_err(err)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn diary_folder_create(name: String, db: State<'_, Db>) -> Result<i64, String> {
-    let name = name.trim();
-    if name.is_empty() {
-        return Err("diary: a folder needs a name".into());
-    }
-    let conn = db.lock();
-    conn.execute("INSERT INTO diary_folders(name, created_at) VALUES(?1, ?2)", params![name, now_ms()]).map_err(err)?;
-    Ok(conn.last_insert_rowid())
+pub async fn diary_folder_create(name: String, app: tauri::AppHandle) -> Result<i64, String> {
+    crate::db_thread::run(&app, move |db| {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("diary: a folder needs a name".into());
+        }
+        let conn = db.lock();
+        conn.execute("INSERT INTO diary_folders(name, created_at) VALUES(?1, ?2)", params![name, now_ms()]).map_err(err)?;
+        Ok(conn.last_insert_rowid())
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn diary_folder_rename(id: i64, name: String, db: State<'_, Db>) -> Result<(), String> {
-    let name = name.trim();
-    if name.is_empty() {
-        return Err("diary: a folder needs a name".into());
-    }
-    db.lock().execute("UPDATE diary_folders SET name = ?1 WHERE id = ?2", params![name, id]).map_err(err)?;
-    Ok(())
+pub async fn diary_folder_rename(id: i64, name: String, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("diary: a folder needs a name".into());
+        }
+        db.lock().execute("UPDATE diary_folders SET name = ?1 WHERE id = ?2", params![name, id]).map_err(err)?;
+        Ok(())
+    })
+    .await
 }
 
 /// Delete a folder. Its entries stay: they only leave the folder (they still sit in In
 /// progress or Completed).
 #[tauri::command]
-pub fn diary_folder_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.lock();
-    let tx = conn.transaction().map_err(err)?;
-    tx.execute("UPDATE diary_entries SET folder_id = NULL WHERE folder_id = ?1", [id]).map_err(err)?;
-    tx.execute("DELETE FROM diary_folders WHERE id = ?1", [id]).map_err(err)?;
-    tx.commit().map_err(err)
+pub async fn diary_folder_delete(id: i64, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let tx = conn.transaction().map_err(err)?;
+        tx.execute("UPDATE diary_entries SET folder_id = NULL WHERE folder_id = ?1", [id]).map_err(err)?;
+        tx.execute("DELETE FROM diary_folders WHERE id = ?1", [id]).map_err(err)?;
+        tx.commit().map_err(err)
+    })
+    .await
 }
 
 /// File an entry in a folder, or take it out (`folder` = None). One folder per entry.
 #[tauri::command]
-pub fn diary_file(id: i64, folder: Option<i64>, db: State<'_, Db>) -> Result<(), String> {
-    db.lock()
-        .execute("UPDATE diary_entries SET folder_id = ?1 WHERE id = ?2", params![folder, id])
-        .map_err(err)?;
-    Ok(())
+pub async fn diary_file(id: i64, folder: Option<i64>, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        db.lock()
+            .execute("UPDATE diary_entries SET folder_id = ?1 WHERE id = ?2", params![folder, id])
+            .map_err(err)?;
+        Ok(())
+    })
+    .await
 }
 
 /// Delete an entry and its songs' notes.
 #[tauri::command]
-pub fn diary_delete(id: i64, db: State<'_, Db>) -> Result<(), String> {
-    let mut conn = db.lock();
-    let tx = conn.transaction().map_err(err)?;
-    tx.execute("DELETE FROM diary_songs WHERE entry_id = ?1", [id]).map_err(err)?;
-    tx.execute("DELETE FROM diary_entries WHERE id = ?1", [id]).map_err(err)?;
-    tx.commit().map_err(err)?;
-    crate::log::info(&format!("diary: deleted entry {id}"));
-    Ok(())
+pub async fn diary_delete(id: i64, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let tx = conn.transaction().map_err(err)?;
+        tx.execute("DELETE FROM diary_songs WHERE entry_id = ?1", [id]).map_err(err)?;
+        tx.execute("DELETE FROM diary_entries WHERE id = ?1", [id]).map_err(err)?;
+        tx.commit().map_err(err)?;
+        crate::log::info(&format!("diary: deleted entry {id}"));
+        Ok(())
+    })
+    .await
 }
 
 // ── Export (DIARY.md §10) ────────────────────────────────────────────────────
@@ -620,8 +658,11 @@ pub fn export_text(e: &DiaryEntry) -> String {
 }
 
 #[tauri::command]
-pub fn diary_export(id: i64, db: State<'_, Db>) -> Result<String, String> {
-    Ok(export_text(&read_entry(&db.lock(), id)?))
+pub async fn diary_export(id: i64, app: tauri::AppHandle) -> Result<String, String> {
+    crate::db_thread::run(&app, move |db| {
+        Ok(export_text(&read_entry(&db.lock(), id)?))
+    })
+    .await
 }
 
 // ── The agent and the CLI (DIARY.md §10; AGENT.md) ───────────────────────────

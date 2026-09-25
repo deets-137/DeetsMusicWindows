@@ -14,6 +14,7 @@
 //! The API key and shared secret are built into the exe (build.rs, §2). The session key lives
 //! in `<app_data>/lastfm-session.json` and never reaches the renderer or the log.
 
+use crate::lock::LockExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -129,7 +130,7 @@ pub fn setup(app: &AppHandle, dir: PathBuf) {
     if let Some(s) = session {
         crate::log::register_secret(&s.key);
         crate::log::info("lastfm: connected at launch");
-        *SESSION.lock().unwrap() = Some(s);
+        *SESSION.lock_or_recover() = Some(s);
         let app = app.clone();
         tauri::async_runtime::spawn(async move {
             tokio_sleep(BOOT_DELAY).await;
@@ -207,27 +208,27 @@ pub async fn lastfm_begin_auth(app: AppHandle) -> Result<(), String> {
         return Err("lastfm-unavailable".into());
     }
     stop_pending();
-    *AUTH.lock().unwrap() = AuthStatus::Pending;
+    *AUTH.lock_or_recover() = AuthStatus::Pending;
     let token = match call("auth.getToken", vec![]).await {
         Ok(v) => v.get("token").and_then(|t| t.as_str()).map(str::to_string),
         Err(CallError::Net(e)) => {
             crate::log::warn(&format!("lastfm: connect could not reach Last.fm ({e})"));
-            *AUTH.lock().unwrap() = AuthStatus::Failed { reason: "offline".into() };
+            *AUTH.lock_or_recover() = AuthStatus::Failed { reason: "offline".into() };
             return Err("offline".into());
         }
         Err(e) => {
             crate::log::warn(&format!("lastfm: auth.getToken refused ({e})"));
-            *AUTH.lock().unwrap() = AuthStatus::Failed { reason: e.to_string() };
+            *AUTH.lock_or_recover() = AuthStatus::Failed { reason: e.to_string() };
             return Err(e.to_string());
         }
     };
     let Some(token) = token else {
-        *AUTH.lock().unwrap() = AuthStatus::Failed { reason: "no token".into() };
+        *AUTH.lock_or_recover() = AuthStatus::Failed { reason: "no token".into() };
         return Err("no token".into());
     };
     let abort = Arc::new(AtomicBool::new(false));
     let poke = Arc::new(AtomicBool::new(false));
-    *PENDING.lock().unwrap() = Some(Pending { token: token.clone(), abort: abort.clone(), poke: poke.clone() });
+    *PENDING.lock_or_recover() = Some(Pending { token: token.clone(), abort: abort.clone(), poke: poke.clone() });
 
     let mut url = format!("{AUTH_URL}?api_key={}&token={token}", API_KEY.unwrap_or_default());
     if LINK_BACK {
@@ -237,7 +238,7 @@ pub async fn lastfm_begin_auth(app: AppHandle) -> Result<(), String> {
     }
     if let Err(e) = app.opener().open_url(&url, None::<&str>) {
         stop_pending();
-        *AUTH.lock().unwrap() = AuthStatus::Failed { reason: "browser".into() };
+        *AUTH.lock_or_recover() = AuthStatus::Failed { reason: "browser".into() };
         return Err(format!("could not open browser: {e}"));
     }
     // The token is single use and worth nothing without the secret; the address is not logged
@@ -297,14 +298,14 @@ pub async fn lastfm_begin_auth(app: AppHandle) -> Result<(), String> {
 }
 
 fn stop_pending() {
-    if let Some(p) = PENDING.lock().unwrap().take() {
+    if let Some(p) = PENDING.lock_or_recover().take() {
         p.abort.store(true, Ordering::Relaxed);
     }
 }
 
 fn end_pending(status: AuthStatus) {
-    PENDING.lock().unwrap().take();
-    *AUTH.lock().unwrap() = status;
+    PENDING.lock_or_recover().take();
+    *AUTH.lock_or_recover() = status;
     changed();
 }
 
@@ -322,7 +323,7 @@ fn finish_connect(app: &AppHandle, s: Session) {
     }
     crate::log::info("lastfm: connected");
     let name = s.name.clone();
-    *SESSION.lock().unwrap() = Some(s);
+    *SESSION.lock_or_recover() = Some(s);
     NEEDS_RECONNECT.store(false, Ordering::Relaxed);
     end_pending(AuthStatus::Connected { name });
     flush(app); // rows that waited through a reconnect
@@ -330,14 +331,14 @@ fn finish_connect(app: &AppHandle, s: Session) {
 
 #[tauri::command]
 pub fn lastfm_auth_status() -> AuthStatus {
-    AUTH.lock().unwrap().clone()
+    AUTH.lock_or_recover().clone()
 }
 
 /// The Last.fm button clicked again while a connect waits.
 #[tauri::command]
 pub fn lastfm_cancel_auth() {
     stop_pending();
-    let mut auth = AUTH.lock().unwrap();
+    let mut auth = AUTH.lock_or_recover();
     if matches!(*auth, AuthStatus::Pending) {
         *auth = AuthStatus::Failed { reason: "cancelled".into() };
         crate::log::info("lastfm: connect cancelled from the Account row");
@@ -356,7 +357,7 @@ pub fn handle_link(raw: &str) {
     let token = url::Url::parse(raw)
         .ok()
         .and_then(|u| u.query_pairs().find(|(k, _)| k == "token").map(|(_, v)| v.into_owned()));
-    let pending = PENDING.lock().unwrap();
+    let pending = PENDING.lock_or_recover();
     match (pending.as_ref(), token) {
         (Some(p), Some(t)) if p.token == t => {
             p.poke.store(true, Ordering::Relaxed);
@@ -370,20 +371,21 @@ pub fn handle_link(raw: &str) {
 /// Forget the account: the session file, and the rows still waiting (they would go to the
 /// next account connected). Sent rows stay `sent`.
 #[tauri::command]
-pub fn lastfm_disconnect(app: AppHandle) -> Result<(), String> {
+pub async fn lastfm_disconnect(app: AppHandle) -> Result<(), String> {
     stop_pending();
-    *SESSION.lock().unwrap() = None;
+    *SESSION.lock_or_recover() = None;
     NEEDS_RECONNECT.store(false, Ordering::Relaxed);
-    *AUTH.lock().unwrap() = AuthStatus::Idle;
+    *AUTH.lock_or_recover() = AuthStatus::Idle;
     if let Some(p) = session_path() {
         let _ = std::fs::remove_file(p);
     }
-    let dropped = {
-        let db = app.state::<crate::library::Db>();
+    // On the database thread (db_thread.rs): dropping the queue takes the lock.
+    let dropped = crate::db_thread::run(&app, |db| {
         let conn = db.lock();
         conn.execute("UPDATE play_events SET lastfm = NULL WHERE lastfm = 'queued'", [])
-            .map_err(|e| e.to_string())?
-    };
+            .map_err(|e| e.to_string())
+    })
+    .await?;
     crate::log::info(&format!("lastfm: disconnected; {dropped} waiting scrobble(s) dropped"));
     changed();
     Ok(())
@@ -403,27 +405,30 @@ pub struct LastfmStatus {
 }
 
 #[tauri::command]
-pub fn lastfm_status(app: AppHandle) -> LastfmStatus {
-    let name = SESSION.lock().unwrap().as_ref().map(|s| s.name.clone());
-    let waiting = {
-        let db = app.state::<crate::library::Db>();
-        let conn = db.lock();
-        conn.query_row("SELECT COUNT(*) FROM play_events WHERE lastfm = 'queued'", [], |r| r.get(0)).unwrap_or(0)
-    };
-    LastfmStatus {
-        available: available(),
-        connected: name.is_some(),
-        name,
-        reconnect: NEEDS_RECONNECT.load(Ordering::Relaxed),
-        waiting,
-    }
+pub async fn lastfm_status(app: AppHandle) -> Result<LastfmStatus, String> {
+    // On the database thread (db_thread.rs): the count takes the lock.
+    crate::db_thread::run(&app, move |db| {
+        let name = SESSION.lock_or_recover().as_ref().map(|s| s.name.clone());
+        let waiting = {
+            let conn = db.lock();
+            conn.query_row("SELECT COUNT(*) FROM play_events WHERE lastfm = 'queued'", [], |r| r.get(0)).unwrap_or(0)
+        };
+        Ok(LastfmStatus {
+            available: available(),
+            connected: name.is_some(),
+            name,
+            reconnect: NEEDS_RECONNECT.load(Ordering::Relaxed),
+            waiting,
+        })
+    })
+    .await
 }
 
 /// The user's profile page (the Account row's name).
 #[tauri::command]
 pub fn lastfm_open_profile(app: AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
-    let Some(name) = SESSION.lock().unwrap().as_ref().map(|s| s.name.clone()) else { return Ok(()) };
+    let Some(name) = SESSION.lock_or_recover().as_ref().map(|s| s.name.clone()) else { return Ok(()) };
     let path: String = url::form_urlencoded::byte_serialize(name.as_bytes()).collect();
     app.opener()
         .open_url(format!("https://www.last.fm/user/{path}"), None::<&str>)
@@ -476,7 +481,7 @@ fn settings(app: &AppHandle) -> crate::settings::SettingsData {
 /// A song started (library.rs `record_event_start`). Fire and forget: a miss costs only the
 /// "listening now" line on the profile, so nothing retries.
 pub fn now_playing(app: &AppHandle, track_id: String) {
-    if SESSION.lock().unwrap().is_none() || NEEDS_RECONNECT.load(Ordering::Relaxed) || !settings(app).lastfm_now_playing {
+    if SESSION.lock_or_recover().is_none() || NEEDS_RECONNECT.load(Ordering::Relaxed) || !settings(app).lastfm_now_playing {
         return;
     }
     let app = app.clone();
@@ -493,7 +498,7 @@ pub fn now_playing(app: &AppHandle, track_id: String) {
         let Some(m) = meta else { return };
         // Live radio has no length, and Last.fm scrobbles nothing under 30 s: say nothing.
         let Some(dur) = m.duration_ms.filter(|d| *d > MIN_TRACK_MS) else { return };
-        let Some(sk) = SESSION.lock().unwrap().as_ref().map(|s| s.key.clone()) else { return };
+        let Some(sk) = SESSION.lock_or_recover().as_ref().map(|s| s.key.clone()) else { return };
         let mut p = vec![
             ("artist".to_string(), m.artist),
             ("track".to_string(), m.title),
@@ -515,12 +520,18 @@ pub fn now_playing(app: &AppHandle, track_id: String) {
 /// the stored length (the renderer's is a fallback for a song with none stored), marks the row
 /// `queued` once, and sends. Returns whether the row was queued.
 #[tauri::command]
-pub fn lastfm_heard(event_id: i64, ms_listened: i64, duration_ms: Option<u64>, app: AppHandle) -> Result<bool, String> {
-    if SESSION.lock().unwrap().is_none() || !settings(&app).lastfm_scrobble {
+pub async fn lastfm_heard(event_id: i64, ms_listened: i64, duration_ms: Option<u64>, app: AppHandle) -> Result<bool, String> {
+    // On the database thread (db_thread.rs): the queue mark takes the lock. `flush` starts
+    // its own task, so no network call runs on that thread.
+    let handle = app.clone();
+    crate::db_thread::run(&handle, move |db| heard_on_db(event_id, ms_listened, duration_ms, &app, db)).await
+}
+
+fn heard_on_db(event_id: i64, ms_listened: i64, duration_ms: Option<u64>, app: &AppHandle, db: &crate::library::Db) -> Result<bool, String> {
+    if SESSION.lock_or_recover().is_none() || !settings(app).lastfm_scrobble {
         return Ok(false);
     }
     let queued = {
-        let db = app.state::<crate::library::Db>();
         let conn = db.lock();
         let json: Option<String> = conn
             .query_row(
@@ -541,7 +552,7 @@ pub fn lastfm_heard(event_id: i64, ms_listened: i64, duration_ms: Option<u64>, a
     };
     if queued {
         crate::log::info(&format!("lastfm: play {event_id} queued"));
-        flush(&app);
+        flush(app);
     }
     Ok(queued)
 }
@@ -600,7 +611,7 @@ async fn run_flush(app: &AppHandle) {
         if NEEDS_RECONNECT.load(Ordering::Relaxed) {
             return;
         }
-        let Some(sk) = SESSION.lock().unwrap().as_ref().map(|s| s.key.clone()) else { return };
+        let Some(sk) = SESSION.lock_or_recover().as_ref().map(|s| s.key.clone()) else { return };
         let rows: Vec<Row> = {
             let db = app.state::<crate::library::Db>();
             let conn = db.lock();

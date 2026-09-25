@@ -4,6 +4,7 @@ mod apple;
 mod beta;
 mod bridge;
 mod credits;
+mod db_thread;
 mod dbhealth;
 mod diary;
 mod enrich;
@@ -11,6 +12,8 @@ mod favorites;
 mod friends;
 mod lastfm;
 mod library;
+mod lock;
+use lock::LockExt;
 mod log;
 mod loudness;
 mod model;
@@ -149,7 +152,7 @@ pub fn run() {
 
             // Seed the user-token store so a prior sign-in survives restarts.
             if let Some(tok) = apple::load_persisted_user_token() {
-                *app.state::<apple::AppleState>().user_token.lock().unwrap() = Some(tok);
+                *app.state::<apple::AppleState>().user_token.lock_or_recover() = Some(tok);
             }
 
             // The deep-link scheme (DATA-ARCHITECTURE §2a). A debug build owns
@@ -230,6 +233,8 @@ pub fn run() {
             diary::migrate_v14(&conn).expect("v14 migration failed");
             diary::migrate_v15(&conn).expect("v15 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
+            // Every command that takes the lock runs on this one thread, in arrival order.
+            db_thread::start(app.handle());
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
 

@@ -331,30 +331,33 @@ fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<
 
 /// Read a page of cached tracks, ordered by title/artist.
 #[tauri::command]
-pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page<Track>, String> {
-    let conn = db.lock();
-    // Library views show synced rows only; 'seen' rows exist for feedback joins.
-    let total: u32 = conn
-        .query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0))
-        .map_err(|e| e.to_string())?;
-    let mut stmt = conn
-        .prepare_cached("SELECT json FROM tracks WHERE source = 'library' ORDER BY sort_key LIMIT ?1 OFFSET ?2")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map(rusqlite::params![limit, offset], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?;
-    let mut items = Vec::new();
-    for row in rows {
-        let s = row.map_err(|e| e.to_string())?;
-        let t: Track = serde_json::from_str(&s).map_err(|e| e.to_string())?;
-        items.push(t);
-    }
-    let next_offset = (offset + limit < total).then_some(offset + limit);
-    Ok(Page {
-        items,
-        total,
-        next_offset,
+pub async fn library_tracks(offset: u32, limit: u32, app: tauri::AppHandle) -> Result<Page<Track>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        // Library views show synced rows only; 'seen' rows exist for feedback joins.
+        let total: u32 = conn
+            .query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare_cached("SELECT json FROM tracks WHERE source = 'library' ORDER BY sort_key LIMIT ?1 OFFSET ?2")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(rusqlite::params![limit, offset], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        let mut items = Vec::new();
+        for row in rows {
+            let s = row.map_err(|e| e.to_string())?;
+            let t: Track = serde_json::from_str(&s).map_err(|e| e.to_string())?;
+            items.push(t);
+        }
+        let next_offset = (offset + limit < total).then_some(offset + limit);
+        Ok(Page {
+            items,
+            total,
+            next_offset,
+        })
     })
+    .await
 }
 
 /// All materialized (`source = 'seen'`) rows — catalog-only tracks the user has
@@ -362,20 +365,23 @@ pub fn library_tracks(offset: u32, limit: u32, db: State<'_, Db>) -> Result<Page
 /// historical feedback (play events / stats / Rewind) resolves to metadata across
 /// sessions; library views still read only synced rows (`library_tracks`).
 #[tauri::command]
-pub fn seen_tracks(db: State<'_, Db>) -> Result<Vec<Track>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT json FROM tracks WHERE source = 'seen'")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?;
-    let mut items = Vec::new();
-    for row in rows {
-        let s = row.map_err(|e| e.to_string())?;
-        items.push(serde_json::from_str(&s).map_err(|e| e.to_string())?);
-    }
-    Ok(items)
+pub async fn seen_tracks(app: tauri::AppHandle) -> Result<Vec<Track>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT json FROM tracks WHERE source = 'seen'")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        let mut items = Vec::new();
+        for row in rows {
+            let s = row.map_err(|e| e.to_string())?;
+            items.push(serde_json::from_str(&s).map_err(|e| e.to_string())?);
+        }
+        Ok(items)
+    })
+    .await
 }
 
 /// A track's cumulative play tallies (see `record_play`).
@@ -396,113 +402,107 @@ pub struct PlayStat {
 /// a subset of `partial_count` (every finish also started). Returns the updated row
 /// so the caller can confirm/log without a separate read. Purely local — no Apple calls.
 #[tauri::command]
-pub fn record_play(
-    catalog_id: Option<String>,
-    library_id: Option<String>,
-    kind: String,
-    db: State<'_, Db>,
-) -> Result<PlayStat, String> {
-    let track_id = catalog_id.or(library_id).unwrap_or_default();
-    if track_id.is_empty() {
-        return Err("record_play: track has no id".into());
-    }
-    let now_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0);
-
-    let conn = db.lock();
-    // One upsert per kind: create the row on first sight, else bump the tally.
-    // `partial` also stamps last_played (the start); `full` leaves it (it follows a start).
-    let sql = match kind.as_str() {
-        "partial" => {
-            "INSERT INTO play_stats(track_id, partial_count, full_count, last_played)
-             VALUES(?1, 1, 0, ?2)
-             ON CONFLICT(track_id) DO UPDATE SET
-                 partial_count = partial_count + 1,
-                 last_played = ?2"
+pub async fn record_play(catalog_id: Option<String>, library_id: Option<String>, kind: String, app: tauri::AppHandle) -> Result<PlayStat, String> {
+    crate::db_thread::run(&app, move |db| {
+        let track_id = catalog_id.or(library_id).unwrap_or_default();
+        if track_id.is_empty() {
+            return Err("record_play: track has no id".into());
         }
-        // The insert arm seeds partial_count = 1, not 0: a "full" with no prior row
-        // means the start went unrecorded (e.g. began before an app restart), and the
-        // full ⊆ partial invariant must hold regardless of arrival order.
-        "full" => {
-            "INSERT INTO play_stats(track_id, partial_count, full_count, last_played)
-             VALUES(?1, 1, 1, ?2)
-             ON CONFLICT(track_id) DO UPDATE SET
-                 full_count = full_count + 1"
-        }
-        other => return Err(format!("record_play: unknown kind '{other}'")),
-    };
-    // The caller logs a failure and moves on (stats.ts), so the play would be lost with
-    // nothing counting it. `watch` counts it (DB-HEALTH.md §3).
-    crate::dbhealth::watch("play", conn.execute(sql, rusqlite::params![track_id, now_ms]))
-        .map_err(|e| e.to_string())?;
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
 
-    conn.query_row(
-        "SELECT track_id, partial_count, full_count, last_played
-         FROM play_stats WHERE track_id = ?1",
-        rusqlite::params![track_id],
-        |r| {
-            Ok(PlayStat {
-                track_id: r.get(0)?,
-                partial_count: r.get(1)?,
-                full_count: r.get(2)?,
-                last_played: r.get(3)?,
-            })
-        },
-    )
-    .map_err(|e| e.to_string())
+        let conn = db.lock();
+        // One upsert per kind: create the row on first sight, else bump the tally.
+        // `partial` also stamps last_played (the start); `full` leaves it (it follows a start).
+        let sql = match kind.as_str() {
+            "partial" => {
+                "INSERT INTO play_stats(track_id, partial_count, full_count, last_played)
+                 VALUES(?1, 1, 0, ?2)
+                 ON CONFLICT(track_id) DO UPDATE SET
+                     partial_count = partial_count + 1,
+                     last_played = ?2"
+            }
+            // The insert arm seeds partial_count = 1, not 0: a "full" with no prior row
+            // means the start went unrecorded (e.g. began before an app restart), and the
+            // full ⊆ partial invariant must hold regardless of arrival order.
+            "full" => {
+                "INSERT INTO play_stats(track_id, partial_count, full_count, last_played)
+                 VALUES(?1, 1, 1, ?2)
+                 ON CONFLICT(track_id) DO UPDATE SET
+                     full_count = full_count + 1"
+            }
+            other => return Err(format!("record_play: unknown kind '{other}'")),
+        };
+        // The caller logs a failure and moves on (stats.ts), so the play would be lost with
+        // nothing counting it. `watch` counts it (DB-HEALTH.md §3).
+        crate::dbhealth::watch("play", conn.execute(sql, rusqlite::params![track_id, now_ms]))
+            .map_err(|e| e.to_string())?;
+
+        conn.query_row(
+            "SELECT track_id, partial_count, full_count, last_played
+             FROM play_stats WHERE track_id = ?1",
+            rusqlite::params![track_id],
+            |r| {
+                Ok(PlayStat {
+                    track_id: r.get(0)?,
+                    partial_count: r.get(1)?,
+                    full_count: r.get(2)?,
+                    last_played: r.get(3)?,
+                })
+            },
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Append a play-event row at song start (step 1 of the two-step write). Returns
 /// the new row id so the caller can finalize it at end-of-play. Writing immediately
 /// means the play survives a crash/force-quit (`ms_listened` stays NULL = unknown).
 #[tauri::command]
-pub fn record_event_start(
-    catalog_id: Option<String>,
-    library_id: Option<String>,
-    context: Option<String>,
-    app: AppHandle,
-    db: State<'_, Db>,
-) -> Result<i64, String> {
-    let track_id = catalog_id.or(library_id).unwrap_or_default();
-    if track_id.is_empty() {
-        return Err("record_event_start: track has no id".into());
-    }
-    let now_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0);
-    let id = {
-        let conn = db.lock();
-        conn.execute(
-            "INSERT INTO play_events(track_id, started_ts, context) VALUES(?1, ?2, ?3)",
-            rusqlite::params![track_id, now_ms, context],
-        )
-        .map_err(|e| e.to_string())?;
-        conn.last_insert_rowid()
-    };
-    // The profile's "listening now" line (LASTFM.md §5). Returns at once; the call runs apart.
-    crate::lastfm::now_playing(&app, track_id);
-    Ok(id)
+pub async fn record_event_start(catalog_id: Option<String>, library_id: Option<String>, context: Option<String>, app: AppHandle) -> Result<i64, String> {
+    let app_db = app.clone();
+    crate::db_thread::run(&app, move |db| {
+        let track_id = catalog_id.or(library_id).unwrap_or_default();
+        if track_id.is_empty() {
+            return Err("record_event_start: track has no id".into());
+        }
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        let id = {
+            let conn = db.lock();
+            conn.execute(
+                "INSERT INTO play_events(track_id, started_ts, context) VALUES(?1, ?2, ?3)",
+                rusqlite::params![track_id, now_ms, context],
+            )
+            .map_err(|e| e.to_string())?;
+            conn.last_insert_rowid()
+        };
+        // The profile's "listening now" line (LASTFM.md §5). Returns at once; the call runs apart.
+        crate::lastfm::now_playing(&app_db, track_id);
+        Ok(id)
+    })
+    .await
 }
 
 /// Finalize a play-event row at end-of-play (step 2): the real elapsed listen time
 /// and whether it crossed the listened-through threshold.
 #[tauri::command]
-pub fn record_event_end(
-    event_id: i64,
-    ms_listened: i64,
-    completed: bool,
-    db: State<'_, Db>,
-) -> Result<(), String> {
-    let conn = db.lock();
-    conn.execute(
-        "UPDATE play_events SET ms_listened = ?2, completed = ?3 WHERE id = ?1",
-        rusqlite::params![event_id, ms_listened.max(0), completed],
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
+pub async fn record_event_end(event_id: i64, ms_listened: i64, completed: bool, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        conn.execute(
+            "UPDATE play_events SET ms_listened = ?2, completed = ?3 WHERE id = ?1",
+            rusqlite::params![event_id, ms_listened.max(0), completed],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
 }
 
 /// One row from the play-event log, for the Rewind card (DEETS-REWIND Phase B).
@@ -520,37 +520,43 @@ pub struct PlayEvent {
 /// How many plays have ever started (one row per start). The Rewind card's 50-start
 /// auto-reveal reads this once at boot, then counts starts in the renderer.
 #[tauri::command]
-pub fn play_event_count(db: State<'_, Db>) -> Result<i64, String> {
-    let conn = db.lock();
-    conn.query_row("SELECT COUNT(*) FROM play_events", [], |r| r.get(0))
-        .map_err(|e| e.to_string())
+pub async fn play_event_count(app: tauri::AppHandle) -> Result<i64, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        conn.query_row("SELECT COUNT(*) FROM play_events", [], |r| r.get(0))
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Read play events with `started_ts >= since_ts` (epoch-ms), oldest first. The time
 /// windowing happens HERE (via idx_play_events_ts) so a day view never ships a year of
 /// rows over IPC; all grouping/ranking lives in TS where the track-store join is.
 #[tauri::command]
-pub fn play_events_since(since_ts: i64, db: State<'_, Db>) -> Result<Vec<PlayEvent>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached(
-            "SELECT track_id, started_ts, ms_listened, completed, context
-             FROM play_events WHERE started_ts >= ?1 ORDER BY started_ts",
-        )
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([since_ts], |r| {
-            Ok(PlayEvent {
-                track_id: r.get(0)?,
-                started_ts: r.get(1)?,
-                ms_listened: r.get(2)?,
-                completed: r.get::<_, i64>(3)? != 0,
-                context: r.get(4)?,
+pub async fn play_events_since(since_ts: i64, app: tauri::AppHandle) -> Result<Vec<PlayEvent>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT track_id, started_ts, ms_listened, completed, context
+                 FROM play_events WHERE started_ts >= ?1 ORDER BY started_ts",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([since_ts], |r| {
+                Ok(PlayEvent {
+                    track_id: r.get(0)?,
+                    started_ts: r.get(1)?,
+                    ms_listened: r.get(2)?,
+                    completed: r.get::<_, i64>(3)? != 0,
+                    context: r.get(4)?,
+                })
             })
-        })
-        .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Materialize a non-library track into the unified store (`source = 'seen'`) so
@@ -559,24 +565,27 @@ pub fn play_events_since(since_ts: i64, db: State<'_, Db>) -> Result<Vec<PlayEve
 /// (a search result, the now-playing item) — a LOCAL upsert, no Apple call. Never
 /// overwrites a 'library' row (the sync is authoritative for those).
 #[tauri::command]
-pub fn materialize_track(track: Track, db: State<'_, Db>) -> Result<(), String> {
-    let Some(id) = track_key(&track) else {
-        return Err("materialize_track: track has no id".into());
-    };
-    let sort_key = format!(
-        "{}\u{1f}{}",
-        track.title.to_lowercase(),
-        track.artist_name.to_lowercase()
-    );
-    let json = serde_json::to_string(&track).map_err(|e| e.to_string())?;
-    let conn = db.lock();
-    conn.execute(
-        "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'seen', ?2, ?3)
-         ON CONFLICT(track_id) DO NOTHING",
-        rusqlite::params![id, sort_key, json],
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
+pub async fn materialize_track(track: Track, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let Some(id) = track_key(&track) else {
+            return Err("materialize_track: track has no id".into());
+        };
+        let sort_key = format!(
+            "{}\u{1f}{}",
+            track.title.to_lowercase(),
+            track.artist_name.to_lowercase()
+        );
+        let json = serde_json::to_string(&track).map_err(|e| e.to_string())?;
+        let conn = db.lock();
+        conn.execute(
+            "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'seen', ?2, ?3)
+             ON CONFLICT(track_id) DO NOTHING",
+            rusqlite::params![id, sort_key, json],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
 }
 
 /// The same local upsert as `materialize_track`, for a batch under one lock — the
@@ -649,19 +658,22 @@ pub(crate) fn graduate_tracks(conn: &Connection, tracks: &[Track]) -> Result<(),
 /// Every add time this app has stamped: `[track_id, epoch_ms]` pairs. One read at mount
 /// (the Home card), no Apple call. Small by nature — one row per add from DeetsMusic.
 #[tauri::command]
-pub fn added_at_map(db: State<'_, Db>) -> Result<Vec<(String, i64)>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT track_id, ts FROM added_at")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
-        .map_err(|e| e.to_string())?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row.map_err(|e| e.to_string())?);
-    }
-    Ok(out)
+pub async fn added_at_map(app: tauri::AppHandle) -> Result<Vec<(String, i64)>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT track_id, ts FROM added_at")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+            .map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(|e| e.to_string())?);
+        }
+        Ok(out)
+    })
+    .await
 }
 
 // One sync at a time. Overlapping invocations (double-triggered refresh, a card
@@ -698,15 +710,21 @@ pub(crate) fn meta_set(conn: &Connection, key: &str, value: &str) -> Result<(), 
 const META_QUEUE_STATE: &str = "queue_state";
 
 #[tauri::command]
-pub fn queue_state_get(db: State<'_, Db>) -> Result<Option<String>, String> {
-    let conn = db.lock();
-    Ok(meta_get(&conn, META_QUEUE_STATE))
+pub async fn queue_state_get(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        Ok(meta_get(&conn, META_QUEUE_STATE))
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn queue_state_set(json: String, db: State<'_, Db>) -> Result<(), String> {
-    let conn = db.lock();
-    meta_set(&conn, META_QUEUE_STATE, &json)
+pub async fn queue_state_set(json: String, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        meta_set(&conn, META_QUEUE_STATE, &json)
+    })
+    .await
 }
 
 // ── Play counts (the Library artist view's "Most Played" sort, ARTIST-VIEW.md §1) ──
@@ -722,16 +740,19 @@ pub struct PlayCount {
 
 /// Every song this app has played, with its tallies. Zero Apple calls.
 #[tauri::command]
-pub fn play_counts(db: State<'_, Db>) -> Result<Vec<PlayCount>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT track_id, full_count, partial_count FROM play_stats WHERE partial_count > 0")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| Ok(PlayCount { id: r.get(0)?, full: r.get(1)?, partial: r.get(2)? }))
-        .map_err(|e| e.to_string())?;
-    let out: Result<Vec<PlayCount>, _> = rows.collect();
-    out.map_err(|e| e.to_string())
+pub async fn play_counts(app: tauri::AppHandle) -> Result<Vec<PlayCount>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT track_id, full_count, partial_count FROM play_stats WHERE partial_count > 0")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| Ok(PlayCount { id: r.get(0)?, full: r.get(1)?, partial: r.get(2)? }))
+            .map_err(|e| e.to_string())?;
+        let out: Result<Vec<PlayCount>, _> = rows.collect();
+        out.map_err(|e| e.to_string())
+    })
+    .await
 }
 
 // ── Dead play ids (QUEUE.md §Dead ids) ────────────────────────────────────────
@@ -866,18 +887,21 @@ pub fn migrate_v12(conn: &Connection) -> Result<(), String> {
 
 /// Every pin, newest first — the order the cards show (PINS.md fork 4).
 #[tauri::command]
-pub fn pins_list(db: State<'_, Db>) -> Result<Vec<Pin>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT key, kind, data, pinned_at, act FROM pins ORDER BY pinned_at DESC")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| {
-            Ok(Pin { key: r.get(0)?, kind: r.get(1)?, data: r.get(2)?, pinned_at: r.get(3)?, act: r.get(4)? })
-        })
-        .map_err(|e| e.to_string())?;
-    let out: Result<Vec<Pin>, _> = rows.collect();
-    out.map_err(|e| e.to_string())
+pub async fn pins_list(app: tauri::AppHandle) -> Result<Vec<Pin>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT key, kind, data, pinned_at, act FROM pins ORDER BY pinned_at DESC")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok(Pin { key: r.get(0)?, kind: r.get(1)?, data: r.get(2)?, pinned_at: r.get(3)?, act: r.get(4)? })
+            })
+            .map_err(|e| e.to_string())?;
+        let out: Result<Vec<Pin>, _> = rows.collect();
+        out.map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Pin an item. Pinning again refreshes the snapshot and keeps the original time, so a
@@ -885,81 +909,87 @@ pub fn pins_list(db: State<'_, Db>) -> Result<Vec<Pin>, String> {
 /// you set by hand survives a re-pin (PINS.md §8.6 step 7). `act` is therefore the verb a
 /// NEW row starts with (the caller passes the Settings default); it never overwrites one.
 #[tauri::command]
-pub fn pin_set(
-    key: String,
-    kind: String,
-    data: Option<String>,
-    act: Option<String>,
-    db: State<'_, Db>,
-) -> Result<Pin, String> {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0);
-    let conn = db.lock();
-    conn.execute(
-        "INSERT INTO pins(key, kind, data, pinned_at, act) VALUES(?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(key) DO UPDATE SET kind = excluded.kind, data = excluded.data",
-        rusqlite::params![key, kind, data, now, act],
-    )
-    .map_err(|e| e.to_string())?;
-    let (pinned_at, act): (i64, Option<String>) = conn
-        .query_row("SELECT pinned_at, act FROM pins WHERE key = ?1", [&key], |r| Ok((r.get(0)?, r.get(1)?)))
+pub async fn pin_set(key: String, kind: String, data: Option<String>, act: Option<String>, app: tauri::AppHandle) -> Result<Pin, String> {
+    crate::db_thread::run(&app, move |db| {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        let conn = db.lock();
+        conn.execute(
+            "INSERT INTO pins(key, kind, data, pinned_at, act) VALUES(?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(key) DO UPDATE SET kind = excluded.kind, data = excluded.data",
+            rusqlite::params![key, kind, data, now, act],
+        )
         .map_err(|e| e.to_string())?;
-    crate::log::info(&format!("pin:set {key}"));
-    Ok(Pin { key, kind, data, pinned_at, act })
+        let (pinned_at, act): (i64, Option<String>) = conn
+            .query_row("SELECT pinned_at, act FROM pins WHERE key = ?1", [&key], |r| Ok((r.get(0)?, r.get(1)?)))
+            .map_err(|e| e.to_string())?;
+        crate::log::info(&format!("pin:set {key}"));
+        Ok(Pin { key, kind, data, pinned_at, act })
+    })
+    .await
 }
 
 /// Set what a click on this pin does (PINS.md §8). Only a pinned key has a verb; an
 /// unknown key is a no-op rather than an error, because the tile may have been unpinned
 /// from another surface while the menu was open.
 #[tauri::command]
-pub fn pin_act(key: String, act: String, db: State<'_, Db>) -> Result<bool, String> {
-    if !matches!(act.as_str(), "play" | "shuffle" | "open") {
-        return Err(format!("unknown pin act: {act}"));
-    }
-    let conn = db.lock();
-    let n = conn
-        .execute("UPDATE pins SET act = ?2 WHERE key = ?1", rusqlite::params![key, act])
-        .map_err(|e| e.to_string())?;
-    if n > 0 {
-        crate::log::info(&format!("pin:act {key} {act}"));
-    }
-    Ok(n > 0)
+pub async fn pin_act(key: String, act: String, app: tauri::AppHandle) -> Result<bool, String> {
+    crate::db_thread::run(&app, move |db| {
+        if !matches!(act.as_str(), "play" | "shuffle" | "open") {
+            return Err(format!("unknown pin act: {act}"));
+        }
+        let conn = db.lock();
+        let n = conn
+            .execute("UPDATE pins SET act = ?2 WHERE key = ?1", rusqlite::params![key, act])
+            .map_err(|e| e.to_string())?;
+        if n > 0 {
+            crate::log::info(&format!("pin:act {key} {act}"));
+        }
+        Ok(n > 0)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn pin_clear(key: String, db: State<'_, Db>) -> Result<bool, String> {
-    let conn = db.lock();
-    let n = conn.execute("DELETE FROM pins WHERE key = ?1", [&key]).map_err(|e| e.to_string())?;
-    if n > 0 {
-        crate::log::info(&format!("pin:clear {key}"));
-    }
-    Ok(n > 0)
+pub async fn pin_clear(key: String, app: tauri::AppHandle) -> Result<bool, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let n = conn.execute("DELETE FROM pins WHERE key = ?1", [&key]).map_err(|e| e.to_string())?;
+        if n > 0 {
+            crate::log::info(&format!("pin:clear {key}"));
+        }
+        Ok(n > 0)
+    })
+    .await
 }
 
 /// Plays per pin, all time (PINS.md fork 5): a song counts its own play rows, a container
 /// counts the rows played from it (`play_events.context` is the pin key). One statement
 /// each; the log is thousands of rows and Home reads it whole anyway.
 #[tauri::command]
-pub fn pin_play_counts(keys: Vec<String>, db: State<'_, Db>) -> Result<Vec<(String, i64)>, String> {
-    let conn = db.lock();
-    let mut by_ctx = conn
-        .prepare_cached("SELECT COUNT(*) FROM play_events WHERE context = ?1")
-        .map_err(|e| e.to_string())?;
-    let mut by_track = conn
-        .prepare_cached("SELECT COUNT(*) FROM play_events WHERE track_id = ?1")
-        .map_err(|e| e.to_string())?;
-    let mut out = Vec::with_capacity(keys.len());
-    for key in keys {
-        let n: i64 = match key.strip_prefix("song:") {
-            Some(id) => by_track.query_row([id], |r| r.get(0)),
-            None => by_ctx.query_row([&key], |r| r.get(0)),
+pub async fn pin_play_counts(keys: Vec<String>, app: tauri::AppHandle) -> Result<Vec<(String, i64)>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut by_ctx = conn
+            .prepare_cached("SELECT COUNT(*) FROM play_events WHERE context = ?1")
+            .map_err(|e| e.to_string())?;
+        let mut by_track = conn
+            .prepare_cached("SELECT COUNT(*) FROM play_events WHERE track_id = ?1")
+            .map_err(|e| e.to_string())?;
+        let mut out = Vec::with_capacity(keys.len());
+        for key in keys {
+            let n: i64 = match key.strip_prefix("song:") {
+                Some(id) => by_track.query_row([id], |r| r.get(0)),
+                None => by_ctx.query_row([&key], |r| r.get(0)),
+            }
+            .map_err(|e| e.to_string())?;
+            out.push((key, n));
         }
-        .map_err(|e| e.to_string())?;
-        out.push((key, n));
-    }
-    Ok(out)
+        Ok(out)
+    })
+    .await
 }
 
 /// v8 (2026-09-17): `local_playlists.expire_days` — a temporary web playlist's days
@@ -978,48 +1008,54 @@ pub fn migrate_v8(conn: &Connection) -> Result<(), String> {
 
 /// The ids marked dead within the last 7 days — the player's denylist at launch.
 #[tauri::command]
-pub fn dead_ids_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT id FROM dead_ids WHERE marked_at >= ?1")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([now_secs() - DEAD_ID_TTL_SECS], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+pub async fn dead_ids_cached(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT id FROM dead_ids WHERE marked_at >= ?1")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([now_secs() - DEAD_ID_TTL_SECS], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Mark ids dead (`reason`: "not-found" | "unavailable"). Returns the ids that had no
 /// row before — first found dead on this install.
 #[tauri::command]
-pub fn dead_ids_mark(ids: Vec<String>, reason: String, db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let mut conn = db.lock();
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
-    let now = now_secs();
-    let mut fresh = Vec::new();
-    for id in ids.iter().filter(|s| !s.is_empty()) {
-        let n = tx
-            .execute(
-                "INSERT INTO dead_ids(id, reason, first_seen, marked_at) VALUES(?1, ?2, ?3, ?3)
-                 ON CONFLICT(id) DO NOTHING",
-                rusqlite::params![id, reason, now],
-            )
-            .map_err(|e| e.to_string())?;
-        if n > 0 {
-            fresh.push(id.clone());
-        } else {
-            tx.execute(
-                "UPDATE dead_ids SET reason = ?1, marked_at = ?2 WHERE id = ?3",
-                rusqlite::params![reason, now, id],
-            )
-            .map_err(|e| e.to_string())?;
+pub async fn dead_ids_mark(ids: Vec<String>, reason: String, app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        let now = now_secs();
+        let mut fresh = Vec::new();
+        for id in ids.iter().filter(|s| !s.is_empty()) {
+            let n = tx
+                .execute(
+                    "INSERT INTO dead_ids(id, reason, first_seen, marked_at) VALUES(?1, ?2, ?3, ?3)
+                     ON CONFLICT(id) DO NOTHING",
+                    rusqlite::params![id, reason, now],
+                )
+                .map_err(|e| e.to_string())?;
+            if n > 0 {
+                fresh.push(id.clone());
+            } else {
+                tx.execute(
+                    "UPDATE dead_ids SET reason = ?1, marked_at = ?2 WHERE id = ?3",
+                    rusqlite::params![reason, now, id],
+                )
+                .map_err(|e| e.to_string())?;
+            }
         }
-    }
-    tx.commit().map_err(|e| e.to_string())?;
-    if !fresh.is_empty() {
-        crate::log::info(&format!("dead ids: {} new ({reason})", fresh.len()));
-    }
-    Ok(fresh)
+        tx.commit().map_err(|e| e.to_string())?;
+        if !fresh.is_empty() {
+            crate::log::info(&format!("dead ids: {} new ({reason})", fresh.len()));
+        }
+        Ok(fresh)
+    })
+    .await
 }
 
 fn now_secs() -> i64 {

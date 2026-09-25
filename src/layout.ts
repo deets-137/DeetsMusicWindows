@@ -24,6 +24,8 @@ import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type Surfa
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
 import { initCardGrow, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
+import { storedAssignment } from "./layout-rules";
+
 type Assignment = Partial<Record<Slot, CardId>>;
 
 interface Composition {
@@ -70,25 +72,16 @@ const poolFor = (comp: Composition): CardDef[] =>
   );
 
 function loadLayout(comp: Composition): Assignment {
+  // Every slot filled with a distinct, still-registered, non-anchored card — else default.
+  // The rule is layout-rules.ts, under test.
+  let raw: string | null = null;
   try {
-    const raw = localStorage.getItem(comp.key);
-    if (raw) {
-      const s = JSON.parse(raw) as Assignment;
-      const ids = new Set(poolFor(comp).map((c) => c.id));
-      const picked = comp.slots.map((slot) => s[slot]);
-      // Every slot filled with a distinct, still-registered, non-anchored card — else default.
-      const valid =
-        picked.every((id) => id && ids.has(id)) && new Set(picked).size === picked.length;
-      if (valid) {
-        const out: Assignment = {};
-        comp.slots.forEach((slot) => (out[slot] = s[slot]));
-        return out;
-      }
-    }
+    raw = localStorage.getItem(comp.key);
   } catch {
-    /* corrupt prefs → default */
+    /* storage disabled → default */
   }
-  return { ...comp.defaults };
+  const ids = new Set<string>(poolFor(comp).map((c) => c.id));
+  return storedAssignment<Slot, CardId>(comp.slots, raw, ids) ?? { ...comp.defaults };
 }
 
 function saveLayout(comp: Composition, l: Assignment): void {

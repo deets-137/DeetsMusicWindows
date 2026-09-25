@@ -181,14 +181,14 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   const buildRows = (): Row[] => {
     const byRow = (key: string, xs: DiarySummary[]) => sortByOrder(rowScope(key), xs, (s) => String(s.id));
     const built: Row[] = [
-      { key: "progress", label: "In progress", items: byRow("progress", list.filter((s) => !s.doneAt)), empty: "Nothing in progress. Add an album to start" },
-      { key: "done", label: "Completed", items: byRow("done", list.filter((s) => s.doneAt)), empty: "Press the check on an entry when you finish it" },
+      { key: "progress", label: "In progress", items: byRow("progress", list.filter((s) => !s.doneAt)), empty: "Nothing in progress. Add an album to start." },
+      { key: "done", label: "Completed", items: byRow("done", list.filter((s) => s.doneAt)), empty: "Press the check on an entry when you finish it." },
       ...folders.map((f) => ({
         key: `folder:${f.id}`,
         label: f.name,
         folderId: f.id,
         items: byRow(`folder:${f.id}`, list.filter((s) => s.folderId === f.id)),
-        empty: "Drag an entry here, or right-click one › Move to Folder",
+        empty: "Drag an entry here, or right-click one › Move to Folder.",
       })),
     ];
     return sortByOrder("diary.sections", built, (r) => r.key);
@@ -845,7 +845,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
               })
               .catch(saveFailed),
         },
-        { label: "Keep" },
+        { label: "Cancel" },
       ],
     });
 
@@ -865,17 +865,40 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         own: [
           // Export (his ask, 2026-09-24): the entry as text on the clipboard (diary.rs `export_text`).
           { label: "Export", run: () => void copyDiaryExport(s.id) },
-          { label: s.doneAt ? "Mark in progress" : "Mark as done", run: () => void setDone(s.id, !s.doneAt) },
+          { label: s.doneAt ? "Mark in Progress" : "Mark as Done", run: () => void setDone(s.id, !s.doneAt) },
           { label: "Move to Folder", sub: () => folderSub(s.id, s.folderId) },
         ],
-        away: [{ label: "Delete entry", run: () => askDelete(s.id, s.album.title) }],
+        away: [{ label: "Delete Entry", run: () => askDelete(s.id, s.album.title) }],
       },
     );
   /** A folder row's header: rename it, delete it (its entries stay, in In progress or Completed). */
   const folderMenu = (f: DiaryFolder): MenuItem[] => [
     { input: { placeholder: "Rename folder…", value: f.name, onSubmit: (name) => void diaryFolderRename(f.id, name).catch(saveFailed) } },
-    { label: "Delete Folder", run: () => void diaryFolderDelete(f.id).catch(saveFailed) },
+    { label: "Delete Folder", run: () => deleteFolder(f) },
   ];
+  // The destructive-action rule (his call, 2026-09-25): a folder delete can be undone, so
+  // it runs at once and offers Undo. Undo remakes the folder under its old name and files
+  // its entries back. It is a new folder id, so a moved folder row goes back to the default order.
+  const deleteFolder = (f: DiaryFolder) => {
+    const members = list.filter((s) => s.folderId === f.id).map((s) => s.id);
+    void diaryFolderDelete(f.id)
+      .then(() =>
+        toast({
+          kind: "info",
+          text: `Deleted the folder “${f.name}”. Its entries stay.`,
+          actions: [
+            {
+              label: "Undo",
+              run: () =>
+                void diaryFolderCreate(f.name)
+                  .then((nid) => Promise.all(members.map((id) => diaryFile(id, nid))))
+                  .catch(saveFailed),
+            },
+          ],
+        }),
+      )
+      .catch(saveFailed);
+  };
 
   // ── events ─────────────────────────────────────────────────────────────────────
   // ── Done (the check, his call 2026-09-24: it toggles) ─────────────────────────
@@ -883,7 +906,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const on = !!entry?.doneAt;
     doneBtn.classList.toggle("is-active", on);
     doneBtn.setAttribute("aria-pressed", String(on));
-    doneBtn.setAttribute("aria-label", on ? "Mark in progress" : "Mark as done");
+    doneBtn.setAttribute("aria-label", on ? "Mark in Progress" : "Mark as Done");
     doneBtn.title = on ? "Done. Press again to put it back in progress" : "Marks this entry done and copies its Export. It moves to Completed";
   }
   const setDone = (id: number, done: boolean) => {

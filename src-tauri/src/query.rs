@@ -21,6 +21,7 @@
 //! dress a read of an internal table up as a read through an allowed view. The in-memory copy
 //! removes the internal tables from reach instead of trying to fence them.
 
+use crate::lock::LockExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -149,7 +150,7 @@ fn open(history: bool) -> Result<(Connection, Reason), String> {
     let why = reason.clone();
     conn.authorizer(Some(move |ctx: AuthContext<'_>| {
         let deny = |msg: String| {
-            why.lock().unwrap().get_or_insert(msg);
+            why.lock_or_recover().get_or_insert(msg);
             Authorization::Deny
         };
         match ctx.action {
@@ -203,7 +204,7 @@ fn unknown_table(name: &str, history: bool) -> String {
 /// A SQLite error in plain words. The database holds only the exported tables, so its own
 /// messages cannot name anything internal; they are passed on, cut short.
 fn plain(e: rusqlite::Error, reason: &Reason, history: bool, started: Instant) -> String {
-    if let Some(r) = reason.lock().unwrap().take() {
+    if let Some(r) = reason.lock_or_recover().take() {
         return r;
     }
     let msg = e.to_string();
@@ -255,7 +256,7 @@ fn run(conn: &Connection, reason: &Reason, history: bool, sql: &str, params: &[V
     match batch.next() {
         Ok(None) => {}
         Ok(Some(_)) | Err(_) => {
-            reason.lock().unwrap().take();
+            reason.lock_or_recover().take();
             return Err("One statement at a time.".into());
         }
     }

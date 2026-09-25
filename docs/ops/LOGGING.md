@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/diag.ts, src-tauri/src/log.rs, src-tauri/src/bridge.rs, src-tauri/src/report.rs, src-tauri/src/watchdog.rs]
-updated: 2026-09-20
+updated: 2026-09-25
 ---
 # Logging — the rolling log file
 
@@ -30,6 +30,15 @@ existed and were not rebuilt; this doc bounds them, joins them, and says what st
 > The unload flush now writes the 300-event block **only when a warn/error happened** since
 > the last flush; writing it on every reload rotated the 512 KB file within a day. The
 > `start:` line now carries the UTC offset (line times are local; the Worker's are UTC).
+
+> **Revised 2026-09-25 — `console.error` and `console.warn` are copied into diag.** About
+> 200 failures in the playlist, library, settings, tray and Now Playing code were reported
+> with `console.error` alone, so they never reached a bug report. `diag.ts` now wraps both.
+> The console still prints. A `console.error` goes through `error("console:error", {msg})`:
+> a line in the file now, with the same dedupe and rate limit as above. A `console.warn`
+> goes to the ring only (`console:warn`) and reaches the file with the next flush. The text
+> is capped at 500 chars. MusicKit's own console errors are copied too; the 60-a-minute cap
+> bounds them.
 
 ---
 

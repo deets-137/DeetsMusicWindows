@@ -36,6 +36,7 @@ import { playContext } from "./player";
 import { roomState } from "./room";
 import { setSetting } from "./settings-store";
 import { toast } from "./toast";
+import { el } from "./dom";
 
 /** How long a box keeps drawing a song after it was last heard about. Past this the row
  *  says the time instead of pretending it is live — a friend whose PC slept should not
@@ -44,12 +45,6 @@ const STALE_MS = 30 * 60_000;
 
 type El = HTMLElement;
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: string): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
 function chip(text: string, hint: string, cls = ""): HTMLButtonElement {
   const b = el("button", `room__chip ${cls}`.trim(), text);
   b.type = "button";
@@ -304,6 +299,6 @@ export function pasteAKey(): void {
 function copy(text: string, said: string): void {
   void navigator.clipboard.writeText(text).then(
     () => toast({ kind: "info", text: said }),
-    () => toast({ kind: "warn", text: "Could not reach the clipboard." }),
+    () => toast({ kind: "warn", text: "Couldn't reach the clipboard." }),
   );
 }

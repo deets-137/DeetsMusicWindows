@@ -19,6 +19,7 @@ import { enterRows } from "./pop";
 import { toast } from "./toast";
 import { onMeter, soundStatus } from "./sound";
 import * as frames from "./frames";
+import { el } from "./dom";
 import {
   DEFAULT_CONTROLS,
   endRoom,
@@ -198,12 +199,6 @@ function paintButton(state: RoomState): void {
 
 // ── the builders (the Sound panel's, in room clothes) ────────────────────────
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: string): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
 /** Label left, control right — `.sound__row`'s shape. */
 function row(label: string, control: HTMLElement, cls = ""): HTMLDivElement {
   const r = el("div", `room__row ${cls}`.trim());

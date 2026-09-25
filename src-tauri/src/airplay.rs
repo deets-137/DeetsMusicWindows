@@ -12,6 +12,7 @@
 //!
 //! Every command that touches the network or WASAPI runs on `spawn_blocking`.
 
+use crate::lock::LockExt;
 use std::net::Ipv4Addr;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -262,16 +263,16 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
 
 /// The live session's ring becomes (or stops being) where `airplay_tap` chunks land.
 fn publish_tap(state: &AirplayState) {
-    let ring = state.live.lock().unwrap().as_ref().and_then(|l| l.tap.clone());
+    let ring = state.live.lock_or_recover().as_ref().and_then(|l| l.tap.clone());
     let open = ring.is_some();
-    let was = std::mem::replace(&mut *state.tap.lock().unwrap(), ring).is_some();
+    let was = std::mem::replace(&mut *state.tap.lock_or_recover(), ring).is_some();
     if open != was {
         log(if open { "tap ring open" } else { "tap ring closed" });
     }
 }
 
 fn stop_live(state: &AirplayState) {
-    if let Some(live) = state.live.lock().unwrap().take() {
+    if let Some(live) = state.live.lock_or_recover().take() {
         live.session.disconnect();
     }
     publish_tap(state);
@@ -283,7 +284,7 @@ fn stop_live(state: &AirplayState) {
 /// sender at a time. Nothing else need be installed for this to be correct:
 /// with no session the route simply answers "nobody".
 pub fn held_speaker(app: &AppHandle) -> Option<AirplaySpeaker> {
-    app.state::<AirplayState>().live.lock().unwrap().as_ref().map(|l| l.speaker.clone())
+    app.state::<AirplayState>().live.lock_or_recover().as_ref().map(|l| l.speaker.clone())
 }
 
 /// Let the speaker go because the other app asked for it (its "Take over").
@@ -312,23 +313,23 @@ fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), Strin
         });
     }
     stop_live(&state);
-    *state.error.lock().unwrap() = None;
-    *state.connecting.lock().unwrap() = Some(speaker.name.clone());
+    *state.error.lock_or_recover() = None;
+    *state.connecting.lock_or_recover() = Some(speaker.name.clone());
     let result = start_live(app, speaker.clone(), None);
-    *state.connecting.lock().unwrap() = None;
+    *state.connecting.lock_or_recover() = None;
     match result {
         Ok(live) => {
-            *state.live.lock().unwrap() = Some(live);
+            *state.live.lock_or_recover() = Some(live);
             publish_tap(&state);
             app.state::<Settings>().update(|d| d.airplay_last_speaker = Some(speaker)).ok();
             // The speaker learns the current song right away.
-            let np = app.state::<bridge::Hub>().np.lock().unwrap().clone();
+            let np = app.state::<bridge::Hub>().np.lock_or_recover().clone();
             push_now_playing(app, &np, true);
             Ok(())
         }
         Err(e) => {
             let plain = plain_error(&speaker.name, &e);
-            *state.error.lock().unwrap() = Some(plain.clone());
+            *state.error.lock_or_recover() = Some(plain.clone());
             Err(plain)
         }
     }
@@ -337,15 +338,15 @@ fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), Strin
 /// Reconnect in place (auto retune, a preference change). Keeps the speaker.
 fn reconnect(app: &AppHandle, rtt_p95_ms: Option<f64>) -> Result<(), String> {
     let state = app.state::<AirplayState>();
-    let Some(live) = state.live.lock().unwrap().take() else { return Ok(()) };
+    let Some(live) = state.live.lock_or_recover().take() else { return Ok(()) };
     let speaker = live.speaker.clone();
     live.session.disconnect();
     publish_tap(&state); // between sessions: no ring
     let mut live = start_live(app, speaker, rtt_p95_ms)?;
     live.retuned = true;
-    *state.live.lock().unwrap() = Some(live);
+    *state.live.lock_or_recover() = Some(live);
     publish_tap(&state);
-    let np = app.state::<bridge::Hub>().np.lock().unwrap().clone();
+    let np = app.state::<bridge::Hub>().np.lock_or_recover().clone();
     push_now_playing(app, &np, true);
     Ok(())
 }
@@ -377,7 +378,7 @@ pub fn on_np_state(app: &AppHandle, np: &NpState) {
 
 fn push_now_playing(app: &AppHandle, np: &NpState, force: bool) {
     let state = app.state::<AirplayState>();
-    let mut guard = state.live.lock().unwrap();
+    let mut guard = state.live.lock_or_recover();
     let Some(live) = guard.as_mut() else { return };
 
     let meta = Metadata {
@@ -428,7 +429,7 @@ fn fetch_artwork(app: AppHandle, url: String) {
         match fetched {
             Ok((ct, bytes)) => {
                 let state = app.state::<AirplayState>();
-                let guard = state.live.lock().unwrap();
+                let guard = state.live.lock_or_recover();
                 // Only if this is still the current cover (a fast skip can outrun the fetch).
                 if let Some(live) = guard.as_ref().filter(|l| l.art_url.as_deref() == Some(url.as_str())) {
                     let ct = if ct.starts_with("image/png") { "image/png" } else { "image/jpeg" };
@@ -484,7 +485,7 @@ pub async fn airplay_scan(app: AppHandle) -> Result<Vec<SpeakerInfo>, String> {
         .into_iter()
         .filter_map(|s| s.ip.map(|ip| SpeakerInfo { name: s.name, ip: ip.to_string(), port: s.port, model: s.model }))
         .collect();
-    *app.state::<AirplayState>().speakers.lock().unwrap() = infos.clone();
+    *app.state::<AirplayState>().speakers.lock_or_recover() = infos.clone();
     Ok(infos)
 }
 
@@ -509,16 +510,16 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         let state = app.state::<AirplayState>();
 
         // Drop a session whose threads died (the speaker went away).
-        let dead = state.live.lock().unwrap().as_ref().map(|l| !l.session.alive()).unwrap_or(false);
+        let dead = state.live.lock_or_recover().as_ref().map(|l| !l.session.alive()).unwrap_or(false);
         if dead {
-            let name = state.live.lock().unwrap().as_ref().map(|l| l.speaker.name.clone()).unwrap_or_default();
+            let name = state.live.lock_or_recover().as_ref().map(|l| l.speaker.name.clone()).unwrap_or_default();
             stop_live(&state);
-            *state.error.lock().unwrap() = Some(format!("Lost {name}."));
+            *state.error.lock_or_recover() = Some(format!("Lost {name}."));
         }
 
         // Auto delay: after 10 s of round trips, settle the buffer once.
         let retune = {
-            let live = state.live.lock().unwrap();
+            let live = state.live.lock_or_recover();
             match live.as_ref() {
                 Some(l) if !l.retuned => {
                     let st = l.session.stats();
@@ -538,7 +539,7 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             if let Err(e) = reconnect(&app, Some(rtt)) {
                 log(&format!("retune reconnect failed: {e}"));
             }
-        } else if let Some(l) = state.live.lock().unwrap().as_mut() {
+        } else if let Some(l) = state.live.lock_or_recover().as_mut() {
             if !l.retuned && l.session.stats().seconds >= 10 && l.session.stats().rtt_p95_ms > 0.0 {
                 l.retuned = true; // inside the band: call it tuned so we never flap
             }
@@ -548,7 +549,7 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         // the player says playing means the tap is not seeing this app's sound. Logged
         // when the verdict changes, and every 10 min while it holds (was every 10 s:
         // 59% of the log, 2026-09-16).
-        if let Some(l) = state.live.lock().unwrap().as_mut() {
+        if let Some(l) = state.live.lock_or_recover().as_mut() {
             if l.heard_logged.0.elapsed() >= Duration::from_secs(10) {
                 let (all, loud) = l.capture.stats();
                 let (d_all, d_loud) = (all - l.heard_logged.1, loud - l.heard_logged.2);
@@ -567,7 +568,7 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             // nothing. Logged once per session; the panel shows a note; no automatic switch
             // (the cause gets found first).
             if l.tap.is_some() {
-                let playing = app.state::<bridge::Hub>().np.lock().unwrap().playing;
+                let playing = app.state::<bridge::Hub>().np.lock_or_recover().playing;
                 let (all, _) = l.capture.stats();
                 let delivering = all > l.heard_logged.1 || l.heard_logged.0.elapsed() < Duration::from_secs(1);
                 if playing && !delivering {
@@ -584,11 +585,11 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
 
         // The speaker's level as heard: the poll's reading once it has one (Siri and the
         // touch surface move it), else what the handshake set. Either way, remembered.
-        let heard = state.live.lock().unwrap().as_ref().map(|l| (l.speaker.name.clone(), l.session.receiver_volume_pct().unwrap_or(l.session.config.volume_pct)));
+        let heard = state.live.lock_or_recover().as_ref().map(|l| (l.speaker.name.clone(), l.session.receiver_volume_pct().unwrap_or(l.session.config.volume_pct)));
         if let Some((name, pct)) = &heard {
             remember_volume(&app, name, *pct);
         }
-        let connected = state.live.lock().unwrap().as_ref().map(|l| Connected {
+        let connected = state.live.lock_or_recover().as_ref().map(|l| Connected {
             speaker: l.speaker.clone(),
             seconds: l.session.stats().seconds,
             latency_ms: l.session.stats().latency_ms,
@@ -599,10 +600,10 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         let settings = app.state::<Settings>().get();
         let status = Status {
             connected,
-            connecting: state.connecting.lock().unwrap().clone(),
-            error: state.error.lock().unwrap().clone(),
+            connecting: state.connecting.lock_or_recover().clone(),
+            error: state.error.lock_or_recover().clone(),
             last_speaker: settings.airplay_last_speaker,
-            speakers: state.speakers.lock().unwrap().clone(),
+            speakers: state.speakers.lock_or_recover().clone(),
             firewall_seeded: firewall_seeded(&app),
             capture: settings.airplay_capture,
         };
@@ -622,7 +623,7 @@ pub fn airplay_tap(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<(
         return Err("tap: expected raw bytes".into());
     };
     let state = app.state::<AirplayState>();
-    let Some(ring) = state.tap.lock().unwrap().clone() else { return Ok(()) };
+    let Some(ring) = state.tap.lock_or_recover().clone() else { return Ok(()) };
     let samples: Vec<i16> = bytes.chunks_exact(2).map(|p| i16::from_le_bytes([p[0], p[1]])).collect();
     ring.push(&samples);
     Ok(())
@@ -634,7 +635,7 @@ pub async fn airplay_volume(app: AppHandle, pct: f64) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AirplayState>();
         let name = {
-            let mut live = state.live.lock().unwrap();
+            let mut live = state.live.lock_or_recover();
             let Some(l) = live.as_mut() else { return Ok(()) };
             l.session.set_volume(pct.clamp(0.0, 100.0))?;
             l.speaker.name.clone()

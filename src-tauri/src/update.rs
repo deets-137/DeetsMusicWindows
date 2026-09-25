@@ -12,6 +12,7 @@
 //! the signature check the plugin runs at download time. ~6 MB, and the cap bounds it.
 //! The front end (`src/updater.ts`) decides when to call these, from Settings › Updates.
 
+use crate::lock::LockExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -95,7 +96,7 @@ fn current_version(app: &AppHandle) -> String {
 fn change(app: &AppHandle, f: impl FnOnce(&mut Inner)) -> Status {
     let state = app.state::<UpdateState>();
     let s = {
-        let mut g = state.inner.lock().unwrap();
+        let mut g = state.inner.lock_or_recover();
         f(&mut g);
         g.status.current = current_version(app);
         g.status.clone()
@@ -215,7 +216,7 @@ pub async fn update_check(app: AppHandle, target: Option<String>) -> Status {
 pub async fn update_download(app: AppHandle) -> Status {
     let state = app.state::<UpdateState>();
     let update = {
-        let g = state.inner.lock().unwrap();
+        let g = state.inner.lock_or_recover();
         if g.bytes.is_some() {
             drop(g);
             return change(&app, |_| {});
@@ -282,7 +283,7 @@ async fn fetch(app: &AppHandle, update: &Update) -> Result<Vec<u8>, String> {
 pub fn update_install(app: AppHandle) -> Result<(), String> {
     let state = app.state::<UpdateState>();
     let (update, bytes) = {
-        let mut g = state.inner.lock().unwrap();
+        let mut g = state.inner.lock_or_recover();
         match (g.pending.clone(), g.bytes.take()) {
             (Some(u), Some(b)) => (u, b),
             (_, b) => {
@@ -293,7 +294,7 @@ pub fn update_install(app: AppHandle) -> Result<(), String> {
     };
     if cfg!(debug_assertions) {
         crate::log::info(&format!("update: dev build, install of {} skipped", update.version));
-        state.inner.lock().unwrap().bytes = Some(bytes);
+        state.inner.lock_or_recover().bytes = Some(bytes);
         return Err("A dev build doesn't install updates.".into());
     }
     crate::log::info(&format!("update: installing {} over {}; the app exits now", update.version, current_version(&app)));

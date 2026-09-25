@@ -113,7 +113,7 @@ export function fullViews(deps: FullDeps): FullViews {
         grouping = null; // the queue tag carries the id
         songs = await collectionTracks("albums", id);
       } catch (e) {
-        failed = "Could not read the album from Apple Music.";
+        failed = "Couldn't read the album from Apple Music.";
         console.error("[library] full album", e);
       } finally {
         diag.log("library:full", { kind: "album", id: id ?? null, n: songs?.length ?? 0, failed: !!failed });
@@ -220,7 +220,7 @@ export function fullViews(deps: FullDeps): FullViews {
         d = await artistDetail(id);
         void loadYours();
       } catch (e) {
-        failed = "Could not read the artist from Apple Music.";
+        failed = "Couldn't read the artist from Apple Music.";
         console.error("[library] full artist", e);
       } finally {
         diag.log("library:full", { kind: "artist", id: id ?? null, n: d?.topSongs.length ?? 0, failed: !!failed });

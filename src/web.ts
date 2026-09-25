@@ -834,7 +834,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
       count += ` · ${list.filter((t) => seedTracks.has(t)).length} by ${result.seed.name}`;
     }
     const days = Math.floor((Date.now() - result.oldest) / DAY_MS);
-    if (!n) setStatus("No songs match. Pick fewer genres");
+    if (!n) setStatus("No songs match. Pick fewer genres.");
     else if (result.failed) setStatus(`${count} · some artists didn't load`, "retry");
     else if (!result.calls) setStatus(`${count} · read ${days < 1 ? "today" : days === 1 ? "yesterday" : `${days} days ago`}`, "again");
     else setStatus(count);

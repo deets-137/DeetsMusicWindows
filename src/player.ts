@@ -27,6 +27,7 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
+import { expectedIds, suffixPlan } from "./queue-sync";
 
 declare global {
   interface Window {
@@ -1895,27 +1896,17 @@ async function doReconcileUpcoming(cap: number): Promise<void> {
 
   // Expected MK upcoming = the model's upcoming live ids, in order, capped to the window.
   // No dedup: `playLater` keeps a repeated id (only `setQueue` collapses them, which is why
-  // loadFromModel's window still dedups). Deduping here against the songs MusicKit already
-  // held left a re-queued, already-heard song out of MusicKit entirely (2026-09-24).
+  // loadFromModel's window still dedups). The rules live in queue-sync.ts, under test.
   // A closure so the NOT_FOUND retry can rebuild it after a dead-id bank (playId is deadIds-aware).
-  const computeExpected = (): string[] => {
-    const expected: string[] = [];
-    for (const e of queue.getUpcoming()) {
-      if (expected.length >= cap) break;
-      const id = playId(e);
-      if (id) expected.push(id);
-    }
-    return expected;
-  };
+  const computeExpected = (): string[] => expectedIds(queue.getUpcoming(), cap, playId);
   const expected = computeExpected();
 
   const mkUp: string[] = items.slice(np + 1).map((it) => it?.id);
-  let d = 0;
-  while (d < mkUp.length && d < expected.length && mkUp[d] === expected[d]) d++;
-  if (d === mkUp.length && d === expected.length) return; // already in sync
+  const plan = suffixPlan(mkUp, expected);
+  if (!plan) return; // already in sync
+  const { keep: d, drop } = plan; // MK's divergent suffix is contiguous: [np+1+d .. end]
 
   diag.log("player:reconcile", { d, mk: mkUp.length, expected: expected.length });
-  const drop = mkUp.length - d; // MK's divergent suffix is contiguous: [np+1+d .. end]
   if (drop > 0 && typeof m.queue?.splice === "function") m.queue.splice(np + 1 + d, drop); // one splice, one queueItemsDidChange
   // The matched prefix [0..d) resolved in MK already, so it can't be dead — a retry
   // rebuild only ever changes the tail.

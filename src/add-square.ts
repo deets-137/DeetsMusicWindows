@@ -21,6 +21,7 @@ import type { Track } from "./library";
 import { addTrackToLibrary, libraryAddEnabled, alreadyInLibrary, onLibraryAddChange } from "./library-add";
 import { onTracksChange } from "./track-store";
 import { setting, onSettingsChange } from "./settings-store";
+import { esc } from "./dom";
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
@@ -41,7 +42,6 @@ function stateOf(t: Track | undefined, mark = false): State {
 }
 
 const LABEL: Record<State, string> = { none: "", add: "Add to Library", busy: "Add to Library", in: "In your library" };
-const escAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
 /** The square for a song row. `cls` is the card's own placement class. "" when the song
  *  has no catalog id (an upload can't be added). */
@@ -53,7 +53,7 @@ export function addSquareHTML(t: Track | undefined, cls = "", mark = false): str
   const label = LABEL[s];
   const state = s === "busy" ? " is-busy" : s === "in" ? " is-in" : "";
   return (
-    `<button class="panel__action add-square${cls ? ` ${cls}` : ""}${mark ? " add-square--mark" : ""}${state}" type="button" data-add="${escAttr(t.catalogId)}"` +
+    `<button class="panel__action add-square${cls ? ` ${cls}` : ""}${mark ? " add-square--mark" : ""}${state}" type="button" data-add="${esc(t.catalogId)}"` +
     (s === "none" ? " hidden" : ` aria-label="${label}" title="${label}" aria-disabled="${s !== "add"}"`) +
     `>${s === "in" ? ICON_CHECK : s === "none" ? "" : ICON_PLUS}</button>`
   );

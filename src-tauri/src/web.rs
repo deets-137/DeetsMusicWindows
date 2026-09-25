@@ -21,6 +21,7 @@
 //! degree 1. The song or album itself is the `anchor`: it leads the playlist. An album's full
 //! tracklist is read once and saved in `web_albums` (1 call, 0 after).
 
+use crate::lock::LockExt;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -897,7 +898,7 @@ pub async fn web_build(
     let reach = reach.clamp(1, 3);
     let fresh = fresh.unwrap_or(false);
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     // A newer build makes this one stop before its next Apple call: a Reach press during a build
@@ -1075,11 +1076,14 @@ fn save_seed(db: &Db, seed: &WebSeed) {
 /// The seeds webs were built from, all kinds, newest first. The panel's field offers them,
 /// filtered by its Artist · Song · Album row, before any search. Zero Apple calls.
 #[tauri::command]
-pub fn web_seeds(db: tauri::State<'_, Db>) -> Result<Vec<WebSeed>, String> {
-    let conn = db.lock();
-    let mut st = conn
-        .prepare_cached("SELECT json FROM web_seed_list ORDER BY built_at DESC LIMIT 60")
-        .map_err(|e| e.to_string())?;
-    let rows = st.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
-    Ok(rows.flatten().filter_map(|j| serde_json::from_str::<WebSeed>(&j).ok()).collect())
+pub async fn web_seeds(app: tauri::AppHandle) -> Result<Vec<WebSeed>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut st = conn
+            .prepare_cached("SELECT json FROM web_seed_list ORDER BY built_at DESC LIMIT 60")
+            .map_err(|e| e.to_string())?;
+        let rows = st.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
+        Ok(rows.flatten().filter_map(|j| serde_json::from_str::<WebSeed>(&j).ok()).collect())
+    })
+    .await
 }

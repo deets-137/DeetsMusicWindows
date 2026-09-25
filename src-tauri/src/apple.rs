@@ -7,6 +7,7 @@
 //! The page is themed with the app's own token CSS + bundled fonts (served here)
 //! so it matches the app exactly. The `.p8` and MUT never reach the app renderer.
 
+use crate::lock::LockExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -62,10 +63,10 @@ pub struct AppleState {
 /// its link is forgotten) and hand back the flag for this one.
 fn arm_abort(state: &AppleState) -> Arc<std::sync::atomic::AtomicBool> {
     let flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    if let Some(old) = state.abort.lock().unwrap().replace(flag.clone()) {
+    if let Some(old) = state.abort.lock_or_recover().replace(flag.clone()) {
         old.store(true, std::sync::atomic::Ordering::Relaxed);
     }
-    *state.link.lock().unwrap() = None;
+    *state.link.lock_or_recover() = None;
     flag
 }
 
@@ -75,11 +76,11 @@ fn arm_abort(state: &AppleState) -> Arc<std::sync::atomic::AtomicBool> {
 /// paints the row back without a toast — the user asked for this one.
 #[tauri::command]
 pub fn apple_cancel_auth(state: tauri::State<'_, AppleState>) {
-    if let Some(flag) = state.abort.lock().unwrap().take() {
+    if let Some(flag) = state.abort.lock_or_recover().take() {
         flag.store(true, std::sync::atomic::Ordering::Relaxed);
     }
-    *state.link.lock().unwrap() = None;
-    let mut auth = state.auth.lock().unwrap();
+    *state.link.lock_or_recover() = None;
+    let mut auth = state.auth.lock_or_recover();
     if matches!(*auth, AuthStatus::Pending) {
         *auth = AuthStatus::Failed { reason: "cancelled".into() };
         crate::log::info("sign-in: cancelled from the Account row");
@@ -178,7 +179,7 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
 
     let state = app.state::<AppleState>();
     {
-        let mut pending = state.link.lock().unwrap();
+        let mut pending = state.link.lock_or_recover();
         let Some(p) = pending.as_ref() else {
             crate::log::warn("sign-in: link arrived with no sign-in in progress; ignored (start the sign-in from DeetsMusic)");
             return;
@@ -191,19 +192,19 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
         *pending = None; // single use, matched or expired
         if expired {
             crate::log::warn("sign-in: link arrived after 5 min; sign-in abandoned");
-            *state.auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
+            *state.auth.lock_or_recover() = AuthStatus::Failed { reason: "timeout".into() };
             return;
         }
     }
 
     if let Some(reason) = error {
         crate::log::warn(&format!("sign-in: the hosted page reported a failure: {reason}"));
-        *state.auth.lock().unwrap() = AuthStatus::Failed { reason };
+        *state.auth.lock_or_recover() = AuthStatus::Failed { reason };
         return;
     }
     let Some(tok) = token.filter(|t| !t.is_empty()) else {
         crate::log::warn("sign-in: link carried no token; sign-in abandoned");
-        *state.auth.lock().unwrap() = AuthStatus::Failed { reason: "link carried no token".into() };
+        *state.auth.lock_or_recover() = AuthStatus::Failed { reason: "link carried no token".into() };
         return;
     };
     let store = state.user_token.clone();
@@ -218,19 +219,19 @@ fn begin_hosted(app: &tauri::AppHandle, state: &AppleState, theme: &str, skin: &
     use tauri_plugin_opener::OpenerExt;
     let nonce = random_nonce();
     arm_abort(state);
-    *state.link.lock().unwrap() = Some(PendingLink { nonce: nonce.clone(), started: Instant::now() });
-    *state.auth.lock().unwrap() = AuthStatus::Pending;
+    *state.link.lock_or_recover() = Some(PendingLink { nonce: nonce.clone(), started: Instant::now() });
+    *state.auth.lock_or_recover() = AuthStatus::Pending;
 
     let link = state.link.clone();
     let auth = state.auth.clone();
     let armed = nonce.clone();
     std::thread::spawn(move || {
         std::thread::sleep(LINK_TTL);
-        let mut pending = link.lock().unwrap();
+        let mut pending = link.lock_or_recover();
         if pending.as_ref().map(|p| p.nonce == armed).unwrap_or(false) {
             *pending = None;
             crate::log::warn("sign-in: no link within 5 min; browser sign-in abandoned");
-            *auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
+            *auth.lock_or_recover() = AuthStatus::Failed { reason: "timeout".into() };
         }
     });
 
@@ -544,8 +545,8 @@ fn install(t: DevToken) {
             .map(|d| d.format("%Y-%m-%d").to_string())
             .unwrap_or_default()
     ));
-    *DEV_TOKEN.lock().unwrap() = Some(t);
-    *DEV_TOKEN_ERROR.lock().unwrap() = None;
+    *DEV_TOKEN.lock_or_recover() = Some(t);
+    *DEV_TOKEN_ERROR.lock_or_recover() = None;
 }
 
 /// Resolve the developer token once, before the webview asks for it. Runs in
@@ -557,7 +558,7 @@ pub fn ensure_developer_token() -> Result<(), String> {
     if cfg!(debug_assertions) && std::env::var_os("DEETS_DEV_NO_TOKEN").is_some() {
         let msg = "no developer token: forced by DEETS_DEV_NO_TOKEN".to_string();
         crate::log::warn(&format!("token: {msg}"));
-        *DEV_TOKEN_ERROR.lock().unwrap() = Some(msg.clone());
+        *DEV_TOKEN_ERROR.lock_or_recover() = Some(msg.clone());
         return Err(msg);
     }
 
@@ -569,7 +570,7 @@ pub fn ensure_developer_token() -> Result<(), String> {
                 Ok(())
             }
             Err(e) => {
-                *DEV_TOKEN_ERROR.lock().unwrap() = Some(e.clone());
+                *DEV_TOKEN_ERROR.lock_or_recover() = Some(e.clone());
                 Err(e)
             }
         };
@@ -601,7 +602,7 @@ pub fn ensure_developer_token() -> Result<(), String> {
             None => {
                 let msg = format!("no developer token: no local MusicKit key and {e}");
                 crate::log::warn(&format!("token: {msg}"));
-                *DEV_TOKEN_ERROR.lock().unwrap() = Some(msg.clone());
+                *DEV_TOKEN_ERROR.lock_or_recover() = Some(msg.clone());
                 Err(msg)
             }
         },
@@ -612,7 +613,7 @@ pub fn ensure_developer_token() -> Result<(), String> {
 /// `ensure_developer_token()`. Signature unchanged from the local-signing days,
 /// so every caller stays as it was.
 pub fn developer_token() -> Result<String, String> {
-    if let Some(t) = DEV_TOKEN.lock().unwrap().as_ref() {
+    if let Some(t) = DEV_TOKEN.lock_or_recover().as_ref() {
         return Ok(t.token.clone());
     }
     Err(DEV_TOKEN_ERROR
@@ -624,7 +625,7 @@ pub fn developer_token() -> Result<String, String> {
 
 /// Remote config that rode the token response (`{}` when signing locally).
 pub fn remote_config() -> serde_json::Value {
-    match DEV_TOKEN.lock().unwrap().as_ref() {
+    match DEV_TOKEN.lock_or_recover().as_ref() {
         Some(t) if t.config.is_object() => t.config.clone(),
         _ => serde_json::json!({}),
     }
@@ -639,7 +640,7 @@ pub fn remote_config() -> serde_json::Value {
 /// On a real swap: persist, install, and tell the webview so MusicKit re-configures.
 /// Local-key installs skip this: a re-sign from the same key changes nothing.
 async fn refetch_after_401(failed: &str) -> Option<String> {
-    let (minted, current) = match DEV_TOKEN.lock().unwrap().as_ref() {
+    let (minted, current) = match DEV_TOKEN.lock_or_recover().as_ref() {
         Some(t) => (t.source == "worker", t.token.clone()),
         None => (false, String::new()),
     };
@@ -650,7 +651,7 @@ async fn refetch_after_401(failed: &str) -> Option<String> {
         return Some(current);
     }
     {
-        let mut last = LAST_REFETCH.lock().unwrap();
+        let mut last = LAST_REFETCH.lock_or_recover();
         if last.is_some_and(|at| at.elapsed() < REFETCH_COOLDOWN) {
             return None;
         }
@@ -824,7 +825,7 @@ fn serve(
         }
         let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
             crate::log::warn("sign-in: no callback within 5 min; browser sign-in abandoned");
-            *auth.lock().unwrap() = AuthStatus::Failed { reason: "timeout".into() };
+            *auth.lock_or_recover() = AuthStatus::Failed { reason: "timeout".into() };
             break;
         };
         match server.recv_timeout(remaining.min(Duration::from_secs(1))) {
@@ -844,7 +845,7 @@ fn serve(
                     });
                     if let Some(reason) = reason {
                         crate::log::warn(&format!("sign-in: the page reported a failure: {reason}"));
-                        *auth.lock().unwrap() = AuthStatus::Failed { reason };
+                        *auth.lock_or_recover() = AuthStatus::Failed { reason };
                         let _ = req.respond(tiny_http::Response::from_string(DONE_RESPONSE));
                         break;
                     }
@@ -910,15 +911,15 @@ fn accept_token(tok: &str, store: &Arc<Mutex<Option<String>>>, auth: &Arc<Mutex<
     // the developer token or the network and does not block the sign-in.
     if capture_rejected_by_apple(tok) {
         crate::log::warn("sign-in: Apple refused the delivered token (403); not saved");
-        *auth.lock().unwrap() = AuthStatus::Failed { reason: "forbidden: Apple refused the new sign-in".into() };
+        *auth.lock_or_recover() = AuthStatus::Failed { reason: "forbidden: Apple refused the new sign-in".into() };
         return false;
     }
-    *store.lock().unwrap() = Some(tok.to_string());
-    *auth.lock().unwrap() = AuthStatus::Captured;
+    *store.lock_or_recover() = Some(tok.to_string());
+    *auth.lock_or_recover() = AuthStatus::Captured;
     // A new sign-in: forget the cached health answer (it may still say "expired") and
     // hand the token to MusicKit in the running page — MusicKit otherwise only reads it
     // when the player first starts (found 2026-09-13: signed in, MusicKit still unauthorized).
-    *LAST_CHECK.lock().unwrap() = None;
+    *LAST_CHECK.lock_or_recover() = None;
     if let Some(app) = APP_HANDLE.get() {
         let _ = app.emit("user-token-changed", ());
     }
@@ -1006,7 +1007,7 @@ pub async fn apple_begin_auth(
 
     let store = state.user_token.clone();
     let auth = state.auth.clone();
-    *auth.lock().unwrap() = AuthStatus::Pending;
+    *auth.lock_or_recover() = AuthStatus::Pending;
     std::thread::spawn(move || serve(server, page, nonce, store, auth, abort));
 
     let url = format!("http://127.0.0.1:{port}/");
@@ -1020,7 +1021,7 @@ pub async fn apple_begin_auth(
 /// The browser sign-in's progress, polled by `connect()`.
 #[tauri::command]
 pub fn apple_auth_status(state: tauri::State<'_, AppleState>) -> AuthStatus {
-    state.auth.lock().unwrap().clone()
+    state.auth.lock_or_recover().clone()
 }
 
 // ── Health check: which token is Apple rejecting? ─────────────────────────────
@@ -1085,7 +1086,7 @@ async fn app_status(client: &reqwest::Client) -> (&'static str, bool) {
 #[tauri::command]
 pub async fn apple_check(fresh: Option<bool>, state: tauri::State<'_, AppleState>) -> Result<AppleHealth, String> {
     {
-        let last = LAST_CHECK.lock().unwrap();
+        let last = LAST_CHECK.lock_or_recover();
         if let Some((at, h)) = last.as_ref() {
             let ttl = if fresh.unwrap_or(false) { CHECK_FRESH_MIN } else { CHECK_TTL };
             if at.elapsed() < ttl {
@@ -1093,7 +1094,7 @@ pub async fn apple_check(fresh: Option<bool>, state: tauri::State<'_, AppleState
             }
         }
     }
-    let mut_tok = state.user_token.lock().unwrap().clone();
+    let mut_tok = state.user_token.lock_or_recover().clone();
     let client = check_client()?;
     let (app, healed) = app_status(&client).await;
     let signin = match (mut_tok.as_deref(), app) {
@@ -1110,13 +1111,13 @@ pub async fn apple_check(fresh: Option<bool>, state: tauri::State<'_, AppleState
     };
     crate::log::info(&format!("apple check: app={app} signin={signin} healed={healed}"));
     let h = AppleHealth { app, signin, healed };
-    *LAST_CHECK.lock().unwrap() = Some((Instant::now(), h.clone()));
+    *LAST_CHECK.lock_or_recover() = Some((Instant::now(), h.clone()));
     Ok(h)
 }
 
 #[tauri::command]
 pub fn apple_connection_status(state: tauri::State<'_, AppleState>) -> bool {
-    state.user_token.lock().unwrap().is_some()
+    state.user_token.lock_or_recover().is_some()
 }
 
 /// Hand the captured Music User Token to the renderer.
@@ -1128,12 +1129,12 @@ pub fn apple_connection_status(state: tauri::State<'_, AppleState>) -> bool {
 /// signed in.
 #[tauri::command]
 pub fn apple_user_token(state: tauri::State<'_, AppleState>) -> Option<String> {
-    state.user_token.lock().unwrap().clone()
+    state.user_token.lock_or_recover().clone()
 }
 
 #[tauri::command]
 pub fn apple_disconnect(state: tauri::State<'_, AppleState>) {
-    *state.user_token.lock().unwrap() = None;
+    *state.user_token.lock_or_recover() = None;
     let _ = std::fs::remove_file(user_token_path());
     // Also clear the pre-app-data copy, or the next launch's fallback in
     // load_persisted_user_token() would quietly sign you back in.
@@ -1221,7 +1222,7 @@ fn log_failure(status: u16, url: &str) {
     let path = url.split_once("api.music.apple.com").map(|(_, p)| p).unwrap_or(url);
     crate::log::warn(&format!("apple: {status} {path}"));
     if status == 403 && path.starts_with("/v1/me") {
-        let mut last = SIGNIN_REJECTED_AT.lock().unwrap();
+        let mut last = SIGNIN_REJECTED_AT.lock_or_recover();
         if !last.is_some_and(|at| at.elapsed() < SIGNIN_REJECTED_GAP) {
             *last = Some(Instant::now());
             if let Some(app) = APP_HANDLE.get() {
@@ -1826,7 +1827,7 @@ pub async fn catalog_collection_tracks(
         return Err(format!("catalog_collection_tracks: bad kind '{kind}'"));
     }
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
@@ -1899,7 +1900,7 @@ pub async fn apple_add_to_library(
         return Ok(());
     }
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     // `ids[songs]=a,b` — reqwest percent-encodes the brackets, which Apple accepts.
     let url = format!(
@@ -1928,7 +1929,7 @@ pub async fn catalog_artist(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<ArtistDetail, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
@@ -1982,22 +1983,25 @@ fn epoch_ms() -> i64 {
 /// (HOME.md §2). An artist not opened in the Library artist view yet has no row here, and
 /// the tile falls back to one of that artist's album covers.
 #[tauri::command]
-pub fn artist_photos(db: tauri::State<'_, crate::library::Db>) -> Result<Vec<(String, Artwork)>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT name, artwork FROM artist_catalog WHERE artwork IS NOT NULL")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
-        .map_err(|e| e.to_string())?;
-    let mut out = Vec::new();
-    for row in rows {
-        let (name, json) = row.map_err(|e| e.to_string())?;
-        if let Ok(a) = serde_json::from_str::<Artwork>(&json) {
-            out.push((name, a));
+pub async fn artist_photos(app: tauri::AppHandle) -> Result<Vec<(String, Artwork)>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT name, artwork FROM artist_catalog WHERE artwork IS NOT NULL")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+            .map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (name, json) = row.map_err(|e| e.to_string())?;
+            if let Ok(a) = serde_json::from_str::<Artwork>(&json) {
+                out.push((name, a));
+            }
         }
-    }
-    Ok(out)
+        Ok(out)
+    })
+    .await
 }
 
 /// The Library artist view's catalog facts for a library artist NAME (ARTIST-VIEW.md §4).
@@ -2047,7 +2051,7 @@ pub async fn library_artist_info(
     }
 
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
@@ -2131,10 +2135,13 @@ pub async fn library_artist_info(
 /// The Library ⟳: every saved featured-playlist list counts as old, so the next open of
 /// each artist fetches it again. Ids and photo links stay. Zero Apple calls.
 #[tauri::command]
-pub fn library_artists_expire(db: tauri::State<'_, crate::library::Db>) -> Result<(), String> {
-    let conn = db.lock();
-    conn.execute("UPDATE artist_catalog SET featured_at = 0", []).map_err(|e| e.to_string())?;
-    Ok(())
+pub async fn library_artists_expire(app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        conn.execute("UPDATE artist_catalog SET featured_at = 0", []).map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
 }
 
 /// Catalog search command. Normalizes per category and — since catalog songs carry
@@ -2209,7 +2216,7 @@ pub async fn radio_live(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<Station>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!(
@@ -2228,7 +2235,7 @@ pub async fn radio_my_station(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Option<Station>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!(
@@ -2250,7 +2257,7 @@ pub async fn radio_discovery(
     state: tauri::State<'_, AppleState>,
 ) -> Result<Option<Station>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let url = "https://api.music.apple.com/v1/me/recommendations";
     let (status, body) = api_get(&client, &dev, &user, url).await?;
@@ -2284,7 +2291,7 @@ pub async fn radio_genres(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<StationGenre>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres");
@@ -2308,7 +2315,7 @@ pub async fn radio_genre_stations(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<Station>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/station-genres/{id}/stations");
@@ -2330,7 +2337,7 @@ pub async fn radio_seed_station(
         return Err(format!("unsupported seed kind: {kind}"));
     }
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}/station");
@@ -2354,7 +2361,7 @@ pub async fn catalog_song_artist(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Option<String>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/songs/{id}?include=artists");
@@ -2385,7 +2392,7 @@ pub async fn catalog_related(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Option<NamedRef>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/{kind}/{id}?include={rel}");
@@ -2429,7 +2436,7 @@ pub async fn recent_played_tracks(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<Track>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     // Apple caps `limit` at 30 — `limit=100` is a 400 — but `offset` pages, so depth is
     // bought a call at a time. Recently Played needs one page; the "New" shelf reads
@@ -2482,7 +2489,7 @@ pub async fn recent_added(
     state: tauri::State<'_, AppleState>,
 ) -> Result<RecentAdded, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let url = "https://api.music.apple.com/v1/me/library/recently-added?limit=25";
     let (status, body) = api_get(&client, &dev, &user, url).await?;
@@ -2610,7 +2617,7 @@ pub async fn artist_new_releases(
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<Album>, String> {
     let dev = developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = http_client();
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 

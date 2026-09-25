@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-22
+updated: 2026-09-25
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,81 @@ updated: 2026-09-22
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-09-25 — the codebase evaluation and the consistency pass
+- **Read:** two sessions (the repo health read and the app consistency read) merged into one
+  plan. The health checks were clean: tsc, `cargo check` 0 warnings, `cargo test` 33/33,
+  docs:check, `npm audit`. The gaps: no front-end tests, no CI, ~150 raw
+  `Mutex::lock().unwrap()` outside `Db::lock`, 199 `console.error` calls that never reached
+  the log file, and 73 sync commands that take the database lock on the UI thread.
+- **His word: "fix everything that doesn't need me first."** Built:
+  - release-check check 9 names a sync command that takes `db.lock()`. It is SOFT (one
+    warning, 73 names) until those commands move off the UI thread. RELEASE.md §1.
+  - `diag.ts` copies `console.error` (to the file now) and `console.warn` (to the ring).
+    LOGGING.md, revision 2026-09-25.
+  - One scrollbar rule set: seven hand copies folded into the `app-scroll` rule in
+    styles.css. `.slot-picker__menu` and `.ctx-menu__fly` gain the hover color they had lost.
+  - `src/dom.ts` holds `el` (was in three panels) and `esc` (was in two, plus `escAttr`).
+  - "Could not" → "Couldn't" in three strings. Diary menu rows in Title Case (Mark as Done,
+    Mark in Progress, Delete Entry). The date pill's values stay in sentence case.
+  - The extension's style copy re-synced (`pack.cjs --styles-only`).
+- **Checked and dropped:** `pick:suggest` is a Home tile id, not a localStorage key. The
+  Quick and Room panels do carry `app-scroll` (in index.html). The Room panel's missing
+  gutter is his call of 2026-09-18, not a gap.
+- **Desk test:** scroll the Library, Queue, Search, a Playlist web panel, a right-click
+  flyout with many rows and the slot picker. Each bar looks as before, and the flyout and the
+  slot picker thumbs now darken on hover. Right-click a Diary tile: the rows read Mark as
+  Done / Mark in Progress / Delete Entry. In the dev app, run `console.error("test")` in
+  DevTools, then check that the log file has a `fe: console:error` line.
+- **His calls, later the same sitting:** A1 with Cancel, B and C as recommended. Built:
+  - **The destructive-action rule** (TOASTS.md §6): what can be undone runs at once and
+    offers Undo; what cannot asks first, with Cancel. New Undo on Remove from Playlist
+    (one and a picked set), Delete Folder (Playlists and Diary), Remove Cover and Generate
+    Cover › Mosaic. Keep → Cancel on Diary Delete Entry, Song of the Day Withdraw and the
+    replaced pick's posts; those two go info → warn.
+  - Decided inside his choice: Delete Playlist keeps its question (a restore is a new id
+    with no Apple link, pins or place, so it is not an undo). The unmark ask keeps "Keep":
+    that button unmarks and keeps the post, so it is not a decline. An undone folder is a
+    new id: a moved folder row goes back to the default order.
+  - **`lock_or_recover()`** (src-tauri/src/lock.rs): all 150 raw `lock().unwrap()` now
+    recover from a poisoned mutex, and the first one is logged with its file and line.
+  - **Empty states end with a period:** Compass "Nothing here yet.", the three Diary
+    section empties, the web builder's "No songs match. Pick fewer genres."
+- **Desk test, the second part:** remove a song from a hand-made playlist, then press Undo:
+  it comes back at the same place. Do the same with three picked songs (Ctrl+click), with
+  Remove Cover, with Generate Cover › Mosaic and with Delete Folder in Playlists and in
+  the Diary. Right-click a Diary tile › Delete Entry: the buttons read Delete / Cancel.
+- **CI and tests, researched by the consistency session:** of ~30 past bugs, ~6 a unit
+  test on pure logic would have caught (the 2026-07-02 "Unknown" queue rows, sampleHz
+  2026-09-16, the `\\?\` path 2026-09-16, loadLayout 2026-09-17, the menu pin subject
+  2026-09-23, reconcileUpcoming 2026-09-24); 2 a push-time CI (both the 2026-09-21 docs
+  re-org: the Guide button stub, publish-update.mjs); 4 only a static gate (the 0.12.0
+  freeze, autostart, the Db poison, the 0.11.0 version files); ~18 only a hand test or
+  telemetry. No case where tsc / cargo on push would have caught what his hand-off habit
+  missed. Its pick: narrow vitest tests on media-menu, queue, row-pick, list-keys and the
+  loadLayout parse, plus `npm run check` and a pre-push hook; no hosted CI.
+- **His calls, the third round:** the built-in test runner, one database thread, the
+  scrollbar gutter left as is. Built:
+  - **The database thread** (`src-tauri/src/db_thread.rs`, DB-HEALTH.md §2a): the 73 sync
+    commands that took `db.lock()` are `async fn` + `crate::db_thread::run`, one thread,
+    first in first out. 70 were moved by a one-off codemod, the three Last.fm ones by
+    hand; `lastfm_heard` keeps its network `flush` off that thread. The bridge's two
+    direct calls now await. Check 9's database rule is hard. Commands that returned a
+    bare value now return `Result` (the front end sees the same value on success).
+  - **Tests:** `tests/` on Node 24's own runner, no dependency. `tests/setup.mjs` adds
+    `.ts` to extensionless imports and stubs `localStorage`, `addEventListener` and
+    Tauri's window label. 30 tests: queue.ts, row-pick.ts, and three rules moved into
+    pure files for it — `queue-sync.ts` (reconcile's expected ids and suffix plan, the
+    2026-09-24 bug), `layout-rules.ts` (loadLayout's check), `frame-period.ts` (sampleHz,
+    the 2026-09-16 bug). `npm run check` (~15 s) and `.githooks/pre-push`, which
+    `npm install` wires through the `prepare` script.
+  - CLAUDE.md checklist 6a: `scrollbar-gutter: stable` is no longer automatic.
+- **Desk test, the third part (restart the dev runner: new Rust):** play a few songs, open
+  Diary, tap a song score several times fast, and add, reorder and remove playlist songs.
+  Everything saves as before. Start a library sync (the Library card's Refresh library button) and
+  click around the Playlists card while it runs: the window keeps painting. Last.fm
+  (if connected): a play past half still scrobbles.
+- **Left for him:** HANDOFF.md › Open now › The consistency pass.
 
 ## 2026-09-24 — the queue is the master; the heave flood
 - **Report:** a song dragged into the Queue card showed for a second, then a different song

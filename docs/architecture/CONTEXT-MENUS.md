@@ -80,7 +80,7 @@ Start a Web · Copy Link · Add to Library · Add to Diary · Favorite · On Cli
 
 - **Add to Diary** (2026-09-24, [DIARY.md](../features/DIARY.md) §2): summons the Diary card at
   the album's entry, making it the first time. Left out inside the Diary itself (`inDiary`).
-  A Diary tile's own rows (group 6): Export · Mark as done / Mark in progress · Move to Folder ▸; Delete
+  A Diary tile's own rows (group 6): Export · Mark as Done / Mark in Progress · Move to Folder ▸; Delete
   entry is group 7. A Diary folder header: Rename (a field) · Delete Folder (DIARY.md §4b).
 - An album has no station (Apple seeds stations from songs and artists).
 - **Go to Album on an album tile** (fork 2B): every card shows it. In the Library it drills in

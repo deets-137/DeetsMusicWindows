@@ -1235,11 +1235,6 @@ body {
 }
 .web[hidden], .web [hidden] { display: none; }
 .web.web--gone { transition: none; } /* "Shrink to chip" ended: the panel leaves at once, no pop out */
-/* The app's own scrollbar (the Library's), not the OS bar. */
-.web::-webkit-scrollbar { width: var(--scrollbar-w); }
-.web::-webkit-scrollbar-track { background: transparent; }
-.web::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
-.web::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 .web__title {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
   color: var(--subtext); text-transform: uppercase; letter-spacing: var(--web-title-tracking);
@@ -2038,9 +2033,6 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   display: grid;
   grid-template-columns: repeat(2, minmax(var(--menu-min-w), 1fr));
 }
-.slot-picker__menu::-webkit-scrollbar { width: var(--scrollbar-w); }
-.slot-picker__menu::-webkit-scrollbar-track { background: transparent; }
-.slot-picker__menu::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
 
 /* Card stub placeholder (e.g. Playlists before it's built out). */
 .card-stub { display: grid; place-items: center; }
@@ -2176,24 +2168,25 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 /* Off hides the storm, as reduced motion does: a frozen half-drawn bolt reads as a bug. */
 :root[data-bg-motion="off"] .storm { display: none; }
 
-/* The app's scrollbar as a class: any NEW element that scrolls gets `app-scroll` (CLAUDE.md
-   build checklist; UI-ARCHITECTURE §Scrollbars). The older scrollers below keep their own
-   selectors; they draw the same bar. */
-.app-scroll::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
-.app-scroll::-webkit-scrollbar-track { background: transparent; }
-.app-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
-.app-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
-
-/* Our own scrollbar for the Library list/grid and any plain panel body that scrolls
-   (Settings) — replaces the OS bar. WebView2 is Chromium, so the ::-webkit-scrollbar
-   pseudo-elements apply; color is a theme role, width/radius are skin tokens. */
-.lib-view::-webkit-scrollbar, .panel__body::-webkit-scrollbar { width: var(--scrollbar-w); }
-.lib-view::-webkit-scrollbar-track, .panel__body::-webkit-scrollbar-track { background: transparent; }
-.lib-view::-webkit-scrollbar-thumb, .panel__body::-webkit-scrollbar-thumb {
-  background: var(--scrollbar);
-  border-radius: var(--scrollbar-radius);
+/* The app's scrollbar, replacing the OS bar. Any NEW element that scrolls gets `app-scroll`
+   (CLAUDE.md build checklist; UI-ARCHITECTURE §Scrollbars). The older scrollers are listed
+   here by their own class, because each is built in many places (`.search__scroller` in
+   eight). Before 2026-09-25 each kept its own copy of these four rules, and two copies had
+   lost the hover color; one rule set is what keeps them the same. WebView2 is Chromium, so
+   the ::-webkit-scrollbar pseudo-elements apply; color is a theme role, width and radius
+   are skin tokens. */
+:is(.app-scroll, .lib-view, .panel__body, .web, .slot-picker__menu, .ctx-menu__fly, .spane__scroll, .search__scroller, .qcard__list)::-webkit-scrollbar {
+  width: var(--scrollbar-w); height: var(--scrollbar-w);
 }
-.lib-view::-webkit-scrollbar-thumb:hover, .panel__body::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+:is(.app-scroll, .lib-view, .panel__body, .web, .slot-picker__menu, .ctx-menu__fly, .spane__scroll, .search__scroller, .qcard__list)::-webkit-scrollbar-track {
+  background: transparent;
+}
+:is(.app-scroll, .lib-view, .panel__body, .web, .slot-picker__menu, .ctx-menu__fly, .spane__scroll, .search__scroller, .qcard__list)::-webkit-scrollbar-thumb {
+  background: var(--scrollbar); border-radius: var(--scrollbar-radius);
+}
+:is(.app-scroll, .lib-view, .panel__body, .web, .slot-picker__menu, .ctx-menu__fly, .spane__scroll, .search__scroller, .qcard__list)::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
 
 /* Back chevron in the card header — shown only in a drilled-in context. */
 .panel__back {
@@ -2668,9 +2661,6 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    Set by context-menu.ts when the resolved items contain a submenu; the trade is that
    this one flyout does not scroll. */
 .ctx-menu__fly--deep { overflow: visible; }
-.ctx-menu__fly::-webkit-scrollbar { width: var(--scrollbar-w); }
-.ctx-menu__fly::-webkit-scrollbar-track { background: transparent; }
-.ctx-menu__fly::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
 /* rows with a mini cover (songs/albums/artists lines) */
 .lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
 .lib-row__art {
@@ -3055,13 +3045,6 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    the real Back button, as the Library and Playlists cards do (SEARCH.md). */
 .spane__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
-/* Match the Library's custom Chromium scrollbar across every search scroll surface
-   — the vertical pane scroll and the horizontal section scrollers. */
-.spane__scroll::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
-.spane__scroll::-webkit-scrollbar-track { background: transparent; }
-.spane__scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
-.spane__scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
-
 /* sections */
 .search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
 .search__sec:last-child { border-bottom: none; }
@@ -3109,10 +3092,6 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   scrollbar-gutter: stable;
   padding-bottom: var(--space-1);
 }
-.search__scroller::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
-.search__scroller::-webkit-scrollbar-track { background: transparent; }
-.search__scroller::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--scrollbar-radius); }
-.search__scroller::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 .search__scroller--songs {
   display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto);
   grid-auto-columns: 170px; gap: var(--space-1) var(--space-2);

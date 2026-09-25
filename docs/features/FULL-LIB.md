@@ -133,4 +133,4 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
    then Back: the first card comes back.
 9. Leave the card on a Full level, change the surface and back (card memory): it reopens there.
 10. An album with a song that is not out yet: that row is dimmed and plays nothing.
-11. Offline: Full shows "Could not read the album from Apple Music." Lib still works.
+11. Offline: Full shows "Couldn't read the album from Apple Music." Lib still works.

@@ -122,6 +122,12 @@ user guide for deets.solutions (DOCS-ORG.md §13).
   compiles, then hand it to the user to try.
 - Cheap checks that ARE worth running (not harnesses): `npx tsc --noEmit` and
   `npx vite build` to catch type/compile/bundle errors before handing off.
+- **Unit tests on pure logic (2026-09-25):** `npm test` runs `tests/*.test.ts` on Node's
+  built-in runner, no test dependency. `npm run check` = tsc + tests + docs:check + cargo
+  check + cargo test (~15 s), and the pre-push hook (`.githooks/pre-push`) runs it. A test
+  covers a pure rule only; when the rule sits in a DOM or MusicKit module, move it to a
+  small pure file first (`queue-sync.ts`, `layout-rules.ts`, `frame-period.ts`). A bug in
+  a pure rule gets a test with its date in the name. `tests/setup.mjs` says what is stubbed.
 - If something genuinely can't be reasoned through and the user is away, ask them to
   test rather than scaffolding a harness.
 - **Playback can be driven and measured from the session (2026-09-12).** Start the dev
@@ -224,9 +230,12 @@ user guide for deets.solutions (DOCS-ORG.md §13).
      with every listed mark seen, so only settings added AFTER it installed read as new.
   6. **Log lines:** `diag.log` the arm / fire / off of anything that acts on its own.
   6a. **Scrollbars:** anything that can scroll (`overflow: auto/scroll`, a `max-height` panel)
-     gets the `app-scroll` class, or it shows the grey OS bar, and `scrollbar-gutter: stable` so its
-     content does not shift when the bar appears. The bar is opt-in per element, so
+     gets the `app-scroll` class, or it shows the grey OS bar. The bar is opt-in per element, so
      nothing catches a miss (the Sound panel shipped with the OS bar, 2026-09-16).
+     `scrollbar-gutter: stable` is NOT automatic (his call, 2026-09-25): it leaves an empty
+     8 px strip on a short list. Use it on a panel that is sized to hold the bar anyway; a
+     list that nearly always scrolls goes without; where a jump is really seen, use the Room
+     panel's grow-into-the-padding method (`.room__members[data-scrolls]` in styles.css).
   7. **Telemetry:** a panel that animates sets `dataset.frames` so frames.ts times it.
   8. **Check:** `npx tsc --noEmit` and `npx vite build`, then hand it over with the desk
      test written into the doc section.
@@ -266,6 +275,8 @@ npm run bench appearance -- --passes 3   # repeatable switch benchmark; refuses 
 npm run release       # build + sign the installer (→ installers/; see docs/ops/RELEASE.md §0)
 npm run release:publish   # after testing the install: put it on the update channel
 npx tsc --noEmit      # front-end typecheck
+npm test              # the unit tests (tests/*.test.ts, Node's own runner)
+npm run check         # tsc + tests + docs:check + cargo check + cargo test (the pre-push hook)
 ```
 Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 

@@ -22,6 +22,9 @@ the app can do any of these things.
   native Rust vs our own TypeScript, costs, the AirPlay reuse, forks (researched 2026-09-21).
 - [WorkerDeploy.md](WorkerDeploy.md) — deploy a worker (rooms, friends) without dropping live
   connections: what drops today, what exists, the paths to consider (opened 2026-09-23).
+- [WORKERS.md](WORKERS.md) — workers and queues in Rust: the database thread (built
+  2026-09-25), one actor per outside subsystem, one Apple call queue, and where a worker
+  speeds the app up (opened 2026-09-25).
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).

@@ -13,6 +13,7 @@
 //! cheap and follow every publish. `media.rs::is_self` already skips this
 //! session when the tray panel looks for a *foreign* player.
 
+use crate::lock::LockExt;
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, WebviewWindow};
@@ -87,7 +88,7 @@ pub fn init(app: AppHandle, win: &WebviewWindow) -> Result<(), String> {
     >::new(move |_, args| {
         let Some(args) = args.as_ref() else { return Ok(()) };
         let secs = args.RequestedPlaybackPosition()?.Duration as f64 / 10_000_000.0;
-        let dur = *LAST_DURATION.lock().unwrap();
+        let dur = *LAST_DURATION.lock_or_recover();
         if dur > 0.0 {
             send(&a, "seek", Some((secs / dur).clamp(0.0, 1.0)));
         }
@@ -95,20 +96,20 @@ pub fn init(app: AppHandle, win: &WebviewWindow) -> Result<(), String> {
     }))
     .map_err(|e| e.to_string())?;
 
-    *SMTC.lock().unwrap() = Some(smtc);
+    *SMTC.lock_or_recover() = Some(smtc);
     Ok(())
 }
 
 /// Mirror a published player state onto the session. Errors are swallowed —
 /// the overlay is a courtesy, never a reason to fail a publish.
 pub fn update(s: &NpState) {
-    let guard = SMTC.lock().unwrap();
+    let guard = SMTC.lock_or_recover();
     let Some(smtc) = guard.as_ref() else { return };
     let _ = apply(smtc, s);
 }
 
 fn apply(smtc: &SystemMediaTransportControls, s: &NpState) -> windows::core::Result<()> {
-    *LAST_DURATION.lock().unwrap() = s.duration;
+    *LAST_DURATION.lock_or_recover() = s.duration;
 
     if !s.active {
         smtc.SetIsEnabled(false)?;
@@ -116,7 +117,7 @@ fn apply(smtc: &SystemMediaTransportControls, s: &NpState) -> windows::core::Res
         let d = smtc.DisplayUpdater()?;
         d.ClearAll()?;
         d.Update()?;
-        *LAST_META.lock().unwrap() = None;
+        *LAST_META.lock_or_recover() = None;
         return Ok(());
     }
 
@@ -149,7 +150,7 @@ fn apply(smtc: &SystemMediaTransportControls, s: &NpState) -> windows::core::Res
         album,
         art.as_deref().unwrap_or_default()
     );
-    let stale = LAST_META.lock().unwrap().as_deref() != Some(key.as_str());
+    let stale = LAST_META.lock_or_recover().as_deref() != Some(key.as_str());
     if stale {
         let d = smtc.DisplayUpdater()?;
         d.ClearAll()?;
@@ -166,7 +167,7 @@ fn apply(smtc: &SystemMediaTransportControls, s: &NpState) -> windows::core::Res
             }
         }
         d.Update()?;
-        *LAST_META.lock().unwrap() = Some(key);
+        *LAST_META.lock_or_recover() = Some(key);
     }
 
     // Timeline: a real scrubber for finite tracks, nothing for live radio.

@@ -13,6 +13,7 @@ import { setting } from "./settings-store";
 import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
   playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
+  playlistInsertTracks, playlistCoverData,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
 } from "./playlists";
@@ -49,6 +50,25 @@ import { mountWeb } from "./web";
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 /** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
 const handMade = (p: Playlist) => p.source === "local" && !isReplay(p);
+
+/** The destructive-action rule (his call, 2026-09-25): an action that can be undone runs at
+ *  once and offers Undo; one that cannot asks first, with Cancel (TOASTS.md §5). */
+function undoToast(text: string, what: string, undo: () => Promise<void>): void {
+  toast({
+    kind: "info",
+    text,
+    actions: [
+      {
+        label: "Undo",
+        run: () =>
+          void undo().catch((e) => {
+            console.error(`[playlists] undo ${what}`, e);
+            toast({ kind: "warn", text: "Couldn't undo that." });
+          }),
+      },
+    ],
+  });
+}
 
 // Auto-sync the mirror once per session — a slot remount must not re-hit Apple.
 let sessionSynced = false;
@@ -386,9 +406,17 @@ export const playlistsCard: CardDef = {
                 label: `Remove ${picksText(ts.length)} from Playlist`,
                 run: () => {
                   const live = trackCache.get(id) ?? [];
-                  const idxs = ts.map((t) => live.indexOf(t)).filter((i) => i >= 0).sort((a, b) => b - a);
-                  void idxs
-                    .reduce((chain, i) => chain.then(() => playlistRemoveTrack(p, i)), Promise.resolve())
+                  const gone = ts
+                    .map((t) => ({ t, i: live.indexOf(t) }))
+                    .filter((g) => g.i >= 0)
+                    .sort((a, b) => b.i - a.i);
+                  void gone
+                    .reduce((chain, g) => chain.then(() => playlistRemoveTrack(p, g.i)), Promise.resolve())
+                    .then(() => undoToast(`Removed ${picksText(gone.length)} from “${p.name}”.`, "songs", () =>
+                      // Back in from the top down: each insert at its old position restores
+                      // the ones below it too.
+                      [...gone].reverse().reduce((chain, g) => chain.then(() => playlistInsertTracks(p, g.i, [g.t])), Promise.resolve()),
+                    ))
                     .catch((e) => {
                       console.error("[playlists] remove picked", e);
                       toast({ kind: "warn", text: `Couldn't remove the songs from “${p.name}”.` });
@@ -412,7 +440,9 @@ export const playlistsCard: CardDef = {
                   run: () => {
                     const i = (trackCache.get(id) ?? []).indexOf(t);
                     if (i >= 0)
-                      void playlistRemoveTrack(p, i).catch((e) => console.error("[playlists] remove track", e));
+                      void playlistRemoveTrack(p, i)
+                        .then(() => undoToast(`Removed “${t.title}” from “${p.name}”.`, "song", () => playlistInsertTracks(p, i, [t])))
+                        .catch((e) => console.error("[playlists] remove track", e));
                   },
                 }]
               : [],
@@ -550,8 +580,34 @@ export const playlistsCard: CardDef = {
           onSubmit: (name) => void folderRename(id, name).catch((e) => console.error("[playlists] rename folder", e)),
         },
       },
-      { label: "Delete Folder", run: () => void folderDelete(id).catch((e) => console.error("[playlists] delete folder", e)) },
+      { label: "Delete Folder", run: () => deleteFolder(id) },
     ];
+    // Undo remakes the folder under its old name and files its playlists back. It is a new
+    // folder id, so a moved folder row goes back to the default order.
+    const deleteFolder = (id: number) => {
+      const f = folders.find((x) => x.id === id);
+      const members = lists.filter((p) => p.folderId === id);
+      void folderDelete(id)
+        .then(() => {
+          if (!f) return;
+          undoToast(`Deleted the folder “${f.name}”. Its playlists stay.`, "folder", () =>
+            folderCreate(f.name).then((nid) => Promise.all(members.map((p) => folderAssign(p, nid)))).then(() => undefined),
+          );
+        })
+        .catch((e) => console.error("[playlists] delete folder", e));
+    };
+    // Remove Cover and Generate Cover › Mosaic are the same write. The old cover is read
+    // back first, so Undo can save it again.
+    const clearCover = (p: Playlist, text: string, what: string) => {
+      void playlistCoverData(p)
+        .catch(() => null)
+        .then((before) =>
+          playlistSetCover(p, null).then(() => {
+            if (before) undoToast(text, "cover", () => playlistSetCover(p, before));
+          }),
+        )
+        .catch((e) => console.error(`[playlists] ${what}`, e));
+    };
 
     // The local playlist items (NEXT-VERSION §2, PLAYLISTS.md §6, §10.2), shared by the hero
     // cover button and a local row's right-click: Rename (a field holding the current
@@ -599,12 +655,12 @@ export const playlistsCard: CardDef = {
           { label: "Note", run: () => generateCover(p, "note") },
           // Back to the derived cover: the saved one goes (the same write as Remove Cover).
           ...(ownCover(p)
-            ? [{ label: "Mosaic", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] mosaic cover", e)) }]
+            ? [{ label: "Mosaic", run: () => clearCover(p, `“${p.name}” shows the mosaic again.`, "mosaic cover") }]
             : []),
         ],
       });
       if (withRemove && ownCover(p))
-        items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] remove cover", e)) });
+        items.push({ label: "Remove Cover", run: () => clearCover(p, `Removed the cover of “${p.name}”.`, "remove cover") });
       const apple = appleMusicItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
       if (apple) items.push(apple);
       return items;

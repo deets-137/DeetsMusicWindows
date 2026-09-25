@@ -7,6 +7,8 @@
 // divider, the pressed half on `--picked`. The caller owns the state; this draws it and reads
 // a press.
 
+import { esc } from "./dom";
+
 export interface SplitHalf {
   key: string;
   label: string;
@@ -16,8 +18,6 @@ export interface SplitHalf {
   off?: string;
 }
 
-const esc = (s: string) =>
-  s.replace(/[&<>"]/g, (c) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }) as Record<string, string>)[c]);
 
 /** The pill. `label` names the group for a screen reader ("Show", "Search"). */
 export function splitPillHTML(halves: SplitHalf[], active: string, label: string): string {

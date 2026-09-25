@@ -7,6 +7,7 @@
 //! `GET …/ratings/songs?ids=` for ids the playlist has not caught up with yet.
 //! Keyed catalog-first like everything else; catalog-less uploads cannot be loved.
 
+use crate::lock::LockExt;
 use rusqlite::Connection;
 use serde::Serialize;
 use tauri::State;
@@ -74,7 +75,7 @@ pub async fn favorite_set(
         .filter(|s| !s.is_empty())
         .ok_or("favorite_set: no catalog id")?;
     let dev = apple::developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
     let url = format!("https://api.music.apple.com/v1/me/ratings/songs/{id}");
     let (status, body) = if loved {
@@ -132,7 +133,7 @@ pub async fn favorite_collection_set(
         return Err("favorite_collection_set: no id".into());
     }
     let dev = apple::developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
     let url = format!("https://api.music.apple.com/v1/me/ratings/{path}/{id}");
     let (status, body) = if loved {
@@ -165,7 +166,7 @@ pub async fn favorite_collection_reconcile(
         return Err("favorite_collection_reconcile: no id".into());
     }
     let dev = apple::developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
     let url = format!("https://api.music.apple.com/v1/me/ratings/{path}?ids={id}");
     let (status, body) = apple::api_get(&client, &dev, &user, &url).await?;
@@ -186,23 +187,29 @@ pub async fn favorite_collection_reconcile(
 
 /// Every loved id in the mirror — the front-end's in-memory set at boot.
 #[tauri::command]
-pub fn favorites_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT track_id FROM favorites WHERE loved = 1")
-        .map_err(err)?;
-    let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(err)
+pub async fn favorites_cached(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT track_id FROM favorites WHERE loved = 1")
+            .map_err(err)?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(err)
+    })
+    .await
 }
 
 /// Which ids the mirror already knows (loved or not) — so the front-end only asks
 /// Apple about the rest.
 #[tauri::command]
-pub fn favorites_known(db: State<'_, Db>) -> Result<Vec<String>, String> {
-    let conn = db.lock();
-    let mut stmt = conn.prepare_cached("SELECT track_id FROM favorites").map_err(err)?;
-    let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(err)
+pub async fn favorites_known(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn.prepare_cached("SELECT track_id FROM favorites").map_err(err)?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(err)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(err)
+    })
+    .await
 }
 
 #[derive(Serialize)]
@@ -228,7 +235,7 @@ pub async fn favorites_reconcile(
         return Ok(out);
     }
     let dev = apple::developer_token()?;
-    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
     for chunk in ids.chunks(100) {
         let url = format!(

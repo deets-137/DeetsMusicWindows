@@ -171,6 +171,12 @@ npm run release     # secrets → cli:build → sign cli → tauri build (signed
    a sync command runs on the thread that paints, so a wait in one freezes the window —
    FRIENDS.md §8.11. It walks calls inside the same file three deep and skips bodies handed
    to `spawn`/`spawn_blocking`; checked against the 0.12.0 `presence.rs`, which it names).
+   Since 2026-09-25 it also names a sync command that takes `db.lock()`: the library sync
+   and the playlist refresh hold that lock for whole write batches. It fails the build. The
+   fix for this one is `crate::db_thread::run`, not `spawn_blocking`: one thread in arrival
+   order, so two quick writes cannot swap (DB-HEALTH.md §2a). The 73 commands it first named
+   moved the same day. A BLOCKERS row may carry `{ soft: true }` to warn instead of fail
+   while a sweep is under way; a hard hit always wins over a soft one in the same command.
 5. **`scripts/archive-installer.mjs`** — copies the exe and `.sig` into `installers/` (a
    pre-release version such as `0.4.4-t1` goes to `installers/dev/`).
 

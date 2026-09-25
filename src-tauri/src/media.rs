@@ -10,6 +10,7 @@
 //! Ported from DeetsAirplay's `media.rs` and extended. Every WinRT call blocks on
 //! `.get()`, so callers run these on `spawn_blocking` — never on the main thread.
 
+use crate::lock::LockExt;
 use serde::Serialize;
 use std::sync::Mutex;
 use windows::Media::Control::{
@@ -100,7 +101,7 @@ fn filetime_now() -> i64 {
 static ART_CACHE: Mutex<Option<(String, Option<String>)>> = Mutex::new(None);
 
 fn read_thumbnail(session: &Session, key: &str) -> Option<String> {
-    if let Some((k, v)) = ART_CACHE.lock().unwrap().as_ref() {
+    if let Some((k, v)) = ART_CACHE.lock_or_recover().as_ref() {
         if k == key {
             return v.clone();
         }
@@ -121,7 +122,7 @@ fn read_thumbnail(session: &Session, key: &str) -> Option<String> {
         Ok(Some(format!("data:{mime};base64,{}", base64_encode(&buf))))
     };
     let v = inner().unwrap_or(None);
-    *ART_CACHE.lock().unwrap() = Some((key.to_string(), v.clone()));
+    *ART_CACHE.lock_or_recover() = Some((key.to_string(), v.clone()));
     v
 }
 

@@ -17,9 +17,7 @@
 
 use rusqlite::Connection;
 use serde::Serialize;
-use tauri::State;
 
-use crate::library::Db;
 use crate::model::Track;
 
 pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
@@ -155,37 +153,40 @@ pub struct CreditsStats {
 
 /// What the collection has gathered so far. No Apple call.
 #[tauri::command]
-pub fn credits_stats(db: State<'_, Db>) -> Result<CreditsStats, String> {
-    let conn = db.lock();
-    let (songs, with_composer, first_seen, last_seen) = conn
-        .query_row(
-            "SELECT COUNT(*), COUNT(composer), COALESCE(MIN(seen_at), 0), COALESCE(MAX(seen_at), 0)
-             FROM song_credits",
-            [],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-        )
-        .map_err(|e| e.to_string())?;
+pub async fn credits_stats(app: tauri::AppHandle) -> Result<CreditsStats, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let (songs, with_composer, first_seen, last_seen) = conn
+            .query_row(
+                "SELECT COUNT(*), COUNT(composer), COALESCE(MIN(seen_at), 0), COALESCE(MAX(seen_at), 0)
+                 FROM song_credits",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare_cached("SELECT composer FROM song_credits WHERE composer IS NOT NULL")
-        .map_err(|e| e.to_string())?;
-    let mut counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
-    let rows = stmt
-        .query_map([], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?;
-    for row in rows.flatten() {
-        for name in split_composer(&row) {
-            *counts.entry(name).or_insert(0) += 1;
+        let mut stmt = conn
+            .prepare_cached("SELECT composer FROM song_credits WHERE composer IS NOT NULL")
+            .map_err(|e| e.to_string())?;
+        let mut counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        for row in rows.flatten() {
+            for name in split_composer(&row) {
+                *counts.entry(name).or_insert(0) += 1;
+            }
         }
-    }
-    let shared_names = counts.values().filter(|n| **n > 1).count() as u32;
-    let names = counts.len() as u32;
-    let mut top: Vec<CreditName> =
-        counts.into_iter().map(|(name, songs)| CreditName { name, songs }).collect();
-    top.sort_by(|a, b| b.songs.cmp(&a.songs).then_with(|| a.name.cmp(&b.name)));
-    top.truncate(25);
+        let shared_names = counts.values().filter(|n| **n > 1).count() as u32;
+        let names = counts.len() as u32;
+        let mut top: Vec<CreditName> =
+            counts.into_iter().map(|(name, songs)| CreditName { name, songs }).collect();
+        top.sort_by(|a, b| b.songs.cmp(&a.songs).then_with(|| a.name.cmp(&b.name)));
+        top.truncate(25);
 
-    Ok(CreditsStats { songs, with_composer, names, shared_names, top, first_seen, last_seen })
+        Ok(CreditsStats { songs, with_composer, names, shared_names, top, first_seen, last_seen })
+    })
+    .await
 }
 
 // -- The song pane's reads (CREDITS.md §7) -----------------------------------
@@ -208,35 +209,35 @@ pub struct SongCredit {
 /// The credits we hold for these songs. **No Apple call.** A song we have never read is
 /// absent from the map; a song we read that Apple gave nothing for comes back as "none".
 #[tauri::command]
-pub fn credits_for(
-    catalog_ids: Vec<String>,
-    db: State<'_, Db>,
-) -> Result<std::collections::HashMap<String, SongCredit>, String> {
-    let mut out = std::collections::HashMap::new();
-    if catalog_ids.is_empty() {
-        return Ok(out);
-    }
-    let conn = db.lock();
-    let mut stmt = conn
-        .prepare_cached("SELECT composer FROM song_credits WHERE catalog_id = ?1")
-        .map_err(|e| e.to_string())?;
-    for id in catalog_ids {
-        if id.is_empty() {
-            continue;
+pub async fn credits_for(catalog_ids: Vec<String>, app: tauri::AppHandle) -> Result<std::collections::HashMap<String, SongCredit>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut out = std::collections::HashMap::new();
+        if catalog_ids.is_empty() {
+            return Ok(out);
         }
-        // A row with a NULL composer is the "none" answer: we asked Apple and it had none.
-        if let Ok(composer) = stmt.query_row([&id], |r| r.get::<_, Option<String>>(0)) {
-            let credit = match composer {
-                Some(c) if !c.trim().is_empty() => {
-                    let names = split_composer(&c);
-                    SongCredit { state: "have", composer: c, names }
-                }
-                _ => SongCredit { state: "none", composer: String::new(), names: Vec::new() },
-            };
-            out.insert(id, credit);
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached("SELECT composer FROM song_credits WHERE catalog_id = ?1")
+            .map_err(|e| e.to_string())?;
+        for id in catalog_ids {
+            if id.is_empty() {
+                continue;
+            }
+            // A row with a NULL composer is the "none" answer: we asked Apple and it had none.
+            if let Ok(composer) = stmt.query_row([&id], |r| r.get::<_, Option<String>>(0)) {
+                let credit = match composer {
+                    Some(c) if !c.trim().is_empty() => {
+                        let names = split_composer(&c);
+                        SongCredit { state: "have", composer: c, names }
+                    }
+                    _ => SongCredit { state: "none", composer: String::new(), names: Vec::new() },
+                };
+                out.insert(id, credit);
+            }
         }
-    }
-    Ok(out)
+        Ok(out)
+    })
+    .await
 }
 
 #[derive(Serialize)]
@@ -259,59 +260,62 @@ pub struct WriterSong {
 /// is the node, and the answer is a join over what the app has already read. It reaches
 /// nothing we have not seen — which is why the pane also offers an Apple search.
 #[tauri::command]
-pub fn songs_by_writer(name: String, db: State<'_, Db>) -> Result<Vec<WriterSong>, String> {
-    let wanted = name.trim().to_lowercase();
-    if wanted.is_empty() {
-        return Ok(Vec::new());
-    }
-    let conn = db.lock();
-    // LIKE narrows the scan; `split_composer` then decides, so "Ali" never matches "Alicia".
-    let like = format!("%{}%", wanted.replace('%', "").replace('_', ""));
-    let mut stmt = conn
-        .prepare_cached(
-            "SELECT c.catalog_id, c.title, c.artist_name, c.composer,
-                    (SELECT 1 FROM tracks t WHERE t.track_id = c.catalog_id AND t.source = 'library'),
-                    (SELECT partial_count FROM play_stats p WHERE p.track_id = c.catalog_id),
-                    (SELECT 1 FROM favorites f WHERE f.track_id = c.catalog_id AND f.loved = 1),
-                    (SELECT t.json FROM tracks t WHERE t.track_id = c.catalog_id)
-             FROM song_credits c
-             WHERE c.composer IS NOT NULL AND lower(c.composer) LIKE ?1",
-        )
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([&like], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, String>(1)?,
-                r.get::<_, String>(2)?,
-                r.get::<_, String>(3)?,
-                r.get::<_, Option<i64>>(4)?,
-                r.get::<_, Option<i64>>(5)?,
-                r.get::<_, Option<i64>>(6)?,
-                r.get::<_, Option<String>>(7)?,
-            ))
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut out: Vec<WriterSong> = Vec::new();
-    for (catalog_id, title, artist_name, composer, in_lib, plays, loved, json) in rows.flatten() {
-        if !split_composer(&composer).iter().any(|n| n.to_lowercase() == wanted) {
-            continue;
+pub async fn songs_by_writer(name: String, app: tauri::AppHandle) -> Result<Vec<WriterSong>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let wanted = name.trim().to_lowercase();
+        if wanted.is_empty() {
+            return Ok(Vec::new());
         }
-        let mine = if loved.is_some() {
-            3
-        } else if plays.unwrap_or(0) > 0 {
-            2
-        } else if in_lib.is_some() {
-            1
-        } else {
-            0
-        };
-        let track = json.and_then(|j| serde_json::from_str::<crate::model::Track>(&j).ok());
-        out.push(WriterSong { catalog_id, title, artist_name, mine, track });
-    }
-    out.sort_by(|a, b| b.mine.cmp(&a.mine).then_with(|| a.artist_name.cmp(&b.artist_name)).then_with(|| a.title.cmp(&b.title)));
-    Ok(out)
+        let conn = db.lock();
+        // LIKE narrows the scan; `split_composer` then decides, so "Ali" never matches "Alicia".
+        let like = format!("%{}%", wanted.replace('%', "").replace('_', ""));
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT c.catalog_id, c.title, c.artist_name, c.composer,
+                        (SELECT 1 FROM tracks t WHERE t.track_id = c.catalog_id AND t.source = 'library'),
+                        (SELECT partial_count FROM play_stats p WHERE p.track_id = c.catalog_id),
+                        (SELECT 1 FROM favorites f WHERE f.track_id = c.catalog_id AND f.loved = 1),
+                        (SELECT t.json FROM tracks t WHERE t.track_id = c.catalog_id)
+                 FROM song_credits c
+                 WHERE c.composer IS NOT NULL AND lower(c.composer) LIKE ?1",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([&like], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, Option<i64>>(4)?,
+                    r.get::<_, Option<i64>>(5)?,
+                    r.get::<_, Option<i64>>(6)?,
+                    r.get::<_, Option<String>>(7)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+
+        let mut out: Vec<WriterSong> = Vec::new();
+        for (catalog_id, title, artist_name, composer, in_lib, plays, loved, json) in rows.flatten() {
+            if !split_composer(&composer).iter().any(|n| n.to_lowercase() == wanted) {
+                continue;
+            }
+            let mine = if loved.is_some() {
+                3
+            } else if plays.unwrap_or(0) > 0 {
+                2
+            } else if in_lib.is_some() {
+                1
+            } else {
+                0
+            };
+            let track = json.and_then(|j| serde_json::from_str::<crate::model::Track>(&j).ok());
+            out.push(WriterSong { catalog_id, title, artist_name, mine, track });
+        }
+        out.sort_by(|a, b| b.mine.cmp(&a.mine).then_with(|| a.artist_name.cmp(&b.artist_name)).then_with(|| a.title.cmp(&b.title)));
+        Ok(out)
+    })
+    .await
 }
 
 #[cfg(test)]
