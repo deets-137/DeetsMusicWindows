@@ -1,6 +1,7 @@
 ---
-status: built
-desk_test: open
+status: shipped
+shipped_in: 0.14.5
+desk_test: passed 2026-09-25
 sources: [src/wallpaper.ts, src/wallpaper-worker.ts, src-tauri/src/wallpaper.rs, src/album-color.ts, src/album-slots.ts, src/styles/skin.css, src/styles.css, src/settings-card.ts, src/settings-store.ts]
 updated: 2026-09-25
 ---
@@ -261,7 +262,7 @@ Three rows in Skin settings, Glass only:
 - **Busy art.** Some covers are text-heavy. The dim and the aurora must hold text contrast in
   the gaps (the headers that sit on the canvas).
 
-## 6. Desk test (open — built 2026-09-24)
+## 6. Desk test (passed 2026-09-25 — his word: "It looks good as is"; the dim set to 15 at step 8)
 
 > **Part:** built · 2026-09-24 · not yet desk-tested
 

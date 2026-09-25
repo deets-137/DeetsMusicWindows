@@ -32,10 +32,36 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
-**For the next entry (his call, 2026-09-25; SOUND.md §11a):** say that Adaptive sound (Match
-loudness, Fuller at low volume, Headphone crossfeed) is gone and the Equalizer stays. This line
-is the only notice: a user who had it on hears the change after the update. Then delete this
-paragraph.
+## 0.14.6 — 2026-09-25
+
+**AirPlay comes back by itself.** When your PC sleeps or its Wi-Fi drops, a HomePod can let
+go of DeetsMusic while the app still showed it as connected. Now the music pauses, and
+DeetsMusic reconnects to the same speaker. If it cannot reach the speaker in about 30
+seconds, it says so and offers **Try again**. Your PC speakers never start playing on their
+own.
+
+**Play works after starting offline.** If DeetsMusic started before your internet was up (for
+example at Windows sign-in), clicking a song did nothing until a restart. Now it tells you it
+can't reach Apple Music, and it plays as soon as the connection is back.
+
+**Adaptive sound is gone; the Equalizer stays.** Match loudness, Fuller at low volume and
+Headphone crossfeed are removed. If you had Adaptive sound on, songs now play at their own
+loudness. The Equalizer and your presets are unchanged. The Ocean sea and the listening-room
+faces move with the music while the Equalizer is on.
+
+**Undo instead of a question.** Remove songs from a playlist, delete a folder, or remove or
+remake a playlist cover, and an **Undo** button appears. Questions you can back out of now say
+**Cancel**.
+
+**Steadier while it saves.** Saving to your library now happens off the window, so the window
+keeps responding during a library sync.
+
+**The Glass canvas is brighter** behind the cards.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
 
 ## 0.14.5 — 2026-09-24
 

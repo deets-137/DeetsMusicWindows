@@ -113,16 +113,13 @@ The short list of what is not finished, as of 2026-09-25. Each item names where 
 When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Next (his word, 2026-09-24; order confirmed 2026-09-25):** the telemetry pass (below). The
-429 toast's words and tier are decided (APPLE-CALLS.md §3). The next release notes must say
-Adaptive sound is gone (RELEASE-NOTES.md, "For the next entry"; SOUND.md §11a).
+429 toast's words and tier are decided (APPLE-CALLS.md §3).
 
 **Desk tests open (on `main`; every local branch is merged into it as of 2026-09-25)**
-- **Cover Wallpaper** (built and committed 2026-09-24, `5650dd3`) — COVER-WALLPAPER.md §6. He
-  looked at it and kept both layouts (the mosaic is the default; One cover stays in Tiles). The
-  locked dim is 15 (his value, 2026-09-25). Still open: his review of the "As built" decisions.
 - **Diary: Done copies the Export** (built and committed 2026-09-24) — DIARY.md §8 step 11f.
-- The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP), which
-  runs on the installed beta after the next beta release.
+- The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP). It needs
+  an installed build with the Diary CLI; beta is paused, so it runs on the installed app once
+  0.14.6 is in (0.14.5 already carries the Diary).
 
 **The consistency pass (2026-09-25)** — desk test passed and merged to `main` 2026-09-25, not
 in a release yet. The same merge carries the watchdog sleep line, the rejection stack, the
