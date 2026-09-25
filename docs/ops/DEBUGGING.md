@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 # DeetsMusic — Debugging tools
 
@@ -1219,6 +1219,7 @@ into the song, could not be explained). Now every time MusicKit leaves `playing`
 | `tray` | the tray panel |
 | `windows` | the Windows media session: a media key, a headset or Bluetooth button, the volume flyout (smtc.rs) |
 | `airplay` | the HomePod: its touch surface, Siri, the Home app (airplay.rs) |
+| `airplay:lost` | the speaker dropped the session; airplay.ts `recover` pauses while it reconnects (AIRPLAY.md §13.3, 2026-09-25). The play after a good reconnect is `airplay:reconnected` |
 | `agent` | the MCP / CLI / bridge |
 | `sleep` | the sleep timer |
 | `load` · `station` · `station-stop` | our own pause before a new list or a station |

@@ -22,7 +22,7 @@ import { getAppliedGain, isPlayingNow, isShuffleOn } from "./player";
 import { integratedLufs } from "./sound-dsp";
 import { trackById, tracks, onTracksChange } from "./track-store";
 import { albumKey } from "./rewind";
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, onSettingsChange, adaptiveOn } from "./settings-store";
 import type { TrackHandle } from "./queue";
 import type { Track } from "./library";
 import * as diag from "./diag";
@@ -121,7 +121,7 @@ function capped(gainDb: number, peakDb: number | undefined): { gainDb: number; c
 }
 
 function decide(h: TrackHandle, track: Track | undefined): GainSource {
-  if (!setting("soundAdaptive") || !setting("soundLoudness")) return { kind: "off" };
+  if (!adaptiveOn() || !setting("soundLoudness")) return { kind: "off" };
   const target = setting("soundLoudTarget");
   if (track && setting("soundLoudAlbum") && !isShuffleOn()) {
     const key = albumKey(track);

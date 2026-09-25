@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-20
 sources: [src/toast.ts, src/styles/toast.css]
-updated: 2026-09-20
+updated: 2026-09-25
 ---
 # DeetsMusic — Toasts
 

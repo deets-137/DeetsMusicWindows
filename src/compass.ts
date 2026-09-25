@@ -20,7 +20,7 @@ import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
 import { currentSurface, onSurfaceChange } from "./surface";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
-import { setting } from "./settings-store";
+import { setting, adaptiveUnhidden } from "./settings-store";
 import { settingsRows, type SettingEntry } from "./settings-card";
 import { tracks } from "./track-store";
 import { creditIndex } from "./artist-credit";
@@ -340,7 +340,7 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     rows.push({ group: "Places", title: el.textContent?.trim() ?? "", sub: "Skin", hint: el.dataset.hint || el.title, run: click(el) });
   });
-  rows.push({ group: "Places", title: "Sound", sub: "The equalizer and adaptive sound", run: () => openSoundPanel() });
+  rows.push({ group: "Places", title: "Sound", sub: adaptiveUnhidden() ? "The equalizer and adaptive sound" : "The equalizer", run: () => openSoundPanel() });
   rows.push({ group: "Places", title: "Sleep timer", sub: "The alarm clock", run: () => openSleepPanel() });
   rows.push({ group: "Places", title: "Web", sub: "Makes a playlist from an artist and the artists around them", run: () => openTitleWeb() });
   rows.push({ group: "Places", title: "Quick settings", sub: "Every setting, by what it is for", run: () => openQuickPanel() });

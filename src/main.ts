@@ -9,7 +9,7 @@ import { initWallpaper } from "./wallpaper";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
 import { initHints } from "./hint";
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, onSettingsChange, adaptiveUnhidden } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import * as health from "./apple-health";
@@ -71,7 +71,9 @@ window.addEventListener("DOMContentLoaded", () => {
   initWallpaper(); // Glass › Canvas: the album covers or a chosen picture behind the cards; inert otherwise
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
   initSound(); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)
-  initLoudness(); // Match loudness: measures songs and sets each one's gain (SOUND.md §3A)
+  // Match loudness: measures songs and sets each one's gain (SOUND.md §3A). Hidden with Adaptive
+  // sound since 2026-09-25 (§11a): without the DevTools flag the `loudness` table is not read.
+  if (adaptiveUnhidden()) initLoudness();
   // File drops belong to the page (tauri.conf.json `dragDropEnabled: false`, for the playlist
   // cover). A drop no element took must not navigate the webview to the file.
   window.addEventListener("dragover", (e) => {

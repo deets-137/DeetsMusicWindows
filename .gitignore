@@ -54,3 +54,6 @@ dist-web
 
 # Raw notes for the new-app template (local only until synthesized)
 docs/ops/deetsapp-template.md
+
+# A local [patch] for the AirPlay crate while a crate change is under test (src-tauri/Cargo.toml)
+src-tauri/.cargo/

@@ -109,13 +109,14 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-09-24. Each item names where the detail is.
+The short list of what is not finished, as of 2026-09-25. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**Next (his word, 2026-09-24):** the telemetry pass (below), after the two desk tests below.
-The 429 toast for a user call is decided (APPLE-CALLS.md §3); bring him the words and tier.
+**Next (his word, 2026-09-24; order confirmed 2026-09-25):** the telemetry pass (below), after
+the Sound desk test (Waiting on him). The 429 toast's words and tier are decided
+(APPLE-CALLS.md §3).
 
-**Desk tests open (branch `darn-critics`)**
+**Desk tests open (on `main`; every local branch is merged into it as of 2026-09-25)**
 - **Cover Wallpaper** (built and committed 2026-09-24, `5650dd3`) — COVER-WALLPAPER.md §6. He
   looked at it and kept both layouts (the mosaic is the default; One cover stays in Tiles). The
   locked dim is 15 (his value, 2026-09-25). Still open: his review of the "As built" decisions.
@@ -143,12 +144,20 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
 
 **Waiting on him**
-- **Sound: keep it at all?** The desk test passed 2026-09-24; he is weighing keep, keep some, or
-  remove (SOUND.md §11). No Sound work before his call.
+- **Sound: Adaptive sound hidden, the Equalizer kept** (his call 2026-09-25, SOUND.md §11a).
+  Built and committed 2026-09-25; desk test open (§11a). The next release notes must say it
+  (RELEASE-NOTES.md, "For the next entry").
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.14.5** (2026-09-25, `1e19a9b`, straight to live: beta-first is paused from
+  this release, RELEASE.md §0): the Diary card, Full | Lib, the Glass canvas (Covers /
+  Picture), unreleased songs dimmed, album and playlist favorites, the queue fix. The §0b hand
+  test was skipped by his call.
+- **On `main`, not released (2026-09-25):** the consistency pass, the watchdog sleep line,
+  the rejection stack, the No MusicKit retry, the AirPlay reconnect (crate 0.4.1), the Cover
+  Wallpaper dim of 15, Adaptive sound hidden.
 - **Published: 0.14.1** (2026-09-24, `e2d8e3d`; beta `0.14.1-beta.1` first): the installer
   fix. The 0.14.0 update aborted when an AI app's DeetsMusic CLI held `cli\deetsmusic.exe`:
   the 32-bit installer's PowerShell read every process path as empty (RELEASE.md §4a).
@@ -166,7 +175,8 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
   He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
 
 - **DeetsMusic Beta** (2026-09-23, in `main` since 0.14.0) — a second installed app on
-  `deetsmusic-test`; every release goes beta first. **0.14.1-beta.1 is published there.** The
+  `deetsmusic-test`. Beta-first is **paused** since 0.14.5 (2026-09-24, RELEASE.md §0):
+  releases go straight to live. **0.14.1-beta.1 is the last one published there.** The
   two spike rows were withdrawn 2026-09-24 (BETA.md §4.3). The DeetsSupport change (sign-in scheme + version order, BETA.md §5) is written, uncommitted in
   `../DeetsSupport`, and HELD by his call.
 - **Add a room member as a friend** — his ask, 2026-09-23. Designed, forks decided (F1A–F5A:
@@ -206,7 +216,7 @@ with the installer, and the user guide (DOCS-ORG.md §13).
 
 ## State of play
 
-**Live: 0.14.1** (2026-09-24, `deetsmusic` channel; beta `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
+**Live: 0.14.5** (2026-09-25, `deetsmusic` channel; the last beta is `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
 [RELEASE.md §0a](ops/RELEASE.md); what each version added is in
 [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The

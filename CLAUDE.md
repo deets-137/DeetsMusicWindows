@@ -68,7 +68,8 @@ old installs' Guide button opens.
 - `ARTIST-VIEW.md` — the artist hero, its shelves, the chip flight.
 - `FULL-LIB.md` — the Library's "Full | Lib" chips: Apple's whole album or artist in place of your songs.
 - `CREDITS.md` — writer credits from Apple's `composerName`; the song pane.
-- `SOUND.md` — Advanced EQ and DeetsAdaptiveSound on one Web Audio graph.
+- `SOUND.md` — the Equalizer on one Web Audio graph; DeetsAdaptiveSound hidden behind a DevTools
+  flag since 2026-09-25 (§11a).
 - `AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker.
 - `VINYL.md` — the Press record player.
 - `DEETS-REWIND.md` — listening stats and the Rewind card.
@@ -293,5 +294,5 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - **A withdrawn version's notes never reach an update offer**, so the release that replaces
   it carries the whole line's notes in its own entry (RELEASE-NOTES.md).
 - Commit only when the user asks. Co-author trailer — name the model that did the work
-  (today `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`); update this line when
+  (today `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when
   the model changes.

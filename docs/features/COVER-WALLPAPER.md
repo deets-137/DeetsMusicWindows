@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/wallpaper.ts, src/wallpaper-worker.ts, src-tauri/src/wallpaper.rs, src/album-color.ts, src/album-slots.ts, src/styles/skin.css, src/styles.css, src/settings-card.ts, src/settings-store.ts]
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 # DeetsMusic — Cover Wallpaper (the Glass canvas as a picture: covers or your own)
 

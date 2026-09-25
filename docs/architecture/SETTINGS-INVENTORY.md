@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-09-20
+updated: 2026-09-25
 ---
 # Every control in DeetsMusic
 
@@ -103,7 +103,7 @@ Settings › Sound, except the curve, the presets and the two Clear actions.
 | Lower the song by | The amount for *By hand*, in dB | −24…+6, **0** |
 | Remember each output | Headphones, speakers and AirPlay speakers each keep their own preset | **On** / Off |
 
-**Adaptive sound tab**
+**Adaptive sound tab** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows it.
 
 | Control | What it does | Choices |
 |---|---|---|
@@ -298,7 +298,7 @@ are not listening — and because Ctrl+Space can only reach a setting the card h
 | Lower the song by | The amount for *By hand*. A slider in half-decibel steps | −24…+6 dB, **0** |
 | Remember each output | Headphones, speakers and AirPlay speakers each keep their own preset | **On** / Off |
 
-**Adaptive sound**
+**Adaptive sound** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows these rows.
 
 | Control | What it does | Choices |
 |---|---|---|
@@ -584,8 +584,6 @@ Words in *italics* have their own entry.
 | Open a card over its neighbor | Settings › Window › Grow cards from edges, then click a gap |
 | Keep my cards where I left them | Settings › Window › Keep card places on restart |
 | Change the sound | The Sound button in the title bar |
-| Even out loud and quiet songs | Sound panel › Adaptive sound › Match loudness |
-| Make quiet listening less thin | Sound panel › Adaptive sound › Fuller at low volume |
 | Play to a speaker | The AirPlay button; Settings › AirPlay sets which sound it sends |
 | Stop the music at bedtime | The sleep timer button |
 | Listen with a friend | The listening room button |

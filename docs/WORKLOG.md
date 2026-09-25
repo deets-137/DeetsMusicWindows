@@ -71,6 +71,21 @@ updated: 2026-09-25
   the decisions inside his calls and the desk test are in §13.3. **Desk test passed** the
   same day. DeetsAirplay committed and pushed (`6fe2922`, crate 0.4.1; the tray app builds),
   the `rev` bumped, the local `[patch]` file deleted.
+- **The 429 toast (APPLE-CALLS.md §3):** his words: "Apple Music is busy right now. Try again
+  in N seconds." (`warn`, timed). It is built with the telemetry pass, which is next.
+- **Sound (SOUND.md §11a):** his answer to "keep it?": the Equalizer stays, Adaptive sound goes,
+  hidden behind a DevTools flag, the `loudness` table left, a release-note line only. Found on
+  the way: the Ocean heave and the Room bob read the meter, which ran only with Adaptive sound.
+  His call: the meter follows the graph (the Equalizer or the AirPlay tap). Built, desk test in
+  §11a (open), committed with the docs sweep.
+- **Docs sweep (his ask):** HANDOFF said "Live: 0.14.1", "every release goes beta first" and
+  "branch `darn-critics`": now 0.14.5 live, beta-first paused, every local branch merged into
+  `main`, and a line for what is on `main` and not released. Also: CLAUDE.md's co-author
+  trailer (Opus 5.5) and its SOUND.md line; SOUND.md's header points to §11a; DB-HEALTH §2
+  records `lock_or_recover`; DEBUGGING's pause table gains `airplay:lost`; AIRPLAY §13.2 marks
+  `airplay: drop` built in part; AGENT.md's Sound key list; `updated:` dates. `.gitignore` now
+  holds `src-tauri/.cargo/`, which Cargo.toml's comment already claimed. In DeetsAirplay,
+  docs/architecture.md describes the keep-alive drop.
 
 ## 2026-09-25 — the codebase evaluation and the consistency pass
 - **Read:** two sessions (the repo health read and the app consistency read) merged into one

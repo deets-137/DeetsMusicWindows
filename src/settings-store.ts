@@ -470,7 +470,7 @@ export const DEFAULTS: Settings = {
   soundEqPerOutput: true, // user's call 2026-09-16: headphones and speakers want different curves
   soundEqOutputs: {},
   soundOutputNames: {}, // filled as presets are remembered: a Windows output's key is an unreadable id
-  soundAdaptive: false, // user's call 2026-09-16: off like every effect
+  soundAdaptive: false, // user's call 2026-09-16: off like every effect. Hidden since 2026-09-25: read adaptiveOn(), which also needs the DevTools flag
   soundLoudness: true, // user's call 2026-09-18: on inside Adaptive sound — a person who turns Adaptive sound on expects it to do something, and this is its most audible part (it was off from 2026-09-17; every effect still ships off because soundAdaptive does)
   soundLoudTarget: -14, // user's call 2026-09-18: the level streaming services use; at −16 a library of modern masters (−8 to −10 LUFS) was a 6–8 dB cut on nearly everything (it was −16, Apple Sound Check's level, from 2026-09-16)
   soundLoudAlbum: true, // user's call 2026-09-16: an album keeps its own dynamics
@@ -636,6 +636,23 @@ const listeners = new Set<(changed: keyof Settings) => void>();
 export function setting<K extends keyof Settings>(key: K): Settings[K] {
   return state[key];
 }
+
+/**
+ * Adaptive sound is hidden (his call, 2026-09-25, SOUND.md §11a). It is off for everyone,
+ * whatever `soundAdaptive` holds, unless `localStorage["deets.dev.adaptiveSound"] = "on"` is
+ * set in DevTools, then a reload. The flag also shows its Settings rows, its Sound panel section
+ * and its agent specs, so the parts can be tried. Read once: the flag needs the reload.
+ */
+const ADAPTIVE_UNHIDDEN = (() => {
+  try {
+    return localStorage.getItem("deets.dev.adaptiveSound") === "on";
+  } catch {
+    return false;
+  }
+})();
+export const adaptiveUnhidden = (): boolean => ADAPTIVE_UNHIDDEN;
+/** Adaptive sound is on right now: unhidden AND switched on. Read this, never `soundAdaptive`. */
+export const adaptiveOn = (): boolean => ADAPTIVE_UNHIDDEN && state.soundAdaptive;
 
 /** Write one setting, persist, and notify subscribers. No-op if unchanged. */
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {

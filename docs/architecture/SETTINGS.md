@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/settings-store.ts, src/settings-card.ts, src/styles/settings.css, src/agent-settings.ts]
-updated: 2026-09-20
+updated: 2026-09-25
 ---
 # DeetsMusic — Settings: the machinery
 
@@ -174,7 +174,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Sound | *Equalizer* group — Avoid distortion (How a boost is kept from distorting. Limiter only turns down just the loudest moments; the others lower the whole song) — menu *Limiter only* / *When needed* / *Always* / *By hand* (2026-09-18; the panel has this row too) | `soundEqPreamp` | **limiter** / needed / always / manual | `sound-dsp.ts` ([SOUND.md](../features/SOUND.md) §2.1a) |
 | Sound | Lower the song by (By hand only. How much the song is turned down before the equalizer. The limiter catches anything left) — a slider, −24…+6 dB in half-steps; shows only while Avoid distortion is *By hand*. The panel's own control for this key is a ± stepper; the card's slider keeps the same half-decibel step (arrows step one, Shift ten), so the two agree | `soundEqPreampDb` | **0**, −24…+6 | same |
 | Sound | Remember each output (On: headphones, speakers and AirPlay speakers each remember their own preset) | `soundEqPerOutput` | **on** / off | `sound.ts` on output change; the outputs it has remembered are listed in the panel's own fold |
-| Sound | *Adaptive sound* group — Match songs to (How loud songs are made. Standard is Apple's Sound Check level) — pills *Standard* / *Louder* / *Quieter* | `soundLoudTarget` | −16 / **−14** / −18 (default −14 since 2026-09-18) | `sound-loudness.ts` |
+| Sound | *Adaptive sound* group (**hidden since 2026-09-25**: these rows carry `when: adaptiveUnhidden`, SOUND.md §11a) — Match songs to (How loud songs are made. Standard is Apple's Sound Check level) — pills *Standard* / *Louder* / *Quieter* | `soundLoudTarget` | −16 / **−14** / −18 (default −14 since 2026-09-18) | `sound-loudness.ts` |
 | Sound | Keep albums together (On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet) | `soundLoudAlbum` | **on** / off | same |
 | Sound | Songs not measured get (A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is) — pills *Usual amount* / *No change* | `soundLoudUnmeasured` | **median** / none | same |
 | Sound | Follow the volume of (App + Windows: counts the DeetsMusic volume and the Windows volume together) — pills *App + Windows* / *App only* | `soundLowVolKey` | **both** / app | `sound-worklet.ts` |

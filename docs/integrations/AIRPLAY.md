@@ -538,7 +538,7 @@ cause cannot be read, for three reasons:
 | Line | When | Fields |
 |---|---|---|
 | `airplay: switch` | each connect, disconnect, reconnect in place, and speaker → speaker | `from`, `to`, `why` (user / agent / retune / pref / lost / wake), `ms` total, and the stage split: claim check, stop old, RTSP setup, first frame sent, sink flip (the PC goes quiet) |
-| `airplay: drop` | a session is found dead | speaker, how found (threads / no reply / wake), seconds since the last good reply |
+| `airplay: drop` | a session is found dead | speaker, how found (threads / no reply / wake), seconds since the last good reply. **Built 2026-09-25 in part (§13.3):** `airplay: drop <speaker> after N s`, found by threads only (the crate ends them after 3 failed keep-alives); N is the session's age |
 | `airplay: stall` / `stall-end` | connected, NP playing, and no frame sent to the speaker for 2 s (the crate's frame count stops) | speaker, `s`, the last RTT p95, the last RTSP error |
 | `sound:output` | (exists) | add `why`: user / windows (the default device changed, audio_out.rs) / airplay-lost / airplay-on |
 | `sound:switch` | a **Windows** output change while playing | `ms` from the `audio-output` event to the first non-silent block the sound graph measures |

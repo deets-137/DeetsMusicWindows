@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-09-20
+updated: 2026-09-25
 ---
 # Onboarding — how the app explains itself
 
@@ -83,11 +83,11 @@ nothing about authoring changed when the box did.
 | Settings › Last.fm | Scrobble plays · Show now playing | Sends each song to your Last.fm profile once you hear half of it or 4 minutes · Your Last.fm profile shows the song while it plays | settings-card.ts |
 | Settings › AirPlay | Send to speaker | DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app's sound, and this PC keeps playing | settings-card.ts |
 | Title bar | Web (the web of rings, left of the room figures; 2026-09-22) | Web: makes a playlist from an artist and the artists they make songs with. Its panel's hints are the Playlist web panel row's | index.html / web.ts |
-| Title bar | Sound (the EQ faders) | Sound: the equalizer and adaptive sound. Everything is off · on: *Sound: Vocal EQ · Match loudness · Fuller at low volume · Crossfeed* | index.html / sound-panel.ts |
+| Title bar | Sound (the EQ faders) | Sound: the equalizer. It is off · on: *Sound: Vocal EQ*. With the Adaptive sound flag (SOUND.md §11a): Sound: the equalizer and adaptive sound. Everything is off · on: *Sound: Vocal EQ · Match loudness · Fuller at low volume · Crossfeed* | index.html / sound-panel.ts |
 | Sound panel | Compare | Hold to hear the music without the effects, at the same loudness | sound-panel.ts |
 | Sound panel | i (the reading) | *This song is heavy in the bass and soft in the top end.* Click for the numbers · before 3 s of sound: *What this song's sound is like. Click for the numbers* | sound-panel.ts |
 | Sound panel | Bass · Body · Voice · Detail · Air | Bass, 20–150 Hz: the kick drum and the bass guitar. Raise it for weight; lower it if the sound booms. Hold to hear only this range (and one line each for Body, Voice, Detail, Air) | sound-panel.ts |
-| Sound panel | This song · What you hear (legend) | The song's own shape, averaged while it plays · The song's shape with your equalizer and adaptive sound applied | sound-panel.ts |
+| Sound panel | This song · What you hear (legend) | The song's own shape, averaged while it plays · The song's shape with your equalizer applied (with the Adaptive sound flag: … with your equalizer and adaptive sound applied) | sound-panel.ts |
 | Sound panel | Equalizer · Adaptive tabs | The equalizer: the curve, the sliders and the presets · Adaptive sound: even loudness between songs, a fuller sound at low volume, and a natural sound on headphones | sound-panel.ts |
 | Sound panel | Reset · Undo | Puts every band back to 0 dB (the Flat preset). Undo is offered for a moment · Brings back what was there before | sound-panel.ts |
 | Sound panel | Equalizer · Adaptive sound pills | Turns the equalizer on or off · Turns adaptive sound on or off. Each of the three parts below also has its own switch | sound-panel.ts |
@@ -100,7 +100,7 @@ nothing about authoring changed when the box did.
 | Sound panel | Avoid distortion · Lower the song by ‹ › · Remember each output · × | How a boost is kept from distorting: Limiter only turns down just the loudest moments; the others lower the whole song (when needed, always, or by an amount you set) · 0.5 dB lower / higher · On: headphones, speakers and AirPlay speakers each remember their own preset · Forgets the preset for this output | sound-panel.ts |
 | Sound panel | Match loudness · Fuller at low volume · Headphone crossfeed | Plays every song at about the same loudness, so you do not reach for the volume between songs · Adds bass and a little treble as you turn the volume down, because quiet music sounds thin. Gentle adds half as much as Full · On headphones, mixes a little of the left side into the right and back, as speakers in a room do. Auto: only on headphones | sound-panel.ts |
 | Sound panel | Match songs to · Keep albums together · Songs not measured get · Clear measurements · Follow the volume of · Blend amount | How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS · On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet · A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is · Deletes every song's loudness measurement. Each song is measured again the next time you hear most of it · App + Windows: counts the DeetsMusic volume and the Windows volume together. App only: counts the DeetsMusic volume · How much of each side goes into the other | sound-panel.ts |
-| Sound panel | footer: Keep: 7 days pill · Keep · Turn all off · the meter | *Asks whether to keep the effects on Sep 23* (or: this long after you first turn one on · never · you chose to keep them). Click for the next choice · Keeps the effects and stops asking · Turns the equalizer and adaptive sound off · The limiter stops distortion by turning down only the loudest moments. Shows how much it cut, and the loudest moment, in the last half second | sound-panel.ts |
+| Sound panel | footer: Keep: 7 days pill · Keep · Turn all off · the meter | *Asks whether to keep the effects on Sep 23* (or: this long after you first turn one on · never · you chose to keep them). Click for the next choice · Keeps the effects and stops asking · Turns the equalizer off (with the Adaptive sound flag: Turns the equalizer and adaptive sound off) · The limiter stops distortion by turning down only the loudest moments. Shows how much it cut, and the loudest moment, in the last half second | sound-panel.ts |
 | Title bar | Sleep timer (the alarm clock) | The sleep timer. Music pauses when it runs out · armed: *Sleep in 23:14* / *Sleep at the end of this song* / *Sleep at 10:00 PM, every day* | index.html / sleep.ts |
 | Sleep panel | the dial | Turn the timer to set the minutes. Music pauses when it runs out | index.html |
 | Sleep panel | End of song · End of Up Next | Pauses when this song ends · Pauses when Up Next runs out | index.html |

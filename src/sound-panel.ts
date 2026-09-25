@@ -7,7 +7,7 @@
 import { keepInWindow, makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { makeSlider, type SliderHandle } from "./slider";
-import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
+import { setting, setSetting, onSettingsChange, adaptiveOn, adaptiveUnhidden, type Settings } from "./settings-store";
 import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, LOW_SHELF_HZ, SUB_SHELF_HZ, HIGH_SHELF_HZ, type Band, type BandType } from "./sound-dsp";
 import { GRAPHIC_FREQS, MAX_BANDS, fitGraphic, isGraphic, parseApo, toApo, type EqPreset } from "./sound-presets";
 import * as sound from "./sound";
@@ -310,6 +310,8 @@ function build(panel: HTMLElement): void {
   tabEq.addEventListener("click", () => setTab("eq"));
   tabAdapt.addEventListener("click", () => setTab("adapt"));
   tabs.append(tabEq, tabAdapt);
+  // Adaptive sound is hidden (SOUND.md §11a): with one view left, no tab row.
+  tabs.hidden = !adaptiveUnhidden();
   const headEnd = el("div", "sound__head-end");
   headEnd.append(infoBtn, compareBtn);
   head.append(el("span", "sound__title", "Sound"), tabs, headEnd);
@@ -408,7 +410,7 @@ function build(panel: HTMLElement): void {
   const song = el("span", "sound__key sound__key--song", "This song");
   song.title = "The song's own shape, averaged while it plays";
   const heard = el("span", "sound__key sound__key--heard", "What you hear");
-  heard.title = "The song's shape with your equalizer and adaptive sound applied";
+  heard.title = adaptiveUnhidden() ? "The song's shape with your equalizer and adaptive sound applied" : "The song's shape with your equalizer applied";
   legend.append(song, heard);
   ends.append(el("span", "", "20 Hz"), legend, el("span", "", "20 kHz"));
   const graphWrap = el("div", "sound__graph-wrap");
@@ -553,7 +555,7 @@ function build(panel: HTMLElement): void {
 
   // 6. DeetsAdaptiveSound
   adaptivePill = pill("Turns adaptive sound on or off. Each of the three parts below also has its own switch");
-  adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !setting("soundAdaptive")));
+  adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !adaptiveOn()));
   adaptView.append(row("Adaptive sound", adaptivePill, "sound__row--strong"));
 
   const loud = cyclePill("soundLoudness", [true, false], ["On", "Off"], "Plays every song at about the same loudness, so you do not reach for the volume between songs");
@@ -612,7 +614,7 @@ function build(panel: HTMLElement): void {
   keep.addEventListener("click", () => setSetting("soundReviewed", true));
   const off = el("button", "sound__chip", "Turn all off");
   off.type = "button";
-  off.title = "Turns the equalizer and adaptive sound off";
+  off.title = adaptiveUnhidden() ? "Turns the equalizer and adaptive sound off" : "Turns the equalizer off";
   off.addEventListener("click", () => {
     setSetting("soundEq", false);
     setSetting("soundAdaptive", false);
@@ -1068,9 +1070,9 @@ function renderAll(): void {
   resetBtn.disabled = !undoReset && (!setting("soundEq") || setting("soundEqPreset") === "flat");
   renameBtn.disabled = !user;
   deleteBtn.disabled = !user;
-  adaptivePill.textContent = setting("soundAdaptive") ? "On" : "Off";
-  adaptivePill.setAttribute("aria-pressed", String(setting("soundAdaptive")));
-  parts.panel.toggleAttribute("data-adaptive-off", !setting("soundAdaptive"));
+  adaptivePill.textContent = adaptiveOn() ? "On" : "Off";
+  adaptivePill.setAttribute("aria-pressed", String(adaptiveOn()));
+  parts.panel.toggleAttribute("data-adaptive-off", !adaptiveOn());
   // Always shown (no jump in the rows below); live only for Set by hand.
   const manual = setting("soundEqPreamp") === "manual";
   preampRow.toggleAttribute("data-inactive", !manual);
@@ -1089,7 +1091,7 @@ let meterHold = { limiterDb: 0, peakDb: -Infinity, since: 0 };
 function renderMeter(): void {
   const st = sound.busStatus();
   const routed = sound.routedElements() > 0 && sound.contextState() === "running";
-  const show = routed && !!st && (setting("soundEq") || setting("soundAdaptive"));
+  const show = routed && !!st && (setting("soundEq") || adaptiveOn());
   meter.hidden = !show;
   if (!show || !st) return;
   meterHold.limiterDb = Math.min(meterHold.limiterDb, st.limiterDb);
@@ -1103,17 +1105,19 @@ function renderMeter(): void {
 
 function renderIcon(): void {
   if (!parts) return;
-  const on = setting("soundEq") || setting("soundAdaptive");
+  const on = setting("soundEq") || adaptiveOn();
   parts.btn.innerHTML = icon(sound.activePreset().bands, setting("soundEq"));
   parts.btn.toggleAttribute("data-armed", on);
   const what: string[] = [];
   if (setting("soundEq")) what.push(`${sound.activePreset().name} EQ`);
-  if (setting("soundAdaptive")) {
+  if (adaptiveOn()) {
     if (setting("soundLoudness")) what.push("Match loudness");
     if (setting("soundLowVol") !== "off") what.push("Fuller at low volume");
     if (sound.crossfeedState().on) what.push("Crossfeed");
   }
-  parts.btn.title = what.length ? `Sound: ${what.join(" · ")}` : "Sound: the equalizer and adaptive sound. Everything is off";
+  parts.btn.title = what.length
+    ? `Sound: ${what.join(" · ")}`
+    : adaptiveUnhidden() ? "Sound: the equalizer and adaptive sound. Everything is off" : "Sound: the equalizer. It is off";
 }
 
 function renderCurve(): void {
@@ -1228,7 +1232,7 @@ function loudLine(): string {
  *  when the sentence did not change, which is most ticks. */
 function renderLoudStatus(): void {
   if (!parts || parts.panel.hidden) return;
-  setText(loudStatus, !setting("soundAdaptive")
+  setText(loudStatus, !adaptiveOn()
     ? "Adaptive sound is off."
     : !setting("soundLoudness") ? measuringLine() : loudLine());
 }
@@ -1281,7 +1285,7 @@ function renderStatus(): void {
   );
 
   // Adaptive
-  const adaptive = setting("soundAdaptive");
+  const adaptive = adaptiveOn();
   const offLine = "Adaptive sound is off.";
   renderLoudStatus();
   const lowMode = setting("soundLowVol");
@@ -1400,7 +1404,7 @@ function effectDbAt(freqs: number[]): number[] {
   const p = sound.activePreset();
   const chain = setting("soundEq") ? bands().flatMap((b) => bandBiquads(b, fs, p.design)) : [];
   const mode = setting("soundLowVol");
-  if (setting("soundAdaptive") && mode !== "off") {
+  if (adaptiveOn() && mode !== "off") {
     const sh = lowVolumeShelves(sound.volumeDropDb(), mode === "full" ? 1 : 0.5);
     chain.push(rbj("lowshelf", LOW_SHELF_HZ, sh.low, 0.707, fs), rbj("lowshelf", SUB_SHELF_HZ, sh.sub, 0.707, fs), rbj("highshelf", HIGH_SHELF_HZ, sh.high, 0.707, fs));
   }

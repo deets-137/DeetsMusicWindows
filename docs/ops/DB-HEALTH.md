@@ -61,6 +61,13 @@ panic cannot leave a half-applied multi-step invariant in the connection, and SQ
 back an interrupted statement itself. All 88 sites now call it. The first poisoning is
 logged and counted, because a panic still happened and somebody should know.
 
+**Every other `Mutex` (2026-09-25):** the same recovery, as `lock_or_recover()` from the
+`LockExt` trait in `src-tauri/src/lock.rs`, for the ~150 raw `.lock().unwrap()` outside `Db`
+(the token state, AirPlay, Last.fm, the bridge). The first poisoning is logged with its file
+and line (`#[track_caller]`). A codemod missed 11 that were split over three lines
+(`.lock()` / `.unwrap()` / `.clone()` on the user token); they were fixed the same day. None
+is left: `grep -rn "\.lock()\.unwrap()"` and the two-line form both find only comments.
+
 ## 2a. The database thread (built 2026-09-25)
 
 Every Tauri command that takes the lock runs on one thread, `db`, through

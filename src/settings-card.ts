@@ -17,7 +17,7 @@ import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
-import { setting, setSetting, onSettingsChange, onOwnedSettingChange, isFreshInstall, DEFAULTS, type Settings } from "./settings-store";
+import { setting, setSetting, onSettingsChange, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, applySkin, defaultSkin, type SkinName } from "./skin";
 import { applyTheme, defaultTheme, type ThemeName } from "./theme";
 import { withAppearanceTransition } from "./appearance";
@@ -303,7 +303,7 @@ const RESET_GROUPS: ResetGroup[] = [
     keys: ["playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webMakeMotion"],
   },
   {
-    id: "sound", label: "Sound", hint: "The equalizer, adaptive sound and their choices. Not your saved presets",
+    id: "sound", label: "Sound", hint: adaptiveUnhidden() ? "The equalizer, adaptive sound and their choices. Not your saved presets" : "The equalizer and its choices. Not your saved presets",
     keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundAdaptive", "soundLoudness", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
   },
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
@@ -1330,29 +1330,34 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           when: () => setting("soundEqPreamp") === "manual",
         },
         storeToggle("eqperoutput", "Remember each output", "soundEqPerOutput", () => "On: headphones, speakers and AirPlay speakers each remember their own preset"),
-        headRow("g-adaptive", "Adaptive sound"),
+        // Adaptive sound is hidden (SOUND.md §11a): these rows show only with the DevTools flag.
+        { ...headRow("g-adaptive", "Adaptive sound"), when: adaptiveUnhidden },
         {
           kind: "choice", id: "loudtarget", label: "Match songs to", key: "soundLoudTarget",
           hint: "How loud songs are made. Standard is Apple's Sound Check level (−16 LUFS), Louder is −14, Quieter is −18",
           get: () => String(setting("soundLoudTarget")),
           set: (v) => setSetting("soundLoudTarget", Number(v)),
           options: [{ value: "-16", label: "Standard" }, { value: "-14", label: "Louder" }, { value: "-18", label: "Quieter" }],
+          when: adaptiveUnhidden,
         },
-        storeToggle("loudalbum", "Keep albums together", "soundLoudAlbum", () => "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet"),
+        { ...storeToggle("loudalbum", "Keep albums together", "soundLoudAlbum", () => "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet"), when: adaptiveUnhidden },
         {
           kind: "choice", id: "loudunmeasured", label: "Songs not measured get", key: "soundLoudUnmeasured",
           hint: "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is",
           options: [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }],
+          when: adaptiveUnhidden,
         },
         {
           kind: "choice", id: "lowvolkey", label: "Follow the volume of", key: "soundLowVolKey",
           hint: "App + Windows: counts the DeetsMusic volume and the Windows volume together",
           options: [{ value: "both", label: "App + Windows" }, { value: "app", label: "App only" }],
+          when: adaptiveUnhidden,
         },
         {
           kind: "choice", id: "crossfeedlevel", label: "Blend amount", key: "soundCrossfeedLevel",
           hint: "How much of each side goes into the other",
           options: [{ value: "light", label: "Light" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }],
+          when: adaptiveUnhidden,
         },
         {
           kind: "choice", id: "soundreview", label: "Ask to keep after", key: "soundReviewDays",

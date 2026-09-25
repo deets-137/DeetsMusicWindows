@@ -24,7 +24,7 @@ import * as diag from "./diag";
 import * as perf from "./perf";
 import { TELEMETRY } from "./telemetry-on";
 import { toast } from "./toast";
-import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
+import { setting, setSetting, onSettingsChange, adaptiveOn, type Settings } from "./settings-store";
 import { BUILTIN, type EqPreset } from "./sound-presets";
 
 // ── The state every part reads (settings wire into this in the panel phase) ──────────
@@ -74,6 +74,22 @@ const seen = new Set<HTMLMediaElement>();
 /** Any effect on, or the AirPlay tap armed: the only conditions under which a new element is routed. */
 function wanted(): boolean {
   return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match || config.measure || tapArmed;
+}
+
+/**
+ * The element meters (100 ms hops, `onMeter`) run whenever the graph is wanted. Until
+ * 2026-09-25 they ran only with Adaptive sound (`config.measure`), so the Ocean heave and the
+ * Room panel's bob moved only with it; Adaptive sound is hidden now, and his call keeps them
+ * moving with the Equalizer (SOUND.md §11a). `config.measure` still gates the loudness
+ * measuring (sound-loudness.ts), so no new rows reach the `loudness` table.
+ */
+let meterOn = false;
+function syncMeter(): void {
+  const on = wanted();
+  if (on === meterOn) return;
+  meterOn = on;
+  for (const n of elementNodes) n.port.postMessage({ type: "meter", on });
+  diag.log(on ? "sound:meterOn" : "sound:meterOff", { routed: routedCount });
 }
 
 // ── The context and the bus ──────────────────────────────────────────────────────────
@@ -198,6 +214,7 @@ export async function armTap(on: boolean): Promise<boolean> {
     tap?.port.postMessage({ type: "arm", on: false });
     diag.log("airplay:tapDisarmed", { chunks: tapStats.chunks, failed: tapStats.failed, worstGapMs: tapStats.worstGapMs });
   }
+  syncMeter();
   push(); // the bus's `enabled` follows wanted()
   return tapArmed;
 }
@@ -340,7 +357,7 @@ function route(el: HTMLMediaElement): void {
       numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [2],
-      processorOptions: { meter: config.measure, gainDb: matchDb },
+      processorOptions: { meter: meterOn, gainDb: matchDb },
     });
     const info: NodeInfo = { createdAt: performance.now() };
     nodeInfo.set(node, info);
@@ -607,7 +624,7 @@ export function commitBands(bands: EqPreset["bands"]): void {
 export function crossfeedState(): { on: boolean; why: string } {
   const mode = setting("soundCrossfeed");
   if (mode === "off") return { on: false, why: "Off." };
-  if (!setting("soundAdaptive")) return { on: false, why: "Adaptive sound is off." };
+  if (!adaptiveOn()) return { on: false, why: "Adaptive sound is off." };
   if (mode === "always") return { on: true, why: "On for every output." };
   if (output.kind === "headphones") return { on: true, why: `On: ${output.name} is headphones.` };
   if (output.kind === "headset") return { on: true, why: `On: ${output.name} is a headset.` };
@@ -622,7 +639,7 @@ let windowsMasterKnown = false;
 
 function applySettings(): void {
   const p = activePreset();
-  const adaptive = setting("soundAdaptive");
+  const adaptive = adaptiveOn();
   const xf = crossfeedState();
   const level = CROSSFEED_LEVELS[setting("soundCrossfeedLevel")];
   const patch: Partial<SoundConfig> = {
@@ -643,10 +660,8 @@ function applySettings(): void {
   const matchWas = config.match;
   const measureWas = config.measure;
   Object.assign(config, patch);
-  if (config.measure !== measureWas) {
-    for (const n of elementNodes) n.port.postMessage({ type: "meter", on: config.measure });
-    diag.log(config.measure ? "sound:measureOn" : "sound:measureOff", { routed: routedCount });
-  }
+  if (config.measure !== measureWas) diag.log(config.measure ? "sound:measureOn" : "sound:measureOff", { routed: routedCount });
+  syncMeter();
   if (config.match !== matchWas) diag.log(config.match ? "sound:matchOn" : "sound:matchOff", { routed: routedCount });
   const on = wanted();
   if (on !== was) diag.log(on ? "sound:on" : "sound:off", { eq: config.eqOn, lowVolume: config.lowVolume, crossfeed: config.crossfeed.on, routed: routedCount });

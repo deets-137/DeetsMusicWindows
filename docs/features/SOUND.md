@@ -2,10 +2,14 @@
 status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-24
-sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts]
-updated: 2026-09-18
+sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts, src/settings-store.ts]
+updated: 2026-09-25
 ---
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
+
+> **Now (2026-09-25): the Equalizer stays; DeetsAdaptiveSound (§3) is hidden behind a DevTools
+> flag, and the meter follows the Equalizer. Read §11a first.** The rest of this file is the
+> design and build record of both.
 
 > **Designed 2026-09-16. BUILT the same day: the graph + worklet (§1, §8.1 tests pass), the Sound panel
 > (§2.3–2.4, §9), and phases 4 (the Windows output + volume) and 5 (Match loudness) — §10. Shipped in 0.8.0
@@ -641,4 +645,47 @@ decision (keep, keep some parts, or remove) is his, and no Sound work starts bef
 That report is §7 step 4 (keep, keep some parts, or remove). The §10.4 desk test and the §7.3
 heaviness check (`heaviness-sample.ps1`, effects on against off) go with it. No new Sound work
 starts before the report.
+
+## 11a. Adaptive sound hidden; the Equalizer stays (2026-09-25)
+
+> **Part:** built · 2026-09-25 (desk test below, open)
+
+**His call (the §7 step 4 answer):** keep the Equalizer, remove all of DeetsAdaptiveSound (§3:
+Match loudness, Fuller at low volume, Headphone crossfeed). Then, for the removal: hide the
+code rather than delete it; leave the `loudness` table (464 rows on his install) with no
+schema change; a line in the release notes, no toast; the update turns it off for everyone, and
+only a DevTools flag brings it back.
+
+**As built:**
+- **The flag:** `localStorage["deets.dev.adaptiveSound"] = "on"`, then a reload.
+  `settings-store.ts` reads it once: `adaptiveUnhidden()`, and `adaptiveOn()` = the flag AND
+  `soundAdaptive`. Every read of `soundAdaptive` goes through `adaptiveOn()` (sound.ts,
+  sound-loudness.ts, sound-panel.ts). The stored `soundAdaptive` is kept, so a user who had
+  it on is off with no write, and the flag brings back his own last choice.
+- **Hidden without the flag:** the Sound panel's tab row (the Equalizer view only), the six
+  Adaptive sound rows in Settings › Sound (`when: adaptiveUnhidden`, so the Compass drops
+  them too), the ten agent specs (`agent-settings.ts`), and `initLoudness()` (the `loudness`
+  table is not read or written). The hover hints and the Compass "Sound" row lose the words
+  "adaptive sound".
+- **The meter now follows the graph (his call, the same day).** The element meters' 100 ms
+  hops (`onMeter`) ran only while `config.measure` was on, which was Adaptive sound. The Ocean
+  heave and the Room panel's bob read those hops, so without this they would stop for
+  everyone. `syncMeter()` in sound.ts now runs the meters whenever `wanted()` holds (the
+  Equalizer on, or the AirPlay tap armed). `config.measure` still means "measure the loudness
+  of songs" and still follows Adaptive sound. `diag`: `sound:meterOn` / `sound:meterOff`.
+- **Kept on purpose:** the Sound graph and worklet (the Equalizer, the limiter, the AirPlay
+  in-page tap), `audio_out.rs` (a preset per output), the "Keep them?" review (the
+  Equalizer turns it on), and all of §3's code behind the flag.
+- Decided inside his calls: the flag also shows the rows, the panel section and the agent
+  specs (so the parts can be tried, not only switched on blind); the flag name follows the
+  other dev flags (`deets.dev.*`); the Rust commands (`loudness_*`) stay registered, unused.
+
+**Desk test (the dev app; front end only, no restart):**
+1. Open the Sound panel: no tab row, the Equalizer only. Settings › Sound: no Adaptive sound
+   rows. Ctrl+Space "match songs" or "crossfeed": no row.
+2. Ocean skin, the Equalizer on, play a song: the sea heaves with the music. Turn the Equalizer
+   off: it stops (nothing is routed). In a room, the heads bob only while the Equalizer is on.
+3. In DevTools: `localStorage["deets.dev.adaptiveSound"] = "on"`, reload. The Adaptive tab and
+   the rows are back, and the switch shows your last choice. Remove the flag and reload: gone.
+4. The log after a song with the Equalizer on: `sound:meterOn`, and no `sound:measured` line.
 

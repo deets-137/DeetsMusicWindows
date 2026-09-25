@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-20
+updated: 2026-09-25
 ---
 # Release notes
 
@@ -31,6 +31,11 @@ publisher (Aditya Sundaram); the box offered Cancel and **Delete ▾**, and the 
 worked. Copy 0.6.0's Installing lines until a browser download of a new version shows no warning. Only the text above the
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
+
+**For the next entry (his call, 2026-09-25; SOUND.md §11a):** say that Adaptive sound (Match
+loudness, Fuller at low volume, Headphone crossfeed) is gone and the Equalizer stays. This line
+is the only notice: a user who had it on hears the change after the update. Then delete this
+paragraph.
 
 ## 0.14.5 — 2026-09-24
 

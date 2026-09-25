@@ -12,7 +12,7 @@
 // The rows mirror settings-card.ts: a new card row joins SPECS as well (SETTINGS.md §5).
 
 import { invoke } from "@tauri-apps/api/core";
-import { setting, setSetting, notifyOwnedSettingChange, type Settings } from "./settings-store";
+import { setting, setSetting, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
 import { toast } from "./toast";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
 import { applyTheme, type ThemeName } from "./theme";
@@ -205,18 +205,24 @@ const SPECS: Spec[] = [
   storeChoice("Sound", "soundEqMode", "Equalizer view", [{ value: "graphic", label: "Sliders" }, { value: "parametric", label: "Dots" }]),
   storeChoice("Sound", "soundEqPreamp", "Avoid distortion", [{ value: "limiter", label: "Limiter only" }, { value: "needed", label: "When needed" }, { value: "always", label: "Always" }, { value: "manual", label: "By hand" }]),
   storeToggle("Sound", "soundEqPerOutput", "Remember each output"),
-  storeToggle("Sound", "soundAdaptive", "Adaptive sound", { offOnly: true }),
-  storeToggle("Sound", "soundLoudness", "Match loudness"),
-  storeChoice("Sound", "soundLoudTarget", "Match songs to", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
-    get: () => String(setting("soundLoudTarget")),
-    set: (v) => setSetting("soundLoudTarget", Number(v)),
-  }),
-  storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),
-  storeChoice("Sound", "soundLoudUnmeasured", "Songs not measured get", [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }]),
-  storeChoice("Sound", "soundLowVol", "Fuller at low volume", [{ value: "off", label: "Off" }, { value: "gentle", label: "Gentle" }, { value: "full", label: "Full" }]),
-  storeChoice("Sound", "soundLowVolKey", "Follow the volume of", [{ value: "both", label: "App + Windows" }, { value: "app", label: "App only" }]),
-  storeChoice("Sound", "soundCrossfeed", "Headphone crossfeed", [{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "off", label: "Off" }]),
-  storeChoice("Sound", "soundCrossfeedLevel", "Blend amount", [{ value: "light", label: "Light" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }]),
+  // Adaptive sound is hidden (SOUND.md §11a, his call 2026-09-25: DevTools only). An agent sees
+  // these specs only when the DevTools flag is set in this window.
+  ...(adaptiveUnhidden()
+    ? [
+        storeToggle("Sound", "soundAdaptive", "Adaptive sound", { offOnly: true }),
+        storeToggle("Sound", "soundLoudness", "Match loudness"),
+        storeChoice("Sound", "soundLoudTarget", "Match songs to", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
+          get: () => String(setting("soundLoudTarget")),
+          set: (v) => setSetting("soundLoudTarget", Number(v)),
+        }),
+        storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),
+        storeChoice("Sound", "soundLoudUnmeasured", "Songs not measured get", [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }]),
+        storeChoice("Sound", "soundLowVol", "Fuller at low volume", [{ value: "off", label: "Off" }, { value: "gentle", label: "Gentle" }, { value: "full", label: "Full" }]),
+        storeChoice("Sound", "soundLowVolKey", "Follow the volume of", [{ value: "both", label: "App + Windows" }, { value: "app", label: "App only" }]),
+        storeChoice("Sound", "soundCrossfeed", "Headphone crossfeed", [{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "off", label: "Off" }]),
+        storeChoice("Sound", "soundCrossfeedLevel", "Blend amount", [{ value: "light", label: "Light" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }]),
+      ]
+    : []),
   storeChoice("Sound", "soundReviewDays", "Ask to keep after", [7, 14, 3, 0].map((d) => ({ value: String(d), label: d ? `${d} days` : "Never" })), {
     get: () => String(setting("soundReviewDays")),
     set: (v) => setSetting("soundReviewDays", Number(v)),

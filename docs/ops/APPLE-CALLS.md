@@ -2,7 +2,7 @@
 status: designed
 desk_test: none
 sources: [src-tauri/src/apple.rs, src-tauri/src/log.rs]
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 # Apple calls — the counter and the 429 back-off
 
@@ -68,7 +68,10 @@ updated: 2026-09-24
   (CLAUDE.md checklist item 6).
 - No toast for a background job. The user has nothing to do about it.
 - ✅ **A user call that gets a 429 shows a toast** (the owner, 2026-09-24). TOASTS.md §5 gets a
-  row when it is built. The words and the tier go to him with the build.
+  row when it is built. ✅ **The words and the tier (his call, 2026-09-25):** `warn`, timed
+  (6 s): "Apple Music is busy right now. Try again in N seconds." N is `Retry-After`; with no
+  header (60 s) it reads "Try again in a minute." Decided inside his call: while one is on
+  screen, a second failed click does not show another.
 
 ## 4. Later (⬜ C)
 
