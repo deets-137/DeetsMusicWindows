@@ -436,14 +436,18 @@ async function update(reason: string): Promise<void> {
 
   // What each slot should show.
   const newGeom = g !== geom;
-  const keys = m === "picture" ? [] : tileKeys(key, n);
   const urls: string[] = [];
   const plan: { slot: Slot; key: string; from?: Rect }[] = [];
+  try {
   if (newGeom) {
     buildSlots(w, h, n);
     geom = g;
-    slots.forEach((s, i) => plan.push({ slot: s, key: s.anchor ? key : keys[i] }));
+    // The grid can hold a few more tiles than asked (layout() fills every free cell), so the
+    // albums are counted from the slots it made, not from `n`.
+    const keys = m === "picture" ? [] : tileKeys(key, slots.length - 1);
+    slots.forEach((s, i) => plan.push({ slot: s, key: s.anchor ? key : keys[i] ?? key }));
   } else {
+    const keys = m === "picture" ? [] : tileKeys(key, slots.length - 1);
     // Tiles stay in place (T-A): an album still in the set keeps its slot.
     const anchorSlot = slots.find((s) => s.anchor)!;
     const tiles = slots.filter((s) => !s.anchor);
@@ -477,7 +481,11 @@ async function update(reason: string): Promise<void> {
   }
   for (const p of plan) urls.push(linkFor(p.key, p.slot));
   await Promise.all(urls.map(preload));
-  if (pending === `${g}|${key}`) pending = "";
+  } finally {
+    // Always, so a throw above can never leave this draw "in flight" and block every later
+    // one for the same size and album (the boot draw did, 2026-09-24).
+    if (pending === `${g}|${key}`) pending = "";
+  }
   if (mine !== seq || mode() !== m) return;
 
   const entering = !shown;

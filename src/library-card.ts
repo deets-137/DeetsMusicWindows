@@ -620,7 +620,7 @@ const HEAD = `
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
     </button>
     <h2 class="panel__title">Library</h2>
-    <div class="coll-views" data-coll-views role="group" aria-label="Show" hidden></div>
+    <div class="coll-views" data-coll-views hidden></div>
     <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library" title="Reads your library from Apple Music again">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>

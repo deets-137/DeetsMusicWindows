@@ -755,7 +755,7 @@ user sets the rules.
 | 5 | **C** | The rules are stored as data now (a list of `{ when, card, do }`). Settings shows them as fixed rows, one per trigger, with pills. A rule builder can come later on the same data, with no migration (§18.6). |
 | 6 | **A** | A rule grow ends when Back leaves the level that caused it. That is the Diary rule today (`grewForEntry` in diary-card.ts). |
 | 7 | **A** | A rule never changes or shrinks a hand grow. A card that is already grown stays as it is. |
-| 8 | **open** | The first set of triggers (§18.4). |
+| 8 | **album, artist, Full, Diary, cog** | The first rows (§18.4): a drill to an album, a drill to an artist, a press on Full, and the two grows that exist now (the Diary entry, the cog) moved into rules. Playlist and song pane wait. |
 
 ### 18.3 The engine
 
@@ -775,7 +775,7 @@ user sets the rules.
 - Log: `diag.log("grow:rule", { trigger, card, do, applied })` per trigger, so a desk
   complaint can be read.
 
-### 18.4 Triggers — fork 8 (open)
+### 18.4 Triggers — fork 8 (decided 2026-09-24: album, artist, Full, Diary, cog)
 
 The candidate first set:
 

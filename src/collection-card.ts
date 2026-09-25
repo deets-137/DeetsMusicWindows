@@ -24,6 +24,7 @@ import { shuffleInPlace } from "./queue";
 import { isShuffleOn, setShuffleMode } from "./player";
 import { setting } from "./settings-store";
 import { enterRows } from "./pop";
+import { splitPillHTML, splitPick } from "./split-pill";
 import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
 
@@ -882,13 +883,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       return;
     }
     const fresh = !viewsEl.childElementCount;
-    viewsEl.innerHTML = v.options
-      .map((o) => {
-        const on = o.key === v.active;
-        const off = on ? undefined : o.off?.();
-        return `<button class="coll-views__chip" type="button" data-view-opt="${esc(o.key)}" aria-pressed="${on}"${off ? ` aria-disabled="true"` : ""} title="${esc(off ?? o.title)}">${esc(o.label)}</button>`;
-      })
-      .join("");
+    viewsEl.innerHTML = splitPillHTML(
+      v.options.map((o) => ({ key: o.key, label: o.label, title: o.title, off: o.off?.() })),
+      v.active,
+      "Show",
+    );
     if (fresh) enterRows(viewsEl.children);
   };
 
@@ -1000,11 +999,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     diag.log("ui:act", { at: opts.storeKey, do: "view", to: ctx.views?.active ?? "" });
   };
   viewsEl?.addEventListener("click", (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-view-opt]");
+    const key = splitPick(e);
     const v = cur().ctx.views;
-    if (!btn || !v || stack.length <= 1) return;
-    const key = btn.dataset.viewOpt!;
-    if (key === v.active || btn.getAttribute("aria-disabled") === "true") return;
+    if (!key || !v || stack.length <= 1 || key === v.active) return;
     const next = v.to(key);
     if (next) replace(next);
   });

@@ -59,6 +59,11 @@ updated: 2026-09-22
   the old center album now shrinks into the tile the new one left. COVER-WALLPAPER.md "As built".
 - **His layout call (after the commit `5650dd3`):** the mosaic stays the default (Tiles: Some),
   and One cover stays as a Tiles choice. No code change.
+- **Bug fixed: the Covers canvas did not draw at app open** (found by the Library session from
+  the dev log). The grid can make more tiles than the Tiles count asks (21 for Many at
+  1100 × 910), so the boot draw read an album key past the list and threw; the throw left the
+  draw marked "in flight", which blocked every later draw of the same album. Now the keys are
+  counted from the slots made, and a `finally` always clears the in-flight mark.
 - **Diary: Done copies the Export BUILT** (DIARY.md §7): one `onDiaryDone` listener; the check's
   hint names the copy.
 - Checks: `npx tsc --noEmit`, `npx vite build`, `cargo check`, `npm run tokens`,

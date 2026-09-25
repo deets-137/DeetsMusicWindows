@@ -15,17 +15,19 @@ updated: 2026-09-24
   lists only the songs in your library.
 - **Full view:** Apple's catalog page for the same album or artist. Before this feature, only
   the Search card showed it.
-- **The chips:** "Full" and "Lib", two panel chips in the Library card head, left of the ⟳
-  square. They show on an album level and an artist level only.
+- **The pill:** "Full | Lib", one split pill in the Library card head, left of the ⟳
+  square. It shows on an album level and an artist level only. It is the shared split pill
+  (`split-pill.ts`), the same control the Search card's scope uses (SEARCH-FIELDS.md §6): in
+  both, Full means Apple Music and Lib means your library.
 
 ## 2. What it does
 
-- A drill from the Library opens the Lib view, as before (fork 3A). The **Lib** chip is
+- A drill from the Library opens the Lib view, as before (fork 3A). The **Lib** half is
   pressed. Nothing asks Apple until you press **Full**.
 - **Full** replaces the level with the Full view, in the same card (fork 1A). It does not add a
   level: Back goes to where the drill came from (fork 2A). The drill swap's way back
   (CARD-GROW.md §14–§15) is kept on the new level.
-- **Lib** on a Full level goes back to the Lib view. The chip is dimmed, with a hint, when the
+- **Lib** on a Full level goes back to the Lib view. The half is dimmed, with a hint, when the
   library holds none of it (§4).
 - The Full view is a collection-card level, not a Search pane. So Sort, View, Search, the
   grown card's columns, multi-select, drag and card memory work on it.
@@ -81,9 +83,9 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
   The Library card hands it the pieces it owns (the song grouping, the hero cover, the Lib
   builders, its drills), so there is no import cycle.
 - `collection-card.ts` — `Context.views` (a `ViewSwitch`: the options, the active key, `to`)
-  and `replace(ctx)`. The engine draws the chips into the head's `[data-coll-views]` slot on
+  and `replace(ctx)`. The engine draws the pill into the head's `[data-coll-views]` slot on
   every header change. `replace` keeps the head still, swaps the body with no slide, and runs
-  `enterRows` on the new body. A `reload()` paints the chips again, so Lib wakes up when the
+  `enterRows` on the new body. A `reload()` paints the pill again, so Lib wakes up when the
   album's songs land.
 - `library-card.ts` — the slot in `HEAD`; `views` on `albumDetail` and `artistDetail`;
   `SongOpts.mark` (the marked square and the unreleased dim); the resolver takes
@@ -93,19 +95,25 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
 - The queue tags are Search's: `search-albums:<id>` and `search-artist:<id>`. Home reads
   `search-albums:` as the album it played (home.ts `containerOf`).
 - Log: `library:full` (kind, id, row count, failed) per load; `ui:act` `do: "view"` per press.
-- Tokens: `--views-chip-radius`, `--views-chip-min-w`, `--views-chip-dim` — aliases of the
-  panel chip family (UI-ARCHITECTURE.md §2a).
+- `split-pill.ts` — `splitPillHTML(halves, active, label)` and `splitPick(e)`. The engine
+  draws it; the Search card's scope pill (SEARCH-FIELDS.md §6) uses the same two calls.
+- Tokens: `--split-pill-radius`, `--split-pill-pad`, `--split-pill-fs`, `--split-pill-weight`,
+  `--split-pill-dim` — aliases of the header-action family (UI-ARCHITECTURE.md §2a).
+  Changed the same day from two panel chips (the owner's fork A, 2026-09-24): both "Full |
+  Lib" controls sit in a card head, so both are the header-action family and one primitive.
 
 ## 6. Decisions made inside the owner's forks (for review)
 
-1. The chips are the **panel chip** family (the Sound pills): the pressed chip is `--picked`.
+1. The control is the shared **split pill** (header-action family, the room pill's cut): the
+   pressed half is `--picked`. (First built as two panel chips; the owner chose one shared
+   pill the same day.)
 2. The ✓ shows **at rest** in the Full view, and the + only on hover, as elsewhere.
 3. The ✓ ignores the "Show ✓ on songs you have" setting in the Full view only.
 4. The artist link on a Full album opens the artist's **Full** view, not the Lib view.
 5. Go to Album / Go to Artist on a Full row stay in the Full view (§2.3).
 6. The Full artist's rows are Apple's Top Songs, with a Popular sort as the default.
 7. The swap has no slide. The head stays still and the new rows come in (`enterRows`).
-8. The Library ⟳ square stays to the right of the chips.
+8. The Library ⟳ square stays to the right of the pill.
 9. Queue tags reuse Search's (§5), so Home's album tiles work for plays from here.
 
 ## 7. Desk test (open)
@@ -115,7 +123,7 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
 2. Press **Lib**: your songs only. Press Full again: it opens at once (session cache).
 3. On a Full row, press **+**: it turns, then shows ✓. The Lib view now has the song.
 4. Library › Artists › an artist. Press **Full**: Albums, Featured Playlists, Your Playlists,
-   Top Songs. Press an album tile: its Full view opens as a new level; its Lib chip works if you
+   Top Songs. Press an album tile: its Full view opens as a new level; its Lib half works if you
    own some of it, and is dimmed with the hint if not. Back returns to the Full artist.
 5. On a Full album, press the artist name: the artist's Full view.
 6. Grow the Library wide, then Fill: the Full rows take the columns; the ✓ sits after the title.

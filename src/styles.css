@@ -4159,26 +4159,36 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   margin: 0;
 }
 
-/* ── The Library's "Full | Lib" chips (docs/features/FULL-LIB.md) ───────────────────────
-   The panel chip family (UI-ARCHITECTURE.md §2a, .sound__pill): a pair in the card head, left
-   of the ⟳ square, on an album or artist level only. The chosen view is the pressed chip. */
-.coll-views { display: flex; flex: 0 0 auto; gap: var(--space-1); margin-right: var(--space-1); }
+/* ── The split pill (split-pill.ts): one header control cut in two ────────────────────────
+   "Full | Lib" in the Library (FULL-LIB.md) and the Search card (SEARCH-FIELDS.md §6). The
+   family is the header action (UI-ARCHITECTURE.md §2a, .panel__action--text): its fill,
+   border, height, radius, type and hover. The cut is the room guest pill's (.room__pill):
+   two equal halves, a 1 px divider, the pressed half on --picked with the title's ink. */
+.coll-views { display: flex; flex: 0 0 auto; margin-right: var(--space-1); }
 .coll-views[hidden] { display: none; }
-.coll-views__chip {
-  display: inline-flex; align-items: center; justify-content: center;
-  height: var(--icon-lg); min-width: var(--views-chip-min-w);
-  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1; white-space: nowrap;
-  color: var(--text); background: var(--surface);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--views-chip-radius);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
+.split-pill {
+  box-sizing: border-box; height: var(--icon-lg);
+  display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; flex: 0 0 auto;
+  background: var(--surface-hover);
+  border: 1px solid var(--border); border-radius: var(--split-pill-radius);
+  overflow: hidden;
 }
-.coll-views__chip:hover { background: var(--surface-hover); }
-.coll-views__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); cursor: default; }
-.coll-views__chip[aria-disabled="true"] { opacity: var(--views-chip-dim); cursor: default; }
-.coll-views__chip[aria-disabled="true"]:hover { background: var(--surface); }
-.coll-views__chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.split-pill__half {
+  font-family: var(--font-body); font-size: var(--split-pill-fs); font-weight: var(--split-pill-weight); line-height: 1;
+  color: var(--title); background: transparent;
+  border: none; border-radius: 0;
+  padding: 0 var(--split-pill-pad);
+  cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-ui);
+}
+.split-pill__half + .split-pill__half { border-left: 1px solid var(--border); }
+.split-pill__half:hover { filter: brightness(0.97); }
+.split-pill__half[aria-pressed="true"] { background: var(--picked); cursor: default; filter: none; }
+.split-pill__half[aria-disabled="true"] { opacity: var(--split-pill-dim); cursor: default; filter: none; }
+.split-pill__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+@media (prefers-reduced-motion: reduce) {
+  .split-pill__half { transition: none; }
+}
 /* The Full view's rows: a song you have wears the ✓ at rest (fork 4A); the + still waits for
    the hover. In a grown card's columns the square rides the end of the title cell. An
    unreleased song is dimmed, as in Search. */

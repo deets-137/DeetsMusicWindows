@@ -1,7 +1,7 @@
 ---
 status: designed
 desk_test: none
-sources: [src/search-card.ts, src/radio.ts, src/collection-card.ts, src/settings-card.ts, src/diary-card.ts, src/web.ts, src/compass.ts, src/find-key.ts, src/list-keys.ts]
+sources: [src/search-card.ts, src/radio.ts, src/collection-card.ts, src/settings-card.ts, src/diary-card.ts, src/web.ts, src/compass.ts, src/find-key.ts, src/list-keys.ts, src/split-pill.ts]
 updated: 2026-09-24
 ---
 # DeetsMusic — Search fields
@@ -97,6 +97,9 @@ Rewind: **Full | Lib**. Its family is the header action (`.panel__action--text`:
 border, height, radius, type). It is cut in two with the room guest pill's split
 (`.room__pill`: two equal halves, a 1 px divider, the pressed half on `--picked`). The
 alias tokens point at the header action's tokens. No new raw values.
+**Built as a shared primitive (2026-09-24):** use `src/split-pill.ts` (`splitPillHTML`,
+`splitPick`; CSS `.split-pill`, tokens `--split-pill-*`). Do not build a second pill. The
+Library card's album and artist levels already use it (FULL-LIB.md).
 
 **What each half searches.**
 
