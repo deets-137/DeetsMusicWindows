@@ -139,6 +139,10 @@ export interface Hero {
   coverMenu?: () => MenuItem[];
   /** Makes the cover a file drop target (needs `coverMenu`, which renders the button). */
   coverDrop?: (file: File) => void;
+  /** The right-click menu anywhere on the hero — the view's own media menu (CONTEXT-MENUS.md
+   *  §3a). A left-click on the cover still opens `coverMenu`. Absent: a right-click on the
+   *  cover opens `coverMenu`, and the rest of the hero has no menu. */
+  menu?: () => MenuItem[];
 }
 
 export interface Context {
@@ -179,12 +183,31 @@ export interface Context {
    *  card owns the state and narrows its own lists; the engine draws the pill, flips
    *  it, and re-renders. */
   filter?: { label: string; icon: string; active: () => boolean; toggle: () => void };
+  /** Two ways to see the same thing, as chips in the card head (the Library's "Full | Lib",
+   *  docs/features/FULL-LIB.md). A pick REPLACES this level with the context `to` returns, so
+   *  Back still goes to where the drill came from. Needs a `[data-coll-views]` slot in the head. */
+  views?: ViewSwitch;
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
   /** The pane takes dropped songs (an open playlist, DRAG-DROP.md §3). The action gets the
    *  insertion index while the grouping's reorder order shows, else null (the end). Null
    *  when the pane doesn't take the payload. */
   dropInto?: (p: DragPayload) => ((at: number | null) => void) | null;
+}
+
+/** One chip of a `ViewSwitch`. `off` is the hover hint of a chip that cannot be picked yet
+ *  (the album is not in your library), or undefined when it can. */
+export interface ViewOption {
+  key: string;
+  label: string;
+  title: string;
+  off?: () => string | undefined;
+}
+export interface ViewSwitch {
+  options: ViewOption[];
+  active: string;
+  /** The level that shows `key`; null leaves the card as it is. */
+  to: (key: string) => Context | null;
 }
 
 /** "1 hr 2 min" / "48 min" for a summed duration; "" below a minute or unknown. */
@@ -381,6 +404,8 @@ function sortItems<T>(items: T[], spec: SortSpec<T>, dir: SortDir, nameOf: (x: T
 export interface CollectionCardHandle {
   /** Push a child context programmatically — the same slide/header path as a tile click. */
   drill(ctx: Context): void;
+  /** Put `ctx` in place of the open level (not the root): no new Back step (FULL-LIB.md). */
+  replace(ctx: Context): void;
   reload(): void;
   /** Card memory: where the card is now (CARD-MEMORY.md §2). Null from a card whose
    *  host has no body to mount into — there is no place to remember. */
@@ -406,6 +431,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     return {
       reload: () => {},
       drill: (_ctx: Context) => {},
+      replace: (_ctx: Context) => {},
       destroy: () => {},
       snapshot: (): CardSnapshot | null => null,
       restore: (_s: unknown): boolean => false,
@@ -844,8 +870,31 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
 
-  const setHeader = (isTop: boolean, title: string, returns = false) => {
+  // The view chips (`Context.views`) in the head's `[data-coll-views]` slot. Drawn on every
+  // header change: a level with no switch empties the slot and hides it.
+  const viewsEl = opts.root.querySelector<HTMLElement>("[data-coll-views]");
+  const paintViews = (ctx: Context | null) => {
+    if (!viewsEl) return;
+    const v = ctx?.views;
+    viewsEl.hidden = !v;
+    if (!v) {
+      viewsEl.innerHTML = "";
+      return;
+    }
+    const fresh = !viewsEl.childElementCount;
+    viewsEl.innerHTML = v.options
+      .map((o) => {
+        const on = o.key === v.active;
+        const off = on ? undefined : o.off?.();
+        return `<button class="coll-views__chip" type="button" data-view-opt="${esc(o.key)}" aria-pressed="${on}"${off ? ` aria-disabled="true"` : ""} title="${esc(off ?? o.title)}">${esc(o.label)}</button>`;
+      })
+      .join("");
+    if (fresh) enterRows(viewsEl.children);
+  };
+
+  const setHeader = (isTop: boolean, title: string, returns = false, ctx: Context | null = null) => {
     const shown = isTop ? baseTitle : title;
+    paintViews(isTop ? null : ctx);
     if (titleEl) titleEl.textContent = shown;
     if (backEl) {
       backEl.hidden = isTop;
@@ -923,9 +972,42 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     if (pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) f.onBack = pendingReturn.cb;
     pendingReturn = null;
     stack.push(f);
-    setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack);
+    setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
     slide(buildPane(f), "push", f);
   };
+
+  // A view chip (FULL-LIB.md): the same level seen another way. It takes the open level's
+  // place, so Back is unchanged and so is the drill swap's way back. No slide: the head, the
+  // chips and the place in the card stay; the new body comes in through `enterRows`.
+  const replace = (ctx: Context) => {
+    if (animating || stack.length <= 1) return;
+    pick.clear();
+    const old = cur();
+    const f = frameFor(ctx, false);
+    f.onBack = old.onBack;
+    stack[stack.length - 1] = f;
+    setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
+    dropWindower(curPane);
+    curPane?.remove();
+    const pane = buildPane(f);
+    pane.dataset.pos = "center";
+    viewport.appendChild(pane);
+    curPane = pane;
+    paneFrame = f;
+    applyScroll(pane, f);
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    if (view) enterRows(view.children);
+    diag.log("ui:act", { at: opts.storeKey, do: "view", to: ctx.views?.active ?? "" });
+  };
+  viewsEl?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-view-opt]");
+    const v = cur().ctx.views;
+    if (!btn || !v || stack.length <= 1) return;
+    const key = btn.dataset.viewOpt!;
+    if (key === v.active || btn.getAttribute("aria-disabled") === "true") return;
+    const next = v.to(key);
+    if (next) replace(next);
+  });
 
   const back = () => {
     if (animating || stack.length <= 1) return;
@@ -942,7 +1024,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     }
     pick.clear();
     const prev = stack[stack.length - 2];
-    setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack);
+    setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack, prev.ctx);
     slide(buildPane(prev), "pop", prev, () => stack.pop());
   };
 
@@ -1040,7 +1122,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     viewport.appendChild(pane);
     curPane = pane;
     paneFrame = top;
-    setHeader(stack.length === 1, top.ctx.headerLabel ?? top.ctx.title, !!top.onBack);
+    setHeader(stack.length === 1, top.ctx.headerLabel ?? top.ctx.title, !!top.onBack, top.ctx);
     applyScroll(pane, top, true);
     diag.log("memory", {
       card: opts.storeKey,
@@ -1447,9 +1529,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const t = e.target as HTMLElement;
     const pane = t.closest<HTMLElement>(".coll-pane");
     if (!pane || pane !== curPane || animating) return;
-    // The hero cover button: right-click opens the same cover menu as a left-click, at the cursor.
-    if (t.closest("[data-hero-cover]")) {
-      const items = cur().ctx.hero?.()?.coverMenu?.();
+    // The hero: its own media menu anywhere on it (his call 1A, 2026-09-24). A hero without
+    // one keeps the old rule: a right-click on the cover button opens the cover menu.
+    if (t.closest(".lib-hero")) {
+      const hero = cur().ctx.hero?.();
+      const items = hero?.menu ? hero.menu() : t.closest("[data-hero-cover]") ? hero?.coverMenu?.() : undefined;
       if (!items?.length) return;
       e.preventDefault();
       openContextMenu(e.clientX, e.clientY, items);
@@ -1590,6 +1674,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       }
     }
     if (!curPane) return;
+    if (stack.length > 1 && cur().ctx.views) paintViews(cur().ctx); // a chip's "can" may have changed
     rerenderInPlace(curPane, cur()); // a background sync shouldn't yank the user to the top
   }
 
@@ -1599,6 +1684,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     drill(ctx: Context) {
       drill(ctx);
     },
+    replace,
     reload,
     /** Card memory: where the card is now (CARD-MEMORY.md §2). */
     snapshot,

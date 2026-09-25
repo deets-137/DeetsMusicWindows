@@ -93,6 +93,97 @@ pub async fn favorite_set(
     Ok(())
 }
 
+// ── Albums and playlists (CONTEXT-MENUS.md §3b, his calls F1A F2A F3A, 2026-09-24) ──
+// The same mirror table, keyed `album:{id}` / `playlist:{id}` so no song id can collide.
+// A Library album holds no album id (only its songs'), so a row `albumsong:{first song id}`
+// mirrors the album's row: the Library menu reads it with no song → album lookup.
+
+/// The ratings path segment for a collection kind, or an error for anything else.
+fn collection_kind(kind: &str) -> Result<(&'static str, &'static str), String> {
+    match kind {
+        "albums" => Ok(("albums", "album")),
+        "playlists" => Ok(("playlists", "playlist")),
+        "library-playlists" => Ok(("library-playlists", "playlist")),
+        _ => Err(format!("favorites: bad collection kind '{kind}'")),
+    }
+}
+
+fn set_collection_local(conn: &Connection, prefix: &str, id: &str, alias: Option<&str>, loved: bool) -> Result<(), String> {
+    set_local(conn, &format!("{prefix}:{id}"), loved)?;
+    if let Some(song) = alias.filter(|s| !s.is_empty()) {
+        set_local(conn, &format!("albumsong:{song}"), loved)?;
+    }
+    Ok(())
+}
+
+/// ♥ / un-♥ an album or playlist: `PUT …/ratings/{kind}/{id}` value 1, or `DELETE`.
+/// Write-through, as `favorite_set`. `alias`: the album's first song, for the Library row.
+#[tauri::command]
+pub async fn favorite_collection_set(
+    kind: String,
+    id: String,
+    alias: Option<String>,
+    loved: bool,
+    state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<(), String> {
+    let (path, prefix) = collection_kind(&kind)?;
+    if id.is_empty() {
+        return Err("favorite_collection_set: no id".into());
+    }
+    let dev = apple::developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = crate::apple::http_client();
+    let url = format!("https://api.music.apple.com/v1/me/ratings/{path}/{id}");
+    let (status, body) = if loved {
+        let payload = serde_json::json!({ "type": "rating", "attributes": { "value": 1 } });
+        apple::api_send(&client, reqwest::Method::PUT, &dev, &user, &url, Some(&payload)).await?
+    } else {
+        apple::api_send(&client, reqwest::Method::DELETE, &dev, &user, &url, None).await?
+    };
+    if !(200..300).contains(&status) {
+        return Err(format!("favorite {path} HTTP {status}: {body}"));
+    }
+    let conn = db.lock();
+    set_collection_local(&conn, prefix, &id, alias.as_deref(), loved)?;
+    crate::log::info(&format!("favorites: {} {prefix} {id}", if loved { "loved" } else { "unloved" }));
+    Ok(())
+}
+
+/// Ask Apple once whether an album or playlist is loved (one `GET …/ratings/{kind}?ids=`).
+/// The answer gets a mirror row either way, so it is never asked again on this install.
+#[tauri::command]
+pub async fn favorite_collection_reconcile(
+    kind: String,
+    id: String,
+    alias: Option<String>,
+    state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<bool, String> {
+    let (path, prefix) = collection_kind(&kind)?;
+    if id.is_empty() {
+        return Err("favorite_collection_reconcile: no id".into());
+    }
+    let dev = apple::developer_token()?;
+    let user = state.user_token.lock().unwrap().clone().ok_or("not connected to Apple Music")?;
+    let client = crate::apple::http_client();
+    let url = format!("https://api.music.apple.com/v1/me/ratings/{path}?ids={id}");
+    let (status, body) = apple::api_get(&client, &dev, &user, &url).await?;
+    // 404 = no rating on it; anything else unexpected is an error.
+    if status != 200 && status != 404 {
+        return Err(format!("ratings {path} HTTP {status}: {body}"));
+    }
+    let loved = body
+        .get("data")
+        .and_then(|d| d.as_array())
+        .map(|arr| arr.iter().any(|r| r.pointer("/attributes/value").and_then(|v| v.as_i64()) == Some(1)))
+        .unwrap_or(false);
+    let conn = db.lock();
+    set_collection_local(&conn, prefix, &id, alias.as_deref(), loved)?;
+    crate::log::info(&format!("favorites: reconciled {prefix} {id}, loved={loved}"));
+    Ok(loved)
+}
+
 /// Every loved id in the mirror — the front-end's in-memory set at boot.
 #[tauri::command]
 pub fn favorites_cached(db: State<'_, Db>) -> Result<Vec<String>, String> {

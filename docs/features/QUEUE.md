@@ -1,8 +1,8 @@
 ---
 status: foundation
-desk_test: none
+desk_test: passed 2026-09-24
 sources: [src/player.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts]
-updated: 2026-09-18
+updated: 2026-09-24
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -203,8 +203,53 @@ MusicKit index the model's `current` is aligned to. On `nowPlayingItemDidChange`
 `syncModelToMusicKit()` replays `advance()`/`previous()` to walk the model to MusicKit's
 `nowPlayingItemIndex` (NOT `queue.position` — empty in this build). Suppressed by
 `loadingContext` while we're (re)building the queue, so our own `setQueue`/`change…`
-churn doesn't drive the model. `player:desync` logs if the model's `current` ever stops
-matching MusicKit's now-playing item.
+churn doesn't drive the model. A forward step lands on the next **live** upcoming entry:
+an entry with no play id was never fed, so the walk drops it (as a jump does) instead of
+counting it as a step.
+
+### The model is the master (2026-09-24)
+> **Part:** built · 2026-09-24 · desk test passed 2026-09-24
+
+What the Queue card shows is what plays. When the two disagree, the app corrects
+MusicKit; it does not follow it. The owner's rule, set after a dragged song vanished and a
+different one played.
+
+**The bug.** `reconcileUpcoming` deduped the model's upcoming against every id MusicKit
+held up to `current`. A song dragged into the Queue card that had already played in the
+same run was left out of MusicKit entirely. The index-only follow then moved the model one
+step per song change while MusicKit played the next song: the Queue card showed one song,
+another played, and no play rows were written for the songs heard. The alignment canary
+tested a *subsequence*, so a model-only song passed as aligned and nothing was logged.
+
+**Three layers:**
+1. **No dedup in `reconcileUpcoming`.** `playLater` keeps a repeated id (only `setQueue`
+   collapses them, so `loadFromModel`'s window still dedups). The expected upcoming is the
+   model's live ids, in order, capped to `WINDOW_FWD`. Reconciles are serialized on one
+   chain, so the song-change repair and the top-up cannot splice the same suffix twice.
+2. **Repair on every edit.** The invariant is now a **prefix**: MusicKit's upcoming equals
+   the start of the model's live upcoming. `ensureAligned(where)` runs after Play Next, Add
+   to Queue, Remove, Move and each song change. On a mismatch it logs `player:misalign`,
+   runs one `reconcileUpcoming` (gapless) and logs `player:repair {where, ok}`. Never a
+   loop: one repair per call.
+3. **Correct at the song change.** After the walk, if MusicKit's now-playing id is not the
+   model's `current`, `correctDrift` logs `player:desync` (a warn) with `fix`:
+   - `jumped` — re-window onto the model's song (`loadFromModel`, the ~1 s jump buffer).
+     The load records the start and grows the window.
+   - `followed` — the model's song has no play id, or MusicKit moved further than the
+     model has songs (`short` > 0). Nothing to correct toward.
+   - `held` — a correction ran less than 5 s ago (`DRIFT_GAP_MS`); the fix itself is
+     failing, so it stops rather than loop.
+
+A normal Next moves both one step, and their ids match, so layer 3 fires only on drift.
+
+**Desk test.**
+1. Play an album from its first song. Let two songs play.
+2. Drag the first song (already heard) from Search into the Queue card, at the top of Up Next.
+3. Skip to the end of the current song (the scrubber). The dragged song must play, and the
+   Queue card must show it as Now Playing.
+4. Read the ring: `player:insert` → `player:reconcile`, no `player:misalign`, no
+   `player:desync`. `query` over `plays` has a row for the dragged song.
+5. Drag the same song in twice, one after the other. Both copies must play.
 
 ---
 
@@ -268,8 +313,9 @@ reorder (drag-drop to any slot) has no documented MusicKit op — so instead of 
 `splice`, we **reflect the model into MusicKit by rebuilding only the divergent suffix**:
 
 1. Reorder the model (`queue.move(from, to)`) — it's the source of truth.
-2. `reconcileUpcoming()`: compute the model's expected upcoming (deduped against what MusicKit
-   holds up to `current`, capped to `WINDOW_FWD`), find the **first index `d`** where MusicKit's
+2. `reconcileUpcoming()`: compute the model's expected upcoming (its live ids in order,
+   repeats kept, capped to `WINDOW_FWD` — no dedup since 2026-09-24, §The model is the
+   master), find the **first index `d`** where MusicKit's
    live upcoming diverges, `splice` out MusicKit's upcoming `[d..end]` (one contiguous removal),
    then `playLater` the model's `[d..end]`.
 
@@ -320,9 +366,8 @@ any 200-song window could hit it.
 **Net behavior:** invisible to the user — first contact with a dead id costs one extra
 round-trip, then the session denylist makes every later window/insert skip it up front.
 The queue **model** never drops entries: a fully-dead song still shows in the Qcard but
-is silently absent from what MusicKit is fed (it reconciles as model-only, same as any
-beyond-window entry — the alignment invariant treats MK as a subsequence, so no
-`player:misalign`).
+is silently absent from what MusicKit is fed (the alignment prefix and the follow walk
+both count only live entries, so no `player:misalign` — §The model is the master).
 
 **Persisted (2026-09-12).** `markDead` writes every banked id to the cache db's `dead_ids`
 table (`dead_ids_mark`: `reason` = `not-found` | `unavailable`, `first_seen`, `marked_at`);

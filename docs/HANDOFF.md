@@ -116,10 +116,10 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 The 429 toast for a user call is decided (APPLE-CALLS.md §3); bring him the words and tier.
 
 **Desk tests open (branch `darn-critics`)**
-- **Cover Wallpaper** (built 2026-09-24, uncommitted) — COVER-WALLPAPER.md §6. He picks 1A
-  (Tiles › One cover) or 1B there, and sets the locked dim. Restart the dev runner first
-  (a new Rust file). The "As built" section lists what was decided inside his calls.
-- **Diary: Done copies the Export** (built 2026-09-24, uncommitted) — DIARY.md §8 step 11f.
+- **Cover Wallpaper** (built and committed 2026-09-24, `5650dd3`) — COVER-WALLPAPER.md §6. He
+  looked at it and kept both layouts (the mosaic is the default; One cover stays in Tiles). Still
+  open: the locked dim value (step 8) and his review of the "As built" decisions.
+- **Diary: Done copies the Export** (built and committed 2026-09-24) — DIARY.md §8 step 11f.
 - The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP), which
   runs on the installed beta after the next beta release.
 

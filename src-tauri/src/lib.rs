@@ -398,6 +398,8 @@ pub fn run() {
             favorites::favorites_cached,
             favorites::favorites_known,
             favorites::favorites_reconcile,
+            favorites::favorite_collection_set,
+            favorites::favorite_collection_reconcile,
             enrich::catalog_enrich,
             enrich::album_palette,
             credits::credits_stats,

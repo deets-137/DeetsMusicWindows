@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/library-add.ts, src/track-store.ts, src-tauri/src/apple.rs, src-tauri/src/library.rs, src-tauri/src/lib.rs, src/main.ts]
-updated: 2026-09-20
+updated: 2026-09-24
 ---
 # DeetsMusic — Favorites & library writes
 
@@ -51,6 +51,10 @@ the [Playlists export decision](PLAYLISTS.md)):
   *On trial: the user may revert it after living with it.*
 - **♥ Favorite** (later step) — a dedicated **♥** on Now Playing (filled if loved) + a right-click
   item across Library / Search / Queue. Surfaces TBD when that step is built.
+  **Albums and playlists (2026-09-24):** a Favorite row in every album and playlist menu, on
+  the same `favorites` mirror with `album:` / `playlist:` / `albumsong:` keys —
+  [CONTEXT-MENUS.md §3b](../architecture/CONTEXT-MENUS.md). Apple's playlists also gained Add to
+  Library (§3.4 there): `apple_add_to_library` takes `playlists`.
 - All are icon/theme-tokened glyphs — no hardcoded colors/sizes.
 
 > **Add-to-Library — ✅ BUILT + user-verified 2026-07-03.** Its own slice **ahead of the separate

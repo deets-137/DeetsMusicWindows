@@ -18,7 +18,7 @@ import { tracks, onTracksChange } from "./track-store";
 import { playTracks } from "./player";
 import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
-import { isLoved, onFavoritesChange } from "./favorites";
+import { isLoved, onFavoritesChange, reconcileAlbum } from "./favorites";
 import { requestPlaylistPane } from "./go-to";
 import { songMenu, albumMenu, artistMenu, playlistMenu, listMenu, setMenu, tileMenu, type AlbumSubject } from "./media-menu";
 import {
@@ -42,6 +42,9 @@ import {
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
 import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
+import { addSquareHTML } from "./add-square";
+import { unreleasedHint } from "./release";
+import { fullViews, FULL_LIB, type FullViews } from "./library-full";
 
 // ── derived models ────────────────────────────────────────────────────────────
 interface AlbumGroup {
@@ -368,7 +371,7 @@ export const libAlbum = (ts: Track[], pinKey?: string): AlbumSubject => ({
 });
 
 // ── groupings ─────────────────────────────────────────────────────────────────
-interface SongOpts {
+export interface SongOpts {
   hideCover?: boolean; // album detail: every track shares the cover, so omit it
   numbered?: boolean; // album detail: track number in the cover's slot, length as the subline
   selectedId?: string; // highlight this track (e.g. drilled-in)
@@ -378,6 +381,9 @@ interface SongOpts {
   actionTitles?: ActionTitles; // hover text for the Play / Shuffle row (what the list is)
   /** The play tallies (the Library root): a Plays sort, and the Plays column of a filled card. */
   plays?: () => Map<string, PlayCount> | undefined;
+  /** A catalog list (the Full view, FULL-LIB.md): each line row ends in the Add square with
+   *  the ✓ mark on a song you have, and an unreleased song is dimmed as in Search. */
+  mark?: boolean;
 }
 
 // ── the columns of a grown card (CARD-GROW.md §9a) ──────────────────────────────
@@ -409,7 +415,7 @@ function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): str
   const lead = o.numbered ? `<span class="lib-row__num lib-row__cell--end">${t.trackNumber ?? idx + 1}</span>` : rowThumb(t.artwork, false, t.title);
   const cells = [
     lead,
-    `<span class="lib-row__cell lib-row__title">${esc(t.title)}${explicitBadge(t)}</span>`,
+    `<span class="lib-row__cell lib-row__title">${esc(t.title)}${explicitBadge(t)}${o.mark ? markSquare(t) : ""}</span>`,
     `<span class="lib-row__cell lib-row__artist">${esc(t.artistName)}</span>`,
     ...(o.hideCover ? [] : [`<span class="lib-row__cell lib-row__album">${esc(t.albumName ?? "")}</span>`]),
     `<span class="lib-row__cell lib-row__cell--end lib-row__time">${fmtClock(t.durationMs)}</span>`,
@@ -426,10 +432,17 @@ function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): str
     }
   }
   const selected = !!o.selectedId && trackId(t) === o.selectedId;
-  return `<div class="lib-row lib-row--art lib-row--cols${selected ? " is-selected" : ""}" data-idx="${idx}">${cells.join("")}</div>`;
+  return dimUnreleased(`<div class="lib-row lib-row--art lib-row--cols${selected ? " is-selected" : ""}" data-idx="${idx}">${cells.join("")}</div>`, t, !!o.mark);
 }
 
-function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
+// The Full view's rows (FULL-LIB.md): the Add square, marked, and Search's unreleased dim.
+const markSquare = (t: Track): string => (t.unreleased ? "" : addSquareHTML(t, "add-square--row", true));
+const dimUnreleased = (html: string, t: Track, mark: boolean): string =>
+  mark && t.unreleased
+    ? html.replace('class="lib-row', `aria-disabled="true" title="${esc(unreleasedHint(t))}" class="lib-row is-unreleased`)
+    : html;
+
+export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {
     key: "songs",
     label: "Songs",
@@ -443,13 +456,17 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     render: (t, density, idx, cols) =>
       cols && density === "lines"
         ? songColsHTML(t, idx, cols, o)
-        : musicCell(density, idx, t.artwork, t.title, o.numbered && density === "lines" ? fmtClock(t.durationMs) : t.artistName, {
-            hideCover: o.hideCover,
-            num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
-            selected: !!o.selectedId && trackId(t) === o.selectedId,
-            badge: explicitBadge(t),
-            cid: t.catalogId ?? "",
-          }),
+        : dimUnreleased(
+            musicCell(density, idx, t.artwork, t.title, o.numbered && density === "lines" ? fmtClock(t.durationMs) : t.artistName, {
+              hideCover: o.hideCover,
+              num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
+              selected: !!o.selectedId && trackId(t) === o.selectedId,
+              badge: explicitBadge(t) + (o.mark && density === "lines" ? markSquare(t) : ""),
+              cid: t.catalogId ?? "",
+            }),
+            t,
+            !!o.mark,
+          ),
     columns: (cols) => songColumns(cols, o),
     isSelected: o.selectedId ? (t) => trackId(t) === o.selectedId : undefined,
     // Click a song → play it and queue the rest of THIS list from here, in the
@@ -466,6 +483,7 @@ function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
     // is where "Add to Playlist ▸ New Playlist…" builds a list from a hand-picked set.
     pick: {
       id: trackId,
+      can: o.mark ? (t) => !t.unreleased : undefined, // an unreleased song is never picked (SEARCH.md)
       menu: (ts) => setMenu(() => ts, ts.length, "song", { context: o.context }),
       drag: (ts) => ({ source: "library", kind: "song", count: ts.length, tracks: () => ts, context: o.context }),
       play: (ts) => void playTracks(ts, 0, o.context).catch((e) => console.error("[library] play picked", e)),
@@ -602,6 +620,7 @@ const HEAD = `
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
     </button>
     <h2 class="panel__title">Library</h2>
+    <div class="coll-views" data-coll-views role="group" aria-label="Show" hidden></div>
     <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library" title="Reads your library from Apple Music again">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
@@ -635,11 +654,17 @@ export const libraryCard: CardDef = {
           const artist = a.artist || ts[0]?.artistName || "";
           const year = (a.releaseDate ?? ts.find((t) => t.releaseDate)?.releaseDate)?.slice(0, 4);
           const total = formatTotal(ts.reduce((n, t) => n + (t.durationMs ?? 0), 0));
+          // The ♥ state: asked once per install, the first time this hero draws (F1A). The
+          // seed is the album's first song, as `albumMenu` picks it.
+          reconcileAlbum({ seed: albumOrder(ts).find((t) => t.catalogId)?.catalogId, name: a.name });
           return {
             cover: heroCover(a.artwork ?? ts[0]?.artwork, a.name),
             title: a.name,
             sub: artist ? { text: artist, run: () => libNav.drillArtist(artist) } : undefined,
             meta: [year, `${ts.length} song${ts.length === 1 ? "" : "s"}`, total].filter(Boolean).join(" · "),
+            // Right-click anywhere on the hero: the album's own menu, without Go to Album
+            // (you are there) — CONTEXT-MENUS.md §3a.
+            menu: () => albumMenu(libAlbum(albumOrder(list())), { context: `album:${a.key}`, nav: libNav, here: true }),
           };
         },
         density: true,
@@ -653,6 +678,16 @@ export const libraryCard: CardDef = {
           }),
         ],
         defaults: { density: "lines", sortKey: "track" },
+        // Full | Lib (FULL-LIB.md): Full is Apple's whole album, in place of this level.
+        views: {
+          options: FULL_LIB,
+          active: "lib",
+          to: (k) => {
+            if (k !== "full") return null;
+            const ts = list();
+            return full.album({ libKey: a.key, songId: ts.find((t) => t.catalogId)?.catalogId, name: a.name, artist: a.artist || ts[0]?.artistName, artwork: a.artwork ?? ts[0]?.artwork });
+          },
+        },
       };
     };
 
@@ -759,6 +794,12 @@ export const libraryCard: CardDef = {
                 { name: a.name, catalogId: info?.catalogId, artwork: info?.artwork, songs: artistOrder(ts), inLibrary: true },
                 { context: `artist:${a.name}`, here: true },
               ),
+            // The same menu anywhere on the hero, as the Search artist pane has it (his call 1A).
+            menu: () =>
+              artistMenu(
+                { name: a.name, catalogId: info?.catalogId, artwork: info?.artwork, songs: artistOrder(sub()), inLibrary: true },
+                { context: `artist:${a.name}`, here: true },
+              ),
             title: a.name,
             meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
           };
@@ -829,6 +870,12 @@ export const libraryCard: CardDef = {
           }),
         ],
         defaults: { density: "lines", sortKey: "release", sortDir: "desc" },
+        // Full | Lib (FULL-LIB.md): Full is Apple's artist page, in place of this level.
+        views: {
+          options: FULL_LIB,
+          active: "lib",
+          to: (k) => (k === "full" ? full.artist({ name: a.name, id: info?.catalogId, artwork: info?.artwork }) : null),
+        },
       };
     };
 
@@ -849,6 +896,28 @@ export const libraryCard: CardDef = {
       drillGenre: (name) => card.drill(genreDetail({ name, songCount: 0, artistCount: 0, covers: [] })),
       drillSong: (t) => card.drill(songDetail(t)),
     };
+
+    // Full | Lib (docs/features/FULL-LIB.md): Apple's whole album or artist page as a level
+    // of this card, in place of the Lib level. A Full level goes back to Lib only when the
+    // library holds some of it: an album by its key, or by any of its songs (catalog id, ISRC).
+    const libAlbumOf = (t: Track) =>
+      albumDetail({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0, artwork: t.artwork, releaseDate: t.releaseDate });
+    const full: FullViews = fullViews({
+      card: () => card,
+      songs: songsGrouping,
+      heroCover,
+      artURL,
+      nav: libNav,
+      libAlbum: (songs, libKey) => {
+        const all = tracks();
+        const byKey = libKey ? all.find((t) => albumKey(t) === libKey) : undefined;
+        if (byKey) return libAlbumOf(byKey);
+        const ids = new Set(songs.flatMap((s) => [s.catalogId, s.isrc ? `isrc:${s.isrc}` : undefined]).filter(Boolean));
+        const hit = ids.size ? all.find((t) => ids.has(t.catalogId) || (t.isrc && ids.has(`isrc:${t.isrc}`))) : undefined;
+        return hit ? libAlbumOf(hit) : null;
+      },
+      libArtist: (name) => (creditIndex(tracks()).tracksFor(name).length ? artistDetail({ name, albumCount: 0, songCount: 0 }) : null),
+    });
 
     // ── song detail and writer detail (CREDITS.md §7.6) ──
     // A song is a LOCAL target: every fact on the level is already in hand, so it drills
@@ -1110,6 +1179,8 @@ export const libraryCard: CardDef = {
       }
       // A writer level needs no store: its rows are read again from the collection.
       if (kind === "writer") return name ? writerDetail(name) : null;
+      // A Full level (FULL-LIB.md) is keyed by its catalog id and reads Apple's page again.
+      if (kind === "full-album" || kind === "full-artist") return full.resolve(key);
       return null;
     };
     const card = initCollectionCard({

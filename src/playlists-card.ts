@@ -22,7 +22,7 @@ import {
 import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks } from "./player";
-import { initFavorites, reconcile } from "./favorites";
+import { initFavorites, reconcile, reconcilePlaylist, playlistFav } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
 import { songMenu, playlistMenu, setMenu, tileMenu } from "./media-menu";
@@ -432,6 +432,9 @@ export const playlistsCard: CardDef = {
           const total = ts ? formatTotal(ts.reduce((acc, t) => acc + (t.durationMs ?? 0), 0)) : "";
           const source = q.source === "local" ? "Yours" : q.curatorName ?? "Apple Music";
           const local = q.source === "local";
+          // The ♥ state: asked once per install, the first time this hero draws (F1A).
+          const fav = playlistFav(q);
+          if (fav) reconcilePlaylist(fav);
           return {
             cover: heroCover(q.artwork, q.name, coverOf(q), id), // live: fills in when the tracks land
             title: q.name,
@@ -449,6 +452,8 @@ export const playlistsCard: CardDef = {
             // An Apple playlist's cover offers Import to Edit, its one way to an editable copy.
             coverMenu: local ? () => coverItems(q, "Choose Image…") : q.source === "apple" ? () => [importItem(q)] : undefined,
             coverDrop: local ? (file: File) => setCoverFromFile(q, file) : undefined,
+            // Right-click anywhere on the hero: the playlist's whole menu (CONTEXT-MENUS.md §3a).
+            menu: () => listMenu(q, true),
           };
         },
         density: true,
@@ -568,7 +573,8 @@ export const playlistsCard: CardDef = {
     });
 
     // `withRename: false` — the row menu already put Rename at its top.
-    const coverItems = (p: Playlist, pickLabel: string, withRename = true): MenuItem[] => {
+    // `withRemove: false` — the hero menu, which holds no destructive row (his call 5A).
+    const coverItems = (p: Playlist, pickLabel: string, withRename = true, withRemove = true): MenuItem[] => {
       const items: MenuItem[] = [];
       if (withRename && handMade(p)) items.push(renameItem(p));
       // A temporary web playlist (PLAYLIST-WEB.md §10.5): the only way to stop its expiry.
@@ -597,7 +603,7 @@ export const playlistsCard: CardDef = {
             : []),
         ],
       });
-      if (ownCover(p))
+      if (withRemove && ownCover(p))
         items.push({ label: "Remove Cover", run: () => void playlistSetCover(p, null).catch((e) => console.error("[playlists] remove cover", e)) });
       const apple = appleMusicItem(p, () => lists, () => doSync(false)); // the new Apple copy joins the mirror
       if (apple) items.push(apple);
@@ -694,7 +700,9 @@ export const playlistsCard: CardDef = {
       });
     };
 
-    const listMenu = (p: Playlist): MenuItem[] => {
+    // `hero`: the menu on the open playlist's hero (CONTEXT-MENUS.md §3a) — no Go to Playlist
+    // (you are there) and nothing destructive: no Delete Playlist, no Remove Cover (his call 5A).
+    const listMenu = (p: Playlist, hero = false): MenuItem[] => {
       // The playlist menu (CONTEXT-MENUS.md §3.4), with this card's own rows. Rename is the
       // field first, ready to type (hand-made only). Go to Playlist drills in place.
       const own: MenuItem[] = [moveToFolderItem(p)];
@@ -703,13 +711,14 @@ export const playlistsCard: CardDef = {
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
       // The change bus (below) handles the cache eviction + list reload.
       const local = p.source === "local";
-      if (local) own.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…", false));
+      if (local) own.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…", false, !hero));
       return playlistMenu(p, () => tracksOf(p), {
         context: `playlist:${pid(p)}`,
         lead: handMade(p) ? [renameItem(p)] : [],
         open: () => card.drill(detail(p)),
+        here: hero,
         own,
-        away: local ? [{ label: "Delete Playlist", run: () => confirmDelete(p) }] : [],
+        away: local && !hero ? [{ label: "Delete Playlist", run: () => confirmDelete(p) }] : [],
       });
     };
 

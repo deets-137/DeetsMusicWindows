@@ -111,6 +111,7 @@ The last row is always **Search Apple Music for …**: the Search card opens wit
 | **favorite** | fav, love, heart, like; unfavorite, unlove, dislike | a song's name, or nothing for the playing song | ♥ on Apple Music (Unfavorite when it is loved) |
 | **add** | add to library | a song's name, or nothing for the playing song | Adds it to your library. Only a song not in it yet (a station's, a catalog play's) |
 | **queue** | — | `[song\|album\|playlist] <name> [N \| next \| end]` | Puts it in Up Next: at position N, next (the default), or at the end |
+| **shuffle** | — | `[album\|playlist] <name>` | Plays that library album or playlist shuffled (the menus' Shuffle row). With no name, **shuffle** is the Shuffle button |
 | **web** | — | `[song\|album\|artist] <seed> [1\|2\|3] [genre, genre]` | Makes a playlist web from the seed at that reach with those genres, and opens it. Reach, size and style you leave out come from Settings › Playlists |
 | **grow** | expand, enlarge, big, fill | a card's name | Grows the card over its neighbor (Horizontal, Vertical, Full: Tab picks the shape; the last pick is remembered). Brings the card in first. Nothing to grow in Mini |
 | **volume** | vol | a number 0–100 | Sets the level |

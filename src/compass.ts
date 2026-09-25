@@ -32,13 +32,13 @@ import type { Playlist } from "./search";
 import type { Track } from "./library";
 import {
   playPause, nextTrack, prevTrack, toggleShuffle, cycleRepeat, toggleMute, isMuted, isPlayingNow, isShuffleOn, getRepeat,
-  playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt,
+  playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt, setShuffleMode,
 } from "./player";
 import { sleepIn, sleepOff, sleepArmed, sleepAtEnd, openSleepPanel } from "./sleep";
 import { restartWalk } from "./walk";
 import { checkPlaylistRefreshNow } from "./playlist-refresh";
 import { presetOptions, selectPreset } from "./sound";
-import { getUpcoming, getRecentlyPlayed, getCurrent } from "./queue";
+import { getUpcoming, getRecentlyPlayed, getCurrent, shuffleInPlace } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
 import { addTrackToLibrary, alreadyInLibrary, libraryAddEnabled } from "./library-add";
 import { trackById } from "./track-store";
@@ -818,6 +818,35 @@ function queueRow(term: string): Row[] {
   }];
 }
 
+/** "shuffle [album|playlist] <name>": the best library album or playlist plays shuffled — the
+ *  menus' Shuffle row (CONTEXT-MENUS.md §3a). A bare "shuffle" stays the mode's on/off row. */
+function shuffleRow(term: string): Row[] {
+  const m = /^shuffle\s+(.+)$/i.exec(term.trim());
+  if (!m) return [];
+  const tokens = m[1].trim().split(/\s+/);
+  let kind: "album" | "playlist" | undefined;
+  if (/^(album|playlist)$/i.test(tokens[0]) && tokens.length > 1) kind = tokens.shift()!.toLowerCase() as typeof kind;
+  const name = tokens.join(" ");
+  if (!name) return [];
+  const lib = libraryRows();
+  const pool = kind === "album" ? lib.albums : kind === "playlist" ? playlistRows() : [...lib.albums, ...playlistRows()];
+  const hit = hitsOf(pool, fold(name).split(/\s+/), fold(name))[0]?.r;
+  if (!hit?.tracks) return [];
+  return [{
+    group: "Actions", title: `Shuffle “${hit.title}”`, sub: `${hit.group.replace(/s$/, "")} · ${hit.sub ?? ""}`,
+    run: () => {
+      void hit.tracks!()
+        .then((ts) => {
+          if (!ts.length) return;
+          if (setting("shuffleStays")) setShuffleMode(true);
+          diag.log("compass:shuffle", { title: hit.title, n: ts.length });
+          return playTracks(shuffleInPlace(ts.slice()), 0, CONTEXT);
+        })
+        .catch((e) => console.error("[compass] shuffle", e));
+    },
+  }];
+}
+
 // The stations Apple lists, read once per session the first time a term is typed: the same
 // four calls the Radio card makes, into the same caches, so a Radio card opened after
 // costs nothing (the user's ask). A bar used only for cards or settings never makes them.
@@ -958,7 +987,7 @@ function query(termRaw: string, kind: Group | null): Result {
   const words = term.split(/\s+/);
   const lib = libraryRows();
   preloadStations();
-  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...favoriteRow(termRaw), ...addRow(termRaw)];
+  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...shuffleRow(termRaw), ...favoriteRow(termRaw), ...addRow(termRaw)];
   // Each group is a block with its best score; the blocks come in that order, ties in the
   // default order — so an exact playlist name ("Replay") sits above the Settings rows that
   // only contain the word. The library block (its chips ride with it) is one block.

@@ -226,6 +226,10 @@ Two terms are commands, drawn as the first row:
 - **`queue [song|album|playlist] <name> [N | next | end]`**: the best library match goes into
   Up Next: at position N (counted from 1), next (the default), or at the end. `queue Fancy 3`,
   `queue album Do Well end`, `queue playlist Web Samara next`. Logged as `compass:queue`.
+- **`shuffle [album|playlist] <name>`** (2026-09-24): the best library album or playlist
+  plays shuffled — the menus' Shuffle row (CONTEXT-MENUS.md §3a). With "Shuffle stays on" it
+  turns the mode on, as the Shuffle button does. A bare `shuffle` is still the mode's row.
+  Logged as `compass:shuffle`.
 
 Score: each word of the term must match the start of a word in the row's text (title, then
 the second line, then the row's hidden aliases). A match at the start of the title ranks

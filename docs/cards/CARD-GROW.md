@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
 sources: [src/card-grow.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-09-19
+updated: 2026-09-24
 ---
 # DeetsMusic — growing a card
 
@@ -731,3 +731,83 @@ What changed here: `Slot` gained `"np"` and `"queue"`; `MAX_NEIGHBOR` gained `qu
 `growSlots()` adds the Queue in Max while Fill keeps reading `opts.slots()`, so Fill still covers
 the bento only. The stage column never offers Fill — not from the button, not from the menu, not
 from its outer zones. The whole rule and the desk test are in **docs/cards/STAGE-COLUMN.md §7–§8**.
+
+## 18. Grow rules — a card grows on an action (designed 2026-09-24)
+
+> **Part:** designed · 2026-09-24
+
+Two cards already grow on their own: the cog Fills Settings (`expandCard`, §17), and a Diary
+entry grows the Diary taller (`growCardTaller`, DIARY.md §4a). Each one is coded at its own
+call site. §18 makes this one system: a **rule** says which action grows which card, and the
+user sets the rules.
+
+### 18.1 Terms
+
+- **Trigger:** an action that can start a grow (a drill to an album, a Diary entry opening).
+- **Rule:** When (a trigger) + In (a card) → Do (Off / Grow / Taller / Fill).
+- **Rule grow:** a grow a rule started. **Hand grow:** a grow the user started (an edge zone,
+  the Grow button, the title menu, the agent).
+
+### 18.2 Decisions (the owner, 2026-09-24)
+
+| Fork | Choice | What it means |
+|---|---|---|
+| 5 | **C** | The rules are stored as data now (a list of `{ when, card, do }`). Settings shows them as fixed rows, one per trigger, with pills. A rule builder can come later on the same data, with no migration (§18.6). |
+| 6 | **A** | A rule grow ends when Back leaves the level that caused it. That is the Diary rule today (`grewForEntry` in diary-card.ts). |
+| 7 | **A** | A rule never changes or shrinks a hand grow. A card that is already grown stays as it is. |
+| 8 | **open** | The first set of triggers (§18.4). |
+
+### 18.3 The engine
+
+- One module, `src/grow-rules.ts`: `ruleFor(trigger, card)` reads the stored rules and
+  returns the Do. Each trigger site calls `growOnRule(trigger, card, cause)` in place of its
+  own `expandCard` / `growCardTaller` call.
+- `growOnRule` obeys "Grow cards from edges" (`cardGrow`), waits for `whenSwapSettled()`, and
+  does nothing on Mini / Player, as `expandCard` does today.
+- **Fork 7A:** when `grownState()` is not null, it does nothing, and it does not mark the
+  level.
+- **Fork 6A:** a rule grow marks the level it opened (the engine's frame, or the Search pane).
+  Back off that level calls `collapseGrow("rule-back")`, only when the grow is still the rule
+  grow. A hand change in between (Pin, a new pick, a Fill from the button) makes it a hand
+  grow, and Back leaves it alone.
+- A drill in place (§15) keeps the span, as today. The rule grow ends when Back walks past
+  the level that grew it, not at the first Back.
+- Log: `diag.log("grow:rule", { trigger, card, do, applied })` per trigger, so a desk
+  complaint can be read.
+
+### 18.4 Triggers — fork 8 (open)
+
+The candidate first set:
+
+| Trigger | Where it fires | Today |
+|---|---|---|
+| Drill to an album | any card's album level (Library Lib and Full, Search pane, Playlists) | nothing |
+| Drill to an artist | any card's artist level | nothing |
+| Open a playlist | the Playlists card | nothing |
+| Open a song pane | Song Credits | nothing |
+| Full view (FULL-LIB.md) | a press on Full | nothing |
+| Open a Diary entry | diary-card.ts | Taller (hard-coded) |
+| The cog | quick-panel.ts | Fill Settings (hard-coded) |
+
+Moving the last two into rules makes both of them switchable. Their defaults stay what they do
+today, so nothing changes for a user who never opens the rows.
+
+### 18.5 Settings rows (fork 5C)
+
+Settings › Window, a new part under the grow rows: **"Grow on"**. One row per trigger:
+
+| Label | Pills | Default |
+|---|---|---|
+| Opening an album | Off / Grow / Fill | the owner's call at build |
+| … one row per trigger in §18.4 … | | |
+
+A pill shows only where the surface can do it (no Fill in Midi: Fill reads as Grow there, as
+`expandCard` does). Each row gets a `NEW_MARKS` line, an `agent-settings.ts` spec, a line in
+AGENT.md, and a hint in the ONBOARDING.md ledger.
+
+### 18.6 The rule builder (later)
+
+The same stored list, shown as editable rows: "When I [open an album ▾] in [Library ▾],
+[Fill ▾]". A row per card lets one trigger do different things in different cards (Library
+Fills on an album, Search only Grows). The fixed rows of §18.5 are the rules with `card: "*"`.
+Nothing is built until the fixed rows are desk-tested.

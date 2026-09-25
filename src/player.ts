@@ -777,11 +777,16 @@ function onNowPlayingChange(): void {
       stats.recordStart(queue.getCurrent());
       diag.log("player:npRoom", snap());
     } else {
-      syncModelToMusicKit();
-      stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
+      const short = syncModelToMusicKit();
       diag.log("player:np", snap());
-      checkDesync();
-      checkAlignment("np");
+      // The model is the master: MusicKit started a song the model did not expect → re-window
+      // onto the model's song. That load records the start and grows the window itself.
+      if (correctDrift(short)) {
+        emit();
+        return;
+      }
+      stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
+      void ensureAligned("np");
       maybeTopUpWindow();
     }
   }
@@ -888,54 +893,88 @@ function snap() {
   };
 }
 
-/** Log when the model's current no longer matches MusicKit's now-playing item. */
-function checkDesync(): void {
+/** MusicKit's item id is the id we fed it: the catalog id, or the library-id fallback. */
+const isEntry = (e: TrackHandle, id: string): boolean => id === e.catalogId || id === e.libraryId || id === playId(e);
+
+// ── The model is the master (QUEUE.md §The model is the master, 2026-09-24) ────────
+//
+// What the Queue card shows is what plays. When MusicKit disagrees at a song change, the
+// app corrects MusicKit — it does not follow it. Two layers:
+//  1. After every queue edit (and every song change), `ensureAligned` compares MusicKit's
+//     upcoming with the model's and repairs it at once through `reconcileUpcoming`
+//     (gapless: `current` never moves). Drift is fixed before anyone hears it.
+//  2. If drift still reaches a song change (MusicKit starts X, the model expected Y),
+//     `correctDrift` re-windows onto Y (`loadFromModel`, the same ~1 s buffer as any jump).
+// Found 2026-09-24: a dragged song that had already played once was left out of MusicKit's
+// queue, and the old index-only follow then showed one song while another played.
+
+let lastDriftFixAt = -Infinity;
+/** Two corrections this close together means the fix itself is failing: stop and follow. */
+const DRIFT_GAP_MS = 5000;
+
+/**
+ * The song change landed on a song the model did not expect. Re-window onto the model's
+ * song and return true, or return false and follow MusicKit when there is nothing to
+ * correct toward (the model ran out, its song cannot play, or a correction just failed).
+ */
+function correctDrift(short: number): boolean {
+  const m = music;
   const cur = queue.getCurrent();
-  const npId = music?.nowPlayingItem?.id;
-  if (!cur || !npId) return;
-  if (npId !== cur.catalogId && npId !== cur.libraryId) {
-    const data = { npId, curCat: cur.catalogId, curLib: cur.libraryId, windowPos, npIndex: music?.nowPlayingItemIndex };
-    diag.log("player:desync", data);
-    perf.event("desync", data);
-  }
+  const npId: string | undefined = m?.nowPlayingItem?.id;
+  if (!m || !cur || !npId || isEntry(cur, npId)) return false;
+  const want = playId(cur);
+  const data = { npId, want: want ?? null, npIndex: m.nowPlayingItemIndex, windowPos, short };
+  const now = performance.now();
+  // `short`: MusicKit moved further than the model has songs; it holds songs the model does not.
+  const fix = !want || short > 0 ? "followed" : now - lastDriftFixAt < DRIFT_GAP_MS ? "held" : "jumped";
+  diag.warn("player:desync", { ...data, fix });
+  perf.event("desync", { ...data, fix });
+  if (fix !== "jumped") return false;
+  lastDriftFixAt = now;
+  loadFromModel(m).catch((e) => console.warn("[player] drift re-window:", e));
+  return true;
 }
 
 // ── Upcoming alignment (model.upcoming ⟷ MusicKit's live window) ──────────────
 //
-// The lockstep invariant the whole queue rests on. `checkDesync` only watches `current`;
-// this watches the UPCOMING list, which the manual-queue ops (enqueue/remove/move) and a
-// future re-windower all mutate. The invariant: MusicKit's upcoming ids are an
-// ORDER-PRESERVING SUBSEQUENCE of the model's upcoming ids — *subsequence*, not equality,
-// because the fed window dedups repeats and is bounded (50/200), so the model legitimately
-// has MORE upcoming, but never in a different order, and MusicKit must never hold an id the
-// model doesn't. A break = an edit desynced the two.
+// The invariant: MusicKit's upcoming is a PREFIX of the model's upcoming live ids (an entry
+// with no play id is dead and never fed). Prefix, not equality: MusicKit holds a bounded
+// window (grown to WINDOW_FWD), so the model legitimately has more. Before 2026-09-24 this
+// was a subsequence test, which let a model-only song pass as aligned — the drag bug.
 
 function alignmentReport() {
   const items: any[] = music?.queue?.items ?? [];
   const np = typeof music?.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
   const mkUp: string[] = np >= 0 ? items.slice(np + 1).map((it) => it?.id).filter(Boolean) : [];
-  const modelUp = queue.getUpcoming().map((e) => playId(e));
-  let i = 0;
-  let firstMismatch: { mkPos: number; mkId: string } | null = null;
+  const modelUp = queue.getUpcoming().filter((e) => !!playId(e));
+  let firstMismatch: { mkPos: number; mkId: string; want: string | null } | null = null;
   for (let j = 0; j < mkUp.length; j++) {
-    while (i < modelUp.length && modelUp[i] !== mkUp[j]) i++; // skip model-only ids (dedup/window)
-    if (i >= modelUp.length) {
-      firstMismatch = { mkPos: j, mkId: mkUp[j] }; // a MusicKit id the model doesn't have (in order)
+    const e = modelUp[j];
+    if (!e || !isEntry(e, mkUp[j])) {
+      firstMismatch = { mkPos: j, mkId: mkUp[j], want: e ? playId(e) ?? null : null };
       break;
     }
-    i++;
   }
   return { aligned: !firstMismatch, firstMismatch, mkUpLen: mkUp.length, modelUpLen: modelUp.length };
 }
 
-/** Best-effort canary: log `player:misalign` when the upcoming lists diverge. */
-function checkAlignment(where: string): void {
-  if (loadingContext) return; // mid-(re)build — expected to differ
+/** Log `player:misalign` when the upcoming lists diverge. True = aligned. */
+function checkAlignment(where: string): boolean {
+  if (loadingContext) return true; // mid-(re)build — expected to differ
   const r = alignmentReport();
   if (!r.aligned) {
     diag.log("player:misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
     perf.event("misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
   }
+  return r.aligned;
+}
+
+/** Check, and repair MusicKit from the model when they diverge — once per call, never a loop. */
+async function ensureAligned(where: string): Promise<void> {
+  if (checkAlignment(where) || mode !== "queue") return;
+  await reconcileUpcoming();
+  const ok = alignmentReport().aligned;
+  diag.log("player:repair", { where, ok });
 }
 
 /** `window.__player.queue()` — model vs MusicKit upcoming, side by side, with the verdict. */
@@ -966,8 +1005,13 @@ function queueDump() {
 }
 
 
-/** Walk the queue model to match MusicKit's live position (natural advance + skips). */
-function syncModelToMusicKit(): void {
+/**
+ * Walk the queue model to match MusicKit's live position (natural advance + skips).
+ * A forward step lands on the next LIVE entry: an entry with no play id was never fed to
+ * MusicKit, so it is dropped (as a jump drops it), not counted as a step. Returns how many
+ * forward steps the model could not take because it ran out of songs.
+ */
+function syncModelToMusicKit(): number {
   // `nowPlayingItemIndex` is the documented v3 index of the current item; `queue.position`
   // is a fallback (not populated in every build — relying on it left the model frozen,
   // so the now-playing song lingered at the top of Up Next).
@@ -976,11 +1020,14 @@ function syncModelToMusicKit(): void {
   const p = typeof idx === "number" && idx >= 0 ? idx : typeof qp === "number" && qp >= 0 ? qp : -1;
   if (p < 0) {
     console.warn("[player] model-follow: MusicKit gave no queue position");
-    return;
+    return 0;
   }
   let diff = p - windowPos;
+  let short = 0;
   while (diff > 0) {
-    queue.advance();
+    const k = queue.getUpcoming().findIndex((h) => !!playId(h));
+    if (k < 0) short++;
+    else queue.jumpTo(k);
     diff--;
   }
   while (diff < 0) {
@@ -988,6 +1035,7 @@ function syncModelToMusicKit(): void {
     diff++;
   }
   windowPos = p;
+  return short;
 }
 
 // ── Context playback ───────────────────────────────────────────────────────────
@@ -1690,7 +1738,7 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
     if (typeof m.playLater === "function")
       await insertWithRetry("enqueue:later", (ids) => m.playLater({ songs: ids }), () => liveIds(playable));
   }
-  checkAlignment(`enqueue:${where}`);
+  await ensureAligned(`enqueue:${where}`);
 }
 
 /** Insert handles right after the current song (gapless). */
@@ -1771,7 +1819,10 @@ function queueFailed(e: unknown): never {
 function mkUpcomingIndex(m: any, k: number, id: string): number {
   const items: any[] = m.queue?.items ?? [];
   const np = typeof m.nowPlayingItemIndex === "number" && m.nowPlayingItemIndex >= 0 ? m.nowPlayingItemIndex : windowPos;
-  const guess = np + 1 + k;
+  // MusicKit holds only the live entries (a dead one is never fed), so count those. Since
+  // 2026-09-24 a song can sit in the window twice, which makes the exact slot matter.
+  const live = queue.getUpcoming().slice(0, k).filter((h) => !!playId(h)).length;
+  const guess = np + 1 + live;
   if (items[guess]?.id === id) return guess;
   for (let i = np + 1; i < items.length; i++) if (items[i]?.id === id) return i; // dedup drift
   return -1;
@@ -1788,7 +1839,7 @@ export async function removeFromQueue(index: number): Promise<void> {
   diag.log("player:queueEdit", { op: "remove", index, mk, id });
   queue.removeAt(index); // model first → Qcard updates instantly
   if (mk >= 0 && typeof m.queue?.splice === "function") m.queue.splice(mk, 1);
-  checkAlignment("remove");
+  await ensureAligned("remove");
 }
 
 /** Move an Up Next entry to the front (top) or back (bottom) of upcoming (gapless). */
@@ -1811,7 +1862,7 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
     else if (to === "bottom" && typeof m.playLater === "function")
       await insertWithRetry("move-bottom", (ids) => m.playLater({ songs: ids }), one);
   }
-  checkAlignment(`move-${to}`);
+  await ensureAligned(`move-${to}`);
 }
 
 /**
@@ -1822,7 +1873,18 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
  * Bounded by `WINDOW_FWD` (MusicKit only ever holds the forward window). This is the general
  * sync primitive — drag-reorder uses it, and re-windowing (roadmap) will too. See docs/features/QUEUE.md.
  */
-export async function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
+// Reconciles are SERIALIZED: a song change repairs (ensureAligned) and tops up
+// (maybeTopUpWindow) in the same tick, and two reconciles reading `items` before either
+// splices would each cut and append the same suffix.
+let reconcileChain: Promise<void> = Promise.resolve();
+
+export function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
+  const run = reconcileChain.then(() => doReconcileUpcoming(cap));
+  reconcileChain = run.catch(() => {}); // keep the chain alive past a failed reconcile
+  return run;
+}
+
+async function doReconcileUpcoming(cap: number): Promise<void> {
   // Radio: MusicKit's queue is station-owned; a break-out block edit is model-only.
   // Room: the room owns the queue, and MusicKit holds only the song being heard.
   if (!music || mode !== "queue") return;
@@ -1831,22 +1893,17 @@ export async function reconcileUpcoming(cap = WINDOW_FWD): Promise<void> {
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
   if (np < 0) return;
 
-  // Expected MK upcoming = model upcoming, deduped against what MK already holds up to current,
-  // capped to the window (forward-only mirror of loadFromModel's dedup — current is never touched).
+  // Expected MK upcoming = the model's upcoming live ids, in order, capped to the window.
+  // No dedup: `playLater` keeps a repeated id (only `setQueue` collapses them, which is why
+  // loadFromModel's window still dedups). Deduping here against the songs MusicKit already
+  // held left a re-queued, already-heard song out of MusicKit entirely (2026-09-24).
   // A closure so the NOT_FOUND retry can rebuild it after a dead-id bank (playId is deadIds-aware).
   const computeExpected = (): string[] => {
-    const seen = new Set<string>();
-    for (let i = 0; i <= np; i++) {
-      const id = items[i]?.id;
-      if (id) seen.add(id);
-    }
     const expected: string[] = [];
     for (const e of queue.getUpcoming()) {
       if (expected.length >= cap) break;
       const id = playId(e);
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      expected.push(id);
+      if (id) expected.push(id);
     }
     return expected;
   };

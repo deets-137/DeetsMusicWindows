@@ -21,6 +21,8 @@ import { inLibrary, loadTracks } from "./track-store";
 import { catalogRelated } from "./search";
 import { toast, noticeOff } from "./toast";
 import { requestSetting } from "./layout-bus";
+import type { Playlist } from "./search";
+import { playlistsCached, applePlaylistsSync, onPlaylistsChange, notifyPlaylistsChanged } from "./playlists";
 
 export const ADD_NOTICE_KEY = "deets.notice.addOneWay";
 const NOTICE_KEY = ADD_NOTICE_KEY;
@@ -67,7 +69,12 @@ export async function addToLibrary(kind: "songs" | "albums", ids: string[], trac
     toast({ kind: "warn", text: `Couldn't add the ${kind === "albums" ? "album" : "song"} to your library.` });
     throw e;
   }
-  const what = kind === "albums" ? "Album added" : "Added";
+  confirmAdd(kind === "albums" ? "Album added" : "Added");
+  await loadTracks();
+}
+
+/** The first add ever raises the one-way notice; every later add confirms (TOASTS.md). */
+function confirmAdd(what: string): void {
   if (!noticeOff(NOTICE_KEY)) {
     toast({
       kind: "info",
@@ -78,7 +85,45 @@ export async function addToLibrary(kind: "songs" | "albums", ids: string[], trac
   } else {
     toast({ kind: "success", text: `${what} to your library.` });
   }
-  await loadTracks();
+}
+
+// ── Apple's playlists (his call 4B, 2026-09-24) ──
+// A catalog playlist (Search, Home, an artist's Featured shelf) adds as the playlist: Apple
+// lists it in the library, and the next mirror sync brings it to the Playlists card. Its
+// songs are not added to the library, so nothing graduates. The row hides once the mirror
+// holds it: a library playlist added from the catalog carries the catalog id as its
+// `globalId`. The mirror's ids are read at load and after every playlist change (zero Apple calls).
+let listed = new Set<string>();
+const readListed = () =>
+  void playlistsCached()
+    .then((ls) => {
+      listed = new Set(ls.map((p) => p.globalId).filter((id): id is string => !!id));
+    })
+    .catch((e) => console.warn("[library-add] playlists", e));
+readListed();
+onPlaylistsChange(() => readListed());
+
+/** Add to Library for one of Apple's playlists, or null when not offered. */
+export function addPlaylistToLibraryItem(p: Playlist): MenuItem | null {
+  const id = p.catalogId;
+  if (!enabled || !id || p.libraryId || p.source || listed.has(id)) return null;
+  return {
+    label: "Add to Library",
+    run: () => void addPlaylistToLibrary(p, id).catch((e) => console.error("[library-add] playlist", e)),
+  };
+}
+
+async function addPlaylistToLibrary(p: Playlist, id: string): Promise<void> {
+  try {
+    await invoke("apple_add_to_library", { kind: "playlists", ids: [id], tracks: [] });
+  } catch (e) {
+    toast({ kind: "warn", text: `Couldn't add “${p.name}” to your library.` });
+    throw e;
+  }
+  listed.add(id);
+  confirmAdd("Playlist added");
+  await applePlaylistsSync(false);
+  notifyPlaylistsChanged();
 }
 
 /**

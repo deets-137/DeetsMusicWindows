@@ -1,9 +1,9 @@
 ---
 status: shipped
 shipped_in: 0.14.0
-desk_test: passed 2026-09-23
+desk_test: passed 2026-09-24
 sources: [src/media-menu.ts, src/context-menu.ts, src/web.ts, src/copy-link.ts, src/go-to.ts, src/pins.ts, src/np-bus.ts, src/tray.ts]
-updated: 2026-09-23
+updated: 2026-09-24
 ---
 # DeetsMusic — Right-click menus
 
@@ -44,7 +44,7 @@ The same in every menu. The groups never change places.
 
 | # | Group | Rows |
 |---|---|---|
-| 1 | Play | Play Now · Play Next · Add to Queue |
+| 1 | Play | Play Now · Shuffle (albums, playlists) · Play Next · Add to Queue |
 | 2 | File | Add to Playlist ▸ |
 | 3 | Go to | Go to Artist · Go to Album · Go to Playlist · Song Credits |
 | 4 | Seed | Start Station · Start a Web · Copy Link |
@@ -72,8 +72,11 @@ Library · Favorite · Mark as Song of the Day · Pin.
   (`np_command`, np-bus.ts).
 
 ### 3.2 Album — `albumMenu`
-Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album · Start a
-Web · Copy Link · Add to Library · Add to Diary · On Click ▸ · Pin.
+Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album ·
+Start a Web · Copy Link · Add to Library · Add to Diary · Favorite · On Click ▸ · Pin.
+
+- **Shuffle** (2026-09-24, his call 3A): the hero's Shuffle button as a row, on every card. With
+  "Shuffle stays on" it turns the mode on (`runListAction`'s rule).
 
 - **Add to Diary** (2026-09-24, [DIARY.md](../features/DIARY.md) §2): summons the Diary card at
   the album's entry, making it the first time. Left out inside the Diary itself (`inDiary`).
@@ -102,8 +105,15 @@ a Web · Copy Link · On Click ▸ · Pin.
 - The artist view's own hero leaves Go to Artist out (you are there).
 
 ### 3.4 Playlist — `playlistMenu`
-Play Now · Play Next · Add to Queue · Add to Playlist ▸ (not itself) · Go to Playlist · Copy
-Link · On Click ▸ · Pin.
+Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ (not itself) · Go to Playlist ·
+Copy Link · Add to Library · Favorite · On Click ▸ · Pin.
+
+- **Shuffle**: as on an album (§3.2).
+- **Add to Library** (2026-09-24, his call 4B): only one of Apple's playlists (Search, Home, an
+  artist's Featured shelf) that the library does not hold. The row reads the Playlists
+  mirror's `globalId`s (zero Apple calls). The press is one `POST /me/library?ids[playlists]=`;
+  the playlist's songs do not join the library. The mirror then re-syncs, so the playlist
+  shows in the Playlists card. Behind the Library Add toggle, as every add is.
 
 - **Go to Playlist**: the Playlists card opens it (in place on that card); one of Apple's
   opens as a Search pane.
@@ -123,6 +133,80 @@ Play Now · Add to Queue · Copy Link · Pin. A station has no view, so no Go to
 - A **picked set** (Ctrl / Shift): Play *N songs* (or albums, artists, genres, plays,
   playlists) · Play Next · Add to Queue · Add to Playlist ▸ · the card's Remove N.
 - A **tile** on Home or a Pinned shelf: `tileMenu` picks the builder for the tile's kind.
+
+## 3a. The hero menus
+
+> **Part:** built · 2026-09-24 · desk test passed 2026-09-24
+
+The **hero** is the block at the top of an open album, playlist or artist view: the cover,
+the title, the subtitle and the details line. A right-click **anywhere on the hero** opens the
+view's own media menu (his call 1A). Before this, an album hero had no menu, a playlist hero
+had only its cover menu, and the Library artist hero answered on the cover only.
+
+| View | The menu |
+|---|---|
+| Album — Library card, Search pane | `albumMenu` with `here`: no Go to Album |
+| Playlist — Playlists card | the card's playlist menu (§5) with `here`: no Go to Playlist, no Delete Playlist, no Remove Cover |
+| Playlist — Search pane (Apple's) | `playlistMenu` with `here` |
+| Artist — Library card, Search pane | `artistMenu` with `here`: no Go to Artist (as before) |
+
+- **Nothing destructive** (his rule, 2026-09-24): the hero never holds a take-away row. Delete
+  Playlist stays on the playlist row; Remove Cover stays on the row and on the cover button (5A).
+- **The cover button keeps its left-click** (2A): on a playlist you made, the cover still opens
+  the short cover menu (Choose Image… first, PLAYLISTS.md §10 1B).
+- **Code:** a collection-card hero sets `menu` (the `Hero` interface); the engine's
+  right-click handler takes `.lib-hero` first. A hero without `menu` keeps the old rule (the
+  cover button's `coverMenu`). The Search panes wire their own hero listener in `fillCollection`.
+- **Not yet** (his call 6, later): the song credits, Writer and Genre heroes have no menu.
+
+**Desk test.**
+1. Library › an album. Right-click the cover, the title, the artist line and the details line:
+   each opens the album menu, with Shuffle and without Go to Album.
+2. Search › an album, and an Apple playlist: the same, anywhere on the hero. The playlist has
+   Add to Library when your library does not hold it; press it, and it shows in the Playlists
+   card after the sync.
+3. Playlists › a playlist you made: right-click the hero. Rename is on top; Move to Folder,
+   the cover rows and the Apple Music row are there; Delete Playlist and Remove Cover are not.
+   A left-click on the cover still opens the short cover menu.
+4. Library › an artist: right-click the name. The artist menu opens (before, only the cover).
+5. Any album tile on Home or in the Library: Shuffle is the second row, and it plays shuffled.
+6. Ctrl+Space, `shuffle album <name>`: the album plays shuffled.
+
+## 3b. ♥ Favorite on albums and playlists
+
+> **Part:** built · 2026-09-24 · desk test passed 2026-09-24
+
+Apple's love rating (`PUT /me/ratings/{albums|playlists|library-playlists}/{id}`, value 1;
+`DELETE` takes it off), in every album and playlist menu, tiles included (his call F2A). Behind
+the Library Add toggle, as the song ♥ is ([FAVORITES.md](../features/FAVORITES.md)).
+
+- **The state** (F1A): the song ♥'s `favorites` table, no schema change. Keys `album:{id}` and
+  `playlist:{id}` cannot collide with a song id. A Library album knows only its songs, so a
+  pointer row `albumsong:{first song's catalog id}` mirrors the album's row: the Library menu
+  reads it with no song → album lookup. The "first song" is the first song with a catalog id
+  in disc and track order, in `albumMenu` and in the hero alike.
+- **Reading Apple:** a hero asks once per install, the first time it draws
+  (`favorite_collection_reconcile`, one `GET …/ratings/{kind}?ids=`). A Library album hero
+  first finds the album's id (one song → album hop, cached for the session). A tile never
+  asks: an album or playlist never opened reads "Favorite", and a press on one already loved
+  only loves it again.
+- **The press:** optimistic, as the song ♥. A Library album resolves its id first (the same
+  hop). Apple refuses → the row flips back and a warn toast says so.
+- **Which playlists** (F3A): a library playlist by its `p.` id (`library-playlists`), one of
+  Apple's by its catalog id (`playlists`). A playlist made in DeetsMusic has no ♥ row.
+- The Favorite Songs seed and the web and credits reads still see only song ids: the new keys
+  never match a song.
+
+**Desk test.**
+1. Library › an album › right-click the hero: Favorite. Press it. Open the Music app on the
+   phone or the web: the album is loved. Right-click again: Unfavorite.
+2. Restart the app. Right-click the same album's tile in the Library: Unfavorite (no Apple
+   call — `favorites:` lines in the log show none).
+3. Love an album in the Music app. Open its hero in DeetsMusic once: the log shows one
+   `favorites: reconciled album …, loved=true`, and the menu says Unfavorite.
+4. Search › an Apple playlist › hero › Favorite; Playlists › one of your Apple playlists ›
+   Favorite. A playlist under Made Here has no Favorite row.
+5. Settings › Apple Music › turn Add to Library and ♥ off: no Favorite row anywhere.
 
 ## 4. Start a Web
 

@@ -104,7 +104,7 @@ export interface Settings {
    *  Picture = one picture the user chose. wallpaper.ts reads it. */
   glassCanvas: "aurora" | "covers" | "picture";
   /** Glass Covers only: how many tiles sit around the playing album's cover. "one" = the cover
-   *  alone, filling the window (1A, kept for the side-by-side desk test, §6.1). */
+   *  alone, filling the window (1A; kept as a choice by his call at the desk test, 2026-09-24). */
   glassTiles: "one" | "few" | "some" | "many";
   /** Glass Covers / Picture, 0–100: a blur over the whole picture, so it reads soft, not sharp.
    *  skin-settings.ts publishes it as --glass-diffusion; 100 = --wallpaper-diffusion-max. */

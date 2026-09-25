@@ -920,6 +920,11 @@ vocabulary/split machinery is shared either way.
 
 ## 20. Drill-in target — in-place (local) vs Search card (catalog)
 
+> **Part:** built · 2026-09-24 — in part, as a control and not a setting. The Library's album
+> and artist levels carry **Full | Lib** chips (docs/features/FULL-LIB.md): Full shows Apple's
+> whole page in the Library card itself. A drill still opens Lib (fork 3A). A setting "open
+> drills in Full" would be the follow-up; it costs Apple calls on every drill.
+
 **Behavior.** Where the right-click **Go to Artist** / **Go to Album** verbs land. Two
 targets exist and both are shipped today, chosen **per surface**:
 - **In-place (local)** — push the artist/album context inside the *current* card's own

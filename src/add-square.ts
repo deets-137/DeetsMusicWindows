@@ -29,8 +29,12 @@ const addable = new Map<string, Track>(); // catalogId → the row's track
 const adding = new Set<string>();
 
 type State = "none" | "add" | "busy" | "in";
-function stateOf(t: Track | undefined): State {
-  if (!t?.catalogId || !libraryAddEnabled()) return "none";
+// `mark`: a list whose point is which songs you have (the Library's Full view, FULL-LIB.md)
+// shows the ✓ whatever "Show ✓ on songs you have" says, and shows it at rest (CSS).
+function stateOf(t: Track | undefined, mark = false): State {
+  if (!t?.catalogId) return "none";
+  if (mark && alreadyInLibrary(t)) return "in";
+  if (!libraryAddEnabled()) return "none";
   if (adding.has(t.catalogId)) return "busy";
   if (!alreadyInLibrary(t)) return "add";
   return setting("addSquareOwned") ? "in" : "none";
@@ -41,15 +45,15 @@ const escAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").
 
 /** The square for a song row. `cls` is the card's own placement class. "" when the song
  *  has no catalog id (an upload can't be added). */
-export function addSquareHTML(t: Track | undefined, cls = ""): string {
+export function addSquareHTML(t: Track | undefined, cls = "", mark = false): string {
   if (!t?.catalogId) return "";
   ensureWired();
   addable.set(t.catalogId, t);
-  const s = stateOf(t);
+  const s = stateOf(t, mark);
   const label = LABEL[s];
   const state = s === "busy" ? " is-busy" : s === "in" ? " is-in" : "";
   return (
-    `<button class="panel__action add-square${cls ? ` ${cls}` : ""}${state}" type="button" data-add="${escAttr(t.catalogId)}"` +
+    `<button class="panel__action add-square${cls ? ` ${cls}` : ""}${mark ? " add-square--mark" : ""}${state}" type="button" data-add="${escAttr(t.catalogId)}"` +
     (s === "none" ? " hidden" : ` aria-label="${label}" title="${label}" aria-disabled="${s !== "add"}"`) +
     `>${s === "in" ? ICON_CHECK : s === "none" ? "" : ICON_PLUS}</button>`
   );
@@ -59,7 +63,7 @@ export function addSquareHTML(t: Track | undefined, cls = ""): string {
 export const isAddSquare = (target: HTMLElement): boolean => !!target.closest("[data-add]");
 
 function paint(btn: HTMLButtonElement): void {
-  const s = stateOf(addable.get(btn.dataset.add!));
+  const s = stateOf(addable.get(btn.dataset.add!), btn.classList.contains("add-square--mark"));
   btn.hidden = s === "none";
   btn.classList.toggle("is-busy", s === "busy");
   btn.classList.toggle("is-in", s === "in");
@@ -84,7 +88,7 @@ function ensureWired(): void {
       e.preventDefault();
       const id = btn.dataset.add!;
       const t = addable.get(id);
-      if (!t || stateOf(t) !== "add") return;
+      if (!t || stateOf(t, btn.classList.contains("add-square--mark")) !== "add") return;
       adding.add(id);
       repaintAll(); // the same song can show in two cards at once
       addTrackToLibrary(t)

@@ -1890,7 +1890,9 @@ pub async fn apple_add_to_library(
     state: tauri::State<'_, AppleState>,
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<(), String> {
-    if kind != "songs" && kind != "albums" {
+    // "playlists": one of Apple's playlists, added as the playlist (library-add.ts). Its songs
+    // do not join the library, so the front end sends no tracks and nothing graduates.
+    if kind != "songs" && kind != "albums" && kind != "playlists" {
         return Err(format!("apple_add_to_library: bad kind '{kind}'"));
     }
     if ids.is_empty() {

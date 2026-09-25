@@ -346,7 +346,14 @@ function route(el: HTMLMediaElement): void {
     nodeInfo.set(node, info);
     node.port.onmessage = (e) => {
       const m = e.data;
-      if (m?.type === "meter") meterSubs.forEach((cb) => cb(m.ms, m.peak));
+      // MusicKit keeps more than one element routed. The idle one sends exact zeros every
+      // hop, and fed between the playing one's hops they flipped the Ocean heave off and on
+      // ~17 times a second (and flooded the diag ring). A silent playing element still goes
+      // quiet to the subscribers: each one has its own idle timer.
+      if (m?.type === "meter") {
+        if (m.ms === 0 && m.peak === 0) return;
+        meterSubs.forEach((cb) => cb(m.ms, m.peak));
+      }
       else if (m?.type === "alive") info.aliveAt = performance.now();
       else if (m?.type === "first") {
         const w = startWatches.get(el);

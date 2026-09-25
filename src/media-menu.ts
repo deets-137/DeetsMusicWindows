@@ -27,15 +27,16 @@ import type { Station } from "./radio";
 import type { HomeItem } from "./home";
 import { artistDetail, catalogRelated, materializeTrack } from "./search";
 import { addTransientTracks } from "./track-store";
-import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter } from "./player";
+import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, setShuffleMode } from "./player";
+import { shuffleInPlace } from "./queue";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
 import { goToArtistItem, goToAlbumItem, goToAlbumPaneItem, songCreditsItem, requestPlaylistPane, requestArtistPane } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkItem, copyAlbumLinkFromSongItem, copyArtistLinkItem, copyPlaylistLinkItem, copyStationLinkItem } from "./copy-link";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { startWebItem, type WebSeed } from "./web";
-import { addSongToLibraryItem, addAlbumFromSongsItem, addAlbumToLibraryItem } from "./library-add";
-import { favoriteItem } from "./favorites";
+import { addSongToLibraryItem, addAlbumFromSongsItem, addAlbumToLibraryItem, addPlaylistToLibraryItem } from "./library-add";
+import { favoriteItem, albumFavoriteItem, playlistFavoriteItem, playlistFav } from "./favorites";
 import { markItem } from "./sotd";
 import { pinRows, pinItem, pinActItem, songKey, isPinned, setPin, clearPin } from "./pins";
 import { albumKey, pid } from "./rewind";
@@ -72,9 +73,9 @@ export interface ListFrom {
 export function playRows(
   load: () => Track[] | Promise<Track[]>,
   context: string | undefined,
-  opts: { catalog?: boolean; label?: string; now?: (ts: Track[]) => Promise<void> } = {},
+  opts: { catalog?: boolean; label?: string; now?: (ts: Track[]) => Promise<void>; shuffle?: boolean } = {},
 ): MenuItem[] {
-  const run = (how: "now" | "next" | "later") => () =>
+  const run = (how: "now" | "shuffle" | "next" | "later") => () =>
     void Promise.resolve(load())
       .then((ts) => {
         if (!ts.length) return;
@@ -83,14 +84,21 @@ export function playRows(
           ts.forEach(materializeTrack);
         }
         if (how === "now") return opts.now ? opts.now(ts) : playTracks(ts, 0, context);
+        // The Shuffle button's rule (runListAction): with "Shuffle stays on" it turns the mode on.
+        if (how === "shuffle") {
+          if (setting("shuffleStays")) setShuffleMode(true);
+          return playTracks(shuffleInPlace(ts.slice()), 0, context);
+        }
         return how === "next" ? queueTracksNext(ts, context) : queueTracksLater(ts, context);
       })
       .catch(err(`play ${how}`));
   return [
     { label: opts.label ?? "Play Now", run: run("now") },
+    // Albums and playlists (his call 3A, 2026-09-24): the hero's Shuffle, in every menu.
+    opts.shuffle && { label: "Shuffle", run: run("shuffle") },
     { label: "Play Next", run: run("next") },
     { label: "Add to Queue", run: run("later") },
-  ];
+  ].filter(Boolean) as MenuItem[];
 }
 
 // ── song ──────────────────────────────────────────────────────────────────────
@@ -188,6 +196,8 @@ export interface AlbumWhere extends Where {
   inArtist?: boolean;
   /** Inside the Diary: Add to Diary would open where you are. */
   inDiary?: boolean;
+  /** The album's own view (its hero): Go to Album would go where you are. */
+  here?: boolean;
 }
 
 /** The album's dominant credited artist (mode of each song's leading credit) — the Library
@@ -245,6 +255,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
       : goToAlbumItem(seed?.catalogId, a.title);
   }
   if (w.inArtist) goArtist = null;
+  if (w.here) goAlbum = null;
   const genres = [...new Set(a.known.flatMap((t) => t.genres ?? []))];
   const webSeed = (): WebSeed => ({
     kind: "album",
@@ -252,7 +263,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
     songId: seed?.catalogId,
   });
   return join(
-    playRows(load, w.context, { catalog: a.catalog }),
+    playRows(load, w.context, { catalog: a.catalog, shuffle: true }),
     [addToPlaylistItem(load)],
     [goArtist, goAlbum],
     [
@@ -276,6 +287,8 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
             tracks: load,
           }),
       },
+      // ♥ (his call F2A, 2026-09-24): every album menu; the state is what the mirror knows.
+      albumFavoriteItem({ id: a.catalogId ?? undefined, seed: seed?.catalogId, name: a.title }),
       ...albumPinRows(a),
     ],
     w.own ?? [],
@@ -362,11 +375,14 @@ export interface PlaylistWhere extends Where {
   catalog?: boolean;
   /** Rows above group 1 — only Rename, the field you type into (PLAYLISTS.md §10.2). */
   lead?: Row[];
+  /** The playlist's own view (its hero): Go to Playlist would go where you are. */
+  here?: boolean;
 }
 
 export function playlistMenu(p: Playlist, load: () => Track[] | Promise<Track[]>, w: PlaylistWhere): MenuItem[] {
   let open: Row = null;
-  if (w.open) open = { label: "Go to Playlist", run: w.open };
+  if (w.here) open = null;
+  else if (w.open) open = { label: "Go to Playlist", run: w.open };
   else if (p.libraryId) {
     const id = p.libraryId;
     open = { label: "Go to Playlist", run: () => { requestDrillCard("playlists"); requestOpenPlaylist(id); } };
@@ -376,12 +392,16 @@ export function playlistMenu(p: Playlist, load: () => Track[] | Promise<Track[]>
   }
   return join(
     w.lead ?? [],
-    playRows(load, w.context, { catalog: w.catalog }),
+    playRows(load, w.context, { catalog: w.catalog, shuffle: true }),
     [addToPlaylistItem(load, p.libraryId)], // a playlist can't bulk-add to itself
     [open],
     [copyPlaylistLinkItem(p)],
-    // One of Apple's (Search) keeps a snapshot, so its pinned tile draws (pins.ts).
-    pinRows(`playlist:${pid(p)}`, "playlist", p.libraryId ? undefined : p),
+    [
+      addPlaylistToLibraryItem(p),
+      playlistFavoriteItem(playlistFav(p)),
+      // One of Apple's (Search) keeps a snapshot, so its pinned tile draws (pins.ts).
+      ...pinRows(`playlist:${pid(p)}`, "playlist", p.libraryId ? undefined : p),
+    ],
     w.own ?? [],
     w.away ?? [],
   );

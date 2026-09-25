@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 495 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 498 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -155,6 +155,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--friend-radius` | `var(--room-radius)` | — | The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. Friends (FRIENDS.md §3, §6). ALIASES, not raw values: a friend's box lives inside the room panel, so a skin that restyles that panel restyles this with it. Only the three that describe the box's own shape are new. |
 | `--friend-chip-min-w` | `var(--room-chip-min-w)` | — |  |
 | `--friend-list-max-h` | `180px` | — | about three boxes before the list scrolls |
+| `--views-chip-radius` | `var(--sound-chip-radius)` | — | The Library's "Full \| Lib" chips in the card head (FULL-LIB.md): the panel chip family, ALIASES only, so a skin can move this pair alone later. |
+| `--views-chip-min-w` | `var(--sound-pill-min-w)` | — | Full and Lib are one width |
+| `--views-chip-dim` | `var(--sound-dim)` | — | Lib when the library holds none of it |
 | `--friend-art` | `38px` | — | the cover square; the box is two text lines tall |
 | `--friend-gap` | `var(--space-2)` | — |  |
 | `--friend-dim` | `var(--room-dim)` | — | an offline box, and every quiet line |

@@ -10,7 +10,7 @@ import { addTransientTracks } from "./track-store";
 import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import * as frames from "./frames";
 import { addSquareHTML, isAddSquare } from "./add-square";
-import { reconcile } from "./favorites";
+import { reconcile, reconcileAlbum, reconcilePlaylist } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { songMenu, albumMenu, artistMenu, playlistMenu, stationMenu, setMenu } from "./media-menu";
 import { makeDropdown } from "./dropdown";
@@ -642,6 +642,28 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           : "";
         body.innerHTML = heroHTML(kind, meta, tracks) + actions + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
         wireTrackList(body, tracks, `search-${kind}:${id}`);
+        // The ♥ state: asked once per install, the first time this hero draws (F1A).
+        if (kind === "albums") reconcileAlbum({ id, seed: tracks.find((t) => t.catalogId)?.catalogId, name: meta.title });
+        else reconcilePlaylist({ kind: "playlists", id, name: meta.title });
+        // Right-click anywhere on the hero: the album's or playlist's own menu, without its
+        // own Go to row (you are there) — CONTEXT-MENUS.md §3a, his call 1A (2026-09-24).
+        body.querySelector<HTMLElement>(".lib-hero")?.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          const context = `search-${kind}:${id}`;
+          menuAt(
+            e,
+            kind === "albums"
+              ? albumMenu(
+                  { title: meta.title, artistName: meta.artistName ?? tracks[0]?.artistName, artwork: meta.artwork ?? tracks[0]?.artwork, catalogId: id, known: tracks, catalog: true },
+                  { context, here: true },
+                )
+              : playlistMenu(
+                  { catalogId: id, name: meta.title, artwork: meta.artwork, curatorName: meta.curatorName, canEdit: false, isPublic: true },
+                  () => tracks,
+                  { context, catalog: true, here: true },
+                ),
+          );
+        });
         // The album hero's artist subtitle → the artist pane, via the album's own relationship.
         body.querySelector<HTMLElement>("[data-hero-artist]")?.addEventListener("click", (e) => {
           e.stopPropagation();

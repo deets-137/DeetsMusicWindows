@@ -110,6 +110,11 @@
   --friend-radius:       var(--room-radius);
   --friend-chip-min-w:   var(--room-chip-min-w);
   --friend-list-max-h:   180px;  /* about three boxes before the list scrolls */
+  /* The Library's "Full | Lib" chips in the card head (FULL-LIB.md): the panel chip family,
+     ALIASES only, so a skin can move this pair alone later. */
+  --views-chip-radius:   var(--sound-chip-radius);
+  --views-chip-min-w:    var(--sound-pill-min-w);  /* Full and Lib are one width */
+  --views-chip-dim:      var(--sound-dim);         /* Lib when the library holds none of it */
   --friend-art:          38px;   /* the cover square; the box is two text lines tall */
   --friend-gap:          var(--space-2);
   --friend-dim:          var(--room-dim);   /* an offline box, and every quiet line */

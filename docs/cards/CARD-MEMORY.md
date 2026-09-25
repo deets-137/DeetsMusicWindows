@@ -114,7 +114,7 @@ The engine adds `snapshot()` and `restore(s)` to its return value.
 
 | Card | Levels and keys | Resolver builds with | Data ready when |
 |---|---|---|---|
-| Library | `artist:<name>`, `album:<albumKey>` | `artistDetail(...)`, `albumDetail(al)` | the library lists have loaded |
+| Library | `artist:<name>`, `album:<albumKey>`; the Full view (FULL-LIB.md) `full-artist:<catalog id>`, `full-album:<catalog id>` | `artistDetail(...)`, `albumDetail(al)`; `full.resolve(key)` (library-full.ts) | the library lists have loaded; a Full level loads itself (session cache) |
 | Playlists | `playlist:<pid>` (a folder is a section, not a level) | `detail(p)` | `load()` has listed the playlists |
 | Radio | `genre:<id>` | `genreCtx(g)` | its genres have loaded |
 | Search | §5a | the pane openers | at once (the panes load themselves) |

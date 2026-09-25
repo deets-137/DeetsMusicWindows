@@ -28,7 +28,8 @@ Where this section and the design below disagree, this section is the code.
   `<div class="wallpaper">` in index.html, before `.aurora`.
 - **1A and 1B are both in.** 1A is the **Tiles** row's first choice, **One cover** (the cover
   alone, `cover`-fitted to the window). Four choices make the Tiles row a small menu, not a
-  pill. After the desk test, One cover is either dropped (the pill returns) or kept.
+  pill. **His call at the desk test (2026-09-24): the mosaic stays the default (Tiles: Some),
+  and One cover stays as a choice.**
 - **The layout (§3.2) is a grid, not the worker's cut-the-rectangle rule.** A grid of square
   cells covers the canvas (centered, overhanging the edges a little). The anchor takes a k × k
   block, k ≥ 2, `--wallpaper-anchor-share` (0.6) of the short side, at
@@ -295,7 +296,8 @@ A Rust file was added, so restart the dev runner (`npm run dev:app`) before the 
 
 ## 7. Open forks (for the owner)
 - ✅ Every fork in §1 is closed (2026-09-24).
-- 🔵 **1A vs 1B** — decided by the desk test (§6.1). The owner, 2026-09-24: **build both**,
+- ✅ **1A vs 1B** — closed at the desk test, 2026-09-24: the mosaic (1B) is the default, and the
+  single cover (1A) stays as the Tiles row's "One cover" choice. Before that, the owner: **build both**,
   he picks at the end.
 - ✅ **The Aurora color row's words** — label "Aurora color", pill `Cover | Theme` (the owner,
   2026-09-24). "Cover" names the album cover under Covers and the chosen picture under Picture.

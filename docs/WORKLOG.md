@@ -30,6 +30,16 @@ updated: 2026-09-22
 - **Pause (not a bug of ours):** `MEDIA_LICENSE` on The City → "Playback stopped". No
   auto-retry exists for it; left for its own fork.
 - Nothing committed. The installed app has neither fix until a release.
+- **Hero menus** (CONTEXT-MENUS.md §3a, his calls 1A 2A 3A 4B 5A, 6 later): a right-click
+  anywhere on an album / playlist / artist hero opens the view's own menu, nothing
+  destructive; Shuffle joins every album and playlist menu; Add to Library for Apple's
+  playlists (Rust: `apple_add_to_library` takes `playlists`); Compass `shuffle <name>`. Desk
+  test in §3a.
+- **♥ on albums and playlists** (CONTEXT-MENUS.md §3b, F1A F2A F3A): the `favorites` table
+  with `album:` / `playlist:` keys and an `albumsong:` pointer row for Library albums (my call
+  inside F1A, so "ask once" holds with no album id); a hero asks Apple once per install; two
+  new Rust commands `favorite_collection_set` / `_reconcile`. Desk test in §3b.
+- **Desk tests:** he passed all three the same day (the queue master, the hero menus, the ♥).
 
 ## 2026-09-24 — Cover Wallpaper and Diary Done copy built
 
@@ -47,6 +57,8 @@ updated: 2026-09-22
 - **The swap** (his question: why the center tile always seemed replaced; the dev log showed 3
   slots per album change — center, the tile it grew from, one new queue album; his call A):
   the old center album now shrinks into the tile the new one left. COVER-WALLPAPER.md "As built".
+- **His layout call (after the commit `5650dd3`):** the mosaic stays the default (Tiles: Some),
+  and One cover stays as a Tiles choice. No code change.
 - **Diary: Done copies the Export BUILT** (DIARY.md §7): one `onDiaryDone` listener; the check's
   hint names the copy.
 - Checks: `npx tsc --noEmit`, `npx vite build`, `cargo check`, `npm run tokens`,

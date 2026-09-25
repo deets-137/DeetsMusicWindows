@@ -66,6 +66,7 @@ old installs' Guide button opens.
 - `FAVORITES.md` — Add to Library and ♥; the store of every track we touch.
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.
 - `ARTIST-VIEW.md` — the artist hero, its shelves, the chip flight.
+- `FULL-LIB.md` — the Library's "Full | Lib" chips: Apple's whole album or artist in place of your songs.
 - `CREDITS.md` — writer credits from Apple's `composerName`; the song pane.
 - `SOUND.md` — Advanced EQ and DeetsAdaptiveSound on one Web Audio graph.
 - `AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker.

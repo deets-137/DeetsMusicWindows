@@ -4158,3 +4158,32 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   pointer-events: none;
   margin: 0;
 }
+
+/* ── The Library's "Full | Lib" chips (docs/features/FULL-LIB.md) ───────────────────────
+   The panel chip family (UI-ARCHITECTURE.md §2a, .sound__pill): a pair in the card head, left
+   of the ⟳ square, on an album or artist level only. The chosen view is the pressed chip. */
+.coll-views { display: flex; flex: 0 0 auto; gap: var(--space-1); margin-right: var(--space-1); }
+.coll-views[hidden] { display: none; }
+.coll-views__chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: var(--icon-lg); min-width: var(--views-chip-min-w);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1; white-space: nowrap;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--views-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.coll-views__chip:hover { background: var(--surface-hover); }
+.coll-views__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); cursor: default; }
+.coll-views__chip[aria-disabled="true"] { opacity: var(--views-chip-dim); cursor: default; }
+.coll-views__chip[aria-disabled="true"]:hover { background: var(--surface); }
+.coll-views__chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* The Full view's rows: a song you have wears the ✓ at rest (fork 4A); the + still waits for
+   the hover. In a grown card's columns the square rides the end of the title cell. An
+   unreleased song is dimmed, as in Search. */
+.lib-row > .add-square--mark.is-in { display: grid; }
+.lib-row__title > .add-square { display: none; vertical-align: middle; margin-left: var(--space-1); }
+.lib-row:hover .lib-row__title > .add-square:not([hidden]), .lib-row__title > .add-square--mark.is-in,
+.lib-row__title > .add-square.is-busy { display: inline-grid; }
+.lib-row.is-unreleased { cursor: default; opacity: var(--unreleased-opacity); }
