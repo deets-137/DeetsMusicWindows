@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
-updated: 2026-09-21
+updated: 2026-09-24
 ---
 # DeetsMusic — Debugging tools
 
@@ -1231,6 +1231,45 @@ How it works: each pause we cause calls `notePause(why)` in player.ts first; the
 **Desk test:** play a song, then pause it once from each of: the play button, Space, the
 tray panel, a keyboard media key, and the HomePod (if routed). `deetsmusic diag --tag
 player:pause` shows five lines with `button`, `space`, `tray`, `windows`, `airplay`.
+
+### What the 2026-09-24 read found — `outside` is mostly song changes
+
+> **Part:** designed · 2026-09-24
+
+The owner asked: did a song ever pause without a user action? The read (installed app
+2026-09-17 → 09-24, beta, dev) found **no**. But it showed that `outside` is noise:
+
+| The 93 `outside` lines (installed app) | Count | What follows |
+|---|---|---|
+| A radio song change | 80 | `player:stationFollow` about 250 ms later. MusicKit reports `paused` at the end of each station song. |
+| The queue ended | 5 | `player:queueEnd` |
+| A song change after the user's Next / Play Next | 7 | `presence:pause-cancel` 0.2–0.5 s later (the resume). No `playing: true` line, so a naive scan misses it. |
+| **A real gap** | 1 | 2026-09-23 ~22:14, radio, AirPlay. The song ended, the next started **17.5 s** later, at the same moment `sound:output` changed to the speakers. AIRPLAY.md §13. |
+
+Scan recipe: for each `outside` line, look at the next 5 s of the ring for `stationFollow`,
+`queueEnd`, `player:play`, `"playing":true` or `presence:pause-cancel`. Only a line with none
+of them is a real stop.
+
+**The fixes (designed, not built; build with [APPLE-CALLS.md](APPLE-CALLS.md) A + B):**
+
+1. **Label the song change.** A pause becomes `why: "songEnd"` when, within 1 s, a
+   `stationFollow`, a `queueEnd` or a new `nowPlayingItem` arrives, or when `at` is within 2 s of
+   the song's duration. `player:pause` is then written at the end of that second, not at once
+   (the ring order stays by time). Only a pause with none of these stays `outside`. The
+   `presence` pause-arm is not changed.
+2. **Name what `outside` still holds.** The Windows media session is already `windows`
+   (smtc.rs). What stays in `outside`: MusicKit by itself, and WebView2's own media-key
+   handling, which never reaches smtc.rs. If `outside` still shows real lines after fix 1, the
+   next step is to find out if WebView2's media-key handling can be switched off or seen.
+3. **A stall line.** `player:stall {after, s, mode, output}` when a song ends (`songEnd`) and no
+   next song is `playing` within 3 s, while the list or the station has a next song. `after` is
+   the id that ended. `output` is the `sound:output` kind (speakers / airplay …). One more line,
+   `player:stall-end {s}`, when music plays again. This catches the 22:14 case by its effect,
+   whatever the cause.
+
+**Desk test (after the build):** play a station for 3 songs, press Next once, let a queue run
+out. `deetsmusic diag --tag player:pause` shows `songEnd` × 3, the Next as `songEnd`, and no
+`outside`. Pull the network cable at a song's end: one `player:stall`, then `stall-end`.
 
 ## MusicKit quirks learned (so we don't relearn them)
 - **`music.queue.position` is empty in this build** — use `music.nowPlayingItemIndex`

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-19
 sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
-updated: 2026-09-19
+updated: 2026-09-24
 ---
 # DeetsMusic — AirPlay (play on a HomePod)
 
@@ -510,3 +510,72 @@ the PC's own volume slider and Windows master have no effect on the speaker whil
 The next run showed the context gone (`ctx: "none"`): a front-end save from another session had
 reloaded the page mid-run. With saves held, the run was clean. Every listen run reports one raw-loopback
 discontinuity, clean runs included, so that warning is the probe's and not a signal.
+
+## 13. Stalls, switch speed, and sleep (2026-09-24)
+
+> **Part:** designed · 2026-09-24
+
+The owner's goal: **AirPlay must be tight.** A switch of the output, in DeetsMusic or in
+Windows, must be fast and smooth. A stall must leave a trace. Build with
+[APPLE-CALLS.md](../ops/APPLE-CALLS.md) A + B and the DEBUGGING.md pause fixes (§Why did it pause).
+
+### 13.1 The evidence that started this
+
+On 2026-09-23 at about 22:14 (installed app, radio, AirPlay): a song ended and the next started
+**17.5 s** later, at the same moment `sound:output` changed to "Speakers (Yeti Classic)". An
+`airplay: progress: SET_PARAMETER … connection attempt failed` line came at 22:12:42. The
+cause cannot be read, for three reasons:
+- **`airplay.log` rolls over in hours.** The crate writes a `→ POST /feedback` and a `← 200`
+  line every 2 s (`rtsp.rs` in DeetsAirplay), so the 512 KB file holds only the last few hours.
+  The 22:14 trace was already gone the next day.
+- **A drop is not logged.** `airplay_status` sets `Lost {name}.` on a dead session but writes no
+  log line, and it notices only when the session's threads have died (`session.alive()`).
+- **An output change does not say why.** `sound:output` does not say if the user, Windows or
+  a lost speaker changed it.
+
+### 13.2 The tracking (designed, not built)
+
+| Line | When | Fields |
+|---|---|---|
+| `airplay: switch` | each connect, disconnect, reconnect in place, and speaker → speaker | `from`, `to`, `why` (user / agent / retune / pref / lost / wake), `ms` total, and the stage split: claim check, stop old, RTSP setup, first frame sent, sink flip (the PC goes quiet) |
+| `airplay: drop` | a session is found dead | speaker, how found (threads / no reply / wake), seconds since the last good reply |
+| `airplay: stall` / `stall-end` | connected, NP playing, and no frame sent to the speaker for 2 s (the crate's frame count stops) | speaker, `s`, the last RTT p95, the last RTSP error |
+| `sound:output` | (exists) | add `why`: user / windows (the default device changed, audio_out.rs) / airplay-lost / airplay-on |
+| `sound:switch` | a **Windows** output change while playing | `ms` from the `audio-output` event to the first non-silent block the sound graph measures |
+
+- The existing `tap starved` (10 s, page → Rust) stays. `stall` is the Rust → speaker side.
+- `player:stall` (DEBUGGING.md) catches the effect on the queue. These lines name the cause.
+- **The wire log (crate change):** write `/feedback` only when it fails or is slow (> 500 ms),
+  so `airplay.log` keeps days, not hours. This is a change in the shared crate: a new crate
+  version and the `rev` in Cargo.toml (§11: DeetsAirplay uses the same crate).
+- A `diag` event for each line (CLAUDE.md checklist item 6), so the `diag` tool sees them live.
+
+🔵 **Open (for the owner, after the first numbers):** the targets. The tracking gives the
+baseline first. A draft to react to: speaker → PC under 300 ms of silence, PC → speaker under
+2 s to sound, speaker → speaker under 2.5 s.
+
+### 13.3 After the PC sleeps — to find out
+
+> **Part:** idea · 2026-09-24
+
+**The suspected fault:** after the PC wakes, AirPlay shows **connected** when it is not. It fits
+the code: a session counts as dead only when its threads die (`session.alive()`,
+airplay.rs `airplay_status`). Through a sleep, the threads can live on over a socket that the
+speaker has closed. Nothing listens for the Windows sleep and wake events today.
+
+**What to find out first (a desk test, no code):**
+1. Connect to the HomePod, play, and sleep the PC for **1 minute**. Wake it. Read the AirPlay
+   panel, `airplay_status`, the last lines of `airplay.log`, and `deetsmusic diag`. Does sound
+   come back? Does the panel say connected?
+2. The same for **30 minutes** (the HomePod forgets the session in that time, if it ever does).
+3. The same with the music **paused** before the sleep.
+4. Each time: does a new pick of the same speaker work at once, or does the speaker refuse (a
+   stale claim on its side)?
+
+**Possible fixes (for the owner after the test; not decided):**
+- Listen for the Windows power events (`PBT_APMSUSPEND` / `PBT_APMRESUMEAUTOMATIC`). On
+  suspend: note the speaker and disconnect cleanly. On wake: reconnect in place when the
+  network is back, `why: wake` in `airplay: switch`.
+- Or on wake only: probe the session with one round trip and a 2 s timeout. No reply →
+  `airplay: drop {how: wake}`, then reconnect, or show the lost state.
+- In both: the panel never says connected until a reply proves it.

@@ -116,6 +116,13 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 - Unreleased songs on a pre-release album — SEARCH.md §Unreleased songs.
 - The Diary card, schema v14 — DIARY.md §8; the forks still open are DIARY.md §7.
 
+**Designed, not built (2026-09-24)**
+- Cover Wallpaper, the Glass canvas as covers or your own picture — COVER-WALLPAPER.md. Next to build.
+- The telemetry pass: Apple call counter + 429 back-off (APPLE-CALLS.md), the `songEnd` /
+  `player:stall` pause fixes (DEBUGGING.md §Why did it pause), AirPlay stall and switch timing
+  (AIRPLAY.md §13.2).
+- AirPlay after the PC sleeps: shows connected when it is not? Desk test first — AIRPLAY.md §13.3.
+
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.

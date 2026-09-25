@@ -12,6 +12,24 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-24 — docs only: Cover Wallpaper, Apple calls, pause and AirPlay telemetry
+
+- **Cover Wallpaper designed** (COVER-WALLPAPER.md, status designed). His calls: 1B mosaic
+  (1A built too, for a side-by-side test) · 2B album-colored aurora · 3B redraw per album · 4A
+  Glass only · tiles pill Few/Some/Many (6/12/20) · TA tiles stay in place, gentle per-tile
+  fade · dim locked higher with the wallpaper · back to the aurora when nothing plays · user
+  pictures U1A–U5A (Canvas pill Aurora/Covers/Picture, one picture, colors from it, cover-fit)
+  · Aurora color row `Cover | Theme`. What I decided inside: §3.1, §3.5, §8.
+- **Apple rate limits: no evidence.** No 429 in any log (installed, beta, dev,
+  2026-09-17 → 09-24). Nothing counts calls. Designed APPLE-CALLS.md: A the counter, B the 429
+  back-off. Build later.
+- **Pauses the user did not cause: none real.** Of 93 `outside` pauses, 92 were song changes;
+  one 17.5 s gap at ~22:14 on 09-23 lines up with AirPlay. Designed the fixes (DEBUGGING.md
+  §What the 2026-09-24 read found) and the AirPlay stall / switch-speed tracking + the
+  after-sleep unknown (AIRPLAY.md §13).
+- Next session: build Cover Wallpaper. Then the telemetry pass (APPLE-CALLS A + B, the pause
+  fixes, AIRPLAY §13.2). The sleep desk test (AIRPLAY §13.3) needs no code.
+
 ## 2026-09-24 — branch `darn-critics`: unreleased songs, and the Diary card
 
 - **Unreleased songs** (his calls 1A · 2B toast · 3A). OPIA by VITA showed all 12 songs as out.
