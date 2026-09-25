@@ -43,7 +43,9 @@ echoing. Off by default (the buffer still records silently).
 ## What gets logged
 Auto-captured (no flag needed):
 - `window:error`, `window:unhandledrejection` — uncaught errors land in the buffer
-  automatically (e.g. the *"play() without a previous stop()/pause()"* rejection).
+  automatically (e.g. the *"play() without a previous stop()/pause()"* rejection). A
+  rejection carries `at`: its top three stack frames, innermost first, joined by ` < `
+  (2026-09-25; a rejection has no file or line of its own).
 
 **Dev-only click-to-sound telemetry** (`src/perf.ts`, gated on Vite's `DEV` flag — the
 installed build ships none of it; `npx vite build` + grep for `perf:` confirms). Every

@@ -156,11 +156,22 @@ window.addEventListener("error", (e) => {
     flushOnError();
   }, 0);
 });
+/** The top frames of a stack, origin stripped. A rejection has no filename or line of its own
+ *  (the 2026-09-24 "reading 'includes'" ×22 could not be placed from the log). */
+function topFrames(stack: unknown, n = 3): string | undefined {
+  if (typeof stack !== "string") return undefined;
+  const frames = stack
+    .split("\n")
+    .filter((l) => /^\s*at /.test(l))
+    .slice(0, n)
+    .map((l) => l.trim().replace(/^at /, "").split(location.origin).join(""));
+  return frames.length ? frames.join(" < ") : undefined;
+}
 window.addEventListener("unhandledrejection", (e) => {
   setTimeout(() => {
     const reason = e.reason instanceof Error ? e.reason.message : String(e.reason?.message ?? e.reason);
     if (e.defaultPrevented) return log("window:unhandledrejection", { reason, swallowed: true });
-    error("window:unhandledrejection", { reason });
+    error("window:unhandledrejection", { reason, at: topFrames(e.reason?.stack) });
     flushOnError();
   }, 0);
 });

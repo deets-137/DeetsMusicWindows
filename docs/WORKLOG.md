@@ -32,6 +32,16 @@ updated: 2026-09-25
     AirPlay capture line after one of them counts 7,699 s for a 10 s window.
   - `MEDIA_LICENSE` on the installed app: the 2026-09-24 pause, still left for its own fork.
   - Dev library-sync 401s on 2026-09-24: the same short Apple refusal, and the toast shows.
+- **His calls from the review:** two fixes built.
+  - **The rejection stack:** `window:unhandledrejection` carries `at`, its top three stack
+    frames (diag.ts `topFrames`, DEBUGGING.md). Checked in the dev app with a test rejection.
+  - **The sleep false alarm:** the watchdog times its own 2 s sleep. When that sleep took 7 s or more,
+    it writes `ui: the PC was asleep for N s` and does not do the stall check (LOGGING.md
+    §The freeze watchdog). Decided inside his choice: the 7 s limit (the beat + the stall
+    limit), and whole seconds with no thousands separator, like the other log lines.
+- **Desk test (restart: new Rust):** put the PC to sleep for a minute or more with the dev
+  app open, then wake it. The log has `ui: the PC was asleep for N s` and no "stopped
+  answering" line.
 
 ## 2026-09-25 — the codebase evaluation and the consistency pass
 - **Read:** two sessions (the repo health read and the app consistency read) merged into one

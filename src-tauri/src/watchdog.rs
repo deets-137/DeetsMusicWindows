@@ -32,6 +32,10 @@ const BEAT_EVERY: Duration = Duration::from_secs(2);
 /// How long the UI thread may stay silent before we call it a stall. Generous on purpose —
 /// a slow frame, a big sort or a cold paint must never write this line.
 const STALL_AFTER: Duration = Duration::from_secs(5);
+/// The watcher's own `BEAT_EVERY` sleep took this long or longer: the PC was asleep. A frozen
+/// UI thread never delays the watcher, so this cannot hide a real stall. Before 2026-09-25 a
+/// sleep read as "the window stopped answering 1801.6 s ago" (four times in two days).
+const ASLEEP_AFTER: Duration = Duration::from_secs(BEAT_EVERY.as_secs() + STALL_AFTER.as_secs());
 
 static ORIGIN: OnceLock<Instant> = OnceLock::new();
 static LAST_BEAT: AtomicU64 = AtomicU64::new(0);
@@ -72,7 +76,15 @@ pub fn start(app: &AppHandle) {
             // Posting is not waiting. If the UI thread is wedged this closure simply never
             // runs, and that silence is the measurement.
             let _ = app.run_on_main_thread(|| LAST_BEAT.store(now_ms(), Ordering::Relaxed));
+            let slept_from = Instant::now();
             std::thread::sleep(BEAT_EVERY);
+            let slept = slept_from.elapsed();
+            if slept >= ASLEEP_AFTER {
+                // The whole process was stopped, not the UI thread: start the count again.
+                crate::log::info(&format!("ui: the PC was asleep for {} s", slept.as_secs()));
+                LAST_BEAT.store(now_ms(), Ordering::Relaxed);
+                continue;
+            }
             let quiet = now_ms().saturating_sub(LAST_BEAT.load(Ordering::Relaxed));
             if quiet >= STALL_AFTER.as_millis() as u64 {
                 if !told {

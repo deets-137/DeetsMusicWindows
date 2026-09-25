@@ -387,6 +387,17 @@ after five seconds is a **synchronous** command blocking the thread that paints.
 0.12.0 fault exactly, and this line names it in one second instead of an afternoon.
 `— no command was in flight` means the stall is not an invoke: a paint, a plugin, or the OS.
 
+**A PC sleep is not a stall (2026-09-25).** A sleep stops the whole process, the watcher
+included, while the clock runs on. So the watcher also times its own 2 s sleep. When that
+sleep took 7 s or more (2 s + the 5 s stall limit), the PC was asleep: it writes one line,
+starts the count again and skips the stall check for that beat. A frozen UI thread never
+delays the watcher, so this cannot hide a real stall. Before this, every sleep over 5 s read
+as a freeze ("stopped answering 1801.6 s ago", four times on 2026-09-23 and 2026-09-24).
+
+```
+INFO  ui: the PC was asleep for 1801 s
+```
+
 **It ships.** This is not dev-only telemetry like `frames.ts`: the failure it catches happened
 to a user on a release build. It costs one wake every 2 s and two atomics. The thresholds are
 deliberately slack — a slow frame, a big sort or a cold paint must never write this line.
