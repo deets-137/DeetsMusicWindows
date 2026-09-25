@@ -41,7 +41,15 @@ updated: 2026-09-25
     limit), and whole seconds with no thousands separator, like the other log lines.
 - **Desk test (restart: new Rust):** put the PC to sleep for a minute or more with the dev
   app open, then wake it. The log has `ui: the PC was asleep for N s` and no "stopped
-  answering" line.
+  answering" line. **Passed** the same day: `ui: the PC was asleep for 100 s`.
+- **Seen on that wake:** the dev page reloads when the PC wakes. This is almost certainly
+  Vite's client reconnecting to the dev server. The sync ran before the network was up, so
+  the offline toast showed. The installed app's four wakes kept one session and showed no
+  toast, so this happens in dev only.
+- **An AirPlay lead** (installed log, 2026-09-24): after the 17:00 wake, every
+  SET_PARAMETER got os error 10054 from 17:04 to 17:06, then a new connect at 17:06:40
+  brought the sound back. Open: was that connect his? If yes, AIRPLAY.md §13.3 is a real
+  bug, and the wake line is the moment to reconnect.
 
 ## 2026-09-25 — the codebase evaluation and the consistency pass
 - **Read:** two sessions (the repo health read and the app consistency read) merged into one

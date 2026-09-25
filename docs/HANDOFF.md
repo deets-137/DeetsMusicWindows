@@ -145,6 +145,9 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 - **Sound: keep it at all?** The desk test passed 2026-09-24; he is weighing keep, keep some, or
   remove (SOUND.md §11). No Sound work before his call.
 - AirPlay after the PC sleeps: shows connected when it is not? Desk test first — AIRPLAY.md §13.3.
+  A lead (WORKLOG.md 2026-09-25, later): after the 2026-09-24 17:00 wake, every send failed
+  with os error 10054 for two minutes until a new connect at 17:06:40. Ask him whether that
+  connect was his. The watchdog's `ui: the PC was asleep` line now marks the wake.
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
