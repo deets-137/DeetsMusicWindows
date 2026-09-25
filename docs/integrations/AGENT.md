@@ -359,6 +359,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `[Glass only, with Fancy Glass on]`: while `glassFancy` is off they store a value but the look
   holds the locked values (65 / 85 / 40 / 10).
 - `glassFancy` (on | off, 2026-09-16) `[Glass only]`: the live frost and the moving background.
+- The Glass canvas rows (2026-09-24, COVER-WALLPAPER.md): `glassCanvas` (Aurora | Covers | Picture)
+  `[Glass only]`, `glassTiles` (One cover | Few | Some | Many) `[with Canvas on Covers]`,
+  `glassDiffusion` (0–100, the picture's blur; 30 by default) `[with Canvas on Covers or Picture]`,
+  `glassAuroraColor` (Cover | Theme) `[with Canvas on Covers or Picture]`. An agent cannot choose
+  the picture itself (a file on the user's PC): Picture with no picture chosen shows the plain aurora.
 - `oceanCardOpacity` (0–100, 2026-09-23) `[Ocean only]`: how solid the sunken cards are
   (100 = solid, the default).
 - `oceanLight` (0–100, 2026-09-23) `[Ocean only]`: the album light. 0 = the plain sea (the

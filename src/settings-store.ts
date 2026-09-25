@@ -99,6 +99,22 @@ export interface Settings {
   /** Glass only, 0–100: darkens the canvas between the cards; the cards keep their brightness
    *  (their frost undoes the dim). skin-settings.ts publishes it as --glass-canvas-dim. */
   glassCanvasDim: number;
+  /** Glass only: what the canvas behind the cards shows (COVER-WALLPAPER.md). Aurora = the
+   *  theme's glow alone; Covers = the playing album's cover and the queue's next albums;
+   *  Picture = one picture the user chose. wallpaper.ts reads it. */
+  glassCanvas: "aurora" | "covers" | "picture";
+  /** Glass Covers only: how many tiles sit around the playing album's cover. "one" = the cover
+   *  alone, filling the window (1A, kept for the side-by-side desk test, §6.1). */
+  glassTiles: "one" | "few" | "some" | "many";
+  /** Glass Covers / Picture, 0–100: a blur over the whole picture, so it reads soft, not sharp.
+   *  skin-settings.ts publishes it as --glass-diffusion; 100 = --wallpaper-diffusion-max. */
+  glassDiffusion: number;
+  /** Glass Covers / Picture: the aurora's colors come from the cover (or the picture), or stay
+   *  the theme's own. */
+  glassAuroraColor: "cover" | "theme";
+  /** Glass Picture: when the user last chose a picture (ms), 0 = none yet. The picture itself is
+   *  a file in the app data folder (wallpaper.rs); the stamp changes its link on each choice. */
+  glassPicture: number;
   /** Press only: the cover becomes a record that turns while music plays, a record that holds
    *  still, or the plain cover (docs/features/VINYL.md). skin-settings.ts applies it as `data-press-vinyl`. */
   pressVinyl: "spin" | "still" | "off";
@@ -414,6 +430,11 @@ export const DEFAULTS: Settings = {
   glassBacklight: 85,
   glassCanvasGlow: 40,
   glassCanvasDim: 10,
+  glassCanvas: "aurora", // user's call 2026-09-24 (COVER-WALLPAPER.md row 9): today's Glass until you ask
+  glassTiles: "some", // user's call 2026-09-24 (row 5): 12 tiles
+  glassDiffusion: 30, // ≈ 6 px, the "soft blur" he picked 2026-09-24; set at the desk test
+  glassAuroraColor: "cover", // user's call 2026-09-24 (U4): the glow follows the picture under it
+  glassPicture: 0, // nothing chosen yet
   pressVinyl: "off", // opt-in, like Sand
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
   pressVinylPlate: true,

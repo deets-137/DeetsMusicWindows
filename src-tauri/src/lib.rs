@@ -27,6 +27,7 @@ mod smtc;
 mod sotd;
 mod tray;
 mod update;
+mod wallpaper;
 mod watchdog;
 mod web;
 
@@ -85,6 +86,12 @@ pub fn run() {
             let app = ctx.app_handle().clone();
             let path = request.uri().path().to_string();
             std::thread::spawn(move || responder.respond(playlists::cover_response(&app, &path)));
+        })
+        // The Glass canvas picture the user chose (`http://wallpaper.localhost/<stamp>`,
+        // COVER-WALLPAPER.md §8). Off the webview thread: a file read.
+        .register_asynchronous_uri_scheme_protocol("wallpaper", |ctx, _request, responder| {
+            let app = ctx.app_handle().clone();
+            std::thread::spawn(move || responder.respond(wallpaper::response(&app)));
         })
         .setup(|app| {
             use tauri::Manager;
@@ -405,6 +412,8 @@ pub fn run() {
             playlists::playlist_create,
             playlists::playlist_rename,
             playlists::playlist_set_cover,
+            wallpaper::wallpaper_set,
+            wallpaper::wallpaper_colors,
             playlists::playlist_export_plan,
             playlists::playlist_export_apple,
             playlists::playlist_get_apple_songs,

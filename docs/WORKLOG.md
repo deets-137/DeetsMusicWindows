@@ -12,6 +12,47 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-24 — the queue is the master; the heave flood
+- **Report:** a song dragged into the Queue card showed for a second, then a different song
+  played (twice). Read from `plays`, `list queue` and one `player:np` line: the drag never
+  reached MusicKit. `reconcileUpcoming` deduped against every id MusicKit held up to
+  `current`, and Breaking News had played earlier in the run. The index-only follow then ran
+  one step off and wrote no play rows for The City or Save Me from Myself.
+- **His call:** fix B, then "the queue the user sees is the source of truth": correct
+  MusicKit on drift, fork (a) — jump to the model's song at the song change. Built:
+  QUEUE.md §The model is the master (no dedup in reconcile, prefix alignment + repair on
+  every edit, `correctDrift`). Desk test in that section. Decided inside his choice: the 5 s
+  `DRIFT_GAP_MS` loop guard; "followed" when the model has run out; the live-entry count in
+  `mkUpcomingIndex`.
+- **Heave flood:** the idle MusicKit element's exact-zero meter hops reached the Ocean heave,
+  which logged `ocean:heave` on/off ~17 times a second. The 300-event ring held ~18 s, so
+  every player event was lost. `sound.ts` now drops exact-zero hops at the source.
+- **Pause (not a bug of ours):** `MEDIA_LICENSE` on The City → "Playback stopped". No
+  auto-retry exists for it; left for its own fork.
+- Nothing committed. The installed app has neither fix until a release.
+
+## 2026-09-24 — Cover Wallpaper and Diary Done copy built
+
+- **Cover Wallpaper BUILT** (COVER-WALLPAPER.md, "As built" first). Glass › Skin settings ›
+  Canvas `Aurora | Covers | Picture`, Tiles `One cover | Few | Some | Many` (One cover = 1A, for
+  his side-by-side pick), Picture (Choose, or drop a file on the row), Aurora color
+  `Cover | Theme`. New: `wallpaper.ts`, `wallpaper-worker.ts`, `wallpaper.rs` (the user picture
+  in the app data folder, the `wallpaper.localhost` scheme, two async commands),
+  `paletteFromPixels`. skin.css: `--canvas-go/-stop/-pause` feed the aurora; the frost paint
+  split into glow, soft copy and ground; the `--wallpaper-*` tokens. Settings: a row a choice
+  reveals now enters through `enterRows` (every such row, not only these).
+- **Diffusion added** (his ask the same sitting: the wallpaper felt too sharp; his calls: a soft
+  blur, as a slider). Settings › Diffusion 0–100%, default 30 (≈ 6 px); the picture bleeds 48 px
+  past the window so the blur never darkens the edge. COVER-WALLPAPER.md "As built", §6 step 7a.
+- **The swap** (his question: why the center tile always seemed replaced; the dev log showed 3
+  slots per album change — center, the tile it grew from, one new queue album; his call A):
+  the old center album now shrinks into the tile the new one left. COVER-WALLPAPER.md "As built".
+- **Diary: Done copies the Export BUILT** (DIARY.md §7): one `onDiaryDone` listener; the check's
+  hint names the copy.
+- Checks: `npx tsc --noEmit`, `npx vite build`, `cargo check`, `npm run tokens`,
+  `npm run docs:check`. Not run in the app. **Desk tests:** COVER-WALLPAPER.md §6 and DIARY.md
+  §8 step 11f. A Rust file was added: restart the dev runner.
+
 ## 2026-09-24 — desk tests closed, three calls, docs only
 
 - **The Diary desk test passed** (DIARY.md §8), every step but 11e. 11e (the `diary` CLI and

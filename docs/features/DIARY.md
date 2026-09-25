@@ -215,11 +215,12 @@ you type a new one or rescale.
 ## 7. Open forks
 
 - ✅ **What a finish triggers** — his call, 2026-09-24: **marking an entry done copies its Export
-  to the clipboard.** Not built. The plan: an `onDiaryDone` listener that calls the Export
-  function in diary.ts (the same text and the same "Diary entry copied." toast) when `done` is
-  true. Every finish passes `diarySetDone`, so the check AND a drag into Completed both copy.
-  Un-marking copies nothing. An agent cannot mark an entry done (§10), so no CLI path copies.
-  Add the call site to TOASTS.md §5 and a step to §8 when it is built.
+  to the clipboard.** Built 2026-09-24 (desk test §8 step 11f): one `onDiaryDone` listener in
+  diary.ts calls `copyDiaryExport` (the same text and the same "Diary entry copied." toast) when
+  `done` is true. Every finish in the window passes `diarySetDone`, so the check, the tile menu's
+  Mark as done AND a drag into Completed all copy. Putting it back in progress copies nothing.
+  An agent's `done` (§10) is written in Rust and never passes `diarySetDone`, so no CLI or MCP
+  path copies (nothing to paste into on that side). The check's hover hint now names the copy.
 - Decided inside §4b (for his review): one folder per entry; a tile drags with a plain press
   (no hold — the header is the hold); a drop back into a status row changes only the status and
   leaves the folder; rows do not fold as they lift; Settings › Reset has no Diary order row yet.
@@ -270,5 +271,9 @@ you type a new one or rescale.
 11e. Agents: `deetsmusic diary` → the refusal. Turn on Settings › Connections › Agents use the
     Diary: `diary` lists, `diary show N` prints the export, `diary score N --song 3 8` writes and
     the open entry redraws.
+11f. Done copies (built 2026-09-24, not yet desk-tested): in an entry, press the check. The toast
+    says "Diary entry copied." Paste: the Export text. Press the check again: no toast, the
+    clipboard keeps the old text. Drag an In progress tile into Completed: the toast again. Drag
+    it back into In progress: no toast.
 11. Restart the dev app: the entry, notes, scores and dates are all there. Right-click the tile ›
     Delete entry › Delete: it is gone.

@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 484 tokens · overrides: vanilla 3, press 64, ocean 40, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 495 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -380,6 +380,22 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--aurora-dur` | `60s` | glass |  |
 | `--aurora-drift` | `aurora-drift` | glass | the drift's keyframes; none holds the blobs at rest (Glass with Fancy Glass off) |
 
+### wallpaper layer (Glass › Canvas: Covers / Picture; COVER-WALLPAPER.md)
+
+| Token | Base | Overridden by | Note |
+|---|---|---|---|
+| `--wallpaper-anchor-share` | `0.6` | — | A picture under the aurora: the album's cover and the queue's next albums as tiles, or one picture the user chose. src/wallpaper.ts lays the tiles and reads these; only Glass shows picture the user chose. src/wallpaper.ts lays the tiles and reads these; only Glass shows the layer (styles.css). The painted frost lays a blurred copy under each card. — the playing album's tile, as a share of the window's short side |
+| `--wallpaper-anchor-rise` | `0.3` | — | where it sits: 0 = the top, 0.5 = the middle |
+| `--wallpaper-tile-dur` | `0.9s` | — | one tile's picture changes: fade + a small scale |
+| `--wallpaper-tile-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | — |  |
+| `--wallpaper-tile-scale` | `1.04` | — |  |
+| `--wallpaper-fade-dur` | `0.8s` | — | the whole layer in or out; the cards' frost; the aurora colors |
+| `--wallpaper-fade-ease` | `ease` | — |  |
+| `--wallpaper-blur` | `28px` | — | the cards' copy; wide enough to erase the tile seams |
+| `--wallpaper-diffusion-max` | `20px` | — | the gaps' blur at Diffusion 100% (Settings › Diffusion, --glass-diffusion) |
+| `--wallpaper-bleed` | `48px` | — | the picture runs this far past the window, so a blurred edge never fades to black (≥ 2 × the max blur) |
+| `--wallpaper-canvas-dim` | `35` | — | the locked Dim canvas (0–100) with Fancy Glass off; set at the desk test (§6.4) |
+
 ### ambient motion rate
 
 | Token | Base | Overridden by | Note |
@@ -743,6 +759,10 @@ A skin sets these, but the base block never declares them — a token that only 
 - `--glass-glow (glass)`
 - `--glass-dim (glass)`
 - `--glass-frost-sat (glass)`
+- `--canvas-go (glass)`
+- `--canvas-stop (glass)`
+- `--canvas-pause (glass)`
+- `--glass-frost-ground (glass)`
 - `--glass-frost-go (glass)`
 - `--glass-frost-stop (glass)`
 - `--glass-frost-pause (glass)`

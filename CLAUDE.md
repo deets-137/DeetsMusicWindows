@@ -78,7 +78,7 @@ old installs' Guide button opens.
 - `TRAY.md` — the tray icon, the tray panel, minimize to tray.
 - `SUGGEST-LESS.md` — Apple's −1 plus our own marks; proactive skips.
 - `ALBUM-COLOR.md` — the album-colored aurora and text.
-- `COVER-WALLPAPER.md` — the Glass canvas as a mosaic of the album and queue covers (designed, not built).
+- `COVER-WALLPAPER.md` — Glass › Canvas: the album and queue covers, or your own picture, behind the cards.
 - `OCEAN.md` — the Ocean sea: the heavy swell in perspective, the glow from the deep, heave, ripples.
 - `MOVABLE-ROWS.md` — hold a header to move a section; the Settings search bar; Ctrl+F.
 - `ONBOARDING.md` — the hover-hint ledger (every `title`), right-click coverage, Settings ›

@@ -884,7 +884,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     doneBtn.classList.toggle("is-active", on);
     doneBtn.setAttribute("aria-pressed", String(on));
     doneBtn.setAttribute("aria-label", on ? "Mark in progress" : "Mark as done");
-    doneBtn.title = on ? "Done. Press again to put it back in progress" : "Marks this entry done. It moves to Completed";
+    doneBtn.title = on ? "Done. Press again to put it back in progress" : "Marks this entry done and copies its Export. It moves to Completed";
   }
   const setDone = (id: number, done: boolean) => {
     diag.log("ui:act", { at: "diary", do: done ? "done" : "undone" });

@@ -112,22 +112,18 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-24. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**The next session — build in this order (his word, 2026-09-24).** The tree is committed and
-pushed on `darn-critics`. No code was written for any item below.
-1. **Cover Wallpaper** — COVER-WALLPAPER.md. Build **both** 1A (one cover) and 1B (mosaic); he
-   picks at the desk test (§6.1). Every other fork is closed (§1, §8). Walk the CLAUDE.md build
-   checklist; write the desk test into §6; list what you decided inside his calls at hand-off.
-2. **Diary: Done copies the Export** — DIARY.md §7 (the plan is written there). Small; can ride
-   with item 1.
-3. Then the telemetry pass (below). The 429 toast for a user call is now decided (APPLE-CALLS.md
-   §3); bring him the words and tier.
+**Next (his word, 2026-09-24):** the telemetry pass (below), after the two desk tests below.
+The 429 toast for a user call is decided (APPLE-CALLS.md §3); bring him the words and tier.
 
 **Desk tests open (branch `darn-critics`)**
+- **Cover Wallpaper** (built 2026-09-24, uncommitted) — COVER-WALLPAPER.md §6. He picks 1A
+  (Tiles › One cover) or 1B there, and sets the locked dim. Restart the dev runner first
+  (a new Rust file). The "As built" section lists what was decided inside his calls.
+- **Diary: Done copies the Export** (built 2026-09-24, uncommitted) — DIARY.md §8 step 11f.
 - The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP), which
   runs on the installed beta after the next beta release.
 
 **Designed, not built (2026-09-24)**
-- Cover Wallpaper, the Glass canvas as covers or your own picture — COVER-WALLPAPER.md. Next to build.
 - The telemetry pass: Apple call counter + 429 back-off (APPLE-CALLS.md), the `songEnd` /
   `player:stall` pause fixes (DEBUGGING.md §Why did it pause), AirPlay stall and switch timing
   (AIRPLAY.md §13.2).

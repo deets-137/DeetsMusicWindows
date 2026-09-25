@@ -364,6 +364,22 @@
   --aurora-dur:     60s;
   --aurora-drift:   aurora-drift;    /* the drift's keyframes; none holds the blobs at rest (Glass with Fancy Glass off) */
 
+  /* -- wallpaper layer (Glass › Canvas: Covers / Picture; COVER-WALLPAPER.md) -- */
+  /* A picture under the aurora: the album's cover and the queue's next albums as tiles, or one
+     picture the user chose. src/wallpaper.ts lays the tiles and reads these; only Glass shows
+     the layer (styles.css). The painted frost lays a blurred copy under each card. */
+  --wallpaper-anchor-share: 0.6;      /* the playing album's tile, as a share of the window's short side */
+  --wallpaper-anchor-rise:  0.3;      /* where it sits: 0 = the top, 0.5 = the middle */
+  --wallpaper-tile-dur:     0.9s;     /* one tile's picture changes: fade + a small scale */
+  --wallpaper-tile-ease:    cubic-bezier(0.4, 0, 0.2, 1);
+  --wallpaper-tile-scale:   1.04;
+  --wallpaper-fade-dur:     0.8s;     /* the whole layer in or out; the cards' frost; the aurora colors */
+  --wallpaper-fade-ease:    ease;
+  --wallpaper-blur:         28px;     /* the cards' copy; wide enough to erase the tile seams */
+  --wallpaper-diffusion-max: 20px;    /* the gaps' blur at Diffusion 100% (Settings › Diffusion, --glass-diffusion) */
+  --wallpaper-bleed:        48px;     /* the picture runs this far past the window, so a blurred edge never fades to black (≥ 2 × the max blur) */
+  --wallpaper-canvas-dim:   35;       /* the locked Dim canvas (0–100) with Fancy Glass off; set at the desk test (§6.4) */
+
   /* -- ambient motion rate ------------------------------------ */
   /* The endless decorative loops (ocean / aurora / storm / NP aurora)
      step at this rate instead of the display's, so the compositor draws
@@ -1064,7 +1080,19 @@
   --glass-frost-layer:  calc(-1 * var(--aurora-slack)) calc(var(--titlebar-h) - var(--aurora-slack)) /
                         calc(100% + 2 * var(--aurora-slack)) calc(100% - var(--titlebar-h) + 2 * var(--aurora-slack))
                         no-repeat fixed;
-  --glass-frost-paint:
+  /* the aurora's colors: the theme's go / stop / pause, or the album's (or the chosen picture's)
+     while the wallpaper shows (wallpaper.ts sets --canvas-go/-stop/-pause on <html>) */
+  --canvas-go:    var(--go);
+  --canvas-stop:  var(--stop);
+  --canvas-pause: var(--pause);
+  /* the frost's layers: the aurora copy, then the wallpaper's soft copy (a transparent stand-in
+     when there is none, so the layer count never changes and a change can crossfade), then the
+     ground. --wallpaper-at is the canvas box, set by wallpaper.ts. */
+  --glass-frost-paint: var(--glass-frost-glow),
+    var(--wallpaper-soft, linear-gradient(transparent, transparent)) var(--wallpaper-at, 0 0 / 100% 100%) no-repeat fixed,
+    var(--glass-frost-ground);
+  --glass-frost-ground: oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-glow:
     radial-gradient(42% 52% at 16% 10%,
       color-mix(in srgb, var(--glass-frost-go) min(100%, 50% * var(--glass-glow)), transparent),
       color-mix(in srgb, var(--glass-frost-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%)
@@ -1076,13 +1104,12 @@
     radial-gradient(52% 52% at 60% 96%,
       color-mix(in srgb, var(--glass-frost-pause) min(100%, 38% * var(--glass-glow)), transparent),
       color-mix(in srgb, var(--glass-frost-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%)
-      var(--glass-frost-layer),
-    oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
+      var(--glass-frost-layer);
   /* the aurora's own hues, saturated the way the live frost's saturate() does (keep the three
      gradients above in step with --aurora-1..3 below) */
-  --glass-frost-go:    oklch(from var(--go) l calc(c * var(--glass-frost-sat)) h);
-  --glass-frost-stop:  oklch(from var(--stop) l calc(c * var(--glass-frost-sat)) h);
-  --glass-frost-pause: oklch(from var(--pause) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-go:    oklch(from var(--canvas-go) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-stop:  oklch(from var(--canvas-stop) l calc(c * var(--glass-frost-sat)) h);
+  --glass-frost-pause: oklch(from var(--canvas-pause) l calc(c * var(--glass-frost-sat)) h);
   /* the stuck list bar keeps a real blur in both forms: it frosts the rows under it */
   --sticky-bar-backdrop: blur(14px) saturate(var(--glass-frost-sat));
 
@@ -1170,16 +1197,16 @@
        no abrupt slope change (Mach band) rimming the hotter blobs. */
   --aurora-1:
     radial-gradient(42% 52% at 16% 10%,
-      color-mix(in srgb, var(--go) min(100%, 50% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%);
+      color-mix(in srgb, var(--canvas-go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--canvas-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%);
   --aurora-2:
     radial-gradient(46% 56% at 86% 22%,
-      color-mix(in srgb, var(--stop) min(100%, 44% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%);
+      color-mix(in srgb, var(--canvas-stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--canvas-stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%);
   --aurora-3:
     radial-gradient(52% 52% at 60% 96%,
-      color-mix(in srgb, var(--pause) min(100%, 38% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%);
+      color-mix(in srgb, var(--canvas-pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--canvas-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%);
   --aurora-display: block;
   --aurora-slack:   64px;            /* blobs 128px oversized; every drift stays within ±64 */
   /* each blob wanders a different way and returns */
@@ -1216,6 +1243,12 @@
   --panel-isolation: auto;
   --aurora-drift:    aurora-drift;
   --panel-paint:     var(--glass-backlight-paint);
+}
+
+/* Glass with a wallpaper (COVER-WALLPAPER.md row 7): a picture is louder than the aurora, so
+   with Fancy Glass off the canvas dim locks to a higher value (the cards keep their brightness). */
+[data-skin="glass"][data-wallpaper]:not([data-glass-fancy="on"]) {
+  --glass-dim: calc(var(--wallpaper-canvas-dim) / 100 * 0.9);
 }
 
 /* ============================================================

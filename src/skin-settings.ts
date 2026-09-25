@@ -8,14 +8,16 @@
 // Glass: `glassBacklight` / `glassTint` / `glassCanvasGlow` (0–100) → --glass-backlight,
 //        --glass-tint (a %), --glass-canvas; `glassCanvasDim` → --glass-canvas-dim.
 //        `glassFancy` → `data-glass-fancy`; off publishes GLASS_LOCKED instead of the sliders.
+//        `glassDiffusion` (0–100) → --glass-diffusion, the wallpaper's blur (never locked).
 // Press: `pressVinyl` / `pressVinylWhere` → `data-press-vinyl` / `data-press-vinyl-where`
 //        (docs/features/VINYL.md); the tray panel applies these two as well.
 // The skin blocks in skin.css read them; other skins ignore them.
 
 import { setting, onSettingsChange, GLASS_LOCKED } from "./settings-store";
 
-type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "oceanSand" | "oceanCardOpacity" | "oceanLight";
+type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "glassDiffusion" | "oceanSand" | "oceanCardOpacity" | "oceanLight";
 const PROPS: Record<SliderKey, [string, string]> = {
+  glassDiffusion: ["--glass-diffusion", ""],
   glassTint: ["--glass-tint", "%"],
   glassBacklight: ["--glass-backlight", ""],
   glassCanvasGlow: ["--glass-canvas", ""],
@@ -24,12 +26,12 @@ const PROPS: Record<SliderKey, [string, string]> = {
   oceanCardOpacity: ["--ocean-card-opacity", ""],
   oceanLight: ["--ocean-light", ""],
 };
-const OCEAN_SLIDERS: SliderKey[] = ["oceanSand", "oceanCardOpacity", "oceanLight"];
 const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
 const isSlider = (k: string): k is SliderKey => k in PROPS;
-/** The value a slider publishes: a Glass slider holds its locked value while Fancy Glass is off. */
+/** The value a slider publishes: one of the four Glass layer sliders holds its locked value while
+ *  Fancy Glass is off. Diffusion is never locked (it shows with the wallpaper, not Fancy Glass). */
 const sliderValue = (k: SliderKey): number =>
-  !OCEAN_SLIDERS.includes(k) && !setting("glassFancy") ? GLASS_LOCKED[k as keyof typeof GLASS_LOCKED] : setting(k);
+  k in GLASS_LOCKED && !setting("glassFancy") ? GLASS_LOCKED[k as keyof typeof GLASS_LOCKED] : setting(k);
 
 /** Show a skin slider value without writing the store (a slider drag). */
 export function previewSkin(key: SliderKey, v: number): void {

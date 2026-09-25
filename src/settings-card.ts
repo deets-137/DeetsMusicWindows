@@ -24,6 +24,7 @@ import { withAppearanceTransition } from "./appearance";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
 import { setAlbumLight } from "./ocean";
+import { pickWallpaper, setWallpaperFromFile } from "./wallpaper";
 
 /** Fancy Glass's hover hint. The cost is the 2026-09-16 bench (DEBUGGING.md §Fancy Glass). */
 const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
@@ -153,6 +154,11 @@ const NEW_MARKS: { section: string; row?: string }[] = [
   { section: "Skin settings", row: "oceanlight" }, // Ocean album light, built 2026-09-23
   { section: "Diary" }, // the Diary card's section, built 2026-09-24
   { section: "Connections", row: "agentdiary" }, // Agents use the Diary, built 2026-09-24
+  { section: "Skin settings", row: "glasswallpaper" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
+  { section: "Skin settings", row: "glasstiles" },
+  { section: "Skin settings", row: "glasspicture" },
+  { section: "Skin settings", row: "glassdiffusion" },
+  { section: "Skin settings", row: "glassauroracolor" },
 ];
 const markKey = (m: { section: string; row?: string }) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -271,8 +277,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "The three Animate rows and Fancy scrubber", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
+    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -1084,8 +1090,39 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           preview: (v) => previewSkin("oceanSand", v),
           when: () => currentSkin() === "ocean" && setting("oceanEdges") === "sand",
         },
-        // Glass: Fancy Glass first (it shows the sliders), then the layers in paint order, back
-        // to front — the background (glow, then its dim), then the card (backlight, then tint).
+        // Glass: what the canvas shows first (COVER-WALLPAPER.md §3.7) with the rows it reveals,
+        // then Fancy Glass (it shows the sliders), then the layers in paint order, back to
+        // front — the background (glow, then its dim), then the card (backlight, then tint).
+        {
+          kind: "choice", id: "glasswallpaper", label: "Canvas", key: "glassCanvas",
+          hint: "Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose",
+          options: [{ value: "aurora", label: "Aurora" }, { value: "covers", label: "Covers" }, { value: "picture", label: "Picture" }],
+          when: () => currentSkin() === "glass",
+        },
+        {
+          kind: "choice", id: "glasstiles", label: "Tiles", key: "glassTiles",
+          hint: "Glass only. How many album covers sit around the one that plays. One cover: it fills the window alone",
+          options: [{ value: "one", label: "One cover" }, { value: "few", label: "Few" }, { value: "some", label: "Some" }, { value: "many", label: "Many" }],
+          when: () => currentSkin() === "glass" && setting("glassCanvas") === "covers",
+        },
+        {
+          kind: "split", id: "glasspicture", label: "Picture",
+          hint: () => "Glass only. The picture behind the cards. Press Choose, or drop an image file on this row",
+          halves: [{ type: "action", label: "Choose", hint: "Opens a picture from your PC", run: () => pickWallpaper() }],
+          when: () => currentSkin() === "glass" && setting("glassCanvas") === "picture",
+        },
+        {
+          kind: "range", id: "glassdiffusion", label: "Diffusion", key: "glassDiffusion", min: 0, max: 100, unit: "%",
+          hint: "Glass only. Softens the picture behind the cards. 0: sharp",
+          preview: (v) => previewSkin("glassDiffusion", v),
+          when: () => currentSkin() === "glass" && setting("glassCanvas") !== "aurora",
+        },
+        {
+          kind: "choice", id: "glassauroracolor", label: "Aurora color", key: "glassAuroraColor",
+          hint: "Glass only. Cover: the glow takes its colors from the picture behind the cards. Theme: the theme's own colors",
+          options: [{ value: "cover", label: "Cover" }, { value: "theme", label: "Theme" }],
+          when: () => currentSkin() === "glass" && setting("glassCanvas") !== "aurora",
+        },
         {
           ...storeToggle("glassfancy", "Fancy Glass", "glassFancy", () => GLASS_FANCY_HINT),
           when: () => currentSkin() === "glass",
@@ -2499,7 +2536,38 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
 
   // Re-paint on any change, whoever made it (the store, the Library Add module, the
   // Rust setting we cached). A full re-render is cheap here — a dozen rows.
-  const unsubStore = onSettingsChange(render);
+  // A row a choice reveals (Canvas › Picture shows its Choose row) slides in through
+  // `enterRows`, like a panel's rows (CLAUDE.md build checklist 1).
+  const rowIds = () => new Set([...body.querySelectorAll<HTMLElement>("[data-set-row]")].map((el) => el.dataset.setRow));
+  const renderRevealing = () => {
+    const before = rowIds();
+    render();
+    if (!before.size) return;
+    const fresh = [...body.querySelectorAll<HTMLElement>("[data-set-row]")].filter((el) => !before.has(el.dataset.setRow));
+    if (fresh.length) enterRows(fresh);
+  };
+  const unsubStore = onSettingsChange(renderRevealing);
+  // Glass › Picture: an image file dropped on its row becomes the canvas (COVER-WALLPAPER.md §8).
+  const pictureRow = (e: DragEvent): HTMLElement | null =>
+    e.dataTransfer?.types.includes("Files") ? (e.target as HTMLElement).closest<HTMLElement>('[data-set-row="glasspicture"]') : null;
+  body.addEventListener("dragover", (e) => {
+    const row = pictureRow(e);
+    if (!row) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = "copy";
+    row.classList.add("is-drop");
+  });
+  body.addEventListener("dragleave", (e) => {
+    (e.target as HTMLElement).closest?.('[data-set-row="glasspicture"]')?.classList.remove("is-drop");
+  });
+  body.addEventListener("drop", (e) => {
+    const row = pictureRow(e);
+    if (!row) return;
+    e.preventDefault();
+    row.classList.remove("is-drop");
+    const file = e.dataTransfer!.files[0];
+    if (file) setWallpaperFromFile(file);
+  });
   const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
   const unsubLibAdd = onLibraryAddChange(render);
   // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.

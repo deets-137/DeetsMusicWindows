@@ -232,6 +232,11 @@ under Cyber the whole section is gone.
 
 | Control | What it does | Choices |
 |---|---|---|
+| Canvas | What shows behind the cards: the theme's aurora, the playing album's cover with the queue's next albums around it, or one picture you choose (COVER-WALLPAPER.md) | **Aurora** / Covers / Picture |
+| Tiles | With Covers: how many covers sit around the playing one. One cover: it fills the window alone | One cover / Few (6) / **Some (12)** / Many (20) |
+| Picture | With Picture: Choose opens an image file; a file dropped on the row works too | an action |
+| Diffusion | With Covers or Picture: softens the picture behind the cards. 0: sharp | 0–100%, **30** |
+| Aurora color | With Covers or Picture: the aurora takes the colors of the picture under it, or keeps the theme's | **Cover** / Theme |
 | Fancy Glass | A real blur behind each card, and the aurora drifts. Off: the frost is painted in, and it costs nothing to redraw | on / **off** |
 | Canvas glow | How brightly the aurora glows | 0–100%, **40** |
 | Dim canvas | Darkens the space between the cards | 0–100%, **10** |

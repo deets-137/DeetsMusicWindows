@@ -177,6 +177,12 @@ export function onDiaryDone(cb: (id: number, done: boolean) => void): () => void
   doneSubs.add(cb);
   return () => doneSubs.delete(cb);
 }
+// A finish copies the entry's Export (his call 2026-09-24, DIARY.md §7): the check and a drag
+// into Completed both pass here, with the same text and toast as the menu's Export. Putting it
+// back in progress copies nothing. An agent's `done` is written in Rust and never passes here.
+onDiaryDone((id, done) => {
+  if (done) void copyDiaryExport(id);
+});
 
 export const diaryFolders = (): Promise<DiaryFolder[]> => invoke<DiaryFolder[]>("diary_folders");
 export const diaryFolderCreate = (name: string): Promise<number> => invoke<number>("diary_folder_create", { name }).then(changed);

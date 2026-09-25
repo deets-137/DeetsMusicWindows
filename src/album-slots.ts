@@ -92,3 +92,44 @@ export function auroraSlots(p: AlbumPalette): [string | undefined, string | unde
   const halo = second && (second.chroma >= GREY_CHROMA || first.chroma < GREY_CHROMA) ? second.s : first.s;
   return [third?.s ?? second?.s, first.s, halo];
 }
+
+// ── a palette from a picture's own pixels (COVER-WALLPAPER.md §8, U4) ───────────
+
+const HUE_BINS = 12;
+const toHex = ([r, g, b]: RGB) =>
+  "#" + [r, g, b].map((c) => Math.round(clamp01(c) * 255).toString(16).padStart(2, "0")).join("");
+
+/**
+ * A user picture has no Apple palette, so its three colors are read here, locally (0 API
+ * calls). `px` is RGBA from a small copy of the picture (about 48 × 48). Each pixel falls in
+ * one of twelve hue bins, weighted by its chroma; the three heaviest bins give the colors (each
+ * its pixels' mean). Too dark and too light pixels are skipped: they carry no hue. A grey
+ * picture gives its mean color three times, so the aurora stays grey. The result has the album
+ * palette's shape, so `auroraSlots` ranks it by the same rule.
+ */
+export function paletteFromPixels(px: Uint8ClampedArray): AlbumPalette {
+  const bins = Array.from({ length: HUE_BINS }, () => ({ w: 0, r: 0, g: 0, b: 0 }));
+  const all = { n: 0, r: 0, g: 0, b: 0 };
+  for (let i = 0; i + 3 < px.length; i += 4) {
+    if (px[i + 3] < 128) continue;
+    const rgb: RGB = [px[i] / 255, px[i + 1] / 255, px[i + 2] / 255];
+    all.n++;
+    all.r += rgb[0];
+    all.g += rgb[1];
+    all.b += rgb[2];
+    const [L, C, h] = toOKLCH(rgb);
+    if (L < 0.2 || L > 0.95 || C < GREY_CHROMA) continue;
+    const bin = bins[Math.floor(((h + Math.PI) / (2 * Math.PI)) * HUE_BINS) % HUE_BINS];
+    bin.w += C;
+    bin.r += rgb[0] * C;
+    bin.g += rgb[1] * C;
+    bin.b += rgb[2] * C;
+  }
+  const mean = all.n ? toHex([all.r / all.n, all.g / all.n, all.b / all.n]) : undefined;
+  const top = bins
+    .filter((b) => b.w > 0)
+    .sort((a, b) => b.w - a.w)
+    .slice(0, 3)
+    .map((b) => toHex([b.r / b.w, b.g / b.w, b.b / b.w]));
+  return { bg: top[2] ?? mean, c1: top[0] ?? mean, c2: top[1] ?? top[0] ?? mean };
+}

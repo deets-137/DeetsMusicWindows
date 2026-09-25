@@ -119,6 +119,11 @@ nothing about authoring changed when the box did.
 | Settings › Motion | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Settings › Skin settings | Card opacity | Ocean only. How solid the sunken cards are. Lower: the sea shows through | settings-card.ts |
 | Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon | settings-card.ts |
+| Settings › Skin settings (2026-09-24) | Canvas | Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose | settings-card.ts (COVER-WALLPAPER.md §3.7) |
+| Settings › Skin settings (2026-09-24) | Tiles | Glass only. How many album covers sit around the one that plays. One cover: it fills the window alone | settings-card.ts |
+| Settings › Skin settings (2026-09-24) | Picture · its Choose half | Glass only. The picture behind the cards. Press Choose, or drop an image file on this row · Opens a picture from your PC | settings-card.ts |
+| Settings › Skin settings (2026-09-24) | Diffusion | Glass only. Softens the picture behind the cards. 0: sharp | settings-card.ts |
+| Settings › Skin settings (2026-09-24) | Aurora color | Glass only. Cover: the glow takes its colors from the picture behind the cards. Theme: the theme's own colors | settings-card.ts |
 | Settings › Skin settings | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | "Play on" panel | Scan for speakers · Not now · Continue | Scan for speakers · Keep the speaker list open and ask again later · Show the Windows permission prompt, then play on the speaker | airplay.ts (the last two show once, before the first connect) |
@@ -146,7 +151,7 @@ nothing about authoring changed when the box did.
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
 | Diary (2026-09-24) | the + cover · the picker's × | Pick an album to write about · Closes the album search | diary-card.ts (DIARY.md §4) |
 | Diary | an entry tile | the album and its artist ("OPIA — VITA") | diary-card.ts `tileHTML` |
-| Diary header (2026-09-24) | the + (home) · the check (entry) | Starts a new entry or makes a new folder · Marks this entry done. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b) |
+| Diary header (2026-09-24) | the + (home) · the check (entry) | Starts a new entry or makes a new folder · Marks this entry done and copies its Export. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b, §7) |
 | Diary home | a row header (In progress, Completed, a folder) | Click to open or close. Hold to move this row. New folders appear at the end → hold off: Click to open or close | diary-card.ts `rowHTML` |
 | Diary entry | the score pill's right half ("/ 10 ▾") · the review-date pill · the score pill's number field | The scale for this album: its songs and the album use it · The day of this review · Score for the album: any number from 0 to 10 → marked: Type a number from 0 to 10 / Above this scale's top of 5. Type a new score, or rescale | diary-card.ts |
 | Diary entry | a song row | Shows this song's note below. Double-click plays the album from here → unreleased: the Search pane's "Not out yet" hint | diary-card.ts `songRowHTML` |

@@ -1,7 +1,7 @@
 ---
-status: designed
-desk_test: none
-sources: [src/mosaic.ts, src/mosaic-worker.ts, src/album-color.ts, src/album-slots.ts, src/styles/skin.css, src/styles.css, src/skin-settings.ts, src/settings-store.ts]
+status: built
+desk_test: open
+sources: [src/wallpaper.ts, src/wallpaper-worker.ts, src-tauri/src/wallpaper.rs, src/album-color.ts, src/album-slots.ts, src/styles/skin.css, src/styles.css, src/settings-card.ts, src/settings-store.ts]
 updated: 2026-09-24
 ---
 # DeetsMusic — Cover Wallpaper (the Glass canvas as a picture: covers or your own)
@@ -13,6 +13,98 @@ updated: 2026-09-24
 > [PLAYLISTS.md](PLAYLISTS.md) §11 (the mosaic worker) and
 > [UI-ARCHITECTURE.md](../architecture/UI-ARCHITECTURE.md) (the canvas tokens).
 > Status: ✅ decided · 🔵 open · ⬜ later.
+
+---
+
+## As built (2026-09-24) — read this first
+
+> **Part:** built · 2026-09-24 · desk test §6 open
+
+Where this section and the design below disagree, this section is the code.
+
+- **Files.** `src/wallpaper.ts` (the layout, the slots, the fades, the colors, Choose / drop),
+  `src/wallpaper-worker.ts` (the soft copy), `src-tauri/src/wallpaper.rs` (the user picture on
+  disk and the `wallpaper` link scheme), `paletteFromPixels` in `album-slots.ts`. The layer is
+  `<div class="wallpaper">` in index.html, before `.aurora`.
+- **1A and 1B are both in.** 1A is the **Tiles** row's first choice, **One cover** (the cover
+  alone, `cover`-fitted to the window). Four choices make the Tiles row a small menu, not a
+  pill. After the desk test, One cover is either dropped (the pill returns) or kept.
+- **The layout (§3.2) is a grid, not the worker's cut-the-rectangle rule.** A grid of square
+  cells covers the canvas (centered, overhanging the edges a little). The anchor takes a k × k
+  block, k ≥ 2, `--wallpaper-anchor-share` (0.6) of the short side, at
+  `--wallpaper-anchor-rise` (0.3) down the free rows. The other cells join into 1×1, 2×1, 1×2
+  and 2×2 tiles until there are about as many as the Tiles row asks (a few more when the grid
+  cannot join enough). Why: the cut rule made thin strips around a large anchor; the grid keeps
+  every tile near square. The tiles are ordered nearest to the anchor first, so the queue's
+  next album sits next to the playing one. The seed is the size and the count (§3.1).
+- **The picture set.** The queue's upcoming entries, then the rest of the plan, then history
+  newest first; distinct covers; the anchor excluded. Fewer than the slots: the set repeats.
+- **The sharp copy** loads Apple's cover links directly as each tile's background, at fetch
+  steps 120 / 240 / 480 / 720 / 1000 / 1400 px (the tile's size × the display scale). Every new
+  picture is decoded before its fade starts (at most 3 s).
+- **The soft copy** is drawn at a quarter of the canvas size, blurred by `--wallpaper-blur`
+  (28 px) and saturated by `--glass-frost-sat`, from the same links (the HTTP cache serves
+  them). It is not drawn with Fancy Glass on. It sits in `--glass-frost-paint` as its own layer,
+  between the aurora copy and the ground. Glass always carries that layer (a transparent stand-in
+  when there is none), so the layer count never changes and a change can crossfade.
+- **The swap (his call 2026-09-24, after the first look: "the center tile is the one getting
+  replaced every time").** On an album change the new album grows out of its tile into the
+  center, AND the old center album shrinks into that tile: the two trade places, and nothing
+  leaves the mosaic. A jump to an album with no tile sends the old one to the nearest tile that
+  is no longer wanted; with none free, it fades out. A moving cover flies at full opacity, above
+  the other tiles (the tiles no longer clip). The swapped-out album is history, so at the next
+  album change its tile goes to a queue album, as before.
+- **The fades.** Tiles: `element.animate` (opacity + `--wallpaper-tile-scale`, or a grow from the
+  anchor's old tile box). The whole layer (in, out, a new size, a new count, a new picture): an
+  opacity fade of `--wallpaper-fade-dur`. The cards' frost and the aurora colors: for one fade,
+  `<html data-wall-fade>` turns on a `background-image` transition on `.panel` and
+  `.aurora__blob` (styles.css), which Chromium draws as a crossfade. Only inside that window, so
+  a slider drag or a look change never waits on it. Reduced motion: every fade is a snap.
+- **The aurora colors (§3.4).** New tokens in the Glass block: `--canvas-go` / `--canvas-stop` /
+  `--canvas-pause` (the theme's go / stop / pause by default). The aurora blobs and the frost's
+  aurora copy read them. `wallpaper.ts` sets them on `<html>`: the rim (the most colorful) on go,
+  the halo on stop, the rest on pause. The NP card's own `--album-*` props are untouched.
+- **The dim (row 7).** `[data-wallpaper]` with Fancy Glass off locks `--glass-dim` to
+  `--wallpaper-canvas-dim` (35, to set at the desk test). Fancy Glass on keeps the slider.
+- **A user picture (§8).** Choose (the Picture row's action) or a file dropped on the row. The
+  page resizes it to at most 2560 px and reads its colors from a 48 × 48 copy
+  (`paletteFromPixels`: twelve hue bins weighted by chroma; the three heaviest). `wallpaper_set`
+  (async, off the UI thread) writes `wallpaper.jpg` and `wallpaper.json` in the app data folder;
+  the settings key `glassPicture` holds the stamp. The page shows
+  `http://wallpaper.localhost/<stamp>`.
+- **Hidden window.** `data-ambient="paused"` (ambient.ts): nothing is drawn; the change is drawn
+  once on show.
+- **Telemetry.** `diag.log`: `wallpaper:draw` (why, mode, tiles, changed slots, ms, size),
+  `wallpaper:soft` (tiles, ms, KB), `wallpaper:soft-failed`, `wallpaper:picture`, `wallpaper:off`.
+  `[perf] frames wallpaper` for each fade (enter, leave, tiles, frost).
+- **Diffusion** (his ask, 2026-09-24: "so it doesn't feel as sharp / high res"; his calls: a soft
+  blur, as a slider). A `filter: blur()` on `.wallpaper__set`, 0–100% of
+  `--wallpaper-diffusion-max` (20 px); default 30 (≈ 6 px). The set is static between changes,
+  so the blur is drawn once, and again only while a fade runs. The picture runs
+  `--wallpaper-bleed` (48 px) past the window on every side, so the blur never darkens the
+  window's edge. Fancy Glass's live frost blurs the diffused layer. The cards' soft copy
+  (28 px) is already softer than any Diffusion value, so it does not change.
+- **Settings rows** (Skin settings, Glass only, before Fancy Glass): Canvas, Tiles (Covers),
+  Picture (Picture), Diffusion (Covers or Picture), Aurora color (Covers or Picture). Each wears the New badge. A row a choice
+  reveals now slides in through `enterRows` — this applies to every Settings row that a choice
+  shows (Sand width, the Press record rows too).
+
+### Decided inside his calls (for his review)
+- The layout is a grid of near-square cells (above), not the cut-the-rectangle rule.
+- 1A lives in the Tiles row as "One cover", not in the Canvas pill.
+- The four Glass canvas rows sit at the top of the Glass rows, before Fancy Glass.
+- The Tiles row, Picture row and Aurora color row each wear the New badge, like Canvas.
+- Diffusion: the row sits after Picture, before Aurora color; 100% = 20 px; default 30% (the
+  "about 6 px" of the option he picked); it is not locked with Fancy Glass off; it wears the New
+  badge; the Skin settings reset group resets it.
+- Tokens, to tune at the desk test: anchor 0.6 of the short side, 0.3 down; tile fade 0.9 s,
+  scale 1.04; layer and frost fade 0.8 s; blur 28 px; the locked dim 35.
+- A queue shorter than the tile count repeats its covers instead of leaving tiles empty.
+- The reset group "Skin settings" now resets Canvas, Tiles and Aurora color. It does not remove
+  the chosen picture file.
+- No toast on a good picture choice (the canvas changes); the two failure toasts reuse the
+  playlist cover's words.
+- An agent can set the three pills but cannot choose the picture.
 
 ---
 
@@ -167,15 +259,39 @@ Three rows in Skin settings, Glass only:
 - **Busy art.** Some covers are text-heavy. The dim and the aurora must hold text contrast in
   the gaps (the headers that sit on the canvas).
 
-## 6. Desk test (planned)
-1. Glass, Fancy Glass off, mini window. Play an album with a long mixed queue behind it.
-   Compare **1A** (one cover) and **1B** (mosaic). Does 1A fill the screen well enough?
-   The result decides whether 1A is dropped, kept, or offered as a choice.
-2. The same in max, then with Fancy Glass on.
-3. Skip to the next song on the same album: no redraw. Skip to a new album: one crossfade.
-4. Read every card's text over the loudest cover you own.
-5. `npm run dev:built`: `[perf] frames` for a library scroll, wallpaper on vs off.
-6. Reduced motion on: the change is a snap.
+## 6. Desk test (open — built 2026-09-24)
+
+> **Part:** built · 2026-09-24 · not yet desk-tested
+
+A Rust file was added, so restart the dev runner (`npm run dev:app`) before the test.
+
+1. Glass, Fancy Glass off, mini window. Settings › Skin settings › Canvas › **Covers**. Play an
+   album with a long mixed queue behind it: the canvas fades to the cover, large at the upper
+   center, with twelve tiles around it; the aurora takes the album's colors; the cards show a
+   blurred copy that lines up with the gaps. Set Tiles to **One cover** (1A), then back to Some
+   (1B). Does 1A fill the screen well enough? The answer decides whether One cover is dropped or
+   kept (§7).
+2. The same in max. Then turn on Fancy Glass: the cards blur the tiles live.
+3. Skip to the next song on the same album: nothing moves. Skip to a new album: the new cover
+   grows out of its tile into the center while the old center cover shrinks into that tile —
+   they trade places. The rest stay. Jump to an album far down the queue: the old center cover
+   goes to the nearest tile that changes.
+4. Tiles: Few, then Many — the layer crossfades to the new layout. Resize the window: after a
+   moment the layer crossfades to the new size.
+5. Stop playback so nothing plays (clear the queue): the wallpaper fades out and the plain
+   aurora comes back. Play again: it fades in.
+6. Canvas › **Picture**: the Choose row slides in. Choose a photo: the canvas fades to it, the
+   aurora takes its colors. Drop another image file on the row: it replaces the first. Drop a
+   text file: "… is not an image DeetsMusic can read." Restart the app: the picture is still there.
+7. Aurora color › Theme: the glow goes back to the theme's colors over the picture. Cover: back.
+7a. Diffusion: drag it from 0 to 100. At 0 the covers are sharp; at 30 (the default) they read
+    soft; at 100 they are a wash of color. The window's edges never go dark. Pick the default.
+8. Read every card's text over the loudest cover you own. Set the locked dim
+   (`--wallpaper-canvas-dim`, now 35) to the value that reads well (row 7).
+9. Minimize the window, skip to a new album, restore: the new album is drawn once on show.
+10. `npm run dev:built`: `[perf] frames` for a library scroll, wallpaper on vs off.
+11. Reduced motion on: every change is a snap.
+12. Switch to another skin and back: the wallpaper leaves with Glass and comes back with it.
 
 ## 7. Open forks (for the owner)
 - ✅ Every fork in §1 is closed (2026-09-24).

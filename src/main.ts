@@ -5,6 +5,7 @@ import { applySurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, o
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initOcean } from "./ocean";
+import { initWallpaper } from "./wallpaper";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
 import { initHints } from "./hint";
@@ -67,6 +68,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initOcean(); // the Ocean sea's textures, album light, breath and ripples; inert under other skins
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray
+  initWallpaper(); // Glass › Canvas: the album covers or a chosen picture behind the cards; inert otherwise
   initArtworkHeal(); // retry cover <img>s that fail to load (sleep/wake, network blips)
   initSound(); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)
   initLoudness(); // Match loudness: measures songs and sets each one's gain (SOUND.md §3A)

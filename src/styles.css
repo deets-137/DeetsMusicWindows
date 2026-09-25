@@ -1769,6 +1769,33 @@ body {
 .aurora__blob--2 { background-image: var(--aurora-2); --drift-x: var(--aurora-drift-2-x); --drift-y: var(--aurora-drift-2-y); }
 .aurora__blob--3 { background-image: var(--aurora-3); --drift-x: var(--aurora-drift-3-x); --drift-y: var(--aurora-drift-3-y); }
 
+/* ── Wallpaper layer (Glass › Canvas: Covers / Picture; COVER-WALLPAPER.md) ── */
+/* Under the aurora. src/wallpaper.ts fills it: one `__set` of tiles (a new size or tile count
+   crossfades a new set), each tile one or two `__img`s (a changing picture fades over the old
+   one). Static between changes: nothing here animates on its own. Glass only, and only while
+   wallpaper.ts has a picture to show (data-wallpaper on <html>). */
+.wallpaper {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+[data-skin="glass"][data-wallpaper] .wallpaper { display: block; }
+/* Diffusion (Settings › Diffusion): a blur over the whole picture, so it reads soft. The set is
+   static between changes, so the blur is drawn once, and again only while a fade runs. */
+.wallpaper__set  { position: absolute; inset: 0; filter: blur(calc(var(--glass-diffusion, 30) / 100 * var(--wallpaper-diffusion-max))); }
+.wallpaper__tile { position: absolute; } /* no clip: a swapped cover flies out of its box (wallpaper.ts) */
+.wallpaper__img  { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; }
+/* A frost or aurora color change (wallpaper.ts opens this window for one fade): the cards'
+   painted frost and the blobs crossfade their pictures. Only inside the window, so a slider
+   drag or a look change never waits on it. */
+:root[data-wall-fade] .panel,
+:root[data-wall-fade] .aurora__blob {
+  transition: background-image var(--wallpaper-fade-dur) var(--wallpaper-fade-ease);
+}
+
 /* ── Storm layer (decorative strokes behind the cards) ──────── */
 /* Inert unless a skin opts in (--storm-display; Cyber). Everything
    here reads tokens: geometry via CSS `d:` (--storm-path-*), ink/glow

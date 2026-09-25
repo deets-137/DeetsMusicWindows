@@ -94,6 +94,8 @@
 .set__row--toggle { cursor: pointer; }
 .set__row--toggle:hover { background: var(--surface-hover); }
 .set__row--toggle:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* An image file held over Glass › Picture: the row takes the drop (the hero cover's dashed ring). */
+.set__row.is-drop { outline: var(--focus-ring-w) dashed var(--title); outline-offset: var(--focus-ring-off); background: var(--surface-hover); }
 /* A choice row keeps its pills on the label's line, right-aligned; they wrap under the
    label only when the slot is too narrow (flex-wrap on the row, pills pushed right). */
 .set__row--choice { flex-wrap: wrap; min-height: var(--set-row-h); }
