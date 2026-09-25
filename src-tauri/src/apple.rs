@@ -1059,8 +1059,16 @@ async fn status_only(client: &reqwest::Client, dev: &str, mut_tok: Option<&str>,
     if let Some(m) = mut_tok {
         req = req.header("Music-User-Token", m);
     }
-    let status = req.send().await.map_err(|e| e.to_string())?.status().as_u16();
-    log_failure(status, url);
+    crate::apple_calls::refuse_in_background()?;
+    if crate::apple_calls::take_forced(crate::apple_calls::Kind::Probe, url) {
+        return Ok(429);
+    }
+    let resp = req.send().await.map_err(|e| {
+        crate::apple_calls::count(crate::apple_calls::Kind::Probe, url, None);
+        e.to_string()
+    })?;
+    let status = resp.status().as_u16();
+    observe(crate::apple_calls::Kind::Probe, url, status, &resp);
     Ok(status)
 }
 
@@ -1069,6 +1077,8 @@ async fn app_status(client: &reqwest::Client) -> (&'static str, bool) {
     let Ok(dev) = developer_token() else { return ("missing", false) };
     match status_only(client, &dev, None, STOREFRONT_URL).await {
         Ok(200) => ("ok", false),
+        // Too many requests: Apple read the token and accepted it (APPLE-CALLS.md §3).
+        Ok(429) => ("ok", false),
         Err(_) => ("unreachable", false),
         Ok(401) => match refetch_after_401(&dev).await {
             Some(fresh) if fresh != dev => match status_only(client, &fresh, None, STOREFRONT_URL).await {
@@ -1191,6 +1201,10 @@ async fn api_get_once(
     mut_tok: &str,
     url: &str,
 ) -> Result<(u16, serde_json::Value), String> {
+    crate::apple_calls::refuse_in_background()?;
+    if crate::apple_calls::take_forced(crate::apple_calls::Kind::Read, url) {
+        return Ok((429, serde_json::json!({})));
+    }
     let resp = client
         .get(url)
         .header("Authorization", format!("Bearer {dev}"))
@@ -1198,13 +1212,27 @@ async fn api_get_once(
         .header("Music-User-Token", mut_tok)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            crate::apple_calls::count(crate::apple_calls::Kind::Read, url, None);
+            e.to_string()
+        })?;
     let status = resp.status().as_u16();
-    log_failure(status, url);
+    observe(crate::apple_calls::Kind::Read, url, status, &resp);
     let text = resp.text().await.map_err(|e| e.to_string())?;
     let body = serde_json::from_str::<serde_json::Value>(&text)
         .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
     Ok((status, body))
+}
+
+/// Every reply of the four functions: count it (APPLE-CALLS.md §2), arm the back-off on a 429
+/// (§3), and log a failure.
+fn observe(kind: crate::apple_calls::Kind, url: &str, status: u16, resp: &reqwest::Response) {
+    crate::apple_calls::count(kind, url, Some(status));
+    if status == 429 {
+        let hint = resp.headers().get("retry-after").and_then(|v| v.to_str().ok());
+        crate::apple_calls::on_429(url, hint);
+    }
+    log_failure(status, url);
 }
 
 /// Apple failures only, status + path (LOGGING.md): the host is always the same
@@ -1287,6 +1315,10 @@ async fn api_post_once(
     mut_tok: &str,
     url: &str,
 ) -> Result<(u16, serde_json::Value), String> {
+    crate::apple_calls::refuse_in_background()?;
+    if crate::apple_calls::take_forced(crate::apple_calls::Kind::Write, url) {
+        return Ok((429, serde_json::json!({})));
+    }
     let resp = client
         .post(url)
         .header("Authorization", format!("Bearer {dev}"))
@@ -1295,9 +1327,12 @@ async fn api_post_once(
         .header("Content-Length", "0")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            crate::apple_calls::count(crate::apple_calls::Kind::Write, url, None);
+            e.to_string()
+        })?;
     let status = resp.status().as_u16();
-    log_failure(status, url);
+    observe(crate::apple_calls::Kind::Write, url, status, &resp);
     let text = resp.text().await.unwrap_or_default();
     let body = serde_json::from_str::<serde_json::Value>(&text)
         .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
@@ -1333,6 +1368,11 @@ async fn api_send_once(
     url: &str,
     body: Option<&serde_json::Value>,
 ) -> Result<(u16, serde_json::Value), String> {
+    crate::apple_calls::refuse_in_background()?;
+    let kind = if method == reqwest::Method::GET { crate::apple_calls::Kind::Read } else { crate::apple_calls::Kind::Write };
+    if crate::apple_calls::take_forced(kind, url) {
+        return Ok((429, serde_json::json!({})));
+    }
     let mut req = client
         .request(method, url)
         .header("Authorization", format!("Bearer {dev}"))
@@ -1342,9 +1382,12 @@ async fn api_send_once(
         Some(b) => req.json(b),
         None => req.header("Content-Length", "0"),
     };
-    let resp = req.send().await.map_err(|e| e.to_string())?;
+    let resp = req.send().await.map_err(|e| {
+        crate::apple_calls::count(kind, url, None);
+        e.to_string()
+    })?;
     let status = resp.status().as_u16();
-    log_failure(status, url);
+    observe(kind, url, status, &resp);
     let text = resp.text().await.unwrap_or_default();
     let body = serde_json::from_str::<serde_json::Value>(&text)
         .unwrap_or_else(|_| serde_json::json!({ "_nonjson": text }));
@@ -2426,8 +2469,22 @@ const RECENT_PAGES_MAX: u32 = 3;
 ///
 /// Side effects, both local: the rows we do not hold are materialized as `seen` tracks,
 /// and every row's writers are noted. A row we DO hold is left alone (`DO NOTHING`).
+///
+/// A background job (Home's own read, APPLE-CALLS.md §3): `apple_calls::BUSY` while Apple's
+/// back-off holds, and Home keeps the shelf it has.
 #[tauri::command]
 pub async fn recent_played_tracks(
+    pages: Option<u32>,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Track>, String> {
+    if crate::apple_calls::skip("recent_played_tracks") {
+        return Err(crate::apple_calls::BUSY.into());
+    }
+    crate::apple_calls::background("recent_played_tracks", recent_played_tracks_run(pages, state, db)).await
+}
+
+async fn recent_played_tracks_run(
     pages: Option<u32>,
     state: tauri::State<'_, AppleState>,
     db: tauri::State<'_, crate::library::Db>,
@@ -2481,8 +2538,19 @@ pub async fn recent_played_tracks(
 /// so the shelf can order them truthfully. It still prints no dates (his call).
 ///
 /// One call, no side effects: an added album is already in the library sync's path.
+///
+/// A background job, like `recent_played_tracks` (APPLE-CALLS.md §3).
 #[tauri::command]
 pub async fn recent_added(
+    state: tauri::State<'_, AppleState>,
+) -> Result<RecentAdded, String> {
+    if crate::apple_calls::skip("recent_added") {
+        return Err(crate::apple_calls::BUSY.into());
+    }
+    crate::apple_calls::background("recent_added", recent_added_run(state)).await
+}
+
+async fn recent_added_run(
     state: tauri::State<'_, AppleState>,
 ) -> Result<RecentAdded, String> {
     let dev = developer_token()?;
@@ -2607,8 +2675,22 @@ pub(crate) async fn sync_artist_catalog(
 /// and a name it has never seen simply contributes nothing. Apple answering fewer artists
 /// than asked (22 of 25, measured) is a gap, never an error. The rows are deduplicated by
 /// catalog id, so one collaboration does not draw twice.
+///
+/// A background job (Home's New shelf, APPLE-CALLS.md §3): `apple_calls::BUSY` while Apple's
+/// back-off holds, and the shelf keeps what it has.
 #[tauri::command]
 pub async fn artist_new_releases(
+    names: Vec<String>,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Album>, String> {
+    if crate::apple_calls::skip("artist_new_releases") {
+        return Err(crate::apple_calls::BUSY.into());
+    }
+    crate::apple_calls::background("artist_new_releases", artist_new_releases_run(names, state, db)).await
+}
+
+async fn artist_new_releases_run(
     names: Vec<String>,
     state: tauri::State<'_, AppleState>,
     db: tauri::State<'_, crate::library::Db>,

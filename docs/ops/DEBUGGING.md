@@ -1224,7 +1224,8 @@ into the song, could not be explained). Now every time MusicKit leaves `playing`
 | `sleep` | the sleep timer |
 | `load` · `station` · `station-stop` | our own pause before a new list or a station |
 | `room` · `room-hold` · `room:<source>` | a listening room: the host's command, a hold, or our own press sent to the room |
-| `outside` | no note from our code in the last 5 s: MusicKit paused by itself, or WebView2's own media-key handling |
+| `songEnd` | no note, but a song change within 1 s (a station's next song, the queue's end, a Next) or the song's last 2 s (2026-09-25, below) |
+| `outside` | no note from our code in the last 5 s and no song change: MusicKit paused by itself, or WebView2's own media-key handling |
 
 How it works: each pause we cause calls `notePause(why)` in player.ts first; the
 `playbackStateDidChange` handler reads the note. Rust stamps `from` on every `np-command`
@@ -1237,7 +1238,16 @@ player:pause` shows five lines with `button`, `space`, `tray`, `windows`, `airpl
 
 ### What the 2026-09-24 read found — `outside` is mostly song changes
 
-> **Part:** designed · 2026-09-24
+> **Part:** built · 2026-09-25 (fixes 1 and 3; fix 2 needed no code) · desk test passed 2026-09-25
+
+**As built (2026-09-25):** a pause with no fresh note waits 1 s (`SONG_END_WAIT_MS`,
+player.ts), then writes `player:pause` with `why: "songEnd"` or `"outside"`. The rule is
+`isSongEnd` in `src/pause-rules.ts` (unit-tested): a `stationFollow` or `queueEnd` in the wait,
+a different song now, or a pause within 2 s of the song's end. After a `songEnd`, when a station
+plays or songs are still queued and nothing plays for 3 s from the pause, `player:stall {after,
+s, mode, output}` (a warn), and `player:stall-end {s, after}` when music plays again. `output`
+is `outputKind()` from sound.ts. A pause our code named (`button`, `sleep` …) is written at
+once, as before.
 
 The owner asked: did a song ever pause without a user action? The read (installed app
 2026-09-17 → 09-24, beta, dev) found **no**. But it showed that `outside` is noise:

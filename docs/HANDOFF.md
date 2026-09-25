@@ -112,10 +112,14 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-25. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**Next (his word, 2026-09-24; order confirmed 2026-09-25):** the telemetry pass (below). The
-429 toast's words and tier are decided (APPLE-CALLS.md §3).
+**Next:** the telemetry pass's last part, the AirPlay stall and switch timing (AIRPLAY.md
+§13.2, a crate change too).
 
-**Desk tests open (on `main`; every local branch is merged into it as of 2026-09-25)**
+**Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
+- **The Apple call counter's hourly line** (APPLE-CALLS.md §5 step 1): an hour of normal use,
+  then read `[apple] calls 1h` and the `quit` line. The 429 back-off (steps 2–3) was checked in
+  the dev app, and the pause labels passed his desk test (DEBUGGING.md), both 2026-09-25.
+  Committed on `clode-eval`; not merged, not released.
 - **Diary: Done copies the Export** (built and committed 2026-09-24) — DIARY.md §8 step 11f.
 - The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP). It needs
   an installed build with the Diary CLI; beta is paused, so it runs on the installed app
@@ -135,9 +139,8 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
   version (0.11.0 shipped with it stale).
 
 **Designed, not built (2026-09-24)**
-- The telemetry pass: Apple call counter + 429 back-off (APPLE-CALLS.md), the `songEnd` /
-  `player:stall` pause fixes (DEBUGGING.md §Why did it pause), AirPlay stall and switch timing
-  (AIRPLAY.md §13.2).
+- The telemetry pass's AirPlay part: stall and switch timing, the quieter wire log (AIRPLAY.md
+  §13.2). The other two parts are built (Desk tests open, above).
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
 
 **Releases and branches**

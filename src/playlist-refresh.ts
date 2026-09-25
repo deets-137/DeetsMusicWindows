@@ -39,6 +39,7 @@ import {
 import type { Track } from "./library";
 import { setting } from "./settings-store";
 import { toast } from "./toast";
+import { isAppleBusy } from "./apple-health";
 import * as diag from "./diag";
 
 export type RefreshMode = "daily" | "weekly" | "off";
@@ -158,6 +159,8 @@ async function refetchMirror(p: Playlist): Promise<number | null> {
     });
     return r.added;
   } catch (e) {
+    // Apple's back-off: a skipped turn, not a failure (APPLE-CALLS.md §3). The stamp stays.
+    if (isAppleBusy(e)) return null;
     console.error("[refresh] refetch", e);
     diag.warn("playlist:refresh", { failed: p.libraryId, why: String(e) });
     return null;

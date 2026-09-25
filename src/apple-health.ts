@@ -106,6 +106,31 @@ export function show(t: Trouble, force = false, source = "show", quiet = false):
 // Name it now instead of letting the sync fail quietly.
 void listen("apple-signin-rejected", () => void check(false, false, "rust403"));
 
+// ── Too many requests (APPLE-CALLS.md §3, his words 2026-09-25) ────────────────────
+// Rust sends `apple-busy` when a USER call gets a 429 (a background job skips quietly).
+// warn, timed: the click did nothing, here is why. One at a time: while one is on screen, a
+// second failed click does not add another.
+const BUSY_TOAST_MS = 6000;
+let busyUntil = 0;
+void listen<{ s: number; hinted: boolean }>("apple-busy", (e) => {
+  const { s, hinted } = e.payload;
+  diag.warn("apple:busy", { s, hinted });
+  if (Date.now() < busyUntil) return;
+  busyUntil = Date.now() + BUSY_TOAST_MS;
+  const wait = !hinted && s === 60 ? "a minute" : `${s} ${s === 1 ? "second" : "seconds"}`;
+  toast({ kind: "warn", text: `Apple Music is busy right now. Try again in ${wait}.`, timeout: BUSY_TOAST_MS });
+});
+
+// The counter's hourly line and the back-off's arm / skip / off, copied into the ring so the
+// `diag` tool sees them live (CLAUDE.md checklist item 6). Rust already wrote the log line.
+void listen<Record<string, unknown> & { tag: string }>("apple-calls-diag", (e) => {
+  const { tag, ...rest } = e.payload;
+  diag.log(tag, rest);
+});
+
+/** A background job's quiet "not now" (apple_calls.rs `BUSY`): not a failure, never a toast. */
+export const isAppleBusy = (e: unknown): boolean => String(e).includes("Apple Music is busy;");
+
 /** Forget any trouble without a toast (after a deliberate sign-out). */
 export function reset(): void {
   show("none", false, "reset", true);

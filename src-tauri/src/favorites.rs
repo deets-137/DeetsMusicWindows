@@ -153,8 +153,24 @@ pub async fn favorite_collection_set(
 
 /// Ask Apple once whether an album or playlist is loved (one `GET …/ratings/{kind}?ids=`).
 /// The answer gets a mirror row either way, so it is never asked again on this install.
+///
+/// A background job (the app asks on its own, APPLE-CALLS.md §3): `apple_calls::BUSY` while
+/// Apple's back-off holds, and no row is written, so it asks again next time.
 #[tauri::command]
 pub async fn favorite_collection_reconcile(
+    kind: String,
+    id: String,
+    alias: Option<String>,
+    state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<bool, String> {
+    if crate::apple_calls::skip("favorite_collection_reconcile") {
+        return Err(crate::apple_calls::BUSY.into());
+    }
+    crate::apple_calls::background("favorite_collection_reconcile", favorite_collection_reconcile_run(kind, id, alias, state, db)).await
+}
+
+async fn favorite_collection_reconcile_run(
     kind: String,
     id: String,
     alias: Option<String>,
@@ -223,8 +239,21 @@ pub struct Reconciled {
 /// phone). One `GET …/ratings/songs?ids=` per 100 ids; ids Apple omits are not loved.
 /// Every asked id gets a mirror row either way, so it is never asked again on this
 /// install (a later ♥ elsewhere shows up through the Favorite Songs seed).
+///
+/// A background job, like `favorite_collection_reconcile` (APPLE-CALLS.md §3).
 #[tauri::command]
 pub async fn favorites_reconcile(
+    ids: Vec<String>,
+    state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<Reconciled, String> {
+    if crate::apple_calls::skip("favorites_reconcile") {
+        return Err(crate::apple_calls::BUSY.into());
+    }
+    crate::apple_calls::background("favorites_reconcile", favorites_reconcile_run(ids, state, db)).await
+}
+
+async fn favorites_reconcile_run(
     ids: Vec<String>,
     state: State<'_, AppleState>,
     db: State<'_, Db>,

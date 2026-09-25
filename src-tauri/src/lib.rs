@@ -1,6 +1,7 @@
 mod airplay;
 mod audio_out;
 mod apple;
+mod apple_calls;
 mod beta;
 mod bridge;
 mod credits;
@@ -237,6 +238,8 @@ pub fn run() {
             db_thread::start(app.handle());
             // Is the database still writable? (DB-HEALTH.md) The first canary runs at once.
             dbhealth::start(app.handle().clone());
+            // Apple calls (APPLE-CALLS.md): the hourly count line and the 429 back-off's events.
+            apple_calls::start(app.handle());
 
             // Back-end settings (minimize-to-tray, Windows-media fallback, the
             // extension pairing token), then the tray + the extension bridge.
@@ -329,6 +332,8 @@ pub fn run() {
             apple::apple_auth_status,
             apple::apple_cancel_auth,
             apple::apple_check,
+            apple_calls::apple_calls_status,
+            apple_calls::apple_force_429,
             apple::apple_user_token,
             apple::apple_disconnect,
             apple::apple_dump_library,
@@ -542,8 +547,14 @@ pub fn run() {
             report::report_close,
             report::report_clear,
         ]))
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| {
+            // Every way out (the tray's Quit, the last window closed): the last Apple call count.
+            if let tauri::RunEvent::Exit = event {
+                apple_calls::report("quit");
+            }
+        });
 }
 
 /// Wrap the generated handler so every command records its name while it runs

@@ -404,3 +404,18 @@ deliberately slack — a slow frame, a big sort or a cold paint must never write
 
 The gate that stops the cause reaching a build at all is `release-check` check 9
 (RELEASE.md §1). The watchdog is the second layer, for a stall the gate cannot see.
+
+## Apple calls (BUILT 2026-09-25)
+
+`src-tauri/src/apple_calls.rs` ([APPLE-CALLS.md](APPLE-CALLS.md) §6). Release and dev both;
+no ids, the same class of data as the `apple: {status} {path}` line:
+
+```
+INFO  [apple] calls 1h: library 12 · catalog 40 (404 ×1) · search 6 · me 3 · write 2 · 429 0 | since launch: …
+WARN  apple: back-off arm 60s (/v1/catalog/us/search?term=…)
+INFO  apple: back-off skip playlist_refetch (41s left)
+INFO  apple: back-off off
+```
+
+The hourly line is written only when the hour had a call, and once more at quit. Each has a
+`diag` twin (`apple:calls`, `apple:backoffArm`, `apple:backoffSkip`, `apple:backoffOff`).

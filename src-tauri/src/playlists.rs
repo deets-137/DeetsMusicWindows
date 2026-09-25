@@ -856,8 +856,25 @@ const EXPORT_LIST_LAG_MS: i64 = 30 * 1000;
 /// Refresh the flat mirror list from Apple. `fresh: false` (the once-per-session
 /// auto-sync) keeps the content caches of unchanged playlists; `fresh: true` (the
 /// explicit ⟳) drops them all, so every next open refetches current contents.
+///
+/// `fresh: false` is a background job (APPLE-CALLS.md §3): it skips its turn while Apple's
+/// back-off holds. The ⟳ is the user's and always goes out.
 #[tauri::command]
 pub async fn apple_playlists_sync(
+    fresh: bool,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<u32, String> {
+    if fresh {
+        return apple_playlists_sync_run(fresh, apple_state, db).await;
+    }
+    if crate::apple_calls::skip("apple_playlists_sync") {
+        return Ok(0);
+    }
+    crate::apple_calls::background("apple_playlists_sync", apple_playlists_sync_run(fresh, apple_state, db)).await
+}
+
+async fn apple_playlists_sync_run(
     fresh: bool,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
@@ -988,8 +1005,20 @@ pub async fn apple_playlists_sync(
 ///
 /// The front-end gates this on the eager-counts setting (FUTURE-SETTINGS §14): eager
 /// backfill (this) vs. leaving "Playlist" on the tile until the user opens it.
+///
+/// A background job (APPLE-CALLS.md §3): it skips its turn while Apple's back-off holds.
 #[tauri::command]
 pub async fn apple_playlist_counts(
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<u32, String> {
+    if crate::apple_calls::skip("apple_playlist_counts") {
+        return Ok(0);
+    }
+    crate::apple_calls::background("apple_playlist_counts", apple_playlist_counts_run(apple_state, db)).await
+}
+
+async fn apple_playlist_counts_run(
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<u32, String> {
@@ -1229,8 +1258,22 @@ pub struct RefetchResult {
 /// Re-read a mirror's songs from Apple, whatever the cache holds (PLAYLIST-REFRESH.md §5).
 /// One Apple read per 100 songs. On a failure the old cache AND the old stamp both stay, so
 /// the next trigger tries again rather than waiting another day.
+///
+/// A background job (the hourly check and the refresh on open, APPLE-CALLS.md §3). While
+/// Apple's back-off holds it returns `apple_calls::BUSY`, so the front end keeps the old stamp.
 #[tauri::command]
 pub async fn playlist_refetch(
+    id: String,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<RefetchResult, String> {
+    if crate::apple_calls::skip("playlist_refetch") {
+        return Err(crate::apple_calls::BUSY.into());
+    }
+    crate::apple_calls::background("playlist_refetch", playlist_refetch_run(id, apple_state, db)).await
+}
+
+async fn playlist_refetch_run(
     id: String,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,

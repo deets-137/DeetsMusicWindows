@@ -111,7 +111,8 @@ old installs' Guide button opens.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
-- `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (designed, not built).
+- `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
+  commands are background jobs.
 
 **`docs/ideas/`** — not built; never tell a user the app does these. **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13).

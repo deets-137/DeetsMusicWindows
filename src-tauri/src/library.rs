@@ -1073,8 +1073,26 @@ fn now_secs() -> i64 {
 /// written. An incomplete full pass upserts what it got, emits `{phase:"error"}`, and
 /// fails — silently dropping pages would mean songs quietly missing from the cache.
 /// Emits `library-sync` progress events per page either way.
+///
+/// The startup pass (`full` not true) is a background job (APPLE-CALLS.md §3): it skips its
+/// turn while Apple's back-off holds. The refresh button is the user's and always goes out.
 #[tauri::command]
 pub async fn library_sync(
+    full: Option<bool>,
+    app: AppHandle,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<u32, String> {
+    if full.unwrap_or(false) {
+        return library_sync_run(full, app, apple_state, db).await;
+    }
+    if crate::apple_calls::skip("library_sync") {
+        return Ok(0);
+    }
+    crate::apple_calls::background("library_sync", library_sync_run(full, app, apple_state, db)).await
+}
+
+async fn library_sync_run(
     full: Option<bool>,
     app: AppHandle,
     apple_state: State<'_, AppleState>,

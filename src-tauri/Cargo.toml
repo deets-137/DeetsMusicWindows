@@ -36,6 +36,10 @@ rusqlite = { version = "0.32", features = ["bundled", "hooks", "limits"] } # hoo
 futures = "0.3"
 # ms → RFC3339 for local playlists' date_added (already in the tree transitively)
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+# Both already in the tree through Tauri and reqwest (APPLE-CALLS.md): tokio's task_local marks
+# a background job's Apple calls; httpdate reads a 429's Retry-After when it is a date.
+tokio = { version = "1", default-features = false, features = ["rt"] }
+httpdate = "1"
 
 # The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app, pinned to
 # a commit of that public repo so a clone of this one builds alone. To change the crate:

@@ -83,6 +83,24 @@ updated: 2026-09-25
 - **0.14.6 published** (`5f1abb5`), by his word; the hand test skipped by his call ("I've tested
   adequately"). Release check clean, 8.4 MB; the update route answers `latest: 0.14.6`; the
   demo pushed to DeetsSolutions (`6c0a946`). RELEASE.md §0a has the row.
+- **The telemetry pass, parts 1 and 2 (his word: "start the telemetry pass"):** built in the
+  order the docs set (the pause fixes with the counter), the AirPlay part after their desk test.
+  - **The counter and the 429 back-off** (APPLE-CALLS.md §6): `apple_calls.rs`; `observe()`
+    after every reply of the four functions; a `tokio::task_local` scope marks background jobs;
+    `RunEvent::Exit` writes the quit line; the `apple-busy` toast with his words;
+    `apple_force_429` for the desk test (dev only).
+  - **The pause labels** (DEBUGGING.md): `songEnd` after a 1 s wait, `player:stall` /
+    `stall-end`; the rule is `src/pause-rules.ts` with 3 unit tests (33 in all).
+  - Decided inside the design: a module of its own; the background list (§6); empty result vs
+    `BUSY` per job; `apple_check` reads a 429 as a good token; the dedupe is 6 s by time; the
+    counter's diag twin is the hourly line (the `diag` tool shows it live) plus
+    `apple_calls_status` (not wired to the agent). Known gap: a user 429 can also show the
+    call's own failure toast.
+  - **Desk test:** the pause labels passed his test. The forced 429 (APPLE-CALLS.md §5 steps
+    2–3) was run by Claude in the dev app and behaved as designed. Open: the hourly line
+    (step 1). Committed and pushed on `clode-eval`, not merged.
+  - Seen on the way: the `deetsmusic` diag MCP tool read the installed app's ring, not the dev
+    app's, while both ran; `scripts/webview-eval.mjs` read the dev ring.
 - **Docs sweep (his ask):** HANDOFF said "Live: 0.14.1", "every release goes beta first" and
   "branch `darn-critics`": now 0.14.5 live, beta-first paused, every local branch merged into
   `main`, and a line for what is on `main` and not released. Also: CLAUDE.md's co-author

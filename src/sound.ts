@@ -575,6 +575,8 @@ export interface SoundOutput {
 const NO_OUTPUT: SoundOutput = { key: "default", name: "This PC", kind: "unknown" };
 let output: SoundOutput = NO_OUTPUT;
 let windowsOutput: SoundOutput | null = null;
+/** The output's kind now (speakers, headphones, airplay …), for `player:stall` (DEBUGGING.md). */
+export const outputKind = (): SoundOutput["kind"] => output.kind;
 let airplayOutput: SoundOutput | null = null;
 
 const CROSSFEED_LEVELS = { light: { fc: 650, db: -9.5 }, medium: { fc: 700, db: -6 }, strong: { fc: 700, db: -4.5 } } as const;

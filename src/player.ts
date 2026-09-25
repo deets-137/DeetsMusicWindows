@@ -22,6 +22,8 @@ import { stageArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
+import { outputKind } from "./sound";
+import { nearSongEnd, isSongEnd, stallCanHappen } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
@@ -708,6 +710,7 @@ function maybeFinishQueue(): void {
     return;
   }
   diag.log("player:queueEnd", snap());
+  songChangeSeen();
   queue.advance();
 }
 
@@ -724,6 +727,40 @@ function notePause(why: string): void {
   pauseNote = { why, at: performance.now() };
 }
 
+// ── A song change is not a pause (DEBUGGING.md §Why did it pause, fixes 1 and 3; 2026-09-25) ──
+// MusicKit reports `paused` at the end of every station song and at a queue's end, and a user's
+// Next passes through it too: 86 of 93 `outside` lines were song changes. So a pause with no
+// note waits SONG_END_WAIT_MS: a `stationFollow`, a `queueEnd` or a new song in that time, or
+// a pause within SONG_END_TAIL_S of the end, makes it `songEnd`. A song end that plays nothing
+// for STALL_AFTER_MS, while there is a next song, writes `player:stall` (the 17.5 s AirPlay gap
+// of 2026-09-23), and `player:stall-end` when music plays again.
+const SONG_END_WAIT_MS = 1000;
+const STALL_AFTER_MS = 3000;
+let pendingPause: { fields: Record<string, unknown>; id: string | null; nearEnd: boolean; evidence: boolean; at: number } | null = null;
+let stallTimer = 0;
+let stall: { after: string | null; since: number } | null = null;
+
+/** stationFollow / queueEnd: a song change the pending pause belongs to. */
+function songChangeSeen(): void {
+  if (pendingPause) pendingPause.evidence = true;
+}
+
+function settlePause(): void {
+  const p = pendingPause;
+  pendingPause = null;
+  if (!p) return;
+  const songEnd = isSongEnd({ evidence: p.evidence, idBefore: p.id, idNow: music?.nowPlayingItem?.id ?? null, nearEnd: p.nearEnd });
+  diag.log("player:pause", { why: songEnd ? "songEnd" : "outside", ...p.fields });
+  if (!songEnd || music?.isPlaying) return;
+  if (!stallCanHappen(mode, queue.getUpcoming().length)) return;
+  window.clearTimeout(stallTimer);
+  stallTimer = window.setTimeout(() => {
+    if (music?.isPlaying) return;
+    stall = { after: p.id, since: p.at };
+    diag.warn("player:stall", { after: p.id, s: Math.round((performance.now() - p.at) / 1000), mode, output: outputKind() });
+  }, Math.max(0, STALL_AFTER_MS - (performance.now() - p.at)));
+}
+
 function logPauseSource(): void {
   const S = window.MusicKit?.PlaybackStates;
   if (!S || !music) return;
@@ -731,14 +768,23 @@ function logPauseSource(): void {
   const playing = st === S.playing;
   if (wasPlaying && (st === S.paused || st === S.stopped)) {
     const fresh = pauseNote && performance.now() - pauseNote.at < PAUSE_NOTE_MS;
-    diag.log("player:pause", {
-      why: fresh ? pauseNote!.why : "outside",
-      state: S[st],
-      id: music.nowPlayingItem?.id ?? null,
-      at: Math.round(music.currentPlaybackTime ?? 0),
-      mode,
-    });
+    const at = music.currentPlaybackTime ?? 0;
+    const fields = { state: S[st], id: music.nowPlayingItem?.id ?? null, at: Math.round(at), mode };
+    if (fresh) {
+      diag.log("player:pause", { why: pauseNote!.why, ...fields });
+    } else {
+      const nearEnd = nearSongEnd(at, music.currentPlaybackDuration ?? 0);
+      pendingPause = { fields, id: music.nowPlayingItem?.id ?? null, nearEnd, evidence: false, at: performance.now() };
+      window.setTimeout(settlePause, SONG_END_WAIT_MS);
+    }
     pauseNote = null;
+  }
+  if (playing) {
+    window.clearTimeout(stallTimer);
+    if (stall) {
+      diag.log("player:stall-end", { s: Math.round((performance.now() - stall.since) / 1000), after: stall.after });
+      stall = null;
+    }
   }
   if (st !== S.waiting && st !== S.loading) wasPlaying = playing;
 }
@@ -848,6 +894,7 @@ function stationFollow(): void {
   const id: string | undefined = item?.id;
   if (!item || !id) return;
   diag.log("player:stationFollow", { id, type: item?.type, kind: item?.playParams?.kind });
+  songChangeSeen();
   if (id.startsWith("ra.")) return; // the station container itself, not a track
   const cur = queue.getCurrent();
   if (cur && (cur.catalogId === id || cur.libraryId === id)) return; // duplicate event
