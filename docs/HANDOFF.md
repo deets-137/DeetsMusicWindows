@@ -112,6 +112,10 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-22. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Desk tests open (branch `darn-critics`, 2026-09-24, uncommitted)**
+- Unreleased songs on a pre-release album — SEARCH.md §Unreleased songs.
+- The Diary card, schema v14 — DIARY.md §8; the forks still open are DIARY.md §7.
+
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.

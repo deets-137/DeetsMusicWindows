@@ -15,8 +15,9 @@ import { historyCard } from "./history-card";
 import { rewindCard } from "./rewind-card";
 import { radioCard } from "./radio-card";
 import { settingsCard } from "./settings-card";
+import { diaryCard } from "./diary-card";
 
-export type CardId = "home" | "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings";
+export type CardId = "home" | "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings" | "diary";
 
 export interface CardInstance {
   /** Tear down: drop every listener and clear the host. Called when a slot swaps cards. */
@@ -65,5 +66,6 @@ export const registry: Partial<Record<CardId, CardDef>> = {
   history: historyCard,
   rewind: rewindCard,
   radio: radioCard,
+  diary: diaryCard,
   settings: settingsCard,
 };

@@ -344,6 +344,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playlists › Temp web playlist days** (2026-09-17, PLAYLIST-WEB.md §10): `webTempDays`
   (1 | 3 | 5 | 7 | 30). No Settings row: it is the web panel's Temp | N days button under Make
   playlist, and sets the next web playlist only. Every new web starts on Temp.
+- **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
+  What happens to the scores already on a Diary entry when its scale changes. An agent has no
+  Diary verb, and the entries are not in the `query` export.
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
   `pressVinylSpeed` (33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set

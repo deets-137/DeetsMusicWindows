@@ -143,6 +143,13 @@ nothing about authoring changed when the box did.
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
 | Song pane (2026-09-17) | a writer chip | Other songs by this writer | search-card.ts (CREDITS.md §7) |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
+| Diary (2026-09-24) | the + cover · the picker's × | Pick an album to write about · Closes the album search | diary-card.ts (DIARY.md §4) |
+| Diary | an entry tile | the album and its artist ("OPIA — VITA") | diary-card.ts `tileHTML` |
+| Diary entry | the scale pill · the review-date pill · the album score field | The scale for this album: its songs and the album use it · The day of this review · Score for the album: any number from 0 to 10 → marked: Type a number from 0 to 10 / Above this scale's top of 5. Type a new score, or rescale | diary-card.ts |
+| Diary entry | a song row | Shows this song's note below. Double-click plays the album from here → unreleased: the Search pane's "Not out yet" hint | diary-card.ts `songRowHTML` |
+| Diary foot | the play square · the song title · the note-day pill | Plays the album from this song · The song that plays. The panel follows it / The row you picked · The day of this note. It is set when you first write one | diary-card.ts `footHTML` |
+| Settings › Diary | Rescale scores | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5 | settings-card.ts |
+| Search album pane (2026-09-24) | a dimmed row (a song not out yet) | Not out yet — coming 09/25 → past its date: Not on Apple Music yet | search-card.ts `listRow`, release.ts `unreleasedHint` (SEARCH.md §Unreleased songs) |
 | Any list | Sort · View · magnifier | Changes the order of this list · Changes what the list groups by and how big the rows are · Finds a name in this list | collection-card.ts |
 | Sort popover | ↑ · ↓ | First to last: A to Z, newest first · Last to first: Z to A, oldest first | collection-card.ts |
 | View popover | density icons | Rows: one line each · Small tiles · Large tiles | collection-card.ts |

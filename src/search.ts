@@ -122,7 +122,7 @@ const paneCache = new Map<string, Track[] | ArtistDetail>();
 const searchCache = new Map<string, SearchResults>();
 const inflight = new Map<string, Promise<unknown>>();
 
-function remember<V>(cache: Map<string, V>, cap: number, key: string, fetch: () => Promise<V>): Promise<V> {
+function remember<V>(cache: Map<string, V>, cap: number, key: string, fetch: () => Promise<V>, keep: (v: V) => boolean = () => true): Promise<V> {
   const hit = cache.get(key);
   if (hit !== undefined) {
     cache.delete(key);
@@ -134,6 +134,7 @@ function remember<V>(cache: Map<string, V>, cap: number, key: string, fetch: () 
   if (running) return running;
   const p = fetch()
     .then((v) => {
+      if (!keep(v)) return v;
       cache.set(key, v);
       if (cache.size > cap) cache.delete(cache.keys().next().value as string);
       return v;
@@ -159,11 +160,17 @@ export function searchCatalog(term: string, types?: SearchType[]): Promise<Searc
   return remember(searchCache, SEARCH_CAP, key, () => invoke<SearchResults>("catalog_search", { term, types: types ?? null })).then(copyResults);
 }
 
-/** A catalog album's or playlist's tracks, authored order, music videos skipped. */
+/** A catalog album's or playlist's tracks, authored order, music videos skipped. A list with
+ *  an unreleased song is not kept, so each open asks Apple again and the song lights up on
+ *  release day without a restart (SEARCH.md §Unreleased songs). */
 export function collectionTracks(kind: "albums" | "playlists", id: string): Promise<Track[]> {
-  return remember(paneCache, PANE_CAP, `${kind}:${id}`, () => invoke<Track[]>("catalog_collection_tracks", { kind, id })).then((ts) => [
-    ...(ts as Track[]),
-  ]);
+  return remember(
+    paneCache,
+    PANE_CAP,
+    `${kind}:${id}`,
+    () => invoke<Track[]>("catalog_collection_tracks", { kind, id }),
+    (v) => !(v as Track[]).some((t) => t.unreleased),
+  ).then((ts) => [...(ts as Track[])]);
 }
 
 /** A catalog artist's detail: albums + top songs. */

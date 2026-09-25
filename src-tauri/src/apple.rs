@@ -1486,6 +1486,7 @@ fn track_from_library_song(v: &serde_json::Value) -> Track {
         release_date: a["releaseDate"].as_str().map(String::from),
         preview_url: None, // catalog-only; library payloads never carry previews
         added_rank: None,  // set during sync from the dateAdded-sorted page position
+        unreleased: false, // a library song is one Apple already plays
         play_params: PlayParams {
             id: pp["id"].as_str().map(String::from),
             catalog_id: pp["catalogId"].as_str().map(String::from),
@@ -1522,6 +1523,8 @@ pub(crate) fn track_from_catalog_song(v: &serde_json::Value) -> Track {
         preview_url: a["previews"][0]["url"].as_str().map(String::from),
         release_date: a["releaseDate"].as_str().map(String::from),
         added_rank: None,
+        // No playParams = Apple will not play it yet (model.rs `Track::unreleased`).
+        unreleased: pp.is_null(),
         play_params: PlayParams {
             id: pp["id"].as_str().map(String::from).or(id),
             catalog_id: pp["id"].as_str().map(String::from),
@@ -1847,14 +1850,27 @@ pub async fn catalog_collection_tracks(
         next = page["next"].as_str().map(String::from);
     }
 
+    // A pre-release album: Apple dates no unreleased song, so each one carries the album's
+    // date, the only date Apple gives (SEARCH.md §Unreleased songs).
+    let album_date = (kind == "albums")
+        .then(|| body["data"][0]["attributes"]["releaseDate"].as_str().map(String::from))
+        .flatten();
     let tracks: Vec<Track> = items
         .iter()
         .filter(|v| v["type"].as_str() == Some("songs")) // skip music-videos
-        .map(track_from_catalog_song)
+        .map(|v| {
+            let mut t = track_from_catalog_song(v);
+            if t.unreleased && t.release_date.is_none() {
+                t.release_date = album_date.clone();
+            }
+            t
+        })
         .collect();
     {
+        // An unreleased song is not cached: the cache row would keep the flag past release day.
+        let out: Vec<Track> = tracks.iter().filter(|t| !t.unreleased).cloned().collect();
         let conn = db.lock();
-        crate::enrich::cache_tracks(&conn, &tracks)?;
+        crate::enrich::cache_tracks(&conn, &out)?;
     }
     Ok(tracks)
 }
@@ -1892,6 +1908,9 @@ pub async fn apple_add_to_library(
     if !(200..300).contains(&status) {
         return Err(format!("add-to-library HTTP {status}: {body}"));
     }
+    // A pre-release album's unreleased songs are not in the library until Apple releases
+    // them; the next library_sync brings each one in on its day.
+    let tracks: Vec<Track> = tracks.into_iter().filter(|t| !t.unreleased).collect();
     let conn = db.lock();
     crate::library::graduate_tracks(&conn, &tracks)?;
     Ok(())

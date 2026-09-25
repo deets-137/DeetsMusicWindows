@@ -26,6 +26,7 @@ import type { Artwork, Track } from "./library";
 import { tracks as allTracks, trackById, addTransientTracks } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
 import { collectionTracks, catalogRelated, materializeTrack, type Album, type Playlist } from "./search";
+import { comingMark, releaseAt } from "./release";
 import { radioRecents, type Station } from "./radio";
 import { playCounts } from "./artist-view";
 import { albumKey, pid, playEventsSince, type PlayEvent } from "./rewind";
@@ -836,10 +837,6 @@ async function fetchNew(counts: Map<string, { full: number; partial: number }>):
   newAt = Date.now() + (got ? NEW_FLOOR_MS : APPLE_RETRY_MS);
 }
 
-/** "Coming 09/23" — no year (his call): the window ahead is five days wide, so the year
- *  can only be this one or the next. */
-const comingMark = (d: Date): string =>
-  `Coming ${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 
 /** The shelf: one tile per release inside the window, newest first. A release we do not
  *  hold is a catalog album, and it plays through the same path a Search catalog album
@@ -852,11 +849,8 @@ function newShelf(limit: number): HomeItem[] {
   for (const al of newReleases) {
     const id = al.catalogId;
     if (!id || !al.releaseDate) continue;
-    // Apple dates a release YYYY-MM-DD with no zone. Read it as local midnight, so
-    // "today" is today here and not a day out either side.
-    const [y, m, d] = al.releaseDate.split("-").map(Number);
-    if (!y || !m || !d) continue;
-    const at = new Date(y, m - 1, d).getTime();
+    const at = releaseAt(al.releaseDate);
+    if (Number.isNaN(at)) continue;
     if (at < from || at > to) continue;
     const coming = at > now;
     out.push({

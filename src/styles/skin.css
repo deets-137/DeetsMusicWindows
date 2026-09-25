@@ -264,6 +264,7 @@
   --hint-row-max-w: 290px;  /* a song row: two lines, both of them names */
   --hint-credit-gap: var(--space-1);  /* the blank line before a song's writers */
   --credit-flat-opacity: 0.6;  /* a credited song the app holds no track for */
+  --unreleased-opacity: var(--credit-flat-opacity);  /* an album song that is not out yet: the same "a row that does not play" */
   --hint-pad-x:     var(--space-2);
   --hint-pad-y:     calc(var(--space-1) + 1px);
   --hint-radius:    var(--radius-control);
@@ -688,6 +689,12 @@
   --hold-ms:    400ms;              /* how long a header is held before it can be moved */
   --hold-swell: 1.015;              /* the held header swells, so the hold is visible */
   --tile-art:     96px;             /* a shelf tile's cover (styles.css .search__tile-art) */
+  /* -- the Diary card (DIARY.md §4): families it joins, by alias -- */
+  --diary-new-size:   calc(var(--tile-art) * 1.5);  /* the + cover: a shelf tile, half again as big */
+  --diary-score-w:    5ch;                          /* a score field holds "2.6767" */
+  --diary-num-w:      2ch;                          /* the track number column */
+  --diary-note-min-h: var(--set-textarea-min-h);    /* a note: the Bugs details field's five lines */
+  --diary-foot-note-min-h: calc(var(--set-textarea-min-h) * 0.75);  /* the foot's note, so the list keeps its room */
   --grip-w:       18px;             /* the dotted bar over a pinned tile's left edge */
   --grip-inset:   2px;              /* how far in from the cover's edge the bar sits */
   --grip-height:  0.72;             /* of the cover's height, centred on it (a factor, so calc can use it) */

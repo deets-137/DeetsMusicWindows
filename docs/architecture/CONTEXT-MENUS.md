@@ -48,7 +48,7 @@ The same in every menu. The groups never change places.
 | 2 | File | Add to Playlist ▸ |
 | 3 | Go to | Go to Artist · Go to Album · Go to Playlist · Song Credits |
 | 4 | Seed | Start Station · Start a Web · Copy Link |
-| 5 | Keep | Add to Library · Favorite · Mark as Song of the Day · On Click ▸ · Pin |
+| 5 | Keep | Add to Library · Add to Diary (albums) · Favorite · Mark as Song of the Day · On Click ▸ · Pin |
 | 6 | The card's own rows | Move to Top / Bottom · Move to Folder ▸ · Refresh ▸ · Stop Station · a pick's note … |
 | 7 | Take away (last) | Remove · Remove from Playlist · Hide · Delete Playlist |
 
@@ -73,8 +73,10 @@ Library · Favorite · Mark as Song of the Day · Pin.
 
 ### 3.2 Album — `albumMenu`
 Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album · Start a
-Web · Copy Link · Add to Library · On Click ▸ · Pin.
+Web · Copy Link · Add to Library · Add to Diary · On Click ▸ · Pin.
 
+- **Add to Diary** (2026-09-24, [DIARY.md](../features/DIARY.md) §2): summons the Diary card at
+  the album's entry, making it the first time. Left out inside the Diary itself (`inDiary`).
 - An album has no station (Apple seeds stations from songs and artists).
 - **Go to Album on an album tile** (fork 2B): every card shows it. In the Library it drills in
   place; elsewhere it opens the Search album pane.

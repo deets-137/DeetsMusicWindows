@@ -350,6 +350,8 @@ const SPECS: Spec[] = [
     { value: "fri", label: "Fri" }, { value: "sat", label: "Sat" }, { value: "sun", label: "Sun" },
   ]),
   storeToggle("Rewind", "replayKeep", "Keep every Replay"),
+  // ── Diary (docs/features/DIARY.md §5) ──
+  storeChoice("Diary", "diaryRescale", "Rescale scores", [{ value: "ask", label: "Ask" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]),
   // ── Song of the Day (docs/integrations/DeetsOTD.md §8.8) ──
   // Five rows live in Rust; the sixth (the suggestion) is a view preference in the store.
   // The switch itself is OFF ONLY: an agent may take the feature away, never give it (§5 2B).

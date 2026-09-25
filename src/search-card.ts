@@ -24,6 +24,8 @@ import { onSearchTerm, takeSearchTerm } from "./layout-bus";
 import { wireListKeys } from "./list-keys";
 import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
 import * as diag from "./diag";
+import { toast } from "./toast";
+import { comingMark, releaseAt, unreleasedHint, unreleasedToast } from "./release";
 import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
@@ -502,7 +504,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     const under = paneStack[paneStack.length - 1];
     const sc = under?.querySelector<HTMLElement>(".spane__scroll");
     const list = sc ? paneTracks.get(sc) : undefined;
-    activeList = list ? () => list.tracks : () => results?.songs ?? [];
+    activeList = list ? () => released(list.tracks) : () => results?.songs ?? [];
     const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>(".spane:first-child");
     frames.during("slide", 450, "search-pop");
     pane.dataset.pos = "right";
@@ -537,12 +539,16 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   document.addEventListener("pointerdown", onDocDown);
   document.addEventListener("keydown", onKey);
 
+  // An unreleased song (a pre-release album) is dimmed, has no + and says when it comes out;
+  // a click toasts the same (player.ts playTracks, SEARCH.md §Unreleased songs).
   const listRow = (t: Track, i: number): string =>
-    `<div class="search__row" data-row="${i}"${t.catalogId ? ` data-cid="${esc(t.catalogId)}"` : ""} role="button" tabindex="0">
+    `<div class="search__row${t.unreleased ? " is-unreleased" : ""}" data-row="${i}"${t.catalogId ? ` data-cid="${esc(t.catalogId)}"` : ""} role="button" tabindex="0"${t.unreleased ? ` aria-disabled="true" title="${esc(unreleasedHint(t))}"` : ""}>
       ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
-      ${addBtnHTML(t)}
+      ${t.unreleased ? "" : addBtnHTML(t)}
     </div>`;
+  // The picks never hold an unreleased song: Ctrl+A and a Shift range read this list.
+  const released = (ts: Track[]): Track[] => (ts.some((t) => t.unreleased) ? ts.filter((t) => !t.unreleased) : ts);
 
   /** A detail pane's track list: tap plays the list from that row (Library semantics). */
   const wireTrackList = (body: HTMLElement, tracks: Track[], context: string) => {
@@ -551,11 +557,13 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     // so the count row can hand it back (§19).
     const ownBar = body.querySelector<HTMLElement>(".lib-actions");
     if (ownBar) paneActions.set(body, ownBar.outerHTML);
-    activeList = () => tracks;
+    activeList = () => released(tracks);
     picks.clear();
     const start = (list: Track[], idx: number) => {
-      addTransientTracks(list);
-      list.forEach(materializeTrack);
+      // playTracks drops the unreleased songs itself; the store never takes them either.
+      const out = released(list);
+      addTransientTracks(out);
+      out.forEach(materializeTrack);
       playTracks(list, idx, context).catch((err) => console.error("[search] play", err));
     };
     body.addEventListener("click", (e) => {
@@ -573,6 +581,12 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
       if (!row) return;
       const picked = tracks[Number(row.dataset.row)];
+      if (picked?.unreleased) {
+        // Not a play and not a pick: say when it comes out (his call 2B, 2026-09-24).
+        diag.log("ui:act", { at: context, do: "unreleased", i: Number(row.dataset.row) });
+        toast({ kind: "warn", text: unreleasedToast(picked) });
+        return;
+      }
       if (picked && picks.click(e, picked)) return; // Ctrl / Shift → a pick, not a play
       diag.log("ui:act", { at: context, do: "row", i: Number(row.dataset.row), n: tracks.length });
       start(tracks, Number(row.dataset.row));
@@ -599,10 +613,16 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     const t0 = tracks[0];
     const cover = heroCover(m.artwork ?? t0?.artwork, m.title);
     const total = formatTotal(tracks.reduce((n, t) => n + (t.durationMs ?? 0), 0));
-    const count = `${tracks.length} song${tracks.length === 1 ? "" : "s"}`;
+    const out = tracks.filter((t) => !t.unreleased).length;
+    const count =
+      out < tracks.length ? `${out} of ${tracks.length} songs out` : `${tracks.length} song${tracks.length === 1 ? "" : "s"}`;
     if (kind === "albums") {
       const artist = m.artistName ?? t0?.artistName ?? "";
-      const year = (m.releaseDate ?? t0?.releaseDate)?.slice(0, 4);
+      // A pre-release album reads "Coming 09/25" in place of the year (his call 1A,
+      // 2026-09-24). An unreleased song carries the album's own date (apple.rs).
+      const date = tracks.find((t) => t.unreleased)?.releaseDate ?? m.releaseDate ?? t0?.releaseDate;
+      const at = releaseAt(date);
+      const year = at > Date.now() ? comingMark(new Date(at)) : date?.slice(0, 4);
       const sub = artist
         ? `<button class="lib-hero__sub lib-hero__sub--link" type="button" data-hero-artist="${esc(artist)}">${esc(artist)}<span class="lib-hero__chev" aria-hidden="true">›</span></button>`
         : "";
@@ -1076,6 +1096,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         const scroll = row.closest<HTMLElement>(".spane__scroll");
         const list = scroll ? paneTracks.get(scroll) : undefined;
         const t = list?.tracks[Number(row.dataset.row)];
+        if (t?.unreleased) return null; // nothing to drop: Apple will not play it yet
         const many = list ? setPayload(t, list.context) : null;
         if (many) return { row, index: 0, payload: many };
         return t && list ? { row, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: list.context } } : null;

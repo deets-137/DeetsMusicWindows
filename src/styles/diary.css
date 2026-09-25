@@ -1,0 +1,104 @@
+/* Diary card (docs/features/DIARY.md) — only what the shared families do not cover. The
+   families it joins: shelf tiles and song rows (.search__tile, .search__row), the hero and
+   the Play / Shuffle row (.lib-hero, .lib-actions), pills (.lib-pill), the search well
+   (.search__field) for every field, the icon square (.panel__action). Colors are theme
+   roles, geometry is skin tokens. */
+
+.panel__body.diary { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/* ── the root: the + cover (or the picker), then the shelf ── */
+.diary__root {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  overflow-y: auto; scrollbar-gutter: stable;
+  padding: var(--space-2);
+}
+/* The + cover is a shelf tile with no art yet: the tile's empty-art fill, its radius, its lift. */
+.diary__new {
+  align-self: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: 0; background: none; border: none; cursor: pointer;
+  font-family: var(--font-body); color: var(--title);
+  transition: transform var(--dur-fast) var(--ease-ui);
+}
+.diary__new:hover { transform: var(--hover-lift); }
+.diary__new:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); border-radius: var(--lib-tile-radius); }
+.diary__new-art {
+  width: var(--diary-new-size); height: var(--diary-new-size);
+  display: grid; place-items: center;
+  background: var(--surface-hover); color: var(--subtext);
+  border: 1px solid var(--border); border-radius: var(--lib-tile-radius);
+}
+.diary__new-art svg { width: var(--icon-lg); height: var(--icon-lg); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.diary__new-label { font-size: var(--fs-subtext); }
+.diary__pick { display: flex; flex-direction: column; gap: var(--space-2); }
+.diary__pick .search__input { padding-right: 0; }
+.diary__pick .search__clear { position: static; transform: none; flex: 0 0 auto; }
+.diary__results { display: flex; flex-direction: column; }
+.diary__shelf { flex: 0 0 auto; }
+
+/* ── the entry: a scrolling list over a fixed foot (fork 6B) ── */
+.diary__entry { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.diary__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+.diary__album { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
+.diary__line { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* The pills size to their words (a .lib-pill fills its cell by default). */
+.diary__scale, .diary__date { width: auto; flex: 0 0 auto; white-space: nowrap; position: relative; }
+
+/* A score: the search well holding a short number field and its "/ 10". */
+.diary__score {
+  display: inline-flex; align-items: center; gap: var(--space-1); flex: 0 0 auto;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius-control);
+  cursor: text;
+}
+.diary__score-input {
+  width: var(--diary-score-w); min-width: 0;
+  background: transparent; border: none; outline: none; text-align: right;
+  font-family: var(--font-body); font-size: var(--fs-text); color: var(--text);
+}
+.diary__score-input::placeholder { color: var(--subtext); }
+.diary__score-max { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
+/* Not a number, or past the top: MARKED in the accent, as the room's empty name field is
+   (it reads "this one first", not an alarm). The hint says what to type. */
+.diary__score[data-bad], .diary__score.is-over { border-color: var(--title); }
+.diary__score:focus-within { border-color: var(--title); }
+
+/* A note: the search well, grown to a text area. */
+.diary__note {
+  box-sizing: border-box; width: 100%;
+  min-height: var(--diary-note-min-h); resize: vertical;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius-control);
+  font-family: var(--font-body); font-size: var(--fs-text); color: var(--text); line-height: var(--lh-text);
+  scrollbar-gutter: stable;
+}
+.diary__note::placeholder { color: var(--subtext); }
+.diary__note:focus { outline: none; border-color: var(--title); }
+
+/* The songs: the Search pane's rows, with a number in front and the score at the end. */
+.diary__songs { list-style: none; margin: 0; padding: 0 var(--space-1) var(--space-2); }
+.diary__num { flex: 0 0 auto; width: var(--diary-num-w); text-align: right; font-size: var(--fs-subtext); color: var(--subtext); }
+.diary__row-score { flex: 0 0 auto; font-size: var(--fs-subtext); color: var(--title); }
+.diary__row-score.is-over { text-decoration: underline; }
+.diary__mark { flex: 0 0 auto; display: inline-flex; color: var(--subtext); }
+.diary__mark svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+/* The row the foot shows wears the selected outline (the Library's drilled-in song). */
+.diary__song.is-sel { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.diary__song.is-playing .diary__num { color: var(--title); }
+
+/* ── the foot (6B): one song's score, note and day, fixed under the list ── */
+.diary__foot {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+.diary__foot-head { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.diary__foot-title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.diary__foot-play { flex: 0 0 auto; }
+.diary__foot .diary__note { min-height: var(--diary-foot-note-min-h); }
+.diary__foot-line { display: flex; align-items: center; gap: var(--space-2); }
+
+/* The system date picker opens from a field nobody sees. */
+.diary__date-input { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

@@ -12,6 +12,19 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-24 — branch `darn-critics`: unreleased songs, and the Diary card
+
+- **Unreleased songs** (his calls 1A · 2B toast · 3A). OPIA by VITA showed all 12 songs as out.
+  Probed Apple: an unreleased song has no `playParams`, no length and no preview, and no date
+  of its own. `Track.unreleased` now carries it; every sink keeps it out (queue, store, library,
+  playlists, the pane cache). The album page dims the rows, says "Coming 09/25 · 2 of 12 songs
+  out", toasts on a click, and offers only Go to Artist. Desk test: SEARCH.md §Unreleased songs.
+- **The Diary card** (his calls 4A · 5ABC · 6B · 7B · 8B, and 7B's Settings row). An album
+  journal: schema v14 (`diary.rs`), `diary-card.ts`, Settings › Diary › Rescale scores
+  (Ask default), Add to Diary on every album menu. The 6B foot panel was chosen from a mockup
+  of three layouts. What I decided inside his calls: DIARY.md §6. Desk test: DIARY.md §8.
+- Not committed. Both features need his desk test.
+
 ## 2026-09-24 — 0.14.1: the installer could not stop the MCP CLIs
 
 - **His report:** the 0.14.0 install aborted: *Can't write …\DeetsMusic\cli\deetsmusic.exe*.

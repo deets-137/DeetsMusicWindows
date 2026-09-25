@@ -107,6 +107,17 @@ export const requestLibraryDrill = (d: LibraryDrill): void => libraryDrill.reque
 export const takeLibraryDrill = (): LibraryDrill | null => libraryDrill.take();
 export const onLibraryDrill = (cb: () => void): (() => void) => libraryDrill.on(cb);
 
+/** The Diary card at an album (DIARY.md §2): "Add to Diary" on an album's menu. The songs load
+ *  when the card takes the request, so a Search album costs no fetch until then. */
+export interface DiaryRequest {
+  album: { title: string; artistName: string; artwork?: Track["artwork"]; catalogId?: string; libraryId?: string; releaseDate?: string };
+  tracks: () => Track[] | Promise<Track[]>;
+}
+const diaryAlbum = heldRequest<DiaryRequest>("diary");
+export const requestDiaryAlbum = (r: DiaryRequest): void => diaryAlbum.request(r);
+export const takeDiaryAlbum = (): DiaryRequest | null => diaryAlbum.take();
+export const onDiaryAlbum = (cb: () => void): (() => void) => diaryAlbum.on(cb);
+
 /** The Search card with a term typed and its search running. */
 const searchTerm = heldRequest<string>("search");
 export const requestSearchTerm = (term: string): void => searchTerm.request(term);

@@ -201,6 +201,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Rewind | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
 | Rewind | Weekly Replay — day menu (*Mon … Sun*) + on/off (A playlist of the past week's most-played songs, made on this day) | `replayDay` + `replayAuto` | mon / … · on / off | `replay.ts` `lastDue` / `runWeeklyReplay` (boot) |
 | Rewind | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
+| Diary (2026-09-24, [DIARY.md](../features/DIARY.md) §5) | Rescale scores (When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5) — *Ask* / *Always* / *Never* | `diaryRescale` | **ask** / always / never | `diary-card.ts` `changeScale` |
 | Song of the Day (2026-09-18, [DeetsOTD.md](../integrations/DeetsOTD.md) §8.4) | Song of the Day (Mark one song a day. With no outlet set up it stays on this PC and posts nothing) | `sotd` — **Rust** | **on** / off | `sotd/mod.rs`, and every row below it |
 | Song of the Day | Suggest today's pick (Puts the song you played most today at the head of the Home shelf. You still choose) | `sotdSuggest` — the store | **off** / on | `sotd.ts` `suggestionTile` |
 | Song of the Day | Day starts at (A song marked before this hour counts for the day before) | `sotdDayStart` — **Rust** | **5 AM** / Midnight | `sotd/mod.rs` `day_of` |

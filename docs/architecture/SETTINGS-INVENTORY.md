@@ -362,6 +362,12 @@ behind both. The dial and the three live ends are only in the panel.
 | Weekly Replay | A playlist of the past week's most-played songs, made on this weekday | **on**, **Mon** |
 | Keep every Replay | Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly | on / **off** |
 
+### Diary
+
+| Control | What it does | Choices |
+|---|---|---|
+| Rescale scores | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5. **Ask** shows a notice with Rescale and Keep numbers | **Ask** / Always / Never |
+
 ### Connections
 
 | Control | What it does | Choices |
@@ -384,7 +390,7 @@ behind both. The dial and the three live ends are only in the panel.
 One **Reset** button for each group. Each one asks first, and offers Undo after.
 
 Look and feel › (Theme and skin · Look schedule · Motion · Skin settings) · Menus, hints and
-notices · Window · Playback · Playlists · Sound · Sleep · Home · Rewind · **Everything**.
+notices · Window · Playback · Playlists · Sound · Sleep · Home · Rewind · Diary · **Everything**.
 
 The four Look and feel groups now match four real sections of the card (2026-09-18); the Reset
 row keeps them together because you usually want the whole look back at once.

@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: none
-sources: [src/search-card.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts]
-updated: 2026-09-20
+sources: [src/search-card.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts, src/release.ts]
+updated: 2026-09-24
 ---
 # DeetsMusic — Search card (catalog search)
 
@@ -349,3 +349,55 @@ let the hero carry the name. Search now does the same (the user's call, forks 1A
 - **The drill swap's hint rides the same button** ("Goes back to Playlists", CARD-GROW.md §14.4).
 - The slot picker was already inert while a pane is open, because the card reports `atRoot`; now
   the title it reports is the live one.
+
+## Unreleased songs
+> **Part:** built · 2026-09-24
+
+Before this, a pre-release album (OPIA by VITA, out 2026-09-25) showed all 12 songs as if all
+were out. A click on one that was not out failed as "Couldn't play".
+
+**What Apple sends (probed 2026-09-24, `catalog/us/albums/6801682028?include=tracks`).** The
+album has `releaseDate` 2026-09-25 and `isComplete: false`. 10 of its 12 songs have **no
+`playParams`, no `durationInMillis` and no `previews`**. Apple dates NO unreleased song. A song
+that IS out can have no `releaseDate` too (SINGLE), so a song's date cannot tell out from not
+out. Only the missing `playParams` can. Apple does resolve an unreleased song's artist
+(`songs/{id}/artists` → 200).
+
+**The model.** `Track.unreleased` (model.rs) is `true` when `playParams` is missing
+(`track_from_catalog_song`). Before, the normalizer filled the missing id with the catalog id and
+hid the signal. `catalog_collection_tracks` gives each unreleased song the ALBUM's date as its
+`release_date`. That is the only date Apple gives.
+
+**Where an unreleased song is kept out** (each is a guard at the sink, so every caller and the
+agent get it):
+
+| Sink | Guard |
+|---|---|
+| The queue | `player.ts` `handlesFrom` drops them. `playTracks` moves the start to the first released song at or after the click. If none is left, it toasts. |
+| The store | not `materialize`d, not in `cache_tracks`. A stored row would keep the flag past release day. |
+| The library | `apple_add_to_library` does not graduate them. The next library sync brings each one in on its day. |
+| Playlists | `append_local`, `playlist_insert_tracks`, `apple_playlist_add` leave them out quietly. |
+| The session cache | `collectionTracks` does not keep an album that has one. Each open asks Apple again, so a song lights up on its day without a restart. One call per open, as before the cache. |
+
+**The album page (his calls 1A · 2B · 3A):**
+- The hero meta reads **"Coming 09/25 · 2 of 12 songs out · 6:27"**. The date uses the Home New
+  shelf's `comingMark` (now in `src/release.ts`). A date that has passed shows the year, and the
+  count still says how many are out.
+- An unreleased row is dimmed (`--unreleased-opacity`, an alias of `--credit-flat-opacity`), has
+  no + square, and has the hint **"Not out yet — coming 09/25"** ("Not on Apple Music yet" when the
+  date has passed).
+- A click toasts **“APPLE OF MY EYE” is not out yet. Coming 09/25.** It is not a play and not a
+  pick. Ctrl+A and a Shift range skip the row. The row does not drag.
+- Right-click shows only **Go to Artist** (`songMenu`).
+
+**Desk test**
+1. Search "OPIA VITA" and open the album. The hero reads "Coming 09/25 · 2 of 12 songs out". Ten
+   rows are dimmed, and PLEASER and SINGLE are not.
+2. Hover a dimmed row: the hint gives the date. Click it: the toast gives the date and nothing
+   plays.
+3. Right-click a dimmed row: only Go to Artist. It opens VITA.
+4. Press Play on the album: PLEASER plays, then SINGLE, then the queue ends. Shuffle: the same two.
+5. Ctrl+A in the pane: two rows picked. Drag a dimmed row: nothing moves.
+6. Right-click the album tile › Add to Playlist › a local playlist: two songs go in.
+7. On 2026-09-25 (or later), open the album again with no restart: every row is lit and the hero
+   shows the year.

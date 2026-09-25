@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 471 tokens · overrides: vanilla 3, press 64, ocean 40, glass 65, cyber 64 |
+| Skin (everything else) | skin.css base block | 477 tokens · overrides: vanilla 3, press 64, ocean 40, glass 65, cyber 64 |
 
 ## Theme roles
 
@@ -300,6 +300,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hint-row-max-w` | `290px` | — | a song row: two lines, both of them names |
 | `--hint-credit-gap` | `var(--space-1)` | — | the blank line before a song's writers |
 | `--credit-flat-opacity` | `0.6` | — | a credited song the app holds no track for |
+| `--unreleased-opacity` | `var(--credit-flat-opacity)` | — | an album song that is not out yet: the same "a row that does not play" |
 | `--hint-pad-x` | `var(--space-2)` | — |  |
 | `--hint-pad-y` | `calc(var(--space-1) + 1px)` | — |  |
 | `--hint-radius` | `var(--radius-control)` | — |  |
@@ -667,6 +668,16 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hold-ms` | `400ms` | — | -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its own grip, and the grip bar on a pinned tile -- — how long a header is held before it can be moved |
 | `--hold-swell` | `1.015` | — | the held header swells, so the hold is visible |
 | `--tile-art` | `96px` | — | a shelf tile's cover (styles.css .search__tile-art) |
+
+### the Diary card (DIARY.md §4): families it joins, by alias
+
+| Token | Base | Overridden by | Note |
+|---|---|---|---|
+| `--diary-new-size` | `calc(var(--tile-art) * 1.5)` | — | the + cover: a shelf tile, half again as big |
+| `--diary-score-w` | `5ch` | — | a score field holds "2.6767" |
+| `--diary-num-w` | `2ch` | — | the track number column |
+| `--diary-note-min-h` | `var(--set-textarea-min-h)` | — | a note: the Bugs details field's five lines |
+| `--diary-foot-note-min-h` | `calc(var(--set-textarea-min-h) * 0.75)` | — | the foot's note, so the list keeps its room |
 | `--grip-w` | `18px` | — | the dotted bar over a pinned tile's left edge |
 | `--grip-inset` | `2px` | — | how far in from the cover's edge the bar sits |
 | `--grip-height` | `0.72` | — | of the cover's height, centred on it (a factor, so calc can use it) |

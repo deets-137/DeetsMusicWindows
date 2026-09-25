@@ -24,6 +24,9 @@ export interface Track {
   releaseDate?: string;
   addedRank?: number;
   artwork?: Artwork;
+  /** A song Apple lists but does not play yet (a pre-release album). Its `releaseDate` is
+   *  then the album's. Never queued; dimmed on the album page (src/release.ts). */
+  unreleased?: boolean;
 }
 
 export interface Artwork {

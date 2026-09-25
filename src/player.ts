@@ -26,6 +26,7 @@ import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
+import { unreleasedToast } from "./release";
 
 declare global {
   interface Window {
@@ -1080,7 +1081,10 @@ const toHandle = (t: Track, context = "library"): TrackHandle => ({
 // so every collection resolves — no per-card ingest needed (Search still does its own
 // alongside materializeTrack; that's idempotent). Library copies still win in trackById
 // (byId is checked before transients), so ingesting library songs here is a harmless no-op.
-const handlesFrom = (list: Track[], context: string): TrackHandle[] => {
+const handlesFrom = (all: Track[], context: string): TrackHandle[] => {
+  // A pre-release album's unreleased songs never reach the queue or the store: Apple will
+  // not play them, and a 'seen' row would keep the flag past release day (release.ts).
+  const list = all.some((t) => t.unreleased) ? all.filter((t) => !t.unreleased) : all;
   addTransientTracks(list);
   // The DURABLE twin of the transient ingest: persist catalog-only tracks as 'seen'
   // rows so plays logged against them (play_events / play_stats) still resolve to
@@ -1478,6 +1482,18 @@ export async function jumpToUpcoming(index: number): Promise<void> {
 
 /** Play library Tracks already in display/sort order, starting at `startIndex`. */
 export function playTracks(tracks: Track[], startIndex: number, context = "library"): Promise<void> {
+  // handlesFrom drops unreleased songs, so the start moves to the first released song at or
+  // after the click. None left: say so here, not the "no longer offers" toast below.
+  if (tracks.some((t) => t.unreleased)) {
+    const rest = tracks.slice(startIndex).filter((t) => !t.unreleased);
+    if (!rest.length) {
+      diag.log("player:unreleased", { context, n: tracks.length - startIndex });
+      // warn: the click did nothing, here is why (TOASTS.md §2) — it shows under every tier.
+      toast({ kind: "warn", text: unreleasedToast(tracks[startIndex], tracks.length - startIndex > 1) });
+      return Promise.resolve();
+    }
+    startIndex = tracks.slice(0, startIndex).filter((t) => !t.unreleased).length;
+  }
   playIntent();
   perf.click(context, tracks.length); // BEFORE the ingest — stage A includes it
   const handles = handlesFrom(tracks, context);

@@ -11,7 +11,7 @@
 //   2 File      Add to Playlist ▸
 //   3 Go to     Go to Artist · Go to Album · Go to Playlist · Song Credits
 //   4 Seed      Start Station · Start a Web · Copy Link
-//   5 Keep      Add to Library · Favorite · Mark as Song of the Day · On Click ▸ · Pin
+//   5 Keep      Add to Library · Add to Diary (albums) · Favorite · Mark as Song of the Day · On Click ▸ · Pin
 //   6 The card's own rows
 //   7 Take away (last): Remove · Hide · Delete
 //
@@ -29,7 +29,7 @@ import { artistDetail, catalogRelated, materializeTrack } from "./search";
 import { addTransientTracks } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter } from "./player";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
-import { requestDrillCard, requestLibraryDrill } from "./layout-bus";
+import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
 import { goToArtistItem, goToAlbumItem, goToAlbumPaneItem, songCreditsItem, requestPlaylistPane, requestArtistPane } from "./go-to";
 import { copySongLinkItem, copyAlbumLinkItem, copyAlbumLinkFromSongItem, copyArtistLinkItem, copyPlaylistLinkItem, copyStationLinkItem } from "./copy-link";
 import { startStationItem, startArtistStationItem } from "./start-station";
@@ -132,6 +132,9 @@ function songGoTo(t: Track | undefined, cid: string | undefined, nav?: LibNav): 
  *  History): the rows that need the track then leave themselves out. */
 export function songMenu(t: Track | undefined, w: SongWhere): MenuItem[] {
   const cid = t?.catalogId ?? w.catalogId;
+  // An unreleased song (his call 3A, 2026-09-24): Apple will not play, add or link it yet,
+  // so only Go to Artist. Apple does resolve the artist of a song that is not out.
+  if (t?.unreleased) return join(songGoTo(t, cid, w.nav).slice(0, 1));
   let play: Row[] = [];
   if (w.play !== undefined) play = w.play ?? [];
   else if (t) {
@@ -183,6 +186,8 @@ export interface AlbumSubject {
 export interface AlbumWhere extends Where {
   /** Inside this album's artist view: Go to Artist would go where you are. */
   inArtist?: boolean;
+  /** Inside the Diary: Add to Diary would open where you are. */
+  inDiary?: boolean;
 }
 
 /** The album's dominant credited artist (mode of each song's leading credit) — the Library
@@ -257,6 +262,20 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
     ],
     [
       a.catalogId ? addAlbumToLibraryItem(a.catalogId, () => Promise.resolve(load())) : addAlbumFromSongsItem(a.known),
+      // The Diary (DIARY.md §2, his call 5C): opens the album's entry, making it the first time.
+      !w.inDiary && {
+        label: "Add to Diary",
+        run: () =>
+          requestDiaryAlbum({
+            album: {
+              title: a.title,
+              artistName: a.artistName ?? first?.artistName ?? "",
+              artwork: a.artwork ?? first?.artwork,
+              catalogId: a.catalogId ?? undefined,
+            },
+            tracks: load,
+          }),
+      },
       ...albumPinRows(a),
     ],
     w.own ?? [],

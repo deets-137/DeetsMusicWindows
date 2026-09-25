@@ -677,7 +677,8 @@ pub async fn apple_playlist_add(
         return Err(format!("apple_playlist_add: {apple_id} is not an editable Apple playlist"));
     }
     let (mut ids, mut skipped_titles) = (Vec::new(), Vec::new());
-    for t in &tracks {
+    for t in tracks.iter().filter(|t| !t.unreleased) {
+        // Apple refuses a song it does not play yet; leave it out quietly, as append_local.
         match &t.catalog_id {
             Some(c) if !c.is_empty() => ids.push(c.clone()),
             _ => skipped_titles.push(t.title.clone()),
@@ -1445,6 +1446,15 @@ pub fn playlist_add_tracks(id: i64, tracks: Vec<Track>, db: State<'_, Db>) -> Re
 }
 
 fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), String> {
+    // A pre-release album's unreleased songs stay out: the snapshot would keep the flag
+    // (and no play data) past release day (model.rs `Track::unreleased`).
+    let kept: Vec<Track>;
+    let tracks = if tracks.iter().any(|t| t.unreleased) {
+        kept = tracks.iter().filter(|t| !t.unreleased).cloned().collect();
+        &kept[..]
+    } else {
+        tracks
+    };
     let tx = conn.transaction().map_err(err)?;
     let next: i64 = tx
         .query_row(
@@ -1531,6 +1541,8 @@ pub fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, db: State<'_
     let at = (at.max(0) as usize).min(jsons.len());
     let new = tracks
         .iter()
+        .filter(|t| !t.unreleased) // as append_local
+
         .map(|t| serde_json::to_string(t).map_err(err))
         .collect::<Result<Vec<_>, _>>()?;
     jsons.splice(at..at, new);

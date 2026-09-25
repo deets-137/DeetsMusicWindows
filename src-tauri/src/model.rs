@@ -76,6 +76,12 @@ pub struct Track {
     /// sort (lower = added earlier). None on tracks not sourced from a song sync.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub added_rank: Option<u32>,
+    /// A catalog song Apple lists but will not play yet: a pre-release album's songs come
+    /// with no `playParams`, no length and no preview (checked on OPIA, 2026-09-24). Its
+    /// `release_date` is then the ALBUM's, because Apple dates no unreleased song. Never
+    /// cached or queued; the album page dims it (SEARCH.md §Unreleased songs).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub unreleased: bool,
     /// Defaulted on deserialize: Tracks round-trip through the frontend (e.g.
     /// `materialize_track`), whose TS type doesn't re-state playParams.
     #[serde(default)]

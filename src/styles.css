@@ -3048,6 +3048,9 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .credit__facts dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
 /* A song we know of but hold no track for: it reads as a row, and does nothing. */
 .search__row--flat { cursor: default; opacity: var(--credit-flat-opacity); }
+/* A pre-release album's song that is not out yet (SEARCH.md §Unreleased songs): dimmed, and
+   a click toasts its date instead of playing. */
+.search__row.is-unreleased { cursor: default; opacity: var(--unreleased-opacity); }
 /* The same song in the Library's writer level, where the row is a real list row: a quiet
    trailing word instead of a dimmed row, so the list stays one weight. */
 .credit__flat {

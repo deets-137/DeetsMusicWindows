@@ -344,6 +344,10 @@ export interface Settings {
   rewindCard: boolean;
   /** The one-shot auto-enable already fired (so a later "off" sticks). */
   rewindAutoShown: boolean;
+  /** Diary (docs/features/DIARY.md §5): when an entry's scale changes and it already holds
+   *  scores — "ask" (a toast: Rescale / Keep numbers), "always" (move them in proportion,
+   *  7/10 → 3.5/5), "never" (the numbers stay as typed; a score above the top is marked). */
+  diaryRescale: "ask" | "always" | "never";
   // ── onboarding (docs/features/ONBOARDING.md §4) ──
   /** How far through the first-run walk the user is: the NEXT step to show, 1-based.
    *  0 = the walk is over (finished or skipped). A settings key, not a localStorage
@@ -495,6 +499,7 @@ export const DEFAULTS: Settings = {
   sotdSuggest: false, // user's call 2026-09-17: a suggestion row is off until you ask for it
   rewindCard: false,
   rewindAutoShown: false,
+  diaryRescale: "ask", // user's call 2026-09-24 (7B): never change a number the user typed without telling them
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
   quickSeen: [], // user's call 2026-09-20: every icon starts New, on an upgrade too — the panel is new to everyone
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates

@@ -151,6 +151,7 @@ const NEW_MARKS: { section: string; row?: string }[] = [
   { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
   { section: "Skin settings", row: "oceancards" }, // Ocean card opacity, built 2026-09-23
   { section: "Skin settings", row: "oceanlight" }, // Ocean album light, built 2026-09-23
+  { section: "Diary" }, // the Diary card's section, built 2026-09-24
 ];
 const markKey = (m: { section: string; row?: string }) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -301,6 +302,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
+  { id: "diary", label: "Diary", hint: "Rescale scores. Not your entries — those are your writing, not a setting", keys: ["diaryRescale"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
 const LOOK_AND_FEEL = ["look", "schedule", "motion", "skinrows", "menus"];
@@ -1629,6 +1631,17 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           ],
         },
         storeToggle("replaykeep", "Keep every Replay", "replayKeep", () => "Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly"),
+      ],
+    },
+    {
+      // The Diary card (docs/features/DIARY.md §5). His call 7B: a score is the number you typed.
+      title: "Diary",
+      rows: [
+        {
+          kind: "choice", id: "diaryrescale", label: "Rescale scores", key: "diaryRescale",
+          hint: "When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5",
+          options: [{ value: "ask", label: "Ask" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }],
+        },
       ],
     },
     {

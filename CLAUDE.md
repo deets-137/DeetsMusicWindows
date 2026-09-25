@@ -70,12 +70,14 @@ old installs' Guide button opens.
 - `AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker.
 - `VINYL.md` — the Press record player.
 - `DEETS-REWIND.md` — listening stats and the Rewind card.
+- `DIARY.md` — the Diary card: an album journal, a note and a score per song, the scale rule.
 - `LOOK-SCHEDULE.md` — the day / night look and its pre-paint in `index.html`.
 - `COMPASS.md` — Ctrl+Space: places, settings, verbs, library items, the calculator.
 - `COMPASS-TERMS.md` — every word the bar answers to; update it with `SYNONYMS` in compass.ts.
 - `TRAY.md` — the tray icon, the tray panel, minimize to tray.
 - `SUGGEST-LESS.md` — Apple's −1 plus our own marks; proactive skips.
 - `ALBUM-COLOR.md` — the album-colored aurora and text.
+- `COVER-WALLPAPER.md` — the Glass canvas as a mosaic of the album and queue covers (designed, not built).
 - `OCEAN.md` — the Ocean sea: the heavy swell in perspective, the glow from the deep, heave, ripples.
 - `MOVABLE-ROWS.md` — hold a header to move a section; the Settings search bar; Ctrl+F.
 - `ONBOARDING.md` — the hover-hint ledger (every `title`), right-click coverage, Settings ›
@@ -105,6 +107,7 @@ old installs' Guide button opens.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
+- `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (designed, not built).
 
 **`docs/ideas/`** — not built; never tell a user the app does these. **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13).
