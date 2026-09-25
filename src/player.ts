@@ -100,6 +100,36 @@ function stationInfo(s: Station): NonNullable<PlayerState["station"]> {
   return { id: s.id, name: s.name, live: s.isLive, artworkUrl: stationArt(s) };
 }
 
+// ── MusicKit's script failed to load (2026-09-25) ────────────────────────────
+// A launch with no network (autostart before Wi-Fi, a PC wake) fails index.html's
+// <script>, whose onerror sets `__musicKitFailed`. `musickitloaded` then never fires,
+// initPlayer waits forever, and every click did nothing. Load it again when Windows
+// reports the network back, every MUSICKIT_RETRY_MS, and on a play click; the click
+// itself shows the offline toast (his call: tell, do not replay the click).
+const MUSICKIT_SRC = "https://js-cdn.music.apple.com/musickit/v3/musickit.js";
+const MUSICKIT_RETRY_MS = 30_000;
+const NO_MUSICKIT = "MusicKit did not load";
+let musicKitRetries = 0;
+
+const musicKitMissing = (): boolean => !window.MusicKit && !!(window as any).__musicKitFailed;
+
+function reloadMusicKit(why: string): void {
+  if (!musicKitMissing()) return; // loaded, or the last try is still in flight
+  (window as any).__musicKitFailed = false;
+  diag.warn("player:musicKitRetry", { why, n: ++musicKitRetries });
+  const s = document.createElement("script");
+  s.src = MUSICKIT_SRC;
+  s.async = true;
+  s.onerror = () => ((window as any).__musicKitFailed = true);
+  document.head.append(s);
+}
+
+const musicKitTimer = window.setInterval(() => {
+  if (window.MusicKit) return window.clearInterval(musicKitTimer);
+  reloadMusicKit("timer");
+}, MUSICKIT_RETRY_MS);
+window.addEventListener("online", () => reloadMusicKit("online"));
+
 /** Resolve once the async MusicKit CDN script has registered `window.MusicKit`. */
 async function whenMusicKitLoaded(): Promise<void> {
   if (window.MusicKit) return;
@@ -155,6 +185,11 @@ async function applyNewUserToken(): Promise<void> {
  *  MusicKit fail with "Unable to prepare for playback." */
 const SIGNED_OUT = "signed out of Apple Music";
 async function requireSignIn(): Promise<void> {
+  if (musicKitMissing()) {
+    reloadMusicKit("click");
+    health.show("offline", true, "play");
+    throw new Error(NO_MUSICKIT);
+  }
   if (await isConnected()) {
     // Signed in, but MusicKit may have dropped its copy of the token. That raises no play
     // error we can see (MusicKit shows only its own dialog), so restore BEFORE the load.
@@ -1550,7 +1585,7 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
   return play().catch(async (e) => {
     // Every play click (every card, the agent) lands here; the callers only log (TOASTS.md).
     const msg = String(e instanceof Error ? e.message : e);
-    if (msg === SIGNED_OUT) throw e; // requireSignIn's toast already says why
+    if (msg === SIGNED_OUT || msg === NO_MUSICKIT) throw e; // requireSignIn's toast already says why
     diag.warn("player:playFailed", { msg, context });
     const gone = msg.startsWith("nothing to play");
     if (!gone) {

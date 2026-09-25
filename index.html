@@ -68,8 +68,10 @@
       })();
     </script>
     <!-- MusicKit JS — the in-webview playback engine (DRM via EME). Same build the
-         loopback auth page loads. `player.ts` configures it lazily on first play. -->
-    <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" async></script>
+         loopback auth page loads. `player.ts` configures it lazily on first play.
+         A launch with no network fails this load; the flag lets player.ts load it again
+         (TOASTS.md §5, the Apple health offline row). -->
+    <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js" async onerror="window.__musicKitFailed = true"></script>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 

@@ -50,6 +50,20 @@ updated: 2026-09-25
   SET_PARAMETER got os error 10054 from 17:04 to 17:06, then a new connect at 17:06:40
   brought the sound back. Open: was that connect his? If yes, AIRPLAY.md §13.3 is a real
   bug, and the wake line is the moment to reconnect.
+- **"Nothing is playing in the dev app":** the wake reload ran with no network, so the
+  MusicKit `<script>` failed. `whenMusicKitLoaded` waits for `musickitloaded` with no
+  timeout, so every click stopped after `perf:model` with no word. A live launch with no
+  network (autostart before Wi-Fi) does the same. His call: retry, and tell on click. Built
+  (TOASTS.md §5, the offline row): the script's `onerror` sets a flag; `player.ts` loads it
+  again on `online`, every 30 s and on a play click; the click shows the offline toast,
+  forced, and is not replayed. Decided inside his choice: 30 s; the existing offline copy
+  (it reads "check your internet" even if only Apple's CDN is down).
+- **Cover Wallpaper:** he set the locked dim to 15 (step 8 of COVER-WALLPAPER.md §6).
+- **Desk test, No MusicKit:** turn Wi-Fi off. In the dev app press Ctrl+R (or put the PC to
+  sleep and wake it). Click a song: the "can't reach Apple Music" toast shows. Turn Wi-Fi
+  on and wait up to 30 s. Click a song: it plays. The log has `player:musicKitRetry`.
+  **Passed** the same day (the log: `player:configured` 224 s after that page load).
+- **Merged:** `clode-eval` into `main` (fast-forward) and pushed, by his word.
 
 ## 2026-09-25 — the codebase evaluation and the consistency pass
 - **Read:** two sessions (the repo health read and the app consistency read) merged into one

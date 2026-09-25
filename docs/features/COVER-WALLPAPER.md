@@ -66,7 +66,7 @@ Where this section and the design below disagree, this section is the code.
   aurora copy read them. `wallpaper.ts` sets them on `<html>`: the rim (the most colorful) on go,
   the halo on stop, the rest on pause. The NP card's own `--album-*` props are untouched.
 - **The dim (row 7).** `[data-wallpaper]` with Fancy Glass off locks `--glass-dim` to
-  `--wallpaper-canvas-dim` (35, to set at the desk test). Fancy Glass on keeps the slider.
+  `--wallpaper-canvas-dim` (15, his desk-test value, 2026-09-25). Fancy Glass on keeps the slider.
 - **A user picture (§8).** Choose (the Picture row's action) or a file dropped on the row. The
   page resizes it to at most 2560 px and reads its colors from a 48 × 48 copy
   (`paletteFromPixels`: twelve hue bins weighted by chroma; the three heaviest). `wallpaper_set`
@@ -99,7 +99,8 @@ Where this section and the design below disagree, this section is the code.
   "about 6 px" of the option he picked); it is not locked with Fancy Glass off; it wears the New
   badge; the Skin settings reset group resets it.
 - Tokens, to tune at the desk test: anchor 0.6 of the short side, 0.3 down; tile fade 0.9 s,
-  scale 1.04; layer and frost fade 0.8 s; blur 28 px; the locked dim 35.
+  scale 1.04; layer and frost fade 0.8 s; blur 28 px; the locked dim 35 (he set it to 15 at the
+  desk test, 2026-09-25).
 - A queue shorter than the tile count repeats its covers instead of leaving tiles empty.
 - The reset group "Skin settings" now resets Canvas, Tiles and Aurora color. It does not remove
   the chosen picture file.
@@ -227,8 +228,8 @@ Where this section and the design below disagree, this section is the code.
 - The gaps show the sharp picture under the canvas dim (`.app-body::after`). The cards show
   the soft copy under the tint and backlight.
 - With Fancy Glass off, the dim and the tint are locked (`GLASS_LOCKED`: dim 10, tint 65).
-  While the wallpaper (covers or picture) is on, the dim locks to a higher value (row 7). The
-  number is set at the desk test (§6.4).
+  While the wallpaper (covers or picture) is on, the dim locks to a higher value (row 7): 15,
+  his desk-test value (§6, step 8).
 
 ### 3.7 The settings (4A, rows 5, 9, U1, U4)
 Three rows in Skin settings, Glass only:
@@ -288,7 +289,7 @@ A Rust file was added, so restart the dev runner (`npm run dev:app`) before the 
 7a. Diffusion: drag it from 0 to 100. At 0 the covers are sharp; at 30 (the default) they read
     soft; at 100 they are a wash of color. The window's edges never go dark. Pick the default.
 8. Read every card's text over the loudest cover you own. Set the locked dim
-   (`--wallpaper-canvas-dim`, now 35) to the value that reads well (row 7).
+   (`--wallpaper-canvas-dim`) to the value that reads well (row 7). **Done 2026-09-25: 15.**
 9. Minimize the window, skip to a new album, restore: the new album is drawn once on show.
 10. `npm run dev:built`: `[perf] frames` for a library scroll, wallpaper on vs off.
 11. Reduced motion on: every change is a snap.

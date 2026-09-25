@@ -378,7 +378,7 @@
   --wallpaper-blur:         28px;     /* the cards' copy; wide enough to erase the tile seams */
   --wallpaper-diffusion-max: 20px;    /* the gaps' blur at Diffusion 100% (Settings › Diffusion, --glass-diffusion) */
   --wallpaper-bleed:        48px;     /* the picture runs this far past the window, so a blurred edge never fades to black (≥ 2 × the max blur) */
-  --wallpaper-canvas-dim:   35;       /* the locked Dim canvas (0–100) with Fancy Glass off; set at the desk test (§6.4) */
+  --wallpaper-canvas-dim:   15;       /* the locked Dim canvas (0–100) with Fancy Glass off; his desk-test value, 2026-09-25 (COVER-WALLPAPER.md §6, step 8) */
 
   /* -- ambient motion rate ------------------------------------ */
   /* The endless decorative loops (ocean / aurora / storm / NP aurora)
