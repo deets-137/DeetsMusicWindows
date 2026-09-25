@@ -865,8 +865,7 @@ pub async fn apple_playlists_sync(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let provider = AppleProvider::new(dev, user);
@@ -1019,8 +1018,7 @@ pub async fn apple_playlist_counts(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let provider = AppleProvider::new(dev, user);
@@ -1104,8 +1102,7 @@ pub async fn apple_playlist_tracks(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let provider = AppleProvider::new(dev, user);
@@ -1255,8 +1252,7 @@ pub async fn playlist_refetch(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let provider = AppleProvider::new(dev, user);

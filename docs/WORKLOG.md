@@ -12,6 +12,27 @@ updated: 2026-09-25
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-25, later — the consistency pass desk test; the log review
+- **Desk test:** he passed all three parts of the 2026-09-25 script.
+- **The 401 on a playlist refresh:** at 11:03 the dev app's refresh got HTTP 401 on two of 28
+  playlists (Get Up!, Hip-Hop/R&B Hits: 2016). The same request sent to Apple later, with the
+  same key and headers, got 200, and so did `playlist_refetch` in the app. Apple refused it
+  for a short time. The refresh already keeps the old cache and stamp, so the next check
+  retries. It shows now only because `console.error` reaches the file. His call: keep it.
+- **Missed by the codemod:** 11 `lock().unwrap()` split over three lines (the user-token
+  reads in apple.rs, enrich.rs, library.rs, playlists.rs). Now `lock_or_recover()`.
+- **The log review** (dev and installed, 2026-09-23 to 2026-09-25). Nothing to fix:
+  - `window:unhandledrejection` "reading 'includes'" ×22 and `ReferenceError` in
+    diary-card.ts / diary.ts / library-add.ts: dev only, 2026-09-23 to 2026-09-24, about 1 s
+    after a Vite reload while those files were being edited. None in 0.14.5 or in today's
+    dev sessions.
+  - The `cubic-bezier(0.4` easing error in diary-card.ts: dev only, 2026-09-24 18:28, the
+    same kind of mid-edit reload.
+  - "The window stopped answering 1,800 s ago" ×4 on the installed app: the PC slept. The
+    AirPlay capture line after one of them counts 7,699 s for a 10 s window.
+  - `MEDIA_LICENSE` on the installed app: the 2026-09-24 pause, still left for its own fork.
+  - Dev library-sync 401s on 2026-09-24: the same short Apple refusal, and the toast shows.
+
 ## 2026-09-25 — the codebase evaluation and the consistency pass
 - **Read:** two sessions (the repo health read and the app consistency read) merged into one
   plan. The health checks were clean: tsc, `cargo check` 0 warnings, `cargo test` 33/33,

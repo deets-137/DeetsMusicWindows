@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-09-22
+updated: 2026-09-25
 ---
 # DeetsMusic — Handoff
 
@@ -123,13 +123,14 @@ The 429 toast for a user call is decided (APPLE-CALLS.md §3); bring him the wor
 - The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP), which
   runs on the installed beta after the next beta release.
 
-**The consistency pass (2026-09-25, uncommitted)** — WORKLOG.md 2026-09-25 has the desk test.
-Every fork in it is decided and built: the destructive-action rule (TOASTS.md §6),
-`lock_or_recover` (src-tauri/src/lock.rs), empty states with a period, **the database
-thread** (DB-HEALTH.md §2a; 73 commands, check 9 now hard), the scrollbar gutter left as is
-(CLAUDE.md checklist 6a), and **unit tests on Node's own runner** (`npm test`, `npm run
-check`, the pre-push hook). **The database thread is load-bearing: desk-test it before new
-work that touches the schema or the bridge.**
+**The consistency pass (2026-09-25)** — committed on branch `clode-eval`, desk test passed
+2026-09-25, not yet merged to `main` and not in a release. It holds: the destructive-action
+rule (TOASTS.md §6), `lock_or_recover` (src-tauri/src/lock.rs), empty states with a period,
+**the database thread** (DB-HEALTH.md §2a; 73 commands, check 9 now hard), the scrollbar
+gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runner**
+(`npm test`, `npm run check`, the pre-push hook).
+- Kept by his call (2026-09-25): every `console.error` writes an ERROR line to the log file,
+  a failure the app already handles included (an Apple 401 on one playlist refresh).
 - Later, not decided: tests for `media-menu.ts` need a stub map in `tests/setup.mjs` (it
   loads the player and MusicKit); a release-check row for `extension/manifest.json`'s
   version (0.11.0 shipped with it stale).

@@ -617,8 +617,7 @@ pub fn developer_token() -> Result<String, String> {
         return Ok(t.token.clone());
     }
     Err(DEV_TOKEN_ERROR
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .unwrap_or_else(|| "no developer token: startup resolution has not run".into()))
 }
@@ -1359,8 +1358,7 @@ pub async fn apple_dump_library(state: tauri::State<'_, AppleState>) -> Result<S
     let dev = developer_token()?;
     let mut_tok = state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
 
@@ -2157,8 +2155,7 @@ pub async fn catalog_search(
     let dev = developer_token()?;
     let user = state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let provider = AppleProvider::new(dev.clone(), user.clone());

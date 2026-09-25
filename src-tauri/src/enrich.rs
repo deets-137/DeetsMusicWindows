@@ -19,6 +19,7 @@ use tauri::State;
 
 use crate::apple::{self, api_get, AppleState};
 use crate::library::Db;
+use crate::lock::LockExt;
 
 /// Documented ceiling for "Get Multiple Catalog Songs" by ids.
 const BATCH: usize = 300;
@@ -326,8 +327,7 @@ pub async fn catalog_enrich(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
@@ -374,8 +374,7 @@ pub async fn credits_fetch(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
@@ -451,8 +450,7 @@ pub async fn album_palette(
     let dev = apple::developer_token()?;
     let user = apple_state
         .user_token
-        .lock()
-        .unwrap()
+        .lock_or_recover()
         .clone()
         .ok_or("not connected to Apple Music")?;
     let client = crate::apple::http_client();
