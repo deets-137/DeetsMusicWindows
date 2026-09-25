@@ -12,6 +12,21 @@ updated: 2026-09-22
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-24 — desk tests closed, three calls, docs only
+
+- **The Diary desk test passed** (DIARY.md §8), every step but 11e. 11e (the `diary` CLI and
+  the MCP tool) waits for the next beta release and a fresh install, by his call.
+- **Passed, his word:** Unreleased songs (SEARCH.md), the web demo (WEB-DEMO.md §10), Quick
+  settings (§10.1 and §11.1), Sound (§10.4 steps 4–10).
+- **Two follow-ups from those:** the web demo should show the album light more prominently
+  (WEB-DEMO.md §10, forks first); he is weighing whether to keep Sound at all (SOUND.md §11).
+- **His calls:** Cover Wallpaper builds both 1A and 1B, he picks at the end · a user call that
+  gets a 429 shows a toast (APPLE-CALLS.md §3) · marking a Diary entry done copies its Export
+  (DIARY.md §7).
+- He asked for docs + commit + push only; the build was stopped before any code. **Next
+  session:** HANDOFF.md › Open now › "The next session" — Cover Wallpaper (both layouts), then
+  the Diary Done copy, then the telemetry pass.
+
 ## 2026-09-24 — docs only: Cover Wallpaper, Apple calls, pause and AirPlay telemetry
 
 - **Cover Wallpaper designed** (COVER-WALLPAPER.md, status designed). His calls: 1B mosaic

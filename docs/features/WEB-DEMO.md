@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-09-24
 sources: [demo/shim.ts, demo/handlers.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
 updated: 2026-09-21
 ---
@@ -11,7 +11,8 @@ can try the look before they install. It also serves as a portfolio piece.
 
 > **Status (2026-09-21): BUILT on branch `demo-time`** (this repo, and a local `demo-time` in
 > `../DeetsSolutions`, not pushed). §9 = as built; where it differs from §2–§6, §9 is the code.
-> Desk test §10 is open.
+> Desk test §10 PASSED 2026-09-24. **Open (his ask, 2026-09-24):** make the album light more
+> prominent in the demo (§10, after the list). Not designed yet: the forks go to him first.
 
 **Terms:**
 - **Demo** — the web page at `deets.solutions/deetsmusic/demo`.
@@ -162,7 +163,12 @@ followed by the host page, the Compass, and each of the four sizes resizing the 
 - **Hover hints are the app's own** (fork 7), and so are its failure toasts for desktop-only
   actions.
 
-## 10. Desk test
+## 10. Desk test — **PASSED 2026-09-24**
+
+> **Next (his ask, 2026-09-24):** the album light should be more prominent in the demo. Forks to
+> bring him before any build: which light (the Ocean album light, OCEAN.md; the album-colored
+> aurora, ALBUM-COLOR.md; or both), and how (a higher demo default, a demo that opens on the
+> Ocean skin, or covers with stronger colors in `demo/catalog.ts`).
 1. `npm run demo` → open the printed URL. The launch cover lifts. Now Playing shows Honey Static.
    The walk shows step 2.
 2. Press Play. The scrubber moves and the Press record turns. Press Next: the Queue follows.

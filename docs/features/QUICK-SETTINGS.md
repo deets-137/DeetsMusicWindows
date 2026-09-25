@@ -1,12 +1,12 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-09-24
 sources: [src/quick-panel.ts]
 updated: 2026-09-21
 ---
 # Quick settings — the cog's panel
 
-**BUILT 2026-09-20 on branch `thirteen`. The owner tried §1–§9 in the dev app the same day (58 `quick:part` lines in the dev log). §10's desk test (§10.1) is NOT RUN.**
+**BUILT 2026-09-20 on branch `thirteen`. The owner tried §1–§9 in the dev app the same day (58 `quick:part` lines in the dev log). §10's desk test (§10.1) and §11.1 PASSED 2026-09-24.**
 
 ## 1. What it is
 
@@ -226,7 +226,7 @@ The badge outlives the panel's own onboarding: it is how a NEW setting announces
 - **Never retired:** a line stays in `NEW_MARKS` for good. For a user who cleared it, it is
   inert; for a new install it is pre-seen.
 
-### 10.1 Desk test
+### 10.1 Desk test — **PASSED 2026-09-24**
 
 1. Open the panel. The net and Discord squares show the N again.
 2. Press the net. *Friends* has an N beside its heading. Rest the pointer on the Friends rows: the N goes, and the net's N goes.
@@ -252,7 +252,7 @@ The onboarding walk does not change.
   bar has no surface of its own. The disc sits on the button, not the svg, so it does not
   turn with the cog.
 
-### 11.1 Desk test
+### 11.1 Desk test — **PASSED 2026-09-24**
 
 1. `npm run dev:fresh`: the title bar cog shows an N. Press it: the N goes. The squares keep theirs.
 2. An existing profile: the cog shows an N once. With Friends still unseen, it stays after the press; hover the Friends rows and it goes.

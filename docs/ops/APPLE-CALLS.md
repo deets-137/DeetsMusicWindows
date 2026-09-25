@@ -66,8 +66,9 @@ updated: 2026-09-24
 - **Log / diag**: `apple: back-off arm {s}s ({path})`, `apple: back-off skip {job}` (at most
   once per job per back-off), `apple: back-off off`. The same three as `diag` events
   (CLAUDE.md checklist item 6).
-- No toast. The user has nothing to do about it. 🔵 open: a toast if a user call itself gets a
-  429 (TOASTS.md would get a row).
+- No toast for a background job. The user has nothing to do about it.
+- ✅ **A user call that gets a 429 shows a toast** (the owner, 2026-09-24). TOASTS.md §5 gets a
+  row when it is built. The words and the tier go to him with the build.
 
 ## 4. Later (⬜ C)
 

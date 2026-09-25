@@ -1,7 +1,7 @@
 ---
 status: shipped
 shipped_in: 0.4.3
-desk_test: none
+desk_test: passed 2026-09-24
 sources: [src/search-card.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts, src/release.ts]
 updated: 2026-09-24
 ---
@@ -390,7 +390,7 @@ agent get it):
   pick. Ctrl+A and a Shift range skip the row. The row does not drag.
 - Right-click shows only **Go to Artist** (`songMenu`).
 
-**Desk test**
+**Desk test — PASSED 2026-09-24**
 1. Search "OPIA VITA" and open the album. The hero reads "Coming 09/25 · 2 of 12 songs out". Ten
    rows are dimmed, and PLEASER and SINGLE are not.
 2. Hover a dimmed row: the hint gives the date. Click it: the toast gives the date and nothing

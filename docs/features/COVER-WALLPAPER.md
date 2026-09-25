@@ -179,7 +179,8 @@ Three rows in Skin settings, Glass only:
 
 ## 7. Open forks (for the owner)
 - ✅ Every fork in §1 is closed (2026-09-24).
-- 🔵 **1A vs 1B** — decided by the desk test (§6.1).
+- 🔵 **1A vs 1B** — decided by the desk test (§6.1). The owner, 2026-09-24: **build both**,
+  he picks at the end.
 - ✅ **The Aurora color row's words** — label "Aurora color", pill `Cover | Theme` (the owner,
   2026-09-24). "Cover" names the album cover under Covers and the chosen picture under Picture.
 

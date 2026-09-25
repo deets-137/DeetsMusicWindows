@@ -109,18 +109,33 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-09-22. Each item names where the detail is.
+The short list of what is not finished, as of 2026-09-24. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**Desk tests open (branch `darn-critics`, 2026-09-24, uncommitted)**
-- Unreleased songs on a pre-release album — SEARCH.md §Unreleased songs.
-- The Diary card, schema v14 — DIARY.md §8; the forks still open are DIARY.md §7.
+**The next session — build in this order (his word, 2026-09-24).** The tree is committed and
+pushed on `darn-critics`. No code was written for any item below.
+1. **Cover Wallpaper** — COVER-WALLPAPER.md. Build **both** 1A (one cover) and 1B (mosaic); he
+   picks at the desk test (§6.1). Every other fork is closed (§1, §8). Walk the CLAUDE.md build
+   checklist; write the desk test into §6; list what you decided inside his calls at hand-off.
+2. **Diary: Done copies the Export** — DIARY.md §7 (the plan is written there). Small; can ride
+   with item 1.
+3. Then the telemetry pass (below). The 429 toast for a user call is now decided (APPLE-CALLS.md
+   §3); bring him the words and tier.
+
+**Desk tests open (branch `darn-critics`)**
+- The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP), which
+  runs on the installed beta after the next beta release.
 
 **Designed, not built (2026-09-24)**
 - Cover Wallpaper, the Glass canvas as covers or your own picture — COVER-WALLPAPER.md. Next to build.
 - The telemetry pass: Apple call counter + 429 back-off (APPLE-CALLS.md), the `songEnd` /
   `player:stall` pause fixes (DEBUGGING.md §Why did it pause), AirPlay stall and switch timing
   (AIRPLAY.md §13.2).
+- Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
+
+**Waiting on him**
+- **Sound: keep it at all?** The desk test passed 2026-09-24; he is weighing keep, keep some, or
+  remove (SOUND.md §11). No Sound work before his call.
 - AirPlay after the PC sleeps: shows connected when it is not? Desk test first — AIRPLAY.md §13.3.
 
 **Releases and branches**
@@ -158,11 +173,6 @@ When an item closes, delete it here and write the day in WORKLOG.md.
   open: **the perf check** in OCEAN.md §6 (the album light at 0 and at 100, with music, on
   `dev:built`, with and without the GPU). The first read on `dev:app` showed about the same
   weight as before.
-- **Web demo** — WEB-DEMO.md §10. The app half is merged into `main`; the page is live on
-  deets.solutions/deetsmusic/demo (DeetsSolutions `master`). One open fork (§9.7).
-- **Quick settings** — QUICK-SETTINGS.md §10.1 (above).
-- **Sound** — SOUND.md §10.4 steps 4–10, and his report from daily listening (§11) comes
-  before any new Sound work.
 - **Discord's two buttons** (*Play on Apple Music*, *Listen Along*) are proven sent, not proven
   readable: they are invisible to the account that sets them, so reading them needs a second
   Discord account (FRIENDS.md §8.4, item 3).

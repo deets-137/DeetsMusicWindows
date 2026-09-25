@@ -214,8 +214,12 @@ you type a new one or rescale.
 
 ## 7. Open forks
 
-- **What else a finish triggers** — he has more to attach to marking an entry done (2026-09-24).
-  The hook is `onDiaryDone` in diary.ts.
+- ✅ **What a finish triggers** — his call, 2026-09-24: **marking an entry done copies its Export
+  to the clipboard.** Not built. The plan: an `onDiaryDone` listener that calls the Export
+  function in diary.ts (the same text and the same "Diary entry copied." toast) when `done` is
+  true. Every finish passes `diarySetDone`, so the check AND a drag into Completed both copy.
+  Un-marking copies nothing. An agent cannot mark an entry done (§10), so no CLI path copies.
+  Add the call site to TOASTS.md §5 and a step to §8 when it is built.
 - Decided inside §4b (for his review): one folder per entry; a tile drags with a plain press
   (no hold — the header is the hold); a drop back into a status row changes only the status and
   leaves the folder; rows do not fold as they lift; Settings › Reset has no Diary order row yet.
@@ -225,7 +229,11 @@ you type a new one or rescale.
   from search; an agent cannot delete an entry, change the scale, file into folders or rescale;
   an open entry redraws after an agent's write unless you are typing in it.
 
-## 8. Desk test
+## 8. Desk test — **PASSED 2026-09-24, except 11e**
+
+> **Part:** every step passed his desk test on 2026-09-24 except **11e (the CLI and the MCP)**.
+> 11e is run on the installed beta, after the next `release -- --beta` and a fresh install
+> (his call). `desk_test` stays `open` until then.
 
 1. Put the Diary card in a slot. It shows the + cover and "Pick an album, listen, and write about
    each song."

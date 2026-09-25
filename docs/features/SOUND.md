@@ -1,7 +1,7 @@
 ---
 status: shipped
 shipped_in: 0.8.0
-desk_test: open
+desk_test: passed 2026-09-24
 sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts]
 updated: 2026-09-18
 ---
@@ -568,6 +568,8 @@ Web Audio graph and the bus worklet (EQ, limiter) the whole time it plays. The �
 ### 10.4 Desk test (needs a runner restart: Rust changed)
 **Status (user, 2026-09-16):** steps 1–3 PASS on the desk. Steps 4–10 are tested when the release is
 live (§11). Phase 0 (a flat graph measures like no graph) PASSES: AUDIO-QUALITY §4.3a.
+**Status (user, 2026-09-24):** steps 4–10 PASS. He is now asking whether Sound is worth keeping
+at all (§11, step 3).
 1. Launch. The log has `migration: v7 added the loudness table` (once) and
    `audio-out: <your output> (<kind>)`.
 2. Sound › Equalizer › How the equalizer decides: *Output: <name>; Windows reports <kind>.*
@@ -632,6 +634,9 @@ next step is the user's, not a build:
 2. Get a feel for each part: the Equalizer and its presets, Compare, Match loudness, Fuller at low
    volume (Gentle and Full), Headphone crossfeed (Auto), and the panel's words and help text.
 3. Report back: what sounds better, what sounds worse or odd, what is confusing, what is never used.
+
+**2026-09-24:** the §10.4 desk test passed. He is weighing whether to keep Sound at all. The
+decision (keep, keep some parts, or remove) is his, and no Sound work starts before it.
 
 That report is §7 step 4 (keep, keep some parts, or remove). The §10.4 desk test and the §7.3
 heaviness check (`heaviness-sample.ps1`, effects on against off) go with it. No new Sound work
