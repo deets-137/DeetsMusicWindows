@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 # Release notes
 
@@ -31,6 +31,29 @@ publisher (Aditya Sundaram); the box offered Cancel and **Delete ▾**, and the 
 worked. Copy 0.6.0's Installing lines until a browser download of a new version shows no warning. Only the text above the
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
+
+## 0.14.7 — 2026-09-26
+
+**Add friends from a listening room.** In a room, each listener's row now has **Add friend**.
+Press it, and they get a question: **Add** or **Not now**. One press on each side, and you are
+friends. A listener who is already your friend shows **Friend** as soon as they join. Both of
+you need DeetsMusic 0.14.7.
+
+**Listen Along no longer stops your music.** When a friend listens along, your song keeps
+playing from where it is, and they join you there.
+
+**A room stays together.** Everybody in a room now hears the song within a small fraction of a
+second of each other, also right after a song starts.
+
+**The Diary shows the album you are playing.** At the top of the Diary, the album that plays
+now has its own box: **Listening now** starts an entry, and **Continue** opens the one you have.
+Right-click it for the album's menu.
+
+**The room's Remove is now an ×**, so it cannot be mistaken for **Add friend**. Notices appear
+below the Friends panel while it is open, not over it.
+
+**Sort and View take the arrow keys.** New settings show their **N** on the choice that reveals
+them. When Apple Music asks the app to slow down, DeetsMusic waits and tries again.
 
 ## 0.14.6 — 2026-09-25
 

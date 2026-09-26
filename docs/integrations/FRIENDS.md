@@ -1339,11 +1339,12 @@ window that stops answering is a fail, whatever the card says.
 
 ## 18. Add a room member as a friend
 
-> **Part:** built · 2026-09-26. The owner's ask: "an easy way to add other listeners in the
-> room as friends". **Forks decided 2026-09-23: F1A, F2A, F3A, F4A + F5A** (the ⭐ options in
-> §18.3). Two more on 2026-09-26 (§18.5): the pending ask shows on the member row only, and a
-> per-room tag lets a friend read "Friend" at once. **Built on `clode-eval`; the rooms worker
-> change is NOT deployed** (§18.6). Desk test: §18.8.
+> **Part:** shipped · 0.14.7 · 2026-09-26. The owner's ask: "an easy way to add other listeners
+> in the room as friends". **Forks decided 2026-09-23: F1A, F2A, F3A, F4A + F5A** (the ⭐ options
+> in §18.3). Two more on 2026-09-26 (§18.5): the pending ask shows on the member row only, and a
+> per-room tag lets a friend read "Friend" at once. **The rooms worker change is DEPLOYED**
+> (2026-09-26, at his word, version `0561f70f`; `check.mjs` 41/41 against the live host).
+> Desk test: §18.8.
 
 ### 18.1 What the code allows today (read 2026-09-23)
 
