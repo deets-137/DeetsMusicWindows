@@ -310,6 +310,13 @@ you type a new one or rescale.
 11e. Agents: `deetsmusic diary` → the refusal. Turn on Settings › Connections › Agents use the
     Diary: `diary` lists, `diary show N` prints the export, `diary score N --song 3 8` writes and
     the open entry redraws.
+    **Run 2026-09-26 on the live app (0.14.6, installed CLI and the MCP):** with the row off,
+    the MCP's `diary list` was refused with the AGENT_OFF text. With it on: `add` made entry 1
+    (Science, James the Seventh), `deetsmusic diary` listed it (0/7 songs), `diary score 1
+    --song 3 8` wrote ("Scored song 3 of Science 8/10") and the list read 1/7, `diary show 1`
+    printed the export with "## 3. Goofy | 8/10" and the album link, an empty score cleared
+    it (0/7 again), and the MCP's `show` matched. Every exit code was 0. **Not seen:** the
+    open entry redrawing, which needs the entry open in the window during the write.
 11f. Done copies (built 2026-09-24, not yet desk-tested): in an entry, press the check. The toast
     says "Diary entry copied." Paste: the Export text. Press the check again: no toast, the
     clipboard keeps the old text. Drag an In progress tile into Completed: the toast again. Drag
