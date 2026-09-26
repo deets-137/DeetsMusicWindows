@@ -17,6 +17,17 @@
 //      bundle), --gpu=off|slow (pretend to be a weaker machine). DEBUGGING.md §Measuring
 //      like the live app, §Pretending to be a weaker machine.
 //   6. --fresh : be a first-time user. ONBOARDING.md §Testing a first run.
+//   7. --second : a SECOND dev app beside the first, for anything that needs two people —
+//      a room, a friend (FRIENDS.md §18.8). Its own identifier (so its own data folder,
+//      friend code and single-instance lock), its own deep-link scheme, its own generated
+//      config (a shared one would make tauri dev restart the first app) and its own cargo
+//      target dir (the first app's running exe is locked). Its first launch copies the Apple
+//      token and the library cache from the first dev profile, never `friends.json`.
+//      The first build of it is a full compile.
+//   8. --hidden : the window never shows, so Claude can drive the app over CDP with nothing
+//      on the owner's screen. It is the app's own tray launch (`--tray`, tray.rs
+//      `tray_launch`): the page loads and runs, `reveal_main` never shows the window, and
+//      only the tray icon appears. The tray icon opens it as usual.
 import { createServer } from "node:net";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -24,8 +35,33 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const base = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.dev.conf.json"), "utf8"));
+const devConf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.dev.conf.json"), "utf8"));
 const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+
+// --second: the same dev config under another name. The identifier still ends in ".dev", so
+// the --fresh guard below holds for it too.
+const SECOND = process.argv.includes("--second");
+const base = SECOND
+  ? {
+      ...devConf,
+      identifier: "com.deetsmusic.second.dev",
+      plugins: { ...devConf.plugins, "deep-link": { desktop: { schemes: ["deetsmusic-dev2"] } } },
+    }
+  : devConf;
+const genName = SECOND ? ".tauri.dev2.gen.json" : ".tauri.dev.gen.json";
+if (SECOND && !existsSync(join(process.env.APPDATA, base.identifier))) {
+  // Signed in from the first launch: the Apple token and the library cache, and nothing that
+  // is WHO you are — no friends.json, so this app mints its own friend code.
+  const from = join(process.env.APPDATA, devConf.identifier);
+  const to = join(process.env.APPDATA, base.identifier);
+  mkdirSync(to, { recursive: true });
+  const copied = ["user-token.txt", "deetsmusic.db", "deetsmusic.db-shm", "deetsmusic.db-wal"].filter((f) => {
+    if (!existsSync(join(from, f))) return false;
+    copyFileSync(join(from, f), join(to, f));
+    return true;
+  });
+  console.log(`[dev:app] --second: new profile ${base.identifier}` + (copied.length ? `, signed in (copied ${copied.join(", ")})` : ", signed out"));
+}
 
 // Vite binds `localhost`, which on this Windows box resolves to ::1 first — so probe
 // both families, or an orphaned vite on ::1 reads as free and the launch fails.
@@ -39,7 +75,9 @@ const free = async (port) => (await freeOn(port, "127.0.0.1")) && (await freeOn(
 
 let port = 1420;
 while (!(await free(port))) port += 1;
-let cdp = 9222;
+// The CDP port is bound only when the window opens, minutes after this probe on a cold
+// build, so two apps started together would both see 9222 free. The second starts higher.
+let cdp = SECOND ? 9232 : 9222;
 while (!(await free(cdp))) cdp += 1;
 
 // --gpu=off | slow — pretend this is a weaker machine, so a skin that is comfortable on a
@@ -142,7 +180,7 @@ if (freshArg) {
 
 const windows = conf.app.windows.map((w) => ({
   ...w,
-  title: `${w.title} (dev)`,
+  title: `${w.title} (${SECOND ? "dev 2" : "dev"})`,
   ...(w.label === "main"
     ? {
         additionalBrowserArgs:
@@ -161,7 +199,10 @@ const BUILT = process.argv.includes("--built");
 const PERF = BUILT || process.argv.includes("--perf");
 const passThrough = process.argv
   .slice(2)
-  .filter((a) => a !== "--perf" && a !== "--built" && !a.startsWith("--gpu=") && a !== "--fresh" && !a.startsWith("--fresh="));
+  .filter((a) => a !== "--perf" && a !== "--built" && a !== "--second" && a !== "--hidden" && !a.startsWith("--gpu=") && a !== "--fresh" && !a.startsWith("--fresh="));
+// `tauri dev -- -- <args>`: after the second `--`, the arguments reach the app itself.
+const HIDDEN = process.argv.includes("--hidden");
+if (HIDDEN) passThrough.push("--", "--", "--tray");
 
 let preview;
 if (BUILT) {
@@ -181,7 +222,7 @@ if (BUILT) {
   await new Promise((r) => setTimeout(r, 1200)); // let preview bind before tauri loads the URL
 }
 
-const gen = join(root, "src-tauri", ".tauri.dev.gen.json");
+const gen = join(root, "src-tauri", genName);
 writeFileSync(
   gen,
   JSON.stringify(
@@ -199,6 +240,7 @@ writeFileSync(
 console.log(
   `[dev:app] ${BUILT ? "release-shaped bundle (vite preview)" : "vite"} on ${port} · webview CDP on ${cdp} · identifier ${base.identifier}` +
     (PERF ? " · DevTools held shut (--perf)" : "") +
+    (HIDDEN ? " · window hidden (--hidden: open it from the tray icon)" : "") +
     (gpuMode ? ` · GPU ${gpuMode.toUpperCase()} (pretending to be a weaker machine)` : ""),
 );
 
@@ -207,11 +249,16 @@ console.log(
 const tauriBin = join(root, "node_modules", "@tauri-apps", "cli", "tauri.js");
 const child = spawn(
   process.execPath,
-  [tauriBin, "dev", "--config", "src-tauri/.tauri.dev.gen.json", ...passThrough],
+  [tauriBin, "dev", "--config", `src-tauri/${genName}`, ...passThrough],
   {
     cwd: root,
     stdio: "inherit",
-    env: { ...process.env, VITE_PORT: String(port), ...(PERF ? { DEETS_NO_DEVTOOLS: "1" } : {}) },
+    env: {
+      ...process.env,
+      VITE_PORT: String(port),
+      ...(PERF ? { DEETS_NO_DEVTOOLS: "1" } : {}),
+      ...(SECOND ? { CARGO_TARGET_DIR: join(root, "src-tauri", "target-second") } : {}),
+    },
   },
 );
 child.on("exit", (code) => {

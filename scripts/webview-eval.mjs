@@ -14,12 +14,14 @@ const fail = (msg, code = 2) => {
   process.exit(code);
 };
 
-const expr = process.argv.slice(2).join(" ");
-if (!expr) fail('usage: node scripts/webview-eval.mjs "__toast.demo()"');
+// --second: the second dev app (`npm run dev:app -- --second`), which has its own config.
+const second = process.argv[2] === "--second";
+const expr = process.argv.slice(second ? 3 : 2).join(" ");
+if (!expr) fail('usage: node scripts/webview-eval.mjs [--second] "__toast.demo()"');
 
 let gen;
 try {
-  gen = JSON.parse(readFileSync(join(root, "src-tauri", ".tauri.dev.gen.json"), "utf8"));
+  gen = JSON.parse(readFileSync(join(root, "src-tauri", second ? ".tauri.dev2.gen.json" : ".tauri.dev.gen.json"), "utf8"));
 } catch {
   fail("no generated dev config — start the app with `npm run dev:app`");
 }

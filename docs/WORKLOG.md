@@ -12,6 +12,16 @@ updated: 2026-09-25
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, late afternoon — two dev apps; Claude runs the friend desk test
+
+`npm run tauri dev` would have collided with his running installed app (same identifier), so
+§18.8's setup was wrong. New: `dev:app -- --second` (own identifier `com.deetsmusic.second.dev`,
+friend code, scheme, generated config, `target-second`, CDP from 9232 — the first try raced both
+apps onto 9222) and `webview-eval.mjs --second`. At his word Claude drove both apps and ran
+§18.8 steps 1–6: all pass. Then `dev:app -- --hidden` (the app's own `--tray` launch, so no
+window; checked: `IsWindowVisible` false, the page runs and answers CDP) and the log label
+`data dir dev 2`. His call: keep Dismiss on the ask toast for now.
+
 ## 2026-09-26, afternoon — Shots: forks closed, the picture runner
 
 His calls on SHOTS.md §9: F1 every look for every shot (30 looks), F2 real library allowed in

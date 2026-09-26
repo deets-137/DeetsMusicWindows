@@ -129,6 +129,8 @@ pub fn init(dir: &Path) {
 
     let which = match dir.file_name().and_then(|n| n.to_str()) {
         Some("com.deetsmusic.dev") => "dev",
+        // `npm run dev:app -- --second` (dev-app.mjs): a second dev app beside the first.
+        Some("com.deetsmusic.second.dev") => "dev 2",
         Some("com.deetsmusic.beta") => "beta",
         _ => "release",
     };

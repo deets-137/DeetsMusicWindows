@@ -1485,13 +1485,16 @@ Reading the code before the build found two things §18.2 assumed and F1A does n
 
 Needs two apps in one room against a worker that has the change. Before the deploy: run the
 worker locally (`npx wrangler@4 dev --port 8787` in `../DeetsMusicRooms`) and run two dev apps
-on this PC: `npm run tauri dev` and `npm run dev:app`. They have separate data folders, so they
-have separate friend codes. In the DevTools console of EACH, run the line below, then restart
-that app (`roomsUrl` is dev-only and read at launch, SETTINGS.md):
+on this PC: `npm run dev:app` and `npm run dev:app -- --second` (the second has its own
+identifier, data folder and friend code; its first build is a full compile). ~~`npm run tauri
+dev`~~ — corrected 2026-09-26: it shares the INSTALLED app's identifier, so it collides with an
+installed app that is running. In EACH app, point it at the local worker and reload (`roomsUrl`
+is dev-only, SETTINGS.md):
 
-    s = JSON.parse(localStorage["deets.settings"]); s.roomsUrl = "http://127.0.0.1:8787"; localStorage["deets.settings"] = JSON.stringify(s)
+    node scripts/webview-eval.mjs "(()=>{const s=JSON.parse(localStorage['deets.settings']);s.roomsUrl='http://127.0.0.1:8787';localStorage['deets.settings']=JSON.stringify(s);location.reload()})()"
+    node scripts/webview-eval.mjs --second "…the same…"
 
-Put `s.roomsUrl = ""` back after the test.
+Put `roomsUrl` back to `""` after the test.
 
 1. **A new friend.** A (with no friends) starts a room; B joins. On A's panel, B's row shows
    **Add friend**; B's row of A too. A presses it: A's chip reads **Asked**, B gets *"A wants to
@@ -1514,3 +1517,11 @@ Put `s.roomsUrl = ""` back after the test.
    Friends: `friends.json` does not appear. Pressing Add friend on a member makes it.
 8. The log: `room:friend-offer-out`, `room:friend-offer-in`, `room:friend-ask`,
    `room:friend-accept`, `room:friend-done`, `room:friend-reply`, `room:friend-not-now`.
+
+**Run by Claude, 2026-09-26: steps 1–6 PASS** on two dev apps ("Ada" = `dev:app`, "Ben" =
+`dev:app -- --second`), driven over CDP with `webview-eval.mjs`: the member rows, the toasts
+and both Friends lists read after each press. Step 6 against the live worker. Step 7 was not
+reachable (the second app minted at launch, before any room); step 8 not read (the info lines
+flush every 5 minutes). One note: the ask toast shows Add · Not now · **Dismiss** (the toast
+module adds Dismiss to every sticky toast); his call, 2026-09-26: keep it for now. **Open: his
+look at the rows and the toast.**

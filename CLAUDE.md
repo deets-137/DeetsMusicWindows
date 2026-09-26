@@ -274,6 +274,8 @@ npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 windo
 npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
 npm run dev:perf      # dev:app with DevTools held shut (it renders in the app's own GPU process)
 npm run dev:built     # release-shaped bundle + DevTools shut — the honest graphics measurement
+npm run dev:app -- --second   # a second dev app (own identity + friend code) for rooms/friends tests
+npm run dev:app -- --hidden   # no window (the app's --tray launch): drive it over CDP, nothing on screen
 npm run bench appearance -- --passes 3   # repeatable switch benchmark; refuses to run on a noisy machine
 npm run release       # build + sign the installer (→ installers/; see docs/ops/RELEASE.md §0)
 npm run release:publish   # after testing the install: put it on the update channel

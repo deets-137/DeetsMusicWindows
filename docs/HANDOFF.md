@@ -122,7 +122,8 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
 - **Add a room member as a friend** (2026-09-26, committed on `clode-eval`):
-  [FRIENDS.md §18.8](integrations/FRIENDS.md) steps 1–8, against a local rooms worker. The
+  [FRIENDS.md §18.8](integrations/FRIENDS.md). Claude ran steps 1–6 on two dev apps: all pass.
+  Open: his look at the rows and the toast, and step 7. The
   rooms worker change (`../DeetsMusicRooms` `master`, committed and pushed) is **not
   deployed**; a deploy drops
   every live room socket, so it is his call (WorkerDeploy.md).
