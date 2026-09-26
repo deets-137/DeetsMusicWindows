@@ -164,6 +164,11 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.14.7** (2026-09-26, `5fe868c`, straight to live; `main` = `clode-eval`): add
+  friends from a room (the rooms worker deployed first, `0561f70f`), Listen Along keeps the
+  host playing, rooms in sync to the millisecond, the Diary's playing-album box, the menu
+  divider, Sort / View arrow keys, New badges on pills, the Apple 429 back-off. The §0b hand
+  test was skipped by his call; his stress test on live is open.
 - **Published: 0.14.6** (2026-09-25, `5f1abb5`, straight to live): the consistency pass (the
   database thread, `lock_or_recover`, Undo), the watchdog sleep line, the rejection stack, the
   No MusicKit retry, the AirPlay reconnect (crate 0.4.1), the Cover Wallpaper dim of 15,
