@@ -287,6 +287,7 @@
   --toast-stripe: 3px;     /* the kind stripe on the leading edge */
   --toast-bar:    2px;     /* the countdown bar on timed toasts */
   --toast-shift:  30%;     /* fly-in / fly-out travel; a skin may zero it */
+  --toast-floor-room: 104px; /* the window kept below the column's top: one toast with buttons fits */
 
   /* -- the first-run walk (src/walk.ts, styles/walk.css; docs/features/ONBOARDING.md §4) --
      Deets and Happy lead a stranger through the app. The speech card joins the

@@ -20,7 +20,12 @@ friend code, scheme, generated config, `target-second`, CDP from 9232 — the fi
 apps onto 9222) and `webview-eval.mjs --second`. At his word Claude drove both apps and ran
 §18.8 steps 1–6: all pass. Then `dev:app -- --hidden` (the app's own `--tray` launch, so no
 window; checked: `IsWindowVisible` false, the page runs and answers CDP) and the log label
-`data dir dev 2`. His call: keep Dismiss on the ask toast for now.
+`data dir dev 2`.
+
+Then his UI review calls (FRIENDS.md §18.7a): Remove → × icon square; toasts below the open
+Friends panel; the "In a room together?" line. Lesson for driving the dev app: after a hot
+update, Vite serves modules with `?t=`, so `import('/src/room.ts')` loads a SECOND copy with
+its own sockets — import the URL from `performance.getEntriesByType('resource')` instead. His call: keep Dismiss on the ask toast for now.
 
 ## 2026-09-26, afternoon — Shots: forks closed, the picture runner
 

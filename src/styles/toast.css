@@ -9,9 +9,16 @@
    Geometry through skin tokens (--toast-*), motion through --dur-med/--ease-ui.
    z 90: above every card and flyout (20/30), BELOW the context menu, settings
    menus and pickers (100) — a menu is the user's live intent; a toast waits. */
+/* `--toast-below` is set only while the Friends panel is open (room-panel.ts placeToasts):
+   the column starts under the panel, not over its Leave / End room corner (2026-09-26). The
+   min() keeps --toast-floor-room of window below it, so a short window never pushes a toast
+   off the bottom; there it overlaps the panel's foot instead of its head. */
 .toast-host {
   position: fixed;
-  top: calc(var(--toast-top, var(--titlebar-h)) + var(--space-2));
+  top: min(
+    max(calc(var(--toast-top, var(--titlebar-h)) + var(--space-2)), calc(var(--toast-below, 0px) + var(--space-2))),
+    calc(100vh - var(--toast-floor-room))
+  );
   left: var(--space-4); /* only clamps the strip in a narrow window; align-items keeps it right */
   right: var(--space-4);
   display: flex;
@@ -23,7 +30,10 @@
   --toast-in: translateX(var(--toast-shift));
 }
 :is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .toast-host {
-  top: calc(var(--titlebar-h) + var(--space-2));
+  top: min(
+    max(calc(var(--titlebar-h) + var(--space-2)), calc(var(--toast-below, 0px) + var(--space-2))),
+    calc(100vh - var(--toast-floor-room))
+  );
 }
 .toast {
   pointer-events: auto;

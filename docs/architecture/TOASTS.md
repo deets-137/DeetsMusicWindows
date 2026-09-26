@@ -63,7 +63,7 @@ A caller may override `sticky` either way; none does today.
 
 | | Deets.Solutions | DeetsMusic |
 |---|---|---|
-| Position | top-right column under the header | **top-right, newest on top**, on every surface. **mini/midi:** under the Now Playing card, so the song stays readable (`--toast-top`, the card's bottom edge measured by `toast.ts`) · **max:** under the titlebar, since the stage is on the left. Changed 2026-09-13 from bottom-centred in mini/midi. |
+| Position | top-right column under the header | **top-right, newest on top**, on every surface. **mini/midi:** under the Now Playing card, so the song stays readable (`--toast-top`, the card's bottom edge measured by `toast.ts`) · **max:** under the titlebar, since the stage is on the left. Changed 2026-09-13 from bottom-centred in mini/midi. **While the Friends panel is open** (2026-09-26): under the panel (`--toast-below`, set by `room-panel.ts` `placeToasts`), so an ask does not cover Leave / End room; `--toast-floor-room` keeps one toast inside a short window. |
 | Fly-in | from the right | from the right (`--toast-shift`) |
 | Cap | 4 | **3** — the oldest *timed* toast yields first; sticky ones only when nothing timed is left, **which destroys them with their actions unrun — see §4a** |
 | Setting | none | `toasts`: `all` (default, 2026-09-13) · `failures` — Settings › Look and feel › **Show notices** (no `off` since 2026-09-14, §4) |

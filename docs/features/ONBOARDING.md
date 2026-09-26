@@ -71,7 +71,7 @@ nothing about authoring changed when the box did.
 | Friends panel › DeetsRooms | Copy code · Copy invite link | Copies the room code / Copies a link that opens DeetsMusic and joins this room | room-panel.ts |
 | Friends panel › DeetsRooms | a member row's **Add friend** | Sends {Name} your friend code. One press on their side adds you both | room-panel.ts (FRIENDS.md §18) |
 | Friends panel › DeetsRooms | a member row's **Asked** · **Friend** | You sent {Name} your friend code. They are added when they press Add / {Name} is on your Friends list | room-panel.ts (FRIENDS.md §18) |
-| Friends panel › DeetsRooms | Remove (per guest) | Removes {name} from the room | room-panel.ts |
+| Friends panel › DeetsRooms | the × on a guest's row (host only; an icon square since 2026-09-26, was a "Remove" chip) | Removes {name} from the room | room-panel.ts |
 | Friends panel › DeetsRooms | Permissions (the fold) | Shows what a guest may do: play, skip, seek, add songs and reorder Up Next | room-panel.ts |
 | Friends panel › DeetsRooms | each guest-control pill | what the control hands over ("Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app") | room-panel.ts |
 | Friends panel › DeetsRooms | Leave room · End room | Leaves the room / Ends the room for everyone. Your own queue comes back | room-panel.ts |

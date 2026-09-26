@@ -1481,6 +1481,21 @@ Reading the code before the build found two things §18.2 assumed and F1A does n
   member id, their reply finds nobody, and only their half is done. Their Friends box then says
   *"Waiting for them to add you"*; pressing Add friend again fixes it.
 
+### 18.7a The UI review (2026-09-26) — his three calls, built
+
+Claude reviewed the rows and the toast on both apps. His calls, all three recommendations:
+1. **Remove is a × icon square** (`.panel__action.room__remove`, hint unchanged), not a word
+   chip. Beside Add friend, two alike chips put a friendly press and a destructive one side by
+   side, and Remove acts at once.
+2. **Toasts start below the Friends panel while it is open** (`placeToasts` → `--toast-below`,
+   toast.css; `--toast-floor-room` keeps one toast inside a short window). The ask arrived over
+   Leave / End room.
+3. **A second help line** in the Friends part, in his voice: *"In a room together? Press Add
+   friend next to their name!"* It shows while you are in a room with somebody who is not your
+   friend yet, under the handshake line or above your list.
+
+Checked on the two dev apps with screenshots: all three as described.
+
 ### 18.8 The desk test
 
 Needs two apps in one room against a worker that has the change. Before the deploy: run the

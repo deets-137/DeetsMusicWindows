@@ -78,8 +78,13 @@ const thumb = (url: string | null): string | null =>
  */
 export type NameGate = (button: HTMLButtonElement) => HTMLButtonElement;
 
-export function buildFriends(panel: El, gate: NameGate): void {
+export function buildFriends(panel: El, gate: NameGate, inRoomWithStrangers = false): void {
   const state = friendsState();
+
+  // The one-press way, while you share a room with somebody who is not your friend yet
+  // (FRIENDS.md §18; his call, 2026-09-26). The room panel decides when; Friends only says it.
+  const roomLine = (): HTMLElement =>
+    el("div", "room__note", "In a room together? Press Add friend next to their name!");
 
   if (!state.rows.length) {
     // It has to say HANDSHAKE, not "add a friend" (his call, 2026-09-20). The first
@@ -91,7 +96,9 @@ export function buildFriends(panel: El, gate: NameGate): void {
         "You and your friend need to add each other's code to add friend!",
       ),
     );
+    if (inRoomWithStrangers) panel.append(roomLine());
   } else {
+    if (inRoomWithStrangers) panel.append(roomLine());
     const list = el("div", "friend__list app-scroll");
     for (const row of state.rows) list.append(box(row));
     panel.append(list);

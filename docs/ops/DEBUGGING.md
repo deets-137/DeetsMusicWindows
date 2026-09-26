@@ -993,6 +993,19 @@ node scripts/webview-eval.mjs "__diag.dump(); __diag.flush()"   # or return a va
 node scripts/webview-eval.mjs "JSON.parse(localStorage.getItem('deets.settings')).toasts"
 ```
 
+**Two apps, and no window (2026-09-26).** `npm run dev:app -- --second` is a second app with
+its own identity (CDP from 9232; `webview-eval.mjs --second` reaches it). `-- --hidden` starts
+either one with no window (the app's own `--tray` launch); CDP still works.
+
+**Calling the app's own modules.** `await import('/src/room.ts')` reaches the SAME module the
+app uses only until Vite hot-updates something. After that the app's copy is
+`/src/room.ts?t=…`, and the plain URL loads a SECOND copy with its own state and sockets
+(found 2026-09-26: a "room" that the panel never saw). Import the app's URL instead:
+
+```
+node scripts/webview-eval.mjs "(async()=>{const u=performance.getEntriesByType('resource').map(e=>e.name).find(n=>n.includes('/src/room.ts')); return (await import(u)).roomState().phase})()"
+```
+
 - The expression runs in the main window as a console line, with a user gesture (so a
   clipboard write works). Promises are awaited. The value prints as JSON.
 - Exit 1: the expression threw (the message prints). Exit 2: no dev config, no port, or

@@ -105,7 +105,12 @@ export function initRoomPanel(): void {
   // Rows arrive while the panel is open — a member joins, "Waiting for the host" shows —
   // so the gutter is measured again whenever the panel's own box changes, not only on a
   // render.
-  new ResizeObserver(() => requestAnimationFrame(measureGutters)).observe(panel);
+  new ResizeObserver(() =>
+    requestAnimationFrame(() => {
+      measureGutters();
+      placeToasts();
+    }),
+  ).observe(panel);
 
   dropdown = makeDropdown({
     root,
@@ -257,7 +262,10 @@ function render(state: RoomState): void {
   panel.append(nameRow(state));
 
   const friends = part("friends", "Friends", "The people you added, and what they are playing");
-  buildFriends(friends.body, (b) => gateOnName(b));
+  // The Friends part's "In a room together?" line shows while somebody here is not your
+  // friend yet (FRIENDS.md §18).
+  const strangers = inRoom && state.members.some((m) => memberFriendState(m) === "none");
+  buildFriends(friends.body, (b) => gateOnName(b), strangers);
 
   const rooms = part("rooms", TITLE_ROOMS, "Start a room, or join one with a code");
   if (inRoom) renderInRoom(state, rooms.body);
@@ -352,6 +360,18 @@ function slideParts(before: Map<string, number>): void {
  * nothing changed, and it runs a frame late, outside the ResizeObserver's own delivery,
  * so it cannot raise the loop warning.
  */
+/**
+ * While this panel is open, toasts start below it (his call, 2026-09-26). A friend's ask
+ * arrives while you are looking at the member list, and the toast column's usual place is
+ * this panel's top-right corner, over Leave / End room. `--toast-below` is the panel's bottom
+ * edge; toast.css takes the larger of it and the usual top. A closed panel clears it.
+ */
+function placeToasts(): void {
+  const root = document.documentElement;
+  if (!panel || panel.hidden) return void root.style.removeProperty("--toast-below");
+  root.style.setProperty("--toast-below", `${Math.round(panel.getBoundingClientRect().bottom)}px`);
+}
+
 function measureGutters(): void {
   if (!panel || panel.hidden) return;
   const boxes: (HTMLElement | null)[] = [
@@ -574,7 +594,13 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
     const friendly = friendControl(member);
     if (friendly) end.append(friendly);
     if (!member.isHost && state.isHost) {
-      const remove = chip("Remove", `Removes ${member.name} from the room`, "room__chip--small");
+      // An icon square, not a word chip (his call, 2026-09-26): beside Add friend, two chips
+      // that look alike put a friendly press and a destructive one side by side.
+      const remove = el("button", "panel__action room__remove");
+      remove.type = "button";
+      remove.title = `Removes ${member.name} from the room`;
+      remove.setAttribute("aria-label", `Remove ${member.name}`);
+      remove.innerHTML = REMOVE_GLYPH;
       remove.addEventListener("click", () => removeMember(member.memberId));
       end.append(remove);
     }
@@ -594,6 +620,10 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
   }
   into.append(foldButton("Permissions", "Shows what a guest may do: play, skip, seek, add songs and reorder Up Next", body), body);
 }
+
+/** The host's Remove on a member row: a cross in the icon square's 24-unit box. */
+const REMOVE_GLYPH =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>';
 
 /**
  * A member row's friend control (FRIENDS.md §18): an Add friend chip (the Remove chip's

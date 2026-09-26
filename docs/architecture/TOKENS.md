@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 500 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 501 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -321,6 +321,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--toast-stripe` | `3px` | — | the kind stripe on the leading edge |
 | `--toast-bar` | `2px` | — | the countdown bar on timed toasts |
 | `--toast-shift` | `30%` | — | fly-in / fly-out travel; a skin may zero it |
+| `--toast-floor-room` | `104px` | — | the window kept below the column's top: one toast with buttons fits |
 | `--walk-card-w` | `var(--toast-w)` | — | -- the first-run walk (src/walk.ts, styles/walk.css; docs/features/ONBOARDING.md §4) -- Deets and Happy lead a stranger through the app. The speech card joins the TOAST family (§2a) — same material, same button idiom — so these are aliases, not new values; only the walker's own geometry is new. The frame sizes are the art's, not a choice: the sprite sheets are 32-wide frames (ONBOARDING §4.1). |
 | `--walk-card-pad` | `var(--space-2) var(--space-3)` | — |  |
 | `--walk-scale` | `2` | — | pixel art doubled; the site renders it the same way |
