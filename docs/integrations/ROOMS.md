@@ -1209,6 +1209,29 @@ already passed there is **no open desk test left in Rooms**.
 The worker's three `epoch` crumbs still wait for a deploy that happens for a real reason.
 FRIENDS.md §8.7.3 gives them one: the `/j/` landing route rides that deploy.
 
+### 18.8 Sub-second sync (2026-09-26, his call; measured on two dev apps)
+
+> **Part:** built · 2026-09-26 · uncommitted, his ear test open.
+
+Measured with each page's `<audio>.currentTime` (one PC clock, so app A − app B is the gap):
+skip 30 ms, pause/play 13 ms, a seek 32 ms — but the FIRST start of a room left **390 ms**,
+and nothing corrected it.
+
+- **Cause 1:** `roomPositionMs()` read MusicKit's `currentPlaybackTime`, which counts WHOLE
+  seconds. `settle()` (250 ms) could not see a sub-second error. **Fix:** `preciseMs()` in
+  player.ts reads the `<audio>` element MusicKit plays through, trusted only while it agrees
+  with MusicKit's whole second (±1.5 s); `roomShow`'s and `roomResumeAt`'s "how far off"
+  use it too.
+- **Cause 2:** `settle()` asked for a fix at 250 ms, but `roomResumeAt` only seeked over 400 ms.
+  **Fix:** `roomResumeAt(…, toleranceMs)`; settle passes its own 250.
+- **Cause 3:** a seek lands LATE by the player's restart time (one −335 ms fix still left
+  ~400 ms). **Fix:** settle looks again after a correction, up to 3 tries, aiming ahead by
+  what the last try missed (`room:settle {off, try, ahead}`).
+
+**After:** Listen Along join 72 ms (settle: −340 → −324 with 324 ahead → in), Start a room +
+Play 18 ms (no settle needed). Open: a joiner's first load still starts at 0:00 and the drift
+check moves it (`room:drift` off ~25 s) — a jump the joiner sees once; not looked into.
+
 ## 19. Telling people the room server restarted (designed 2026-09-19, NOT BUILT)
 
 The owner asked whether a worker redeploy can send an apology to everyone in a room. It

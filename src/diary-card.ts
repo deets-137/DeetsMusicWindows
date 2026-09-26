@@ -25,7 +25,7 @@ import { tracks as storeTracks, addTransientTracks } from "./track-store";
 import { albumKey } from "./rewind";
 import { albumOrder, heroCover } from "./library-card";
 import { esc, actionsRowHTML, runListAction } from "./collection-card";
-import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, type MenuItem, type ActionItem } from "./context-menu";
+import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, MENU_DIVIDER, type MenuItem, type ActionItem } from "./context-menu";
 import { albumMenu, songMenu } from "./media-menu";
 import { growCardTaller, isGrownCard, collapseGrow } from "./card-grow";
 import { playTracks } from "./player";
@@ -955,6 +955,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         context: `diary:${s.id}`,
         inDiary: true,
         own: [
+          // The album's rows above, the entry's own below (his call, 2026-09-26).
+          MENU_DIVIDER,
           // Export (his ask, 2026-09-24): the entry as text on the clipboard (diary.rs `export_text`).
           { label: "Export", run: () => void copyDiaryExport(s.id) },
           { label: s.doneAt ? "Mark in Progress" : "Mark as Done", run: () => void setDone(s.id, !s.doneAt) },
@@ -1228,6 +1230,9 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       return;
     }
     // The playing album's box: the entry's menu when it has one, else the album menu.
+    // `known: [t]` gives the album menu its song seed, so Go to Artist / Album, Start a Web,
+    // Copy Link, Add to Library and ♥ are there too, each hopping song → album on ITS click,
+    // never on the right-click (his call, 2026-09-26: the full menu, not six rows).
     const nowBox = target.closest<HTMLElement>("[data-now]");
     const t = nowBox && !entry ? playingTrack() : undefined;
     if (nowBox && t) {
@@ -1237,7 +1242,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       const items = has
         ? entryMenu({ ...has, tracks: () => diaryGet(has.id).then((e) => e.tracks) })
         : albumMenu(
-            { title: a.album.title, artistName: a.album.artistName, artwork: a.album.artwork, known: [], whole: () => Promise.resolve(a.tracks()), catalog: !!t.catalogId },
+            { title: a.album.title, artistName: a.album.artistName, artwork: a.album.artwork, known: [t], whole: () => Promise.resolve(a.tracks()), catalog: !!t.catalogId },
             { context: "diary:now", inDiary: true },
           );
       nowBox.classList.add("is-context");

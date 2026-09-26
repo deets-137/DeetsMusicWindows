@@ -2105,7 +2105,7 @@ export async function roomShow(handle: TrackHandle, positionMs: number, play: bo
   const npId = m.nowPlayingItem?.id;
   if (npId && (npId === handle.catalogId || npId === handle.libraryId)) {
     diag.log("player:roomSameSong", { id, play, playing: !!m.isPlaying, at: Math.round(positionMs) });
-    const off = Math.abs((m.currentPlaybackTime ?? 0) * 1000 - positionMs);
+    const off = Math.abs(roomPositionMs() - positionMs);
     if (off > 400 && typeof m.seekToTime === "function") await m.seekToTime(Math.max(0, positionMs) / 1000);
     // Match the room, whichever way it points: a seeded room that has not started yet
     // must HOLD this song, not leave it playing from before the room existed.
@@ -2129,7 +2129,7 @@ export async function roomHold(): Promise<void> {
  * the song is playing by definition: seek only, never start. Every other caller leaves it
  * false, so a held player starts again when the room says the song is playing.
  */
-export async function roomResumeAt(positionMs: number, correcting = false): Promise<void> {
+export async function roomResumeAt(positionMs: number, correcting = false, toleranceMs = 400): Promise<void> {
   const m = music;
   if (!m) return;
   const had = !!m.nowPlayingItem;
@@ -2153,14 +2153,37 @@ export async function roomResumeAt(positionMs: number, correcting = false): Prom
   }
   const duration = (m.currentPlaybackDuration ?? 0) * 1000;
   const want = duration > 0 ? Math.min(positionMs, Math.max(0, duration - 500)) : positionMs;
-  const off = Math.abs((m.currentPlaybackTime ?? 0) * 1000 - want);
-  if (off > 400 && typeof m.seekToTime === "function") await m.seekToTime(want / 1000);
+  const off = Math.abs(preciseMs(m) - want);
+  // `toleranceMs`: the room's settle passes its own 250 ms, or it would ask for a fix this
+  // line then refused (a 390 ms gap is over 250 and under 400).
+  if (off > toleranceMs && typeof m.seekToTime === "function") await m.seekToTime(want / 1000);
   if (!correcting && !m.isPlaying) await m.play();
+}
+
+/**
+ * Where MusicKit is in the song, in ms, to the millisecond. `currentPlaybackTime` counts
+ * WHOLE seconds, so the room's 250 ms settle and its seek checks could not see an error under
+ * a second: a 390 ms start gap between two apps stayed for the whole song (measured
+ * 2026-09-26, ROOMS.md). The <audio> element MusicKit plays through keeps the real time. It
+ * is trusted only while it agrees with MusicKit's whole second, so another element can never
+ * steer the room; otherwise this falls back to MusicKit.
+ */
+function preciseMs(m: any): number {
+  const coarse = (m.currentPlaybackTime ?? 0) * 1000;
+  const els = [...document.querySelectorAll("audio")];
+  const el = els.find((a) => !a.paused && a.readyState > 0) ?? els.find((a) => a.currentSrc);
+  const fine = el ? el.currentTime * 1000 : NaN;
+  return Number.isFinite(fine) && Math.abs(fine - coarse) < 1500 ? fine : coarse;
 }
 
 /** Where the local player is, in ms — what the room's drift check compares. */
 export function roomPositionMs(): number {
-  return (music?.currentPlaybackTime ?? 0) * 1000;
+  return music ? preciseMs(music) : 0;
+}
+
+/** MusicKit is PLAYING this song now — a Listen Along room made from it need not reload it. */
+export function roomPlayingSame(catalogId: string): boolean {
+  return !!music?.isPlaying && music?.nowPlayingItem?.id === catalogId;
 }
 
 /** False once MusicKit's one-song queue has played out and gone quiet (§5.5). */

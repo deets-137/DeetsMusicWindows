@@ -52,6 +52,12 @@ The same in every menu. The groups never change places.
 | 6 | The card's own rows | Move to Top / Bottom · Move to Folder ▸ · Refresh ▸ · Stop Station · a pick's note … |
 | 7 | Take away (last) | Remove · Remove from Playlist · Hide · Delete Playlist |
 
+**The divider (2026-09-26, his call).** `MENU_DIVIDER` (context-menu.ts, a `DividerItem`) is a
+hairline in the menu's `--border`, inset like a label, with `--ctx-divider-gap` above and below.
+It is not a row: no hover, no focus. Used ONCE so far: a Diary entry's menu puts it at the top
+of group 6, so the album's rows and the entry's own (Export · Mark as Done · Move to Folder ·
+Delete Entry) read as two groups. Another menu takes it only by the owner's call.
+
 Two menus put a row ABOVE group 1, both by an earlier decision of the owner: the Playlists
 card's **Rename** field (PLAYLISTS.md §10.2, "the field first, ready to type") and the Song
 of the Day suggestion's **Mark** (DeetsOTD.md §8.6, the row the tile exists for).

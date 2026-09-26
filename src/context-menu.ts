@@ -78,7 +78,13 @@ export function menuState(text: string): string {
 
 /** The mark on the chosen row inside a choice flyout. */
 export const MENU_CHOSEN = menuState("\u2713");
-export type MenuItem = ActionItem | InputItem | SubmenuItem;
+/** A thin line between two groups of rows (his call, 2026-09-26: the Diary entry's own rows,
+ *  after the album's). Not a row: no hover, no focus, and the arrow keys pass over it. */
+export interface DividerItem {
+  divider: true;
+}
+export const MENU_DIVIDER: DividerItem = { divider: true };
+export type MenuItem = ActionItem | InputItem | SubmenuItem | DividerItem;
 
 let openEl: HTMLElement | null = null;
 let cleanup: (() => void) | null = null;
@@ -217,6 +223,14 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
 
   const appendItems = (host: HTMLElement, list: MenuItem[], depth: number) => {
     for (const item of list) {
+      if ("divider" in item) {
+        const line = document.createElement("div");
+        line.className = "ctx-menu__divider";
+        line.setAttribute("role", "separator");
+        line.addEventListener("pointerenter", () => closeFrom(depth)); // as a label does
+        host.appendChild(line);
+        continue;
+      }
       if ("sub" in item) {
         const wrap = document.createElement("div");
         wrap.className = "ctx-menu__sub";

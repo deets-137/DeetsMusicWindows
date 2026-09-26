@@ -31,6 +31,8 @@ import {
   roomResumeAt,
   roomPositionMs,
   roomHasSong,
+  roomPlayingSame,
+  isPlayingNow,
   type RoomBridge,
 } from "./player";
 import { toast } from "./toast";
@@ -171,6 +173,14 @@ let ownQueue: queue.QueueSnapshot | null = null;
 let stopped = false;
 /** The last transport the room sent: the drift tick and Listen again read it. */
 let lastTransport: Transport | null = null;
+/**
+ * A room made from music that is PLAYING (Listen Along, FRIENDS.md §16.2): until this time,
+ * and until the room itself plays, the follower leaves the local player alone. Without it the
+ * empty first state and the held seed each pause the host mid-song (found 2026-09-26). 0 = off.
+ */
+let keepPlayingUntil = 0;
+/** The worker's scheduled-start lead (DeetsMusicRooms protocol.js LEAD_MS). */
+const ROOM_LEAD_MS = 1500;
 
 const listeners = new Set<(s: RoomState) => void>();
 /** Subscribe to the room state. The panel and the title bar item render from this. */
@@ -225,8 +235,13 @@ export function setRoomName(name: string): void {
  * what the panel's pills say for the next one. Friends' Listen Along passes a host-only
  * set, so the person who pressed the button simply hears what you hear (FRIENDS.md §7).
  */
-export async function startRoom(controls?: GuestControls): Promise<void> {
+export async function startRoom(controls?: GuestControls, opts?: { keepPlaying?: boolean }): Promise<void> {
   if (inRoom()) return;
+  // Listen Along's room (FRIENDS.md §16.2, his call 2026-09-26): "you are not interrupted".
+  // Read BEFORE anything changes: whether you play, and where you are in the song.
+  const keep = !!opts?.keepPlaying;
+  const wasPlaying = keep && isPlayingNow();
+  const atMs = keep ? roomPositionMs() : 0;
   state = { ...OFF, phase: "starting" };
   emit();
   try {
@@ -256,13 +271,24 @@ export async function startRoom(controls?: GuestControls): Promise<void> {
     // sits idle for ever (the 2026-09-18 log: `room:in` with no `add` after it).
     const current = queue.getCurrent();
     const seed = entriesFrom([...(current ? [current] : []), ...queue.getUpcoming()]);
+    // Only when the room's first song IS the one you are on: `entriesFrom` drops a song the
+    // others cannot play, and a position means nothing on another song.
+    const fromHere = keep && !!current?.catalogId && (seed[0] as { catalogId?: string } | undefined)?.catalogId === current.catalogId;
+    if (wasPlaying && fromHere) keepPlayingUntil = Date.now() + 10_000; // before connect: its first state is empty
     await connect(made.code, true);
-    diag.log("room:seed", { songs: seed.length });
+    diag.log("room:seed", { songs: seed.length, keep: wasPlaying });
     // `seed: true` fills the room WITHOUT starting it (DeetsMusicRooms room.js: a plain
     // first add auto-advances and sets playing). The host's own Play is what starts a
     // room — otherwise the room is already playing before the host has pressed anything,
     // and their Play button is really a Pause button (the owner's call, 2026-09-18).
     if (seed.length) send({ type: "add", entries: seed, where: "end", seed: true });
+    // Listen Along starts FROM WHERE YOU ARE. The room's start is one lead away, so it is set
+    // one lead ahead: when the lead ends, the room and your music are at the same place, and
+    // `step` only lines them up. Paused, it holds at your position instead of 0:00.
+    if (fromHere) {
+      send({ type: "seek", positionMs: Math.round(atMs + (wasPlaying ? ROOM_LEAD_MS : 0)) });
+      if (wasPlaying) send({ type: "play" });
+    }
   } catch (e) {
     fail("Couldn't start a room.", e);
   }
@@ -500,6 +526,7 @@ function teardown(why: string): void {
   hostToken = "";
   playingEntryId = "";
   stopped = false;
+  keepPlayingUntil = 0;
   diag.log("room:left", { why });
   roomHold().catch(() => {});
   roomExit();
@@ -610,6 +637,27 @@ async function step(t: Transport): Promise<void> {
   if (!inRoom()) return;
   if (stopped) return; // this app is not listening; the room plays on (§12.3)
 
+  // A Listen Along room made from music that is playing (FRIENDS.md §16.2): leave the local
+  // player alone until the room plays — the empty first state and the held seed would each
+  // pause it — then, on the song MusicKit already plays, line up without a reload.
+  if (keepPlayingUntil) {
+    const starting = t.playing && t.current;
+    if (!starting && Date.now() < keepPlayingUntil) return;
+    keepPlayingUntil = 0;
+    if (starting && roomPlayingSame(t.current!.catalogId)) {
+      const entryId = t.current!.entryId;
+      playingEntryId = entryId;
+      const startsIn = t.leadUntil ? t.leadUntil - roomNow() : 0;
+      diag.log("room:kept", { id: t.current!.catalogId, startsIn: Math.round(startsIn) });
+      if (startsIn > 0) await sleep(startsIn);
+      const live = lastTransport;
+      if (!inRoom() || stopped || playingEntryId !== entryId || !live?.playing || live.current?.entryId !== entryId) return;
+      await roomResumeAt(expectedPosition(live)); // seeks only when off; the song never stopped
+      settle(entryId);
+      return;
+    }
+  }
+
   const entry = t.current;
   if (!entry) {
     playingEntryId = "";
@@ -675,19 +723,30 @@ const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(r
  * lookup, no licence, no bytes), so the lead schedules the start but does not buffer it:
  * each app's own play takes its own moment, and two apps can begin up to about a second
  * apart. That is under the drift threshold, so nothing would ever correct it. This looks
- * once, SETTLE_MS after the start, and lines the app up with the room to within a quarter
- * of a second.
+ * SETTLE_MS after the start and lines the app up with the room to within a quarter of a
+ * second.
+ *
+ * A seek lands LATE by the time the player needs to start again after it (measured
+ * 2026-09-26: one correction of −335 ms still left the app ~400 ms behind). So after a
+ * correction it looks again, up to SETTLE_TRIES times, and aims ahead by what the last one
+ * missed. The position is the <audio> clock (player.ts `preciseMs`), not MusicKit's whole
+ * second, or none of this could see under a second.
  */
 const SETTLE_MS = 1400;
 const SETTLE_TOLERANCE_MS = 250;
-function settle(entryId: string): void {
+const SETTLE_TRIES = 3;
+function settle(entryId: string, tries = 0, aheadMs = 0): void {
   window.setTimeout(() => {
     if (!inRoom() || stopped || playingEntryId !== entryId || !lastTransport?.playing) return;
     const expected = expectedPosition(lastTransport);
     const local = roomPositionMs();
-    if (local <= 0 || Math.abs(local - expected) < SETTLE_TOLERANCE_MS) return;
-    diag.log("room:settle", { off: Math.round(local - expected) });
-    void roomResumeAt(expectedPosition(lastTransport), true);
+    const off = local - expected; // negative: behind the room
+    if (local <= 0 || Math.abs(off) < SETTLE_TOLERANCE_MS) return;
+    // The first try aims at the room; a later one adds what the one before landed short.
+    const ahead = tries === 0 ? 0 : Math.max(0, Math.min(1500, aheadMs - off));
+    diag.log("room:settle", { off: Math.round(off), try: tries + 1, ahead: Math.round(ahead) });
+    void roomResumeAt(expectedPosition(lastTransport) + ahead, true, SETTLE_TOLERANCE_MS);
+    if (tries + 1 < SETTLE_TRIES) settle(entryId, tries + 1, ahead);
   }, SETTLE_MS);
 }
 

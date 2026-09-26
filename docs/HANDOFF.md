@@ -128,7 +128,12 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
   deployed**; a deploy drops
   every live room socket, so it is his call (WorkerDeploy.md).
 - **The Diary's playing-album box** (2026-09-26, committed on `clode-eval`, `9c656be`):
-  [DIARY.md §4c](features/DIARY.md) steps 1–7.
+  [DIARY.md §4c](features/DIARY.md). Claude ran steps 2–7: all pass. Open: step 1 and his look.
+- **Room sync + Listen Along fixes** (2026-09-26, his calls, committed and merged to `main`):
+  Listen Along keeps the host playing (FRIENDS.md §16.2 note); settle reads the `<audio>`
+  clock and retries (ROOMS.md §18.8); the Diary box's full album menu (DIARY.md §4c); the menu
+  divider (CONTEXT-MENUS.md §2). Measured by Claude on two dev apps; **his ear test passed**.
+  Open: his stress test on live, after the next release.
 - **New badges on pills, skin-only marks** (2026-09-25, committed on `clode-eval`, `da0181d`):
   [QUICK-SETTINGS.md §10a.1](features/QUICK-SETTINGS.md) steps 1–5.
 - **The Apple call counter's hourly line** (APPLE-CALLS.md §5 step 1): an hour of normal use,

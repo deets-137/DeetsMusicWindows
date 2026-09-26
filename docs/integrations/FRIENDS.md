@@ -1057,6 +1057,13 @@ the whole thing:
 > `host`**, so they hear what you hear and can change nothing. You get one toast: *"Sam is
 > listening along."*
 
+> **Corrected 2026-09-26 (his call):** the room DID interrupt you — `startRoom` seeded it held
+> at 0:00 (the Start a room rule), so your music stopped until you pressed Play. Now
+> `startRoom(locked, { keepPlaying: true })` starts the room from your song and position, one
+> lead ahead, and the follower leaves your player alone until the room plays, then lines it
+> up without a reload (`room:kept`). Measured on the host: 103 samples over 10 s, no pause, no
+> jump. Paused when the ask comes: the room holds at your position, not 0:00.
+
 Three consequences, each deliberate:
 
 - **Already hosting → they join that room AS IT IS**, with whatever controls you chose when you
@@ -1537,6 +1544,9 @@ Put `roomsUrl` back to `""` after the test.
 `dev:app -- --second`), driven over CDP with `webview-eval.mjs`: the member rows, the toasts
 and both Friends lists read after each press. Step 6 against the live worker. Step 7 was not
 reachable (the second app minted at launch, before any room); step 8 not read (the info lines
-flush every 5 minutes). One note: the ask toast shows Add · Not now · **Dismiss** (the toast
+flush every 5 minutes). **Step 7 run later the same day: PASS** — a fresh second profile
+(`--second --hidden --fresh=keep`) joined a room through code: `friend_code` null, no
+`friends.json`, no tag on its member row; opening the panel then minted (a mint door by
+design, so it always comes before Add friend). One note: the ask toast shows Add · Not now · **Dismiss** (the toast
 module adds Dismiss to every sticky toast); his call, 2026-09-26: keep it for now. **Open: his
 look at the rows and the toast.**

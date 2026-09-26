@@ -2620,6 +2620,9 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   cursor: default;
 }
 .ctx-menu__label:first-child { padding-top: var(--space-1); }
+/* A line between two groups of rows (DividerItem, 2026-09-26): the menu's own hairline,
+   inset like a label, with --ctx-divider-gap above and below. */
+.ctx-menu__divider { height: 1px; margin: var(--ctx-divider-gap) var(--space-2); background: var(--border); }
 /* A searching field's results (InputItem.onInput): under the field, zero tall until the first
    answer, then as tall as its rows up to a cap. The height change animates in JS. */
 .ctx-menu--search { width: var(--menu-search-w); }

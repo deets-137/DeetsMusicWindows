@@ -12,6 +12,40 @@ updated: 2026-09-25
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, evening — Claude's desk-test pass on the two apps
+
+At his word, with a visual pass at each step:
+- **Listen Along + invite by name: PASS.** Ben's press made Ada's app start a locked room
+  (every control `host`) and Ben joined; Ada's right-click › Invite to my room → Ben's
+  *Join · Not now · Dismiss* → joined. A guest's seek in the locked room: *"The host keeps that
+  control in this room."*
+- **FINDING (a bug against FRIENDS.md §16.2 "uninterrupted"):** Listen Along STOPS the host's
+  music. `answerListenAlong` → `startRoom` seeds with `seed: true`, which holds the room at 0:00
+  until the host presses Play (the 2026-09-18 rule for Start a room). Ada was mid-song; her
+  player went to paused at 0:00. Not fixed: his fork.
+- **Room sync: PASS, with one finding.** Measured with the page's `<audio>.currentTime` (one PC
+  clock, so A − B is the gap): after Next 30 ms, after pause/play 13 ms, after the host's seek
+  32 ms. But the FIRST start of the held room left Ada 390 ms ahead, and nothing corrected it.
+  **Cause:** `roomPositionMs()` reads MusicKit's `currentPlaybackTime`, which is whole seconds,
+  so `settle()` (250 ms tolerance) and the drift check cannot see a sub-second error. Not fixed:
+  his fork.
+- **FRIENDS §18.8 step 7: PASS** (see there).
+- **Diary §4c steps 2–7: PASS** (see there). Two design notes: the box's menu WITHOUT an entry
+  is the short album menu (6 rows: no Go to Artist / Album, Start a Web, Copy Link, Add to
+  Library, Favorite — the playing box has no album id until the click hops), while WITH an entry
+  it is 17 rows with no divider between the album's rows and the Diary's (Export … Delete Entry).
+- **Then his four calls, three built and measured the same evening:** Listen Along keeps the
+  host playing (host probe: no pause, no jump); settle reads the `<audio>` clock, uses its own
+  250 ms tolerance and retries with a learned lead (Listen Along join 400 → 72 ms, Start a
+  room + Play 18 ms); the Diary box's full album menu. The divider: the menu had no divider
+  row kind, so that fork went back to him; his call: a `DividerItem` row kind
+  (`MENU_DIVIDER`, CONTEXT-MENUS.md §2), used in the Diary entry menu only. Uncommitted — his
+  ear test first (player.ts).
+- **Method lessons:** a plain `import('/src/x.ts')` after a hot update is a SECOND module copy
+  (DEBUGGING.md); `.search__tile` is shared by the Library pins and the Diary tiles, so scope a
+  click to its card; the stray room.ts copy wrote an old room queue into Ada's dev queue (its
+  songs still carry a `room:` context until the dev queue plays something new).
+
 ## 2026-09-26, late afternoon — two dev apps; Claude runs the friend desk test
 
 `npm run tauri dev` would have collided with his running installed app (same identifier), so

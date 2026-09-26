@@ -185,6 +185,17 @@ box. Both are `--diary-new-size`.
 6. Right-click the album box, with and without an entry. Check the menus.
 7. A long album name: it ends in "…" at the box width.
 
+**Run by Claude on the dev app, 2026-09-26: steps 2–7 PASS** (driven over CDP, with
+screenshots). Step 2: *Listening now · Sunshine*, the click made the entry with all 11 songs.
+Step 3: *Continue*. Step 4: only `[data-top]` was replaced, the new box animated in, the shelves
+stayed. Step 5: the bar takes the row with focus, the box fades out and back in. Step 6: both
+menus as specified. Step 7: "…" at 144 px. **Step 1 not run** (it needs an empty queue, which
+would throw away his dev queue). Two notes for him in WORKLOG (the two menus differ in length;
+the entry menu has no divider). **His call, built the same day:** the box without an entry
+gets the full album menu — `albumMenu` is handed the playing song (`known: [t]`) as its seed,
+so Go to Artist / Album, Start a Web, Copy Link, Add to Library and ♥ each hop song → album on
+their own click; the right-click costs no Apple call.
+
 ## 10. Export, the Compass, the CLI and agents (built 2026-09-24; his calls below)
 
 **Export** (right-click a tile or the hero › Export; Ctrl+Enter on a Compass Diary row) copies
