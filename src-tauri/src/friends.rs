@@ -196,6 +196,17 @@ pub fn friend_me() -> Result<Me, String> {
     Ok(Me { code: code_for(&public), public_key: b64().encode(public.as_bytes()) })
 }
 
+/// Your friend code if this PC has one, and `None` if it has none. It NEVER mints: joining
+/// a room reads it to make the room tag (FRIENDS.md §18.5), and joining a room is not one of
+/// the three doors that make an identity (§16.5).
+#[tauri::command]
+pub fn friend_code() -> Option<String> {
+    if with_store(|s| s.seed.is_empty()) {
+        return None;
+    }
+    key().ok().map(|k| code_for(&k.verifying_key()))
+}
+
 /// Sign the worker's nonce, so it can tell that this socket really is this friend code
 /// (FRIENDS.md §5.1). The nonce is the worker's, never ours, so a signature cannot be
 /// replayed onto a different connection.

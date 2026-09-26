@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
-sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts]
-updated: 2026-09-23
+sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts]
+updated: 2026-09-26
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
@@ -1332,9 +1332,11 @@ window that stops answering is a fail, whatever the card says.
 
 ## 18. Add a room member as a friend
 
-> **Part:** designed · 2026-09-23. The owner's ask: "an easy way to add other listeners in the
-> room as friends". **Forks decided the same day: F1A, F2A, F3A, F4A + F5A** (the ⭐ options in
-> §18.3). **Nothing is built.** It waits on a rooms-worker deploy (§18.4).
+> **Part:** built · 2026-09-26. The owner's ask: "an easy way to add other listeners in the
+> room as friends". **Forks decided 2026-09-23: F1A, F2A, F3A, F4A + F5A** (the ⭐ options in
+> §18.3). Two more on 2026-09-26 (§18.5): the pending ask shows on the member row only, and a
+> per-room tag lets a friend read "Friend" at once. **Built on `clode-eval`; the rooms worker
+> change is NOT deployed** (§18.6). Desk test: §18.8.
 
 ### 18.1 What the code allows today (read 2026-09-23)
 
@@ -1358,8 +1360,11 @@ window that stops answering is a fail, whatever the card says.
 
 - Each other member's row in the room panel's member list gets a way to add them. It is not on
   your own row, and not on a person who is already your friend (their row can say *Friend* instead).
-- Adding a member does YOUR half of the mutual add at once: their box appears with *"Waiting for
-  them to add you"*. The room carries your code to them, so they can do their half in one press.
+- ~~Adding a member does YOUR half of the mutual add at once: their box appears with *"Waiting
+  for them to add you"*.~~ **Corrected 2026-09-26 (§18.5):** under F1A the room never gives you
+  their code, so your app cannot do your half at the press. Your press sends your code; their
+  **Add** does their half AND sends their code back; your app adds them because you asked. The
+  room carries your code to them, so they can do their half in one press.
 - When both halves are done, the Friends worker does the rest, the same as a pasted code.
 - One offer per person per room: pressing again sends nothing new.
 
@@ -1411,4 +1416,101 @@ calls. No schema change: the list lives in `friends.json`.
 
 **Deploy:** the rooms worker, once, at a time the owner picks (WorkerDeploy.md). The app half can
 ship before the deploy: with no relay, the chip does your half only and says the room could not carry
-the ask.
+the ask. *(2026-09-26: "does your half only" is not possible — see §18.5. With no relay, the chip
+turns back to Add friend and the toast says to add them by code in Friends.)*
+
+### 18.5 The two gaps, and his answers (2026-09-26)
+
+Reading the code before the build found two things §18.2 assumed and F1A does not give.
+
+1. **Your half at the press.** Under F1A only YOUR code travels, so your app has nothing to add.
+   The fix: their **Add** sends their code back through the room, and your app adds it with no
+   question, because you asked (`offerAction` → `answer`). Each side presses once. **His call:**
+   until they answer, the pending ask shows **on the member row only** (*Asked*), and nothing in
+   the Friends panel, because there is no code to make a box from.
+2. **"Friend" on a member who is already your friend.** A member row carried no code, so the
+   panel could not tell. **His call: a room tag.** Each member's join carries
+   `tag` = the first 16 hex characters of SHA-256 over `deetsmusic-room-tag:{room code}:{friend
+   code}` (`src/room-friend-rules.ts`). Your app makes the same tag from each code on your list
+   and compares.
+   - It matches only the real person, never a name lookalike.
+   - It changes from room to room, so a stranger cannot link your visits to two rooms.
+   - A person with no friend code sends no tag: joining reads the code with `friend_code`,
+     which never mints (joining is not a mint door, §16.5).
+   - The limit, said to him: a friend code is 40 bits, so a stranger with a strong GPU could
+     work back from a tag to the code in hours. A code alone shows nothing (the add is mutual).
+
+### 18.6 As built (2026-09-26)
+
+| Where | What |
+|---|---|
+| `../DeetsMusicRooms/src/room.js` | `friendOffer`: the code through `normalizeCode` (friend codes use the room code's alphabet), `to` must be a joined member, one offer per sender and target per socket (`attachment.offered`, capped at the room size so the attachment stays under 2 KB), relayed to that one socket. Errors: `bad-code`, `no-member`. The join keeps `tag`; `memberViews` shows it when set |
+| `../DeetsMusicRooms/src/sanitize.js` | `sanitizeTag`: 16 lower-case hex or nothing |
+| `../DeetsMusicRooms/src/protocol.js` | the member shape and the two messages. `PROTOCOL_V` stays 1: all of it is additive |
+| `../DeetsMusicRooms/scripts/check.mjs` | step 11e: the tag passes, a bad tag drops, the offer reaches one member only, a repeat drops, a bad code and a stranger are refused. **All pass against `wrangler dev`** |
+| `src-tauri/src/friends.rs` | `friend_code`: your code or `None`, never a mint |
+| `src/room-friend-rules.ts` + `tests/room-friend-rules.test.ts` | `roomTag`, `offerAction`, `friendNameFromMember` |
+| `src/room.ts` | the tag on the join; `sendFriendOffer`; the `friendOffer` case; `onFriendOffer`, `onFriendOfferFailed` |
+| `src/room-friends.ts` | the wiring: `asked`, `known`, open offers, the tag map; the ask toast; the answer; the quiet reply; the refusal toasts. Everything resets when the room changes |
+| `src/room-panel.ts`, `styles.css` | `friendControl` on each member row; `.room__member-end` holds Host, the friend control and Remove |
+| `src/friends.ts` | `addFriend(code, name, said?)`: the room's path passes its own sentence |
+
+**What each side sees** (`offerAction`):
+
+| An offer arrives from Sam, and… | Your app |
+|---|---|
+| you asked Sam first | adds Sam; toast *"Sam is now your friend."* (or *"…is already your friend."*) |
+| Sam is already on your list | sends your code back; no toast |
+| neither | sticky toast *"Sam wants to add you as a friend."* **Add** · **Not now**. Sam's row shows **Add friend**, which does the same as the toast's Add |
+
+### 18.7 Decided inside his choices (nothing ships unseen)
+
+- **No toast when you press Add friend.** The chip turning to *Asked* is the answer.
+- **The row order** at the end of a member row: Host, then the friend control, then Remove.
+- *Asked* and *Friend* use the Host tag's family (`room__tag`); Add friend uses Remove's
+  (`room__chip--small`).
+- **The name saved** for the new friend is their room name without the room's ` (2)`.
+- **An open ask toast closes when the room ends or you switch rooms**: its Add could no longer
+  send your code back, so it would do one half only.
+- **The refusals:** a worker without the relay → *"This room can't carry a friend ask yet. Add
+  them by code in Friends."*; the member left → *"Sam has left the room."*; a bad code →
+  *"Couldn't send your friend code."* (warn). Each clears *Asked* back to *Add friend*.
+- **A tag is made at the join only.** A person who mints mid-room (their first Add) has no tag
+  until the next join. The offer exchange already knows them, so their row still reads right.
+- **Known limit:** if YOUR socket reconnects between your ask and their Add, you have a new
+  member id, their reply finds nobody, and only their half is done. Their Friends box then says
+  *"Waiting for them to add you"*; pressing Add friend again fixes it.
+
+### 18.8 The desk test
+
+Needs two apps in one room against a worker that has the change. Before the deploy: run the
+worker locally (`npx wrangler@4 dev --port 8787` in `../DeetsMusicRooms`) and run two dev apps
+on this PC: `npm run tauri dev` and `npm run dev:app`. They have separate data folders, so they
+have separate friend codes. In the DevTools console of EACH, run the line below, then restart
+that app (`roomsUrl` is dev-only and read at launch, SETTINGS.md):
+
+    s = JSON.parse(localStorage["deets.settings"]); s.roomsUrl = "http://127.0.0.1:8787"; localStorage["deets.settings"] = JSON.stringify(s)
+
+Put `s.roomsUrl = ""` back after the test.
+
+1. **A new friend.** A (with no friends) starts a room; B joins. On A's panel, B's row shows
+   **Add friend**; B's row of A too. A presses it: A's chip reads **Asked**, B gets *"A wants to
+   add you as a friend."* B presses **Add**: B gets *"A is now your friend."*, A gets *"B is now
+   your friend."* Both rows read **Friend**, and each Friends list has a box for the other that
+   fills with what they play (not "Waiting").
+2. **Already friends, on the join.** Both leave. A starts a new room; B joins. Each row reads
+   **Friend** at once, with no press.
+3. **Not now.** Remove each other in Friends. New room. A presses Add friend; B presses **Not
+   now**. A's row stays **Asked**; A gets no message. Pressing again sends nothing.
+4. **The row's button answers too.** New room, A asks again; B ignores the toast and presses
+   **Add friend** on A's row: the toast closes, and both become friends as in step 1.
+5. **One side only.** B removes A in Friends (A still has B). New room: A's row of B reads
+   **Friend**; B's row of A reads **Add friend**. B presses it: no toast on A, and B gets
+   *"A is now your friend."*
+6. **No relay.** Before the deploy, point both apps back at the LIVE worker (`roomsUrl` empty)
+   and press Add friend: the chip goes back to **Add friend** and the toast says to add them by
+   code.
+7. **No mint on join.** On a fresh profile (`npm run dev:fresh`) join a room without opening
+   Friends: `friends.json` does not appear. Pressing Add friend on a member makes it.
+8. The log: `room:friend-offer-out`, `room:friend-offer-in`, `room:friend-ask`,
+   `room:friend-accept`, `room:friend-done`, `room:friend-reply`, `room:friend-not-now`.

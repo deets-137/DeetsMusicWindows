@@ -361,6 +361,7 @@ pub fn run() {
             presence::presence_close,
             // Friends (docs/integrations/FRIENDS.md §2, §3). The seed leaves Rust only by `friend_key_export`.
             friends::friend_me,
+            friends::friend_code,
             friends::friend_sign,
             friends::friend_key_export,
             friends::friend_key_import,

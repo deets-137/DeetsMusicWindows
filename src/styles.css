@@ -751,6 +751,8 @@ body {
 .room__member { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); min-height: var(--icon-lg); }
 .room__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room__tag { color: var(--title); }
+/* Host, the friend control and Remove, together at the row's end (FRIENDS.md §18). */
+.room__member-end { display: flex; align-items: center; gap: var(--space-1); flex: none; }
 
 /* ── Friends (FRIENDS.md §3, §6; friends-panel.ts) ───────────────────────────────────
    A friend is a rectangle with a cover in it, not a row of text (his design, 2026-09-20).

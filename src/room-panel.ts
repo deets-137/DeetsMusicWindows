@@ -15,6 +15,7 @@
 import { makeDropdown, keepInWindow, type DropdownHandle } from "./dropdown";
 import { buildFriends } from "./friends-panel";
 import { ensureIdentity, onFriendsChange } from "./friends";
+import { addMemberAsFriend, memberFriendState, onRoomFriendsChange } from "./room-friends";
 import { enterRows } from "./pop";
 import { toast } from "./toast";
 import { onMeter, soundStatus } from "./sound";
@@ -35,6 +36,7 @@ import {
   setRoomName,
   startRoom,
   type GuestControls,
+  type RoomMember,
   type RoomState,
 } from "./room";
 
@@ -132,6 +134,10 @@ export function initRoomPanel(): void {
   // open. Nothing here costs anything when it is shut — reading is a side effect of being
   // connected (FRIENDS.md §5.1 rule 5), so no work is done for a panel nobody is looking at.
   onFriendsChange(() => {
+    if (!panel!.hidden) render(roomState());
+  });
+  // A member row's Add friend / Asked / Friend (FRIENDS.md §18).
+  onRoomFriendsChange(() => {
     if (!panel!.hidden) render(roomState());
   });
   paintButton(roomState());
@@ -561,14 +567,18 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
   for (const member of state.members) {
     const line = el("div", "room__member");
     const who = el("span", "room__who", member.name + (member.memberId === state.memberId ? " (you)" : ""));
-    line.append(who);
-    if (member.isHost) {
-      line.append(el("span", "room__tag", "Host"));
-    } else if (state.isHost) {
+    // The name takes the room left over; Host, the friend control and Remove sit together
+    // at the end (FRIENDS.md §18).
+    const end = el("span", "room__member-end");
+    if (member.isHost) end.append(el("span", "room__tag", "Host"));
+    const friendly = friendControl(member);
+    if (friendly) end.append(friendly);
+    if (!member.isHost && state.isHost) {
       const remove = chip("Remove", `Removes ${member.name} from the room`, "room__chip--small");
       remove.addEventListener("click", () => removeMember(member.memberId));
-      line.append(remove);
+      end.append(remove);
     }
+    line.append(who, end);
     list.append(line);
   }
   into.append(list);
@@ -583,6 +593,35 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
     body.append(controlRow(control, state.guestControls[control.key] ?? DEFAULT_CONTROLS[control.key]));
   }
   into.append(foldButton("Permissions", "Shows what a guest may do: play, skip, seek, add songs and reorder Up Next", body), body);
+}
+
+/**
+ * A member row's friend control (FRIENDS.md §18): an Add friend chip (the Remove chip's
+ * family), or the Host tag's family for "Asked" and "Friend". Nothing on your own row.
+ */
+function friendControl(member: RoomMember): HTMLElement | null {
+  const said = memberFriendState(member);
+  if (said === "self") return null;
+  if (said === "friend") {
+    const tag = el("span", "room__tag", "Friend");
+    tag.title = `${member.name} is on your Friends list`;
+    return tag;
+  }
+  if (said === "asked") {
+    const tag = el("span", "room__tag", "Asked");
+    tag.title = `You sent ${member.name} your friend code. They are added when they press Add`;
+    return tag;
+  }
+  const add = chip(
+    "Add friend",
+    `Sends ${member.name} your friend code. One press on their side adds you both`,
+    "room__chip--small",
+  );
+  add.addEventListener("click", () => {
+    add.disabled = true; // one offer per person; the row repaints to "Asked"
+    void addMemberAsFriend(member);
+  });
+  return add;
 }
 
 /** A fold: the button and the box it opens (`.sound__fold-btn`, sound-panel.ts). */

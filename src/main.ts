@@ -48,6 +48,7 @@ import { initPins } from "./pins";
 import { initRowOrder } from "./row-order";
 import { initPresence } from "./presence";
 import { initFriends } from "./friends";
+import { initRoomFriends } from "./room-friends";
 import { initSotd } from "./sotd";
 import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
@@ -430,6 +431,7 @@ window.addEventListener("DOMContentLoaded", () => {
   void initFriends(); // Friends (friends.ts, FRIENDS.md §5) — mints the key, then one socket
                       // per friend. No heartbeat, and nothing you play leaves this PC until
                       // Settings › Sharing says so.
+  initRoomFriends(); // add a room member as a friend (room-friends.ts, FRIENDS.md §18) — listens only
   void initSotd(); // Song of the Day (sotd.ts, DeetsOTD.md) — the picks mirror, the Ask toast
                    // and the posts that were left waiting. Local, zero Apple calls.
   const restored = initQueuePersist(); // last session's song + Up Next + Previous, per Settings › Restore on launch

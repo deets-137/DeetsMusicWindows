@@ -120,6 +120,11 @@ done; start at [SHOTS.md §11](guide/SHOTS.md) (check ffmpeg, close forks F1–F
 §13.2, a crate change too).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
+- **Add a room member as a friend** (2026-09-26, committed on `clode-eval`):
+  [FRIENDS.md §18.8](integrations/FRIENDS.md) steps 1–8, against a local rooms worker. The
+  rooms worker change (`../DeetsMusicRooms` `master`, committed and pushed) is **not
+  deployed**; a deploy drops
+  every live room socket, so it is his call (WorkerDeploy.md).
 - **The Diary's playing-album box** (2026-09-26, committed on `clode-eval`, `9c656be`):
   [DIARY.md §4c](features/DIARY.md) steps 1–7.
 - **New badges on pills, skin-only marks** (2026-09-25, committed on `clode-eval`, `da0181d`):

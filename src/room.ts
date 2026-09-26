@@ -15,6 +15,8 @@
 // The app never moves to the next song on its own in a room: at the local song end it
 // goes silent and waits for the room, because two apps drifting would each skip (§5.5).
 
+import { invoke } from "@tauri-apps/api/core";
+import { roomTag } from "./room-friend-rules";
 import { setting, setSetting } from "./settings-store";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
@@ -87,6 +89,15 @@ export interface RoomMember {
   name: string;
   isHost: boolean;
   joinedAt: number;
+  /** Their room tag, when they have a friend code (FRIENDS.md §18.5). An older app sends none. */
+  tag?: string;
+}
+
+/** A member offered you their friend code (FRIENDS.md §18). The worker sends it to you alone. */
+export interface FriendOffer {
+  from: string;
+  name: string;
+  code: string;
 }
 
 /** What the panel draws. `phase` is the whole story of the connection. */
@@ -296,10 +307,24 @@ export function endRoom(): void {
   teardown("ended");
 }
 
+/**
+ * This app's room tag for `code`, or none (FRIENDS.md §18.5). `friend_code` never mints:
+ * joining a room is not a door that makes a friend code.
+ */
+async function joinTag(code: string): Promise<string> {
+  try {
+    const me = await invoke<string | null>("friend_code");
+    return me ? await roomTag(code, me) : "";
+  } catch {
+    return "";
+  }
+}
+
 async function connect(code: string, asHost: boolean): Promise<void> {
   closing = false;
   ownQueue ??= queue.snapshot(); // saved once, even across a reconnect (§9.4)
   await roomEnter();
+  const tag = await joinTag(code);
   return new Promise<void>((resolve, reject) => {
     let settled = false;
     // Supersede whatever is still open BEFORE the new socket exists. Its own close
@@ -323,6 +348,7 @@ async function connect(code: string, asHost: boolean): Promise<void> {
         v: PROTOCOL_V,
         name: roomName() || (asHost ? "Host" : "Listener"),
         ...(hostToken ? { hostToken } : {}),
+        ...(tag ? { tag } : {}),
       });
     });
     ws.addEventListener("message", (event) => {
@@ -416,11 +442,43 @@ function onMessage(raw: string): void {
         teardown("full");
         return;
       }
+      // A friend offer that did not go: the member left, or a worker from before the
+      // offer existed (it answers "unknown-command"). room-friends.ts says which.
+      if (message.code === "no-member" || message.code === "bad-code" || message.code === "unknown-command") {
+        offerFailedListeners.forEach((cb) => cb(String(message.code)));
+      }
       diag.warn("room:error", { code: message.code });
+      return;
+    case "friendOffer":
+      if (typeof message.from !== "string" || typeof message.code !== "string") return;
+      diag.log("room:friend-offer-in", { from: message.from });
+      offerListeners.forEach((cb) =>
+        cb({ from: message.from, name: String(message.name ?? ""), code: message.code }),
+      );
       return;
     default:
       return;
   }
+}
+
+// ── add a member as a friend (FRIENDS.md §18) ────────────────────────────────
+
+const offerListeners = new Set<(offer: FriendOffer) => void>();
+const offerFailedListeners = new Set<(code: string) => void>();
+/** A member sent you their friend code. room-friends.ts decides what it does. */
+export function onFriendOffer(cb: (offer: FriendOffer) => void): () => void {
+  offerListeners.add(cb);
+  return () => offerListeners.delete(cb);
+}
+/** The worker refused an offer this app sent: `no-member`, `bad-code` or `unknown-command`. */
+export function onFriendOfferFailed(cb: (code: string) => void): () => void {
+  offerFailedListeners.add(cb);
+  return () => offerFailedListeners.delete(cb);
+}
+/** Send your friend code to ONE member. The worker relays it to them and nobody else. */
+export function sendFriendOffer(to: string, code: string): void {
+  send({ type: "friendOffer", to, code });
+  diag.log("room:friend-offer-out", { to });
 }
 
 function fail(text: string, e: unknown): void {

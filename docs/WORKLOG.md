@@ -12,6 +12,17 @@ updated: 2026-09-25
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, later — add a room member as a friend
+
+His ask: build FRIENDS.md §18 (forks F1A–F5A decided 2026-09-23). Reading the code found two
+gaps; his answers: the pending ask shows on the member row only ("Asked"), and a per-room tag
+(SHA-256 of the room code and the friend code) lets a friend read "Friend" at once (§18.5).
+Built in the rooms worker (`friendOffer` relay, `tag` on the join) and the app
+(`room-friends.ts`, `room-friend-rules.ts`, `friend_code`). `check.mjs` passes against
+`wrangler dev`; tsc, vite build, cargo check and `npm test` pass. Committed and pushed in both
+repos; the worker is not deployed.
+Desk test: FRIENDS.md §18.8.
+
 ## 2026-09-26 — the Diary's playing-album box
 
 His ask: the Diary's "Add an album" box becomes a row, with the playing album first. Forks
