@@ -57,3 +57,4 @@ docs/ops/deetsapp-template.md
 
 # A local [patch] for the AirPlay crate while a crate change is under test (src-tauri/Cargo.toml)
 src-tauri/.cargo/
+shots/

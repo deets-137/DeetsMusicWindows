@@ -24,13 +24,24 @@ const SEED_LOOK = `<script>
     } catch (e) {}
     // The demo's own defaults (WEB-DEMO.md §11, his call 2026-09-26): Ocean's Album light
     // starts at 80, not the app's 0. Written only while the visitor has no value of their own,
-    // so a change they make stays. Only this key: the app fills every other one itself.
+    // so a change they make stays. Only these keys: the app fills every other one itself.
     try {
       var s = JSON.parse(localStorage.getItem("deets.settings") || "{}");
+      var changed = false;
       if (s.oceanLight === undefined) {
         s.oceanLight = 80;
-        localStorage.setItem("deets.settings", JSON.stringify(s));
+        changed = true;
       }
+      // The demo's seeded plays pass Rewind's 50 starts at once, so a fresh visit (and every
+      // Start over) showed "Rewind unlocked" over the page (his call 2026-09-26: fix it). The
+      // unlock is written as done, with the card on, which is what the unlock itself does
+      // (stats.ts), without the notice. The same "only while unset" rule as Album light.
+      if (s.rewindAutoShown === undefined) {
+        s.rewindAutoShown = true;
+        s.rewindCard = true;
+        changed = true;
+      }
+      if (changed) localStorage.setItem("deets.settings", JSON.stringify(s));
     } catch (e) {}
   })();
 </script>`;

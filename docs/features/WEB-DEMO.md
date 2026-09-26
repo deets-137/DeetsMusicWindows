@@ -248,3 +248,17 @@ album box reads "Listening now" and a click starts one. The note texts are in `S
 3. Click the Honey Static box: a new entry opens. Write a note, go back, reload the page: it
    is still there.
 4. *Start over* on the site page: the Diary is back to the two samples.
+
+## 13. No "Rewind unlocked" on a fresh visit (2026-09-26)
+
+The seeded plays pass Rewind's 50 starts at once, so every fresh visit and every *Start over*
+showed "Rewind unlocked: your listening, ranked…" over the page (found by the Shots runner,
+SHOTS.md). His call: fix it. `vite.demo.config.ts` now writes `rewindAutoShown: true` and
+`rewindCard: true` while the visitor has no value of their own: the result of the unlock
+(stats.ts), without its notice. The same "only while unset" rule as Album light (§11).
+
+It reaches deets.solutions with the next `release:publish` (§9.8), or `npm run demo:publish
+-- --push`.
+
+**Desk test.** `npm run demo`, clear the `deets.` keys (or *Start over*), reload: no toast.
+The Rewind card is on the slot menus.

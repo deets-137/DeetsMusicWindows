@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/webview-eval.mjs, vite.demo.config.ts, demo/shim.ts]
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
 
@@ -10,8 +10,10 @@ A script records every feature of the app as a picture or a short clip. The user
 (DOCS-ORG.md §13) and a marketing overview use the same shots. The script runs again before
 each release, so no picture shows an old app.
 
-> **State (2026-09-25):** paper design. No code. Four forks are still open (§9). The next
-> sitting starts at §11.
+> **State (2026-09-26):** §10 step 2 BUILT: `scripts/shots.mjs` takes demo pictures, and
+> `shots.json` holds three samples. The first run gave 6 pictures (3 shots × 2 looks) and a
+> contact sheet, all good; they wait for his review. F1–F4 closed (§1); U10 open. Next: §10
+> step 3, clips, after he likes the pictures.
 
 **Terms:**
 - **Shot** — one picture, or one short clip, of one feature in one look.
@@ -32,7 +34,11 @@ each release, so no picture shows an old app.
 | Where the shot list lives | **`docs/guide/`** — this doc and `shots.json`. |
 | Where shots go (U10) | **Local only, for now.** The owner is checking the cost of each way to host them. U10 stays open. |
 | The marketing page | **Decide later**, after the owner sees the first shots. |
-| How ffmpeg gets on the PC | **`winget install Gyan.FFmpeg`** (the owner started it, 2026-09-25). Not the `ffmpeg-static` npm package (a ~70 MB dev dependency in the repo), and not WebM from the browser's own recorder (an uneven frame rate, poor in Safari). |
+| How ffmpeg gets on the PC | **`winget install Gyan.FFmpeg`** (the owner started it, 2026-09-25). Not the `ffmpeg-static` npm package (a ~70 MB dev dependency in the repo), and not WebM from the browser's own recorder (an uneven frame rate, poor in Safari). Installed: ffmpeg 9.0.2, on the PATH (checked 2026-09-26). |
+| F1 Which looks (2026-09-26) | **Every look for every shot.** His reason: it is scripted, and the files stay on his PC. The disk estimate in §8 grows by the same factor. |
+| F2 Real library in dev-app shots (2026-09-26) | **Allow it, local only.** No swap step. Revisit when U10 puts shots anywhere public. |
+| F3 Taskbar and tray icon (2026-09-26) | **Leave them out.** One hand-made picture if the guide needs it. |
+| F4 Contact sheet (2026-09-26) | **Yes:** `shots/<version>/index.html`, every shot of the run on one page. |
 
 ## 2. What is there (read 2026-09-25)
 
@@ -83,6 +89,24 @@ One entry per shot:
 - `frame` — `app` (the app's surface only) or `window` (the demo page's frame, for a toast
   or a panel that reaches the edge).
 - `poster` — `first`, `last` or a time in seconds.
+- `settings` (added 2026-09-26) — settings keys to seed for this shot, on top of the runner's
+  own: the walk over (`onboardingStep: 0`) and `lookSchedule: "off"`. (The Rewind unlock
+  notice covered every shot on the first run; the demo itself now marks it done, WEB-DEMO.md
+  §13.)
+- `badges` (added 2026-09-26) — `true` keeps the New badges. By default they read as seen (his
+  call): the runner hides the badge's three forms (`.new-badge`, and `::after` on `[data-new]`
+  for the cog and the quick panel logo), because copying the app's seen list would go stale.
+- `looks` — leave it out for every look (F1). The looks are read from `ThemeName` in
+  `src/theme.ts` and `SkinName` in `src/skin.ts`, so a new theme or skin joins by itself.
+
+**The runner as built (2026-09-26):** `node scripts/shots.mjs [--only id,…] [--look
+theme-skin,…]`. It starts the demo (free port from 1430) and headless Edge (free port from
+9300, a throwaway profile, no window), seeds a clean store on EVERY load
+(`Page.addScriptToEvaluateOnNewDocument`), sets the size at device scale 2, waits for the load,
+the fonts and 1.5 s of arrival motion, runs the steps, and captures. A failed shot keeps its
+last good file and is marked in `manifest.json` and on the contact sheet. Edge and Vite are
+killed by process tree at the end, and on Ctrl+C. `kind: "clip"` and `source: "dev"` are
+reported as skipped until §10 steps 3–4.
 
 ## 4. Where each shot comes from
 
@@ -146,8 +170,14 @@ cares, which shot shows it. The owner writes the words. Where the page lives is 
   before looks are multiplied. The owner cuts or adds before the first full run.
 - **A run:** local only. No Apple call: the demo has no network (WEB-DEMO.md §9.4), and the
   dev-app shots avoid playback. Time is mostly the clip seconds, so a few minutes.
-- **Disk:** a picture is about 100–400 KB, a 5 s MP4 about 0.3–1 MB. A version folder is
-  roughly 30–80 MB with every look. That size is why U10 matters.
+- **Disk:** a picture is about 100–400 KB, a 5 s MP4 about 0.3–1 MB. ~~A version folder is
+  roughly 30–80 MB with every look.~~ **Corrected 2026-09-26 with F1 = every look:** the code
+  has 5 skins (vanilla, glass, ocean, press, cyber) and 6 themes (lilac, green, sepia,
+  moonlight, black-yellow, black-red), so 30 looks. 40–60 shots × 30 looks is about
+  1,200–1,800 files, **roughly 0.5–1.3 GB for each version**, and a full run of **one to three
+  hours** (the clip seconds dominate). Measured 2026-09-26: a picture takes about 4 s and is
+  0.2–1.7 MB at device scale 2 (Midi ~0.4–0.7 MB, Max ~0.9–1.7 MB; Glass is the largest). A run can take `--only <id>` or `--look <theme-skin>` to redo a part. That size
+  is why U10 matters.
 - **Tools:** ffmpeg (about 100 MB, dev PC only).
 
 ## 9. Open forks
@@ -155,10 +185,8 @@ cares, which shot shows it. The owner writes the words. Where the page lives is 
 | # | fork | options | recommendation |
 |---|---|---|---|
 | **U10** | Where shots go for the site | R2 upload on each publish · GitHub `main` · other | open: the owner is checking cost |
-| **F1** | Which looks each shot uses | one look for every shot · one look for most and all looks for the look features · every look for every shot | one look for most, all looks only where the look is the feature (skins, Press, Ocean, Cover Wallpaper) |
-| **F2** | Real library in dev-app shots | allow it (local only) · blur the covers and names in the runner · skip dev-app shots until the demo gains those panels | blur in the runner: an `eval` step swaps covers and names for demo ones, CSS only, nothing written |
-| **F3** | The taskbar and tray icon | leave them out · capture the screen with a Windows tool | leave them out; one hand-made picture if the guide needs it |
-| **F4** | A contact sheet | none · `shots/<version>/index.html`, every shot on one page | the contact sheet: one page to review a run |
+
+F1–F4 closed 2026-09-26; the answers are in §1.
 
 ## 10. Build order
 

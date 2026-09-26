@@ -12,6 +12,16 @@ updated: 2026-09-25
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, afternoon — Shots: forks closed, the picture runner
+
+His calls on SHOTS.md §9: F1 every look for every shot (30 looks), F2 real library allowed in
+dev-app shots (local only), F3 no taskbar, F4 a contact sheet. ffmpeg 9.0.2 is on the PATH.
+Built `scripts/shots.mjs` (demo pictures only) and `docs/guide/shots.json` with three samples;
+`shots/` is gitignored. The first run showed the Rewind unlock notice over every shot, and a
+New badge on the cog. His calls: badges read as seen unless a shot asks for them (the runner
+hides the three badge forms; `"badges": true` keeps them), and fix the notice in the demo
+itself (WEB-DEMO.md §13) — live demo visitors saw it too. The sample run after both: clean.
+
 ## 2026-09-26, later — add a room member as a friend
 
 His ask: build FRIENDS.md §18 (forks F1A–F5A decided 2026-09-23). Reading the code found two

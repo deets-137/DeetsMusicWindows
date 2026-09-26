@@ -1,0 +1,34 @@
+{
+  "about": "The shot list for scripts/shots.mjs (docs/guide/SHOTS.md §3). Every shot runs in every look unless it names `looks` (F1, 2026-09-26).",
+  "shots": [
+    {
+      "id": "midi-home",
+      "covers": "features/HOME.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "midi",
+      "steps": [{ "wait": 600 }]
+    },
+    {
+      "id": "max-overview",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "steps": [{ "wait": 600 }]
+    },
+    {
+      "id": "compass-open",
+      "covers": "features/COMPASS.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "midi",
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": ".compass__input" },
+        { "type": "honey", "delay": 60 },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}
