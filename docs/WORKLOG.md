@@ -12,6 +12,26 @@ updated: 2026-09-25
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26 — the Diary's playing-album box
+
+His ask: the Diary's "Add an album" box becomes a row, with the playing album first. Forks
+decided: nothing playing = the + box alone; an album with an entry reads "Continue"; both boxes
+1.5 × a tile; the + turns the whole row into the bar and the album box fades. Built in
+`diary-card.ts` (`nowHTML`, `paintNow`, `openNow`, `fadeOut`) and `diary.css`. Spec and desk
+test: DIARY.md §4c. tsc, vite build and docs:check pass. Desk test open.
+
+## 2026-09-25, afternoon — Shots: the paper design
+- **His ask:** a way to record each section and feature of the app, for a full user guide
+  and a short marketing overview.
+- **Decided (him):** pictures and short clips; from the web demo first, the dev app only for
+  the desktop-only parts; made by a script, run again before each release; the guide rule
+  holds for marketing too (Claude outlines, he writes every word); MP4 with a poster; the shot
+  list lives in `docs/guide/`; shots stay local for now (U10 open, he is checking hosting
+  cost); the marketing page's home is decided later; ffmpeg by `winget install Gyan.FFmpeg`
+  (he started the install).
+- **Written:** [SHOTS.md](guide/SHOTS.md), status `project`, and its line in CLAUDE.md. No code.
+- **Left:** forks F1–F4 (SHOTS.md §9). The next sitting starts at SHOTS.md §11.
+
 ## 2026-09-25, later — the consistency pass desk test; the log review
 - **Desk test:** he passed all three parts of the 2026-09-25 script.
 - **The 401 on a playlist refresh:** at 11:03 the dev app's refresh got HTTP 401 on two of 28

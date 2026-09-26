@@ -153,6 +153,7 @@ nothing about authoring changed when the box did.
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
 | Diary (2026-09-24) | the + cover · the picker's × | Pick an album to write about · Closes the album search | diary-card.ts (DIARY.md §4) |
 | Diary | an entry tile | the album and its artist ("OPIA — VITA") | diary-card.ts `tileHTML` |
+| Diary home (2026-09-26) | the playing album's box | Starts an entry for the album that is playing → has an entry: Opens your entry for the album that is playing | diary-card.ts `nowHTML` (DIARY.md §4c) |
 | Diary header (2026-09-24) | the + (home) · the check (entry) | Starts a new entry or makes a new folder · Marks this entry done and copies its Export. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b, §7) |
 | Diary home | a row header (In progress, Completed, a folder) | Click to open or close. Hold to move this row. New folders appear at the end → hold off: Click to open or close | diary-card.ts `rowHTML` |
 | Diary entry | the score pill's right half ("/ 10 ▾") · the review-date pill · the score pill's number field | The scale for this album: its songs and the album use it · The day of this review · Score for the album: any number from 0 to 10 → marked: Type a number from 0 to 10 / Above this scale's top of 5. Type a new score, or rescale | diary-card.ts |

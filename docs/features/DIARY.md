@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/diary-card.ts, src/diary.ts, src/styles/diary.css, src-tauri/src/diary.rs, src/layout-bus.ts, src/media-menu.ts]
-updated: 2026-09-24
+updated: 2026-09-26
 ---
 # DeetsMusic — the Diary card
 
@@ -71,7 +71,8 @@ A patch changes only the keys it holds; `null` clears.
 
 ## 4. The card
 
-**Root.** The + cover (a shelf tile with no art, half again as big: `--diary-new-size`), then
+**Root.** The playing album's box when an album plays (§4c), and the + cover (a shelf tile
+with no art, half again as big: `--diary-new-size`), then
 "Your entries": a sideways shelf, the newest touched first. A tile reads "7.5/10 · 5 of 12 songs".
 Right-click a tile: the album menu, and **Delete Entry** last.
 
@@ -145,6 +146,44 @@ when its first word goes in; the pill changes it (Today · Pick a date… · No 
   Folder ▸** (a New folder field, the other folders, Remove from Folder), then Delete Entry.
   **Right-click a folder header:** Rename (a field), Delete Folder — its entries stay in their
   status rows. The built-in headers have no menu.
+
+## 4c. The playing album's box (built 2026-09-26; his calls below)
+> **Part:** built · 2026-09-26
+
+The top of the home page is a row: the **album box** (the album that plays now), then the +
+box. Both are `--diary-new-size`.
+
+| Fork | Call |
+|---|---|
+| Nothing plays | **The + box alone**, centered, as before. The row appears when an album plays |
+| The album already has an entry | **"Continue"** and the album name. A click opens that entry |
+| Box size | **Both stay 1.5 × a tile** |
+| The + box opens the search bar | **The whole row turns into the bar.** The album box fades out; it fades back in when the bar closes |
+
+- **Labels:** "Listening now" (no entry yet) or "Continue" (an entry), then the album name,
+  cut with an ellipsis at the box's width.
+- **A click:** an entry → `openEntry`, zero Apple calls. No entry → `openAlbum` with the
+  Compass's Add to Diary rule: a catalog song hops to its album once (memoized), a library song
+  brings the album's songs the library holds. The hop happens on the click, never on draw.
+- **Which entry is "the same album":** the same album name (any case), and the same artist or
+  the same cover. The playing song comes from the queue (`resolveEntry`).
+- **A song change** at the home page redraws only the top row, and only when the album or its
+  entry changed (`paintNow`). A new album box enters with `enterRows`.
+- **Right-click:** the entry's menu when it has one (as a tile's), else the album menu
+  without Add to Diary.
+- Diag: `ui:act {at: "diary", do: "open-now", has}`.
+
+**Desk test (open).**
+1. Nothing playing: open the Diary. Only the + box shows, centered.
+2. Play an album that has no entry. The album box appears first, "Listening now", with its
+   cover and name. Click it: the entry opens, made for the first time.
+3. Back. The box now reads "Continue". Click it: the same entry opens.
+4. Play a song from another album while the home page shows. The box changes to that album and
+   slides in. The shelves do not redraw or jump.
+5. Click the + box: the row turns into the search bar and the album box fades. Press Escape:
+   the bar shrinks back to the + and the album box fades in.
+6. Right-click the album box, with and without an entry. Check the menus.
+7. A long album name: it ends in "…" at the box width.
 
 ## 10. Export, the Compass, the CLI and agents (built 2026-09-24; his calls below)
 

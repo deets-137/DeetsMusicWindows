@@ -31,6 +31,22 @@
 }
 .diary__new-art svg { width: var(--icon-lg); height: var(--icon-lg); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .diary__new-label { font-size: var(--fs-subtext); }
+/* The top row (DIARY.md §4c): the playing album's box, then the + box, centered. With
+   nothing playing the + box sits alone in the same place. Tops line up; the album box has
+   one more text line. */
+.diary__top { align-self: center; display: flex; align-items: flex-start; justify-content: center; gap: var(--space-4); }
+.diary__top .diary__new { align-self: auto; }
+/* The album box is the + box with the cover in the square. */
+.diary__now { width: var(--diary-new-size); }
+img.diary__now-art { object-fit: cover; }
+.diary__now.is-context .diary__now-art { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.diary__now-name {
+  max-width: 100%; margin-top: calc(-1 * var(--space-1));
+  font-size: var(--fs-subtext); color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* The album box's copy that fades out as the row turns into the bar (diary-card.ts `fadeOut`). */
+.diary__ghost { position: fixed; z-index: 80; pointer-events: none; margin: 0; }
 .diary__pick { display: flex; flex-direction: column; gap: var(--space-2); }
 /* The morph's stand-in box (diary-card.ts `morph`): the cover's square travelling into the
    search bar. Its place, size, corner and fill are keyframed in JS from the two real

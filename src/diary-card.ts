@@ -19,7 +19,8 @@ import "./styles/diary.css";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import type { Track } from "./library";
 import type { Album } from "./search";
-import { searchCatalog, collectionTracks, materializeTrack } from "./search";
+import { searchCatalog, collectionTracks, materializeTrack, catalogRelated } from "./search";
+import { resolveEntry } from "./queue-rows";
 import { tracks as storeTracks, addTransientTracks } from "./track-store";
 import { albumKey } from "./rewind";
 import { albumOrder, heroCover } from "./library-card";
@@ -223,6 +224,75 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     `<button class="diary__new" type="button" data-new title="Pick an album to write about">
       <span class="diary__new-art">${ICON_PLUS}</span><span class="diary__new-label">Add an album</span>
     </button>`;
+
+  // ── the playing album's box (DIARY.md §4c, his calls 2026-09-26) ───────────────
+  // First in the top row, before the + box. Nothing plays: the + box alone (1A). The album
+  // has an entry: "Continue" and a click opens it, at zero Apple calls (2A).
+  const playingTrack = (): Track | undefined => {
+    const cur = queue.getCurrent();
+    const t = cur ? resolveEntry(cur) : undefined;
+    return t?.albumName ? t : undefined;
+  };
+  const same = (a: string | undefined, b: string | undefined) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+  /** The entry the playing album already has: the same name, and the same artist or cover. */
+  const entryFor = (t: Track): DiarySummary | undefined =>
+    list.find(
+      (s) =>
+        same(s.album.title, t.albumName) &&
+        (same(s.album.artistName, t.artistName) || (!!t.artwork && s.album.artwork?.urlTemplate === t.artwork.urlTemplate)),
+    );
+  /** The playing album, as the picker hands one over. A catalog song hops to its album once
+   *  (memoized in search.ts) on the click, never before; a library song brings the album's
+   *  songs the library holds (the Compass's Add to Diary rule). */
+  const playingAlbumIn = (t: Track): AlbumIn => {
+    const lib = () => albumOrder(storeTracks().filter((x) => albumKey(x) === albumKey(t)));
+    return {
+      album: { title: t.albumName ?? "Unknown Album", artistName: t.artistName, artwork: t.artwork, genres: [], releaseDate: t.releaseDate },
+      tracks: async () => {
+        if (!t.catalogId) return lib();
+        const ref = await catalogRelated("songs", t.catalogId, "albums").catch(() => null);
+        return ref?.id ? collectionTracks("albums", ref.id) : lib();
+      },
+    };
+  };
+  /** What the box shows now: redraw only when this changes. */
+  let nowShown = "";
+  const nowKey = (): string => {
+    const t = playingTrack();
+    return t ? `${albumKey(t)}|${entryFor(t)?.id ?? ""}` : "";
+  };
+  const nowHTML = (): string => {
+    const t = playingTrack();
+    if (!t) return "";
+    const has = entryFor(t);
+    const hint = has ? "Opens your entry for the album that is playing" : "Starts an entry for the album that is playing";
+    return `<button class="diary__new diary__now" type="button" data-now title="${esc(hint)}">
+      ${coverHTML(art(t.artwork?.urlTemplate, TILE_PX), "diary__new-art diary__now-art")}
+      <span class="diary__new-label">${has ? "Continue" : "Listening now"}</span>
+      <span class="diary__now-name">${esc(t.albumName ?? "")}</span>
+    </button>`;
+  };
+  const topHTML = (): string => {
+    nowShown = nowKey();
+    return `<div class="diary__top" data-top>${nowHTML()}${newHTML()}</div>`;
+  };
+  /** A song change at the home page: only the album box redraws, and a new box enters. */
+  const paintNow = () => {
+    if (entry || picking) return;
+    const top = body.querySelector<HTMLElement>("[data-top]");
+    if (!top || nowKey() === nowShown) return;
+    top.outerHTML = topHTML();
+    const box = body.querySelector<HTMLElement>("[data-now]");
+    if (box) enterRows([box]);
+  };
+  const openNow = () => {
+    const t = playingTrack();
+    if (!t) return;
+    const has = entryFor(t);
+    diag.log("ui:act", { at: "diary", do: "open-now", has: !!has });
+    if (has) void openEntry(has.id);
+    else openAlbum(playingAlbumIn(t), "now");
+  };
   const pickerHTML = () =>
     `<div class="diary__pick">
       <div class="search__field">
@@ -244,7 +314,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         const keepScroll = body.querySelector<HTMLElement>(".diary__root")?.scrollTop ?? 0;
         const lead = l.length ? "" : `<p class="qcard__empty">Pick an album, listen, and write about each song.</p>`;
         body.innerHTML =
-          `<div class="diary__root app-scroll">${picking ? pickerHTML() : newHTML()}${lead}` +
+          `<div class="diary__root app-scroll">${picking ? pickerHTML() : topHTML()}${lead}` +
           `<div class="diary__secs" data-secs>${rows.map(rowHTML).join("")}</div></div>`;
         const rootEl = body.querySelector<HTMLElement>(".diary__root");
         if (rootEl) rootEl.scrollTop = keepScroll;
@@ -396,12 +466,28 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     };
     anim.finished.then(land, land);
   };
+  /** The album box leaves as the row turns into the bar (his call 4A): a copy of it, fixed
+   *  where it stood, fades out, since the row itself is already gone. */
+  const fadeOut = (el: HTMLElement, ms: number, easing: string) => {
+    const r = el.getBoundingClientRect();
+    const ghost = el.cloneNode(true) as HTMLElement;
+    ghost.classList.add("diary__ghost");
+    Object.assign(ghost.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    document.body.appendChild(ghost);
+    const end = () => ghost.remove();
+    ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing, fill: "forwards" }).finished.then(end, end);
+  };
   const openPicker = () => {
-    const cover = body.querySelector<HTMLElement>(".diary__new-art");
-    const btn = body.querySelector<HTMLElement>("[data-new]");
+    const cover = body.querySelector<HTMLElement>("[data-new] .diary__new-art");
+    const btn = body.querySelector<HTMLElement>("[data-top]");
+    const now = body.querySelector<HTMLElement>("[data-now]");
     picking = true;
     diag.log("ui:act", { at: "diary", do: "pick-open" });
     if (!cover || !btn) return renderRoot();
+    if (now && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const { ms, easing } = tokenMotion(now, "--diary-morph-dur", "--diary-morph-ease");
+      fadeOut(now, ms / 2, easing);
+    }
     morph(
       cover,
       () => {
@@ -420,8 +506,14 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     ++pickSeq; // an Apple search still on its way must not draw into the bar that left
     if (!field || !pick) return renderRoot();
     morph(field, () => {
-      pick.outerHTML = newHTML();
-      return body.querySelector<HTMLElement>(".diary__new-art");
+      pick.outerHTML = topHTML();
+      // The album box comes back with the row: it fades in while the bar shrinks to the +.
+      const now = body.querySelector<HTMLElement>("[data-now]");
+      if (now && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const { ms, easing } = tokenMotion(now, "--diary-morph-dur", "--diary-morph-ease");
+        now.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing });
+      }
+      return body.querySelector<HTMLElement>("[data-new] .diary__new-art");
     });
   };
 
@@ -992,6 +1084,10 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         openPicker();
         return;
       }
+      if (target.closest("[data-now]")) {
+        openNow();
+        return;
+      }
       if (target.closest("[data-pick-close]")) {
         closePicker();
         return;
@@ -1129,6 +1225,23 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         entryMenu({ ...s, tracks: () => diaryGet(s.id).then((e) => e.tracks) }),
         () => tile.classList.remove("is-context"),
       );
+      return;
+    }
+    // The playing album's box: the entry's menu when it has one, else the album menu.
+    const nowBox = target.closest<HTMLElement>("[data-now]");
+    const t = nowBox && !entry ? playingTrack() : undefined;
+    if (nowBox && t) {
+      ev.preventDefault();
+      const has = entryFor(t);
+      const a = playingAlbumIn(t);
+      const items = has
+        ? entryMenu({ ...has, tracks: () => diaryGet(has.id).then((e) => e.tracks) })
+        : albumMenu(
+            { title: a.album.title, artistName: a.album.artistName, artwork: a.album.artwork, known: [], whole: () => Promise.resolve(a.tracks()), catalog: !!t.catalogId },
+            { context: "diary:now", inDiary: true },
+          );
+      nowBox.classList.add("is-context");
+      openContextMenu(ev.clientX, ev.clientY, items, () => nowBox.classList.remove("is-context"));
       return;
     }
     const head = target.closest<HTMLElement>("[data-sec-head]");
@@ -1323,8 +1436,9 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   // ── live updates ───────────────────────────────────────────────────────────────
   // The song that plays moves the foot (6B) and the row mark.
+  // At the home page it moves the playing album's box instead.
   const unsubQueue = queue.onQueueChange(() => {
-    if (!entry) return;
+    if (!entry) return paintNow();
     const k = playingKey();
     if (k && k !== selKey) select(k);
     else renderRows();
