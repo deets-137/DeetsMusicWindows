@@ -174,9 +174,10 @@ export async function initWalk(): Promise<void> {
 export async function restartWalk(): Promise<void> {
   if (live) return;
   setSetting("onboardingStep", 1);
-  // The quick panel's square badges come back too (QUICK-SETTINGS.md §8). A new setting's
-  // mark ("row:" / "sec:", §10) does not: the tour is about the app, not about what is new.
-  setSetting("quickSeen", setting("quickSeen").filter((k) => k.startsWith("row:") || k.startsWith("sec:")));
+  // Every New badge comes back too: the quick panel's squares and the cog (QUICK-SETTINGS.md
+  // §8, §11), and each new setting's row, section and pill mark (§10, §10a). His call
+  // 2026-09-25; before, the tour kept the "row:" / "sec:" marks seen.
+  setSetting("quickSeen", []);
   run(await past1(1));
 }
 

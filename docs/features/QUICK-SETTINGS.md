@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-09-24
 sources: [src/quick-panel.ts]
-updated: 2026-09-21
+updated: 2026-09-25
 ---
 # Quick settings — the cog's panel
 
@@ -210,8 +210,10 @@ The badge outlives the panel's own onboarding: it is how a NEW setting announces
   a section badge, only its rows'.
 - **Off:** the first time the pointer rests on the row, or anywhere in the section (the
   heading included). The seen key joins `quickSeen` as `row:<id>` / `sec:<title>`; every
-  open copy redraws. *Show the tour again* brings back the square badges only, never these:
-  the tour is about the app, not about what is new.
+  open copy redraws. *Show the tour again* brings these back too, with the square badges
+  (his call 2026-09-25; until then it kept them seen, because the tour was about the app,
+  not about what is new). It writes `quickSeen: []`, so a user who started on a fresh
+  install then sees the N on every mark in `NEW_MARKS`, the old ones included.
 - **Existing users vs new ones (his call, 2026-09-20):** a mark stays until THAT user clears
   it — for an existing user, for as long as it takes. A brand-new install starts with every
   mark in `NEW_MARKS` already seen (`seedNewMarks`, from `isFreshInstall()` — the same
@@ -234,6 +236,53 @@ The badge outlives the panel's own onboarding: it is how a NEW setting announces
 4. `npm run dev:fresh`: a brand-new user sees N on every square, and NO N beside Friends or Share activity on Discord.
 5. Settings card: with `quickSeen` cleared by hand (the dev app's localStorage), Settings › Friends and Settings › Sharing › Share activity on Discord show the same Ns; a hover there clears the panel's too.
 
+### 10a. The N on a pill, and rows you cannot see
+
+> **Part:** built · 2026-09-25
+
+The problem (his screenshot, 2026-09-25, a live install): Glass › Canvas shows its rows
+(Tiles, Picture, Diffusion, Aurora color) only after you pick Covers or Picture. Those rows
+were unseen, so the cog and the brush square wore the N. No row on screen wore one. The Ocean
+rows did the same under Glass. Cause: `unseenNewIn` / `unseenNewAny` counted every unseen
+mark, shown or not.
+
+His choices (2026-09-25):
+- **Which pills:** Covers AND Picture (each one shows unseen rows).
+- **What clears the pill's N:** the pointer resting on that pill. The rows it shows keep
+  their own N and clear on their own hover. So the cog's N stays until you see those rows.
+- **The general cause, fixed too:** a mark carries the `skin` its row shows under. Under any
+  other skin it does not light the cog or a square. It lights them again when you change to
+  that skin (`onSkinChange` repaints, quick-panel.ts).
+
+As built:
+- A mark can carry `via: { row, values }`: the row shows only after one of those pills in
+  that row is picked. `newPill` puts the N inline after the pill's word while the pill is not
+  the picked one, its own key `pill:<row>=<value>` is unseen, and a row it shows is unseen.
+  The picked pill has no N: its rows are on screen with their own.
+- A pill's N is inline, not on its corner, because `.set__split` clips its halves
+  (`overflow: hidden`).
+- The row hover now clears only the N in the row's label; the pill hover clears the pill's.
+- No seeding for pill keys: a new install has the rows seen, so no pill wears an N.
+
+**The letter is centered on its capital (2026-09-25).** The disc centered the N's line box.
+The line box keeps unequal room above and below the capital, and that room changes with
+each skin's font, so the N sat high or low. Now `text-box: trim-both cap alphabetic` trims
+the line to the cap height, and `padding-top: calc((size − 1cap) / 2)` centers it. One rule
+for all three places (the square's corner, the cog, inline).
+
+### 10a.1 Desk test
+
+1. Live-like state: Glass, Canvas on Aurora, `quickSeen` without `row:glasstiles` and the
+   rest. Settings › Skin settings: *Covers* and *Picture* each show an N after the word.
+   *Aurora* has none.
+2. Rest the pointer on *Covers*: its N goes. *Picture* keeps its N. The cog still has its N.
+3. Pick *Covers*: Tiles, Diffusion and Aurora color show, each with its N. Rest on each: the
+   N goes. *Picture* keeps its N while Picture still has unseen rows.
+4. Change to Ocean with the Glass rows still unseen: the cog and brush square N depend only
+   on the Ocean rows. Back to Glass: they light again.
+5. Look at the N in each skin (the square, the cog, a row, a pill): the letter sits in the
+   middle of the disc, not high or low.
+
 ## 11. The N on the title bar cog
 
 > **Part:** built · 2026-09-21
@@ -246,8 +295,8 @@ The onboarding walk does not change.
 - **Off:** the first press on the cog adds `cog` to `quickSeen`. A New mark keeps it on until
   that mark is hovered.
 - **Existing users (his call):** they see it once after the update too. `cog` is not seeded
-  by `seedNewMarks`. *Show the tour again* puts it back with the square badges (walk.ts keeps
-  only `row:` / `sec:` keys).
+  by `seedNewMarks`. *Show the tour again* puts it back with every other badge (walk.ts
+  writes `[]`, §10).
 - **Look:** the corner disc of §8 on the button's top right corner, with no ring: the title
   bar has no surface of its own. The disc sits on the button, not the svg, so it does not
   turn with the cog.

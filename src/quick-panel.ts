@@ -13,6 +13,7 @@
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { mountSettingsParts, unseenNewIn, unseenNewAny, seedNewMarks, type SettingsPart } from "./settings-card";
+import { onSkinChange } from "./skin";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { requestCard, requestSetting } from "./layout-bus";
 import { setting, setSetting, onSettingsChange } from "./settings-store";
@@ -219,6 +220,7 @@ export function initQuickPanel(): void {
   seedNewMarks(); // a brand-new install: today's New marks are not new to them (§10)
   paintNew();
   onSettingsChange((k) => { if (k === "quickSeen") paintNew(); });
+  onSkinChange(() => paintNew()); // a skin's own rows light the N only under that skin (§10a)
   cog.addEventListener("click", () => {
     const seen = setting("quickSeen");
     if (!seen.includes("cog")) setSetting("quickSeen", [...seen, "cog"]);

@@ -147,22 +147,42 @@ const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
 //    starts with every mark in this list seen (`seedNewMarks`) — nothing here is new to
 //    them. The seen marks share the quick panel's `quickSeen` list, as "row:<id>" and
 //    "sec:<title>". ──
-const NEW_MARKS: { section: string; row?: string }[] = [
+//    `skin`: the row shows in that skin only. Under another skin its mark does not light the
+//    cog or a quick panel square (his call 2026-09-25: nothing leads you to a row you cannot
+//    see). `via`: the row shows only after a pill in another row is picked; that pill wears
+//    the N while the row is unseen, so the N leads you to it (QUICK-SETTINGS.md §10a).
+interface NewMark {
+  section: string;
+  row?: string;
+  skin?: SkinName;
+  via?: { row: string; values: string[] };
+}
+const NEW_MARKS: NewMark[] = [
   { section: "Friends" }, // Friends, built 2026-09-20
   { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
-  { section: "Skin settings", row: "oceancards" }, // Ocean card opacity, built 2026-09-23
-  { section: "Skin settings", row: "oceanlight" }, // Ocean album light, built 2026-09-23
+  { section: "Skin settings", row: "oceancards", skin: "ocean" }, // Ocean card opacity, built 2026-09-23
+  { section: "Skin settings", row: "oceanlight", skin: "ocean" }, // Ocean album light, built 2026-09-23
   { section: "Diary" }, // the Diary card's section, built 2026-09-24
   { section: "Connections", row: "agentdiary" }, // Agents use the Diary, built 2026-09-24
-  { section: "Skin settings", row: "glasswallpaper" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
-  { section: "Skin settings", row: "glasstiles" },
-  { section: "Skin settings", row: "glasspicture" },
-  { section: "Skin settings", row: "glassdiffusion" },
-  { section: "Skin settings", row: "glassauroracolor" },
+  { section: "Skin settings", row: "glasswallpaper", skin: "glass" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
+  { section: "Skin settings", row: "glasstiles", skin: "glass", via: { row: "glasswallpaper", values: ["covers"] } },
+  { section: "Skin settings", row: "glasspicture", skin: "glass", via: { row: "glasswallpaper", values: ["picture"] } },
+  { section: "Skin settings", row: "glassdiffusion", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
+  { section: "Skin settings", row: "glassauroracolor", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
 ];
-const markKey = (m: { section: string; row?: string }) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
+const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
+/** An unseen mark that can lead you somewhere: its row's skin is the one on now. */
+const liveNew = (m: NewMark) => unseen(markKey(m)) && (!m.skin || currentSkin() === m.skin);
 const newRow = (id: string) => NEW_MARKS.some((m) => m.row === id && unseen(`row:${id}`));
+/** A pill's own seen key. Hovering the pill clears only its N; the rows it shows keep theirs. */
+const pillKey = (row: string, value: string) => `pill:${row}=${value}`;
+/** Does this pill wear the N? Only while it is not the picked one (its rows show then, each
+ *  with its own N) and a row it shows is unseen. */
+const newPill = (row: string, value: string, picked: string) =>
+  value !== picked &&
+  unseen(pillKey(row, value)) &&
+  NEW_MARKS.some((m) => m.via?.row === row && m.via.values.includes(value) && unseen(markKey(m)));
 const newSection = (title: string) => NEW_MARKS.some((m) => !m.row && m.section === title && unseen(`sec:${title}`));
 /** The N itself, inline after a name. `key` is what the first hover marks seen. */
 const newBadge = (key: string) => `<span class="new-badge" data-new-mark="${esc(key)}" aria-label="New">N</span>`;
@@ -182,11 +202,11 @@ export function seedNewMarks(): void {
 /** Does anything in these parts still wear a New badge? (a quick panel square shows its own N then) */
 export function unseenNewIn(parts: SettingsPart[]): boolean {
   return NEW_MARKS.some(
-    (m) => unseen(markKey(m)) && parts.some((p) => p.title === m.section && (!m.row ? !p.rows : !p.rows || p.rows.includes(m.row))),
+    (m) => liveNew(m) && parts.some((p) => p.title === m.section && (!m.row ? !p.rows : !p.rows || p.rows.includes(m.row))),
   );
 }
 /** Does any New mark anywhere still wear its N? (the title bar cog shows its own N then) */
-export const unseenNewAny = (): boolean => NEW_MARKS.some((m) => unseen(markKey(m)));
+export const unseenNewAny = (): boolean => NEW_MARKS.some(liveNew);
 /** The header's count and the Compass index both mean settings, not sub-headings. */
 const settingRows = (rows: Row[]): Row[] => shown(rows).filter((r) => r.kind !== "head");
 const headRow = (id: string, label: string): HeadRow => ({ kind: "head", id, label });
@@ -904,7 +924,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           // it before the library had loaded, has no other way back: `onboardingStep` is 0
           // and nothing on screen offers the sprites.
           kind: "split", id: "tour", label: "Show the tour again",
-          hint: () => "Deets and Happy walk you through the app, the way they did on the first launch",
+          hint: () => "Deets and Happy walk you through the app, the way they did on the first launch. Every New badge comes back too",
           halves: [
             {
               type: "action", label: "Show",
@@ -2115,7 +2135,10 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const choice = r as ChoiceRow;
     const cur = choice.get ? choice.get() : String(setting(choice.key!));
     const opts = choice.options
-      .map((o) => `<button class="set__half" type="button" data-row="${choice.id}" data-value="${esc(o.value)}" aria-pressed="${o.value === cur}">${esc(o.label)}</button>`)
+      .map((o) => {
+        const pill = newPill(choice.id, o.value, cur) ? newBadge(pillKey(choice.id, o.value)) : "";
+        return `<button class="set__half" type="button" data-row="${choice.id}" data-value="${esc(o.value)}" aria-pressed="${o.value === cur}">${esc(o.label)}${pill}</button>`;
+      })
       .join("");
     return `<div class="set__row set__row--choice${fx.cls}"${mark}${tip}>${label}<div class="set__split" role="radiogroup" aria-label="${esc(choice.label)}">${opts}</div></div>`;
   };
@@ -2425,9 +2448,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
 
   // A New badge goes the first time the pointer rests on its row, or anywhere in its
   // section (QUICK-SETTINGS.md §10, his call: hover, not a press). Every open copy redraws.
+  // A pill's N goes only when the pointer rests on that pill (§10a); the row's own N sits in
+  // its label.
   body.addEventListener("mouseover", (e) => {
     const t = e.target as HTMLElement;
-    const row = t.closest<HTMLElement>("[data-set-row]")?.querySelector<HTMLElement>("[data-new-mark]")?.dataset.newMark;
+    const pill = t.closest<HTMLElement>(".set__half")?.querySelector<HTMLElement>("[data-new-mark]")?.dataset.newMark;
+    if (pill) seeNew(pill);
+    const row = t.closest<HTMLElement>("[data-set-row]")?.querySelector<HTMLElement>(".set__label [data-new-mark]")?.dataset.newMark;
     if (row) seeNew(row);
     const sec = t.closest<HTMLElement>(".set__section")?.querySelector<HTMLElement>(":scope > .set__head [data-new-mark], :scope > .set__sub-head [data-new-mark]")?.dataset.newMark;
     if (sec) seeNew(sec);

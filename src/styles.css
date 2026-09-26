@@ -164,19 +164,26 @@ body {
 /* The same disc also sits inline after the name of a new Settings row or section
    (`.new-badge`, §10), in the Settings card and in the panel alike. */
 .quick__logo, .cog__btn { position: relative; }
+/* The N is centered on its capital, not on its line (2026-09-25). A line box keeps room
+   above the capital for accents and below it for descenders. That room is not the same above
+   and below, and it changes with each skin's font, so a line centered in the disc put the N
+   off center. `text-box` trims the line to the cap height, and the padding centers that. */
 .quick__logo[data-new]::after, .cog__btn[data-new]::after, .new-badge {
   box-sizing: border-box; width: var(--new-badge-size); height: var(--new-badge-size);
-  place-items: center;
+  padding-top: calc((var(--new-badge-size) - 1cap) / 2);
+  text-align: center;
+  text-box: trim-both cap alphabetic;
   border-radius: 50%;
   background: var(--new-badge); color: var(--new-badge-ink);
   font-family: var(--font-body); font-size: var(--new-badge-fs); font-weight: 600; line-height: 1;
-  letter-spacing: 0; text-transform: none; text-decoration: none;
+  letter-spacing: 0; text-transform: none; text-decoration: none; text-indent: 0;
+  overflow: hidden;
   pointer-events: none;
 }
 .quick__logo[data-new]::after {
   content: "N";
   position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
-  display: grid;
+  display: block;
   box-shadow: 0 0 0 var(--new-badge-ring) var(--menu-surface);
 }
 /* The title bar cog's N (§11): the same disc on its top right corner. The title bar has
@@ -185,10 +192,10 @@ body {
 .cog__btn[data-new]::after {
   content: "N";
   position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
-  display: grid;
+  display: block;
 }
 .new-badge {
-  display: inline-grid; flex: 0 0 auto;
+  display: inline-block; flex: 0 0 auto;
   margin-left: var(--space-1);
   vertical-align: middle;
 }
