@@ -115,7 +115,8 @@ old installs' Guide button opens.
   commands are background jobs.
 
 **`docs/ideas/`** — not built; never tell a user the app does these. **`docs/guide/`** — the
-user guide for deets.solutions (DOCS-ORG.md §13).
+user guide for deets.solutions (DOCS-ORG.md §13). `SHOTS.md` — the pictures and clips of each
+feature, made by a script from the demo; for the guide and a marketing overview.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
