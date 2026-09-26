@@ -22,6 +22,16 @@ const SEED_LOOK = `<script>
         if (site && !localStorage.getItem(pairs[i][1])) localStorage.setItem(pairs[i][1], site);
       }
     } catch (e) {}
+    // The demo's own defaults (WEB-DEMO.md §11, his call 2026-09-26): Ocean's Album light
+    // starts at 80, not the app's 0. Written only while the visitor has no value of their own,
+    // so a change they make stays. Only this key: the app fills every other one itself.
+    try {
+      var s = JSON.parse(localStorage.getItem("deets.settings") || "{}");
+      if (s.oceanLight === undefined) {
+        s.oceanLight = 80;
+        localStorage.setItem("deets.settings", JSON.stringify(s));
+      }
+    } catch (e) {}
   })();
 </script>`;
 

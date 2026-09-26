@@ -6,6 +6,7 @@
 import type { Track } from "../src/library";
 import type { Playlist, SearchResults } from "../src/search";
 import * as cat from "./catalog";
+import { diaryHandlers } from "./diary";
 
 const VERSION = __DEMO_VERSION__;
 
@@ -533,7 +534,18 @@ const H: Record<string, Handler> = {
       .filter((t) => (t.composer ?? "").split(/,\s*/).includes(name))
       .map((t) => ({ catalogId: t.catalogId, title: t.title, artistName: t.artistName, mine: store.loved.includes(t.catalogId!) ? 3 : store.plays[t.catalogId!] ? 2 : 1, track: t }));
   },
-  album_palette: () => null,
+  // The album light (WEB-DEMO.md §11): the palette each cover was drawn with, as Apple's
+  // bgColor / textColor1 / textColor2 would give it. The NP aurora, the album text, the tray
+  // and the Ocean glow and neon all read it through album-color.ts, as in the app.
+  album_palette: ({ coverUrl }: { coverUrl: string }) => {
+    const a =
+      cat.tracks.find((t) => t.artwork?.urlTemplate === coverUrl)?.artwork ??
+      cat.albums.find((x) => x.artwork?.urlTemplate === coverUrl)?.artwork ??
+      [...cat.stations, cat.myStation, cat.discovery].find((s) => s.artwork?.urlTemplate === coverUrl)?.artwork;
+    if (!a?.bgColor) return null;
+    const hex = (c?: string) => (c ? `#${c}` : undefined);
+    return { bg: hex(a.bgColor), c1: hex(a.textColors?.[0]), c2: hex(a.textColors?.[1]) };
+  },
 
   // The playlist web (PLAYLIST-WEB.md) reads Apple's artist graph: desktop only
   web_seeds: () => [],
@@ -588,6 +600,9 @@ const H: Record<string, Handler> = {
   // The tray panel and the look it copies
   appearance_publish: (a, host) => host.appearance(a),
   np_snapshot: () => null,
+
+  // The Diary, with sample entries (demo/diary.ts, WEB-DEMO.md §12)
+  ...diaryHandlers,
 };
 
 const warned = new Set<string>();

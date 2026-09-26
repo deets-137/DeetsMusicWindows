@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: passed 2026-09-24
-sources: [demo/shim.ts, demo/handlers.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-09-21
+sources: [demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
+updated: 2026-09-26
 ---
 # DeetsMusic — Web demo
 
@@ -103,6 +103,7 @@ alias. Events (`listen` / `emit`) run on a local table in the shim. §2's alias 
 |---|---|
 | `demo/shim.ts` | The two Tauri globals, the fake `window.MusicKit` and its `musickitloaded`, the host-page bridge, the network guard. Runs before `main.ts`. |
 | `demo/handlers.ts` | One handler per command the demo reaches. An unknown command answers `null` and logs once at debug level. Results are cloned, so the app can never change the store by mutating a result. |
+| `demo/diary.ts` | The Diary's commands on `deets.demo.diary`, with the sample entries (§12). |
 | `demo/musickit.ts` | The fake MusicKit: `setQueue` (items, songs, station), play / pause / stop / seek, next / previous, `changeToMediaAtIndex`, `playNext` / `playLater`, `queue.splice`, the four events, `PlaybackStates`, `MediaItem`. A 250 ms timer moves the clock. At the end of the window it reports no item and `completed`, like MusicKit. An unknown id rejects with MusicKit's "could not be resolved" text, so the app's dead-id path still works. |
 | `demo/catalog.ts` | 5 artists, 8 albums, 60 songs, 3 live + 15 genre stations, 2 Apple playlists, 3 starting local playlists. Every name is invented. Covers and artist portraits are SVG data URLs drawn in code, with `{w}{h}{f}` in the URL fragment so the app's template fill works unchanged. |
 | `vite.demo.config.ts` | The real `index.html`, served with the MusicKit CDN script removed, the shim added before `main.ts`, and a head script that seeds the app's look from the site's. `base: "./"`, out to `dist-web/`. It fails the build if `index.html` changes shape. |
@@ -182,3 +183,68 @@ followed by the host page, the Compass, and each of the four sizes resizing the 
    in that folder) and open `/deetsmusic/demo/`. Change the surface in the app: the frame takes
    each size. Change the app's skin: only its box changes. Make the browser narrow: the app
    scales down. *Start over* resets the demo and the walk.
+
+## 11. The album light is wired (2026-09-26)
+> **Part:** built · 2026-09-26 · desk test open
+
+**The cause.** His ask (§10) was a stronger album light. The demo had none: its
+`album_palette` handler answered `null`, so the NP aurora, the album text, the tray and the
+Ocean's glow and neon all fell back to the theme.
+
+**The fix.** `album_palette` now finds the cover by its URL in the mock catalog (songs, albums,
+stations) and returns the colors the cover was drawn with: `bg` = `bgColor`, `c1` / `c2` =
+`textColors`. The app's own rule (`auroraSlots`, `albumColor`) picks the rim from those.
+
+The rim each album gets (OKLCH chroma; below 0.04 reads as grey):
+
+| Album | Rim | Chroma |
+|---|---|---|
+| Neon Parable | #ff3864 | 0.231 |
+| After Hours Atlas | #c77dff | 0.193 |
+| Night Drive Almanac | #9d0208 | 0.178 |
+| Low Tide Radio | #ffd166 | 0.135 |
+| Paper Boats | #bc6c25 | 0.130 |
+| Honey Static (the start song) | #e0a458 | 0.117 |
+| Salt & Signal | #0b2545 | 0.068 |
+| Rainy Day Ledger | #22223b | 0.046 |
+
+**His calls (2026-09-26):** Ocean's Album light starts at **80** in the demo (the app's own
+default stays 0). The two muted covers stay as they are: real albums are muted too. The seed
+is in `vite.demo.config.ts` (the head script, beside the look seed). It writes `oceanLight`
+into `deets.settings` only while the visitor has no value, so their own change stays, and
+*Start over* (which clears `deets.*`) brings back 80.
+
+**Desk test.**
+1. `npm run demo` in a fresh browser profile. Now Playing (Honey Static) wears an amber aurora.
+   On Glass the title and subtext take the album's colors.
+2. Play Neon Parable: the aurora turns pink and cyan.
+3. Change to Ocean: the crests already glow in the album's color. Settings › Skin settings ›
+   Album light reads 80. Set it to 30 and reload: it stays 30.
+
+## 12. The Diary in the demo (2026-09-26)
+> **Part:** built · 2026-09-26 · desk test open
+
+Before this, the demo had no Diary handlers: every `diary_*` command answered `null`, and the
+card could not read its list. `demo/diary.ts` now answers every Diary command from
+`deets.demo.diary` in localStorage, with the rules of `diary.rs`: an entry is found by its album
+key (catalog id, then library id, then name), a note or a score marks a song written, a scale
+change alone keeps the scores, a rescale multiplies them, a deleted folder leaves its entries,
+and `diary_export` gives the same text as `export_text`.
+
+**The sample entries (his call: samples, not empty).** A visitor starts with:
+| Album | State | Scale | Album score | Songs written | Folder |
+|---|---|---|---|---|---|
+| Neon Parable | Completed, 9 days ago | 10 | 8.5 | 8 of 8, notes on 5 | Night drives |
+| After Hours Atlas | In progress, 2 days ago | 5 | none yet | 3 of 6, notes on 2 | none |
+
+Honey Static, the song that plays when the demo opens, has no entry, so the Diary's playing
+album box reads "Listening now" and a click starts one. The note texts are in `SAMPLES`.
+
+**Desk test.**
+1. `npm run demo`, open the Diary. In progress holds After Hours Atlas; Completed and the
+   Night drives folder hold Neon Parable. The top row shows Honey Static, "Listening now".
+2. Open Neon Parable: the album note, the 8.5/10 pill, a note under each song you pick.
+   Right-click the tile › Export, and paste: the export text.
+3. Click the Honey Static box: a new entry opens. Write a note, go back, reload the page: it
+   is still there.
+4. *Start over* on the site page: the Diary is back to the two samples.
