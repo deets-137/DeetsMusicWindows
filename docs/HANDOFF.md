@@ -143,8 +143,8 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 - Kept by his call (2026-09-25): every `console.error` writes an ERROR line to the log file,
   a failure the app already handles included (an Apple 401 on one playlist refresh).
 - Later, not decided: tests for `media-menu.ts` need a stub map in `tests/setup.mjs` (it
-  loads the player and MusicKit); a release-check row for `extension/manifest.json`'s
-  version (0.11.0 shipped with it stale).
+  loads the player and MusicKit). The extension manifest's version is a hard fail in
+  `release-check` since 2026-09-26 (RELEASE.md, the seven version files).
 
 **Designed, not built (2026-09-24)**
 - The telemetry pass's AirPlay part: stall and switch timing, the quieter wire log (AIRPLAY.md
@@ -210,8 +210,8 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 **Before a public announcement** (RELEASE.md §7): screenshots (none exist), a GitHub Release
 with the installer, and the user guide (DOCS-ORG.md §13).
 
-**Keyboard** (COMPASS.md): hover-only controls (the Search Add-to-Library square) show only on
-`:focus-visible`; the Sort / View popovers take no arrow keys.
+**Keyboard** (COMPASS.md §5): the Sort / View popovers take the arrow keys since 2026-09-26
+(desk test open). The Add to Library square already showed on keyboard focus.
 
 **The 2026-09-17 health check** ran; what it found and its open leads are DEBUGGING.md
 "What the 2026-09-17 health check found".

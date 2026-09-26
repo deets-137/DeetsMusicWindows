@@ -20,6 +20,19 @@ decided: nothing playing = the + box alone; an album with an entry reads "Contin
 `diary-card.ts` (`nowHTML`, `paintNow`, `openNow`, `fadeOut`) and `diary.css`. Spec and desk
 test: DIARY.md §4c. tsc, vite build and docs:check pass. Desk test open.
 
+Later the same sitting:
+- **The demo's album light.** The demo had none: `album_palette` answered `null`. It now
+  returns each mock cover's own colors (WEB-DEMO.md §11). His calls: Ocean's Album light
+  starts at 80 in the demo; the two muted covers stay muted.
+- **The Diary in the demo** (WEB-DEMO.md §12): `demo/diary.ts` answers every Diary command.
+  His call: sample entries (Neon Parable done, After Hours Atlas in progress, one folder).
+- **Diary step 11e, part 1**, on his live app through the MCP: with Agents use the Diary off,
+  `diary list` is refused with the right text. The rest waits for him to turn the row on.
+- **Keyboard:** the Sort / View popovers take the arrow keys (COMPASS.md §5). The Add to
+  Library square already showed on keyboard focus; the HANDOFF line was out of date.
+- **Release check:** the extension manifest's version is a hard fail (RELEASE.md). The docs
+  checker already compared it, and both Cargo.locks, but only as a warning until 09-28.
+
 ## 2026-09-25, afternoon — Shots: the paper design
 - **His ask:** a way to record each section and feature of the app, for a full user guide
   and a short marketing overview.

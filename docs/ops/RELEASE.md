@@ -123,7 +123,7 @@ What the log taught:
 
 ## 1. Cut a build
 
-**Seven files hold the version**, and only four of them are checked (2026-09-18).
+**Seven files hold the version**, and all seven are checked (since 2026-09-26).
 
 | File | Checked by | If it is stale |
 |---|---|---|
@@ -131,14 +131,14 @@ What the log taught:
 | `src-tauri/tauri.conf.json` | `release-check` | Tauri names the installer from it, so the archive step fails |
 | `src-tauri/Cargo.toml` | `release-check` | caught |
 | `cli/Cargo.toml` | `release-check` | caught. It is what `deetsmusic --version` and the MCP server info report |
-| **`extension/manifest.json`** | **nothing** | the browser extension keeps reporting the old version, silently, for ever |
-| **`src-tauri/Cargo.lock` + `cli/Cargo.lock`** | **nothing** | cargo rewrites them during the build, so the release is fine but the tree is left dirty and the version commit is incomplete |
+| `extension/manifest.json` | `release-check` (a hard fail since 2026-09-26; a beta build skips it), `docs:check` check 5 | the browser extension keeps reporting the old version |
+| `src-tauri/Cargo.lock` + `cli/Cargo.lock` | `docs:check` check 5 (so `npm run check` and the pre-push hook) | cargo rewrites them during the build, so the release is fine but the tree is left dirty and the version commit is incomplete |
 
-`release-check` compares the first four and fails when they disagree. **The last two it does
-not see**: on 0.11.0 both `extension/manifest.json` and `cli/Cargo.lock` were still on 0.10.1
-after the first four were bumped, and nothing would have said so. Bump the manifest by hand,
-and run `cargo check` in `cli/` (and let the app's own build touch `src-tauri/Cargo.lock`)
-before the version commit, so the locks are in it rather than in the next one.
+On 0.11.0 both `extension/manifest.json` and `cli/Cargo.lock` were still on 0.10.1 after the
+first four were bumped, and nothing said so; that is why they are checked now. Bump the
+manifest by hand, and run `cargo check` in `cli/` (and let the app's own build touch
+`src-tauri/Cargo.lock`) before the version commit, so the locks are in it rather than in the
+next one.
 
 A mismatch among the checked four fails the archive step with a message that says to check
 them all — deliberately, because the alternative is an installer that silently never gets

@@ -300,8 +300,17 @@ the row and dispatches a `contextmenu` event, so each card's own handlers run.
 - **Enter / Space on a Search card row** does what a click does: plays the song, or opens the
   album, artist, playlist or station pane. The rows already carried `role="button"` and
   `tabindex="0"` without a key handler.
-- Still open: hover-only controls (the Search Add-to-Library square) show only on
-  `:focus-visible`; the Sort / View popovers take no arrow keys yet.
+- **Hover-only controls** show on keyboard focus too: the Add to Library square on a Search,
+  Library, Queue and History row shows while that row (or the square) has `:focus-visible`.
+  `:focus-within` is not used: a click focuses the row, and the square then stayed after the
+  pointer left.
+- **The Sort / View popovers (2026-09-26).** A pill opened with Enter or Space puts the focus
+  on the choice in force. Up / Down move in a column (they wrap), Home / End go to its ends,
+  Left / Right go to the next column (onto its choice in force). Enter or Space picks, and the
+  pop stays open. Escape or Tab closes it and the focus goes back to the pill. A pill opened
+  with the pointer leaves the focus where it was. `openPop` in collection-card.ts.
+  Desk test: in the Library, Tab to the Sort pill, press Enter, use the arrows, pick a sort
+  with Enter, press Escape. The focus is on the Sort pill again.
 
 ## 6. What changed
 

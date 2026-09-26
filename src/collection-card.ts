@@ -1232,6 +1232,44 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     popAnchor = pill;
     pill.setAttribute("aria-expanded", "true");
 
+    // The keyboard (COMPASS.md §Keyboard, 2026-09-26). The pop sits at the end of <body>, so
+    // Tab never reached it. A pill opened from the keyboard puts the focus on the choice in
+    // force; a click leaves the focus where it was. Up / Down move in a column, Left / Right
+    // between columns, Enter or Space picks (the button's own click). Escape and Tab close it
+    // and give the focus back to the pill.
+    const cols = () => [...pop.querySelectorAll<HTMLElement>(".lib-pop__col")].map((c) => [...c.querySelectorAll<HTMLButtonElement>("button")]);
+    if (pill.matches(":focus-visible")) {
+      const first = cols()[0] ?? [];
+      (first.find((b) => b.classList.contains("is-active")) ?? first[0])?.focus();
+    }
+    pop.addEventListener("keydown", (e) => {
+      const grid = cols();
+      const ci = grid.findIndex((c) => c.includes(document.activeElement as HTMLButtonElement));
+      if (e.key === "Escape" || e.key === "Tab") {
+        e.preventDefault();
+        e.stopPropagation();
+        const back = pill.isConnected ? pill : curPane?.querySelector<HTMLElement>(`[data-pop="${which}"]`);
+        closePops();
+        back?.focus();
+        return;
+      }
+      if (ci < 0) return;
+      const col = grid[ci];
+      const ri = col.indexOf(document.activeElement as HTMLButtonElement);
+      let to: HTMLButtonElement | undefined;
+      if (e.key === "ArrowDown") to = col[(ri + 1) % col.length];
+      else if (e.key === "ArrowUp") to = col[(ri - 1 + col.length) % col.length];
+      else if (e.key === "Home") to = col[0];
+      else if (e.key === "End") to = col[col.length - 1];
+      else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        const next = grid[ci + (e.key === "ArrowRight" ? 1 : -1)];
+        if (next) to = next.find((b) => b.classList.contains("is-active")) ?? next[Math.min(ri, next.length - 1)];
+      }
+      if (!to) return;
+      e.preventDefault();
+      to.focus();
+    });
+
     // Fixed-positioned, so a scroll/resize would leave it mis-anchored — dismiss instead.
     // (Outside-click and Escape are handled by the card's onDocClick/onDocKey.)
     const onAway = () => closePop();

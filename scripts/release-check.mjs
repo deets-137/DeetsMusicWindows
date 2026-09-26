@@ -12,7 +12,8 @@
 //  1. The release exe contains no absolute path into this repo. Build output under
 //     `src-tauri\target\` is allowed: generated code carries those paths in panic
 //     locations, and they never point at secrets or sources.
-//  2. The four version files agree (the archive step checks two; this checks all four).
+//  2. The four version files agree (the archive step checks two; this checks all four), and
+//     the extension manifest matches them (a beta build skips it). Added 2026-09-26.
 //  3. The pin and the updater: the product name, exe name and per-user install are unchanged
 //     (a pinned taskbar button points at them), the updater public key is set, and the
 //     installer has its signature.
@@ -80,6 +81,14 @@ const versions = {
   "src-tauri/Cargo.toml": /^version\s*=\s*"([^"]+)"/m.exec(readFileSync(join(root, "src-tauri", "Cargo.toml"), "utf8"))?.[1],
   "cli/Cargo.toml": /^version\s*=\s*"([^"]+)"/m.exec(readFileSync(join(root, "cli", "Cargo.toml"), "utf8"))?.[1],
 };
+// The browser extension reports its manifest's version (0.11.0 shipped it stale, on 0.10.1).
+// Checked here as a hard fail, not only by the docs checker's check 5, which warns until its
+// grace ends. A beta version (0.14.0-beta.1) cannot go in a manifest (Chrome takes numbers and
+// dots only), so a beta build leaves it on the last full version and skips it.
+const manifestVersion = JSON.parse(readFileSync(join(root, "extension", "manifest.json"), "utf8")).version;
+if (!/-beta\.\d+$/.test(versions["package.json"]) && manifestVersion !== versions["package.json"]) {
+  failures.push(`extension/manifest.json is version ${manifestVersion} — package.json says ${versions["package.json"]}`);
+}
 if (new Set(Object.values(versions)).size !== 1) {
   failures.push("version files disagree:\n" + Object.entries(versions).map(([f, v]) => `      ${f}: ${v}`).join("\n"));
 }
@@ -335,4 +344,4 @@ if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the installer stops processes by path only; ${docsNote}`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the installer stops processes by path only; ${docsNote}`);

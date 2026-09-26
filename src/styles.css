@@ -2332,6 +2332,8 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 }
 .lib-pop__dir:hover { background: var(--surface-hover); }
 .lib-pop__dir.is-active { background: var(--surface-hover); border-color: var(--border); color: var(--title); }
+/* The keyboard's place in the pop (arrow keys, collection-card.ts `openPop`): the menu row's ring. */
+.lib-pop__opt:focus-visible, .lib-pop__dir:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 .lib-pop__dir svg {
   width: var(--icon-sm); height: var(--icon-sm);
   fill: none; stroke: currentColor; stroke-width: 1.6;
