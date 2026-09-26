@@ -120,8 +120,10 @@ done; start at [SHOTS.md §11](guide/SHOTS.md) (check ffmpeg, close forks F1–F
 §13.2, a crate change too).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
-- **The Diary's playing-album box** (2026-09-26, uncommitted): [DIARY.md §4c](features/DIARY.md)
-  steps 1–7.
+- **The Diary's playing-album box** (2026-09-26, committed on `clode-eval`, `9c656be`):
+  [DIARY.md §4c](features/DIARY.md) steps 1–7.
+- **New badges on pills, skin-only marks** (2026-09-25, committed on `clode-eval`, `da0181d`):
+  [QUICK-SETTINGS.md §10a.1](features/QUICK-SETTINGS.md) steps 1–5.
 - **The Apple call counter's hourly line** (APPLE-CALLS.md §5 step 1): an hour of normal use,
   then read `[apple] calls 1h` and the `quit` line. The 429 back-off (steps 2–3) was checked in
   the dev app, and the pause labels passed his desk test (DEBUGGING.md), both 2026-09-25.
