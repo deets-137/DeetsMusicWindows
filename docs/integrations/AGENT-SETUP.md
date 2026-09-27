@@ -59,6 +59,11 @@ change applies when you press **Allow**. **Allow** applies changes at once. **Of
 An AI app can turn **Add to Library and ♥**, **Export playlists** and **Agent control** off, but
 only you can turn them on.
 
+**Rules.** An AI app can also make a rule for you: "when a rap song comes on, skip it", "while
+jazz plays after 8 pm, use the Warm preset". The same **Agent changes settings** setting
+decides whether DeetsMusic asks you first. The rule shows in the Rulez card, marked as made by
+an AI app, and you can change or remove it there like any rule of yours.
+
 ## 4. The command line
 
 The same program works as a command. It lives at

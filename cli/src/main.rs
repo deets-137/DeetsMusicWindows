@@ -177,6 +177,10 @@ enum Cmd {
     /// note N [--song S] TEXT · score N [--song S] X · date N [--song S] YYYY-MM-DD · done N [on|off].
     /// Needs Settings › Connections › Agents use the Diary.
     Diary(DiaryArgs),
+    /// Rules (docs/features/RULEZ.md §7): list (default) · words · show ID · add JSON ·
+    /// remove ID · on ID · off ID. An agent reads every rule and writes only the user's own;
+    /// a write follows Settings › Connections › Agent changes settings (Ask / Allow / Off).
+    Rules(RulesArgs),
     /// Add to your Apple Music library: an id, or the playing song.
     Add { id: Option<String> },
     /// ♥ a song (the playing song by default).
@@ -1066,6 +1070,11 @@ fn tools(small: bool) -> Value {
               "album": { "type": "string", "description": "add: an album:… id from search." },
               "song": { "type": "number", "description": "note, score, date: the song's track number (leave out for the album)." },
               "value": { "type": "string", "description": "note: the text · score: a number, e.g. 7.5 · date: YYYY-MM-DD or today · done: on or off." } } } }));
+    list.push(json!({ "name": "rules", "description": "DeetsMusic's rules: what the app does when something happens (a moment rule: when + optional if + do) or while something is true (a while rule: while + a value it holds, given back after). list shows every rule with its id and sentence; the locked ones come from Settings and cannot be changed here. words lists every event, fact and do with the values each takes — read it before add. add takes rule: {name, when, if?, do, value?} for a moment rule (when = an event id, e.g. song.play; do = a do id, e.g. preset; if = a condition {fact, is | isNot | lt | gt | lte | gte} or {all|any|not: [...]}) or {name, while: <condition>, do, value?} for a while rule; a clock rule adds at, e.g. 8:00 PM. The new rule goes to the top and runs first. remove, on and off take id (or the name). Depending on the user's setting, DeetsMusic may ask them first; then tell them to answer in DeetsMusic and don't send it again.",
+          "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
+              "action": { "type": "string", "enum": ["list", "words", "show", "add", "remove", "on", "off"] },
+              "id": { "type": "string", "description": "show, remove, on, off: the rule's id from list, or its name." },
+              "rule": { "type": "object", "description": "add: the rule. E.g. {\"name\":\"Night jazz\",\"when\":\"song.play\",\"if\":{\"all\":[{\"fact\":\"genre\",\"is\":\"Jazz\"},{\"fact\":\"time\",\"gt\":1200}]},\"do\":\"preset\",\"value\":\"Warm\"}" } } } }));
     list.push(json!({ "name": "query", "description": "One read-only SQL SELECT over the user's DeetsMusic data (SQLite). No Apple calls. Tables: songs(id, title, artist, album, length_s, genre, release_date, in_library, added_rank, added_at) · playlists(id, name, source, song_count) · playlist_songs(playlist_id, position, song_id) · plays(song_id, started_at, listened_s, finished, skipped, context) · play_counts(song_id, starts, finishes, last_played). ids are song:… / playlist:…, ready for play and queue. Times are local ISO text. song_count counts the songs DeetsMusic has read. plays and play_counts exist only while the user allows agents to read play history. Only SELECT, one statement, 2 s, 500 rows. For a simple sorted list, list what=library is easier.",
           "inputSchema": { "type": "object", "required": ["sql"], "additionalProperties": false, "properties": {
               "sql": { "type": "string", "description": "e.g. SELECT s.title, c.starts FROM play_counts c JOIN songs s ON s.id = c.song_id ORDER BY c.starts DESC LIMIT 10" } } } }));
@@ -1081,7 +1090,7 @@ fn tools(small: bool) -> Value {
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag", "diary"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag", "diary", "rules"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -1197,6 +1206,11 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             };
             op_diary(c, &DiaryArgs { action, target, value: vec![str_arg("value")], song: num_arg("song") })?.0
         }
+        "rules" => {
+            let action = if str_arg("action").is_empty() { "list".to_string() } else { str_arg("action") };
+            let target = if action == "add" { a.get("rule").map(|r| r.to_string()).unwrap_or_default() } else { str_arg("id") };
+            op_rules(c, &action, &target)?.0
+        }
         other => return Err(Failure { status: 400, message: format!("unknown tool {other:?}") }),
     };
     Ok(text)
@@ -1289,6 +1303,18 @@ struct PickArgs {
 }
 
 #[derive(clap::Args)]
+struct RulesArgs {
+    /// list (the default) · words · show · add · remove · on · off
+    #[arg(default_value = "list")]
+    action: String,
+    /// show, remove, on, off: the rule's id or name (from `rules`). add: the rule as JSON — the words
+    /// form `{"name":"…","when":"song.play","if":{"fact":"genre","is":"Jazz"},"do":"preset","value":"Warm"}`,
+    /// or `{"while":{…},"do":"theme","value":"Night"}`; `rules words` lists what the fields take.
+    #[arg(num_args = 0.., trailing_var_arg = true)]
+    target: Vec<String>,
+}
+
+#[derive(clap::Args)]
 struct DiaryArgs {
     /// list (the default) · show · export · add · note · score · date · done
     #[arg(default_value = "list")]
@@ -1304,6 +1330,79 @@ struct DiaryArgs {
 
 /// `deetsmusic diary` — the Diary, read and write (DIARY.md §10). The bridge refuses it (403,
 /// exit 6) while Settings › Connections › Agents use the Diary is off.
+/// One rule as a line: `[id] Name · on/off · the sentence  (who made it)`.
+fn rule_line(r: &Value) -> String {
+    let name = s(r, "name");
+    let name = if name.is_empty() { "(unnamed)".to_string() } else { name.to_string() };
+    let state = if r.get("on").and_then(Value::as_bool).unwrap_or(false) { "on" } else { "off" };
+    let idle = s(r, "idle");
+    let idle = if idle.is_empty() { String::new() } else { format!("  ! {idle}") };
+    let lock = if r.get("locked").and_then(Value::as_bool).unwrap_or(false) { "  [locked]" } else { "" };
+    format!("[{}] {name} · {state} · {}  ({}){lock}{idle}", s(r, "id"), s(r, "text"), s(r, "source"))
+}
+
+/// list · words · show · add · remove · on · off (RULEZ.md §7).
+fn op_rules(c: &Client, action: &str, target: &str) -> Result<(String, Value), Failure> {
+    match action {
+        "list" => {
+            let v = c.get("/rules")?;
+            let lines: Vec<String> = arr(&v, "rules").iter().map(|r| rule_line(r)).collect();
+            Ok((if lines.is_empty() { "No rules.".into() } else { lines.join("\n") }, v))
+        }
+        "words" => {
+            let v = c.get("/rules?words=1")?;
+            let w = v.get("words").cloned().unwrap_or(Value::Null);
+            let mut out = Vec::new();
+            let mark = |x: &Value| if x.get("known").and_then(Value::as_bool).unwrap_or(true) { "" } else { "  (not available now)" };
+            out.push("When (moment events):".to_string());
+            for e in arr(&w, "events") {
+                out.push(format!("  {:<18} {}  · {}{}", s(e, "id"), s(e, "label"), s(e, "section"), mark(e)));
+            }
+            out.push("If / While (facts; a leaf is {fact, is | isNot | lt | gt | lte | gte}):".to_string());
+            for f in arr(&w, "facts") {
+                let choices: Vec<String> = arr(f, "choices").iter().map(|ch| s(ch, "label").to_string()).collect();
+                let extra = if choices.is_empty() { s(f, "kind").to_string() } else { choices.join(" | ") };
+                out.push(format!("  {:<18} {}  ({extra}){}", s(f, "id"), s(f, "label"), mark(f)));
+            }
+            out.push("Do (when = a one-time action, while = a value held):".to_string());
+            for d in arr(&w, "dos") {
+                let kinds = match (d.get("when").and_then(Value::as_bool).unwrap_or(false), d.get("while").and_then(Value::as_bool).unwrap_or(false)) {
+                    (true, true) => "when, while",
+                    (true, false) => "when",
+                    (false, true) => "while",
+                    _ => "",
+                };
+                let choices: Vec<String> = arr(d, "choices").iter().map(|ch| s(ch, "label").to_string()).collect();
+                let takes = if choices.is_empty() { s(d, "input").to_string() } else { choices.join(" | ") };
+                out.push(format!("  {:<18} {}  [{kinds}] value: {takes}", s(d, "id"), s(d, "label")));
+            }
+            Ok((out.join("\n"), v))
+        }
+        "show" => {
+            if target.is_empty() {
+                return Err(bad("usage: rules show ID  (an id or a name from `deetsmusic rules`)".into()));
+            }
+            let v = c.post("/rules", json!({ "action": "show", "id": target }))?;
+            let r = v.get("rule").cloned().unwrap_or(Value::Null);
+            let stored = r.get("rule").map(|x| serde_json::to_string_pretty(x).unwrap_or_default()).unwrap_or_default();
+            Ok((if stored.is_empty() { rule_line(&r) } else { format!("{}\n{stored}", rule_line(&r)) }, v))
+        }
+        "add" => {
+            let rule: Value = serde_json::from_str(target).map_err(|e| bad(format!("rules add takes the rule as JSON ({e}); `rules words` lists the fields")))?;
+            let v = c.post("/rules", json!({ "action": "add", "rule": rule }))?;
+            Ok((message_line(&v), v))
+        }
+        "remove" | "on" | "off" => {
+            if target.is_empty() {
+                return Err(bad(format!("usage: rules {action} ID  (an id or a name from `deetsmusic rules`)")));
+            }
+            let v = c.post("/rules", json!({ "action": action, "id": target }))?;
+            Ok((message_line(&v), v))
+        }
+        other => Err(bad(format!("unknown rules action {other:?}: list, words, show, add, remove, on, off"))),
+    }
+}
+
 fn op_diary(c: &Client, a: &DiaryArgs) -> Result<(String, Value), Failure> {
     let id = || a.target.clone().filter(|t| !t.is_empty()).ok_or_else(|| bad(format!("usage: diary {} N  (N from `deetsmusic diary list`)", a.action)));
     let value = a.value.join(" ");
@@ -1474,6 +1573,7 @@ fn main() {
         Cmd::Diag { limit, since, tag, flush } => op_diag(&c, limit, since, &tag, flush),
         Cmd::Pick(a) => op_picks(&c, &a),
         Cmd::Diary(a) => op_diary(&c, &a),
+        Cmd::Rules(a) => op_rules(&c, &a.action, &a.target.join(" ")),
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),
         Cmd::Love { id } => op_library(&c, "favorite", id.as_deref().unwrap_or("")),
         Cmd::Unlove { id } => op_library(&c, "unfavorite", id.as_deref().unwrap_or("")),

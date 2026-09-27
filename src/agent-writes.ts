@@ -32,6 +32,7 @@ import { setLoved } from "./favorites";
 import { checkForUpdate, download, offerRestart, olderVersions, rollbackTo, updateStatus, type UpdateStatus } from "./updater";
 import { invoke } from "@tauri-apps/api/core";
 import { settingsList, settingsWrite } from "./agent-settings";
+import { rulesGet, rulesWrite } from "./agent-rules";
 import { agentGrow } from "./card-grow";
 import { agentGo } from "./compass";
 import { allPicks, atLimit, mark, sotdOn, todayDay, unmark } from "./sotd";
@@ -533,6 +534,8 @@ export function runAgentWrite(kind: string, payload: any): Promise<unknown> | nu
     case "update": return update(payload);
     case "settings-get": return settingsList(payload); // AGENT.md §6 (agent-settings.ts)
     case "settings": return settingsWrite(payload);
+    case "rules-get": return rulesGet(payload); // AGENT.md §8 (agent-rules.ts)
+    case "rules": return rulesWrite(payload);
     case "grow-get": return agentGrow({ action: "state" }); // CARD-GROW.md; a test handle
     case "grow": return agentGrow(payload);
     // `deetsmusic go <place>` (COMPASS.md §10): the Compass's own Places, navigation only.

@@ -682,7 +682,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
-        "/picks", "/diag", "/diary",
+        "/picks", "/diag", "/diary", "/rules",
     ];
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
@@ -1060,6 +1060,20 @@ async fn handle(app: AppHandle, mut req: Request) {
                 Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
             };
             agent_json(req, ask(&app, "settings", v).await, origin)
+        }
+        // ── rules (RULEZ.md §7; agent-rules.ts) — read every rule, write your own ──
+        // `?words=1` is the vocabulary an agent reads before it writes. A write rides the
+        // Agent changes settings permission (Ask / Allow / Off) in the window.
+        (Method::Get, "/rules") => {
+            let words = query_param(&url, "words").map(|w| w != "0").unwrap_or(false);
+            agent_json(req, ask(&app, "rules-get", serde_json::json!({ "words": words })).await, origin)
+        }
+        (Method::Post, "/rules") => {
+            let v: serde_json::Value = match serde_json::from_str(&body) {
+                Ok(v) => v,
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+            };
+            agent_json(req, ask(&app, "rules", v).await, origin)
         }
         // ── go (COMPASS.md §10; compass.ts `agentGo`) — the CLI's way to a place ──
         // Navigation only: the Compass's Places minus theme, skin and surface, which are

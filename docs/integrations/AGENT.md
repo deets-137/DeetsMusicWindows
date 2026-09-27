@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
-sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts]
-updated: 2026-09-25
+sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts, src/agent-rules.ts, src/agent-rules-shape.ts, cli/src/main.rs]
+updated: 2026-09-27
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -92,6 +92,7 @@ deliberately **no `withdraw`**: pulling a message back out of a channel is the u
 (DeetsOTD.md §10.6). **403 while Song of the Day is off**, and the first mark asks the user in the window (G2). CLI: `deetsmusic pick list` · `pick mark song:123 --note "…"` · `pick unmark 2`. MCP tool: `picks` (full pack only) |
 | `GET /diary[?id=]` · `POST /diary` | `{entries:[{id, title, artist, score?, done, folder?, reviewDate?, songsWritten, songCount}]}` · with `id`: `{entry:{…, songs:[{n, title, score?, note?, noteDate?, unreleased}]}, text}` (`text` = the Export) · `{action: add \| note \| score \| date \| done, id?, album?, song?, value?}` → `{ok, message}` — the Diary ([DIARY.md](../features/DIARY.md) §10). **403 unless Settings › Connections › Agents use the Diary is on** (off by default; agents may only turn it off). `song` is the track number; without it the album itself. An empty `value` clears; a score must be 0 to the entry's scale. Agents only: an extension is refused. Every write tells the window (`diary-changed`). CLI: `deetsmusic diary` · `diary show 3` · `diary add album:123` · `diary note 3 --song 2 "…"` · `diary score 3 7.5` · `diary date 3 today` · `diary done 3 off`. MCP tool: `diary` (full pack only) |
 | `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
+| `GET /rules[?words=1]` · `POST /rules` | `{rules:[{id, name, kind, on, locked, source, idle?, text, rule?}]}` · with `words=1`: `{words:{events, facts, dos, cards, conditions}}` · `{action: list \| words \| show \| add \| remove \| on \| off, id?, rule?}` → `{rule}` / `{ok, message}` / `pending` (§8) — the rules engine's rules ([RULEZ.md](../features/RULEZ.md) §7). Every rule is read; only the user's own are written. A write rides Agent changes settings (§6). CLI: `deetsmusic rules` · `rules words` · `rules show ID` · `rules add '<json>'` · `rules remove ID` · `rules on ID` · `rules off ID`. MCP tool: `rules` (full pack only) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
 | `GET /diag[?limit=100&since=0&tag=&flush=1]` | `{events:[{n, t, tag, data}], dropped, flushed}` — the window's **live** diag ring, oldest first ([LOGGING.md](../ops/LOGGING.md) §Reading it from outside). What the app just did, without a flush or a restart: `ui:act` gestures, `player:*`, drills, toasts. `since` takes the `n` of an event already read; `tag` keeps the tags that start with it; `flush=1` also writes the new events to the log file first. Behind the Agent control switch, like every agent read. CLI: `deetsmusic diag -n 50 --tag player`. MCP tool: `diag` (full pack only) |
 | `POST /songs` | `{sort?, order?, limit?, artist?, genre?, shorterThan?, longerThan?}` → `{songs:[{id, title, artist, album, length_s, starts?, finishes?, last_played?, skips?}]}` — the library, sorted and filtered, zero Apple calls ([LOCAL-DATA.md](LOCAL-DATA.md) §6). Token callers only |
@@ -189,6 +190,7 @@ subset a tool server needs, no SDK. Tools:
 | `queue_edit` | `action: remove\|move\|jump`, `index`, `to?` | full | replies with the fresh queue |
 | `folder` | `action: list\|create\|rename\|delete`, `name`, `new_name?` | full | by name |
 | `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
+| `rules` | `action: list\|words\|show\|add\|remove\|on\|off`, `id?`, `rule?` (an object) | full | §8: the rules ([RULEZ.md](../features/RULEZ.md) §7). `words` before `add`; a write may be `pending` |
 | `diary` | `action: list\|show\|add\|note\|score\|date\|done`, `id?`, `album?`, `song?`, `value?` | full | The Diary ([DIARY.md](../features/DIARY.md) §10). Refused unless the user turned on Agents use the Diary |
 | `picks` | `action: list\|mark\|unmark`, `id?`, `index?`, `note?`, `window?` | full | Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `mark` takes a `song:…` id or `current`; `unmark` takes the row from `list`. Refused while the feature is off; the first mark is `pending` until the user allows it in the window |
 | `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
@@ -486,6 +488,94 @@ A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass i
 3. **Close to tray and Start with Windows: A (included)**, with the reply note above.
 4. **Agent changes settings: Allow / Ask / Off, default Ask** — the user asked for a runtime
    permission row on top of 2.
+
+## 8. Rules — BUILT 2026-09-27 (RULEZ.md §7, route 2)
+
+> **Part:** built · 2026-09-27 · desk test open
+
+An agent reads every rule the engine runs and writes the user's own. This is the "text form"
+of [RULES.md](../architecture/RULES.md) §14: the agent is the parser, so a sentence typed to
+Claude ("when jazz plays after 8, use the Warm preset") becomes a stored rule with no parser
+in the app. **Full pack only.** Code: `src/agent-rules.ts` (the window's half),
+`src/agent-rules-shape.ts` (pure: the shaping and the words, `tests/agent-rules.test.ts`),
+`bridge.rs` (`/rules`), `cli/` (`rules`, the `rules` tool).
+
+### Surfaces
+
+| Surface | Shape |
+|---|---|
+| MCP tool `rules` | `action: list \| words \| show \| add \| remove \| on \| off`, `id?`, `rule?` |
+| CLI | `deetsmusic rules` · `rules words` · `rules show ID` · `rules add '<json>'` · `rules remove ID` · `rules on ID` · `rules off ID` (ID = the id or the name) |
+| Routes | `GET /rules` → `{rules}` · `GET /rules?words=1` → `{words}` · `POST /rules` `{action, id?, rule?}` → `{rule}` (show) · `{ok, message}` or `{ok, pending: "user", message}` (a write) |
+
+`/rules` is in `AGENT_ROUTES` (Agent control gates it). The bridge asks the window
+(`rules-get`, `rules`); `agent-writes.ts` `runAgentWrite` hands both to `agent-rules.ts`.
+
+### What an agent reads
+
+- **`list`:** every rule in the engine's order, yours first, then the built-in and recipe
+  rules **locked**. A row: `id`, `name`, `kind` (moment · state), `on`, `locked`, `source`
+  (`you` · `agent` · `Settings › <row>` · `recipe <id>` · `built-in`), `idle` (why it does not
+  run now, from `ruleIdle`), `text` (the sentence: "When the next song plays, if Genre is Jazz
+  → Use EQ preset Warm"), and `rule` (the stored shape; only for your own).
+- **`words`:** the vocabulary, from the same tables Rulez's menus use (`rulez-words.ts`):
+  every event, fact and Do with its id, label, section, what it takes (a kind, a unit, the
+  choices with their labels) and `known` (false while no module has registered it, the same
+  words Rulez greys out). `cards` lists the card ids an `In` may name. `conditions` states the
+  leaf and group shape.
+- **`show`:** one rule with its stored shape.
+
+### What an agent writes
+
+- **`add`** takes `rule` in either form; `agent-rules-shape.ts` turns it into a stored rule:
+  - **the words form** (recommended): `{ name?, desc?, when, at?, card?, if?, do, value? }` for
+    a moment rule — `when` an event id, `do` a Do id or label, `value` what it takes (a choice
+    by label or value, any case; a number; text), `at` for `clock` (`8:00 PM` or minutes);
+    `{ name?, while, do, value?, onHand? }` for a while rule (`do` must be a word that holds a
+    value; `onHand` defaults to `next`);
+  - **the stored shape**, as Rulez saves it (`kind`, `when` / `while`, `do` / `set`, …).
+  - The id (`a:<time>`), `source: { user: true }` and **`by: "agent"`** are set here, never by
+    the caller. `validate()` against `known()` refuses an unknown event, fact, Do or target and
+    a bad condition, with the reason (`400`). A rule that is not complete is refused too: an
+    agent gets no drafts.
+  - The new rule goes to the **top** of your list, as a Rulez row does, and the reply says so:
+    it runs before the others on its event.
+- **`remove`**, **`on`**, **`off`** take `id` (or the name, any case) of one of **your** rules. A
+  locked rule answers `403` naming its Settings row or recipe. `on` refuses a draft.
+- **The gate** (his call, RULEZ.md §6.6): Settings › Connections › **Agent changes settings**.
+  **Ask** (default): a sticky question, "An agent wants to add the rule “Night jazz”." (Allow /
+  Not now); the reply is `pending` and tells the agent not to resend. **Allow:** applied at once,
+  with a quiet info toast. **Off:** `403`. Reads always work. Every applied write logs
+  `rule:agent`.
+- The engine rebuilds from the store on the write (`saveUserRules`), so the rule runs at once
+  and Rulez shows it, marked as an agent's.
+
+### Decided inside his choices (2026-09-27, for his review)
+
+- The words form and the stored shape are both accepted; the words form is what the tool
+  description teaches.
+- An agent may not make a draft: a half rule is a Rulez thing (a person finishing a sentence).
+- `on` / `off` are separate actions rather than a `set on` value, so the tool's enum reads as
+  verbs.
+- Playlists and stations in a sentence show as ids, not names (the window's list is async and
+  the agent has `search` for names).
+- No new Settings row and no new gate: the rules verb rides Agent changes settings, since the
+  card has no describe box of its own (RULEZ.md §6.1).
+
+### Desk test
+
+Needs a dev app with this bridge (a Rust change: restart the dev runner). Full pack.
+(1) `deetsmusic rules` lists the built-in rules locked with their Settings rows. (2)
+`deetsmusic rules words` lists events, facts and Dos; a Do's choices carry labels (Warm, Night).
+(3) `rules add '{"name":"Skip rap","when":"song.play","if":{"fact":"genre","is":"Rap"},"do":"next"}'`
+with Agent changes settings = Ask: the window shows the question; the reply says
+"Waiting for the user"; Allow → the rule is at the top of Rulez, marked as an agent's; a rap
+song is skipped. (4) `rules off "Skip rap"` then `rules on "Skip rap"` by name. (5)
+`rules add '{"while":{"fact":"genre","is":"Jazz"},"do":"theme","value":"Night"}'` → a jazz song
+turns the theme Night with the green dot; the next song gives it back. (6) A bad rule
+(`"do":"fly"`, `"fact":"mood"`) → `400` with the reason. (7) `rules remove` on a locked id →
+`403` naming the Settings row. (8) Agent changes settings = Off → every write `403`; `rules`
+still lists. (9) The MCP tool: `rules action=words`, then `add` with the same rule as (3).
 
 ## 7. Later
 - **Agent look and surface changes under a slower cover** — planned 2026-09-15, forks settled
