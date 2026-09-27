@@ -121,12 +121,13 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 §13.2, a crate change too).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
-- **The rules engine** (2026-09-26, branch `rules-rulez`, 11 commits, not merged, not
-  released): [RULES.md §18](architecture/RULES.md). Claude ran every step's desk test on the dev
-  app. Open, **his**: the tray panel follows a look change; a real `dev:fresh` first run;
-  Windows mode in the look schedule; his Discord profile during a pause; real headphones for
-  EQ per output; a new Diary entry grows. Also his: the chip's look (RULES.md §9), and the
-  "changes a user can see" list in §18.
+- **The rules engine** (2026-09-26, branch `rules-rulez`, pushed, not merged, not released):
+  [RULES.md §18](architecture/RULES.md). Claude ran every step's desk test on the dev app, and
+  the perf comparison with `main` (§18 Performance). The chip is his dots design (§9: green = a
+  rule, red = your pick), and the New badge is now a yellow dot (QUICK-SETTINGS.md §8). Open,
+  **his**: the tray panel follows a look change; a real `dev:fresh` first run; Windows mode in
+  the look schedule; his Discord profile during a pause; real headphones for EQ per output; a
+  new Diary entry grows; the "changes a user can see" list in §18. Then merge.
 - **Add a room member as a friend** (2026-09-26, committed on `clode-eval`):
   [FRIENDS.md §18.8](integrations/FRIENDS.md). Claude ran steps 1–6 on two dev apps: all pass.
   Step 7 passed later. Released in 0.14.7; the rooms worker is deployed (2026-09-26,
@@ -166,9 +167,10 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 - The telemetry pass's AirPlay part: stall and switch timing, the quieter wire log (AIRPLAY.md
   §13.2). The other two parts are built (Desk tests open, above).
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
-- **The rules engine** (2026-09-26) — [RULES.md](architecture/RULES.md): every fork closed but
-  the chip's look. The build plan is RULES.md §17, on the branch `rules-rulez` (made from `main` at `7785a75`), one
-  commit and one desk test per step. Not started.
+- **Recipes and a Rulez card** (his direction, 2026-09-26) — rule sets a user turns on from one
+  place (genre EQ, late night, pause when the output changes, look changes), suggested by the app,
+  on a card of their own. Not designed: forks first, after the rules engine's desk test. How a
+  feature uses the engine: RULES.md §19.
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release

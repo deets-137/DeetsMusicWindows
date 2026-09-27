@@ -248,6 +248,12 @@ feature, made by a script from the demo; for the guide and a marketing overview.
   9. **Compass:** a new card, Settings row or verb is reachable from Ctrl+Space by the rules
      in COMPASS.md §9 (a card and a store-backed row are automatic; a panel exports an
      opener; a verb, a data kind or a command is one row in `src/compass.ts`).
+  10. **Rules (2026-09-26):** does the feature decide *when* or *while* something happens (a
+     time, a surface, an output, a genre, after an action)? Then that decision is a rule: the
+     feature keeps its own module and behavior, registers its event / fact / action with the
+     engine, and its row makes the rule. A value a rule may set is a rule key, read with
+     `effective` or `ownSetting`. The recipe is RULES.md §19. Bring him the fork when the
+     rule's order or its hand-change behavior (`onHand`) is a choice.
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.

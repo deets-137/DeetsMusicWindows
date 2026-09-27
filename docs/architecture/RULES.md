@@ -615,5 +615,69 @@ unseen):
   to collapse). The same rule as every rule grow (fork 6A / 7A).
 - EQ for each output: an output with nothing remembered shows your last pick, where it used to
   keep the previous output's preset.
-- The rule chip: a bolt / hand disc beside the title menu's Theme and Skin, the Sound panel's
-  preset, and the sharing switches while a rule acts on them.
+- The rule chip: a dot beside the title menu's Theme and Skin, the Sound panel's preset, and
+  the sharing switches while a rule acts on them — green when a rule set the value, red when
+  your pick holds (§9). The New badge became a yellow dot of the same kind.
+
+## 19. Adding a feature that uses rules
+
+> **Part:** guide · 2026-09-26
+
+**When.** A feature that decides *when* or *while* something happens — at a time, in a surface,
+on an output, for a genre, after an action — puts that decision in a rule. The feature keeps
+its own module, UI and behavior; the rule only says when (his rule, 2026-09-26: rules sit
+under features, never replace one). A feature with no "when" does not need the engine.
+
+**How it runs.** No worker, no thread. `emit()` is a plain call on the page's main thread: it
+reads the facts, picks the first matching moment rule and runs its action, in microseconds. A
+state check (all state rules, the overlay, the properties) measured 0.23 ms and runs only on a
+seam, a row change, the one fact timer or the page showing again, never per frame (§10, §18).
+
+**The steps** (names are in `src/rules-eval.ts` and `src/rules.ts`):
+
+1. **Name the parts.** A new event goes in `EventId`, a new fact in `FactId`, a new action in
+   the `Action` union (rules-eval.ts). The validator only runs rules whose names the registry
+   knows, so a typo is a skipped rule, not a crash.
+2. **Register them in the owner's init** — the module that knows the thing:
+   - `registerEvent("x.happen", { facts: [...] })` — list the facts only the event supplies
+     (like `entry.new`); they count as known.
+   - `registerFact("x", () => value, { seam })` — `seam(cb)` calls `cb` when the value changes
+     (sound.ts `onOutputChange`); a fact that changes with time and no seam gives `next` (the
+     time of its next change) instead.
+   - `registerAction("verb", { cost, run })` — `cost: "apple"` when it calls Apple (ask him
+     the cost first, CLAUDE.md). `run(arg, ctx, rule)` may be async.
+   - `registerProp("id", { apply, off })` for a window-like property no store key holds.
+   A module that the unit tests load (settings-store.ts, surface.ts …) must NOT import rules.ts:
+   its log timer keeps Node running. Register from main.ts or the owner's init instead (§18).
+   A registration that must be in place before the first paint (the look) runs before `initLook`.
+3. **Emit at the seam, after the motion.** `emit("x.happen", { card, facts, depth })` where the
+   thing happened, once its own animation has ended (the drill emits in the slide's `onDone`,
+   his call 2026-09-26). Not from a restore or a replay of state. `emit` returns the rule id
+   that ran, or null.
+4. **A value a rule may set is a rule key.** Add it to `RULE_KEYS` (settings-store.ts) and run
+   `npx tsc --noEmit`: it lists every `setting()` read of that key. Each reader chooses:
+   `effective(k)` for what acts now (the painter, the player, what is sent out), `ownSetting(k)`
+   for your value (a Settings row, an agent spec, a toggle that reads and writes). Never a rule
+   key: the agent gates, `updateMode`, the Apple-write switches, window sizes, Reset (§6).
+5. **The row makes its rule.** Add its fields to `RowValues`, its rules to `builtinRules()`
+   (ids `row:<key>:…`), its key to `ROW_KEYS` in rules.ts (so a change rebuilds), and to
+   `ROW_OFF` if a hand change turns the row off (`onHand: "off"`). Pick `onHand` per §8:
+   `next`, `session`, `off`, `learn` or `until`.
+6. **Test the rule.** `tests/rules-eval.test.ts`: each of the row's values → the rule it makes
+   and what it does; the new names go in the test's `known` sets, and the "every built-in rule is
+   valid" test covers the shape. A bug gets a test with its date in the name.
+7. **Show it.** A Settings row whose key is a rule key gets the chip by itself. Elsewhere, put
+   `ruleChip("key:x").el` beside the value. Give the row's words: `registerChipText(row, { name,
+   bolt, hand })` — the green dot's hint names the rule and your value; the red dot's hint says
+   when the rule acts again.
+8. **Check and log.** The engine logs every fire, start, end, hold and skip (`rule`, `rule:*`);
+   the action logs its own outcome (`grow:rule`, `sleep:daily`). Desk-test it through the UI
+   and read `__rules.applied()`, `__rules.holds()` and `__rules.facts()` in DevTools. Then the
+   CLAUDE.md build checklist as for any row.
+
+**Example — genre EQ (not built; an idea for Recipes).** Fact `genre` from the playing song
+(registered in the player's init, seam = the song change; no Apple call if the track carries
+its genre). Rules: while `genre` = X → `soundEqPreset` = Y, `onHand: "learn"`, made by a row
+the way *Remember each output* makes its rules (§13). `soundEqPreset` is already a rule key, so
+no reader changes; the Sound panel's chip already shows it. The first matching rule wins, so the
+order of genre rules and output rules is the design fork to bring him.
