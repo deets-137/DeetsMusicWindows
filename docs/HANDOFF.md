@@ -121,6 +121,9 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 §13.2, a crate change too).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
+- **Go to Album grows, and the grow replaces the slide** (2026-09-26, on `main`, for the next
+  release): [RULES.md §18](architecture/RULES.md), the desk test under "the grow replaces the
+  slide". Also `deetsmusic diag --flush` ([LOGGING.md](ops/LOGGING.md) §Reading it from outside).
 - **The rules engine** (2026-09-26, merged into `main`, **published in 0.25.0**):
   [RULES.md §18](architecture/RULES.md). Claude ran every step's desk test on the dev app, and
   the perf comparison with `main` (§18 Performance). The chip is his dots design (§9: green = a

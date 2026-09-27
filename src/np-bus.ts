@@ -38,7 +38,7 @@ import { runAgentWrite } from "./agent-writes";
 import { materializeTrack } from "./search";
 import type { Track } from "./library";
 import type { Station } from "./radio";
-import { log, events as diagEvents } from "./diag";
+import { log, events as diagEvents, flush as diagFlush } from "./diag";
 import { onToast, type ToastKind } from "./toast";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 
@@ -291,8 +291,11 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
       const limit = Math.max(1, Math.min(300, Number(payload?.limit) || 100));
       const since = Number(payload?.since) || 0;
       const tag = String(payload?.tag ?? "").trim();
+      // `flush` also writes the events the log file does not have yet (`deetsmusic diag
+      // --flush`), so a session reads the file without waiting on the 5-minute timer.
+      if (payload?.flush) await diagFlush();
       const all = diagEvents().filter((e) => e.n > since && (!tag || e.tag.startsWith(tag)));
-      return { events: all.slice(-limit), dropped: Math.max(0, all.length - limit) };
+      return { events: all.slice(-limit), dropped: Math.max(0, all.length - limit), flushed: !!payload?.flush };
     }
     case "queue-edit": {
       await runAgentWrite(kind, payload);

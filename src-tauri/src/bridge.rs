@@ -1031,9 +1031,11 @@ async fn handle(app: AppHandle, mut req: Request) {
             let limit = query_param(&url, "limit").and_then(|v| v.parse::<u32>().ok()).unwrap_or(100);
             let since = query_param(&url, "since").and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
             let tag = query_param(&url, "tag").unwrap_or_default();
+            // `flush=1` also writes the ring's new events to the log file first.
+            let flush = query_param(&url, "flush").is_some_and(|v| v == "1" || v == "true");
             agent_json(
                 req,
-                ask(&app, "diag-get", serde_json::json!({ "limit": limit, "since": since, "tag": tag })).await,
+                ask(&app, "diag-get", serde_json::json!({ "limit": limit, "since": since, "tag": tag, "flush": flush })).await,
                 origin,
             )
         }

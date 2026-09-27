@@ -328,31 +328,59 @@ export async function growByRule(card: string, axis: "horizontal" | "vertical" |
     return false;
   };
   if (!enabled()) return no(setting("cardGrow") ? "surface" : "setting");
-  await whenSwapSettled();
-  await settled;
-  const slot = opts?.slotOf(card) ?? null;
-  if (!slot) return no("not on screen");
-  if (state?.slot === slot) return no("already grown");
-  if (state && !replace) return no("a grow is on screen");
-  let dir: GrowDir | null;
-  if (axis === "full") dir = canFill() && !isStage(slot) ? "full" : null;
-  else {
-    const want: SideDir[] = axis === "vertical" ? ["up", "down"] : ["left", "right"];
-    dir = growDirs(slot).find((d) => want.includes(d)) ?? null;
+  // The same checks now, before any wait: when they pass, the grow is on its way, and the
+  // drill that asked places its level with no slide (`ruleGrowComing`). The body blanks at
+  // once, so the new level never shows at the small size (his call, 2026-09-26). Only a drill
+  // does this: the cog, the Diary and a new playlist keep the motion they had.
+  const drill = why === "album.open" || why === "artist.open";
+  const early = drill ? opts?.slotOf(card) ?? null : null;
+  const blank = early && !animating && ruleDir(early, axis, replace) ? opts!.hosts[early] : null;
+  if (blank) {
+    coming = card;
+    if (motion()) blank.classList.add("is-grow-rebuild");
   }
-  if (!dir) return no("no-axis");
-  ruleGrowing = true;
   try {
-    growCard(slot, dir, `rule:${why}`);
+    await whenSwapSettled();
+    await settled;
+    const slot = opts?.slotOf(card) ?? null;
+    if (!slot) return no("not on screen");
+    if (state?.slot === slot) return no("already grown");
+    if (state && !replace) return no("a grow is on screen");
+    const dir = ruleDir(slot, axis, replace);
+    if (!dir) return no("no-axis");
+    ruleGrowing = true;
+    try {
+      growCard(slot, dir, `rule:${why}`);
+    } finally {
+      ruleGrowing = false;
+    }
+    await settled;
+    const grew = state?.slot === slot;
+    if (grew) ruleMark = { card, slot, depth };
+    diag.log("grow:rule", { card, axis, dir, why, applied: grew, depth, placed: !!blank });
+    return grew;
   } finally {
-    ruleGrowing = false;
+    if (coming === card) coming = null;
+    // A grow that did not run after all: the blanked body comes back, its rows enter.
+    if (blank && !(state && opts?.hosts[state.slot] === blank)) {
+      blank.classList.remove("is-grow-rebuild");
+      enterAll(blank);
+    }
   }
-  await settled;
-  const grew = state?.slot === slot;
-  if (grew) ruleMark = { card, slot, depth };
-  diag.log("grow:rule", { card, axis, dir, why, applied: grew, depth });
-  return grew;
 }
+
+/** The way a rule grow on `axis` goes from `slot`, or null when it cannot (or must not) grow. */
+function ruleDir(slot: Slot, axis: "horizontal" | "vertical" | "full", replace: boolean): GrowDir | null {
+  if (state?.slot === slot || (state && !replace)) return null;
+  if (axis === "full") return canFill() && !isStage(slot) ? "full" : null;
+  const want: SideDir[] = axis === "vertical" ? ["up", "down"] : ["left", "right"];
+  return growDirs(slot).find((d) => want.includes(d)) ?? null;
+}
+
+/** A rule grow of `card` has passed its checks and is on its way. The drill that emitted the
+ *  event places its new level with no slide: the grow is the one motion (RULES.md §18). */
+let coming: string | null = null;
+export const ruleGrowComing = (card: string): boolean => coming === card;
 
 /** A Back path: `card` now has `depth` levels open. Back past the level a rule grow opened
  *  collapses it, when the grow on screen is still that rule grow. */

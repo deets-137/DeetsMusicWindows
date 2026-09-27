@@ -607,10 +607,35 @@ What drops is the Library grow's own cost: a hand grow of the same card, no dril
 with a worst frame of 21–29 ms, and its collapse 25–38 ms, on `main` too. Search's album pane:
 0.9 %, worst 17 ms. Album → artist → Back → Back still grows once and returns at the root.
 
+**His call, later the same day (2026-09-26): the grow replaces the slide.** The slide, then the
+grow, read as two separate steps: the album showed in the small card first. Now the event is
+emitted at the drill, BEFORE any slide. `growByRule` runs its checks at once (before it waits for
+a swap or a grow in motion). When they pass, it blanks the card body (`.is-grow-rebuild`) and
+sets `ruleGrowComing(card)`. The drill reads that and puts the new level in place with no slide
+(collection-card.ts `place`; search-card.ts the restore's no-transition path). The grow's clip
+and its row entry are then the one motion, so nothing runs over anything else. A grow that is
+refused after the wait gives the body back and enters its rows. Only `album.open` /
+`artist.open` do this; the cog, the Diary and a new playlist keep their motion. No grow coming
+(the row Off, Mini, a grow already on screen) → the plain slide, as before. The `grow:rule` log
+line carries `placed: true` for a grow that took this path.
+
+The same day's fix: a **related** Search pane (Go to Album / Go to Artist from a song — every
+Home song tile and library-album tile, by the id hop) sent no event at all, so Home's Go to
+Album never grew. It sends `album.open` / `artist.open` now. So does a Library **Full** album or
+artist, whose key is empty until its id loads (the level's `opens` field).
+
+*Desk test.* Max, *Grow on album or artist* = Full. (1) Home › a song tile › Go to Album: the
+Search card comes in, grows at once with its body blank, and the album's rows enter at full size.
+No small album first. (2) The same from a library-album tile and a "New" tile. (3) Library ›
+an album: no slide, one grow. (4) Row Off: the plain slide, no grow. (5) Back from the grown
+album collapses it. (6) The cog still opens Settings as before. `deetsmusic diag --flush --tag
+grow` shows `grow:rule … placed: true`.
+
 **Changes a user can see** (each one is a consequence of a decided fork; listed so none ships
 unseen):
 - *Grow on album or artist* is new and **on by default** (*Vertical*): an album or artist that
-  opens in a card now grows it, once its slide has ended (his default, §13; his call on the timing).
+  opens in a card now grows it (his default, §13). Since 2026-09-26 the grow replaces the slide:
+  the level is put in place and the grow is the one motion (his call on the timing, above).
 - A Pin (or any hand change to a grow) now keeps a Diary entry's grow when you go Back (it used
   to collapse). The same rule as every rule grow (fork 6A / 7A).
 - EQ for each output: an output with nothing remembered shows your last pick, where it used to

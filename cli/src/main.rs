@@ -167,6 +167,9 @@ enum Cmd {
         /// Only tags that start with this, e.g. `player` or `ui:`.
         #[arg(long, default_value = "")]
         tag: String,
+        /// Also write the events the log file does not have yet to deetsmusic.log, now.
+        #[arg(long)]
+        flush: bool,
     },
     /// Song of the Day: the picks, or mark / unmark one (docs/integrations/DeetsOTD.md).
     Pick(PickArgs),
@@ -670,8 +673,9 @@ fn op_history(c: &Client, limit: usize) -> Result<(String, Value), Failure> {
 /// event, oldest first, in the same shape the log file uses — so a session being debugged
 /// reads the same either way. The log file only holds what a flush has written; this is
 /// the window's buffer as it is now.
-fn op_diag(c: &Client, limit: u32, since: u64, tag: &str) -> Result<(String, Value), Failure> {
-    let v = c.get(&format!("/diag?limit={limit}&since={since}&tag={tag}"))?;
+fn op_diag(c: &Client, limit: u32, since: u64, tag: &str, flush: bool) -> Result<(String, Value), Failure> {
+    let f = if flush { "&flush=1" } else { "" };
+    let v = c.get(&format!("/diag?limit={limit}&since={since}&tag={tag}{f}"))?;
     let lines: Vec<String> = arr(&v, "events")
         .iter()
         .map(|e| {
@@ -685,7 +689,10 @@ fn op_diag(c: &Client, limit: u32, since: u64, tag: &str) -> Result<(String, Val
         })
         .collect();
     let dropped = v.get("dropped").and_then(Value::as_u64).unwrap_or(0);
-    let head = if dropped > 0 { format!("({dropped} older event(s) not shown)\n") } else { String::new() };
+    let mut head = if dropped > 0 { format!("({dropped} older event(s) not shown)\n") } else { String::new() };
+    if v.get("flushed").and_then(Value::as_bool) == Some(true) {
+        head.insert_str(0, "(flushed to the log file)\n");
+    }
     Ok((if lines.is_empty() { "(no events)".into() } else { format!("{head}{}", lines.join("\n")) }, v))
 }
 
@@ -1066,7 +1073,8 @@ fn tools(small: bool) -> Value {
           "inputSchema": { "type": "object", "additionalProperties": false, "properties": {
               "limit": { "type": "number", "description": "How many of the most recent events, 1-300 (default 100)." },
               "since": { "type": "number", "description": "Only events after this sequence number." },
-              "tag": { "type": "string", "description": "Only tags starting with this, e.g. player, ui:, sound." } } } }));
+              "tag": { "type": "string", "description": "Only tags starting with this, e.g. player, ui:, sound." },
+              "flush": { "type": "boolean", "description": "Also write the events the log file does not have yet to deetsmusic.log, now." } } } }));
     Value::Array(list)
 }
 
@@ -1142,7 +1150,7 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             _ => op_queue_list(c)?.0,
         },
         "query" => op_query(c, &str_arg("sql"))?.0,
-        "diag" => op_diag(c, num_arg("limit").unwrap_or(100), num_arg("since").unwrap_or(0) as u64, &str_arg("tag"))?.0,
+        "diag" => op_diag(c, num_arg("limit").unwrap_or(100), num_arg("since").unwrap_or(0) as u64, &str_arg("tag"), a.get("flush").and_then(Value::as_bool).unwrap_or(false))?.0,
         "library" => op_library(c, &str_arg("action"), &str_arg("id"))?.0,
         "playlist_add" => {
             let id = str_arg("id");
@@ -1463,7 +1471,7 @@ fn main() {
         ),
         Cmd::Sql { query } => op_query(&c, &query.join(" ")),
         Cmd::History { limit } => op_history(&c, limit),
-        Cmd::Diag { limit, since, tag } => op_diag(&c, limit, since, &tag),
+        Cmd::Diag { limit, since, tag, flush } => op_diag(&c, limit, since, &tag, flush),
         Cmd::Pick(a) => op_picks(&c, &a),
         Cmd::Diary(a) => op_diary(&c, &a),
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),

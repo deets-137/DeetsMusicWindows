@@ -29,7 +29,7 @@ import { esc } from "./dom";
 import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
 import { emit } from "./rules";
-import { levelLeft } from "./card-grow";
+import { levelLeft, ruleGrowComing } from "./card-grow";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -154,6 +154,9 @@ export interface Context {
   /** Card memory (CARD-MEMORY.md §5): what this level shows, as the card's `resolve` reads it
    *  back ("album:<key>", "playlist:<id>"). A level with no key ends a snapshot there. */
   key?: string;
+  /** What this level opens, for the rules engine's album.open / artist.open (RULES.md §10).
+   *  Set it where the key cannot say it: a Full level has no key until its id resolves. */
+  opens?: "album" | "artist";
   /** What the card header shows while drilled ("Album", "Playlist") when a hero owns
    *  the title itself. Absent → the header shows `title`, as before. */
   headerLabel?: string;
@@ -978,15 +981,26 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
     // The rules engine (RULES.md §10): an album or an artist opened. Not from `replace` (the
     // Lib | Full chips) or a card-memory restore, which never come through here. It is told
-    // when the slide ENDS, so a rule's grow runs after the slide, never over it (his call,
-    // 2026-09-26: together they dropped frames, RULES.md §18 Performance). A level left before
-    // then grows nothing.
+    // BEFORE the slide: when a rule grow is coming, the level goes in place with no slide and
+    // the grow is the one motion (his call, 2026-09-26 — the slide then the grow read as two
+    // separate steps, and both at once dropped frames, RULES.md §18 Performance).
     const key = f.ctx.key ?? "";
-    const event = key.startsWith("album:") ? "album.open" : key.startsWith("artist:") ? "artist.open" : null;
-    const depth = stack.length;
-    slide(buildPane(f), "push", f, () => {
-      if (event && cur() === f) emit(event, { card: cardId(), facts: { cause: "hand" }, depth });
-    });
+    const opens = f.ctx.opens ?? (key.startsWith("album:") ? "album" : key.startsWith("artist:") ? "artist" : null);
+    if (opens) emit(`${opens}.open`, { card: cardId(), facts: { cause: "hand" }, depth: stack.length });
+    if (opens && ruleGrowComing(cardId())) place(f);
+    else slide(buildPane(f), "push", f);
+  };
+
+  /** A new level in place, no slide: a rule grow is the motion, and it enters the rows. */
+  const place = (f: Frame) => {
+    dropWindower(curPane);
+    curPane?.remove();
+    const pane = buildPane(f);
+    pane.dataset.pos = "center";
+    viewport.appendChild(pane);
+    curPane = pane;
+    paneFrame = f;
+    applyScroll(pane, f);
   };
 
   // A view chip (FULL-LIB.md): the same level seen another way. It takes the open level's

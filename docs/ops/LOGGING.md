@@ -323,6 +323,11 @@ more than that in memory. `GET /diag` reads the window's ring as it is now.
   app's own behaviour, so it needs no second switch of its own.
 - **CLI:** `deetsmusic diag -n 50 --tag player`. **MCP tool:** `diag` (full pack only —
   a small local model has no use for it).
+- **Flush from outside (2026-09-26):** `deetsmusic diag --flush` (MCP: `flush: true`, route:
+  `&flush=1`) first writes the events the log file does not have yet, then prints the ring as
+  usual. It is `diag.flush()` — the same since-cursor as the 5-minute timer, so it never writes
+  an event twice. Use it when a session needs the file (a grep over `deetsmusic.log`, a report)
+  without waiting for the timer. The reply says `(flushed to the log file)`.
 
 ## The click trail (BUILT 2026-09-18)
 

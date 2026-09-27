@@ -12,6 +12,26 @@ updated: 2026-09-26
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, late night — Go to Album from Home did not grow; the grow replaces the slide
+
+His report: Home › Go to Album did not fill the card with *Grow on album or artist* = Full. The
+live ring (the `diag` MCP tool on his installed 0.25.0) showed five "Go to Album" presses and one
+`album.open`, from a "New" tile. Cause: Home has no drill, so it opens the album in Search. A
+song tile or a library-album tile has no album id, so Search opens a **related** pane (the
+song → album hop), and a related pane sent no event. Fixed; a Library Full album or artist sent
+none either (no key until its id loads), fixed with a level `opens` field.
+
+His second note: the album opened small, then grew, and felt like two steps. Fork asked: the grow
+replaces the slide (chosen) / grow then slide / blank at the click / keep. Built: the drill emits
+before the slide; a grow that passes its checks blanks the body at once and the level goes in
+place with no slide (RULES.md §18). Decided inside his choice: only album and artist opens do
+this (the cog, the Diary and a new playlist keep their motion); a grow refused after its wait
+gives the body back with the row entry; the `grow:rule` line logs `placed`.
+
+His third note: a CLI way to flush the log. Built `deetsmusic diag --flush` (MCP `flush`, route
+`flush=1`); it is `diag.flush()` with the timer's since-cursor (LOGGING.md). The bridge change
+is Rust: the app needs a restart. Not desk-tested yet; the desk test is in RULES.md §18.
+
 ## 2026-09-26, night — the rules engine, built (branch `rules-rulez`)
 
 RULES.md §17 steps 1–11, one commit each (step 4's overlay went in with step 2). Two forks

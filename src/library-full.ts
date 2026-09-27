@@ -131,6 +131,7 @@ export function fullViews(deps: FullDeps): FullViews {
         return id ? `full-album:${id}` : undefined;
       },
       headerLabel: "Album",
+      opens: "album",
       hero: () => {
         const ts = rows();
         const art = ts[0]?.artwork ?? src.artwork;
@@ -254,6 +255,7 @@ export function fullViews(deps: FullDeps): FullViews {
         return id ? `full-artist:${id}` : undefined;
       },
       headerLabel: "Artist",
+      opens: "artist",
       hero: () => ({
         cover: deps.heroCover(d?.artist.artwork ?? src.artwork, name(), undefined, undefined, true),
         title: name(),
