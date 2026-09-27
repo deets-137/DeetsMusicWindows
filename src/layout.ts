@@ -25,7 +25,7 @@ import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card
 import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
 import { storedAssignment } from "./layout-rules";
-import { emit, registerAction, registerEvent } from "./rules";
+import { cancelled, emit, registerAction, registerEvent } from "./rules";
 
 type Assignment = Partial<Record<Slot, CardId>>;
 
@@ -598,12 +598,22 @@ export function initLayout(): void {
   // (synchronous — the slot is on-screen before setSlot mounts into it).
   // A slot of this composition that shows `id` on screen (mini's hidden right slot doesn't count).
   const visibleSlotOf = (id: CardId): Slot | undefined => comp.slots.find((s) => layout[s] === id && shown(s));
+  // Rulez (RULEZ.md §10.1, his case 2026-09-27: Playlists grown in Max, the Queue pressed): a
+  // request for the Queue that would change the layout — end the grow over it, or push a card out
+  // of the slot it takes — is a cancel event. In = the card it would replace (the grown card, or
+  // the card in that slot). Keep leaves the layout as it is. A request with no change asks nothing.
+  const grownCard = (): string | undefined => {
+    const g = grownState();
+    return g ? hosts[g.slot]?.dataset.mounted : undefined;
+  };
+  const queueKept = (id: CardId, replaces: string | undefined): boolean =>
+    id === "queue" && !!replaces && cancelled("queue.summon", { card: replaces });
   onCardRequest((id, how: RequestHow) => {
     if (comp.anchored.includes(id)) {
       // An anchored card is on screen by construction — unless a grow covers it. In max the
       // Queue can cover Now Playing (STAGE-COLUMN.md §7), so a request for it ends the grow.
       const anchored: Slot | null = id === "now-playing" ? "np" : id === "queue" && comp.queueSlot ? "queue" : null;
-      if (anchored && isCovered(anchored)) void collapseGrow("request");
+      if (anchored && isCovered(anchored) && !queueKept(id, grownCard())) void collapseGrow("request");
       return;
     }
     if (isPlayerView()) void applySurface("mini", "cards");
@@ -613,21 +623,22 @@ export function initLayout(): void {
     if (inPlace && drillInPlace(inPlace, id)) return;
     // Under a grown card (CARD-GROW.md §7, fork 5): the grow collapses, and the card is on screen.
     if (comp.slots.some((s) => layout[s] === id && isCovered(s))) {
-      void collapseGrow("request");
+      if (!queueKept(id, grownCard())) void collapseGrow("request");
       return;
     }
     // Already on screen: leave the layout as it is. It used to exchange the two slots
     // whenever the least-recently-touched slot was the other one (ARTIST-VIEW.md §6).
     if (visibleSlotOf(id)) return;
     if (currentSurface() === "mini") {
-      setSlot("left", id);
+      if (!queueKept(id, layout.left)) setSlot("left", id);
       return;
     }
     const slot = lruSlot();
     // Every other slot is under the grown card (Midi, or a filled card in Max): the grow ends
     // first, so the card lands where it can be seen (CARD-GROW.md §14.5).
-    if (slot) setSlot(slot, id);
-    else void collapseGrow("request").then(() => setSlot(lruSlot() ?? comp.slots[0], id));
+    if (slot) {
+      if (!queueKept(id, layout[slot])) setSlot(slot, id);
+    } else if (!queueKept(id, grownCard())) void collapseGrow("request").then(() => setSlot(lruSlot() ?? comp.slots[0], id));
   });
   setCardHostLookup((id) => {
     const s = visibleSlotOf(id);

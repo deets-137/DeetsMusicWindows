@@ -25,9 +25,34 @@
 // So a menu builder here that has a nav in hand should prefer it. `goToItems` in
 // library-card.ts is the reference: it branches on `nav` before it reaches for this bus.
 
+//
+// **Where it opens (RULEZ.md §10.1, route 8).** Each Go to asks the rules at the press: the
+// events `goto.artist` / `goto.album` (In = the card the menu opened in), whose Do is *Open in the
+// Library* or *Open in Search*. Settings › Go to opens makes the built-in rule; with no rule the
+// answer is the split above (the Library in place, every other card in Search). A way the item
+// does not have (no Library copy, no catalog id) falls back to the other.
+
 import { requestDrillCard } from "./layout-bus";
-import type { MenuItem } from "./context-menu";
+import { menuCard, type MenuItem } from "./context-menu";
+import { decided } from "./rules";
+import * as diag from "./diag";
 import type { Artwork, Track } from "./library";
+
+/** A Go to's Library way: `run` opens it in the Library card; `inPlace` = the menu is the
+ *  Library's own, so the Library is where it fits when no rule speaks. */
+export interface LibraryWay {
+  run: () => void;
+  inPlace: boolean;
+}
+
+/** Ask the rules where a Go to opens, and open it there. */
+export function goTo(kind: "artist" | "album", library: LibraryWay | undefined, search: (() => void) | undefined): void {
+  const d = decided(`goto.${kind}`, { card: menuCard() });
+  const want = d && "openIn" in d ? d.openIn : library?.inPlace ? "library" : "search";
+  const run = (want === "library" ? library?.run : search) ?? library?.run ?? search;
+  diag.log("goto", { kind, want, took: run === search ? "search" : "library", card: menuCard() });
+  run?.();
+}
 
 export interface DrillIntent {
   /** The SOURCE resource we hop FROM. */
@@ -77,12 +102,17 @@ export function goToArtistItem(
   kind: "songs" | "albums",
   catalogId?: string | null,
   fallbackName?: string,
+  library?: LibraryWay,
 ): MenuItem | null {
-  if (!catalogId) return null;
-  return {
-    label: "Go to Artist",
-    run: () => requestDrill({ srcKind: kind, srcId: catalogId, rel: "artists", name: fallbackName || "Artist" }),
-  };
+  const search = artistSearch(kind, catalogId, fallbackName);
+  if (!search && !library) return null;
+  return { label: "Go to Artist", run: () => goTo("artist", library, search) };
+}
+
+/** Open the artist in the Search card, by a song's or an album's catalog id. */
+export function artistSearch(kind: "songs" | "albums", catalogId?: string | null, fallbackName?: string): (() => void) | undefined {
+  if (!catalogId) return undefined;
+  return () => requestDrill({ srcKind: kind, srcId: catalogId, rel: "artists", name: fallbackName || "Artist" });
 }
 
 /** A catalog playlist to open as a Search pane (a Featured Playlists tile on the Library
@@ -186,18 +216,23 @@ export function requestArtistPane(intent: ArtistPaneIntent): void {
 }
 
 /** "Go to Album" from the ALBUM's own catalog id — `null` without one. */
-export function goToAlbumPaneItem(intent: AlbumPaneIntent | null): MenuItem | null {
-  if (!intent?.id) return null;
-  return { label: "Go to Album", run: () => requestAlbumPane(intent) };
+export function goToAlbumPaneItem(intent: AlbumPaneIntent | null, library?: LibraryWay): MenuItem | null {
+  const search = intent?.id ? () => requestAlbumPane(intent) : undefined;
+  if (!search && !library) return null;
+  return { label: "Go to Album", run: () => goTo("album", library, search) };
 }
 
-/** "Go to Album" from a song's catalog id — `null` without one. */
-export function goToAlbumItem(songCatalogId?: string | null, albumName?: string): MenuItem | null {
-  if (!songCatalogId) return null;
-  return {
-    label: "Go to Album",
-    run: () => requestDrill({ srcKind: "songs", srcId: songCatalogId, rel: "albums", name: albumName || "Album" }),
-  };
+/** "Go to Album" from a song's catalog id — `null` without one and without a Library way. */
+export function goToAlbumItem(songCatalogId?: string | null, albumName?: string, library?: LibraryWay): MenuItem | null {
+  const search = albumSearch(songCatalogId, albumName);
+  if (!search && !library) return null;
+  return { label: "Go to Album", run: () => goTo("album", library, search) };
+}
+
+/** Open a song's album in the Search card (the song → album hop). */
+export function albumSearch(songCatalogId?: string | null, albumName?: string): (() => void) | undefined {
+  if (!songCatalogId) return undefined;
+  return () => requestDrill({ srcKind: "songs", srcId: songCatalogId, rel: "albums", name: albumName || "Album" });
 }
 
 // ── The song pane (CREDITS.md §7) ────────────────────────────────────────────

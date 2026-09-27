@@ -27,6 +27,23 @@ scrubber showed 92 s. Read from the live app's ring (port 47826; the dev app hel
   toast says Apple works again. The song goes on from where it stopped; the log has
   `player:resumeOnPlay {at, used: true}`.
 
+## 2026-09-27, afternoon — Rulez finished: the music desk tests and route 8 (branch `rules-rulez`)
+
+His ask: run the Rulez steps that need music, finish those desk tests, build the routes, and
+test. One session did all of it (the two-session split of RULEZ.md §3 ended here).
+
+- The open steps with music all passed: the clock event, the Diary score and times played
+  facts, Play a station (RULEZ.md §10.2). Found and fixed: an agent's station rule could not
+  run (it stores an id), and the agent's word list had no stations.
+- Route 8, all five steps built (RULEZ.md §10.2): the Play on launch recipe with the tray guard,
+  the Queue's cancel event, the Go to events with the new row Menus › Go to opens, the shuffle
+  press (the idle branch is now the rule `row:shuffleIdle`), the window width and height facts.
+- His two calls: the Queue cancel covers his case (Max, Playlists grown, the Queue pressed);
+  the idle shuffle rule reads *No song loaded*. What was decided inside them: RULEZ.md §10.2.
+- `npm run check` and `vite build` pass (93 unit tests; two new, dated). Committed and pushed on
+  `rules-rulez` at his word, with the stale lines in CLAUDE.md, HANDOFF, FUTURE-SETTINGS §5b,
+  §10, §20, §22 and RULEZ.md §3 and §8 brought up to date.
+
 ## 2026-09-27 — Rulez, the rules builder (branch `rules-rulez`)
 
 `rules-rulez` fast-forwarded to `main` (0b7436a), then Rulez designed with him and built

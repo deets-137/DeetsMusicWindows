@@ -7,9 +7,9 @@ import {
 } from "../src/rules-eval.ts";
 
 const known: Known = {
-  events: new Set(["album.open", "artist.open", "diary.open", "cog", "playlist.create", "sleep.arm"]),
-  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now"]),
-  actions: new Set(["grow", "summon", "sleep"]),
+  events: new Set(["album.open", "artist.open", "diary.open", "cog", "playlist.create", "sleep.arm", "goto.artist", "goto.album", "shuffle.press"]),
+  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded"]),
+  actions: new Set(["grow", "summon", "sleep", "openIn", "shuffleLibrary"]),
   targets: new Set(["key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop"]),
 };
 
@@ -17,6 +17,7 @@ const ROWS: RowValues = {
   drillGrow: "vertical", diaryGrow: "new", lookSchedule: "off", dayTheme: "lilac", daySkin: "press",
   nightTheme: "black-red", nightSkin: "cyber", lookHold: "next", alwaysOnTop: "off", soundEqPerOutput: true,
   soundEqOutputs: {}, sharePauseUntil: 0, playlistCreateSummon: "notmini", sleepSchedule: "off",
+  goToTarget: "fits", shuffleIdle: "library",
 };
 const rows = (patch: Partial<RowValues>) => builtinRules({ ...ROWS, ...patch });
 const byId = (rs: Rule[], id: string) => rs.find((r) => r.id === id);
@@ -181,8 +182,24 @@ test("the sharing pause: the three switches read off until the time, then come b
   assert.equal(resolveState(rows({ sharePauseUntil: 0 }), { now: 1 }, []).set.size, 0);
 });
 
+test("Go to opens (2026-09-27): Where it fits makes no rule; Search and Library answer both events", () => {
+  const where = (v: RowValues["goToTarget"], ev: "goto.artist" | "goto.album") =>
+    (pickMoment(rows({ goToTarget: v }), ev, "queue", {}).rule?.do as { openIn?: string } | undefined)?.openIn ?? null;
+  assert.equal(where("fits", "goto.artist"), null);
+  assert.equal(where("search", "goto.album"), "search");
+  assert.equal(where("library", "goto.artist"), "library");
+  assert.equal(where("library", "goto.album"), "library");
+});
+
+test("Idle shuffle plays (2026-09-27): the library only with no song loaded; Nothing makes no rule", () => {
+  const plays = (v: RowValues["shuffleIdle"], loaded: boolean) => !!pickMoment(rows({ shuffleIdle: v }), "shuffle.press", "*", { loaded }).rule;
+  assert.equal(plays("library", false), true);
+  assert.equal(plays("library", true), false); // a paused song shuffles Up Next, as before
+  assert.equal(plays("noop", false), false);
+});
+
 test("every built-in rule is valid", () => {
-  const all = rows({ lookSchedule: "clock", alwaysOnTop: "player", soundEqOutputs: { hp: "warm" }, sharePauseUntil: 5, sleepSchedule: "sun", playlistCreateSummon: "always", diaryGrow: "every", drillGrow: "full" });
+  const all = rows({ lookSchedule: "clock", alwaysOnTop: "player", soundEqOutputs: { hp: "warm" }, sharePauseUntil: 5, sleepSchedule: "sun", playlistCreateSummon: "always", diaryGrow: "every", drillGrow: "full", goToTarget: "library" });
   for (const r of all) assert.equal(validate(r, known), null, r.id);
 });
 

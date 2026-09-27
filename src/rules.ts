@@ -108,6 +108,7 @@ const STORE_HOLDS = "deets.rules.holds";
 const ROW_KEYS: (keyof RowValues)[] = [
   "drillGrow", "diaryGrow", "lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "lookHold",
   "alwaysOnTop", "soundEqPerOutput", "soundEqOutputs", "sharePauseUntil", "playlistCreateSummon", "sleepSchedule",
+  "goToTarget", "shuffleIdle",
 ];
 
 let started = false;
@@ -284,6 +285,12 @@ export function cancelled(event: EventId, ctx: EmitCtx): boolean {
   return !!r && "keep" in r.do;
 }
 
+/** A site that asks the rules which way to go (Go to: `openIn`, RULEZ.md §10.1): the Do of the
+ *  rule that matched, or null when none did (the site's own default). */
+export function decided(event: EventId, ctx: EmitCtx): MomentRule["do"] | null {
+  return fire(event, ctx)?.do ?? null;
+}
+
 function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
   if (!started) return null;
   if (checking) {
@@ -398,7 +405,7 @@ function stateSnap(ruleId: string, target: string, verdict: Verdict, f: Facts): 
 }
 
 /** The events that fire often: a miss writes no log line. */
-const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "grow.back", "surface.change"]);
+const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "grow.back", "surface.change", "queue.summon", "goto.artist", "goto.album", "shuffle.press"]);
 
 /** The fire cap: the rule is off until the app starts again, and a notice names it. */
 function tripRule(rule: Rule): void {

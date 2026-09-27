@@ -18,6 +18,7 @@ import { registry } from "./cards";
 import { presetOptions } from "./sound";
 import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { userFiles } from "./user-files";
+import { radioLivePeek, radioRecents, radioSpecialPeek } from "./radio";
 import { fileGone } from "./rules-files";
 import * as diag from "./diag";
 import type { Rule } from "./rules-eval";
@@ -27,9 +28,12 @@ const waiting = (message: string): Reply => ({ ok: true, pending: "user", messag
 const blocked = (why: string) => new Error(`blocked: ${why}`);
 const unknown = (why: string) => new Error(`unknown: ${why}`);
 
-/** The run-time lists a sentence needs; playlists and stations stay as ids (no async here). */
+/** The run-time lists a sentence needs; playlists stay as ids (no async here). The stations are
+ *  the ones the Radio card already holds, so an agent can name one (`do: "playStation"`). */
 function lists(): Lists {
   const outputs = Object.entries(setting("soundOutputNames")).map(([value, label]) => ({ value, label }));
+  const seen = new Set<string>();
+  const stations = [...radioSpecialPeek(), ...radioRecents(), ...radioLivePeek()].filter((s) => !seen.has(s.id) && !!seen.add(s.id));
   return {
     ...NO_LISTS,
     cards: (Object.values(registry).filter(Boolean) as { id: string; title: string }[]).map((c) => ({ value: c.id, label: c.title })),
@@ -37,6 +41,7 @@ function lists(): Lists {
     outputs: outputs.length ? outputs : [{ value: "default", label: "This PC" }],
     themes: THEME_OPTIONS,
     skins: SKIN_OPTIONS,
+    stations: stations.map((s) => ({ value: s.id, label: s.name })),
     // Your own files (RULEZ.md §5): a picture or a sound by name, so `do: "picture", value: "Blue"` works.
     pictures: userFiles("picture").map((f) => ({ value: f.id, label: f.name })),
     sounds: userFiles("sound").map((f) => ({ value: f.id, label: f.name })),

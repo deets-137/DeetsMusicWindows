@@ -38,6 +38,8 @@ export interface EventWord {
   label: string;
   /** A cancel event: its rule's Do is Keep (RULES.md §20.7). */
   cancel?: boolean;
+  /** A Go to event: its rule's Do is *Open in* (RULEZ.md §10.1). */
+  goTo?: boolean;
 }
 
 export const EVENTS: EventWord[] = [
@@ -50,6 +52,7 @@ export const EVENTS: EventWord[] = [
   { id: "queue.end", section: "Playback", label: "The queue runs out" },
   { id: "station.play", section: "Playback", label: "A station plays" },
   { id: "station.return", section: "Playback", label: "A station is about to come back", cancel: true },
+  { id: "shuffle.press", section: "Playback", label: "You press shuffle" },
   { id: "clock", section: "Time", label: "The clock reaches" },
   { id: "app.open", section: "Window", label: "The app opens" },
   { id: "surface.change", section: "Window", label: "The surface changes" },
@@ -58,10 +61,13 @@ export const EVENTS: EventWord[] = [
   { id: "card.open", section: "Window", label: "You open a card" },
   { id: "grow.outside", section: "Window", label: "You press outside a grown card", cancel: true },
   { id: "grow.back", section: "Window", label: "You go Back from a grown album or artist", cancel: true },
+  { id: "queue.summon", section: "Window", label: "The Queue is about to replace a card or end a grow", cancel: true },
   { id: "album.open", section: "Library", label: "You open an album" },
   { id: "artist.open", section: "Library", label: "You open an artist" },
   { id: "diary.open", section: "Library", label: "You open a Diary entry" },
   { id: "playlist.create", section: "Library", label: "You make a playlist" },
+  { id: "goto.artist", section: "Library", label: "You press Go to Artist", goTo: true },
+  { id: "goto.album", section: "Library", label: "You press Go to Album", goTo: true },
   { id: "cog", section: "Library", label: "You press the cog" },
   { id: "replay.weekly", section: "Library", label: "The weekly Replay is about to be made", cancel: true },
   { id: "output.change", section: "Sound", label: "The output changes" },
@@ -123,6 +129,7 @@ export const FACTS: FactWord[] = [
   { id: "diaryScore", section: "Playback", label: "Diary score", kind: "number" },
   { id: "plays", section: "Playback", label: "Times played", kind: "number" },
   { id: "queueLength", section: "Playback", label: "Songs up next", kind: "number" },
+  { id: "loaded", section: "Playback", label: "A song is loaded", kind: "bool", yes: "A song is loaded", no: "No song is loaded" },
   { id: "time", section: "Time", label: "Time", kind: "time" },
   { id: "day", section: "Time", label: "Day", kind: "choice", choices: DAY_CHOICES },
   { id: "daylight", section: "Time", label: "Daylight", kind: "bool", yes: "It is daylight", no: "It is dark" },
@@ -145,6 +152,8 @@ export const FACTS: FactWord[] = [
   { id: "songMids", section: "Sound", label: "Song mids", kind: "number", unit: "dB" },
   { id: "songTreble", section: "Sound", label: "Song treble", kind: "number", unit: "dB" },
   { id: "surface", section: "Window", label: "Surface", kind: "choice", choices: SURFACES },
+  { id: "windowWidth", section: "Window", label: "Window width", kind: "number", unit: "px" },
+  { id: "windowHeight", section: "Window", label: "Window height", kind: "number", unit: "px" },
   { id: "battery", section: "Window", label: "Battery", kind: "number", unit: "%" },
   { id: "charging", section: "Window", label: "Charging", kind: "bool", yes: "The PC is charging", no: "The PC is on battery" },
   { id: "online", section: "Window", label: "Online", kind: "bool", yes: "The PC is online", no: "The PC is offline" },
@@ -182,7 +191,10 @@ export interface DoWord {
   state?: (v: Value) => StateSet;
   /** Offered only for a cancel event (Keep). */
   cancel?: boolean;
+  /** Offered only for a Go to event (*Open in*). */
+  goTo?: boolean;
 }
+const OPEN_IN: Choice[] = [{ value: "library", label: "Library" }, { value: "search", label: "Search" }];
 
 const SHARING = ["shareActivityApp", "shareActivityDiscord", "discordRoomInvite"] as const;
 const ON_OFF: Choice[] = [{ value: true, label: "On" }, { value: false, label: "Off" }];
@@ -245,6 +257,9 @@ export const DOS: DoWord[] = [
   },
   { id: "playSound", section: "Sound", label: "Play sound", input: "choice", choices: "sounds", moment: (v) => ({ playSound: String(v) }) },
   { id: "scrobble", section: "Playback", label: "Turn scrobbling", input: "choice", choices: ON_OFF, moment: (v) => ({ scrobble: v === true }) },
+  // Route 8 (RULEZ.md §10.1).
+  { id: "shuffleLibrary", section: "Playback", label: "Play the library shuffled", input: "none", moment: () => ({ shuffleLibrary: true }) },
+  { id: "openIn", section: "Library", label: "Open it in", input: "choice", choices: OPEN_IN, goTo: true, moment: (v) => ({ openIn: v === "library" ? "library" : "search" }) },
 ];
 
 export const doWord = (id: string): DoWord | undefined => DOS.find((d) => d.id === id);
@@ -253,8 +268,10 @@ export const doWord = (id: string): DoWord | undefined => DOS.find((d) => d.id =
  *  cancel event only Keep), a While row the targets. */
 export function dosFor(rule: Rule): DoWord[] {
   if (rule.kind === "state") return DOS.filter((d) => d.state);
-  const cancel = !!eventWord(rule.when)?.cancel;
-  return DOS.filter((d) => d.moment && (cancel ? d.cancel : !d.cancel));
+  const ev = eventWord(rule.when);
+  if (ev?.goTo) return DOS.filter((d) => d.goTo);
+  const cancel = !!ev?.cancel;
+  return DOS.filter((d) => d.moment && !d.goTo && (cancel ? d.cancel : !d.cancel));
 }
 
 // ── the time field ───────────────────────────────────────────────
@@ -373,7 +390,8 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "repeat": return `Set repeat to ${labelOf(REPEATS, arg)}`;
     case "volume": return `Set the volume to ${arg}%`;
     case "playPlaylist": return `Play ${labelOf(lists.playlists, arg)}`;
-    case "playStation": return `Play ${(arg as { name?: string })?.name ?? "a station"}`;
+    // Rulez stores the station; an agent's rule stores its id.
+    case "playStation": return `Play ${typeof arg === "string" ? labelOf(lists.stations, arg) : (arg as { name?: string })?.name ?? "a station"}`;
     case "sharePause": return "Pause sharing for an hour";
     case "sleepIn": return `Start the sleep timer: ${arg} min`;
     case "keep": return "Keep it from happening";
@@ -385,6 +403,8 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "scrobble": return `Turn scrobbling ${arg ? "on" : "off"}`;
     case "picture": return `Use the picture ${labelOf(lists.pictures, arg)}`;
     case "playSound": return `Play the sound ${labelOf(lists.sounds, arg)}`;
+    case "shuffleLibrary": return "Play the library shuffled";
+    case "openIn": return `Open it in ${arg === "library" ? "the Library" : "Search"}`;
     case "set": {
       const { key, value } = arg as { key: string; value: unknown };
       if (key === "theme") return `Use theme ${labelOf(lists.themes, value)}`;
@@ -440,7 +460,8 @@ export function doWordOf(r: Rule): { word: DoWord; value: Value } | null {
       return w ? { word: w, value } : null;
     }
     const w = doWord(verb);
-    return w ? { word: w, value: (verb === "playStation" ? (arg as { id: string }).id : arg) as Value } : null;
+    const station = verb === "playStation" && typeof arg !== "string" ? (arg as { id: string }).id : arg;
+    return w ? { word: w, value: station as Value } : null;
   }
   const first = r.set[0];
   if (!first) return null;
@@ -467,6 +488,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
   love: { act: "loves the song" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
+  shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" },
 };
 export const saysOf = (w: DoWord, moment: boolean): string => (moment ? SAYS[w.id]?.act : SAYS[w.id]?.keep) ?? w.label.toLowerCase();
 
@@ -483,6 +505,7 @@ export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
     if (typeof st === "string") return labelOf(lists.stations, st);
     return st?.special === "discovery" ? "your Discovery station" : st?.name ?? st?.id ?? "a station";
   }
+  if (w.id === "openIn") return v === "library" ? "the Library" : "Search";
   const label = labelOf(choicesOf(w, lists), v);
   // Words that are not names read lower case in the sentence ("grows this card taller").
   return w.id === "grow" || w.id === "shuffle" || w.id === "scrobble" || w.id === "growOutside" || w.id === "repeat" ? label.toLowerCase() : label;

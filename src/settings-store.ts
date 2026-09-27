@@ -273,6 +273,9 @@ export interface Settings {
   shuffleManual: "top" | "hold" | "mix";
   /** Shuffle with nothing playing: play the whole library shuffled, or do nothing (§5b). */
   shuffleIdle: "library" | "noop";
+  /** Menus › Go to opens (RULEZ.md §10.1): "fits" = the Library in place, every other card in
+   *  Search (today's split); a value makes the built-in rule `row:goToTarget`. */
+  goToTarget: "fits" | "search" | "library";
   /** The Shuffle button is a mode that stays on (NEXT-VERSION §14 A) — off: it shuffles Up
    *  Next once (the 2026-07-02 one-shot). */
   shuffleStays: boolean;
@@ -511,6 +514,7 @@ export const DEFAULTS: Settings = {
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   shuffleManual: "top",
   shuffleIdle: "library",
+  goToTarget: "fits", // RULEZ.md §10.1: what Go to did before the row existed, so nothing moves
   shuffleStays: true, // user's call 2026-09-15: shuffle is a mode (NEXT-VERSION §14 A)
   shuffleMode: false,
   repeatMode: "off",

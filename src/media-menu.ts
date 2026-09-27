@@ -26,12 +26,13 @@ import type { Playlist } from "./search";
 import type { Station } from "./radio";
 import type { HomeItem } from "./home";
 import { artistDetail, catalogRelated, materializeTrack } from "./search";
-import { addTransientTracks } from "./track-store";
+import { addTransientTracks, tracks } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, setShuffleMode } from "./player";
 import { shuffleInPlace } from "./queue";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
-import { goToArtistItem, goToAlbumItem, goToAlbumPaneItem, songCreditsItem, requestPlaylistPane, requestArtistPane } from "./go-to";
+import { goTo, goToArtistItem, goToAlbumItem, goToAlbumPaneItem, artistSearch, songCreditsItem, requestPlaylistPane, requestArtistPane, type LibraryWay } from "./go-to";
+import { creditIndex } from "./artist-credit";
 import { copySongLinkItem, copyAlbumLinkItem, copyAlbumLinkFromSongItem, copyArtistLinkItem, copyPlaylistLinkItem, copyStationLinkItem } from "./copy-link";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { startWebItem, type WebSeed } from "./web";
@@ -116,24 +117,38 @@ export interface SongWhere extends Where {
   lead?: Row[];
 }
 
-/** Go to the song's artist and album, and its credits (group 3). */
+/** The Library's copy of a song, when you have one: Go to may open it there (RULEZ.md §10.1). */
+function libCopy(t?: Track): Track | undefined {
+  if (!t) return undefined;
+  if (t.libraryId) return t;
+  return t.catalogId ? tracks().find((x) => x.catalogId === t.catalogId) : undefined;
+}
+/** A song's credited artists as the Library groups them, outside the Library card. */
+const libNames = (): Pick<LibNav, "artistNames"> => ({ artistNames: (t) => creditIndex(tracks()).namesOf(t) });
+
+/** Go to the song's artist and album, and its credits (group 3). Each Go to has a Library way
+ *  (in place in the Library card; else the Library summoned, for a song you have) and a Search
+ *  way; the rules pick at the press (go-to.ts `goTo`). */
 function songGoTo(t: Track | undefined, cid: string | undefined, nav?: LibNav): Row[] {
-  if (nav && t) {
-    const names = nav.artistNames(t);
-    const artist: Row =
-      names.length === 0
-        ? null
-        : names.length === 1
-          ? { label: "Go to Artist", run: () => nav.drillArtist(names[0]) }
-          : { label: "Go to Artist", sub: () => names.map((n) => ({ label: n, run: () => nav.drillArtist(n) })) };
-    // A nav means this card drills locally, so Song Credits stays here too (go-to.ts).
-    return [
-      artist,
-      t.albumName ? { label: "Go to Album", run: () => nav.drillAlbum(t) } : null,
-      t.catalogId ? { label: "Song Credits", run: () => nav.drillSong(t) } : null,
-    ];
-  }
-  return [goToArtistItem("songs", cid, t?.artistName), goToAlbumItem(cid, t?.albumName), songCreditsItem(t)];
+  const lib = nav && t ? t : libCopy(t);
+  const inPlace = !!nav;
+  const names = lib ? (nav ?? libNames()).artistNames(lib) : [];
+  const toArtist = (n: string) => (nav ? nav.drillArtist(n) : requestLibraryDrill({ kind: "artist", name: n }));
+  const artist: Row =
+    nav && names.length > 1
+      ? {
+          label: "Go to Artist",
+          sub: () => names.map((n) => ({ label: n, run: () => goTo("artist", { run: () => toArtist(n), inPlace }, artistSearch("songs", cid, n)) })),
+        }
+      : goToArtistItem("songs", cid, t?.artistName, names.length ? { run: () => toArtist(names[0]), inPlace } : undefined);
+  const album = goToAlbumItem(
+    cid,
+    t?.albumName,
+    lib?.albumName ? { run: () => (nav ? nav.drillAlbum(lib) : requestLibraryDrill({ kind: "album", track: lib })), inPlace } : undefined,
+  );
+  // A nav means this card drills locally, so Song Credits stays here too (go-to.ts).
+  const credits: Row = nav && t ? (t.catalogId ? { label: "Song Credits", run: () => nav.drillSong(t) } : null) : songCreditsItem(t);
+  return [artist, album, credits];
 }
 
 /** One song's menu. `t` may be undefined only where a row is still resolving (Queue,
@@ -202,7 +217,7 @@ export interface AlbumWhere extends Where {
 
 /** The album's dominant credited artist (mode of each song's leading credit) — the Library
  *  "Go to Artist" target, where a featured guest on one song should not win. */
-function dominantArtist(items: Track[], nav: LibNav): string | undefined {
+function dominantArtist(items: Track[], nav: Pick<LibNav, "artistNames">): string | undefined {
   const counts = new Map<string, number>();
   for (const t of items) {
     const primary = nav.artistNames(t)[0];
@@ -241,19 +256,18 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
   const load = a.whole ?? (() => a.known);
   const seed = a.known.find((t) => t.catalogId);
   const first = a.known[0];
-  let goArtist: Row;
-  let goAlbum: Row;
-  if (w.nav && first) {
-    const nav = w.nav;
-    const dom = dominantArtist(a.known, nav);
-    goArtist = dom ? { label: "Go to Artist", run: () => nav.drillArtist(dom) } : null;
-    goAlbum = { label: "Go to Album", run: () => nav.drillAlbum(first) };
-  } else {
-    goArtist = a.catalogId ? goToArtistItem("albums", a.catalogId, a.artistName) : goToArtistItem("songs", seed?.catalogId, a.artistName);
-    goAlbum = a.catalogId
-      ? goToAlbumPaneItem({ id: a.catalogId, name: a.title, artwork: a.artwork, artistName: a.artistName })
-      : goToAlbumItem(seed?.catalogId, a.title);
-  }
+  // Go to (RULEZ.md §10.1): a Library way when you have the album (in place in the Library card),
+  // a Search way when it has a catalog id; the rules pick at the press.
+  const nav = w.nav;
+  const inPlace = !!nav;
+  const libT = nav ? first : a.known.map(libCopy).find(Boolean);
+  const dom = libT ? dominantArtist(nav ? a.known : [libT], nav ?? libNames()) : undefined;
+  const libArtist: LibraryWay | undefined = dom ? { run: () => (nav ? nav.drillArtist(dom) : requestLibraryDrill({ kind: "artist", name: dom })), inPlace } : undefined;
+  const libAlbum: LibraryWay | undefined = libT ? { run: () => (nav ? nav.drillAlbum(libT) : requestLibraryDrill({ kind: "album", track: libT })), inPlace } : undefined;
+  let goArtist: Row = a.catalogId ? goToArtistItem("albums", a.catalogId, a.artistName, libArtist) : goToArtistItem("songs", seed?.catalogId, a.artistName, libArtist);
+  let goAlbum: Row = a.catalogId
+    ? goToAlbumPaneItem({ id: a.catalogId, name: a.title, artwork: a.artwork, artistName: a.artistName }, libAlbum)
+    : goToAlbumItem(seed?.catalogId, a.title, libAlbum);
   if (w.inArtist) goArtist = null;
   if (w.here) goAlbum = null;
   const genres = [...new Set(a.known.flatMap((t) => t.genres ?? []))];
@@ -340,13 +354,14 @@ export function artistMenu(a: ArtistSubject, w: ArtistWhere): MenuItem[] {
           : catalogRelated("songs", seedId, "artists").then((r) => r?.id ?? null));
   let go: Row = null;
   if (!w.here) {
+    // An artist you have opens in the Library from any card when no rule speaks (RULEZ.md §10.1).
     const nav = w.nav;
-    if (nav && a.inLibrary) go = { label: "Go to Artist", run: () => nav.drillArtist(a.name) };
-    else if (a.inLibrary) go = { label: "Go to Artist", run: () => requestLibraryDrill({ kind: "artist", name: a.name }) };
-    else if (a.catalogId) {
-      const id = a.catalogId;
-      go = { label: "Go to Artist", run: () => requestArtistPane({ id, name: a.name }) };
-    } else go = goToArtistItem("songs", seedId, a.name);
+    const lib: LibraryWay | undefined = a.inLibrary
+      ? { run: () => (nav ? nav.drillArtist(a.name) : requestLibraryDrill({ kind: "artist", name: a.name })), inPlace: true }
+      : undefined;
+    const id = a.catalogId;
+    const search = id ? () => requestArtistPane({ id, name: a.name }) : artistSearch("songs", seedId, a.name);
+    go = lib || search ? { label: "Go to Artist", run: () => goTo("artist", lib, search) } : null;
   }
   return join(
     load ? playRows(load, w.context, { catalog }) : [],

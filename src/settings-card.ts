@@ -172,6 +172,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "glassdiffusion", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
   { section: "Skin settings", row: "glassauroracolor", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
   { section: "Window", row: "drillgrow" }, // Grow on album or artist, the rules engine's first row, built 2026-09-26
+  { section: "Menus, hints and notices", row: "gototarget" }, // Go to opens, route 8, built 2026-09-27
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -314,7 +315,7 @@ const RESET_GROUPS: ResetGroup[] = [
   {
     id: "menus", label: "Menus, hints and notices",
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
-    keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "compassCloseAway"],
+    keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "goToTarget", "compassCloseAway"],
   },
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
@@ -1257,6 +1258,12 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           kind: "choice", id: "toasts", label: "Show notices", key: "toasts",
           hint: "Everything: confirmations too. Failures: only when an action couldn't do what it said",
           options: [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }],
+        },
+        {
+          // RULEZ.md §10.1 (FUTURE-SETTINGS §20): a row that makes a rule (RULES.md §13).
+          kind: "choice", id: "gototarget", label: "Go to opens", key: "goToTarget",
+          hint: "Where Go to Artist and Go to Album open. Where it fits: in place in the Library, in Search from other cards",
+          options: [{ value: "fits", label: "Where it fits" }, { value: "search", label: "Search" }, { value: "library", label: "Library" }],
         },
         // From Window, 2026-09-18: it is an outside-click rule, not a window rule.
         storeToggle("compassaway", "Compass closes on outside click", "compassCloseAway", () => "A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it"),

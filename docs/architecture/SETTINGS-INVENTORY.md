@@ -262,6 +262,7 @@ under Cyber the whole section is gone.
 | Hints appear after | How long the pointer rests first. A song row waits longer | A moment / **A pause** / A while |
 | Name songs on hover | The name box on a song row | **Always** / only when Cut off / Never |
 | Show notices | Everything adds confirmations. Failures: only when an action could not do what it said. A failure always shows | **Everything** / Failures |
+| Go to opens | Where Go to Artist and Go to Album open. Where it fits: in place in the Library, in Search from the other cards. Library: the Library card, drilled, for a song or album you have (else Search). Search: the Search card, also from the Library | **Where it fits** / Search / Library |
 | Compass closes on outside click | A click elsewhere closes the Ctrl+Space bar. It is an outside-click rule, which is why it sits here and not under Window | **on** / off |
 
 ### Home

@@ -41,6 +41,10 @@ export function initRulesApp(): void {
   // `replay.weekly` is emitted by replay.ts 8 s after launch; registered here so a rule on it is
   // not "unknown" until then (found at the desk 2026-09-27).
   for (const e of ["app.open", "surface.change", "tray.hide", "tray.show", "card.open", "replay.weekly"] as const) registerEvent(e, { facts: [] });
+  // Route 8 (RULEZ.md §10.1). `queue.summon` is layout.ts's cancel event; Go to is go-to.ts's
+  // question, whose answer is the rule's `openIn` (the site acts, as a cancel site reads Keep).
+  for (const e of ["queue.summon", "goto.artist", "goto.album"] as const) registerEvent(e, { facts: [] });
+  registerAction("openIn", { cost: "free", run: () => undefined });
 
   registerAction("set", {
     cost: "free",
@@ -113,7 +117,15 @@ export function initRulesApp(): void {
   void win.onFocusChanged(() => void check());
 }
 
-/** main.ts, once the cards are placed: the app opened. */
+/** main.ts, once the cards are placed: the app opened. Not for a start in the tray (`--tray`, the
+ *  window hidden at boot): FUTURE-SETTINGS §22 says a tray launch never plays, so *Play on
+ *  launch* must not run there, and a later show from the tray is *You bring the app back*. */
 export function emitAppOpen(): void {
-  emit("app.open", { card: "*" });
+  void getCurrentWindow()
+    .isVisible()
+    .catch(() => true)
+    .then((shown) => {
+      if (!shown) return diag.log("rule", { event: "app.open", applied: false, reason: "skipped (tray)" });
+      emit("app.open", { card: "*" });
+    });
 }

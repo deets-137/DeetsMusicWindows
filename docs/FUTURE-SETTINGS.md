@@ -171,6 +171,10 @@ rebuild). This is a *one-time reorder action*, **not** the P6 persistent shuffle
   `queue.shuffleUpcoming`.
 
 **5b. Idle press — bootstrap vs no-op.**
+
+> **Part:** built · 2026-09-27 — the row *Idle shuffle plays* (`shuffleIdle`) now makes the
+> built-in rule `row:shuffleIdle` (When *You press shuffle*, if no song is loaded → *Play the
+> library shuffled*); `player.shuffleQueue` has no idle branch of its own. RULEZ.md §10.2.
 - **(current default) Play the library shuffled** — with nothing playing, the button
   shuffles the entire cached library (client-side, no extra API calls) and plays it as a
   fresh context.
@@ -499,6 +503,11 @@ menu's *effective* mode, not just the global one).
 ---
 
 ## 10. Queue summon — flip vs no-op when Queue is already visible
+
+> **Part:** built · 2026-09-27 — as a rule, not a row. The flip below is gone: since
+> ARTIST-VIEW.md §6 a Queue request with the Queue on screen does nothing (option b). What a
+> Queue request still changes (it takes a slot, or ends a grow over the Queue) is the cancel
+> event `queue.summon` with Keep (RULEZ.md §10.2). The text below is the old record.
 
 **Behavior.** What the NP card's **queue button** does when the Queue card is *already
 on-screen* in one of the two content slots. (When it's off-screen the button always mounts
@@ -924,6 +933,10 @@ vocabulary/split machinery is shared either way.
 > and artist levels carry **Full | Lib** chips (docs/features/FULL-LIB.md): Full shows Apple's
 > whole page in the Library card itself. A drill still opens Lib (fork 3A). A setting "open
 > drills in Full" would be the follow-up; it costs Apple calls on every drill.
+>
+> **Part:** built · 2026-09-27 — the target: Settings › Menus, hints and notices › **Go to
+> opens** (*Where it fits* · *Search* · *Library*), a row that makes a rule, and the events
+> `goto.artist` / `goto.album` with *Open it in* for a rule of your own. RULEZ.md §10.2.
 
 **Behavior.** Where the right-click **Go to Artist** / **Go to Album** verbs land. Two
 targets exist and both are shipped today, chosen **per surface**:
@@ -995,6 +1008,10 @@ automatic). Possibly a second switch: incremental at startup on/off.
 `library: incremental sync done, N new in P page(s)` shows what a launch cost.
 
 ## 22. Play on launch — what starts playing when the app opens
+
+> **Part:** built · 2026-09-27 — as a recipe, not a row: Rulez › Recipes › **Play on launch**
+> (When *The app opens* → *Play*, off by default; a start in the tray never plays). A playlist
+> or a station: duplicate it and change the Do. The starred pool below waits. RULEZ.md §10.2.
 
 **Status (2026-09-13): documented, not built.** Decided in the click-to-sound follow-up: the
 hover pre-insert lever is skipped; the launch story is a setting instead. Build in a later

@@ -15,7 +15,9 @@ export type EventId =
   | "song.play" | "song.end" | "music.pause" | "music.resume" | "skip.next" | "skip.prev" | "queue.end" | "station.play"
   | "clock" | "app.open" | "surface.change" | "tray.hide" | "tray.show" | "card.open" | "output.change"
   // A cancel event (RULEZ.md §1.7): a rule whose Do is `keep` stops what the app was about to do.
-  | "grow.outside" | "station.return" | "grow.back" | "replay.weekly";
+  | "grow.outside" | "station.return" | "grow.back" | "replay.weekly"
+  // Route 8 (RULEZ.md §10.1): the Queue's layout change (a cancel event), Go to, the shuffle press.
+  | "queue.summon" | "goto.artist" | "goto.album" | "shuffle.press";
 export type FactId =
   | "surface" | "cause" | "from" | "entry.new" | "daylight" | "lookMode" | "output" | "now"
   // Rulez (RULES.md §20.3).
@@ -24,7 +26,9 @@ export type FactId =
   | "eqPreset" | "eqBass" | "eqMids" | "eqTreble" | "loudness" | "songBass" | "songMids" | "songTreble"
   // Route 5 (RULEZ.md §3): facts that cost nothing, from app state.
   | "outputKind" | "loved" | "diaryScore" | "plays" | "queueLength" | "sinceOpen" | "idle"
-  | "battery" | "charging" | "online" | "dataSaver";
+  | "battery" | "charging" | "online" | "dataSaver"
+  // Route 8 (RULEZ.md §10.1): a song is loaded; the window's size.
+  | "loaded" | "windowWidth" | "windowHeight";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
 export type FactValue = Value | string[];
@@ -69,7 +73,11 @@ export type Action =
   | { hide: true }
   // Your own files (RULEZ.md §5, rules-files.ts): a When row's picture writes your value; a sound plays once.
   | { picture: string }
-  | { playSound: string };
+  | { playSound: string }
+  // Route 8 (RULEZ.md §10.1): where Go to opens (the site reads it, as a cancel site reads Keep);
+  // the idle shuffle press.
+  | { openIn: "library" | "search" }
+  | { shuffleLibrary: true };
 
 /** Name and Desc (Rulez), and `draft`: a row with a part still missing is saved and never runs. */
 interface Named {
@@ -347,6 +355,8 @@ export interface RowValues {
   sharePauseUntil: number;
   playlistCreateSummon: "always" | "notmini" | "off";
   sleepSchedule: "off" | "sun" | "clock";
+  goToTarget: "fits" | "search" | "library";
+  shuffleIdle: "library" | "noop";
 }
 
 /** What a row is set to when one of its rules says `onHand: "off"` (a hand change turns it off). */
@@ -446,6 +456,25 @@ export function builtinRules(s: RowValues): Rule[] {
     out.push({
       id: "row:sleepSchedule", kind: "moment", source: row("sleepSchedule"), on: true,
       when: "sleep.arm", card: "*", do: { sleep: { at: s.sleepSchedule } },
+    });
+  }
+
+  // Menus › Go to opens (FUTURE-SETTINGS §20, RULEZ.md §10.1). "Where it fits" makes no rule: the
+  // menu keeps its own split (the Library in place, every other card in Search).
+  if (s.goToTarget !== "fits") {
+    for (const kind of ["artist", "album"] as const)
+      out.push({
+        id: `row:goToTarget:${kind}`, kind: "moment", source: row("goToTarget"), on: true,
+        when: `goto.${kind}`, card: "*", do: { openIn: s.goToTarget },
+      });
+  }
+
+  // Playback › Idle shuffle plays (FUTURE-SETTINGS §5b): a shuffle press with no song loaded plays
+  // the library shuffled. This rule is the one path; player.ts has no idle branch of its own.
+  if (s.shuffleIdle === "library") {
+    out.push({
+      id: "row:shuffleIdle", kind: "moment", source: row("shuffleIdle"), on: true,
+      when: "shuffle.press", card: "*", if: { fact: "loaded", is: false }, do: { shuffleLibrary: true },
     });
   }
   return out;

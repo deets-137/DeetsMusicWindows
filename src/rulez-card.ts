@@ -54,6 +54,8 @@ const ROWS: Record<string, { name: string; row: string | null }> = {
   sharePauseUntil: { name: "Pause sharing", row: "sharepause" },
   playlistCreateSummon: { name: "New playlist opens Search", row: "createsummon" },
   sleepSchedule: { name: "Sleep every day", row: "sleepsched" },
+  goToTarget: { name: "Go to opens", row: "gototarget" },
+  shuffleIdle: { name: "Idle shuffle plays", row: "shuffleidle" },
 };
 const builtinOf = (r: Rule) => ("row" in r.source ? ROWS[r.source.row] : "fixed" in r.source ? ROWS[r.source.fixed] : undefined);
 const recipeOf = (r: Rule) => ("recipe" in r.source ? RECIPES.find((x) => x.id === (r.source as { recipe: string }).recipe) : undefined);
@@ -614,7 +616,7 @@ export const rulezCard: CardDef = {
       else {
         const w = r.when ? whenText(r, L) : "";
         when = `<span class="rulez__word">When</span>${blank(w ? w[0].toLowerCase() + w.slice(1) : "what happens?", "when", "Picks what starts this rule, or While for a rule that holds while its condition is true", "", !r.when)}`;
-        const cardEvent = r.when && ["card.open", "album.open", "artist.open", "grow.outside", "grow.back"].includes(r.when);
+        const cardEvent = r.when && ["card.open", "album.open", "artist.open", "grow.outside", "grow.back", "queue.summon", "goto.artist", "goto.album"].includes(r.when);
         if (cardEvent || r.card !== "*") when += `<span class="rulez__word">in</span>${blank(r.card === "*" ? "any card" : L.cards.find((c) => c.value === r.card)?.label ?? r.card, "in", "Picks the card the event must happen in")}`;
       }
       // Line 2: DeetsMusic does.

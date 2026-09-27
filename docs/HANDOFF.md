@@ -109,20 +109,15 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-09-25. Each item names where the detail is.
+The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**In flight:** Rulez, the rules builder on `rules-rulez` ([RULEZ.md](features/RULEZ.md) §1–2,
-committed `4c9808c`), his desk test open (§2's script). The 5-in-10-s trip notice, the clock and
-the playback events still need a run with music playing. **Next (his call, 2026-09-27): the ten
-routes and the Rules | Logs view, RULEZ.md §3**, two sessions in parallel, each committing its
-own paths. Route 2 (the agent's `rules` verb, AGENT.md §8) and §5 (your own pictures and
-sounds in a rule, RULEZ.md §5.5) are built and desk-tested; **his** steps left: Agent changes
-settings = Off (AGENT.md §8 step 8) and the chime on a HomePod (RULEZ.md §5.4 step 8).
-**Route 8 walked and decided (2026-09-27, late): yes to all five** — RULEZ.md §10.1 has the
-split (the card session: the Play-on-launch recipe, the Queue summon cancel, the Go-to events
-and row, the shuffle event; the engine-review session: the window size facts), the seams and
-the desk tests. Nothing of §10.1 is built yet.
+**In flight:** Rulez on `rules-rulez`: **every route is built and Claude's desk tests have
+run, with music** ([RULEZ.md](features/RULEZ.md) §2, §8, §10.2). Route 8's five steps were
+built 2026-09-27 afternoon (§10.2), and the new Settings row is Menus › Go to opens. Committed
+and pushed on `rules-rulez`; not merged into `main`, not released. **His** steps left: his look at the new words and the Go to opens row; Agent
+changes settings = Off (AGENT.md §8 step 8); the chime on a HomePod (RULEZ.md §5.4 step 8).
+*Mark Suggest Less* (route 6) waits for Suggest Less itself.
 
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built
@@ -182,10 +177,6 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 - The telemetry pass's AirPlay part: stall and switch timing, the quieter wire log (AIRPLAY.md
   §13.2). The other two parts are built (Desk tests open, above).
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
-- **Recipes and a Rulez card** (his direction, 2026-09-26) — rule sets a user turns on from one
-  place (genre EQ, late night, pause when the output changes, look changes), suggested by the app,
-  on a card of their own. Not designed: forks first, after the rules engine's desk test. How a
-  feature uses the engine: RULES.md §19.
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release

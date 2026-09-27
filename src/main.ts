@@ -60,6 +60,7 @@ import { initRulesPlayback } from "./rules-playback";
 import { initRulesApp, emitAppOpen } from "./rules-app";
 import { initRulesFiles } from "./rules-files";
 import { initRulesFacts } from "./rules-facts";
+import { initRulesWindow } from "./rules-window";
 import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
 
@@ -452,6 +453,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initRulesApp();
   initRulesFacts(); // route 5: the ♥, Diary score, plays, queue, idle, battery, network (RULEZ.md §3)
   initRulesFiles(); // RULEZ.md §5: your own pictures and sounds in a rule; loads the file list (and the old wallpaper, once)
+  initRulesWindow(); // RULEZ.md §10.1: the window's width and height, one recheck per settled resize
   window.addEventListener("deets:boot-done", () => emitAppOpen(), { once: true });
 
   // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it

@@ -2023,31 +2023,43 @@ async function doReconcileUpcoming(cap: number): Promise<void> {
 
 // ── Shuffle (one-shot; the NP card's shuffle button) ─────────────────────────
 
+const shuffleSubs = new Set<() => void>();
+/** A press that shuffles (the Shuffle square, the Compass, the agent; not a rule's mode change).
+ *  rules-playback.ts reports it as *You press shuffle* (RULEZ.md §10.1). */
+export function onShufflePress(cb: () => void): () => void {
+  shuffleSubs.add(cb);
+  return () => shuffleSubs.delete(cb);
+}
+
 /**
  * Shuffle the remaining queue once. Playing: manual picks rise to the top, the auto
  * tail shuffles (queue.shuffleUpcoming), and MusicKit's live window is reconciled
- * gaplessly — same primitive as drag-reorder, `current` never moves. Idle: plays the
- * whole cached library shuffled. Both behaviors have future-setting knobs
- * (FUTURE-SETTINGS §5); the P6 persistent shuffle MODE is a separate, later feature.
+ * gaplessly — same primitive as drag-reorder, `current` never moves. With no song loaded the
+ * press is only reported: what it plays is a rule's (RULEZ.md §10.1). Settings › Idle shuffle
+ * plays makes the built-in one, `shuffleLibrary` below; "Nothing" makes none (FUTURE-SETTINGS §5b).
  */
 export async function shuffleQueue(): Promise<void> {
   if (roomBridge) return; // the room decides the order (§10)
   await initPlayer();
-  if (!queue.getCurrent()) {
-    if (setting("shuffleIdle") === "noop") return; // FUTURE-SETTINGS §5b: idle press does nothing
-    const all = tracks();
-    if (!all.length) {
-      console.warn("[player] shuffle: no cached library to play");
-      return;
-    }
-    const handles = queue.shuffleInPlace(all.map((t) => toHandle(t)));
-    diag.log("player:shuffle", { idle: true, n: handles.length });
-    await playContext(handles, 0);
-    return;
-  }
+  shuffleSubs.forEach((cb) => cb());
+  if (!queue.getCurrent()) return;
   diag.log("player:shuffle", { idle: false, up: queue.getUpcoming().length });
   queue.shuffleUpcoming();
   await reconcileUpcoming();
+}
+
+/** Play the whole cached library shuffled (the idle shuffle press's rule, *Play the library shuffled*). */
+export async function shuffleLibrary(): Promise<void> {
+  if (roomBridge) return;
+  await initPlayer();
+  const all = tracks();
+  if (!all.length) {
+    console.warn("[player] shuffle: no cached library to play");
+    return;
+  }
+  const handles = queue.shuffleInPlace(all.map((t) => toHandle(t)));
+  diag.log("player:shuffle", { idle: true, n: handles.length });
+  await playContext(handles, 0);
 }
 
 /**

@@ -1,7 +1,7 @@
 ---
 status: built
 desk_test: open
-sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts]
+sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
 updated: 2026-09-27
 ---
 # DeetsMusic — Rulez, the rules builder
@@ -230,7 +230,9 @@ rule` shows each fire.
 
 ## 3. Next — the ten routes and the Logs view
 
-> **Part:** project · 2026-09-27 · his call: build all of them
+> **Part:** built · 2026-09-27 · his call: build all of them. Every route is built: route 2 is §7,
+> session A's routes are §8, route 8 is §10.2. Only route 6's *Mark Suggest Less* waits (for
+> Suggest Less itself).
 
 Confirmed by the owner on 2026-09-27 after a review of the engine. Two sessions build them in
 parallel on `rules-rulez`, each committing only its own paths. Each route gets its own step, its
@@ -248,7 +250,7 @@ session.
 | 5 | Facts that cost nothing | A | The song's ♥, Diary score and play count; queue length; minutes since the app opened; minutes idle; battery and charging; a metered network. No Apple call. Rooms and Friends stay out (his call, §1.1). |
 | 6 | Actions the app already does | A | Show a note (a toast), Add the song to a playlist, Mark Suggest Less, Open the Diary for this song, Pause scrobbling, Hide to the tray. Add to playlist and ♥ are Apple writes: `cost: "apple"`, the §1.5 gate, and his cost call first. |
 | 7 | Cancel events as a veto | A | More `cancelled()` seams on the §1.7 shape: *The queue runs out → Keep* (no play-on), *The surface changes → Keep* (hold a grow). The list is his fork. |
-| 8 | FUTURE-SETTINGS as rules | B | **Walked 2026-09-27 (§10): five candidates with his forks, no code.** Walk [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md): each hard-coded "when" behavior that should be a built-in rule or a recipe rather than a row. |
+| 8 | FUTURE-SETTINGS as rules | B | **Walked 2026-09-27 (§10), all five built and desk-tested the next afternoon (§10.2).** Walk [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md): each hard-coded "when" behavior that should be a built-in rule or a recipe rather than a row. |
 | 9 | The shadow gap | A | A user rule above a built-in one wins silently. The Settings row's chip hint names the user rule ("Your rule 'Night jazz' in Rulez sets this"); the locked Rulez row says which rule above beat it. |
 | 10 | Two safety notes | A | A When-row "set" item (theme, skin, EQ preset) hints that it writes your pick for good (§1.4). The song balance facts stay the only polled facts; a new fact needs a seam or a `next` time. |
 
@@ -627,9 +629,8 @@ app, a library album playing:
 - Drag in the new list: the first rule moved to third. (Found: a script's pointer made
   `setPointerCapture` throw and end the drag; the capture is now tolerant.)
 
-**Still not run:** the station-return and weekly-Replay cancels (a station break-out that plays
-to its end; a Replay that is due), and the Diary score / times played facts with a rule that
-reads them.
+**Run later:** the station-return and weekly-Replay cancels (the end of §10), and the Diary
+score / times played facts with a rule that reads them (§10.2). Nothing of §8 is left unrun.
 
 ## 9. Snapshots: the app state when a rule runs (his calls, 2026-09-27)
 
@@ -659,8 +660,8 @@ Pause. Logs › What ran: one line; open it: both rules, `ran` and `did not run`
 
 ## 10. Route 8 — the FUTURE-SETTINGS walk (owner B, 2026-09-27)
 
-> **Part:** designed · 2026-09-27 · **his call the same night: yes to all five.** The build
-> record goes in §10.1 as each lands.
+> **Part:** built · 2026-09-27 · **his call the same night: yes to all five.** Built and
+> desk-tested by Claude the next day (§10.2).
 
 The question (§3, route 8): which of the hard-coded behaviors in
 [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md) are "when" or "while" decisions, and so belong to
@@ -734,3 +735,59 @@ change per settled resize; a rule *While Window width is below 500 → Keep on t
   sends a rating only for a marked song, so false is the right reading; the album cover wears
   the badge for its other songs.
 - The chip's hint now reads "…give it back to your rule "Jazz blue"." (session B's catch).
+
+### 10.2 As built (2026-09-27, afternoon; one session built all five)
+
+> **Part:** built · 2026-09-27 · desk test run by Claude (below); his look is open
+
+Where this and §10.1 differ, this is the code.
+
+**His two calls at the build.** (1) The Queue's cancel event: §10 assumed the Queue button still
+flips the two slots when the Queue is on screen. It does not (layout.ts does nothing then, since
+ARTIST-VIEW.md §6). He named his case: Max, Playlists grown, the Queue pressed. (2) The idle
+shuffle rule's condition: **No song loaded** (today's behavior), not "the music is not playing".
+
+| Step | As built |
+|---|---|
+| 1 | Recipe **Play on launch** (`launch`, rules-recipes.ts): When *The app opens* → *Play*, off. `emitAppOpen` asks `isVisible()` first; a hidden start logs `rule {event: app.open, reason: "skipped (tray)"}` and emits nothing. |
+| 2 | `queue.summon`, *The Queue is about to replace a card or end a grow* (cancel, Keep only). layout.ts `onCardRequest` asks it only where a Queue request changes the layout: the grow over the Queue ends, or the Queue takes a slot (Midi, Mini). In = the grown card or the card it would replace; `grown` names the grow. |
+| 3 | `goto.artist` / `goto.album`, *You press Go to Artist / Album* (In = the card the menu opened in, `context-menu.ts menuCard()`). Their only Do is **Open it in** *Library* / *Search* (`openIn`); `rules.ts decided()` returns it to the site, as `cancelled()` does Keep. `go-to.ts goTo()` does the rest: each Go to item has a Library way and a Search way, and a missing way falls back to the other. Settings › Menus, hints and notices › **Go to opens** (`goToTarget`: Where it fits · Search · Library) makes `row:goToTarget:artist/album`; *Where it fits* makes none. |
+| 4 | `shuffle.press`, *You press shuffle*: player.ts `onShufflePress`, fired in `shuffleQueue` (a press that shuffles; a press that turns the mode off is not one). The idle branch moved to `shuffleLibrary()`, run only by the action *Play the library shuffled*. `shuffleIdle` = Library makes `row:shuffleIdle`: `if loaded is false`. New fact **A song is loaded** (`loaded`). |
+| 5 | `src/rules-window.ts`: `windowWidth` / `windowHeight` (px, Window section), one ResizeObserver on `<html>`, 150 ms trailing edge, a change only when the size moved. |
+
+**Decided inside his choices (for his review).**
+- In Max, a grow never covers the Queue: Fill covers the four content slots only. So his exact
+  case (Playlists grown, a press in the Queue) is `grow.outside`, which his rule "Keep
+  playlists" already covers. The new event matters in Midi and Mini, and for the Queue's own
+  grow over Now Playing.
+- The Go to events offer only *Open it in*, as a cancel event offers only Keep: another Do there
+  would win first and leave the menu doing nothing.
+- *Library* from another card summons the Library card drilled (`requestLibraryDrill`), for a
+  song or album you have. A song you do not have goes to Search even when the rule says Library.
+- An artist you have still opens in the Library from any card under *Where it fits* (that was
+  already the artist menu's behavior).
+- In the Library card a song with two credited artists keeps its submenu of names; elsewhere the
+  Library way uses the first name.
+- The Settings row sits in Menus, hints and notices (§10.1 said "Menus"); it wears the New mark.
+- Found on the way: an agent's *Play a station* rule stored the station's id, which the action
+  could not read ("its station is gone"), and the agent's word list had no stations. Both
+  fixed: the action finds an id in the stations the Radio card holds; the words list them.
+
+**Desk test run (2026-09-27, Claude, dev:app, presses through the UI).**
+- The §2 and §8 steps left open, with music: the clock (a rule at 12:30 PM showed its note at
+  12:30:00); *Diary score* (a song scored 8 ran "Diary score ≥ 7"; the plays rule lost to it);
+  *Times played* (0, then 1 on the replay); *Play a station* (a pause started Apple Music Chill;
+  MusicKit's first shape failed and the player's fallback played it).
+- (1) Recipe on through its switch; a reload resumed the paused song
+  (`recipe:launch:0 applied`). A `--hidden` start: `skipped (tray)`, nothing played.
+- (2) Midi, the Queue off screen, Keep rule: the Show queue button did nothing (In =
+  Settings). Rule gone: the Queue took Settings' slot. Diary grown over the Queue, a Keep rule
+  *if Grown card is Diary*: the grow stayed; rule gone: it collapsed.
+- (3) *Library*: Go to Album on Casio in the Queue opened the Library at *For Ever*;
+  Sunshine (not in your library) fell back to Search. *Search*: Go to Artist on a Library row
+  opened Search. *Where it fits*: the Library in place from the Library, Search from the Queue.
+- (4) Nothing loaded: the Shuffle square played 3,963 songs shuffled through `row:shuffleIdle`.
+  *Nothing*: the press turned shuffle on and nothing played.
+- (5) 1,100 → 495 → 1,100 px (Max → Midi → Max): one check each way; *While Window width is
+  below 500 → Keep on top* held and let go.
+- Everything made for the test was removed; the settings went back as they were.

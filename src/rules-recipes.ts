@@ -70,6 +70,20 @@ export const RECIPES: Recipe[] = [
       },
     ],
   },
+  {
+    // Route 8 (RULEZ.md §10.1, FUTURE-SETTINGS §22): a recipe, not a row. *Play* resumes the queue
+    // the app restored (§22's "Last song"); Duplicate and change the Do for a playlist or a
+    // station. A start in the tray never plays (rules-app.ts `emitAppOpen`).
+    id: "launch",
+    name: "Play on launch",
+    desc: "When DeetsMusic opens, the song you left off plays. Not when it starts in the tray.",
+    rules: [
+      {
+        id: "recipe:launch:0", kind: "moment", source: src("launch"), on: true, name: "Play on launch",
+        when: "app.open", card: "*", do: { play: true },
+      },
+    ],
+  },
 ];
 
 /** The rules of the recipes that are on, in the list's order. */

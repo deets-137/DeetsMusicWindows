@@ -10,12 +10,12 @@
 import {
   getRepeat, getVolume, isShuffleOn, nextTrack, nowPlayingMeta, onPlayerProgress, onPlayerState, onTransport,
   pausePlayback, playPause, playStation, playTracks, prevTrack, setRepeat, setShuffleMode, setVolume,
-  isPlayingNow, onVolumeChange, type PlayerState,
+  isPlayingNow, onVolumeChange, onShufflePress, shuffleLibrary, type PlayerState,
 } from "./player";
 import { getCurrent, getUpcoming } from "./queue";
 import { trackById } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
-import { radioDiscovery, radioSpecialPeek, type Station } from "./radio";
+import { radioDiscovery, radioLivePeek, radioRecents, radioSpecialPeek, type Station } from "./radio";
 import type { Playlist } from "./search";
 import { emit, recheck, registerAction, registerEvent, registerFact, registerProp } from "./rules";
 import * as diag from "./diag";
@@ -69,7 +69,7 @@ function applyVolume(v: unknown): void {
 
 export function initRulesPlayback(): void {
   let last: PlayerState | null = null; // the player's last state (the facts read it too)
-  for (const e of ["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "queue.end", "station.play", "station.return"] as const)
+  for (const e of ["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "queue.end", "station.play", "station.return", "shuffle.press"] as const)
     registerEvent(e, { facts: [] });
 
   const meta = () => nowPlayingMeta();
@@ -91,6 +91,8 @@ export function initRulesPlayback(): void {
   registerFact("repeat", () => getRepeat(), { seam: onState });
   registerFact("volume", () => Math.round(getVolume() * 100), { seam: onVolumeChange });
   registerFact("source", () => sourceNow(!!last?.station));
+  // A song is in the queue (playing or paused). The idle shuffle press reads it (RULEZ.md §10.1).
+  registerFact("loaded", () => !!getCurrent(), { seam: onState });
 
   registerAction("play", { cost: "free", run: () => (isPlayingNow() ? undefined : playPause("rule")) });
   registerAction("pause", { cost: "free", run: () => pausePlayback("rule") });
@@ -110,8 +112,11 @@ export function initRulesPlayback(): void {
       if (tracks.length) await playTracks(tracks, 0, `playlist:${id}`);
     },
   });
-  // A recipe names the Discovery station by `special` (its id is yours: `ra.q-…`).
+  // A recipe names the Discovery station by `special` (its id is yours: `ra.q-…`). Rulez stores
+  // the station itself; an agent's rule stores only its id, found here in the stations the
+  // Radio card already holds (no Apple call).
   const stationOf = (s: unknown): Station | undefined => {
+    if (typeof s === "string") return [...radioSpecialPeek(), ...radioRecents(), ...radioLivePeek()].find((st) => st.id === s);
     const x = s as (Station & { special?: string }) | null;
     if (x?.special === "discovery") return radioSpecialPeek().find((st) => st.id.startsWith("ra.q-"));
     return x?.id ? x : undefined;
@@ -125,9 +130,11 @@ export function initRulesPlayback(): void {
     },
   });
   registerProp("volume", { apply: applyVolume, off: null });
+  registerAction("shuffleLibrary", { cost: "free", run: () => shuffleLibrary() });
   void refreshPlaylists().catch(() => {});
 
   onTransport((way) => emit(way === "next" ? "skip.next" : "skip.prev", { card: "*" }));
+  onShufflePress(() => emit("shuffle.press", { card: "*" }));
 
   // ── the song and pause events, from the player's state ──
   let lastKey = "";

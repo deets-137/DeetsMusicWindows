@@ -92,7 +92,7 @@ old installs' Guide button opens.
 - `QUICK-SETTINGS.md` — the cog's quick panel and the New badges (`NEW_MARKS`).
 - `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with mock tracks.
 - `RULEZ.md` — the Rulez card (Max only): make your own rules from words; the cascade guards,
-  cancel events, the ten routes in flight (§3). The engine is `architecture/RULES.md`.
+  cancel events, the ten routes (§3; all built, §7, §8, §10.2). The engine is `architecture/RULES.md`.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
 

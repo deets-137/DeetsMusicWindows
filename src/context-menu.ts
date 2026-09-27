@@ -409,12 +409,24 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
   };
 }
 
+// The card the last menu opened in: a rule's In for what the menu does (Go to, RULEZ.md §10.1).
+// A host says which card it shows (`data-mounted`); the two anchored hosts by their slot.
+let openedIn = "*";
+const ANCHORED: Record<string, string> = { np: "now-playing", queue: "queue" };
+function cardOf(el: Element | null): string {
+  const host = el?.closest<HTMLElement>("[data-mounted], [data-slot]");
+  return host?.dataset.mounted ?? ANCHORED[host?.dataset.slot ?? ""] ?? "*";
+}
+/** The card the open (or the last) menu opened in, or "*" (a title-bar panel). */
+export const menuCard = (): string => openedIn;
+
 /**
  * Open a menu at viewport coords (x, y) — typically `e.clientX/clientY`.
  * `onClose` fires whenever the menu goes away (item run, dismiss, or replacement) —
  * the caller uses it to clear any source-row highlight.
  */
 export function openContextMenu(x: number, y: number, items: MenuItem[], onClose?: () => void): void {
+  openedIn = cardOf(document.elementFromPoint(x, y));
   openMenu(
     items,
     (w, h, vw, vh) => ({
@@ -427,6 +439,7 @@ export function openContextMenu(x: number, y: number, items: MenuItem[], onClose
 
 /** Open a menu anchored under `el`, right edges aligned (a "dropdown"). */
 export function openContextMenuUnder(el: HTMLElement, items: MenuItem[], onClose?: () => void): void {
+  openedIn = cardOf(el);
   openMenu(
     items,
     (w) => {

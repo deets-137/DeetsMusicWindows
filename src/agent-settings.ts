@@ -289,6 +289,7 @@ const SPECS: Spec[] = [
     set: (v) => setSetting("menuMode", v === "on" ? "hover" : "click"),
   },
   storeChoice("Menus, hints and notices", "toasts", "Show notices", [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }]),
+  storeChoice("Menus, hints and notices", "goToTarget", "Go to opens", [{ value: "fits", label: "Where it fits" }, { value: "search", label: "Search" }, { value: "library", label: "Library" }]),
   // ── Playback ──
   storeChoice("Playback", "streamQuality", "Stream quality", [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }]),
   storeChoice("Playback", "playNowScope", "Play Now plays", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
