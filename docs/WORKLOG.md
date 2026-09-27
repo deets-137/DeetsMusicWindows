@@ -12,6 +12,34 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, 14:30 — A network drop in a song, quieter (branch `rules-rulez`)
+
+His ask: make a drop less visible. Windows logged no network change at 13:51, so the PC stayed
+on line; the break was farther out and short. The app waited 5 min to check again.
+
+- His calls: fast rechecks (2, 5, 10, 20, 30 s, then 60 s); the toast after 5 s without
+  recovery; the player shows paused, as today.
+- Built: `apple-health.ts` (`quietDrop`, `fastRecheck`, "working again" only after a seen
+  toast), `player.ts` (`onDrop`: drop = `loadSegmentError` in a queue song; a live first check;
+  resume at once when it passes; `resumeDropped` confirms the resume; `seekOnceStarted`),
+  `apple.rs` `apple_check` (`live`; a fresh check after "unreachable" always goes out),
+  `apple_calls.rs` `apple_force_offline` (dev only). TOASTS.md §5, APPLE-CALLS.md §6.
+- Desk test run by Claude on the dev app (his ask): the webview cut with CDP offline + cache off
+  and a seek outside the buffer (MusicKit had the whole song buffered in 4 s, so a cut alone
+  did nothing), the Rust check cut with `apple_force_offline`. Scripts in the session scratchpad.
+  - 2 s drop, 3 runs: no toast; the song went on at its spot 2.4 s after the drop. PASS.
+  - 20 s drop: the toast at 5.0 s; rechecks at 0.5, 2.5, 7.5, 17.5, 37.7 s; the song went on
+    at its spot, then "working again". PASS. Covers came back after the cut (151, 0 broken).
+  - Resume into a dead network: noticed 3.3 s later (`resumeFailed`), then "Playback stopped"
+    and no loop (`resumeGaveUp`); Play then went on at the spot (`resumeOnPlay used: true`). PASS.
+- Found by the test and fixed: the toast was not held (the drop's check comes forced); a cached
+  "ok" from 90 s before resumed the song into a dead network with no word and no retry; a seek
+  right after the load stalled the song at 1 s for good; `seekMs` before the sound was ignored.
+- The wait-then-seek let up to 1 s of the song's opening play before the jump. His call: mute
+  until the jump (`resumeHush`, a gain factor like the sleep duck, 12 s at most). Traced every
+  50 ms on the page's audio element: 0 ms heard before the spot, the sound back at the jump.
+- Not committed.
+
 ## 2026-09-27, 14:00 — Play after a network drop restarted the song (branch `rules-rulez`)
 
 His report: the music on live stopped, then Play restarted "Location" at 0 s while the

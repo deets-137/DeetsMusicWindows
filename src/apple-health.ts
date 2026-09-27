@@ -46,6 +46,10 @@ const COPY: Record<Exclude<Trouble, "none">, { kind: ToastKind; text: string; ac
 let current: Trouble = "none";
 let handle: ToastHandle | null = null;
 let recheck = 0;
+let fastStep = -1; // a drop's fast rechecks (below): -1 = off, else the index of the next gap
+let quietUntil = 0; // a drop's quiet time: the "can't reach" toast waits until then
+let heldTimer = 0;
+let raised: Trouble = "none"; // the app / network toast shown in this spell of trouble
 const listeners = new Set<(t: Trouble) => void>();
 
 export const trouble = (): Trouble => current;
@@ -77,28 +81,77 @@ export function show(t: Trouble, force = false, source = "show", quiet = false):
   if (t !== was || force) {
     handle?.dismiss();
     handle = null;
+    window.clearTimeout(heldTimer);
     // The first-run walk owns "you are signed out" while it is on screen: its step 1 says
     // the same thing with the same button, and one cause must raise one notice (TOASTS.md).
     // A user who has ever signed in never sees the walk, so they get this sticky as before.
     const owned = t === "signedOut" && walkActive();
     if (t !== "none" && !owned && !(quiet && (t === "signin" || t === "signedOut"))) {
-      const c = COPY[t];
-      handle = toast({
-        kind: c.kind,
-        text: c.text,
-        sticky: true,
-        actions: [{ label: c.action.label, run: () => { handle = null; c.action.run?.(); } }],
-      });
-    } else if (t === "none" && (was === "app" || was === "offline")) {
+      const wait = quietUntil - Date.now();
+      if (t === "offline" && source !== "tryNow" && wait > 0) {
+        // A drop in a song: say nothing yet, it may be back before the quiet time ends. The
+        // drop's own check comes forced (player.ts recoverFromFailure), so `force` cannot end
+        // the hold; only the toast's own Try again, pressed by the user, can.
+        diag.log("apple:toastHeld", { ms: wait });
+        heldTimer = window.setTimeout(() => {
+          if (current === "offline" && !handle) raise("offline");
+        }, wait);
+      } else raise(t);
+    } else if (t === "none" && (raised === "app" || raised === "offline")) {
+      // "Working again" answers a toast the user saw; a drop healed in its quiet time had none.
       toast({ kind: "success", text: "Apple Music is working again." });
     }
+    if (t === "none") raised = "none";
   }
   window.clearTimeout(recheck);
-  if (t === "app" || t === "offline") recheck = window.setTimeout(() => void check(true, false, "recheck"), RECHECK_MS);
+  if (t === "offline" && fastStep >= 0) {
+    const s = FAST_RECHECK_S[fastStep] ?? SLOW_RECHECK_S;
+    fastStep++;
+    recheck = window.setTimeout(() => void check(true, false, "recheck"), s * 1000);
+  } else if (t === "app" || t === "offline") {
+    recheck = window.setTimeout(() => void check(true, false, "recheck"), RECHECK_MS);
+  }
+  if (t !== "offline" && fastStep >= 0) {
+    diag.log("apple:fastRecheck", { on: false, checks: fastStep, t });
+    fastStep = -1;
+  }
   if (t !== was) {
     (t === "none" ? diag.log : diag.warn)("apple:trouble", { t, was, source });
     listeners.forEach((fn) => fn(t));
   }
+}
+
+function raise(t: Exclude<Trouble, "none">): void {
+  const c = COPY[t];
+  raised = t;
+  handle = toast({
+    kind: c.kind,
+    text: c.text,
+    sticky: true,
+    actions: [{ label: c.action.label, run: () => { handle = null; c.action.run?.(); } }],
+  });
+}
+
+// ── A network drop in a song (player.ts onMusicKitTrouble; his calls 2026-09-27) ──────────
+// The song stopped on a failed audio download. Most drops are short, so: check again soon
+// (2, 5, 10, 20, 30 s after each failed check, then every 60 s, until Apple answers) and hold
+// the "can't reach" toast for the first 5 s. A check that gets no reply never reached Apple,
+// and Rust lets a fresh one through after "unreachable" (apple.rs apple_check).
+const FAST_RECHECK_S = [2, 5, 10, 20, 30];
+const SLOW_RECHECK_S = 60;
+export const DROP_QUIET_MS = 5000;
+
+/** Hold the "can't reach Apple Music" toast for `ms` from now (a drop in a song). */
+export function quietDrop(ms: number): void {
+  quietUntil = Date.now() + ms;
+}
+
+/** Check again on the fast ladder while the network stays out (a drop in a song). */
+export function fastRecheck(): void {
+  if (fastStep >= 0) return;
+  fastStep = 0;
+  diag.log("apple:fastRecheck", { on: true });
+  if (current === "offline") show("offline", false, "fastRecheck");
 }
 
 // Rust saw a 403 on a /v1/me call (apple.rs log_failure, at most once a minute): the saved
@@ -149,9 +202,10 @@ export async function check(
   force = false,
   source = "check",
   quiet = false,
+  live = false,
 ): Promise<{ trouble: Trouble; healed: boolean }> {
   try {
-    const h = await checkApple(fresh);
+    const h = await checkApple(fresh, live);
     const t = troubleOf(h);
     show(t, force, source, quiet);
     return { trouble: t, healed: h.healed };

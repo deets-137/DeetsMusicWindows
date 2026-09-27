@@ -280,6 +280,29 @@ pub fn take_forced(kind: Kind, url: &str) -> bool {
     true
 }
 
+// ── The desk test's forced network drop (TOASTS.md §5, 2026-09-27; dev builds only) ──
+
+/// Until then, the health check's probes get no reply, as with the network out.
+static OFFLINE_UNTIL: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Dev only: for `secs` seconds the health check (`apple_check`) sees no network. Pair it with
+/// CDP `Network.emulateNetworkConditions` offline, which cuts MusicKit's audio downloads.
+/// `invoke("apple_force_offline", { secs: 20 })` from `scripts/webview-eval.mjs`; 0 ends it.
+#[tauri::command]
+pub fn apple_force_offline(secs: u64) -> Result<(), String> {
+    if !cfg!(debug_assertions) {
+        return Err("dev builds only".into());
+    }
+    *OFFLINE_UNTIL.lock_or_recover() = (secs > 0).then(|| Instant::now() + Duration::from_secs(secs));
+    crate::log::info(&format!("apple: forced offline for {secs}s"));
+    Ok(())
+}
+
+/// A forced drop holds: the probe fails as if no reply came.
+pub fn forced_offline() -> bool {
+    cfg!(debug_assertions) && OFFLINE_UNTIL.lock_or_recover().is_some_and(|t| Instant::now() < t)
+}
+
 /// For the diag route and the agent: the counts and the back-off, now.
 #[tauri::command]
 pub fn apple_calls_status() -> serde_json::Value {

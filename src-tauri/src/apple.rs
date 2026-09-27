@@ -1063,6 +1063,9 @@ async fn status_only(client: &reqwest::Client, dev: &str, mut_tok: Option<&str>,
     if crate::apple_calls::take_forced(crate::apple_calls::Kind::Probe, url) {
         return Ok(429);
     }
+    if crate::apple_calls::forced_offline() {
+        return Err("forced offline (desk test)".into());
+    }
     let resp = req.send().await.map_err(|e| {
         crate::apple_calls::count(crate::apple_calls::Kind::Probe, url, None);
         e.to_string()
@@ -1093,11 +1096,24 @@ async fn app_status(client: &reqwest::Client) -> (&'static str, bool) {
 }
 
 #[tauri::command]
-pub async fn apple_check(fresh: Option<bool>, state: tauri::State<'_, AppleState>) -> Result<AppleHealth, String> {
+pub async fn apple_check(
+    fresh: Option<bool>,
+    live: Option<bool>,
+    state: tauri::State<'_, AppleState>,
+) -> Result<AppleHealth, String> {
     {
         let last = LAST_CHECK.lock_or_recover();
         if let Some((at, h)) = last.as_ref() {
-            let ttl = if fresh.unwrap_or(false) { CHECK_FRESH_MIN } else { CHECK_TTL };
+            // Two kinds of check always go out (apple-health.ts, TOASTS.md §5, 2026-09-27):
+            // - `live`: a network drop in a song. A cached "ok" from before the drop would
+            //   resume the song into a dead network, with no word. At most 2 calls per drop.
+            // - fresh after "unreachable": that request got no reply, so Apple saw nothing, and
+            //   a drop's fast rechecks (2 s, 5 s) must reach the network.
+            let ttl = match (live.unwrap_or(false), fresh.unwrap_or(false), h.app) {
+                (true, _, _) | (_, true, "unreachable") => Duration::ZERO,
+                (_, true, _) => CHECK_FRESH_MIN,
+                _ => CHECK_TTL,
+            };
             if at.elapsed() < ttl {
                 return Ok(AppleHealth { healed: false, ..h.clone() });
             }

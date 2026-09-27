@@ -342,6 +342,7 @@ pub fn run() {
             apple::apple_check,
             apple_calls::apple_calls_status,
             apple_calls::apple_force_429,
+            apple_calls::apple_force_offline,
             apple::apple_user_token,
             apple::apple_disconnect,
             apple::apple_dump_library,

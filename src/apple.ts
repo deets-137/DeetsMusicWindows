@@ -84,7 +84,9 @@ export interface AppleHealth {
   healed: boolean;
 }
 
-export const checkApple = (fresh = false): Promise<AppleHealth> => invoke<AppleHealth>("apple_check", { fresh });
+/** `live`: skip the cached answer entirely (a network drop in a song, TOASTS.md §5). */
+export const checkApple = (fresh = false, live = false): Promise<AppleHealth> =>
+  invoke<AppleHealth>("apple_check", { fresh, live });
 
 /** Ask the Account flow (main.ts) to start a sign-in — the "Sign in" toast button. */
 export function requestSignIn(): void {

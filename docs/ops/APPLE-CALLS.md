@@ -126,6 +126,12 @@ updated: 2026-09-25
   busy Apple never shows "Apple Music isn't responding to DeetsMusic".
 - **The desk test's 429:** `apple_force_429 { n, secs }` — the next `n` calls answer 429 with
   that `Retry-After`, sent nowhere. A release build refuses it.
+- **A network drop in a song (2026-09-27, TOASTS.md §5):** `apple_check` takes `live` (skip
+  the cached answer; the drop's first check, at most 2 calls) and lets a fresh check through
+  after "unreachable" (a request with no reply never reached Apple). The fast rechecks
+  (2, 5, 10, 20, 30 s, then 60 s) run only while the network is out. The desk test's drop:
+  `apple_force_offline { secs }` — the check's probes fail as if no reply came. A release
+  build refuses it.
 - New dependencies, both already in the tree: `tokio` (`rt`, for `task_local`) and `httpdate`.
 - Unit tests: the groups, the classes, `Retry-After` as seconds and as a date, the summary line.
 - **Known gap:** a user call that gets a 429 may also show its own failure toast ("Couldn't

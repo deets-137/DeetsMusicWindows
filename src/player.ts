@@ -2254,10 +2254,10 @@ export async function playPause(why = "button"): Promise<void> {
   // (queue-persist.ts), or a network drop destroyed MusicKit's player: Play resumes where
   // you left off.
   if (queue.getCurrent()) {
-    await loadFromModel(m);
     // The spot a network drop or an update restart saved: resume there, once, and only while
     // that song is still the model's current (resume-point.ts). Taking the drop's spot here
-    // also stops the reconnect resume below from acting on it again.
+    // also stops the reconnect resume below from acting on it again. loadAndResumeAt says
+    // why the seek waits for the song to play.
     const restart = resumeAt;
     const drop = resumeAfterReconnect;
     resumeAt = null;
@@ -2265,7 +2265,7 @@ export async function playPause(why = "button"): Promise<void> {
     const cur = queue.getCurrent();
     const sec = resumePoint(cur, cur ? (cur.catalogId ?? cur.libraryId) : undefined, restart, drop);
     if (drop) diag.log("player:resumeOnPlay", { at: Math.round(drop.at), used: sec > 0 });
-    if (sec > 0) await m.seekToTime(sec);
+    await loadAndResumeAt(m, sec);
     return;
   }
   if (queue.getUpcoming().length) {
@@ -2408,7 +2408,7 @@ let recovering: Promise<{ trouble: health.Trouble; healed: boolean }> | null = n
 
 /** Find the cause (health.check shows its toast) and re-configure MusicKit when the
  *  developer token was swapped. `retry` is true for the first caller only, once per gap. */
-async function recoverFromFailure(source: string): Promise<{ trouble: health.Trouble; retry: boolean }> {
+async function recoverFromFailure(source: string, live = false): Promise<{ trouble: health.Trouble; retry: boolean }> {
   if (recovering) {
     const r = await recovering;
     return { trouble: r.trouble, retry: false };
@@ -2419,7 +2419,7 @@ async function recoverFromFailure(source: string): Promise<{ trouble: health.Tro
     if (music && !music.isAuthorized && (await restoreAuthorization(source))) {
       return { trouble: "none" as health.Trouble, healed: true };
     }
-    const r = await health.check(false, true, source);
+    const r = await health.check(false, true, source, false, live);
     if (r.healed) await syncDeveloperToken();
     return r;
   })();
@@ -2437,19 +2437,18 @@ async function recoverFromFailure(source: string): Promise<{ trouble: health.Tro
  *  song): no native dialog, find the cause, retry the current song once after a heal. */
 function onMusicKitTrouble(msg: string, via: string): void {
   diag.warn("player:mkTrouble", { msg, via });
-  const now = performance.now();
-  if (now - lastTroubleAt < RETRY_GAP_MS) return;
-  lastTroubleAt = now;
   // The song and spot this failure stopped, read before any await (the clock is ours).
   const stopped = mode === "queue" ? queue.getCurrent() : undefined;
   const stoppedAt = lastHeardAt;
+  // A failed audio download in a queue song: a network drop, most often a short one.
+  if (msg === "loadSegmentError" && stopped) return onDrop(stopped, stoppedAt, via, true);
+  const now = performance.now();
+  if (now - lastTroubleAt < RETRY_GAP_MS) return;
+  lastTroubleAt = now;
   void (async () => {
     if (!(await isConnected())) return health.show("signedOut", true, via);
     const r = await recoverFromFailure(via);
-    if (r.trouble === "offline" && stopped) {
-      resumeAfterReconnect = { entry: stopped, at: stoppedAt };
-      diag.log("player:resumeArmed", { at: Math.round(stoppedAt), via });
-    }
+    if (r.trouble === "offline" && stopped) armResume(stopped, stoppedAt, via);
     if (r.retry && music && mode === "queue" && queue.getCurrent()) {
       try {
         await loadFromModel(music);
@@ -2462,25 +2461,116 @@ function onMusicKitTrouble(msg: string, via: string): void {
   })();
 }
 
+/** A network drop stopped a queue song (his calls 2026-09-27): hold the "can't reach" toast
+ *  for its first 5 s, check the network at once (never a cached answer), and go on from the
+ *  spot as soon as a check passes — at once, or on the fast rechecks (apple-health.ts).
+ *  `first` is false for a resume that failed: that is the same drop, so no new quiet time. */
+function onDrop(entry: QueueEntry, at: number, via: string, first: boolean): void {
+  // MusicKit can report one drop more than once: the rechecks already running pick it up.
+  if (resumeAfterReconnect?.entry === entry && health.trouble() === "offline") return;
+  if (first) health.quietDrop(health.DROP_QUIET_MS);
+  armResume(entry, at, via);
+  void (async () => {
+    if (!(await isConnected())) return health.show("signedOut", true, via);
+    const r = await recoverFromFailure(via, true);
+    if (r.trouble === "offline") health.fastRecheck();
+    else if (r.trouble === "none" && !first) {
+      // Apple answers, yet the resume failed: no loop of resumes. Say so; Play keeps the spot.
+      diag.warn("player:resumeGaveUp", { at: Math.round(at) });
+      toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+    } else if (r.trouble === "none" && resumeAfterReconnect?.entry === entry) {
+      // The network is up (it was back before this check, or it never showed as out): go on
+      // now. onTrouble does not fire, because the state did not change.
+      resumeAfterReconnect = null;
+      resumeDropped(entry, at, "atOnce");
+    }
+    // A sign-in or developer-token problem: its own toast shows, and the spot stays armed.
+  })();
+}
+
 // A network drop stopped the song (MusicKit's audio player destroys itself on a
-// loadSegmentError). When Apple health sees the network back — its 5-min recheck, Try
-// again, or any other check — pick the song up where it stopped: once, queue mode only,
-// and only if nothing has played or changed since (2026-09-14).
+// loadSegmentError). When Apple health sees the network back — a drop's fast rechecks, the
+// 5-min recheck, Try again, or any other check — pick the song up where it stopped: once,
+// queue mode only, and only if nothing has played or changed since (2026-09-14). Play
+// before that takes the spot itself (playPause, resume-point.ts).
 let lastHeardAt = 0;
-let resumeAfterReconnect: { entry: ReturnType<typeof queue.getCurrent>; at: number } | null = null;
+type QueueEntry = NonNullable<ReturnType<typeof queue.getCurrent>>;
+let resumeAfterReconnect: { entry: QueueEntry; at: number } | null = null;
+
+function armResume(entry: QueueEntry, at: number, via: string): void {
+  resumeAfterReconnect = { entry, at };
+  diag.log("player:resumeArmed", { at: Math.round(at), via });
+}
+
+function resumeDropped(entry: QueueEntry, at: number, why: string): void {
+  const m = music;
+  if (!m || mode !== "queue" || m.isPlaying || queue.getCurrent() !== entry) {
+    diag.log("player:resumeSkip", { mode, playing: !!m?.isPlaying, same: queue.getCurrent() === entry, why });
+    return;
+  }
+  diag.log("player:resumeAfterReconnect", { at: Math.round(at), why });
+  void loadAndResumeAt(m, at)
+    .catch((e) => console.warn("[player] resume after reconnect:", e))
+    .finally(() => {
+      // A resume into a network that is still out fails with no error event: MusicKit just
+      // drops the song (nowPlayingItem null). A user's pause keeps it. Seen in the desk test
+      // 2026-09-27: without this the song stayed stopped, with no toast and no retry.
+      window.setTimeout(() => {
+        if (mode !== "queue" || queue.getCurrent() !== entry || m.isPlaying || m.nowPlayingItem) return;
+        diag.warn("player:resumeFailed", { at: Math.round(at), why });
+        onDrop(entry, at, "resumeFailed", false);
+      }, RESUME_CONFIRM_MS);
+    });
+}
+const RESUME_CONFIRM_MS = 3000;
+
+/** Reload the model's current song and move it to `sec`, the spot where it stopped, silent
+ *  until it gets there (resumeHush). Two ways failed in the desk test of 2026-09-27: a seek right
+ *  after the load raced MusicKit's own start at 0 s and stalled the song at 1 s for good, and a
+ *  seek before the first sound (`seekMs`) was ignored. So: wait until it plays, seek, and seek
+ *  once more if the clock has not reached the spot. Resolves when the song has loaded; the seek
+ *  goes on after that. */
+async function loadAndResumeAt(m: any, sec: number): Promise<void> {
+  if (sec <= 3) return loadFromModel(m); // the opening seconds: start from the top
+  hushForResume(true);
+  try {
+    await loadFromModel(m);
+  } catch (e) {
+    hushForResume(false);
+    throw e;
+  }
+  void seekOnceStarted(m, sec);
+}
+
+async function seekOnceStarted(m: any, sec: number): Promise<void> {
+  const pause = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+  const reached = async (ms: number): Promise<boolean> => {
+    const until = performance.now() + ms;
+    while ((m.currentPlaybackTime ?? 0) < sec - 1 && performance.now() < until) await pause(50);
+    return (m.currentPlaybackTime ?? 0) >= sec - 1;
+  };
+  try {
+    const until = performance.now() + SEEK_START_WAIT_MS;
+    while (!m.isPlaying && performance.now() < until) await pause(100);
+    if (!m.isPlaying) {
+      diag.warn("player:resumeSeek", { at: Math.round(sec), done: false, why: "not playing" });
+      return;
+    }
+    await m.seekToTime(sec);
+    const again = !(await reached(1500));
+    if (again) await m.seekToTime(sec);
+    diag.log("player:resumeSeek", { at: Math.round(sec), done: true, again });
+  } finally {
+    hushForResume(false); // sound again at the spot (and on every way out)
+  }
+}
+const SEEK_START_WAIT_MS = 8000;
+
 health.onTrouble((t) => {
   if (t !== "none" || !resumeAfterReconnect) return;
   const { entry, at } = resumeAfterReconnect;
   resumeAfterReconnect = null;
-  const m = music;
-  if (!m || mode !== "queue" || m.isPlaying || queue.getCurrent() !== entry) {
-    diag.log("player:resumeSkip", { mode, playing: !!m?.isPlaying, same: queue.getCurrent() === entry });
-    return;
-  }
-  diag.log("player:resumeAfterReconnect", { at: Math.round(at) });
-  void loadFromModel(m)
-    .then(() => (at > 3 ? m.seekToTime(at) : undefined))
-    .catch((e) => console.warn("[player] resume after reconnect:", e));
+  resumeDropped(entry, at, "reconnect");
 });
 
 // index.html routes every non-benign MusicKit alert() here; drain what arrived first.
@@ -2630,11 +2720,28 @@ export function reflectExternalVolume(v: number): void {
 // to 1 after the pause, so the next Play is at the set level.
 let duck = 1;
 
+// A resume after a network drop (TOASTS.md §5, his call 2026-09-27): silent from the reload
+// until the jump to the spot, so the song's opening is never heard. Like the ducks, a factor on
+// MusicKit's gain only: the slider, the saved level and a speaker's own volume never see it
+// (with a speaker, MusicKit's gain silences the stream it sends). It can never outlast
+// RESUME_HUSH_MAX_MS, whatever fails on the way.
+let resumeHush = false;
+let resumeHushTimer = 0;
+const RESUME_HUSH_MAX_MS = 12_000;
+function hushForResume(on: boolean): void {
+  window.clearTimeout(resumeHushTimer);
+  if (on) resumeHushTimer = window.setTimeout(() => hushForResume(false), RESUME_HUSH_MAX_MS);
+  if (on === resumeHush) return;
+  resumeHush = on;
+  diag.log("player:resumeHush", { on });
+  applyVolumeToMusic();
+}
+
 function applyVolumeToMusic(): void {
   volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
-    music.volume = volumeSink ? 1 : muted ? 0 : level * duck * clipDuck;
+    music.volume = resumeHush ? 0 : volumeSink ? 1 : muted ? 0 : level * duck * clipDuck;
   } catch (e) {
     console.warn("[player] volume not settable:", e);
   }
