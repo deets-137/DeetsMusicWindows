@@ -58,6 +58,7 @@ import { initQuickPanel } from "./quick-panel";
 import { initRules, registerFact, registerProp, setAppleGate } from "./rules";
 import { initRulesPlayback } from "./rules-playback";
 import { initRulesApp, emitAppOpen } from "./rules-app";
+import { initRulesFacts } from "./rules-facts";
 import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
 
@@ -448,6 +449,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // fires once the launch cover is done, so a rule acts on cards you can see.
   initRulesPlayback();
   initRulesApp();
+  initRulesFacts(); // route 5: the ♥, Diary score, plays, queue, idle, battery, network (RULEZ.md §3)
   window.addEventListener("deets:boot-done", () => emitAppOpen(), { once: true });
 
   // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it

@@ -397,7 +397,10 @@ export function levelLeft(card: string, depth: number): void {
   if (!ruleMark || ruleMark.card !== card || depth >= ruleMark.depth) return;
   const mark = ruleMark;
   ruleMark = null;
-  if (state?.slot === mark.slot) void collapseGrow("rule-back");
+  if (state?.slot !== mark.slot) return;
+  // A cancel event (RULEZ.md §4, route 7): a rule with Keep leaves the card grown on Back.
+  if (cancelled("grow.back", { card })) return diag.log("grow:kept", { slot: mark.slot, on: "back" });
+  void collapseGrow("rule-back");
 }
 
 export function collapseGrow(cause: string, withMotion = true): Promise<void> {
@@ -837,6 +840,7 @@ export function initCardGrow(o: Opts): void {
   // Rulez (RULES.md §20.7): a press outside the grown card is a cancel event. In = the card you
   // pressed; a rule whose Do is Keep leaves the grow open. `grown` = the card that is grown.
   registerEvent("grow.outside", { facts: [] });
+  registerEvent("grow.back", { facts: [] });
   registerFact("grown", () => (state ? cardIn(state.slot) : "none"), { seam: (cb) => onGrowChange(() => cb()) });
   registerAction("grow", {
     cost: "free",

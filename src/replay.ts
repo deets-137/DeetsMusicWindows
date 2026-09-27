@@ -16,6 +16,7 @@ import {
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import * as diag from "./diag";
+import { cancelled, registerEvent } from "./rules";
 import { toast } from "./toast";
 
 export const REPLAY_SIZE = 25;
@@ -116,6 +117,13 @@ export async function runWeeklyReplay(force = false): Promise<void> {
     if (!setting("replayAuto")) return;
     const last = Number(localStorage.getItem(LAST_RUN_KEY) ?? 0);
     if (last >= due) return;
+    // A cancel event (RULEZ.md §4, route 7): a rule with Keep skips this week's Replay.
+    registerEvent("replay.weekly");
+    if (cancelled("replay.weekly", { card: "*" })) {
+      try { localStorage.setItem(LAST_RUN_KEY, String(Date.now())); } catch { /* session-only */ }
+      diag.log("replay", "weekly kept back by a rule");
+      return;
+    }
   }
 
   const rows = await topBy("songs", "week");

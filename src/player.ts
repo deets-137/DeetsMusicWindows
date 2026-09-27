@@ -22,6 +22,7 @@ import { stageArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
+import { cancelled } from "./rules";
 import { outputKind } from "./sound";
 import { nearSongEnd, isSongEnd, stallCanHappen } from "./pause-rules";
 import { roomDriftTick } from "./room";
@@ -694,6 +695,11 @@ function maybeResumeStation(): void {
   if (!finished || queue.getUpcoming().length) return;
   const s = resumeStation;
   resumeStation = null;
+  // A cancel event (RULEZ.md §4, route 7): a rule with Keep leaves the station off.
+  if (cancelled("station.return", { card: "*" })) {
+    diag.log("player:resumeStation", { id: s.id, kept: "rule" });
+    return;
+  }
   diag.log("player:resumeStation", { id: s.id });
   playStation(s).catch((e) => console.warn("[player] resume station:", e));
 }

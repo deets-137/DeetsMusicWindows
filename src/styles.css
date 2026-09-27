@@ -4211,77 +4211,63 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .lib-row__title > .add-square.is-busy { display: inline-grid; }
 .lib-row.is-unreleased { cursor: default; opacity: var(--unreleased-opacity); }
 
-/* ── Rulez (RULES.md §20.6): a table of rules, one row per rule ─────────────────────────── */
-.rulez { overflow: auto; }
-.rulez__table { min-width: var(--rulez-min-w); display: flex; flex-direction: column; gap: var(--rulez-gap); padding-bottom: var(--space-3); }
-.rulez__row {
+/* ── Rulez (RULEZ.md §6): a list of rules; a press opens one to its sentence ──────────────── */
+.rulez { overflow-y: auto; overflow-x: hidden; }
+.rulez__list { display: flex; flex-direction: column; gap: var(--rulez-gap); padding-bottom: var(--space-3); }
+.rulez__rule { border: 1px solid transparent; border-radius: var(--radius-control); }
+.rulez__rule.is-open { border-color: var(--border); background: var(--surface); }
+.rulez__bar {
   display: grid;
-  grid-template-columns: var(--rulez-cols);
+  grid-template-columns: var(--rulez-lead-w) minmax(4em, max-content) minmax(0, 1fr) auto var(--icon-lg);
   align-items: center;
-  gap: var(--rulez-gap);
+  gap: var(--space-2);
   min-height: var(--rulez-row-h);
-  padding: var(--space-1) 0;
-  border-top: 1px solid transparent;
-  border-bottom: 1px solid transparent;
+  padding: var(--space-1) var(--space-1);
+  border-radius: var(--radius-control);
+  cursor: pointer;
 }
-.rulez__row--head {
-  position: sticky; top: 0; z-index: 1;
-  background: var(--surface);
-  color: var(--subtext);
-  font-size: var(--fs-subtext);
-  border-bottom-color: var(--border);
-}
-.rulez__row.is-idle > :not(.rulez__more):not(.rulez__lead) { opacity: var(--rulez-idle-opacity); }
-.rulez__row.is-dragging { opacity: var(--rulez-idle-opacity); }
-.rulez__row.is-drop-before { border-top-color: var(--np-accent); }
-.rulez__row.is-drop-after { border-bottom-color: var(--np-accent); }
+.rulez__rule:not(.is-locked) > .rulez__bar:hover { background: var(--surface-hover); }
+.rulez__rule.is-locked > .rulez__bar { cursor: default; }
+.rulez__name { font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: var(--rulez-name-max-w); }
+.rulez__summary { min-width: 0; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: var(--space-1); }
+.rulez__warn svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.8; }
+.rulez__switch { margin: 0; }
+.rulez__switch .set__half[aria-disabled="true"] { opacity: var(--rulez-idle-opacity); cursor: default; }
+.rulez__rule.is-idle > .rulez__bar > .rulez__name, .rulez__rule.is-idle > .rulez__bar > .rulez__summary { opacity: var(--rulez-idle-opacity); }
+.rulez__rule.is-dragging { opacity: var(--rulez-idle-opacity); }
+.rulez__rule.is-drop-before { border-top-color: var(--np-accent); }
+.rulez__rule.is-drop-after { border-bottom-color: var(--np-accent); }
+.rulez__wins { margin: 0 0 var(--space-1) calc(var(--rulez-lead-w) + var(--space-3)); font-size: var(--fs-subtext); color: var(--subtext); font-style: italic; }
 .rulez__lead { display: grid; place-items: center; color: var(--subtext); }
 .rulez__lead svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; stroke: currentColor; stroke-width: 0; }
-.rulez__row.is-locked .rulez__lead svg { fill: none; stroke-width: 1.6; }
+.rulez__rule.is-locked .rulez__lead svg { fill: none; stroke-width: 1.6; }
 .rulez__grip { cursor: grab; touch-action: none; }
-.rulez__cell {
-  min-width: 0;
+
+/* The open row: the sentence. A blank is the Rulez cell family (the Library's Sort / View pill). */
+.rulez__open { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-3) calc(var(--rulez-lead-w) + var(--space-3)); }
+.rulez__fields { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.rulez__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rulez-gap); min-height: var(--icon-lg); }
+.rulez__line:empty { display: none; }
+.rulez__word { font-size: var(--fs-text); color: var(--text); padding: 0 var(--space-1); }
+.rulez__blank {
+  max-width: 100%;
   padding: var(--rulez-cell-pad);
-  background: var(--surface);
+  background: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: var(--rulez-cell-radius);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: var(--fs-subtext);
-  text-align: left;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  cursor: pointer;
-}
-.rulez__cell:hover, .rulez__chip:hover, .rulez__add:hover, .rulez__more:hover { background: var(--surface-hover); }
-.rulez__cell:focus-visible, .rulez__chip:focus-visible, .rulez__add:focus-visible, .rulez__more:focus-visible,
-.rulez__join:focus-visible, .rulez__paren:focus-visible { outline: 1px solid var(--np-accent); outline-offset: 1px; }
-.rulez__cell.is-empty { color: var(--subtext); font-style: italic; }
-.rulez__cond { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rulez-gap); min-width: 0; }
-.rulez__group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--rulez-gap); }
-.rulez__chip {
-  max-width: 100%;
-  min-height: var(--icon-lg);
-  padding: var(--rulez-chip-pad);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--rulez-chip-radius);
-  color: var(--text);
+  color: var(--title);
   font-family: var(--font-body);
   font-size: var(--fs-subtext);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   cursor: pointer;
 }
-.rulez__chip--text { cursor: default; color: var(--subtext); }
-.rulez__join, .rulez__paren {
-  padding: 0 var(--space-1);
-  background: none; border: 0;
-  color: var(--subtext);
-  font-family: var(--font-body);
-  font-size: var(--fs-subtext);
-  cursor: pointer;
-}
-.rulez__join:hover, .rulez__paren:hover { color: var(--title); }
-.rulez__paren--end { cursor: default; }
+.rulez__blank:hover { filter: brightness(0.97); }
+.rulez__blank.is-missing { border-style: dashed; color: var(--subtext); background: transparent; }
+.rulez__block { display: flex; flex-direction: column; gap: var(--rulez-gap); margin-left: var(--space-2); padding-left: var(--space-3); border-left: 2px solid var(--border); }
+.rulez__mark { width: 1em; text-align: center; font-size: var(--fs-subtext); color: var(--subtext); }
+.rulez__mark.is-yes { color: var(--title); }
+.rulez__live { margin: 0; font-size: var(--fs-subtext); color: var(--subtext); font-style: italic; }
+.rulez__blank:focus-visible, .rulez__add:focus-visible, .rulez__more:focus-visible { outline: 1px solid var(--np-accent); outline-offset: 1px; }
 .rulez__add, .rulez__more {
   width: var(--icon-lg); height: var(--icon-lg);
   padding: 0;
@@ -4293,10 +4279,17 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   cursor: pointer;
 }
 .rulez__add { border-color: var(--border); border-style: dashed; }
+.rulez__add:hover, .rulez__more:hover { background: var(--surface-hover); }
 .rulez__add svg, .rulez__more svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; stroke: currentColor; stroke-width: 1.6; }
 .rulez__add svg { fill: none; }
-.rulez__text { min-width: 0; font-size: var(--fs-subtext); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rulez__text--dim { color: var(--subtext); }
 .rulez__divider { margin-top: var(--space-3); padding: var(--space-1) 0; color: var(--subtext); font-size: var(--fs-subtext); border-bottom: 1px solid var(--border); }
 .rulez__empty { margin: var(--space-3) 0; color: var(--subtext); font-size: var(--fs-subtext); }
 .rulez__close svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; }
+
+/* The Logs view (rulez-logs.ts). */
+.rulez-log__tools { display: flex; justify-content: flex-end; padding: var(--space-1) 0; }
+.rulez-log__part { display: flex; flex-direction: column; }
+.rulez-log__line { display: grid; grid-template-columns: minmax(6em, max-content) minmax(0, 1fr); gap: var(--space-3); padding: var(--space-1) 0; font-size: var(--fs-subtext); border-bottom: 1px solid var(--border); }
+.rulez-log__time { color: var(--subtext); white-space: nowrap; }
+.rulez-log__text { color: var(--text); overflow-wrap: anywhere; }
+.rulez-log__text--raw { font-family: var(--font-mono); }

@@ -13,6 +13,26 @@ import { setSetting } from "./settings-store";
 import { sleepIn } from "./sleep";
 import type { ThemeName, SkinName } from "./look-ids";
 import * as diag from "./diag";
+import { invoke } from "@tauri-apps/api/core";
+import { toast } from "./toast";
+import { getCurrent } from "./queue";
+import { trackById, tracks } from "./track-store";
+import { isLoved, setLoved } from "./favorites";
+import { applePlaylistAdd, onPlaylistsChange, playlistInsertTracks, playlistsCached } from "./playlists";
+import { requestDiaryAlbum } from "./layout-bus";
+import type { Playlist } from "./search";
+import type { Track } from "./library";
+
+const trackNow = (): Track | undefined => {
+  const c = getCurrent();
+  return c ? trackById(c.catalogId) ?? trackById(c.libraryId) : undefined;
+};
+
+// The playlists a rule may add to, kept in step with the store (an action reads it at once).
+let playlists: Playlist[] = [];
+const pidOf = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
+const refreshPlaylists = () => void playlistsCached().then((l) => (playlists = l)).catch(() => {});
+const playlistOf = (id: unknown) => playlists.find((p) => pidOf(p) === id);
 
 /** The keys a When row's "set" may write (your value, as a press would). */
 const SETTABLE = new Set(["theme", "skin", "soundEqPreset"]);
@@ -32,6 +52,44 @@ export function initRulesApp(): void {
   });
   registerAction("sharePause", { cost: "free", run: (min) => setSetting("sharePauseUntil", Date.now() + Math.max(1, Number(min) || 60) * 60_000) });
   registerAction("sleepIn", { cost: "free", run: (min) => sleepIn(Math.max(1, Number(min) || 30)) });
+
+  // Route 6 (RULEZ.md §3): what the app already does. ♥ and an Apple Music playlist are Apple
+  // writes, under the engine's cap (RULEZ.md §4: a number of calls per 30 s).
+  registerAction("note", { cost: "free", run: (text) => toast({ kind: "info", text: String(text).slice(0, 200) }) });
+  refreshPlaylists();
+  onPlaylistsChange(refreshPlaylists);
+  registerAction("addTo", {
+    cost: "free",
+    appleIf: (id) => playlistOf(id)?.source === "apple",
+    exists: (id) => !!playlistOf(id),
+    run: async (id) => {
+      const p = playlistOf(id);
+      const t = trackNow();
+      if (!p || !t) return;
+      if (p.source === "apple") await applePlaylistAdd(p, [t]);
+      else await playlistInsertTracks(p, null, [t]);
+    },
+  });
+  registerAction("love", {
+    cost: "apple",
+    exists: () => !!trackNow()?.catalogId,
+    run: async () => {
+      const t = trackNow();
+      if (t && !isLoved(t)) await setLoved(t, true);
+    },
+  });
+  registerAction("diary", {
+    cost: "free",
+    run: () => {
+      const t = trackNow();
+      if (!t?.albumName) return;
+      const album = { title: t.albumName, artistName: t.artistName, artwork: t.artwork, releaseDate: t.releaseDate };
+      requestDiaryAlbum({ album, tracks: () => tracks().filter((x) => x.albumName === t.albumName && x.artistName === t.artistName) });
+    },
+  });
+  registerAction("scrobble", { cost: "free", run: (on) => invoke("settings_set_lastfm_scrobble", { on: on === true }) });
+  registerAction("hide", { cost: "free", run: () => getCurrentWindow().hide() });
+  // The cancel events' sites register their own event (player.ts, card-grow.ts, replay.ts).
 
   onSurfaceChange(() => emit("surface.change", { card: "*" }));
 

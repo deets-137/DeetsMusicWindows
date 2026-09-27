@@ -14,11 +14,12 @@ import {
   type RuleKey, type Settings,
 } from "./settings-store";
 import {
-  CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, builtinRules, chainDepth, factsChanged, handChange, keepHolds, nextClock, nextEdge,
+  APPLE_CAP, CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, failingLeaf, builtinRules, chainDepth, factsChanged, handChange, keepHolds, nextClock, nextEdge,
   noteFire, pickMoment, readsFact, resolveState, restart, resume as resumeHolds, timeFacts, validate,
   type EventId, type FactId, type FactValue, type Facts, type Hold, type Known, type MomentRule, type Rule, type RowValues,
-  type StateRule, type Stored,
+  type Leaf, type StateRule, type Stored,
 } from "./rules-eval";
+import { recipeRules } from "./rules-recipes";
 import * as diag from "./diag";
 
 // ── the registry (RULES.md §6) ───────────────────────────────────
@@ -44,6 +45,8 @@ interface ActionDef {
   cost: "free" | "apple";
   /** An Apple action's target still exists (a playlist, a station). */
   exists?: (arg: unknown) => boolean;
+  /** A free action that calls Apple for some targets (Add to an Apple Music playlist). */
+  appleIf?: (arg: unknown) => boolean;
   run: (arg: unknown, ctx: EmitCtx, rule: Rule) => unknown;
 }
 interface PropDef {
@@ -108,6 +111,7 @@ const ROW_KEYS: (keyof RowValues)[] = [
 ];
 
 let started = false;
+let launched = false; // the launch cover is done: every module has registered its parts
 let built = false; // the first rule list exists (initRules)
 let all: Rule[] = []; // the user's own rules (Rulez), then the built-in ones
 let live: Rule[] = []; // the rules that can run now
@@ -123,7 +127,56 @@ export function userRules(): Rule[] {
 
 /** Save your rules (Rulez). A row change rebuilds through the store's listener. */
 export function saveUserRules(rules: Rule[]): void {
-  setSetting("rules", { v: 1, rules });
+  setSetting("rules", { ...(allSettings().rules ?? EMPTY), v: 1, rules });
+}
+
+/** The recipes you turned on (RULEZ.md §4, route 3: all ship off). */
+export const recipesOn = (): string[] => (allSettings().rules ?? EMPTY).recipes ?? [];
+export function setRecipe(id: string, on: boolean): void {
+  const stored = allSettings().rules ?? EMPTY;
+  const now = new Set(stored.recipes ?? []);
+  if (on) now.add(id);
+  else now.delete(id);
+  diag.log("rule:recipe", { id, on });
+  setSetting("rules", { ...stored, recipes: [...now] });
+}
+
+/** For the Logs view: when each rule last ran, each rule's recent fires, the overlay and holds. */
+export function ruleStats() {
+  return {
+    lastRun: new Map(lastRun),
+    fires: new Map(fires),
+    offForSession: new Set(offForSession),
+    applied: new Map(applied),
+    appliedValue: new Map(appliedValue),
+    held: new Map(heldNow),
+    holds: [...holds],
+    facts: readFacts(),
+  };
+}
+
+/** Try (route 1): would this rule run now, and if not, why. It runs nothing. For a moment
+ *  rule the event's own facts are unknown, so it checks the If against the facts now. */
+export function tryRule(id: string): { runs: boolean; leaf?: Leaf; lostTo?: Rule; note?: string } {
+  const r = all.find((x) => x.id === id);
+  if (!r) return { runs: false, note: "This rule is gone." };
+  if (r.draft) return { runs: false, note: "A part is missing." };
+  if (!r.on) return { runs: false, note: "This rule is off." };
+  if (offForSession.has(r.id)) return { runs: false, note: "It fired 5 times in 10 seconds and is off until DeetsMusic starts again." };
+  if (!live.includes(r)) return { runs: false, note: skipWhy.get(r.id) ?? "Its part is not ready in this app yet." };
+  const f = readFacts({ card: r.kind === "moment" ? r.card : undefined });
+  if (r.kind === "state") {
+    const leaf = failingLeaf(r.while, f) ?? undefined;
+    if (leaf) return { runs: false, leaf };
+    const lost = r.set.map((s) => applied.get("key" in s.target ? `key:${s.target.key}` : `prop:${s.target.prop}`)).find((x) => x && x !== r.id);
+    const lostTo = lost ? all.find((x) => x.id === lost) : undefined;
+    return lostTo ? { runs: false, lostTo } : { runs: true };
+  }
+  const leaf = failingLeaf(r.if, f) ?? undefined;
+  if (leaf) return { runs: false, leaf };
+  const { rule } = pickMoment(live, r.when, r.card, f, r.at, offForSession);
+  if (rule && rule.id !== r.id) return { runs: false, lostTo: rule };
+  return { runs: true };
 }
 
 /** A rule that can run reads one of these facts (a costly fact runs only while one does). */
@@ -144,7 +197,7 @@ export function ruleIdle(r: Rule): string | null {
 /** Make the rule list again from the rows (a row changed). */
 function rebuild(why: string): void {
   const before = all;
-  all = [...userRules(), ...builtinRules(allSettings())];
+  all = [...userRules(), ...recipeRules(recipesOn()), ...builtinRules(allSettings())];
   // A row change ends the holds of the rules it changed. At launch there is no "before": a
   // saved hold stays while its rule exists (the facts decide at the first check).
   holds = before.length ? keepHolds(holds, before, all) : holds.filter((h) => all.some((r) => r.id === h.ruleId));
@@ -162,9 +215,12 @@ function relist(check = true): void {
     if (r.draft) return false; // a Rulez row with a part missing: saved, never run, no log
     const why = validate(r, k);
     if (!why) return true;
-    // A built-in rule whose module has not registered yet only waits: no log line.
+    // A built-in rule or a recipe whose module has not registered yet only waits: no log line.
     if (!("user" in r.source)) return false;
     skipWhy.set(r.id, why);
+    // Until the launch is done, a module may still register the part: no line yet (found in the
+    // Logs view 2026-09-27: every rule of yours read "unknown event" at launch, then ran fine).
+    if (!launched) return false;
     const key = `${r.id}:${why}`;
     if (!skipped.has(key)) {
       skipped.add(key);
@@ -196,13 +252,16 @@ function readFacts(extra?: Facts): Facts {
 // Cascades are allowed (his call, 2026-09-27): an action may set off another rule. The guards
 // (RULES.md §20.5, the numbers in rules-eval.ts): a chain stops at CHAIN_CAP; a user rule that
 // fires FIRE_CAP times in FIRE_WINDOW_MS is off for the session; an Apple action never runs
-// from a rule-caused event, at most once per APPLE_GAP_MS per rule, and never while Apple
-// asks us to wait. Memory: the last FIRE_CAP fire times per rule, nothing else per fire.
+// from a rule-caused event, at most APPLE_CAP of them in APPLE_WINDOW_MS across all rules, and
+// never while Apple asks us to wait. Memory: the last FIRE_CAP fire times per rule, the last
+// run per rule (the Logs view), the last APPLE_CAP Apple runs; nothing else per fire.
 let acting = false;
 let lastAction: { at: number; depth: number } | null = null;
 const fires = new Map<string, number[]>();
 const offForSession = new Set<string>();
-const appleRuns = new Map<string, number>();
+let appleRecent: number[] = [];
+/** When each rule last ran (any rule; the Logs view's "Last ran", RULEZ.md §4). */
+const lastRun = new Map<string, number>();
 let appleGate: () => boolean = () => false;
 
 /** main.ts: Apple asks us to wait now (apple-health.ts), so a rule's Apple action waits. */
@@ -247,17 +306,18 @@ function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
   }
   const [verb, arg] = Object.entries(rule.do)[0];
   const def = actions.get(verb)!;
-  if (def.cost === "apple") {
+  if (def.cost === "apple" || def.appleIf?.(arg)) {
     const why =
-      appleMayRun({ caused: chain.caused, lastRun: appleRuns.get(rule.id), now, backingOff: appleGate() }) ??
+      appleMayRun({ caused: chain.caused, recent: appleRecent, now, backingOff: appleGate() }) ??
       (def.exists && !def.exists(arg) ? "its playlist or station is gone" : null);
     if (why) {
       diag.log("rule", { id: rule.id, event, applied: false, reason: why });
       return null;
     }
-    appleRuns.set(rule.id, now);
+    appleRecent = [...appleRecent, now].slice(-APPLE_CAP);
   }
-  if ("user" in rule.source) {
+  lastRun.set(rule.id, now);
+  if ("user" in rule.source || "recipe" in rule.source) {
     const n = noteFire(fires.get(rule.id) ?? [], now);
     fires.set(rule.id, n.times);
     if (n.trip) tripRule(rule);
@@ -280,7 +340,7 @@ function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
 }
 
 /** The events that fire often: a miss writes no log line. */
-const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "surface.change"]);
+const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "grow.back", "surface.change"]);
 
 /** The fire cap: the rule is off until the app starts again, and a notice names it. */
 function tripRule(rule: Rule): void {
@@ -531,6 +591,10 @@ export function initRules(): void {
     recheck(`row:${k}`);
   });
   onOwnChange(onHand);
+  window.addEventListener("deets:boot-done", () => {
+    launched = true;
+    relist(false); // a rule still broken now is logged once
+  }, { once: true });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       recheck("visible");

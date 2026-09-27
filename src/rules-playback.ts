@@ -15,7 +15,7 @@ import {
 import { getCurrent, getUpcoming } from "./queue";
 import { trackById } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
-import type { Station } from "./radio";
+import { radioDiscovery, radioSpecialPeek, type Station } from "./radio";
 import type { Playlist } from "./search";
 import { emit, recheck, registerAction, registerEvent, registerFact, registerProp } from "./rules";
 import * as diag from "./diag";
@@ -61,14 +61,15 @@ function applyVolume(v: unknown): void {
     return;
   }
   // The rule ended: give your volume back, unless you moved it meanwhile (your change wins).
-  if (volBase !== null && volLaid !== null && Math.abs(getVolume() - volLaid) < 0.01) setVolume(volBase);
-  diag.log("rule:volume", { back: volBase === null ? null : Math.round(volBase * 100) });
+  if (volBase === null) return; // no rule laid one (the engine's first check at launch)
+  if (volLaid !== null && Math.abs(getVolume() - volLaid) < 0.01) setVolume(volBase);
+  diag.log("rule:volume", { back: Math.round(volBase * 100) });
   volBase = volLaid = null;
 }
 
 export function initRulesPlayback(): void {
   let last: PlayerState | null = null; // the player's last state (the facts read it too)
-  for (const e of ["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "queue.end", "station.play"] as const)
+  for (const e of ["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "queue.end", "station.play", "station.return"] as const)
     registerEvent(e, { facts: [] });
 
   const meta = () => nowPlayingMeta();
@@ -109,10 +110,19 @@ export function initRulesPlayback(): void {
       if (tracks.length) await playTracks(tracks, 0, `playlist:${id}`);
     },
   });
+  // A recipe names the Discovery station by `special` (its id is yours: `ra.q-…`).
+  const stationOf = (s: unknown): Station | undefined => {
+    const x = s as (Station & { special?: string }) | null;
+    if (x?.special === "discovery") return radioSpecialPeek().find((st) => st.id.startsWith("ra.q-"));
+    return x?.id ? x : undefined;
+  };
   registerAction("playStation", {
     cost: "apple",
-    exists: (s) => !!(s as Station | null)?.id,
-    run: (s) => playStation(s as Station),
+    exists: (s) => !!stationOf(s) || (s as { special?: string })?.special === "discovery",
+    run: async (s) => {
+      const st = stationOf(s) ?? ((s as { special?: string })?.special === "discovery" ? await radioDiscovery() : null);
+      if (st) await playStation(st);
+    },
   });
   registerProp("volume", { apply: applyVolume, off: null });
   void refreshPlaylists().catch(() => {});

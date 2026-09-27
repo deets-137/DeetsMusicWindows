@@ -906,6 +906,7 @@ function registerSoundRules(): void {
     return () => balanceSubs.delete(cb);
   };
   registerFact("eqPreset", () => effective("soundEqPreset"), { seam: onSound });
+  registerFact("outputKind", () => output.kind, { seam: onOutputChange });
   registerFact("eqBass", () => eqZone("bass"), { seam: onSound });
   registerFact("eqMids", () => eqZone("mids"), { seam: onSound });
   registerFact("eqTreble", () => eqZone("treble"), { seam: onSound });

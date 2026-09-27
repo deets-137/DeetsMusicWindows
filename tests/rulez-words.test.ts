@@ -29,7 +29,7 @@ test("his example reads back with its parentheses", () => {
 test("a row reads as When · Do; a cancel event offers only Keep", () => {
   const r: MomentRule = { id: "u:1", kind: "moment", source: { user: true }, on: true, when: "grow.outside", card: "queue", if: { fact: "grown", is: "playlists" }, do: { keep: true } };
   assert.equal(whenText(r, lists), "You press outside a grown card");
-  assert.equal(doText(r, lists), "Keep the grown card open");
+  assert.equal(doText(r, lists), "Keep it from happening");
   assert.deepEqual(dosFor(r).map((d) => d.id), ["keep"]);
   assert.equal(doWordOf(r)?.word.id, "keep");
   const s: StateRule = { id: "u:2", kind: "state", source: { user: true }, on: true, while: { all: [] }, set: [{ target: { prop: "tone.bass" }, value: -3 }], onHand: "next" };

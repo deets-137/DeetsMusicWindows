@@ -14,21 +14,24 @@ export type EventId =
   // Rulez (RULES.md §20.3): playback, time, window, sound.
   | "song.play" | "song.end" | "music.pause" | "music.resume" | "skip.next" | "skip.prev" | "queue.end" | "station.play"
   | "clock" | "app.open" | "surface.change" | "tray.hide" | "tray.show" | "card.open" | "output.change"
-  // A cancel event (RULES.md §20.7): a rule whose Do is `keep` stops what the app was about to do.
-  | "grow.outside";
+  // A cancel event (RULEZ.md §1.7): a rule whose Do is `keep` stops what the app was about to do.
+  | "grow.outside" | "station.return" | "grow.back" | "replay.weekly";
 export type FactId =
   | "surface" | "cause" | "from" | "entry.new" | "daylight" | "lookMode" | "output" | "now"
   // Rulez (RULES.md §20.3).
   | "genre" | "artist" | "album" | "year" | "explicit" | "playing" | "shuffle" | "repeat" | "volume" | "source"
   | "time" | "day" | "card" | "grown"
-  | "eqPreset" | "eqBass" | "eqMids" | "eqTreble" | "loudness" | "songBass" | "songMids" | "songTreble";
+  | "eqPreset" | "eqBass" | "eqMids" | "eqTreble" | "loudness" | "songBass" | "songMids" | "songTreble"
+  // Route 5 (RULEZ.md §3): facts that cost nothing, from app state.
+  | "outputKind" | "loved" | "diaryScore" | "plays" | "queueLength" | "sinceOpen" | "idle"
+  | "battery" | "charging" | "online" | "dataSaver";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
 export type FactValue = Value | string[];
 export type Facts = Partial<Record<FactId, FactValue>>;
 
 /** Who made a rule: a Settings row (from its value), a fixed built-in with no row (the cog), or you (Rulez). */
-export type Source = { row: string } | { fixed: string } | { user: true };
+export type Source = { row: string } | { fixed: string } | { user: true } | { recipe: string };
 
 /** A leaf: `is` = equal to the value (or to any value in a list), `isNot` = equal to none of them (not `not`: that name is the group);
  *  `lt` / `gt` / `gte` / `lte` compare a number (his call, 2026-09-26: the sharing pause is
@@ -56,13 +59,22 @@ export type Action =
   | { set: { key: string; value: unknown } }
   | { sharePause: number }
   | { sleepIn: number }
-  | { keep: true };
+  | { keep: true }
+  // Route 6 (RULEZ.md §3): what the app already does.
+  | { note: string }
+  | { addTo: string }
+  | { love: true }
+  | { diary: true }
+  | { scrobble: boolean }
+  | { hide: true };
 
 /** Name and Desc (Rulez), and `draft`: a row with a part still missing is saved and never runs. */
 interface Named {
   name?: string;
   desc?: string;
   draft?: boolean;
+  /** Made by an agent through the bridge (RULEZ.md, route 2); Rulez marks the row. */
+  by?: "agent";
 }
 
 export interface MomentRule extends Named {
@@ -93,7 +105,8 @@ export interface StateRule extends Named {
 }
 
 export type Rule = MomentRule | StateRule;
-export type Stored = { v: 1; rules: Rule[] };
+/** `recipes`: the shipped recipes you turned on (RULEZ.md §4, route 3). Off by default. */
+export type Stored = { v: 1; rules: Rule[]; recipes?: string[] };
 export const EMPTY: Stored = { v: 1, rules: [] };
 
 export const targetId = (t: RuleTarget): string => ("key" in t ? `key:${t.key}` : `prop:${t.prop}`);
@@ -489,8 +502,10 @@ export const FIRE_WINDOW_MS = 10_000;
 export const CHAIN_CAP = 8;
 /** An event this soon after a rule's action counts as caused by it (a skip's next song is async). */
 export const CAUSE_MS = 3_000;
-/** An Apple action runs at most once in this long per rule. */
-export const APPLE_GAP_MS = 30_000;
+/** All rules together make at most APPLE_CAP Apple actions in APPLE_WINDOW_MS (his call,
+ *  2026-09-27: a number of calls per 30 s, RULEZ.md §4). */
+export const APPLE_CAP = 3;
+export const APPLE_WINDOW_MS = 30_000;
 
 /** Note one fire. `times` = the last fire times (at most FIRE_CAP kept); `trip` = the cap is reached. */
 export function noteFire(times: readonly number[], now: number): { times: number[]; trip: boolean } {
@@ -505,10 +520,28 @@ export function chainDepth(last: { at: number; depth: number } | null, acting: b
   return { caused, depth: caused && last ? last.depth + 1 : 0 };
 }
 
-/** May an Apple action run now? */
-export function appleMayRun(o: { caused: boolean; lastRun?: number; now: number; backingOff: boolean }): string | null {
+/** May an Apple action run now? `recent` = when the rules' Apple actions ran (any rule). */
+export function appleMayRun(o: { caused: boolean; recent: readonly number[]; now: number; backingOff: boolean }): string | null {
   if (o.caused) return "caused by a rule";
   if (o.backingOff) return "Apple asked us to wait";
-  if (o.lastRun !== undefined && o.now - o.lastRun < APPLE_GAP_MS) return "ran less than 30 s ago";
+  if (o.recent.filter((t) => o.now - t < APPLE_WINDOW_MS).length >= APPLE_CAP) return `${APPLE_CAP} Apple calls in 30 s already`;
   return null;
+}
+
+// ── Try (RULEZ.md §3, route 1): why a rule would not run now ─────
+
+/** The first leaf that keeps `c` from holding with `f`, or null when it holds. For an "or"
+ *  group that fails, its first member's reason. */
+export function failingLeaf(c: Cond | undefined, f: Facts): Leaf | null {
+  if (!c || evalCond(c, f)) return null;
+  if ("all" in c) {
+    for (const m of c.all) {
+      const l = failingLeaf(m, f);
+      if (l) return l;
+    }
+    return null;
+  }
+  if ("any" in c) return c.any.length ? failingLeaf(c.any[0], f) : null;
+  if ("not" in c) return "fact" in c.not ? c.not : null;
+  return c;
 }

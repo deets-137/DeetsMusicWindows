@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   validate, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds,
-  builtinRules, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
+  builtinRules, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, failingLeaf, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
 } from "../src/rules-eval.ts";
 
 const known: Known = {
@@ -302,10 +302,20 @@ test("the cascade guards: 5 fires in 10 s trip; chains count; Apple waits", () =
   assert.equal(noteFire([0, 1, 2, 3], 20_000).trip, false); // old fires fall out of the window
   assert.deepEqual(chainDepth({ at: 0, depth: 2 }, false, 1000), { caused: true, depth: 3 });
   assert.deepEqual(chainDepth({ at: 0, depth: 2 }, false, 5000), { caused: false, depth: 0 });
-  assert.equal(appleMayRun({ caused: true, now: 0, backingOff: false }), "caused by a rule");
-  assert.equal(appleMayRun({ caused: false, lastRun: 0, now: 10_000, backingOff: false }), "ran less than 30 s ago");
-  assert.equal(appleMayRun({ caused: false, lastRun: 0, now: 40_000, backingOff: false }), null);
+  assert.equal(appleMayRun({ caused: true, recent: [], now: 0, backingOff: false }), "caused by a rule");
+  // His call 2026-09-27: a number of calls per 30 s, across all rules.
+  assert.match(appleMayRun({ caused: false, recent: [0, 1000, 2000], now: 10_000, backingOff: false })!, /3 Apple calls/);
+  assert.equal(appleMayRun({ caused: false, recent: [0, 1000], now: 10_000, backingOff: false }), null);
+  assert.equal(appleMayRun({ caused: false, recent: [0, 1000, 2000], now: 40_000, backingOff: false }), null);
+  assert.equal(appleMayRun({ caused: false, recent: [], now: 0, backingOff: true }), "Apple asked us to wait");
   assert.equal(CHAIN_CAP, 8);
+});
+
+test("failingLeaf names the part that keeps a rule from running (Try, route 1)", () => {
+  const c: Cond = { all: [{ fact: "surface", is: "max" }, { any: [{ fact: "genre", is: "jazz" }, { fact: "time", gt: 1200 }] }] };
+  assert.equal(failingLeaf(c, { surface: "max", genre: ["jazz"], time: 0 }), null);
+  assert.deepEqual(failingLeaf(c, { surface: "midi" }), { fact: "surface", is: "max" });
+  assert.deepEqual(failingLeaf(c, { surface: "max", genre: ["rap"], time: 0 }), { fact: "genre", is: "jazz" });
 });
 
 test("readsFact finds a fact inside nested groups", () => {

@@ -475,3 +475,66 @@ What Rulez sees: an agent's rule is a user rule with `by: "agent"` (the `Named` 
 session added), at the top of the list. The card marks it (§6.2 shows who made a row); a
 person edits or removes it like any rule of theirs. The desk test needs a dev app restarted on
 this bridge (a Rust change).
+
+## 8. Session A's routes and §6 as built (2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test open (his)
+
+Where this section and §3, §4, §6 differ, this section is the code.
+
+**Files.** `src/rulez-card.ts` (rewritten for §6: the collapsed list, the sentence, the
+blocks, the views, paste / import / export) · `src/rulez-blocks.ts` (pure: all / any / none
+blocks; `tests/rulez-blocks.test.ts`) · `src/rulez-words.ts` (`SAYS`, `sentenceText`,
+`stateParts`, `whoWins`, `canBothHold`, the new words) · `src/rulez-logs.ts` (the Logs view) ·
+`src/rules-recipes.ts` (the four recipes) · `src/rules-facts.ts` (route 5) · `src/rules.ts`
+(`ruleStats`, `tryRule`, `recipesOn` / `setRecipe`, the shared Apple cap, `appleIf`, the launch
+hold on skip lines) · `src/rules-eval.ts` (`{ recipe }` source, `Stored.recipes`, `failingLeaf`,
+`APPLE_CAP`, the new names) · `src/rules-app.ts` (route 6's actions) · `src/rules-playback.ts`
+(`station.return`, the Discovery station) · `src/player.ts`, `src/card-grow.ts`,
+`src/replay.ts` (route 7's three cancel sites) · `src/diag.ts` (`onDiag`) · `src/sound.ts`
+(`outputKind`) · `src/context-menu.ts` (a searching field widens its own box).
+
+| Route | As built |
+|---|---|
+| L | *Rules \| Logs* is the split pill primitive (`splitPillHTML`, the Full \| Lib family) in the head. Logs: **What ran** (the rule lines of the diag ring as sentences, newest first, 80 at most; *Words \| Raw*), **Last ran** (every rule: its last fire, fires in the last 10 s, off until restart), **Holding now** (what each While rule lays, and where your pick holds), **Facts now**. It follows new rule lines through `diag.onDiag`, at most every 300 ms, only while it shows. The view and the open row are the card's memory. |
+| 1 | *Last ran* is in Logs only (his call). An open row of yours shows *Try* live under the sentence (§6.3); a locked row (built-in, recipe) keeps *Try* in its menu, since it does not open. `failingLeaf` names the part that is not true now. |
+| 3 | `Stored.recipes` lists the recipes that are on (none by default). A recipe shows locked under **Recipes** with one On \| Off switch; its menu: Turn on / off, Try, *Duplicate into your rules*, Copy as text. Party's station is `{ special: "discovery" }`, found from your Discovery station at run time. |
+| 4 | The header's ⋯: **Paste a rule** (a field: Ctrl+V, then Enter), **Import from a file…** (a file picker), **Export your rules to a file** (`deetsmusic.deetsrules.json` in Downloads), **Copy your rules as text**. A row's menu: *Copy as text*. Every pasted or imported rule is checked against `known()`; a broken one is named and skipped. |
+| 5 | Loved, Diary score, Times played, Songs up next, Minutes since the app opened, Minutes with no press, Battery, Charging, Online, Data saver, Output kind. The Diary score and play count are read once per song, only while a rule reads them (`pin_play_counts`, the cached Diary list, one `diary_get`). Minute facts wake the engine only while a rule reads them. |
+| 6 | Show a note, Hide the app in the tray, Add the song to a playlist (your local playlists and editable Apple ones), Love the song (Apple), Open the Diary for this album, Turn scrobbling on / off. An add to an Apple playlist is an Apple call through `appleIf`. *Mark Suggest Less* waits for Suggest Less. |
+| 6 cap | His call: **at most 3 Apple actions in 30 s across all rules**, and never from an event another rule caused, never while Apple asks us to wait. |
+| 7 | *A station is about to come back* (`maybeResumeStation`), *You go Back from a grown album or artist* (`levelLeft`), *The weekly Replay is about to be made* (`runWeeklyReplay`; a Keep marks this week done). Keep's words are now *Keep it from happening*, for every cancel event. |
+| 9 | Your rows and the locked rows show "Also matches when *X* does. *X* runs first." from `whoWins` (same event and card, or a shared While target, and conditions that can both hold). The Settings chip names your rule: *Your rule "Night jazz" sets this now.* |
+| 10 | A When row's *Use theme / skin / EQ preset* opens with a greyed line: *Saves it as your own pick, for good*. The song balance stays the only polled fact; every route 5 fact has a seam or a `next` time. |
+
+**Decided inside his choices (for his review).**
+- The Apple cap's number is 3 in 30 s (he asked for "a number of calls per 30 s").
+- The header gets a ⋯ for paste / import / export: + now makes a rule at once (§6.3), so those
+  moved off it.
+- Paste is a field, not a clipboard read: the WebView refuses the page a read.
+- A condition line is two blanks, not three: *[Genre]* *[is Jazz]* (the value menu holds is /
+  is not / above / below together).
+- The open row's parts enter with `enterRows`; the row itself opens with no height motion.
+- A recipe with two rules shows two locked lines; the switch sits on the first.
+- An agent's rule starts its summary with *Made by an AI app.* (his words in AGENT-SETUP.md)
+- The fire cap (5 in 10 s) covers recipes too.
+- The indent guide uses `--border`, not a new role (§6.4 named `--rulez-block-rule`).
+
+**Found at the desk (2026-09-27).**
+- A searching field in a flyout widened the top menu and pushed the open flyout off the window
+  (his picture): the class now goes on the box that holds the field.
+- Every rule of yours logged "cannot run: unknown event" at launch, then ran: the engine now
+  logs a skip only after the launch cover is done.
+- A stray "The volume went back" line at launch: the volume property logs only when a rule laid
+  one.
+
+**Desk test (Claude, dev:app, through the UI).** The sentence flow: + opens the When menu; the
+Do blank; a value; *only if…*; a second condition shows *all of these* with ✓ / ✗; switch to *any*;
+the summary reads as one sentence; the stored rule is `{ any: [...] }`. A recipe's switch turns
+it on and off. *Try* on the cog's locked row says "Would run now." Logs shows its four parts in
+words. Export saved the file; Paste added a good rule and named a broken one. *Show a note* on
+*You open a card › History* showed the note. *Keep* on *You go Back from a grown album* kept the
+Library grown after Back (the log shows `grow:kept on back`). **Not run at the desk:** the
+station return and the weekly Replay cancels, the Apple actions, the route 5 facts other than
+the ones Logs lists, the who-wins line with two real rules, and drag in the new list.
+

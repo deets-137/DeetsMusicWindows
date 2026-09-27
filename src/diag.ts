@@ -22,6 +22,7 @@ export interface DiagEvent {
 }
 
 const CAP = 300;
+const subs = new Set<(e: DiagEvent) => void>();
 const buffer: DiagEvent[] = [];
 let seq = 0; // the last number handed out; `flushedSeq` is how far the file has it
 let flushedSeq = 0;
@@ -34,9 +35,18 @@ try {
 }
 
 export function log(tag: string, data?: unknown): void {
-  buffer.push({ n: ++seq, t: Math.round(performance.now()), tag, data });
+  const e = { n: ++seq, t: Math.round(performance.now()), tag, data };
+  buffer.push(e);
   if (buffer.length > CAP) buffer.shift();
   if (echo) console.debug(`[diag] ${tag}`, data ?? "");
+  if (subs.size) subs.forEach((cb) => cb(e));
+}
+
+/** Hear each new line (Rulez's Logs view, RULEZ.md §3). A subscriber must be cheap, and must
+ *  not log from inside: that would call it again. Returns an unsubscribe fn. */
+export function onDiag(cb: (e: DiagEvent) => void): () => void {
+  subs.add(cb);
+  return () => subs.delete(cb);
 }
 
 // ── Warnings and errors reach the log file as they happen ─────────────────────────

@@ -3,7 +3,7 @@
 // The lists that change at run time (the cards, the presets, the outputs, your playlists) come
 // in as `Lists`. tests/rulez-words.test.ts covers the reading-back and the time field.
 
-import type { Action, Cond, EventId, FactId, Leaf, Rule, RuleTarget, Value } from "./rules-eval";
+import type { Action, Cond, EventId, FactId, Leaf, Rule, RuleTarget, StateRule, Value } from "./rules-eval";
 
 export const SECTIONS = ["Playback", "Time", "Sound", "Look", "Window", "Library", "Sharing", "Sleep"] as const;
 export type Section = (typeof SECTIONS)[number];
@@ -21,9 +21,11 @@ export interface Lists {
   themes: Choice[];
   skins: Choice[];
   playlists: Choice[];
+  /** The playlists a song can be added to: your local ones and editable Apple ones. */
+  editable: Choice[];
   stations: Choice[];
 }
-export const NO_LISTS: Lists = { cards: [], presets: [], outputs: [], themes: [], skins: [], playlists: [], stations: [] };
+export const NO_LISTS: Lists = { cards: [], presets: [], outputs: [], themes: [], skins: [], playlists: [], editable: [], stations: [] };
 
 // ── When ─────────────────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ export const EVENTS: EventWord[] = [
   { id: "skip.prev", section: "Playback", label: "You go back" },
   { id: "queue.end", section: "Playback", label: "The queue runs out" },
   { id: "station.play", section: "Playback", label: "A station plays" },
+  { id: "station.return", section: "Playback", label: "A station is about to come back", cancel: true },
   { id: "clock", section: "Time", label: "The clock reaches" },
   { id: "app.open", section: "Window", label: "The app opens" },
   { id: "surface.change", section: "Window", label: "The surface changes" },
@@ -51,17 +54,21 @@ export const EVENTS: EventWord[] = [
   { id: "tray.show", section: "Window", label: "You bring the app back" },
   { id: "card.open", section: "Window", label: "You open a card" },
   { id: "grow.outside", section: "Window", label: "You press outside a grown card", cancel: true },
+  { id: "grow.back", section: "Window", label: "You go Back from a grown album or artist", cancel: true },
   { id: "album.open", section: "Library", label: "You open an album" },
   { id: "artist.open", section: "Library", label: "You open an artist" },
   { id: "diary.open", section: "Library", label: "You open a Diary entry" },
   { id: "playlist.create", section: "Library", label: "You make a playlist" },
   { id: "cog", section: "Library", label: "You press the cog" },
+  { id: "replay.weekly", section: "Library", label: "The weekly Replay is about to be made", cancel: true },
   { id: "output.change", section: "Sound", label: "The output changes" },
 ];
 /** Built-in only: never offered, but a locked row names it. */
 const HIDDEN_EVENTS: Partial<Record<EventId, string>> = { "sleep.arm": "The sleep schedule arms" };
 
 export const eventWord = (id: EventId): EventWord | undefined => EVENTS.find((e) => e.id === id);
+/** An event's words, the built-in-only ones too. */
+export const eventLabel = (id: EventId): string => eventWord(id)?.label ?? HIDDEN_EVENTS[id] ?? id;
 
 // ── If / While ───────────────────────────────────────────────────
 
@@ -109,10 +116,23 @@ export const FACTS: FactWord[] = [
       { value: "artist", label: "An artist" }, { value: "station", label: "A station" },
     ],
   },
+  { id: "loved", section: "Playback", label: "Loved", kind: "bool", yes: "The song is loved", no: "The song is not loved" },
+  { id: "diaryScore", section: "Playback", label: "Diary score", kind: "number" },
+  { id: "plays", section: "Playback", label: "Times played", kind: "number" },
+  { id: "queueLength", section: "Playback", label: "Songs up next", kind: "number" },
   { id: "time", section: "Time", label: "Time", kind: "time" },
   { id: "day", section: "Time", label: "Day", kind: "choice", choices: DAY_CHOICES },
   { id: "daylight", section: "Time", label: "Daylight", kind: "bool", yes: "It is daylight", no: "It is dark" },
+  { id: "sinceOpen", section: "Time", label: "Minutes since the app opened", kind: "number", unit: "min" },
+  { id: "idle", section: "Time", label: "Minutes with no press", kind: "number", unit: "min" },
   { id: "output", section: "Sound", label: "Output", kind: "choice", choices: "outputs" },
+  {
+    id: "outputKind", section: "Sound", label: "Output kind", kind: "choice",
+    choices: [
+      { value: "speakers", label: "Speakers" }, { value: "headphones", label: "Headphones" }, { value: "headset", label: "Headset" },
+      { value: "airplay", label: "AirPlay" }, { value: "unknown", label: "Not known" },
+    ],
+  },
   { id: "eqPreset", section: "Sound", label: "EQ preset", kind: "choice", choices: "presets" },
   { id: "eqBass", section: "Sound", label: "EQ bass", kind: "number", unit: "dB" },
   { id: "eqMids", section: "Sound", label: "EQ mids", kind: "number", unit: "dB" },
@@ -122,6 +142,10 @@ export const FACTS: FactWord[] = [
   { id: "songMids", section: "Sound", label: "Song mids", kind: "number", unit: "dB" },
   { id: "songTreble", section: "Sound", label: "Song treble", kind: "number", unit: "dB" },
   { id: "surface", section: "Window", label: "Surface", kind: "choice", choices: SURFACES },
+  { id: "battery", section: "Window", label: "Battery", kind: "number", unit: "%" },
+  { id: "charging", section: "Window", label: "Charging", kind: "bool", yes: "The PC is charging", no: "The PC is on battery" },
+  { id: "online", section: "Window", label: "Online", kind: "bool", yes: "The PC is online", no: "The PC is offline" },
+  { id: "dataSaver", section: "Window", label: "Data saver", kind: "bool", yes: "Data saver is on", no: "Data saver is off" },
   { id: "card", section: "Window", label: "Card", kind: "choice", choices: "cards" },
   { id: "grown", section: "Window", label: "Grown card", kind: "choice", choices: "cards" },
 ];
@@ -139,7 +163,7 @@ export function choicesOf(w: FactWord | DoWord, lists: Lists): Choice[] {
 
 // ── Do ───────────────────────────────────────────────────────────
 
-export type DoInput = "none" | "number" | "choice";
+export type DoInput = "none" | "number" | "choice" | "text";
 export type StateSet = { target: RuleTarget; value: unknown }[];
 
 export interface DoWord {
@@ -193,7 +217,7 @@ export const DOS: DoWord[] = [
   { id: "grow", section: "Window", label: "Grow this card", input: "choice", choices: AXES, moment: (v) => ({ grow: v as "full" }) },
   { id: "summon", section: "Window", label: "Open a card", input: "choice", choices: "cards", moment: (v) => ({ summon: String(v) }) },
   { id: "onTop", section: "Window", label: "Keep on top", input: "none", state: () => [{ target: { prop: "window.onTop" }, value: true }] },
-  { id: "keep", section: "Window", label: "Keep the grown card open", input: "none", cancel: true, moment: () => ({ keep: true }) },
+  { id: "keep", section: "Window", label: "Keep it from happening", input: "none", cancel: true, moment: () => ({ keep: true }) },
   {
     id: "growOutside", section: "Window", label: "Collapse on outside click", input: "choice", choices: ON_OFF,
     state: (v) => [{ target: { key: "cardGrowOutside" }, value: v === true }],
@@ -203,6 +227,13 @@ export const DOS: DoWord[] = [
     moment: () => ({ sharePause: 60 }), state: () => SHARING.map((k) => ({ target: { key: k }, value: false })),
   },
   { id: "sleepIn", section: "Sleep", label: "Start the sleep timer", input: "number", unit: "min", moment: (v) => ({ sleepIn: Number(v) }) },
+  // Route 6 (RULEZ.md §3). ♥ and an Apple Music playlist are Apple writes (RULEZ.md §4).
+  { id: "note", section: "Window", label: "Show a note", input: "text", moment: (v) => ({ note: String(v) }) },
+  { id: "hide", section: "Window", label: "Hide the app in the tray", input: "none", moment: () => ({ hide: true }) },
+  { id: "addTo", section: "Library", label: "Add the song to a playlist", input: "choice", choices: "editable", moment: (v) => ({ addTo: String(v) }) },
+  { id: "love", section: "Library", label: "Love the song", input: "none", moment: () => ({ love: true }) },
+  { id: "diary", section: "Library", label: "Open the Diary for this album", input: "none", moment: () => ({ diary: true }) },
+  { id: "scrobble", section: "Playback", label: "Turn scrobbling", input: "choice", choices: ON_OFF, moment: (v) => ({ scrobble: v === true }) },
 ];
 
 export const doWord = (id: string): DoWord | undefined => DOS.find((d) => d.id === id);
@@ -241,7 +272,7 @@ export function formatTime(minute: number): string {
 
 const labelOf = (choices: Choice[], v: unknown): string => choices.find((c) => c.value === v)?.label ?? String(v);
 
-function valueText(w: FactWord | undefined, v: Value, lists: Lists): string {
+export function valueText(w: FactWord | undefined, v: Value, lists: Lists): string {
   if (!w) return String(v);
   if (w.kind === "time" && typeof v === "number") return formatTime(v);
   if (w.kind === "choice") return labelOf(choicesOf(w, lists), v);
@@ -255,7 +286,14 @@ function valueText(w: FactWord | undefined, v: Value, lists: Lists): string {
 const list = (v: Value | Value[]) => (Array.isArray(v) ? v : [v]);
 
 /** One chip: "Genre is Jazz", "Time is after 8:00 PM", "The music is playing". */
-export function leafText(l: Leaf, lists: Lists): string {
+export function leafText(l: Leaf, lists: Lists, inSentence = false): string {
+  const out = leafWords(l, lists);
+  // Inside a sentence a name starts lower case ("time is after 8 PM"), unless it is a short
+  // form ("EQ preset").
+  return inSentence && /^[A-Z][a-z]/.test(out) ? out[0].toLowerCase() + out.slice(1) : out;
+}
+
+function leafWords(l: Leaf, lists: Lists): string {
   const w = factWord(l.fact);
   const name = w?.label ?? HIDDEN_FACTS[l.fact] ?? l.fact;
   // A built-in fact with a yes / no value reads as its own words ("The entry is new").
@@ -276,22 +314,23 @@ export function leafText(l: Leaf, lists: Lists): string {
 }
 
 /** A whole condition as one line (the locked rows, the hints). Groups inside get parentheses. */
-export function condText(c: Cond | undefined, lists: Lists, top = true): string {
+export function condText(c: Cond | undefined, lists: Lists, top = true, inSentence = false): string {
   if (!c) return "";
   if ("all" in c || "any" in c) {
     const members = "all" in c ? c.all : c.any;
     if (!members.length) return top ? "Always" : "";
-    const inner = members.map((m) => condText(m, lists, false)).join("all" in c ? " and " : " or ");
+    const inner = members.map((m) => condText(m, lists, false, inSentence)).join("all" in c ? " and " : " or ");
     return top || members.length === 1 ? inner : `(${inner})`;
   }
   if ("not" in c) {
     const inner = c.not;
     // not (Surface is Mini) reads as "Surface is not Mini".
     if (!("all" in inner || "any" in inner || "not" in inner) && inner.is !== undefined && Object.keys(inner).length === 2)
-      return leafText({ fact: inner.fact, isNot: inner.is }, lists);
-    return `not ${condText(inner, lists, false)}`;
+      return leafText({ fact: inner.fact, isNot: inner.is }, lists, inSentence);
+    if ("any" in inner) return `none of (${inner.any.map((m) => condText(m, lists, false, inSentence)).join(", ")})`;
+    return `not ${condText(inner, lists, false, inSentence)}`;
   }
-  return leafText(c, lists);
+  return leafText(c, lists, inSentence);
 }
 
 export function whenText(r: Rule, lists: Lists): string {
@@ -326,7 +365,13 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "playStation": return `Play ${(arg as { name?: string })?.name ?? "a station"}`;
     case "sharePause": return "Pause sharing for an hour";
     case "sleepIn": return `Start the sleep timer: ${arg} min`;
-    case "keep": return "Keep the grown card open";
+    case "keep": return "Keep it from happening";
+    case "note": return `Show a note: ${String(arg)}`;
+    case "hide": return "Hide the app in the tray";
+    case "addTo": return `Add the song to ${labelOf(lists.editable, arg)}`;
+    case "love": return "Love the song";
+    case "diary": return "Open the Diary for this album";
+    case "scrobble": return `Turn scrobbling ${arg ? "on" : "off"}`;
     case "set": {
       const { key, value } = arg as { key: string; value: unknown };
       if (key === "theme") return `Use theme ${labelOf(lists.themes, value)}`;
@@ -390,6 +435,123 @@ export function doWordOf(r: Rule): { word: DoWord; value: Value } | null {
     : t.prop === "window.onTop" ? "onTop" : t.prop.startsWith("tone.") ? t.prop.slice(5) : t.prop;
   const w = doWord(id);
   return w ? { word: w, value: first.value as Value } : null;
+}
+
+// ── the sentence (RULEZ.md §6.3, §6.5): DeetsMusic is the actor ────
+
+/** What DeetsMusic does, for a When row (`act`) and a While row (`keep`), before the value. */
+export const SAYS: Record<string, { act?: string; keep?: string }> = {
+  play: { act: "plays" }, pause: { act: "pauses" }, next: { act: "skips ahead" }, prev: { act: "goes back" },
+  shuffle: { act: "turns shuffle" }, repeat: { act: "sets repeat to" }, volume: { act: "sets the volume to", keep: "keeps the volume at" },
+  playPlaylist: { act: "plays the playlist" }, playStation: { act: "plays the station" },
+  preset: { act: "uses EQ preset", keep: "keeps EQ preset" }, bass: { keep: "keeps the bass at" }, mids: { keep: "keeps the mids at" },
+  treble: { keep: "keeps the treble at" }, preamp: { keep: "keeps the preamp at" },
+  theme: { act: "uses theme", keep: "keeps theme" }, skin: { act: "uses skin", keep: "keeps skin" },
+  grow: { act: "grows this card" }, summon: { act: "opens" }, onTop: { keep: "keeps the window on top" },
+  keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps Collapse on outside click" },
+  sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
+  note: { act: "shows the note" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
+  love: { act: "loves the song" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
+};
+export const saysOf = (w: DoWord, moment: boolean): string => (moment ? SAYS[w.id]?.act : SAYS[w.id]?.keep) ?? w.label.toLowerCase();
+
+/** A Do word's value as words ("Warm", "40%", "−3 dB"), or "" for a word with none. */
+export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
+  if (w.input === "none") return "";
+  if (w.input === "text") return `"${String(v)}"`;
+  if (w.input === "number") {
+    const n = Number(v);
+    return w.unit === "dB" ? `${n > 0 ? "+" : ""}${n} dB` : w.unit === "%" ? `${n}%` : `${n}${w.unit ? ` ${w.unit}` : ""}`;
+  }
+  if (w.id === "playStation") {
+    const st = v as { name?: string; id?: string; special?: string } | string;
+    if (typeof st === "string") return labelOf(lists.stations, st);
+    return st?.special === "discovery" ? "your Discovery station" : st?.name ?? st?.id ?? "a station";
+  }
+  const label = labelOf(choicesOf(w, lists), v);
+  // Words that are not names read lower case in the sentence ("grows this card taller").
+  return w.id === "grow" || w.id === "shuffle" || w.id === "scrobble" || w.id === "growOutside" || w.id === "repeat" ? label.toLowerCase() : label;
+}
+
+const lower = (s: string) => (s ? s[0].toLowerCase() + s.slice(1) : s);
+
+/** The row's one-line summary: "When the next song plays, DeetsMusic skips ahead, only if The song is explicit." */
+export function sentenceText(r: Rule, lists: Lists): string {
+  const cond = condText(r.kind === "state" ? r.while : r.if, lists, true, true);
+  if (r.kind === "state") {
+    const parts = stateParts(r.set).map(({ word, value }) => (word ? `${saysOf(word, false)} ${doValueText(word, value, lists)}`.trim() : ""));
+    const does = parts.filter(Boolean).join(" and ") || "…";
+    return `While ${cond === "Always" ? "it is on" : lower(cond)}, DeetsMusic ${does}.`;
+  }
+  const when = whenText(r, lists);
+  const inCard = r.card !== "*" ? ` in ${labelOf(lists.cards, r.card)}` : "";
+  const d = doWordOf(r);
+  const does = d ? `${saysOf(d.word, true)} ${doValueText(d.word, r.kind === "moment" && "playStation" in r.do ? r.do.playStation : d.value, lists)}`.trim() : "…";
+  const only = r.if && cond && cond !== "Always" ? `, only if ${lower(cond)}` : "";
+  return `When ${when ? lower(when) : "…"}${inCard}, DeetsMusic ${does}${only}.`;
+}
+
+/** A While row's set as its Do words (the sharing switches are one word). */
+export function stateParts(set: StateSet): { word: DoWord | undefined; value: unknown; set: StateSet }[] {
+  const sharing = set.filter((s) => "key" in s.target && (SHARING as readonly string[]).includes(s.target.key));
+  const out: { word: DoWord | undefined; value: unknown; set: StateSet }[] = [];
+  if (sharing.length) out.push({ word: doWord("sharePause"), value: true, set: sharing });
+  for (const s of set) {
+    if (sharing.includes(s)) continue;
+    const probe = doWordOf({ id: "", kind: "state", source: { user: true }, on: true, while: { all: [] }, set: [s], onHand: "next" });
+    out.push({ word: probe?.word, value: s.value, set: [s] });
+  }
+  return out;
+}
+
+// ── who wins (RULEZ.md §6.2, route 9's Rulez half) ────────────────
+
+/** The top-level "all of" leaves of a condition (what must hold for it to hold). */
+function mustHold(c: Cond | undefined): Leaf[] {
+  if (!c) return [];
+  if ("fact" in c) return [c];
+  if ("all" in c) return c.all.flatMap((m) => ("fact" in m ? [m] : []));
+  return [];
+}
+
+/** Can both conditions hold at once? False only when both name one fact with `is` values that
+ *  share nothing ("Genre is Jazz" against "Genre is Rap"). Anything else might overlap. */
+export function canBothHold(a: Cond | undefined, b: Cond | undefined): boolean {
+  const la = mustHold(a);
+  const lb = mustHold(b);
+  for (const x of la)
+    for (const y of lb) {
+      if (x.fact !== y.fact || x.is === undefined || y.is === undefined) continue;
+      const xs = (Array.isArray(x.is) ? x.is : [x.is]).map((v) => (typeof v === "string" ? v.toLowerCase() : v));
+      const ys = (Array.isArray(y.is) ? y.is : [y.is]).map((v) => (typeof v === "string" ? v.toLowerCase() : v));
+      if (!xs.some((v) => ys.includes(v))) return false;
+    }
+  return true;
+}
+
+const targetsOf = (r: StateRule) => r.set.map((s) => ("key" in s.target ? `key:${s.target.key}` : `prop:${s.target.prop}`));
+
+/** For each rule, the first rule above it that also matches when it does (and so runs first). */
+export function whoWins(rules: readonly Rule[]): Map<string, Rule> {
+  const out = new Map<string, Rule>();
+  rules.forEach((r, i) => {
+    if (r.draft) return;
+    for (const above of rules.slice(0, i)) {
+      if (above.draft || !above.on || above.kind !== r.kind) continue;
+      if (r.kind === "moment" && above.kind === "moment") {
+        if (above.when !== r.when || (above.when === "clock" && above.at !== r.at)) continue;
+        if (above.card !== "*" && r.card !== "*" && above.card !== r.card) continue;
+        if (!canBothHold(above.if, r.if)) continue;
+      } else if (r.kind === "state" && above.kind === "state") {
+        const t = new Set(targetsOf(above));
+        if (!targetsOf(r).some((x) => t.has(x))) continue;
+        if (!canBothHold(above.while, r.while)) continue;
+      }
+      out.set(r.id, above);
+      return;
+    }
+  });
+  return out;
 }
 
 /** A row is complete: it names its When and its Do (a draft otherwise, RULES.md §20.2). */
