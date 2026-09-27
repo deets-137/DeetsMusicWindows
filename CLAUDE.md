@@ -48,7 +48,7 @@ old installs' Guide button opens.
 - `RULES.md` — the rules engine: moment and state rules, the `if` tree, the overlay on
   settings (`effective` / `ownSetting`), the rows that make rules. Built 2026-09-26 on
   `rules-rulez`; §18 is the as-built record. Rules sit under features, never replace one.
-  §20–21: **Rulez**, the rules builder card (Max only), its words, cancel events, the cascade guards.
+  §19 is how a feature uses it. The Rulez card is `features/RULEZ.md`.
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.
@@ -91,6 +91,8 @@ old installs' Guide button opens.
   Tips, the first-run walk (`npm run dev:fresh` to be a first-time user).
 - `QUICK-SETTINGS.md` — the cog's quick panel and the New badges (`NEW_MARKS`).
 - `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with mock tracks.
+- `RULEZ.md` — the Rulez card (Max only): make your own rules from words; the cascade guards,
+  cancel events, the ten routes in flight (§3). The engine is `architecture/RULES.md`.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
