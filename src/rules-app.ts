@@ -38,7 +38,9 @@ const playlistOf = (id: unknown) => playlists.find((p) => pidOf(p) === id);
 const SETTABLE = new Set(["theme", "skin", "soundEqPreset"]);
 
 export function initRulesApp(): void {
-  for (const e of ["app.open", "surface.change", "tray.hide", "tray.show", "card.open"] as const) registerEvent(e, { facts: [] });
+  // `replay.weekly` is emitted by replay.ts 8 s after launch; registered here so a rule on it is
+  // not "unknown" until then (found at the desk 2026-09-27).
+  for (const e of ["app.open", "surface.change", "tray.hide", "tray.show", "card.open", "replay.weekly"] as const) registerEvent(e, { facts: [] });
 
   registerAction("set", {
     cost: "free",

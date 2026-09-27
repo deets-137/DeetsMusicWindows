@@ -657,7 +657,8 @@ Pause. Logs › What ran: one line; open it: both rules, `ran` and `did not run`
 
 ## 10. Route 8 — the FUTURE-SETTINGS walk (owner B, 2026-09-27)
 
-> **Part:** designed · 2026-09-27 · his forks: which of the candidates to build, and in which form
+> **Part:** designed · 2026-09-27 · **his call the same night: yes to all five.** The build
+> record goes in §10.1 as each lands.
 
 The question (§3, route 8): which of the hard-coded behaviors in
 [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md) are "when" or "while" decisions, and so belong to
@@ -692,8 +693,42 @@ a skin's intensity preset (*While Genre is Ambient → Glass calm*), §11 the ti
 §24 the Now Playing squares (*While Surface is Mini → hide Search*). Each is one line in
 `RULE_KEYS` and the readers choose `effective` (RULES.md §19 step 4).
 
-**His forks.** (1) §22 as a recipe rather than a row: yes / no. (2) §10 as a cancel event:
-yes / no. (3) §20 as an event with two Dos: now, later, or no. (4) §5b's shuffle event: only
-if wanted. (5) The `windowWidth` fact: yes / no. Nothing here is built; each yes is one
-route-sized step with its own desk test.
+**His forks, decided 2026-09-27 (late; he went to bed after): yes to all five.** (1) §22 as
+a recipe. (2) §10 as a cancel event. (3) §20 as an event with two Dos. (4) §5b's shuffle
+event. (5) The `windowWidth` / `windowHeight` facts. Each is one step with its own desk test,
+recorded in §10.1.
 
+### 10.1 The build (two sessions, same split as §3)
+
+| # | Step | Owner | The seam | Decided inside his choice (for his review) |
+|---|---|---|---|---|
+| 1 | **Play on launch** recipe | A (rules-recipes.ts, rules-app.ts) | `emitAppOpen()` in rules-app.ts, on `deets:boot-done` | The recipe ships off with *Play* (the restored queue = §22's *Last song*); Duplicate and change the Do to *Play a playlist* / *Play a station* for a source. **The tray guard:** `app.open` is not emitted when the window is hidden at boot (`--tray`, `isVisible()` false), and not when it is shown later from the tray; the log says `rule: app.open skipped (tray)`. The starred-playlists pool is a later Do |
+| 2 | **Queue summon** cancel event | A (layout.ts, rules-app.ts, rulez-words.ts) | `onCardRequest` in layout.ts, before `setSlot(lruSlot(), "queue")` when the Queue is already on screen | Event `queue.summon` (*The Queue button is pressed with the Queue on screen*), In = the card the flip would displace, fact `grown`; Do *Keep it from happening* only (the §1.7 shape). A hidden card request (the agent's summon) is the same event |
+| 3 | **Go to** events | A (go-to.ts, library-card.ts, rules-playback.ts or rules-app.ts, rulez-words.ts) | `goToArtistItem` / `goToAlbumItem` (go-to.ts) and the Library's `trackMenu(items, ctx, nav)` | Events `goto.artist` / `goto.album`, In = the card the verb came from; Dos *Open in the Library* (the Library card summoned and drilled, §20's option c, for a library track; else Search) and *Open in Search*. The built-in rule keeps today's split: `row:goToTarget` made by a new row Settings › Menus › **Go to opens** (*Where it fits* (default) · *Search* · *Library*) — a row makes its rule (RULES.md §13). Cost: the Library path is local; Search is the existing one-hop catalog read |
+| 4 | **Shuffle press** event | A (player.ts `shuffleQueue`, rules-playback.ts, rulez-words.ts) | the shuffle button's press (the Now Playing square, the Compass, a media key, the agent), not a mode change from a rule | Event `shuffle.press` (*You press shuffle*); the row `shuffleIdle` makes the built-in rule *If The music is not playing → Play the library shuffled*, and `player.ts` drops its own idle branch (the rule is the one path). Fact `playing` exists |
+| 5 | **Window size** facts | B (a new `src/rules-window.ts`, registered from main.ts) | a `ResizeObserver` on `<html>`, published on a 150 ms trailing edge (the seam) | Facts `windowWidth` / `windowHeight` in logical px (`innerWidth` / `innerHeight`), kind number, unit px, section Window; the `surface` fact stays the deliberate choice. One recheck per settled resize, none per frame |
+
+*Desk tests.* (1) Recipe on, restart → the last song plays after the boot cover; `npm run
+dev:app -- --tray` → nothing plays, `rule: app.open skipped`. (2) Queue on screen, rule *When
+the Queue button is pressed… → Keep*: the press does nothing; rule off: the flip. (3) From
+the Queue's right-click Go to Artist with a rule *Open in the Library*: the Library card comes
+drilled to the artist; with none: Search as today; the row's three values. (4) Nothing
+playing, press shuffle: the library plays shuffled through the rule (`rule` log line); the row
+on *noop*: nothing. (5) `__rules.facts().windowWidth` follows a drag of the window edge, one
+change per settled resize; a rule *While Window width is below 500 → Keep on top*.
+
+
+**The last two cancels, with music (2026-09-27).**
+- *A station is about to come back* + Keep: the album's last song playing, the Discovery station
+  added to the queue from the Radio card ("Will resume after"), a seek to the end. The rule ran,
+  the player logged `resumeStation … kept: rule`, and no station played.
+- *The weekly Replay is about to be made* + Keep: this week's Replay marked due in dev storage, a
+  reload; eight seconds later the log read "weekly kept back by a rule". Found: the Replay module
+  registered its event only when its check ran, so for the first eight seconds a rule on it read
+  "unknown event"; rules-app.ts now registers it at start. (A first try whose paste had not
+  landed made a real rolling Replay in the dev app; dev data only.)
+- Session B's finding, *Explicit* false for "Only in the West" (Yeek): neither the track store
+  (a catalog song) nor MusicKit's item carries a rating, and the app's own row shows no E. Apple
+  sends a rating only for a marked song, so false is the right reading; the album cover wears
+  the badge for its other songs.
+- The chip's hint now reads "…give it back to your rule "Jazz blue"." (session B's catch).

@@ -598,7 +598,7 @@ export function chipState(target: string): ChipState | null {
   const text = own ? undefined : texts.get(rowOf(id));
   const name = own ? `Your rule "${own.name || "Untitled"}"` : text?.name ?? "A rule";
   if (bolt) return { kind: "bolt", ruleId: bolt, hint: text?.bolt?.(target) ?? `${name} sets this now.` };
-  return { kind: "hand", ruleId: hand!, hint: text?.hand?.(target) ?? `Your pick holds. Press to give it back to ${own ? name : name.toLowerCase()}.` };
+  return { kind: "hand", ruleId: hand!, hint: text?.hand?.(target) ?? `Your pick holds. Press to give it back to ${own ? name[0].toLowerCase() + name.slice(1) : name.toLowerCase()}.` };
 }
 
 /** Resume on the chip: the rule acts again at once. */
