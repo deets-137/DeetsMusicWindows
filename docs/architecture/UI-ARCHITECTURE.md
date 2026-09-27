@@ -336,7 +336,7 @@ player). This supersedes the "future skin options surface" in FUTURE-SETTINGS §
 **The path of one value:** the store (`settings-store.ts`) → `src/skin-settings.ts` writes it
 onto `<html>` (a choice as a `data-` attribute, a 0–100 slider as a custom property) → the
 skin's block in `skin.css` reads it. Other skins never read it, so the value can stay stored
-while another skin is on. `initSkinSettings()` runs in `main.ts` right after `initSkin()`,
+while another skin is on. `initSkinSettings()` runs in `main.ts` right after `initLook()`,
 before the first paint, so a card never flashes the default look.
 
 **Rules**
@@ -503,7 +503,7 @@ active — the same selection indicator the theme flyout uses; the choice persis
 `core:window:allow-set-always-on-top` capability). **Hover-Menu** is a second toggle
 (`localStorage` `deets.menuMode`, default off/click) — see the dropdown primitive below.
 A **Skin** row mirrors Theme exactly (flyout of `[data-skin-choice]` items, wired in
-`src/skin.ts` — `applySkin`/`initSkin`, `localStorage` `deets.skin`); further settings
+`src/skin.ts` — `paintSkin`; the choice is the settings store's `skin`, RULES.md §7a); further settings
 slot in the same way. Because the title is now interactive, the **draggable zone is the
 middle `.drag-region`** between the title and the lights, not the whole bar.
 
@@ -913,7 +913,7 @@ src/styles/palette.css  Tier 1 — raw paints
 src/styles/themes.css   Tier 2 — color roles per theme
 src/styles/skin.css     Tier 3 — [data-skin] base + press/ocean/glass/cyber deltas (type/geometry/motion)
 src/styles/fonts/       bundled font files (Liberation TTFs + NOTICE; skin WOFF2s)
-src/main.ts             window controls, settings menu, account, menu-mode; calls initTheme/initSkin/initLayout()
+src/main.ts             window controls, settings menu, account, menu-mode; calls initLook/initLayout()
 src/cards.ts            card registry + CardDef/CardInstance (the mountable-card contract)
 src/layout.ts           midi layout: anchored Now Playing + 2 swappable slots + title-menu picker
 src/now-playing-card.ts Now Playing transport card (extracted from main.ts)

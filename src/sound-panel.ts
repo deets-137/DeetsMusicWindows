@@ -7,7 +7,7 @@
 import { keepInWindow, makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { makeSlider, type SliderHandle } from "./slider";
-import { setting, setSetting, onSettingsChange, adaptiveOn, adaptiveUnhidden, type Settings } from "./settings-store";
+import { setting, setSetting, ownSetting, onSettingsChange, adaptiveOn, adaptiveUnhidden, type Settings } from "./settings-store";
 import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, LOW_SHELF_HZ, SUB_SHELF_HZ, HIGH_SHELF_HZ, type Band, type BandType } from "./sound-dsp";
 import { GRAPHIC_FREQS, MAX_BANDS, fitGraphic, isGraphic, parseApo, toApo, type EqPreset } from "./sound-presets";
 import * as sound from "./sound";
@@ -93,13 +93,13 @@ function row(label: string, control: HTMLElement, cls = ""): HTMLDivElement {
 function cyclePill<K extends keyof Settings>(key: K, values: Settings[K][], labels: string[], title: string): { btn: HTMLButtonElement; sync: () => void } {
   const btn = pill(title);
   const sync = () => {
-    const i = values.indexOf(setting(key));
+    const i = values.indexOf(ownSetting(key));
     btn.textContent = labels[i < 0 ? 0 : i];
-    const v = setting(key) as unknown;
+    const v = ownSetting(key) as unknown;
     btn.setAttribute("aria-pressed", String(v !== false && v !== "off" && v !== "none" && v !== 0));
   };
   btn.addEventListener("click", () => {
-    const i = values.indexOf(setting(key));
+    const i = values.indexOf(ownSetting(key));
     setSetting(key, values[(i + 1) % values.length]);
   });
   return { btn, sync };

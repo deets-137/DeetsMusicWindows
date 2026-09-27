@@ -145,8 +145,9 @@ Known limits, both accepted:
   identity. Two DeetsMusic icons in dev is expected, not a duplicate process.
 
 ## 6. Later
-- Theme/skin pre-paint on the panel already follows the shared `deets.theme` / `deets.skin`
-  keys (same origin); live changes ride the `appearance` event.
+- Theme/skin pre-paint on the panel already follows the shared settings store's `theme` /
+  `skin` (same origin; the old `deets.theme` / `deets.skin` keys are its fallback, RULES.md
+  §7a); live changes ride the `appearance` event.
 - "Read Windows media" is only in the tray menu; a mirror in the Settings card when that
   card lands (the v1 push, item 1, in WORKLOG.md's older entries).
 - Per-app volume for the Windows source would need the WASAPI session enumerator

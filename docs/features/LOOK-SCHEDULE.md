@@ -65,7 +65,9 @@ accurate for the city). The app makes no request and asks for no permission.
 - **Pre-paint:** each tick writes `deets.look.prepaint` = `{ window, day, night }` (today's day
   window in local minutes; null in Windows mode). `index.html` reads it and the hold before
   the stylesheet loads, so a launch after a change time does not flash the old look.
-  `initLookSchedule()` (right after `initTheme` / `initSkin`) then applies the exact plan
-  without animation. `tray.html` needs nothing: it follows `publishAppearance` and the saved ids.
-- A scheduled change writes `deets.theme` / `deets.skin` like a hand pick, so turning the
-  schedule off keeps the current look.
+  `initLookSchedule()` (right after `initLook`) then applies the exact plan without animation.
+  `tray.html` needs nothing: it follows `publishAppearance` and the saved ids.
+- **Since 2026-09-26 a scheduled change never writes your look.** Your theme and skin are the
+  settings store's `theme` / `skin` (RULES.md §7a); the schedule only lays its look on top.
+  Turning the schedule off still keeps the current look, as before: `keepShownLook()` writes
+  the look on screen as your pick at that moment.

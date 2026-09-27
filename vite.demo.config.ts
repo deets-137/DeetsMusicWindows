@@ -11,16 +11,19 @@ import { readFileSync } from "node:fs";
 const version: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 
 // The first look follows the site's own theme and skin (deets.solutions stores them as
-// `deets-theme` / `deets-skin`, the app as `deets.theme` / `deets.skin`; the ids are the same).
-// It runs before the page's own pre-paint script, which then reads the app keys as usual.
+// `deets-theme` / `deets-skin`, the app as the settings store's `theme` / `skin` since
+// 2026-09-26, RULES.md §7a; the ids are the same). Written only while the visitor has no look
+// of their own. It runs before the page's own pre-paint script, which then reads the store.
 const SEED_LOOK = `<script>
   (function () {
     try {
-      var pairs = [["deets-theme", "deets.theme"], ["deets-skin", "deets.skin"]];
+      var look = JSON.parse(localStorage.getItem("deets.settings") || "{}");
+      var pairs = [["deets-theme", "theme"], ["deets-skin", "skin"]], seeded = false;
       for (var i = 0; i < pairs.length; i++) {
         var site = localStorage.getItem(pairs[i][0]);
-        if (site && !localStorage.getItem(pairs[i][1])) localStorage.setItem(pairs[i][1], site);
+        if (site && !look[pairs[i][1]]) { look[pairs[i][1]] = site; seeded = true; }
       }
+      if (seeded) localStorage.setItem("deets.settings", JSON.stringify(look));
     } catch (e) {}
     // The demo's own defaults (WEB-DEMO.md §11, his call 2026-09-26): Ocean's Album light
     // starts at 80, not the app's 0. Written only while the visitor has no value of their own,

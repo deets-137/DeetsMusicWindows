@@ -15,10 +15,15 @@
         };
         var dark = false;
         try { dark = window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) {}
-        [["deets.theme", "data-theme", dark ? "black-red" : "lilac"],
-         ["deets.skin",  "data-skin",  dark ? "cyber" : "press"]].forEach(function (a) {
-          var saved = null;
-          try { saved = localStorage.getItem(a[0]); } catch (e) {}
+        // Your look: the settings store's `theme` / `skin` (RULES.md §7a), else the old keys.
+        // The look schedule's look arrives as the hub's `appearance` event.
+        var S = null;
+        try { S = JSON.parse(localStorage.getItem("deets.settings")); } catch (e) {}
+        [["theme", "deets.theme", "data-theme", dark ? "black-red" : "lilac"],
+         ["skin",  "deets.skin",  "data-skin",  dark ? "cyber" : "press"]].forEach(function (a) {
+          var saved = S && S[a[0]];
+          try { if (!saved) saved = localStorage.getItem(a[1]); } catch (e) {}
+          a = a.slice(1);
           document.documentElement.setAttribute(a[1], saved ? (R[saved] || saved) : a[2]);
         });
       })();

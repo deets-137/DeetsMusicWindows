@@ -361,9 +361,9 @@ gesture on it:
 **State: `onboardingStep` in settings** — the NEXT step to show, 0 = over. Not a
 localStorage once-key (this supersedes §4.4): it survives a localStorage clear, the agent
 can read it, and Settings › Tips hands it back. `settings-store.ts seedOnboarding()` decides
-ONCE, at first load, whether this install has ever been used — the tell is `deets.theme`,
-which `applyTheme` writes back on every launch and which is still absent on a true first
-paint — and **persists that answer alone**, so a user who quits during step 1 does not lose
+ONCE, at first load, whether this install has ever been used — the tell is a saved look: the
+store's `theme`, or `deets.theme`, which the store writes as a mirror on every launch (before
+2026-09-26 `applyTheme` wrote it) and which is still absent on a true first paint — and **persists that answer alone**, so a user who quits during step 1 does not lose
 the walk they never finished, and an upgrade never sees it.
 
 **Who owns "you are signed out".** While the walk is live, `apple-health.ts` stays quiet

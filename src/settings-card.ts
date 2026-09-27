@@ -17,10 +17,10 @@ import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
-import { setting, setSetting, onSettingsChange, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type Settings } from "./settings-store";
-import { currentSkin, onSkinChange, applySkin, defaultSkin, type SkinName } from "./skin";
-import { applyTheme, defaultTheme, type ThemeName } from "./theme";
-import { withAppearanceTransition } from "./appearance";
+import { setting, setSetting, ownSetting, onSettingsChange, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type Settings } from "./settings-store";
+import { currentSkin, onSkinChange, defaultSkin, type SkinName } from "./skin";
+import { pickLook } from "./look";
+import { defaultTheme, type ThemeName } from "./theme";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
 import { setAlbumLight } from "./ocean";
@@ -50,7 +50,7 @@ import {
   resetOrder, snapshotOrders, restoreOrders, orderedScopes,
 } from "./row-order";
 import { checkForUpdate, rollbackTo, olderVersions, onUpdateStatus, updateStatusText, versionText, type OlderVersion } from "./updater";
-import { scheduleStatus, onScheduleChange, noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
+import { scheduleStatus, onScheduleChange, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
@@ -340,9 +340,9 @@ interface ResetSnapshot {
   look?: { theme: ThemeName; skin: SkinName };
 }
 const snapshotOf = (groups: ResetGroup[]): ResetSnapshot => ({
-  values: Object.fromEntries(groups.flatMap((g) => g.keys).map((k) => [k, setting(k)])) as Partial<Settings>,
+  values: Object.fromEntries(groups.flatMap((g) => g.keys).map((k) => [k, ownSetting(k)])) as Partial<Settings>,
   look: groups.some((g) => g.look)
-    ? { theme: document.documentElement.dataset.theme as ThemeName, skin: currentSkin() }
+    ? { theme: ownSetting("theme"), skin: ownSetting("skin") }
     : undefined,
 });
 const defaultsOf = (groups: ResetGroup[]): ResetSnapshot => ({
@@ -354,16 +354,7 @@ const sameSnapshot = (a: ResetSnapshot, b: ResetSnapshot): boolean =>
 /** Write a snapshot: the store keys first (the schedule settles), then the theme and skin as a hand pick. */
 function applySnapshot(s: ResetSnapshot): void {
   for (const k of Object.keys(s.values) as (keyof Settings)[]) setSetting(k, s.values[k] as never);
-  if (!s.look) return;
-  const { theme, skin } = s.look;
-  const newSkin = currentSkin() !== skin;
-  if (document.documentElement.dataset.theme === theme && !newSkin) return;
-  noteHandPick();
-  withAppearanceTransition(newSkin ? "skin" : "theme", () => { applyTheme(theme); applySkin(skin); }, {
-    skin: newSkin ? skin : undefined,
-    // np-bus imports this module's neighbours (agent-settings.ts does the same); load it lazily.
-    after: () => void import("./np-bus").then((m) => m.publishAppearance()),
-  });
+  if (s.look) pickLook(s.look);
 }
 
 const SETUP_CLIENTS: Option[] = [
@@ -415,7 +406,7 @@ export function settingsRows(): SettingEntry[] {
           control = {
             kind: "choice",
             options: r.options,
-            get: () => (r.get ? r.get() : String(setting(key))),
+            get: () => (r.get ? r.get() : String(ownSetting(key))),
             set: (v) => (r.set ? r.set(v) : setSetting(key, v as never)),
           };
         }
@@ -2082,7 +2073,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
   const menuOf = (r: ChoiceRow): Half => ({
     type: "menu",
     options: r.options,
-    get: () => (r.get ? r.get() : String(setting(r.key!))),
+    get: () => (r.get ? r.get() : String(ownSetting(r.key!))),
     set: (v) => (r.set ? (r.set(v), render()) : setSetting(r.key!, v as never)),
   });
   const halvesOf = (r: Row): Half[] | undefined =>
@@ -2140,7 +2131,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       return `<div class="set__row set__row--choice${sub}${fx.cls}"${mark}${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
     }
     const choice = r as ChoiceRow;
-    const cur = choice.get ? choice.get() : String(setting(choice.key!));
+    const cur = choice.get ? choice.get() : String(ownSetting(choice.key!));
     const opts = choice.options
       .map((o) => {
         const pill = newPill(choice.id, o.value, cur) ? newBadge(pillKey(choice.id, o.value)) : "";

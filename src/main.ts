@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { applyTheme, initTheme, type ThemeName } from "./theme";
-import { applySkin, initSkin, type SkinName } from "./skin";
+import { type ThemeName } from "./theme";
+import { initLook, pickLook } from "./look";
+import { type SkinName } from "./skin";
 import { applySurface, currentSurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, onNarrowChange, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
@@ -24,14 +25,13 @@ import { initSkinSettings } from "./skin-settings";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
-import { initNpBus, publishAppearance } from "./np-bus";
+import { initNpBus } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { makeSlider } from "./slider";
 import { makeDropdown, setDropdownMode, type DropdownMode } from "./dropdown";
 import { initAirplay, mountAirplay } from "./airplay";
-import { withAppearanceTransition } from "./appearance";
-import { initLookSchedule, noteHandPick } from "./look-schedule";
+import { initLookSchedule } from "./look-schedule";
 import { initSleep } from "./sleep";
 import { initCompass, compassOpen, CARD_KEYS } from "./compass";
 import { initPlaylistExpiry } from "./playlist-expiry";
@@ -63,8 +63,7 @@ const appWindow = getCurrentWindow();
 
 window.addEventListener("DOMContentLoaded", () => {
   initRules(); // the rules engine (RULES.md): before the look and the cards, which register into it
-  initTheme();
-  initSkin();
+  initLook(); // the theme and skin from the store (RULES.md §7a)
   initSkinSettings(); // before the first paint, so a card never flashes the default look
   initLookSchedule(); // a day/night schedule overrides the saved look (LOOK-SCHEDULE.md)
   initSurface();
@@ -150,32 +149,13 @@ window.addEventListener("DOMContentLoaded", () => {
   // Theme choices — the launch animation (appearance.ts); the menu closes under the
   // opaque cover, so the rise never shows it half-closed.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
-    el.addEventListener("click", () => {
-      noteHandPick(); // a running schedule holds this pick (LOOK-SCHEDULE.md §2)
-      // `after` runs inside the transition's update callback, AFTER applyTheme — a publish
-      // outside it would read the attributes before they flip and report the OLD theme.
-      withAppearanceTransition("theme", () => applyTheme(el.dataset.themeChoice as ThemeName), {
-        after: () => {
-          close();
-          publishAppearance(); // tray panel + extension popup follow (they snap)
-        },
-      });
-    });
+    // A hand pick: your theme (look.ts paints it inside the transition and publishes it).
+    el.addEventListener("click", () => pickLook({ theme: el.dataset.themeChoice as ThemeName }, { after: close }));
   });
 
   // Skin choices (same pattern as Theme) — the incoming skin's own entrance.
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const skin = el.dataset.skinChoice as SkinName;
-      noteHandPick();
-      withAppearanceTransition("skin", () => applySkin(skin), {
-        skin,
-        after: () => {
-          close();
-          publishAppearance();
-        },
-      });
-    });
+    el.addEventListener("click", () => pickLook({ skin: el.dataset.skinChoice as SkinName }, { after: close }));
   });
 
   // Keyboard shortcuts (NEXT-VERSION §5): summon a card. Fixed set; ignored while a

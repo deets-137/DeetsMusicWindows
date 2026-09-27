@@ -513,5 +513,22 @@ Where this section and §1–§17 differ, this section is the code.
 - `host.dataset.mounted` (layout.ts) names the card a host shows; the emits read it, so the
   second Search card reports its own id.
 - `webview-eval.mjs --shot FILE` saves a picture of the dev window (the desk tests' pictures).
+- **Theme and skin (step 5).** `look-ids.ts` holds the RETIRED maps and the first-launch pair
+  (pure, so the store migrates at load with no import cycle). `theme.ts` / `skin.ts` only paint
+  (`paintTheme`, `paintSkin`). `look.ts` is the one painter: `initLook()` at launch, and
+  `pickLook(look, opts)` for every hand pick (the title menu, the Compass through it, Reset, an
+  agent with `by: "agent"`). It paints the effective pair on the next microtask, so a theme and
+  a skin that change together animate once.
+- `ownSetting` takes any key (not only a `RuleKey`): generic code — a Settings row, an agent
+  spec, a Reset snapshot, the Sound panel's cycle pill — reads every key as yours.
+- The resolved default look is not written to the store until some setting is saved; the
+  mirror (`deets.theme`) is written at every load, which is what the first-install check and a
+  roll back need.
+- **Turning the schedule off still keeps the look on screen** (LOOK-SCHEDULE.md): the schedule
+  no longer writes your pick, so `keepShownLook()` writes the look on screen as your pick when
+  the row goes Off. Without it, Off would have shown your older pick: a change you could see.
+- The build check is a unit test, `tests/look-keys.test.ts`; the migration and the
+  first-install rule are `tests/look-migrate.test.ts` (in place of wiping the dev profile with
+  `dev:fresh`).
 
 **Steps.** Each step's desk test result is in WORKLOG.md (2026-09-26).

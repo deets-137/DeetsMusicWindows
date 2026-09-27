@@ -9,9 +9,10 @@
 // index.html reads PREPAINT_KEY and HOLD_KEY before first paint, so a launch after a
 // change time never flashes the old look. Keep the two in step.
 
-import { setting, setSetting, onSettingsChange, type Settings } from "./settings-store";
-import { applyTheme } from "./theme";
-import { applySkin } from "./skin";
+import { setting, setSetting, ownSetting, onSettingsChange, type Settings } from "./settings-store";
+import type { ThemeName, SkinName } from "./look-ids";
+import { paintTheme } from "./theme";
+import { paintSkin } from "./skin";
 import { withAppearanceTransition } from "./appearance";
 import { ZONES, ALIASES } from "./sun-zones";
 
@@ -201,8 +202,8 @@ function applyLook(period: Period, animate: boolean): void {
   const newSkin = root.dataset.skin !== skin;
   if (root.dataset.theme === theme && !newSkin) return;
   const fn = () => {
-    applyTheme(theme);
-    applySkin(skin);
+    paintTheme(theme);
+    paintSkin(skin);
   };
   if (!animate) return fn();
   // Both play the launch animation (appearance.ts); `skin` makes it wait for the new faces.
@@ -270,11 +271,23 @@ export function onScheduleChange(cb: () => void): () => void {
   return () => listeners.delete(cb);
 }
 
+/** Write the look on screen as your pick (the schedule turned off). */
+function keepShownLook(): void {
+  const root = document.documentElement;
+  const theme = root.dataset.theme as ThemeName | undefined;
+  const skin = root.dataset.skin as SkinName | undefined;
+  if (theme && theme !== ownSetting("theme")) setSetting("theme", theme);
+  if (skin && skin !== ownSetting("skin")) setSetting("skin", skin);
+}
+
 /** Launch: apply the scheduled look at once (no animation), then keep it current. */
 export function initLookSchedule(): void {
   tick(false);
   onSettingsChange((k) => {
     if (!SCHEDULE_KEYS.includes(k)) return;
+    // Off keeps the look on screen, as it always did: the schedule's look becomes your pick.
+    // (Since 2026-09-26 a scheduled change no longer writes your theme and skin, RULES.md §7a.)
+    if (k === "lookSchedule" && setting("lookSchedule") === "off") keepShownLook();
     store(HOLD_KEY, null);
     tick(true);
   });

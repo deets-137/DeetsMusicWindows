@@ -12,13 +12,14 @@
 // The rows mirror settings-card.ts: a new card row joins SPECS as well (SETTINGS.md §5).
 
 import { invoke } from "@tauri-apps/api/core";
-import { setting, setSetting, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
+import { setting, setSetting, ownSetting, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
 import { toast } from "./toast";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
-import { applyTheme, type ThemeName } from "./theme";
-import { applySkin, currentSkin, type SkinName } from "./skin";
+import { type ThemeName } from "./theme";
+import { currentSkin, type SkinName } from "./skin";
+import { pickLook } from "./look";
 import { applySurface, currentSurface, MIN_SIZES, SIZE_KEYS, type SurfaceName, type SizeSlot } from "./surface";
-import { noteHandPick, THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
+import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
 import { presetOptions, selectPreset } from "./sound";
 
@@ -62,7 +63,7 @@ const ON_OFF: Opt[] = [{ value: "on", label: "On" }, { value: "off", label: "Off
 
 const storeChoice = (section: string, key: keyof Settings, label: string, options: Opt[], extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "choice", options,
-  get: () => String(setting(key)),
+  get: () => String(ownSetting(key)),
   set: (v) => setSetting(key, v as never),
   ...extra,
 });
@@ -108,16 +109,10 @@ const rustToggle = (section: string, key: string, label: string, get: () => Prom
   ...extra,
 });
 
-/** A theme or skin set from outside the title menu: the same hand pick, transition and publish. */
-function pickLook(kind: "theme" | "skin", v: string): void {
-  noteHandPick();
-  withAppearanceTransition(kind, () => (kind === "theme" ? applyTheme(v as ThemeName) : applySkin(v as SkinName)), {
-    skin: kind === "skin" ? (v as SkinName) : undefined,
-    by: "agent", // the slower cover (UX-COVERUPS §6b)
-    // np-bus imports this module (through agent-writes); load it lazily, not at the top.
-    after: () => void import("./np-bus").then((m) => m.publishAppearance()),
-  });
-}
+/** A theme or skin set from outside the title menu: the same hand pick (look.ts), with the
+ *  slower cover an agent's change rides (UX-COVERUPS §6b). */
+const agentLook = (kind: "theme" | "skin", v: string): void =>
+  pickLook(kind === "theme" ? { theme: v as ThemeName } : { skin: v as SkinName }, { by: "agent" });
 
 const skinNote = (skin: SkinName, name: string) => () => (currentSkin() === skin ? undefined : `It shows while ${name} is the skin.`);
 const MINUTES = [-60, -45, -30, -15, 0, 15, 30, 45, 60];
@@ -172,14 +167,14 @@ const SPECS: Spec[] = [
   // ── Theme and skin, Look schedule, Motion, Skin settings, Menus ──
   {
     key: "theme", label: "Theme", section: "Theme and skin", kind: "choice", options: THEME_OPTIONS,
-    get: () => document.documentElement.dataset.theme ?? "",
-    set: (v) => pickLook("theme", v),
+    get: () => ownSetting("theme"),
+    set: (v) => agentLook("theme", v),
     note: () => (setting("lookSchedule") !== "off" ? "The look schedule is on: this pick lasts as Settings › Menu pick lasts says." : undefined),
   },
   {
     key: "skin", label: "Skin", section: "Theme and skin", kind: "choice", options: SKIN_OPTIONS,
-    get: () => currentSkin(),
-    set: (v) => pickLook("skin", v),
+    get: () => ownSetting("skin"),
+    set: (v) => agentLook("skin", v),
     note: () => (setting("lookSchedule") !== "off" ? "The look schedule is on: this pick lasts as Settings › Menu pick lasts says." : undefined),
   },
   storeChoice("Look schedule", "lookSchedule", "Change look at", [

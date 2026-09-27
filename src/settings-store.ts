@@ -8,8 +8,7 @@
 // that must react live (the window's always-on-top, the dropdown mode, the Rewind
 // gate in the layout) subscribe with `onSettingsChange`.
 
-import type { ThemeName } from "./theme";
-import type { SkinName } from "./skin";
+import { defaultSkin, defaultTheme, resolveSkin, resolveTheme, type SkinName, type ThemeName } from "./look-ids";
 import type { EqPreset } from "./sound-presets";
 import type { Stored } from "./rules-eval";
 
@@ -142,6 +141,12 @@ export interface Settings {
   /** Which toasts show (TOASTS.md): failures = warn + error + the one-time notices;
    *  all = every kind, confirmations included. No "off": a failure always shows. */
   toasts: "failures" | "all";
+  // ── theme and skin (RULES.md §7a; look.ts paints them) ──
+  /** Your theme and skin. Rule keys: read `effective` for what shows (the look schedule may lay
+   *  its look on top) and `ownSetting` for your pick. Moved here from `deets.theme` /
+   *  `deets.skin` on 2026-09-26; those keys are still written as a mirror, for a roll back. */
+  theme: ThemeName;
+  skin: SkinName;
   // ── look schedule (LOOK-SCHEDULE.md; look-schedule.ts applies it) ──
   /** What changes the look between day and night: sun times from the time zone, set times,
    *  the Windows light/dark mode, or nothing. */
@@ -453,6 +458,8 @@ export const DEFAULTS: Settings = {
   hoverHintDelay: "normal",
   hoverSongNames: "always", // user's call 2026-09-15: name the song on every row, not only cut-off ones
   toasts: "all", // user's call 2026-09-13: Everything by default
+  theme: "lilac", // resolved at load: the saved pick, else defaultTheme() (the OS light / dark pair)
+  skin: "press",
   lookSchedule: "off",
   dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
   daySkin: "press",
@@ -588,7 +595,7 @@ function migrate(into: Partial<Settings>): void {
   // Auto preamp (on/off, a few hours on 2026-09-16) became a four-way choice; its old default
   // is dropped so the new one (Limiter only) applies.
   delete (into as Record<string, unknown>).soundEqAutoPreamp;
-  // The Retro-Future skin became Cyber (2026-09-17); skin.ts migrates deets.skin the same way.
+  // The Retro-Future skin became Cyber (2026-09-17); migrateLook maps the look keys the same way.
   for (const k of ["daySkin", "nightSkin"] as const) if ((into[k] as string | undefined) === "retro-future") into[k] = "cyber";
 }
 
@@ -600,19 +607,41 @@ function load(): Settings {
   } catch {
     /* corrupt or unavailable — defaults */
   }
+  seedOnboarding(stored); // first: it asks whether a look was ever saved
   migrate(stored);
-  seedOnboarding(stored);
+  migrateLook(stored);
   return { ...DEFAULTS, ...stored };
+}
+
+// The old keys: written as a mirror of YOUR theme and skin, for Settings › Updates › Roll
+// back, which can install a build that reads only them (RULES.md §7a). Nothing new reads them.
+const MIRROR: Record<string, string> = { theme: "deets.theme", skin: "deets.skin" };
+const mirror = (key: string, value: unknown): void => {
+  try {
+    localStorage.setItem(MIRROR[key], String(value));
+  } catch {
+    /* storage disabled — the look still applies for the session */
+  }
+};
+
+/** Theme and skin moved into the store (2026-09-26). A store with no `theme` takes
+ *  `deets.theme` (a retired id mapped), else the first-launch pair; the same for the skin. */
+function migrateLook(into: Partial<Settings>): void {
+  into.theme = resolveTheme(into.theme) ?? resolveTheme(localStorage.getItem(MIRROR.theme)) ?? defaultTheme();
+  into.skin = resolveSkin(into.skin) ?? resolveSkin(localStorage.getItem(MIRROR.skin)) ?? defaultSkin();
+  mirror("theme", into.theme);
+  mirror("skin", into.skin);
 }
 
 /**
  * Decide ONCE whether this install has ever been used, and remember the answer
  * (ONBOARDING.md §4.4). The first-run walk must never start on an upgrade.
  *
- * The tell is `deets.theme`: applyTheme writes it back on every launch, including the one
- * that resolved the OS default, so its presence means "this app has painted before" and
- * nothing else. It is read HERE, at module load, which runs before main.ts calls initTheme
- * — on a true first run the key is still absent.
+ * The tell is a saved look: the store's `theme`, or `deets.theme` (every launch writes it,
+ * before 2026-09-26 from applyTheme and since then as the store's mirror, including the launch
+ * that resolved the OS default), so its presence means "this app has painted before" and
+ * nothing else. It is read HERE, at module load, before `migrateLook` writes the mirror — on a
+ * true first run both are still absent.
  *
  * The answer is persisted at once, alone. Without that, a user who quits during step 1
  * would come back with a saved theme and lose the walk they never finished. Only this key
@@ -628,7 +657,7 @@ export function isFreshInstall(): boolean {
 
 function seedOnboarding(stored: Partial<Settings>): void {
   if (stored.onboardingStep !== undefined) return;
-  stored.onboardingStep = localStorage.getItem("deets.theme") === null ? 1 : 0;
+  stored.onboardingStep = stored.theme === undefined && localStorage.getItem("deets.theme") === null ? 1 : 0;
   freshInstall = stored.onboardingStep === 1;
   try {
     const raw = localStorage.getItem(KEY);
@@ -649,7 +678,7 @@ const listeners = new Set<(changed: keyof Settings) => void>();
 // each reader must say which value it wants — `effective` (the value to act on) or
 // `ownSetting` (your value: the Settings card, the agent, a toggle that reads then writes).
 // Add a key here and `npx tsc --noEmit` lists every read of it that must choose.
-export const RULE_KEYS = [] as const;
+export const RULE_KEYS = ["theme", "skin"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 
@@ -666,8 +695,9 @@ export function effective<K extends RuleKey>(key: K): Settings[K] {
   const o = overlay.get(key);
   return o ? (o.value as Settings[K]) : state[key];
 }
-/** Your value, whatever a rule lays on top. */
-export function ownSetting<K extends RuleKey>(key: K): Settings[K] {
+/** Your value, whatever a rule lays on top. It takes any key, so generic code (a Settings row,
+ *  an agent spec, a Reset snapshot) reads every key the same way: as yours. */
+export function ownSetting<K extends keyof Settings>(key: K): Settings[K] {
   return state[key];
 }
 /** The rule that sets `key` now, or null (the chip, rule-chip.ts). */
@@ -718,6 +748,7 @@ export function setSetting<K extends keyof Settings>(key: K, value: Settings[K])
   } catch {
     /* storage disabled — still applies for the session */
   }
+  if (key in MIRROR) mirror(key, value);
   if (isRuleKey(key) && overlay.has(key)) ownListeners.forEach((cb) => cb(key));
   else listeners.forEach((cb) => cb(key));
 }

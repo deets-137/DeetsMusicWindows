@@ -218,14 +218,12 @@ function cdp(wsUrl) {
  * Clearing on EVERY load is the point: each shot starts from the same state (SHOTS.md §4).
  */
 function seedScript(look, size, extra = {}, badges = false) {
-  // The walk over and the look fixed. A shot's own `settings` go on top. The demo itself
+  // The walk over and the look fixed (the store's theme and skin, RULES.md §7a). A shot's own `settings` go on top. The demo itself
   // marks the Rewind unlock done (vite.demo.config.ts), so its notice never covers a shot.
-  const settings = { onboardingStep: 0, lookSchedule: "off", ...extra };
+  const settings = { onboardingStep: 0, lookSchedule: "off", theme: look.theme, skin: look.skin, ...extra };
   return `(() => {
     try {
       for (const k of Object.keys(localStorage)) if (k.startsWith("deets.") || k.startsWith("deets-")) localStorage.removeItem(k);
-      localStorage.setItem("deets.theme", ${JSON.stringify(look.theme)});
-      localStorage.setItem("deets.skin", ${JSON.stringify(look.skin)});
       localStorage.setItem("deets.surface", ${JSON.stringify(size.surface)});
       ${size.miniView ? `localStorage.setItem("deets.surface.mini", ${JSON.stringify(size.miniView)});` : ""}
       localStorage.setItem("deets.settings", ${JSON.stringify(JSON.stringify(settings))});
