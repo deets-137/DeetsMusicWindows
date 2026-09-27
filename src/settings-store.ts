@@ -741,7 +741,12 @@ export const adaptiveOn = (): boolean => ADAPTIVE_UNHIDDEN && state.soundAdaptiv
 /** Write one setting (your value), persist, and notify subscribers. No-op if unchanged.
  *  Under an active rule the effective value does not move: `onOwnChange` hears it instead. */
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
-  if (state[key] === value) return;
+  if (state[key] === value) {
+    // Your value already, but a rule shows another: still a hand change (you picked what you
+    // have, to see it again), so the rule hears it and stands aside.
+    if (isRuleKey(key) && overlay.has(key) && effective(key) !== value) ownListeners.forEach((cb) => cb(key));
+    return;
+  }
   state = { ...state, [key]: value };
   try {
     localStorage.setItem(KEY, JSON.stringify(state));

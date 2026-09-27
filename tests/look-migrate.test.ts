@@ -57,3 +57,13 @@ test("under a rule, your change is heard by onOwnChange, not onSettingsChange", 
   assert.deepEqual(heard, ["eff:theme", "own:theme", "eff:theme"]);
   assert.equal(s.effective("theme"), "sepia");
 });
+
+test("picking your own value while a rule shows another is still a hand change", async () => {
+  const s = await loadStore({ "deets.settings": JSON.stringify({ onboardingStep: 0, theme: "green" }) });
+  const heard: string[] = [];
+  s.onOwnChange((k) => heard.push(k));
+  s.setSetting("theme", "green"); // no rule: a plain no-op
+  s._setOverlay("theme", "moonlight", "r");
+  s.setSetting("theme", "green"); // the rule shows moonlight: you picked green again
+  assert.deepEqual(heard, ["theme"]);
+});

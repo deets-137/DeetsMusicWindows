@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-15
-sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts]
-updated: 2026-09-18
+sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts, src/look.ts, src/rules-eval.ts]
+updated: 2026-09-26
 ---
 # DeetsMusic — Look schedule (day look / night look)
 
@@ -65,9 +65,38 @@ accurate for the city). The app makes no request and asks for no permission.
 - **Pre-paint:** each tick writes `deets.look.prepaint` = `{ window, day, night }` (today's day
   window in local minutes; null in Windows mode). `index.html` reads it and the hold before
   the stylesheet loads, so a launch after a change time does not flash the old look.
-  `initLookSchedule()` (right after `initLook`) then applies the exact plan without animation.
-  `tray.html` needs nothing: it follows `publishAppearance` and the saved ids.
+  `initLookSchedule()` runs right BEFORE `initLook`, so the first paint already has the
+  scheduled look, with no animation. `tray.html` needs nothing: it follows
+  `publishAppearance` and the saved ids.
 - **Since 2026-09-26 a scheduled change never writes your look.** Your theme and skin are the
   settings store's `theme` / `skin` (RULES.md §7a); the schedule only lays its look on top.
   Turning the schedule off still keeps the current look, as before: `keepShownLook()` writes
   the look on screen as your pick at that moment.
+
+## 5. On the rules engine (built 2026-09-26)
+
+> **Part:** built · 2026-09-26 · desk test passed (Claude, dev app) except Windows mode (his)
+
+The feature is the same; the rules engine runs it (RULES.md §13).
+- The row makes two state rules: while `daylight` → the day theme and skin, while not → the
+  night pair. `look-schedule.ts` keeps the plan and is the provider of the `daylight` and
+  `lookMode` facts; `tick()` asks the engine to check again at each change.
+- **A hand pick** (the title menu, the Compass, Reset, an agent — all through `pickLook` in
+  look.ts) is a hand change: *Until next change* is the rule's `onHand: "next"` — it holds
+  both the theme and the skin until `daylight` changes; the half you did not pick stays as it
+  shows. *For good* is `onHand: "off"` — the row turns Off and your pick stays.
+- The hold is saved (`deets.rules.holds`), so it survives a restart until the period changes.
+  `deets.look.hold` is still written for the pre-paint (`syncHoldKey`).
+- A change to any schedule row ends a hold at once, as before (`resumeRow`).
+- **The chip** (RULES.md §9) sits beside Theme and Skin in the title menu: a bolt while the
+  schedule shows its look ("The look schedule shows the night look. Your pick is Moonlight."),
+  a hand while your pick holds ("Your pick stays until 7:00 AM. Press to go back to the
+  schedule now."). A press on the hand ends the hold.
+
+**Desk test (2026-09-26, dev app).** Set times with the day window around now → the day look;
+at the night time the night look comes in by itself. A menu pick at night → Lilac with the
+scheduled skin kept, the hand chip and its hint. The period changes → the hold ends and the
+day look comes. The chip resumes the schedule. *For good* → the row goes Off, the pick stays.
+The row set to Off → the look on screen stays as your pick. A reload during a period, with and
+without a held pick → the pre-paint and the app agree (no flash). **His:** Windows mode follows
+the OS light / dark switch.

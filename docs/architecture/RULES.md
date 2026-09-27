@@ -527,6 +527,18 @@ Where this section and §1–§17 differ, this section is the code.
 - **Turning the schedule off still keeps the look on screen** (LOOK-SCHEDULE.md): the schedule
   no longer writes your pick, so `keepShownLook()` writes the look on screen as your pick when
   the row goes Off. Without it, Off would have shown your older pick: a change you could see.
+- **The look schedule (step 6)** is LOOK-SCHEDULE.md §5. Inside it: `pickLook` writes both
+  halves (the one you did not pick as it shows), so a theme pick under the schedule keeps the
+  scheduled skin, as before; `noteHandPick()` now only marks "a hand pick is being written",
+  so *For good* keeps your pick and not the scheduled look; `initLookSchedule()` runs before
+  `initLook()`, so the first paint has the scheduled look.
+- **Picking your own value while a rule shows another** (you own Lilac, the schedule shows
+  Black & Red, you pick Lilac) is still a hand change: `setSetting` tells `onOwnChange` even
+  though your value does not move.
+- **A saved hold at launch.** A fact that no module has registered yet is not a change
+  (`factsChanged`), and a hold is checked against every rule, not only the live ones; at
+  launch a saved hold stays while its rule exists (there is no "before" list to compare).
+  Found at the desk: without these, a held pick was lost on reload.
 - The build check is a unit test, `tests/look-keys.test.ts`; the migration and the
   first-install rule are `tests/look-migrate.test.ts` (in place of wiping the dev profile with
   `dev:fresh`).

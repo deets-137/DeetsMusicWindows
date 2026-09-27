@@ -4,21 +4,16 @@
 // app needs no location and makes no request.
 //
 // A theme or skin picked from the title menu while a schedule is on holds until the next
-// change (`lookHold` "next"), or turns the schedule off ("always").
+// change (`lookHold` "next"), or turns the schedule off ("always"). Since 2026-09-26 the
+// rules engine runs both (RULES.md §13): see "apply" below.
 //
 // index.html reads PREPAINT_KEY and HOLD_KEY before first paint, so a launch after a
 // change time never flashes the old look. Keep the two in step.
 
 import { setting, setSetting, ownSetting, onSettingsChange, type Settings } from "./settings-store";
 import type { ThemeName, SkinName } from "./look-ids";
-import { paintTheme } from "./theme";
-import { paintSkin } from "./skin";
-import { withAppearanceTransition } from "./appearance";
+import { isHeld, onRulesChange, recheck, registerChipText, registerFact, resumeRow } from "./rules";
 import { ZONES, ALIASES } from "./sun-zones";
-
-// np-bus imports agent-settings (through agent-writes), and agent-settings imports this
-// module: a static import here is a cycle that leaves THEME_OPTIONS uninitialized. Lazy.
-const publishAppearance = (): void => void import("./np-bus").then((m) => m.publishAppearance());
 
 type Period = "day" | "night";
 interface Plan {
@@ -185,38 +180,24 @@ function plan(now: number): Plan | null {
 
 // ── apply ────────────────────────────────────────────────────────
 
-function readHold(): Hold | null {
-  try {
-    return JSON.parse(localStorage.getItem(HOLD_KEY) ?? "null") as Hold | null;
-  } catch {
-    return null;
-  }
-}
-const holds = (h: Hold | null, p: Plan, now: number): boolean =>
-  !!h && h.period === p.period && (h.until === null || now < h.until);
+// Since 2026-09-26 the schedule is two state rules (RULES.md §13, rules-eval.ts
+// `builtinRules`): while `daylight` → the day look, while not → the night look. This module
+// keeps the sun and clock plan, the pre-paint, the status line, and is the provider of the
+// `daylight` and `lookMode` facts. The engine lays the look on top of your pick and holds your
+// hand pick (`lookHold` → the rule's `onHand`); look.ts paints.
 
-function applyLook(period: Period, animate: boolean): void {
-  const theme = setting(period === "day" ? "dayTheme" : "nightTheme");
-  const skin = setting(period === "day" ? "daySkin" : "nightSkin");
-  const root = document.documentElement;
-  const newSkin = root.dataset.skin !== skin;
-  if (root.dataset.theme === theme && !newSkin) return;
-  const fn = () => {
-    paintTheme(theme);
-    paintSkin(skin);
-  };
-  if (!animate) return fn();
-  // Both play the launch animation (appearance.ts); `skin` makes it wait for the new faces.
-  withAppearanceTransition(newSkin ? "skin" : "theme", fn, { skin: newSkin ? skin : undefined, after: publishAppearance });
-}
+const RULE = "row:lookSchedule:";
+const held = (): boolean => isHeld(RULE);
 
 let timer = 0;
 const listeners = new Set<() => void>();
+let lastPlan: Plan | null = null;
 
-function tick(animate: boolean): void {
+function tick(): void {
   window.clearTimeout(timer);
   const now = Date.now();
   const p = plan(now);
+  lastPlan = p;
   store(
     PREPAINT_KEY,
     p && {
@@ -225,25 +206,23 @@ function tick(animate: boolean): void {
       night: [setting("nightTheme"), setting("nightSkin")],
     },
   );
-  if (p) {
-    const hold = readHold();
-    if (!holds(hold, p, now)) {
-      if (hold) store(HOLD_KEY, null);
-      applyLook(p.period, animate);
-    }
-    if (p.next !== null) timer = window.setTimeout(() => tick(true), Math.min(Math.max(p.next - now, 0) + 1000, RECHECK_MS));
-  }
+  if (p?.next != null) timer = window.setTimeout(tick, Math.min(Math.max(p.next - now, 0) + 1000, RECHECK_MS));
+  recheck("daylight"); // the engine reads `daylight` again: a new period lays the other look
   listeners.forEach((cb) => cb());
 }
 
-/** The title menu's Theme or Skin was picked by hand (main.ts). */
+/** The pre-paint's copy of the hold (index.html reads it before any module runs). */
+function syncHoldKey(): void {
+  const p = lastPlan;
+  store(HOLD_KEY, held() && p ? ({ period: p.period, until: p.next } satisfies Hold) : null);
+}
+
+let handPick = false;
+/** A theme or skin is being written by hand now (look.ts `pickLook`). While it is, the schedule
+ *  turning off (*For good*) keeps your pick, not the look that was on screen. */
 export function noteHandPick(): void {
-  if (setting("lookSchedule") === "off") return;
-  if (setting("lookHold") === "always") return setSetting("lookSchedule", "off");
-  const p = plan(Date.now());
-  if (!p) return;
-  store(HOLD_KEY, { period: p.period, until: p.next } satisfies Hold);
-  listeners.forEach((cb) => cb());
+  handPick = true;
+  queueMicrotask(() => (handPick = false));
 }
 
 /** One line for Settings › Look schedule: which look shows, and until when. "" when off. */
@@ -252,7 +231,7 @@ export function scheduleStatus(): string {
   const p = plan(now);
   if (!p) return "";
   const at = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  if (holds(readHold(), p, now)) {
+  if (held()) {
     return p.next === null ? "Your pick stays until Windows changes mode." : `Your pick stays until ${at(p.next)}.`;
   }
   const look = p.period === "day" ? "Day look" : "Night look";
@@ -273,6 +252,7 @@ export function onScheduleChange(cb: () => void): () => void {
 
 /** Write the look on screen as your pick (the schedule turned off). */
 function keepShownLook(): void {
+  if (handPick) return; // *For good*: the pick that turned it off is yours already
   const root = document.documentElement;
   const theme = root.dataset.theme as ThemeName | undefined;
   const skin = root.dataset.skin as SkinName | undefined;
@@ -280,26 +260,46 @@ function keepShownLook(): void {
   if (skin && skin !== ownSetting("skin")) setSetting("skin", skin);
 }
 
-/** Launch: apply the scheduled look at once (no animation), then keep it current. */
+/** Launch, before look.ts paints: the facts and the chip's words, then the plan. The engine
+ *  lays the scheduled look before the first paint, so it shows with no animation. */
 export function initLookSchedule(): void {
-  tick(false);
+  registerFact("daylight", () => (lastPlan ? lastPlan.period === "day" : undefined));
+  registerFact("lookMode", () => setting("lookSchedule"));
+  registerChipText("lookSchedule", {
+    name: "The look schedule",
+    bolt: (t) => {
+      const look = lastPlan?.period === "day" ? "day" : "night";
+      const own = t === "key:skin" ? labelOf(SKIN_OPTIONS, ownSetting("skin")) : labelOf(THEME_OPTIONS, ownSetting("theme"));
+      return `The look schedule shows the ${look} look. Your pick is ${own}.`;
+    },
+    hand: () => {
+      const p = lastPlan;
+      const at = p?.next != null ? new Date(p.next).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
+      const until = at ? `until ${at}` : "until Windows changes mode";
+      return `Your pick stays ${until}. Press to go back to the schedule now.`;
+    },
+  });
+  onRulesChange(syncHoldKey);
+  tick();
   onSettingsChange((k) => {
     if (!SCHEDULE_KEYS.includes(k)) return;
     // Off keeps the look on screen, as it always did: the schedule's look becomes your pick.
     // (Since 2026-09-26 a scheduled change no longer writes your theme and skin, RULES.md §7a.)
     if (k === "lookSchedule" && setting("lookSchedule") === "off") keepShownLook();
-    store(HOLD_KEY, null);
-    tick(true);
+    resumeRow(RULE); // a change to the schedule ends a hand pick's hold, as before
+    tick();
   });
   try {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (setting("lookSchedule") === "windows") tick(true);
+      if (setting("lookSchedule") === "windows") tick();
     });
   } catch {
     /* no media query support — Windows mode applies at launch only */
   }
   // Back from sleep or the tray: check again at once.
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && setting("lookSchedule") !== "off") tick(true);
+    if (!document.hidden && setting("lookSchedule") !== "off") tick();
   });
 }
+
+const labelOf = (opts: { value: string; label: string }[], v: string): string => opts.find((o) => o.value === v)?.label ?? v;

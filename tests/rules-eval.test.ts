@@ -209,6 +209,14 @@ test("onHand next: the hold stands until a fact the rule reads changes", () => {
   assert.equal(factsChanged(holds, [r], { daylight: true }).length, 0);
 });
 
+test("a next hold survives a check before its fact is registered (a launch, 2026-09-26)", () => {
+  const r = st("look", { fact: "daylight", is: false }, "black-red");
+  const out = handChange(r, "key:theme", { daylight: false });
+  const holds = out.do === "hold" ? [out.hold] : [];
+  assert.equal(factsChanged(restart(holds), [r], { surface: "max" }).length, 1); // no daylight yet
+  assert.equal(factsChanged(restart(holds), [r], { daylight: true }).length, 0); // the period moved
+});
+
 test("a held target stays yours: a later rule does not take it", () => {
   const a = st("a", { all: [] }, "green");
   const b = st("b", { all: [] }, "sepia");

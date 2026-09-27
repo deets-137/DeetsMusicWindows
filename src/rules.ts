@@ -116,7 +116,9 @@ function userRules(): Rule[] {
 function rebuild(why: string): void {
   const before = all;
   all = [...userRules(), ...builtinRules(allSettings())];
-  holds = keepHolds(holds, before, all);
+  // A row change ends the holds of the rules it changed. At launch there is no "before": a
+  // saved hold stays while its rule exists (the facts decide at the first check).
+  holds = before.length ? keepHolds(holds, before, all) : holds.filter((h) => all.some((r) => r.id === h.ruleId));
   diag.log("rule:rebuild", { why, rules: all.length });
   relist(false);
 }
@@ -242,7 +244,7 @@ export function recheck(why: string): void {
 
 function checkOnce(why: string): void {
   const f = readFacts();
-  const ended = holds.filter((h) => !factsChanged([h], live, f).length);
+  const ended = holds.filter((h) => !factsChanged([h], all, f).length);
   if (ended.length) {
     holds = holds.filter((h) => !ended.includes(h));
     ended.forEach((h) => diag.log("rule:hold", { id: h.ruleId, target: h.target, ended: true }));

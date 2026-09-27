@@ -56,6 +56,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
 import { initRules, registerFact } from "./rules";
+import { ruleChip } from "./rule-chip";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -63,9 +64,9 @@ const appWindow = getCurrentWindow();
 
 window.addEventListener("DOMContentLoaded", () => {
   initRules(); // the rules engine (RULES.md): before the look and the cards, which register into it
-  initLook(); // the theme and skin from the store (RULES.md §7a)
+  initLookSchedule(); // the day/night rules' facts first (LOOK-SCHEDULE.md), so the first paint has them
+  initLook(); // the theme and skin from the store, with the schedule's look on top (RULES.md §7a)
   initSkinSettings(); // before the first paint, so a card never flashes the default look
-  initLookSchedule(); // a day/night schedule overrides the saved look (LOOK-SCHEDULE.md)
   initSurface();
   // The rules engine's `surface` fact (RULES.md §5), registered here and not in surface.ts:
   // the unit tests load surface.ts, and the engine's log keeps Node running.
@@ -157,6 +158,10 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
     el.addEventListener("click", () => pickLook({ skin: el.dataset.skinChoice as SkinName }, { after: close }));
   });
+  // The rule chip (RULES.md §9): a bolt while the look schedule shows its look, a hand while
+  // your pick holds (a press gives the look back to the schedule).
+  document.querySelector('.menu__row[data-row="theme"] .menu__label')?.after(ruleChip("key:theme").el);
+  document.querySelector('.menu__row[data-row="skin"] .menu__label')?.after(ruleChip("key:skin").el);
 
   // Keyboard shortcuts (NEXT-VERSION §5): summon a card. Fixed set; ignored while a
   // text field has focus. Rebinding is deferred (FUTURE-SETTINGS).

@@ -47,6 +47,7 @@ nothing about authoring changed when the box did.
 | Title bar | DeetsMusic (the title) | Opens the menu: theme, skin, window size, account, and Settings | index.html |
 | Title menu | each Theme | Light/Dark + its two colors ("Light. Purple and mint") | index.html |
 | Title menu | each Skin | one line on the idiom ("A print shop: ink on paper, square corners. The cover can be a record") | index.html |
+| Title menu | the rule chip beside Theme and Skin (2026-09-26, RULES.md §9) | bolt: "The look schedule shows the night look. Your pick is Moonlight." · hand: "Your pick stays until 7:00 AM. Press to go back to the schedule now." — built from the rule, the hold and your value | rule-chip.ts, look-schedule.ts |
 | Title menu | Mini · Player · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |

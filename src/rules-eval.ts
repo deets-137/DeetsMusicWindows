@@ -206,13 +206,14 @@ export function handChange(rule: StateRule, target: string, f: Facts): HandOutco
   return { do: "hold", hold: { ruleId: rule.id, target, kind: "until", until: h.until } };
 }
 
-/** The holds that still stand after the facts moved to `f`. A hold of a rule that is gone ends too. */
+/** The holds that still stand after the facts moved to `f`. A hold of a rule that is gone ends too.
+ *  A fact `f` does not hold yet (its module has not registered, at launch) is not a change. */
 export function factsChanged(holds: readonly Hold[], rules: readonly Rule[], f: Facts): Hold[] {
   const byId = new Map(rules.map((r) => [r.id, r]));
   return holds.filter((h) => {
     const r = byId.get(h.ruleId);
     if (!r || r.kind !== "state" || !r.on) return false;
-    if (h.kind === "next") return Object.entries(h.snap ?? {}).every(([k, v]) => f[k as FactId] === v);
+    if (h.kind === "next") return Object.entries(h.snap ?? {}).every(([k, v]) => f[k as FactId] === undefined || f[k as FactId] === v);
     if (h.kind === "until") return !evalCond(h.until, f);
     return true;
   });

@@ -59,10 +59,14 @@ function schedule(opts?: Opts): void {
  * `after` runs once the new look is on screen (or at once when nothing changes).
  */
 export function pickLook(look: { theme?: ThemeName; skin?: SkinName }, opts: Opts = {}): void {
-  noteHandPick(); // a running schedule holds this pick (LOOK-SCHEDULE.md §2)
+  // The half you did not pick stays as it shows. Under the look schedule the two are one look,
+  // and your change holds both (RULES.md §8), so a theme pick must not bring back an older skin.
+  const theme = look.theme ?? effective("theme");
+  const skin = look.skin ?? effective("skin");
+  noteHandPick(); // *For good* keeps this pick when it turns the schedule off (look-schedule.ts)
   schedule(opts);
-  if (look.theme) setSetting("theme", look.theme);
-  if (look.skin) setSetting("skin", look.skin);
+  setSetting("theme", theme);
+  setSetting("skin", skin);
 }
 
 /** Launch: paint the look at once (no animation), then follow every change. */
