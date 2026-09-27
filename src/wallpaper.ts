@@ -24,10 +24,10 @@ import { onPlayerState } from "./player";
 import { getUpcoming, getHistory, getPlan, type TrackHandle } from "./queue";
 import { trackById } from "./track-store";
 import { currentCover, lookupPalette } from "./album-color";
-import { auroraSlots, paletteFromPixels, type AlbumPalette } from "./album-slots";
-import { setting, setSetting, onSettingsChange } from "./settings-store";
+import { auroraSlots, type AlbumPalette } from "./album-slots";
+import { setting, setSetting, effective, onSettingsChange } from "./settings-store";
+import { addPicture } from "./user-files";
 import { tokenMs } from "./boot-cover";
-import { toast } from "./toast";
 import * as diag from "./diag";
 import * as frames from "./frames";
 import type { WallJob, WallTile } from "./wallpaper-worker";
@@ -38,10 +38,6 @@ const TILE_COUNT = { one: 0, few: 6, some: 12, many: 20 } as const;
 const FETCH_PX = [120, 240, 480, 720, 1000, 1400];
 /** The soft copy is drawn at a quarter of the canvas size: it is blurred, CSS stretches it. */
 const SOFT_SCALE = 0.25;
-/** A user picture is kept at most this long on its long side (§8). */
-const PICTURE_MAX = 2560;
-/** The picture's colors are read from a copy this small. */
-const COLOR_PX = 48;
 /** A tile's image that has not loaded by then fades in anyway (the ground shows until it does). */
 const PRELOAD_MS = 3000;
 const RESIZE_MS = 300;
@@ -73,14 +69,18 @@ let softUrl: string | null = null;
 let softSeq = 0;
 let worker: Worker | null = null;
 let pictureColors: AlbumPalette | null | undefined; // undefined = not read yet
+let pictureColorsId = ""; // the picture the colors were read for (a rule may swap pictures)
 let resizeTimer = 0;
 
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const hidden = () => root.dataset.ambient === "paused";
-const mode = (): "aurora" | "covers" | "picture" => (currentSkin() === "glass" ? setting("glassCanvas") : "aurora");
+// `effective`: a rule may hold the canvas and the picture (RULEZ.md §5.2, two rule keys).
+const mode = (): "aurora" | "covers" | "picture" => (currentSkin() === "glass" ? effective("glassCanvas") : "aurora");
 const ms = (token: string) => (reduced() ? 0 : tokenMs(token));
 const num = (token: string, fallback: number) => parseFloat(getComputedStyle(root).getPropertyValue(token)) || fallback;
-const pictureLink = () => `http://wallpaper.localhost/${setting("glassPicture")}`;
+/** The picture in use: yours, or the one a rule holds. `http://files.localhost/<id>` (user_files.rs). */
+const pictureId = () => effective("glassPictureId");
+const pictureLink = () => `http://files.localhost/${pictureId()}`;
 
 // ── the layout (§3.2) ───────────────────────────────────────────────────────────
 
@@ -377,7 +377,11 @@ function applyColors(p: AlbumPalette | null): void {
 
 async function colorsFor(which: "covers" | "picture", key: string): Promise<AlbumPalette | null> {
   if (which === "picture") {
-    if (pictureColors === undefined) pictureColors = await invoke<AlbumPalette | null>("wallpaper_colors").catch(() => null);
+    const id = pictureId();
+    if (pictureColors === undefined || pictureColorsId !== id) {
+      pictureColorsId = id;
+      pictureColors = await invoke<AlbumPalette | null>("user_files_colors", { id }).catch(() => null);
+    }
     return pictureColors ?? null;
   }
   return lookupPalette(key, currentCover().catalogId).catch(() => null);
@@ -420,7 +424,7 @@ async function update(reason: string): Promise<void> {
     return;
   }
   dirty = false;
-  const key = m === "picture" ? (setting("glassPicture") ? pictureLink() : null) : currentCover().cover;
+  const key = m === "picture" ? (pictureId() ? pictureLink() : null) : currentCover().cover;
   if (!key) return leave(true); // Covers with nothing playing (row 8); Picture with none chosen
   const body = layer.parentElement!;
   const w = body.clientWidth;
@@ -520,40 +524,12 @@ async function update(reason: string): Promise<void> {
 
 // ── the user's picture (§8) ─────────────────────────────────────────────────────
 
-/** Read, resize and save a picture the user chose or dropped; the canvas shows it at once. */
+/** Save a picture the user chose or dropped as one of their files (user-files.ts: resized,
+ *  its colors read) and show it: it becomes your picture. The canvas crossfades to it. */
 export function setWallpaperFromFile(file: File): void {
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-    const k = Math.min(1, PICTURE_MAX / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.naturalWidth * k);
-    c.height = Math.round(img.naturalHeight * k);
-    const ctx = c.getContext("2d");
-    const small = document.createElement("canvas");
-    small.width = small.height = COLOR_PX;
-    const sctx = small.getContext("2d", { willReadFrequently: true });
-    if (!ctx || !sctx) return;
-    ctx.drawImage(img, 0, 0, c.width, c.height);
-    sctx.drawImage(img, 0, 0, COLOR_PX, COLOR_PX);
-    const colors = paletteFromPixels(sctx.getImageData(0, 0, COLOR_PX, COLOR_PX).data);
-    invoke<number>("wallpaper_set", { data: c.toDataURL("image/jpeg", 0.9), colors })
-      .then((stamp) => {
-        pictureColors = colors;
-        diag.log("wallpaper:picture", { w: c.width, h: c.height });
-        setSetting("glassPicture", stamp);
-      })
-      .catch((e) => {
-        console.error("[wallpaper] save", e);
-        toast({ kind: "warn", text: "Couldn't save the picture." });
-      });
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    toast({ kind: "warn", text: `“${file.name}” is not an image DeetsMusic can read.` });
-  };
-  img.src = url;
+  void addPicture(file).then((r) => {
+    if (r) setSetting("glassPictureId", r.id);
+  });
 }
 
 /** The Choose button: pick an image file for the canvas. */
@@ -579,8 +555,9 @@ export function initWallpaper(): void {
   onSkinChange(() => (mode() === "aurora" ? leave(false) : void update("skin")));
   onSettingsChange((k) => {
     if (k === "glassCanvas" || k === "glassTiles") void update(k);
-    else if (k === "glassPicture") {
-      geom = ""; // a new picture: the whole layer crossfades
+    else if (k === "glassPictureId") {
+      geom = ""; // a new picture (yours, or a rule's): the whole layer crossfades
+      pictureColors = undefined;
       void update(k);
     } else if (k === "glassAuroraColor" && shown && anchorKey) void colorsFor(shown, anchorKey).then(applyColors);
     else if (k === "glassFancy" && shown) void bakeSoft(body.clientWidth, body.clientHeight);

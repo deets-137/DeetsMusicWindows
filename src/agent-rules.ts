@@ -17,6 +17,8 @@ import { agentWords, findUserRule, shapeAgentRule } from "./agent-rules-shape";
 import { registry } from "./cards";
 import { presetOptions } from "./sound";
 import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
+import { userFiles } from "./user-files";
+import { fileGone } from "./rules-files";
 import * as diag from "./diag";
 import type { Rule } from "./rules-eval";
 
@@ -35,6 +37,9 @@ function lists(): Lists {
     outputs: outputs.length ? outputs : [{ value: "default", label: "This PC" }],
     themes: THEME_OPTIONS,
     skins: SKIN_OPTIONS,
+    // Your own files (RULEZ.md §5): a picture or a sound by name, so `do: "picture", value: "Blue"` works.
+    pictures: userFiles("picture").map((f) => ({ value: f.id, label: f.name })),
+    sounds: userFiles("sound").map((f) => ({ value: f.id, label: f.name })),
   };
 }
 
@@ -44,6 +49,15 @@ function sourceOf(r: Rule): string {
   if ("row" in r.source) return `Settings › ${r.source.row}`;
   if ("recipe" in (r.source as Record<string, unknown>)) return `recipe ${(r.source as { recipe: string }).recipe}`;
   return "built-in";
+}
+
+/** A rule whose Do names a picture or a sound that was deleted (RULEZ.md §5.1): Rulez dims it the same way. */
+function namesGoneFile(r: Rule): boolean {
+  if (r.kind === "moment") {
+    const id = "picture" in r.do ? r.do.picture : "playSound" in r.do ? r.do.playSound : null;
+    return id !== null && fileGone(id);
+  }
+  return r.set.some((s) => "key" in s.target && s.target.key === "glassPictureId" && typeof s.value === "string" && fileGone(s.value));
 }
 
 /** One rule as the agent sees it: the sentence, the state, and the stored shape. */
@@ -66,7 +80,7 @@ function rowOf(r: Rule, l: Lists) {
     on: r.on,
     locked: !yours,
     source: sourceOf(r),
-    idle: ruleIdle(r) ?? undefined,
+    idle: ruleIdle(r) ?? (namesGoneFile(r) ? "The file this rule uses is gone." : undefined),
     text,
     rule: yours ? r : undefined,
   };

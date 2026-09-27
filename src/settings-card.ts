@@ -26,6 +26,7 @@ import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
 import { setAlbumLight } from "./ocean";
 import { pickWallpaper, setWallpaperFromFile } from "./wallpaper";
+import { userFiles, userFile, renameFile, deleteFile, onFilesChange } from "./user-files";
 
 /** Fancy Glass's hover hint. The cost is the 2026-09-16 bench (DEBUGGING.md §Fancy Glass). */
 const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
@@ -1131,25 +1132,40 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           kind: "choice", id: "glasstiles", label: "Tiles", key: "glassTiles",
           hint: "Glass only. How many album covers sit around the one that plays. One cover: it fills the window alone",
           options: [{ value: "one", label: "One cover" }, { value: "few", label: "Few" }, { value: "some", label: "Some" }, { value: "many", label: "Many" }],
-          when: () => currentSkin() === "glass" && setting("glassCanvas") === "covers",
+          when: () => currentSkin() === "glass" && ownSetting("glassCanvas") === "covers",
         },
         {
+          // Your pictures (RULEZ.md §5.2): a list by name, Choose for a new one, a drop on the
+          // row; rename and delete on right-click. A rule may hold another one (the chip).
           kind: "split", id: "glasspicture", label: "Picture",
-          hint: () => "Glass only. The picture behind the cards. Press Choose, or drop an image file on this row",
-          halves: [{ type: "action", label: "Choose", hint: "Opens a picture from your PC", run: () => pickWallpaper() }],
-          when: () => currentSkin() === "glass" && setting("glassCanvas") === "picture",
+          hint: () => "Glass only. The picture behind the cards: one you chose before, or press Choose for a new one. Drop an image file on this row. Right-click to rename or delete a picture",
+          halves: [
+            {
+              type: "menu",
+              get options() {
+                const ps = userFiles("picture").map((p) => ({ value: p.id, label: p.name }));
+                return ps.length ? ps : [{ value: "", label: "None yet" }];
+              },
+              get: () => ownSetting("glassPictureId"),
+              set: (v) => {
+                if (v) setSetting("glassPictureId", v);
+              },
+            },
+            { type: "action", label: "Choose", hint: "Opens a picture from your PC", run: () => pickWallpaper() },
+          ],
+          when: () => currentSkin() === "glass" && ownSetting("glassCanvas") === "picture",
         },
         {
           kind: "range", id: "glassdiffusion", label: "Diffusion", key: "glassDiffusion", min: 0, max: 100, unit: "%",
           hint: "Glass only. Softens the picture behind the cards. 0: sharp",
           preview: (v) => previewSkin("glassDiffusion", v),
-          when: () => currentSkin() === "glass" && setting("glassCanvas") !== "aurora",
+          when: () => currentSkin() === "glass" && ownSetting("glassCanvas") !== "aurora",
         },
         {
           kind: "choice", id: "glassauroracolor", label: "Aurora color", key: "glassAuroraColor",
           hint: "Glass only. Cover: the glow takes its colors from the picture behind the cards. Theme: the theme's own colors",
           options: [{ value: "cover", label: "Cover" }, { value: "theme", label: "Theme" }],
-          when: () => currentSkin() === "glass" && setting("glassCanvas") !== "aurora",
+          when: () => currentSkin() === "glass" && ownSetting("glassCanvas") !== "aurora",
         },
         {
           ...storeToggle("glassfancy", "Fancy Glass", "glassFancy", () => GLASS_FANCY_HINT),
@@ -2622,6 +2638,28 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const file = e.dataTransfer!.files[0];
     if (file) setWallpaperFromFile(file);
   });
+  // Right-click the Picture row: rename or delete the picture in use (RULEZ.md §5.2). Delete
+  // asks first, as a playlist delete does; a rule that names the picture goes idle.
+  body.addEventListener("contextmenu", (e) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('[data-set-row="glasspicture"]');
+    if (!row) return;
+    const p = userFile(ownSetting("glassPictureId"));
+    if (!p) return;
+    e.preventDefault();
+    const items: MenuItem[] = [
+      { input: { label: "Rename", placeholder: "Picture name", value: p.name, onSubmit: (v) => void renameFile(p.id, v).catch((err) => console.error("[settings] rename picture", err)) } },
+      {
+        label: "Delete picture",
+        run: () =>
+          toast({
+            kind: "warn", sticky: true, text: `Delete “${p.name}”? A rule that shows it will stop.`,
+            actions: [{ label: "Delete", run: () => void deleteFile(p.id).then(() => { if (ownSetting("glassPictureId") === p.id) setSetting("glassPictureId", userFiles("picture")[0]?.id ?? ""); }).catch((err) => console.error("[settings] delete picture", err)) }, { label: "Keep" }],
+          }),
+      },
+    ];
+    openContextMenu(e.clientX, e.clientY, items);
+  });
+  const unsubFiles = onFilesChange(() => render()); // a picture added, renamed or deleted
   const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
   const unsubLibAdd = onLibraryAddChange(render);
   // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.
@@ -2794,6 +2832,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       chips.forEach((c) => c.destroy());
       unsubSotd();
       unsubSkin();
+      unsubFiles();
       unsubLibAdd();
       unsubOwned();
       unsubUpdate();

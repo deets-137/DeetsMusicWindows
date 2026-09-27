@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 516 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 518 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -176,6 +176,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--sound-btn-size` | `var(--traffic-size)` | — | The EQ-fader icon and its panel. Colors are the --eq-* theme roles; the strengths below feed them (themes.css), so a skin can brighten a fill strengths below feed them (themes.css), so a skin can brighten a fill without naming a color. |
+| `--clip-gain-db` | `-6` | — | a rule's sound clip (RULEZ.md §5.3, rules-files.ts): its level, dB against the music's full scale |
+| `--clip-duck-db` | `6` | — | how far the music dips under a clip, dB; 80 ms in, 250 ms back (sound.ts playClip) |
 | `--sound-panel-w` | `300px` | — |  |
 | `--sound-panel-max-h` | `min(620px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
 | `--sound-panel-pad` | `var(--space-2)` | — |  |

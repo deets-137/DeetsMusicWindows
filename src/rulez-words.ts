@@ -24,8 +24,11 @@ export interface Lists {
   /** The playlists a song can be added to: your local ones and editable Apple ones. */
   editable: Choice[];
   stations: Choice[];
+  /** Your own files (RULEZ.md §5): named pictures and sounds. */
+  pictures: Choice[];
+  sounds: Choice[];
 }
-export const NO_LISTS: Lists = { cards: [], presets: [], outputs: [], themes: [], skins: [], playlists: [], editable: [], stations: [] };
+export const NO_LISTS: Lists = { cards: [], presets: [], outputs: [], themes: [], skins: [], playlists: [], editable: [], stations: [], pictures: [], sounds: [] };
 
 // ── When ─────────────────────────────────────────────────────────
 
@@ -233,6 +236,14 @@ export const DOS: DoWord[] = [
   { id: "addTo", section: "Library", label: "Add the song to a playlist", input: "choice", choices: "editable", moment: (v) => ({ addTo: String(v) }) },
   { id: "love", section: "Library", label: "Love the song", input: "none", moment: () => ({ love: true }) },
   { id: "diary", section: "Library", label: "Open the Diary for this album", input: "none", moment: () => ({ diary: true }) },
+  // Your own files (RULEZ.md §5, session B's store). A picture in a While row holds Glass ›
+  // Canvas on that picture; in a When row it sets it as your pick.
+  {
+    id: "picture", section: "Look", label: "Use picture", input: "choice", choices: "pictures",
+    moment: (v) => ({ picture: String(v) }),
+    state: (v) => [{ target: { key: "glassCanvas" }, value: "picture" }, { target: { key: "glassPictureId" }, value: String(v) }],
+  },
+  { id: "playSound", section: "Sound", label: "Play sound", input: "choice", choices: "sounds", moment: (v) => ({ playSound: String(v) }) },
   { id: "scrobble", section: "Playback", label: "Turn scrobbling", input: "choice", choices: ON_OFF, moment: (v) => ({ scrobble: v === true }) },
 ];
 
@@ -372,6 +383,8 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "love": return "Love the song";
     case "diary": return "Open the Diary for this album";
     case "scrobble": return `Turn scrobbling ${arg ? "on" : "off"}`;
+    case "picture": return `Use the picture ${labelOf(lists.pictures, arg)}`;
+    case "playSound": return `Play the sound ${labelOf(lists.sounds, arg)}`;
     case "set": {
       const { key, value } = arg as { key: string; value: unknown };
       if (key === "theme") return `Use theme ${labelOf(lists.themes, value)}`;
@@ -396,6 +409,8 @@ export function setText(set: StateSet, lists: Lists): string {
       else if (t.key === "skin") out.push(`Use skin ${labelOf(lists.skins, s.value)}`);
       else if (t.key === "soundEqPreset") out.push(`Use EQ preset ${labelOf(lists.presets, s.value)}`);
       else if (t.key === "cardGrowOutside") out.push(`Collapse on outside click: ${s.value ? "On" : "Off"}`);
+      else if (t.key === "glassPictureId") out.push(`Use the picture ${labelOf(lists.pictures, s.value)}`);
+      else if (t.key === "glassCanvas") continue; // one part with the picture
       else out.push(`Set ${t.key}`);
     } else {
       const v = Number(s.value);
@@ -431,7 +446,7 @@ export function doWordOf(r: Rule): { word: DoWord; value: Value } | null {
   if (!first) return null;
   const t = first.target;
   const id = "key" in t
-    ? t.key === "soundEqPreset" ? "preset" : t.key === "cardGrowOutside" ? "growOutside" : (SHARING as readonly string[]).includes(t.key) ? "sharePause" : t.key
+    ? t.key === "soundEqPreset" ? "preset" : t.key === "cardGrowOutside" ? "growOutside" : t.key === "glassPictureId" || t.key === "glassCanvas" ? "picture" : (SHARING as readonly string[]).includes(t.key) ? "sharePause" : t.key
     : t.prop === "window.onTop" ? "onTop" : t.prop.startsWith("tone.") ? t.prop.slice(5) : t.prop;
   const w = doWord(id);
   return w ? { word: w, value: first.value as Value } : null;
@@ -450,7 +465,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   grow: { act: "grows this card" }, summon: { act: "opens" }, onTop: { keep: "keeps the window on top" },
   keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps Collapse on outside click" },
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
-  note: { act: "shows the note" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
+  note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
   love: { act: "loves the song" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
 };
 export const saysOf = (w: DoWord, moment: boolean): string => (moment ? SAYS[w.id]?.act : SAYS[w.id]?.keep) ?? w.label.toLowerCase();
@@ -496,8 +511,11 @@ export function stateParts(set: StateSet): { word: DoWord | undefined; value: un
   const sharing = set.filter((s) => "key" in s.target && (SHARING as readonly string[]).includes(s.target.key));
   const out: { word: DoWord | undefined; value: unknown; set: StateSet }[] = [];
   if (sharing.length) out.push({ word: doWord("sharePause"), value: true, set: sharing });
+  // A picture is two targets, Glass › Canvas and the picture: one part.
+  const pic = set.filter((s) => "key" in s.target && (s.target.key === "glassCanvas" || s.target.key === "glassPictureId"));
+  if (pic.length) out.push({ word: doWord("picture"), value: pic.find((s) => "key" in s.target && s.target.key === "glassPictureId")?.value, set: pic });
   for (const s of set) {
-    if (sharing.includes(s)) continue;
+    if (sharing.includes(s) || pic.includes(s)) continue;
     const probe = doWordOf({ id: "", kind: "state", source: { user: true }, on: true, while: { all: [] }, set: [s], onHand: "next" });
     out.push({ word: probe?.word, value: s.value, set: [s] });
   }

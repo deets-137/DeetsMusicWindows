@@ -361,7 +361,7 @@ shows as "My picture". (8) **His:** the chime on a HomePod.
 
 ### 5.5 As built (2026-09-27)
 
-> **Part:** built · 2026-09-27 · desk test open
+> **Part:** built · 2026-09-27 · desk test passed 2026-09-27 (§5.4 steps 1–7; 8, the HomePod, is his)
 
 Where this and §5.1–§5.4 differ, this is the code.
 
@@ -397,10 +397,34 @@ session, 9e4f0d8) · `skin.css` (`--clip-gain-db` −6, `--clip-duck-db` 6) · `
   dip.
 - The agent's `settings` verb does not expose `glassPictureId` (its values are file ids that
   change per machine); an agent uses the `rules` verb's `picture` word, or `glassCanvas`.
-- The Rulez words (`Use picture`, `Play sound`), the two run-time lists (`pictures`, `sounds`)
-  and the "Choose a picture… / Choose a sound…" menu items are the card session's lines
-  (rulez-words.ts, rulez-card.ts); until they land, the agent's stored shape reaches both
-  actions.
+- The Rulez words (`Use picture`, `Play sound`), the two run-time lists (`pictures`, `sounds`),
+  the "Choose a picture… / Choose a sound…" menu items, a sound's "Listen", and the idle hint
+  for a gone file are the card session's lines in rulez-words.ts and rulez-card.ts (in the same
+  commit). The agent's `rules` verb reaches both words by name (`do: "picture", value: "Blue"`)
+  and shows the same gone-file idle.
+- The chip sits on the Canvas pill, not on the Picture row: the row is a split row (a menu
+  and a button) with no store key of its own, and the chip slot belongs to keyed rows. The
+  pill's hint names the rule either way.
+- `__files` in DevTools (telemetry builds): `list`, `addPicture(file)`, `addSound(file)`,
+  `rename`, `delete`, so a desk test adds a file made on the page, without the native picker.
+
+**Desk test run (2026-09-27, Claude on his dev app; Ask-mode Allows pressed over CDP at his
+word).** (1) Two pictures dropped on the Picture row (a DataTransfer with a File, the real
+drop path): both saved (`files:add`, 10 KB each), the row's menu lists them, the canvas drew
+the last one (`wallpaper:draw why: glassPictureId`); rename through the right-click field →
+"Crimson". (2) The agent rule *While Genre is Jazz → Use the picture Blue*, then Blue Train:
+`__rules.applied()` held both keys, the canvas was blue (picture). (3) A hand pick of Red from
+the row's menu: a `next` hold on both targets, the overlay let go, the Canvas pill's red dot
+hint: "Your pick holds. Press to give it back to your rule 'Jazz blue'". (4) Delete Blue
+through the right-click question: the file and its colors gone from `files/`, your picture
+fell back to Crimson, the rule reads "The file this rule uses is gone." (5) A 0.8 s ping made
+on the page (`__files.addSound`); the rule *When the next song plays → Play the sound ping*:
+`clip:play {gainDb: -6, duckDb: 6, ms: 800}` then `rule:file {played: true}`, audible over
+Blue Train. The *Explicit* version did not fire: the `explicit` fact read false for
+`song:1693657477` (Only in the West), whose cover wears the advisory badge — a fact of the
+card session's, told to it. (6) A 30 s file: refused with the toast, nothing saved. (7) A page
+reload: both files, the picture in use and the rule came back. Everything the test made was
+removed after it; the canvas went back to Covers.
 
 ## 6. The row, made for a first rule (owner A, from B's design)
 

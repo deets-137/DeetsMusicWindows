@@ -116,9 +116,10 @@ export interface Settings {
   /** Glass Covers / Picture: the aurora's colors come from the cover (or the picture), or stay
    *  the theme's own. */
   glassAuroraColor: "cover" | "theme";
-  /** Glass Picture: when the user last chose a picture (ms), 0 = none yet. The picture itself is
-   *  a file in the app data folder (wallpaper.rs); the stamp changes its link on each choice. */
-  glassPicture: number;
+  /** Glass Picture: the id of the picture behind the cards, "" = none yet. The pictures are the
+   *  user's files (user_files.rs, `http://files.localhost/<id>`, RULEZ.md §5); a rule may hold
+   *  another one (a rule key). Replaced `glassPicture` (a stamp) on 2026-09-27. */
+  glassPictureId: string;
   /** Press only: the cover becomes a record that turns while music plays, a record that holds
    *  still, or the plain cover (docs/features/VINYL.md). skin-settings.ts applies it as `data-press-vinyl`. */
   pressVinyl: "spin" | "still" | "off";
@@ -449,7 +450,7 @@ export const DEFAULTS: Settings = {
   glassTiles: "some", // user's call 2026-09-24 (row 5): 12 tiles
   glassDiffusion: 30, // ≈ 6 px, the "soft blur" he picked 2026-09-24; set at the desk test
   glassAuroraColor: "cover", // user's call 2026-09-24 (U4): the glow follows the picture under it
-  glassPicture: 0, // nothing chosen yet
+  glassPictureId: "", // nothing chosen yet; the old wallpaper becomes the first picture at first load (user-files.ts)
   pressVinyl: "off", // opt-in, like Sand
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
   pressVinylPlate: true,
@@ -678,7 +679,7 @@ const listeners = new Set<(changed: keyof Settings) => void>();
 // each reader must say which value it wants — `effective` (the value to act on) or
 // `ownSetting` (your value: the Settings card, the agent, a toggle that reads then writes).
 // Add a key here and `npx tsc --noEmit` lists every read of it that must choose.
-export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDiscord", "discordRoomInvite", "soundEqPreset", "cardGrowOutside"] as const;
+export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDiscord", "discordRoomInvite", "soundEqPreset", "cardGrowOutside", "glassCanvas", "glassPictureId"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

@@ -32,6 +32,7 @@ mod sotd;
 mod tray;
 mod update;
 mod wallpaper;
+mod user_files;
 mod watchdog;
 mod web;
 
@@ -96,6 +97,13 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("wallpaper", |ctx, _request, responder| {
             let app = ctx.app_handle().clone();
             std::thread::spawn(move || responder.respond(wallpaper::response(&app)));
+        })
+        // The user's own files a rule may use (`http://files.localhost/<id>`, RULEZ.md §5):
+        // pictures for the canvas, sound clips. Off the webview thread: a file read.
+        .register_asynchronous_uri_scheme_protocol("files", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            let path = request.uri().path().to_string();
+            std::thread::spawn(move || responder.respond(user_files::response(&app, &path)));
         })
         .setup(|app| {
             use tauri::Manager;
@@ -427,6 +435,11 @@ pub fn run() {
             playlists::playlist_set_cover,
             wallpaper::wallpaper_set,
             wallpaper::wallpaper_colors,
+            user_files::user_files_list,
+            user_files::user_files_add,
+            user_files::user_files_rename,
+            user_files::user_files_delete,
+            user_files::user_files_colors,
             playlists::playlist_export_plan,
             playlists::playlist_export_apple,
             playlists::playlist_get_apple_songs,

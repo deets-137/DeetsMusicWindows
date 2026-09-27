@@ -448,6 +448,7 @@ Max), **except**:
 | `agentSettings` — **read-only** | The permission itself. |
 | `addSquareOwned` (Show ✓ on songs you have, 2026-09-17) — **not** limited, an ordinary toggle | It changes only what the Add-to-Library square shows. It writes nothing to Apple, so it is not a gate. |
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
+| `glassPictureId` (Glass › Picture, 2026-09-27, RULEZ.md §5) | Its values are file ids that differ per machine, and an agent cannot choose files. `glassCanvas` is exposed; a picture is set through the `rules` verb's `picture` word (§8). |
 | Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |
 
 Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_tray`,

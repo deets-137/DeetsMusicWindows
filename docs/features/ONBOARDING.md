@@ -124,7 +124,7 @@ nothing about authoring changed when the box did.
 | Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon | settings-card.ts |
 | Settings › Skin settings (2026-09-24) | Canvas | Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose | settings-card.ts (COVER-WALLPAPER.md §3.7) |
 | Settings › Skin settings (2026-09-24) | Tiles | Glass only. How many album covers sit around the one that plays. One cover: it fills the window alone | settings-card.ts |
-| Settings › Skin settings (2026-09-24) | Picture · its Choose half | Glass only. The picture behind the cards. Press Choose, or drop an image file on this row · Opens a picture from your PC | settings-card.ts |
+| Settings › Skin settings (2026-09-24; the list 2026-09-27) | Picture · its Choose half | Glass only. The picture behind the cards: one you chose before, or press Choose for a new one. Drop an image file on this row. Right-click to rename or delete a picture · Opens a picture from your PC | settings-card.ts (RULEZ.md §5.2) |
 | Settings › Skin settings (2026-09-24) | Diffusion | Glass only. Softens the picture behind the cards. 0: sharp | settings-card.ts |
 | Settings › Skin settings (2026-09-24) | Aurora color | Glass only. Cover: the glow takes its colors from the picture behind the cards. Theme: the theme's own colors | settings-card.ts |
 | Settings › Skin settings | Fancy Glass | Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames | settings-card.ts (`GLASS_FANCY_HINT`) |

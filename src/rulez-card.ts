@@ -39,6 +39,8 @@ import { tracks } from "./track-store";
 import { toast } from "./toast";
 import { esc } from "./dom";
 import * as diag from "./diag";
+import { onFilesChange, pickFile, userFiles, type FileKind } from "./user-files";
+import { fileGone, previewSound } from "./rules-files";
 import { onDiag } from "./diag";
 
 // ── the built-in rows (locked): their Settings row, by the rule's source ──
@@ -130,6 +132,8 @@ export const rulezCard: CardDef = {
         playlists: playlistChoices,
         editable: editableChoices,
         stations: stationsNow().map((s) => ({ value: s.id, label: s.name })),
+        pictures: userFiles("picture").map((f) => ({ value: f.id, label: f.name })),
+        sounds: userFiles("sound").map((f) => ({ value: f.id, label: f.name })),
       };
     };
 
@@ -344,8 +348,19 @@ export const rulezCard: CardDef = {
         } } }];
       }
       const cs = choicesOf(w, lists());
-      if (!cs.length) return [{ label: "Nothing to pick yet", disabled: true, run: () => {} }];
-      const rows = cs.map((c): MenuItem => ({ label: c.label, run: () => done(c.value) }));
+      // Your own files (RULEZ.md §5.2): choose a new one right here, no trip to Settings.
+      const fileKind: FileKind | null = w.id === "picture" ? "picture" : w.id === "playSound" ? "sound" : null;
+      const choose: MenuItem[] = fileKind
+        ? [...(cs.length ? [MENU_DIVIDER] : []), { label: fileKind === "picture" ? "Choose a picture…" : "Choose a sound…", run: () => void pickFile(fileKind).then((f) => f && done(f.id)) }]
+        : [];
+      if (!cs.length && !choose.length) return [{ label: "Nothing to pick yet", disabled: true, run: () => {} }];
+      // A sound opens two rows: use it, or listen to it first (RULEZ.md §5.3 asks for a play button).
+      const rows = cs.map((c): MenuItem =>
+        fileKind === "sound"
+          ? { label: c.label, sub: () => [{ label: "Use this sound", run: () => done(c.value) }, { label: "Listen", run: () => void previewSound(String(c.value)) }] }
+          : { label: c.label, run: () => done(c.value) },
+      );
+      rows.push(...choose);
       // Route 10: a When row's pick is yours for good; a greyed line at the top says so.
       const note = moment && ["theme", "skin", "preset"].includes(w.id);
       return note ? [{ label: "Saves it as your own pick, for good", disabled: true, run: () => {} }, MENU_DIVIDER, ...rows] : rows;
@@ -530,6 +545,16 @@ export const rulezCard: CardDef = {
       { label: "Copy your rules as text", disabled: !mine.length, run: () => copyText(mine) },
     ];
 
+    /** A rule whose picture or sound was deleted from your files (RULEZ.md §5.1). */
+    const usesGoneFile = (r: Rule): boolean => {
+      if (r.kind === "moment") {
+        const d = r.do as { picture?: string; playSound?: string };
+        const id = d.picture ?? d.playSound;
+        return !!id && fileGone(id);
+      }
+      return r.set.some((s) => "key" in s.target && s.target.key === "glassPictureId" && fileGone(String(s.value)));
+    };
+
     // ── drawing: the collapsed row ──
     const onOffHTML = (on: boolean, disabled: string | null, act = "onoff") =>
       `<span class="set__split rulez__switch"><button class="set__half set__half--toggle" type="button" role="switch" data-act="${act}" aria-checked="${on}"${disabled ? ` aria-disabled="true" title="${esc(disabled)}"` : ` title="${on ? "Turns this rule off" : "Turns this rule on"}"`}>${on ? "On" : "Off"}</button></span>`;
@@ -537,7 +562,7 @@ export const rulezCard: CardDef = {
 
     const ownRowHTML = (r: Rule, wins: Map<string, Rule>, L: Lists): string => {
       const open = openId === r.id;
-      const idle = ruleIdle(r);
+      const idle = ruleIdle(r) ?? (usesGoneFile(r) ? "The file this rule uses is gone." : null);
       // A rule an agent made through the bridge (RULEZ.md §7) says so; you change it like your own.
       const summary = (r.by === "agent" ? "Made by an AI app. " : "") + (r.draft ? "Finish the sentence to use this rule." : sentenceText(r, L));
       const warn = idle && !r.draft && r.on ? `<span class="rulez__warn" aria-hidden="true">${ICON_WARN}</span>` : "";
@@ -800,7 +825,11 @@ export const rulezCard: CardDef = {
       const others = rows.filter((r) => r !== row);
       let to = from;
       row.classList.add("is-dragging");
-      grip.setPointerCapture(e.pointerId);
+      try {
+        grip.setPointerCapture(e.pointerId);
+      } catch {
+        /* a pointer the page does not own (a script): the moves still reach the grip */
+      }
       const move = (ev: PointerEvent) => {
         to = others.filter((r) => r.getBoundingClientRect().top + r.offsetHeight / 2 < ev.clientY).length;
         rows.forEach((r) => r.classList.remove("is-drop-before", "is-drop-after"));
@@ -859,6 +888,7 @@ export const rulezCard: CardDef = {
     body.addEventListener("contextmenu", onContext);
     body.addEventListener("pointerdown", onGrip);
     const offRules = onRulesChange(render);
+    const offFiles = onFilesChange(render); // a new picture or sound shows in the menus
     const offSettings = onSettingsChange((key) => {
       if (key === "rules" || key === "soundOutputNames" || key === "soundEqUser") render();
     });
@@ -872,6 +902,7 @@ export const rulezCard: CardDef = {
         destroyed = true;
         window.clearTimeout(logTimer);
         offDiag();
+        offFiles();
         offRules();
         offSettings();
         host.innerHTML = "";

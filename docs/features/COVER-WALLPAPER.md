@@ -70,10 +70,15 @@ Where this section and the design below disagree, this section is the code.
   `--wallpaper-canvas-dim` (15, his desk-test value, 2026-09-25). Fancy Glass on keeps the slider.
 - **A user picture (§8).** Choose (the Picture row's action) or a file dropped on the row. The
   page resizes it to at most 2560 px and reads its colors from a 48 × 48 copy
-  (`paletteFromPixels`: twelve hue bins weighted by chroma; the three heaviest). `wallpaper_set`
-  (async, off the UI thread) writes `wallpaper.jpg` and `wallpaper.json` in the app data folder;
-  the settings key `glassPicture` holds the stamp. The page shows
-  `http://wallpaper.localhost/<stamp>`.
+  (`paletteFromPixels`: twelve hue bins weighted by chroma; the three heaviest). **Since
+  2026-09-27 (RULEZ.md §5):** the picture is one of the user's files — `user-files.ts`
+  `readPicture` + `addPicture` → `user_files_add` (async, off the UI thread) writes
+  `files/<id>.jpg` and `files/<id>.json` (the colors) in the app data folder; the settings key
+  `glassPictureId` names it, and the Picture row is a menu of every picture by name plus Choose.
+  The page shows `http://files.localhost/<id>`. `wallpaper.ts` reads `effective("glassCanvas")`
+  and `effective("glassPictureId")`: a While rule may hold another picture. The old
+  `wallpaper.jpg` + `wallpaper.json` + `glassPicture` stamp become the first picture ("My
+  picture") on the first list after the update; `wallpaper.rs` stays for a roll back only.
 - **Hidden window.** `data-ambient="paused"` (ambient.ts): nothing is drawn; the change is drawn
   once on show.
 - **Telemetry.** `diag.log`: `wallpaper:draw` (why, mode, tiles, changed slots, ms, size),

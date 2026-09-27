@@ -116,8 +116,9 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 committed `4c9808c`), his desk test open (§2's script). The 5-in-10-s trip notice, the clock and
 the playback events still need a run with music playing. **Next (his call, 2026-09-27): the ten
 routes and the Rules | Logs view, RULEZ.md §3**, two sessions in parallel, each committing its
-own paths. Route 2 (the agent's `rules` verb, AGENT.md §8) is built; its desk test needs a dev
-app restarted on this bridge.
+own paths. Route 2 (the agent's `rules` verb, AGENT.md §8) and §5 (your own pictures and
+sounds in a rule, RULEZ.md §5.5) are built and desk-tested; **his** steps left: Agent changes
+settings = Off (AGENT.md §8 step 8) and the chime on a HomePod (RULEZ.md §5.4 step 8).
 
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built
