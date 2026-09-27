@@ -248,7 +248,7 @@ session.
 | 5 | Facts that cost nothing | A | The song's ♥, Diary score and play count; queue length; minutes since the app opened; minutes idle; battery and charging; a metered network. No Apple call. Rooms and Friends stay out (his call, §1.1). |
 | 6 | Actions the app already does | A | Show a note (a toast), Add the song to a playlist, Mark Suggest Less, Open the Diary for this song, Pause scrobbling, Hide to the tray. Add to playlist and ♥ are Apple writes: `cost: "apple"`, the §1.5 gate, and his cost call first. |
 | 7 | Cancel events as a veto | A | More `cancelled()` seams on the §1.7 shape: *The queue runs out → Keep* (no play-on), *The surface changes → Keep* (hold a grow). The list is his fork. |
-| 8 | FUTURE-SETTINGS as rules | B | Walk [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md): each hard-coded "when" behavior that should be a built-in rule or a recipe rather than a row. A list for him, no code. |
+| 8 | FUTURE-SETTINGS as rules | B | **Walked 2026-09-27 (§10): five candidates with his forks, no code.** Walk [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md): each hard-coded "when" behavior that should be a built-in rule or a recipe rather than a row. |
 | 9 | The shadow gap | A | A user rule above a built-in one wins silently. The Settings row's chip hint names the user rule ("Your rule 'Night jazz' in Rulez sets this"); the locked Rulez row says which rule above beat it. |
 | 10 | Two safety notes | A | A When-row "set" item (theme, skin, EQ preset) hints that it writes your pick for good (§1.4). The song balance facts stay the only polled facts; a new fact needs a seam or a `next` time. |
 
@@ -654,3 +654,46 @@ state); read in **the Logs view, the log file and reports, and the agent / diag 
 *Desk test.* Make a rule on *The music pauses* with a condition that fails, and one that holds.
 Pause. Logs › What ran: one line; open it: both rules, `ran` and `did not run`, each condition
 ✓ / ✗, and the facts. `deetsmusic diag --flush --tag rule:snap` prints the same.
+
+## 10. Route 8 — the FUTURE-SETTINGS walk (owner B, 2026-09-27)
+
+> **Part:** designed · 2026-09-27 · his forks: which of the candidates to build, and in which form
+
+The question (§3, route 8): which of the hard-coded behaviors in
+[FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md) are "when" or "while" decisions, and so belong to
+the engine as a built-in rule or a recipe rather than as a Settings row. The test applied to
+each entry: a rule decides *when* something happens or *while* what is true; a row decides
+*what* a thing is (a scope, a threshold, an order, a shape). A "when" that costs an Apple call
+on a timer is never a rule (RULES.md §6).
+
+**Already rules.** §16 New-Playlist summon is the `playlist.create` rule (RULES.md §13). §17
+Radio resume after a break-out is the `station.return` cancel event (route 7, §8). §18 (the
+toasts) and §23 are built as features.
+
+**Candidates: a rule instead of a row** (my recommendation first).
+
+| FUTURE-SETTINGS | Today | As a rule | Why |
+|---|---|---|---|
+| **§22 Play on launch** | Documented, not built: a row with a picker (*Nothing · Last song · A station · A playlist · A song*) plus starred playlists | **A recipe, "Play on launch"**: When *The app opens* → *Play a playlist / Play a station / Play*, off by default; the user picks the source in the recipe's copy (Duplicate → the Do's value). *Last song* = the `play` Do on the restored queue. The starred pool waits (a "random of these" Do is a later word) | Every part of §22's table is a When + a Do the engine has today. The row's picker would be a second UI for the same thing. **Guard to keep:** §22's rule that a tray launch never plays — `app.open` fires on `deets:boot-done`, so the engine must not emit it for a hidden `--tray` start (to check with the card session; one `if` at the emit) |
+| **§10 Queue summon: flip or no-op** | A row, not built (`deets.summonFlip`) | **A cancel event**, `queue.summon` (In: the card the Queue would displace; fact `grown`) with Do *Keep it from happening* — the §1.7 shape, like `grow.outside` | "Do nothing when the Queue is already on screen" is a veto on an about-to moment, which is exactly what a cancel event is; a row would hard-code one answer |
+| **§5b Shuffle press with nothing playing** | Built as the row `shuffleIdle` (*library* / *noop*) | A built-in rule made by that row: When *You press shuffle* · If *The music is not playing* → *Play the library shuffled*; the row keeps its key | Fits §13's pattern (a row makes its rule) and gives a user rule the same event (*You press shuffle*) for their own use. Low value on its own; worth it only when a shuffle event is wanted anyway |
+| **§20 Drill-in target** (Go to Artist / Album: in place or in Search) | Built as Full \| Lib chips; a setting "open drills in Full" is the follow-up | An event `goto.artist` / `goto.album` with two Dos, *Open in the Library* / *Open in Search*, and In = the card the verb came from. The default stays the built-in rule (Library in place, the rest in Search) | The split is already "per surface" — that is a rule's `In`. A user rule can then say "from the Queue, open in the Library" without a new row |
+| **§8 Surface switching** (auto-flip on resize) | Built as the row `surfaceAutoFlip` | Not a rule; but a **fact** `windowWidth` / `windowHeight` (seam: the resize) lets a user say *While the window is narrower than 500 → Keep on top* | The surface is a deliberate choice (§8's principle); the size is a fact worth having |
+
+**Stay rows** (a "what", not a "when"): §1 Play Now scope, §2 queue menu actions and order, §3
+drag initiation, §4 Previous reach, §5a shuffle placement, §6 the caret, §7 the listened-through
+threshold, §9 per-menu hover, §11 title underline, §12 / §13 the skin knobs, §14 eager counts
+(an Apple cost gate), §15 the submenu sort, §19 artist placement, §21 sync cadence (Apple on a
+timer: never a rule), §24 the Now Playing squares, §25 graphics quality.
+
+**Rows that should be rule keys when built** (so a While rule can hold them): §25 *Graphics
+quality* (*While on battery → Light*, with route 5's `battery` / `charging` facts), §12 / §13
+a skin's intensity preset (*While Genre is Ambient → Glass calm*), §11 the title underline,
+§24 the Now Playing squares (*While Surface is Mini → hide Search*). Each is one line in
+`RULE_KEYS` and the readers choose `effective` (RULES.md §19 step 4).
+
+**His forks.** (1) §22 as a recipe rather than a row: yes / no. (2) §10 as a cancel event:
+yes / no. (3) §20 as an event with two Dos: now, later, or no. (4) §5b's shuffle event: only
+if wanted. (5) The `windowWidth` fact: yes / no. Nothing here is built; each yes is one
+route-sized step with its own desk test.
+
