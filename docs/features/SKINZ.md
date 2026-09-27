@@ -1,7 +1,7 @@
 ---
 status: designed
 desk_test: none
-sources: [src/styles/themes.css, src/styles/skin.css, src/look-ids.ts, src/theme.ts, src/skin.ts, src/look.ts, src/album-color.ts, src/settings-store.ts, index.html, tray.html]
+sources: [src/styles/themes.css, src/styles/skin.css, src/look-ids.ts, src/theme.ts, src/skin.ts, src/look.ts, src/album-color.ts, src/ocean.ts, src/look-schedule.ts, src/compass.ts, src/settings-store.ts, index.html, tray.html]
 updated: 2026-09-27
 ---
 # DeetsMusic — Skinz, your own theme and skin
@@ -13,6 +13,10 @@ It is a Max-only card, the second one after [Rulez](RULEZ.md). The token tiers i
 [RULES.md](../architecture/RULES.md) §7a.
 Designed 2026-09-27. Build it after the Rulez desk test is closed (one load-bearing feature in
 flight).
+
+**The first build is theme only (his call, 2026-09-27).** It edits the 12 roles of the 6 slots.
+The skin controls (§4) are parked for a later build. §11 has the review decisions of the same
+day.
 
 ## 0. Terms
 
@@ -79,12 +83,22 @@ slot has an edit to `--title`, Skinz also writes:
 
 `--traffic-glyph` follows the slot's Light / Dark switch (§8).
 
+**Menu edge and Card edge keep their alpha (§11).** `--border` and `--panel-border` are
+`rgba()` values in every theme (Lilac: 16 % and 30 %). For these two roles you pick the hue
+only: the picker shows the hue strip and the square, with no alpha. Skinz paints
+`color-mix(in srgb, <your hex> <the slot's built-in alpha>, transparent)`, so an edge still
+reads as an edge.
+
 **Album color still sits above the theme.** With album-colored text on, the Now Playing card
 uses the album's colors, as today (ALBUM-COLOR.md).
 
 ## 4. The skin: the controls
 
-> **Part:** designed · 2026-09-27
+> **Part:** parked · 2026-09-27
+
+**Not in the first build (his call, 2026-09-27).** When the skin build starts, it leaves out the
+Card fill row, so Glass's Tint (locked by `GLASS_LOCKED` with Fancy Glass off) and Ocean's Card
+opacity stay as they are. The other points to settle then are in §11.2.
 
 Each skin (Press, Ocean, Glass, Cyber) has its own edits, in the same way as a slot. A control
 changes the skin's own value, so Press can keep square corners while Glass gets round ones.
@@ -100,8 +114,9 @@ changes the skin's own value, so Press can keep square corners while Glass gets 
 | Card fill | `--panel` | A strength, 0 % to 100 %, mixed toward transparent. |
 
 - **No network font.** The font list is only the fonts that fonts.css bundles.
-- **Glass already has Tint and Frost** (skin rows, `glassTint`). In Glass, the Card fill row is
-  the existing Tint row, with the same key. It is not a second control.
+- **Card fill is out (his call, 2026-09-27).** Glass's Tint and Ocean's Card opacity already
+  set the fill, and Tint is locked at 65 with Fancy Glass off. The row stays in the table
+  above as a record only.
 - **A scale reads the skin's own value**, so it is written as `calc(<skin value> * <scale>)`.
   skin.css gets one base token per scaled group (for example `--fs-scale: 1`), and the sizes
   become `calc(… * var(--fs-scale))`. This is a skin.css change, so `npm run tokens` runs in the
@@ -111,35 +126,51 @@ changes the skin's own value, so Press can keep square corners while Glass gets 
 
 > **Part:** designed · 2026-09-27
 
-**Two store keys** in `settings-store.ts`:
+**One store key** in `settings-store.ts` for the first build (theme only):
 
 ```ts
 themeEdits: Partial<Record<ThemeName, { name?: string; scheme?: "light" | "dark"; roles: Partial<Record<RoleName, string>> }>>
-skinEdits:  Partial<Record<SkinName, SkinEditValues>>
 ```
 
-- Defaults are `{}`: no edits, so every install looks the same as today.
-- **They are not `RuleKey`s.** A rule sets `theme` and `skin` only (§1).
-- A role value is a hex color. The store refuses any other string, because the value goes into
-  a style sheet.
+The skin build adds `skinEdits: Partial<Record<SkinName, SkinEditValues>>` later (§4).
+
+- The default is `{}`: no edits, so every install looks the same as today.
+- **It is not a `RuleKey`.** A rule sets `theme` only (§1).
+- A role value is a 6-digit hex color. The store refuses any other string, because the value
+  goes into a style sheet. Menu edge and Card edge store a hex too; their alpha comes from the
+  built-in slot at paint time (§3).
 
 **One style element paints all the edits.** `src/look-edits.ts` writes a `<style
-id="look-edits">` with one block per edited slot and skin:
+id="look-edits">` with one block per edited slot:
 
 ```css
-:root[data-theme="lilac"] { --canvas: #f3eefc; --title: #2a1c4a; … }
-:root[data-skin="press"]  { --panel-radius: 6px; --fs-scale: 1.1; … }
+:root[data-theme="lilac"] { color-scheme: dark; --canvas: #f3eefc; --title: #2a1c4a; … }
 ```
 
-- `:root[data-theme=…]` wins over the `[data-theme=…]` blocks in themes.css by specificity, not
-  by source order. The order of the style tags in dev and in the bundle does not matter.
+- `:root[data-theme=…]` (0,2,0) wins over the plain `[data-theme=…]` blocks in themes.css
+  (0,1,0) by specificity, not by source order. The order of the style tags in dev and in the
+  bundle does not matter. This holds because themes.css has no compound theme selector. A
+  compound one added later (for example `[data-theme=…][data-skin=…]`) ties with the edit
+  block and falls back to source order. **The skin build** must check this again: skin.css has
+  compound blocks such as `[data-skin="glass"][data-glass-fancy="on"]` (0,2,0) and
+  `:root[data-skin="ocean"][data-ocean-edges="sand"]` (0,3,0). It writes its blocks as
+  `:root:root[data-skin=…]`, or adds a check that no compound block sets an edited token.
+- **The "look edits changed" event.** Each rewrite sends one event. Code that reads a role in
+  JS listens for it next to its `data-theme` observer, because an edit to the theme in use does
+  not change the attribute:
+  - `album-color.ts` (the NP text guard, [album-color.ts:180](../../src/album-color.ts)).
+  - `ocean.ts` (the glow from the deep, [ocean.ts:376](../../src/ocean.ts)).
+  - The tray (below).
+  - The theme names (§6).
+  - `mosaic.ts` reads `--surface-hover` when it makes a cover. An old cover keeps the old
+    color. That is acceptable: a cover is made once.
 - **A theme switch needs no extra code.** The browser picks the block for the new
   `data-theme`, inside the existing appearance transition.
 - An edit rewrites the element once. The card shows the change on the next frame.
 
 **The pre-paints.** `index.html` and `tray.html` already read `deets.settings` to set
 `data-theme` and `data-skin`. They also write the same `<style id="look-edits">` from
-`themeEdits` and `skinEdits` before the first paint, so no frame shows the built-in colors. The
+`themeEdits` before the first paint, so no frame shows the built-in colors. The
 CSS text is made by one small pure function that is also inlined in the two pre-paints, with a
 comment that names the three copies (the same rule as the RETIRED maps in look-ids.ts).
 
@@ -157,7 +188,8 @@ It follows Rulez (RULEZ.md §1.1): it is in the card picker only in Max. Opening
 Fill. An **X** in place of Back closes it and returns the card it replaced. Leaving Max puts the
 replaced card back, and card memory brings Skinz back in Max.
 
-**Two sections, Theme and Skin**, as movable rows (MOVABLE-ROWS.md).
+**Two sections, Theme and Skin**, as movable rows (MOVABLE-ROWS.md). The first build has the
+Theme section only. The Skin section joins in the skin build (§4).
 
 - **Theme:** a row of 6 slot tiles. Each tile shows the slot's canvas, title and accent. The
   tile of the theme in use is marked. Click a tile to edit that slot. Editing a slot that is
@@ -170,15 +202,30 @@ replaced card back, and card memory brings Skinz back in Max.
     in the slot's `--stop` color. It never blocks the value.
   - The slot's menu (glyph and right-click): Rename · Use this theme · Reset · Copy from… (the
     built-in values of another slot).
-- **Skin:** the controls of §4 for the skin in use, with a Reset in the section menu.
+- **Skin (parked, §4):** the controls of §4 for the skin in use, with a Reset in the section
+  menu.
 
 **The contrast math moves to a pure file.** album-color.ts keeps `luminance` and `contrast` as
 private functions. They move to `src/color-math.ts`, album-color.ts imports them, and
 `tests/color-math.test.ts` covers them.
 
-**The theme name.** A renamed slot shows your name everywhere a theme name shows: the menu's
-theme flyout, the quick panel, Compass, the look schedule, the Rulez words, and the Settings
-rows. Rules store the id, so a rename never breaks a rule.
+**The theme name.** A renamed slot shows your name everywhere a theme name shows. Rules store
+the id, so a rename never breaks a rule. The names are written in three places today (checked
+2026-09-27). Every other surface reads one of them:
+
+| Where the name is written | Who reads it |
+|---|---|
+| `THEME_OPTIONS` in `look-schedule.ts` | The look schedule's day and night menus in Settings, the look schedule status line, the Rulez card and its words (`rulez-logs.ts`), the agent specs (`agent-settings.ts`, `agent-rules.ts`) |
+| The theme flyout buttons in `index.html` (text and hover hint) | `theme.ts`, `main.ts`, and Compass (it reads the button text) |
+| `extension/options/options.html` | The extension only. It keeps the built-in names (§5). |
+
+The quick panel shows no theme name. So the change is:
+- `THEME_OPTIONS` becomes a function that puts the slot's `name` over the built-in label.
+- `look-edits.ts` rewrites the flyout button text from that function at start and on "look
+  edits changed" (§5). Compass follows the flyout with no change of its own.
+- **The flyout hints describe the colors** ("Light. Purple and mint"). An edited slot gets a
+  plain hint in their place ("Your edit of Lilac. Dark."), because the built-in words no longer
+  match the colors.
 
 ## 7. The build checklist (CLAUDE.md › Working style)
 
@@ -190,7 +237,7 @@ rows. Rules store the id, so a rename never breaks a rule.
 - **Hints:** every `title` goes into the ONBOARDING.md ledger. The slot tile and the role row
   are new row shapes in its SHAPES table.
 - **Toasts:** Reset has an undo toast (a row in TOASTS.md §5).
-- **Settings keys:** `themeEdits` and `skinEdits` get a spec in `agent-settings.ts` (the Ask
+- **Settings keys:** `themeEdits` (and `skinEdits` in the skin build) gets a spec in `agent-settings.ts` (the Ask
   gate, as other look changes) and a line in AGENT.md.
 - **New badge:** a `NEW_MARKS` line for the Skinz card.
 - **Log lines:** `diag.log` each edit, rename and reset (`skinz:edit`, `skinz:reset`).
@@ -215,14 +262,68 @@ same scheme.
 
 ## 9. Build order
 
+The first build (theme only):
+
 1. `color-math.ts` and its test; album-color.ts imports it.
-2. The store keys, the validation, the agent spec.
-3. `look-edits.ts`, the scale tokens in skin.css, `npm run tokens`.
+2. The `themeEdits` key, the validation, the agent spec.
+3. `look-edits.ts`: the style element, the edge alpha mix (§3), the "look edits changed" event,
+   and its listeners in album-color.ts and ocean.ts. No skin.css change, so no
+   `npm run tokens`.
 4. The pre-paints in `index.html` and `tray.html`, and the tray repaint.
-5. The Skinz card, with its own color picker (a hue strip, a square, a hex field).
-6. The theme name in the flyout, the quick panel, Compass, the look schedule and Rulez.
+5. The Skinz card, with its own color picker (a hue strip, a square, a hex field; hue and
+   square only for Menu edge and Card edge).
+6. The theme name: `THEME_OPTIONS` as a function, and the flyout text and hints (§6).
 7. The docs: this doc's as-built section, SETTINGS-INVENTORY, ONBOARDING, TOASTS, AGENT.
+
+The skin build, later: `skinEdits`, the scale tokens in skin.css with `npm run tokens`, the
+selector check of §5, and the Skin section of the card.
 
 ## 10. Desk test
 
 > **Part:** designed · 2026-09-27. Written at build time.
+
+## 11. The review (2026-09-27)
+
+A check of this doc against the code, on the day it was written.
+
+### 11.1 His calls
+
+| Question | Choice |
+|---|---|
+| What the first build covers | **Theme only.** The skin controls (§4) are parked. |
+| Glass Tint and Ocean Card opacity against a Card fill row | **Leave out Fancy Glass and the card fill.** The skin build has no Card fill row (§4). |
+| Menu edge and Card edge are `rgba()` | **You pick the hue.** The built-in alpha of the slot stays (§3). |
+| Code that reads a role in JS does not see an edit to the theme in use | **One "look edits changed" event** (§5). |
+| Where the theme names are written | Three places (§6). `THEME_OPTIONS` becomes a function; the flyout is rewritten from it. |
+
+**Decided inside his calls (Claude, 2026-09-27), for him to see:**
+- The edge paint is `color-mix(in srgb, <hex> <built-in alpha>, transparent)`, and the alpha is
+  per slot.
+- An edited slot's flyout hint becomes "Your edit of <built-in name>. Light | Dark." in place of
+  the color words.
+- The card has one section (Theme) until the skin build.
+
+### 11.2 Open points
+
+Not decided. Bring each one to him before the step that needs it.
+
+For the first build:
+- **Accent contrast.** The contrast line covers only text. `--go`, `--stop` and `--pause` carry
+  the `--traffic-glyph` marks, and a picked row fills with `--title`. An accent near the glyph
+  color hides the traffic-light marks, and no warning shows.
+- **Undo for one role.** Only Reset has an undo toast. A role's reset dot goes back to the
+  built-in value, not to the value before your last change.
+- **The agent's write.** A write to `themeEdits` is the whole map, so an agent can replace
+  edits it did not read. A route that changes one role of one slot is safer.
+
+For the skin build:
+- **Motion speed scales 2 of about 28 duration tokens** (`--dur-fast`, `--dur-med`). The others
+  (`--swap-dur`, `--nav-dur`, `--grow-dur` …) stay the same, so 200 % looks like a broken
+  control. Put all of them on the scale, or give the row a narrower name.
+- **Text size misses the local size tokens.** About 150 font sizes use the three `--fs-*`
+  tokens. About 15 local `--*-fs` tokens (the sleep dial, the room code, the Sound axis) do not
+  scale. `var(--fs-body)` is used twice, and no `--fs-body` token exists.
+- **Spacing:** 239 uses of `--space-*`, about 80 literal paddings, gaps and margins.
+- **Test the extremes in Mini.** 125 % text with 150 % spacing in the 480 px Mini is where rows
+  will cut off.
+- **The selector check** of §5.
