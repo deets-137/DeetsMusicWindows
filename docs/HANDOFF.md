@@ -121,7 +121,10 @@ changes settings = Off (AGENT.md §8 step 8); the chime on a HomePod (RULEZ.md �
 facts *Album color* and *The cover is light / dark* (RULEZ.md §11; his open call: where the
 orange / yellow line sits), and the recipe **Live Theming** (§11.1: each cover color picks one of
 the six themes, light or dark by the cover; the color half is his to review). The Album theme, colors from the cover, is documented into Skinz
-(SKINZ.md §12) and waits for the Skinz build.
+(SKINZ.md §12) and waits for the Skinz build. **Then:** a rule moves by hold-then-move (no
+grip) and its row has a hover box (RULEZ.md §12; his hand test is open); the engine rechecks
+only when a seam's fact changed. **To talk through:** cases, one rule with many branches
+(RULEZ.md §13).
 
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built

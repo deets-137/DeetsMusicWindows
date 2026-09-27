@@ -232,8 +232,9 @@ run it: `main.ts` and `tray.ts`.
 Nobody authors a row hint. `SHAPES` in hint.ts lists the row and tile shapes the cards build
 — `.lib-row`, `.lib-tile`, `.lib-hero`, `.qrow`, `.qnow`, `.search__song`, `.search__row` (a Search
 drill pane's song list; missing until 2026-09-17), `.search__tile`,
-`.search__artist`, `.np` — each with its title span and its sub span, so one delegated handler
-covers Library, Search, Queue, Rewind, History, Home, the Artist shelves and Now Playing.
+`.search__artist`, `.np`, `.rulez__bar` (a Rulez rule: its name, then its whole sentence;
+2026-09-27, RULEZ.md §12) — each with its title span and its sub span, so one delegated handler
+covers Library, Search, Queue, Rewind, History, Home, the Artist shelves, Now Playing and Rulez.
 **Add a new row shape to that table, not a new listener.** The deeper element wins: the Add
 button inside a song row still says *Add to Library*.
 
@@ -242,7 +243,8 @@ button inside a song row still says *Add to Library*.
 synchronous from a memory map, because a hover cannot wait for a round trip: a song not
 collected yet has no third line, and asking warms it for the next hover. A row with writers
 shows its hint **even under "Name songs on hover: Cut off"** — being cut off is no longer the
-only reason to hover a row.
+only reason to hover a row. A row can also carry its own third line in `data-hint-note`: a
+Rulez rule puts your description there (2026-09-27), with the same rule.
 
 **Three settings** (Settings › Menus, hints and notices, beside Open menus on hover):
 

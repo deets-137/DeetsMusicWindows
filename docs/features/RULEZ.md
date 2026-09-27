@@ -858,3 +858,80 @@ Blue Train (teal, dark) → Moonlight; *So Far So Good* (purple, light) → Lila
 (orange, dark) → Black & Yellow. Each read `recipe:live:<n>` on `key:theme`.
 
 **For his review:** the color half of the table (Grey could leave the theme alone).
+
+## 12. Moving a rule, and the hover box (his calls, 2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test run by Claude (below); his hand test is open
+
+His report: dragging a rule by its six-dot grip was finicky and often did nothing. His calls:
+**no grip**; move a rule the way songs and folders move elsewhere, **hold, then move**; and a
+**hover box** with the name on line 1 and the description on line 2, because the sentence is
+cut off.
+
+- **The move** is the one drag primitive, `rowDrag` in its hold mode (row-drag.ts; a Playlists
+  folder uses the same): press the row's bar and hold still (`--hold-ms`, 400 ms; the bar swells),
+  then move. A quick press is still the click that opens the row; a move before the hold is a
+  scroll. A ghost follows the pointer and a line shows where the rule lands. Your rules sit in
+  their own box (`.rulez__mine`), so the line never lands among the recipes. An open row folds
+  as it lifts, so one bar travels, and opens again after the drop.
+- **The hover box** is a row shape in hint.ts (`.rulez__bar`): line 1 the name, line 2 the
+  whole sentence (or why the rule does not run), and your Desc, when you wrote one, as a third
+  line (`data-hint-note`). It shows under the same rule as a song row: when a line is cut off.
+- **The sentence ends in "…" now** (`.rulez__said`): it sat in a flex box, which cut it with no
+  ellipsis, and the hover check could not see it was cut.
+
+**Found on the way.** The card redrew its whole list about 4 times a second: Sound's seam fires
+with the audio worklet's status, the engine rechecked each time, and Rulez redrew after each
+check. A redraw under the pointer closed the hover box before it opened, and could drop a
+held press. Fixed twice: the engine rechecks only when a seam's fact really changed (RULES.md
+§10), and Rulez skips a redraw whose HTML is the same. It also holds redraws while a row is
+pressed or moving. Measured: 20 redraws in 5 s before, 0 after.
+
+**Decided inside his calls (for his review).**
+- The lead column stays as an empty space on your rows, so your names line up with the locked
+  rows' lock glyphs.
+- Only the bar lifts a rule: a press in the open sentence (a blank, a field) never starts a move.
+- The hover box's second line is the sentence the row shows (his "description"); a Desc you
+  wrote is the third line.
+
+*Desk test (Claude, dev:app, pointer events on the real rows).* A 20 px move before the hold:
+nothing moved. Hold 550 ms, then move to the top: the bar swelled, a ghost and a line showed,
+"Keep playlists" went from third to first. An open row held and moved to the bottom: it folded
+as it lifted and opened again after the drop. A hover on the cut sentence: the box read "Keep
+playlists" / the whole sentence. **His:** the move with a real mouse, and the feel of 400 ms.
+
+## 13. Cases: one rule, many branches (to talk through)
+
+> **Part:** idea · 2026-09-27 · his call: talk it through before any build
+
+His question: what would it take for one rule to hold every branch with a clean UI? Live
+Theming (§11.1) is six rules today, six locked lines, because a rule has one condition and one
+Do.
+
+**The shape.** A rule with an ordered list of **cases**, each a condition and a value; the first
+case that holds wins; an optional *otherwise* last.
+
+> **While a song plays, DeetsMusic uses theme:**
+> · if the cover is light and the album color is Red, Orange, Brown or Yellow → **Sepia**
+> · … five more cases …
+> · otherwise → **your own theme**
+
+**The engine stays small.** At the rebuild a rule with cases becomes one internal rule per case
+(pure, tested), so `resolveState` and `pickMoment` do not change. Around it: a `cases` field
+(optional; the store stays v1), a hand change holds the whole rule, the snapshots, *Try* and
+the Logs name the case, *who wins* compares whole rules, and the words say "uses a theme by
+album cover (6 cases)".
+
+**The UI is most of the work.** The collapsed row as today, with that summary. The open row: the
+Do blank once at the top, then one line per case (the condition blocks, compact, and one value
+blank), a +, a hold to move a case, *otherwise* last, and the live line naming the case that
+holds now. The build checklist: a new row shape, `--rulez-case-*` alias tokens in the menu-row
+family, `enterRows`, hints. Also: the agent's verb (`add` / `show` with cases), paste and
+import, the recipe viewer (one locked line per recipe), Live Theming rewritten as one rule.
+About one sitting, as big as the §6 sentence.
+
+**To talk through** (my first recommendation in each):
+1. **Same Do for every case, a value per case**, or a different Do per case. The first keeps the
+   UI clean and covers every "pick one of N" rule.
+2. **Both kinds of rule** (While and When), or While first. The expansion is the same code.
+3. **Otherwise:** offered, with "your own value" as its default, or not at all.

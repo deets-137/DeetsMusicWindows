@@ -71,9 +71,24 @@ export function registerEvent(id: EventId, def: { facts: FactId[] } = { facts: [
   events.set(id, def);
   relist();
 }
+/** Each fact's value when its seam last fired (JSON), so a seam that fires with no change is
+ *  no check. Found 2026-09-27: Sound's seam fires with the audio worklet's status, about 4 times
+ *  a second with the EQ on, and every check redrew Rulez (its hover box could never show). */
+const seamSeen = new Map<FactId, string>();
+
 export function registerFact(id: FactId, read: FactDef["read"], opts: Omit<FactDef, "read"> = {}): void {
   facts.set(id, { read, ...opts });
-  opts.seam?.(() => recheck(`fact:${id}`));
+  opts.seam?.(() => {
+    let now: string;
+    try {
+      now = JSON.stringify(read() ?? null);
+    } catch {
+      now = "";
+    }
+    if (seamSeen.get(id) === now) return;
+    seamSeen.set(id, now);
+    recheck(`fact:${id}`);
+  });
   relist();
 }
 export function registerAction(verb: string, def: ActionDef): void {

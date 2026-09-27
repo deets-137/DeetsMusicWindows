@@ -61,6 +61,7 @@ const SHAPES: Shape[] = [
   { row: ".search__tile", title: ".search__tile-name", sub: ".search__tile-sub" }, // Search tiles, Home + Artist shelves
   { row: ".search__artist", title: ".search__artist-name" }, // the round artist tile
   { row: ".np", title: ".np__title", sub: ".np__artist" }, // Now Playing
+  { row: ".rulez__bar", title: ".rulez__name", sub: ".rulez__said" }, // a Rulez rule: its name, its whole sentence (RULEZ.md §12)
 ];
 /** One selector for the whole table: `resolve` tests this per ancestor, and only looks the
  *  shape up on a hit. A pointer crossing a list walks a lot of ancestors. */
@@ -143,7 +144,9 @@ function rowHint(row: HTMLElement, shape: Shape): Hint | null {
   // The writers (CREDITS.md §7). A song row only — the id is on the row itself, so a tile
   // or an artist row never asks. The read is synchronous and local: a song we have not
   // collected yet simply has no third line, and asking warms it for the next hover.
-  const credit = row.dataset.cid ? creditsFor(row.dataset.cid)?.composer : undefined;
+  // A row can also carry a note of its own for that third line (`data-hint-note`: a Rulez
+  // rule's description). It shows only when the box does, as the writers do.
+  const credit = (row.dataset.cid ? creditsFor(row.dataset.cid)?.composer : undefined) ?? row.dataset.hintNote;
   // The song name being cut off is not the only reason to hover a row any more, so a row
   // that has credits shows them even under "only when the name is cut off".
   if (mode === "cut" && !credit && !cutOff(t) && !cutOff(s)) return null;

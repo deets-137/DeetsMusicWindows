@@ -29,6 +29,8 @@ import { logsHTML, isRuleLine } from "./rulez-logs";
 import { splitPillHTML, splitPick } from "./split-pill";
 import { MENU_CHOSEN, MENU_DIVIDER, openContextMenu, openContextMenuUnder, type ActionItem, type MenuItem } from "./context-menu";
 import { enterRows } from "./pop";
+import { isDragging, onDragEnd, rowDrag } from "./row-drag";
+import { holdMs } from "./row-order";
 import { onSettingsChange, setting } from "./settings-store";
 import { requestSetting } from "./layout-bus";
 import { presetOptions } from "./sound";
@@ -64,7 +66,6 @@ const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg>';
 const ICON_MORE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>';
 const ICON_LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>';
-const ICON_GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="1.4" /><circle cx="15" cy="7" r="1.4" /><circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="17" r="1.4" /><circle cx="15" cy="17" r="1.4" /></svg>';
 const ICON_WARN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.5" stroke-linecap="round" /></svg>';
 
 const HEAD = `
@@ -562,7 +563,7 @@ export const rulezCard: CardDef = {
       `<span class="set__split rulez__switch"><button class="set__half set__half--toggle" type="button" role="switch" data-act="${act}" aria-checked="${on}"${disabled ? ` aria-disabled="true" title="${esc(disabled)}"` : ` title="${on ? "Turns this rule off" : "Turns this rule on"}"`}>${on ? "On" : "Off"}</button></span>`;
     const moreHTML = (hint: string) => `<button class="rulez__more" type="button" data-act="more" aria-label="Rule menu" title="${esc(hint)}">${ICON_MORE}</button>`;
 
-    const ownRowHTML = (r: Rule, wins: Map<string, Rule>, L: Lists): string => {
+    const ownRowHTML = (r: Rule, wins: Map<string, Rule>, L: Lists, idx: number): string => {
       const open = openId === r.id;
       const idle = ruleIdle(r) ?? (usesGoneFile(r) ? "The file this rule uses is gone." : null);
       // A rule an agent made through the bridge (RULEZ.md §7) says so; you change it like your own.
@@ -570,15 +571,18 @@ export const rulezCard: CardDef = {
       const warn = idle && !r.draft && r.on ? `<span class="rulez__warn" aria-hidden="true">${ICON_WARN}</span>` : "";
       const w = wins.get(r.id);
       const winsLine = w && r.on && !r.draft ? `<p class="rulez__wins">Also matches when ${esc(nameOf(w.id))} does. ${esc(nameOf(w.id))} runs first.</p>` : "";
-      const bar = `<div class="rulez__bar" data-act="open" title="${esc(open ? "Closes this rule" : r.desc ? r.desc : "Opens this rule to change it")}">
-        <span class="rulez__lead rulez__grip" data-act="grip" title="Drag to move this rule. The first rule that matches runs">${ICON_GRIP}</span>
+      // The hover box (hint.ts SHAPES): the name, the whole sentence, and your description
+      // under them. Press and hold, then move, to move the rule (no grip: the whole bar).
+      const note = r.desc ? ` data-hint-note="${esc(r.desc)}"` : "";
+      const bar = `<div class="rulez__bar" data-act="open"${note} title="${esc(open ? "Closes this rule" : r.desc ? r.desc : "Opens this rule to change it. Hold, then move, to move it")}">
+        <span class="rulez__lead" aria-hidden="true"></span>
         <span class="rulez__name">${esc(r.name || "Untitled rule")}</span>
-        <span class="rulez__summary">${warn}${esc(idle && !r.draft && r.on ? idle : summary)}</span>
+        <span class="rulez__summary">${warn}<span class="rulez__said">${esc(idle && !r.draft && r.on ? idle : summary)}</span></span>
         ${onOffHTML(r.on, r.draft ? "Finish the rule first" : null)}
         ${moreHTML("Turns the rule on or off, copies, moves or deletes it")}
       </div>`;
       const cls = `rulez__rule${open ? " is-open" : ""}${!r.on || r.draft ? " is-idle" : ""}${r.by === "agent" ? " is-agent" : ""}`;
-      return `<div class="${cls}" data-id="${esc(r.id)}" data-own="1">${bar}${winsLine}${open ? openHTML(r, L) : ""}</div>`;
+      return `<div class="${cls}" data-id="${esc(r.id)}" data-own="1" data-idx="${idx}">${bar}${winsLine}${open ? openHTML(r, L) : ""}</div>`;
     };
 
     const lockedRowHTML = (r: Rule, wins: Map<string, Rule>, L: Lists): string => {
@@ -594,7 +598,7 @@ export const rulezCard: CardDef = {
       return `<div class="rulez__rule is-locked${on ? "" : " is-idle"}" data-id="${esc(r.id)}"><div class="rulez__bar" title="${esc(hint)}">
         <span class="rulez__lead" aria-hidden="true">${ICON_LOCK}</span>
         <span class="rulez__name">${esc(name)}</span>
-        <span class="rulez__summary">${esc(sentenceText(r, L))}</span>
+        <span class="rulez__summary"><span class="rulez__said">${esc(sentenceText(r, L))}</span></span>
         ${sw}
         ${moreHTML(rec ? "Turns the recipe on or off, or copies it into your rules" : "Tries this rule, or opens the Settings row that makes it")}
       </div>${winsLine}</div>`;
@@ -689,13 +693,21 @@ export const rulezCard: CardDef = {
       moreBtn.hidden = view !== "rules";
     };
 
-    const render = () => {
+    // A render asked for while a row is pressed or moving waits for the release: a rule check
+    // re-renders the list, and a new list under a hold would drop the press.
+    let renderLater = false;
+    let pressing = false;
+    let lastHTML = ""; // the Rules view as last drawn
+    /** `force`: draw even when the HTML is the same (a move folded the open row by hand). */
+    const render = (force = false) => {
       if (destroyed) return;
+      if (pressing || isDragging()) return void (renderLater = true);
       const L = lists();
       mine = clone(userRules());
       if (openId && !mine.some((r) => r.id === openId)) openId = null;
       const scroll = body.scrollTop;
       if (view === "logs") {
+        lastHTML = "";
         const everything = [...mine, ...RECIPES.flatMap((x) => x.rules), ...allRules().filter((r) => "row" in r.source || "fixed" in r.source)];
         body.innerHTML = `<div class="rulez-log">
           <div class="rulez-log__tools">${splitPillHTML([
@@ -712,11 +724,16 @@ export const rulezCard: CardDef = {
       const recipeRules = RECIPES.flatMap((x) => x.rules);
       const builtins = live.filter((r) => "row" in r.source || "fixed" in r.source);
       const empty = mine.length ? "" : `<p class="rulez__empty">You have no rules yet. Press + to make one.</p>`;
-      body.innerHTML = `<div class="rulez__list">
-        ${mine.map((r) => ownRowHTML(r, wins, L)).join("")}${empty}
+      const html = `<div class="rulez__list">
+        <div class="rulez__mine">${mine.map((r, i) => ownRowHTML(r, wins, L, i)).join("")}</div>${empty}
         <div class="rulez__divider">Recipes</div>${recipeRules.map((r) => lockedRowHTML(r, wins, L)).join("")}
         ${builtins.length ? `<div class="rulez__divider">Made by Settings</div>${builtins.map((r) => lockedRowHTML(r, wins, L)).join("")}` : ""}
       </div>`;
+      // Nothing to show that is not already shown: keep the rows (a hover box, a hold and the
+      // scroll stay where they are). A rule check runs this after every check.
+      if (html === lastHTML && !force) return;
+      lastHTML = html;
+      body.innerHTML = html;
       body.scrollTop = scroll;
       if (fresh) {
         const row = body.querySelector<HTMLElement>(`[data-id="${CSS.escape(fresh)}"]`);
@@ -752,7 +769,7 @@ export const rulezCard: CardDef = {
         return;
       }
       const el = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
-      if (!el || el.dataset.act === "grip") return;
+      if (!el) return;
       const r = ruleOf(el);
       if (!r) return;
       const act = el.dataset.act;
@@ -814,43 +831,60 @@ export const rulezCard: CardDef = {
       openContextMenu(e.clientX, e.clientY, rowMenu(r));
     };
 
-    // Drag a row by its grip: a line shows where it lands.
-    const onGrip = (e: PointerEvent) => {
-      const grip = (e.target as HTMLElement).closest<HTMLElement>('[data-act="grip"]');
-      if (!grip || e.button !== 0) return;
-      const row = grip.closest<HTMLElement>(".rulez__rule")!;
-      const from = mine.findIndex((r) => r.id === row.dataset.id);
-      if (from < 0) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const rows = [...body.querySelectorAll<HTMLElement>(".rulez__rule[data-own]")];
-      const others = rows.filter((r) => r !== row);
-      let to = from;
-      row.classList.add("is-dragging");
-      try {
-        grip.setPointerCapture(e.pointerId);
-      } catch {
-        /* a pointer the page does not own (a script): the moves still reach the grip */
-      }
-      const move = (ev: PointerEvent) => {
-        to = others.filter((r) => r.getBoundingClientRect().top + r.offsetHeight / 2 < ev.clientY).length;
-        rows.forEach((r) => r.classList.remove("is-drop-before", "is-drop-after"));
-        if (others[to]) others[to].classList.add("is-drop-before");
-        else others[others.length - 1]?.classList.add("is-drop-after");
-      };
-      const up = () => {
-        grip.removeEventListener("pointermove", move);
-        rows.forEach((r) => r.classList.remove("is-drop-before", "is-drop-after", "is-dragging"));
-        if (to !== from) {
-          const [x] = mine.splice(from, 1);
-          mine.splice(to, 0, x);
-          save("drag");
-        }
-      };
-      grip.addEventListener("pointermove", move);
-      grip.addEventListener("pointerup", up, { once: true });
-      grip.addEventListener("pointercancel", up, { once: true });
+    // Move a rule of yours the way a Playlists folder moves (his call, 2026-09-27): press the
+    // row's bar and hold still, then move. The one drag primitive (row-drag.ts `hold`): a
+    // quick press is still the click that opens the row, a move before the hold is a scroll,
+    // and a line shows where it lands. An open row folds as it lifts, so one bar travels, and
+    // opens again after the drop.
+    let reopen: string | null = null;
+    const rowMove = rowDrag({
+      root: body,
+      label: "rulez",
+      rowAt: (t) => {
+        if (view !== "rules" || mine.length < 2 || t.closest("button, input, .rulez__open")) return null;
+        const row = t.closest<HTMLElement>(".rulez__bar")?.closest<HTMLElement>(".rulez__rule[data-own]");
+        const list = row?.parentElement;
+        if (!row || !list) return null;
+        return {
+          row, list, index: Number(row.dataset.idx), count: mine.length, measure: true, hold: holdMs(),
+          begin: () => {
+            if (!row.classList.contains("is-open")) return;
+            reopen = openId;
+            openId = null;
+            row.querySelector(".rulez__open")?.remove();
+            row.classList.remove("is-open");
+          },
+        };
+      },
+      onEnd: (from, to) => {
+        if (reopen) openId = reopen;
+        reopen = null;
+        if (to == null) return render(true);
+        const [x] = mine.splice(from, 1);
+        mine.splice(to, 0, x);
+        save("move");
+      },
+    });
+    const flushRender = () => {
+      if (!renderLater) return;
+      renderLater = false;
+      render();
     };
+    const offDragEnd = onDragEnd(flushRender);
+    const onPress = (e: PointerEvent) => {
+      if (e.button !== 0 || !(e.target as HTMLElement).closest(".rulez__mine .rulez__bar")) return;
+      pressing = true;
+      const release = () => {
+        document.removeEventListener("pointerup", release, true);
+        document.removeEventListener("pointercancel", release, true);
+        pressing = false;
+        // After the drag's own end (it runs in the bubble phase): a drop saves and renders.
+        window.setTimeout(flushRender, 0);
+      };
+      document.addEventListener("pointerup", release, true);
+      document.addEventListener("pointercancel", release, true);
+    };
+    body.addEventListener("pointerdown", onPress, true);
 
     /** + : a new rule, open, with its When blank's menu open (RULEZ.md §6.3). */
     const onAdd = () => {
@@ -888,7 +922,7 @@ export const rulezCard: CardDef = {
     viewsEl.addEventListener("click", onViews);
     body.addEventListener("click", onClick);
     body.addEventListener("contextmenu", onContext);
-    body.addEventListener("pointerdown", onGrip);
+
     const offRules = onRulesChange(render);
     const offFiles = onFilesChange(render); // a new picture or sound shows in the menus
     const offSettings = onSettingsChange((key) => {
@@ -907,6 +941,9 @@ export const rulezCard: CardDef = {
         offFiles();
         offRules();
         offSettings();
+        offDragEnd();
+        rowMove.destroy();
+        body.removeEventListener("pointerdown", onPress, true);
         host.innerHTML = "";
       },
     };

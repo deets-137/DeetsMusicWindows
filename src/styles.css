@@ -4230,18 +4230,30 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez__rule.is-locked > .rulez__bar { cursor: default; }
 .rulez__name { font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: var(--rulez-name-max-w); }
 .rulez__summary { min-width: 0; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: var(--space-1); }
+/* The sentence's own box: a flex item cannot end in "…" itself, and hint.ts reads this box to
+   know it is cut off (the hover box then shows the whole sentence). */
+.rulez__said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rulez__warn svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.8; }
 .rulez__switch { margin: 0; }
 .rulez__switch .set__half[aria-disabled="true"] { opacity: var(--rulez-idle-opacity); cursor: default; }
 .rulez__rule.is-idle > .rulez__bar > .rulez__name, .rulez__rule.is-idle > .rulez__bar > .rulez__summary { opacity: var(--rulez-idle-opacity); }
-.rulez__rule.is-dragging { opacity: var(--rulez-idle-opacity); }
-.rulez__rule.is-drop-before { border-top-color: var(--np-accent); }
-.rulez__rule.is-drop-after { border-bottom-color: var(--np-accent); }
+/* Your rules move by press and hold, then a move (row-drag.ts `hold`, as a Playlists folder
+   does): the list is its own box, so the drop line counts only your rows. The swell is the
+   bar's, not an open row's whole sentence. */
+.rulez__mine { display: flex; flex-direction: column; gap: var(--rulez-gap); }
+.rulez__rule.is-holding { transform: none; }
+.rulez__rule.is-holding > .rulez__bar {
+  transform: scale(var(--hold-swell));
+  transform-origin: center left;
+  transition: transform var(--hold-ms) var(--ease-ui);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rulez__rule.is-holding > .rulez__bar { transform: none; }
+}
 .rulez__wins { margin: 0 0 var(--space-1) calc(var(--rulez-lead-w) + var(--space-3)); font-size: var(--fs-subtext); color: var(--subtext); font-style: italic; }
 .rulez__lead { display: grid; place-items: center; color: var(--subtext); }
 .rulez__lead svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; stroke: currentColor; stroke-width: 0; }
 .rulez__rule.is-locked .rulez__lead svg { fill: none; stroke-width: 1.6; }
-.rulez__grip { cursor: grab; touch-action: none; }
 
 /* The open row: the sentence. A blank is the Rulez cell family (the Library's Sort / View pill). */
 .rulez__open { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-3) calc(var(--rulez-lead-w) + var(--space-3)); }

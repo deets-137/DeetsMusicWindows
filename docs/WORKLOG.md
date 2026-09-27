@@ -79,7 +79,13 @@ test. One session did all of it (the two-session split of RULEZ.md §3 ended her
 - Then the recipe **Live Theming** (RULEZ.md §11.1): six While rules map the ten cover colors to
   the six themes; his call then: a light or dark cover picks a light or dark theme. Desk test:
   Casio → Sepia, Blue Train → Moonlight, *So Far So Good* → Lilac, Sunshine → Black & Yellow. Left
-  on in the dev app so he can see it.
+  on in the dev app so he can see it. Committed and pushed (`456017a`, my files only).
+- His next asks: the grip drag was finicky, so a rule now moves by hold-then-move (`rowDrag`
+  hold mode, no grip), and a hover box shows the name and the whole sentence (RULEZ.md §12).
+  Found: Rulez redrew about 4 times a second (Sound's seam, every worklet status → a recheck →
+  a redraw), which closed the hover box. Fixed in the engine (a seam rechecks only on a real
+  change) and in the card (no redraw for the same HTML): 20 redraws in 5 s → 0. Cases (one
+  rule, many branches) written up to talk through (RULEZ.md §13). Committed and pushed.
 
 ## 2026-09-27 — Rulez, the rules builder (branch `rules-rulez`)
 

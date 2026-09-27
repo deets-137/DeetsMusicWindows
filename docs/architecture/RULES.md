@@ -290,7 +290,10 @@ Only `rules.ts` knows rules exist.
 - **Moment rules:** `emit` → `pickMoment(rules, event, card, facts)` → the first match → the
   action. Actions run with `emit` held, so no rule sets off a rule.
 - **State rules:** on any seam that a state rule's facts name, and on a fact provider's timer,
-  the engine runs `resolveState` and updates the overlay and the properties.
+  the engine runs `resolveState` and updates the overlay and the properties. **A seam that fires
+  with no change is no check** (2026-09-27): `registerFact` keeps each fact's last value (JSON)
+  and rechecks only when it moved. Sound's seam fires with the audio worklet's status, about 4
+  times a second with the EQ on, and each check redrew the Rulez card.
 - **`rules-eval.ts` is pure** (no DOM), and `npm test` covers it.
 
 **The grow action.** `growByRule(card, axis, cause)` in card-grow.ts:
