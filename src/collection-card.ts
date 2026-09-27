@@ -976,12 +976,17 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     pendingReturn = null;
     stack.push(f);
     setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
-    slide(buildPane(f), "push", f);
     // The rules engine (RULES.md §10): an album or an artist opened. Not from `replace` (the
-    // Lib | Full chips) or a card-memory restore, which never come through here.
+    // Lib | Full chips) or a card-memory restore, which never come through here. It is told
+    // when the slide ENDS, so a rule's grow runs after the slide, never over it (his call,
+    // 2026-09-26: together they dropped frames, RULES.md §18 Performance). A level left before
+    // then grows nothing.
     const key = f.ctx.key ?? "";
     const event = key.startsWith("album:") ? "album.open" : key.startsWith("artist:") ? "artist.open" : null;
-    if (event) emit(event, { card: cardId(), facts: { cause: "hand" }, depth: stack.length });
+    const depth = stack.length;
+    slide(buildPane(f), "push", f, () => {
+      if (event && cur() === f) emit(event, { card: cardId(), facts: { cause: "hand" }, depth });
+    });
   };
 
   // A view chip (FULL-LIB.md): the same level seen another way. It takes the open level's

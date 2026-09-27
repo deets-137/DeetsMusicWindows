@@ -483,8 +483,24 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (memory?.scroll) void Promise.resolve(filled).then(() => { scroller.scrollTop = memory.scroll!; });
     notifyHeader(); // the header takes this level's kind, and shows its Back button
     // The rules engine (RULES.md §10): an album or artist pane opened by hand, not by a restore.
-    if (!memory?.instant && (open?.kind === "album" || open?.kind === "artist"))
-      emit(open.kind === "album" ? "album.open" : "artist.open", { card: host.dataset.mounted ?? "search", facts: { cause: "hand" }, depth: paneStack.length });
+    // It is told when the pane's slide ENDS, so a rule's grow runs after it (his call,
+    // 2026-09-26). The timer is the fallback for a missed transitionend (--nav-dur is 400 ms).
+    if (!memory?.instant && (open?.kind === "album" || open?.kind === "artist")) {
+      const event = open.kind === "album" ? "album.open" : "artist.open";
+      const depth = paneStack.length;
+      let told = false;
+      const tell = () => {
+        if (told) return;
+        told = true;
+        pane.removeEventListener("transitionend", onEnd);
+        if (paneStack[paneStack.length - 1] === pane) emit(event, { card: host.dataset.mounted ?? "search", facts: { cause: "hand" }, depth });
+      };
+      const onEnd = (e: TransitionEvent) => {
+        if (e.target === pane) tell();
+      };
+      pane.addEventListener("transitionend", onEnd);
+      window.setTimeout(tell, 500);
+    }
   };
 
   /** The Back button: the pane a grown card's drill opened hands the Back to the layout, which

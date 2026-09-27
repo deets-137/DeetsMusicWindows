@@ -592,10 +592,18 @@ at its default (*Vertical*) an album open runs the grow's clip and row entry at 
 as the drill's slide, and drops a few frames (worst 21–29 ms against 8). With the row Off the
 drill is `main`'s exactly. MusicKit's stream time varies with the network, not the branch.
 
+**His call (2026-09-26): the grow waits for the slide.** `album.open` / `artist.open` are now
+emitted when the drill's slide ends (collection-card.ts: the slide's `onDone`; search-card.ts:
+the pane's `transitionend`, 500 ms fallback), and only if that level is still open. Measured
+after (same machine, same load): album open 1.1–2.5 % dropped, **worst 13–17 ms** (was 21–29).
+What drops is the Library grow's own cost: a hand grow of the same card, no drill, drops 0.7–3 %
+with a worst frame of 21–29 ms, and its collapse 25–38 ms, on `main` too. Search's album pane:
+0.9 %, worst 17 ms. Album → artist → Back → Back still grows once and returns at the root.
+
 **Changes a user can see** (each one is a consequence of a decided fork; listed so none ships
 unseen):
 - *Grow on album or artist* is new and **on by default** (*Vertical*): an album or artist that
-  opens in a card now grows it (his default, §13).
+  opens in a card now grows it, once its slide has ended (his default, §13; his call on the timing).
 - A Pin (or any hand change to a grow) now keeps a Diary entry's grow when you go Back (it used
   to collapse). The same rule as every rule grow (fork 6A / 7A).
 - EQ for each output: an output with nothing remembered shows your last pick, where it used to
