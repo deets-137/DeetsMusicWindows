@@ -15,7 +15,7 @@
 import { registry, type CardDef, type CardId, type CardInstance, type MountOpts } from "./cards";
 import { setting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
-import { onCardRequest, setCardHostLookup, setDrillSwapCheck, type RequestHow } from "./layout-bus";
+import { onCardRequest, requestCard, setCardHostLookup, setDrillSwapCheck, type RequestHow } from "./layout-bus";
 import { initCardMemory, cardMemory, rememberCard, setLiveSnapshots } from "./card-memory";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
@@ -25,6 +25,7 @@ import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card
 import { initCardGrow, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
 import { storedAssignment } from "./layout-rules";
+import { registerAction, registerEvent } from "./rules";
 
 type Assignment = Partial<Record<Slot, CardId>>;
 
@@ -189,6 +190,9 @@ function makePicker(
 
 export function initLayout(): void {
   initCardMemory(); // the saved places, before the first card mounts (CARD-MEMORY.md §3)
+  // The rules engine's summon action (RULES.md §13): a card comes into a slot, as a request.
+  registerEvent("playlist.create", { facts: ["surface"] });
+  registerAction("summon", { cost: "free", run: (card) => requestCard(card as CardId) });
   const npHost = document.querySelector<HTMLElement>('[data-slot="np"]');
   const npDef = registry["now-playing"];
   if (npHost && npDef) npDef.mount(npHost); // anchored in every surface; never swapped

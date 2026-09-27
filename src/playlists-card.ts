@@ -36,8 +36,7 @@ import { openContextMenuUnder, menuState, MENU_CHOSEN, type MenuItem } from "./c
 import { appleMusicItem } from "./playlist-export";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { enterRows, rowsAfter } from "./pop";
-import { requestCard } from "./layout-bus";
-import { currentSurface } from "./surface";
+import { emit } from "./rules";
 import { toast } from "./toast";
 import * as diag from "./diag";
 import type { CardDef } from "./cards";
@@ -1208,9 +1207,8 @@ export const playlistsCard: CardDef = {
           card.drill(detail(p));
           // FUTURE-SETTINGS §16. Mini shows one card, so a summon there replaces the playlist
           // you just made — "Not in mini" (the default) keeps it beside you only where there
-          // is room for both.
-          const summon = setting("playlistCreateSummon");
-          if (summon === "always" || (summon === "notmini" && currentSurface() !== "mini")) requestCard("search");
+          // is room for both. The row makes that rule (RULES.md §13); the engine summons.
+          emit("playlist.create", { card: "playlists", facts: { cause: "hand" } });
         })
         .catch((e) => {
           console.error("[playlists] create", e);
