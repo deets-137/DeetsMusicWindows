@@ -2597,7 +2597,7 @@ export function setVolumeSink(sink: ((v: number) => void) | null, initial?: numb
 export function reflectExternalVolume(v: number): void {
   if (!volumeSink) return;
   const next = Math.max(0, Math.min(1, v));
-  if (Math.abs(next - (muted ? 0 : level * duck)) < 0.01) return; // the echo of our own write
+  if (Math.abs(next - (muted ? 0 : level * duck * clipDuck)) < 0.01) return; // the echo of our own write
   if (duck < 0.05) return; // the wind-down's last seconds: nothing to read back from
   level = Math.min(1, next / duck); // the speaker moved under a wind-down: keep the set level's frame
   muted = level === 0;
@@ -2615,7 +2615,7 @@ function applyVolumeToMusic(): void {
   volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
-    music.volume = volumeSink ? 1 : muted ? 0 : level * duck;
+    music.volume = volumeSink ? 1 : muted ? 0 : level * duck * clipDuck;
   } catch (e) {
     console.warn("[player] volume not settable:", e);
   }
@@ -2628,12 +2628,26 @@ export function setDuck(f: number): void {
   if (next === duck) return;
   duck = next;
   applyVolumeToMusic();
-  if (volumeSink) volumeSink(muted ? 0 : level * duck);
+  if (volumeSink) volumeSink(muted ? 0 : level * duck * clipDuck);
 }
 
 export function getDuck(): number {
   return duck;
 }
+
+// A sound clip's duck (RULEZ.md §5.3, sound.ts `playClip`): its own factor, multiplied with the
+// wind-down's, so a clip during a sleep fade never overwrites the fade (and the fade never ends
+// the clip's duck). The slider does not show it: it is a moment, not your level.
+let clipDuck = 1;
+export function setClipDuck(f: number): void {
+  const next = Math.max(0, Math.min(1, f));
+  if (next === clipDuck) return;
+  clipDuck = next;
+  applyVolumeToMusic();
+  if (volumeSink) volumeSink(muted ? 0 : level * duck * clipDuck);
+}
+/** A speaker holds the volume: each write goes over the network, so a ramp is one step. */
+export const volumeOnSpeaker = (): boolean => !!volumeSink;
 
 // ── Stream quality ───────────────────────────────────────────────────────────
 //
@@ -2684,7 +2698,7 @@ onSettingsChange((k) => {
 /** The gain MusicKit applies to the audio right now (0..1), before the Sound graph: 1 while a
  *  speaker holds the volume. sound.ts reads it to know how far below full scale a song arrives. */
 export function getAppliedGain(): number {
-  return volumeSink ? 1 : muted ? 0 : level * duck;
+  return volumeSink ? 1 : muted ? 0 : level * duck * clipDuck;
 }
 
 /** Pause, if anything plays. No sign-in check: pausing never needs one. */
@@ -2701,7 +2715,7 @@ export function isPlayingNow(): boolean {
 
 function persistVolume(): void {
   if (volumeSink) {
-    volumeSink(muted ? 0 : level * duck); // the speaker's volume is the speaker's to keep
+    volumeSink(muted ? 0 : level * duck * clipDuck); // the speaker's volume is the speaker's to keep
     return;
   }
   try {

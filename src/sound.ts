@@ -19,7 +19,7 @@ import { listen } from "@tauri-apps/api/event";
 import workletUrl from "./sound-worklet.ts?worker&url";
 import type { BusConfig } from "./sound-worklet";
 import { bandBiquads, chainDb, integratedLufs, logFreqs, lowVolumeShelves, kWeighting, type Band } from "./sound-dsp";
-import { getVolume, getDuck, onVolumeChange, isPlayingNow, getAppliedGain } from "./player";
+import { getVolume, getDuck, onVolumeChange, isPlayingNow, getAppliedGain, setClipDuck, volumeOnSpeaker } from "./player";
 import * as diag from "./diag";
 import * as perf from "./perf";
 import { TELEMETRY } from "./telemetry-on";
@@ -806,6 +806,80 @@ function checkReview(): void {
   });
 }
 
+// ── Sound clips (RULEZ.md §5.3: the Do "Play sound") ────────────────────────────────
+// A clip plays into the tap, after the bus: the AirPlay tap and a HomePod hear it with the
+// music, and it never goes through the EQ, a rule's tone or the meter. The music ducks under it
+// through the player's clip duck (its own factor, so a sleep fade and a clip compose). One clip
+// at a time. Paused music stays paused: a duck only lowers what plays.
+const CLIP_GAIN_DB = -6; // the default when the caller passes none (session B passes the skin token)
+const CLIP_DUCK_IN_MS = 80;
+const CLIP_DUCK_OUT_MS = 250;
+const RAMP_STEP_MS = 16;
+let clipBusy = false;
+
+/** Decode a clip's bytes on the app's one AudioContext (made now if there is none yet). */
+export async function decodeClip(bytes: ArrayBuffer): Promise<AudioBuffer> {
+  await ensureContext();
+  return ctx!.decodeAudioData(bytes.slice(0));
+}
+
+export const clipPlaying = (): boolean => clipBusy;
+
+/** Move the clip duck from `from` to `to` over `ms` (one step while a speaker holds the volume). */
+function rampDuck(from: number, to: number, ms: number): Promise<void> {
+  if (volumeOnSpeaker() || ms <= 0) {
+    setClipDuck(to);
+    return Promise.resolve();
+  }
+  return new Promise((done) => {
+    const t0 = performance.now();
+    const tick = () => {
+      const k = Math.min(1, (performance.now() - t0) / ms);
+      setClipDuck(from + (to - from) * k);
+      if (k < 1) window.setTimeout(tick, RAMP_STEP_MS);
+      else done();
+    };
+    tick();
+  });
+}
+
+/** Play a clip. Resolves true when it played to its end; false when one was already playing
+ *  (dropped, `clip:busy`) or the context could not start. */
+export async function playClip(buffer: AudioBuffer, opts: { gainDb?: number; duckDb?: number } = {}): Promise<boolean> {
+  if (clipBusy) {
+    diag.log("clip:busy", { ms: Math.round(buffer.duration * 1000) });
+    return false;
+  }
+  clipBusy = true;
+  try {
+    await ensureContext();
+    if (!ctx || !tap) return false;
+    await resume("clip");
+    const gain = ctx.createGain();
+    gain.gain.value = Math.pow(10, (opts.gainDb ?? CLIP_GAIN_DB) / 20);
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(gain).connect(tap);
+    const duckTo = Math.pow(10, -Math.abs(opts.duckDb ?? 0) / 20);
+    diag.log("clip:play", { ms: Math.round(buffer.duration * 1000), gainDb: opts.gainDb ?? CLIP_GAIN_DB, duckDb: opts.duckDb ?? 0 });
+    if (duckTo < 1) await rampDuck(1, duckTo, CLIP_DUCK_IN_MS);
+    await new Promise<void>((ended) => {
+      src.onended = () => ended();
+      src.start();
+    });
+    src.disconnect();
+    gain.disconnect();
+    if (duckTo < 1) await rampDuck(duckTo, 1, CLIP_DUCK_OUT_MS);
+    return true;
+  } catch (e) {
+    diag.error("clip:failed", { err: String(e) });
+    setClipDuck(1);
+    return false;
+  } finally {
+    clipBusy = false;
+  }
+}
+
 /** A While rule lays (or lifts, with null) a part of the tone. */
 function setRuleTone(part: keyof typeof ruleTone, db: unknown): void {
   const v = typeof db === "number" ? Math.max(-12, Math.min(12, db)) : 0;
@@ -948,7 +1022,7 @@ export function initSound(): void {
   watchWindowsOutput();
   // TELEMETRY, not DEV: the `airplay` bench scene reads `__sound.status().tap` and must
   // run on the release-shaped build too (telemetry-on.ts). Absent from the installed app.
-  if (TELEMETRY) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting };
+  if (TELEMETRY) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting, decodeClip, playClip, clipPlaying };
 }
 
 /** A live preview of bands while a handle or fader is dragged; the release commits to settings. */
