@@ -161,7 +161,7 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
   §13.2). The other two parts are built (Desk tests open, above).
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
 - **The rules engine** (2026-09-26) — [RULES.md](architecture/RULES.md): every fork closed but
-  the chip's look. The build plan is RULES.md §17, on a branch `rules-engine` from `main`, one
+  the chip's look. The build plan is RULES.md §17, on the branch `rules-rulez` (made from `main` at `7785a75`), one
   commit and one desk test per step. Not started.
 
 **Releases and branches**

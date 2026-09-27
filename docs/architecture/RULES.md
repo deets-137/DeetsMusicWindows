@@ -355,10 +355,11 @@ Written per step in §17. Claude runs them on `npm run dev:app` and drives the U
 through `scripts/webview-eval.mjs`, not module imports), reads `diag` and the `rule` lines, and
 takes a picture of each visible step. Steps that need his hardware or ear are marked **his**.
 
-## 17. The build plan (branch `rules-engine`)
+## 17. The build plan (branch `rules-rulez`)
 
 **Ground rules for the branch.**
-- Branch `rules-engine` from `main`. One commit per step, with the co-author line. No merge, no
+- Branch `rules-rulez` (the owner's name). It exists already: made from `main` at `7785a75`
+  (0.14.8), and it tracks `origin/rules-rulez`. Build on it; do not make another. One commit per step, with the co-author line. No merge, no
   push, no release: he merges after his test.
 - Every step ends with `npm run check` (tsc, tests, docs:check, cargo) and `npx vite build`,
   then its desk test. A step is not committed until both pass.
