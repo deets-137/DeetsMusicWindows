@@ -713,7 +713,8 @@ rule in Rulez.)
 > **Part:** built · 2026-09-27
 
 Rulez, the card where a user makes rules, is its own doc: [RULEZ.md](../features/RULEZ.md)
-(his forks §1, as built §2, the next routes §3). Moved out of this doc on 2026-09-27: the engine
+(his forks §1, as built §2, the next routes §3, your own files §5, the sentence row §6). Moved
+out of this doc on 2026-09-27: the engine
 is architecture, the card is a feature. What the card added to the engine (the wider event and
 fact set, any-depth conditions, `isNot` and the number tests, drafts, the clock, the cascade
 guards, cancel events with `cancelled()` and `keep`) is code in `rules-eval.ts` and `rules.ts`
