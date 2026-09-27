@@ -196,6 +196,53 @@ gets the full album menu — `albumMenu` is handed the playing song (`known: [t]
 so Go to Artist / Album, Start a Web, Copy Link, Add to Library and ♥ each hop song → album on
 their own click; the right-click costs no Apple call.
 
+## 4d. A narrow or short card (built 2026-09-26; his calls below)
+> **Part:** built · 2026-09-26
+
+The bug (his screenshot, 2026-09-26): in a narrow card the two top boxes (2 × 144 px + 16 px)
+did not fit. The centered row spilled out on both sides. The left side was cut off for good, and
+the right side made the whole home page scroll sideways.
+
+| Fork | Call |
+|---|---|
+| The top row does not fit | **Shrink both, then scroll sideways.** Both boxes share the width, from 1.5 × a tile down to one tile. Under that the row scrolls sideways on its own, as a shelf does |
+| The entry page in a short card | **The foot's note gets smaller**, so the song list keeps a few rows |
+
+- **The top row:** `.diary__root` is an inline-size container. `--diary-top-fit` =
+  clamp(one tile, half the width less the gap, 1.5 × a tile). Only a row with the album box
+  uses it; the + box alone keeps 1.5 × a tile. The row has `overflow-x: auto`,
+  `justify-content: safe center` (the left edge stays in reach) and `app-scroll`.
+- **The foot:** `.diary__entry` is a size container. The foot's note starts at 20 % of the
+  entry's height, never under two lines and never over the old size (72 px). A note dragged
+  taller stops at half the entry.
+
+**Decided inside his choice (for his review):** the share is 20 % and the drag stop is 50 %;
+the floor is two lines of text; the row's block padding is paid back by a negative margin, so
+the hover lift and the focus ring are not clipped and nothing moves; the fade-out copy of the
+album box keeps the size it had.
+
+**Desk test (open).**
+1. Play an album. Make the Diary card narrow (Midi, a thin column). The two boxes shrink and
+   stay side by side. Nothing is cut on the left. The page does not scroll sideways.
+2. Make the card narrower still. At one tile each, the top row scrolls sideways under its boxes.
+   The shelves under it do not move.
+3. Stop the music (or clear the queue): the + box alone is 1.5 × a tile, centered.
+4. Press the + box in a narrow card: the morph and the album box's fade look right.
+5. Open an entry in a short card (half the Midi height). The foot's note is smaller and the list
+   keeps more room. In a tall card, the note is its old size.
+6. Drag the foot's note taller: it stops at half the entry.
+
+**Run by Claude on the dev app, 2026-09-26: steps 1, 2, 4, 5, 6 PASS** (the card's width and
+height set by an inline style over CDP, with screenshots). Step 1 at 290 px: each box 112 px, the
+page's sideways overflow 0. Step 2 at 200 px: each box 96 px, the row 208 px wide in 150 px and
+scrolling; the page's overflow 0. Step 4: the fading copy stays 112 px; Escape brings the row back
+at 112 px. Step 5 in a 250 px card: the note 49 px (was 71), the list 87 px (was 65) — about 2½
+rows, because the song head and the card header take the rest; at 437 px the note is 72 px.
+Step 6: a 400 px drag stops at 94 px. **Step 3 not run** (it needs an empty queue). Two bugs the
+run found, both fixed before the pass: the top row shrank in the column and cut its own labels
+(now `flex: 0 0 auto`, the shelves' rule), and the note's `rows="3"` held it at 71 px (now a
+`height`, with the two lines as its `min-height`).
+
 ## 10. Export, the Compass, the CLI and agents (built 2026-09-24; his calls below)
 
 **Export** (right-click a tile or the hero › Export; Ctrl+Enter on a Compass Diary row) copies

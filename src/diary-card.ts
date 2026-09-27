@@ -274,7 +274,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   };
   const topHTML = (): string => {
     nowShown = nowKey();
-    return `<div class="diary__top" data-top>${nowHTML()}${newHTML()}</div>`;
+    return `<div class="diary__top app-scroll" data-top>${nowHTML()}${newHTML()}</div>`;
   };
   /** A song change at the home page: only the album box redraws, and a new box enters. */
   const paintNow = () => {
@@ -473,6 +473,10 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const ghost = el.cloneNode(true) as HTMLElement;
     ghost.classList.add("diary__ghost");
     Object.assign(ghost.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    // The box's square follows the top row's width (--diary-top-fit); on <body> the copy has
+    // no row, so it keeps the size it had.
+    const sq = el.querySelector(".diary__now-art")?.getBoundingClientRect().width;
+    if (sq) ghost.style.setProperty("--diary-box", `${sq}px`);
     document.body.appendChild(ghost);
     const end = () => ghost.remove();
     ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing, fill: "forwards" }).finished.then(end, end);

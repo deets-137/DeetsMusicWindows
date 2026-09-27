@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 502 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 507 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -697,12 +697,17 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--diary-new-size` | `calc(var(--tile-art) * 1.5)` | — | the + cover: a shelf tile, half again as big |
+| `--diary-top-gap` | `var(--space-4)` | — | between the album box and the + box (§4c) |
+| `--diary-top-fit` | `clamp(var(--tile-art), calc((100cqw - var(--diary-top-gap)) / 2), var(--diary-new-size))` | — | The two boxes share a narrow card's width (§4d): 1.5 × a tile when there is room, never under one tile; under that the row scrolls sideways. 100cqw is the home page's width. |
 | `--diary-morph-dur` | `calc(var(--nav-dur) * 1.4)` | — | the + cover becoming the search bar: the skin's own nav motion, |
 | `--diary-morph-ease` | `var(--nav-ease)` | — | a little slower, because the shape travels farther than a pane |
 | `--diary-score-w` | `5ch` | — | a score field holds "2.6767" |
 | `--diary-num-w` | `2ch` | — | the track number column |
 | `--diary-note-min-h` | `var(--set-textarea-min-h)` | — | a note: the Bugs details field's five lines |
 | `--diary-foot-note-min-h` | `calc(var(--set-textarea-min-h) * 0.75)` | — | the foot's note, so the list keeps its room |
+| `--diary-foot-note-floor` | `calc(var(--fs-text) * var(--lh-text) * 2 + var(--space-1) * 2)` | — | A short card (§4d): the foot's note takes a share of the entry's height (100cqh), between two lines and the size above. A note dragged taller stops at half the entry. |
+| `--diary-foot-note-share` | `20cqh` | — |  |
+| `--diary-foot-note-max-h` | `50cqh` | — |  |
 | `--grip-w` | `18px` | — | the dotted bar over a pinned tile's left edge |
 | `--grip-inset` | `2px` | — | how far in from the cover's edge the bar sits |
 | `--grip-height` | `0.72` | — | of the cover's height, centred on it (a factor, so calc can use it) |

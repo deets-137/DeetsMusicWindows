@@ -12,6 +12,8 @@
   display: flex; flex-direction: column; gap: var(--space-3);
   overflow-y: auto; scrollbar-gutter: stable;
   padding: var(--space-2);
+  /* The top row sizes its boxes from this width (--diary-top-fit, §4d). */
+  container-type: inline-size;
 }
 /* The + cover is a shelf tile with no art yet: the tile's empty-art fill, its radius, its lift. */
 .diary__new {
@@ -24,7 +26,7 @@
 .diary__new:hover { transform: var(--hover-lift); }
 .diary__new:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); border-radius: var(--lib-tile-radius); }
 .diary__new-art {
-  width: var(--diary-new-size); height: var(--diary-new-size);
+  width: var(--diary-box, var(--diary-new-size)); height: var(--diary-box, var(--diary-new-size));
   display: grid; place-items: center;
   background: var(--surface-hover); color: var(--subtext);
   border: 1px solid var(--border); border-radius: var(--lib-tile-radius);
@@ -34,10 +36,20 @@
 /* The top row (DIARY.md §4c): the playing album's box, then the + box, centered. With
    nothing playing the + box sits alone in the same place. Tops line up; the album box has
    one more text line. */
-.diary__top { align-self: center; display: flex; align-items: flex-start; justify-content: center; gap: var(--space-4); }
-.diary__top .diary__new { align-self: auto; }
+.diary__top {
+  align-self: center; display: flex; align-items: flex-start; justify-content: safe center; gap: var(--diary-top-gap);
+  /* A narrow card (§4d): the boxes shrink to one tile, then the row scrolls sideways as a
+     shelf does (never the page). `safe` keeps the first box's left edge in reach. The block
+     padding, paid back by the margin, keeps the hover lift and focus ring out of the clip. */
+  max-width: 100%; overflow-x: auto; overflow-y: hidden;
+  /* A clipping flex item may shrink in the column and cut its own labels (the shelves' rule). */
+  flex: 0 0 auto;
+  padding-block: var(--space-1); margin-block: calc(-1 * var(--space-1));
+}
+.diary__top:has(.diary__now) { --diary-box: var(--diary-top-fit); }
+.diary__top .diary__new { align-self: auto; flex: 0 0 auto; }
 /* The album box is the + box with the cover in the square. */
-.diary__now { width: var(--diary-new-size); }
+.diary__now { width: var(--diary-box, var(--diary-new-size)); }
 img.diary__now-art { object-fit: cover; }
 .diary__now.is-context .diary__now-art { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .diary__now-name {
@@ -81,7 +93,9 @@ img.diary__now-art { object-fit: cover; }
 .diary__tile-done svg path:first-child { fill: none; }
 
 /* ── the entry: a scrolling list over a fixed foot (fork 6B) ── */
-.diary__entry { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* A size container: the foot's note reads the entry's height as 100cqh (§4d). The flex
+   parent sets the size, so containing it changes nothing else. */
+.diary__entry { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; container-type: size; }
 .diary__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
 .diary__album { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
 .diary__line { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
@@ -153,7 +167,13 @@ button.diary__score-max:focus-visible { outline: var(--focus-ring-w) solid var(-
 .diary__foot-head { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .diary__foot-title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .diary__foot-play { flex: 0 0 auto; }
-.diary__foot .diary__note { min-height: var(--diary-foot-note-min-h); }
+/* A height, not only a min-height: rows="3" alone would hold it at three lines. A drag sets an
+   inline height, which the max still stops. */
+.diary__foot .diary__note {
+  height: clamp(var(--diary-foot-note-floor), var(--diary-foot-note-share), var(--diary-foot-note-min-h));
+  min-height: var(--diary-foot-note-floor);
+  max-height: var(--diary-foot-note-max-h);
+}
 
 /* The system date picker opens from a field nobody sees. */
 .diary__date-input { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
