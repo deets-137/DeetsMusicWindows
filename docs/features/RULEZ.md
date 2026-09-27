@@ -242,7 +242,7 @@ session.
 |---|---|---|---|
 | L | **Rules \| Logs** toggle | A | Two view chips in the card head, the Library's Full \| Lib family; Rules is the default. Logs shows the `rule` diag lines as words (raw on a toggle), the live facts, the overlay and holds, and each rule's fire ring. |
 | 1 | Last ran + Try | A | A *Last ran* cell from the fire ring; *Try* in the row menu runs `pickMoment` with the live facts and says "would run" or why not, without running the action. |
-| 2 | The agent as the parser | B | **BUILT 2026-09-27, desk test open (§7).** `rules list / words / show / add / remove / on / off` on the bridge, one MCP tool, the CLI verb; a rule validated with `validate()` against `known()`. Agent-made rules carry `by: "agent"`. Gate: the existing agent-settings gate (§6.6). This is the §1.6 "text form", for an agent the user set up; the card itself carries no AI box (his call, §6.1). |
+| 2 | The agent as the parser | B | **BUILT 2026-09-27, desk test passed (§7).** `rules list / words / show / add / remove / on / off` on the bridge, one MCP tool, the CLI verb; a rule validated with `validate()` against `known()`. Agent-made rules carry `by: "agent"`. Gate: the existing agent-settings gate (§6.6). This is the §1.6 "text form", for an agent the user set up; the card itself carries no AI box (his call, §6.1). |
 | 3 | Recipes | A | Shipped rule sets (`source: { recipe }`) with one switch each, shown locked under a Recipes divider; Duplicate makes an editable copy. The first sets are his fork. |
 | 4 | Import and export | A | A rule or all rules as a JSON file (validated on load; broken ones named and skipped), Copy / Paste as text in the row menu. |
 | 5 | Facts that cost nothing | A | The song's ♥, Diary score and play count; queue length; minutes since the app opened; minutes idle; battery and charging; a metered network. No Apple call. Rooms and Friends stay out (his call, §1.1). |
@@ -460,7 +460,7 @@ opens Settings.
 
 ## 7. Route 2 as built — the agent's `rules` verb (owner B, 2026-09-27)
 
-> **Part:** built · 2026-09-27 · desk test open
+> **Part:** built · 2026-09-27 · desk test passed 2026-09-27 (AGENT.md §8; the Off step is his)
 
 The whole record is [AGENT.md §8](../integrations/AGENT.md): the surfaces (the `rules` MCP
 tool, `deetsmusic rules …`, `GET` / `POST /rules`), what an agent reads (`list`, `words`,

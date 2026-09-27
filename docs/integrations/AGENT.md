@@ -491,7 +491,7 @@ A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass i
 
 ## 8. Rules — BUILT 2026-09-27 (RULEZ.md §7, route 2)
 
-> **Part:** built · 2026-09-27 · desk test open
+> **Part:** built · 2026-09-27 · desk test passed 2026-09-27 (steps 1–7, 9; step 8 is his)
 
 An agent reads every rule the engine runs and writes the user's own. This is the "text form"
 of [RULES.md](../architecture/RULES.md) §14: the agent is the parser, so a sentence typed to
@@ -576,6 +576,17 @@ turns the theme Night with the green dot; the next song gives it back. (6) A bad
 (`"do":"fly"`, `"fact":"mood"`) → `400` with the reason. (7) `rules remove` on a locked id →
 `403` naming the Settings row. (8) Agent changes settings = Off → every write `403`; `rules`
 still lists. (9) The MCP tool: `rules action=words`, then `add` with the same rule as (3).
+
+**Run 2026-09-27 (Claude, on his dev app, the Allow presses through CDP at his word).** 1, 2,
+3, 4, 6, 7 and 9 as written. 5 with *Moonlight* (there is no theme called Night; the refusal
+named the six themes, which is test 6 again): Blue Train played, `__rules.facts().genre` read
+`["Jazz", "Hard Bop", "Blues"]`, `__rules.applied()` showed `key:theme` held by the agent's rule
+over the look schedule's, and the chip was on the title menu. 8 (Off) is **his**: agents cannot
+set that row and the test would change his setting. Two things learned: a sticky Ask waits in
+the toast queue while three sticky toasts fill the cap (four demo toasts were live in his
+window; an ask jumps the line but still needs a slot), and a page reload drops a waiting Ask,
+so the agent's "don't send it again" holds only while the app stays up. Both test rules were
+removed after the run.
 
 ## 7. Later
 - **Agent look and surface changes under a slower cover** — planned 2026-09-15, forks settled
