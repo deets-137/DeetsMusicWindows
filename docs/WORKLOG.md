@@ -12,6 +12,17 @@ updated: 2026-09-26
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, late — the Diary in a narrow or short card; 0.14.8 built
+
+His screenshot: in a ~290 px card the top row (album box + + box, 304 px) spilled out both
+sides. The left was cut off, and the page scrolled sideways. His calls: shrink both, then scroll
+sideways; and give the foot's note less height in a short card. Built as DIARY.md §4d (commit
+`dce34cf`). Claude ran the desk test on the dev app, with the card's size set over CDP: steps 1,
+2, 4, 5 and 6 pass, and step 3 was not run (it needs an empty queue). The run found two bugs
+before hand-off, both fixed. The top row shrank in the flex column and cut its own labels. The
+note's `rows="3"` held it at 71 px. At his ask, 0.14.8 was built (not published), and
+`clode-eval` was merged into `main`.
+
 ## 2026-09-26, late — the rules engine, designed (no code)
 
 A talk from CARD-GROW.md §18 (grow rules) to a general engine. His calls: an `if` layer on every

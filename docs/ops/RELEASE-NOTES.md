@@ -32,6 +32,15 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.14.8 — 2026-09-26
+
+**The Diary fits a narrow card.** When an album plays, its box and the + box now share the
+card's width and get smaller together. Nothing is cut off at the left edge, and the page no
+longer scrolls sideways. In a very narrow card, only the top row scrolls sideways.
+
+**More room for the song list in a short Diary card.** When the card is short, the note under
+the song list starts smaller, so you see more songs.
+
 ## 0.14.7 — 2026-09-26
 
 **Add friends from a listening room.** In a room, each listener's row now has **Add friend**.
