@@ -14,7 +14,7 @@ import {
   type RuleKey, type Settings,
 } from "./settings-store";
 import {
-  APPLE_CAP, CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, failingLeaf, builtinRules, chainDepth, factsChanged, handChange, keepHolds, nextClock, nextEdge,
+  APPLE_CAP, CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, failingLeaf, leafResults, builtinRules, chainDepth, factsChanged, handChange, keepHolds, nextClock, nextEdge,
   noteFire, pickMoment, readsFact, resolveState, restart, resume as resumeHolds, timeFacts, validate,
   type EventId, type FactId, type FactValue, type Facts, type Hold, type Known, type MomentRule, type Rule, type RowValues,
   type Leaf, type StateRule, type Stored,
@@ -299,9 +299,12 @@ function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
   const f = readFacts({ card: ctx.card, ...ctx.facts });
   const { rule, losers } = pickMoment(live, event, ctx.card, f, ctx.at, offForSession);
   losers.forEach((l) => diag.log("rule", { id: l.id, event, applied: false, reason: `lost to ${rule!.id}` }));
+  // The snapshot (RULEZ.md §9): every rule that listens to this event, with its verdict.
+  const snap = momentSnap(event, ctx, f, rule, losers, chain);
   if (!rule) {
     // The events that come often (a song, a press) log only a match: the ring is not a trace.
     if (!QUIET.has(event)) diag.log("rule", { event, card: ctx.card, applied: false, reason: "no rule" });
+    logSnap(snap);
     return null;
   }
   const [verb, arg] = Object.entries(rule.do)[0];
@@ -312,6 +315,8 @@ function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
       (def.exists && !def.exists(arg) ? "its playlist or station is gone" : null);
     if (why) {
       diag.log("rule", { id: rule.id, event, applied: false, reason: why });
+      if (snap) snap.rules[0] = { ...snap.rules[0], verdict: "refused", reason: why };
+      logSnap(snap);
       return null;
     }
     appleRecent = [...appleRecent, now].slice(-APPLE_CAP);
@@ -329,6 +334,7 @@ function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
     const out = def.run(arg, ctx, rule);
     if (out instanceof Promise) out.catch((e) => diag.error("rule:action", { id: rule.id, e: String(e) }));
     diag.log("rule", { id: rule.id, event, card: ctx.card, applied: true, do: verb, arg, depth: chain.depth || undefined });
+    logSnap(snap);
   } catch (e) {
     diag.error("rule:action", { id: rule.id, e: String(e) });
   } finally {
@@ -337,6 +343,58 @@ function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
     lastAction = { at: Date.now(), depth: chain.depth };
   }
   return rule;
+}
+
+// ── snapshots (RULEZ.md §9, his call 2026-09-27) ─────────────────
+// When a rule runs, or a rule that listens to the event does not (its condition failed, it lost
+// to a rule above, the guards refused it), the moment is saved: every fact, each condition with
+// ✓ / ✗, the verdict and the chain. It goes to the diag ring as `rule:snap`, so the Logs view,
+// the log file (the ring's flush), a bug report and the agent's diag tool all read the same
+// thing. Events no rule listens to save nothing. About 1 KB each; the ring bounds them.
+
+export type Verdict = "ran" | "lost" | "no" | "refused" | "holds" | "ended" | "hand";
+export interface SnapRule {
+  id: string;
+  name?: string;
+  verdict: Verdict;
+  reason?: string;
+  conds: { leaf: Leaf; holds: boolean }[];
+}
+export interface Snap {
+  event?: EventId;
+  target?: string;
+  card?: string;
+  depth?: number;
+  caused?: boolean;
+  facts: Facts;
+  rules: SnapRule[];
+}
+
+const snapName = (r: Rule) => r.name;
+function momentSnap(event: EventId, ctx: EmitCtx, f: Facts, won: MomentRule | null, losers: MomentRule[], chain: { caused: boolean; depth: number }): Snap | null {
+  const listeners = live.filter(
+    (r): r is MomentRule =>
+      r.kind === "moment" && r.on && !r.draft && r.when === event && (r.card === "*" || r.card === ctx.card) && (event !== "clock" || r.at === ctx.at),
+  );
+  if (!listeners.length) return null;
+  const rules: SnapRule[] = listeners.map((r) => ({
+    id: r.id,
+    name: snapName(r),
+    verdict: r === won ? "ran" : losers.includes(r) ? "lost" : offForSession.has(r.id) ? "refused" : "no",
+    reason: r === won ? undefined : losers.includes(r) ? `lost to ${won?.id}` : offForSession.has(r.id) ? "off until restart" : undefined,
+    conds: leafResults(r.if, f),
+  }));
+  rules.sort((a, b) => (a.verdict === "ran" ? -1 : b.verdict === "ran" ? 1 : 0));
+  return { event, card: ctx.card, depth: chain.depth || undefined, caused: chain.caused || undefined, facts: f, rules };
+}
+function logSnap(s: Snap | null): void {
+  if (s) diag.log("rule:snap", s);
+}
+/** A While rule started, ended or stood aside: its snapshot. */
+function stateSnap(ruleId: string, target: string, verdict: Verdict, f: Facts): void {
+  const r = all.find((x) => x.id === ruleId);
+  if (!r || r.kind !== "state") return;
+  logSnap({ target, facts: f, rules: [{ id: r.id, name: snapName(r), verdict, conds: leafResults(r.while, f) }] });
 }
 
 /** The events that fire often: a miss writes no log line. */
@@ -438,8 +496,16 @@ function checkOnce(why: string): void {
   const next = new Map<string, string>();
   for (const [t, { ruleId }] of res.set) next.set(t, ruleId);
   // Log each start and end.
-  for (const [t, id] of next) if (applied.get(t) !== id) diag.log("rule", { id, target: t, applied: true, why });
-  for (const [t, id] of applied) if (!next.has(t)) diag.log("rule", { id, target: t, applied: false, why, reason: res.held.has(t) ? "hand" : "ended" });
+  for (const [t, id] of next)
+    if (applied.get(t) !== id) {
+      diag.log("rule", { id, target: t, applied: true, why });
+      stateSnap(id, t, "holds", f);
+    }
+  for (const [t, id] of applied)
+    if (!next.has(t)) {
+      diag.log("rule", { id, target: t, applied: false, why, reason: res.held.has(t) ? "hand" : "ended" });
+      stateSnap(id, t, res.held.has(t) ? "hand" : "ended", f);
+    }
   applied = next;
   appliedValue = new Map([...res.set].map(([t, v]) => [t, v.value]));
   heldNow = res.held;

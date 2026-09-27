@@ -5,14 +5,14 @@
 // engine reads, with its value). It reads; it changes nothing.
 
 import { events, type DiagEvent } from "./diag";
-import { ruleStats } from "./rules";
+import { ruleStats, type Snap } from "./rules";
 import type { Rule } from "./rules-eval";
-import { FACTS, actionText, eventLabel, valueText, type Lists } from "./rulez-words";
+import { FACTS, actionText, eventLabel, leafText, valueText, type Lists } from "./rulez-words";
 import { RECIPES } from "./rules-recipes";
 import { esc } from "./dom";
 
 /** The diag tags the rules engine and its actions write. */
-const RULE_TAG = /^(rule|rule:(hold|hand|resume|trip|skip|recipe|volume)|grow:rule|grow:kept|sleep:daily|sound:ruleTone|sound:balance(On|Off)|player:resumeStation)$/;
+const RULE_TAG = /^(rule|rule:(snap|hold|hand|resume|trip|skip|recipe|volume)|grow:rule|grow:kept|sleep:daily|sound:ruleTone|sound:balance(On|Off)|player:resumeStation)$/;
 export const isRuleLine = (e: DiagEvent): boolean => RULE_TAG.test(e.tag);
 
 const MAX_LINES = 80;
@@ -96,12 +96,55 @@ export function lineWords(e: DiagEvent, name: (id: string) => string, L: Lists):
   return `${e.tag} ${JSON.stringify(d)}`;
 }
 
+const VERDICT: Record<string, string> = {
+  ran: "ran", lost: "lost to a rule above", no: "did not run: a condition is not true", refused: "was held back",
+  holds: "now holds", ended: "let go: its condition ended", hand: "stands aside: your change holds",
+};
+
+/** The facts of a moment as rows (the words the If menus use). */
+function factRows(f: Snap["facts"], L: Lists): string {
+  return FACTS.filter((w) => f[w.id] !== undefined)
+    .map((w) => {
+      const v = f[w.id]!;
+      const text = Array.isArray(v) ? v.join(", ") : w.kind === "bool" ? (v ? w.yes! : w.no!) : valueText(w, v, L);
+      return `<div class="rulez-log__fact"><span>${esc(w.label)}</span><span>${esc(text)}</span></div>`;
+    })
+    .join("");
+}
+
+/** A snapshot line (RULEZ.md §9): a sentence that opens to each rule it checked, each condition
+ *  with ✓ / ✗, and every fact at that moment. Native <details>: no script to open it. */
+function snapHTML(e: DiagEvent, name: (id: string) => string, L: Lists): string {
+  const s = e.data as Snap;
+  const first = s.rules[0];
+  const what = s.event ? `"${eventLabel(s.event)}"${s.card && s.card !== "*" ? ` in ${s.card}` : ""}` : "a condition changed";
+  const more = s.rules.length > 1 ? ` (${s.rules.length - 1} more checked)` : "";
+  const chain = s.depth ? ` Another rule set it off (step ${s.depth}).` : "";
+  const head = `${name(first.id)} ${VERDICT[first.verdict] ?? first.verdict} on ${what}.${more}${chain}`;
+  const rules = s.rules
+    .map((r) => {
+      const conds = r.conds.length
+        ? r.conds.map((c) => `<div class="rulez-log__cond${c.holds ? " is-yes" : ""}">${c.holds ? "✓" : "✗"} ${esc(leafText(c.leaf, L))}</div>`).join("")
+        : `<div class="rulez-log__cond is-yes">✓ No condition</div>`;
+      return `<div class="rulez-log__rule"><b>${esc(name(r.id))}</b> ${esc(VERDICT[r.verdict] ?? r.verdict)}${r.reason && r.verdict !== "lost" ? ` (${esc(r.reason)})` : ""}${conds}</div>`;
+    })
+    .join("");
+  return `<details class="rulez-log__snap"><summary><span class="rulez-log__time">${clockOf(e.t)}</span><span class="rulez-log__text">${esc(head)}</span></summary>
+    <div class="rulez-log__body">${rules}<div class="rulez-log__facts">${factRows(s.facts, L)}</div></div></details>`;
+}
+
 /** The Logs view's HTML. `rules` = every rule Rulez knows (yours, the recipes, the built-in). */
 export function logsHTML(rules: readonly Rule[], name: (id: string) => string, L: Lists, raw: boolean): string {
   const st = ruleStats();
-  const lines = events().filter(isRuleLine).slice(-MAX_LINES).reverse();
+  // In words, a snapshot says what its `rule` lines say, and more: those lines step aside.
+  const covered = (e: DiagEvent) => e.tag === "rule" && !!(e.data as { id?: string } | undefined)?.id;
+  const lines = events().filter((e) => isRuleLine(e) && (raw || !covered(e))).slice(-MAX_LINES).reverse();
   const ran = lines.length
-    ? lines.map((e) => `<div class="rulez-log__line"><span class="rulez-log__time">${clockOf(e.t)}</span><span class="rulez-log__text${raw ? " rulez-log__text--raw" : ""}">${esc(raw ? `${e.tag} ${JSON.stringify(e.data ?? "")}` : lineWords(e, name, L))}</span></div>`).join("")
+    ? lines.map((e) =>
+        !raw && e.tag === "rule:snap"
+          ? snapHTML(e, name, L)
+          : `<div class="rulez-log__line"><span class="rulez-log__time">${clockOf(e.t)}</span><span class="rulez-log__text${raw ? " rulez-log__text--raw" : ""}">${esc(raw ? `${e.tag} ${JSON.stringify(e.data ?? "")}` : lineWords(e, name, L))}</span></div>`,
+      ).join("")
     : `<p class="rulez__empty">Nothing yet. A line shows here each time a rule runs, holds or lets go.</p>`;
 
   const last = rules

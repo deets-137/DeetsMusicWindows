@@ -66,7 +66,10 @@ export type Action =
   | { love: true }
   | { diary: true }
   | { scrobble: boolean }
-  | { hide: true };
+  | { hide: true }
+  // Your own files (RULEZ.md §5, rules-files.ts): a When row's picture writes your value; a sound plays once.
+  | { picture: string }
+  | { playSound: string };
 
 /** Name and Desc (Rulez), and `draft`: a row with a part still missing is saved and never runs. */
 interface Named {
@@ -526,6 +529,17 @@ export function appleMayRun(o: { caused: boolean; recent: readonly number[]; now
   if (o.backingOff) return "Apple asked us to wait";
   if (o.recent.filter((t) => o.now - t < APPLE_WINDOW_MS).length >= APPLE_CAP) return `${APPLE_CAP} Apple calls in 30 s already`;
   return null;
+}
+
+// ── snapshots (RULEZ.md §9, his call 2026-09-27): each condition with its result ──
+
+/** Every leaf of a condition, in order, with whether it holds for `f` (a snapshot's ✓ / ✗). */
+export function leafResults(c: Cond | undefined, f: Facts): { leaf: Leaf; holds: boolean }[] {
+  if (!c) return [];
+  if ("all" in c) return c.all.flatMap((m) => leafResults(m, f));
+  if ("any" in c) return c.any.flatMap((m) => leafResults(m, f));
+  if ("not" in c) return leafResults(c.not, f);
+  return [{ leaf: c, holds: evalCond(c, f) }];
 }
 
 // ── Try (RULEZ.md §3, route 1): why a rule would not run now ─────

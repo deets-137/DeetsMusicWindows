@@ -342,7 +342,7 @@ pictures first, and a sound rule needs a small player on the existing graph.
   the 5-in-10-s cap (§1.5) stops a loop; a file that fails to decode marks the rule idle.
 - **Cost:** `free`. Nothing here calls Apple.
 
-### 5.4 Build order and desk test
+### 5.4 Build order and desk test (the desk test is at the end of §5.5)
 
 Session B builds §5 after route 2, in this order: the store and its migration (unit tests for
 the record shape and the migration) → the pictures list in Settings → the picture Do and the
@@ -358,6 +358,49 @@ next song plays, If Explicit is yes → Play sound "ping": an explicit song chim
 second and the music dips and returns; a clean song does not. (6) A 30 s file is refused with
 the toast. (7) Restart: both pictures and the clip are still there; the old `wallpaper.jpg`
 shows as "My picture". (8) **His:** the chime on a HomePod.
+
+### 5.5 As built (2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test open
+
+Where this and §5.1–§5.4 differ, this is the code.
+
+**Files.** `src-tauri/src/user_files.rs` (the store: `files.json` + `files/<id>.<ext>` + a
+picture's `<id>.json` colors; `add` / `rename` / `delete` / `colors` / `migrate_wallpaper` as
+functions over a folder, with three `cargo test`s on a temp dir; the five `user_files_*`
+commands, all `spawn_blocking`; the `files` protocol) · `src/user-files.ts` (the cached list,
+`onFilesChange`, `loadFiles` with the migration, `readPicture` (moved from wallpaper.ts),
+`addPicture`, `addSound`, `renameFile`, `deleteFile`, `pickFile`, `fileUrl`) ·
+`src/rules-files.ts` (`initRulesFiles`: the `picture` and `playSound` actions, the decoded-clip
+cache, `previewSound`, `fileGone`) · `src/wallpaper.ts` (reads `effective` for the canvas and
+the picture id; `setWallpaperFromFile` is `addPicture` + your value) · `src/settings-card.ts`
+(the Picture row: a menu of your pictures + Choose; right-click rename / delete) ·
+`src/settings-store.ts` (`glassPictureId`, both keys in `RULE_KEYS`) · `src/rules-eval.ts`
+(the two Action members) · `src/sound.ts` (`decodeClip`, `playClip`, `clipPlaying`, by the card
+session, 9e4f0d8) · `skin.css` (`--clip-gain-db` −6, `--clip-duck-db` 6) · `lib.rs`.
+
+**Decided inside his choices (for his review).**
+- The store's id is `f` + the time in base 36 + 4 random hex chars; a file never changes
+  under its id (a new choice is a new id), so `http://files.localhost/<id>` is served
+  immutable, as the wallpaper was.
+- A sound's length is checked on the page after a decode (the decoder knows the length; Rust
+  does not), its size in both places. Formats: what WebView2 decodes (mp3, wav, ogg, m4a, flac).
+- The picture list's menu shows "None yet" (inert) until a picture exists; a delete of the
+  picture in use falls back to the first picture left, or none. Rename and delete act on the
+  picture in use (the one the menu shows), through the row's right-click; a picture not in use
+  is renamed by picking it first.
+- The migration runs on the first `user_files_list` (at launch, `initRulesFiles` → `loadFiles`),
+  not at Rust start, so it can point `glassPictureId` at the record it made.
+- `readPicture` moved to user-files.ts so wallpaper.ts imports user-files and not the other
+  way round (no import cycle).
+- The clip's level and duck are skin tokens (base only; a skin may override): −6 dB and a 6 dB
+  dip.
+- The agent's `settings` verb does not expose `glassPictureId` (its values are file ids that
+  change per machine); an agent uses the `rules` verb's `picture` word, or `glassCanvas`.
+- The Rulez words (`Use picture`, `Play sound`), the two run-time lists (`pictures`, `sounds`)
+  and the "Choose a picture… / Choose a sound…" menu items are the card session's lines
+  (rulez-words.ts, rulez-card.ts); until they land, the agent's stored shape reaches both
+  actions.
 
 ## 6. The row, made for a first rule (owner A, from B's design)
 
@@ -538,3 +581,52 @@ Library grown after Back (the log shows `grow:kept on back`). **Not run at the d
 station return and the weekly Replay cancels, the Apple actions, the route 5 facts other than
 the ones Logs lists, the who-wins line with two real rules, and drag in the new list.
 
+
+**Desk test with music (Claude, 2026-09-27, later the same night).** Through the UI on the dev
+app, a library album playing:
+- *The music pauses* / *The music resumes*: each note showed; the snapshots read `ran`.
+- The cascade guard: "When the next song plays, if genre is Alternative → Skip ahead" on a
+  7-song album. It fired at chain steps 0 to 4, about 2.3 s apart; on the 5th the notice named
+  it (*"T skip alt" ran 5 times in 10 seconds…*), and the next song's snapshot reads `refused`.
+- *A song ends* (a seek to 98 %) ran its note.
+- A While rule "while the music is playing → the volume at 8 %": 8 % while playing, and on
+  Pause it gave back the level it found (2 %, the level at that moment). Between two songs the
+  music stops for about 0.2 s, so the rule lets go and lays its value again; you do not hear it.
+- Who wins: two rules on *The music pauses*; the snapshot reads `ran` / `lost`, and the second
+  row says "Also matches when "T pause 2" does. "T pause 2" runs first."
+- The Apple cap: "When the music pauses → Play the playlist *test*", four hand pauses 4.5 s
+  apart: three ran, the fourth read `refused (3 Apple calls in 30 s already)`.
+- The free facts in Logs: loved, songs up next, minutes open, minutes with no press, output
+  kind, battery, charging, online, data saver.
+- Drag in the new list: the first rule moved to third. (Found: a script's pointer made
+  `setPointerCapture` throw and end the drag; the capture is now tolerant.)
+
+**Still not run:** the station-return and weekly-Replay cancels (a station break-out that plays
+to its end; a Replay that is due), and the Diary score / times played facts with a rule that
+reads them.
+
+## 9. Snapshots: the app state when a rule runs (his calls, 2026-09-27)
+
+> **Part:** built · 2026-09-27
+
+His question: can the app capture its state at the time a rule runs, for better debugging?
+His calls: **the facts and the verdict** (not only the facts the rule reads, not the whole app
+state); read in **the Logs view, the log file and reports, and the agent / diag tools**; for
+**runs and near misses** (not every event).
+
+- **What a snapshot holds** (`rule:snap`, rules.ts `momentSnap` / `stateSnap`): every fact at
+  that moment; each rule that listens to the event (same event, same card or any, same clock
+  minute), each with its verdict — `ran`, `lost` (to a rule above), `no` (a condition is not
+  true), `refused` (the fire cap, an Apple guard) — and each of its conditions with ✓ / ✗
+  (rules-eval.ts `leafResults`); the chain step and whether a rule caused it. A While rule's
+  start, end and hand hold write one too (`holds`, `ended`, `hand`).
+- **When:** only when a rule listens to the event. An event nobody listens to saves nothing.
+- **Where:** one line in the diag ring. So the Logs view shows it (a *What ran* line opens in
+  place: the rules checked, ✓ / ✗, the facts; in Words mode it takes the place of its `rule`
+  lines), the log file gets it at the ring's flush (every 5 minutes, and on unload), a bug report
+  carries it, and the agent reads it with `deetsmusic diag --tag rule:snap` / the `diag` tool.
+- **Size:** about 1 KB; the ring (300 lines) bounds how many are kept.
+
+*Desk test.* Make a rule on *The music pauses* with a condition that fails, and one that holds.
+Pause. Logs › What ran: one line; open it: both rules, `ran` and `did not run`, each condition
+✓ / ✗, and the facts. `deetsmusic diag --flush --tag rule:snap` prints the same.

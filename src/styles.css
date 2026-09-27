@@ -4293,3 +4293,14 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez-log__time { color: var(--subtext); white-space: nowrap; }
 .rulez-log__text { color: var(--text); overflow-wrap: anywhere; }
 .rulez-log__text--raw { font-family: var(--font-mono); }
+.rulez-log__snap { border-bottom: 1px solid var(--border); font-size: var(--fs-subtext); }
+.rulez-log__snap > summary { display: grid; grid-template-columns: minmax(6em, max-content) minmax(0, 1fr); gap: var(--space-3); padding: var(--space-1) 0; cursor: pointer; list-style: none; }
+.rulez-log__snap > summary::-webkit-details-marker { display: none; }
+.rulez-log__snap > summary:hover { background: var(--surface-hover); }
+.rulez-log__body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) 0 var(--space-2) calc(6em + var(--space-3)); }
+.rulez-log__rule { color: var(--text); }
+.rulez-log__cond { padding-left: var(--space-3); color: var(--subtext); }
+.rulez-log__cond.is-yes { color: var(--title); }
+.rulez-log__facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: var(--space-3); color: var(--subtext); }
+.rulez-log__fact { display: contents; }
+.rulez-log__fact > span:last-child { color: var(--text); overflow-wrap: anywhere; }
