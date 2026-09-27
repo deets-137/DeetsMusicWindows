@@ -121,13 +121,13 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 §13.2, a crate change too).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
-- **The rules engine** (2026-09-26, branch `rules-rulez`, pushed, not merged, not released):
+- **The rules engine** (2026-09-26, merged into `main`, **published in 0.25.0**):
   [RULES.md §18](architecture/RULES.md). Claude ran every step's desk test on the dev app, and
   the perf comparison with `main` (§18 Performance). The chip is his dots design (§9: green = a
   rule, red = your pick), and the New badge is now a yellow dot (QUICK-SETTINGS.md §8). Open,
-  **his**: the tray panel follows a look change; a real `dev:fresh` first run; Windows mode in
-  the look schedule; his Discord profile during a pause; real headphones for EQ per output; a
-  new Diary entry grows; the "changes a user can see" list in §18. Then merge.
+  **his, now on live**: the tray panel follows a look change; a real `dev:fresh` first run;
+  Windows mode in the look schedule; his Discord profile during a pause; real headphones for EQ
+  per output; a new Diary entry grows; the "changes a user can see" list in §18.
 - **Add a room member as a friend** (2026-09-26, committed on `clode-eval`):
   [FRIENDS.md §18.8](integrations/FRIENDS.md). Claude ran steps 1–6 on two dev apps: all pass.
   Step 7 passed later. Released in 0.14.7; the rooms worker is deployed (2026-09-26,
@@ -175,6 +175,11 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release
   was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
+- **Published: 0.25.0** (2026-09-26, `6526b0d`, straight to live; `main` = `rules-rulez`):
+  the rules engine, Grow on album or artist, the coloured dots. The jump from 0.14.8 is his
+  call. Published without the hand test, his call (RELEASE.md §0a). The sign-in page's assets
+  were not rebuilt: the theme roles only gained tokens (`npm run signin:assets` + a DeetsSupport
+  deploy is his call if he wants it).
 - **Published: 0.14.7** (2026-09-26, `5fe868c`, straight to live; `main` = `clode-eval`): add
   friends from a room (the rooms worker deployed first, `0561f70f`), Listen Along keeps the
   host playing, rooms in sync to the millisecond, the Diary's playing-album box, the menu
