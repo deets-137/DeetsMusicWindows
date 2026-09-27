@@ -32,6 +32,33 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.25.0 — 2026-09-26
+
+**A rules engine under the app.** Several settings that act by themselves — the look schedule,
+Keep on top, Remember each output (the equalizer), Pause sharing for an hour, Sleep every day,
+New playlist opens Search, and the Diary's Grow on open — now run on one engine of rules. They
+work as before. This is the base for rule sets you can turn on yourself, in a coming version.
+
+**Albums and artists open with more room.** When you open an album or an artist in a card, the
+card grows over the card below it in Max (wider in Midi) as soon as the slide ends. Back returns
+it. Choose **Vertical**, **Full** or **Off** in Settings › Window › **Grow on album or artist**.
+
+**Your own theme and skin stay yours.** The look schedule now shows its day or night look on top
+of your pick, and never replaces it. A theme or skin you pick while it runs holds until the next
+change of day or night, also after you restart the app.
+
+**Coloured dots tell you who set what.** A green dot beside a setting means a rule set it, for
+example the look schedule. A red dot means your own pick holds: press the red dot to give the
+setting back to the rule. The New badge is now a yellow dot. Settings › Tips explains the three.
+
+**Small changes.** A Diary entry you pin stays grown when you go Back. An output the equalizer
+has not remembered yet uses the preset you picked last.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.14.8 — 2026-09-26
 
 **The Diary fits a narrow card.** When an album plays, its box and the + box now share the
