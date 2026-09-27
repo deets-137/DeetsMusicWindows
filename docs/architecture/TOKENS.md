@@ -13,7 +13,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 42 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
 | Skin (everything else) | skin.css base block | 509 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
@@ -32,9 +32,8 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--picked` | `color-mix(in srgb, var(--title) var(--picked-strength), transparent)` | — | Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own --title ink at the strength the SKIN sets, so a block of picks reads as one shape in every theme. Derived once here — no theme block names a picked color of its own. |
 | `--apple-music-mark` | `light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white))` | — | Apple Music icon fill: Apple's black file on light themes, the white file on dark. light-dark() follows each theme's own color-scheme, so no theme block repeats it. |
 | `--discord-mark` | `var(--apple-music-mark)` | — | Discord's symbol (the quick panel): its brand kit has the same black and white files, and the same rule, so it follows the Apple Music mark. |
-| `--new-badge` | `var(--apple-music-mark)` | — | The quick panel's New badge (QUICK-SETTINGS.md §8): black on a light theme, white on a dark one, the N the other — the same black and white pair as the marks beside it. |
-| `--new-badge-ink` | `light-dark(var(--paint-apple-music-white), var(--paint-apple-music-black))` | — |  |
-| `--rule-chip-rule` | `light-dark(var(--paint-forest), var(--paint-fern))` | — | The rule chip (RULES.md §9, placeholder look): the New badge's family, so its pair. His call 2026-09-26: a green dot when a rule set the value, a scarlet dot when your pick holds. The deep paint on a light theme, the brighter one of the pair on a dark theme. |
+| `--new-badge` | `light-dark(var(--paint-amber-glow), var(--paint-hazard))` | — | The mark dots (his design, 2026-09-26). Yellow: the New badge (QUICK-SETTINGS.md §8) — warm amber on a light theme, where plain yellow fades into the menu; hi-vis yellow on a dark one. Green: a rule set the value; scarlet: your pick holds (the rule chip, RULES.md §9). The deep paint on a light theme, the brighter one of the pair on a dark theme. |
+| `--rule-chip-rule` | `light-dark(var(--paint-forest), var(--paint-fern))` | — |  |
 | `--rule-chip-hand` | `light-dark(var(--paint-blood), var(--paint-siren))` | — |  |
 | `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
 | `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
@@ -196,12 +195,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--quick-panel-pad` | `var(--sound-panel-pad)` | — |  |
 | `--quick-logo-size` | `var(--icon-lg)` | — | the logo button: the Sound tabs' height |
 | `--quick-mark-size` | `var(--icon-sm)` | — | the glyph inside it |
-| `--new-badge-size` | `11px` | — | The New badge (QUICK-SETTINGS.md §8, §10): on a quick panel square's corner, and inline after a new Settings row's or section's name. — the disc: big enough for its N, small beside a 24 px square |
-| `--new-badge-fs` | `8px` | — | its N |
-| `--new-badge-off` | `-4px` | — | how far it hangs past the square's top right corner |
-| `--new-badge-ring` | `1.5px` | — | the ring of panel surface that stands it off the square's border |
-| `--rule-chip-size` | `var(--icon-md)` | — | The rule chip (RULES.md §9): a bolt (a rule set this) or a hand (you changed it; press to give it back) beside a label. The New badge's family; the look is a placeholder. |
+| `--rule-chip-size` | `var(--icon-md)` | — | The mark dots (his design, 2026-09-26): yellow = new, green = a rule set this, scarlet = your pick holds. One size for all three. The rule chip is a button around its dot (RULES.md §9): its box is the press target, and its dot is --mark-dot (r = 5 of the 24 grid inside the padded box). |
 | `--rule-chip-pad` | `calc(var(--rule-chip-size) / 8)` | — | the glyph fills the middle three quarters |
+| `--mark-dot` | `calc((var(--rule-chip-size) - 2 * var(--rule-chip-pad)) * 10 / 24)` | — |  |
+| `--new-badge-size` | `var(--mark-dot)` | — | The New badge (QUICK-SETTINGS.md §8, §10): the yellow dot, on a quick panel square's corner, on the cog, and inline after a new Settings row's, pill's or section's name. |
+| `--new-badge-off` | `-1px` | — | how far it hangs past the square's top right corner |
+| `--new-badge-ring` | `1.5px` | — | the ring of panel surface that stands it off the square's border |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |

@@ -307,6 +307,11 @@ title menu, *press Ctrl+Space* (the Compass, COMPASS.md), and *close is not quit
 and tells them it is safe ("Nothing in it can break", "Nothing is permanent"). The menu verbs are not listed there; the menus show them. When a
 gesture is added to the app (not a verb), add a note.
 
+**The coloured dots** (2026-09-26, his ask; `DOT_LEGEND` in settings-card.ts) lead the list: a
+legend drawn with the real dots. Yellow: new, and it goes when the pointer rests on it
+(QUICK-SETTINGS.md §8). Green: a rule set this. Red: your own pick holds, and a press gives it
+back to the rule (RULES.md §9).
+
 ## 4. The first-run walk (BUILT 2026-09-18)
 
 > §4.0 is **as built**. §4.1–§4.6 are the 2026-09-15 design; where the two differ, §4.0 wins.

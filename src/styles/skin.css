@@ -159,16 +159,18 @@
   --quick-panel-pad:         var(--sound-panel-pad);
   --quick-logo-size:         var(--icon-lg);   /* the logo button: the Sound tabs' height */
   --quick-mark-size:         var(--icon-sm);   /* the glyph inside it */
-  /* The New badge (QUICK-SETTINGS.md §8, §10): on a quick panel square's corner, and inline
-     after a new Settings row's or section's name. */
-  --new-badge-size:          11px;   /* the disc: big enough for its N, small beside a 24 px square */
-  --new-badge-fs:            8px;    /* its N */
-  --new-badge-off:           -4px;   /* how far it hangs past the square's top right corner */
-  --new-badge-ring:          1.5px;  /* the ring of panel surface that stands it off the square's border */
-  /* The rule chip (RULES.md §9): a bolt (a rule set this) or a hand (you changed it; press to
-     give it back) beside a label. The New badge's family; the look is a placeholder. */
+  /* The mark dots (his design, 2026-09-26): yellow = new, green = a rule set this, scarlet =
+     your pick holds. One size for all three. The rule chip is a button around its dot (RULES.md
+     §9): its box is the press target, and its dot is --mark-dot (r = 5 of the 24 grid inside
+     the padded box). */
   --rule-chip-size:          var(--icon-md);
   --rule-chip-pad:           calc(var(--rule-chip-size) / 8);   /* the glyph fills the middle three quarters */
+  --mark-dot:                calc((var(--rule-chip-size) - 2 * var(--rule-chip-pad)) * 10 / 24);
+  /* The New badge (QUICK-SETTINGS.md §8, §10): the yellow dot, on a quick panel square's corner,
+     on the cog, and inline after a new Settings row's, pill's or section's name. */
+  --new-badge-size:          var(--mark-dot);
+  --new-badge-off:           -1px;   /* how far it hangs past the square's top right corner */
+  --new-badge-ring:          1.5px;  /* the ring of panel surface that stands it off the square's border */
   --sound-title-tracking:    0.02em;
   --sound-chip-radius:       var(--radius-control);
   --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */

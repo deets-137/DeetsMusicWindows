@@ -187,7 +187,7 @@ const newPill = (row: string, value: string, picked: string) =>
   NEW_MARKS.some((m) => m.via?.row === row && m.via.values.includes(value) && unseen(markKey(m)));
 const newSection = (title: string) => NEW_MARKS.some((m) => !m.row && m.section === title && unseen(`sec:${title}`));
 /** The N itself, inline after a name. `key` is what the first hover marks seen. */
-const newBadge = (key: string) => `<span class="new-badge" data-new-mark="${esc(key)}" aria-label="New">N</span>`;
+const newBadge = (key: string) => `<span class="new-badge" data-new-mark="${esc(key)}" role="img" aria-label="New"></span>`;
 /** Mark one New badge seen (the first hover on its row or heading). */
 function seeNew(key: string): void {
   const seen = setting("quickSeen");
@@ -290,6 +290,14 @@ const TIPS: [string, string][] = [
   ["Press Ctrl+Space", "A bar opens at the top. Type a card, a setting, a song, an album, an artist or a playlist, and press Enter to go there. Ctrl+Space again, or Escape, closes it."],
   [TIP_CLOSE, "The × hides DeetsMusic to the tray and the music keeps playing. The tray icon brings it back."],
 ];
+
+/** Settings › Tips: what the three dots mean (his ask, 2026-09-26). Each line wears the real
+ *  dot, drawn with the same tokens as the New badge and the rule chip. */
+const DOT_LEGEND =
+  `<div class="set__tip"><span class="set__label">The coloured dots</span>` +
+  `<span class="set__tip-what set__legend"><span class="mark-dot mark-dot--new" aria-hidden="true"></span>Yellow: new. It goes when the pointer rests on it.</span>` +
+  `<span class="set__tip-what set__legend"><span class="mark-dot mark-dot--rule" aria-hidden="true"></span>Green: a rule set this, for example the look schedule.</span>` +
+  `<span class="set__tip-what set__legend"><span class="mark-dot mark-dot--hand" aria-hidden="true"></span>Red: your own pick holds. Press the dot to give it back to the rule.</span></div>`;
 
 const RESET_GROUPS: ResetGroup[] = [
   { id: "look", label: "Theme and skin", hint: "The first-launch pair for your Windows light or dark mode", keys: [], look: true },
@@ -927,6 +935,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
         },
       ],
       tail: () =>
+        DOT_LEGEND +
         TIPS.filter(([what]) => what !== TIP_CLOSE || minimizeToTray)
           .map(([what, how]) => `<div class="set__tip"><span class="set__label">${esc(what)}</span><span class="set__tip-what">${esc(how)}</span></div>`)
           .join(""),

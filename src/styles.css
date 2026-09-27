@@ -158,39 +158,27 @@ body {
 }
 .quick__tips:hover { color: var(--title); }
 .quick__tips:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
-/* The New badge (QUICK-SETTINGS.md §8): an N in a disc on a square's top right corner
-   until its first press. Black on a light theme, white on a dark one, the letter the
-   other; the ring is the panel's own surface, so the disc stands off the square's border. */
-/* The same disc also sits inline after the name of a new Settings row or section
-   (`.new-badge`, §10), in the Settings card and in the panel alike. */
+/* The New badge (QUICK-SETTINGS.md §8, §10): a yellow dot (his design, 2026-09-26: the N
+   disc became a dot of the rule chip's kind, RULES.md §9). On a quick panel square's top right
+   corner until its first press, ringed in the panel's own surface so it stands off the square's
+   border; on the title bar cog, with no ring (the bar has no surface of its own); and inline
+   after the name of a new Settings row, pill or section (`.new-badge`). */
 .quick__logo, .cog__btn { position: relative; }
-/* The N is centered on its capital, not on its line (2026-09-25). A line box keeps room
-   above the capital for accents and below it for descenders. That room is not the same above
-   and below, and it changes with each skin's font, so a line centered in the disc put the N
-   off center. `text-box` trims the line to the cap height, and the padding centers that. */
 .quick__logo[data-new]::after, .cog__btn[data-new]::after, .new-badge {
   box-sizing: border-box; width: var(--new-badge-size); height: var(--new-badge-size);
-  padding-top: calc((var(--new-badge-size) - 1cap) / 2);
-  text-align: center;
-  text-box: trim-both cap alphabetic;
   border-radius: 50%;
-  background: var(--new-badge); color: var(--new-badge-ink);
-  font-family: var(--font-body); font-size: var(--new-badge-fs); font-weight: 600; line-height: 1;
-  letter-spacing: 0; text-transform: none; text-decoration: none; text-indent: 0;
-  overflow: hidden;
+  background: var(--new-badge);
   pointer-events: none;
 }
 .quick__logo[data-new]::after {
-  content: "N";
+  content: "";
   position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
   display: block;
   box-shadow: 0 0 0 var(--new-badge-ring) var(--menu-surface);
 }
-/* The title bar cog's N (§11): the same disc on its top right corner. The title bar has
-   no surface of its own to ring it with, so it has no ring. It sits on the button, not the
-   svg, so it does not turn with the cog. */
+/* It sits on the cog's button, not the svg, so it does not turn with the cog. */
 .cog__btn[data-new]::after {
-  content: "N";
+  content: "";
   position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
   display: block;
 }
@@ -199,6 +187,17 @@ body {
   margin-left: var(--space-1);
   vertical-align: middle;
 }
+/* A plain mark dot, for the legend in Settings › Tips: the same size and colours as the New
+   badge and the rule chip's dot. */
+.mark-dot {
+  display: inline-block; flex: 0 0 auto;
+  width: var(--mark-dot); height: var(--mark-dot); border-radius: 50%;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+}
+.mark-dot--new { background: var(--new-badge); }
+.mark-dot--rule { background: var(--rule-chip-rule); }
+.mark-dot--hand { background: var(--rule-chip-hand); }
 /* The rule chip (RULES.md §9, rule-chip.ts): a dot beside a label (his design, 2026-09-26).
    Green: a rule set this value (it only tells). Scarlet: your pick holds, and a press gives the
    value back to the rule. The title menu's toggle dot is its family. */

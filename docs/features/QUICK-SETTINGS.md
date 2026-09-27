@@ -169,6 +169,12 @@ sketches.
 
 ## 8. The New badge (Review 4)
 
+> **2026-09-26, his design:** the N disc is now a **yellow dot** (amber on a light theme, hi-vis
+> yellow on a dark one), the same size as the rule chip's dots (`--mark-dot`, RULES.md §9). It
+> sits where the N sat: a square's corner (ringed), the cog, and after a new row, pill or
+> section. Wherever this doc says "N", read "the yellow dot". Settings › Tips explains the
+> three dot colours (ONBOARDING.md §3).
+
 A small disc with an **N** hangs on the top right corner of every square in the row (all
 ten, the panel's cog included) until the first press on that square. It is the panel's
 own onboarding: nothing else says the icons are there to be pressed.
