@@ -17,9 +17,10 @@ import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
-import { setting, setSetting, ownSetting, onSettingsChange, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type Settings } from "./settings-store";
+import { setting, setSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, defaultSkin, type SkinName } from "./skin";
 import { pickLook } from "./look";
+import { ruleChip, type RuleChip } from "./rule-chip";
 import { defaultTheme, type ThemeName } from "./theme";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
@@ -239,7 +240,7 @@ const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => strin
   id,
   label,
   hint,
-  get: () => setting(key),
+  get: () => ownSetting(key),
   set: (on) => setSetting(key, on),
 });
 
@@ -400,7 +401,7 @@ export function settingsRows(): SettingEntry[] {
         let control: SettingEntry["control"];
         if (r.kind === "toggle" && r.key) {
           const key = r.key;
-          control = { kind: "toggle", get: () => setting(key), set: (on) => setSetting(key, on) };
+          control = { kind: "toggle", get: () => ownSetting(key), set: (on) => setSetting(key, on) };
         } else if (r.kind === "choice" && r.key && !r.menu && r.options.length <= SPLIT_MAX) {
           const key = r.key;
           control = {
@@ -1489,8 +1490,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
         const left = sharePauseLeft();
         if (left) return `<div class="set__status">Paused for another ${Math.max(1, Math.round(left / 60000))} min. Nothing is shared meanwhile.</div>`;
         const said: string[] = [];
-        if (setting("shareActivityApp")) said.push("Your friends see what you play.");
-        if (setting("shareActivityDiscord")) said.push("Your Discord profile shows the song, the artist, the album and a progress bar.");
+        if (effective("shareActivityApp")) said.push("Your friends see what you play.");
+        if (effective("shareActivityDiscord")) said.push("Your Discord profile shows the song, the artist, the album and a progress bar.");
         return said.length
           ? `<div class="set__status">${said.join(" ")}</div>`
           : `<div class="set__status">Nothing is shared. With these off, DeetsMusic never opens either connection at all.</div>`;
@@ -2108,7 +2109,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     if (r.kind === "head") return `<h4 class="set__sub-head">${esc(r.label)}</h4>`;
     const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
-    const label = `<span class="set__label">${esc(r.label)}${newRow(r.id) ? newBadge(`row:${r.id}`) : ""}</span>`;
+    const chipSlot = "key" in r && r.key && (RULE_KEYS as readonly string[]).includes(r.key) ? `<span data-rule-chip="key:${r.key}"></span>` : "";
+    const label = `<span class="set__label">${esc(r.label)}${newRow(r.id) ? newBadge(`row:${r.id}`) : ""}${chipSlot}</span>`;
     const fx = flashOf(r.id);
     const mark = ` data-set-row="${r.id}"${fx.style}`;
     if (r.kind === "range") {
@@ -2343,7 +2345,19 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     refreshExtension();
     paintUpdate();
     paintLook();
+    mountChips();
     markScrollable();
+  };
+  // The rule chip (RULES.md §9) on each row a rule can set: the render leaves a slot in the
+  // label, and a fresh chip fills it (the old ones are released first).
+  let chips: RuleChip[] = [];
+  const mountChips = () => {
+    chips.forEach((c) => c.destroy());
+    chips = [...body.querySelectorAll<HTMLElement>("[data-rule-chip]")].map((slot) => {
+      const chip = ruleChip(slot.dataset.ruleChip!);
+      slot.replaceWith(chip.el);
+      return chip;
+    });
   };
   // Settings › Look schedule status line: which look shows and until when (look-schedule.ts).
   const paintLook = () => {
@@ -2577,6 +2591,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     if (fresh.length) enterRows(fresh);
   };
   const unsubStore = onSettingsChange(renderRevealing);
+  const unsubOwn = onOwnChange(() => render()); // your value moved under a rule (RULES.md §7): the row shows yours
   // Glass › Picture: an image file dropped on its row becomes the canvas (COVER-WALLPAPER.md §8).
   const pictureRow = (e: DragEvent): HTMLElement | null =>
     e.dataTransfer?.types.includes("Files") ? (e.target as HTMLElement).closest<HTMLElement>('[data-set-row="glasspicture"]') : null;
@@ -2766,6 +2781,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     destroy() {
       alive = false;
       unsubStore();
+      unsubOwn();
+      chips.forEach((c) => c.destroy());
       unsubSotd();
       unsubSkin();
       unsubLibAdd();

@@ -448,7 +448,7 @@ Two new top-level sections. **Sharing** holds the consent; **Discord** holds the
 |---|---|---|---|---|
 | *Share activity on DeetsMusic* | toggle | **Off** | `shareActivityApp` | Friends presence (§4, fork P1). |
 | *Share activity on Discord* | toggle | **Off** | `shareActivityDiscord` | 7A, Rich Presence. The master switch: Off means the pipe is never opened. |
-| *Pause sharing for an hour* | button | — | `sharePauseUntil` | **Both rows at once** (D11), without losing either setting. |
+| *Pause sharing for an hour* | button | — | `sharePauseUntil` | **Both rows at once** (D11), without losing either setting. Since 2026-09-26 a rule (RULES.md §13): the rows keep your value and wear the bolt chip while it runs. |
 
 The two rows are **adjacent on purpose**. "Who can see what I play" is one decision with two answers,
 and a person must be able to read both without leaving the row they are on.

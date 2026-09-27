@@ -539,6 +539,17 @@ Where this section and §1–§17 differ, this section is the code.
   (`factsChanged`), and a hold is checked against every rule, not only the live ones; at
   launch a saved hold stays while its rule exists (there is no "before" list to compare).
   Found at the desk: without these, a held pick was lost on reload.
+- **Keep on top (step 7):** `registerProp("window.onTop")` in main.ts; `applyAlwaysOnTop` is
+  gone. The engine applies the property's "off" value (false) at its first check.
+- **The sharing pause (step 8):** the three switches are rule keys; `presence.ts` and
+  `friends.ts` read `effective`, and their own `paused()` is gone. The row still writes
+  `sharePauseUntil`, and the old 30 s timers that clear it stay (they only tidy the row's data;
+  the rule ends at its time through the engine's timer). `now` is the engine's own fact.
+- **The chip in the Settings card:** every row whose key is a rule key gets a slot in its label,
+  and a chip fills it after each render. The Settings card also repaints on `onOwnChange`, so a
+  row shows your value when you change it under a rule.
+- **No bolt when the rule lays your own value** (a sharing switch that is Off already, under
+  the pause): the chip hides, because nothing you can see changed.
 - The build check is a unit test, `tests/look-keys.test.ts`; the migration and the
   first-install rule are `tests/look-migrate.test.ts` (in place of wiping the dev profile with
   `dev:fresh`).

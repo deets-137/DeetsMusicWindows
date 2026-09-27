@@ -69,7 +69,7 @@ const storeChoice = (section: string, key: keyof Settings, label: string, option
 });
 const storeToggle = (section: string, key: BoolKey, label: string, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
-  get: () => (setting(key) ? "on" : "off"),
+  get: () => (ownSetting(key) ? "on" : "off"),
   set: (v) => setSetting(key, v === "on"),
   ...extra,
 });

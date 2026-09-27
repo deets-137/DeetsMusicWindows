@@ -10,7 +10,7 @@
 // the rule ends. No rule sets off a rule: `emit` is refused while an action or a check runs.
 
 import {
-  RULE_KEYS, allSettings, onSettingsChange, onOwnChange, overlayOf, setSetting, _setOverlay,
+  RULE_KEYS, allSettings, onSettingsChange, onOwnChange, overlayOf, ownSetting, setSetting, _setOverlay,
   type RuleKey, type Settings,
 } from "./settings-store";
 import {
@@ -200,6 +200,7 @@ let again = false;
 let timer = 0;
 /** What each target holds now: target id → rule id (a rule's value), for the log and the chip. */
 let applied = new Map<string, string>();
+let appliedValue = new Map<string, unknown>();
 let heldNow = new Map<string, string>();
 const propNow = new Map<string, unknown>();
 const changeSubs = new Set<() => void>();
@@ -263,6 +264,7 @@ function checkOnce(why: string): void {
   for (const [t, id] of next) if (applied.get(t) !== id) diag.log("rule", { id, target: t, applied: true, why });
   for (const [t, id] of applied) if (!next.has(t)) diag.log("rule", { id, target: t, applied: false, why, reason: res.held.has(t) ? "hand" : "ended" });
   applied = next;
+  appliedValue = new Map([...res.set].map(([t, v]) => [t, v.value]));
   heldNow = res.held;
   // The store's keys.
   for (const k of RULE_KEYS as readonly RuleKey[]) {
@@ -342,7 +344,10 @@ const rowOf = (ruleId: string): string => ruleId.split(":")[1] ?? "";
 
 /** What the chip beside `target` shows now, or null. */
 export function chipState(target: string): ChipState | null {
-  const bolt = applied.get(target);
+  // A rule that lays your own value changes nothing you can see: no bolt (a sharing switch
+  // that is Off already, under the pause).
+  const same = target.startsWith("key:") && appliedValue.get(target) === ownSetting(target.slice(4) as keyof Settings);
+  const bolt = same ? undefined : applied.get(target);
   const hand = heldNow.get(target);
   const id = bolt ?? hand;
   if (!id) return null;
@@ -385,6 +390,9 @@ export function initRules(): void {
   if (started) return;
   started = true;
   holds = loadHolds();
+  // The clock is the engine's own fact. A rule on it (`now < until`) needs no seam: the one
+  // timer wakes at its edge (`nextEdge`).
+  registerFact("now", () => Date.now());
   rebuild("init");
   diag.log("rule:init", { rules: all.length, live: live.length, holds: holds.length });
   onSettingsChange((k) => {

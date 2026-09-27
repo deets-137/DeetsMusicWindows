@@ -14,10 +14,11 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { onPlayerState, onPlayerProgress, type PlayerState, type PlayerProgress } from "./player";
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, effective, ownSetting, onSettingsChange } from "./settings-store";
 import { onRoomChange, roomState } from "./room";
 import * as queue from "./queue";
 import * as diag from "./diag";
+import { registerChipText } from "./rules";
 
 /** Discord rate-limits RPC updates (about five in twenty seconds). A settled song change
  *  fires at once — nobody changes song twice in four seconds on purpose — and a run of
@@ -45,9 +46,9 @@ let showing = false; // a card is up (or Discord is absent and we think one is)
 let trailing: number | undefined; // the coalescer's trailing-edge timer
 let pauseTimer: number | undefined; // the clear-after-a-pause timer
 
-/** Off, or paused for an hour: the two ways to be silent (§8.5.1). */
-const paused = (): boolean => Date.now() < (setting("sharePauseUntil") || 0);
-const sharing = (): boolean => setting("shareActivityDiscord") && !paused();
+/** Off, or paused for an hour: the two ways to be silent (§8.5.1). The pause is a rule since
+ *  2026-09-26 (RULES.md §13): while it runs, the effective switch reads off. */
+const sharing = (): boolean => effective("shareActivityDiscord");
 
 /** The song identity — a card is re-sent when THIS changes, not when a render happens. */
 const keyOf = (s: PlayerState): string =>
@@ -98,7 +99,7 @@ function activity(): Record<string, unknown> | null {
   // Listen Along carries the room CODE, and the code is the only gate on the room — so it
   // rides its own switch, not the fact of hosting (§8.5.3).
   const room = roomState();
-  if (room.isHost && room.code && setting("discordRoomInvite")) {
+  if (room.isHost && room.code && effective("discordRoomInvite")) {
     buttons.push({ label: "Listen Along", url: `https://rooms.deets.solutions/j/${room.code}` });
   }
   if (buttons.length) act.buttons = buttons;
@@ -153,6 +154,16 @@ function stop(why: string): void {
 }
 
 export function initPresence(): void {
+  // The rule chip's words for the pause (RULES.md §9): its row makes the rule (§13).
+  registerChipText("sharePauseUntil", {
+    name: "Pause sharing",
+    bolt: (t) => {
+      const left = sharePauseLeft();
+      const mins = left ? Math.max(1, Math.round(left / 60000)) : 0;
+      const yours = ownSetting(t.slice(4) as "shareActivityApp") ? "on" : "off";
+      return `Paused for another ${mins} min. Your switch is ${yours}; it counts again when the pause ends.`;
+    },
+  });
   onPlayerState((s) => {
     const was = state;
     state = s;
@@ -191,13 +202,13 @@ export function initPresence(): void {
   // The switches. Off and the hour's pause both close the pipe at once; switching back on
   // puts the card up again without waiting for the next song.
   let wasSharing = sharing();
-  let wasInvite = setting("discordRoomInvite");
+  let wasInvite = effective("discordRoomInvite");
   onSettingsChange(() => {
     const now = sharing();
-    const invite = setting("discordRoomInvite");
+    const invite = effective("discordRoomInvite");
     if (now !== wasSharing) {
       wasSharing = now;
-      if (!now) stop(setting("shareActivityDiscord") ? "paused for an hour" : "sharing off");
+      if (!now) stop(ownSetting("shareActivityDiscord") ? "paused for an hour" : "sharing off");
       else if (state.playing) push("sharing on");
     } else if (now && invite !== wasInvite) {
       // The invite button appears or goes while the same song plays.
@@ -213,7 +224,7 @@ export function initPresence(): void {
     const hosting = r.isHost && !!r.code;
     if (hosting !== wasHosting) {
       wasHosting = hosting;
-      if (sharing() && setting("discordRoomInvite") && state.playing) push("room");
+      if (sharing() && effective("discordRoomInvite") && state.playing) push("room");
     }
   });
 
