@@ -21,6 +21,7 @@ import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { toast } from "./toast";
 import * as diag from "./diag";
+import { emit, registerAction, registerEvent } from "./rules";
 
 type Mode = "off" | "clock" | "song" | "queue";
 
@@ -82,10 +83,23 @@ function remainingMs(now = Date.now()): number {
   }
 }
 
+/** The daily mark the row's rule armed (RULES.md §13, "Sleep every day"): the set time, sunset,
+ *  or none. The rule decides; everything after the mark — the warning, the wind-down, the
+ *  play-out, the pause — is this module's, as before. */
+let daily: "clock" | "sun" | null = null;
+
+/** Ask the rules engine whether a daily mark is armed: at launch, on a Sleep row change, after
+ *  a sleep ends, and back from sleep or the tray. */
+function armDaily(why: string): void {
+  daily = null;
+  emit("sleep.arm", { card: "*" });
+  diag.log("sleep:ask", { why, daily });
+}
+
 /** The schedule's next mark after `now`, or 0 when there is none (off, or a polar day). */
 function nextMark(now: number): number {
-  const kind = setting("sleepSchedule");
-  if (kind === "off") return 0;
+  const kind = daily;
+  if (!kind) return 0;
   const d = new Date(now);
   if (kind === "clock") {
     const at = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, toMinutes(setting("sleepAt")));
@@ -127,7 +141,7 @@ function updateFade(): void {
 // ── arm, fire, off ─────────────────────────────────────────────
 
 function ensureTicking(): void {
-  const need = mode !== "off" || setting("sleepSchedule") !== "off";
+  const need = mode !== "off" || daily !== null;
   if (need && !interval) interval = window.setInterval(tick, 1000);
   if (!need && interval) {
     window.clearInterval(interval);
@@ -179,6 +193,7 @@ async function fire(): Promise<void> {
   } finally {
     applyDuck(1); // paused: the set level is back for the next Play
   }
+  armDaily("fired"); // the next day's mark
   ensureTicking();
   render();
 }
@@ -486,6 +501,16 @@ export function openSleepPanel(): void {
 }
 
 export function initSleep(): void {
+  // The rules engine (RULES.md §13): the Sleep every day row makes a rule on `sleep.arm`; its
+  // action arms the daily mark here.
+  registerEvent("sleep.arm");
+  registerAction("sleep", {
+    cost: "free",
+    run: (arg) => {
+      daily = (arg as { at: "clock" | "sun" }).at;
+      diag.log("sleep:daily", { at: daily });
+    },
+  });
   const root = $("sleep");
   const btn = $("sleep-btn");
   const panel = $("sleep-panel");
@@ -546,6 +571,7 @@ export function initSleep(): void {
       skipMark = 0;
       firedMark = 0;
       if (fromSchedule) disarm("schedule");
+      armDaily("row");
     }
     ensureTicking();
     tick();
@@ -563,9 +589,13 @@ export function initSleep(): void {
     cancelByHand();
   });
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && interval) tick(); // back from sleep or the tray: catch up at once
+    if (document.hidden) return;
+    armDaily("wake"); // back from sleep or the tray: the rule is asked again, then catch up at once
+    ensureTicking();
+    if (interval) tick();
   });
 
+  armDaily("launch");
   ensureTicking();
   tick();
 }

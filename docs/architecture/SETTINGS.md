@@ -181,7 +181,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Sound | Follow the volume of (App + Windows: counts the DeetsMusic volume and the Windows volume together) — pills *App + Windows* / *App only* | `soundLowVolKey` | **both** / app | `sound-worklet.ts` |
 | Sound | Blend amount (How much of each side goes into the other) — pills *Light* / *Medium* / *Strong* | `soundCrossfeedLevel` | light / **medium** / strong | `sound-dsp.ts` |
 | Sound | Ask to keep after (When to ask whether the effects are worth keeping, counted from the first time one was turned on) — menu *3 days* / *7 days* / *14 days* / *Never* | `soundReviewDays` | **7** / 14 / 3 / 0 | `sound-panel.ts` ([SOUND.md](../features/SOUND.md) §7); the panel's footer has the same pill, and the question itself — Keep / Turn all off — is live and only there |
-| Sleep | Sleep every day (Arms a sleep time every day. It pauses only if music is playing when the time comes) — pills *Off* / *Sunset* / *At a time* (2026-09-18; the sleep panel has this row too) | `sleepSchedule` | **off** / sun / clock | `sleep.ts` arm-at-boot + the daily tick |
+| Sleep | Sleep every day (Arms a sleep time every day. It pauses only if music is playing when the time comes) — pills *Off* / *Sunset* / *At a time* (2026-09-18; the sleep panel has this row too) | `sleepSchedule` | **off** / sun / clock | the rules engine ([RULES.md](RULES.md) §13): `sleep.arm` (launch, a Sleep row change, after a sleep, on wake) → the row's rule arms the daily mark; `sleep.ts` keeps the tick, the warning, the wind-down and the pause |
 | Sleep | Sleep at (The time the daily sleep timer runs out) — a menu of the whole day in quarter hours; shows only while Sleep every day is *At a time*. The panel's ‹ › move in 15-minute steps, so the card's menu does too | `sleepAt` | **22:00** | same |
 | Sleep | Wind down (Over these last minutes the volume sinks to nothing, then the music pauses. Off: a plain pause at the time) — menu *Off* / 1 / 2 / 5 / 10 / 15 / 30 min | `sleepWind` | **5** / 0 = a plain pause | `sleep.ts` → `setDuck` gain factor |
 | Sleep | Play out song (The song that is playing when the time comes finishes first. Off: the time is the silence) | `sleepPlayOut` | on / **off** | `sleep.ts` at the mark |
@@ -324,7 +324,7 @@ because `soundAdaptive` does.
 
 | Row | Key | Values | Read site |
 |---|---|---|---|
-| Every day | `sleepSchedule` | **off** / sun (sunset from the time zone) / clock | `sleep.ts` arm-at-boot + the daily tick |
+| Every day | `sleepSchedule` | **off** / sun (sunset from the time zone) / clock | the row's rule arms it (RULES.md §13); `sleep.ts` the daily tick |
 | The set time, for *clock* | `sleepAt` | **22:00** | same |
 | Wind down (the last minutes fade to nothing) | `sleepWind` | **5**, 0 = a plain pause | `sleep.ts` → `setDuck` gain factor |
 | Play out song | `sleepPlayOut` | on / **off** | `sleep.ts` at the mark |

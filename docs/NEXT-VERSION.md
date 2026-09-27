@@ -671,6 +671,12 @@ longer read by anything.
 before the mark, over which the volume sinks to nothing. The *dial* is the panel's kitchen
 timer. The *schedule* is a mark that sets itself every day.
 
+> **2026-09-26:** the schedule is a rule now (RULES.md §13). `sleep.ts` asks the rules engine
+> (`sleep.arm`) at launch, on a Sleep row change, after a sleep and on wake; the row's rule
+> arms the daily mark (the set time or sunset). Everything else here — the dial, the chips,
+> the warning, the wind-down, the play-out, Not tonight — is unchanged. Desk test passed on the
+> dev app: a mark two minutes ahead gave the warning, the pause, and the next day's mark.
+
 **Where.** An alarm clock (with two z's) in the title bar, left of the volume pill, in every
 surface (the pill hides in the NP view; the clock stays — it is a clock, not a level). Armed,
 it takes the title color, and its hover hint says the remaining time. Its panel follows the
