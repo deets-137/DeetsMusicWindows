@@ -1,5 +1,5 @@
 // Rulez's free facts (docs/features/RULEZ.md §3, route 5): the song's ♥, its Diary score and
-// play count, the queue's length, minutes since the app opened, minutes idle, the battery and
+// play count, the cover's color (§11), the queue's length, minutes since the app opened, minutes idle, the battery and
 // the network. Every one reads what the app or the WebView already holds: no Apple call.
 //
 // Route 10's rule: a fact has a seam (it tells the engine when it moves) or a `next` time; no
@@ -13,6 +13,8 @@ import { trackById } from "./track-store";
 import { isLoved, onFavoritesChange } from "./favorites";
 import { diaryCachedList, diaryGet, onDiaryChange, songKeyOf } from "./diary";
 import { onRulesChange, registerFact, ruleReads } from "./rules";
+import { currentCover, lookupPalette } from "./album-color";
+import { albumWords } from "./album-slots";
 import type { Track } from "./library";
 import * as diag from "./diag";
 
@@ -92,6 +94,37 @@ export function initRulesFacts(): void {
   });
   registerFact("diaryScore", () => score, { seam: song.seam });
   registerFact("plays", () => plays, { seam: song.seam });
+
+  // The cover's color (RULEZ.md §11): the palette the Now Playing card already asks for
+  // (`lookupPalette` shares its cache and its in-flight lookup), so no new Apple call. Read
+  // once per cover, only while a rule reads it. It lands a moment after the song starts, so
+  // it suits a While rule best; its seam rechecks when it lands.
+  const cover = seamSet();
+  let coverKey: string | null = null;
+  let words: ReturnType<typeof albumWords> = {};
+  const readCover = () => {
+    const { cover: url, catalogId } = currentCover();
+    if (url === coverKey) return;
+    coverKey = url;
+    words = {};
+    if (!url || !ruleReads(["albumColor", "albumLight"])) return cover.fire();
+    lookupPalette(url, catalogId)
+      .then((p) => {
+        if (coverKey !== url) return;
+        words = albumWords(p);
+        cover.fire();
+      })
+      .catch((e) => diag.warn("rule:factRead", { fact: "albumColor", e: String(e) }));
+  };
+  onPlayerState(readCover);
+  onRulesChange(() => {
+    if (words.color === undefined && ruleReads(["albumColor", "albumLight"])) {
+      coverKey = null; // a rule that reads it was just made: read the cover playing now
+      readCover();
+    }
+  });
+  registerFact("albumColor", () => words.color, { seam: cover.seam });
+  registerFact("albumLight", () => words.light, { seam: cover.seam });
 
   // ── the queue ──
   registerFact("queueLength", () => getUpcoming().length, { seam: (cb) => onQueueChange(cb) });

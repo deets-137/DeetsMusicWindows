@@ -16,7 +16,7 @@ flight).
 
 **The first build is theme only (his call, 2026-09-27).** It edits the 12 roles of the 6 slots.
 The skin controls (§4) are parked for a later build. §11 has the review decisions of the same
-day.
+day. **The Album theme (§12) is built together with it** (his call, the same afternoon).
 
 ## 0. Terms
 
@@ -327,3 +327,44 @@ For the skin build:
 - **Test the extremes in Mini.** 125 % text with 150 % spacing in the 480 px Mini is where rows
   will cut off.
 - **The selector check** of §5.
+
+## 12. The Album theme: colors from the cover
+
+> **Part:** idea · 2026-09-27 · his call: build it with Skinz, later. Nothing below is decided
+> except that.
+
+His ask (2026-09-27): change the look to match the album cover. In this app the look's colors
+are the **theme** (the skin is shape and motion), so this is a theme whose roles are made from
+the playing song's cover. It belongs here because it writes the same 12 roles (§3) through the
+same style element (§5), and building it alone would do that work twice.
+
+**What exists to build on.**
+- The palette: `lookupPalette(cover, catalogId)` (album-color.ts), one Apple lookup per cover,
+  cached in Rust; the Now Playing card already asks for it on every song. So an Album theme
+  costs **no new Apple call**.
+- The color math: `albumColor`, `rankByColor`, `toOKLCH` / `fromOKLCH` (album-slots.ts), and
+  the contrast guard (album-color.ts `guard`, which moves to `color-math.ts` in §9 step 1). The
+  guard already keeps the Now Playing text readable on any cover.
+- The rules: the facts **Album color** and **The cover is light / dark** (RULEZ.md §11,
+  built 2026-09-27). With an Album theme, "While the genre is Jazz → Use theme Album" needs no
+  new rule code.
+
+**Forks to bring him before the build** (my first recommendation in each):
+1. **Where it lives.** (a) A switch on a slot, "Follow the cover": the slot keeps its id and its
+   edits, and the cover's colors sit on top while a song plays; or (b) a 7th theme id `album`.
+   (b) breaks the id contract of §2 (the pre-paints, the extension, DeetsSolutions, the look
+   ids), so (a) is the smaller change.
+2. **Which roles follow the cover.** (a) Background and the three accents from the cover, and
+   the text roles made by the guard against that background; or (b) all 12 roles.
+3. **Light or dark.** (a) From the cover (the §11 fact's rule: the main field's lightness), or
+   (b) the slot's own Light / Dark switch (§8).
+4. **The change on each song.** The theme switch repaints the whole app. Measure the switch on
+   `dev:built` first (DEBUGGING.md §Frame telemetry); then (a) a crossfade in the appearance
+   transition's shape, or (b) a change only at an album change, not at each song.
+5. **With no song** (nothing loaded, or no palette): the slot's own colors.
+6. **The tray panel** follows the Album theme (it already shows the album's rim); the extension
+   and DeetsSolutions keep the built-in colors (§5).
+
+**Build order, when it comes:** after §9 steps 1–3 (the pure color math, `themeEdits`,
+`look-edits.ts`), as one more writer of the `look-edits` style element; then its row on the
+slot in the Skinz card; then the desk test with covers from each of the ten color words.

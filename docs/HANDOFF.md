@@ -117,7 +117,11 @@ run, with music** ([RULEZ.md](features/RULEZ.md) §2, §8, §10.2). Route 8's fi
 built 2026-09-27 afternoon (§10.2), and the new Settings row is Menus › Go to opens. Committed
 and pushed on `rules-rulez`; not merged into `main`, not released. **His** steps left: his look at the new words and the Go to opens row; Agent
 changes settings = Off (AGENT.md §8 step 8); the chime on a HomePod (RULEZ.md §5.4 step 8).
-*Mark Suggest Less* (route 6) waits for Suggest Less itself.
+*Mark Suggest Less* (route 6) waits for Suggest Less itself. **Added the same afternoon:** the
+facts *Album color* and *The cover is light / dark* (RULEZ.md §11; his open call: where the
+orange / yellow line sits), and the recipe **Live Theming** (§11.1: each cover color picks one of
+the six themes, light or dark by the cover; the color half is his to review). The Album theme, colors from the cover, is documented into Skinz
+(SKINZ.md §12) and waits for the Skinz build.
 
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built

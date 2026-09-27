@@ -140,8 +140,9 @@ feature stays grey instead of inventing a hue.
   `currentCover()` as the key. A cover then costs one Apple lookup, however many features ask.
 - **Shape it after the pick:** each feature sets its own lightness and chroma cap for its
   backdrop (the Ocean's `asGlow` / `asNeon`). Scale the chroma; never raise it from zero.
-- **Users today:** the NP aurora and the tray panel (the rim, via `auroraSlots`), and the Ocean's
-  glow from the deep and its neon crests (OCEAN.md §3, §7).
+- **Users today:** the NP aurora and the tray panel (the rim, via `auroraSlots`), the Ocean's
+  glow from the deep and its neon crests (OCEAN.md §3, §7), and the Rulez fact *Album color*
+  (`albumWords`, RULEZ.md §11, 2026-09-27). The Album theme (SKINZ.md §12) is the next.
 - **The exception:** text keeps Apple's `c1` / `c2` by name (§Text & accent), because Apple chose
   them to read on that cover.
 

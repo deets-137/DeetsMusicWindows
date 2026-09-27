@@ -79,7 +79,7 @@ const HEAD = `
 
 const newId = () => `u:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
-const PLAYBACK_FACTS = ["genre", "artist", "album", "year", "explicit", "loved", "diaryScore", "plays", "loudness", "songBass", "songMids", "songTreble"] as const;
+const PLAYBACK_FACTS = ["genre", "artist", "album", "year", "albumColor", "albumLight", "explicit", "loved", "diaryScore", "plays", "loudness", "songBass", "songMids", "songTreble"] as const;
 const EXPORT_NAME = "deetsmusic.deetsrules.json";
 
 type View = "rules" | "logs";

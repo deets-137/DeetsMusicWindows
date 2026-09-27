@@ -113,6 +113,17 @@ export const FACTS: FactWord[] = [
   { id: "artist", section: "Playback", label: "Artist", kind: "text", suggest: "artist" },
   { id: "album", section: "Playback", label: "Album", kind: "text", suggest: "album" },
   { id: "year", section: "Playback", label: "Year", kind: "number" },
+  // RULEZ.md §11: the cover's most colorful color as a word, and its main field light or dark.
+  {
+    id: "albumColor", section: "Playback", label: "Album color", kind: "choice",
+    choices: [
+      { value: "red", label: "Red" }, { value: "orange", label: "Orange" }, { value: "brown", label: "Brown" },
+      { value: "yellow", label: "Yellow" }, { value: "green", label: "Green" }, { value: "teal", label: "Teal" },
+      { value: "blue", label: "Blue" }, { value: "purple", label: "Purple" }, { value: "pink", label: "Pink" },
+      { value: "grey", label: "Grey" },
+    ],
+  },
+  { id: "albumLight", section: "Playback", label: "Album cover light", kind: "bool", yes: "The cover is light", no: "The cover is dark" },
   { id: "explicit", section: "Playback", label: "Explicit", kind: "bool", yes: "The song is explicit", no: "The song is clean" },
   { id: "playing", section: "Playback", label: "The music is playing", kind: "bool", yes: "The music is playing", no: "The music is paused" },
   { id: "shuffle", section: "Playback", label: "Shuffle", kind: "bool", yes: "Shuffle is on", no: "Shuffle is off" },

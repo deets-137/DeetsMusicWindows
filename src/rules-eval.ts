@@ -28,7 +28,9 @@ export type FactId =
   | "outputKind" | "loved" | "diaryScore" | "plays" | "queueLength" | "sinceOpen" | "idle"
   | "battery" | "charging" | "online" | "dataSaver"
   // Route 8 (RULEZ.md §10.1): a song is loaded; the window's size.
-  | "loaded" | "windowWidth" | "windowHeight";
+  | "loaded" | "windowWidth" | "windowHeight"
+  // RULEZ.md §11: the cover's color as a word, and light or dark.
+  | "albumColor" | "albumLight";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
 export type FactValue = Value | string[];

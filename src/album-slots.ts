@@ -69,6 +69,38 @@ export function albumColor(p: AlbumPalette | null | undefined): string | undefin
   return p ? rankByColor(p)[0]?.s : undefined;
 }
 
+// ── the album's color as words (Rulez's facts, RULEZ.md §11) ────────────────────
+
+export const COLOR_NAMES = ["red", "orange", "brown", "yellow", "green", "teal", "blue", "purple", "pink", "grey"] as const;
+export type ColorName = (typeof COLOR_NAMES)[number];
+
+/** OKLCH hue bands, in degrees, measured on the pure colors (#ff0000 is 29°, #0000ff 264°). */
+const BANDS: [number, ColorName][] = [[10, "red"], [45, "orange"], [80, "yellow"], [125, "green"], [170, "teal"], [225, "blue"], [280, "purple"], [320, "pink"]];
+
+/** One color as a word: grey below GREY_CHROMA; brown = a dark orange or yellow. */
+export function colorName(hex: string): ColorName | undefined {
+  const rgb = parseColor(hex);
+  if (!rgb) return undefined;
+  const [L, C, h] = toOKLCH(rgb);
+  if (C < GREY_CHROMA) return "grey";
+  const deg = ((h * 180) / Math.PI + 360) % 360;
+  let name: ColorName = "pink"; // 320°–10°
+  for (const [from, n] of BANDS) if (deg >= from) name = n;
+  if (deg < BANDS[0][0]) name = "pink";
+  if ((name === "orange" || name === "yellow") && L < 0.5) return "brown";
+  return name;
+}
+
+/**
+ * What a rule reads about the cover: its color (the album's one color, `albumColor`) and
+ * whether it is light (Apple's `bg`, the art's main field, OKLCH lightness 0.62 or more).
+ */
+export function albumWords(p: AlbumPalette | null | undefined): { color?: ColorName; light?: boolean } {
+  const main = albumColor(p);
+  const bg = p?.bg ? parseColor(p.bg) : null;
+  return { color: main ? colorName(main) : undefined, light: bg ? toOKLCH(bg)[0] >= 0.62 : undefined };
+}
+
 // ── the aurora's stops ─────────────────────────────────────────────────────────
 
 /** Below this OKLCH chroma a color reads as grey on the aurora. */

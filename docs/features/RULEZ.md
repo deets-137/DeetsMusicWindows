@@ -1,7 +1,7 @@
 ---
 status: built
 desk_test: open
-sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
+sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules-facts.ts, src/album-slots.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
 updated: 2026-09-27
 ---
 # DeetsMusic — Rulez, the rules builder
@@ -569,7 +569,7 @@ hold on skip lines) · `src/rules-eval.ts` (`{ recipe }` source, `Stored.recipes
 |---|---|
 | L | *Rules \| Logs* is the split pill primitive (`splitPillHTML`, the Full \| Lib family) in the head. Logs: **What ran** (the rule lines of the diag ring as sentences, newest first, 80 at most; *Words \| Raw*), **Last ran** (every rule: its last fire, fires in the last 10 s, off until restart), **Holding now** (what each While rule lays, and where your pick holds), **Facts now**. It follows new rule lines through `diag.onDiag`, at most every 300 ms, only while it shows. The view and the open row are the card's memory. |
 | 1 | *Last ran* is in Logs only (his call). An open row of yours shows *Try* live under the sentence (§6.3); a locked row (built-in, recipe) keeps *Try* in its menu, since it does not open. `failingLeaf` names the part that is not true now. |
-| 3 | `Stored.recipes` lists the recipes that are on (none by default). A recipe shows locked under **Recipes** with one On \| Off switch; its menu: Turn on / off, Try, *Duplicate into your rules*, Copy as text. Party's station is `{ special: "discovery" }`, found from your Discovery station at run time. |
+| 3 | `Stored.recipes` lists the recipes that are on (none by default). Six ship: the four of §4, Play on launch (§10.2) and Live Theming (§11.1). A recipe shows locked under **Recipes** with one On \| Off switch; its menu: Turn on / off, Try, *Duplicate into your rules*, Copy as text. Party's station is `{ special: "discovery" }`, found from your Discovery station at run time. |
 | 4 | The header's ⋯: **Paste a rule** (a field: Ctrl+V, then Enter), **Import from a file…** (a file picker), **Export your rules to a file** (`deetsmusic.deetsrules.json` in Downloads), **Copy your rules as text**. A row's menu: *Copy as text*. Every pasted or imported rule is checked against `known()`; a broken one is named and skipped. |
 | 5 | Loved, Diary score, Times played, Songs up next, Minutes since the app opened, Minutes with no press, Battery, Charging, Online, Data saver, Output kind. The Diary score and play count are read once per song, only while a rule reads them (`pin_play_counts`, the cached Diary list, one `diary_get`). Minute facts wake the engine only while a rule reads them. |
 | 6 | Show a note, Hide the app in the tray, Add the song to a playlist (your local playlists and editable Apple ones), Love the song (Apple), Open the Diary for this album, Turn scrobbling on / off. An add to an Apple playlist is an Apple call through `appleIf`. *Mark Suggest Less* waits for Suggest Less. |
@@ -791,3 +791,70 @@ shuffle rule's condition: **No song loaded** (today's behavior), not "the music 
 - (5) 1,100 → 495 → 1,100 px (Max → Midi → Max): one check each way; *While Window width is
   below 500 → Keep on top* held and let go.
 - Everything made for the test was removed; the settings went back as they were.
+
+## 11. The album color facts (his call, 2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test run by Claude (below); his look is open
+
+His ask: change the look to match the album cover. His call: the facts now; the Album theme
+itself goes into Skinz, built with it later ([SKINZ.md](SKINZ.md) §12).
+
+- **Album color** (`albumColor`, Playback): the cover's one color (`albumColor`,
+  ALBUM-COLOR.md §The album's one color) as a word: Red · Orange · Brown · Yellow · Green · Teal
+  · Blue · Purple · Pink · Grey.
+- **The cover is light / dark** (`albumLight`, Playback): Apple's `bg`, the art's main field,
+  at OKLCH lightness 0.62 or more.
+- **Cost:** none. It reads the palette the Now Playing card already asks for
+  (`lookupPalette` shares its cache and its in-flight lookup), once per cover, and only while a
+  rule reads either fact. The pure part is `colorName` / `albumWords` in album-slots.ts
+  (`tests/album-words.test.ts`); the registration is rules-facts.ts.
+- **It suits a While rule.** The palette lands a moment after the song starts; the fact's seam
+  rechecks then. A When *The next song plays* rule can read the cover before it lands.
+
+**Decided inside his choice (for his review).**
+- **The words and the bands.** OKLCH hue, measured on the pure colors: red from 10°, orange
+  45°, yellow 80°, green 125°, teal 170°, blue 225°, purple 280°, pink 320°. Grey below chroma
+  0.04 (the aurora's own grey line). Brown = an orange or yellow with lightness under 0.5.
+- **Light or dark reads the main field, not the colorful one.** A dark cover with a bright red
+  logo is "red" and "dark".
+
+**Desk test (Claude, dev:app).** *While Album color is orange → Use theme Moonlight*: Casio
+(*For Ever*, main color `#e0a137`) held Moonlight; Sunshine (orange, dark) kept it; Blue Train
+(teal, dark) let go, and the look schedule's Lilac came back. **Found:** *For Ever*'s amber sits
+at 76°, just under yellow's line (80°), so a golden cover reads "orange". The line is a choice
+for him (below).
+
+**Open for him:** where the orange / yellow line sits. At 80° amber and gold read orange; at
+about 72° they read yellow and CSS `orange` (#ffa500, 71°) stays orange.
+
+### 11.1 The recipe Live Theming (his ask, 2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test run by Claude (below); the mapping is for his review
+
+The theme follows the album cover, until the Album theme (SKINZ.md §12) can do it with the
+cover's own colors. A recipe (rules-recipes.ts `LIVE_THEMES`), off by default like the others:
+six While rules, one per theme, each *While the cover is light / dark and Album color is … →
+Use theme …*, `onHand: next`. **His call (2026-09-27): light or dark picks the theme's
+lightness**; the color picks the nearest of the three, by the theme's own hint.
+
+| Cover color | A light cover | A dark cover |
+|---|---|---|
+| Red | Sepia | Black & Red |
+| Orange, Brown, Yellow | Sepia | Black & Yellow |
+| Green, Teal | Green | Moonlight |
+| Blue, Grey, Purple | Lilac | Moonlight |
+| Pink | Lilac | Black & Red |
+
+- **Every color, light or dark, picks exactly one theme of its own lightness**
+  (`tests/album-words.test.ts`).
+- **With no song or no palette** no rule holds: your theme shows, or the look schedule's. The
+  recipe sits above the built-in rules, so while a cover plays it beats the look schedule.
+- **A hand theme pick** holds until the next cover of another color (the rule chip shows it).
+- **The skin does not change.** Only the theme is a color; a rule of your own can add a skin.
+- **To change the mapping:** *Duplicate into your rules* on a recipe line, then edit the copy.
+
+*Desk test (Claude, dev:app, the switch pressed in Rulez).* Casio (orange, light) → Sepia;
+Blue Train (teal, dark) → Moonlight; *So Far So Good* (purple, light) → Lilac; Sunshine
+(orange, dark) → Black & Yellow. Each read `recipe:live:<n>` on `key:theme`.
+
+**For his review:** the color half of the table (Grey could leave the theme alone).

@@ -43,6 +43,15 @@ test. One session did all of it (the two-session split of RULEZ.md §3 ended her
 - `npm run check` and `vite build` pass (93 unit tests; two new, dated). Committed and pushed on
   `rules-rulez` at his word, with the stale lines in CLAUDE.md, HANDOFF, FUTURE-SETTINGS §5b,
   §10, §20, §22 and RULEZ.md §3 and §8 brought up to date.
+- After the push, his question: can a rule change the look to match the album? The answer was no
+  (no fact read the cover). His call: the facts now, the Album theme into Skinz for later. Built
+  *Album color* and *The cover is light / dark* (RULEZ.md §11, no new Apple call), and wrote
+  SKINZ.md §12 with its six forks open. Desk test: an orange-cover rule held Moonlight on Casio
+  and let go on Blue Train. Open for him: *For Ever*'s amber (76°) reads orange, not yellow.
+- Then the recipe **Live Theming** (RULEZ.md §11.1): six While rules map the ten cover colors to
+  the six themes; his call then: a light or dark cover picks a light or dark theme. Desk test:
+  Casio → Sepia, Blue Train → Moonlight, *So Far So Good* → Lilac, Sunshine → Black & Yellow. Left
+  on in the dev app so he can see it.
 
 ## 2026-09-27 — Rulez, the rules builder (branch `rules-rulez`)
 
