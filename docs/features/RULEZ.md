@@ -9,8 +9,11 @@ updated: 2026-09-27
 **Rulez is the card where you make your own rules.** The engine that runs them is
 [RULES.md](../architecture/RULES.md): the rule shape (§4), the facts (§5), the registry (§6), the
 overlay (§7), a hand change (§8), the guards (§11) and the recipe for a feature that uses rules
-(§19). This doc is the card: his forks (§1), the build record (§2), the next steps (§3–§4),
-your own files in a rule (§5) and the sentence row (§6).
+(§19). This doc is the card: his forks (§1), the build record (§2), the routes (§3–§4, all
+built), your own files in a rule (§5), the sentence row (§6), the agent's verb (§7), the routes
+as built (§8), snapshots (§9), FUTURE-SETTINGS as rules (§10), the album color facts and Live
+Theming (§11), moving a rule and its hover box (§12), cases (§13) and one row per recipe (§14).
+**Next: a full pass on custom rules (§15)** before any more building on recipes or cases.
 Designed and built 2026-09-27 on branch `rules-rulez`; §1–§2 were RULES.md §20–§21 until the
 split the same day.
 
@@ -463,7 +466,7 @@ card reads as AI or as a suggestion pushed at the user.**
   rules on one target. Computed on render, not per fire. (This is route 9's Rulez half.)
 - **Locked rows** (built-in, recipes): the lock glyph, the name of the Settings row or recipe,
   the summary; no expand; the menu as today (§1.2).
-- **Order:** the grip and *Move up* / *Move down* stay; the who-wins line is what makes the
+- **Order:** the grip and *Move up* / *Move down* stay (the grip went 2026-09-27: hold, then move, §12); the who-wins line is what makes the
   order visible.
 
 ### 6.3 The expanded row: the sentence
@@ -569,7 +572,7 @@ hold on skip lines) · `src/rules-eval.ts` (`{ recipe }` source, `Stored.recipes
 |---|---|
 | L | *Rules \| Logs* is the split pill primitive (`splitPillHTML`, the Full \| Lib family) in the head. Logs: **What ran** (the rule lines of the diag ring as sentences, newest first, 80 at most; *Words \| Raw*), **Last ran** (every rule: its last fire, fires in the last 10 s, off until restart), **Holding now** (what each While rule lays, and where your pick holds), **Facts now**. It follows new rule lines through `diag.onDiag`, at most every 300 ms, only while it shows. The view and the open row are the card's memory. |
 | 1 | *Last ran* is in Logs only (his call). An open row of yours shows *Try* live under the sentence (§6.3); a locked row (built-in, recipe) keeps *Try* in its menu, since it does not open. `failingLeaf` names the part that is not true now. |
-| 3 | `Stored.recipes` lists the recipes that are on (none by default). Six ship: the four of §4, Play on launch (§10.2) and Live Theming (§11.1). A recipe shows locked under **Recipes** with one On \| Off switch; its menu: Turn on / off, Try, *Duplicate into your rules*, Copy as text. Party's station is `{ special: "discovery" }`, found from your Discovery station at run time. |
+| 3 | `Stored.recipes` lists the recipes that are on (none by default). Six ship: the four of §4, Play on launch (§10.2) and Live Theming (§11.1). A recipe shows locked under **Recipes** as one row with one On \| Off switch (§14); its menu: Turn on / off, Try, *Duplicate into your rules*, Copy as text. Party's station is `{ special: "discovery" }`, found from your Discovery station at run time. |
 | 4 | The header's ⋯: **Paste a rule** (a field: Ctrl+V, then Enter), **Import from a file…** (a file picker), **Export your rules to a file** (`deetsmusic.deetsrules.json` in Downloads), **Copy your rules as text**. A row's menu: *Copy as text*. Every pasted or imported rule is checked against `known()`; a broken one is named and skipped. |
 | 5 | Loved, Diary score, Times played, Songs up next, Minutes since the app opened, Minutes with no press, Battery, Charging, Online, Data saver, Output kind. The Diary score and play count are read once per song, only while a rule reads them (`pin_play_counts`, the cached Diary list, one `diary_get`). Minute facts wake the engine only while a rule reads them. |
 | 6 | Show a note, Hide the app in the tray, Add the song to a playlist (your local playlists and editable Apple ones), Love the song (Apple), Open the Diary for this album, Turn scrobbling on / off. An add to an Apple playlist is an Apple call through `appleIf`. *Mark Suggest Less* waits for Suggest Less. |
@@ -586,7 +589,7 @@ hold on skip lines) · `src/rules-eval.ts` (`{ recipe }` source, `Stored.recipes
 - A condition line is two blanks, not three: *[Genre]* *[is Jazz]* (the value menu holds is /
   is not / above / below together).
 - The open row's parts enter with `enterRows`; the row itself opens with no height motion.
-- A recipe with two rules shows two locked lines; the switch sits on the first.
+- A recipe with two rules shows two locked lines; the switch sits on the first. (Replaced the same day: one row per recipe, §14.)
 - An agent's rule starts its summary with *Made by an AI app.* (his words in AGENT-SETUP.md)
 - The fire cap (5 in 10 s) covers recipes too.
 - The indent guide uses `--border`, not a new role (§6.4 named `--rulez-block-rule`).
@@ -935,3 +938,56 @@ About one sitting, as big as the §6 sentence.
    UI clean and covers every "pick one of N" rule.
 2. **Both kinds of rule** (While and When), or While first. The expansion is the same code.
 3. **Otherwise:** offered, with "your own value" as its default, or not at all.
+
+## 14. One row per recipe (his call, 2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test run by Claude (below); his look decides custom recipes
+
+His report: Live Theming showed six locked lines and one switch, on the first. §8 had put a
+recipe's switch on its first rule; with six rules the other five looked like they lost theirs.
+His call: **one row per recipe**. He decides custom recipes (grouping your own rules) after he
+sees how it looks (§13 has the related idea, cases).
+
+**Not a new concept in the engine.** A recipe was already one group: an id, a name, a
+description, its rules, and one entry in `Stored.recipes`. Only the drawing changes; the engine
+and the store do not, and nothing migrates.
+
+- **The row** (`recipeRowHTML`): the lock glyph, the recipe's name, its description as the
+  summary line (the hover box shows it whole), the one switch, the ⋯. A recipe that is off is
+  dimmed. The row carries its first rule's id, so the menu (Turn on / off, Try, Duplicate into
+  your rules, Copy as text) and the switch act on the whole recipe as before.
+- **Open** (a press on the row; one row open at a time, yours included): a line "Made by
+  DeetsMusic. *N* rules, read-only: Duplicate into your rules to change them.", then each rule:
+  its part name ("Light warm covers"), its sentence, and the live line (*Holds now* /
+  *Would not run now: …*), or "Turn the recipe on to use it." while it is off.
+- **Who wins:** the row shows the first of its rules that a rule above beats.
+- The built-in rules keep one locked line each (`lockedRowHTML`): each is its own Settings row.
+- **The who-wins line names the recipe** (`winsHTML`): *Also matches when the recipe "Live
+  Theming" does. The recipe "Live Theming" runs first.* Found at the desk: it named one part
+  ("light warm covers") where any of the six can be first, and its second sentence started in
+  lower case. The Logs view still names the part that ran.
+
+*Desk test (Claude, dev:app, handed over by the theme-switching session).* Six recipe rows, one
+switch each; Live Theming On, the others Off and dimmed. A press opened Live Theming to its six
+rules; "Light cool covers" read *Holds now* for the playing cover (Break Away, Lilac on screen),
+the other five *Would not run now: …*. Its switch turned all six off (the row dimmed, 0 live)
+and on again (6 live); it was left on, as he had it.
+
+## 15. Next: a full pass on custom rules (his call, 2026-09-27)
+
+> **Part:** project · 2026-09-27 · his call: one design pass, then he decides; nothing built
+
+After seeing one row per recipe (§14), his call: "good enough for now". Before any more building
+on grouping, one pass designs **custom rules** as a whole, and he decides from it. The pass
+covers, together:
+
+- **How a group of rules shows:** a recipe is one row that opens to its rules (§14). Should
+  your own rules group the same way (a recipe of your own, one switch for several rules)?
+- **Cases** (§13): one rule with many branches. Is a case list a group, or a group a case list?
+  Live Theming is the test: today six rules under one recipe row; with cases, one rule.
+- **Custom recipes:** making, naming, ordering and sharing your own; where Duplicate into your
+  rules leads (six loose rules today).
+- **What stays the same:** the engine's rule shape and evaluation (a group or a case list
+  expands to plain rules, §13), the store's `v: 1`, the agent's verb.
+
+The questions of §13 (same Do per case, both kinds, *otherwise*) are part of this pass.

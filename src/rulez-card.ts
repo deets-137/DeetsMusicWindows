@@ -169,8 +169,15 @@ export const rulezCard: CardDef = {
       if (!r) return "A rule";
       if ("user" in r.source) return `"${r.name || "Untitled rule"}"`;
       const rec = recipeOf(r);
-      if (rec) return `the recipe ${r.name ?? rec.name}`;
+      if (rec) return `the recipe "${r.name ?? rec.name}"`; // with its part: the Logs view names the rule that ran
       return `Settings › ${builtinOf(r)?.name ?? "a row"}`;
+    };
+    /** "Also matches when X does. X runs first." — the second X starts its sentence. */
+    const winsHTML = (id: string): string => {
+      // A recipe is one row (§14): any of its rules may be the one above, so name the recipe.
+      const rec = RECIPES.find((x) => x.rules.some((r) => r.id === id));
+      const n = rec ? `the recipe "${rec.name}"` : nameOf(id);
+      return `<p class="rulez__wins">Also matches when ${esc(n)} does. ${esc(n[0].toUpperCase() + n.slice(1))} runs first.</p>`;
     };
 
     // ── menus ──
@@ -570,7 +577,7 @@ export const rulezCard: CardDef = {
       const summary = (r.by === "agent" ? "Made by an AI app. " : "") + (r.draft ? "Finish the sentence to use this rule." : sentenceText(r, L));
       const warn = idle && !r.draft && r.on ? `<span class="rulez__warn" aria-hidden="true">${ICON_WARN}</span>` : "";
       const w = wins.get(r.id);
-      const winsLine = w && r.on && !r.draft ? `<p class="rulez__wins">Also matches when ${esc(nameOf(w.id))} does. ${esc(nameOf(w.id))} runs first.</p>` : "";
+      const winsLine = w && r.on && !r.draft ? `${winsHTML(w.id)}` : "";
       // The hover box (hint.ts SHAPES): the name, the whole sentence, and your description
       // under them. Press and hold, then move, to move the rule (no grip: the whole bar).
       const note = r.desc ? ` data-hint-note="${esc(r.desc)}"` : "";
@@ -585,23 +592,45 @@ export const rulezCard: CardDef = {
       return `<div class="${cls}" data-id="${esc(r.id)}" data-own="1" data-idx="${idx}">${bar}${winsLine}${open ? openHTML(r, L) : ""}</div>`;
     };
 
+    /** A built-in rule: its Settings row's name, its sentence, locked. */
     const lockedRowHTML = (r: Rule, wins: Map<string, Rule>, L: Lists): string => {
-      const rec = recipeOf(r);
       const b = builtinOf(r);
       const w = wins.get(r.id);
-      const on = rec ? recipesOn().includes(rec.id) : true;
-      const winsLine = w && on ? `<p class="rulez__wins">Also matches when ${esc(nameOf(w.id))} does. ${esc(nameOf(w.id))} runs first.</p>` : "";
-      const hint = rec ? "Made by DeetsMusic. Turn it on to use it." : `Made by Settings › ${b?.name ?? "a row"}. Change it there.`;
-      const name = rec ? (rec.rules.length > 1 ? `${rec.name}: ${r.name?.split(": ")[1] ?? ""}` : rec.name) : b?.name ?? "";
-      // A recipe's switch sits on its first rule only: one switch per recipe.
-      const sw = rec && rec.rules[0].id === r.id ? onOffHTML(on, null, "recipe") : `<span class="rulez__switch"></span>`;
-      return `<div class="rulez__rule is-locked${on ? "" : " is-idle"}" data-id="${esc(r.id)}"><div class="rulez__bar" title="${esc(hint)}">
+      const winsLine = w ? `${winsHTML(w.id)}` : "";
+      return `<div class="rulez__rule is-locked" data-id="${esc(r.id)}"><div class="rulez__bar" title="${esc(`Made by Settings › ${b?.name ?? "a row"}. Change it there.`)}">
         <span class="rulez__lead" aria-hidden="true">${ICON_LOCK}</span>
-        <span class="rulez__name">${esc(name)}</span>
+        <span class="rulez__name">${esc(b?.name ?? "")}</span>
         <span class="rulez__summary"><span class="rulez__said">${esc(sentenceText(r, L))}</span></span>
-        ${sw}
-        ${moreHTML(rec ? "Turns the recipe on or off, or copies it into your rules" : "Tries this rule, or opens the Settings row that makes it")}
+        <span class="rulez__switch"></span>
+        ${moreHTML("Tries this rule, or opens the Settings row that makes it")}
       </div>${winsLine}</div>`;
+    };
+
+    /** A recipe is one row (his call, 2026-09-27): its name, its description, its one switch.
+     *  A press opens it to its rules, read-only, each with the live line. The row carries its
+     *  first rule's id, so the menu and the switch find the recipe as before. */
+    const recipeRowHTML = (rec: (typeof RECIPES)[number], wins: Map<string, Rule>, L: Lists): string => {
+      const first = rec.rules[0];
+      const on = recipesOn().includes(rec.id);
+      const open = openId === first.id;
+      const w = on ? rec.rules.map((r) => wins.get(r.id)).find(Boolean) : undefined;
+      const winsLine = w ? `${winsHTML(w.id)}` : "";
+      const count = rec.rules.length === 1 ? "1 rule" : `${rec.rules.length} rules`;
+      const parts = rec.rules
+        .map((r) => {
+          const part = rec.rules.length > 1 ? r.name?.split(": ")[1] : undefined;
+          const live = on ? tryText(r) : "Turn the recipe on to use it.";
+          return `<div class="rulez__part">${part ? `<p class="rulez__part-name">${esc(part[0].toUpperCase() + part.slice(1))}</p>` : ""}<p class="rulez__part-said">${esc(sentenceText(r, L))}</p><p class="rulez__live">${esc(live)}</p></div>`;
+        })
+        .join("");
+      const body = open ? `<div class="rulez__open"><p class="rulez__live">Made by DeetsMusic. ${count}, read-only: Duplicate into your rules to change them.</p>${parts}</div>` : "";
+      return `<div class="rulez__rule is-locked is-recipe${open ? " is-open" : ""}${on ? "" : " is-idle"}" data-id="${esc(first.id)}"><div class="rulez__bar" data-act="open" title="${esc(open ? "Closes this recipe" : `Made by DeetsMusic. ${count}. Press to see them`)}">
+        <span class="rulez__lead" aria-hidden="true">${ICON_LOCK}</span>
+        <span class="rulez__name">${esc(rec.name)}</span>
+        <span class="rulez__summary"><span class="rulez__said">${esc(rec.desc)}</span></span>
+        ${onOffHTML(on, null, "recipe")}
+        ${moreHTML("Turns the recipe on or off, tries it, or copies it into your rules")}
+      </div>${winsLine}${body}</div>`;
     };
 
     // ── drawing: the open row, the sentence ──
@@ -704,7 +733,7 @@ export const rulezCard: CardDef = {
       if (pressing || isDragging()) return void (renderLater = true);
       const L = lists();
       mine = clone(userRules());
-      if (openId && !mine.some((r) => r.id === openId)) openId = null;
+      if (openId && !mine.some((r) => r.id === openId) && !RECIPES.some((x) => x.rules[0].id === openId)) openId = null;
       const scroll = body.scrollTop;
       if (view === "logs") {
         lastHTML = "";
@@ -721,12 +750,11 @@ export const rulezCard: CardDef = {
       }
       const live = allRules();
       const wins = whoWins(live);
-      const recipeRules = RECIPES.flatMap((x) => x.rules);
       const builtins = live.filter((r) => "row" in r.source || "fixed" in r.source);
       const empty = mine.length ? "" : `<p class="rulez__empty">You have no rules yet. Press + to make one.</p>`;
       const html = `<div class="rulez__list">
         <div class="rulez__mine">${mine.map((r, i) => ownRowHTML(r, wins, L, i)).join("")}</div>${empty}
-        <div class="rulez__divider">Recipes</div>${recipeRules.map((r) => lockedRowHTML(r, wins, L)).join("")}
+        <div class="rulez__divider">Recipes</div>${RECIPES.map((x) => recipeRowHTML(x, wins, L)).join("")}
         ${builtins.length ? `<div class="rulez__divider">Made by Settings</div>${builtins.map((r) => lockedRowHTML(r, wins, L)).join("")}` : ""}
       </div>`;
       // Nothing to show that is not already shown: keep the rows (a hover box, a hold and the
@@ -780,6 +808,8 @@ export const rulezCard: CardDef = {
         if (rec) setRecipe(rec.id, !recipesOn().includes(rec.id));
         return;
       }
+      // A recipe's row opens to its rules (read-only), one row open at a time as your own.
+      if (act === "open" && recipeOf(r)) return openRow(openId === r.id ? null : r.id);
       if (!own) return;
       if (act === "onoff") {
         if (!r.draft) edit(r.id, r.on ? "off" : "on", (x) => void (x.on = !x.on));

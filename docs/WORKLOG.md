@@ -86,6 +86,13 @@ test. One session did all of it (the two-session split of RULEZ.md §3 ended her
   a redraw), which closed the hover box. Fixed in the engine (a seam rechecks only on a real
   change) and in the card (no redraw for the same HTML): 20 redraws in 5 s → 0. Cases (one
   rule, many branches) written up to talk through (RULEZ.md §13). Committed and pushed.
+- His next report: Live Theming showed six lines and one switch. His call: one row per recipe
+  (RULEZ.md §14), drawing only (a recipe was already one group in the store). It opens to its
+  rules, read-only, each with its live line. The theme-switching session handed the dev app
+  over; desk test passed (RULEZ.md §14). Found and fixed: the who-wins line named one part of a
+  recipe and began a sentence in lower case. His call after seeing it: good enough for now; a
+  full design pass on custom rules (recipes, groups, cases) comes next (RULEZ.md §15).
+  Committed and pushed.
 
 ## 2026-09-27 — Rulez, the rules builder (branch `rules-rulez`)
 

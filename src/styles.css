@@ -4228,6 +4228,12 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 }
 .rulez__rule:not(.is-locked) > .rulez__bar:hover { background: var(--surface-hover); }
 .rulez__rule.is-locked > .rulez__bar { cursor: default; }
+/* A recipe is one row that opens to its rules (RULEZ.md §14): pressable like your own. */
+.rulez__rule.is-recipe > .rulez__bar { cursor: pointer; }
+.rulez__rule.is-recipe > .rulez__bar:hover { background: var(--surface-hover); }
+.rulez__part { display: flex; flex-direction: column; gap: var(--space-1); }
+.rulez__part-name { margin: 0; font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); }
+.rulez__part-said { margin: 0; font-size: var(--fs-subtext); color: var(--text); }
 .rulez__name { font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: var(--rulez-name-max-w); }
 .rulez__summary { min-width: 0; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: var(--space-1); }
 /* The sentence's own box: a flex item cannot end in "…" itself, and hint.ts reads this box to

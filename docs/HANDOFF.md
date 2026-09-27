@@ -123,8 +123,9 @@ orange / yellow line sits), and the recipe **Live Theming** (§11.1: each cover 
 the six themes, light or dark by the cover; the color half is his to review). The Album theme, colors from the cover, is documented into Skinz
 (SKINZ.md §12) and waits for the Skinz build. **Then:** a rule moves by hold-then-move (no
 grip) and its row has a hover box (RULEZ.md §12; his hand test is open); the engine rechecks
-only when a seam's fact changed. **To talk through:** cases, one rule with many branches
-(RULEZ.md §13).
+only when a seam's fact changed. A recipe is one row with one switch, and opens to its rules
+(RULEZ.md §14, desk-tested). **Next for Rulez: a full design pass on custom rules** — how
+recipes and groups show, cases, custom recipes — then he decides (RULEZ.md §15, with §13).
 
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built
