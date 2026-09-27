@@ -421,8 +421,10 @@ fell back to Crimson, the rule reads "The file this rule uses is gone." (5) A 0.
 on the page (`__files.addSound`); the rule *When the next song plays → Play the sound ping*:
 `clip:play {gainDb: -6, duckDb: 6, ms: 800}` then `rule:file {played: true}`, audible over
 Blue Train. The *Explicit* version did not fire: the `explicit` fact read false for
-`song:1693657477` (Only in the West), whose cover wears the advisory badge — a fact of the
-card session's, told to it. (6) A 30 s file: refused with the toast, nothing saved. (7) A page
+`song:1693657477` (Only in the West), whose album cover wears the advisory badge. Not a bug
+(the card session, the same night): Apple rates only the marked songs, and neither the track
+store nor MusicKit's item carries a rating for that one; the album's badge is for its other
+tracks, and the app's own row shows no E. (6) A 30 s file: refused with the toast, nothing saved. (7) A page
 reload: both files, the picture in use and the rule came back. Everything the test made was
 removed after it; the canvas went back to Covers.
 
