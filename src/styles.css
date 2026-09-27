@@ -199,6 +199,24 @@ body {
   margin-left: var(--space-1);
   vertical-align: middle;
 }
+/* The rule chip (RULES.md §9, rule-chip.ts): the New badge's disc, with a bolt or a hand in it.
+   The bolt only tells; the hand is a button that gives the value back to the rule. The
+   look is a placeholder until the owner designs it. */
+.rule-chip {
+  box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto; vertical-align: middle;
+  width: var(--rule-chip-size); height: var(--rule-chip-size);
+  margin-left: var(--space-1); padding: var(--rule-chip-pad);
+  border: 0; border-radius: 50%;
+  background: var(--rule-chip); color: var(--rule-chip-ink);
+  font: inherit; line-height: 1;
+  cursor: default;
+}
+.rule-chip[hidden] { display: none; }
+.rule-chip svg { width: 100%; height: 100%; }
+.rule-chip[data-kind="hand"] { cursor: pointer; }
+.rule-chip[data-kind="hand"]:hover { transform: var(--hover-lift); }
+.rule-chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 /* ── Settings menu + flyout ─────────────────────────────────── */
 .menu {

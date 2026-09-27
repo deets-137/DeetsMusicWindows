@@ -55,12 +55,14 @@ import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
+import { initRules } from "./rules";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
 const appWindow = getCurrentWindow();
 
 window.addEventListener("DOMContentLoaded", () => {
+  initRules(); // the rules engine (RULES.md): before the look and the cards, which register into it
   initTheme();
   initSkin();
   initSkinSettings(); // before the first paint, so a card never flashes the default look

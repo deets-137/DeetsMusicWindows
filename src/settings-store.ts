@@ -11,6 +11,7 @@
 import type { ThemeName } from "./theme";
 import type { SkinName } from "./skin";
 import type { EqPreset } from "./sound-presets";
+import type { Stored } from "./rules-eval";
 
 export interface Settings {
   // ── window ──
@@ -382,6 +383,10 @@ export interface Settings {
   /** A settings change from an agent (AGENT.md §6): apply it, ask in the window each time,
    *  or refuse. Agents can never change this one. agent-settings.ts reads it. */
   agentSettings: "allow" | "ask" | "off";
+  // ── rules (docs/architecture/RULES.md §12) ──
+  /** The user's own rules. Empty until the rules editor; the built-in rules are never stored
+   *  (each row makes its own). Internal: no row, no agent spec. */
+  rules: Stored;
   // ── updates ──
   /** When to get updates (RELEASE.md §6.3): download in the background and then ask to
    *  restart, ask before the download, or no scheduled check. updater.ts reads it. */
@@ -528,6 +533,7 @@ export const DEFAULTS: Settings = {
   diaryGrow: "new", // user's call 2026-09-24: a new entry opens with room for its songs and the note panel
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
   quickSeen: [], // user's call 2026-09-20: every icon starts New, on an upgrade too — the panel is new to everyone
+  rules: { v: 1, rules: [] },
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
   updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
   updateSkip: "",
@@ -632,9 +638,52 @@ function seedOnboarding(stored: Partial<Settings>): void {
 let state: Settings = load();
 const listeners = new Set<(changed: keyof Settings) => void>();
 
-/** Read one setting (always current). */
-export function setting<K extends keyof Settings>(key: K): Settings[K] {
+// ── the rules overlay (docs/architecture/RULES.md §7) ────────────────────────
+// A state rule lays its value on top of yours while its condition holds; it never replaces
+// yours. A key a rule may set is a `RuleKey`, and `setting()` refuses it at compile time:
+// each reader must say which value it wants — `effective` (the value to act on) or
+// `ownSetting` (your value: the Settings card, the agent, a toggle that reads then writes).
+// Add a key here and `npx tsc --noEmit` lists every read of it that must choose.
+export const RULE_KEYS = [] as const;
+export type RuleKey = (typeof RULE_KEYS)[number];
+const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
+
+/** In memory only: key → the rule's value and the rule. */
+const overlay = new Map<RuleKey, { value: unknown; ruleId: string }>();
+const ownListeners = new Set<(key: RuleKey) => void>();
+
+/** Read one setting (always current). A `RuleKey` is read with `effective` or `ownSetting`. */
+export function setting<K extends Exclude<keyof Settings, RuleKey>>(key: K): Settings[K] {
   return state[key];
+}
+/** The value to act on: an active rule's value, or yours. */
+export function effective<K extends RuleKey>(key: K): Settings[K] {
+  const o = overlay.get(key);
+  return o ? (o.value as Settings[K]) : state[key];
+}
+/** Your value, whatever a rule lays on top. */
+export function ownSetting<K extends RuleKey>(key: K): Settings[K] {
+  return state[key];
+}
+/** The rule that sets `key` now, or null (the chip, rule-chip.ts). */
+export const overlayOf = (key: RuleKey): string | null => overlay.get(key)?.ruleId ?? null;
+
+/**
+ * rules.ts alone calls this (RULES.md §7): lay a rule's value on `key`, or lift it with
+ * `undefined`. Listeners hear the key when its effective value changes.
+ */
+export function _setOverlay(key: RuleKey, value: unknown, ruleId: string): void {
+  const before = effective(key);
+  if (value === undefined) overlay.delete(key);
+  else overlay.set(key, { value, ruleId });
+  if (effective(key) !== before) listeners.forEach((cb) => cb(key));
+}
+
+/** Your value changed while a rule sets the key (a hand change, RULES.md §8). The engine and
+ *  the chip listen. Returns an unsubscribe fn. */
+export function onOwnChange(cb: (key: RuleKey) => void): () => void {
+  ownListeners.add(cb);
+  return () => ownListeners.delete(cb);
 }
 
 /**
@@ -654,7 +703,8 @@ export const adaptiveUnhidden = (): boolean => ADAPTIVE_UNHIDDEN;
 /** Adaptive sound is on right now: unhidden AND switched on. Read this, never `soundAdaptive`. */
 export const adaptiveOn = (): boolean => ADAPTIVE_UNHIDDEN && state.soundAdaptive;
 
-/** Write one setting, persist, and notify subscribers. No-op if unchanged. */
+/** Write one setting (your value), persist, and notify subscribers. No-op if unchanged.
+ *  Under an active rule the effective value does not move: `onOwnChange` hears it instead. */
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
   if (state[key] === value) return;
   state = { ...state, [key]: value };
@@ -663,8 +713,12 @@ export function setSetting<K extends keyof Settings>(key: K, value: Settings[K])
   } catch {
     /* storage disabled — still applies for the session */
   }
-  listeners.forEach((cb) => cb(key));
+  if (isRuleKey(key) && overlay.has(key)) ownListeners.forEach((cb) => cb(key));
+  else listeners.forEach((cb) => cb(key));
 }
+
+/** The whole store as it is now (your values), for the rules engine's built-in rules. */
+export const allSettings = (): Readonly<Settings> => state;
 
 /** Subscribe to changes; the callback gets the key that changed. Returns an unsubscribe fn. */
 export function onSettingsChange(cb: (changed: keyof Settings) => void): () => void {

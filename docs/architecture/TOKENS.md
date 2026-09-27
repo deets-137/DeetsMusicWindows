@@ -13,8 +13,8 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 40 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 507 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Theme (color roles) | themes.css | 42 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 509 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -34,6 +34,8 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--discord-mark` | `var(--apple-music-mark)` | — | Discord's symbol (the quick panel): its brand kit has the same black and white files, and the same rule, so it follows the Apple Music mark. |
 | `--new-badge` | `var(--apple-music-mark)` | — | The quick panel's New badge (QUICK-SETTINGS.md §8): black on a light theme, white on a dark one, the N the other — the same black and white pair as the marks beside it. |
 | `--new-badge-ink` | `light-dark(var(--paint-apple-music-white), var(--paint-apple-music-black))` | — |  |
+| `--rule-chip` | `var(--new-badge)` | — | The rule chip (RULES.md §9, placeholder look): the New badge's family, so its pair. |
+| `--rule-chip-ink` | `var(--new-badge-ink)` | — |  |
 | `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
 | `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
 | `--eq-grid` | `color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent)` | — |  |
@@ -198,6 +200,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--new-badge-fs` | `8px` | — | its N |
 | `--new-badge-off` | `-4px` | — | how far it hangs past the square's top right corner |
 | `--new-badge-ring` | `1.5px` | — | the ring of panel surface that stands it off the square's border |
+| `--rule-chip-size` | `var(--quick-mark-size)` | — | The rule chip (RULES.md §9): a bolt (a rule set this) or a hand (you changed it; press to give it back) beside a label. The New badge's family; the look is a placeholder. |
+| `--rule-chip-pad` | `var(--new-badge-ring)` | — |  |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |
