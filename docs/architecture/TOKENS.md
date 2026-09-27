@@ -201,7 +201,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--new-badge-off` | `-4px` | — | how far it hangs past the square's top right corner |
 | `--new-badge-ring` | `1.5px` | — | the ring of panel surface that stands it off the square's border |
 | `--rule-chip-size` | `var(--icon-md)` | — | The rule chip (RULES.md §9): a bolt (a rule set this) or a hand (you changed it; press to give it back) beside a label. The New badge's family; the look is a placeholder. |
-| `--rule-chip-pad` | `calc(var(--rule-chip-size) / 5)` | — | the glyph fills the middle three fifths |
+| `--rule-chip-pad` | `calc(var(--rule-chip-size) / 8)` | — | the glyph fills the middle three quarters |
 | `--sound-title-tracking` | `0.02em` | — |  |
 | `--sound-chip-radius` | `var(--radius-control)` | — |  |
 | `--sound-pill-min-w` | `44px` | — | On / Off keep one width in a column |

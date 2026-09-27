@@ -539,7 +539,10 @@ Where this section and §1–§17 differ, this section is the code.
 - **A saved hold at launch.** A fact that no module has registered yet is not a change
   (`factsChanged`), and a hold is checked against every rule, not only the live ones; at
   launch a saved hold stays while its rule exists (there is no "before" list to compare).
-  Found at the desk: without these, a held pick was lost on reload.
+  Found at the desk: without these, a held pick was lost on reload. **A second cause, found
+  later the same night:** step 8 registered the `now` fact inside `initRules()` before the
+  first build, and that registration's check ended every saved hold. The first build now comes
+  first, and a check before it does nothing (`built`).
 - **Keep on top (step 7):** `registerProp("window.onTop")` in main.ts; `applyAlwaysOnTop` is
   gone. The engine applies the property's "off" value (false) at its first check.
 - **The sharing pause (step 8):** the three switches are rule keys; `presence.ts` and

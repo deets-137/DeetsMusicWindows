@@ -102,6 +102,7 @@ const ROW_KEYS: (keyof RowValues)[] = [
 ];
 
 let started = false;
+let built = false; // the first rule list exists (initRules)
 let all: Rule[] = []; // the user's own rules (none until the editor), then the built-in ones
 let live: Rule[] = []; // the rules that can run now
 let holds: Hold[] = [];
@@ -244,6 +245,7 @@ export function recheck(why: string): void {
 }
 
 function checkOnce(why: string): void {
+  if (!built) return; // no rules yet: a saved hold would read as the hold of a rule that is gone
   const f = readFacts();
   const ended = holds.filter((h) => !factsChanged([h], all, f).length);
   if (ended.length) {
@@ -390,10 +392,13 @@ export function initRules(): void {
   if (started) return;
   started = true;
   holds = loadHolds();
-  // The clock is the engine's own fact. A rule on it (`now < until`) needs no seam: the one
-  // timer wakes at its edge (`nextEdge`).
-  registerFact("now", () => Date.now());
   rebuild("init");
+  built = true;
+  // The clock is the engine's own fact. A rule on it (`now < until`) needs no seam: the one
+  // timer wakes at its edge (`nextEdge`). Registered AFTER the first build: a registration
+  // runs a check, and a check before the rules exist ended every saved hold (found 2026-09-26,
+  // a held look lost on reload).
+  registerFact("now", () => Date.now());
   diag.log("rule:init", { rules: all.length, live: live.length, holds: holds.length });
   onSettingsChange((k) => {
     if (!(ROW_KEYS as string[]).includes(k) && k !== "rules") return;

@@ -7,12 +7,16 @@
 
 import { chipState, onRulesChange, resumeRule } from "./rules";
 
-// Each view box is centred on its own glyph's box (not the 24 grid), so the glyph sits in the
-// middle of the disc (his note, 2026-09-26: the first hand leaned to the lower right).
+// Both glyphs are drawn symmetric about the 24 grid's centre, with a margin on every side, so
+// they sit in the middle of the disc to the eye and never touch its edge (his notes,
+// 2026-09-26: the first hand leaned off centre; a hand with a thumb read as off centre and was
+// cut at the bottom in the Skin row).
 const BOLT =
-  '<svg viewBox="0.5 1 22 22" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z" fill="currentColor"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 3L6 13.5h5.5L10.5 21 18 10.5h-5.5z" fill="currentColor"/></svg>';
 const HAND =
-  '<svg viewBox="0.6 1 22 22" aria-hidden="true"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 5.5v-2a1.5 1.5 0 1 1 3 0V12M14 5.5a1.5 1.5 0 0 1 3 0V12M17 7.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7c-.3-.5-1.4-2.4-3.3-5.7a1.5 1.5 0 0 1 .5-2 1.9 1.9 0 0 1 2.3.3L8 13.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M6.8 12V8M10.3 12V5.2M13.7 12V5.2M17.2 12V8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round"/>' +
+  '<path d="M5.4 11.5h13.2V14a6.6 6.6 0 0 1-13.2 0z" fill="currentColor"/></svg>';
 
 export interface RuleChip {
   el: HTMLButtonElement;
