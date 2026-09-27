@@ -119,6 +119,10 @@ routes and the Rules | Logs view, RULEZ.md §3**, two sessions in parallel, each
 own paths. Route 2 (the agent's `rules` verb, AGENT.md §8) and §5 (your own pictures and
 sounds in a rule, RULEZ.md §5.5) are built and desk-tested; **his** steps left: Agent changes
 settings = Off (AGENT.md §8 step 8) and the chime on a HomePod (RULEZ.md §5.4 step 8).
+**Route 8 walked and decided (2026-09-27, late): yes to all five** — RULEZ.md §10.1 has the
+split (the card session: the Play-on-launch recipe, the Queue summon cancel, the Go-to events
+and row, the shuffle event; the engine-review session: the window size facts), the seams and
+the desk tests. Nothing of §10.1 is built yet.
 
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built
