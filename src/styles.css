@@ -213,6 +213,9 @@ body {
   cursor: default;
 }
 .rule-chip[hidden] { display: none; }
+/* In a title-menu row (label · chip · chevron, spaced apart) the chip sits at the right,
+   beside the chevron, as a status mark, not loose in the middle of the row. */
+.menu__row > .rule-chip { margin-left: auto; }
 .rule-chip svg { width: 100%; height: 100%; }
 .rule-chip[data-kind="hand"] { cursor: pointer; }
 .rule-chip[data-kind="hand"]:hover { transform: var(--hover-lift); }

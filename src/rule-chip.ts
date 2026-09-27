@@ -7,10 +7,12 @@
 
 import { chipState, onRulesChange, resumeRule } from "./rules";
 
+// Each view box is centred on its own glyph's box (not the 24 grid), so the glyph sits in the
+// middle of the disc (his note, 2026-09-26: the first hand leaned to the lower right).
 const BOLT =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z" fill="currentColor"/></svg>';
+  '<svg viewBox="0.5 1 22 22" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z" fill="currentColor"/></svg>';
 const HAND =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-6.5v-1a1.5 1.5 0 0 1 3 0V12m0-5.5a1.5 1.5 0 0 1 3 0V12m0-3.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7l-3.3-5.2a1.5 1.5 0 0 1 2.4-1.8L8 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg viewBox="0.6 1 22 22" aria-hidden="true"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 5.5v-2a1.5 1.5 0 1 1 3 0V12M14 5.5a1.5 1.5 0 0 1 3 0V12M17 7.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7c-.3-.5-1.4-2.4-3.3-5.7a1.5 1.5 0 0 1 .5-2 1.9 1.9 0 0 1 2.3.3L8 13.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 export interface RuleChip {
   el: HTMLButtonElement;

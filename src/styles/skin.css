@@ -167,8 +167,8 @@
   --new-badge-ring:          1.5px;  /* the ring of panel surface that stands it off the square's border */
   /* The rule chip (RULES.md §9): a bolt (a rule set this) or a hand (you changed it; press to
      give it back) beside a label. The New badge's family; the look is a placeholder. */
-  --rule-chip-size:          var(--quick-mark-size);
-  --rule-chip-pad:           var(--new-badge-ring);
+  --rule-chip-size:          var(--icon-md);
+  --rule-chip-pad:           calc(var(--rule-chip-size) / 5);   /* the glyph fills the middle three fifths */
   --sound-title-tracking:    0.02em;
   --sound-chip-radius:       var(--radius-control);
   --sound-pill-min-w:        44px;   /* On / Off keep one width in a column */

@@ -20,6 +20,9 @@ const argv = process.argv.slice(2);
 const second = argv[0] === "--second";
 if (second) argv.shift();
 const shot = argv[0] === "--shot" ? argv[1] : null;
+// --shot FILE x,y,w,h[,scale]: only that part of the window, magnified (a close look at a small mark).
+const clipArg = shot && argv[2] ? argv[2].split(",").map(Number) : null;
+const clip = clipArg ? { x: clipArg[0], y: clipArg[1], width: clipArg[2], height: clipArg[3], scale: clipArg[4] ?? 1 } : undefined;
 const expr = shot ? "" : argv.join(" ");
 if (!expr && !shot) fail('usage: node scripts/webview-eval.mjs [--second] "__toast.demo()" | --shot out.png');
 
@@ -49,7 +52,7 @@ ws.onopen = () =>
   ws.send(
     JSON.stringify(
       shot
-        ? { id: 1, method: "Page.captureScreenshot", params: { format: "png" } }
+        ? { id: 1, method: "Page.captureScreenshot", params: { format: "png", ...(clip ? { clip } : {}) } }
         : {
             id: 1,
             method: "Runtime.evaluate",
