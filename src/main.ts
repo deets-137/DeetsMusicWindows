@@ -55,7 +55,7 @@ import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
-import { initRules, registerFact } from "./rules";
+import { initRules, registerFact, registerProp } from "./rules";
 import { ruleChip } from "./rule-chip";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
@@ -104,20 +104,14 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ── Settings that act on the window / the dropdown primitive: applied here on
   //    launch and whenever the Settings card changes them (SETTINGS.md). ──
-  // Keep on top: always, only while the window shows the player, or off. Re-checked on
-  // launch, on the setting, and on every surface / mini view change.
-  let onTop: boolean | null = null;
-  const applyAlwaysOnTop = () => {
-    const mode = setting("alwaysOnTop");
-    const on = mode === "always" || (mode === "player" && isPlayerView());
-    if (on === onTop) return;
-    onTop = on;
-    appWindow.setAlwaysOnTop(on).catch((e) => console.error("[aot]", e));
-  };
-  applyAlwaysOnTop();
-  onSurfaceChange(applyAlwaysOnTop);
+  // Keep on top: always, only while the window shows the player, or off. The row makes a
+  // state rule (RULES.md §13) that holds this window property: while `surface` = player, or
+  // always. The engine applies it on launch, on the row, and on every surface / view change.
+  registerProp("window.onTop", {
+    apply: (on) => void appWindow.setAlwaysOnTop(on === true).catch((e) => console.error("[aot]", e)),
+    off: false,
+  });
   onSettingsChange((k) => {
-    if (k === "alwaysOnTop") applyAlwaysOnTop();
     if (k === "menuMode") setDropdownMode(setting("menuMode") as DropdownMode);
   });
 

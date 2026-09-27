@@ -15,7 +15,7 @@ import type { Stored } from "./rules-eval";
 export interface Settings {
   // ── window ──
   /** Keep the window above others: always, only while it shows the player, or never.
-   *  Was a boolean until 2026-09-14 (migrated: true → always). main.ts applies it. */
+   *  Was a boolean until 2026-09-14 (migrated: true → always). The row makes a rule on the window.onTop property (RULES.md §13). */
   alwaysOnTop: "always" | "player" | "off";
   /** What a click on the tray icon pops: mini with its card, or the player. main.ts reads it. */
   trayView: "cards" | "player";
