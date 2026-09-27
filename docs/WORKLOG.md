@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,30 @@ updated: 2026-09-26
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-09-27 — Rulez, the rules builder (branch `rules-rulez`)
+
+`rules-rulez` fast-forwarded to `main` (0b7436a), then Rulez designed with him and built
+(RULES.md §20 design, §21 as built). His forks: columns Name · Desc · When · In · If · Do, the
+When cell opening with When… or While…; built-in rules shown locked; If chips with and / or and
+parentheses at any depth; Max only; opens at Fill, an X returns the replaced card; the larger
+event set (no Rooms or Friends) with Play a playlist / station; Sound facts including a live
+song balance; cascades allowed under guards; active-voice words.
+
+His mid-build question — keep a grown Playlists open when he presses the Queue — became the
+first **cancel event** (`grow.outside` + Keep) AND `cardGrowOutside` as a rule key (his call:
+both, §20.7).
+
+Desk test (Claude, dev:app, through the UI): Rulez in the picker only in Max; the pick fills;
+the X brings Diary back; + makes a dimmed draft; his keep-open rule made through the cell menus
+keeps the grow on a Queue press and collapses it on a Now Playing press; two rules that open
+each other's card cascade at depth 1 and stop (the layout's own on-screen check); a While rule
+on EQ preset lays a −3 dB low shelf (`__sound.status().shelves.bands`); a nested condition
+`(Time after 8 PM or Genre is Jazz)` stores at the right depth; the balance watch turns on when a
+rule reads Song bass and off when the rule goes. **Found and fixed at the desk:** Put in
+parentheses vanished at once (a group of one was folded back into its chip). **Not run at the
+desk:** the 5-in-10-s trip notice (unit test only), the clock event, the playback events (no
+music played), Play a playlist / station.
 
 ## 2026-09-26, late night — Go to Album from Home did not grow; the grow replaces the slide
 

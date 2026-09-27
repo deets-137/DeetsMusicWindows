@@ -16,8 +16,9 @@ import { rewindCard } from "./rewind-card";
 import { radioCard } from "./radio-card";
 import { settingsCard } from "./settings-card";
 import { diaryCard } from "./diary-card";
+import { rulezCard } from "./rulez-card";
 
-export type CardId = "home" | "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings" | "diary";
+export type CardId = "home" | "now-playing" | "library" | "queue" | "playlists" | "search" | "history" | "rewind" | "radio" | "settings" | "diary" | "rulez";
 
 export interface CardInstance {
   /** Tear down: drop every listener and clear the host. Called when a slot swaps cards. */
@@ -45,12 +46,17 @@ export interface MountOpts {
   onReturn?: () => boolean;
   /** The card the return goes to, for the Back button's hint. */
   returnTitle?: string;
+  /** A card with an X (Rulez, RULES.md §20.6): the X calls this, and the layout puts back the
+   *  card this one replaced. */
+  onClose?: () => void;
 }
 
 export interface CardDef {
   id: CardId;
   /** Default header label (used by the slot chrome + the picker). */
   title: string;
+  /** Offered only in Max, opens at Fill, and closes with an X (Rulez, RULES.md §20.6). */
+  maxOnly?: boolean;
   /** Build markup into `host` and wire it up; return a handle to tear it down. */
   mount(host: HTMLElement, opts?: MountOpts): CardInstance;
 }
@@ -68,4 +74,5 @@ export const registry: Partial<Record<CardId, CardDef>> = {
   radio: radioCard,
   diary: diaryCard,
   settings: settingsCard,
+  rulez: rulezCard,
 };

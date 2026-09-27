@@ -26,6 +26,7 @@ import { setting, onSettingsChange, adaptiveOn } from "./settings-store";
 import type { TrackHandle } from "./queue";
 import type { Track } from "./library";
 import * as diag from "./diag";
+import { registerFact } from "./rules";
 
 /** A listen counts once this much of the song was heard (SOUND.md §3A). */
 const HEARD_TO_COUNT = 0.8;
@@ -222,6 +223,12 @@ export async function forgetMeasurements(): Promise<number> {
 }
 
 export function initLoudness(): void {
+  // Rulez's "Song loudness" (RULES.md §20.3): the song's measured LUFS, when it has a row. The
+  // song change already runs the state check (the player's seam), so it needs none of its own.
+  registerFact("loudness", () => {
+    const m = listen ? measured.get(listen.id) : undefined;
+    return m ? Math.round(m.lufs * 10) / 10 : undefined;
+  });
   onListen(onStart, onTick);
   sound.onMeter(onHop);
   invoke<[string, number, number][]>("loudness_all")

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   validate, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds,
-  builtinRules, nextEdge, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
+  builtinRules, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
 } from "../src/rules-eval.ts";
 
 const known: Known = {
@@ -60,11 +60,13 @@ test("a good rule passes; unknown names are refused", () => {
   assert.match(validate(null, known)!, /id/);
 });
 
-test("one level of groups inside the top group, and no deeper", () => {
+test("groups at any depth, up to the hang guard (his call 2026-09-27)", () => {
   const leaf = { fact: "surface", is: "max" };
   assert.equal(validate(moment({ if: { all: [leaf, { any: [leaf, leaf] }] } }), known), null);
-  assert.equal(validate(moment({ if: { not: { all: [leaf] } } }), known), null);
-  assert.match(validate(moment({ if: { all: [{ any: [{ not: leaf }] }] } }), known)!, /too deep/);
+  assert.equal(validate(moment({ if: { all: [{ any: [{ not: { all: [leaf] } }] }] } }), known), null);
+  let deep: unknown = leaf;
+  for (let i = 0; i < 20; i++) deep = { all: [deep] };
+  assert.match(validate(moment({ if: deep }), known)!, /too deep/);
 });
 
 // ── moment pick ──
@@ -253,4 +255,61 @@ test("resume, restart, a rule that is gone or changed", () => {
   assert.equal(factsChanged(holds, [], { daylight: true }).length, 0); // the rule is gone
   assert.equal(keepHolds(holds, [r], [r]).length, 1);
   assert.equal(keepHolds(holds, [r], [st("look", { fact: "daylight", is: true }, "green")]).length, 0);
+});
+
+// ── Rulez (RULES.md §20, 2026-09-27) ──
+
+test("his example: (Genre is Jazz and Time after 8 PM) or Genre is Rap", () => {
+  const c: Cond = { any: [{ all: [{ fact: "genre", is: "jazz" }, { fact: "time", gt: 20 * 60 }] }, { fact: "genre", is: "Rap" }] };
+  assert.equal(evalCond(c, { genre: ["Jazz", "Music"], time: 21 * 60 }), true);
+  assert.equal(evalCond(c, { genre: ["Jazz"], time: 19 * 60 }), false);
+  assert.equal(evalCond(c, { genre: ["rap"], time: 9 * 60 }), true);
+  assert.equal(evalCond(c, { time: 22 * 60 }), false); // no genre known: not a match
+});
+
+test("is not, gt and lte; text compares without case", () => {
+  assert.equal(evalCond({ fact: "artist", isNot: "yeek" }, { artist: "Yeek" }), false);
+  assert.equal(evalCond({ fact: "artist", isNot: "yeek" }, { artist: "Other" }), true);
+  assert.equal(evalCond({ fact: "songBass", gt: 3 }, { songBass: 3 }), false);
+  assert.equal(evalCond({ fact: "songBass", lte: 3 }, { songBass: 3 }), true);
+});
+
+test("a draft never runs; a clock rule fires only at its minute", () => {
+  const d = moment({ id: "d", draft: true }) as MomentRule;
+  assert.equal(pickMoment([d], "album.open", "library", {}).rule, null);
+  const c = moment({ id: "c", when: "clock", at: 600 }) as MomentRule;
+  assert.equal(pickMoment([c], "clock", "*", {}, 600).rule?.id, "c");
+  assert.equal(pickMoment([c], "clock", "*", {}, 601).rule, null);
+  assert.equal(pickMoment([c], "clock", "*", {}, 600, new Set(["c"])).rule, null); // turned off by the guard
+  assert.match(validate(moment({ when: "clock" }), { ...known, events: new Set(["clock"]) })!, /minute/);
+});
+
+test("nextClock: later today, or tomorrow once the minute passed", () => {
+  const c = moment({ id: "c", when: "clock", at: 600 }) as MomentRule;
+  const morning = new Date(2026, 8, 27, 9, 0);
+  assert.equal(new Date(nextClock([c], morning)!.at).getHours(), 10);
+  assert.equal(new Date(nextClock([c], morning)!.at).getDate(), 27);
+  const night = new Date(2026, 8, 27, 11, 0);
+  assert.equal(new Date(nextClock([c], night)!.at).getDate(), 28);
+  assert.deepEqual(timeFacts(new Date(2026, 8, 27, 20, 5)), { time: 20 * 60 + 5, day: "sun" });
+});
+
+test("the cascade guards: 5 fires in 10 s trip; chains count; Apple waits", () => {
+  let times: number[] = [];
+  let trip = false;
+  for (let i = 0; i < 5; i++) ({ times, trip } = noteFire(times, 1000 + i * 1000));
+  assert.equal(trip, true);
+  assert.equal(noteFire([0, 1, 2, 3], 20_000).trip, false); // old fires fall out of the window
+  assert.deepEqual(chainDepth({ at: 0, depth: 2 }, false, 1000), { caused: true, depth: 3 });
+  assert.deepEqual(chainDepth({ at: 0, depth: 2 }, false, 5000), { caused: false, depth: 0 });
+  assert.equal(appleMayRun({ caused: true, now: 0, backingOff: false }), "caused by a rule");
+  assert.equal(appleMayRun({ caused: false, lastRun: 0, now: 10_000, backingOff: false }), "ran less than 30 s ago");
+  assert.equal(appleMayRun({ caused: false, lastRun: 0, now: 40_000, backingOff: false }), null);
+  assert.equal(CHAIN_CAP, 8);
+});
+
+test("readsFact finds a fact inside nested groups", () => {
+  const r = moment({ id: "r", if: { any: [{ all: [{ fact: "time", gt: 1 }] }] } }) as MomentRule;
+  assert.equal(readsFact([r], ["time", "day"]), true);
+  assert.equal(readsFact([r], ["songBass"]), false);
 });

@@ -112,9 +112,13 @@ void listen("apple-signin-rejected", () => void check(false, false, "rust403"));
 // second failed click does not add another.
 const BUSY_TOAST_MS = 6000;
 let busyUntil = 0;
+let backoffUntil = 0;
+/** Apple asked us to wait, or a sign-in / network trouble stands: a rule's Apple action waits (RULES.md §20.5). */
+export const appleBackingOff = (): boolean => Date.now() < backoffUntil || current !== "none";
 void listen<{ s: number; hinted: boolean }>("apple-busy", (e) => {
   const { s, hinted } = e.payload;
   diag.warn("apple:busy", { s, hinted });
+  backoffUntil = Date.now() + s * 1000;
   if (Date.now() < busyUntil) return;
   busyUntil = Date.now() + BUSY_TOAST_MS;
   const wait = !hinted && s === 60 ? "a minute" : `${s} ${s === 1 ? "second" : "seconds"}`;

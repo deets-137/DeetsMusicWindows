@@ -25,7 +25,7 @@ import * as perf from "./perf";
 import { TELEMETRY } from "./telemetry-on";
 import { toast } from "./toast";
 import { setting, setSetting, effective, onSettingsChange, adaptiveOn, type Settings } from "./settings-store";
-import { registerChipText, registerFact } from "./rules";
+import { emit as emitRule, onRulesChange, registerChipText, registerEvent, registerFact, registerProp, ruleReads } from "./rules";
 import { BUILTIN, type EqPreset } from "./sound-presets";
 
 // ── The state every part reads (settings wire into this in the panel phase) ──────────
@@ -72,10 +72,25 @@ let solo: { lo: number; hi: number } | null = null;
 /** Every <audio> MusicKit has played, so opening the panel can route the one already playing. */
 const seen = new Set<HTMLMediaElement>();
 
-/** Any effect on, or the AirPlay tap armed: the only conditions under which a new element is routed. */
+/** Any effect on, or the AirPlay tap armed: the only conditions under which a new element is routed.
+ *  A rule's tone (RULES.md §20.4) and the song-balance watch (a rule reads it) count too. */
 function wanted(): boolean {
-  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match || config.measure || tapArmed;
+  return (config.eqOn && config.bands.some((b) => b.on)) || config.lowVolume > 0 || config.crossfeed.on || config.match || config.measure || tapArmed || toneOn() || balanceOn;
 }
+
+// ── Rulez: the tone a While rule lays, and the song's live balance (RULES.md §20.4) ──
+/** dB a rule lays on the bass (low shelf), mids (peak) and treble (high shelf), and the preamp. */
+const ruleTone = { bass: 0, mids: 0, treble: 0, preamp: 0 };
+const toneOn = (): boolean => ruleTone.bass !== 0 || ruleTone.mids !== 0 || ruleTone.treble !== 0 || ruleTone.preamp !== 0;
+/** The rule's tone as three bands after yours: a shelf under 120 Hz, a peak at 1 kHz, a shelf over 6 kHz. */
+function toneBands(): Band[] {
+  const out: Band[] = [];
+  if (ruleTone.bass) out.push({ on: true, type: "lowshelf", freq: 120, gain: ruleTone.bass, q: 0.7 });
+  if (ruleTone.mids) out.push({ on: true, type: "peak", freq: 1000, gain: ruleTone.mids, q: 0.7 });
+  if (ruleTone.treble) out.push({ on: true, type: "highshelf", freq: 6000, gain: ruleTone.treble, q: 0.7 });
+  return out;
+}
+let balanceOn = false;
 
 /**
  * The element meters (100 ms hops, `onMeter`) run whenever the graph is wanted. Until
@@ -460,9 +475,9 @@ export function preampFor(bands: Band[] = config.bands): number {
 }
 
 function busConfig(): BusConfig {
-  const eq = config.eqOn ? config.bands : [];
+  const eq = [...(config.eqOn ? config.bands : []), ...toneBands()];
   const shelves = config.lowVolume > 0 ? lowVolumeShelves(volumeDropDb(), config.lowVolume) : { low: 0, sub: 0, high: 0 };
-  const preampDb = config.eqOn ? preampFor(eq) : 0;
+  const preampDb = (config.eqOn || toneOn() ? preampFor(eq) : 0) + ruleTone.preamp;
   return {
     enabled: wanted(),
     compare,
@@ -791,8 +806,124 @@ function checkReview(): void {
   });
 }
 
+/** A While rule lays (or lifts, with null) a part of the tone. */
+function setRuleTone(part: keyof typeof ruleTone, db: unknown): void {
+  const v = typeof db === "number" ? Math.max(-12, Math.min(12, db)) : 0;
+  if (ruleTone[part] === v) return;
+  const was = wanted();
+  ruleTone[part] = v;
+  diag.log("sound:ruleTone", { part, db: v });
+  if (wanted() && !was) void ensureContext().catch(() => {});
+  syncMeter();
+  push();
+  emit();
+}
+
+// The song's balance: its bass, mids and treble against a neutral (pink) tilt, in dB. 0 = even
+// energy per octave; +3 bass = the bass is 3 dB heavier than even. Read from the graph before
+// any effect (`pre`), only while a rule reads it (RULES.md §20.1). Smoothed over 3 s; the fact
+// moves only when it changes by BALANCE_STEP dB, and at most every BALANCE_EVERY_MS, so an EQ a
+// rule switches on it does not flip back and forth.
+const BALANCE_READ_MS = 500;
+const BALANCE_EVERY_MS = 2000;
+const BALANCE_TAU_S = 3;
+const BALANCE_STEP = 1;
+const ZONES = { bass: [20, 250], mids: [250, 4000], treble: [4000, 16000] } as const;
+type Zone = keyof typeof ZONES;
+let balanceAnalyser: AnalyserNode | null = null;
+let balanceTimer = 0;
+let balanceBins: Float32Array | null = null;
+const smooth: Record<Zone, number | null> = { bass: null, mids: null, treble: null };
+const balance: Record<Zone, number | undefined> = { bass: undefined, mids: undefined, treble: undefined };
+let balanceAt = 0;
+const balanceSubs = new Set<() => void>();
+
+function readBalance(): void {
+  if (!balanceAnalyser || !ctx || !isPlayingNow()) return;
+  const bins = (balanceBins ??= new Float32Array(balanceAnalyser.frequencyBinCount));
+  balanceAnalyser.getFloatFrequencyData(bins);
+  const hz = ctx.sampleRate / balanceAnalyser.fftSize;
+  const perOct: Record<Zone, number> = { bass: 0, mids: 0, treble: 0 };
+  for (const z of Object.keys(ZONES) as Zone[]) {
+    const [lo, hi] = ZONES[z];
+    let p = 0;
+    for (let i = Math.ceil(lo / hz); i <= Math.floor(hi / hz) && i < bins.length; i++) p += Math.pow(10, bins[i] / 10);
+    perOct[z] = 10 * Math.log10(Math.max(p, 1e-20) / Math.log2(hi / lo));
+  }
+  const mean = (perOct.bass + perOct.mids + perOct.treble) / 3;
+  if (mean < -100) return; // silence: keep what we had
+  const a = 1 - Math.exp(-BALANCE_READ_MS / 1000 / BALANCE_TAU_S);
+  for (const z of Object.keys(ZONES) as Zone[]) {
+    const v = perOct[z] - mean;
+    smooth[z] = smooth[z] === null ? v : smooth[z]! + a * (v - smooth[z]!);
+  }
+  const now = Date.now();
+  if (now - balanceAt < BALANCE_EVERY_MS) return;
+  const moved = (Object.keys(ZONES) as Zone[]).some((z) => balance[z] === undefined || Math.abs(smooth[z]! - balance[z]!) >= BALANCE_STEP);
+  if (!moved) return;
+  balanceAt = now;
+  for (const z of Object.keys(ZONES) as Zone[]) balance[z] = Math.round(smooth[z]! * 2) / 2;
+  balanceSubs.forEach((cb) => cb());
+}
+
+async function setBalanceWatch(on: boolean): Promise<void> {
+  if (on === balanceOn) return;
+  balanceOn = on;
+  window.clearInterval(balanceTimer);
+  diag.log(on ? "sound:balanceOn" : "sound:balanceOff", { routed: routedCount });
+  if (!on) {
+    if (balanceAnalyser && pre) try { pre.disconnect(balanceAnalyser); } catch { /* not connected */ }
+    for (const z of Object.keys(ZONES) as Zone[]) smooth[z] = balance[z] = undefined as never;
+    push();
+    return;
+  }
+  try {
+    await ensureContext();
+  } catch {
+    return;
+  }
+  if (!ctx || !pre || !balanceOn) return;
+  for (const el of seen) if (!el.paused && !routed.has(el)) route(el);
+  balanceAnalyser ??= Object.assign(ctx.createAnalyser(), { fftSize: 4096, smoothingTimeConstant: 0, minDecibels: -140, maxDecibels: 0 });
+  pre.connect(balanceAnalyser);
+  push();
+  balanceTimer = window.setInterval(readBalance, BALANCE_READ_MS);
+}
+
+/** The highest gain of your EQ's bands in a zone (dB), 0 when the EQ is off. */
+function eqZone(z: Zone): number {
+  if (!config.eqOn) return 0;
+  const [lo, hi] = ZONES[z];
+  const g = config.bands.filter((b) => b.on && b.freq >= lo && b.freq < hi && ["peak", "lowshelf", "highshelf"].includes(b.type)).map((b) => b.gain);
+  return g.length ? Math.round(Math.max(...g) * 10) / 10 : 0;
+}
+
+/** Rulez's Sound words (RULES.md §20.3). */
+function registerSoundRules(): void {
+  const onSound = (cb: () => void) => onSoundChange(cb);
+  const onBalance = (cb: () => void) => {
+    balanceSubs.add(cb);
+    return () => balanceSubs.delete(cb);
+  };
+  registerFact("eqPreset", () => effective("soundEqPreset"), { seam: onSound });
+  registerFact("eqBass", () => eqZone("bass"), { seam: onSound });
+  registerFact("eqMids", () => eqZone("mids"), { seam: onSound });
+  registerFact("eqTreble", () => eqZone("treble"), { seam: onSound });
+  registerFact("songBass", () => balance.bass, { seam: onBalance });
+  registerFact("songMids", () => balance.mids, { seam: onBalance });
+  registerFact("songTreble", () => balance.treble, { seam: onBalance });
+  registerEvent("output.change");
+  onOutputChange(() => emitRule("output.change", { card: "*" }));
+  for (const part of ["bass", "mids", "treble", "preamp"] as const) registerProp(`tone.${part}`, { apply: (v) => setRuleTone(part, v), off: null });
+  // The balance watch runs only while some rule reads the song's balance.
+  const sync = () => void setBalanceWatch(ruleReads(["songBass", "songMids", "songTreble"]));
+  onRulesChange(sync);
+  sync();
+}
+
 export function initSound(): void {
   installPlayHook();
+  registerSoundRules();
   // Sound › Remember each output is a rule per remembered output (RULES.md §13): while
   // `output` = that key, the preset is the one it remembers. A pick teaches it (`learn`).
   registerFact("output", () => output.key || undefined, { seam: onOutputChange });

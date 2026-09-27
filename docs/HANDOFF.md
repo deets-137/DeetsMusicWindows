@@ -112,6 +112,10 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-25. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**In flight:** Rulez, the rules builder on `rules-rulez` (RULES.md §20–21), uncommitted,
+his desk test open (§21's script). The 5-in-10-s trip notice, the clock and the playback events
+still need a run with music playing.
+
 **Next:** Shots — a script that records every feature as a picture or a clip from the web
 demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built
 2026-09-26 (`node scripts/shots.mjs`); the 6 sample pictures are in

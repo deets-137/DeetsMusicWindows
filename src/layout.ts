@@ -22,10 +22,10 @@ import * as frames from "./frames";
 import * as diag from "./diag";
 import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
-import { initCardGrow, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
+import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
 import { storedAssignment } from "./layout-rules";
-import { registerAction, registerEvent } from "./rules";
+import { emit, registerAction, registerEvent } from "./rules";
 
 type Assignment = Partial<Record<Slot, CardId>>;
 
@@ -69,7 +69,7 @@ const compositionFor = (s: SurfaceName): Composition => (s === "max" ? MAX : MID
  *  minus Rewind while its setting is off (the 50-start gate, SETTINGS.md). */
 const poolFor = (comp: Composition): CardDef[] =>
   (Object.values(registry).filter(Boolean) as CardDef[]).filter(
-    (c) => !comp.anchored.includes(c.id) && (c.id !== "rewind" || setting("rewindCard")),
+    (c) => !comp.anchored.includes(c.id) && (c.id !== "rewind" || setting("rewindCard")) && (!c.maxOnly || comp === MAX),
   );
 
 function loadLayout(comp: Composition): Assignment {
@@ -291,7 +291,8 @@ export function initLayout(): void {
     // Card memory (CARD-MEMORY.md §4): the card takes back the place it left, unless it is
     // mounting to take a held request — the card itself decides that.
     host.dataset.mounted = id; // which card the host shows (the rules engine's `card`)
-    const inst = def.mount(host, { memory: cardMemory(id), ...mountOpts });
+    const onClose = def.maxOnly ? () => closeCard(slot) : undefined;
+    const inst = def.mount(host, { memory: cardMemory(id), onClose, ...mountOpts });
     const picker = makePicker(slot, host, id, inst, poolFor(comp), setSlot);
     const grow = attachGrowButton(slot, host);
     mounted[slot] = { inst, picker, grow };
@@ -308,9 +309,44 @@ export function initLayout(): void {
     delete mounted[slot];
   };
 
+  // A Max-only card (Rulez, RULES.md §20.6) remembers the card it replaced, per slot, so its X
+  // puts that card back. Saved with the layout's key, so a restart keeps the way back.
+  const REPLACED_KEY = "deets.layout.replaced";
+  const replaced: Partial<Record<Slot, CardId>> = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(REPLACED_KEY) ?? "{}") as Partial<Record<Slot, CardId>>;
+    } catch {
+      return {};
+    }
+  })();
+  const saveReplaced = () => {
+    try {
+      localStorage.setItem(REPLACED_KEY, JSON.stringify(replaced));
+    } catch {
+      /* storage off: the way back lasts this session */
+    }
+  };
+  /** The X on a Max-only card: the grow ends, and the card it replaced comes back. */
+  function closeCard(slot: Slot): void {
+    const was = replaced[slot];
+    const used = new Set(comp.slots.map((s) => layout[s]));
+    const back = was && !used.has(was) ? was : poolFor(comp).find((c) => !used.has(c.id) && !c.maxOnly)?.id;
+    delete replaced[slot];
+    saveReplaced();
+    diag.log("card:close", { slot, card: layout[slot] ?? "", back: back ?? "" });
+    if (!back) return;
+    const go = () => setSlot(slot, back);
+    if (grownState()) void collapseGrow("close").then(go);
+    else go();
+  }
+
   function setSlot(slot: Slot, id: CardId): void {
     flushSwapOut(); // a remount still waiting on its out step lands first, so `layout` is current
     if (!comp.slots.includes(slot) || layout[slot] === id) return; // not in this composition / already here
+    if (registry[id]?.maxOnly && layout[slot] && !registry[layout[slot]!]?.maxOnly) {
+      replaced[slot] = layout[slot];
+      saveReplaced();
+    }
     const other = comp.slots.find((s) => layout[s] === id);
     wipeChain(slot); // a pick in this slot ends its way back (CARD-GROW.md §15.3)
     // A pick that touches a grown card (CARD-GROW.md §7, fork 6): "Keep" swaps the cards and
@@ -350,6 +386,8 @@ export function initLayout(): void {
       saveLayout(comp, layout);
       touch(slot); // acting on a slot (picker or summon) makes it the freshest
       refreshGrowZones(); // the zones' hints name the cards
+      emit("card.open", { card: id }); // Rulez: "You open a card" (RULES.md §20.3)
+      if (registry[id]?.maxOnly) void fillCard(id, "open"); // Rulez opens at Fill (RULES.md §20.6)
     }, detail);
   }
 
@@ -544,6 +582,8 @@ export function initLayout(): void {
     comp = next;
     layout = loadLayout(comp);
     compose();
+    // Back in Max, a Max-only card comes back where it was, at Fill as it opens (RULES.md §20.6).
+    for (const s of comp.slots) if (layout[s] && registry[layout[s]!]?.maxOnly) void fillCard(layout[s]!, "surface");
   });
 
   // ── Summon requests (e.g. the NP card's queue button) — bring the card into the

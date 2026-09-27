@@ -9,36 +9,70 @@
 
 // ── the shape (RULES.md §4) ──────────────────────────────────────
 
-export type EventId = "album.open" | "artist.open" | "diary.open" | "cog" | "playlist.create" | "sleep.arm";
-export type FactId = "surface" | "cause" | "from" | "entry.new" | "daylight" | "lookMode" | "output" | "now";
+export type EventId =
+  | "album.open" | "artist.open" | "diary.open" | "cog" | "playlist.create" | "sleep.arm"
+  // Rulez (RULES.md §20.3): playback, time, window, sound.
+  | "song.play" | "song.end" | "music.pause" | "music.resume" | "skip.next" | "skip.prev" | "queue.end" | "station.play"
+  | "clock" | "app.open" | "surface.change" | "tray.hide" | "tray.show" | "card.open" | "output.change"
+  // A cancel event (RULES.md §20.7): a rule whose Do is `keep` stops what the app was about to do.
+  | "grow.outside";
+export type FactId =
+  | "surface" | "cause" | "from" | "entry.new" | "daylight" | "lookMode" | "output" | "now"
+  // Rulez (RULES.md §20.3).
+  | "genre" | "artist" | "album" | "year" | "explicit" | "playing" | "shuffle" | "repeat" | "volume" | "source"
+  | "time" | "day" | "card" | "grown"
+  | "eqPreset" | "eqBass" | "eqMids" | "eqTreble" | "loudness" | "songBass" | "songMids" | "songTreble";
 export type Value = string | number | boolean;
-export type Facts = Partial<Record<FactId, Value>>;
+/** A fact's value. A list (a song's genres) holds when any member does. */
+export type FactValue = Value | string[];
+export type Facts = Partial<Record<FactId, FactValue>>;
 
-/** Who made a rule: a Settings row (from its value), a fixed built-in with no row (the cog), or you (later). */
+/** Who made a rule: a Settings row (from its value), a fixed built-in with no row (the cog), or you (Rulez). */
 export type Source = { row: string } | { fixed: string } | { user: true };
 
-/** A leaf: `is` = equal to the value (or to any value in a list); `lt` / `gte` compare a number
- *  (his call, 2026-09-26: the sharing pause is `now < until`). Every test given must hold. */
-export type Leaf = { fact: FactId; is?: Value | Value[]; lt?: number; gte?: number };
-export type Group = { all: Leaf[] } | { any: Leaf[] } | { not: Leaf };
-export type Cond =
-  | { all: (Leaf | Group)[] }
-  | { any: (Leaf | Group)[] }
-  | { not: Leaf | Group }
-  | Leaf;
+/** A leaf: `is` = equal to the value (or to any value in a list), `isNot` = equal to none of them (not `not`: that name is the group);
+ *  `lt` / `gt` / `gte` / `lte` compare a number (his call, 2026-09-26: the sharing pause is
+ *  `now < until`). Every test given must hold. Text compares without case. */
+export type Leaf = { fact: FactId; is?: Value | Value[]; isNot?: Value | Value[]; lt?: number; gt?: number; gte?: number; lte?: number };
+/** A condition: a leaf, or a group of conditions at any depth (his call, 2026-09-27, RULES.md §20.1). */
+export type Cond = { all: Cond[] } | { any: Cond[] } | { not: Cond } | Leaf;
+export type Group = Exclude<Cond, Leaf>;
 
 export type GrowAxis = "horizontal" | "vertical" | "full";
 export type Action =
   | { grow: GrowAxis }
   | { summon: string }
-  | { sleep: { at: "clock" | "sun" } };
+  | { sleep: { at: "clock" | "sun" } }
+  // Rulez (RULES.md §20.3). A When row's "set" writes your value (§20.4).
+  | { play: true }
+  | { pause: true }
+  | { next: true }
+  | { prev: true }
+  | { shuffle: boolean }
+  | { repeat: "off" | "all" | "one" }
+  | { volume: number }
+  | { playPlaylist: string }
+  | { playStation: string }
+  | { set: { key: string; value: unknown } }
+  | { sharePause: number }
+  | { sleepIn: number }
+  | { keep: true };
 
-export interface MomentRule {
+/** Name and Desc (Rulez), and `draft`: a row with a part still missing is saved and never runs. */
+interface Named {
+  name?: string;
+  desc?: string;
+  draft?: boolean;
+}
+
+export interface MomentRule extends Named {
   id: string;
   kind: "moment";
   source: Source;
   on: boolean;
   when: EventId;
+  /** `clock` only: the minute of the day it fires at. */
+  at?: number;
   card: string; // a card id, or "*"
   if?: Cond;
   do: Action;
@@ -48,7 +82,7 @@ export interface MomentRule {
 export type RuleTarget = { key: string } | { prop: string };
 export type OnHand = "next" | "session" | "off" | "learn" | { until: Cond };
 
-export interface StateRule {
+export interface StateRule extends Named {
   id: string;
   kind: "state";
   source: Source;
@@ -79,13 +113,16 @@ const isGroupShape = (c: Record<string, unknown>): boolean => "all" in c || "any
 function leafError(l: unknown, k: Known): string | null {
   if (!isObj(l) || typeof l.fact !== "string") return "a leaf needs a fact";
   if (!k.facts.has(l.fact)) return `unknown fact ${l.fact}`;
-  if (l.is === undefined && l.lt === undefined && l.gte === undefined) return `leaf ${l.fact} tests nothing`;
-  if (l.lt !== undefined && typeof l.lt !== "number") return "lt needs a number";
-  if (l.gte !== undefined && typeof l.gte !== "number") return "gte needs a number";
+  const nums = ["lt", "gt", "gte", "lte"] as const;
+  if (l.is === undefined && l.isNot === undefined && nums.every((n) => l[n] === undefined)) return `leaf ${l.fact} tests nothing`;
+  for (const n of nums) if (l[n] !== undefined && typeof l[n] !== "number") return `${n} needs a number`;
   return null;
 }
 
-/** `depth` = how many group levels may still open below this one (top = 2: the top group and one inside). */
+/** Any depth for you (RULES.md §20.1); the stop is only so a hand-edited store cannot hang the check. */
+export const COND_DEPTH = 16;
+
+/** `depth` = how many group levels may still open below this one. */
 function condError(c: unknown, k: Known, depth: number): string | null {
   if (!isObj(c)) return "a condition must be an object";
   if (!isGroupShape(c)) return leafError(c, k);
@@ -105,8 +142,9 @@ export function validate(r: unknown, k: Known): string | null {
   if (r.kind === "moment") {
     if (typeof r.when !== "string" || !k.events.has(r.when)) return `unknown event ${String(r.when)}`;
     if (typeof r.card !== "string") return "a moment rule needs a card";
+    if (r.when === "clock" && (typeof r.at !== "number" || r.at < 0 || r.at >= 1440)) return "a clock rule needs a minute";
     if (r.if !== undefined) {
-      const e = condError(r.if, k, 2);
+      const e = condError(r.if, k, COND_DEPTH);
       if (e) return e;
     }
     if (!isObj(r.do)) return "a moment rule needs an action";
@@ -115,7 +153,7 @@ export function validate(r: unknown, k: Known): string | null {
     return null;
   }
   if (r.kind === "state") {
-    const e = condError(r.while, k, 2);
+    const e = condError(r.while, k, COND_DEPTH);
     if (e) return e;
     if (!Array.isArray(r.set) || !r.set.length) return "a state rule sets nothing";
     for (const s of r.set) {
@@ -124,7 +162,7 @@ export function validate(r: unknown, k: Known): string | null {
       if (!k.targets.has(id)) return `unknown target ${id}`;
     }
     const h = r.onHand;
-    if (!(h === "next" || h === "session" || h === "off" || h === "learn" || (isObj(h) && !condError(h.until, k, 2)))) return "bad onHand";
+    if (!(h === "next" || h === "session" || h === "off" || h === "learn" || (isObj(h) && !condError(h.until, k, COND_DEPTH)))) return "bad onHand";
     return null;
   }
   return `unknown kind ${String(r.kind)}`;
@@ -135,12 +173,24 @@ export function validate(r: unknown, k: Known): string | null {
 const TRUE: Cond = { all: [] };
 export const ALWAYS = TRUE;
 
+const fold = (x: Value): Value => (typeof x === "string" ? x.toLowerCase() : x);
+/** The fact's value (or any of its values, for a list) equals one of `want`. */
+function matches(v: FactValue, want: Value | Value[]): boolean {
+  const wants = (Array.isArray(want) ? want : [want]).map(fold);
+  const have = (Array.isArray(v) ? v : [v]).map(fold);
+  return have.some((h) => wants.includes(h));
+}
+
 function leafHolds(l: Leaf, f: Facts): boolean {
   const v = f[l.fact];
   if (v === undefined) return false;
-  if (l.is !== undefined && !(Array.isArray(l.is) ? l.is.includes(v) : l.is === v)) return false;
-  if (l.lt !== undefined && !(typeof v === "number" && v < l.lt)) return false;
-  if (l.gte !== undefined && !(typeof v === "number" && v >= l.gte)) return false;
+  if (l.is !== undefined && !matches(v, l.is)) return false;
+  if (l.isNot !== undefined && matches(v, l.isNot)) return false;
+  const n = typeof v === "number" ? v : null;
+  if (l.lt !== undefined && !(n !== null && n < l.lt)) return false;
+  if (l.gt !== undefined && !(n !== null && n > l.gt)) return false;
+  if (l.gte !== undefined && !(n !== null && n >= l.gte)) return false;
+  if (l.lte !== undefined && !(n !== null && n <= l.lte)) return false;
   return true;
 }
 
@@ -165,11 +215,13 @@ export function factsOf(c: Cond | undefined, out: Set<FactId> = new Set()): Set<
 // ── moment rules ─────────────────────────────────────────────────
 
 /** The first rule in list order that matches wins (RULES.md §2). `losers` = later matches, for the log. */
-export function pickMoment(rules: readonly Rule[], event: EventId, card: string, f: Facts): { rule: MomentRule | null; losers: MomentRule[] } {
+export function pickMoment(rules: readonly Rule[], event: EventId, card: string, f: Facts, at?: number, skip?: ReadonlySet<string>): { rule: MomentRule | null; losers: MomentRule[] } {
   let rule: MomentRule | null = null;
   const losers: MomentRule[] = [];
   for (const r of rules) {
-    if (r.kind !== "moment" || !r.on || r.when !== event) continue;
+    if (r.kind !== "moment" || !r.on || r.draft || r.when !== event) continue;
+    if (skip?.has(r.id)) continue;
+    if (event === "clock" && r.at !== at) continue;
     if (r.card !== "*" && r.card !== card) continue;
     if (!evalCond(r.if, f)) continue;
     if (rule) losers.push(r);
@@ -213,7 +265,7 @@ export function factsChanged(holds: readonly Hold[], rules: readonly Rule[], f: 
   return holds.filter((h) => {
     const r = byId.get(h.ruleId);
     if (!r || r.kind !== "state" || !r.on) return false;
-    if (h.kind === "next") return Object.entries(h.snap ?? {}).every(([k, v]) => f[k as FactId] === undefined || f[k as FactId] === v);
+    if (h.kind === "next") return Object.entries(h.snap ?? {}).every(([k, v]) => f[k as FactId] === undefined || JSON.stringify(f[k as FactId]) === JSON.stringify(v));
     if (h.kind === "until") return !evalCond(h.until, f);
     return true;
   });
@@ -250,7 +302,7 @@ export function resolveState(rules: readonly Rule[], f: Facts, holds: readonly H
   const held = new Map<string, string>();
   const isHeld = (ruleId: string, t: string) => holds.some((h) => h.ruleId === ruleId && h.target === t);
   for (const r of rules) {
-    if (r.kind !== "state" || !r.on || !evalCond(r.while, f)) continue;
+    if (r.kind !== "state" || !r.on || r.draft || !evalCond(r.while, f)) continue;
     for (const s of r.set) {
       const t = targetId(s.target);
       if (set.has(t) || held.has(t)) continue;
@@ -392,8 +444,71 @@ export function nextEdge(rules: readonly Rule[], now: number): number | null {
     if ("any" in c) return c.any.forEach((m) => visit(m as Cond));
     if ("not" in c) return visit(c.not as Cond);
     if (c.fact !== "now") return;
-    for (const t of [c.lt, c.gte]) if (typeof t === "number" && t > now && (best === null || t < best)) best = t;
+    for (const t of [c.lt, c.gt, c.gte, c.lte]) if (typeof t === "number" && t > now && (best === null || t < best)) best = t;
   };
   for (const r of rules) if (r.on) visit(r.kind === "state" ? r.while : r.if);
   return best;
+}
+
+// ── time (RULES.md §20.3) ────────────────────────────────────────
+
+export const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+/** The `time` fact (the minute of the day, 0–1439) and the `day` fact, in local time. */
+export function timeFacts(d: Date): { time: number; day: string } {
+  return { time: d.getHours() * 60 + d.getMinutes(), day: DAYS[d.getDay()] };
+}
+
+/** When the next clock rule fires (epoch ms), or null. A minute that passed today is tomorrow's. */
+export function nextClock(rules: readonly Rule[], now: Date): { at: number; minute: number } | null {
+  let best: { at: number; minute: number } | null = null;
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  for (const r of rules) {
+    if (r.kind !== "moment" || !r.on || r.draft || r.when !== "clock" || typeof r.at !== "number") continue;
+    const day = r.at > nowMin ? 0 : 1;
+    // A day is not always 24 h (a clock change), so build the date, not the sum.
+    const at = new Date(midnight + day * 86_400_000 + 3_600_000 * 12);
+    at.setHours(Math.floor(r.at / 60), r.at % 60, 0, 0);
+    if (!best || at.getTime() < best.at) best = { at: at.getTime(), minute: r.at };
+  }
+  return best;
+}
+
+/** A rule reads this fact (the engine runs the minute timer only while a rule reads the time). */
+export function readsFact(rules: readonly Rule[], ids: readonly FactId[]): boolean {
+  return rules.some((r) => r.on && !r.draft && [...factsOf(r.kind === "state" ? r.while : r.if)].some((f) => ids.includes(f)));
+}
+
+// ── the cascade guards (RULES.md §20.5) ──────────────────────────
+
+/** A rule that fires this many times inside the window turns off for the session. */
+export const FIRE_CAP = 5;
+export const FIRE_WINDOW_MS = 10_000;
+/** A chain stops after this many rules in a row. */
+export const CHAIN_CAP = 8;
+/** An event this soon after a rule's action counts as caused by it (a skip's next song is async). */
+export const CAUSE_MS = 3_000;
+/** An Apple action runs at most once in this long per rule. */
+export const APPLE_GAP_MS = 30_000;
+
+/** Note one fire. `times` = the last fire times (at most FIRE_CAP kept); `trip` = the cap is reached. */
+export function noteFire(times: readonly number[], now: number): { times: number[]; trip: boolean } {
+  const kept = [...times, now].filter((t) => now - t < FIRE_WINDOW_MS).slice(-FIRE_CAP);
+  return { times: kept, trip: kept.length >= FIRE_CAP };
+}
+
+/** How deep a chain an event starts: 0 for a hand event; one more than the last action's for a
+ *  rule-caused one. */
+export function chainDepth(last: { at: number; depth: number } | null, acting: boolean, now: number): { caused: boolean; depth: number } {
+  const caused = acting || (!!last && now - last.at < CAUSE_MS);
+  return { caused, depth: caused && last ? last.depth + 1 : 0 };
+}
+
+/** May an Apple action run now? */
+export function appleMayRun(o: { caused: boolean; lastRun?: number; now: number; backingOff: boolean }): string | null {
+  if (o.caused) return "caused by a rule";
+  if (o.backingOff) return "Apple asked us to wait";
+  if (o.lastRun !== undefined && o.now - o.lastRun < APPLE_GAP_MS) return "ran less than 30 s ago";
+  return null;
 }

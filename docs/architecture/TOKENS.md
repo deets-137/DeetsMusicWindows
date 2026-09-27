@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 509 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 519 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -519,6 +519,16 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--set-flash-dur` | `1600ms` | — | a row opened from a toast: its highlight fades over this |
 | `--set-textarea-min-h` | `96px` | — | Bugs › the details field: about five lines |
 | `--set-preview-max-h` | `180px` | — | Bugs › the log text a report sends; longer scrolls |
+| `--rulez-cell-radius` | `var(--lib-pill-radius)` | — | Rulez (RULES.md §20.6). A cell is the Library's Sort / View pill family (a dropdown trigger in a card); a condition chip is the same family, smaller. Aliases only: no raw values but the column widths, which are the table's own. |
+| `--rulez-cell-pad` | `var(--space-1) var(--space-2)` | — |  |
+| `--rulez-chip-radius` | `var(--lib-pill-radius)` | — |  |
+| `--rulez-chip-pad` | `0 var(--space-2)` | — |  |
+| `--rulez-row-h` | `var(--set-row-h)` | — |  |
+| `--rulez-gap` | `var(--space-1)` | — |  |
+| `--rulez-lead-w` | `var(--icon-md)` | — |  |
+| `--rulez-cols` | `var(--rulez-lead-w) minmax(7em, 1fr) minmax(7em, 1.2fr) minmax(9em, 1.3fr) minmax(6em, 0.8fr) minmax(12em, 2.2fr) minmax(10em, 1.6fr) var(--icon-lg)` | — |  |
+| `--rulez-min-w` | `62em` | — | below this a small card scrolls sideways |
+| `--rulez-idle-opacity` | `var(--unreleased-opacity)` | — | a draft or an off rule: the same "does not run" |
 | `--font-mono` | `"Cascadia Mono", Consolas, ui-monospace, monospace` | — | log text |
 | `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
 | `--np-stage-glyph` | `96px` | — | placeholder ♪ on the stage |

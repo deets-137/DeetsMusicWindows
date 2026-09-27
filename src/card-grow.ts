@@ -18,7 +18,7 @@
 // Nothing here changes the resting layout: every rule is scoped under data-grow / is-covered,
 // the zones are out of flow and paint nothing until hovered, and the button is hover-only.
 
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, effective, onSettingsChange } from "./settings-store";
 import { currentSurface, onSurfaceChange } from "./surface";
 import { enterRows } from "./pop";
 import { openContextMenu, type MenuItem } from "./context-menu";
@@ -27,7 +27,7 @@ import { whenSwapSettled } from "./card-swap";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
-import { registerAction, registerEvent } from "./rules";
+import { cancelled, registerAction, registerEvent, registerFact } from "./rules";
 
 /** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
  *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
@@ -369,6 +369,15 @@ export async function growByRule(card: string, axis: "horizontal" | "vertical" |
   }
 }
 
+/** Fill with `card` once its swap has landed (Rulez opens at Fill, RULES.md §20.6). Any other
+ *  grow ends first. Obeys "Grow cards from edges" and Max, as every grow does. */
+export async function fillCard(card: string, why: string): Promise<void> {
+  await whenSwapSettled();
+  await settled;
+  const slot = opts?.slotOf(card) ?? null;
+  if (slot && state?.slot !== slot) growCard(slot, "full", why);
+}
+
 /** The way a rule grow on `axis` goes from `slot`, or null when it cannot (or must not) grow. */
 function ruleDir(slot: Slot, axis: "horizontal" | "vertical" | "full", replace: boolean): GrowDir | null {
   if (state?.slot === slot || (state && !replace)) return null;
@@ -494,7 +503,7 @@ export function growMenu(slot: Slot): MenuItem[] {
   if (canFill() && !isStage(slot) && state?.slot !== slot) items.push({ label: "Fill", run: () => growCard(slot, "full", "menu") });
   if (canFill() && !isStage(slot) && state?.slot === slot && state.mode !== "full") items.push({ label: "Fill", run: () => growCard(slot, "full", "menu") });
   if (state?.slot === slot) {
-    if (setting("cardGrowOutside")) items.push({ label: state.pinned ? "Unpin" : "Pin", run: () => setPinned(!state?.pinned) });
+    if (effective("cardGrowOutside")) items.push({ label: state.pinned ? "Unpin" : "Pin", run: () => setPinned(!state?.pinned) });
     items.push({ label: "Collapse", run: () => void collapseGrow("menu") });
   }
   return items;
@@ -551,7 +560,7 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
       grow.setAttribute("aria-label", grow.title);
       grow.disabled = act === null;
     }
-    const showPin = !!state && state.slot === slot && setting("cardGrowOutside");
+    const showPin = !!state && state.slot === slot && effective("cardGrowOutside");
     if (pin) {
       pin.hidden = !showPin;
       pin.setAttribute("aria-pressed", String(!!state?.pinned));
@@ -811,6 +820,13 @@ export async function agentGrow(payload: { action?: string; card?: string; dir?:
 }
 
 // ── init ──────────────────────────────────────────────────────────────────────
+/** The card a slot shows (the layout marks each host), for the rules' `card` and `grown`. */
+function cardIn(slot: Slot): string {
+  if (slot === "np") return "now-playing";
+  if (slot === "queue") return "queue";
+  return opts?.hosts[slot]?.dataset.mounted ?? slot;
+}
+
 export function initCardGrow(o: Opts): void {
   opts = o;
   // The rules engine (RULES.md §10): the grow action and the events that can grow a card.
@@ -818,6 +834,10 @@ export function initCardGrow(o: Opts): void {
   registerEvent("artist.open", { facts: ["surface", "cause"] });
   registerEvent("diary.open", { facts: ["surface", "entry.new"] });
   registerEvent("cog", { facts: ["surface"] });
+  // Rulez (RULES.md §20.7): a press outside the grown card is a cancel event. In = the card you
+  // pressed; a rule whose Do is Keep leaves the grow open. `grown` = the card that is grown.
+  registerEvent("grow.outside", { facts: [] });
+  registerFact("grown", () => (state ? cardIn(state.slot) : "none"), { seam: (cb) => onGrowChange(() => cb()) });
   registerAction("grow", {
     cost: "free",
     run: (axis, ctx, rule) =>
@@ -850,13 +870,18 @@ export function initCardGrow(o: Opts): void {
   document.addEventListener(
     "pointerdown",
     (e) => {
-      if (!state || animating || state.pinned || !setting("cardGrowOutside")) return;
+      if (!state || animating || state.pinned || !effective("cardGrowOutside")) return;
       const t = e.target as HTMLElement | null;
       if (!t || !opts) return;
       if (!opts.body.contains(t)) return; // the title bar and the fixed overlays do not count
       if (t.closest(".grow-zone, .ctx-menu, .lib-pop")) return;
       const panel = opts.hosts[state.slot];
       if (panel && panel.contains(t)) return;
+      const pressed = (Object.keys(opts.hosts) as Slot[]).find((s) => opts!.hosts[s]?.contains(t));
+      if (cancelled("grow.outside", { card: pressed ? cardIn(pressed) : "*" })) {
+        diag.log("grow:kept", { slot: state.slot, pressed: pressed ?? "" });
+        return;
+      }
       void collapseGrow("outside");
     },
     { capture: true },

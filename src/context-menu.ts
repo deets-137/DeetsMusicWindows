@@ -318,7 +318,9 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
           results.className = "ctx-menu__results app-scroll";
           results.addEventListener("pointerenter", () => closeFrom(depth));
           host.appendChild(results);
-          menu.classList.add("ctx-menu--search");
+          // The box that holds the field widens, not the top menu: a field in a flyout (Rulez's
+          // Genre › Is) widened the top menu and pushed the open flyout off the window (2026-09-27).
+          host.classList.add("ctx-menu--search");
           let seq = 0;
           let timer = 0;
           inp.addEventListener("input", () => {

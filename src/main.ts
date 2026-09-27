@@ -55,7 +55,10 @@ import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
-import { initRules, registerFact, registerProp } from "./rules";
+import { initRules, registerFact, registerProp, setAppleGate } from "./rules";
+import { initRulesPlayback } from "./rules-playback";
+import { initRulesApp, emitAppOpen } from "./rules-app";
+import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
@@ -64,6 +67,7 @@ const appWindow = getCurrentWindow();
 
 window.addEventListener("DOMContentLoaded", () => {
   initRules(); // the rules engine (RULES.md): before the look and the cards, which register into it
+  setAppleGate(appleBackingOff); // a rule's Apple action waits while Apple asks us to (RULES.md §20.5)
   initLookSchedule(); // the day/night rules' facts first (LOOK-SCHEDULE.md), so the first paint has them
   initLook(); // the theme and skin from the store, with the schedule's look on top (RULES.md §7a)
   initSkinSettings(); // before the first paint, so a card never flashes the default look
@@ -440,6 +444,11 @@ window.addEventListener("DOMContentLoaded", () => {
   // at once unless `onboardingStep` says there is a step left, so this costs a stranger's
   // first launch and nothing else.
   window.addEventListener("deets:boot-done", () => initWalk(), { once: true });
+  // Rulez's words (RULES.md §20): playback, window, the value-writing actions. "The app opens"
+  // fires once the launch cover is done, so a rule acts on cards you can see.
+  initRulesPlayback();
+  initRulesApp();
+  window.addEventListener("deets:boot-done", () => emitAppOpen(), { once: true });
 
   // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it
   //    grows in place into a horizontal slider with the mute speaker and the AirPlay square

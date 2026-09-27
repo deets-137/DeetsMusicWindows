@@ -48,6 +48,7 @@ old installs' Guide button opens.
 - `RULES.md` — the rules engine: moment and state rules, the `if` tree, the overlay on
   settings (`effective` / `ownSetting`), the rows that make rules. Built 2026-09-26 on
   `rules-rulez`; §18 is the as-built record. Rules sit under features, never replace one.
+  §20–21: **Rulez**, the rules builder card (Max only), its words, cancel events, the cascade guards.
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.

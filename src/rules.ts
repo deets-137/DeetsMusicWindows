@@ -14,16 +14,17 @@ import {
   type RuleKey, type Settings,
 } from "./settings-store";
 import {
-  EMPTY, ROW_OFF, builtinRules, factsChanged, handChange, keepHolds, nextEdge, pickMoment, resolveState,
-  restart, resume as resumeHolds, validate,
-  type EventId, type FactId, type Facts, type Hold, type Known, type Rule, type RowValues, type StateRule, type Stored, type Value,
+  CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, builtinRules, chainDepth, factsChanged, handChange, keepHolds, nextClock, nextEdge,
+  noteFire, pickMoment, readsFact, resolveState, restart, resume as resumeHolds, timeFacts, validate,
+  type EventId, type FactId, type FactValue, type Facts, type Hold, type Known, type MomentRule, type Rule, type RowValues,
+  type StateRule, type Stored,
 } from "./rules-eval";
 import * as diag from "./diag";
 
 // ── the registry (RULES.md §6) ───────────────────────────────────
 
 interface FactDef {
-  read: () => Value | undefined;
+  read: () => FactValue | undefined;
   /** Tells the engine when the fact changes (a seam). Returns an unsubscribe fn. */
   seam?: (cb: () => void) => () => void;
   /** A fact that changes with time and no seam: when it changes next (ms), or null. */
@@ -35,10 +36,14 @@ export interface EmitCtx {
   facts?: Facts;
   /** How many levels the card has open after the event (a grow ends on Back past it). */
   depth?: number;
+  /** `clock` only: the minute that arrived. */
+  at?: number;
 }
 interface ActionDef {
-  /** `apple` = the action calls Apple (RULES.md §6). None does yet. */
+  /** `apple` = the action calls Apple (RULES.md §6, the guards §20.5). */
   cost: "free" | "apple";
+  /** An Apple action's target still exists (a playlist, a station). */
+  exists?: (arg: unknown) => boolean;
   run: (arg: unknown, ctx: EmitCtx, rule: Rule) => unknown;
 }
 interface PropDef {
@@ -81,7 +86,8 @@ export function registerChipText(row: string, text: ChipText): void {
   texts.set(row, text);
 }
 
-function known(): Known {
+/** The names the registry knows now (Rulez greys out the words whose module has not registered). */
+export function known(): Known {
   return {
     events: new Set(events.keys()),
     // A fact is known when a provider reads it, or when an event supplies it (`entry.new`).
@@ -103,14 +109,36 @@ const ROW_KEYS: (keyof RowValues)[] = [
 
 let started = false;
 let built = false; // the first rule list exists (initRules)
-let all: Rule[] = []; // the user's own rules (none until the editor), then the built-in ones
+let all: Rule[] = []; // the user's own rules (Rulez), then the built-in ones
 let live: Rule[] = []; // the rules that can run now
 let holds: Hold[] = [];
 const skipped = new Set<string>(); // "id:reason", so a broken rule is logged once
+const skipWhy = new Map<string, string>(); // a user rule the validator refuses → why (Rulez dims it)
 
-function userRules(): Rule[] {
+/** Your own rules, in list order (Rulez). */
+export function userRules(): Rule[] {
   const stored: Stored = allSettings().rules ?? EMPTY;
   return stored.v === 1 && Array.isArray(stored.rules) ? stored.rules : [];
+}
+
+/** Save your rules (Rulez). A row change rebuilds through the store's listener. */
+export function saveUserRules(rules: Rule[]): void {
+  setSetting("rules", { v: 1, rules });
+}
+
+/** A rule that can run reads one of these facts (a costly fact runs only while one does). */
+export const ruleReads = (ids: readonly FactId[]): boolean => readsFact(live, ids);
+
+/** Every rule now: yours, then the built-in ones (Rulez shows the built-in ones locked). */
+export const allRules = (): readonly Rule[] => all;
+
+/** Why a rule does not run now, or null (Rulez's dim and its hint). */
+export function ruleIdle(r: Rule): string | null {
+  if (r.draft) return "A part is missing, so this rule does not run yet.";
+  if (!r.on) return "This rule is off.";
+  if (offForSession.has(r.id)) return "This rule fired 5 times in 10 seconds, so it is off until DeetsMusic starts again.";
+  const why = skipWhy.get(r.id);
+  return why ? `This rule cannot run: ${why}.` : null;
 }
 
 /** Make the rule list again from the rows (a row changed). */
@@ -129,11 +157,14 @@ function rebuild(why: string): void {
 function relist(check = true): void {
   if (!started) return;
   const k = known();
+  skipWhy.clear();
   live = all.filter((r) => {
+    if (r.draft) return false; // a Rulez row with a part missing: saved, never run, no log
     const why = validate(r, k);
     if (!why) return true;
     // A built-in rule whose module has not registered yet only waits: no log line.
     if (!("user" in r.source)) return false;
+    skipWhy.set(r.id, why);
     const key = `${r.id}:${why}`;
     if (!skipped.has(key)) {
       skipped.add(key);
@@ -141,6 +172,7 @@ function relist(check = true): void {
     }
     return false;
   });
+  if (built) armClock();
   if (check) recheck("registry");
 }
 
@@ -161,37 +193,120 @@ function readFacts(extra?: Facts): Facts {
 
 // ── moment rules (RULES.md §10) ──────────────────────────────────
 
+// Cascades are allowed (his call, 2026-09-27): an action may set off another rule. The guards
+// (RULES.md §20.5, the numbers in rules-eval.ts): a chain stops at CHAIN_CAP; a user rule that
+// fires FIRE_CAP times in FIRE_WINDOW_MS is off for the session; an Apple action never runs
+// from a rule-caused event, at most once per APPLE_GAP_MS per rule, and never while Apple
+// asks us to wait. Memory: the last FIRE_CAP fire times per rule, nothing else per fire.
 let acting = false;
+let lastAction: { at: number; depth: number } | null = null;
+const fires = new Map<string, number[]>();
+const offForSession = new Set<string>();
+const appleRuns = new Map<string, number>();
+let appleGate: () => boolean = () => false;
+
+/** main.ts: Apple asks us to wait now (apple-health.ts), so a rule's Apple action waits. */
+export function setAppleGate(fn: () => boolean): void {
+  appleGate = fn;
+}
 
 /**
  * A site reports what happened. The first matching moment rule runs its action; returns that
- * rule's id, or null. Refused while an action or a check runs: no rule sets off a rule.
+ * rule's id, or null. Refused only while a state check runs (a listener's emit).
  */
 export function emit(event: EventId, ctx: EmitCtx): string | null {
+  return fire(event, ctx)?.id ?? null;
+}
+
+/** A cancel event (RULES.md §20.7): true when the rule that matched says Keep, so the site
+ *  does not do what it was about to do. */
+export function cancelled(event: EventId, ctx: EmitCtx): boolean {
+  const r = fire(event, ctx);
+  return !!r && "keep" in r.do;
+}
+
+function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
   if (!started) return null;
-  if (acting || checking) {
+  if (checking) {
     diag.log("rule", { event, applied: false, reason: "held" });
     return null;
   }
-  const f = readFacts(ctx.facts);
-  const { rule, losers } = pickMoment(live, event, ctx.card, f);
+  const now = Date.now();
+  const chain = chainDepth(lastAction, acting, now);
+  if (chain.depth >= CHAIN_CAP) {
+    diag.warn("rule", { event, applied: false, reason: "chain", depth: chain.depth });
+    return null;
+  }
+  const f = readFacts({ card: ctx.card, ...ctx.facts });
+  const { rule, losers } = pickMoment(live, event, ctx.card, f, ctx.at, offForSession);
   losers.forEach((l) => diag.log("rule", { id: l.id, event, applied: false, reason: `lost to ${rule!.id}` }));
-  if (!rule || rule.kind !== "moment") {
-    diag.log("rule", { event, card: ctx.card, applied: false, reason: "no rule" });
+  if (!rule) {
+    // The events that come often (a song, a press) log only a match: the ring is not a trace.
+    if (!QUIET.has(event)) diag.log("rule", { event, card: ctx.card, applied: false, reason: "no rule" });
     return null;
   }
   const [verb, arg] = Object.entries(rule.do)[0];
+  const def = actions.get(verb)!;
+  if (def.cost === "apple") {
+    const why =
+      appleMayRun({ caused: chain.caused, lastRun: appleRuns.get(rule.id), now, backingOff: appleGate() }) ??
+      (def.exists && !def.exists(arg) ? "its playlist or station is gone" : null);
+    if (why) {
+      diag.log("rule", { id: rule.id, event, applied: false, reason: why });
+      return null;
+    }
+    appleRuns.set(rule.id, now);
+  }
+  if ("user" in rule.source) {
+    const n = noteFire(fires.get(rule.id) ?? [], now);
+    fires.set(rule.id, n.times);
+    if (n.trip) tripRule(rule);
+  }
+  const wasActing = acting;
   acting = true;
+  lastAction = { at: now, depth: chain.depth };
   try {
-    const out = actions.get(verb)!.run(arg, ctx, rule);
+    const out = def.run(arg, ctx, rule);
     if (out instanceof Promise) out.catch((e) => diag.error("rule:action", { id: rule.id, e: String(e) }));
-    diag.log("rule", { id: rule.id, event, card: ctx.card, applied: true, do: verb, arg });
+    diag.log("rule", { id: rule.id, event, card: ctx.card, applied: true, do: verb, arg, depth: chain.depth || undefined });
   } catch (e) {
     diag.error("rule:action", { id: rule.id, e: String(e) });
   } finally {
-    acting = false;
+    acting = wasActing;
+    // The window for "caused by this action" starts when it has run (a skip's song is async).
+    lastAction = { at: Date.now(), depth: chain.depth };
   }
-  return rule.id;
+  return rule;
+}
+
+/** The events that fire often: a miss writes no log line. */
+const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "surface.change"]);
+
+/** The fire cap: the rule is off until the app starts again, and a notice names it. */
+function tripRule(rule: Rule): void {
+  offForSession.add(rule.id);
+  fires.delete(rule.id);
+  diag.warn("rule:trip", { id: rule.id, name: rule.name });
+  const name = rule.name ? `"${rule.name}"` : "A rule";
+  void import("./toast").then(({ toast }) =>
+    toast({ kind: "warn", text: `${name} ran 5 times in 10 seconds, so it is off until DeetsMusic starts again.`, timeout: 8000 }),
+  );
+  changeSubs.forEach((cb) => cb());
+}
+
+// ── the clock (RULES.md §20.3: "The clock reaches __") ───────────
+
+let clockTimer = 0;
+function armClock(): void {
+  window.clearTimeout(clockTimer);
+  const next = nextClock(live, new Date());
+  if (!next) return;
+  // A timer stops while the PC sleeps: never wait past 15 minutes, and check again when shown.
+  const wait = Math.min(next.at - Date.now(), 15 * 60_000);
+  clockTimer = window.setTimeout(() => {
+    if (Date.now() >= next.at - 1000) emit("clock", { card: "*", at: next.minute });
+    armClock();
+  }, Math.max(wait, 0) + 50);
 }
 
 // ── state rules ──────────────────────────────────────────────────
@@ -353,10 +468,11 @@ export function chipState(target: string): ChipState | null {
   const hand = heldNow.get(target);
   const id = bolt ?? hand;
   if (!id) return null;
-  const text = texts.get(rowOf(id));
-  const name = text?.name ?? "A rule";
+  const own = all.find((r) => r.id === id && "user" in r.source);
+  const text = own ? undefined : texts.get(rowOf(id));
+  const name = own ? `Your rule "${own.name || "Untitled"}"` : text?.name ?? "A rule";
   if (bolt) return { kind: "bolt", ruleId: bolt, hint: text?.bolt?.(target) ?? `${name} sets this now.` };
-  return { kind: "hand", ruleId: hand!, hint: text?.hand?.(target) ?? `Your pick holds. Press to give it back to ${name.toLowerCase()}.` };
+  return { kind: "hand", ruleId: hand!, hint: text?.hand?.(target) ?? `Your pick holds. Press to give it back to ${own ? name : name.toLowerCase()}.` };
 }
 
 /** Resume on the chip: the rule acts again at once. */
@@ -399,6 +515,15 @@ export function initRules(): void {
   // runs a check, and a check before the rules exist ended every saved hold (found 2026-09-26,
   // a held look lost on reload).
   registerFact("now", () => Date.now());
+  // Rulez's time facts (RULES.md §20.3). The minute timer runs only while a rule reads them.
+  const nextMinute = () => (readsFact(live, ["time", "day"]) ? Math.ceil((Date.now() + 1) / 60_000) * 60_000 : null);
+  registerFact("time", () => timeFacts(new Date()).time, { next: nextMinute });
+  registerFact("day", () => timeFacts(new Date()).day);
+  // The card an event happened in: every emit supplies it; registered so a rule may name it.
+  registerFact("card", () => undefined);
+  registerEvent("clock");
+  // A cancel event's Do: the site reads it (`cancelled`); the action itself does nothing.
+  registerAction("keep", { cost: "free", run: () => undefined });
   diag.log("rule:init", { rules: all.length, live: live.length, holds: holds.length });
   onSettingsChange((k) => {
     if (!(ROW_KEYS as string[]).includes(k) && k !== "rules") return;
@@ -407,7 +532,10 @@ export function initRules(): void {
   });
   onOwnChange(onHand);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) recheck("visible");
+    if (!document.hidden) {
+      recheck("visible");
+      armClock();
+    }
   });
   recheck("init");
   // A measuring handle for the desk tests (DEBUGGING.md): read the engine from DevTools. The

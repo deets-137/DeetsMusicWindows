@@ -495,6 +495,23 @@ export function onPlayIntent(cb: () => void): () => void {
 }
 const playIntent = () => intentSubs.forEach((cb) => cb());
 
+const transportSubs = new Set<(way: "next" | "prev") => void>();
+/** Fires when a press asks for Next or Previous (the Now Playing card, the Compass, a media key,
+ *  the agent), before the player acts. Rulez's "You skip ahead" / "You go back" (RULES.md §20). */
+export function onTransport(cb: (way: "next" | "prev") => void): () => void {
+  transportSubs.add(cb);
+  return () => transportSubs.delete(cb);
+}
+const transport = (way: "next" | "prev") => transportSubs.forEach((cb) => cb(way));
+
+/** What MusicKit knows of the song playing now (a catalog song may not be in the library). */
+export function nowPlayingMeta(): { genres?: string[]; year?: number; explicit?: boolean } {
+  const a = music?.nowPlayingItem?.attributes;
+  if (!a) return {};
+  const year = typeof a.releaseDate === "string" ? Number(a.releaseDate.slice(0, 4)) || undefined : undefined;
+  return { genres: Array.isArray(a.genreNames) ? a.genreNames : undefined, year, explicit: a.contentRating === "explicit" };
+}
+
 export interface PlayerProgress {
   progress: number; // 0..1
   currentTime: number; // seconds
@@ -2242,6 +2259,7 @@ export async function playPause(why = "button"): Promise<void> {
 
 /** Skip forward (native within the fed window). */
 export async function nextTrack(): Promise<void> {
+  transport("next");
   if (roomBridge) return roomBridge.next();
   playIntent();
   const m = await initPlayer();
@@ -2464,6 +2482,7 @@ if (import.meta.env.DEV) {
 
 /** Restart the song if we're past the intro, otherwise skip back. */
 export async function prevTrack(): Promise<void> {
+  transport("prev");
   if (roomBridge) return roomBridge.previous();
   playIntent();
   const m = await initPlayer();
