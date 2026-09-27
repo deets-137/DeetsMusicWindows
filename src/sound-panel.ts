@@ -7,7 +7,8 @@
 import { keepInWindow, makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { makeSlider, type SliderHandle } from "./slider";
-import { setting, setSetting, ownSetting, onSettingsChange, adaptiveOn, adaptiveUnhidden, type Settings } from "./settings-store";
+import { ruleChip } from "./rule-chip";
+import { setting, setSetting, ownSetting, effective, onSettingsChange, adaptiveOn, adaptiveUnhidden, type Settings } from "./settings-store";
 import { bandBiquads, chainDb, logFreqs, lowVolumeShelves, rbj, LOW_SHELF_HZ, SUB_SHELF_HZ, HIGH_SHELF_HZ, type Band, type BandType } from "./sound-dsp";
 import { GRAPHIC_FREQS, MAX_BANDS, fitGraphic, isGraphic, parseApo, toApo, type EqPreset } from "./sound-presets";
 import * as sound from "./sound";
@@ -452,7 +453,7 @@ function build(panel: HTMLElement): void {
   const walk = (dir: number) => {
     const list = sound.presetOptions();
     // While off the screen shows Flat, so the step starts from Flat, and the pick turns it on.
-    const from = setting("soundEq") ? setting("soundEqPreset") : "flat";
+    const from = setting("soundEq") ? effective("soundEqPreset") : "flat";
     const i = list.findIndex((p) => p.id === from);
     selected = -1;
     sound.selectPreset(list[(i + dir + list.length) % list.length].id);
@@ -474,7 +475,9 @@ function build(panel: HTMLElement): void {
     more.setAttribute("aria-expanded", String(open));
     if (!open) showPart(nameRow, false);
   });
-  presetRow.append(prev, presetName, next, modePill, more);
+  // The rule chip (RULES.md §9): a bolt while this output's remembered preset lays over your
+  // last pick elsewhere (Sound › Remember each output).
+  presetRow.append(prev, presetName, ruleChip("key:soundEqPreset").el, next, modePill, more);
   eqView.append(presetRow);
 
   actionsRow = el("div", "sound__actions");
@@ -708,7 +711,7 @@ function visibleRows(view: HTMLElement): HTMLElement[] {
 let undoReset: (() => void) | null = null;
 let undoTimer = 0;
 function resetToFlat(): void {
-  const prev = setting("soundEqPreset");
+  const prev = effective("soundEqPreset");
   if (prev === "flat") return;
   selected = -1;
   sound.selectPreset("flat");
@@ -964,7 +967,7 @@ function askName(mode: "save" | "rename"): void {
 function commitName(): void {
   const name = nameInput.value.trim();
   if (!name) return;
-  const id = setting("soundEqPreset");
+  const id = effective("soundEqPreset");
   if (nameMode === "rename" && id.startsWith("u:")) {
     setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: { ...sound.activePreset(), name } });
   } else {
@@ -982,7 +985,7 @@ function addUserPreset(p: EqPreset): void {
 }
 
 function deletePreset(): void {
-  const id = setting("soundEqPreset");
+  const id = effective("soundEqPreset");
   if (!id.startsWith("u:")) return;
   if (!deleteArmed) {
     deleteArmed = true;
@@ -1065,9 +1068,9 @@ function renderAll(): void {
   faders.hidden = !graphic;
   modePill.textContent = graphic ? "Sliders" : "Dots";
   presetName.textContent = shownName();
-  const user = setting("soundEqPreset").startsWith("u:");
-  if (undoReset && setting("soundEqPreset") !== "flat") endUndo(); // another pick ends the offer
-  resetBtn.disabled = !undoReset && (!setting("soundEq") || setting("soundEqPreset") === "flat");
+  const user = effective("soundEqPreset").startsWith("u:");
+  if (undoReset && effective("soundEqPreset") !== "flat") endUndo(); // another pick ends the offer
+  resetBtn.disabled = !undoReset && (!setting("soundEq") || effective("soundEqPreset") === "flat");
   renameBtn.disabled = !user;
   deleteBtn.disabled = !user;
   adaptivePill.textContent = adaptiveOn() ? "On" : "Off";

@@ -134,6 +134,15 @@ The fold's line says which mode is on and gives this moment's numbers (the boost
   or the AirPlay speaker by name) and switch when the output changes. Needs Rust: the default
   device's name and form factor (`PKEY_AudioEndpoint_FormFactor`: speakers / headphones / headset)
   and a change notice (`IMMNotificationClient`), emitted to the front end.
+  **Since 2026-09-26 the rules engine runs it** (RULES.md §13): each remembered output is a
+  state rule, while `output` = its key → `soundEqPreset` = its preset, laid on top of your pick.
+  `setOutput` no longer writes the preset; it tells the engine the `output` fact changed. A pick
+  (`selectPreset`) writes your preset and what this output remembers, as before (`onHand:
+  "learn"`). The Sound panel shows the preset you hear, with the rule chip (a bolt) beside its
+  name when this output's preset differs from your last pick. One small change: an output with
+  nothing remembered shows your last pick, where it used to keep the previous output's preset.
+  Desk test 2026-09-26 (dev app, a second output stood in by `__sound.setOutput`): passed.
+  **His:** real headphones in and out.
 
 ### 2.3 Where it lives: the Sound item in the title bar (decided)
 Modelled on the sleep timer (NEXT-VERSION §17, `src/sleep.ts`): an icon in the title bar next to

@@ -20,7 +20,7 @@ import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
 import { currentSurface, onSurfaceChange } from "./surface";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
-import { setting, adaptiveUnhidden } from "./settings-store";
+import { setting, effective, adaptiveUnhidden } from "./settings-store";
 import { settingsRows, type SettingEntry } from "./settings-card";
 import { tracks } from "./track-store";
 import { creditIndex } from "./artist-credit";
@@ -534,7 +534,7 @@ function actions(all: boolean): Row[] {
 
 /** The equalizer presets (built-in, Custom, yours), the one in force marked. */
 function soundRows(): Row[] {
-  const cur = setting("soundEqPreset");
+  const cur = effective("soundEqPreset");
   return presetOptions().map((p): Row => ({
     group: "Sound", title: `EQ: ${p.name}`, sub: "Equalizer preset", side: p.id === cur ? "On" : undefined,
     run: () => selectPreset(p.id),

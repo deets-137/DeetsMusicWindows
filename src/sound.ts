@@ -24,7 +24,8 @@ import * as diag from "./diag";
 import * as perf from "./perf";
 import { TELEMETRY } from "./telemetry-on";
 import { toast } from "./toast";
-import { setting, setSetting, onSettingsChange, adaptiveOn, type Settings } from "./settings-store";
+import { setting, setSetting, effective, onSettingsChange, adaptiveOn, type Settings } from "./settings-store";
+import { registerChipText, registerFact } from "./rules";
 import { BUILTIN, type EqPreset } from "./sound-presets";
 
 // ── The state every part reads (settings wire into this in the panel phase) ──────────
@@ -589,13 +590,13 @@ export function presetFor(id: string): EqPreset {
 }
 
 export function activePreset(): EqPreset {
-  return presetFor(setting("soundEqPreset"));
+  return presetFor(effective("soundEqPreset"));
 }
 
 /** Every preset the stepper walks: built-ins, Custom (once it has bands), then the user's. */
 export function presetOptions(): { id: string; name: string }[] {
   const list = BUILTIN.map((b) => ({ id: b.id, name: b.preset.name }));
-  if (setting("soundEqCustom").bands.length || setting("soundEqPreset") === "custom") list.push({ id: "custom", name: "Custom" });
+  if (setting("soundEqCustom").bands.length || effective("soundEqPreset") === "custom") list.push({ id: "custom", name: "Custom" });
   for (const [id, p] of Object.entries(setting("soundEqUser"))) list.push({ id, name: p.name });
   return list;
 }
@@ -612,7 +613,7 @@ export function selectPreset(id: string): void {
 
 /** An edit: a user preset changes in place; a built-in becomes Custom. */
 export function commitBands(bands: EqPreset["bands"]): void {
-  const id = setting("soundEqPreset");
+  const id = effective("soundEqPreset");
   const cur = activePreset();
   if (id.startsWith("u:")) {
     setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: { ...cur, bands } });
@@ -716,12 +717,20 @@ function watchWindowsOutput(): void {
 }
 
 /** Switch to the preset remembered for this output. */
+const outputSubs = new Set<() => void>();
+/** The rules engine's `output` fact changes here (its seam). */
+const onOutputChange = (cb: () => void): (() => void) => {
+  outputSubs.add(cb);
+  return () => outputSubs.delete(cb);
+};
+
 export function setOutput(next: SoundOutput): void {
   if (next.key === output.key && next.kind === output.kind && next.name === output.name) return;
   output = next;
   diag.log("sound:output", { kind: next.kind, name: next.name });
-  const remembered = setting("soundEqOutputs")[next.key];
-  if (setting("soundEqPerOutput") && remembered && remembered !== setting("soundEqPreset")) setSetting("soundEqPreset", remembered);
+  // The output's remembered preset is a rule now (RULES.md §13): the engine hears the new
+  // `output` fact and lays that preset on top of yours.
+  outputSubs.forEach((cb) => cb());
   applySettings();
 }
 export function getOutput(): SoundOutput {
@@ -784,6 +793,13 @@ function checkReview(): void {
 
 export function initSound(): void {
   installPlayHook();
+  // Sound › Remember each output is a rule per remembered output (RULES.md §13): while
+  // `output` = that key, the preset is the one it remembers. A pick teaches it (`learn`).
+  registerFact("output", () => output.key || undefined, { seam: onOutputChange });
+  registerChipText("soundEqOutputs", {
+    name: "Remember each output",
+    bolt: () => `${outputName(output.key)} remembers this preset. A pick here changes what it remembers.`,
+  });
   onVolumeChange(() => {
     if (config.lowVolume > 0 || (config.eqOn && config.preampMode === "needed")) {
       push();

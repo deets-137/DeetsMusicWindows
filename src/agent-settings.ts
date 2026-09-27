@@ -12,7 +12,7 @@
 // The rows mirror settings-card.ts: a new card row joins SPECS as well (SETTINGS.md §5).
 
 import { invoke } from "@tauri-apps/api/core";
-import { setting, setSetting, ownSetting, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
+import { setting, setSetting, ownSetting, effective, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
 import { toast } from "./toast";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
 import { type ThemeName } from "./theme";
@@ -195,7 +195,7 @@ const SPECS: Spec[] = [
     get options() {
       return presetOptions().map((p) => ({ value: p.id, label: p.name }));
     },
-    get: () => setting("soundEqPreset"),
+    get: () => effective("soundEqPreset"),
     set: (v) => selectPreset(v),
   },
   storeChoice("Sound", "soundEqMode", "Equalizer view", [{ value: "graphic", label: "Sliders" }, { value: "parametric", label: "Dots" }]),
