@@ -45,6 +45,8 @@ old installs' Guide button opens.
 - `CONTEXT-MENUS.md` — one right-click menu per media type (`media-menu.ts`); the row order.
 - `UX-COVERUPS.md` — the ledger of latency and jank we cover instead of remove.
 - `LIBRARY-VIRTUALIZATION.md` — windowing for long lists.
+- `RULES.md` — the rules engine: moment and state rules, the `if` tree, the overlay on
+  settings, what moves into rules (designed 2026-09-26, not built).
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.

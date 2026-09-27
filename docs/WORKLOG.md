@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,21 @@ updated: 2026-09-25
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-09-26, late — the rules engine, designed (no code)
+
+A talk from CARD-GROW.md §18 (grow rules) to a general engine. His calls: an `if` layer on every
+rule, nested; grow = horizontal / vertical / full; the first match wins; a missing axis does
+nothing; more actions later (a user can shape the whole listening experience, we do the Apple
+and player work); JSON, not XML; no worker thread (events at the seams, a pure evaluator); the
+overlay the safe way, with `RuleKey` so `tsc` catches drift; a chip on the row (bolt and hand as
+placeholders, he designs it); a hand change wins, and each state rule says when it tries again
+(`next`, `session`, `off`, or an `until` condition). Written as RULES.md, with the audit of
+Settings rows that are rules already (§13). Then his second round: a row makes its own rule (no
+data moves); no rule sets off a rule, one level of groups; one row "Grow on album or artist"
+(Vertical / Full / Off, sideways in Midi); Full does not grow; theme and skin move into the store;
+EQ for each output learns; the branch builds grow rules, the overlay, the look schedule, Keep on
+top, EQ per output, the sharing pause, summon and sleep. The build plan is RULES.md §17.
 
 ## 2026-09-26, evening — Claude's desk-test pass on the two apps
 

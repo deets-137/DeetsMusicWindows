@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 # DeetsMusic — Handoff
 
@@ -160,6 +160,9 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 - The telemetry pass's AirPlay part: stall and switch timing, the quieter wire log (AIRPLAY.md
   §13.2). The other two parts are built (Desk tests open, above).
 - Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
+- **The rules engine** (2026-09-26) — [RULES.md](architecture/RULES.md): every fork closed but
+  the chip's look. The build plan is RULES.md §17, on a branch `rules-engine` from `main`, one
+  commit and one desk test per step. Not started.
 
 **Releases and branches**
 - 0.12.0 and 0.12.1 are withdrawn. The first public release

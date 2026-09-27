@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
 sources: [src/card-grow.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-09-24
+updated: 2026-09-26
 ---
 # DeetsMusic — growing a card
 
@@ -735,6 +735,16 @@ from its outer zones. The whole rule and the desk test are in **docs/cards/STAGE
 ## 18. Grow rules — a card grows on an action (designed 2026-09-24)
 
 > **Part:** designed · 2026-09-24
+
+> **2026-09-26:** the engine is now general, and its design moved to
+> [RULES.md](../architecture/RULES.md). Grow rules are its first action (RULES.md §14, phase 1).
+> Changed from below: the Do is `off` / `horizontal` / `vertical` / `full` (Taller is gone); every
+> rule can carry an `if` tree, so the Diary's *New entries* is a condition (RULES.md §4); the
+> first matching rule wins; a grow with no neighbour on its axis does nothing. §18.3's
+> `grow-rules.ts` is `rules.ts` + `rules-eval.ts`. Later the same day: album and artist share
+> one row, **Grow on album or artist** (Vertical / Full / Off, sideways in Midi); **Full does
+> not grow a card** (a filter, not a drill); the cog keeps no row (RULES.md §13). Where this
+> section and RULES.md differ, RULES.md is the design.
 
 Two cards already grow on their own: the cog Fills Settings (`expandCard`, §17), and a Diary
 entry grows the Diary taller (`growCardTaller`, DIARY.md §4a). Each one is coded at its own
