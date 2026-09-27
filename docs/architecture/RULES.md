@@ -471,3 +471,47 @@ takes a picture of each visible step. Steps that need his hardware or ear are ma
 - The "As built" section here; RULES.md front matter to `built`, `desk_test: open`;
   HANDOFF.md and WORKLOG.md; CLAUDE.md's line; `npm run docs:check`.
 - The hand-off lists: what passed, what is **his**, what I decided inside his choices.
+
+## 18. As built (branch `rules-rulez`, 2026-09-26)
+
+> **Part:** built · 2026-09-26
+
+Where this section and §1–§17 differ, this section is the code.
+
+**His calls during the build (2026-09-26).**
+- **Rules sit under the features; they never replace one.** The sleep timer stays the same
+  feature (dial, chips, warning, wind-down, play-out); its *Sleep every day* row is now a rule.
+  The same for the look schedule, Keep on top, EQ for each output and the sharing pause.
+- **A `next` hold survives a restart** (§8 said memory). The engine saves `next` holds to
+  `deets.rules.holds` with the facts the rule read; at launch a hold whose facts moved ends at
+  the first check. So a hand-picked look still holds until the next day / night change, as
+  `deets.look.hold` did, and the pre-paint keeps reading `deets.look.hold`.
+- **A leaf can compare numbers:** `{ fact, is?, lt?, gte? }`; every test given must hold. The
+  sharing pause is `{ fact: "now", lt: until }`.
+
+**Files.** `src/rules-eval.ts` (pure, `tests/rules-eval.test.ts`) · `src/rules.ts` (registry,
+`emit`, the state check, holds, the chip's view, `__rules` in DevTools under the telemetry flag)
+· `src/rule-chip.ts` · `src/settings-store.ts` (`RULE_KEYS`, `effective`, `ownSetting`,
+`overlayOf`, `_setOverlay`, `onOwnChange`, `allSettings`, the `rules` key).
+
+**Decided inside his choices (for his review).**
+- The rule list is the user's rules first, then the built-in ones. A user rule wins a tie.
+- A built-in rule whose event, fact or action is not registered yet waits with no log line (the
+  modules register at their own init). Only a user rule logs `rule:skip`.
+- A fact is known when a provider reads it or an event names it (`entry.new` comes only with
+  `diary.open`).
+- A `Source` can also be `{ fixed: "cog" }`: the cog's rule has no row.
+- A hand change on one target of a state rule holds every target the rule sets (a look is its
+  theme and its skin together).
+- `emit` and the state check hold each other off: an action's own emits, and an emit from a
+  listener during a check, are refused and logged `reason: "held"`.
+- The `surface` fact is registered in main.ts, not surface.ts: the unit tests load surface.ts,
+  and the engine's log keeps Node running.
+- The cog keeps what it did: when another card is grown, the cog's rule ends that grow and
+  opens Settings (the one exception to fork 7A, `growByRule(…, replace)`).
+- `expandCard` and `growCardTaller` are removed; nothing called them any more.
+- `host.dataset.mounted` (layout.ts) names the card a host shows; the emits read it, so the
+  second Search card reports its own id.
+- `webview-eval.mjs --shot FILE` saves a picture of the dev window (the desk tests' pictures).
+
+**Steps.** Each step's desk test result is in WORKLOG.md (2026-09-26).

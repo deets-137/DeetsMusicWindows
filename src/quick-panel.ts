@@ -17,7 +17,8 @@ import { onSkinChange } from "./skin";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { requestCard, requestSetting } from "./layout-bus";
 import { setting, setSetting, onSettingsChange } from "./settings-store";
-import { expandCard, isGrownCard, collapseGrow, onGrowChange } from "./card-grow";
+import { isGrownCard, collapseGrow, onGrowChange } from "./card-grow";
+import { emit } from "./rules";
 import { tokenMs } from "./boot-cover";
 import type { CardInstance } from "./cards";
 import * as diag from "./diag";
@@ -196,7 +197,8 @@ export function initQuickPanel(): void {
       return;
     }
     requestCard("settings");
-    void expandCard("settings", "cog");
+    // The cog's grow is a fixed rule (RULES.md §13): Fill in Max, wider in Midi.
+    emit("cog", { card: "settings", facts: { cause: "hand" }, depth: 0 });
   });
   onGrowChange(paintAll);
 

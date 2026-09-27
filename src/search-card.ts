@@ -39,6 +39,8 @@ import {
   yourPlaylistsFor, checkPlaylists, artistShelvesHTML, type YourPlaylists, type CheckProgress,
 } from "./artist-view";
 import { handOff } from "./handoff";
+import { emit } from "./rules";
+import { levelLeft } from "./card-grow";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
@@ -480,6 +482,9 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     pendingReturn = null;
     if (memory?.scroll) void Promise.resolve(filled).then(() => { scroller.scrollTop = memory.scroll!; });
     notifyHeader(); // the header takes this level's kind, and shows its Back button
+    // The rules engine (RULES.md §10): an album or artist pane opened by hand, not by a restore.
+    if (!memory?.instant && (open?.kind === "album" || open?.kind === "artist"))
+      emit(open.kind === "album" ? "album.open" : "artist.open", { card: host.dataset.mounted ?? "search", facts: { cause: "hand" }, depth: paneStack.length });
   };
 
   /** The Back button: the pane a grown card's drill opened hands the Back to the layout, which
@@ -490,7 +495,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (top && ret) {
       paneReturn.delete(top);
       paneStack.pop(); // out of the snapshot the destroy that follows takes
-      if (ret()) return;
+      if (ret()) return levelLeft(host.dataset.mounted ?? "search", paneStack.length);
       paneStack.push(top);
     }
     popPane();
@@ -511,6 +516,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (below) below.dataset.pos = "center";
     window.setTimeout(() => pane.remove(), 400); // past --nav-dur; cheap cleanup
     notifyHeader();
+    levelLeft(host.dataset.mounted ?? "search", paneStack.length); // a rule grow ends when Back leaves its pane
   };
   /** Drop every drill pane at once, so `root` is the visible pane again. */
   const resetToRoot = () => { while (paneStack.length) popPane(); };

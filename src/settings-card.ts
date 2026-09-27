@@ -169,6 +169,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "glasspicture", skin: "glass", via: { row: "glasswallpaper", values: ["picture"] } },
   { section: "Skin settings", row: "glassdiffusion", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
   { section: "Skin settings", row: "glassauroracolor", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
+  { section: "Window", row: "drillgrow" }, // Grow on album or artist, the rules engine's first row, built 2026-09-26
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -305,7 +306,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
@@ -1006,6 +1007,12 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           kind: "choice", id: "cardgrowview", label: "Keep view when grown", key: "cardGrowView",
           hint: "A card that grows keeps the view you are in; the tile size still follows the card's size",
           options: [{ value: "keep", label: "Keep" }, { value: "size", label: "Per size" }],
+        },
+        {
+          // The rules engine makes this row's rules (RULES.md §13): album.open and artist.open.
+          kind: "choice", id: "drillgrow", label: "Grow on album or artist", key: "drillGrow",
+          hint: "An album or artist opens with more room: taller in Max, wider in Midi. Back returns it",
+          options: [{ value: "vertical", label: "Vertical" }, { value: "full", label: "Full" }, { value: "off", label: "Off" }],
         },
         {
           kind: "choice", id: "carddrill", label: "Card on drill", key: "cardDrill",

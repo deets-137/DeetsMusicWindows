@@ -150,6 +150,7 @@ const SPECS: Spec[] = [
   storeChoice("Window", "cardDrill", "Card on drill", [{ value: "inplace", label: "In place" }, { value: "summon", label: "Summon" }]),
   storeToggle("Window", "cardDrillBring", "Bring a card already open"),
   storeChoice("Window", "cardGrowView", "Keep view when grown", [{ value: "keep", label: "Keep" }, { value: "size", label: "Per size" }]),
+  storeChoice("Window", "drillGrow", "Grow on album or artist", [{ value: "vertical", label: "Vertical" }, { value: "full", label: "Full" }, { value: "off", label: "Off" }]),
   storeToggle("Window", "cardMemoryDisk", "Keep card places on restart"),
   {
     key: "surface", label: "Surface", section: "Window", kind: "choice",

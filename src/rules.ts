@@ -19,7 +19,6 @@ import {
   type EventId, type FactId, type Facts, type Hold, type Known, type Rule, type RowValues, type StateRule, type Stored, type Value,
 } from "./rules-eval";
 import * as diag from "./diag";
-import { TELEMETRY } from "./telemetry-on";
 
 // ── the registry (RULES.md §6) ───────────────────────────────────
 
@@ -34,6 +33,8 @@ export interface EmitCtx {
   card: string;
   /** Facts only the event knows (`entry.new`, `cause`, `from`). */
   facts?: Facts;
+  /** How many levels the card has open after the event (a grow ends on Back past it). */
+  depth?: number;
 }
 interface ActionDef {
   /** `apple` = the action calls Apple (RULES.md §6). None does yet. */
@@ -83,7 +84,8 @@ export function registerChipText(row: string, text: ChipText): void {
 function known(): Known {
   return {
     events: new Set(events.keys()),
-    facts: new Set(facts.keys()),
+    // A fact is known when a provider reads it, or when an event supplies it (`entry.new`).
+    facts: new Set([...facts.keys(), ...[...events.values()].flatMap((e) => e.facts)]),
     actions: new Set(actions.keys()),
     targets: new Set([...RULE_KEYS.map((k) => `key:${k}`), ...[...props.keys()].map((p) => `prop:${p}`)]),
   };
@@ -113,7 +115,7 @@ function userRules(): Rule[] {
 /** Make the rule list again from the rows (a row changed). */
 function rebuild(why: string): void {
   const before = all;
-  all = [...userRules(), ...builtinRules(allSettings() as RowValues & Settings)];
+  all = [...userRules(), ...builtinRules(allSettings())];
   holds = keepHolds(holds, before, all);
   diag.log("rule:rebuild", { why, rules: all.length });
   relist(false);
@@ -393,13 +395,17 @@ export function initRules(): void {
     if (!document.hidden) recheck("visible");
   });
   recheck("init");
-  // A measuring handle for the desk tests (DEBUGGING.md): read the engine from DevTools.
-  if (TELEMETRY) (window as unknown as { __rules: unknown }).__rules = {
-    rules: () => all,
-    live: () => live,
-    holds: () => holds,
-    applied: () => Object.fromEntries(applied),
-    facts: () => readFacts(),
-    recheck: () => recheck("console"),
-  };
+  // A measuring handle for the desk tests (DEBUGGING.md): read the engine from DevTools. The
+  // flag loads lazily: telemetry-on.ts needs Vite, and the unit tests load this module.
+  void import("./telemetry-on").then(({ TELEMETRY }) => {
+    if (!TELEMETRY) return;
+    (window as unknown as { __rules: unknown }).__rules = {
+      rules: () => all,
+      live: () => live,
+      holds: () => holds,
+      applied: () => Object.fromEntries(applied),
+      facts: () => readFacts(),
+      recheck: () => recheck("console"),
+    };
+  });
 }

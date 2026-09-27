@@ -27,7 +27,8 @@ import { albumOrder, heroCover } from "./library-card";
 import { esc, actionsRowHTML, runListAction } from "./collection-card";
 import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, MENU_DIVIDER, type MenuItem, type ActionItem } from "./context-menu";
 import { albumMenu, songMenu } from "./media-menu";
-import { growCardTaller, isGrownCard, collapseGrow } from "./card-grow";
+import { levelLeft } from "./card-grow";
+import { emit } from "./rules";
 import { playTracks } from "./player";
 import * as queue from "./queue";
 import { registerDropTarget, rowDrag, type DragPayload } from "./row-drag";
@@ -150,8 +151,6 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   /** A song change that waits while the user is typing in the foot. */
   let pendingSel: string | null = null;
   let destroyed = false;
-  /** The open entry grew the card itself (Grow on open), so Back may collapse it. */
-  let grewForEntry = false;
   const headerSubs = new Set<(h: { title: string; atRoot: boolean }) => void>();
 
   const setHeader = () => {
@@ -705,13 +704,9 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       // because the card grows for it and has room; a reopened one on the song that plays, if
       // it is on this album, else on none.
       selKey = e.created && e.tracks[0] ? songKeyOf(e.tracks[0]) : playingKey();
-      const grow = setting("diaryGrow");
-      if (grow === "every" || (grow === "new" && e.created)) {
-        void growCardTaller("diary", "diary-open").then((grew) => {
-          if (grew && entry?.id === e.id) grewForEntry = true;
-          diag.log("ui:act", { at: "diary", do: "grow", grew, why: e.created ? "new" : "every" });
-        });
-      }
+      // Grow on open (DIARY.md §4a) is the row's rule now (RULES.md §4): the engine grows the
+      // card and ends the grow when Back leaves the entry.
+      emit("diary.open", { card: "diary", facts: { "entry.new": !!e.created }, depth: 1 });
     }
     setHeader();
     renderEntry(first);
@@ -1058,9 +1053,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   backEl.addEventListener("click", () => {
     flushNote();
-    // A grow the entry made ends with the entry; a grow the user made stays.
-    if (grewForEntry && isGrownCard("diary")) void collapseGrow("diary-back");
-    grewForEntry = false;
+    // A grow the entry's rule made ends with the entry; a grow the user made stays.
+    levelLeft("diary", 0);
     entry = null;
     selKey = null;
     setHeader();

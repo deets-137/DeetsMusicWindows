@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyTheme, initTheme, type ThemeName } from "./theme";
 import { applySkin, initSkin, type SkinName } from "./skin";
-import { applySurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, onNarrowChange, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
+import { applySurface, currentSurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, onNarrowChange, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initOcean } from "./ocean";
@@ -55,7 +55,7 @@ import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
-import { initRules } from "./rules";
+import { initRules, registerFact } from "./rules";
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -68,6 +68,9 @@ window.addEventListener("DOMContentLoaded", () => {
   initSkinSettings(); // before the first paint, so a card never flashes the default look
   initLookSchedule(); // a day/night schedule overrides the saved look (LOOK-SCHEDULE.md)
   initSurface();
+  // The rules engine's `surface` fact (RULES.md §5), registered here and not in surface.ts:
+  // the unit tests load surface.ts, and the engine's log keeps Node running.
+  registerFact("surface", () => (isPlayerView() ? "player" : currentSurface()), { seam: (cb) => onSurfaceChange(cb) });
   initStorm(); // storm-layer position re-roll; inert unless the skin opts in
   initOcean(); // the Ocean sea's textures, album light, breath and ripples; inert under other skins
   initAmbient(); // pause the skins' decorative loops while the window is minimized / in the tray

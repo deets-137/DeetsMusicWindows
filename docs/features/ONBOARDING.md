@@ -139,6 +139,7 @@ nothing about authoring changed when the box did.
 | Card headers | Back | Goes back one step | library-, playlists-, radio-card.ts; search-card.ts (its card header since 2026-09-17) |
 | Card headers | Back, on a level a grown card's drill opened | Goes back to *<card>* | collection-card.ts `setHeader`, search-card.ts `pushPane` (CARD-GROW.md §14.4) |
 | Settings › Window | Keep view when grown | A card that grows keeps the view you are in; the tile size still follows the card's size | settings-card.ts |
+| Settings › Window | Grow on album or artist | An album or artist opens with more room: taller in Max, wider in Midi. Back returns it | settings-card.ts |
 | Settings › Window | Card on drill | A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot | settings-card.ts |
 | Settings › Window | Bring a card already open | A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits | settings-card.ts |
 | Settings › Window | Keep card places on restart | Opens each card where you left it, also after you restart DeetsMusic | settings-card.ts |

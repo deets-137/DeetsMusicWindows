@@ -692,6 +692,11 @@ lose. Now a drill uses the slot you are reading, and Back walks the chain backwa
 
 ## 17. `expandCard` — a button that opens a card at full size (BUILT 2026-09-18)
 
+> **2026-09-26:** `expandCard` and `growCardTaller` are gone. The cog and the Diary grow through
+> the rules engine's grow action, `growByRule` (RULES.md §10, §13). What each does is the same,
+> the table below included: the cog is a fixed rule (Fill in Max, wider in Midi) and, as before,
+> ends another card's grow to open Settings.
+
 The title bar's cog (right of the Compass) summons the Settings card and opens it at once.
 Someone who presses the cog wants Settings, not a card-sized corner of it.
 
@@ -734,7 +739,7 @@ from its outer zones. The whole rule and the desk test are in **docs/cards/STAGE
 
 ## 18. Grow rules — a card grows on an action (designed 2026-09-24)
 
-> **Part:** designed · 2026-09-24
+> **Part:** built · 2026-09-26 (branch `rules-rulez`; the as-built notes are RULES.md §18)
 
 > **2026-09-26:** the engine is now general, and its design moved to
 > [RULES.md](../architecture/RULES.md). Grow rules are its first action (RULES.md §14, phase 1).

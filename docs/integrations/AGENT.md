@@ -393,7 +393,7 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   on screen resizes the window at once (SETTINGS.md §3, FUTURE-SETTINGS §8a).
 - The **card grow** rows (2026-09-16, CARD-GROW.md §8): `cardGrow` "Grow cards from edges"
   (on | off), `cardGrowOutside` "Collapse on outside click" (on | off), `compassCloseAway` "Compass closes on outside click" (on | off), `maxShortWindow` "Max window when short" (flip | floor), `cardGrowPick` "Grown
-  card on card pick" (Keep | Collapse), `cardGrowView` "Keep view when grown" (Keep | Per size),
+  card on card pick" (Keep | Collapse), `cardGrowView` "Keep view when grown" (Keep | Per size), `drillGrow` "Grow on album or artist" (Vertical | Full | Off, 2026-09-26, RULES.md §13),
   `cardDrill` "Card on drill" (In place | Summon) and `cardDrillBring` "Bring a card already
   open" (on | off, 2026-09-17, CARD-GROW.md §15). A grow itself has no agent verb: it is a hand gesture
   and lasts only the session. An agent's own card request never swaps a grown card: the swap

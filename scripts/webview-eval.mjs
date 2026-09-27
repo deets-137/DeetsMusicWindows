@@ -4,7 +4,7 @@
 // generated config; this reads it back. Promises are awaited; the value comes back as
 // JSON (DOM nodes and functions do not survive). Exit 1 on a thrown error, 2 when the
 // app is not reachable. DEBUGGING.md §Driving the webview.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,9 +15,13 @@ const fail = (msg, code = 2) => {
 };
 
 // --second: the second dev app (`npm run dev:app -- --second`), which has its own config.
-const second = process.argv[2] === "--second";
-const expr = process.argv.slice(second ? 3 : 2).join(" ");
-if (!expr) fail('usage: node scripts/webview-eval.mjs [--second] "__toast.demo()"');
+// --shot FILE: save a PNG of the window instead of running an expression (a desk test's picture).
+const argv = process.argv.slice(2);
+const second = argv[0] === "--second";
+if (second) argv.shift();
+const shot = argv[0] === "--shot" ? argv[1] : null;
+const expr = shot ? "" : argv.join(" ");
+if (!expr && !shot) fail('usage: node scripts/webview-eval.mjs [--second] "__toast.demo()" | --shot out.png');
 
 let gen;
 try {
@@ -43,18 +47,27 @@ const timer = setTimeout(() => fail("no answer in 20 s"), 20_000);
 ws.onerror = () => fail("websocket error");
 ws.onopen = () =>
   ws.send(
-    JSON.stringify({
-      id: 1,
-      method: "Runtime.evaluate",
-      // userGesture: calls like the clipboard write need one.
-      params: { expression: expr, awaitPromise: true, returnByValue: true, userGesture: true },
-    }),
+    JSON.stringify(
+      shot
+        ? { id: 1, method: "Page.captureScreenshot", params: { format: "png" } }
+        : {
+            id: 1,
+            method: "Runtime.evaluate",
+            // userGesture: calls like the clipboard write need one.
+            params: { expression: expr, awaitPromise: true, returnByValue: true, userGesture: true },
+          },
+    ),
   );
 ws.onmessage = (m) => {
   const msg = JSON.parse(m.data);
   if (msg.id !== 1) return;
   clearTimeout(timer);
   ws.close();
+  if (shot && msg.result?.data) {
+    writeFileSync(shot, Buffer.from(msg.result.data, "base64"));
+    console.log(shot);
+    process.exit(0);
+  }
   const r = msg.result ?? {};
   if (msg.error || r.exceptionDetails) {
     console.error(r.exceptionDetails?.exception?.description ?? r.exceptionDetails?.text ?? JSON.stringify(msg.error));

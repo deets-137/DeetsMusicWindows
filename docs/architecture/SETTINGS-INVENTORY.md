@@ -189,6 +189,7 @@ which restarts the first-run walk.
 | Collapse on outside click | A click outside a grown card collapses it. Pin holds it open | **on** / off |
 | Grown card on a new pick | Pick another card in a grown card's title | **Keeps size** / Collapses |
 | Keep view when grown | A grow or collapse keeps the view you are in, or takes that size's own | **Keep** / Per size |
+| Grow on album or artist | An album or artist that opens grows its card: over the card below in Max (*Vertical*) or over the whole window (*Full*); wider in Midi with either. Back off that level returns it. A grow already on screen is left alone | **Vertical** / Full / Off |
 | Card on drill | Go to Album, a shelf tile, a playlist: where the new card opens | **In place** (Back returns) / Summon |
 | Bring a card already open | The drilled card is already on screen: bring it to you, or leave it where it sits | on / **off** |
 | Keep card places on restart | Each card comes back where you left it, also after a restart | on / **off** |

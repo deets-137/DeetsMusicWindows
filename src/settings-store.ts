@@ -56,6 +56,10 @@ export interface Settings {
   /** A grow or a collapse: keep the view you are in (only the tile size follows the card's
    *  size), or take that size's own remembered view (CARD-GROW.md §13a). */
   cardGrowView: "keep" | "size";
+  /** Grow on album or artist (RULES.md §13): an album or artist that opens in a card grows it
+   *  taller in Max ("vertical") or fills the window ("full"); in Midi it widens either way.
+   *  Back off that level returns it. The rules engine makes the row's rules. */
+  drillGrow: "vertical" | "full" | "off";
   /** Card memory (CARD-MEMORY.md): a remounted card comes back where it was. On: the places are
    *  also saved, so they survive a restart. */
   cardMemoryDisk: boolean;
@@ -421,6 +425,7 @@ export const DEFAULTS: Settings = {
   cardDrill: "inplace", // user's call 2026-09-17: a drill belongs to the card you are reading
   cardDrillBring: false, // user's call 2026-09-17: a card already on screen is not worth moving two cards for
   cardGrowView: "keep", // user's call 2026-09-17: the view you are in comes with you; the size sets the tiles
+  drillGrow: "vertical", // his call 2026-09-26 (RULES.md §2): an album or artist wants room for its songs
   cardMemoryDisk: false, // user's call 2026-09-17: memory only; an old drill after a restart can be stale
   appearanceMotion: true,
   cardSwapMotion: true, // user's call 2026-09-16: on by default (was off, 2026-09-15)

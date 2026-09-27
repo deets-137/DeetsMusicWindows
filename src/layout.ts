@@ -286,6 +286,7 @@ export function initLayout(): void {
     if (!host || !id || !def) return;
     // Card memory (CARD-MEMORY.md §4): the card takes back the place it left, unless it is
     // mounting to take a held request — the card itself decides that.
+    host.dataset.mounted = id; // which card the host shows (the rules engine's `card`)
     const inst = def.mount(host, { memory: cardMemory(id), ...mountOpts });
     const picker = makePicker(slot, host, id, inst, poolFor(comp), setSlot);
     const grow = attachGrowButton(slot, host);

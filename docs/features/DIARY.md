@@ -107,10 +107,13 @@ when its first word goes in; the pill changes it (Today · Pick a date… · No 
 
 - **Grow on open** — Settings › Diary (`diaryGrow`): **New entries** (default) · Every entry ·
   Never. When it applies, the card grows over ONE neighbour: up or down in Max, left or right in
-  Midi (`growCardTaller` in card-grow.ts). It obeys Settings › Window › Grow cards from edges,
-  does nothing in Mini, and leaves a card that is already grown alone. `diary_open` returns
-  `created: true` only when it made the entry, so "New entries" means the first open only.
-- **Back collapses a grow the entry made.** A grow you made yourself stays.
+  Midi. It obeys Settings › Window › Grow cards from edges, does nothing in Mini, and leaves a
+  card that is already grown alone. `diary_open` returns `created: true` only when it made the
+  entry, so "New entries" means the first open only. **Since 2026-09-26 the row makes rules**
+  (RULES.md §4): `showEntry` emits `diary.open` with the `entry.new` fact, and the engine's grow
+  action (`growByRule`) does the grow. The behavior is the same.
+- **Back collapses a grow the entry made.** A grow you made yourself stays. Since 2026-09-26 a
+  Pin (or any hand change to the grow) also makes it yours, so Back then leaves it (RULES.md §10).
 - **The foot waits for a song.** A new entry starts with its first song picked (it grew, so there
   is room). A reopened entry starts on the song that plays, when it is on this album, else on
   none, and the foot is not drawn. The first pick slides the foot in (`enterRows`).

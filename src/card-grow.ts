@@ -5,8 +5,8 @@
 //
 // Ways in: the edge zones (four strips per card, children of its host, placed by CSS in the
 // grid's gaps), the Grow button (enters a card's header on hover — it is NOT in the DOM at
-// rest, §0), the title's right-click menu, and `expandCard` (the title bar's cog opens
-// Settings as wide as the window allows, §17). Ways out: the same button, its zones, Esc, an outside click
+// rest, §0), the title's right-click menu, and `growByRule` (the rules engine's grow action:
+// an album or artist opens, a Diary entry opens, the cog — RULES.md §10). Ways out: the same button, its zones, Esc, an outside click
 // (a setting; Pin holds the card against it), a card request for a covered card, a surface
 // change (no motion).
 //
@@ -27,6 +27,7 @@ import { whenSwapSettled } from "./card-swap";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
+import { registerAction, registerEvent } from "./rules";
 
 /** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
  *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
@@ -107,7 +108,11 @@ export function onGrowChange(cb: (s: GrowState | null) => void): () => void {
   subs.add(cb);
   return () => subs.delete(cb);
 }
-const emit = () => subs.forEach((cb) => cb(state));
+const emit = () => {
+  // Any grow change but the rule's own (a Pin, a hand grow, a collapse) ends the rule's claim.
+  if (!ruleGrowing) ruleMark = null;
+  subs.forEach((cb) => cb(state));
+};
 
 const enabled = (): boolean => !!opts && setting("cardGrow") && currentSurface() !== "mini";
 /** Every slot that can BE grown now: the composition's content slots, plus the anchored Queue
@@ -303,49 +308,59 @@ export function isGrownCard(card: string): boolean {
   return !!slot && state?.slot === slot;
 }
 
-/**
- * Open `card` as wide as this window allows: Fill over all four in Max, over its one
- * neighbor in Midi. The cog's way in (SETTINGS.md) — a button, not an edge, but it still
- * obeys "Grow cards from edges" (the owner's call, 2026-09-18), so one flag governs every
- * grow. In Mini nothing can grow and it does nothing.
- *
- * It waits for the summon's card swap first: the card has to be IN its slot before the
- * clip-path can open from that slot's box.
- *
- * Returns true when the card grew.
- */
-export async function expandCard(card: string, cause: string): Promise<boolean> {
-  if (!enabled()) return false; // Mini, or "Grow cards from edges" is off
-  await whenSwapSettled();
-  const slot = opts?.slotOf(card) ?? null;
-  if (!slot) return false;
-  if (state?.slot === slot) return true; // already the grown card
-  const dir: GrowDir | null = canFill() && !isStage(slot) ? "full" : growDirs(slot)[0] ?? null;
-  if (!dir) return false;
-  growCard(slot, dir, cause);
-  await settled;
-  return true;
-}
+// ── the grow rule (RULES.md §10: the rules engine's `grow` action) ─────────────
+/** The level a rule grow opened: Back off it ends the grow (CARD-GROW.md §18, fork 6A).
+ *  `depth` is the card's level count at the grow (a collection frame, a Search pane, a Diary
+ *  entry = 1). A hand change clears it (fork 7A), and Back then leaves the grow alone. */
+let ruleMark: { card: string; slot: Slot; depth: number } | null = null;
+let ruleGrowing = false;
 
 /**
- * Grow `card` over ONE neighbour, taller first: up or down in Max, left or right in Midi (the
- * only way Midi grows). The Diary's way in (DIARY.md §4a): a journal page wants height for its
- * song list and its note panel, not all four cards. Same rules as `expandCard`: it obeys "Grow
- * cards from edges", waits for the summon's swap, does nothing in Mini, and leaves a card that
- * is already grown as it is. Returns true when the card is grown after the call.
+ * A rule asks `card` to grow on one axis: `vertical` = over the neighbour above or below,
+ * `horizontal` = beside it, `full` = Fill (Max only). It obeys "Grow cards from edges", does
+ * nothing in Mini or the player view, waits for the swap and for a grow's motion, and never
+ * changes a grow already on screen (fork 7A) — except `replace`, the cog's press, which keeps
+ * what the cog always did: the other grow ends and Settings opens. Resolves true when it grew.
  */
-export async function growCardTaller(card: string, cause: string): Promise<boolean> {
-  if (!enabled()) return false;
+export async function growByRule(card: string, axis: "horizontal" | "vertical" | "full", depth: number, why: string, replace = false): Promise<boolean> {
+  const no = (reason: string): false => {
+    diag.log("grow:rule", { card, axis, why, applied: false, reason });
+    return false;
+  };
+  if (!enabled()) return no(setting("cardGrow") ? "surface" : "setting");
   await whenSwapSettled();
-  const slot = opts?.slotOf(card) ?? null;
-  if (!slot) return false;
-  if (state?.slot === slot) return true;
-  const dirs = growDirs(slot);
-  const dir = dirs.find((d) => d === "up" || d === "down") ?? dirs[0] ?? null;
-  if (!dir) return false;
-  growCard(slot, dir, cause);
   await settled;
-  return state?.slot === slot;
+  const slot = opts?.slotOf(card) ?? null;
+  if (!slot) return no("not on screen");
+  if (state?.slot === slot) return no("already grown");
+  if (state && !replace) return no("a grow is on screen");
+  let dir: GrowDir | null;
+  if (axis === "full") dir = canFill() && !isStage(slot) ? "full" : null;
+  else {
+    const want: SideDir[] = axis === "vertical" ? ["up", "down"] : ["left", "right"];
+    dir = growDirs(slot).find((d) => want.includes(d)) ?? null;
+  }
+  if (!dir) return no("no-axis");
+  ruleGrowing = true;
+  try {
+    growCard(slot, dir, `rule:${why}`);
+  } finally {
+    ruleGrowing = false;
+  }
+  await settled;
+  const grew = state?.slot === slot;
+  if (grew) ruleMark = { card, slot, depth };
+  diag.log("grow:rule", { card, axis, dir, why, applied: grew, depth });
+  return grew;
+}
+
+/** A Back path: `card` now has `depth` levels open. Back past the level a rule grow opened
+ *  collapses it, when the grow on screen is still that rule grow. */
+export function levelLeft(card: string, depth: number): void {
+  if (!ruleMark || ruleMark.card !== card || depth >= ruleMark.depth) return;
+  const mark = ruleMark;
+  ruleMark = null;
+  if (state?.slot === mark.slot) void collapseGrow("rule-back");
 }
 
 export function collapseGrow(cause: string, withMotion = true): Promise<void> {
@@ -770,6 +785,16 @@ export async function agentGrow(payload: { action?: string; card?: string; dir?:
 // ── init ──────────────────────────────────────────────────────────────────────
 export function initCardGrow(o: Opts): void {
   opts = o;
+  // The rules engine (RULES.md §10): the grow action and the events that can grow a card.
+  registerEvent("album.open", { facts: ["surface", "cause"] });
+  registerEvent("artist.open", { facts: ["surface", "cause"] });
+  registerEvent("diary.open", { facts: ["surface", "entry.new"] });
+  registerEvent("cog", { facts: ["surface"] });
+  registerAction("grow", {
+    cost: "free",
+    run: (axis, ctx, rule) =>
+      growByRule(ctx.card, axis as "horizontal" | "vertical" | "full", ctx.depth ?? 1, rule.kind === "moment" ? rule.when : "rule", ctx.card === "settings" && rule.kind === "moment" && rule.when === "cog"),
+  });
   // The zones are children of each card (makeZones, with the Grow button): CSS places them
   // from the card's own box, so nothing here measures or watches sizes.
   // A surface change collapses with no motion, before the layout tears the slots down.

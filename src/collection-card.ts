@@ -28,6 +28,8 @@ import { splitPillHTML, splitPick } from "./split-pill";
 import { esc } from "./dom";
 import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
+import { emit } from "./rules";
+import { levelLeft } from "./card-grow";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -475,6 +477,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   let animating = false;
 
   const cur = () => stack[stack.length - 1];
+  /** The card this engine runs in, as the layout mounted it ("library"). */
+  const cardId = (): string => opts.root.dataset.mounted ?? opts.storeKey;
   const groupingOf = (f: Frame) => f.ctx.groupings.find((g) => g.key === f.grouping)!;
 
   const frameFor = (ctx: Context, isTop: boolean): Frame => {
@@ -973,6 +977,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     stack.push(f);
     setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
     slide(buildPane(f), "push", f);
+    // The rules engine (RULES.md §10): an album or an artist opened. Not from `replace` (the
+    // Lib | Full chips) or a card-memory restore, which never come through here.
+    const key = f.ctx.key ?? "";
+    const event = key.startsWith("album:") ? "album.open" : key.startsWith("artist:") ? "artist.open" : null;
+    if (event) emit(event, { card: cardId(), facts: { cause: "hand" }, depth: stack.length });
   };
 
   // A view chip (FULL-LIB.md): the same level seen another way. It takes the open level's
@@ -1016,13 +1025,16 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       const ret = top.onBack;
       top.onBack = undefined;
       stack.pop();
-      if (ret()) return;
+      if (ret()) return levelLeft(cardId(), stack.length);
       stack.push(top);
     }
     pick.clear();
     const prev = stack[stack.length - 2];
     setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack, prev.ctx);
-    slide(buildPane(prev), "pop", prev, () => stack.pop());
+    slide(buildPane(prev), "pop", prev, () => {
+      stack.pop();
+      levelLeft(cardId(), stack.length); // a rule grow ends when Back leaves its level
+    });
   };
 
   // ── card memory (CARD-MEMORY.md §4) ──
