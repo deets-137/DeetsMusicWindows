@@ -5,6 +5,7 @@
 // His design, 2026-09-26 (RULES.md §9). The kinds keep their old names in the code.
 
 import { chipState, onRulesChange, resumeRule } from "./rules";
+import * as diag from "./diag";
 
 // Both states are one dot (his design, 2026-09-26); the colour tells them apart: green when a
 // rule set the value (`--rule-chip-rule`), scarlet when your pick holds (`--rule-chip-hand`).
@@ -39,7 +40,11 @@ export function ruleChip(target: string): RuleChip {
   el.addEventListener("click", (e) => {
     e.stopPropagation();
     const s = chipState(target);
-    if (s?.kind === "hand") resumeRule(s.ruleId);
+    if (s?.kind !== "hand") return;
+    // `trusted` tells a real press from a script's .click() (a desk test), so the log says
+    // which one gave the value back (2026-09-26: a real press read as a mystery).
+    diag.log("ui:act", { at: "rule-chip", do: "resume", target, rule: s.ruleId, trusted: e.isTrusted });
+    resumeRule(s.ruleId);
   });
   const unsub = onRulesChange(paint);
   paint();
