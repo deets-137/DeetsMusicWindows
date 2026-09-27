@@ -31,6 +31,12 @@ playlists, a stood-in output, the Midi layout and the dev look were put back.
 
 Left: the items marked **his** in HANDOFF's Open now; the chip's design; merge after his test.
 
+Later the same night, at his ask: the perf comparison against `main` (RULES.md §18,
+Performance). Same numbers everywhere but one: an album open with the new grow row at
+*Vertical* drops a few frames while the grow runs over the slide; with the row Off it is
+`main`'s. His note on the hand chip (off centre, loose in the row) was fixed in `5e06541`. His
+installed app was stopped for the run and started again after.
+
 ## 2026-09-26, late — the Diary in a narrow or short card; 0.14.8 built
 
 His screenshot: in a ~290 px card the top row (album box + + box, 304 px) spilled out both

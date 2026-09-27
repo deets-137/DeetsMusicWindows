@@ -571,6 +571,24 @@ of each visible step; setup such as a time two minutes ahead went through the st
 | 10 the summon action | `e5aca30` | Midi summons, Mini does not | — |
 | 11 Sleep every day | `a6bca97` | the warning, the pause, the next mark; Off; a hand timer | — |
 
+**Performance, `main` against `rules-rulez` (2026-09-26, `npm run dev:built`, 244 Hz display;
+League of Legends held 33–45 % of the GPU, so both ran `--contended` under the same load).**
+
+| Measure | `main` | `rules-rulez` |
+|---|---|---|
+| Theme and skin switch, median fps (Press / Ocean / Glass / Cyber) | 237 / 235 / 231 / 237 | 238 / 235 / 232 / 235 |
+| Grow scene, median fps | 239 / 230 / 238 / 239 | 239 / 229 / 238 / 239 |
+| Launch, boot window (3 cold starts) | 1264 / 1259 / 1255 ms | 1257 / 1257 / 1258 ms |
+| Click → sound, our part (init · pause · setQueue) | 3–4 · 10–13 · 4–44 ms | 3 · 9–12 · 4–35 ms |
+| Album open, 1.2 s window (5 runs) | 0.3 % dropped, worst 8 ms | 0.7–1.8 % dropped, worst 21–29 ms |
+| Album open with *Grow on album or artist* Off | — | 0.3 % dropped, worst 8 ms |
+| One full state check (`__rules.recheck()`, 1,000 runs) | — | 0.23 ms |
+
+The engine costs nothing measurable. The one new cost is the grow motion itself: with the row
+at its default (*Vertical*) an album open runs the grow's clip and row entry at the same time
+as the drill's slide, and drops a few frames (worst 21–29 ms against 8). With the row Off the
+drill is `main`'s exactly. MusicKit's stream time varies with the network, not the branch.
+
 **Changes a user can see** (each one is a consequence of a decided fork; listed so none ships
 unseen):
 - *Grow on album or artist* is new and **on by default** (*Vertical*): an album or artist that
