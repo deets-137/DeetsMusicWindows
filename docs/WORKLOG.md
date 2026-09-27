@@ -12,6 +12,25 @@ updated: 2026-09-26
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-26, night — the rules engine, built (branch `rules-rulez`)
+
+RULES.md §17 steps 1–11, one commit each (step 4's overlay went in with step 2). Two forks
+asked at the start and answered: a look `next` hold survives a restart (as `deets.look.hold`
+did), and a leaf compares numbers with `lt` / `gte`. His note at the start: rules sit under the
+features and never replace one — the sleep timer stays the same feature. Every conversion kept
+its feature's behavior; where the overlay would have changed something you can see, code keeps
+the old behavior (Off keeps the schedule's look; a theme pick keeps the scheduled skin; the
+cog still ends another grow). The rest is RULES.md §18's "changes a user can see".
+
+Desk tests, on the dev app through the UI, with pictures: every step's list, results in the
+§18 table. Bugs found at the desk and fixed before commit: the Diary's rules waited forever
+(an event's own facts were unknown to the validator); `row-pick.test.ts` hung (surface.ts pulled
+in the engine's log timer, so the `surface` fact moved to main.ts); a held look pick was lost on
+reload (three causes, RULES.md §18). Test data made during the tests was removed: two
+playlists, a stood-in output, the Midi layout and the dev look were put back.
+
+Left: the items marked **his** in HANDOFF's Open now; the chip's design; merge after his test.
+
 ## 2026-09-26, late — the Diary in a narrow or short card; 0.14.8 built
 
 His screenshot: in a ~290 px card the top row (album box + + box, 304 px) spilled out both

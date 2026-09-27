@@ -46,7 +46,8 @@ old installs' Guide button opens.
 - `UX-COVERUPS.md` — the ledger of latency and jank we cover instead of remove.
 - `LIBRARY-VIRTUALIZATION.md` — windowing for long lists.
 - `RULES.md` — the rules engine: moment and state rules, the `if` tree, the overlay on
-  settings, what moves into rules (designed 2026-09-26, not built).
+  settings (`effective` / `ownSetting`), the rows that make rules. Built 2026-09-26 on
+  `rules-rulez`; §18 is the as-built record. Rules sit under features, never replace one.
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.

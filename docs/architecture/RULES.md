@@ -1,13 +1,14 @@
 ---
-status: designed
-desk_test: none
-sources: [src/settings-store.ts, src/card-grow.ts, src/look-schedule.ts, src/layout-bus.ts, src/theme.ts, src/skin.ts, src/collection-card.ts, src/search-card.ts]
+status: built
+desk_test: open
+sources: [src/rules-eval.ts, src/rules.ts, src/rule-chip.ts, src/look.ts, src/look-ids.ts, src/settings-store.ts, src/card-grow.ts, src/look-schedule.ts, src/sleep.ts, src/sound.ts, src/presence.ts, src/friends.ts, src/layout.ts, src/collection-card.ts, src/search-card.ts, src/diary-card.ts, src/quick-panel.ts, src/playlists-card.ts]
 updated: 2026-09-26
 ---
 # DeetsMusic — the rules engine
 
-**Designed 2026-09-26 with the owner. Every fork is closed except the chip's look (§9), which
-has placeholders. Nothing is built. The build plan is §17.**
+**Designed 2026-09-26 with the owner; built the same day on branch `rules-rulez` (§17 steps
+1–11, all committed). §18 is the as-built record: where it differs from §1–§17, §18 is the
+code. The chip's look (§9) is still his to design; the build uses a bolt and a hand.**
 
 A rule tells the app what to do when something happens, or while something is true. The
 engine sits under the Settings rows: a row's value makes a built-in rule, and the engine runs
@@ -554,4 +555,29 @@ Where this section and §1–§17 differ, this section is the code.
   first-install rule are `tests/look-migrate.test.ts` (in place of wiping the dev profile with
   `dev:fresh`).
 
-**Steps.** Each step's desk test result is in WORKLOG.md (2026-09-26).
+**Steps and desk tests** (Claude, on `npm run dev:app`, driven through the UI with a picture
+of each visible step; setup such as a time two minutes ahead went through the store).
+
+| Step | Commit | Desk test | His |
+|---|---|---|---|
+| 1 the pure core | `7c65002` | `npm test`: 24 tests in `rules-eval.test.ts`, 7 more in the two `look-*` tests | — |
+| 2 + 4 the engine, the overlay, the chip | `bddf7a4` | `rule:init` with 12 rules, nothing changes | — |
+| 3 grow rules, *Grow on album or artist* | `b029fb2` | 1–8, 10–12 pass; 9 for a reopened entry (a new entry is the unit test's) | a new Diary entry grows |
+| 5 theme and skin in the store | `5c93d85` | 1, 2, 3, 6, 7 pass; 5 as unit tests | 4 the tray panel follows; 5 a real `dev:fresh` |
+| 6 the look schedule | `ed641ff` | 1–5, 7 pass; Off keeps the look | 6 Windows mode |
+| 7 Keep on top | `010c153` | Player / Always / Off, read from the window | — |
+| 8 the sharing pause | `4c752b1` | pause, its end by itself, a toggle ends it | his Discord profile |
+| 9 EQ for each output | `7c3a628` | passes with a stood-in second output | real headphones |
+| 10 the summon action | `e5aca30` | Midi summons, Mini does not | — |
+| 11 Sleep every day | `a6bca97` | the warning, the pause, the next mark; Off; a hand timer | — |
+
+**Changes a user can see** (each one is a consequence of a decided fork; listed so none ships
+unseen):
+- *Grow on album or artist* is new and **on by default** (*Vertical*): an album or artist that
+  opens in a card now grows it (his default, §13).
+- A Pin (or any hand change to a grow) now keeps a Diary entry's grow when you go Back (it used
+  to collapse). The same rule as every rule grow (fork 6A / 7A).
+- EQ for each output: an output with nothing remembered shows your last pick, where it used to
+  keep the previous output's preset.
+- The rule chip: a bolt / hand disc beside the title menu's Theme and Skin, the Sound panel's
+  preset, and the sharing switches while a rule acts on them.

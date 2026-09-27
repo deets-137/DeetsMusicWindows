@@ -121,6 +121,12 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 §13.2, a crate change too).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
+- **The rules engine** (2026-09-26, branch `rules-rulez`, 11 commits, not merged, not
+  released): [RULES.md §18](architecture/RULES.md). Claude ran every step's desk test on the dev
+  app. Open, **his**: the tray panel follows a look change; a real `dev:fresh` first run;
+  Windows mode in the look schedule; his Discord profile during a pause; real headphones for
+  EQ per output; a new Diary entry grows. Also his: the chip's look (RULES.md §9), and the
+  "changes a user can see" list in §18.
 - **Add a room member as a friend** (2026-09-26, committed on `clode-eval`):
   [FRIENDS.md §18.8](integrations/FRIENDS.md). Claude ran steps 1–6 on two dev apps: all pass.
   Step 7 passed later. Released in 0.14.7; the rooms worker is deployed (2026-09-26,
