@@ -31,6 +31,7 @@ import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
 import { expectedIds, suffixPlan } from "./queue-sync";
+import { resumePoint } from "./resume-point";
 
 declare global {
   interface Window {
@@ -2238,15 +2239,21 @@ export async function playPause(why = "button"): Promise<void> {
     return;
   }
   // Nothing loaded in MusicKit but the model has a plan — a restored session
-  // (queue-persist.ts): Play resumes where you left off.
+  // (queue-persist.ts), or a network drop destroyed MusicKit's player: Play resumes where
+  // you left off.
   if (queue.getCurrent()) {
     await loadFromModel(m);
-    // An update restart saved the position (queue-persist.ts): resume there, once, and only
-    // while the restored song is still the model's current.
-    const r = resumeAt;
+    // The spot a network drop or an update restart saved: resume there, once, and only while
+    // that song is still the model's current (resume-point.ts). Taking the drop's spot here
+    // also stops the reconnect resume below from acting on it again.
+    const restart = resumeAt;
+    const drop = resumeAfterReconnect;
     resumeAt = null;
+    resumeAfterReconnect = null;
     const cur = queue.getCurrent();
-    if (r && cur && (cur.catalogId ?? cur.libraryId) === r.id) await m.seekToTime(r.sec);
+    const sec = resumePoint(cur, cur ? (cur.catalogId ?? cur.libraryId) : undefined, restart, drop);
+    if (drop) diag.log("player:resumeOnPlay", { at: Math.round(drop.at), used: sec > 0 });
+    if (sec > 0) await m.seekToTime(sec);
     return;
   }
   if (queue.getUpcoming().length) {

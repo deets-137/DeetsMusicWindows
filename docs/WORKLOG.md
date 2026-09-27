@@ -12,6 +12,21 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, 14:00 — Play after a network drop restarted the song (branch `rules-rulez`)
+
+His report: the music on live stopped, then Play restarted "Location" at 0 s while the
+scrubber showed 92 s. Read from the live app's ring (port 47826; the dev app held 47825).
+
+- The stop was a network drop, not a 429: `loadSegmentError`, then `apple check: app=unreachable`
+  (no reply at all). The session had no 429 line.
+- The bug: Play reloaded the song from 0 s and seeked only to an update restart's spot. The
+  drop's spot waited for the next Apple check, which then saw a song playing and skipped.
+- The fix: `resume-point.ts` (pure, 6 tests, one dated). Play takes the drop's spot for the same
+  entry and clears it. TOASTS.md §5, the "can't reach Apple Music" row.
+- Desk test: a network drop while a song plays (pull the network), then press Play before the
+  toast says Apple works again. The song goes on from where it stopped; the log has
+  `player:resumeOnPlay {at, used: true}`.
+
 ## 2026-09-27 — Rulez, the rules builder (branch `rules-rulez`)
 
 `rules-rulez` fast-forwarded to `main` (0b7436a), then Rulez designed with him and built
