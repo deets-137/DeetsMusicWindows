@@ -88,10 +88,10 @@ The feature is the same; the rules engine runs it (RULES.md §13).
 - The hold is saved (`deets.rules.holds`), so it survives a restart until the period changes.
   `deets.look.hold` is still written for the pre-paint (`syncHoldKey`).
 - A change to any schedule row ends a hold at once, as before (`resumeRow`).
-- **The chip** (RULES.md §9) sits beside Theme and Skin in the title menu: a bolt while the
+- **The chip** (RULES.md §9) sits beside Theme and Skin in the title menu: a green dot while the
   schedule shows its look ("The look schedule shows the night look. Your pick is Moonlight."),
-  a hand while your pick holds ("Your pick stays until 7:00 AM. Press to go back to the
-  schedule now."). A press on the hand ends the hold.
+  a scarlet dot while your pick holds ("Your pick stays until 7:00 AM. Press to go back to the
+  schedule now."). A press on the scarlet dot ends the hold.
 
 **Desk test (2026-09-26, dev app).** Set times with the day window around now → the day look;
 at the night time the night look comes in by itself. A menu pick at night → Lilac with the

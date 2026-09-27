@@ -254,6 +254,13 @@ for that target. Its `onHand` says when it acts again:
 
 ## 9. The chip
 
+> **Part:** built · 2026-09-26 · **his design:** a dot, no disc. **Green** (`--rule-chip-rule`:
+> Forest on a light theme, Fern on a dark one) = a rule set this value. **Scarlet**
+> (`--rule-chip-hand`: Blood on light, Siren on dark) = your pick holds; a press gives it back
+> to the rule. The bolt and the hand below were the placeholders; both read as blobs at 12 px.
+> In a title-menu row the dot sits at the right, beside the chevron. The code keeps the kind
+> names `bolt` and `hand`.
+
 A place that shows a rule-set value carries a chip.
 
 - **Bolt** (placeholder): a rule set this value. The hover hint names the rule and your value:

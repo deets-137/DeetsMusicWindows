@@ -34,8 +34,8 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--discord-mark` | `var(--apple-music-mark)` | — | Discord's symbol (the quick panel): its brand kit has the same black and white files, and the same rule, so it follows the Apple Music mark. |
 | `--new-badge` | `var(--apple-music-mark)` | — | The quick panel's New badge (QUICK-SETTINGS.md §8): black on a light theme, white on a dark one, the N the other — the same black and white pair as the marks beside it. |
 | `--new-badge-ink` | `light-dark(var(--paint-apple-music-white), var(--paint-apple-music-black))` | — |  |
-| `--rule-chip` | `var(--new-badge)` | — | The rule chip (RULES.md §9, placeholder look): the New badge's family, so its pair. |
-| `--rule-chip-ink` | `var(--new-badge-ink)` | — |  |
+| `--rule-chip-rule` | `light-dark(var(--paint-forest), var(--paint-fern))` | — | The rule chip (RULES.md §9, placeholder look): the New badge's family, so its pair. His call 2026-09-26: a green dot when a rule set the value, a scarlet dot when your pick holds. The deep paint on a light theme, the brighter one of the pair on a dark theme. |
+| `--rule-chip-hand` | `light-dark(var(--paint-blood), var(--paint-siren))` | — |  |
 | `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
 | `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
 | `--eq-grid` | `color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent)` | — |  |
