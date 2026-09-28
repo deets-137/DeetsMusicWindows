@@ -36,6 +36,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { TELEMETRY } from "./telemetry-on";
 import { nextPeriod } from "./frame-period";
+import { mark } from "./marks";
 
 const ON = TELEMETRY; // dev, or a VITE_PERF=1 release-shaped build (telemetry-on.ts)
 const SCROLL_IDLE_MS = 150; // a scroll window closes this long after the last scroll event
@@ -83,6 +84,7 @@ function ensureLoop(): void {
 
 function close(w: Win): void {
   if (!open.delete(w)) return;
+  mark(`${w.name}:end`, w.detail);
   const elapsed = Math.round(performance.now() - w.t0);
   const n = w.gaps.length;
   if (n < 2) return; // too short to say anything
@@ -102,6 +104,7 @@ function close(w: Win): void {
 
 function openWin(name: string, detail = ""): Win {
   const w: Win = { name, detail, t0: performance.now(), last: 0, gaps: [], longTasks: [] };
+  mark(`${name}:begin`, detail);
   open.add(w);
   ensureLoop();
   return w;

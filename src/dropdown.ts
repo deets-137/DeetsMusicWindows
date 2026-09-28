@@ -16,6 +16,7 @@
 // and counts as "inside" for dismissal.
 
 import * as frames from "./frames";
+import { mark } from "./marks";
 
 export type DropdownMode = "click" | "hover";
 
@@ -105,11 +106,13 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     }
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
+    if (appearing) mark("panel:open", panel.dataset.frames || panel.id);
     if (appearing) onOpen?.();
   };
   const close = (why: CloseReason = "api") => {
     if (shouldStayOpen?.(why)) return; // e.g. don't close out from under a drag
     window.clearTimeout(graceTimer);
+    if (!panel.hidden) mark("panel:close", `${panel.dataset.frames || panel.id} ${why}`);
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
   };

@@ -57,7 +57,7 @@
     },
     {
       "id": "grow",
-      "about": "Midi: the left card grows over the right one from its edge bar, then the same bar collapses it.",
+      "about": "Midi: the left card grows over the right one from its edge bar, then Escape collapses it (a second click on that zone does not: SHOTS.md §5e).",
       "covers": "cards/CARD-GROW.md",
       "kind": "clip", "source": "demo", "size": "midi", "seconds": 4,
       "steps": [
@@ -65,15 +65,21 @@
         { "wait": 300 },
         { "click": "[data-slot=\"left\"] .grow-zone--left" },
         { "wait": 1500 },
-        { "click": "[data-slot=\"left\"] .grow-zone--left" }
+        { "key": "Escape" }
       ]
     },
     {
       "id": "drill",
-      "about": "Home: click an album tile, so the album opens in the card.",
+      "about": "Playlists: click a playlist row, so the playlist opens in the card (the push slide). Not a Home tile: a Home tile plays (SHOTS.md §5e).",
       "covers": "cards/CARD-GROW.md",
       "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
-      "steps": [{ "click": "[data-slot=\"left\"] .search__tile" }]
+      "prepare": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"playlists\"]" },
+        { "wait": 900 }
+      ],
+      "steps": [{ "click": "[data-slot=\"left\"] .lib-row" }]
     },
     {
       "id": "dropdown",
