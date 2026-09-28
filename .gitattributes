@@ -1,0 +1,6 @@
+# Line endings (2026-09-27). Every text file is stored with LF and checked out with LF, on
+# every machine, so `core.autocrlf` no longer warns on each status and a diff never shows a
+# whole file for its endings. Git tells text from binary by content (`auto`); the fonts,
+# icons and installers are left alone. The index was already all LF when this was added
+# (400 text files, 77 binary), so nothing renormalized.
+* text=auto eol=lf
