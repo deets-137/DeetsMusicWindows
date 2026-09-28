@@ -140,7 +140,8 @@ old installs' Guide button opens.
 
 **`docs/ideas/`** — not built; never tell a user the app does these. **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13). `SHOTS.md` — the pictures and clips of each
-feature, made by a script from the demo; for the guide and a marketing overview.
+feature, made by a script from the demo; for the guide, a marketing overview, and visual
+debugging (§5a–§5c). `motion.json` beside it is the motion set: every animation in 5 skins.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -200,6 +201,18 @@ feature, made by a script from the demo; for the guide and a marketing overview.
   now prints **busy time per thread** (the GPU process included) as merged intervals; read that
   before the per-event table. Check the `@N Hz` and `[perf] gpu` lines before trusting any
   number. `--gpu=off|slow` pretends to be a weaker machine. DEBUGGING.md.
+- **Seeing the UI: the shots runner (2026-09-28).** `node scripts/shots.mjs` drives the web
+  demo (the real UI, mock tracks) in headless Edge. No dev app is needed, and nothing on the
+  desktop moves. A clip gives an MP4, a **frame strip** (one PNG of the motion, each frame
+  labeled in ms; this is how you watch motion, since you read pictures and not video), the
+  shot's console with the app's own `[perf] frames` / `[perf] input` lines, and `.frames.json`.
+  For one bug, write a scratch list with `probe` (a JS answer into the console file) and
+  `snap` (a picture of that moment) steps, and run it with `--list <file> --out <dir>`
+  (`--slow 4` shows fast CSS motion in detail). The motion set
+  (`--list docs/guide/motion.json`) is the before / after view of any motion change. It is NOT
+  a harness to build: it exists, so use it. The limits (not WebView2, a fake MusicKit, no OS
+  window): DEBUGGING.md §Seeing it. **Check the strip, not only "ok":** a clip passed while
+  its click did nothing, because the Glass background kept painting (SHOTS.md §5b).
 - **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
   and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
   to read all of it: DEBUGGING.md §Reviewing the telemetry.

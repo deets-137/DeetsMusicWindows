@@ -1,8 +1,8 @@
 ---
 status: project
 desk_test: none
-sources: [scripts/webview-eval.mjs, vite.demo.config.ts, demo/shim.ts]
-updated: 2026-09-26
+sources: [scripts/shots.mjs, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
+updated: 2026-09-28
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
 
@@ -10,10 +10,12 @@ A script records every feature of the app as a picture or a short clip. The user
 (DOCS-ORG.md §13) and a marketing overview use the same shots. The script runs again before
 each release, so no picture shows an old app.
 
-> **State (2026-09-26):** §10 step 2 BUILT: `scripts/shots.mjs` takes demo pictures, and
-> `shots.json` holds three samples. The first run gave 6 pictures (3 shots × 2 looks) and a
-> contact sheet, all good; they wait for his review. F1–F4 closed (§1); U10 open. Next: §10
-> step 3, clips, after he likes the pictures.
+> **State (2026-09-28, branch `visualz`):** §10 steps 2 and 3 BUILT. The runner takes demo
+> pictures and clips (§5a). `shots.json` holds three pictures and two sample clips (the
+> Compass, the Midi card swap). `motion.json` is the motion set: 24 clips in the 5 skins (17
+> gestures and 7 surface changes, where the runner is the window, §5c), with a console record
+> and the app's frame telemetry per clip (§5b). It is the input to the animation design pass
+> and a visual debugging tool (his framing, 2026-09-28). F1–F4 closed (§1); U10 open.
 
 **Terms:**
 - **Shot** — one picture, or one short clip, of one feature in one look.
@@ -144,6 +146,118 @@ shots/                       gitignored while U10 is open
   the real speed. H.264, no sound, sized for the web.
 - Reduced motion is forced off while the runner works (CDP `Emulation.setEmulatedMedia`). A
   second shot with it on is possible later; nothing asks for it now.
+
+## 5a. Clips as built (2026-09-28)
+
+A shot with `"kind": "clip"` records while its `steps` run:
+- `prepare` — steps that run before the recording starts (a state the clip starts from).
+- `seconds` — the clip's length (default 4). The recording starts 300 ms before the first step.
+- `strip` — `{ fps, seconds, cols, width, from }` for the frame strip (default 30 fps, 1.2 s,
+  6 columns, 300 px per frame). `"strip": true` on a step starts the strip at that step;
+  without it, the strip starts 100 ms before the first action.
+- `about` — one line for the contact sheet: what the clip shows.
+- New step kind: `rightclick` (a CSS selector).
+
+Each clip gives four files: `<id>.<look>.mp4` (H.264, 60 fps, the real speed),
+`.poster.png`, `.strip.png` (the motion window as a grid of frames, each labeled with its ms),
+and `.frames.json` (every frame's time, the time of each step, the frame count, the median fps
+and the longest gap). The strip is how Claude reviews motion: Claude reads pictures, not video.
+
+Measured on the first run: headless Edge sends ~55–60 fps while the page moves, and fewer
+while it rests (a paint only on change). A gap in `frames.json` during motion is a dropped
+frame in headless Edge, not proof of one in WebView2: frame numbers in the app are
+`[perf] frames` (DEBUGGING.md). A clip is ~140 KB; a strip ~1 MB. ffmpeg's `drawtext` needs
+the font named by path on Windows (`consola.ttf`).
+
+## 5b. The motion set and debugging (2026-09-28)
+
+His framing (2026-09-28): the shots are for the guide AND for debugging. So a run can be
+repeated on demand, keeps the evidence of what the page did, and never mixes with the shots of
+a version.
+
+**The motion set** — `docs/guide/motion.json`: one clip per animation (boot, card swap, card
+replace, the Max swap, the title menu, grow, drill, a dropdown, the right-click menu, the quick
+panel, the Compass, a hover hint, toasts, next song, play, scroll, a look switch), and the
+seven surface changes of §5c. Its list-level
+`looks` is `{ "theme": "moonlight", "skin": "*" }`: one theme in each of the 5 skins, because a
+skin owns its motion tokens (§1 F1 still holds for `shots.json`). `"*"` works for the theme too.
+Run it with `node scripts/shots.mjs --list docs/guide/motion.json`; it writes
+`shots/motion/<version>/`. A full run is 24 clips × 5 skins = 120 clips, about 20 minutes.
+
+**Flags:**
+- `--list <file>` — another shot list. A scratch list for one bug is the normal way to debug:
+  a few steps, `probe` and `snap`, one look.
+- `--out <dir>` — write there. Default: `shots/<version>/` for `shots.json`,
+  `shots/<list name>/<version>/` for another list, plus `-slow<n>` with `--slow`.
+- `--slow <n>` — CSS and Web Animations run n times slower (CDP `Animation.setPlaybackRate`).
+  The strip covers n times the seconds and labels its frames in app time, so a 180 ms motion
+  shows n times the frames. Motion driven by `requestAnimationFrame` (the Press record, the
+  Ocean sea) is not slowed.
+
+**Steps for debugging:** `probe` (one JS expression; its answer goes in the console file),
+`snap` (a PNG of this moment, named `<id>.<look>.<snap>.png`, mid-clip too), `reload` (the
+page again with the same seed; a clip records the boot across it), `wheel` (`{ "wheel":
+selector, "dy", "times", "delay" }`).
+
+**What every shot keeps:** `<id>.<look>.console.txt` — every console line, uncaught error and
+probe answer, each with its ms from the shot's start. The demo is a dev build, so the app's own
+`[perf] frames` and `[perf] input` lines (src/frames.ts) are in it. The runner prints each
+gesture's `[perf] frames` line after the shot and puts it on the contact sheet, beside a count
+of console errors (the demo's missing favicon is not counted). A failed shot still writes its
+console file: that is the evidence.
+
+**What the numbers mean:**
+- `[perf] frames … dropped N` is the smoothness number. The `@N Hz` in headless Edge can read
+  wrong (244 Hz on the first run): the window has no display. Judge a drop by the app's own
+  numbers in WebView2 (DEBUGGING.md §Frame telemetry). Use a clip to see WHAT moved.
+- `.frames.json` `gaps` — every screencast gap over 25 ms after the first action, as
+  `[at ms, gap ms]`. At rest the page does not paint, so a gap there is quiet, not a drop.
+
+**What the first runs found (2026-09-28):**
+- A demo bug: `user_files_list` had no demo handler, so every load logged a `[files] list
+  TypeError`. Fixed in `demo/handlers.ts` (WEB-DEMO.md §9.8 says a new command needs its
+  handler).
+- **Next before the first Play does nothing, in the demo.** The Queue card holds the restored
+  queue, but MusicKit has none until the first play, so `nextTrack()` → `skipToNextItem()` has
+  nothing to skip to. Found because `next-song` recorded one frame in vanilla and press (glass,
+  ocean and cyber passed only because their backgrounds keep painting); a probe showed the click
+  landed on the button and the title did not change. **Not yet checked in the real app** —
+  the same path is there (`player.ts` `nextTrack`), so it is an open question for him, not a
+  fix in this branch. The clip now presses Play first (`prepare`).
+- **A lesson for clip design:** a clip that passes can still show nothing, if something else on
+  the page keeps painting. Check the strip, or probe the state the gesture should change.
+
+## 5c. The window: surfaces that grow and shrink (2026-09-28)
+
+His wish (2026-09-28): the motion set records a surface growing and shrinking. In headless Edge
+the page IS the window, so the runner stands in for it:
+
+- **A pick** (`"window": true` on a shot): the app's own `set_size` reaches the runner, and the
+  runner sets the page to that size. The path: `demo/shim.ts` `post()` calls
+  `window.__deetsDemoHost` when no host frame exists; the seed script defines it to call the
+  CDP binding `__shotsWindow`. The runner follows only after the load, so the boot's own
+  `set_size` never moves a shot. Each resize is a `window` line in the console file.
+- **A drag** (a `resize` step, `{ "resize": [w, h], "over": ms, "steps": n }`): the page's size
+  moves in even steps from its size now, as a hand drag of the window's corner, and the app's
+  auto-flip sees each step. **Headless Edge paints no step shorter than ~100 ms:** a 24-step
+  drag over 600 ms showed the old size throughout and then one jump. 12 steps over 1.5 s paint
+  every step. So a drag clip is slower than a real hand, and it shows each band crossing.
+- **The video:** every frame goes on one canvas the size of the largest frame, anchored
+  top-left (a Windows window grows from its top-left corner), on a dark desktop color.
+
+The seven clips: Midi → Max, Max → Midi, Midi → Mini, Mini → Midi, Midi → Player (each picked
+in the Compass, Places › Surface), and a drag that grows Midi to Max and one that shrinks Max to
+Mini.
+
+**What they show today (0.25.1):** a surface change has no motion of its own. A pick changes
+the layout in one frame (`activate()` in `surface.ts`), then the OS window takes the new size
+(`applySize()`): the Midi → Max clip jumps at one frame. The Enter that switches to Max costs
+~300 ms press→paint (`[perf] input keydown`). On a drag, the auto-flip frame shows the new
+surface's cards before their content arrives. These are inputs to the motion review, not fixes.
+
+**What the demo cannot show:** the OS window's own resize (WebView2 in a Tauri window repaints
+as the OS resizes it; headless Edge has no OS window). The dev-app source (§10 step 4) is the
+way to see it.
 
 ## 6. Coverage — no shipped feature without a shot
 

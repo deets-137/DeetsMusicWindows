@@ -12,6 +12,48 @@ updated: 2026-09-28
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-28 — Shots made ready for an animation pass and for visual debugging (branch `visualz`)
+
+**His ask:** a full visual design pass on animation; first get the shots ready for Claude to
+review. Then: "assume this is for preparing shots but also for assisting debugging", and set
+up the motion for surfaces that grow and shrink.
+
+**Built (SHOTS.md §5a–§5c):**
+- **Clips** in `scripts/shots.mjs` (SHOTS.md §10 step 3): a screencast → an ffmpeg concat
+  list with the real frame durations → an MP4 at 60 fps, a poster, a **frame strip** (the motion
+  window as one labeled PNG: how Claude reviews motion) and `.frames.json`.
+- **The motion set**, `docs/guide/motion.json`: 24 clips (17 gestures, 7 surface changes) in
+  moonlight × the 5 skins (a skin owns its motion). The first full run: 120 clips, no failure,
+  in `shots/motion/0.25.1/`.
+- **Debug tools:** a console file per shot (console lines, uncaught errors, probe answers,
+  window resizes, each with its ms), the app's `[perf] frames` lines per gesture in the log and
+  on the contact sheet, steps `probe`, `snap`, `rightclick`, `wheel`, `reload`, `resize`, and
+  flags `--list`, `--out`, `--slow <n>`. A non-default list writes to
+  `shots/<list>/<version>/`.
+- **The runner is the window** (§5c): `"window": true` follows the app's own `set_size`
+  through a new hook in `demo/shim.ts`; a `resize` step drags the size in steps. Frames of
+  different sizes go on one top-left canvas.
+- **Fixed on the way:** the runner read the look names from `theme.ts` / `skin.ts`, which moved
+  to `look-ids.ts`; ffmpeg's `drawtext` needs the font by path on Windows; the demo had no
+  `user_files_list` handler (a TypeError on every load, WEB-DEMO.md §14).
+
+**Decided by Claude inside his choices** (for his look): the MP4 at 60 fps; the strip at 60 fps
+over 1 s, 10 columns, unless a clip names its own; a 300 ms still lead-in; moonlight as the one
+theme of the motion set; the Compass as the way a surface clip picks a surface; drags of
+12 steps over 1.5 s (headless Edge paints no faster step); the desktop color behind a small
+window (#16161a, a runner constant, not an app token).
+
+**Found, for him (not fixed here):**
+- **Next before the first Play does nothing in the demo:** MusicKit has no queue until the
+  first play. The same path is in the real app (`nextTrack`); not checked there yet (§5b).
+- **A surface change has no motion of its own:** the layout changes in one frame, then the
+  window takes its size; Enter → Max costs ~300 ms press→paint; on a drag, the flip frame shows
+  the new cards before their content (§5c).
+- The grown Home card is empty for ~400 ms before its rows arrive (the `grow` clip, glass).
+
+**Next:** the review itself, clip by clip in `shots/motion/0.25.1/index.html`, then the motion
+forks for him.
+
 ## 2026-09-27 night → 09-28 — 0.25.1 published; the uninstall removes start with Windows (branch `main`)
 
 - **0.25.1 live** (`1b23fd5`, his hand test, "Tested, publish it"). He picked 0.25.1 over

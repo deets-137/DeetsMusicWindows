@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [src/toast.ts, src/player.ts, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-09-26
+sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
+updated: 2026-09-28
 ---
 # DeetsMusic — Handoff
 
@@ -124,6 +124,15 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    with the word rules in RULEZ.md §6.5 (parts, one case rule, a SAYS test). His look: open a
    rule of yours with a yes / no condition (Charging, Explicit) and read the blanks.
 4. Then the Rulez design pass (RULEZ.md §15) or Layout (LAYOUT.md), his pick.
+
+**The animation design pass (2026-09-28, branch `visualz`, in progress).** His ask: a full
+visual design pass on motion, with the shots made ready for Claude to review and to help debug.
+Built: clips in the shots runner, the motion set (24 clips × 5 skins, `docs/guide/motion.json`),
+the runner as the window for surface changes, and the debug tools (console record, frame
+telemetry, `probe`, `snap`, `--slow`). [SHOTS.md §5a–§5c](guide/SHOTS.md). Next: Claude reviews
+`shots/motion/0.25.1/` and brings him the motion forks. Two findings wait for him: Next before
+the first Play does nothing in the demo (not yet checked in the real app, SHOTS.md §5b), and a
+surface change has no motion of its own (§5c).
 
 **The uninstall removes start with Windows (2026-09-28, built, not in a release yet).**
 `NSIS_HOOK_POSTUNINSTALL` (RELEASE.md §3). The desk test there runs on the next real build:
@@ -578,6 +587,22 @@ b59e575, shipped in 0.8.0; the checks below are still open:
 - ⬜ Found on the way, older than these changes: a very fast wheel spin (≈ 15,000 px/s) shows
   blank rows in the windowed Library for a few frames (collection-window.ts fills its buffer only
   after the scroll pauses).
+
+## Seeing the UI — shots as a visual debugger (2026-09-28)
+
+`node scripts/shots.mjs` drives the web demo in headless Edge and saves what the screen did:
+pictures, clips (MP4), a frame strip per clip (one PNG of the motion, labeled in ms: how Claude
+watches motion), and each shot's console with the app's own `[perf] frames` lines. No dev app,
+nothing on the desktop moves.
+
+```
+node scripts/shots.mjs --list docs/guide/motion.json          # the motion set, 5 skins
+node scripts/shots.mjs --list <scratch.json> --out <dir>       # one bug: probe + snap steps
+node scripts/shots.mjs --list <scratch.json> --slow 4          # CSS motion 4x slower
+```
+
+When to use it and its limits (not WebView2, no MusicKit, no OS window):
+[DEBUGGING.md § Seeing it](ops/DEBUGGING.md). The formats: [SHOTS.md §5a–§5c](guide/SHOTS.md).
 
 ## Known gotchas
 - **Registry writes from a Claude desktop session are not real (2026-09-13).** The Claude

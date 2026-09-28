@@ -43,7 +43,9 @@ function emitEvent(event: string, payload: unknown): void {
 // ── The host page (the frame on deets.solutions) ──
 const framed = window.parent !== window;
 function post(kind: string, data: Record<string, unknown> = {}): void {
-  if (!framed) return;
+  // No frame: the shots runner (scripts/shots.mjs) may stand in as the host, so a clip can
+  // follow the app's own window resizes (SHOTS.md §5c).
+  if (!framed) return void (window as { __deetsDemoHost?: (kind: string, data: unknown) => void }).__deetsDemoHost?.(kind, data);
   try {
     window.parent.postMessage({ type: "deets-demo", kind, ...data }, location.origin);
   } catch {

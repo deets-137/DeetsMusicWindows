@@ -568,6 +568,10 @@ const H: Record<string, Handler> = {
   airplay_status: () => ({ connected: null, connecting: null, error: null, lastSpeaker: null, speakers: [], firewallSeeded: true, capture: "app" }),
   airplay_scan: () => [],
 
+  // Your own files (0.25.1): none on a web page. Without it, user-files.ts logs a TypeError on
+  // every load (found by the shots console, 2026-09-28).
+  user_files_list: () => ({ files: [], migrated: null }),
+
   // Accounts and services that stay signed out
   lastfm_status: () => ({ available: true, connected: false, name: null, reconnect: false, waiting: 0 }),
   lastfm_auth_status: () => ({ state: "idle" }),

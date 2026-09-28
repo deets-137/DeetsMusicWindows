@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-09-24
 sources: [demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-09-26
+updated: 2026-09-28
 ---
 # DeetsMusic — Web demo
 
@@ -262,3 +262,14 @@ It reaches deets.solutions with the next `release:publish` (§9.8), or `npm run 
 
 **Desk test.** `npm run demo`, clear the `deets.` keys (or *Start over*), reload: no toast.
 The Rewind card is on the slot menus.
+
+## 14. The shots runner as host; the files handler (2026-09-28)
+
+- **`user_files_list` answers an empty list** (`demo/handlers.ts`). The 0.25.1 files feature
+  had no demo handler, so every load logged `[files] list TypeError` (found by the shots
+  console record, SHOTS.md §5b). The same §9.8 rule: a new command needs its handler.
+- **With no host frame, `post()` calls `window.__deetsDemoHost`** (`demo/shim.ts`). Nothing
+  on the site sets it, so a visitor sees no change. The shots runner sets it, so a clip can
+  follow the app's own `set_size` and record a surface change (SHOTS.md §5c).
+
+Neither reaches deets.solutions until the next `release:publish` (§9.8).

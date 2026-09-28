@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
-updated: 2026-09-27
+sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
+updated: 2026-09-28
 ---
 # DeetsMusic — Debugging tools
 
@@ -1127,6 +1127,50 @@ node scripts/webview-eval.mjs "(async()=>{const u=performance.getEntriesByType('
   (`document.querySelector('.np__controls [aria-label="Next"]').click()`,
   `#np-playpause`), not MusicKit directly, so the queue model stays right. The `deetsmusic`
   MCP tools reach the INSTALLED app.
+
+## Seeing it — the shots runner as a visual debugger (2026-09-28)
+
+`scripts/shots.mjs` drives the web demo (the real UI, mock tracks) in headless Edge and records
+what the screen did. Nothing on the desktop moves and no dev app is needed. Built for the guide's
+pictures (docs/guide/SHOTS.md); since 2026-09-28 it is also the way to SEE a UI bug and its
+timing. Claude reads pictures, not video, so the frame strip is how a session watches motion.
+
+**When to reach for it:**
+- A motion looks wrong (a flash, a jump, an empty card, a wrong order): a clip and its strip
+  show each frame with its ms.
+- A gesture is slow or janky: each clip keeps the app's own `[perf] frames` and `[perf] input`
+  lines for that gesture. Compare the skins in one run.
+- A console error only one gesture causes: every shot keeps a console file.
+- A layout bug at one size, surface or look: a `snap` or a picture in that look, at that size.
+- A surface change (pick or drag): the runner is the window (SHOTS.md §5c).
+
+**The recipe — one bug, one scratch list:**
+1. Write a list in the scratchpad with one shot: the size, one look (`"looks": [{ "theme":
+   "moonlight", "skin": "glass" }]`), and the steps that reach the bug (`click`, `key`, `type`,
+   `hover`, `rightclick`, `drag`, `wheel`, `resize`, `reload`, `eval`).
+2. Add `probe` steps for state (`{ "probe": "document.documentElement.dataset.surface" }`) and
+   `snap` steps for a picture of a moment.
+3. `node scripts/shots.mjs --list <file> --out <dir>` (add `--slow 4` to see a 150 ms motion
+   in detail).
+4. Read, in this order: the log's `frames` lines, `<id>.<look>.console.txt` (errors, probes,
+   `window` resizes, with ms), then `<id>.<look>.strip.png`, then `.frames.json` for exact
+   frame times. `index.html` in the out folder shows every clip, its strip and its console.
+
+The motion set (`docs/guide/motion.json`, 24 clips × 5 skins) is the regression view for
+motion: run it before and after a motion change, and compare the two contact sheets.
+
+**What it cannot see:**
+- WebView2 and the Tauri window. It is Edge on the same engine, but the OS window, the tray, the
+  real GPU budget of the app and the Rust side are not there. `@N Hz` in its `[perf] frames`
+  lines can read wrong (244 Hz: headless has no display). For honest frame numbers, use
+  `npm run dev:built` and the tools above.
+- MusicKit and real audio: the demo's MusicKit is a fake with a 250 ms clock (WEB-DEMO.md §9.2).
+- A feature with no demo handler: it logs `[demo] no handler: <command>` in the console file
+  and may look empty. Add the handler in `demo/handlers.ts` (WEB-DEMO.md §9.8).
+- `requestAnimationFrame` motion is not slowed by `--slow` (the Press record, the Ocean sea).
+
+**Do not save a front-end file during a run.** Vite serves the demo, so a save reloads the
+page under the runner, as with `webview-eval.mjs` above.
 
 ## Audio quality — `probe fidelity` (DeetsAirplay, 2026-09-16)
 

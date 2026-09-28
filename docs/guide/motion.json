@@ -1,0 +1,264 @@
+{
+  "about": "The motion set (docs/guide/SHOTS.md §5b): one clip per animation, one theme in every skin, because a skin owns its motion tokens. For the animation design pass and for motion bugs. Run: node scripts/shots.mjs --list docs/guide/motion.json → shots/motion/<version>/.",
+  "looks": [{ "theme": "moonlight", "skin": "*" }],
+  "shots": [
+    {
+      "id": "boot",
+      "about": "The page loads from nothing: the boot cover, then the cards arrive.",
+      "covers": "architecture/UI-ARCHITECTURE.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 4,
+      "strip": { "seconds": 2, "fps": 30 },
+      "steps": [{ "reload": true }]
+    },
+    {
+      "id": "card-swap",
+      "about": "Midi: pick Library in the left card's title menu, so Home and Library change places.",
+      "covers": "cards/CARD-SWAP.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"library\"]", "strip": true }
+      ]
+    },
+    {
+      "id": "card-replace",
+      "about": "Midi: pick Settings in the left card's title menu. Settings is not on screen, so it rises in (a replace, not a swap).",
+      "covers": "cards/CARD-SWAP.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"settings\"]", "strip": true }
+      ]
+    },
+    {
+      "id": "max-swap",
+      "about": "Max: pick Search in the top-left card's title menu, so it changes places with the bottom-right card across the 2×2 bento.",
+      "covers": "cards/CARD-SWAP.md",
+      "kind": "clip", "source": "demo", "size": "max", "seconds": 3,
+      "strip": { "cols": 6, "width": 400 },
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"search\"]", "strip": true }
+      ]
+    },
+    {
+      "id": "title-menu",
+      "about": "The card's title menu opens, and Escape closes it.",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 2.5,
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 900 },
+        { "key": "Escape" }
+      ]
+    },
+    {
+      "id": "grow",
+      "about": "Midi: the left card grows over the right one from its edge bar, then the same bar collapses it.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 4,
+      "steps": [
+        { "hover": "[data-slot=\"left\"] .grow-zone--left" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"left\"] .grow-zone--left" },
+        { "wait": 1500 },
+        { "click": "[data-slot=\"left\"] .grow-zone--left" }
+      ]
+    },
+    {
+      "id": "drill",
+      "about": "Home: click an album tile, so the album opens in the card.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "steps": [{ "click": "[data-slot=\"left\"] .search__tile" }]
+    },
+    {
+      "id": "dropdown",
+      "about": "The Library's Sort pill opens its panel (.pop + enterRows), and Escape closes it.",
+      "covers": "architecture/UI-ARCHITECTURE.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 2.5,
+      "steps": [
+        { "click": "[data-slot=\"right\"] .lib-pill:not(.lib-pill--icon)" },
+        { "wait": 900 },
+        { "key": "Escape" }
+      ]
+    },
+    {
+      "id": "context-menu",
+      "about": "Right-click a Library row: the song menu opens, and Escape closes it.",
+      "covers": "architecture/CONTEXT-MENUS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 2.5,
+      "steps": [
+        { "rightclick": "[data-slot=\"right\"] .lib-row" },
+        { "wait": 900 },
+        { "key": "Escape" }
+      ]
+    },
+    {
+      "id": "quick-panel",
+      "about": "The cog opens the quick panel, and Escape closes it.",
+      "covers": "features/QUICK-SETTINGS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 2.5,
+      "steps": [
+        { "click": ".cog__btn" },
+        { "wait": 900 },
+        { "key": "Escape" }
+      ]
+    },
+    {
+      "id": "compass",
+      "about": "Ctrl+Space opens the Compass; type a word; Escape closes it.",
+      "covers": "features/COMPASS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3.5,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 700 },
+        { "type": "honey", "delay": 90 },
+        { "wait": 700 },
+        { "key": "Escape" }
+      ]
+    },
+    {
+      "id": "hover-hint",
+      "about": "Rest the pointer on Next: the hover hint arrives.",
+      "covers": "features/ONBOARDING.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 2.5,
+      "strip": { "seconds": 1.6, "fps": 30 },
+      "steps": [{ "hover": ".np__btn[aria-label=\"Next\"]" }]
+    },
+    {
+      "id": "toasts",
+      "about": "One toast of each kind arrives (__toast.demo()).",
+      "covers": "architecture/TOASTS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "steps": [{ "eval": "__toast.demo()" }]
+    },
+    {
+      "id": "next-song",
+      "about": "Playing, then Next: the song changes in Now Playing (cover, title, the Press record, the album color). Play comes first because from a fresh load Next does nothing in the demo: MusicKit has no queue until the first play (SHOTS.md §5b).",
+      "covers": "features/VINYL.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "prepare": [{ "click": ".np__btn--play" }, { "wait": 1200 }],
+      "steps": [{ "click": ".np__btn[aria-label=\"Next\"]" }]
+    },
+    {
+      "id": "play",
+      "about": "Play: the play button changes, and the scrub bar and the skin's own play motion start.",
+      "covers": "features/QUEUE.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 4,
+      "strip": { "seconds": 2, "fps": 30 },
+      "steps": [{ "click": ".np__btn--play" }]
+    },
+    {
+      "id": "scroll",
+      "about": "Four wheel notches down the Library, then four up.",
+      "covers": "architecture/LIBRARY-VIRTUALIZATION.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "strip": { "seconds": 1.5, "fps": 30 },
+      "steps": [
+        { "wheel": "[data-slot=\"right\"] .coll-viewport", "dy": 240, "times": 4, "delay": 80 },
+        { "wait": 500 },
+        { "wheel": "[data-slot=\"right\"] .coll-viewport", "dy": -240, "times": 4, "delay": 80 }
+      ]
+    },
+    {
+      "id": "surface-midi-to-max",
+      "about": "Pick Max in the Compass (Places › Surface): the window grows from Midi to Max. The runner is the window and follows the app's own set_size (SHOTS.md §5c).",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "window": true, "seconds": 4,
+      "strip": { "cols": 6, "width": 360 },
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "max", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true }
+      ]
+    },
+    {
+      "id": "surface-max-to-midi",
+      "about": "Pick Midi in the Compass: the window shrinks from Max to Midi.",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 4,
+      "strip": { "cols": 6, "width": 360 },
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "midi", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true }
+      ]
+    },
+    {
+      "id": "surface-midi-to-mini",
+      "about": "Pick Mini in the Compass: the window shrinks from Midi to Mini (Now Playing and one card).",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "window": true, "seconds": 4,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "mini", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true }
+      ]
+    },
+    {
+      "id": "surface-mini-to-midi",
+      "about": "Pick Midi in the Compass: the window grows from Mini to Midi.",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "mini", "window": true, "seconds": 4,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "midi", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true }
+      ]
+    },
+    {
+      "id": "surface-midi-to-player",
+      "about": "Pick Player in the Compass: the window shrinks from Midi to the player alone.",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "window": true, "seconds": 4,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "player", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true }
+      ]
+    },
+    {
+      "id": "surface-drag-grow",
+      "about": "Drag the window's corner from Midi out to Max size over 1.5 s, in 12 steps (headless Edge paints no step shorter than ~100 ms, SHOTS.md §5c): the auto-flip crosses the bands as the window grows.",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "window": true, "seconds": 4.5,
+      "strip": { "fps": 20, "seconds": 2, "cols": 8, "width": 240 },
+      "steps": [{ "resize": [1100, 950], "over": 1500, "steps": 12 }]
+    },
+    {
+      "id": "surface-drag-shrink",
+      "about": "Drag the window's corner from Max in to Mini size over 1.5 s, in 12 steps: the auto-flip crosses the bands as the window shrinks.",
+      "covers": "architecture/SURFACES-AND-CARDS.md",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 4.5,
+      "strip": { "fps": 20, "seconds": 2, "cols": 8, "width": 240 },
+      "steps": [{ "resize": [385, 550], "over": 1500, "steps": 12 }]
+    },
+    {
+      "id": "look-switch",
+      "about": "The Compass switches the theme to Sepia: the appearance transition.",
+      "covers": "features/COMPASS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 4,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "sepia", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true }
+      ]
+    }
+  ]
+}

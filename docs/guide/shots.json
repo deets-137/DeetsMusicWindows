@@ -29,6 +29,36 @@
         { "type": "honey", "delay": 60 },
         { "wait": 500 }
       ]
+    },
+    {
+      "id": "clip-compass-arrive",
+      "about": "Ctrl+Space opens the Compass; type a word; Escape closes it.",
+      "covers": "features/COMPASS.md",
+      "kind": "clip",
+      "source": "demo",
+      "size": "midi",
+      "seconds": 3.5,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 700 },
+        { "type": "honey", "delay": 90 },
+        { "wait": 700 },
+        { "key": "Escape" }
+      ]
+    },
+    {
+      "id": "clip-card-swap",
+      "about": "Midi: pick Library from the left card's title menu, so Home and Library change places (CARD-SWAP.md, the skin's --swap-* shape).",
+      "covers": "cards/CARD-SWAP.md",
+      "kind": "clip",
+      "source": "demo",
+      "size": "midi",
+      "seconds": 3,
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"library\"]", "strip": true }
+      ]
     }
   ]
 }
