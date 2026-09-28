@@ -157,9 +157,17 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     destroy() {
       live.delete(handle);
       regions.delete(handle);
+      window.clearTimeout(graceTimer);
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
-      // root/trigger listeners drop with the host element when a card clears its host.
+      // The root, trigger and panel listeners too (2026-09-27): a PANEL that outlives its
+      // handle (the Sort / View pop, re-bound to a new pill on each head render) kept every
+      // old handle's hover listeners, each opening a panel bound to a pill that was gone.
+      root.removeEventListener("pointerenter", onEnter);
+      root.removeEventListener("pointerleave", onLeave);
+      panel.removeEventListener("pointerenter", onEnter);
+      panel.removeEventListener("pointerleave", onLeave);
+      trigger.removeEventListener("click", onClick);
     },
     get isOpen() { return isOpen(); },
   };

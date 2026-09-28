@@ -36,6 +36,9 @@ const TARGETS: Record<string, string> = {
   "key:shareActivityApp": "sharing in the app", "key:shareActivityDiscord": "sharing on Discord", "key:discordRoomInvite": "room invites on Discord",
   "prop:window.onTop": "Keep on top", "prop:volume": "the volume", "prop:tone.bass": "the bass", "prop:tone.mids": "the mids",
   "prop:tone.treble": "the treble", "prop:tone.preamp": "the preamp",
+  "key:backgroundMotion": "Animate backgrounds", "key:appearanceMotion": "Animate look changes", "key:cardSwapMotion": "Animate card swaps",
+  "key:fancyScrubber": "Fancy scrubber", "key:glassFancy": "Fancy Glass", "key:friendsListenAlong": "Let friends listen along",
+  "key:friendsRoomInvite": "Put my room code on my box", "key:toasts": "Show notices",
 };
 const targetWords = (t: unknown) => TARGETS[String(t)] ?? String(t);
 

@@ -14,7 +14,7 @@
 // Snaps (no fade) under reduced motion or with Animate look changes off.
 
 import { invoke } from "@tauri-apps/api/core";
-import { setting } from "./settings-store";
+import { effective } from "./settings-store";
 import * as frames from "./frames";
 import * as diag from "./diag";
 
@@ -69,7 +69,7 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
       console.warn("[boot] main_ready", e);
     }
     diag.log("boot:ready", { ms: Math.round(performance.now() - t0), capped });
-    if (!setting("appearanceMotion") || reducedMotion()) {
+    if (!effective("appearanceMotion") || reducedMotion()) {
       delete root.dataset.boot;
       done();
       return;

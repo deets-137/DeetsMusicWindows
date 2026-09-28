@@ -13,7 +13,7 @@
 //        (docs/features/VINYL.md); the tray panel applies these two as well.
 // The skin blocks in skin.css read them; other skins ignore them.
 
-import { setting, onSettingsChange, GLASS_LOCKED } from "./settings-store";
+import { setting, effective, onSettingsChange, GLASS_LOCKED } from "./settings-store";
 
 type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "glassDiffusion" | "oceanSand" | "oceanCardOpacity" | "oceanLight";
 const PROPS: Record<SliderKey, [string, string]> = {
@@ -31,7 +31,7 @@ const isSlider = (k: string): k is SliderKey => k in PROPS;
 /** The value a slider publishes: one of the four Glass layer sliders holds its locked value while
  *  Fancy Glass is off. Diffusion is never locked (it shows with the wallpaper, not Fancy Glass). */
 const sliderValue = (k: SliderKey): number =>
-  k in GLASS_LOCKED && !setting("glassFancy") ? GLASS_LOCKED[k as keyof typeof GLASS_LOCKED] : setting(k);
+  k in GLASS_LOCKED && !effective("glassFancy") ? GLASS_LOCKED[k as keyof typeof GLASS_LOCKED] : setting(k);
 
 /** Show a skin slider value without writing the store (a slider drag). */
 export function previewSkin(key: SliderKey, v: number): void {
@@ -55,10 +55,10 @@ export function initSkinSettings(): void {
   };
   // Fancy scrubber (UI-ARCHITECTURE §3 SCRUBBERS): off = every skin's plain masked handle.
   const applyScrubber = () => {
-    document.documentElement.dataset.fancyScrub = setting("fancyScrubber") ? "on" : "off";
+    document.documentElement.dataset.fancyScrub = effective("fancyScrubber") ? "on" : "off";
   };
   const applyGlassFancy = () => {
-    document.documentElement.dataset.glassFancy = setting("glassFancy") ? "on" : "off";
+    document.documentElement.dataset.glassFancy = effective("glassFancy") ? "on" : "off";
   };
   applyEdges();
   applyScrubber();

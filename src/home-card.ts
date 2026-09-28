@@ -36,8 +36,9 @@ import { isPinned, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange, PIN_GRI
 import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs } from "./row-order";
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 import * as diag from "./diag";
+import { errorOf } from "./dom";
 
-const err = (what: string) => (e: unknown) => console.error(`[home] ${what}`, e);
+const err = errorOf("home");
 
 const HEAD = `
   <header class="panel__head">

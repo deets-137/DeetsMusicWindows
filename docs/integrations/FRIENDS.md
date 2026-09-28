@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
 sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts]
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
@@ -1280,8 +1280,10 @@ which have separate data dirs and therefore separate friend codes (`npm run dev:
 8. **Presence.** Turn *Share activity on DeetsMusic* on both. Play a song on A. Within a second
    B's box shows the cover, the title, the artist and *"just now"*. Skip five songs quickly on A:
    B's box updates **once**, about 20 seconds after the skipping stops (§5.1 rule 2).
-9. **The menu.** Right-click A's box on B: *Play this*, *Go to Album*, *Copy their code*,
-   *Rename*, *Remove*. Play this plays that song on B. Remove offers **Undo**.
+9. **The menu.** Right-click A's box on B: the whole song menu for A's song (Play Now · Play
+   Next · Add to Queue · … · Pin — CONTEXT-MENUS.md §3.1, through the builder since
+   2026-09-27; until then *Play this* and *Go to Album* by hand), then *Copy their code*,
+   *Rename*, and *Remove* last. Play Now plays that song on B. Remove offers **Undo**.
 10. **Listen Along.** With A playing and hosting no room, press A's box on B. A gets one toast,
     *"<B> is listening along."* B joins a room and hears A's song. **On B, every transport
     control is refused** — it is a host-only room. A's room panel lists B, and A's **Remove**

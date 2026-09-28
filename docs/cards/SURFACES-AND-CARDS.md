@@ -215,6 +215,88 @@ max).
 
 ---
 
+## 5. Adding a card — the recipe
+
+> **Part:** guide · 2026-09-27
+
+A card joins eight shared systems. Each one is adopted by the card, never wired for it, so a
+card that skips one works and looks finished — and is the one place in the app where a key,
+a right-click or a hover does nothing. This is how Rewind, Diary and Rulez came to have no
+arrow keys (found 2026-09-27, wired the same evening: COMPASS.md §5a). Walk the list; then the CLAUDE.md build checklist, which covers
+what every control needs (motion, tokens, families, hints, toasts, scrollbars, telemetry).
+
+Terms: a **row** is one line or tile the card lists (a song, an album, a rule). A **media
+row** is a row for a song, album, artist, playlist or station. A **drilling card** opens a
+level under its root (an album inside the Library) and has a Back button.
+
+1. **The registry** (`src/cards.ts`). Add the id to `CardId` and a `CardDef` to `registry`:
+   `title`, `mount(host, opts)`, and `maxOnly` for a card that is only offered in Max and
+   closes with an X (Rulez). `mount` returns a `CardInstance` whose `destroy()` drops every
+   listener (§1, the listener-lifetime gotcha: a slot swap that leaks a listener plays twice).
+   The card module is `src/<name>-card.ts`; its store, if it has one, is `src/<name>.ts`.
+   The slot pickers, the Compass Places group and the title-bar menu read the registry, so
+   the card is reachable at once (COMPASS.md §9).
+2. **A list of rows: the collection engine first.** A card that lists library items (songs,
+   albums, artists, with sort, group, filter and a search field) is built on
+   `initCollectionCard` ([UI-ARCHITECTURE.md](../architecture/UI-ARCHITECTURE.md) §4a) and gets steps 3–6 for
+   free (Radio does this). A card with its own rows (Home, Queue, History, Rewind, Diary,
+   Rulez) adopts each one by hand:
+3. **Right-click.** A media row's menu is its type's builder in `src/media-menu.ts`
+   (`songMenu`, `albumMenu`, `artistMenu`, `playlistMenu`, `stationMenu`, `setMenu`,
+   `tileMenu`), called with the card's `own` rows and its `away` rows. A card never lists
+   media rows itself ([CONTEXT-MENUS.md](../architecture/CONTEXT-MENUS.md) §7). A row that is not media (a
+   rule, a folder header, a report) opens `openContextMenu` with its own rows, and takes a
+   line in ONBOARDING.md §2.
+4. **The keyboard.** `wireListKeys(container, { rows })` (`src/list-keys.ts`): arrows, Home /
+   End, Enter, the Menu key and Escape for Back, one tab stop per list. A card with a search
+   field registers it with `src/find-key.ts` so Ctrl+F opens the field the user last pressed
+   in. The Menu key dispatches the card's own `contextmenu` handler, so step 3 serves both.
+5. **Picks and drags.** Ctrl / Shift picks are `src/row-pick.ts`, and the picked set's menu is
+   `setMenu` (step 3). Rows that drag out, and a card that takes a drop, go through
+   `src/row-drag.ts` and `src/drop-actions.ts` ([DRAG-DROP.md](../architecture/DRAG-DROP.md)).
+6. **Hover.** A row whose name can be cut off gets a **row shape** in `SHAPES` (`src/hint.ts`):
+   the row's class, its title span, its sub span. The box then shows the whole name with no
+   `title` written (ONBOARDING.md §1a). A button's `title` is a written hint and goes in the
+   §1 ledger.
+7. **Memory.** `snapshot()` on the instance returns where the card is — keys, the open level,
+   the scroll — and `opts.memory` hands it back on the next mount
+   ([CARD-MEMORY.md](CARD-MEMORY.md)). `scrollSnapshot` / `applyScrollSnapshot` in
+   `src/card-memory.ts` are enough for a card with one scroller (History, Home, Settings).
+   A drilling card also reports `onHeaderChange` so the slot mirrors its title and hides the
+   picker below the root.
+8. **Popovers.** Three primitives, and the place decides which: `makeDropdown`
+   (`src/dropdown.ts`) for a panel on a trigger — it follows *Open menus on hover* and takes
+   `onOpen` for `enterRows`; `openContextMenuUnder` for a list of choices under a button (a
+   Sort pill, a scale picker); `openContextMenu` for the right-click. Never a fourth. A panel
+   that must overflow its card (the pane's transform traps `position: fixed`) is portaled to
+   `<body>` and still rides `makeDropdown`: the Settings menus, and since 2026-09-27 the
+   Library's Sort / View pop (`wirePops` in `collection-card.ts`, the reference for a panel
+   whose trigger is re-rendered with the head).
+
+Then the rest of the CLAUDE.md checklist: `app-scroll` on every scroller, `enterRows` on rows
+that appear, a Settings row (SETTINGS.md §5, with its `NEW_MARKS` line and agent spec), a rule
+where the card decides *when* (RULES.md §19), `diag.log` on anything it does by itself, the
+`dataset.frames` mark on what animates, and a `features/<CARD>.md` with front matter, the desk
+test and one line in CLAUDE.md.
+
+**Who adopts what today** (measured 2026-09-27; ✓ = adopted, · = not needed, **—** = a gap):
+
+| Card | Menu (3) | Keys (4) | Picks (5) | Drag (5) | Hint shape (6) | Memory (7) |
+|---|---|---|---|---|---|---|
+| Library, Playlists, Radio, Search | ✓ engine | ✓ engine | ✓ | ✓ | ✓ | ✓ |
+| Home | ✓ | ✓ | · | ✓ | ✓ | ✓ |
+| Queue | ✓ | ✓ | ✓ | ✓ | ✓ | · (the queue is the state) |
+| History | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Now Playing | ✓ | · | · | ✓ | ✓ | · |
+| Rewind | ✓ | ✓ (2026-09-27) | ✓ | ✓ | ✓ | **—** |
+| Diary | ✓ | ✓ (2026-09-27) | · | ✓ | · (tiles wrap) | ✓ |
+| Rulez | own rows | ✓ (2026-09-27) | · | ✓ | ✓ | ✓ |
+| Settings | own rows | Ctrl+F | · | ✓ sections | · | ✓ |
+
+The gaps are the owner's to close or leave; they are listed in HANDOFF.md › Open now.
+
+---
+
 ## Out of scope (this build)
 
 Playlists & Search cards · accent-palette plumbing · shuffle · the max/mini compositions ·

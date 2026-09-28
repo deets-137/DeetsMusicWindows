@@ -6,7 +6,7 @@
 // JS only measures the slot a card left; the shape and the timing are skin tokens (skin.css
 // §card swap, styles.css §Card swap). On by default (since 2026-09-16); the OS reduced-motion preference snaps.
 
-import { setting } from "./settings-store";
+import { effective } from "./settings-store";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 
@@ -30,7 +30,7 @@ const reduced = (): boolean => {
     return false;
   }
 };
-const motionOn = (): boolean => setting("cardSwapMotion") && !reduced();
+const motionOn = (): boolean => effective("cardSwapMotion") && !reduced();
 
 /** A slot on screen has a box; mini's hidden right slot has none. */
 export const onScreen = (el: HTMLElement | null | undefined): el is HTMLElement =>

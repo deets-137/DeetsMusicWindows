@@ -281,8 +281,10 @@ the text caret; Tab belongs to the filter row (2a).
 ## 5. The rest of the keyboard pass (fork 5B, then the lists — built 2026-09-17)
 
 **Inside every list** (`src/list-keys.ts`, adopted by the collection-card engine — Library,
-Playlists, Rewind, the artist and genre views — the Queue, History, Home and the Search
-card): **Tab** reaches the list and the first row takes the focus (in a drilled card the
+Playlists, Radio, the artist and genre views — and by hand in the Queue, History, Home, the
+Search card, and since 2026-09-27 Rewind, Diary and Rulez; before that day the three had no
+keys at all, and this line wrongly named Rewind as an engine card — §5a is their desk test):
+**Tab** reaches the list and the first row takes the focus (in a drilled card the
 list's tab stop comes after the hero's cover and the Play / Shuffle row, so Tab walks cover,
 Play, Shuffle, then the rows; found in the desk test 2026-09-17); **arrows** move (in a
 grid of tiles, up and down move by a row of tiles); **Home / End**, **PageUp / PageDown**;
@@ -308,9 +310,46 @@ the row and dispatches a `contextmenu` event, so each card's own handlers run.
   on the choice in force. Up / Down move in a column (they wrap), Home / End go to its ends,
   Left / Right go to the next column (onto its choice in force). Enter or Space picks, and the
   pop stays open. Escape or Tab closes it and the focus goes back to the pill. A pill opened
-  with the pointer leaves the focus where it was. `openPop` in collection-card.ts.
+  with the pointer leaves the focus where it was. `wirePops` / `onPopKey` in collection-card.ts
+  (the pop rides `makeDropdown` since 2026-09-27, UI-ARCHITECTURE.md §4a Toolbar).
   Desk test: in the Library, Tab to the Sort pill, press Enter, use the arrows, pick a sort
   with Enter, press Escape. The focus is on the Sort pill again.
+
+### 5a. Rewind, Diary and Rulez — built 2026-09-27, desk test open
+
+> **Part:** built · 2026-09-27
+
+The three cards outside the collection engine that had no list keys (found by the consistency
+survey, SURFACES-AND-CARDS.md §5). Each adopts `wireListKeys` with its own rows; the card's own
+click and right-click handlers do the work, so a key does what the pointer does there.
+
+| Card | The rows | Enter / Space | Menu key | Escape |
+|---|---|---|---|---|
+| Rewind | every `[data-idx]` row on the board (the hero row too) | nothing — a plain click on a Rewind row does nothing (`activate: false`); Ctrl / Shift picks stay a pointer thing | the row's menu | drops the picks (the card's own key, as before) |
+| Diary | a shelf tile, a picker result, a song row in an entry | what a click does: opens the entry, picks the album, picks the song | the tile's or song's menu | in an entry: Back, one step |
+| Rulez | every rule: yours, locked, a recipe | opens or closes the rule (a locked rule does nothing, as under the pointer) | the rule's menu | folds the open rule |
+
+Decided inside his ask (2026-09-27, for his look): Enter does nothing on a Rewind row rather than
+clearing the picks; Escape in Rulez folds the open rule, since the card has an X and no Back; a
+Diary tile keeps its own `tabindex="0"` (each tile stays a Tab stop, as built 2026-09-24).
+
+**Desk test.**
+1. Rewind: click the board once, then ↓ ↑: the ring walks the rows; Home / End reach the
+   ends; the Menu key opens the row's menu at the row; Enter does nothing; Escape drops picks.
+2. Rewind › Picks (Song of the Day on): the same, and the withdraw square inside a row still
+   takes Tab and its own Enter.
+3. Diary: Tab into the card: the first tile takes the ring; ← → walk the tiles, ↓ moves by a
+   row of tiles into the next shelf; Enter opens the entry; inside it ↓ ↑ walk the songs, Enter
+   picks a song (the note panel follows), the Menu key opens the song's menu; Escape returns to
+   the shelves with the ring back on a tile.
+4. Diary › +: ↓ walks the results under the field; Enter picks the album; Escape in the field
+   still closes the picker (the field's own key).
+5. Rulez: ↓ ↑ walk your rules, the locked rows and the recipes; Enter opens a rule of yours
+   and its rows rise; Enter again closes it; Enter on a locked rule does nothing; the Menu key
+   opens the rule's menu; Escape folds the open rule; a second Escape does nothing.
+6. Rulez › Logs: the arrows do nothing (no rules there); Words | Raw keeps its keys.
+7. A right-click or a Ctrl+click on any of the three: the list does not jump to its first
+   row (the press gate in list-keys.ts).
 
 ## 6. What changed
 

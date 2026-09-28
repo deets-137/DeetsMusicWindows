@@ -15,3 +15,9 @@ const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;"
 
 /** Text made safe for HTML, in element content and in a double-quoted attribute. */
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ESCAPES[c]);
+
+/** A module's error reporter for a promise chain: `const err = errorOf("menu")`, then
+ *  `.catch(err("play now"))` logs `[menu] play now` with the error. Every console.error
+ *  writes an ERROR line to the log file (his call 2026-09-25). One copy here; four modules
+ *  each had their own until 2026-09-27. */
+export const errorOf = (tag: string) => (what: string) => (e: unknown) => console.error(`[${tag}] ${what}`, e);

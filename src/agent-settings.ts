@@ -289,6 +289,11 @@ const SPECS: Spec[] = [
     set: (v) => setSetting("menuMode", v === "on" ? "hover" : "click"),
   },
   storeChoice("Menus, hints and notices", "toasts", "Show notices", [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }]),
+  // The hover box (ONBOARDING.md §1a). Missing until 2026-09-27 (the consistency survey): the
+  // three rows were built without a spec and without a reason, and they gate nothing.
+  storeToggle("Menus, hints and notices", "hoverHints", "Show hover hints"),
+  storeChoice("Menus, hints and notices", "hoverHintDelay", "Hints appear after", [{ value: "quick", label: "A moment" }, { value: "normal", label: "A pause" }, { value: "slow", label: "A while" }]),
+  storeChoice("Menus, hints and notices", "hoverSongNames", "Name songs on hover", [{ value: "always", label: "Always" }, { value: "cut", label: "Cut off" }, { value: "off", label: "Never" }]),
   storeChoice("Menus, hints and notices", "goToTarget", "Go to opens", [{ value: "fits", label: "Where it fits" }, { value: "search", label: "Search" }, { value: "library", label: "Library" }]),
   // ── Playback ──
   storeChoice("Playback", "streamQuality", "Stream quality", [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }]),

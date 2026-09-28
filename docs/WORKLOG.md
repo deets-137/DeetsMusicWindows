@@ -12,6 +12,16 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, evening — Rules: eight more rule keys, Battery saver, Focus (branch `rules-rulez`)
+
+His question: which features use the rules engine, and which could. Answer: about 16 use it;
+seven more could (Rooms, Suggest Less, the New shelf, Song of the Day, a ♥ event, the tray,
+the notices). He chose option 1, the rule keys first, and my recommendation on all five forks.
+Built: eight keys, the recipe Battery saver, two new parts for Focus, the Rulez words, one fix
+to the room code on your friend box, `tests/rule-keys.test.ts`. The network keys were dropped
+at the check (`dataSaver` is never true on Windows). Record and desk test:
+[RULES.md §18a](architecture/RULES.md). Not committed.
+
 ## 2026-09-27, 17:40 — Layout: the consistency review folded in (branch `rules-rulez`)
 
 The consistency session's review came after the 17:20 commit; LAYOUT.md §11 holds it, each
@@ -43,6 +53,159 @@ turn buttons off and on, very granular. Designed on paper; nothing is built. The
 - Decided inside his choices, for his review: the key `partStates`, the scope `artist.parts`,
   the part ids, the pill words, the Faded hint text, `--part-fade-dur` = `--dur-med`, the
   Compass row's title (LAYOUT.md §9).
+
+## 2026-09-27, night — Three small cleanups, and the styles.css split written up (branch `rules-rulez`, uncommitted)
+
+**His ask.** "Do the three": the raw NUL bytes, the checker's own table, the copied menu
+tables. Before that: a note on splitting `styles.css`, with whether it would drift more than
+it helps.
+
+- **NUL bytes → `\0` escapes.** `sleep.ts` (the song-change key, two) and `friends.ts` (the
+  home key, one) held literal NUL bytes as separators; `grep` read the files as binary and an
+  editor could mangle them. The runtime strings are the same.
+- **DOCS-ORG.md §8** now says which checks the script holds (1–5, 11, 18–26) and which rows
+  are the design only (6–10, 17). It had read as if all ran, and a line cited check 7 as a
+  fact.
+- **ONBOARDING.md §2** points at CONTEXT-MENUS.md §3 for the media menus instead of copying
+  the rows; the per-card exceptions stay. The copy drifted once (Shuffle, Add to Diary,
+  Favorite were missing), and the test now holds the order.
+- **UI-ARCHITECTURE.md §4c** — splitting `styles.css`: what it would help, the two ways it
+  drifts (the families fork; 191 classes declared in more than one place ride the file's
+  order), and the verdict: only with the "shared class stays in the base" rule and a check 27
+  that holds it, one card per sitting, verified by Shots. His fork.
+
+## 2026-09-27, night — The pixel pass on styles.css (branch `rules-rulez`, uncommitted)
+
+**His ask.** Item 4 of the "tight and thorough" list: the raw px values in `styles.css`, the
+one stylesheet that had them (68 by the survey's count, 0 in every other file).
+
+**Routed to tokens** (skin.css base block, so every skin can retune them; `npm run tokens`
+regenerated TOKENS.md): `--space-half` (2 px: a chip's vertical padding, a tight gap),
+`--caret-size` (the 8 px chevron on a pill, a shelf fold, a column arrow), `--radius-round`
+(999 px: the busy dot, the artist tile, the scrub track and fill), `--lib-pop-dir-size`,
+`--flyout-ring-w` + `--flyout-account-w` + `--spinner-w`, the search card's four
+(`--search-artist-w`, `--search-artist-art`, `--search-song-col-w`, `--search-busy-size`),
+the scrubber's five (`--scrub-bob-amp`, `--scrub-lens-ring-w`, `--scrub-glow-min/max/held`),
+the ocean bob amplitudes (`--ocean-bob-amp-far/mid/near`), `--sand-tile`, `--friend-art-inset`.
+
+**Left raw, each with a comment saying why:** SVG user units (the sleep dial's 100 100
+origin in a 200-unit viewBox, the shuffle glyph's 12 12, the storm's `--storm-x` in a
+stretched viewBox) and the 0 / 0.5 / 1 px hairlines. Nothing should have moved a pixel: every
+token holds the value the rule had.
+
+## 2026-09-27, night — Checks 20–26, the desk-test runbook, the media-menu tests, one `err` (branch `rules-rulez`, uncommitted)
+
+**His ask.** Turn the survey's greps into `docs:check` checks; organize the open desk tests so
+an Opus agent can run them in another session; then the rest of the "tight and thorough" list
+but the user guide.
+
+**The checks** (`scripts/docs-check.mjs`, DOCS-ORG.md §8): 20 settings keys (a spec or an
+AGENT.md reason, and a SETTINGS.md row), 21 toast sites, 22 literal hover hints, 23 scrollers,
+24 right-click listeners, 25 boxes placed by hand (`PLACERS`, a reason per line), 26 list keys
+on every card (`NO_LIST_CARDS`). Facts: they fail the build. The first run found 19 more
+facts than the survey had: 17 hints (the theme, skin and surface lines in index.html, the
+Sound panel's arrows), `onboardingStep`, and `qcard.ts` off the menus ledger — all ledgered
+now (ONBOARDING.md §1, CONTEXT-MENUS.md § Where the listeners are, AGENT.md).
+
+**The runbook** (`docs/ops/DESK-TESTS.md`): the prompt to give the agent (§0), the setup
+and the rules (§1–§2; through the UI over CDP, never the modules; a fail is a finding), the
+list of twenty open tests with who can run each (§3: 14 agent, 6 owner), the two small scripts
+that had no doc (§4), the results table (§5).
+
+**The tests** (`tests/media-menu.test.ts`, 14 tests): the row order of every media type, the
+own / away / lead groups, the Friends box's shape, the playing song's missing Play group, an
+unresolved row, an unreleased song, the here / inArtist / inDiary cuts, a New tile's missing
+Pin. The stub map is `tests/stubs/menu-deps.ts`: the test's own resolve hook points every
+heavy import of media-menu.ts at it (the player, MusicKit, the row modules), so the test
+reads media-menu's ORDER rule and nothing else. 120 tests pass.
+
+**One `err`.** `errorOf(tag)` in dom.ts; home-card, pins, sotd and media-menu take it.
+
+## 2026-09-27, night — The Sort / View pop on the dropdown primitive (branch `rules-rulez`, uncommitted)
+
+**His ask.** "Do the sort/view pop rebuild on makeDropdown."
+
+**Built.** collection-card.ts: one `.lib-pop.pop` panel per kind, made once on `<body>`;
+`wirePops(pane)` binds a `makeDropdown` handle to the live pill (root = the pill's `.lib-ctrl`
+wrap, so hover mode has a region) after every head render (`settleHead`, the old
+`restoreSearch` plus the re-bind) and on a pane slide; a kept head keeps its handle. `onOpen`
+fills the panel from the frame, places it (`placePop`: the panel's margin as the gap,
+`--panel-edge-gap` as the pad, `data-above` when it flips), moves the focus in from the
+keyboard, and `enterRows` the choices. The pop's own keyboard (`onPopKey`) is unchanged. Gone:
+`openPop`, `closePop`, `popEl` / `popAnchor` / `popCleanup`, `data-popbody`, and the card's
+document click listener (the primitive owns the click away). Scroll and resize still close an
+open pop. CSS: `--pop-origin: top left`, `margin-top: var(--space-1)`, `[data-above]` →
+bottom left. card-grow's Escape guard reads `.lib-pop:not([hidden])` now that the panel
+persists.
+
+**The primitive.** `dropdown.ts` `destroy()` removes the root, trigger and panel listeners
+and clears the grace timer. Before, a panel that outlived its handle kept every old handle's
+hover listeners (each `open()` of a dead handle, bound to a pill that was gone). Every other
+caller destroys its panel with its host, so nothing else changes.
+
+**Checks.** `tsc`, `vite build`, `npm test`, `docs:check`. His desk test is UI-ARCHITECTURE.md
+§4a Toolbar (ten steps; step 4 is hover mode, step 10 is the no-doubles check).
+
+## 2026-09-27, late evening — The Friends box takes the song builder (branch `rules-rulez`, uncommitted)
+
+**His ask.** "Do the friends song menu with the builder."
+
+**Built.** `menuFor` in friends-panel.ts calls `songMenu` with the friend's rows as `own`
+(Invite to my room · Copy their code · Rename) and Remove as `away`. The song is your library's
+copy when you have it, else a Track built from the presence (title, artist, album, cover) —
+`trackOf`; `catalog: true` puts it in the transient store on a play, as a Search result. A
+friend off line or playing nothing gets the friend rows alone, as before. Two imports gone
+(`goToAlbumItem`, `playContext`). CONTEXT-MENUS.md §5 has the row and the why; §8 step 11 is
+the desk test (two dev apps); FRIENDS.md step 9 and ONBOARDING.md §2 corrected.
+
+## 2026-09-27, late evening — The hover-hint rows reach the agent (branch `rules-rulez`, uncommitted)
+
+**His ask.** "Fix the settings row piece" — the rows the survey said had no agent spec.
+
+**The survey overcounted.** The four open sizes always had a spec (`storeSize`, `kind: "size"`;
+the grep looked for the literal key and missed `SIZE_KEYS[slot]`). Home › Hiding lasts is left
+out on purpose (a hide is the user's own gesture, the Home comment in agent-settings.ts), and
+the room name is text, which the route has no kind for (the Rooms comment). That leaves the
+three hover-hint rows: no spec, no reason, no gate.
+
+**Built.** `hoverHints` (toggle), `hoverHintDelay` (A moment · A pause · A while) and
+`hoverSongNames` (Always · Cut off · Never) in `SPECS`, section *Menus, hints and notices*,
+with the card's own labels. AGENT.md's exception table now records the two left-out reasons
+and the three new rows. Desk test: `deetsmusic settings get` lists the three under Menus,
+hints and notices; `settings set hoverHintDelay slow` moves the card's pill (Ask shows the
+toast first); a hover then waits the long delay.
+
+## 2026-09-27, late evening — Two scrollers get the app bar; the Sort / View pop's reason found (branch `rules-rulez`, uncommitted)
+
+**His ask.** The five scrollers from the survey, and the Sort / View pop, "though there's a
+reason we left it as such".
+
+**The survey was wrong on three of the five.** Its grep read `src/*.ts` only. `.quick__panel`,
+`.room__panel` and `.compass` carry `app-scroll` in `index.html` and always did. The two real
+misses got the class in settings-card.ts: `.set__menu` (a long menu, Sleep at) and
+`.set__preview` (the App log preview). HANDOFF's list is corrected in place.
+
+**The pop's reason.** UI-ARCHITECTURE.md §4a Toolbar: the pop portals to `<body>` because the
+pane's transform traps `position: fixed`, and it stays open across picks (a tweak panel).
+So it is not "one that predates the rule"; CLAUDE.md item 13 and SURFACES-AND-CARDS.md §5
+step 8 now say why. Nothing built on it: the fork is his (HANDOFF › Open now).
+
+## 2026-09-27, late evening — List keys on Rewind, Diary and Rulez (branch `rules-rulez`, uncommitted)
+
+**His ask.** Close the first gap from the survey: the three cards outside the collection
+engine had no arrow keys.
+
+**Built.** Each card adopts `wireListKeys` (list-keys.ts) with its own rows; the card's own
+click and right-click handlers do the work. Rewind: every `[data-idx]` row, `activate: false`
+(a plain click does nothing there, so Enter does nothing; the Menu key opens the menu). Diary:
+tiles, picker results and song rows; its own Enter branch is gone (the primitive does it);
+Escape in an entry is Back. Rulez: every rule; `onClick` reads a synthetic click on the rule
+element as a press on its bar, so Enter opens a rule of yours or a recipe and does nothing on a
+locked one; Escape folds the open rule. One CSS line gives `.rulez__rule` the inset focus ring.
+COMPASS.md §5 corrected (it named Rewind as an engine card) and §5a holds the desk test.
+
+**Checks.** `tsc`, `vite build`, `docs:check` clean. Not run in the app: his desk test is
+COMPASS.md §5a.
 
 ## 2026-09-27, evening — The consistency survey: a new-card recipe, five checklist items, six doc corrections (branch `rules-rulez`)
 

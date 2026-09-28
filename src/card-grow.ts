@@ -867,7 +867,7 @@ export function initCardGrow(o: Opts): void {
     if (e.key !== "Escape" || !state || animating) return;
     const t = e.target;
     if (t instanceof Element && t.closest("input, textarea, [contenteditable]")) return;
-    if (document.querySelector(".ctx-menu, .lib-pop, .slot-picker__menu:not([hidden]), .pop:not([hidden])")) return;
+    if (document.querySelector(".ctx-menu, .lib-pop:not([hidden]), .slot-picker__menu:not([hidden]), .pop:not([hidden])")) return;
     void collapseGrow("esc");
   });
   // A click outside the grown card (inside the body: another card, the stage) collapses it.

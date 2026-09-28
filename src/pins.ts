@@ -10,6 +10,7 @@
 // album off the library): a pin never needs a fetch to draw.
 
 import { invoke } from "@tauri-apps/api/core";
+import { errorOf } from "./dom";
 import type { Track } from "./library";
 import { artistDetail, collectionTracks, materializeTrack, type Playlist, type Artist } from "./search";
 import { requestPlaylistPane } from "./go-to";
@@ -167,7 +168,7 @@ export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
   // The click trail (LOGGING.md §The click trail): a complaint about this is read, not
   // guessed — which tile, and which verb it ran.
   diag.log("ui:act", { at, do: "pin", kind: it.kind, act });
-  const err = (what: string) => (e: unknown) => console.error(`[pins] ${what}`, e);
+  const err = errorOf("pins");
 
   // A station is a stream: it plays, whatever anything says (fork 5).
   if (it.kind === "station" && it.station) {

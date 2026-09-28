@@ -26,6 +26,7 @@ import { albumKey } from "./rewind";
 import { albumOrder, heroCover } from "./library-card";
 import { esc, actionsRowHTML, runListAction } from "./collection-card";
 import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, MENU_DIVIDER, type MenuItem, type ActionItem } from "./context-menu";
+import { wireListKeys } from "./list-keys";
 import { albumMenu, songMenu } from "./media-menu";
 import { levelLeft } from "./card-grow";
 import { emit } from "./rules";
@@ -1202,13 +1203,18 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       closePicker();
       return;
     }
-    if (ev.key === "Enter" && !target.matches("input, textarea")) {
-      const tile = target.closest<HTMLElement>("[data-entry], [data-pick], [data-song-i]");
-      if (tile) {
-        ev.preventDefault();
-        tile.click();
-      }
-    }
+  });
+  // The rows' keys (list-keys.ts; 2026-09-27, before this the card answered Enter alone):
+  // arrows walk the shelf tiles (by a row of tiles up and down), the picker's results and an
+  // entry's song rows; Enter / Space click the row; the Menu key opens its menu; Escape in an
+  // entry is Back. A tile keeps its own tabindex="0" (DIARY.md §3), so Tab still reaches each.
+  const unwireKeys = wireListKeys(body, {
+    rows: "[data-entry], [data-pick], [data-song-i]",
+    back: () => {
+      if (!entry) return false;
+      backEl.click();
+      return true;
+    },
   });
 
   body.addEventListener("contextmenu", (ev) => {
@@ -1472,6 +1478,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       unregisterDrop();
       unregisterRows();
       unsubOrder();
+      unwireKeys();
       drag.destroy();
       headerSubs.clear();
       host.innerHTML = "";

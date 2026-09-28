@@ -31,7 +31,7 @@ import { userFiles, userFile, renameFile, deleteFile, onFilesChange } from "./us
 /** Fancy Glass's hover hint. The cost is the 2026-09-16 bench (DEBUGGING.md §Fancy Glass). */
 const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
 /** The four Glass sliders show under Glass with Fancy Glass on (off holds GLASS_LOCKED). */
-const glassSliders = (): boolean => currentSkin() === "glass" && setting("glassFancy");
+const glassSliders = (): boolean => currentSkin() === "glass" && ownSetting("glassFancy");
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
@@ -2019,7 +2019,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
         },
         {
           kind: "html", id: "report-preview",
-          html: () => (preview === null ? "" : `<pre class="set__preview">${esc(preview || "The log is empty.")}</pre>`),
+          html: () => (preview === null ? "" : `<pre class="set__preview app-scroll">${esc(preview || "The log is empty.")}</pre>`),
         },
         {
           kind: "split", id: "reportsend", label: "Send",
@@ -2189,7 +2189,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       if (half?.type !== "menu") return;
       const cur = half.get();
       const panel = document.createElement("div");
-      panel.className = "set__menu";
+      panel.className = "set__menu app-scroll"; // the app's bar on a long menu (Sleep at: the whole day), not the OS bar
       panel.hidden = true;
       panel.setAttribute("role", "menu");
       panel.innerHTML = half.options

@@ -18,6 +18,7 @@ import { albumOrder, artistOrder, libAlbum } from "./library-card";
 import { songMenu, albumMenu, artistMenu, playlistMenu, setMenu } from "./media-menu";
 import { creditIndex } from "./artist-credit";
 import { rowPick, picksText } from "./row-pick";
+import { wireListKeys } from "./list-keys";
 import { artURL } from "./queue-rows";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { onPlaylistsChange, playlistsCached, playlistTracks } from "./playlists";
@@ -341,6 +342,10 @@ function mountRewind(host: HTMLElement): CardInstance {
   };
   document.addEventListener("pointerdown", onDocDown);
   document.addEventListener("keydown", onKey);
+  // Arrows, Home / End and the Menu key on the rows (list-keys.ts; 2026-09-27, the card had
+  // none). `activate` is off: a plain click on a Rewind row does nothing (above), so Enter does
+  // nothing too — the Menu key opens the row's menu, which is where a Rewind row's verbs live.
+  const unwireKeys = wireListKeys(board, { rows: "[data-idx]", activate: false });
 
   board.addEventListener("contextmenu", (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
@@ -423,6 +428,7 @@ function mountRewind(host: HTMLElement): CardInstance {
       unsubSotd();
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDocDown);
+      unwireKeys();
       drag.destroy();
       host.innerHTML = "";
     },

@@ -31,11 +31,19 @@ export const RECIPES: Recipe[] = [
   {
     id: "focus",
     name: "Focus",
-    desc: "While it is on: sharing pauses, and an explicit song is skipped.",
+    desc: "While it is on: sharing and listen-along pause, only failures show a notice, and an explicit song is skipped.",
     rules: [
       {
+        // The two Friends switches ride with the sharing ones (his call, 2026-09-27); the hour's
+        // pause (SHARING_KEYS, FRIENDS.md D11) still covers the Sharing section only.
         id: "recipe:focus:0", kind: "state", source: src("focus"), on: true, name: "Focus: pause sharing",
-        while: ALWAYS, set: SHARING_KEYS.map((k) => ({ target: { key: k }, value: false })), onHand: "next",
+        while: ALWAYS,
+        set: ([...SHARING_KEYS, "friendsListenAlong", "friendsRoomInvite"] as const).map((k) => ({ target: { key: k }, value: false })),
+        onHand: "next",
+      },
+      {
+        id: "recipe:focus:2", kind: "state", source: src("focus"), on: true, name: "Focus: failures only",
+        while: ALWAYS, set: [{ target: { key: "toasts" }, value: "failures" }], onHand: "next",
       },
       {
         id: "recipe:focus:1", kind: "moment", source: src("focus"), on: true, name: "Focus: skip explicit songs",
@@ -67,6 +75,28 @@ export const RECIPES: Recipe[] = [
       {
         id: "recipe:party:1", kind: "state", source: src("party"), on: true, name: "Party: grown cards stay",
         while: ALWAYS, set: [{ target: { key: "cardGrowOutside" }, value: false }], onHand: "next",
+      },
+    ],
+  },
+  {
+    // The rule keys of 2026-09-27 (RULES.md §18): the heavy drawing stops while the PC runs on its
+    // battery. Fancy Glass is the largest graphics cost we measured (DEBUGGING.md); Reduced keeps
+    // the backgrounds alive; the Fancy scrubber stays yours. A desktop reports charging, so the
+    // rule never holds there; a WebView with no battery API has no fact, so it never holds either.
+    id: "battery",
+    name: "Battery saver",
+    desc: "While the PC is not charging: Fancy Glass off, backgrounds Reduced, no card swap or look change motion.",
+    rules: [
+      {
+        id: "recipe:battery:0", kind: "state", source: src("battery"), on: true, name: "Battery saver",
+        while: { fact: "charging", is: false },
+        set: [
+          { target: { key: "glassFancy" }, value: false },
+          { target: { key: "backgroundMotion" }, value: "reduced" },
+          { target: { key: "cardSwapMotion" }, value: false },
+          { target: { key: "appearanceMotion" }, value: false },
+        ],
+        onHand: "next",
       },
     ],
   },

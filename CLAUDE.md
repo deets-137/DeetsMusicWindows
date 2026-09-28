@@ -20,7 +20,11 @@ front-end, Rust back-end).
 part marker under its heading: `> **Part:** designed · 2026-09-17`. Where a doc has an
 "as built" section, read it first: where it disagrees with the design above it, it is the code.
 - `npm run docs:check` after any doc edit: links, mentions, § pointers, front matter, versions,
-  generated copies. The release check fails on it from 2026-09-28.
+  generated copies. The release check fails on it from 2026-09-28. **Since 2026-09-27 it also
+  reads the code against its ledgers** (checks 20–26, DOCS-ORG.md §8): a settings key with no
+  agent spec, a toast site or a hover hint off its ledger, a scroller without `app-scroll`, a
+  right-click listener no doc names, a box placed by hand, a card with no list keys. Run it
+  after code too.
 - Move a doc with `node scripts/docs-move.mjs NAME=area` (it re-points every link and
   `docs/` path in the repo). Never move one by hand.
 - Generated docs — edit the source, never the output: `architecture/TOKENS.md` by
@@ -127,6 +131,8 @@ old installs' Guide button opens.
   the data copy and `deetsmusic-beta pull`. Beta-first is PAUSED since 2026-09-24: releases go
   straight to live.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
+- `DESK-TESTS.md` — the open desk tests as one runbook for an agent in its own session: the
+  setup, the rules, the list with who can run each (agent / owner), the results table.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
@@ -149,6 +155,9 @@ feature, made by a script from the demo; for the guide and a marketing overview.
   covers a pure rule only; when the rule sits in a DOM or MusicKit module, move it to a
   small pure file first (`queue-sync.ts`, `layout-rules.ts`, `frame-period.ts`). A bug in
   a pure rule gets a test with its date in the name. `tests/setup.mjs` says what is stubbed.
+  A module whose RULE is pure but whose imports are not (media-menu.ts: the row order, over
+  the player and MusicKit) gets its own resolve hook and a stub map: `tests/stubs/` and
+  `tests/media-menu.test.ts` are the reference (2026-09-27).
 - If something genuinely can't be reasoned through and the user is away, ask them to
   test rather than scaffolding a harness.
 - **Playback can be driven and measured from the session (2026-09-12).** Start the dev
@@ -284,8 +293,10 @@ feature, made by a script from the demo; for the guide and a marketing overview.
   13. **Popovers (2026-09-27):** three primitives, the place picks one. `makeDropdown`
      (`src/dropdown.ts`) for a panel on a trigger — the only one that follows *Open menus on
      hover*; `openContextMenuUnder` for choices under a button; `openContextMenu` for the
-     right-click. Never a fourth (the Library's Sort / View pop is the one that predates
-     this rule).
+     right-click. Never a fourth. A panel that must overflow its card is portaled to `<body>`
+     and still rides `makeDropdown` (the Settings menus, and the Library's Sort / View pop
+     since 2026-09-27: `wirePops` in collection-card.ts is the reference for a panel whose
+     trigger is re-rendered).
   14. **Card memory:** a card returns `snapshot()` and takes `opts.memory` back
      (CARD-MEMORY.md), so it comes back where the user left it.
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
@@ -341,5 +352,5 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - **A withdrawn version's notes never reach an update offer**, so the release that replaces
   it carries the whole line's notes in its own entry (RELEASE-NOTES.md).
 - Commit only when the user asks. Co-author trailer — name the model that did the work
-  (today `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when
+  (today `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`); update this line when
   the model changes.

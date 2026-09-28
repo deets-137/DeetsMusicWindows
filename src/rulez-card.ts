@@ -29,6 +29,7 @@ import { logsHTML, isRuleLine } from "./rulez-logs";
 import { splitPillHTML, splitPick } from "./split-pill";
 import { MENU_CHOSEN, MENU_DIVIDER, openContextMenu, openContextMenuUnder, type ActionItem, type MenuItem } from "./context-menu";
 import { enterRows } from "./pop";
+import { wireListKeys } from "./list-keys";
 import { isDragging, onDragEnd, rowDrag } from "./row-drag";
 import { holdMs } from "./row-order";
 import { onSettingsChange, setting } from "./settings-store";
@@ -796,7 +797,10 @@ export const rulezCard: CardDef = {
         }
         return;
       }
-      const el = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
+      const target = e.target as HTMLElement;
+      // Enter on a focused rule (list-keys clicks the rule element itself) is a press on its
+      // bar: a rule of yours or a recipe opens; a locked bar has no act, as under the pointer.
+      const el = target.closest<HTMLElement>("[data-act]") ?? (target.classList.contains("rulez__rule") ? target.querySelector<HTMLElement>(":scope > .rulez__bar[data-act]") : null);
       if (!el) return;
       const r = ruleOf(el);
       if (!r) return;
@@ -915,6 +919,18 @@ export const rulezCard: CardDef = {
       document.addEventListener("pointercancel", release, true);
     };
     body.addEventListener("pointerdown", onPress, true);
+    // The keyboard on the rules (list-keys.ts; 2026-09-27): arrows and Home / End walk the
+    // rules, Enter opens or closes one (onClick above), the Menu key opens its menu, and
+    // Escape folds the open rule — the one step back this card has (it has an X, no Back).
+    // The Logs view has no rules, so the keys rest there.
+    const unwireKeys = wireListKeys(body, {
+      rows: ".rulez__rule",
+      back: () => {
+        if (!openId) return false;
+        openRow(null);
+        return true;
+      },
+    });
 
     /** + : a new rule, open, with its When blank's menu open (RULEZ.md §6.3). */
     const onAdd = () => {
@@ -973,6 +989,7 @@ export const rulezCard: CardDef = {
         offSettings();
         offDragEnd();
         rowMove.destroy();
+        unwireKeys();
         body.removeEventListener("pointerdown", onPress, true);
         host.innerHTML = "";
       },

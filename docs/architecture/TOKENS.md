@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 520 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 541 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -154,6 +154,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--room-fold-bg` | `var(--sound-fold-bg)` | — | the Permissions box, the Sound fold's tint |
 | `--room-dim` | `var(--sound-dim)` | — |  |
 | `--friend-radius` | `var(--room-radius)` | — | The stage (ROOMS.md §16.6): the rectangle of silhouettes over the code. Friends (FRIENDS.md §3, §6). ALIASES, not raw values: a friend's box lives inside the room panel, so a skin that restyles that panel restyles this with it. Only the three that describe the box's own shape are new. |
+| `--friend-art-inset` | `var(--space-half)` | — | the art's corner sits this far inside the box's |
 | `--friend-chip-min-w` | `var(--room-chip-min-w)` | — |  |
 | `--friend-list-max-h` | `180px` | — | about three boxes before the list scrolls |
 | `--friend-art` | `38px` | — | the cover square; the box is two text lines tall |
@@ -426,6 +427,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ocean-bob-far` | `13` | — | s for one rise of a band |
 | `--ocean-bob-mid` | `11` | — |  |
 | `--ocean-bob-near` | `9` | — |  |
+| `--ocean-bob-amp-far` | `1px` | — | how far each band bobs; the signs alternate so the sea breathes |
+| `--ocean-bob-amp-mid` | `-2px` | — |  |
+| `--ocean-bob-amp-near` | `3px` | — |  |
 | `--ocean-heave-far` | `1.5px` | — | how far a band rises at the music's loudest |
 | `--ocean-heave-mid` | `5px` | — |  |
 | `--ocean-heave-near` | `10px` | — |  |
@@ -450,6 +454,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--panel-paint` | `var(--panel)` | glass | .panel paints --panel-paint. A skin with sand edges sets it transparent and shows --panel on .panel::before instead, broken into grains over and shows --panel on .panel::before instead, broken into grains over --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --panel itself opaque: album-color.ts reads it for the contrast guard. |
 | `--sand-display` | `none` | — |  |
 | `--sand-reach` | `0px` | — |  |
+| `--sand-tile` | `128px` | — | the grain texture repeats on this tile (styles.css .panel::before) |
 | `--sand-ink` | `transparent` | — |  |
 
 ### transport (now playing)
@@ -572,6 +577,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--scrub-sheen-dur` | `6s` | — | Glass: the specular dot's drift, one way |
 | `--scrub-lens-scale` | `1.2` | — | Glass: the lens's swell under the hand |
 | `--scrub-breathe-dur` | `3s` | — | Cyber: the bolt's glow, one way |
+| `--scrub-bob-amp` | `1.5px` | — | Ocean: how far the float bobs |
+| `--scrub-lens-ring-w` | `1.5px` | — | Glass: the lens's rim |
+| `--scrub-glow-min` | `1.5px` | — | Cyber: the bolt's glow at rest in its breath … |
+| `--scrub-glow-max` | `5px` | — | … and at its brightest |
+| `--scrub-glow-held` | `3px` | — | Cyber: the glow while the bolt is held |
 
 ### scrubber (handle is a skin-swappable SVG mask)
 
@@ -587,6 +597,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 |---|---|---|---|
 | `--lib-pill-radius` | `999px` | press, glass, cyber | fully-rounded sort/view pills |
 | `--lib-pop-radius` | `var(--radius-panel)` | press, cyber |  |
+| `--lib-pop-dir-size` | `26px` | — | a direction / density square in the Sort and View pops |
 | `--lib-grid-gap` | `var(--space-2)` | — |  |
 | `--lib-tile-small` | `84px` | — | min tile width — small squares (denser) |
 | `--lib-tile-large` | `132px` | — | min tile width — large squares |
@@ -684,6 +695,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--search-pin-size` | `var(--icon-sm)` | — |  |
+| `--search-artist-w` | `72px` | — | The search card's own geometry (2026-09-27, the pixel pass): the round artist tile, its art, a Songs column in the two-row shelf, and the busy dot beside the field. |
+| `--search-artist-art` | `64px` | — |  |
+| `--search-song-col-w` | `170px` | — |  |
+| `--search-busy-size` | `6px` | — |  |
 
 ### micro-motion (hover/expand/spin; nav has its own --nav-*)
 
@@ -745,6 +760,16 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 |---|---|---|---|
 | `--picked-strength` | `14%` | — | how hard a picked row's fill reads |
 
+### title menu flyouts
+
+| Token | Base | Overridden by | Note |
+|---|---|---|---|
+| `--flyout-ring-w` | `var(--focus-ring-w)` | — | the hover ring on a flyout row, and the inset ring on a half |
+| `--flyout-account-w` | `200px` | — | the Account flyout's floor: the sign-in line must not wrap |
+| `--spinner-w` | `2px` | — | the account spinner's stroke |
+| `--caret-size` | `8px` | — | the small chevron: a pill's caret, a shelf's fold, a column's sort arrow |
+| `--radius-round` | `999px` | — | a capsule or a circle: the fully-rounded radius the pill tokens also use |
+
 ### focus ring (one place to restyle every focus state)
 
 | Token | Base | Overridden by | Note |
@@ -772,6 +797,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
+| `--space-half` | `2px` | — | the half step: a chip's vertical padding, a tight gap between column buttons |
 | `--space-1` | `4px` | — |  |
 | `--space-2` | `8px` | — |  |
 | `--space-3` | `12px` | — |  |

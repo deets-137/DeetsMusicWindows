@@ -10,6 +10,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { errorOf } from "./dom";
 import type { Track } from "./library";
 import type { MenuItem } from "./context-menu";
 import { songItem, type HomeItem } from "./home";
@@ -62,7 +63,7 @@ interface SotdSettings {
   sotdPostAs: string;
 }
 
-const err = (what: string) => (e: unknown) => console.error(`[sotd] ${what}`, e);
+const err = errorOf("sotd");
 
 let picks: Pick[] = [];
 let today = "";

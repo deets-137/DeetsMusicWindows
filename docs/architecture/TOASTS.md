@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-20
 sources: [src/toast.ts, src/styles/toast.css]
-updated: 2026-09-25
+updated: 2026-09-27
 ---
 # DeetsMusic — Toasts
 
@@ -427,6 +427,8 @@ token without MusicKit's logout call.
 | `main.ts` — an invite link arrived | info (sticky) **with actions** | Join listening room K7QM-4XHT? **[Join] [Not now]** | Added 2026-09-17 (ROOMS.md §1). Any page can open a `deetsmusic://` link, so nothing joins on its own. |
 | `main.ts` — an invite while already in a room | info | Leave the room you are in before you join another. | Added 2026-09-17. |
 | `stats.ts` — Rewind unlock at 50 starts | info | Rewind unlocked: your listening, ranked. Pick it from any slot's title. | `all` tier (the card also just appears in the pickers, as before). |
+| `agent-settings.ts` — an agent set a setting, Agent changes settings = Allow (2026-09-15) | info | An agent set *Keep on top* to *Always*. | The quiet notice every agent write gets (AGENT.md §6). With = Ask, the sticky question "An agent wants to set …" **[Allow] [Not now]** shows instead, and the reply to the agent is `pending`. Ledgered 2026-09-27 |
+| `home-card.ts` — right-click a Home tile › Hide (2026-09-15) | info **with an action** | Hid *Name* **[Undo]** | The destructive-action rule (§6): a hide can be undone, so it runs at once and offers Undo. HOME.md §5. Ledgered 2026-09-27 |
 
 **Investigated, not built — a library playlist Apple no longer has** (FUTURE-SETTINGS §18
 candidate 3). The mirror sync `DELETE`s and re-inserts `apple_playlists` from Apple's own

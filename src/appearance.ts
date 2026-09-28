@@ -18,7 +18,7 @@
 // Snaps (calls `fn` directly) when Animate look changes is off, the OS asks for reduced motion,
 // or the launch cover is still up.
 
-import { setting } from "./settings-store";
+import { effective } from "./settings-store";
 import * as frames from "./frames";
 import { tokenMs, nextFrame } from "./boot-cover";
 import type { SkinName } from "./skin";
@@ -66,7 +66,7 @@ export function withAppearanceTransition(
   opts: { skin?: SkinName; after?: () => void; by?: "agent" } = {},
 ): void {
   const root = document.documentElement;
-  if (!setting("appearanceMotion") || reducedMotion() || (phase === null && root.dataset.boot !== undefined)) {
+  if (!effective("appearanceMotion") || reducedMotion() || (phase === null && root.dataset.boot !== undefined)) {
     const r = fn();
     if (r) void r.then(() => opts.after?.(), (e) => console.error("[appearance]", e));
     else opts.after?.();
@@ -110,7 +110,7 @@ export function withThemeFade(fn: () => void, after: () => void): void {
     withAppearanceTransition("theme", fn, { after });
     return;
   }
-  if (!setting("appearanceMotion") || reducedMotion() || typeof document.startViewTransition !== "function") {
+  if (!effective("appearanceMotion") || reducedMotion() || typeof document.startViewTransition !== "function") {
     fn();
     after();
     return;

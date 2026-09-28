@@ -29,10 +29,12 @@ import {
   removeFriend,
   renameFriend,
   takePendingInvite,
+  type FriendPresence,
   type FriendRow,
 } from "./friends";
-import { goToAlbumItem } from "./go-to";
-import { playContext } from "./player";
+import type { Track } from "./library";
+import { songMenu } from "./media-menu";
+import { trackById } from "./track-store";
 import { roomState } from "./room";
 import { setSetting } from "./settings-store";
 import { toast } from "./toast";
@@ -226,28 +228,39 @@ function box(row: FriendRow): El {
   return b;
 }
 
-/** The right-click menu: the song's actions, then the friend's (§3, his call 2026-09-20). */
-function menuFor(row: FriendRow, live: boolean): MenuItem[] {
-  const items: MenuItem[] = [];
-  const p = live ? row.presence : null;
+/** The song a friend plays, as a Track: yours from the store when you have it, else one built
+ *  from the presence (its title, artist, album and cover). Enough for every song row; it joins
+ *  the transient store on a play (`catalog`), as a Search result does. */
+const trackOf = (p: FriendPresence): Track | undefined =>
+  p.catalogId
+    ? (trackById(p.catalogId) ?? {
+        catalogId: p.catalogId,
+        title: p.title,
+        artistName: p.artist,
+        albumName: p.album || undefined,
+        genres: [],
+        hasLyrics: false,
+        artwork: p.artworkUrl ? { urlTemplate: p.artworkUrl, width: 600, height: 600 } : undefined,
+      })
+    : undefined;
 
-  if (p?.catalogId) {
-    items.push({
-      label: "Play Now",
-      run: () => void playContext([{ catalogId: p.catalogId!, context: `friend:${row.code}` }], 0),
-    });
-    const album = goToAlbumItem(p.catalogId, p.album || undefined);
-    if (album) items.push(album);
-  }
+/** The right-click menu: the song they play gets the whole song menu (CONTEXT-MENUS.md §3.1,
+ *  through the builder since 2026-09-27 — before that the box listed Play Now and Go to Album
+ *  by hand, his call of 2026-09-20, the one song row off the builder), then the friend's own
+ *  rows (group 6) and Remove last (group 7). Off line, or playing nothing: the friend's rows
+ *  alone, as before. */
+function menuFor(row: FriendRow, live: boolean): MenuItem[] {
+  const p = live ? row.presence : null;
+  const own: MenuItem[] = [];
   // Invite by name (§7.1): no pasting, one message on a socket that is already open.
   if (roomState().isHost && roomState().code && row.online) {
-    items.push({ label: "Invite to my room", run: () => inviteToRoom(row.code) });
+    own.push({ label: "Invite to my room", run: () => inviteToRoom(row.code) });
   }
-  items.push({
+  own.push({
     label: "Copy their code",
     run: () => copy(formatFriendCode(row.code), "Their friend code is copied."),
   });
-  items.push({
+  own.push({
     input: {
       label: "Rename",
       placeholder: "What you call them",
@@ -255,18 +268,20 @@ function menuFor(row: FriendRow, live: boolean): MenuItem[] {
       onSubmit: (value: string) => void renameFriend(row.code, value),
     },
   });
-  items.push({
-    label: "Remove",
-    run: () => {
-      void removeFriend(row.code);
-      toast({
-        kind: "info",
-        text: `${row.name || "They"} is off your list.`,
-        actions: [{ label: "Undo", run: () => void addFriend(row.code, row.name) }],
-      });
+  const away: MenuItem[] = [
+    {
+      label: "Remove",
+      run: () => {
+        void removeFriend(row.code);
+        toast({
+          kind: "info",
+          text: `${row.name || "They"} is off your list.`,
+          actions: [{ label: "Undo", run: () => void addFriend(row.code, row.name) }],
+        });
+      },
     },
-  });
-  return items;
+  ];
+  return songMenu(p ? trackOf(p) : undefined, { context: `friend:${row.code}`, catalog: true, catalogId: p?.catalogId ?? undefined, own, away });
 }
 
 /**

@@ -43,13 +43,14 @@ import { pinRows, pinItem, pinActItem, songKey, isPinned, setPin, clearPin } fro
 import { albumKey, pid } from "./rewind";
 import { picksText } from "./row-pick";
 import { setting } from "./settings-store";
+import { errorOf } from "./dom";
 
 type Row = MenuItem | null | undefined | false;
 
 /** Join the groups in their fixed order and drop the rows that do not apply. */
 const join = (...groups: Row[][]): MenuItem[] => groups.flat().filter(Boolean) as MenuItem[];
 
-const err = (what: string) => (e: unknown) => console.error(`[menu] ${what}`, e);
+const err = errorOf("menu");
 
 /** Where a menu opens: what every builder needs from its card. */
 export interface Where {

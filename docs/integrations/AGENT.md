@@ -452,6 +452,10 @@ Max), **except**:
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
 | `glassPictureId` (Glass › Picture, 2026-09-27, RULEZ.md §5) | Its values are file ids that differ per machine, and an agent cannot choose files. `glassCanvas` is exposed; a picture is set through the `rules` verb's `picture` word (§8). |
 | Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |
+| Home › Hiding lasts (`homeHideLasts`) and Hidden tiles (`homeHidden`) | A hide is the user's own gesture on a tile, so its rows stay out (`agent-settings.ts`, the Home comment). |
+| The Room panel's name (`roomName`) and the worker addresses | Text, which this route has no kind for (the Rooms comment in `agent-settings.ts`). A room's name is set in the panel. |
+| The three hover-hint rows (`hoverHints`, `hoverHintDelay`, `hoverSongNames`) — **specced 2026-09-27** | Found by the consistency survey with no spec and no reason; they gate nothing, so they are ordinary rows now, in *Menus, hints and notices*. (The survey also named the four open sizes; they were always there, as `kind: "size"`.) |
+| Written by the app, never by a row: `sharePauseUntil` (the Pause half writes it; a rule reads it), `homeHidden` (the hidden tiles), `onboardingStep` (the first-run walk's next stop; Settings › Tips writes 1), `shuffleMode` and `repeatMode` (the transport's live state; `control` owns them), `rules` (the `rules` verb, §8), `quickSeen` (the New badges), `friendsUrl` / `roomsUrl`, and the Sound internals (`soundEqCustom`, `soundEqUser`, `soundEqOutputs`, `soundOutputNames`, `soundEqPreampDb`, `soundFirstOn`, `soundReviewed`) | State, not preferences. Each has an owner that is not the Settings card, and a verb where an agent needs it. |
 
 Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_tray`,
 `startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`,

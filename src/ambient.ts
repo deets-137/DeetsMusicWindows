@@ -19,14 +19,14 @@
 // loops still and hides the storm (styles.css).
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { setting, onSettingsChange } from "./settings-store";
+import { effective, onSettingsChange } from "./settings-store";
 
 export function initAmbient(): void {
   const win = getCurrentWindow();
   const root = document.documentElement;
 
   const applyMotion = () => {
-    root.dataset.bgMotion = setting("backgroundMotion");
+    root.dataset.bgMotion = effective("backgroundMotion");
   };
   applyMotion();
   onSettingsChange((k) => {

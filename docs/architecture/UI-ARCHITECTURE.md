@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/skin-settings.ts, src/skin.ts, src/main.ts, src/library-card.ts, src/styles.css, src/hint.ts]
-updated: 2026-09-18
+updated: 2026-09-27
 ---
 # DeetsMusic — UI Architecture
 
@@ -619,10 +619,40 @@ meaningful (e.g. a future playlists overview). Library's contexts:
 
 **Toolbar.** Three fully-rounded pills — **Sort · View · Search** (width **40/40/20**).
 Sort/View open popovers (`.lib-pop`) that are **portaled to `<body>`** and
-fixed-positioned under their pill (same pattern as the right-click menu below) so they
-can **overflow the card** — the pane's transform + the clipping viewport would otherwise
-trap an in-card popover. Position clamps to the live viewport (flips above the pill when
-there's no room below); dismissal is outside-press / Escape / scroll / resize. **Search**
+fixed-positioned under their pill so they can **overflow the card** — the pane's transform
++ the clipping viewport would otherwise trap an in-card popover. Position clamps to the live
+viewport (flips above the pill when there's no room below, `data-above`); a scroll or a
+resize closes it.
+
+> **Part:** built · 2026-09-27 · desk test open
+>
+> **On the dropdown primitive since 2026-09-27.** Until then the pop was its own mechanism
+> (built and placed on each open, its own away-click and Escape), the one popover in the app
+> off `makeDropdown`, with no arrival motion and deaf to *Open menus on hover*. Now: one panel
+> per kind (`.lib-pop.pop`), made once on `<body>`, and `wirePops` (collection-card.ts) binds a
+> handle to the live pill after every head render and on a pane slide (a kept head keeps its
+> handle). `onOpen` fills the panel from the frame, places it, moves the focus in from the
+> keyboard, and slides the choices in. What came with it: hover mode, the `.pop` arrival,
+> a click away / Escape / the pill to close, one open dropdown at a time app-wide, and the
+> primitive's rule that a row re-rendered away is not a click away. A click inside keeps it
+> open, so tweaks continue. `dropdown.ts` `destroy()` now removes the root, trigger and panel
+> listeners: a panel that outlives its handle kept every old handle's hover listeners.
+>
+> **Desk test.** 1. Library: press Sort; the pop rises under the pill and its rows slide in;
+> pick a key, then the direction: the list re-sorts and the pop stays; click a row: it closes.
+> 2. Press View: Sort closes as View opens; pick a density: the place is kept. 3. Drag the
+> window short so Sort has no room below: the pop opens above the pill and grows upward.
+> 4. Settings › Menus › Open menus on hover: rest on Sort, it opens; move into it (the gap
+> is bridged); move away: it closes after a moment; a click still pins it. 5. Drill into an
+> album, press Sort there; Back; press Sort on the root list: each pane's pill opens its own
+> pop with its own keys. 6. Tab to Sort, Enter: the focus lands on the choice in force; the
+> arrows walk; Escape closes and the ring is back on the pill (COMPASS.md §5). 7. A grown
+> card: Escape with the pop open closes the pop, not the grow; a second Escape collapses.
+> 8. Scroll the list with the pop open: it closes. 9. Playlists and Radio: the same pills, the
+> same pop. 10. Swap the card out of its slot and back: one pop, no doubles (DevTools:
+> `document.querySelectorAll(".lib-pop").length` is 2 at most, one per kind).
+
+**Search**
 is an icon pill that
 **slides an inline search bar down** below the pills (`grid-rows 0fr→1fr`), pushing the
 list down. Search is case-insensitive **substring** on title/artist/album; its pill
@@ -888,6 +918,55 @@ the line + lift colors are theme roles.
 they require explicit permissions in `src-tauri/capabilities/default.json`
 (`core:window:allow-minimize`, `…allow-toggle-maximize`, `…allow-close`,
 `…allow-start-dragging`, etc.). `core:default` alone is not enough.
+
+---
+
+## 4c. Splitting `styles.css` — considered, not decided (2026-09-27)
+
+> **Part:** project · 2026-09-27 · the owner's call
+
+**What is there.** `styles.css` is 4,357 lines in 45 top-level sections, loaded by
+`index.html` and `tray.html`. Eight feature sheets sit beside it in `src/styles/` and each is
+imported by the module that owns it (`import "./styles/diary.css"` in diary-card.ts): compass,
+diary, qcard, rewind, settings, toast, hint, walk. `qcard.css` is the one shared sheet: the
+song-row shape five cards draw, imported by each. The three token tiers (palette, themes,
+skin) are their own files and `npm run tokens` reads only `skin.css`, so a split touches no
+token. `docs:check` 23 reads every `.css` under `src/`, so a split hides no scroller.
+
+**What a split would help.** A reader could hold one card's rules (the Library card's
+toolbar, views, hero and windowing are about 900 lines of the 4,357). A card's sheet would
+load with the card, as the eight sheets do now. The pattern the newer features follow would be
+the whole app's pattern instead of half of it. The consistency survey found that half-applied
+patterns are where drift starts.
+
+**What a split would drift, unless a rule stops it.**
+1. **The families fork.** UI-ARCHITECTURE §2a's control families (the panel chip, the menu
+   row, the icon square, the split pill, the field, the tile badge) are shared rules in the base
+   file. Moved into a card's sheet, or copied into two, they fork per card — the exact AirPlay
+   lesson of 2026-09-17. So: **a class that two modules reference stays in the base sheet**, as
+   `qcard.css` already shows for a shared row shape.
+2. **The cascade changes silently.** 191 classes are declared in more than one place in
+   `styles.css` (`.panel` in 13, `.lib-row` in 12, `.grow-zone` in 11): a later rule of equal
+   specificity wins by order alone. Today that order is one file, top to bottom. After a split
+   it is Vite's import order, which is the order the card modules happen to load in. A rule
+   that moved from before to after its sibling changes what the user sees, with no diff to
+   show it. So: **a split is a pure move, one section at a time, and the base keeps every rule
+   a moved rule depended on for order** — the primitives (`.pop`, `.ctx-menu`, the `:is()`
+   scrollbar list, the list-keys ring, the row-drag ghost), the panel and bento, the ambient
+   layers, the title bar.
+3. **Nothing measures it.** There is no visual diff. The honest verification is the Shots
+   pictures (`node scripts/shots.mjs`, SHOTS.md): the same set before and after the move, and
+   a `[perf] frames` read on the appearance bench, since a sheet that loads later can also
+   paint later.
+
+**The verdict.** A split helps only with the rule in (1) and a check that holds it: a check 27
+in `docs-check.mjs`, *a class declared in a card's sheet is referenced by that card's module
+alone*. Without the check, the split is a fork waiting to happen and the single file is the
+safer of the two. With it, the split is one sitting per card, after the desk-test runbook has
+run (so a pixel that moves is the move's, not tonight's), verified by Shots.
+
+**The fork, his:** leave the one file · split by card with check 27 first · split only the
+biggest section (the Library / collection engine) as a trial.
 
 ---
 

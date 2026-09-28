@@ -209,6 +209,14 @@ const OPEN_IN: Choice[] = [{ value: "library", label: "Library" }, { value: "sea
 
 const SHARING = ["shareActivityApp", "shareActivityDiscord", "discordRoomInvite"] as const;
 const ON_OFF: Choice[] = [{ value: true, label: "On" }, { value: false, label: "Off" }];
+const MOTION: Choice[] = [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }];
+const NOTICES: Choice[] = [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }];
+/** A While word that holds one Settings row at a value: its id is the row's key, so `doWordOf`
+ *  finds it by the key (RULES.md §18, the rule keys of 2026-09-27). The label is the row's. */
+const keyWord = (key: string, section: Section, label: string, choices: Choice[]): DoWord => ({
+  id: key, section, label, input: "choice", choices,
+  state: (v) => [{ target: { key: key as never }, value: choices === ON_OFF ? v === true : v }],
+});
 const AXES: Choice[] = [{ value: "full", label: "To Fill" }, { value: "vertical", label: "Taller" }, { value: "horizontal", label: "Wider" }];
 
 export const DOS: DoWord[] = [
@@ -271,6 +279,15 @@ export const DOS: DoWord[] = [
   // Route 8 (RULEZ.md §10.1).
   { id: "shuffleLibrary", section: "Playback", label: "Play the library shuffled", input: "none", moment: () => ({ shuffleLibrary: true }) },
   { id: "openIn", section: "Library", label: "Open it in", input: "choice", choices: OPEN_IN, goTo: true, moment: (v) => ({ openIn: v === "library" ? "library" : "search" }) },
+  // The rule keys of 2026-09-27 (Battery saver, Focus): While rows only.
+  keyWord("backgroundMotion", "Look", "Animate backgrounds", MOTION),
+  keyWord("appearanceMotion", "Look", "Animate look changes", ON_OFF),
+  keyWord("cardSwapMotion", "Look", "Animate card swaps", ON_OFF),
+  keyWord("fancyScrubber", "Look", "Fancy scrubber", ON_OFF),
+  keyWord("glassFancy", "Look", "Fancy Glass", ON_OFF),
+  keyWord("friendsListenAlong", "Sharing", "Let friends listen along", ON_OFF),
+  keyWord("friendsRoomInvite", "Sharing", "Put my room code on my box", ON_OFF),
+  keyWord("toasts", "Window", "Show notices", NOTICES),
 ];
 
 export const doWord = (id: string): DoWord | undefined => DOS.find((d) => d.id === id);
@@ -442,7 +459,10 @@ export function setText(set: StateSet, lists: Lists): string {
       else if (t.key === "cardGrowOutside") out.push(`Collapse on outside click: ${s.value ? "On" : "Off"}`);
       else if (t.key === "glassPictureId") out.push(`Use the picture ${labelOf(lists.pictures, s.value)}`);
       else if (t.key === "glassCanvas") continue; // one part with the picture
-      else out.push(`Set ${t.key}`);
+      else {
+        const w = doWord(t.key);
+        out.push(w ? `${w.label}: ${labelOf(choicesOf(w, lists), s.value)}` : `Set ${t.key}`);
+      }
     } else {
       const v = Number(s.value);
       const db = `${v > 0 ? "+" : ""}${v} dB`;
@@ -500,6 +520,10 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
   love: { act: "loves the song" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
   shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" },
+  backgroundMotion: { keep: "keeps Animate backgrounds" }, appearanceMotion: { keep: "keeps Animate look changes" },
+  cardSwapMotion: { keep: "keeps Animate card swaps" }, fancyScrubber: { keep: "keeps Fancy scrubber" },
+  glassFancy: { keep: "keeps Fancy Glass" }, friendsListenAlong: { keep: "keeps Let friends listen along" },
+  friendsRoomInvite: { keep: "keeps Put my room code on my box" }, toasts: { keep: "keeps Show notices at" },
 };
 export const saysOf = (w: DoWord, moment: boolean): string => (moment ? SAYS[w.id]?.act : SAYS[w.id]?.keep) ?? w.label.toLowerCase();
 
@@ -519,7 +543,9 @@ export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
   if (w.id === "openIn") return v === "library" ? "the Library" : "Search";
   const label = labelOf(choicesOf(w, lists), v);
   // Words that are not names read lower case in the sentence ("grows this card taller").
-  return w.id === "grow" || w.id === "shuffle" || w.id === "scrobble" || w.id === "growOutside" || w.id === "repeat" ? label.toLowerCase() : label;
+  const plain = w.id === "grow" || w.id === "shuffle" || w.id === "scrobble" || w.id === "growOutside" || w.id === "repeat"
+    || w.choices === ON_OFF || w.choices === MOTION || w.choices === NOTICES;
+  return plain ? label.toLowerCase() : label;
 }
 
 const lower = (s: string) => (s ? s[0].toLowerCase() + s.slice(1) : s);

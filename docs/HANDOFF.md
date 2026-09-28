@@ -112,6 +112,12 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Eight more rule keys, Battery saver, Focus (2026-09-27 evening, built, desk test open,
+uncommitted).** Motion, Fancy Glass, the two Friends switches and Show notices are rule keys;
+the recipe Battery saver holds four of them off while not charging; Focus also stops
+listen-along and keeps notices at Failures. The unplug test is his, on a laptop
+([RULES.md §18a](architecture/RULES.md)).
+
 **The dead-next heal's double play (2026-09-27 17:10, built, desk test open).** A song
 healed after a failed auto-advance played with no MusicKit index, never grew its window, and
 replayed at its end (twice on live that day). The heal now loads with `stopFirst`, and the
@@ -123,17 +129,35 @@ against its users. Written down: the new-card recipe (SURFACES-AND-CARDS.md §5,
 who-adopts-what table), checklist items 0 and 11–14 in CLAUDE.md, and the doc corrections
 (SETTINGS.md's eight missing keys, AGENT.md's no-spec rows, ONBOARDING.md's album and playlist
 menus and ten hints, TOASTS.md's two sites). **Left as found, his to close or leave:**
-- No arrow keys on Rewind, Diary and Rulez rows (`wireListKeys`, SURFACES-AND-CARDS.md §5 step 4).
-- The OS scrollbar on `.quick__panel`, `.room__panel`, `.compass`, `.set__menu`, `.set__preview`
-  (no `app-scroll`, not in the `:is()` list; CLAUDE.md checklist 6a).
-- The Library's Sort / View pop (`collection-card.ts` `openPop`) is a fourth popover: no
-  arrival motion, ignores *Open menus on hover*.
-- The Friends panel's song row builds Play Now · Go to Album by hand (CONTEXT-MENUS.md §5
-  names it as a non-media menu; it is the one song menu off the builder).
-- Six Settings rows have no agent spec and no recorded reason (AGENT.md § Which settings).
-- `styles.css` holds 68 raw px values in component rules; every other stylesheet has none.
-- `docs:check` catches none of the above; a settings-key and a toast-site cross-check would
-  fit as checks 20 and 21.
+- ~~No arrow keys on Rewind, Diary and Rulez rows~~ — **built the same evening, uncommitted**;
+  his desk test is [COMPASS.md §5a](features/COMPASS.md).
+- ~~The OS scrollbar on five scrollers~~ — **corrected the same evening:** the survey's grep
+  read `src/*.ts` only; `.quick__panel`, `.room__panel` and `.compass` carry `app-scroll` in
+  `index.html` and always did. The two real misses, `.set__menu` (a long Settings menu, Sleep
+  at) and `.set__preview` (the App log preview), got the class (uncommitted; his look).
+- ~~The Library's Sort / View pop is a fourth popover~~ — **rebuilt on `makeDropdown` the same
+  night, uncommitted** (his call): a portaled `.pop` panel per kind, re-bound to the live pill
+  on each head render (`wirePops`); hover mode, the arrival and the one dismiss path came with
+  it. `dropdown.ts` `destroy()` now drops the trigger, root and panel listeners too. His desk
+  test is [UI-ARCHITECTURE.md §4a](architecture/UI-ARCHITECTURE.md), under Toolbar.
+- ~~The Friends panel's song row builds Play Now · Go to Album by hand~~ — **on the builder
+  since the same evening, uncommitted** (his call); the desk test is CONTEXT-MENUS.md §8 step 11
+  (two dev apps).
+- ~~Six Settings rows have no agent spec~~ — **corrected and closed the same evening:** the open
+  sizes always had one (`kind: "size"`, the survey's grep missed the key map); Hiding lasts and
+  the room name are left out with a reason in `agent-settings.ts`; the three hover-hint rows
+  were the real miss and have a spec now (AGENT.md § Which settings; uncommitted).
+- ~~`styles.css` holds 68 raw px values in component rules~~ — **routed to tokens the same
+  night** (eleven new skin tokens: `--space-half`, `--caret-size`, `--radius-round`, the search
+  card's four, the scrubber's five, the ocean bob amplitudes, the sand tile, the flyout ring and
+  Account floor). What stays raw is SVG user units (a viewBox origin, the storm's x), each
+  commented as such. `npm run tokens` regenerated TOKENS.md. His look: nothing should have
+  moved a pixel.
+- ~~`docs:check` catches none of the above~~ — **checks 20–26 built the same night**
+  (DOCS-ORG.md §8): settings keys, toast sites, hover hints, scrollers, right-click listeners,
+  boxes placed by hand, list keys. Facts; the first run found 19 more than the survey had.
+- **The open desk tests are one runbook now:** [ops/DESK-TESTS.md](ops/DESK-TESTS.md) — §0 is
+  the prompt for an agent in its own session; 14 rows an agent can run, 6 that are his.
 
 **In flight:** Rulez on `rules-rulez`: **every route is built and Claude's desk tests have
 run, with music** ([RULEZ.md](features/RULEZ.md) §2, §8, §10.2). Route 8's five steps were
@@ -209,7 +233,9 @@ gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runne
 (`npm test`, `npm run check`, the pre-push hook).
 - Kept by his call (2026-09-25): every `console.error` writes an ERROR line to the log file,
   a failure the app already handles included (an Apple 401 on one playlist refresh).
-- Later, not decided: tests for `media-menu.ts` need a stub map in `tests/setup.mjs` (it
+- ~~Later, not decided: tests for `media-menu.ts` need a stub map~~ — **built 2026-09-27:**
+  `tests/media-menu.test.ts` with its own resolve hook and `tests/stubs/menu-deps.ts` (14
+  tests on the row order of every media type). The old note, for the record: the tests need a stub map in `tests/setup.mjs` (it
   loads the player and MusicKit). The extension manifest's version is a hard fail in
   `release-check` since 2026-09-26 (RELEASE.md, the seven version files).
 

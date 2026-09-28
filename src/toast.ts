@@ -22,7 +22,7 @@
 //   onceKey     a notice that shows ONCE (2026-09-14): sticky, shows under every tier,
 //               ends with "Got it", and ANY button press writes "off" to the key.
 //
-// Tiers (`setting("toasts")`): "failures" = warn + error + notices · "all" = every
+// Tiers (`effective("toasts")`): "failures" = warn + error + notices · "all" = every
 // kind. There is no "off" (removed 2026-09-14): a failure must always reach the user.
 // A toast that ASKS — sticky with the caller's own actions — shows under every tier,
 // because a muted question would stop the action it gates. A gated call returns an inert handle (`shown: false`), and
@@ -36,7 +36,7 @@
 // oldest sticky was removed with its buttons and their closures unrun.
 // Main window only: the tray panel and the extension popup keep the console.
 
-import { setting } from "./settings-store";
+import { effective } from "./settings-store";
 import * as diag from "./diag";
 import "./styles/toast.css";
 
@@ -199,7 +199,7 @@ export function onToast(fn: ToastObserver): () => void {
 
 /** Does the current tier let this call through? A question (`asks`) always does. */
 function admitted(kind: ToastKind, notice: boolean, asks: boolean): boolean {
-  if (asks || setting("toasts") === "all") return true;
+  if (asks || effective("toasts") === "all") return true;
   return notice || kind === "warn" || kind === "error";
 }
 
@@ -233,7 +233,7 @@ export function toast(opts: ToastOptions): ToastHandle {
     return INERT;
   }
   if (!admitted(kind, notice, asks)) {
-    diag.log("toast:muted", { kind, text, why: `tier-${setting("toasts")}` });
+    diag.log("toast:muted", { kind, text, why: `tier-${effective("toasts")}` });
     return INERT;
   }
   diag.log("toast", { kind, text, sticky, notice });

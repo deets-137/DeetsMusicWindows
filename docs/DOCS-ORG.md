@@ -339,11 +339,26 @@ Deterministic, fast, free. No model runs. It joins the release check
 | 10 | `docs/README.md` is stale against the front matter | the generated index not regenerated |
 | 11 | a doc in `ideas/` with a status above `idea` | the exact DeetsOTD failure, caught in one second |
 | 17 | a part marker (§5.1) with a status not in the table; or `designed` on a part whose code exists | a half-built doc whose other half landed unseen (the first half is a fact, the second a suspicion) |
+| 20 | every settings key has an agent spec or a reason in AGENT.md, and a row in SETTINGS.md | the three hover-hint rows no agent could reach (2026-09-27) |
+| 21 | every module that calls `toast()` has a row in TOASTS.md §5 | the agent-set line and Home's Hide + Undo, unledgered for twelve days |
+| 22 | every literal `title` hint is in ONBOARDING.md §1 | 27 hints off the ledger the day the check was written |
+| 23 | every element that scrolls draws the app's bar (`app-scroll`, or the `:is()` list) | the Settings menus and the log preview on the grey OS bar |
+| 24 | every `contextmenu` listener's module is named in CONTEXT-MENUS.md or ONBOARDING.md §2 | a card that builds its own song menu again |
+| 25 | a floating box placed by hand is one of the known placers | a fourth popover primitive (the Sort / View pop, until 2026-09-27) |
+| 26 | every card with rows takes the keyboard (`wireListKeys` or the collection engine) | Rewind, Diary and Rulez with no arrow keys |
 
-Checks 1, 2, 3, 5, 7 and 11 are **facts**. They fail the build.
-Checks 6, 8, 9 and 10 are **suspicions**. They print and do not fail, because a doc can be
-correct and older than its code. Check 8 will be noisy on the first run. That noise is the
-sweep's input, not an error.
+Checks 20–26 (2026-09-27) read the CODE against its ledgers: each one is a grep the
+consistency survey ran by hand that evening, five of whose seven findings were partly wrong
+for reading the wrong scope. The right scope lives in the script now, with the allowlists
+(`PLACERS`, `NO_LIST_CARDS`) that carry a reason per line.
+
+**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 11, 18, 19 and 20–26. All of them are
+**facts**: they fail the build. **Planned, not written:** 6, 7, 8, 9, 10 and 17 — the rows
+stay in the table as the design, and this line says the script does not hold them yet (found
+2026-09-27; the table had read as if they ran, and one doc cited check 7 as a fact). Of the
+planned ones, 7 is a fact and 6, 8, 9, 10 are **suspicions**: they would print and not fail,
+because a doc can be correct and older than its code. Check 8 will be noisy on its first run.
+That noise is the sweep's input, not an error.
 
 Written once, in `scripts/docs-check.mjs`, beside the other scripts. It runs no model, so it
 costs nothing on every release.

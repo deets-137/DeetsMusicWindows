@@ -12,7 +12,7 @@
 // already on screen) passes `ownMotion` and follows reduced motion only. The shape is skin
 // tokens (skin.css §chip flight).
 
-import { setting } from "./settings-store";
+import { effective } from "./settings-store";
 import { requestDrillCard, cardHost, drillSwapsInPlace } from "./layout-bus";
 import { makeGhost } from "./row-drag";
 import { whenSwapSettled } from "./card-swap";
@@ -40,7 +40,7 @@ export function handOff<T>(
   /** The flight moves no card, so Animate card swaps does not govern it; reduced motion still does. */
   ownMotion = false,
 ): void {
-  if ((!ownMotion && !setting("cardSwapMotion")) || reduced() || !tile.isConnected) {
+  if ((!ownMotion && !effective("cardSwapMotion")) || reduced() || !tile.isConnected) {
     requestDrillCard(target);
     open(undefined);
     return;

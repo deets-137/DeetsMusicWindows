@@ -649,6 +649,59 @@ unseen):
   the sharing switches while a rule acts on them — green when a rule set the value, red when
   your pick holds (§9). The New badge became a yellow dot of the same kind.
 
+### 18a. Eight more rule keys, Battery saver, Focus (2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test open (below)
+
+**His calls (2026-09-27; my recommendation on all five forks).** The rule keys went first,
+before any new events. The test: a key is a rule key when a fact we already have can decide
+*while* it holds another value.
+
+- **The eight keys:** `backgroundMotion`, `appearanceMotion`, `cardSwapMotion`,
+  `fancyScrubber`, `glassFancy`, `friendsListenAlong`, `friendsRoomInvite`, `toasts`.
+- **Dropped at the check: the network keys** (`streamQuality`, `homeApple`,
+  `playlistAutoRefresh`). The only fact for them, `dataSaver`, reads
+  `navigator.connection.saveData`, which Windows never sets, not on a metered connection either.
+  *Auto* stream quality already follows the network speed (`player.ts applyStreamQuality`).
+  A `metered` fact read from Windows in Rust would open them; not built.
+- **Recipe Battery saver** (`battery`): *While charging is false* → Fancy Glass off, Animate
+  backgrounds Reduced, Animate card swaps off, Animate look changes off; `onHand: "next"`. The
+  Fancy scrubber stays yours. A desktop reports charging, and a WebView with no battery API has
+  no fact, so the rule never holds on either.
+- **Focus** adds the two Friends switches to its sharing rule (`recipe:focus:0`) and a new rule
+  `recipe:focus:2`, *Show notices: Failures*. `SHARING_KEYS` does not change: it is also what
+  *Pause sharing for an hour* stops (FRIENDS.md D11), and that row covers the Sharing section only.
+- **The Glass sliders** in Settings follow your Fancy Glass (`ownSetting`), so you can tune them
+  while Battery saver holds it off; the row's dot shows the rule.
+- **The Rulez words** are the Settings rows' own labels and choices, While rows only (the shape
+  of *Collapse on outside click*): `keyWord()` in rulez-words.ts; the Logs view's names in
+  rulez-logs.ts.
+
+**The readers.** Each act-now read became `effective`: ambient.ts, appearance.ts,
+boot-cover.ts, card-swap.ts, handoff.ts, skin-settings.ts, wallpaper.ts, toast.ts, friends.ts.
+The listeners in ambient.ts, skin-settings.ts and wallpaper.ts already filter on the key, and
+the overlay fires them when a rule starts or ends.
+
+**Found on the way.** A change to *Put my room code on my box* did not send your box again, so
+a code switched off stayed on friends' rows until the next song. friends.ts now pushes at once
+when the switch's effective value changes while you host (by hand or by Focus).
+
+**Tests.** `tests/rule-keys.test.ts`: Battery saver holds on `charging: false` only; Focus sets
+the five sharing switches and *Failures*; the words read back as the rows'.
+
+**Desk test.**
+1. Rulez › Battery saver on. In DevTools, the charging fact cannot be set by hand, so on a
+   desktop the recipe reads *Would not run now*. Make a copy (Duplicate) and change its While to
+   *Always*: Glass with Fancy Glass on goes plain, the backgrounds slow, a card swap snaps, a
+   theme change has no animation. The Motion rows and Fancy Glass wear the green dot. Turn the copy off:
+   all four come back.
+2. With the copy on, set Animate card swaps on by hand: the dot turns red, swaps animate;
+   the hold ends at the next change of the fact (`next`).
+3. **His, on a laptop:** Battery saver on, unplug, then plug in again.
+4. Focus on: the two Friends rows and Show notices wear the green dot; an Add to Library shows
+   no confirmation; a failure still shows. Hosting a room with the invite on: a friend's row
+   loses the code at once when Focus turns on.
+
 ## 19. Adding a feature that uses rules
 
 > **Part:** guide · 2026-09-26

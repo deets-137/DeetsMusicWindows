@@ -305,7 +305,7 @@ function placeSoft(): void {
 }
 
 async function bakeSoft(w: number, h: number): Promise<void> {
-  if (setting("glassFancy")) {
+  if (effective("glassFancy")) {
     if (softUrl) setSoft(null); // the live frost blurs the sharp layer itself
     return;
   }

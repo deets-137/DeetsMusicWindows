@@ -53,6 +53,27 @@ const SHIPPED_LINKS = [
   "docs/AGENT-SETUP.md", // the Guide button (settings.rs) up to 0.12.2
   "docs/integrations/AGENT-SETUP.md", // the Guide button from 0.13.0
 ];
+// Checks 20–26 (2026-09-27, the consistency survey): the code against its ledgers. Each one
+// is a grep the survey ran by hand that evening; five of its seven findings were partly wrong
+// because the hand grep read the wrong scope, so the checks live here with the right one.
+// Check 25: the modules that place a floating box by hand, each with its reason. A popover
+// rides makeDropdown / openContextMenuUnder / openContextMenu (CLAUDE.md checklist 13).
+const PLACERS = {
+  "src/context-menu.ts": "the menu itself",
+  "src/collection-card.ts": "placePop: the Sort / View pop's panel, on makeDropdown",
+  "src/settings-card.ts": "the Settings menus' panels, on makeDropdown",
+  "src/airplay.ts": "the Play on panel, portaled out of the volume flyout, on makeDropdown",
+  "src/web.ts": "the web panel's artist results, on makeDropdown",
+  "src/hint.ts": "the hover box (ONBOARDING.md §1a)",
+  "src/walk.ts": "the first-run tour's stops (ONBOARDING.md §4)",
+  "src/row-drag.ts": "the drag ghost and the insertion line (DRAG-DROP.md §4)",
+  "src/layout.ts": "the card-swap copy (CARD-SWAP.md)",
+};
+// Check 26: the cards whose body is not a list of rows, so list-keys.ts does not apply.
+const NO_LIST_CARDS = {
+  "src/now-playing-card.ts": "one song, no rows",
+  "src/settings-card.ts": "rows of controls; Ctrl+F through find-key.ts, sections by hold",
+};
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n");
 // Private docs: a docs/*.md line in .gitignore. The file may not exist in this checkout.
@@ -203,12 +224,114 @@ export function check() {
     if (!existsSync(join(ROOT, p))) fail(19, p, 0, `a shipped app opens ${p} — leave a stub there (moved_to) when you move it`);
   }
 
+  // ── 20–26: the code against its ledgers (2026-09-27) ──
+  const srcTs = files.filter((f) => /^src\/[^/]+\.ts$/.test(f));
+  const src = new Map(srcTs.map((f) => [f, read(f)]));
+  const pages = ["index.html", "tray.html"].filter((f) => existsSync(join(ROOT, f))).map((f) => [f, read(f)]);
+  const doc = (p) => texts.get(p) ?? read(p);
+  const word = (t, w) => new RegExp(`(^|[^\\w])${w}([^\\w]|$)`).test(t);
+
+  // 20. Every settings key has an agent spec (agent-settings.ts) or a reason in AGENT.md § Which
+  //     settings, and a row in SETTINGS.md. SETTINGS.md §5 is the recipe.
+  {
+    const store = src.get("src/settings-store.ts") ?? "";
+    const start = store.indexOf("export interface Settings {");
+    const iface = start < 0 ? "" : store.slice(start, store.indexOf("\n}\n", start));
+    const agent = src.get("src/agent-settings.ts") ?? "";
+    const agentDoc = doc("docs/integrations/AGENT.md");
+    const settingsDoc = doc("docs/architecture/SETTINGS.md");
+    for (const m of iface.matchAll(/^  (\w+)\??:/gm)) {
+      const k = m[1];
+      const line = lineOf(store, start + m.index);
+      if (!agent.includes(`"${k}"`) && !word(agentDoc, k)) fail(20, "src/settings-store.ts", line, `${k} — no spec in agent-settings.ts and no line in AGENT.md § Which settings`);
+      if (!word(settingsDoc, k)) fail(20, "src/settings-store.ts", line, `${k} — not in SETTINGS.md §3 or §3a`);
+    }
+  }
+
+  // 21. Every module that shows a toast is in TOASTS.md §5, the ledger of call sites.
+  {
+    const ledger = doc("docs/architecture/TOASTS.md");
+    for (const [f, t] of src) {
+      if (f === "src/toast.ts" || !/\btoast\(/.test(t)) continue;
+      if (!ledger.includes(basename(f))) fail(21, f, lineOf(t, t.search(/\btoast\(/)), `calls toast() and TOASTS.md §5 has no row naming ${basename(f)}`);
+    }
+  }
+
+  // 22. Every written hover hint (a literal `title`) is in ONBOARDING.md's ledger. A hint built
+  //     from a value (a template) is the author's to ledger by shape; only literals are checked.
+  {
+    const ledger = doc("docs/features/ONBOARDING.md");
+    for (const [f, t] of [...src, ...pages]) {
+      for (const m of t.matchAll(/(?:\btitle="|\.title = ")([^"$\n]+)"/g)) {
+        const hint = m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+        if (!ledger.includes(hint)) fail(22, f, lineOf(t, m.index), `hint "${hint}" is not in ONBOARDING.md §1`);
+      }
+    }
+  }
+
+  // 23. Every element that scrolls draws the app's bar: its class is in the styles.css `:is()`
+  //     list, or a module that names the class also adds `app-scroll` (CLAUDE.md checklist 6a).
+  {
+    const shared = (src.get("src/styles.css") ?? read("src/styles.css")).match(/:is\(([^)]*)\)::-webkit-scrollbar\b/)?.[1] ?? "";
+    const inList = new Set([...shared.matchAll(/\.([\w-]+)/g)].map((m) => m[1]));
+    const hosts = [...src, ...pages];
+    for (const f of files.filter((f) => /^src\/(styles\/)?[^/]+\.css$/.test(f))) {
+      const css = read(f);
+      for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        if (!/overflow(?:-[xy])?\s*:\s*(auto|scroll)\b/.test(m[2])) continue;
+        for (const sel of m[1].split(",")) {
+          const cls = sel.match(/\.([A-Za-z_][\w-]*)/)?.[1];
+          if (!cls || cls === "app-scroll" || inList.has(cls)) continue;
+          if (hosts.some(([, t]) => t.includes(cls) && t.includes("app-scroll"))) continue;
+          fail(23, f, lineOf(css, m.index), `.${cls} scrolls with no app-scroll — it shows the grey OS bar (CLAUDE.md checklist 6a)`);
+        }
+      }
+    }
+  }
+
+  // 24. Every right-click listener is in the menus' ledger: CONTEXT-MENUS.md (§5, the rows each
+  //     card adds; § Where the listeners are) or ONBOARDING.md §2 (the coverage table).
+  {
+    const ledgers = doc("docs/architecture/CONTEXT-MENUS.md") + doc("docs/features/ONBOARDING.md");
+    for (const [f, t] of src) {
+      const at = t.indexOf('addEventListener("contextmenu"');
+      if (at < 0 || f === "src/context-menu.ts") continue;
+      if (!ledgers.includes(basename(f))) fail(24, f, lineOf(t, at), `opens a right-click menu and neither CONTEXT-MENUS.md nor ONBOARDING.md §2 names ${basename(f)}`);
+    }
+  }
+
+  // 25. A floating box placed by hand is one of the known placers. A new popover rides one of
+  //     the three primitives instead (CLAUDE.md checklist 13; the Sort / View pop was the last
+  //     to move, 2026-09-27).
+  {
+    for (const [f, t] of src) {
+      if (!t.includes("getBoundingClientRect") || !/style\.top = `/.test(t)) continue;
+      if (f in PLACERS) continue;
+      fail(25, f, lineOf(t, t.search(/style\.top = `/)), `places a box by hand — a popover is makeDropdown, openContextMenuUnder or openContextMenu; a real placer is added to PLACERS in docs-check.mjs with its reason`);
+    }
+  }
+
+  // 26. Every card with rows takes the keyboard: list-keys.ts by hand, or the collection engine
+  //     (SURFACES-AND-CARDS.md §5 step 4). Rewind, Diary and Rulez had none until 2026-09-27.
+  {
+    const cards = src.get("src/cards.ts") ?? "";
+    for (const m of cards.matchAll(/^import \{ \w+Card \} from "\.\/([\w-]+)";/gm)) {
+      const f = `src/${m[1]}.ts`;
+      const t = src.get(f);
+      if (!t || f in NO_LIST_CARDS) continue;
+      if (!t.includes("wireListKeys(") && !t.includes("initCollectionCard(")) fail(26, f, 0, `a card with rows and no list keys — wireListKeys (list-keys.ts), or NO_LIST_CARDS in docs-check.mjs with the reason`);
+    }
+  }
+
   return { facts, docs: docs.length };
 }
 
 export function report({ facts, docs }) {
   const lines = [];
-  const names = { 1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links" };
+  const names = {
+    1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
+    20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
+  };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);
     lines.push(`check ${n} — ${names[n]}: ${mine.length ? `${mine.length} FAIL` : "ok"}`);

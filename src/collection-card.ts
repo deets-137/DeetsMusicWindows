@@ -24,6 +24,7 @@ import { shuffleInPlace } from "./queue";
 import { isShuffleOn, setShuffleMode } from "./player";
 import { setting } from "./settings-store";
 import { enterRows } from "./pop";
+import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { splitPillHTML, splitPick } from "./split-pill";
 import { esc } from "./dom";
 import { tokenMs } from "./boot-cover";
@@ -833,8 +834,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       while (bar.nextSibling) bar.nextSibling.remove();
       bar.insertAdjacentHTML("afterend", rows);
     };
-    // A rebuilt head block has a new search field: give it the query, and the focus it had.
-    const restoreSearch = () => {
+    // The head is in place: a rebuilt one has new pills, so the Sort / View dropdowns re-bind
+    // (wirePops; a kept head keeps its handles), and a new search field gets the query and the
+    // focus it had.
+    const settleHead = () => {
+      wirePops(pane);
       const input = view.querySelector<HTMLInputElement>("[data-search]");
       if (!input) return;
       if (input.value !== f.query) input.value = f.query;
@@ -856,7 +860,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
           ? `<div class="lib-empty__slot"><span class="lib-empty__art" aria-hidden="true">♪</span><span class="lib-empty__msg">${msg}</span></div>`
           : `<p class="lib-empty__msg">${msg}</p>`,
       );
-      restoreSearch();
+      settleHead();
       return;
     }
     view.className = f.density === "lines" ? "lib-view lib-list" : "lib-view lib-grid";
@@ -867,13 +871,13 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       const w = windowers.get(view);
       if (w) w.update(spec);
       else windowers.set(view, windowView(view, spec));
-      restoreSearch();
+      settleHead();
       syncRail(pane, f, g);
       return;
     }
     dropWindower(pane);
     fill(items.map((x, i) => renderRow(g, x, f.density, i, cols)).join(""));
-    restoreSearch();
+    settleHead();
     syncRail(pane, f, g);
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
@@ -945,6 +949,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     incoming.dataset.pos = "center";
     if (outgoing) outgoing.dataset.pos = dir === "push" ? "left" : "right";
     curPane = incoming;
+    wirePops(incoming); // a pane coming back (Back) has its own pills: the dropdowns re-bind
 
     let done = false;
     const finish = () => {
@@ -1164,23 +1169,19 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
 
   backEl?.addEventListener("click", back);
 
-  // ── Sort/View popover (portaled to <body>) ──
-  // Anchored under its pill but mounted on <body> so it can overflow the card: the
-  // pane's transform + the viewport's overflow:hidden would otherwise clip an in-pane
-  // popover. Mirrors context-menu.ts. One at a time; controls act on it directly since
-  // it lives outside the viewport's delegated-click subtree.
-  let popEl: HTMLElement | null = null;
-  let popAnchor: HTMLElement | null = null; // the pill, for aria + re-click toggling
-  let popCleanup: (() => void) | null = null;
-
-  const closePop = () => {
-    popCleanup?.();
-    popCleanup = null;
-    popAnchor?.setAttribute("aria-expanded", "false");
-    popAnchor = null;
-    popEl?.remove();
-    popEl = null;
-  };
+  // ── Sort/View popover — a dropdown on the shared primitive (2026-09-27) ──
+  // One panel per kind, made once and mounted on <body> so it can overflow the card: the
+  // pane's transform + the viewport's overflow:hidden would clip an in-pane popover
+  // (UI-ARCHITECTURE.md §4a Toolbar). It rides `makeDropdown` (dropdown.ts), as the Settings
+  // menus do, so it follows Open menus on hover, arrives as a `.pop`, closes on a click away,
+  // Escape or its pill, and closes every other dropdown as it opens. A click inside keeps it
+  // open, so tweaks can continue. The pills are rebuilt with the head on a render, so
+  // `wirePops` re-binds each kind's handle to the live pill. Before this day it was its own
+  // mechanism (built and placed on each open), the one popover off the primitive.
+  type PopKind = "sort" | "view";
+  const pops = new Map<PopKind, { panel: HTMLElement; handle: DropdownHandle | null; pill: HTMLElement | null }>();
+  const popCols = (panel: HTMLElement) =>
+    [...panel.querySelectorAll<HTMLElement>(".lib-pop__col")].map((c) => [...c.querySelectorAll<HTMLButtonElement>("button")]);
 
   // Apply a control click within the open pop; keep it open so tweaks can continue.
   const onPopClick = (e: MouseEvent, pop: HTMLElement) => {
@@ -1230,92 +1231,114 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     }
   };
 
-  const openPop = (which: "sort" | "view", pill: HTMLElement, f: Frame) => {
-    const reopen = popAnchor === pill;
-    closePop();
-    if (reopen) return; // clicking the open pill again just closes it
+  // The keyboard inside a pop (COMPASS.md §5, 2026-09-26). The pop sits at the end of <body>, so
+  // Tab never reached it. A pill opened from the keyboard puts the focus on the choice in
+  // force (`onOpen`); a click leaves the focus where it was. Up / Down move in a column, Left /
+  // Right between columns, Enter or Space picks (the button's own click). Escape and Tab close
+  // it and give the focus back to the pill.
+  const onPopKey = (e: KeyboardEvent, which: PopKind, panel: HTMLElement) => {
+    const grid = popCols(panel);
+    const ci = grid.findIndex((c) => c.includes(document.activeElement as HTMLButtonElement));
+    if (e.key === "Escape" || e.key === "Tab") {
+      e.preventDefault();
+      e.stopPropagation();
+      const bound = pops.get(which)?.pill;
+      const back = bound?.isConnected ? bound : curPane?.querySelector<HTMLElement>(`[data-pop="${which}"]`);
+      closePops();
+      back?.focus();
+      return;
+    }
+    if (ci < 0) return;
+    const col = grid[ci];
+    const ri = col.indexOf(document.activeElement as HTMLButtonElement);
+    let to: HTMLButtonElement | undefined;
+    if (e.key === "ArrowDown") to = col[(ri + 1) % col.length];
+    else if (e.key === "ArrowUp") to = col[(ri - 1 + col.length) % col.length];
+    else if (e.key === "Home") to = col[0];
+    else if (e.key === "End") to = col[col.length - 1];
+    else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const next = grid[ci + (e.key === "ArrowRight" ? 1 : -1)];
+      if (next) to = next.find((b) => b.classList.contains("is-active")) ?? next[Math.min(ri, next.length - 1)];
+    }
+    if (!to) return;
+    e.preventDefault();
+    to.focus();
+  };
 
-    const pop = document.createElement("div");
-    pop.className = "lib-pop";
-    pop.dataset.popbody = which; // marks clicks as "inside a pop" for onDocClick
-    pop.setAttribute("role", "menu");
-    pop.setAttribute("aria-label", which === "sort" ? "Sort" : "View");
-    pop.innerHTML = which === "sort" ? sortPopBody(f) : viewPopBody(f);
-    pop.addEventListener("click", (e) => onPopClick(e, pop));
+  /** The panel of one kind: made on the first need, kept for the card's life. */
+  const popPanel = (which: PopKind): HTMLElement => {
+    const panel = document.createElement("div");
+    panel.className = "lib-pop pop";
+    panel.hidden = true;
+    panel.dataset.frames = "lib-pop"; // the arrival's frames (frames.ts, through makeDropdown)
+    panel.setAttribute("role", "menu");
+    panel.setAttribute("aria-label", which === "sort" ? "Sort" : "View");
+    panel.addEventListener("click", (e) => onPopClick(e, panel));
+    panel.addEventListener("keydown", (e) => onPopKey(e, which, panel));
+    document.body.appendChild(panel);
+    return panel;
+  };
 
-    // Measure hidden, then anchor under the pill and clamp to the live viewport.
-    pop.style.visibility = "hidden";
-    document.body.appendChild(pop);
+  /** Under the pill's left edge, clamped to the live viewport; above the pill when there is no
+   *  room below (`data-above` turns the arrival around). The gap is the panel's own margin and
+   *  the edge pad its `--panel-edge-gap`, as the Settings menus read theirs. Layout, not the
+   *  rect, so the .pop arrival's scale does not skew it. */
+  const placePop = (panel: HTMLElement, pill: HTMLElement) => {
     const r = pill.getBoundingClientRect();
-    const pad = 6;
+    const cs = getComputedStyle(panel);
+    const gap = parseFloat(cs.marginTop) || 0;
+    const pad = parseFloat(cs.getPropertyValue("--panel-edge-gap")) || 0;
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
-    const w = pop.offsetWidth;
-    const h = pop.offsetHeight;
-    const left = Math.max(pad, Math.min(r.left, vw - w - pad)); // align to pill's left, stay on-screen
-    let top = r.bottom + 4;
-    if (top + h + pad > vh) top = Math.max(pad, r.top - h - 4); // flip above the pill if no room below
-    pop.style.left = `${left}px`;
-    pop.style.top = `${top}px`;
-    pop.style.visibility = "";
+    const w = panel.offsetWidth;
+    const h = panel.offsetHeight;
+    panel.style.left = `${Math.max(pad, Math.min(r.left, vw - w - pad))}px`;
+    const above = r.bottom + gap + h + pad > vh;
+    panel.toggleAttribute("data-above", above);
+    panel.style.top = `${above ? Math.max(pad, r.top - h - 2 * gap) : r.bottom}px`;
+  };
 
-    popEl = pop;
-    popAnchor = pill;
-    pill.setAttribute("aria-expanded", "true");
-
-    // The keyboard (COMPASS.md §Keyboard, 2026-09-26). The pop sits at the end of <body>, so
-    // Tab never reached it. A pill opened from the keyboard puts the focus on the choice in
-    // force; a click leaves the focus where it was. Up / Down move in a column, Left / Right
-    // between columns, Enter or Space picks (the button's own click). Escape and Tab close it
-    // and give the focus back to the pill.
-    const cols = () => [...pop.querySelectorAll<HTMLElement>(".lib-pop__col")].map((c) => [...c.querySelectorAll<HTMLButtonElement>("button")]);
-    if (pill.matches(":focus-visible")) {
-      const first = cols()[0] ?? [];
-      (first.find((b) => b.classList.contains("is-active")) ?? first[0])?.focus();
+  /** Bind each kind's dropdown to the pane's live pill. Called after every head render and on
+   *  a pane slide; a pill that is the same element keeps its handle (a kept head). */
+  const wirePops = (pane: HTMLElement) => {
+    for (const which of ["sort", "view"] as PopKind[]) {
+      const pill = pane.querySelector<HTMLElement>(`[data-pop="${which}"]`);
+      const bound = pops.get(which);
+      if (bound && bound.pill === pill) continue;
+      bound?.handle?.destroy();
+      if (!pill) {
+        if (bound) pops.set(which, { ...bound, handle: null, pill: null });
+        continue;
+      }
+      const panel = bound?.panel ?? popPanel(which);
+      const handle = makeDropdown({
+        root: pill.closest<HTMLElement>(".lib-ctrl") ?? pill, // the hover region: the pill's own wrap
+        trigger: pill,
+        panel,
+        disabled: () => animating || pane !== curPane,
+        onOpen: () => {
+          panel.innerHTML = which === "sort" ? sortPopBody(cur()) : viewPopBody(cur());
+          placePop(panel, pill);
+          if (pill.matches(":focus-visible")) {
+            const first = popCols(panel)[0] ?? [];
+            (first.find((b) => b.classList.contains("is-active")) ?? first[0])?.focus();
+          }
+          enterRows(panel.querySelectorAll("button"));
+        },
+      });
+      pops.set(which, { panel, handle, pill });
     }
-    pop.addEventListener("keydown", (e) => {
-      const grid = cols();
-      const ci = grid.findIndex((c) => c.includes(document.activeElement as HTMLButtonElement));
-      if (e.key === "Escape" || e.key === "Tab") {
-        e.preventDefault();
-        e.stopPropagation();
-        const back = pill.isConnected ? pill : curPane?.querySelector<HTMLElement>(`[data-pop="${which}"]`);
-        closePops();
-        back?.focus();
-        return;
-      }
-      if (ci < 0) return;
-      const col = grid[ci];
-      const ri = col.indexOf(document.activeElement as HTMLButtonElement);
-      let to: HTMLButtonElement | undefined;
-      if (e.key === "ArrowDown") to = col[(ri + 1) % col.length];
-      else if (e.key === "ArrowUp") to = col[(ri - 1 + col.length) % col.length];
-      else if (e.key === "Home") to = col[0];
-      else if (e.key === "End") to = col[col.length - 1];
-      else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const next = grid[ci + (e.key === "ArrowRight" ? 1 : -1)];
-        if (next) to = next.find((b) => b.classList.contains("is-active")) ?? next[Math.min(ri, next.length - 1)];
-      }
-      if (!to) return;
-      e.preventDefault();
-      to.focus();
-    });
-
-    // Fixed-positioned, so a scroll/resize would leave it mis-anchored — dismiss instead.
-    // (Outside-click and Escape are handled by the card's onDocClick/onDocKey.)
-    const onAway = () => closePop();
-    document.addEventListener("scroll", onAway, true);
-    window.addEventListener("resize", onAway);
-    popCleanup = () => {
-      document.removeEventListener("scroll", onAway, true);
-      window.removeEventListener("resize", onAway);
-    };
   };
 
   const closePops = () => {
-    closePop();
-    curPane?.querySelectorAll<HTMLElement>("[data-pop]").forEach((b) => b.setAttribute("aria-expanded", "false"));
+    for (const b of pops.values()) b.handle?.close();
   };
+  // Fixed-positioned, so a scroll or a resize would leave an open pop mis-anchored: it closes.
+  const onPopAway = () => {
+    if ([...pops.values()].some((b) => b.handle?.isOpen)) closePops();
+  };
+  document.addEventListener("scroll", onPopAway, true);
+  window.addEventListener("resize", onPopAway);
   const markSearchPill = () => {
     curPane?.querySelector('[data-pop="search"]')?.classList.toggle("is-active", !!cur().query);
   };
@@ -1482,8 +1505,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
         if (open) pane.querySelector<HTMLInputElement>("[data-search]")?.focus();
         return;
       }
-      // Sort/View → portaled popover (overflows the card); toggles on re-click.
-      openPop(which as "sort" | "view", pop, cur());
+      // Sort / View: their pills are dropdown triggers (wirePops), and the primitive stops the
+      // click before it reaches here; nothing to do.
       return;
     }
 
@@ -1635,9 +1658,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
 
   // Named (not inline) so destroy() can remove them — these are the only listeners the
   // engine attaches outside its own DOM subtree, so they're what would leak on remount.
-  const onDocClick = (e: MouseEvent) => {
-    if (!(e.target as HTMLElement).closest("[data-popbody], [data-pop]")) closePops();
-  };
+  // (A click away from an open Sort / View pop is the dropdown primitive's, since 2026-09-27.)
   const onDocKey = (e: KeyboardEvent) => {
     // Ctrl+A takes every row in the current sort and filter — only while this card holds
     // the focus, and never in a text field (the search box keeps its own select-all).
@@ -1657,7 +1678,6 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       curPane?.querySelector(".lib-searchbar")?.classList.remove("is-open");
     }
   };
-  document.addEventListener("click", onDocClick);
   document.addEventListener("keydown", onDocKey);
   // The keyboard inside the list (list-keys.ts): arrows, Enter, the Menu key, Escape = Back.
   // A windowed list reveals the row first, so an arrow reaches every row.
@@ -1773,8 +1793,14 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       unsubDragEnd();
       unregisterDrop();
       dropWindower(curPane); // its observers outlive the subtree otherwise
-      closePop(); // the pop lives on <body>, not the host subtree — remove it explicitly
-      document.removeEventListener("click", onDocClick);
+      // The pops live on <body>, not the host subtree — drop their handles and panels explicitly.
+      for (const b of pops.values()) {
+        b.handle?.destroy();
+        b.panel.remove();
+      }
+      pops.clear();
+      document.removeEventListener("scroll", onPopAway, true);
+      window.removeEventListener("resize", onPopAway);
       document.removeEventListener("keydown", onDocKey);
       unwireKeys();
       document.removeEventListener("pointerdown", onDocDown);

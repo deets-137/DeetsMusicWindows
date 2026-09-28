@@ -683,7 +683,11 @@ const listeners = new Set<(changed: keyof Settings) => void>();
 // each reader must say which value it wants — `effective` (the value to act on) or
 // `ownSetting` (your value: the Settings card, the agent, a toggle that reads then writes).
 // Add a key here and `npx tsc --noEmit` lists every read of it that must choose.
-export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDiscord", "discordRoomInvite", "soundEqPreset", "cardGrowOutside", "glassCanvas", "glassPictureId"] as const;
+export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDiscord", "discordRoomInvite", "soundEqPreset", "cardGrowOutside", "glassCanvas", "glassPictureId",
+  // Option 1 of the rule keys (RULES.md §18, 2026-09-27): motion and graphics for Battery saver,
+  // the two Friends switches for Focus, and the notices.
+  "backgroundMotion", "appearanceMotion", "cardSwapMotion", "fancyScrubber", "glassFancy",
+  "friendsListenAlong", "friendsRoomInvite", "toasts"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

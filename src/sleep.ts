@@ -579,7 +579,7 @@ export function initSleep(): void {
 
   onPlayerState((s) => {
     playing = s.playing;
-    onSongChange(s.title ? `${s.title} ${s.artist ?? ""} ${s.album ?? ""}` : "");
+    onSongChange(s.title ? `${s.title}\0${s.artist ?? ""}\0${s.album ?? ""}` : "");
     updateFade();
     render();
   });

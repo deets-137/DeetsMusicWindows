@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.14.0
 desk_test: passed 2026-09-24
 sources: [src/media-menu.ts, src/context-menu.ts, src/web.ts, src/copy-link.ts, src/go-to.ts, src/pins.ts, src/np-bus.ts, src/tray.ts]
-updated: 2026-09-24
+updated: 2026-09-27
 ---
 # DeetsMusic — Right-click menus
 
@@ -252,11 +252,37 @@ Start Station). One press makes a web playlist with no panel (`startWebItem`, we
 | Home | any tile | Songs of the Day: the pick's note · Post Now · Withdraw · Unmark | Hide |
 | Rewind | pick row | the pick's own rows | — |
 | Radio | station | — | — |
+| Friends panel (2026-09-27) | a friend's box: the song they play | Invite to my room (while you host) · Copy their code · Rename (a field) | Remove (with Undo) |
+
+**The Friends box** joined the builder on 2026-09-27 (the consistency survey found it as the
+one song row off it). Before that it listed *Play Now* and *Go to Album* by hand (his call of
+2026-09-20, FRIENDS.md fork 3), so a friend's song had no Play Next, Add to Playlist, Start
+Station, Copy Link, Add to Library, ♥ or Pin. The song comes from the presence when your
+library does not hold it (`trackOf`, friends-panel.ts) and joins the transient store on a play,
+as a Search result does. A friend off line or playing nothing keeps the friend rows alone.
 
 Menus that are not media menus keep their own rows: Search term pills, Playlists folder
-headers, the card title (Grow ▸ · Fill · Pin · Collapse — fork 7B keeps its "Pin"), Friends
-rows (Play Now · Go to Album · Invite · Copy their code · Rename · Remove), Settings › My
+headers, the card title (Grow ▸ · Fill · Pin · Collapse — fork 7B keeps its "Pin"), Settings › My
 reports (Open · Copy Link · Close · Clear), text fields (Cut · Copy · Paste · Select All).
+
+### Where the listeners are
+
+Every `contextmenu` listener in the app, and what it opens. `docs:check` check 24 fails a
+module with a listener that neither this doc nor ONBOARDING.md §2 names (2026-09-27).
+
+| Module | The right-click | Opens |
+|---|---|---|
+| `browser-defaults.ts` | anywhere | blocks the browser's own menu, except in a text field |
+| `collection-card.ts` | a row, a tile, the hero | the row's media menu through its card's builder call; the hero's `menu` (§3a) |
+| `history-card.ts` · `qcard.ts` · `rewind-card.ts` · `home-card.ts` · `search-card.ts` | a row, a tile, the now hero, a picked set | the media menu of the item's kind, with the card's own rows (§5) |
+| `now-playing-card.ts` | the cover, the title block | the song menu without the Play group (§3.1) |
+| `diary-card.ts` | an entry tile, a song row, a folder header | the album menu with the entry's rows (DIARY.md §2); the song menu; Rename · Delete Folder |
+| `rulez-card.ts` | a rule | the rule's own rows (RULEZ.md §6) — not a media menu |
+| `friends-panel.ts` | a friend's box | the song menu with the friend's rows (§5) |
+| `settings-card.ts` | a My reports row · a Glass picture | Open · Copy Link · Close · Clear; Delete picture (COVER-WALLPAPER.md) |
+| `card-grow.ts` | a card's title, the Grow button | Grow ▸ · Fill · Pin · Collapse (CARD-GROW.md) |
+| `tray.ts` | the song in the tray panel | the tray song menu (§3.1, fork 6A) |
+| `web.ts` | the Temp \| N days button | no menu: steps the days back (PLAYLIST-WEB.md §10) |
 
 ## 6. The forks, closed 2026-09-23
 
@@ -305,3 +331,10 @@ reports (Open · Copy Link · Close · Clear), text fields (Cut · Copy · Paste
 9. Right-click the song in the tray panel: Start Station · Copy Link · Add to Library ·
    Favorite · Pin. Pin it; right-click again: Unpin.
 10. Right-click a Home tile: Hide is the last row, under Pin.
+11. (2026-09-27) Two dev apps, A playing a song B's library does not hold. On B, right-click
+    A's box in the Friends panel: the §3.1 rows in the §2 order (Play Now · Play Next · Add to
+    Queue · Add to Playlist ▸ · Go to Artist · Go to Album · Song Credits · Start Station ·
+    Start a Web · Copy Link · Add to Library · Favorite · Mark as Song of the Day · Pin), then
+    Copy their code · Rename, and Remove last; Invite to my room shows only while B hosts a
+    room. Play Next queues the song after B's current one. Pin it: the tile on Home plays it.
+    Stop A's playback: B's menu shows Copy their code · Rename · Remove alone.

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-09-25
+updated: 2026-09-27
 ---
 # Onboarding — how the app explains itself
 
@@ -45,10 +45,12 @@ nothing about authoring changed when the box did.
 | A Pinned tile | the grip bar on its cover | Drag to move this pinned item | pins.ts `PIN_GRIP` |
 | Settings header | the search button | Finds a setting by name | settings-card.ts (MOVABLE-ROWS.md §13.6) |
 | Title bar | DeetsMusic (the title) | Opens the menu: theme, skin, window size, account, and Settings | index.html |
-| Title menu | each Theme | Light/Dark + its two colors ("Light. Purple and mint") | index.html |
-| Title menu | each Skin | one line on the idiom ("A print shop: ink on paper, square corners. The cover can be a record") | index.html |
+| Title menu | each Theme | Light/Dark + its two colors: Light. Purple and mint · Light. Green and fern · Light. Parchment and terracotta · Dark. Slate and moon white · Dark. Yellow on black · Dark. Red on black | index.html |
+| Title menu | each Skin | one line on the idiom: A print shop: ink on paper, square corners. The cover can be a record · Cards on rolling waves, with a serif · Frosted panels over a soft glow · Lightning behind the cards, machined type | index.html |
 | Title menu | the rule chip beside Theme and Skin (2026-09-26, RULES.md §9: a green dot = a rule, a scarlet dot = your pick) | green: "The look schedule shows the night look. Your pick is Moonlight." · scarlet: "Your pick stays until 7:00 AM. Press to go back to the schedule now." — built from the rule, the hold and your value | rule-chip.ts, look-schedule.ts |
-| Title menu | Mini · Player · Midi · Max | what the window holds ("A small window: Now Playing and one card") | index.html |
+| Title menu | Mini · Player · Midi · Max | what the window holds: A small window: Now Playing and one card · The player alone: Now Playing only · The tall window: Now Playing and two cards · The wide window: the stage, the queue, and four cards | index.html |
+| Sleep panel | the ‹ › beside the dial | 15 minutes earlier · 15 minutes later | index.html |
+| Sound panel | the ‹ › beside the preset name · the preamp's + · the Ask to keep after pill · Undo Reset | The previous preset · The next preset · 0.5 dB higher · When to ask whether the effects are worth keeping, counted from the first time one was turned on. Click for the next choice · Brings back the curve from before Reset | sound-panel.ts |
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
 | Title bar | the cog (right of the compass) | Quick settings, grouped by what they are for, and the way to all of Settings (was *Opens Settings at full size* until 2026-09-20, QUICK-SETTINGS.md) | index.html |
@@ -58,6 +60,13 @@ nothing about authoring changed when the box did.
 | Friends panel | the stage (the silhouettes) | Everyone listening. The heads move with the music → "…when Sound is on" while nothing is routed → out of a room: "Start a room and the others join here" | room-panel.ts |
 | Friends panel | the **Friends** heading (a fold) | The people you added, and what they are playing | room-panel.ts |
 | Friends panel | the **DeetsRooms** heading (a fold) | Start a room, or join one with a code | room-panel.ts |
+| Any list with picks (Library, Playlists, Search, Queue, History, Rewind) | the Play and Shuffle buttons while rows are picked | Play what you picked, in order · Shuffle what you picked | collection-card.ts `actionsRowHTML` |
+| Song Credits pane | a writer chip | Other songs by this name | search-card.ts (CREDITS.md §7) |
+| Home | the Refresh button in the header | Builds the shelves again, and asks Apple Music what you played and added elsewhere | home-card.ts |
+| Song Credits | the *credited* mark on a writer with no track held | Credited, but DeetsMusic holds no track for it yet | credits.ts `FLAT_MARK` |
+| Compass | a Tab-walked pill (a kind chip, a two-answer row) · the Open / alt halves | Tab moves between these · Enter · Ctrl+Enter | compass.ts |
+| Settings › Connections | Install the browser extension (the action row) | Opens the install page in your browser | settings-card.ts `ext-install` |
+| Settings › Bugs › My reports | the Refresh button · the Close row · the *New reply* mark | Asks support.deets.solutions for each report's status · Closes the post on the support page · New reply | settings-card.ts |
 | Friends | a friend's box | Listen along — they host a room and you hear what they hear → "They have not added your code yet…" / "They are not online right now" / "They are online but not playing anything" | friends-panel.ts |
 | Friends | Your code | Your friend code. A friend types it to add you — and you must add theirs before either of you sees anything | friends-panel.ts |
 | Friends | Link | Copies a link that opens DeetsMusic with your code filled in | friends-panel.ts |
@@ -276,12 +285,8 @@ same in every card** (2026-09-23): the rows, their order and each card's own row
 
 | Surface | Item | Menu |
 |---|---|---|
-| Any card | a **song** (a row, a tile, a pick on Home or Rewind, a writer's song) | the song menu (CONTEXT-MENUS.md §3.1): Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album · Song Credits · Start Station · **Start a Web** · Copy Link · Add to Library · Favorite · Mark as Song of the Day · Pin |
-| Any card | an **album** | §3.2: Play · Add to Playlist ▸ · Go to Artist · Go to Album · Start a Web · Copy Link · Add to Library · On Click ▸ · Pin |
-| Any card | an **artist** | §3.3: Play (your songs, or Apple's Top Songs) · Add to Playlist ▸ · Go to Artist · Start Station · Start a Web · Copy Link · On Click ▸ · Pin |
-| Any card | a **playlist** | §3.4: Play · Add to Playlist ▸ · Go to Playlist · Copy Link (Apple's, public) · On Click ▸ · Pin |
-| Any card | a **station** | §3.5: Play Now · Add to Queue · Copy Link · Pin |
-| Any card | a **genre** · a **picked set** (Ctrl/Shift+click) | §3.6: Play Now (or *Play N songs*) · Play Next · Add to Queue · Add to Playlist ▸ · the card's Remove / Delete N |
+| Any card | a **song** · an **album** · an **artist** · a **playlist** · a **station** | the media type's own menu, the same in every card: the rows and their order are [CONTEXT-MENUS.md](../architecture/CONTEXT-MENUS.md) §3.1–§3.5 and are not copied here (they drifted once, 2026-09-27; `tests/media-menu.test.ts` holds the order) |
+| Any card | a **genre** · a **picked set** (Ctrl/Shift+click) | the list menu, CONTEXT-MENUS.md §3.6, then the card's Remove / Delete N |
 | Any card | a **pinned** tile or row | the item's own menu; **On Click ▸** (Play · Shuffle · Open) sits above Pin for album, artist and playlist pins (PINS.md §8) |
 | Playlists | playlist row | Rename (field, hand-made only) above the playlist menu; its own rows: Move to Folder ▸ · **Refresh ▸** · Import to Edit (Apple) · Keep Playlist · the cover rows; last: Delete Playlist (local) |
 | Playlists | song in a playlist | the song menu; last: Remove from Playlist (hand-made) |
@@ -299,6 +304,7 @@ same in every card** (2026-09-23): the rows, their order and each card's own row
 | **Songs of the Day shelf** (Home) · **Rewind › Picks** | a pick | the song menu, then the pick's own rows: **Add a note** (a field) · **Post Now** · **Withdraw the post** · **Unmark Song of the Day**. A posted pick in Rewind also carries the **withdraw square** at the row's end, on hover |
 | **Songs of the Day shelf** (Home) | the suggestion tile (dashed rim) | **Mark as Song of the Day** first, then the song menu |
 | Settings | My reports row | Open · Copy Link · Close · Clear |
+| **Friends panel** | a friend's box (2026-09-27) | the song menu for the song they play (§3.1); own rows: Invite to my room (while you host) · Copy their code · Rename; last: Remove. Off line or playing nothing: the friend rows alone |
 | **Tray panel** | song | Start Station · Copy Link · Add to Library · Favorite / Unfavorite · Pin / Unpin (2026-09-23; the main window runs each one) |
 | **Queue header (Max)** | the title, or the Grow button (2026-09-17, STAGE-COLUMN.md) | Grow ▸ (*Up, over Now Playing* — the only direction the stage column has) · while grown: Pin / Unpin · Collapse. No Fill row. |
 | **Card header** | the title, or the Grow button (2026-09-16, CARD-GROW.md) | Grow ▸ (*Right, over Search* · *Down, over Playlists* — the directions that exist in this slot) · Fill (Max) · while grown: Pin / Unpin (with Collapse on outside click on) · Collapse |
