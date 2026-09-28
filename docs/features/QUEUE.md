@@ -408,6 +408,33 @@ fails into the id re-feed, whose NOT_FOUND retry banks it properly. Since the gr
 by id, dead ids no longer reach MusicKit's queue at all in normal play — these paths are
 the belt-and-suspenders. Logged as `player:deadNext` (`bank` says which).
 
+### The healed song played twice (2026-09-27)
+
+> **Part:** built · 2026-09-27 · desk test open
+
+Seen twice on live in one day (02:55 "BLUE", 16:56 "Dracula"), both the end-of-song shape
+with live songs, both `bank:false`. The heal's re-window fed the song alone, as every click
+does, and then **neither grow ran**: no `player:topUp` line for the whole song, so MusicKit's
+queue stayed at one song. At its end MusicKit started **index 0 again** — a `player:np` with
+`playing:true, npIndex:0` — and only then did the top-up append the rest. He heard the song
+begin a second time and pressed Next.
+
+The cause, read from the code: the load skips its pause because MusicKit reports `isPlaying`
+false in the `ended` state, so nothing resets the controller, and the re-windowed song plays
+with **no now-playing index**. Both grows and the reconcile exit on `np < 0` — and did so
+silently. Two changes:
+1. `healDeadNext` and the window-dry branch load with **`stopFirst`** (a full `stop()` before
+   `setQueue`), as the station break-out does for the same reason.
+2. The top-up's two abnormal exits are logged: `player:topUpSkip {why: "noIndex" | "inFlight",
+   np, mkLen, modelUp}`, and the reconcile's `player:reconcileSkip {why: "noIndex"}`. "Nothing
+   to add" stays silent (it is every song change).
+
+**Desk test.** The failed advance cannot be forced from the session. Watch live: after the next
+`player:deadNext … bank:false`, the same second must show `player:loadWindow {ids:1}` and then a
+`player:topUp` (mkLen 1); no `topUpSkip`. The healed song's end must go to the next song. If a
+`topUpSkip {why:"noIndex"}` still appears, the stop did not reset the index: the next step is to
+read the index after `play()` resolves and grow on `windowPos` instead.
+
 ## Restore across sessions (2026-09-12)
 
 `src/queue-persist.ts`. The three zones are saved as **one JSON blob** in the cache db's

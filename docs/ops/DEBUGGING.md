@@ -81,7 +81,9 @@ bridge (the CLI probes the port list; the installed app would win).
   play after a page reload is a *cool* one (fresh connections, the account check).
 - **Song-to-song advance:** `play`, wait for the `grow` line, `control seek 97`, wait
   ~10 s, then `now_playing` + the log. A healthy advance logs nothing; `deadNext`,
-  `windowDry`, `desync` or `misalign` are findings.
+  `windowDry`, `desync` or `misalign` are findings. A `deadNext` must be followed in the
+  same second by `player:topUp`; a `player:topUpSkip {why:"noIndex"}` there is the
+  double-play shape of 2026-09-27 (QUEUE.md § The healed song played twice).
 - **Dead ids:** the "Sad Collection" playlist (`list playlists`) has one; expect
   `reconcile: N unresolvable id(s) dropped` from the grow, never a skip at play time.
 - **Cold start:** stop the dev exe (`Get-Process deetsmusic | ? Path -like '*target\debug*'

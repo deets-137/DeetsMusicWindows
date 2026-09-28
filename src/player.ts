@@ -966,10 +966,19 @@ const REWINDOW_LOW = 50;
 let topUp: Promise<void> | null = null;
 
 function maybeTopUpWindow(cap = WINDOW_FWD): void {
-  if (topUp || !music || mode !== "queue") return; // stations refill themselves; a room feeds one song
+  if (!music || mode !== "queue") return; // stations refill themselves; a room feeds one song
   const items: any[] = music.queue?.items ?? [];
   const np = typeof music.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
-  if (np < 0) return;
+  // The two exits that are NOT "nothing to add" are logged: a top-up that never happens is
+  // otherwise invisible until the song ends on a one-song queue (the double play, 2026-09-27).
+  if (topUp) {
+    diag.log("player:topUpSkip", { why: "inFlight", np, mkLen: items.length, modelUp: queue.getUpcoming().length });
+    return;
+  }
+  if (np < 0) {
+    diag.log("player:topUpSkip", { why: "noIndex", np, mkLen: items.length, modelUp: queue.getUpcoming().length });
+    return;
+  }
   const mkRemaining = items.length - np - 1;
   if (mkRemaining >= REWINDOW_LOW) return;
   // Model has nothing beyond what MusicKit already holds → natural end of the plan.
@@ -1998,7 +2007,10 @@ async function doReconcileUpcoming(cap: number): Promise<void> {
   const m = music;
   const items: any[] = m.queue?.items ?? [];
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
-  if (np < 0) return;
+  if (np < 0) {
+    diag.log("player:reconcileSkip", { why: "noIndex", mkLen: items.length, modelUp: queue.getUpcoming().length });
+    return;
+  }
 
   // Expected MK upcoming = the model's upcoming live ids, in order, capped to the window.
   // No dedup: `playLater` keeps a repeated id (only `setQueue` collapses them, which is why
@@ -2333,7 +2345,12 @@ async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean
   console.warn(`[player] next song ${bank ? "unavailable" : "failed to start"} (${id}); ${bank ? "moving on" : "re-windowing onto it"}`);
   const k = queue.getUpcoming().findIndex((h) => !!playId(h));
   if (k < 0 || !queue.jumpTo(k)) return false;
-  await loadFromModel(m);
+  // `stopFirst`: MusicKit sits in `ended` here, so the load's pause is skipped (`isPlaying` is
+  // false) and nothing resets its position. Twice on live (2026-09-27, 02:55 and 16:56) the
+  // re-windowed song then played with NO now-playing index: both grows returned silently, the
+  // queue stayed at one song, and at its end MusicKit started index 0 again — the song played
+  // twice. A full stop() resets the controller, as the station break-out learned (QUEUE.md).
+  await loadFromModel(m, true, { stopFirst: true });
   return true;
 }
 
@@ -2364,7 +2381,7 @@ function onEndedWithoutItem(): void {
         diag.log("player:windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
         perf.event("windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
         if (!queue.advance()) return false;
-        await loadFromModel(m);
+        await loadFromModel(m, true, { stopFirst: true }); // same `ended` state as healDeadNext
         return true;
       })();
   run.catch((e) => console.warn("[player] end-of-song heal:", e)).finally(() => {
