@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts]
-updated: 2026-09-18
+sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts, src/look.ts, src/rules-facts.ts]
+updated: 2026-09-27
 ---
 # UX Cover-ups — latency & jank ledger
 
@@ -222,6 +222,84 @@ outranks `.bento > .panel.swap-in`, and a recompose never calls `playSwap`.
 **Test in the morning:** dev app, debug CLI (`--port` of the dev bridge), Agent changes settings
 = Allow. `settings set theme "Black & Red"`, then `settings set surface mini`, then theme, skin
 and surface back to back. Check `[perf] frames appearance` in the dev log for each.
+
+## 6c. A rule's theme change — **the colors change in place, no cover** (designed 2026-09-27)
+
+> **Part:** built · 2026-09-27 · his desk test open (end of this section)
+
+**Why:** Live Theming (RULEZ.md §11.1), and later the Album theme (SKINZ.md §12), change the
+theme on every song. Under §6a each song fades the cards out and raises them again. A theme
+changes only colors; the layout is the same before and after, so it needs no cover.
+
+**His calls (2026-09-27):**
+- **Only a rule's theme change** gets it. A hand pick, an agent's change and every skin change
+  keep the §6a cover: they are rare, and a skin changes more than colors.
+- **Animate look changes** (`appearanceMotion`) controls it. Off, or reduced motion: it snaps.
+- **500 ms**, a skin token (`--theme-morph-dur`), so a skin can tune it.
+
+- **A crossfade**, not a sweep (the sweep costs more on a weak GPU, measured below). A View
+  Transition (`document.startViewTransition`); clicks pass through it.
+- **The moving parts never show twice.** The fade's old half is a still picture, so a part that
+  moves would show twice for the fade's length (seen on Ocean). The Press record gets its own
+  transition group that shows only the live record. The background loops (the Ocean sea, the
+  Glass aurora and album aurora, the Cyber storm) **hold still** for the fade instead (his call
+  after the fork below): a part with its own group is drawn above the cards, so they cannot
+  skip the fade.
+- **Keep the last cover's color** until the new one lands (the bug below).
+- The Live Theming recipe's description says it works best with a GPU.
+
+**Measured (2026-09-27; WORKLOG.md has the tables).** `dev:built`, Max, Lilac ↔ Moonlight,
+compositor frames (`Display::DrawAndSwap`), not the page's rAF.
+- A color morph (`@property` on the 15 roles) restyles and repaints every frame: ~20 fps
+  however long it runs. Rejected.
+- RX 6700 XT, 244 Hz: the crossfade draws as many frames as a plain opacity fade at every length
+  from 1000 to 150 ms (Cyber, Press, Glass); Ocean ~55%. Freeze before it starts 41–70 ms.
+  Processor time: crossfade and sweeps within noise of a snap.
+- `--gpu=slow` (an integrated chip), 500 ms: crossfade 192–233 fps, worst gap 7–34 ms, as smooth
+  as a snap. Hard sweep (`clip-path`) 65–171 fps. Soft sweep (a gradient mask) 57–157 fps and
+  twice the page's processor time: neither edge animates as a plain GPU layer.
+- `--gpu=off` (WARP, below any real chip): every mode 6–21 fps, freeze 50–210 ms. A snap is the
+  kindest there.
+
+**A bug under it (found 2026-09-27, play test on the dev app).** On a new song `readCover`
+(rules-facts.ts) clears the cover color at once, but fires its seam only when the palette lands.
+`checkOnce` reads every fact on any seam. In the gap, the `playing` seam fired (diag #247): the
+rule "dark cool covers" ended, the theme went back to his pick, and 92 ms later (#253) "light
+cool covers" set it again. It was not seen only because his pick was the next theme. With a
+fade, it is two fades per song. Fixed with this build by his call: keep the last cover's color
+(the other choice was an engine change: hold a rule whose fact is unknown).
+
+**As built (2026-09-27).**
+- `look.ts`: `pickLook` marks a hand change (`handPick`), and that includes Reset and agents.
+  `paint()` sends a change with no mark and no skin change to `withThemeFade`; everything else
+  goes to the §6a cover as before. The look schedule is a rule, so its theme-only change fades too.
+- `appearance.ts` `withThemeFade`: sets `<html data-theme-fade>`, runs the View Transition, and
+  clears the attribute when the fade ends. It snaps when Animate look changes is off or under
+  reduced motion. It hands the change to the cover when the cover (or the launch cover) is up.
+  A second change during a fade starts a new one. `[perf] frames theme-fade skin=…` times it.
+- `styles.css` (after the ambient pause): the fade's length and ease, the paused loops, and the
+  record's group (`view-transition-name: match-element`, class `theme-live`: the old half
+  hidden, no animation). Tokens `--theme-morph-dur` 500ms, `--theme-morph-ease` in `skin.css` base.
+- `rules-facts.ts` `readCover`: the last words stand until the palette lands; they are cleared
+  when there is no cover, when no rule reads them, or when the palette lookup fails.
+- `rules-recipes.ts`: the Live Theming description gets "It works best with a GPU: the colors
+  fade on every song."
+
+**Claude's run (2026-09-27, dev app, Cyber, Live Theming on, 2% volume).** Casio → Blue Train →
+Everybody Loves the Sunshine → Sunshine, with the app's Next button: one `data-theme-fade` and one
+theme change per song, no `data-boot`, each fade 580–650 ms. The rule log shows one `applied` per
+song and no rule ending in between: the double change is gone. A theme picked in the title
+menu still ran the cover (veil → wait → lift).
+
+**His desk test.**
+1. Turn Live Theming on. Play an album mix, or queue songs with different covers, and press Next.
+   The colors fade in place in ~½ s. The cards do not fade out or rise.
+2. On Ocean and Glass: the sea and the aurora stop for that ½ s, then go on from the same place.
+   They never show twice.
+3. On Press with a song playing: the record keeps turning through the fade and never shows twice.
+4. Pick a theme in the title menu: the cover runs, as before.
+5. Settings › Animate look changes Off: a rule's theme change snaps.
+6. Watch several songs: the theme changes once per song, never back to your pick and then again.
 
 ---
 

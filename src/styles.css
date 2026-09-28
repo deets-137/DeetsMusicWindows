@@ -2197,6 +2197,31 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 /* Off hides the storm, as reduced motion does: a frozen half-drawn bolt reads as a bug. */
 :root[data-bg-motion="off"] .storm { display: none; }
 
+/* A rule's theme change (appearance.ts `withThemeFade`, UX-COVERUPS.md §6c): a View Transition
+   crossfade, no cover. Clicks pass through the fade. The old half is a still picture, so for
+   the fade's length (his call, 2026-09-27):
+   - the background loops hold still, so both halves show them in one place (no double image).
+     They cannot skip the fade instead: a part with its own group is drawn above the cards.
+   - the Press record gets its own group that shows only the live record: it keeps turning and
+     never shows twice. It sits on top of its card, so the group's place changes nothing. */
+:root[data-theme-fade]::view-transition { pointer-events: none; }
+:root[data-theme-fade]::view-transition-old(root),
+:root[data-theme-fade]::view-transition-new(root) {
+  animation-duration: var(--theme-morph-dur);
+  animation-timing-function: var(--theme-morph-ease);
+}
+:root[data-theme-fade] :is(.ocean__bob, .ocean__train, .aurora__blob, .storm__strike, .storm__hold),
+:root[data-theme-fade] .np__aurora::before {
+  animation-play-state: paused;
+}
+:root[data-theme-fade] .vinyl__spin {
+  view-transition-name: match-element;
+  view-transition-class: theme-live;
+}
+:root[data-theme-fade]::view-transition-old(*.theme-live) { display: none; }
+:root[data-theme-fade]::view-transition-group(*.theme-live),
+:root[data-theme-fade]::view-transition-new(*.theme-live) { animation: none; }
+
 /* The app's scrollbar, replacing the OS bar. Any NEW element that scrolls gets `app-scroll`
    (CLAUDE.md build checklist; UI-ARCHITECTURE §Scrollbars). The older scrollers are listed
    here by their own class, because each is built in many places (`.search__scroller` in

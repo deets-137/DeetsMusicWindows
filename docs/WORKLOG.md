@@ -12,6 +12,69 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, 15:30 — A theme change without the cover: measured, not built (branch `rules-rulez`)
+
+His ask: can a rule's theme change morph the colors in place instead of running the cover
+(`appearance.ts`)? Live Theming changes the theme per song, so today every song fades the cards
+out and raises them again. Nothing is built; the forks are his.
+- DEBUGGING.md: the "Skin switch … NOT fixed" bullet now says the windowing fixed it. I quoted
+  its pre-windowing 23k-node numbers as today's cost before I found the fix three bullets lower.
+- Measured on `dev:built`, Max, 244 Hz, RX 6700 XT, 2,330 nodes, Lilac ↔ Moonlight, 2–3 passes.
+  The attribute was flipped at run time with injected styles (no file changes); the probe is in
+  the session scratchpad. fps over the 1 s after the flip (the cover: 2.6 s):
+
+  | skin | snap | morph (`@property` roles, 400 ms) | crossfade (View Transition, 400 ms) | cover (today) |
+  |---|---|---|---|---|
+  | Cyber | 205 | 122 | 186 | 206 |
+  | Press | 176 | 95 | 161 | 213 |
+  | Glass | 174 | 118 | 163 | 199 |
+  | Ocean | 131 | 54 | 107 | 171 |
+
+  - One flip costs ~40–50 ms to the 2nd frame on every skin (style ≤ 19 ms, the rest paint and a
+    27 ms rAF). The crossfade adds ~10–15 ms for the snapshot, then runs on the GPU.
+  - The morph restyles and repaints every frame: +~325 ms of page work per change on Cyber,
+    46 ms style passes, and ~20 fps during the 400 ms. On Ocean, 54 fps over the window.
+  - The cover hides its flip under an opaque veil, so it scores well here, but it takes ~2.6 s and
+    raises the cards.
+- His question: a 1 s morph? No: the morph's cost is per frame (a full restyle + repaint), so a
+  longer morph is a longer stretch at ~20 fps. Then the crossfade by length, counted on the
+  COMPOSITOR (`Display::DrawAndSwap` between user-timing marks; scratch `fade-trace.mjs`), since
+  the page's rAF undercounts a composited fade:
+  - Control, a plain full-window opacity animation: ~80% of frames drawn, gaps 20–30 ms spread
+    evenly. That is this machine's floor at 244 Hz, not a cost of the fade.
+  - Cyber, Press, Glass: 75–95% drawn at every length (1000 → 150 ms), worst gap 12–30 ms, the
+    same as the control. Ocean: ~55%, worst ~30 ms (the sea layers). Freeze before the fade:
+    41–70 ms at every length. So the length is not limited by cost.
+  - A 3 s fade on Ocean, pictured at mid-fade: the still old sea and the live new sea show as
+    doubled waves (the ghost), and light ↔ dark text is at its lowest contrast at the midpoint.
+    Both grow with the length.
+- Found in passing: on a new song `readCover` clears the cover color at once but fires its seam
+  only when the palette lands (rules-facts.ts); `checkOnce` reads every fact on any seam.
+  **Play test (his OK):** Casio → Blue Train → Everybody Loves the Sunshine → Sunshine, Next
+  pressed in the app, 2% volume. The attribute changed once per song, 450–600 ms after Next.
+  But diag #247: on the third song the `playing` seam fired in the gap, "dark cool covers"
+  ended (theme back to his pick, Lilac), and 92 ms later #253 "light cool covers" set Lilac.
+  So the double change is real; it hid because his pick was the next theme. UX-COVERUPS.md §6c.
+- His calls: rules only (hand, agent and skin changes keep the cover); Animate look changes
+  controls it; 500 ms. Written as UX-COVERUPS.md §6c. Open: crossfade or sweep; the moving
+  parts; the fix for the double change.
+- Crossfade against sweep, 500 ms, compositor fps (median of 3), Press / Cyber / Glass / Ocean:
+
+  | GPU | crossfade | hard sweep (`clip-path`) | soft sweep (mask) |
+  |---|---|---|---|
+  | RX 6700 XT | same as a plain fade; processor time within noise of a snap | same | same |
+  | `--gpu=slow` | 233 / 216 / 199 / 192 | 149 / 171 / 108 / 65 | 136 / 157 / 83 / 57, page time ×2 |
+  | `--gpu=off` | 18 / 14 / 8 / 9 | 21 / 14 / 6 / 8 | 18 / 13 / 7 / 8 |
+
+- The dev app was restarted as a plain `dev:app` at the end.
+- His calls, then BUILT: crossfade; the moving parts never show twice (the record in its own
+  group; the background loops hold still — his pick at a fork I found while building: a part
+  in its own group is drawn above the cards); keep the last cover's color; the recipe says it
+  works best with a GPU. Files: look.ts, appearance.ts, styles.css, skin.css (+ TOKENS.md),
+  rules-facts.ts, rules-recipes.ts. `npm run check` passes. Claude's run with music: one fade
+  per song, no cover, no rule ending between songs; a hand pick still runs the cover.
+  UX-COVERUPS.md §6c has the as-built notes and his desk test.
+
 ## 2026-09-27, 14:30 — A network drop in a song, quieter (branch `rules-rulez`)
 
 His ask: make a drop less visible. Windows logged no network change at 13:51, so the PC stayed

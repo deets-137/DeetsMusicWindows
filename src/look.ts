@@ -6,13 +6,16 @@
 import { effective, onSettingsChange, setSetting } from "./settings-store";
 import { paintTheme, type ThemeName } from "./theme";
 import { paintSkin, type SkinName } from "./skin";
-import { withAppearanceTransition } from "./appearance";
+import { withAppearanceTransition, withThemeFade } from "./appearance";
 import { noteHandPick } from "./look-schedule";
 
 type Opts = { after?: () => void; by?: "agent" };
 
 let queued = false;
 let pendingOpts: Opts = {};
+// A change that did not come through `pickLook` came from a rule (the overlay, RULES.md §7).
+// A hand pick that ends a rule also moves the overlay, so the mark is set BEFORE its write.
+let handPick = false;
 
 // np-bus imports agent-settings (through agent-writes), and agent-settings imports this module:
 // a static import here is a cycle. Lazy, as look-schedule.ts does.
@@ -23,6 +26,8 @@ function paint(): void {
   queued = false;
   const opts = pendingOpts;
   pendingOpts = {};
+  const byRule = !handPick;
+  handPick = false;
   const theme = effective("theme");
   const skin = effective("skin");
   const root = document.documentElement;
@@ -33,16 +38,23 @@ function paint(): void {
   }
   // `after` runs inside the transition's update callback, after the paint — a publish outside
   // it would read the attributes before they flip and report the OLD look.
+  const after = () => {
+    opts.after?.();
+    publishAppearance(); // tray panel + extension popup follow (they snap)
+  };
+  // A rule's theme change (Live Theming: every song) changes the colors in place; the cover
+  // stays for a hand pick, an agent and any skin change (UX-COVERUPS.md §6c).
+  if (byRule && !newSkin) {
+    withThemeFade(() => paintTheme(theme), after);
+    return;
+  }
   withAppearanceTransition(newSkin ? "skin" : "theme", () => {
     paintTheme(theme);
     paintSkin(skin);
   }, {
     skin: newSkin ? skin : undefined,
     by: opts.by,
-    after: () => {
-      opts.after?.();
-      publishAppearance(); // tray panel + extension popup follow (they snap)
-    },
+    after,
   });
 }
 
@@ -64,6 +76,7 @@ export function pickLook(look: { theme?: ThemeName; skin?: SkinName }, opts: Opt
   const theme = look.theme ?? effective("theme");
   const skin = look.skin ?? effective("skin");
   noteHandPick(); // *For good* keeps this pick when it turns the schedule off (look-schedule.ts)
+  handPick = true;
   schedule(opts);
   setSetting("theme", theme);
   setSetting("skin", skin);

@@ -840,6 +840,11 @@ six While rules, one per theme, each *While the cover is light / dark and Album 
 Use theme …*, `onHand: next`. **His call (2026-09-27): light or dark picks the theme's
 lightness**; the color picks the nearest of the three, by the theme's own hint.
 
+**How the change shows (2026-09-27):** a rule's theme change crossfades in place in 500 ms, with
+no cover ([UX-COVERUPS.md §6c](../architecture/UX-COVERUPS.md)). The last cover's color stands
+until the new one lands, so a song changes the theme once. The recipe's description says it
+works best with a GPU.
+
 | Cover color | A light cover | A dark cover |
 |---|---|---|
 | Red | Sepia | Black & Red |

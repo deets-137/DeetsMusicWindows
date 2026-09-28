@@ -93,6 +93,46 @@ export function withAppearanceTransition(
   timer = window.setTimeout(() => void swap(), tokenMs("--cover-in-dur") + 30);
 }
 
+/**
+ * A rule's theme change (UX-COVERUPS.md §6c): no cover — the colors crossfade in place, a View
+ * Transition of `--theme-morph-dur`. A theme changes only colors, so the layout under the two
+ * pictures is the same and the blend reads as the colors changing. Measured 2026-09-27: on an
+ * integrated-class GPU as smooth as a snap; a color morph (`@property` roles) ran at ~20 fps.
+ * While it runs, <html data-theme-fade> holds the ambient loops still (so the still old picture
+ * and the live new one agree) and gives the Press record its own group that skips the fade.
+ * Snaps when Animate look changes is off or the OS asks for reduced motion; a cover already
+ * running (§6a) or the launch cover takes the change instead.
+ */
+let fading: ViewTransition | null = null;
+export function withThemeFade(fn: () => void, after: () => void): void {
+  const root = document.documentElement;
+  if (phase !== null || root.dataset.boot !== undefined) {
+    withAppearanceTransition("theme", fn, { after });
+    return;
+  }
+  if (!setting("appearanceMotion") || reducedMotion() || typeof document.startViewTransition !== "function") {
+    fn();
+    after();
+    return;
+  }
+  const endFrames = frames.begin("theme-fade", `skin=${root.dataset.skin ?? "?"}`);
+  root.dataset.themeFade = "";
+  // A second change during a fade starts a new one; the browser ends the first where it is.
+  const vt = document.startViewTransition(() => {
+    fn();
+    after();
+  });
+  fading = vt;
+  vt.finished
+    .catch(() => undefined)
+    .finally(() => {
+      endFrames();
+      if (fading !== vt) return;
+      fading = null;
+      delete root.dataset.themeFade;
+    });
+}
+
 async function swap(): Promise<void> {
   const root = document.documentElement;
   phase = "wait";

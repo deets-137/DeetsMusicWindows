@@ -703,6 +703,11 @@
   --cover-in-dur:  0.22s;
   --cover-in-ease: cubic-bezier(0.4, 0, 1, 1);      /* eases in, so the cover lands softly */
   --agent-motion:  1.6;                             /* an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) */
+  /* A rule's theme change: the colors crossfade in place, no cover (UX-COVERUPS §6c). 500 ms is
+     his call (2026-09-27): shorter reads as a blink on a light ↔ dark change; longer holds the
+     low-contrast middle and the still background layers longer. */
+  --theme-morph-dur:  500ms;
+  --theme-morph-ease: ease-in-out;
 
   /* -- album-colored Now Playing text (NEXT-VERSION §7) -- */
   /* 1 = the NP title/subtext/accents take the album's guarded colors; 0 = theme

@@ -104,7 +104,7 @@ const LIVE_THEMES: [theme: string, light: boolean, words: string[], says: string
 RECIPES.push({
   id: "live",
   name: "Live Theming",
-  desc: "The theme follows the album cover: a light cover picks a light theme, a dark cover a dark one, and its color the nearest of those. With no song playing, your own theme shows.",
+  desc: "The theme follows the album cover: a light cover picks a light theme, a dark cover a dark one, and its color the nearest of those. With no song playing, your own theme shows. It works best with a GPU: the colors fade on every song.",
   rules: LIVE_THEMES.map(([theme, light, words, says], i): Rule => ({
     id: `recipe:live:${i}`, kind: "state", source: src("live"), on: true, name: `Live Theming: ${says}`,
     while: { all: [{ fact: "albumLight", is: light }, { fact: "albumColor", is: words }] },

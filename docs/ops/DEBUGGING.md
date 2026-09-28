@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
-updated: 2026-09-25
+updated: 2026-09-27
 ---
 # DeetsMusic — Debugging tools
 
@@ -261,8 +261,11 @@ Where each signal lives and what "bad" looks like. All paths are the DEV app unl
   window. `--ambient-fps` (skin token, 30) steps every loop, which cut that by ~⅔.
   Probe that found it (injected `<style>`): masks off 36→21, motion stopped →0,
   `steps()` at 30 fps →15.
-- **Skin switch and grid scroll are whole-Library costs (tested, NOT fixed).** Dev app,
-  Cyber, 3,897-row Library, styles injected at runtime (no file changes):
+- **Skin switch and grid scroll were whole-Library costs — FIXED by the windowing (2026-09-13,
+  the bullet "Library windowing" below: skin flip 16–40 ms, ~850 nodes).** The numbers in
+  this bullet are the BEFORE state; do not quote them as today's cost. The View Transition
+  they mention was removed on 2026-09-15 (UX-COVERUPS.md §6a). Dev app, Cyber, 3,897-row
+  Library, styles injected at runtime (no file changes):
   - *Skin switch* (direct attribute flip, to the 2nd frame): 353–488 ms. Trace: one Layout
     172–192 ms + style 81–90 ms over ~23k nodes; the View Transition adds ~150–200 ms on top.
     `album-color.ts`'s rAF `getPropertyValue` (93 ms) only pulls that same style pass forward.

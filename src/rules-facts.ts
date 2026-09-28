@@ -99,6 +99,9 @@ export function initRulesFacts(): void {
   // (`lookupPalette` shares its cache and its in-flight lookup), so no new Apple call. Read
   // once per cover, only while a rule reads it. It lands a moment after the song starts, so
   // it suits a While rule best; its seam rechecks when it lands.
+  // Until it lands, the LAST cover's words stand (UX-COVERUPS.md §6c, his call 2026-09-27).
+  // Clearing them at once let any other seam in that gap (diag: `playing`) end the rule, so
+  // the theme went back to his pick and then on again: two changes on one song.
   const cover = seamSet();
   let coverKey: string | null = null;
   let words: ReturnType<typeof albumWords> = {};
@@ -106,15 +109,22 @@ export function initRulesFacts(): void {
     const { cover: url, catalogId } = currentCover();
     if (url === coverKey) return;
     coverKey = url;
-    words = {};
-    if (!url || !ruleReads(["albumColor", "albumLight"])) return cover.fire();
+    if (!url || !ruleReads(["albumColor", "albumLight"])) {
+      words = {};
+      return cover.fire();
+    }
     lookupPalette(url, catalogId)
       .then((p) => {
         if (coverKey !== url) return;
         words = albumWords(p);
         cover.fire();
       })
-      .catch((e) => diag.warn("rule:factRead", { fact: "albumColor", e: String(e) }));
+      .catch((e) => {
+        diag.warn("rule:factRead", { fact: "albumColor", e: String(e) });
+        if (coverKey !== url) return;
+        words = {}; // no palette for this cover: the old one must not stand for it
+        cover.fire();
+      });
   };
   onPlayerState(readCover);
   onRulesChange(() => {

@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 518 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 520 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -670,6 +670,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber |  |
 | `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | eases in, so the cover lands softly |
 | `--agent-motion` | `1.6` | — | an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) |
+| `--theme-morph-dur` | `500ms` | — | A rule's theme change: the colors crossfade in place, no cover (UX-COVERUPS §6c). 500 ms is his call (2026-09-27): shorter reads as a blink on a light ↔ dark change; longer holds the low-contrast middle and the still background layers longer. |
+| `--theme-morph-ease` | `ease-in-out` | — |  |
 
 ### album-colored Now Playing text (NEXT-VERSION §7)
 
