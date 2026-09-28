@@ -32,6 +32,37 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.25.1 — 2026-09-27
+
+**Make your own rules.** The new **Rulez** card (in Max) lets you tell DeetsMusic what to do and
+when: "When the next song plays, use the EQ preset Warm, only if the genre is Jazz". A rule
+reads as one sentence with blanks you fill in. Rules can react to playback, the time, the
+window, the sound and your library, and can change the EQ, the volume, the look, the canvas
+picture and more. The **Logs** view shows what ran and why. Ready-made recipes are there to
+turn on: Night listening, Focus, Headphones, Party, Play on launch, and **Live Theming**, which
+picks a light or dark theme from the colors of each album cover. All recipes start off.
+
+**Your own pictures and sounds.** Add pictures for the Glass canvas and short sound clips, then
+use them in a rule. Settings › Glass › **Picture** is now a menu of your pictures.
+
+**Smoother theme changes.** When a rule changes the theme, the colors now fade in place instead
+of covering the window.
+
+**Playback recovers from a network drop.** When the network drops in the middle of a song,
+DeetsMusic checks again quickly and continues from the same spot when the network is back. The
+"can't reach Apple Music" notice waits 5 seconds first. Play after a drop also continues from
+where the song stopped, not from the start.
+
+**Fixes.** A song no longer plays twice after Apple Music fails to start the next one. Discord
+now shows each new song on a station. The keyboard works in Rewind, Diary and Rulez. Go to
+Album from Home now opens the album with more room. Less graphics work while music plays on
+Ocean, Glass and Cyber.
+
+### Installing
+
+Windows may warn the first time: the installer is signed, but a new version starts with no
+download reputation. In Microsoft Edge the path is **Delete ▾ › Keep anyway**.
+
 ## 0.25.0 — 2026-09-26
 
 **A rules engine under the app.** Several settings that act by themselves — the look schedule,
