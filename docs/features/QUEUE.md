@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: passed 2026-09-24
-sources: [src/player.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts]
-updated: 2026-09-24
+sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts]
+updated: 2026-09-28
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -452,6 +452,36 @@ normal path, so windowing and model-follow gain no new cases. Radio mode has no 
 restore; a station is not remembered. Names and art resolve through the track store (the
 durable `seen` rows cover catalog-only songs), and Now Playing repaints once the store's
 first load lands.
+
+### Next and Previous before the first Play (2026-09-28)
+
+**The bug.** After a restore (above), or after a network drop destroyed MusicKit's player,
+the model has a song and MusicKit has none. Play handled that state; Next and Previous did
+not. They asked MusicKit to skip, MusicKit had nothing, and nothing happened: no sound, no new
+title, no message. Every Next reached it (the Now Playing button, the tray panel, the media
+keys through `np-bus.ts`, the Compass, the agent, a Rulez action), and it was the default
+state of every launch (`restoreQueue: "song"`). Found by the shots runner (SHOTS.md §5b); the
+live log had one on 2026-09-26, 4.2 s after launch.
+
+**The fix, his call (2026-09-28): stay paused, as Apple Music does.** `skipWhileIdle` in
+`player.ts` runs before the MusicKit skip, only in queue mode, with no song in MusicKit and
+none loading. The rule is `src/idle-skip.ts` (tests/idle-skip.test.ts):
+- **Next:** the next song in Up Next becomes Now Playing, paused, at 0:00. At the end, with
+  repeat all, a new lap starts first (`refillFromPlan`); otherwise nothing moves.
+- **Previous:** past 3 s of a saved spot (an update restart or a drop), the song stays and the
+  spot goes, so Play starts it from the top — MusicKit's own Previous line. Otherwise the song
+  before becomes Now Playing, paused.
+- A saved spot is cleared on any move. No play intent fires (Ocean's swell stays still); the
+  `transport` event does (a Rulez skip rule still sees it). A paused skip is not a play: the
+  skipped song joins the back-chain unplayed, so Recently played and the play log are
+  unchanged. `diag`: `player:idleSkip {way, step, spot}`.
+- The first Play then loads the model's current through the normal path above.
+
+**Desk test.** Checked in the demo with the shots runner (fresh load → Next → Next → Previous →
+Play: the titles step, the button stays Play until Play, then the right song plays). His test in
+the app: quit with a song paused and songs in Up Next; start the app; press Next (the button,
+then the keyboard media key): the next song shows, paused, at 0:00. Previous goes back. Play
+plays the song on screen.
 
 ## The session play log (the Previous chain's honest twin)
 

@@ -32,6 +32,7 @@ import { toast } from "./toast";
 import { unreleasedToast } from "./release";
 import { expectedIds, suffixPlan } from "./queue-sync";
 import { resumePoint } from "./resume-point";
+import { idleSkip } from "./idle-skip";
 
 declare global {
   interface Window {
@@ -2295,9 +2296,42 @@ export async function playPause(why = "button"): Promise<void> {
 }
 
 /** Skip forward (native within the fed window). */
+/**
+ * Next / Previous while MusicKit holds no song but the model has one — a restored session
+ * (queue-persist.ts) or a network drop that destroyed MusicKit's player: the same state
+ * playPause loads from. A skip there moves the model and stays paused, as Apple Music does
+ * (his call, 2026-09-28); the first Play loads the new song. Before, the skip reached an empty
+ * MusicKit and did nothing (found by the shots runner). No play intent: nothing starts. The
+ * rule is idle-skip.ts. Returns false when MusicKit has a song (or one is loading): the
+ * normal skip runs.
+ */
+function skipWhileIdle(way: "next" | "prev"): boolean {
+  if (music?.nowPlayingItem || isLoading || mode !== "queue") return false;
+  const cur = queue.getCurrent();
+  if (!cur) return false;
+  const spotSec = resumePoint(cur, cur.catalogId ?? cur.libraryId, resumeAt, resumeAfterReconnect);
+  const step = idleSkip(way, {
+    upcoming: queue.getUpcoming().length,
+    history: queue.getHistory().length,
+    repeatAll: getRepeat() === "all",
+    spotSec,
+  });
+  diag.log("player:idleSkip", { way, step, spot: Math.round(spotSec) });
+  if (step === "none") return true;
+  // The song changes or starts over, so a saved spot no longer applies.
+  resumeAt = null;
+  resumeAfterReconnect = null;
+  if (step === "refill" && !queue.refillFromPlan(isShuffleOn())) return true;
+  if (step === "advance" || step === "refill") queue.advance();
+  else if (step === "previous") queue.previous();
+  refreshPlayerState(); // Now Playing and its scrubber show the model's song at 0:00
+  return true;
+}
+
 export async function nextTrack(): Promise<void> {
   transport("next");
   if (roomBridge) return roomBridge.next();
+  if (skipWhileIdle("next")) return;
   playIntent();
   const m = await initPlayer();
   diag.log("player:next", snap());
@@ -2616,6 +2650,7 @@ if (import.meta.env.DEV) {
 export async function prevTrack(): Promise<void> {
   transport("prev");
   if (roomBridge) return roomBridge.previous();
+  if (skipWhileIdle("prev")) return;
   playIntent();
   const m = await initPlayer();
   const at = Math.round(m.currentPlaybackTime ?? 0);
