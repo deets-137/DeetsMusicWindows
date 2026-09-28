@@ -112,11 +112,23 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**Eight more rule keys, Battery saver, Focus (2026-09-27 evening, built, desk test open,
-uncommitted).** Motion, Fancy Glass, the two Friends switches and Show notices are rule keys;
-the recipe Battery saver holds four of them off while not charging; Focus also stops
-listen-along and keeps notices at Failures. The unplug test is his, on a laptop
-([RULES.md §18a](architecture/RULES.md)).
+**Pick up here (2026-09-28, next session).** In order:
+1. Ask him the two §18a forks (RULES.md §18a, "Found at the run"): does a hand change set aside
+   the whole rule or only that setting (today: whole, `onHand` in rules.ts); does a switch row
+   under a rule show his value (today) or the rule's.
+2. Ask his yes for `npm run dev:fresh` (B3, B12, B13; it wipes the dev sign-in) and a
+   `dev:built` restart (B15). Then run them, and the A1 re-test (COMPASS.md §5a steps 8–10).
+3. The Rulez condition block cuts a yes / no fact's words ("Charging" + "s on battery",
+   rulez-card.ts `blockHTML`, the label-length slice) — an old bug, not yet fixed; a fix needs no
+   fork (show the fact's own phrase).
+4. Then the Rulez design pass (RULEZ.md §15) or Layout (LAYOUT.md), his pick.
+
+**Eight more rule keys, Battery saver, Focus (2026-09-27 evening, built, committed in
+`3b433bc`, pushed).** Motion, Fancy Glass, the two Friends switches and Show notices are rule
+keys; the recipe Battery saver holds four of them off while not charging; Focus also stops
+listen-along and keeps notices at Failures; a room-code switch change reaches friends at once.
+Claude's desk test passed (steps 1, 2, 4); the unplug test is his, on a laptop, and two forks
+are his ([RULES.md §18a](architecture/RULES.md)).
 
 **The dead-next heal's double play (2026-09-27 17:10, built, desk test open).** A song
 healed after a failed auto-advance played with no MusicKit index, never grew its window, and
