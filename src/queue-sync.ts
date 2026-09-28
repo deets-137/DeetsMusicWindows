@@ -17,6 +17,20 @@ export function expectedIds<E>(upcoming: readonly E[], cap: number, idOf: (e: E)
   return out;
 }
 
+/** How far ahead a difference must be repaired at a song change. A repair cuts MusicKit's
+ *  upcoming from the first difference and appends it again, and at a song change that work
+ *  meets the next song's own start. Near the play head it cannot wait: MusicKit plays into
+ *  those songs next. The same count as the grow at a click (GROW_NOW, player.ts). */
+export const REPAIR_NEAR = 8;
+
+/** Repair a difference at `mkPos` of MusicKit's upcoming now, at a song change? A far one
+ *  waits for the next window top-up, which repairs from the first difference anyway.
+ *  Found 2026-09-28: one song MusicKit would not hold, 155 songs ahead, was cut and appended
+ *  again at every song change, and the churn met the next song's start. */
+export function repairAtSongChange(mkPos: number): boolean {
+  return mkPos < REPAIR_NEAR;
+}
+
 /** How MusicKit's upcoming (`mk`) differs from `expected`: the length of the shared prefix
  *  (`keep`) and how many of MusicKit's items after it must go (`drop`). The divergent suffix
  *  is contiguous, so one splice and one append repair it. null when they already match. */

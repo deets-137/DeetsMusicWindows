@@ -11,6 +11,7 @@ mod diary;
 mod enrich;
 mod favorites;
 mod friends;
+mod heal;
 mod lastfm;
 mod library;
 mod lock;
@@ -246,6 +247,7 @@ pub fn run() {
             roworder::migrate_v13(&conn).expect("v13 migration failed");
             diary::migrate_v14(&conn).expect("v14 migration failed");
             diary::migrate_v15(&conn).expect("v15 migration failed");
+            heal::migrate_v16(&conn).expect("v16 migration failed");
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Every command that takes the lock runs on this one thread, in arrival order.
             db_thread::start(app.handle());
@@ -536,6 +538,8 @@ pub fn run() {
             library::queue_state_set,
             library::dead_ids_cached,
             library::dead_ids_mark,
+            heal::catalog_heals,
+            heal::catalog_heal_one,
             log::log_open_folder,
             bridge::bridge_open_install_page,
             bridge::bridge_resolve,

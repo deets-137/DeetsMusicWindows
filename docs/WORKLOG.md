@@ -12,6 +12,47 @@ updated: 2026-09-28
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-28 — The music stopped at a song change
+
+**His ask:** why did the music pause? Read from the live ring: a repair loop on one song MusicKit
+will not hold ("Lawn", no catalog id, 155 songs ahead), a load that did not wait for a repair,
+and a heal that skipped the failed song. QUEUE.md §The music stopped at a song change.
+
+**His calls:** repair at a song change only when the difference is in the next 8 songs; retry a
+license failure after a load once, quietly; retry the failed song once before the heal skips it.
+Also fixed: a load waits for every reconcile.
+
+**Built, NOT committed, NOT desk-tested.** The desk test is in the QUEUE.md section. Choices made
+inside his picks: the song-change rule does not apply to edits (they still repair at any
+distance); the license retry covers any load that ended in the last 3 s, not only the heal's;
+heard = over 0.5 s of the entry's own item.
+
+**Then the catalog heal (his calls: heal with the catalog copy; the id is play-only and answers
+"in your library"; match title + artist, same album first, else within 3 s; no match = not
+playable, searched again in 7 days).** Built, NOT committed, NOT desk-tested: `heal.rs`, schema
+v16 `catalog_heal`, the pass after each sync, the backstop after each insert, the dimmed row.
+QUEUE.md §A library song Apple sends with no play id; the desk test is there. Choices made
+inside his picks: at most 50 searches per pass; only songs with no play id (an uploaded song is
+left alone); the backstop heals once per id per session; a no-copy song leaves a clicked list as
+an unreleased one does; the row reuses the unreleased dim, on line rows only.
+
+**Then the live log.** He reported the break at "Not Always" after he added Chill (the Play Next of
+25). The log file (not only the ring) held at least 13 broken song changes, 12:56–14:35, all with
+the Lawn loop running, and none after he played lists without Lawn. One was silent for 5½ minutes
+with no toast ("Need U" → "Water"). **His call:** check that a recovery load ends in sound
+(`recoverLoad`, 4 s; once more, then the toast). Built.
+
+**Claude's dev-app run** (results in QUEUE.md): Apple's fresh full sync gave Lawn, "Mom + Pop" and
+"Fell In Love" catalog ids again; the heal found no copy for the 9 left; the dim, the list skip,
+and 8 song changes on the Library passed clean. Apple's new ids for Lawn and "Mom + Pop" are
+NOT_FOUND in MusicKit; the dead-id path fell back and Lawn played.
+
+**A slip:** with a dev app up, the `deetsmusic` MCP answered the INSTALLED app (it took port 47825
+first; the dev app got 47826). One volume call set his live volume to 3% for ~4 s; set back to 9%.
+Drive a dev app with `deetsmusic --port 47826` and `webview-eval.mjs` only.
+
+Committed and pushed on `visualz` at his word.
+
 ## 2026-09-28 — Play a web from the song playing
 
 **His ask:** a Settings row: a web made from the song playing plays at once; a second row skips

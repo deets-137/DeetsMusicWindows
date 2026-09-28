@@ -113,6 +113,19 @@ Player events (`src/player.ts`):
   *upcoming list*, not just `current`.
 - `player:reconcile` — `{ d, mk, expected }` a drag-reorder (or future re-window) rebuilt
   MusicKit's upcoming from the first divergence `d` to the window end. Gapless.
+- `player:repair` — `{ where, ok }` the repair after a misalign; `ok: false` at every song
+  change is a LOOP (2026-09-28: one song MusicKit would not hold, and the song changes broke).
+- `player:repairLater` — `{ where, mkPos }` a misalign at a song change too far ahead to repair
+  now (`repairAtSongChange`, queue-sync.ts); the next top-up repairs it.
+- `player:insertDropped` — `{ where, n, ids }` MusicKit took an insert without an error but does
+  not hold these ids. `player:healAsked` — `{ n, healed }` the library ids among them were sent
+  to the catalog heal (QUEUE.md §A library song Apple sends with no play id).
+- `player:retryCurrent` — `{ id, np, mkLen }` MusicKit announced a song and ended it with no
+  sound; the song is loaded again once before the heal skips it.
+- `player:keyRetry` — `{ via, id }` a `MEDIA_KEY` error right after a load; the song loads again
+  once, quietly.
+- `player:recoverSilent` / `player:recoverGaveUp` — `{ why, id, state }` a recovery load was
+  silent 4 s later: loaded once more / silent again, the toast.
 - `player:shuffle` — `{ idle, n | up }` the one-shot shuffle button (`idle: true` = nothing
   was playing → whole library shuffled as a fresh context; `false` = upcoming reshuffled +
   reconciled)
@@ -843,6 +856,12 @@ CDP (9222). Before a `dev:app` / `dev:built` or a bench, ask any other session w
 repo (SendMessage) and wait for "go". Say which source files you edit: its dev app hot-reloads
 them. When you finish, stop only the dev exe under `src-tauri\target` and the owner of port
 1420, never the installed app (bridge 47826), and tell the other session.
+
+**Which app answers on 47825 (2026-09-28).** The bridge port goes to whichever app starts FIRST.
+When the installed app was already running, the dev app got 47826, and the `deetsmusic` MCP
+tools (47825) drove the INSTALLED app: a volume call changed his live volume. Read
+`bridge: listening on …` in the dev log first. Then drive the dev app with
+`deetsmusic --port <its port> …` and `scripts/webview-eval.mjs`, never the MCP.
 
 ## Which memory number to quote (2026-09-27)
 

@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: none
-sources: [src/stats.ts]
-updated: 2026-09-16
+sources: [src/stats.ts, src-tauri/src/heal.rs]
+updated: 2026-09-28
 ---
 # DeetsMusic — Data Architecture
 
@@ -333,6 +333,18 @@ and re-renders on `done`.
 **Read (`library_tracks(offset, limit)`):** paged `Page<Track>` from SQLite, ordered
 by `sort_key`.
 
+**The catalog heal** (2026-09-28, schema v16, `heal.rs`,
+[QUEUE.md §A library song Apple sends with no play id](../features/QUEUE.md)):
+```sql
+catalog_heal(library_id TEXT PRIMARY KEY, catalog_id TEXT, how TEXT, checked_at INTEGER)
+```
+Apple sends some library songs with an empty `playParams` (no catalog id, no play id): the copy
+the library points to was pulled. After each sync a background pass searches the catalog once
+per such song and stores the copy to PLAY (`how` = "album" | "length"), or NULL and "none" (not
+playable; searched again after 7 days). The song's key stays its library id, so nothing is
+re-keyed; the player reads the map through `playId`, and the track store files the healed id
+under the library row. Outside `tracks` on purpose, as `added_at`: a sync rewrites every row.
+
 ---
 
 ## 6. The themed loopback page
@@ -360,10 +372,13 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `play_events_since(sinceTs)` | library.rs | windowed read of the play-event log (the Rewind card) |
 | `added_at_map` | library.rs | every add time this app has stamped (the Home card's Recently Added) |
 | `artist_photos` | apple.rs | every artist photo already in `artist_catalog`; read-only, never calls Apple (Home's artist tiles) |
+| `catalog_heals` | heal.rs | the heal map: healed (library id, catalog id) pairs and the no-copy library ids |
+| `catalog_heal_one(libraryId)` | heal.rs | heal one song now (the player's backstop when MusicKit leaves a library id out); one catalog search at most |
 
 | Event | Payload |
 |---|---|
 | `library-sync` | `{ phase: "start" \| "progress" \| "done", fetched?, count?, total? }` |
+| `catalog-heal` | `{ healed, none }` — a heal stored results; the track store re-reads the map |
 
 ---
 

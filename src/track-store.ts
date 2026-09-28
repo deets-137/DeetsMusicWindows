@@ -3,6 +3,8 @@
 // card (handle resolution) read from here, so the library isn't loaded or held twice —
 // and neither goes stale after a background sync.
 
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { libraryTracks, librarySync, onSyncEvent, seenTracks, type Track } from "./library";
 import { isConnected } from "./apple";
 import * as perf from "./perf";
@@ -20,11 +22,49 @@ function notify(why: TracksChange): void {
   listeners.forEach((label, cb) => perf.span(label, () => cb(why)));
 }
 
+// The catalog heal (heal.rs, QUEUE.md §A library song Apple sends with no play id): Apple
+// sent some library songs with no play id. `healed` maps such a song's library id to the
+// catalog copy to PLAY; the song keeps its library id as its key. `noCopy` holds the ones
+// with no catalog copy (checked in the last 7 days): not playable.
+let healed = new Map<string, string>();
+let noCopy = new Set<string>();
+
+interface Heals {
+  healed: [string, string][];
+  none: string[];
+}
+async function loadHeals(): Promise<void> {
+  try {
+    const h = await invoke<Heals>("catalog_heals");
+    healed = new Map(h.healed);
+    noCopy = new Set(h.none);
+  } catch (e) {
+    console.warn("[track-store] heals", e);
+  }
+}
+
+/** Re-read the heal map and re-index (the heal's event, and the player's backstop). */
+export async function refreshHeals(): Promise<void> {
+  await loadHeals();
+  index();
+  notify("library");
+}
+
+/** The catalog id to play for a library song Apple sent with no play id, if one was found. */
+export const healedId = (libraryId?: string): string | undefined => (libraryId ? healed.get(libraryId) : undefined);
+/** A library song Apple sent with no play id, and with no catalog copy: it cannot play. */
+export const noCatalogCopy = (t: { catalogId?: string; libraryId?: string }): boolean =>
+  !t.catalogId && !!t.libraryId && noCopy.has(t.libraryId);
+
 function index(): void {
   const m = new Map<string, Track>();
   for (const t of all) {
     if (t.libraryId) m.set(t.libraryId, t);
     if (t.catalogId) m.set(t.catalogId, t);
+    // The healed copy answers as this song: "in your library" in Search and on an artist
+    // page, and a queue entry fed by the healed id resolves to the library row.
+    const h = !t.catalogId && t.libraryId ? healed.get(t.libraryId) : undefined;
+    if (h && !m.has(h)) m.set(h, t);
   }
   byId = m;
 }
@@ -35,7 +75,7 @@ export async function loadTracks(): Promise<void> {
     // The durable 'seen' rows (materialized catalog-only tracks) ride along into the
     // TRANSIENT map, so historical feedback (Rewind, play stats) resolves to metadata
     // across sessions — while the browsable library stays synced rows only.
-    const [page, seen] = await Promise.all([libraryTracks(0, 100000), seenTracks()]);
+    const [page, seen] = await Promise.all([libraryTracks(0, 100000), seenTracks(), loadHeals()]);
     all = page.items;
     index();
     for (const t of seen) {
@@ -101,6 +141,9 @@ export function initTrackStore(): void {
   if (started) return;
   started = true;
   firstLoad = loadTracks();
+  // A heal pass (after a sync) or the player's backstop found catalog copies: re-index, so
+  // the rows and "in your library" follow at once.
+  void listen("catalog-heal", () => void refreshHeals());
   onSyncEvent((e) => {
     // Reload on error too: an incomplete sync still upserted the pages that DID fetch.
     if (e.phase === "done" || e.phase === "error") loadTracks();

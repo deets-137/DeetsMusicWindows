@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: open
-sources: [src-tauri/src/apple.rs, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src/apple-health.ts]
-updated: 2026-09-25
+sources: [src-tauri/src/apple.rs, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src/apple-health.ts, src-tauri/src/heal.rs]
+updated: 2026-09-28
 ---
 # Apple calls — the counter and the 429 back-off
 
@@ -121,6 +121,10 @@ updated: 2026-09-25
   and is the user's), the mirror sync (`apple_playlists_sync` with `fresh: false` — the ⟳ is
   the user's), the eager playlist counts, the playlist refresh (hourly and on open), Home's two
   Apple reads and its New shelf, and the two ♥ reconciles. Everything else is a user call.
+  **Added 2026-09-28:** the catalog heal (`catalog_heal`, heal.rs), after every library sync —
+  one catalog search per library song Apple sent with no play id, at most 50 per pass, stopping
+  at the first failed call. Its backstop `catalog_heal_one` (one song, when MusicKit leaves a
+  library id out of an insert) is a user-path call: it serves a play.
 - **The 429 toast** (`apple-busy`, apple-health.ts): `warn`, 6 s, the words of §3; a second 429
   within 6 s adds none. `apple_check`'s probe reads a 429 as "the token is fine" (`ok`), so a
   busy Apple never shows "Apple Music isn't responding to DeetsMusic".

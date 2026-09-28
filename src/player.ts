@@ -17,7 +17,7 @@ import * as health from "./apple-health";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
-import { trackById, tracks, addTransientTracks, inLibrary } from "./track-store";
+import { trackById, tracks, addTransientTracks, inLibrary, healedId, noCatalogCopy, refreshHeals } from "./track-store";
 import { stageArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
@@ -30,7 +30,7 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
-import { expectedIds, suffixPlan } from "./queue-sync";
+import { expectedIds, suffixPlan, repairAtSongChange } from "./queue-sync";
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
 
@@ -539,6 +539,11 @@ function emitProgress(): void {
   // subscription (TOASTS.md). Not at the song-start: MusicKit sets now-playing first.
   if (freshSignIn && currentTime > 0.5) freshSignIn = false;
   if (currentTime > 0) lastHeardAt = currentTime; // MusicKit's clock resets when its player dies
+  if (!isLoading && currentTime > HEARD_S) {
+    const cur = queue.getCurrent();
+    const npId: string | undefined = music?.nowPlayingItem?.id;
+    if (cur && npId && isEntry(cur, npId)) heardEntry = cur;
+  }
   // While a (re)window loads, the outgoing song still ticks through the teardown. The
   // scrubber already shows the incoming song at 0 (emitLoadingProgress, UX-COVERUPS.md §1);
   // an old-song tick here would drag it back under the new title.
@@ -897,7 +902,7 @@ function onNowPlayingChange(): void {
         return;
       }
       stats.recordStart(queue.getCurrent()); // a settled song-start counts as a partial play
-      void ensureAligned("np");
+      void ensureAligned("np", true);
       maybeTopUpWindow();
     }
   }
@@ -1079,20 +1084,27 @@ function alignmentReport() {
   return { aligned: !firstMismatch, firstMismatch, mkUpLen: mkUp.length, modelUpLen: modelUp.length };
 }
 
-/** Log `player:misalign` when the upcoming lists diverge. True = aligned. */
-function checkAlignment(where: string): boolean {
-  if (loadingContext) return true; // mid-(re)build — expected to differ
+/** Log `player:misalign` when the upcoming lists diverge. Null = aligned (or mid-load). */
+function checkAlignment(where: string): ReturnType<typeof alignmentReport>["firstMismatch"] {
+  if (loadingContext) return null; // mid-(re)build — expected to differ
   const r = alignmentReport();
   if (!r.aligned) {
     diag.log("player:misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
     perf.event("misalign", { where, ...r.firstMismatch, mkUpLen: r.mkUpLen, modelUpLen: r.modelUpLen });
   }
-  return r.aligned;
+  return r.firstMismatch;
 }
 
-/** Check, and repair MusicKit from the model when they diverge — once per call, never a loop. */
-async function ensureAligned(where: string): Promise<void> {
-  if (checkAlignment(where) || mode !== "queue") return;
+/** Check, and repair MusicKit from the model when they diverge — once per call, never a loop.
+ *  At a song change (`songChange`) only a near difference is repaired at once (queue-sync.ts,
+ *  `repairAtSongChange`); a far one waits for the next top-up. */
+async function ensureAligned(where: string, songChange = false): Promise<void> {
+  const miss = checkAlignment(where);
+  if (!miss || mode !== "queue") return;
+  if (songChange && !repairAtSongChange(miss.mkPos)) {
+    diag.log("player:repairLater", { where, mkPos: miss.mkPos });
+    return;
+  }
   await reconcileUpcoming();
   const ok = alignmentReport().aligned;
   diag.log("player:repair", { where, ok });
@@ -1214,7 +1226,9 @@ let itemsMode: "try" | "off" = "try";
 function describe(id: string): any | undefined {
   const t = trackById(id);
   if (!t) return undefined;
-  const byLibrary = t.catalogId !== id; // the fallback path: a library id (dead catalog id)
+  // The fallback path: a library id (dead catalog id). A healed catalog id resolves to the
+  // library row too (track-store.ts), so compare with the library id, not the catalog id.
+  const byLibrary = id === t.libraryId;
   const playParams = byLibrary
     ? { id, kind: "song", isLibrary: true, catalogId: t.catalogId }
     : { id, kind: "song" };
@@ -1340,12 +1354,40 @@ export function noteSignedIn(): void {
 }
 
 /** Best play target for a handle — catalog id preferred, library id as fallback;
- *  ids MusicKit has declared dead this session are passed over. */
+ *  ids MusicKit has declared dead this session are passed over. A library song Apple sent
+ *  with no play id plays its healed catalog copy (heal.rs), and plays nothing when it has
+ *  none: MusicKit would take its library id without an error and leave it out. */
 const playId = (h: TrackHandle): string | undefined => {
   if (h.catalogId && !deadIds.has(h.catalogId)) return h.catalogId;
+  if (!h.catalogId) {
+    const healed = healedId(h.libraryId);
+    if (healed) return deadIds.has(healed) ? undefined : healed;
+    if (noCatalogCopy(h)) return undefined;
+  }
   if (h.libraryId && !deadIds.has(h.libraryId)) return h.libraryId;
   return undefined;
 };
+
+// The heal's backstop (QUEUE.md §A library song Apple sends with no play id). MusicKit
+// takes an insert of a library id it cannot play WITHOUT an error and leaves the song out.
+// The heal after each sync finds these songs first; this catches one it has not seen yet
+// (a song added since, a first launch): heal that song now, then repair once more.
+const healAsked = new Set<string>();
+function noteDropped(where: string, sent: string[]): void {
+  const held = new Set<string>((music?.queue?.items ?? []).map((it: any) => it?.id));
+  const dropped = sent.filter((id) => !held.has(id));
+  if (!dropped.length) return;
+  diag.log("player:insertDropped", { where, n: dropped.length, ids: dropped.slice(0, 10) });
+  const ask = dropped.filter((id) => id.startsWith("i.") && !healAsked.has(id));
+  if (!ask.length) return;
+  ask.forEach((id) => healAsked.add(id));
+  void (async () => {
+    const got = await Promise.all(ask.map((id) => invoke<string | null>("catalog_heal_one", { libraryId: id }).catch(() => null)));
+    diag.log("player:healAsked", { n: ask.length, healed: got.filter(Boolean).length });
+    await refreshHeals(); // playId now answers the catalog copy, or nothing
+    await reconcileUpcoming();
+  })();
+}
 
 /** Extract the id list from a MusicKit "items could not be resolved" rejection. */
 function unresolvedIds(e: unknown): string[] {
@@ -1374,6 +1416,7 @@ async function insertWithRetry(
   for (let attempt = 0; ids.length; attempt++) {
     try {
       await run(ids);
+      noteDropped(where, ids);
       return;
     } catch (e) {
       const bad = unresolvedIds(e);
@@ -1439,6 +1482,10 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     perf.mark("waitTopUp");
     await topUp;
   }
+  // Every reconcile, not only the top-up: a song-change repair still appending when this
+  // load swaps the queue landed its old songs behind the new one (2026-09-28, 41 stale
+  // songs, twice), and that met the new song's license setup (MEDIA_KEY, the music stopped).
+  await reconcileChain;
   // Build a DUPLICATE-FREE window: `current` at index 0 (pos is always 0 now), then up to
   // `fwdN` upcoming ids. MusicKit's setQueue collapses repeated song ids, which would
   // throw off the index changeToMediaAtIndex jumps to — so dedupe (first id wins). The
@@ -1662,6 +1709,16 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
       return Promise.resolve();
     }
     startIndex = tracks.slice(0, startIndex).filter((t) => !t.unreleased).length;
+  }
+  // A library song with no catalog copy (heal.rs) leaves the list the same way, so a click on
+  // it starts the next song that plays. Only it left: playContext refuses, and the "no longer
+  // offers" toast below names it.
+  if (tracks.some(noCatalogCopy)) {
+    const kept = tracks.filter((t) => !noCatalogCopy(t));
+    if (kept.length > tracks.slice(0, startIndex).filter((t) => !noCatalogCopy(t)).length) {
+      startIndex = tracks.slice(0, startIndex).filter((t) => !noCatalogCopy(t)).length;
+      tracks = kept;
+    }
   }
   playIntent();
   perf.click(context, tracks.length); // BEFORE the ingest — stage A includes it
@@ -2253,6 +2310,7 @@ export async function playPause(why = "button"): Promise<void> {
   if (!music?.isPlaying) await requireSignIn(); // pausing never needs a sign-in
   const m = await initPlayer();
   if (m.isPlaying) {
+    lastUserPauseAt = performance.now();
     await m.pause();
     return;
   }
@@ -2388,8 +2446,50 @@ async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean
   // re-windowed song then played with NO now-playing index: both grows returned silently, the
   // queue stayed at one song, and at its end MusicKit started index 0 again — the song played
   // twice. A full stop() resets the controller, as the station break-out learned (QUEUE.md).
-  await loadFromModel(m, true, { stopFirst: true });
+  await recoverLoad(m, "deadNext");
   return true;
+}
+
+// ── The recovery load must end in sound (2026-09-28) ─────────────────────────────
+// A recovery load (the end-of-song heal, the failed-song retry, the dry window, the license
+// retry) can end with nothing playing and no error: on live, "Need U" → "Water" had its play()
+// cut off, and the music stayed silent for 5½ minutes with no toast. So each recovery load is
+// checked: RECOVER_CHECK_MS later MusicKit must play (or still be loading) the same song. If
+// it is silent, load it once more; silent again, the toast says so. Nothing is done when the
+// user paused, clicked, skipped or the song changed in between.
+const RECOVER_CHECK_MS = 4000;
+/** A still-loading song gets this many more looks before it counts as silent. */
+const RECOVER_LOADING_LOOKS = 3;
+let lastUserPauseAt = -Infinity;
+let recoverAgain: unknown = null;
+
+async function recoverLoad(m: any, why: string): Promise<void> {
+  await loadFromModel(m, true, { stopFirst: true });
+  const entry = queue.getCurrent();
+  const gen = loadGen;
+  const startedAt = performance.now();
+  let looks = 0;
+  const check = (): void => {
+    const mk = music;
+    const S = window.MusicKit?.PlaybackStates;
+    if (!mk || !S || !entry || mode !== "queue" || isLoading || loadGen !== gen || queue.getCurrent() !== entry) return;
+    if (mk.isPlaying || lastUserPauseAt > startedAt) return;
+    const st = mk.playbackState;
+    if ((st === S.loading || st === S.waiting || st === S.stalled) && looks++ < RECOVER_LOADING_LOOKS) {
+      window.setTimeout(check, RECOVER_CHECK_MS);
+      return;
+    }
+    const id = playId(entry) ?? null;
+    if (recoverAgain === entry) {
+      diag.warn("player:recoverGaveUp", { why, id, state: S[st] ?? st });
+      toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+      return;
+    }
+    recoverAgain = entry;
+    diag.warn("player:recoverSilent", { why, id, state: S[st] ?? st });
+    recoverLoad(mk, `${why}:again`).catch((e) => console.warn("[player] recovery reload:", e));
+  };
+  window.setTimeout(check, RECOVER_CHECK_MS);
 }
 
 /**
@@ -2403,6 +2503,11 @@ async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean
  * A true queue end (model has nothing upcoming) is maybeFinishQueue's, not ours.
  */
 let endHealing = false;
+/** The last queue entry MusicKit played sound for (emitProgress). */
+let heardEntry: unknown = null;
+const HEARD_S = 0.5;
+/** The entry the end-of-song heal already retried: a second failure skips it. */
+let endRetried: unknown = null;
 function onEndedWithoutItem(): void {
   const m = music;
   const S = window.MusicKit?.PlaybackStates;
@@ -2413,13 +2518,28 @@ function onEndedWithoutItem(): void {
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
   const mkRemaining = np >= 0 ? items.length - np - 1 : 0;
   endHealing = true;
-  const run = mkRemaining > 0
+  // Which song failed? When MusicKit announced the next song (the model followed it) and
+  // then ended with no sound, the failed song is the model's `current`, not the one after it.
+  // Retry it once; a second failure skips it as before. Before 2026-09-28 the heal always
+  // went past `current`, so "Not Always" and "Starchild" were skipped unheard.
+  const cur = queue.getCurrent();
+  const retryCurrent = mkRemaining > 0 && !!cur && heardEntry !== cur && endRetried !== cur;
+  if (retryCurrent) endRetried = cur;
+  const run = retryCurrent
+    ? (async () => {
+        const id = playId(cur);
+        diag.log("player:retryCurrent", { id, np, mkLen: items.length });
+        perf.event("retryCurrent", { id, np, mkLen: items.length });
+        await recoverLoad(m, "retryCurrent"); // the same `ended` state as healDeadNext
+        return true;
+      })()
+    : mkRemaining > 0
     ? healDeadNext(m, `ended: next item did not start (mk ${np}/${items.length})`, false)
     : (async () => {
         diag.log("player:windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
         perf.event("windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
         if (!queue.advance()) return false;
-        await loadFromModel(m, true, { stopFirst: true }); // same `ended` state as healDeadNext
+        await recoverLoad(m, "windowDry"); // same `ended` state as healDeadNext
         return true;
       })();
   run.catch((e) => console.warn("[player] end-of-song heal:", e)).finally(() => {
@@ -2488,6 +2608,12 @@ async function recoverFromFailure(source: string, live = false): Promise<{ troub
   }
 }
 
+const MEDIA_KEY = /^MEDIA_KEY\b/;
+/** Wait before the license retry, so MusicKit's torn-down key session is gone. */
+const KEY_RETRY_MS = 1000;
+/** The entry the license retry already loaded again: a second failure is not retried. */
+let keyRetried: unknown = null;
+
 /** MusicKit failed on its own (its alert dialog, or a playback error that is not a dead
  *  song): no native dialog, find the cause, retry the current song once after a heal. */
 function onMusicKitTrouble(msg: string, via: string): void {
@@ -2498,6 +2624,20 @@ function onMusicKitTrouble(msg: string, via: string): void {
   // A failed audio download in a queue song: a network drop, most often a short one.
   if (msg === "loadSegmentError" && stopped) return onDrop(stopped, stoppedAt, via, true);
   const now = performance.now();
+  // The song's license setup failed right after a load: a race inside MusicKit, not Apple's
+  // health. Load the song again once, quietly; a second failure takes the path below.
+  if (stopped && MEDIA_KEY.test(msg) && now - lastLoadEndAt < LOAD_ERROR_GRACE_MS && keyRetried !== stopped) {
+    keyRetried = stopped;
+    diag.log("player:keyRetry", { via, id: playId(stopped) ?? null });
+    window.setTimeout(() => {
+      if (!music || mode !== "queue" || queue.getCurrent() !== stopped || music.isPlaying) return; // moved on
+      recoverLoad(music, "keyRetry").catch((e) => {
+        console.warn("[player] license retry:", e);
+        toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+      });
+    }, KEY_RETRY_MS);
+    return;
+  }
   if (now - lastTroubleAt < RETRY_GAP_MS) return;
   lastTroubleAt = now;
   void (async () => {

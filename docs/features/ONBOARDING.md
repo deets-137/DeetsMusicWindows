@@ -173,6 +173,7 @@ nothing about authoring changed when the box did.
 | Diary entry | a song row | Shows this song's note below. Double-click plays the album from here → unreleased: the Search pane's "Not out yet" hint | diary-card.ts `songRowHTML` |
 | Diary foot | the play square · the song title · the note-day pill | Plays the album from this song · The song that plays. The panel follows it / The row you picked · The day of this note. It is set when you first write one | diary-card.ts `footHTML` |
 | Settings › Diary | Rescale scores · Grow on open | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5 · The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi | settings-card.ts |
+| Library song rows (2026-09-28) | a dimmed row (a library song Apple sent with no play id, and no catalog copy found) | Apple Music has no copy of this song now. DeetsMusic looks again in 7 days | library-card.ts `dimUnreleased` (QUEUE.md §A library song Apple sends with no play id) |
 | Search album pane (2026-09-24) | a dimmed row (a song not out yet) | Not out yet — coming 09/25 → past its date: Not on Apple Music yet | search-card.ts `listRow`, release.ts `unreleasedHint` (SEARCH.md §Unreleased songs) |
 | Any list | Sort · View · magnifier | Changes the order of this list · Changes what the list groups by and how big the rows are · Finds a name in this list | collection-card.ts |
 | Sort popover | ↑ · ↓ | First to last: A to Z, newest first · Last to first: Z to A, oldest first | collection-card.ts |

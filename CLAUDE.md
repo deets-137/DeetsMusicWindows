@@ -377,5 +377,5 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - **A withdrawn version's notes never reach an update offer**, so the release that replaces
   it carries the whole line's notes in its own entry (RELEASE-NOTES.md).
 - Commit only when the user asks. Co-author trailer — name the model that did the work
-  (today `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`); update this line when
+  (today `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when
   the model changes.

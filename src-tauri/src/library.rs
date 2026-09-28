@@ -1122,6 +1122,7 @@ async fn library_sync_run(
     if incremental {
         let n = sync_incremental(&app, provider, &db, age.unwrap_or(0)).await;
         artist_catalog_pass(&dev, &user, &db, false).await;
+        crate::heal::pass(&app, &dev, &user, &db).await; // songs Apple sent with no play id
         return n;
     }
     crate::log::info(&format!(
@@ -1210,6 +1211,9 @@ async fn library_sync_run(
         serde_json::json!({ "phase": "done", "count": all.len(), "total": total }),
     )
     .ok();
+    // Songs Apple sent with no play id get their catalog copy (heal.rs), after `done`:
+    // the Library is already on screen, and the heal's own event updates the map.
+    crate::heal::pass(&app, &dev, &user, &db).await;
     Ok(all.len() as u32)
 }
 

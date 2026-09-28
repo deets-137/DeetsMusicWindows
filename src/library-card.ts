@@ -14,7 +14,7 @@
 
 import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
-import { tracks, onTracksChange } from "./track-store";
+import { tracks, onTracksChange, noCatalogCopy } from "./track-store";
 import { playTracks } from "./player";
 import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
@@ -437,10 +437,14 @@ function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): str
 
 // The Full view's rows (FULL-LIB.md): the Add square, marked, and Search's unreleased dim.
 const markSquare = (t: Track): string => (t.unreleased ? "" : addSquareHTML(t, "add-square--row", true));
+// A library song with no catalog copy (heal.rs) wears the same dim: it cannot play either.
+const NO_COPY_HINT = "Apple Music has no copy of this song now. DeetsMusic looks again in 7 days";
 const dimUnreleased = (html: string, t: Track, mark: boolean): string =>
   mark && t.unreleased
     ? html.replace('class="lib-row', `aria-disabled="true" title="${esc(unreleasedHint(t))}" class="lib-row is-unreleased`)
-    : html;
+    : noCatalogCopy(t)
+      ? html.replace('class="lib-row', `aria-disabled="true" title="${NO_COPY_HINT}" class="lib-row is-unreleased`)
+      : html;
 
 export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<Track> {
   return {

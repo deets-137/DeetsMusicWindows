@@ -1,7 +1,7 @@
 // queue-sync.ts: what MusicKit's upcoming window should hold (QUEUE.md §The model is the master).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expectedIds, suffixPlan } from "../src/queue-sync.ts";
+import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR } from "../src/queue-sync.ts";
 
 const id = (e: { id?: string }) => e.id;
 
@@ -35,4 +35,11 @@ test("suffixPlan: songs removed at the end drop only those", () => {
 test("suffixPlan: a repeated song compares by position, not by id", () => {
   // MusicKit holds a, b; the model re-queued a after b.
   assert.deepEqual(suffixPlan(["a", "b"], ["a", "b", "a"]), { keep: 2, drop: 0 });
+});
+
+test("repairAtSongChange 2026-09-28: a near difference now, a far one waits for the top-up", () => {
+  assert.equal(repairAtSongChange(0), true);
+  assert.equal(repairAtSongChange(REPAIR_NEAR - 1), true);
+  assert.equal(repairAtSongChange(REPAIR_NEAR), false);
+  assert.equal(repairAtSongChange(155), false); // the Lawn loop
 });

@@ -114,6 +114,13 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Pick up here (2026-09-28, next session).** In order:
 0. **Desk test: Play a web from the song playing** (built + committed 2026-09-28, not run): PLAYLIST-WEB.md §11.3.
+0a. **The music stopped at a song change + the catalog heal** (built + committed 2026-09-28,
+   Claude ran part of it on the dev app): QUEUE.md §The music stopped at a song change and §A
+   library song Apple sends with no play id. Not reached yet: a healed id in use, "in your
+   library" for it, and the retries (they need a real failed song change, on live after a
+   release). Watch the live ring for `player:retryCurrent`, `keyRetry`, `recoverSilent`.
+   Also open: when Apple gives a library song a catalog id later (Lawn did), its key moves from
+   the library id to the catalog id; its old play counts may stay on the old key. Not checked.
 1. ~~The two §18a forks~~ — his calls 2026-09-27 late night (RULES.md §18a): a hand change
    sets the whole rule aside (unchanged); a Settings row shows the value in force (built,
    desk-tested by Claude). His look: the rows under Battery saver or Focus, and their dot.

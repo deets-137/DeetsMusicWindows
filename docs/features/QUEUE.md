@@ -1,7 +1,7 @@
 ---
 status: foundation
 desk_test: passed 2026-09-24
-sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts]
+sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs]
 updated: 2026-09-28
 ---
 # DeetsMusic — Queue model & playback windowing
@@ -434,6 +434,125 @@ silently. Two changes:
 `player:topUp` (mkLen 1); no `topUpSkip`. The healed song's end must go to the next song. If a
 `topUpSkip {why:"noIndex"}` still appears, the stop did not reset the index: the next step is to
 read the index after `play()` resolves and grow on `windowPos` instead.
+
+### The music stopped at a song change (2026-09-28)
+
+> **Part:** built · 2026-09-28 · desk test open
+
+Seen on live. A song ended, the next one ("Not Always") was announced and ended at once with no
+sound, the heal loaded the song after it, and that load failed with `MEDIA_KEY: … The session is
+already closed`. The music stopped with the toast "Playback stopped. Try the song again."
+
+What the trace showed:
+1. **A repair loop.** "Lawn" (CHRIS CASEY) has a library id and no catalog id: Apple sent its
+   library record with an empty `playParams`. MusicKit takes a `playLater` of that id without an
+   error and leaves the song out. The check saw the gap 155 songs ahead, repaired it, and MusicKit
+   dropped it again — at every song change for over 30 minutes. Each repair cut ~40 songs and
+   appended them again at the moment the next song started. The Play Next of 25 songs just before
+   was not the cause; its own repair ran at once (300 ms).
+2. **A load did not wait for a repair.** `doLoadFromModel` awaited the top-up only. A song-change
+   repair still appending when the heal's load swapped the queue landed 41 old songs behind the
+   new one (MusicKit held 42 and 45 songs, not 1). That met the new song's license setup.
+3. **The heal skipped the song that failed.** When MusicKit announced the next song, the model
+   followed it, so `healDeadNext` went past it. "Starchild" was skipped unheard the same way.
+
+His calls (2026-09-28), and what was built:
+- **Repair at a song change only when the difference is near** (`repairAtSongChange` in
+  `queue-sync.ts`, `REPAIR_NEAR = 8`, under test). A far one logs `player:repairLater {mkPos}` and
+  waits for the next top-up, which repairs from the first difference anyway. Edits (Play Next,
+  Remove, Move) still repair at once at any distance.
+- **A load waits for every reconcile** (`await reconcileChain`), not only the top-up. A bug fix,
+  not a fork.
+- **Retry the failed song once.** `emitProgress` records the last entry MusicKit played sound for
+  (`heardEntry`, over 0.5 s). When MusicKit ends with no item and the model's `current` was never
+  heard, the failed song is `current`: it is loaded again once (`player:retryCurrent`). A second
+  failure of the same entry takes the old path, `healDeadNext`.
+- **Retry a license failure once, quietly.** A `MEDIA_KEY` error within 3 s of a load's end
+  (`LOAD_ERROR_GRACE_MS`) loads the song again after 1 s with `stopFirst` (`player:keyRetry`). A
+  second failure of the same entry takes the old path (the health check, the toast). A failed
+  retry load shows the same toast. Nothing is retried when the song changed or plays again.
+- **A recovery load must end in sound** (his call, 2026-09-28, after the live log showed "Need U"
+  → "Water" silent for 5½ minutes with no toast: the recovery load's play() was cut off). Every
+  recovery load (`recoverLoad`: the end-of-song heal, the failed-song retry, the dry window, the
+  license retry) is checked 4 s later. Still loading: up to 3 more looks. Silent on the same song:
+  loaded once more (`player:recoverSilent`); silent again: the toast (`player:recoverGaveUp`).
+  Nothing is done after a user pause (`playPause` stamps it), a new load, or a song change.
+
+The live log of 2026-09-28 held at least 13 broken song changes between 12:56 and 14:35, every
+one while the Library queue with Lawn played, and every one after a repair of the far gap; none
+after he switched to playlists without it.
+
+The song that MusicKit leaves out (Lawn) is healed: the next section.
+
+**Desk test.** Play the Library (Lawn is in it) and let three song changes pass. The ring
+(`diag` tag `player:`) must show `player:repairLater {mkPos: ~150}` at each `player:np`, and no
+`player:reconcile` at a song change unless the difference is under 8. The window top-up (when
+MusicKit holds under 50 songs) still repairs. The retries cannot be forced from the session:
+after the next `player:retryCurrent` or `player:keyRetry` on live, the same seconds must show one
+`player:loadWindow` and the song playing, with no toast.
+
+### A library song Apple sends with no play id (2026-09-28)
+
+> **Part:** built · 2026-09-28 · desk test open
+
+**What it is.** Apple sends some library songs with an empty `playParams`: no catalog id and no
+play id. The copy the library points to was pulled; the usual cause is a re-release under a new
+id ("Lawn" on "Re-Do" is `6811221291` in the catalog now). MusicKit takes a `playLater` of the
+library id WITHOUT an error and leaves the song out. On 2026-09-28 his library had 12 such songs.
+An uploaded song is not one of them: it has a play id and plays by its library id.
+
+**His calls (2026-09-28).** Heal it with the catalog copy, early and quietly. The healed id is
+play-only; the song keeps its key. The match: the title and the artist, with a hit on the same
+album first, else a hit within 3 s of the length. No match: not playable, searched again after 7
+days. The healed copy answers "in your library".
+
+**As built** (`src-tauri/src/heal.rs`, schema v16 `catalog_heal`):
+- **At the pull.** After every library sync (full and incremental) a background job
+  (APPLE-CALLS.md) finds the songs with no catalog id and no play id that were not healed and not
+  checked in 7 days, and makes one catalog search each (`"title artist"`, songs, 10 hits). At most
+  50 per pass; the rest wait for the next sync. It stops at the first failed call. The result is
+  one row per library id: the catalog id and `how` ("album" | "length"), or NULL and "none". The
+  pass emits `catalog-heal`.
+- **The match** is `pick_match`, under test (`cargo test heal`): the title and the artist equal
+  after case and punctuation are ignored ("I’m" = "I'm"); an unreleased hit never counts; the same
+  album wins (the closest length among them); else the closest hit within 3 s.
+- **The map.** `catalog_heals` returns the healed pairs and the no-copy ids. track-store.ts loads
+  it with the library and again on `catalog-heal` (`refreshHeals`). `index()` also files the
+  healed catalog id under the library row, so `inLibrary` and `trackById` answer for it: Search and
+  the artist page show the new copy as yours.
+- **Playback.** `playId` (player.ts) is the one place every play, insert and repair takes its id.
+  A song with no catalog id plays its healed id; a no-copy song plays nothing (the queue skips it,
+  as a dead id). `describe` marks a descriptor as a library song only when its id is the library id.
+- **The backstop.** After every insert (`insertWithRetry`), the ids MusicKit does not hold are
+  logged (`player:insertDropped`). A library id among them is healed at once
+  (`catalog_heal_one`, once per id per session; `player:healAsked`), then the map is re-read and
+  the upcoming list repaired once. This catches a song the pass has not seen yet.
+- **A click.** `playTracks` drops no-copy songs from the list, as it drops unreleased ones, so a
+  click on one starts the next song that plays. With nothing left, the "no longer offers" toast.
+- **The row.** A no-copy song's Library row wears the unreleased dim (`is-unreleased`,
+  `aria-disabled`) with the hint "Apple Music has no copy of this song now. DeetsMusic looks again
+  in 7 days".
+
+The key stays the library id (`track_key`), so plays, ♥, pins and Diary notes stay on the row.
+Nothing is written to the Apple library.
+
+**Desk test.** Restart the dev runner (Rust changed). Wait for the startup sync, then read the log:
+one `catalog heal: … healed, … with no copy` line, and one line per song ("Lawn" → `6811221291
+(album)`). Then: (1) play "Lawn" from the Library: it plays; (2) play the Library with Lawn far
+ahead and pass three song changes: no `player:misalign`; (3) Search "Lawn CHRIS CASEY": the "Re-Do"
+hit shows as in your library; (4) a no-copy song, if any: its row is dimmed with the hint, and a
+click on it plays the next song.
+
+**Claude's run on the dev app, 2026-09-28.** The startup full sync brought Lawn, "Mom + Pop" and
+"Fell In Love" back WITH a catalog id: Apple repaired those records itself. The heal pass checked
+the 9 left and found no copy for any (hand searches agree: they are gone from the catalog). Seen:
+the Songs view dims "Melanin" with the hint; a click on "He's a Pirate" queued the list without
+"Curry Rice"; the whole Library queue held 3,957 of 3,966 songs; 3 song changes on the short list
+and 5 on the Library passed with no `misalign`, no repair and no `deadNext`. Found: Apple's new
+catalog ids for Lawn and "Mom + Pop" (`6783958184`, `6783958627`) are NOT_FOUND in MusicKit; the
+old dead-id path banked them, and Lawn played by its library id, which now has a play id. Not
+reached: the healed-id path (no song needed it after Apple's repair), the "in your library" answer,
+and the retries (a failed song change cannot be forced).
 
 ## Restore across sessions (2026-09-12)
 
