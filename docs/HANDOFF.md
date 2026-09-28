@@ -124,6 +124,23 @@ replayed at its end (twice on live that day). The heal now loads with `stopFirst
 top-up logs `player:topUpSkip` when it cannot run. Cannot be forced: watch the next
 `player:deadNext` on live ([QUEUE.md](features/QUEUE.md) § The healed song played twice).
 
+**The desk-test run (2026-09-27 evening, by a Claude session; DESK-TESTS.md §5):** *11 pass ·
+1 fail · 5 blocked · 1 skipped · 8 owner-only.* What it leaves:
+- **The fail, A1, is fixed 2026-09-28** (list-keys.ts keeps the focus through a redraw;
+  COMPASS.md §5a). The re-test is §5a steps 8–10, open.
+- **Blocked on your yes:** B3, B12, B13 need `npm run dev:fresh` (it wipes the dev app's
+  sign-in); B15 needs the dev app restarted as `dev:built`. B2 cannot be driven: the tray
+  webview is not a CDP target, so it is yours (RULES.md §18, the tray follows a look change).
+- **Two findings, not fixed:** `navigator.clipboard.writeText` refuses a window without focus,
+  so a Diary Done from the CLI or an agent toasts *Couldn't copy the Diary entry* (A6; a fork:
+  skip the copy when the window is behind, or say so in the toast). `deetsmusic diag --flush`
+  exists in the repo's CLI only; the installed 0.25.0 CLI lacks it (B1; the next release
+  carries it).
+- **Not run inside a passing row:** A2 steps 3 and 7 (a short window; a grown card + Escape),
+  A3's Pin, A4's empty log, A6's two drag steps, B5's EQ per output, B11's steps 2–4 (your eye,
+  a hand pick). B9 is your mouse test (RULEZ.md §12).
+- **Yours, untouched:** B6, B7, B10, B16–B20.
+
 **The consistency survey (2026-09-27 evening, docs only).** A read of every shared system
 against its users. Written down: the new-card recipe (SURFACES-AND-CARDS.md §5, with the
 who-adopts-what table), checklist items 0 and 11–14 in CLAUDE.md, and the doc corrections

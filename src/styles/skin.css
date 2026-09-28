@@ -100,6 +100,8 @@
   --room-members-max-h:  132px;  /* about five rows before the list scrolls */
   --room-radius:         var(--sound-chip-radius);
   --room-gutter-open:    var(--dur-med);  /* the scrollbar's gutter widening the panel open */
+  --room-away-dur:       1.6s;            /* the away mark's pulse on a member's button */
+  --room-fig-stagger:    40ms;            /* the stage figures' rise, one depth after another */
   --room-half-pad-x:     var(--space-1);  /* the pill halves are one width; the padding only sets how tight */
   --room-fold-bg:        var(--sound-fold-bg);  /* the Permissions box, the Sound fold's tint */
   --room-dim:            var(--sound-dim);
@@ -526,6 +528,7 @@
   --rulez-cell-pad:    var(--space-1) var(--space-2);
   --rulez-row-h:       var(--set-row-h);
   --rulez-gap:         var(--space-1);
+  --rulez-block-line:  2px;             /* the rule down the left of an if-block */
   --rulez-lead-w:      var(--icon-md);
   --rulez-idle-opacity: var(--unreleased-opacity); /* a draft or an off rule: the same "does not run" */
   --rulez-name-max-w:  16em;         /* a long rule name ends in … so the summary keeps room */
@@ -585,6 +588,9 @@
   --scrub-glow-min:     1.5px;  /* Cyber: the bolt's glow at rest in its breath … */
   --scrub-glow-max:     5px;    /* … and at its brightest */
   --scrub-glow-held:    3px;    /* Cyber: the glow while the bolt is held */
+  --scrub-flicker-dur:  0.12s;  /* Cyber: the one flicker on release */
+  --scrub-lens-glint-blur:  1.5px; /* Glass: the lens's two inset glints */
+  --scrub-lens-shadow-blur: 2px;   /* Glass: the lens's drop shadow */
 
   /* -- scrubber (handle is a skin-swappable SVG mask) --------- */
   /* The handle is a --title-filled box masked by this SVG, so the shape is
@@ -733,6 +739,7 @@
   --search-artist-art:  64px;
   --search-song-col-w:  170px;
   --search-busy-size:   6px;
+  --search-pulse-dur:   0.9s;   /* the busy dot's breath while a search is out */
 
   /* -- micro-motion (hover/expand/spin; nav has its own --nav-*) -- */
   --dur-fast: 0.12s;

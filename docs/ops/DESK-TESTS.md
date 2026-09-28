@@ -134,6 +134,34 @@ Fill one line per row and date it. A blocked row says what blocked it.
 
 | # | Date | Result | Seen |
 |---|---|---|---|
-| | | | |
+| A1 | 2026-09-27 | **fail** (one finding) | Arrows, Home / End, the Menu key (the rule's, the song's, the row's menu), Enter on a locked rule, Rewind's Enter = nothing, Escape drops Rewind's picks, the press gate: all pass. **Finding:** an Enter or Escape that redraws the list drops the focus to `<body>` — Rulez Enter (open) and Escape (fold), Diary Enter (open an entry) and Escape (back to the shelves; the doc wants the ring on a tile), Rewind after its menu closes. A keyboard user's next key then does nothing. Also: in the Diary picker ↓ from the field does not reach the results (arrows work once a result has the focus); in Rulez › Logs list-keys eats ↓, so the log does not scroll by arrow. Step 2 (Picks) not run |
+| A2 | 2026-09-27 | pass (8 of 10) | 1, 2, 4–6, 8–10 pass: the pop 4 px under the pill, re-sorts and stays, View closes Sort, hover opens / bridges / closes, each pane its own keys, Enter lands on the choice in force, Escape rings the pill, a scroll closes, Playlists the same. §10: 4 `.lib-pop` with Library and Playlists both on screen (2 per card), steady over 4 swaps. 3 (window short) and 7 (grow + Escape) not run |
+| A3 | 2026-09-27 | pass | Two dev apps. The box's menu: the §3.1 rows in the §2 order, then Copy their code · Rename, Remove; no Invite while not hosting. Play Next put the song after the loaded one. Pin and "stop A's playback" not run (no Stop control; a pause keeps the song on the box) |
+| A4 | 2026-09-27 | pass | All 11 `.set__menu` carry `app-scroll`, bar 8 px = `--scrollbar-w`; the App log preview scrolls on the 8 px bar. The empty-log case not run |
+| A5 | 2026-09-27 | pass | 1–4 as written; *A while* measured 1,136 ms; Not now left `always`, the reply said waiting |
+| A6 | 2026-09-27 | pass | With the window focused: *Diary entry copied.*, the Export text on the clipboard; Mark in Progress: no toast. **Finding:** `navigator.clipboard.writeText` refuses a window without focus, so a Done while the window is behind (a CLI or agent `diary done`) toasts *Couldn't copy the Diary entry.* The two drag steps not run |
+| B1 | 2026-09-27 | pass | Run on his *Vertical*. Home song › Go to Album, Library › an album: grown with a blank body at the first 100 ms sample, rows after, `placed: true`; Off: `frames slide push`, no grow; Back collapses; the cog as before. `--flush` exists in the repo's CLI only (the installed 0.25.0 CLI lacks it); it wrote 4 `placed:true` lines to the file |
+| B2 | 2026-09-27 | blocked | The `tray` webview is not in the CDP target list, and the tray icon cannot be pressed from a script |
+| B3 | 2026-09-27 | blocked | `dev:fresh` wipes the dev app's sign-in; waits for his yes |
+| B4 | 2026-09-27 | pass | A new entry (Kind of Blue): `row:diaryGrow:0` grew it taller; Back collapsed it. Entry deleted after |
+| B5 | 2026-09-27 | pass (3 of 4) | Vertical by default and the grow replacing the slide (B1); Pin keeps a new entry's grow over Back; the dots on Theme, Skin, the sharing rows. EQ for each output needs a second output (his) |
+| B8 | 2026-09-27 | pass | Off: `rules add` and `rules off` refused with the row's name; `rules` still lists |
+| B9 | — | skipped | Claude's part ran 2026-09-27 (RULEZ.md §12); his mouse test is what is open |
+| B11 | 2026-09-27 | pass (3 of 6) | 1 and 6: one `frames theme-fade` (~600 ms) per cover color, no `appearance` line, no back-and-forth. 5: a rule holding Animate look changes off → the theme changed twice with no fade. On `dev:app` Glass drops 80–95% of the fade's frames (measure on `dev:built`). 2–3 his eye; 4 skipped (a hand pick) |
+| B12 | 2026-09-27 | blocked | Step 1 needs nothing loaded; a paused song shows *Listening now*. Goes with B3 |
+| B13 | 2026-09-27 | blocked | Needs a cleared `quickSeen`; goes with B3 |
+| B14 | 2026-09-27 | pass | `[apple] calls 1h` at 17:28 and 18:28 (`me` had one 401), a `calls quit` line at 03:01 |
+| B15 | 2026-09-27 | blocked | Needs the dev app restarted as `dev:built`; waits for his yes |
 
 Summary line for WORKLOG.md: *N pass · N fail · N blocked · N owner-only, untouched.*
+
+Run of 2026-09-27 evening: *11 pass · 1 fail · 5 blocked · 1 skipped · 8 owner-only, untouched.*
+
+After the run (2026-09-28): A1's finding is fixed in list-keys.ts (COMPASS.md §5a); its re-test
+is §5a steps 8–10, a new row **A1b** for the next run. A6's clipboard finding and B1's
+installed-CLI note are in HANDOFF.md › Open now as the owner's forks. The blocked rows wait
+where the table says.
+
+| # | What | The script | Apps | Who | Notes |
+|---|---|---|---|---|---|
+| A1b | The focus stays through a redraw (the A1 fix) | [COMPASS.md §5a](../features/COMPASS.md) steps 8–10 | one | agent | Read `document.activeElement` after each Enter / Escape; it must be a row, never `<body>` |

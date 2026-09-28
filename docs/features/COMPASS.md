@@ -315,9 +315,21 @@ the row and dispatches a `contextmenu` event, so each card's own handlers run.
   Desk test: in the Library, Tab to the Sort pill, press Enter, use the arrows, pick a sort
   with Enter, press Escape. The focus is on the Sort pill again.
 
-### 5a. Rewind, Diary and Rulez — built 2026-09-27, desk test open
+### 5a. Rewind, Diary and Rulez — built 2026-09-27, desk test open (the fix of 2026-09-28)
 
-> **Part:** built · 2026-09-27
+> **Part:** built · 2026-09-27 · the agent's run found one fail, fixed 2026-09-28; steps 8–10 are the re-test
+
+**The fail (the agent's run, DESK-TESTS.md §5 A1).** An Enter or Escape that redraws the list
+dropped the focus to `<body>`: Rulez open and fold, a Diary entry opened and left, Rewind after
+its menu. A keyboard user's next key then did nothing. **The fix is in the primitive**
+(list-keys.ts): a row that leaves the document while it holds the focus after a key is
+replaced, once the redraw settles, by the row with the same key (`data-id`, `data-idx`,
+`data-entry`, `data-song-i`, `data-pick`), else the row at the same index; never after a
+pointer press, so a click that redraws grows no ring. Two more from the same row: the Diary
+picker's ↓ from the field now reaches its first result (the field's own key, since list-keys
+leaves a field alone), and Escape from a Diary entry puts the ring on the tile of the entry
+just left (the card's `back`, by the entry's id). In Rulez › Logs the arrows now scroll the
+log: list-keys with no rows lets the key pass.
 
 The three cards outside the collection engine that had no list keys (found by the consistency
 survey, SURFACES-AND-CARDS.md §5). Each adopts `wireListKeys` with its own rows; the card's own
@@ -350,6 +362,14 @@ Diary tile keeps its own `tabindex="0"` (each tile stays a Tab stop, as built 20
 6. Rulez › Logs: the arrows do nothing (no rules there); Words | Raw keeps its keys.
 7. A right-click or a Ctrl+click on any of the three: the list does not jump to its first
    row (the press gate in list-keys.ts).
+8. (2026-09-28) Rulez: focus a rule of yours, Enter: the ring is on the same rule, now open;
+   Escape: folded, the ring still on it; ↓ moves to the next. Rulez › Logs: ↓ scrolls the log.
+9. (2026-09-28) Diary: focus a tile, Enter: the entry opens with the ring on its first song
+   row; Escape: the shelves, the ring on that tile. Diary › +: type, ↓: the first result takes
+   the ring; Enter picks it.
+10. (2026-09-28) Rewind: focus a row, the Menu key, Escape: the ring is still on the row; ↓
+    moves. Then with the mouse: click a Diary tile: the entry opens and no song row wears a
+    ring (the fix acts after a key only).
 
 ## 6. What changed
 

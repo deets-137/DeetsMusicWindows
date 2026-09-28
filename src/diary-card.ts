@@ -1203,6 +1203,15 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       closePicker();
       return;
     }
+    // ↓ from the picker's field reaches its first result (the desk test of 2026-09-27: the
+    // arrows worked only once a result had the focus). list-keys.ts leaves a field's keys alone.
+    if (target.matches("[data-pick-input]") && ev.key === "ArrowDown") {
+      const first = body.querySelector<HTMLElement>("[data-pick]");
+      if (!first) return;
+      ev.preventDefault();
+      first.tabIndex = -1;
+      first.focus({ preventScroll: true });
+    }
   });
   // The rows' keys (list-keys.ts; 2026-09-27, before this the card answered Enter alone):
   // arrows walk the shelf tiles (by a row of tiles up and down), the picker's results and an
@@ -1212,7 +1221,16 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     rows: "[data-entry], [data-pick], [data-song-i]",
     back: () => {
       if (!entry) return false;
+      const id = entry.id;
       backEl.click();
+      // Back from the keyboard: the ring lands on the tile of the entry just left (the desk
+      // test of 2026-09-27); a song row's index means nothing among the tiles.
+      const tile = body.querySelector<HTMLElement>(`[data-entry="${id}"]`);
+      if (tile) {
+        tile.tabIndex = -1;
+        tile.focus({ preventScroll: true });
+        tile.scrollIntoView({ block: "nearest" });
+      }
       return true;
     },
   });

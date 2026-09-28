@@ -12,6 +12,19 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, late evening — Desk tests run by Claude (branch `rules-rulez`)
+
+His ask: run the §18a desk test and every open desk test Claude can reach. On the dev app
+(`localhost:1420`) through the UI, a second dev app for the Friends rows, and a local rooms
+worker for the room code (the dev app's `roomsUrl` is `127.0.0.1:8787`). Results:
+[DESK-TESTS.md §5](ops/DESK-TESTS.md) — *11 pass · 1 fail · 5 blocked · 1 skipped · 8
+owner-only, untouched.* §18a passes; its three forks and one old bug are in
+[RULES.md §18a](architecture/RULES.md). The one fail is A1: an Enter or Escape that redraws a
+list drops the focus to `<body>`. B3, B12, B13 wait for his yes to `dev:fresh` (it wipes the dev
+sign-in); B15 for a `dev:built` restart. Everything made for the tests was removed; settings
+match the start except `quickSeen` gaining `all`. The clipboard now holds a Diary Export, not
+his screenshot. No code changed.
+
 ## 2026-09-27, evening — Rules: eight more rule keys, Battery saver, Focus (branch `rules-rulez`)
 
 His question: which features use the rules engine, and which could. Answer: about 16 use it;
@@ -53,6 +66,49 @@ turn buttons off and on, very granular. Designed on paper; nothing is built. The
 - Decided inside his choices, for his review: the key `partStates`, the scope `artist.parts`,
   the part ids, the pill words, the Faded hint text, `--part-fade-dur` = `--dur-med`, the
   Compass row's title (LAYOUT.md §9).
+
+## 2026-09-28, early — The list-keys fail from the run, fixed in the primitive (branch `rules-rulez`, uncommitted)
+
+**The run's one fail** (DESK-TESTS.md §5 A1, the other session): an Enter or Escape that
+redraws a list dropped the focus to `<body>` — Rulez open / fold, a Diary entry opened and
+left, Rewind after its menu — and a keyboard user's next key did nothing.
+
+**Fixed where all three share it** (list-keys.ts): on `focusout` from a row after a key, once
+the redraw settles, the focus goes to the row with the same key (`data-id` / `data-idx` /
+`data-entry` / `data-song-i` / `data-pick`), else the same index; never after a pointer press.
+Also from the row: the Diary picker's ↓ reaches its first result; Escape from an entry rings
+the tile just left (diary-card.ts `back`, by id); Rulez › Logs scrolls by arrow (no rows: the
+key passes). The re-test is COMPASS.md §5a steps 8–10 and DESK-TESTS.md row A1b. `tsc`,
+`vite build`, tests and `docs:check` clean. The run's other findings are folded into HANDOFF
+› Open now (A6 clipboard, B1 installed CLI, the blocked rows).
+
+## 2026-09-28, early — Checks 7, 27 and 28; the picture check designed (branch `rules-rulez`, uncommitted)
+
+**His ask.** "Add checks 1, 2 and 3, then doc the picture check", and: when do the checks
+actually apply?
+
+**Built** (`scripts/docs-check.mjs`, DOCS-ORG.md §8):
+- **27** — a feature sheet restyles a class `styles.css` declares only when `SHEET_REDECLARES`
+  names it with a reason (the three cases today: `qcard.css` `.qrow` / `.qnow`, `diary.css` and
+  `settings.css` `.panel__body`, `settings.css` `.set__section`).
+- **28** — no raw length, time or color in a component rule. Hairlines (0, 0.5, 1 px), unit
+  constants (0s, 1s), a data URL's own numbers, and black / white (the mask idiom) pass; a line
+  that must stay raw carries `/* raw: why */`. Its first run found 25 lines the pixel pass had
+  left: nine are SVG or viewBox units and now say so; the rest became tokens
+  (`--room-away-dur`, `--room-fig-stagger`, `--search-pulse-dur`, `--scrub-flicker-dur`,
+  `--scrub-lens-glint-blur`, `--scrub-lens-shadow-blur`, `--rulez-block-line`) or dropped a raw
+  fallback (`walk.css`, `--hint-shift`). The canvas scrim's black and the context menu's clamp
+  (which mirrors `PAD` in context-menu.ts) are marked raw with the reason.
+- **7** — a code name SETTINGS.md or AGENT.md puts in backticks exists in the code. First run:
+  `applyLook` (now `pickLook`) and `exportItem` (now `appleMusicItem`), both corrected.
+
+**Designed:** the picture check, SHOTS.md §12 — `npm run shots:diff` compares each shot with
+a committed baseline in the browser through a canvas (no dependency), fails over a threshold,
+writes the three pictures per failure; runs by hand and in the release check, never in the
+hook. Its forks are listed for him. Build it with the clips.
+
+**When the checks run** is now written down in DOCS-ORG.md §8: by hand, on push through the
+hook `npm install` installs, and in `npm run release`, which fails on a fact from 2026-09-28.
 
 ## 2026-09-27, night — Three small cleanups, and the styles.css split written up (branch `rules-rulez`, uncommitted)
 

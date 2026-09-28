@@ -176,7 +176,7 @@
 }
 
 @keyframes walk-card-in {
-  from { opacity: 0; transform: translateY(var(--hint-shift, 3px)); }
+  from { opacity: 0; transform: translateY(var(--hint-shift)); }
 }
 @keyframes walk-target {
   to { filter: brightness(1.35); }

@@ -95,6 +95,7 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
       // The list's own box: the first key goes to the first row.
       if (!isStop(t) || !["ArrowDown", "ArrowRight", "Home", "ArrowUp", "ArrowLeft", "End"].includes(e.key)) return;
       const list = rows();
+      if (!list.length) return; // no rows (Rulez › Logs): the key is the scroller's, not ours (desk test 2026-09-27)
       const last = e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "End";
       focusRow(last ? (o.count && o.revealIndex ? o.revealIndex(o.count() - 1) : list[list.length - 1]) : list[0]);
       e.preventDefault();
@@ -152,13 +153,47 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     const first = rows()[0];
     if (first) focusRow(first);
   };
+  // A redraw that removes the focused row dropped the focus to <body>, and the next key did
+  // nothing (the desk test of 2026-09-27: Rulez open / fold, a Diary entry, Rewind after its
+  // menu). The row that took the old row's place gets the focus back once the redraw settles:
+  // the row with the same key first (data-id, data-idx, data-entry, data-song-i, data-pick —
+  // the keys the cards' rows carry), else the row at the same index. Only after a key: a
+  // pointer press that redraws a list must not grow a ring where nothing was pressed.
+  const KEYS_OF_ROW = ["id", "idx", "entry", "songI", "pick"] as const;
+  let lastKey = false;
+  const onAnyKey = (): void => {
+    lastKey = true;
+  };
+  const onAnyPointer = (): void => {
+    lastKey = false;
+  };
+  const onFocusOut = (e: FocusEvent): void => {
+    const row = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(o.rows);
+    if (!row || e.relatedTarget || !lastKey) return;
+    const keyName = KEYS_OF_ROW.find((k) => row.dataset[k] !== undefined);
+    const keyValue = keyName ? row.dataset[keyName] : undefined;
+    const index = rows().indexOf(row);
+    requestAnimationFrame(() => {
+      if (row.isConnected || !container.isConnected) return; // it only moved the focus, or the card is gone
+      if (document.activeElement !== document.body) return; // the card put the focus somewhere itself
+      const list = rows();
+      const same = keyName ? list.find((r) => r.dataset[keyName] === keyValue) : undefined;
+      focusRow(same ?? list[Math.max(0, Math.min(index, list.length - 1))]);
+    });
+  };
   container.addEventListener("keydown", onKey);
+  container.addEventListener("keydown", onAnyKey, true);
   container.addEventListener("focusin", onFocus);
+  container.addEventListener("focusout", onFocusOut);
   container.addEventListener("pointerdown", onDown, true);
+  container.addEventListener("pointerdown", onAnyPointer, true);
   return () => {
     container.removeEventListener("keydown", onKey);
+    container.removeEventListener("keydown", onAnyKey, true);
     container.removeEventListener("focusin", onFocus);
+    container.removeEventListener("focusout", onFocusOut);
     container.removeEventListener("pointerdown", onDown, true);
+    container.removeEventListener("pointerdown", onAnyPointer, true);
     delete container.dataset.listKeys;
   };
 }

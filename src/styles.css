@@ -489,7 +489,7 @@ body {
 .sleep__dial:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .sleep__face { width: 100%; height: 100%; display: block; overflow: visible; }
 .sleep__ring {
-  transform-origin: 100px 100px; /* SVG user units: the dial's 200-unit viewBox, not layout px */
+  transform-origin: 100px 100px; /* raw: SVG user units, the dial's 200-unit viewBox, not layout px */
   transform: rotate(var(--sleep-angle, 0deg));
   transition: transform var(--sleep-turn);
 }
@@ -589,7 +589,7 @@ body {
   transition-delay: calc(var(--room-fill) / 3);
 }
 /* Waiting for the host, or reconnecting: the fill breathes instead of sitting still. */
-.room__btn[data-away] svg { animation: room-away 1.6s var(--ease-ui) infinite; }
+.room__btn[data-away] svg { animation: room-away var(--room-away-dur) var(--ease-ui) infinite; }
 @keyframes room-away { 50% { opacity: 0.45; } }
 .room__panel {
   position: absolute; top: 100%; right: 0;
@@ -687,7 +687,7 @@ body {
 /* The ranks behind bob a little less, and a beat later, so it reads as a crowd. */
 .room__figure { --fig-bob: calc(1 - var(--fig-depth, 0) * 0.22); }
 .room__figure:not(.room__figure--you) .room__figure-head {
-  transition-delay: calc(var(--fig-depth, 0) * 40ms);
+  transition-delay: calc(var(--fig-depth, 0) * var(--room-fig-stagger));
 }
 .room__stage-more {
   position: absolute; right: var(--space-1); bottom: var(--space-1);
@@ -1652,7 +1652,7 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: rgb(0 0 0 / var(--canvas-dim));
+  background: rgb(0 0 0 / var(--canvas-dim)); /* raw: the scrim is black by definition; --canvas-dim is the amount, the only choice */
 }
 
 /* ── Ocean layer (the sea behind the cards) ─────────────────── */
@@ -1858,9 +1858,8 @@ body {
 /* Stepped at --ambient-fps across the wipe (the 0→60% keyframe segment). Strike and
    hold share the count, so the clip and the counter-slide stay locked. */
 .storm__strike { --strike-steps: steps(round(var(--strike-cycle) * 0.6 * var(--ambient-fps) / 1s)); }
-/* --storm-x is in the stretched viewBox's user units (≈ % of the width), not layout px. */
-.storm__strike--1 { --strike-cycle: var(--storm-cycle-1); --strike-path: var(--storm-path-1); --storm-x: 30px; }
-.storm__strike--2 { --strike-cycle: var(--storm-cycle-2); --strike-path: var(--storm-path-2); --storm-x: 70px; }
+.storm__strike--1 { --strike-cycle: var(--storm-cycle-1); --strike-path: var(--storm-path-1); --storm-x: 30px; } /* raw: user units of the stretched viewBox (≈ % of the width) */
+.storm__strike--2 { --strike-cycle: var(--storm-cycle-2); --strike-path: var(--storm-path-2); --storm-x: 70px; } /* raw: the same */
 .storm__svg {
   display: block;
   width: 100%;
@@ -1875,7 +1874,7 @@ body {
   stroke-linejoin: miter;       /* sharp elbows — it's lightning */
   vector-effect: non-scaling-stroke;
   filter: var(--storm-glow);
-  transform: translateX(var(--storm-x, 50px)) scaleX(var(--storm-flip, 1));
+  transform: translateX(var(--storm-x, 50px)) scaleX(var(--storm-flip, 1)); /* raw: the fallback is in the viewBox's user units */
 }
 
 /* ── Bento grid (a "screen" is a composition of panels) ─────── */
@@ -2711,7 +2710,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   left: 100%; /* touches the menu edge — no hover gap */
   z-index: 1;
   min-width: var(--menu-min-w);
-  max-height: calc(100vh - 12px); /* 2× the 6px viewport clamp pad (context-menu.ts PAD) */
+  max-height: calc(100vh - 12px); /* raw: 2× the viewport clamp pad, which is context-menu.ts PAD (6); one number with two homes until PAD reads a token */
   overflow-y: auto;
   padding: var(--space-1);
   background: var(--menu-surface);
@@ -3093,7 +3092,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   display: block; position: absolute; top: 50%;
   right: calc(var(--space-2) + var(--icon-sm) + var(--space-1));
   width: var(--search-busy-size); height: var(--search-busy-size); margin-top: calc(-1 * var(--search-busy-size) / 2); border-radius: var(--radius-round);
-  background: var(--subtext); animation: search-pulse 0.9s ease-in-out infinite;
+  background: var(--subtext); animation: search-pulse var(--search-pulse-dur) ease-in-out infinite;
 }
 @keyframes search-pulse { 50% { opacity: 0.25; } }
 
@@ -3387,7 +3386,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
    hold a beat, then re-cross. The rotation lays each wire flat (they sit at ∓45°); the
    translate parts them, or they would lie on top of each other instead of reading as two.
    Each <g> is one wire: its line(s) plus its own arrowhead. */
-.np__shuffle svg g { transform-box: view-box; transform-origin: 12px 12px; /* SVG user units: the glyph's 24-unit box, not layout px */ }
+.np__shuffle svg g { transform-box: view-box; transform-origin: 12px 12px; /* raw: SVG user units, the glyph's 24-unit box, not layout px */ }
 .np__shuffle.is-crossing .np__sh-up { animation: np-sh-up var(--sh-cross-dur) var(--ease-ui); }
 .np__shuffle.is-crossing .np__sh-dn { animation: np-sh-dn var(--sh-cross-dur) var(--ease-ui); }
 @keyframes np-sh-up {
@@ -3591,9 +3590,9 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   border: var(--scrub-lens-ring-w) solid color-mix(in srgb, var(--title) 65%, transparent);
   box-sizing: border-box;
   box-shadow:
-    inset 1px 1px 1.5px var(--glint),
-    inset -1px -1px 1.5px color-mix(in srgb, var(--title) 45%, transparent),
-    0 1px 2px color-mix(in srgb, var(--title) 30%, transparent);
+    inset 1px 1px var(--scrub-lens-glint-blur) var(--glint),
+    inset -1px -1px var(--scrub-lens-glint-blur) color-mix(in srgb, var(--title) 45%, transparent),
+    0 1px var(--scrub-lens-shadow-blur) color-mix(in srgb, var(--title) 30%, transparent);
   overflow: hidden;
 }
 /* The flare: a soft light falling across the lens from the top-left, not a hard dot (the
@@ -3612,7 +3611,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
    plays; a held bolt burns tight and bright, and a release flickers once. */
 [data-fancy-scrub="on"][data-playing="on"][data-skin="cyber"] .scrub__handle { animation: scrub-breathe var(--scrub-breathe-dur) ease-in-out infinite alternate; }
 [data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-dragging] .scrub__handle { animation: none; filter: drop-shadow(0 0 var(--scrub-glow-held) var(--title)) brightness(1.3); }
-[data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-released] .scrub__handle { animation: scrub-flicker 0.12s steps(2, start) 1; }
+[data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-released] .scrub__handle { animation: scrub-flicker var(--scrub-flicker-dur) steps(2, start) 1; }
 @keyframes scrub-breathe { from { filter: drop-shadow(0 0 var(--scrub-glow-min) var(--title)); } to { filter: drop-shadow(0 0 var(--scrub-glow-max) var(--title)); } }
 @keyframes scrub-flicker { 50% { opacity: 0.3; } }
 
@@ -4314,7 +4313,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 }
 .rulez__blank:hover { filter: brightness(0.97); }
 .rulez__blank.is-missing { border-style: dashed; color: var(--subtext); background: transparent; }
-.rulez__block { display: flex; flex-direction: column; gap: var(--rulez-gap); margin-left: var(--space-2); padding-left: var(--space-3); border-left: 2px solid var(--border); }
+.rulez__block { display: flex; flex-direction: column; gap: var(--rulez-gap); margin-left: var(--space-2); padding-left: var(--space-3); border-left: var(--rulez-block-line) solid var(--border); }
 .rulez__mark { width: 1em; text-align: center; font-size: var(--fs-subtext); color: var(--subtext); }
 .rulez__mark.is-yes { color: var(--title); }
 .rulez__live { margin: 0; font-size: var(--fs-subtext); color: var(--subtext); font-style: italic; }

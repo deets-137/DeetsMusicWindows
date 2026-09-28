@@ -346,19 +346,29 @@ Deterministic, fast, free. No model runs. It joins the release check
 | 24 | every `contextmenu` listener's module is named in CONTEXT-MENUS.md or ONBOARDING.md §2 | a card that builds its own song menu again |
 | 25 | a floating box placed by hand is one of the known placers | a fourth popover primitive (the Sort / View pop, until 2026-09-27) |
 | 26 | every card with rows takes the keyboard (`wireListKeys` or the collection engine) | Rewind, Diary and Rulez with no arrow keys |
+| 27 | a feature sheet restyles a class `styles.css` declares only with a reason (`SHEET_REDECLARES`) | two files on one class riding Vite's import order; the risk a `styles.css` split would spread (UI-ARCHITECTURE.md §4c) |
+| 28 | no raw length, time or color in a component rule (`/* raw: why */` marks the SVG-unit lines) | the 68 values the pixel pass removed, the next time one lands; a color that is not a role |
 
-Checks 20–26 (2026-09-27) read the CODE against its ledgers: each one is a grep the
+Checks 20–28 (2026-09-27) read the CODE against its ledgers: each one is a grep the
 consistency survey ran by hand that evening, five of whose seven findings were partly wrong
 for reading the wrong scope. The right scope lives in the script now, with the allowlists
 (`PLACERS`, `NO_LIST_CARDS`) that carry a reason per line.
 
-**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 11, 18, 19 and 20–26. All of them are
-**facts**: they fail the build. **Planned, not written:** 6, 7, 8, 9, 10 and 17 — the rows
-stay in the table as the design, and this line says the script does not hold them yet (found
-2026-09-27; the table had read as if they ran, and one doc cited check 7 as a fact). Of the
-planned ones, 7 is a fact and 6, 8, 9, 10 are **suspicions**: they would print and not fail,
-because a doc can be correct and older than its code. Check 8 will be noisy on its first run.
-That noise is the sweep's input, not an error.
+**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 7, 11, 18, 19 and 20–28. All of them are
+**facts**: they fail the build. Check 7 reads the code names SETTINGS.md and AGENT.md put in
+backticks (its first run found two renamed functions). **Planned, not written:** 6, 8, 9, 10
+and 17 — the rows stay in the table as the design, and this line says the script does not
+hold them yet (found 2026-09-27; the table had read as if they ran). They are **suspicions**:
+they would print and not fail, because a doc can be correct and older than its code. Check 8
+will be noisy on its first run. That noise is the sweep's input, not an error.
+
+**When the checks run.** Three moments, all local (there is no CI; the release is built and
+signed on the owner's PC): by hand, `npm run docs:check` after a doc or code edit; on every
+push, through `.githooks/pre-push` (`npm run check`: typecheck, tests, this script, cargo),
+installed by `npm install`'s `prepare` step, so a clone that never ran `npm install` has no
+hook; and on `npm run release`, where `release-check` calls this script and fails the build
+on any fact from 2026-09-28 (`GRACE_END`; a warning before that). A check cannot fire on a
+file that is only edited: nothing watches the tree.
 
 Written once, in `scripts/docs-check.mjs`, beside the other scripts. It runs no model, so it
 costs nothing on every release.

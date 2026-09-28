@@ -222,3 +222,45 @@ Do these in order. Nothing is built yet, so there is nothing to test first.
 
 The inputs the build needs are all in this doc: §3 (the shot list shape), §4 (the two
 sources), §5 (the output), §6 (the checks, later).
+
+## 12. The picture check — a regression gate on the shots (designed 2026-09-27)
+
+> **Part:** designed · 2026-09-27 · build with the clips (§10 step 3) or after
+
+**Why.** No check today can see the screen. A CSS move, a token change or a skin edit ends
+with "his look" because nothing else can say a pixel moved (UI-ARCHITECTURE.md §4c; the pixel
+pass of 2026-09-27). The shots already render the real UI in a browser from the demo. Kept as a
+baseline and taken again, they are that check.
+
+**What it is.** `npm run shots:diff` (a mode of `scripts/shots.mjs`):
+1. Renders every picture in `shots.json` the way a normal run does (§4: the demo, headless Edge
+   over CDP, a clean store, the shot's size and look).
+2. Compares each new PNG with its baseline, pixel by pixel, in the same browser page through a
+   canvas — no image library, no new dependency. A pixel differs when any channel differs by
+   more than a small tolerance (anti-aliasing noise; the value is a constant in the script).
+3. Fails when a picture has more differing pixels than a threshold (a constant; start at 0.1 %
+   of the picture), and writes three files per failure beside the run: the baseline, the new
+   picture, and a diff picture with the changed pixels in one flat color.
+4. Prints one line per picture: `ok`, or `N pixels differ (x %)` with the three paths.
+
+**The baseline.** A set of pictures taken from a state the owner has looked at and approved,
+committed under `shots/baseline/` (today `shots/` is gitignored, §11 step 3; the baseline
+folder is the one exception, `!shots/baseline/`). A change that is meant to move pixels
+replaces the baseline in the same commit (`npm run shots:diff -- --accept`), so the diff of
+that commit shows the pictures that changed. A baseline is per look and per size, as the shot
+list is.
+
+**What it sees, and what it does not.** It sees layout, color, type, the token tiers and the
+cascade: everything the split and the pixel pass worried about. It does not see motion (a
+still), hover (no pointer), sound, or the WebView2 differences from Edge (same engine, the
+same fonts on this PC; a different PC needs its own baseline). The demo's mock tracks are the
+data, so a picture never depends on the library.
+
+**When it runs.** By hand, not in the hook: `npm run release` runs it as one more release
+check (RELEASE.md §0), and any sitting that moves CSS runs it before and after
+(UI-ARCHITECTURE.md §4c step 3). It is not in `npm run check`, because it needs the demo
+build and a browser and takes a minute, and the pre-push hook must stay a few seconds.
+
+**Forks for the owner, before the build.** The tolerance and the threshold; whether the
+baseline is committed (repo size grows by the set, about 6 × 200 KB today) or kept beside the
+repo; whether a failure blocks a release or warns.

@@ -74,6 +74,17 @@ const NO_LIST_CARDS = {
   "src/now-playing-card.ts": "one song, no rows",
   "src/settings-card.ts": "rows of controls; Ctrl+F through find-key.ts, sections by hold",
 };
+// Check 27: a feature sheet may restyle a class the base sheet (styles.css) declares only when
+// it is named here with the reason. Two files styling one class ride Vite's import order, so a
+// fourth case is drift until it has a reason (UI-ARCHITECTURE.md §4c).
+const SHEET_REDECLARES = {
+  "src/styles/qcard.css": { qrow: "the row's own sheet; styles.css adds the states other cards give it", qnow: "the same, for the hero row" },
+  "src/styles/diary.css": { panel__body: "the Diary's body is a flex column; the base rule is the scroller" },
+  "src/styles/settings.css": { panel__body: "the Settings body keeps its own gutter (styles/settings.css §Scrollbars)", set__section: "the section's fold; styles.css holds its held-to-move state" },
+};
+// Check 28: the token files, where raw values are the point. Every other sheet is a component
+// sheet and takes tokens only (CLAUDE.md: everything is token-based).
+const TOKEN_FILES = new Set(["src/styles/palette.css", "src/styles/themes.css", "src/styles/skin.css", "src/styles/fonts.css"]);
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n");
 // Private docs: a docs/*.md line in .gitignore. The file may not exist in this checkout.
@@ -323,6 +334,78 @@ export function check() {
     }
   }
 
+  // 7. A settings key (or any code name) a settings doc names in backticks exists in the code.
+  //    A renamed key leaves the doc under the old name otherwise. Planned in DOCS-ORG.md §8
+  //    since 2026-09-21; written 2026-09-27.
+  {
+    const code = [...src.values(), ...files.filter((f) => /^(src-tauri\/src|cli\/src)\/.*\.rs$/.test(f)).map(read)].join("\n");
+    for (const p of ["docs/architecture/SETTINGS.md", "docs/integrations/AGENT.md"]) {
+      const t = doc(p);
+      const seen = new Set();
+      for (const m of t.matchAll(/`([a-z][a-zA-Z0-9]*)`/g)) {
+        const name = m[1];
+        if (seen.has(name) || name.length < 4) continue;
+        seen.add(name);
+        if (!word(code, name)) fail(7, p, lineOf(t, m.index), `names \`${name}\` and no source file has it — renamed, or never existed`);
+      }
+    }
+  }
+
+  // 27. A feature sheet restyles a class the base sheet declares only with a reason (SHEET_REDECLARES).
+  {
+    const base = read("src/styles.css");
+    const baseClasses = new Set([...base.matchAll(/^\.([A-Za-z_][\w-]*)/gm)].map((m) => m[1]));
+    for (const f of files.filter((f) => /^src\/styles\/[^/]+\.css$/.test(f) && !TOKEN_FILES.has(f))) {
+      const css = read(f);
+      const allowed = SHEET_REDECLARES[f] ?? {};
+      const seen = new Set();
+      for (const m of css.matchAll(/^\.([A-Za-z_][\w-]*)/gm)) {
+        const cls = m[1];
+        if (seen.has(cls) || !baseClasses.has(cls) || cls in allowed) continue;
+        seen.add(cls);
+        fail(27, f, lineOf(css, m.index), `.${cls} is declared in styles.css too — two files on one class ride the import order; move it, or add it to SHEET_REDECLARES with the reason`);
+      }
+    }
+  }
+
+  // 28. No raw value in a component rule: a length or a time that is not a token, a color that
+  //     is not a role. A hairline (0, 0.5, 1 px), a unit constant (0s, 1s) and a mask's black
+  //     pass. A line that must stay raw (SVG user units) says so: `/* raw: why */`.
+  {
+    const cssFiles = files.filter((f) => /^src\/(styles\/)?[^/]+\.css$/.test(f) && !TOKEN_FILES.has(f));
+    for (const f of cssFiles) {
+      const lines = read(f).split("\n");
+      let inComment = false;
+      lines.forEach((line, i) => {
+        let code = line;
+        if (inComment) {
+          const end = code.indexOf("*/");
+          if (end < 0) return;
+          code = code.slice(end + 2);
+          inComment = false;
+        }
+        if (/\/\*\s*raw:/.test(line)) return;
+        code = code.replace(/\/\*[\s\S]*?\*\//g, "");
+        const open = code.indexOf("/*");
+        if (open >= 0) { code = code.slice(0, open); inComment = true; }
+        code = code.replace(/url\([^)]*\)/g, "url()"); // a data URL's own numbers and %23 escapes are not values
+        if (!code.trim()) return;
+        for (const m of code.matchAll(/(?<![\w.#%-])(\d+(?:\.\d+)?)(px|ms|s)\b/g)) {
+          const v = Number(m[1]);
+          if (m[2] === "px" && (v === 0 || v === 0.5 || v === 1)) continue;
+          if (m[2] !== "px" && (v === 0 || v === 1)) continue;
+          fail(28, f, i + 1, `raw ${m[0]} in a component rule — a skin token (CLAUDE.md: token-based), or \`/* raw: why */\` on the line`);
+        }
+        // Black and white are the mask idiom's alpha stops (a mask's gradient runs over lines,
+        // so the property is not on this one); every other literal color is a role's job.
+        for (const m of code.matchAll(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/g)) {
+          if (/^#(000|000000|fff|ffffff)$/i.test(m[0])) continue;
+          fail(28, f, i + 1, `raw color ${m[0]} in a component rule — a theme role (themes.css), or \`/* raw: why */\` on the line`);
+        }
+      });
+    }
+  }
+
   return { facts, docs: docs.length };
 }
 
@@ -331,6 +414,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

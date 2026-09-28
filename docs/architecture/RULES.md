@@ -702,6 +702,32 @@ the five sharing switches and *Failures*; the words read back as the rows'.
    no confirmation; a failure still shows. Hosting a room with the invite on: a friend's row
    loses the code at once when Focus turns on.
 
+**Run (2026-09-27 evening, Claude, dev app, through the UI).** Steps 1, 2 and 4 pass; 3 is his.
+- 1: the recipe on reads *Would not run now: "The PC is on battery" is not true*. The copy on
+  *Always*: `data-glass-fancy` off, `data-bg-motion` reduced, a card swap wrote no `frames swap`
+  line (the same swap with the copy off wrote one), a Live Theming change wrote no
+  `theme-fade` line. The three Motion rows wear the green dot; the Fancy scrubber none.
+- 2: the red dot's press gave all four back to the rule at once.
+- 4: Show notices: `__toast.demo()` showed the warning and the error only. Two dev apps, a room
+  hosted on a local rooms worker: the invite switch off by hand pushed at once
+  (`friends:push why=roomInvite`) and the friend's box lost *In a room* within a second, with no
+  song change; Focus on hid the box. A switch whose value already equals the rule's shows no
+  dot (`chipState`, by design).
+
+**Found at the run, his forks:**
+- **One hand change sets the whole rule aside.** `onHand` holds every target the rule sets
+  (rules.ts, "a look is its theme AND its skin"), so turning Animate card swaps on by hand
+  brings Fancy Glass and the backgrounds back too, until the charger changes. §8 says "for
+  that target". Keep it whole, or hold per target for a rule that is not a look.
+- **A switch row shows your value, not the rule's.** Under Battery saver, *Animate card swaps*
+  reads On while swaps are off; the first press turns your value Off (no visible change), the
+  second On. Only the dot says a rule acts.
+- **The condition block cuts a yes / no fact's words** (rulez-card.ts, `blockHTML`): it slices
+  the fact's label length off the phrase, so *Charging* + *The PC is on battery* reads
+  "Charging" + "s on battery". Every yes / no fact whose phrase does not start with its label
+  (loaded, playing, explicit, loved, online, charging…). Was there before this build.
+- A recipe's dot says "A rule sets this now."; a rule of yours names itself.
+
 ## 19. Adding a feature that uses rules
 
 > **Part:** guide · 2026-09-26
