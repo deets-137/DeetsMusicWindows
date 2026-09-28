@@ -119,7 +119,7 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 2. ~~The blocked desk tests~~ — run 2026-09-27 night (DESK-TESTS.md §5, the night run). Left
    from it: the A1 focus fix and the `dev:fresh` seed were both fixed and re-tested the same
    night (committed). Open: the
-   Ocean album light without a GPU (34 → 27 fps), a hint wording for him (OCEAN.md §6).
+   Ocean album light without a GPU (re-benched after the cap: 72 fps at 0, 37–41 at 100), a hint wording for him (OCEAN.md §6).
 3. ~~The Rulez condition block cuts a yes / no fact's words~~ — fixed 2026-09-27 late night
    with the word rules in RULEZ.md §6.5 (parts, one case rule, a SAYS test). His look: open a
    rule of yours with a yes / no condition (Charging, Explicit) and read the blanks.

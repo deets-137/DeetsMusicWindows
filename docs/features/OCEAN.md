@@ -135,6 +135,13 @@ and the bands hold still. Reduced sets the bands to 15 steps a second.
     Black-Yellow, album light 65, no music, 244 Hz display: 10 s = 2,394 frames, 4 dropped
     (0.2%), worst 21 ms, no long tasks. Busy per thread: the page 0.8%, the GPU process 2.3–3.4%,
     the compositor 5.2%, Viz 2.8%. The page does nothing at idle; the sea is compositor work.
+  - **Without a graphics card (`dev:built --gpu=off`, WARP, music, bench idle; rows "B15 …"
+    in `scripts/perf-history.csv`).** Before the cap below (2026-09-27, League of Legends on
+    the GPU, `--contended`): 34 fps at 0, 27 at 100 (worst 63 / 75 ms). After the cap and the
+    scrubber-float stepping of `4584075` (clean machine, same night): **72 fps at 0, 37–41 at
+    100** (worst 38 / 46–58 ms). The cap made the plain sea cheaper, not the neon, so light
+    100 now costs about half the frame rate on such a PC. With the GPU on there is no gap (232
+    fps at both). The hint wording that says so is his call (HANDOFF › Open now).
   - **Measured 2026-09-27 (`dev:built`, 244 Hz, Equalizer on, album light 100, clean GPU),
     rows "LC…" in `scripts/perf-history.csv`:** idle without music, the GPU process 8 % and the
     page 18 %; with music, 31 % and 34 %. Freezing the heave cut the GPU to 23 %; the heave,
