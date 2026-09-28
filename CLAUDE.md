@@ -99,8 +99,8 @@ old installs' Guide button opens.
   cancel events, the ten routes (§3; all built, §7, §8, §10.2), the album color facts and Live
   Theming (§11), one row per recipe (§14). Next: a design pass on custom rules (§15). The
   engine is `architecture/RULES.md`.
-- `LAYOUT.md` — Settings › Layout: the artist view's order and hidden shelves, and the
-  Shown / Faded / Hidden buttons; each part is its own rule target. Designed 2026-09-27, every
+- `LAYOUT.md` — two Settings › Window rows: the artist view's order and hidden shelves, and
+  the On / Faded / Hidden buttons; each part is its own rule target. Designed 2026-09-27, every
   fork his; on the docket, not built.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).

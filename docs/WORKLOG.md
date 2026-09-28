@@ -12,6 +12,16 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, 17:40 — Layout: the consistency review folded in (branch `rules-rulez`)
+
+The consistency session's review came after the 17:20 commit; LAYOUT.md §11 holds it, each
+claim checked against the code. One claim was half wrong: ♥ and Add to Library DO have Compass
+rows (the typed `favorite` / `add` commands), just not `actions()` rows. His calls on its five
+forks: the two rows go in **Settings › Window**, not a new Layout section; the pill says
+**On · Faded · Hidden**; the **Grow button is off the list** (Grow cards is its switch);
+**Home's Refresh is on it**, with a *Refresh Home* Compass row; **Reset row order clears the
+artist order too** and says so. The list stays at 20 buttons. Nothing is built.
+
 ## 2026-09-27, 17:20 — Layout: the artist view order and button states, designed (branch `rules-rulez`)
 
 His ask: use the rules engine to reorder the parts of a view (the artist drill-down) and to
@@ -63,6 +73,21 @@ primitives and their users; raw px per stylesheet.
 - HANDOFF.md › Open now — the seven things found and left as they are.
 
 **Not done, on purpose.** No code changed. The gaps are listed in HANDOFF for his call.
+
+## 2026-09-27, 17:10 — Dracula played twice: the dead-next heal's re-window (branch `rules-rulez`)
+
+His complaint, read from the LIVE app (port 47826, its log, its db; the MCP tools had answered
+the dev app on 47825). Twice today on live (02:55 "BLUE", 16:56 "Dracula"): MusicKit ended a
+song without starting the next (the `bank:false` heal shape, both songs live), the heal
+re-windowed onto the next song alone, **no grow ran** for the whole song (no `player:topUp`), and
+at its end MusicKit started index 0 again. He pressed Next 4.7 s into the second Dracula.
+Cause read from the code: in the `ended` state `isPlaying` is false, so the load skips its
+pause and nothing resets MusicKit's position; the healed song plays with no now-playing index,
+and both grows and the reconcile exit silently on `np < 0`. Built, his call, both:
+1. `healDeadNext` and the window-dry branch load with `stopFirst` (the station break-out's fix).
+2. `player:topUpSkip {why: noIndex | inFlight}` and `player:reconcileSkip` log the abnormal exits.
+QUEUE.md § The healed song played twice; DEBUGGING.md's advance recipe names the new line.
+**Desk test open:** it needs a real failed advance on live; the doc section says what to watch.
 
 ## 2026-09-27, 15:30 — A theme change without the cover: measured, not built (branch `rules-rulez`)
 

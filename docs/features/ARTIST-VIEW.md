@@ -163,5 +163,5 @@ hidden right slot is not on screen, so it still comes into the left slot.
 
 > **Part:** designed · 2026-09-27
 
-Settings › Layout will set the order of the four parts under the hero, and hide any of them.
+Settings › Window will set the order of the four parts under the hero, and hide any of them.
 One order for Library and Search. A rule can change it by condition. [LAYOUT.md](LAYOUT.md) §3.1.

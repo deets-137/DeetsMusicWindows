@@ -112,6 +112,12 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**The dead-next heal's double play (2026-09-27 17:10, built, desk test open).** A song
+healed after a failed auto-advance played with no MusicKit index, never grew its window, and
+replayed at its end (twice on live that day). The heal now loads with `stopFirst`, and the
+top-up logs `player:topUpSkip` when it cannot run. Cannot be forced: watch the next
+`player:deadNext` on live ([QUEUE.md](features/QUEUE.md) § The healed song played twice).
+
 **The consistency survey (2026-09-27 evening, docs only).** A read of every shared system
 against its users. Written down: the new-card recipe (SURFACES-AND-CARDS.md §5, with the
 who-adopts-what table), checklist items 0 and 11–14 in CLAUDE.md, and the doc corrections
@@ -156,10 +162,10 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 §13.2, a crate change too).
 
 **On the docket — Layout** (designed 2026-09-27, every fork his, not built):
-[LAYOUT.md](features/LAYOUT.md). Settings › Layout sets the artist view's order and hides its
-shelves, and sets each button on a fixed list (§6) to Shown / Faded / Hidden. Each part is its
-own rule target. Before the build: fold in the consistency session's review if it came. Its
-Rulez words wait for the custom-rules pass (RULEZ.md §15).
+[LAYOUT.md](features/LAYOUT.md). Two Settings › Window rows set the artist view's order and
+hide its shelves, and set each button on a fixed list (§6) to On / Faded / Hidden. Each part is
+its own rule target. The consistency review is folded in and its forks closed (§11). Its Rulez
+words wait for the custom-rules pass (RULEZ.md §15).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
 - **Go to Album grows, and the grow replaces the slide** (2026-09-26, on `main`, for the next
