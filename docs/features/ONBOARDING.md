@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 # Onboarding — how the app explains itself
 
@@ -513,7 +513,9 @@ sentences take the Tips voice (§3): the habit and why it is safe, not the list 
 
 - No coach-mark overlay dimming the app (the app is the point; a dimmed app hides it).
 - No multi-page welcome screen before sign-in — sign-in is the first-run step, and it has
-  its own copy (HANDOFF.md, the Account row).
+  its own copy (HANDOFF.md, the Account row). **One exception (his call, 2026-09-28,
+  designed):** a single welcome screen that asks Cruisin or Pro comes before sign-in
+  ([HOP-IN.md](HOP-IN.md)). Still no multi-page screen.
 - No tips on a timer, and no "Did you know" toasts after the walk (TOASTS.md §4: a toast that
   interrupts must be about what the user just did).
 

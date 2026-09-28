@@ -12,6 +12,40 @@ updated: 2026-09-28
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-28 — Cruisin and Pro: recipes in Settings, a start pick (design only)
+
+**His ask:** fold Rulez away for users who will never build a rule; let a beginner turn on an
+effect instead. He named the two kinds of user *Cruisin* and *Pro*.
+
+**His calls:** no mode (the app is the same for everyone); the recipes get a Settings section,
+one switch each; a first install asks Cruisin or Pro, with a short description of each, and the
+pick pre-sets settings (a starting point, not a mode), with a Settings row to pick again.
+
+**Written:** RULEZ.md §16. Found while checking the code: the agent's `rules` verb cannot turn
+a recipe on or off, so that is part of the build. Six forks are open (§16.4): where the pick is
+asked (walk step or installer page), which pick equals today's defaults, what Pro sets, what
+picking again does, where the section sits, and the two descriptions. Nothing built.
+
+**Later the same sitting, his calls:** the Rulez card is offered only under Pro (the one gate);
+the pick is a welcome screen before sign-in (ONBOARDING.md §4.6 gets one exception), and Pro
+ends the walk after sign-in; switching to Cruisin keeps your rules running; Ctrl + Space finds
+the Rulez card as usual. RULEZ.md §16.1 items 1 and 4–6. Still open: §16.4 forks 1–6.
+
+**Then:** sprites on the screen, Cruisin = the defaults, Pro = his own settings ("everything
+on", more styled), Recipes after Tips. The screen got its own doc, HOP-IN.md; the start-pick
+parts of RULEZ.md §16 moved there. The Pro draft (HOP-IN.md §3) was read from the installed
+app's saved settings (WebView localStorage `deets.settings`; the bridge was not answering):
+45 values differ from the defaults, sorted into four groups.
+
+**Then:** group A kept, with Fancy Glass and the Ocean light only on a graphics card; a Pro walk
+of its own (the look, Rulez, a Discord offer); placeholder question *Why are you here?*; a small
+picture per choice; the App Mode row at the top of Settings, above Tips; picking again shows a
+confirm and an info icon whose list is read from the preset file. HOP-IN.md §1 items 4–11.
+
+**Last:** the walk never switches to Max for the user; a Discord-running check is built so the
+Discord stop shows only then; a picture click gives both a bigger picture and a demo link; the
+§3 table gets a docs:check rule. HOP-IN.md §4. Left open (§5): the words, the Pro walk's order.
+
 ## 2026-09-28 — Shots made ready for an animation pass and for visual debugging (branch `visualz`)
 
 **His ask:** a full visual design pass on animation; first get the shots ready for Claude to

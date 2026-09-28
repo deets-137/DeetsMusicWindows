@@ -125,6 +125,12 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    rule of yours with a yes / no condition (Charging, Explicit) and read the blanks.
 4. Then the Rulez design pass (RULEZ.md §15) or Layout (LAYOUT.md), his pick.
 
+**Cruisin and Pro (2026-09-28, designed, not built).** Recipes get a Settings section after
+Tips (RULEZ.md §16). A welcome screen before sign-in, *Hop in*, picks Cruisin (the defaults)
+or Pro (his own settings) to pre-set settings. No mode; one gate: the Rulez card is offered only
+under Pro. Every fork is decided but the words and the Pro walk's order
+([HOP-IN.md §5](features/HOP-IN.md)); ready to build when he says go.
+
 **The animation design pass (2026-09-28, branch `visualz`, in progress).** His ask: a full
 visual design pass on motion, with the shots made ready for Claude to review and to help debug.
 Built: clips in the shots runner, the motion set (24 clips × 5 skins, `docs/guide/motion.json`),

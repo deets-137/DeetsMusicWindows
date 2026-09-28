@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules-facts.ts, src/album-slots.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 # DeetsMusic — Rulez, the rules builder
 
@@ -14,6 +14,7 @@ built), your own files in a rule (§5), the sentence row (§6), the agent's verb
 as built (§8), snapshots (§9), FUTURE-SETTINGS as rules (§10), the album color facts and Live
 Theming (§11), moving a rule and its hover box (§12), cases (§13) and one row per recipe (§14).
 **Next: a full pass on custom rules (§15)** before any more building on recipes or cases.
+Recipes in Settings and the Cruisin / Pro start pick are designed in §16 (forks open).
 Designed and built 2026-09-27 on branch `rules-rulez`; §1–§2 were RULES.md §20–§21 until the
 split the same day.
 
@@ -1018,3 +1019,51 @@ The questions of §13 (same Do per case, both kinds, *otherwise*) are part of th
 
 **Layout (added 2026-09-27).** The Do words for the part states and the artist order (LAYOUT.md
 §4, item 6) are designed in this pass: "Shuffle is Hidden", "the artist view shows Albums first".
+
+## 16. Cruisin and Pro: recipes in Settings, and a start pick (his calls, 2026-09-28)
+
+> **Part:** designed · 2026-09-28 · his calls below; the start pick's forks are HOP-IN.md §4; nothing built
+
+**The terms** (Cruisin, Pro) are defined in [HOP-IN.md](HOP-IN.md).
+
+**The problem.** Rulez is a heavy feature. Many users will never want to build a rule. But the
+effect of a recipe (a quieter night, Focus, Battery saver) is useful to everyone. Today a user
+turns on a recipe only in the Rulez card, and that card is in Max only, behind a card title.
+
+### 16.1 His calls
+
+1. **No mode, one gate.** The app is the same app for every user, with one exception: **the
+   Rulez card is offered only when the Settings row says Pro** (second round, 2026-09-28).
+   Everything else is the same for Cruisin and Pro. The gate has a precedent: `rewindCard`
+   already takes the Rewind card out of the card picker (`poolFor`, layout.ts). Rulez adds the
+   same test on the new key, beside its `maxOnly` test.
+2. **Recipes in Settings.** A Recipes section in Settings: one switch per recipe, and the
+   recipe's `desc` as its one-sentence line. A user turns on an effect without reading a rule.
+3. **The Recipes section sits right after Tips** (fourth round, 2026-09-28): it is the Cruisin
+   entry point.
+4. **A start pick, on a welcome screen before sign-in.** The user selects Cruisin or Pro; the
+   pick pre-sets settings once. The screen, the two presets and their forks are
+   [HOP-IN.md](HOP-IN.md).
+5. **Switching to Cruisin keeps your rules running** (third round). Only the Rulez card leaves
+   the card picker. The gate never changes what the app does; the recipes in Settings still work.
+6. **Ctrl + Space finds the Rulez card as usual, under Cruisin too** (third round). The gate is
+   on the card picker only. For a future gated card, hiding it from Ctrl + Space too is still
+   open; decide per card.
+
+### 16.2 The Recipes section, against the code
+
+- **One truth.** A Settings switch calls `setRecipe(id, on)` (rules.ts), the same store
+  (`rules.recipes`) as the recipe rows in the Rulez card (§14). A switch in one place shows in
+  the other. No new key, no schema change, nothing migrates.
+- **The rows come from `RECIPES`** (rules-recipes.ts) plus Live Theming, in that list's order.
+  A new recipe gets its Settings row with no Settings code.
+- **What each row shows:** the name, the `desc` line, the switch. The locked rules and the
+  who-wins line stay in the Rulez card. A link line at the end of the section, *Make your own in
+  the Rulez card (Max)*, is the step up to Pro.
+- **The checklist (CLAUDE.md › Working style):** a `NEW_MARKS` line for the section (5a); a
+  hint per row in the ONBOARDING.md §1 ledger (3); Compass reaches store-backed rows by itself
+  (9). The agent's `rules` verb (§7) lists recipe rules but cannot turn a recipe on or off
+  today (agent-rules.ts only names the source). A recipe switch for the agent is part of this
+  build: one verb action over `setRecipe`, a line in AGENT.md.
+- **The `desc` lines are now user copy for a stranger.** Each one is read again before build, in
+  the Tips voice (ONBOARDING.md §3), with no rule words ("state", "moment", "while").
