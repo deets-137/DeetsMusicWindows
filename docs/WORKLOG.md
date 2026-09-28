@@ -12,6 +12,58 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, 17:20 — Layout: the artist view order and button states, designed (branch `rules-rulez`)
+
+His ask: use the rules engine to reorder the parts of a view (the artist drill-down) and to
+turn buttons off and on, very granular. Designed on paper; nothing is built. The design is
+[LAYOUT.md](features/LAYOUT.md).
+- His calls: the feature first, and rules change it by condition. It lives in a new Settings
+  section, **Layout**, so basic users never meet it. A button is Shown, Faded or Hidden; an
+  artist-view shelf is Shown or Hidden. Artist view only; the hero stays fixed. A fixed list of
+  buttons, and a button goes on it only if a Compass row does the same thing (the Compass button
+  never hides). Each part is its own rule target (`part:<id>`), so two rules on two buttons
+  both apply. A state change on screen fades. Mute and AirPlay get one line per place.
+  Play / Pause is on the list. Library › Refresh is added, with a new *Refresh library*
+  Compass row.
+- The list (LAYOUT.md §6) was checked against `actions()` / `places()` in compass.ts and the
+  hint ledger: 20 buttons on it (7 title bar, 11 Now Playing, 2 cards), Refresh included.
+- The Rulez words for it ("Shuffle is Hidden") go into the custom-rules pass (RULEZ.md §15).
+- The consistency session (App consistency and documentation gaps) was asked to review the
+  design; it had not answered at the commit. Fold its notes into LAYOUT.md before the build.
+- Decided inside his choices, for his review: the key `partStates`, the scope `artist.parts`,
+  the part ids, the pill words, the Faded hint text, `--part-fade-dur` = `--dur-med`, the
+  Compass row's title (LAYOUT.md §9).
+
+## 2026-09-27, evening — The consistency survey: a new-card recipe, five checklist items, six doc corrections (branch `rules-rulez`)
+
+**His ask.** The app grew shared systems fast (menus, hover boxes, the rules engine); which
+users bypass one, and where would a future agent miss a system? Then: the recipe and the
+checklist first, then the doc corrections.
+
+**Read, not guessed.** Every `contextmenu` listener against `media-menu.ts`; every scroller
+against the `app-scroll` list; every `title` against the ONBOARDING ledger; every `toast()` file
+against TOASTS.md §5; every `Settings` key against `agent-settings.ts`, SETTINGS.md and
+AGENT.md; `wireListKeys`, `row-pick`, `row-drag`, `snapshot()` per card; the three popover
+primitives and their users; raw px per stylesheet.
+
+**Written.**
+- SURFACES-AND-CARDS.md §5 — *Adding a card*: the eight systems, and the who-adopts-what table.
+  The generated `cards/` copy is refreshed.
+- CLAUDE.md — checklist item 0 (a new card → §5) and items 11 (right-click through the
+  builder), 12 (keys, picks, drags), 13 (three popovers, never a fourth), 14 (card memory);
+  the SEARCH-FIELDS index line now says designed, not built.
+- SETTINGS.md — the eight keys its own text claimed were all there: `shareActivityApp`,
+  `friendsListenAlong`, `friendsRoomInvite`, `homeApple`, `playlistAutoRefresh`, `pinNewAct`
+  in §3; `quickSeen`, `friendsUrl` / `roomsUrl`, `rules` in §3a.
+- AGENT.md § Which settings — two rows: the six rows with no spec and no recorded reason (his
+  fork), and the app-written keys that are state, not preferences.
+- ONBOARDING.md — §2's album and playlist lines now match CONTEXT-MENUS.md §3.2 / §3.4
+  (Shuffle, Add to Diary, Favorite, Add to Library were missing); ten hints added to §1.
+- TOASTS.md §5 — the agent-set line and Home's Hide + Undo.
+- HANDOFF.md › Open now — the seven things found and left as they are.
+
+**Not done, on purpose.** No code changed. The gaps are listed in HANDOFF for his call.
+
 ## 2026-09-27, 15:30 — A theme change without the cover: measured, not built (branch `rules-rulez`)
 
 His ask: can a rule's theme change morph the colors in place instead of running the cover

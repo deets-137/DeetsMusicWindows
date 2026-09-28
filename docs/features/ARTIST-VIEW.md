@@ -158,3 +158,10 @@ hidden right slot is not on screen, so it still comes into the left slot.
   (open request), `playlists.ts` (open bus), `go-to.ts` (catalog playlist intent),
   `start-station.ts` (shared id), `layout.ts` + `layout-bus.ts` (fix + host lookup),
   `card-swap.ts` (`whenSwapSettled`), `row-drag.ts` (export the chip maker), CSS + skin tokens.
+
+## 8. Your own order (designed 2026-09-27)
+
+> **Part:** designed · 2026-09-27
+
+Settings › Layout will set the order of the four parts under the hero, and hide any of them.
+One order for Library and Search. A rule can change it by condition. [LAYOUT.md](LAYOUT.md) §3.1.

@@ -112,6 +112,23 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**The consistency survey (2026-09-27 evening, docs only).** A read of every shared system
+against its users. Written down: the new-card recipe (SURFACES-AND-CARDS.md §5, with the
+who-adopts-what table), checklist items 0 and 11–14 in CLAUDE.md, and the doc corrections
+(SETTINGS.md's eight missing keys, AGENT.md's no-spec rows, ONBOARDING.md's album and playlist
+menus and ten hints, TOASTS.md's two sites). **Left as found, his to close or leave:**
+- No arrow keys on Rewind, Diary and Rulez rows (`wireListKeys`, SURFACES-AND-CARDS.md §5 step 4).
+- The OS scrollbar on `.quick__panel`, `.room__panel`, `.compass`, `.set__menu`, `.set__preview`
+  (no `app-scroll`, not in the `:is()` list; CLAUDE.md checklist 6a).
+- The Library's Sort / View pop (`collection-card.ts` `openPop`) is a fourth popover: no
+  arrival motion, ignores *Open menus on hover*.
+- The Friends panel's song row builds Play Now · Go to Album by hand (CONTEXT-MENUS.md §5
+  names it as a non-media menu; it is the one song menu off the builder).
+- Six Settings rows have no agent spec and no recorded reason (AGENT.md § Which settings).
+- `styles.css` holds 68 raw px values in component rules; every other stylesheet has none.
+- `docs:check` catches none of the above; a settings-key and a toast-site cross-check would
+  fit as checks 20 and 21.
+
 **In flight:** Rulez on `rules-rulez`: **every route is built and Claude's desk tests have
 run, with music** ([RULEZ.md](features/RULEZ.md) §2, §8, §10.2). Route 8's five steps were
 built 2026-09-27 afternoon (§10.2), and the new Settings row is Menus › Go to opens. Committed
@@ -137,6 +154,12 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 
 **After that:** the telemetry pass's last part, the AirPlay stall and switch timing (AIRPLAY.md
 §13.2, a crate change too).
+
+**On the docket — Layout** (designed 2026-09-27, every fork his, not built):
+[LAYOUT.md](features/LAYOUT.md). Settings › Layout sets the artist view's order and hides its
+shelves, and sets each button on a fixed list (§6) to Shown / Faded / Hidden. Each part is its
+own rule target. Before the build: fold in the consistency session's review if it came. Its
+Rulez words wait for the custom-rules pass (RULEZ.md §15).
 
 **Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
 - **Go to Album grows, and the grow replaces the slide** (2026-09-26, on `main`, for the next

@@ -996,3 +996,6 @@ covers, together:
   expands to plain rules, §13), the store's `v: 1`, the agent's verb.
 
 The questions of §13 (same Do per case, both kinds, *otherwise*) are part of this pass.
+
+**Layout (added 2026-09-27).** The Do words for the part states and the artist order (LAYOUT.md
+§4, item 6) are designed in this pass: "Shuffle is Hidden", "the artist view shows Albums first".

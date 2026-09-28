@@ -36,6 +36,8 @@ old installs' Guide button opens.
 - `UI-ARCHITECTURE.md` — the token / theme / skin tiers and the collection-card engine.
 - `DATA-ARCHITECTURE.md` — auth, the normalized model, the provider, the SQLite cache.
 - `SURFACES-AND-CARDS.md` — the surfaces (mini / midi / max) and the card slot system.
+  **§5 is the recipe for a new card**: the eight systems a card adopts (menus, keys, picks,
+  drags, hint shapes, memory, popovers) and which cards adopt which today.
 - `TOKENS.md` — every token (generated).
 - `SETTINGS.md` — the settings store, row kinds, keys and owners; how to add a setting.
 - `SETTINGS-INVENTORY.md` — every control and what each choice does.
@@ -65,7 +67,9 @@ old installs' Guide button opens.
 - `QUEUE.md` — the queue model and MusicKit windowing. Read it before queue.ts / player.ts.
 - `SEARCH.md` — the catalog Search card.
 - `SECOND-SEARCH.md` — a second Search card to compare two albums.
-- `SEARCH-FIELDS.md` — one `searchField()` for all six search boxes: ×, Escape, Ctrl+F, delay, keys.
+- `SEARCH-FIELDS.md` — DESIGNED, not built (2026-09-24): one `searchField()` for all six
+  search boxes: ×, Escape, Ctrl+F, delay, keys. Today each box is its own code; do not look
+  for the primitive.
 - `STATIONS.md` — Apple stations and radio mode.
 - `FAVORITES.md` — Add to Library and ♥; the store of every track we touch.
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.
@@ -95,6 +99,9 @@ old installs' Guide button opens.
   cancel events, the ten routes (§3; all built, §7, §8, §10.2), the album color facts and Live
   Theming (§11), one row per recipe (§14). Next: a design pass on custom rules (§15). The
   engine is `architecture/RULES.md`.
+- `LAYOUT.md` — Settings › Layout: the artist view's order and hidden shelves, and the
+  Shown / Faded / Hidden buttons; each part is its own rule target. Designed 2026-09-27, every
+  fork his; on the docket, not built.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
@@ -216,6 +223,10 @@ feature, made by a script from the demo; for the guide and a marketing overview.
 - **Before you build a new panel, row, button or card, walk this list** (added 2026-09-16
   after the sleep panel shipped without its row motion). Read the primitive's own file, not
   only a call site: one call site never uses every part of a primitive.
+  0. **A new card:** SURFACES-AND-CARDS.md §5 first. A card adopts eight systems (the
+     registry, the collection engine, right-click, the keyboard, picks and drags, hint
+     shapes, memory, popovers); a card that skips one still works, so nothing catches the
+     miss (Rewind, Diary and Rulez had no arrow keys, found 2026-09-27).
   1. **Motion:** a dropdown panel gets `.pop` (arrival) AND `enterRows` from `src/pop.ts`
      on open (`onOpen`) — the "Play on" panel is the reference, not the volume panel. Any
      part that appears later (a row a pill reveals, a button, a status line) goes through
@@ -233,7 +244,7 @@ feature, made by a script from the demo; for the guide and a marketing overview.
      var(--sound-chip-radius)`), never a new raw value. Added 2026-09-17, after the AirPlay
      permission buttons shipped on the toast idiom inside a panel of filled chips.
   3. **Hints:** every `title` is a hover hint (src/hint.ts) and goes in the ONBOARDING.md
-     ledger. New row shapes go in its SHAPES table.
+     §1 ledger. A new row shape goes in `SHAPES` (hint.ts) and the §1a list.
   4. **Toasts:** every new `toast()` call is a row in TOASTS.md §5.
   5. **Settings keys:** a new key in `settings-store.ts` gets a default with the "why", a
      spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md.
@@ -262,6 +273,21 @@ feature, made by a script from the demo; for the guide and a marketing overview.
      engine, and its row makes the rule. A value a rule may set is a rule key, read with
      `effective` or `ownSetting`. The recipe is RULES.md §19. Bring him the fork when the
      rule's order or its hand-change behavior (`onHand`) is a choice.
+  11. **Right-click (2026-09-27):** a song, album, artist, playlist or station row gets its
+     menu from the builder in `src/media-menu.ts` (CONTEXT-MENUS.md §7): pass the card's
+     `own` and `away` rows, never list media rows by hand. A menu that is not media
+     (a rule, a folder, a report) is a line in ONBOARDING.md §2.
+  12. **Keyboard, picks, drags (2026-09-27):** a list of rows gets `wireListKeys`
+     (`src/list-keys.ts`); a search field registers with `src/find-key.ts` for Ctrl+F;
+     Ctrl / Shift picks are `src/row-pick.ts`; a row that drags or a card that takes a drop
+     is `src/row-drag.ts` + `src/drop-actions.ts` (DRAG-DROP.md).
+  13. **Popovers (2026-09-27):** three primitives, the place picks one. `makeDropdown`
+     (`src/dropdown.ts`) for a panel on a trigger — the only one that follows *Open menus on
+     hover*; `openContextMenuUnder` for choices under a button; `openContextMenu` for the
+     right-click. Never a fourth (the Library's Sort / View pop is the one that predates
+     this rule).
+  14. **Card memory:** a card returns `snapshot()` and takes `opts.memory` back
+     (CARD-MEMORY.md), so it comes back where the user left it.
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.
