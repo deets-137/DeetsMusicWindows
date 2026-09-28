@@ -124,7 +124,7 @@ the six themes, light or dark by the cover; the color half is his to review). Th
 (SKINZ.md §12) and waits for the Skinz build. **Then:** a rule moves by hold-then-move (no
 grip) and its row has a hover box (RULEZ.md §12; his hand test is open); the engine rechecks
 only when a seam's fact changed. A recipe is one row with one switch, and opens to its rules
-(RULEZ.md §14, desk-tested). **Built 2026-09-27 evening, uncommitted:** a rule's theme change
+(RULEZ.md §14, desk-tested). **Built 2026-09-27 evening (`dae117a`, pushed):** a rule's theme change
 crossfades in place (500 ms, no cover), and Live Theming changes the theme once per song (the
 last cover's color stands until the new one lands). His desk test is
 [UX-COVERUPS.md §6c](architecture/UX-COVERUPS.md). **Next for Rulez: a full design pass on custom rules** — how
