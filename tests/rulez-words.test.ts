@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   parseTime, formatTime, condText, leafText, whenText, doText, doWordOf, dosFor, isComplete, NO_LISTS, DOS, EVENTS, FACTS,
+  leafParts, lowerFirst, sentenceText, SAYS,
 } from "../src/rulez-words.ts";
 import { builtinRules, type MomentRule, type StateRule, type Rule } from "../src/rules-eval.ts";
 
@@ -52,6 +53,45 @@ test("every built-in rule reads back as words (the locked rows)", () => {
     assert.ok(whenText(r, lists).length > 0, r.id);
     assert.ok(doText(r, lists).length > 0, r.id);
   }
+});
+
+test("a yes / no fact is one phrase, never a name cut off it (the 2026-09-27 'Charging s on battery' bug)", () => {
+  assert.deepEqual(leafParts({ fact: "charging", is: false }, NO_LISTS), { rest: "The PC is on battery" });
+  assert.deepEqual(leafParts({ fact: "charging", isNot: false }, NO_LISTS), { rest: "The PC is charging" });
+});
+
+test("every fact's parts join back into its phrase (so the card never cuts a string)", () => {
+  const sample = (kind: string): unknown =>
+    kind === "bool" ? true : kind === "number" ? 5 : kind === "time" ? 600 : "x";
+  for (const f of FACTS) {
+    for (const leaf of [{ fact: f.id, is: sample(f.kind) }, { fact: f.id, gt: 1 }] as never[]) {
+      const p = leafParts(leaf, NO_LISTS);
+      assert.ok(p.rest.length > 0, `${f.id}: empty rest`);
+      if (p.name) assert.equal(`${p.name} ${p.rest}`, leafText(leaf, NO_LISTS), `${f.id}: parts do not join`);
+    }
+  }
+});
+
+test("lowerFirst lowers an ordinary first word and keeps a name or a short form", () => {
+  assert.equal(lowerFirst("Time is after 8:00 PM"), "time is after 8:00 PM");
+  assert.equal(lowerFirst("The PC is on battery"), "the PC is on battery");
+  assert.equal(lowerFirst("AirPlay is on"), "AirPlay is on");
+  assert.equal(lowerFirst("EQ preset is Warm"), "EQ preset is Warm");
+  assert.equal(lowerFirst("DeetsMusic opens"), "DeetsMusic opens");
+  assert.equal(lowerFirst("Last.fm"), "last.fm"); // a one-capital name: the documented limit
+  assert.equal(lowerFirst(""), "");
+});
+
+test("every Do word has its own SAYS phrase for each row it can sit in (no label fallback)", () => {
+  for (const d of DOS) {
+    if (d.moment) assert.ok(SAYS[d.id]?.act, `${d.id}: no SAYS.act`);
+    if (d.state) assert.ok(SAYS[d.id]?.keep, `${d.id}: no SAYS.keep`);
+  }
+});
+
+test("a While row on a yes / no fact reads as one sentence", () => {
+  const r = { id: "t", kind: "state", on: true, source: { user: true }, while: { fact: "charging", is: false }, set: [] } as unknown as StateRule;
+  assert.match(sentenceText(r, NO_LISTS), /^While the PC is on battery, DeetsMusic/);
 });
 
 test("the word lists have no duplicate ids", () => {

@@ -511,6 +511,25 @@ Sentences use "DeetsMusic" as the actor, never "I" or "we", and never "suggest",
 "AI". Active voice (§1.1). The one place the app writes a rule for the user is a recipe, and
 recipes say who made them: "Made by DeetsMusic. Turn it on to use it."
 
+**How the words are built, so a new word needs no grammar code (2026-09-27 late night).** The
+condition-block bug ("Charging" + "s on battery") came from cutting one string apart. The rules
+that keep it from coming back, all in rulez-words.ts:
+- **Parts, never string surgery.** A condition is `leafParts`: a `name` plus the `rest`
+  ("Genre" + "is Jazz"), or a whole phrase with no name ("The PC is on battery"). The card draws
+  one blank per part. Nothing slices, splits or measures a phrase to find a word in it.
+- **One case rule.** A phrase goes lower case mid-sentence only through `lowerFirst`: it lowers
+  the first letter only when the first word is an ordinary capitalized word, so "AirPlay",
+  "EQ preset" and "DeetsMusic" keep their case. Its one limit: a plain one-capital name
+  ("Apple") reads as a common word; start such a label with another word.
+- **Every Do word says its own verb.** `SAYS` holds the When form (`act`) and the While form
+  (`keep`) of each word; a test fails when a new Do word has none, so the label is never bent
+  into a verb.
+- **Tests** (`tests/rulez-words.test.ts`): every fact's parts join back into its phrase; the
+  yes / no phrase is whole; `lowerFirst` keeps names; every Do word has its SAYS.
+- **What still depends on a format** (not grammar, for the custom-rules pass, §15): a recipe
+  part's title is the text after `": "` in the rule's name (rulez-card.ts `recipeRowHTML`), and
+  a few Do values read lower case by a list of ids (`doValueText`, the `plain` list).
+
 ### 6.6 Decided inside his choices (B's recommendations, for his review)
 
 - The table goes rather than staying as an advanced view: two editors for one thing would each

@@ -155,45 +155,119 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   };
   // A redraw that removes the focused row dropped the focus to <body>, and the next key did
   // nothing (the desk test of 2026-09-27: Rulez open / fold, a Diary entry, Rewind after its
-  // menu). The row that took the old row's place gets the focus back once the redraw settles:
-  // the row with the same key first (data-id, data-idx, data-entry, data-song-i, data-pick —
-  // the keys the cards' rows carry), else the row at the same index. Only after a key: a
-  // pointer press that redraws a list must not grow a ring where nothing was pressed.
-  const KEYS_OF_ROW = ["id", "idx", "entry", "songI", "pick"] as const;
-  let lastKey = false;
-  const onAnyKey = (): void => {
-    lastKey = true;
+  // menu). A key inside the list arms a watch; when a redraw leaves the focus on <body>, the
+  // ring goes back to the row (`pickRefocus`). Only after a key: a pointer press disarms it, so
+  // a click that redraws a list never grows a ring where nothing was pressed.
+  //
+  // Not `focusout`: WebView2 (like Chromium) fires no focusout and no blur when it REMOVES the
+  // focused element. The first fix listened for exactly that and never ran (desk test A1b,
+  // 2026-09-27 night). A MutationObserver on the page sees every redraw, the card's own and a
+  // context menu's that closes; it lives only while armed.
+  let last: RowMark | null = null; // the row the keys were on
+  let from: RowMark | null = null; // the row a key drilled away from (a Diary tile → its entry)
+  let watch: MutationObserver | null = null;
+  let checkRaf = 0;
+  const disarm = (): void => {
+    watch?.disconnect();
+    watch = null;
+    cancelAnimationFrame(checkRaf);
+    checkRaf = 0;
   };
-  const onAnyPointer = (): void => {
-    lastKey = false;
+  const check = (): void => {
+    checkRaf = 0;
+    if (!container.isConnected || !last) return disarm();
+    if (document.activeElement !== document.body) return; // the focus is somewhere real (a menu, a row)
+    if (last.el.isConnected && scope().contains(last.el)) return focusRow(last.el); // a menu closed over it
+    const list = rows();
+    const at = pickRefocus(last, from, list.map((r) => r.dataset));
+    if (at < 0) return;
+    if (!list.some((r) => last && last.key && r.dataset[last.key] === last.value)) from = last; // it drilled
+    focusRow(list[at]);
   };
-  const onFocusOut = (e: FocusEvent): void => {
-    const row = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(o.rows);
-    if (!row || e.relatedTarget || !lastKey) return;
-    const keyName = KEYS_OF_ROW.find((k) => row.dataset[k] !== undefined);
-    const keyValue = keyName ? row.dataset[keyName] : undefined;
-    const index = rows().indexOf(row);
-    requestAnimationFrame(() => {
-      if (row.isConnected || !container.isConnected) return; // it only moved the focus, or the card is gone
-      if (document.activeElement !== document.body) return; // the card put the focus somewhere itself
-      const list = rows();
-      const same = keyName ? list.find((r) => r.dataset[keyName] === keyValue) : undefined;
-      focusRow(same ?? list[Math.max(0, Math.min(index, list.length - 1))]);
+  const arm = (): void => {
+    if (watch) return;
+    watch = new MutationObserver(() => {
+      if (!checkRaf) checkRaf = requestAnimationFrame(check);
     });
+    watch.observe(document.body, { childList: true, subtree: true });
+  };
+  const onAnyKey = (e: KeyboardEvent): void => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>(o.rows);
+    if (row) last = markRow(row, rows().indexOf(row));
+    arm();
+  };
+  const onRowFocus = (e: FocusEvent): void => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>(o.rows);
+    if (row) last = markRow(row, rows().indexOf(row));
+  };
+  // The focus or the keys went somewhere else (another list, a field): stop watching, or this
+  // list would take the ring back when THAT list redraws. A context menu the keys opened keeps
+  // the watch, so its Escape brings the ring back to the row. The key counts as well as the
+  // focus: a window without the system focus sends no focusin (desk test A1b: Rulez took the
+  // ring from a Diary Enter, 2026-09-27 night).
+  const onElsewhere = (e: Event): void => {
+    const t = e.target as HTMLElement;
+    if (!watch || container.contains(t) || t.closest?.(".ctx-menu")) return;
+    disarm();
   };
   container.addEventListener("keydown", onKey);
   container.addEventListener("keydown", onAnyKey, true);
   container.addEventListener("focusin", onFocus);
-  container.addEventListener("focusout", onFocusOut);
+  container.addEventListener("focusin", onRowFocus);
   container.addEventListener("pointerdown", onDown, true);
-  container.addEventListener("pointerdown", onAnyPointer, true);
+  window.addEventListener("pointerdown", disarm, true);
+  document.addEventListener("focusin", onElsewhere, true);
+  document.addEventListener("keydown", onElsewhere, true);
   return () => {
+    disarm();
     container.removeEventListener("keydown", onKey);
     container.removeEventListener("keydown", onAnyKey, true);
     container.removeEventListener("focusin", onFocus);
-    container.removeEventListener("focusout", onFocusOut);
+    container.removeEventListener("focusin", onRowFocus);
     container.removeEventListener("pointerdown", onDown, true);
-    container.removeEventListener("pointerdown", onAnyPointer, true);
+    window.removeEventListener("pointerdown", disarm, true);
+    document.removeEventListener("focusin", onElsewhere, true);
+    document.removeEventListener("keydown", onElsewhere, true);
     delete container.dataset.listKeys;
   };
+}
+
+/** The keys the cards' rows carry, in the order a row is known by. */
+const KEYS_OF_ROW = ["id", "idx", "entry", "songI", "pick"] as const;
+type RowKey = (typeof KEYS_OF_ROW)[number];
+export interface RowMark {
+  el: HTMLElement;
+  key: RowKey | null;
+  value: string | undefined;
+  index: number;
+}
+function markRow(el: HTMLElement, index: number): RowMark {
+  const key = KEYS_OF_ROW.find((k) => el.dataset[k] !== undefined) ?? null;
+  return { el, key, value: key ? el.dataset[key] : undefined, index };
+}
+
+/**
+ * Which row takes the focus back after a redraw removed the focused one (a pure rule, tested in
+ * tests/list-keys.test.ts). `list` is the new rows' datasets, in order. In turn:
+ * 1. the row with the same key (Rulez: the rule that opened or folded);
+ * 2. the row the keys drilled away from (Escape out of a Diary entry: its tile);
+ * 3. a list of another kind (no row carries the old key's name — a tile became an entry's song
+ *    rows): the first row;
+ * 4. the same kind of list, the row gone: the row now at its place.
+ * -1 when the list is empty.
+ */
+export function pickRefocus(
+  last: Pick<RowMark, "key" | "value" | "index">,
+  from: Pick<RowMark, "key" | "value"> | null,
+  list: ReadonlyArray<Record<string, string | undefined>>,
+): number {
+  if (!list.length) return -1;
+  const find = (m: Pick<RowMark, "key" | "value"> | null): number =>
+    m?.key ? list.findIndex((d) => d[m.key!] === m.value) : -1;
+  const same = find(last);
+  if (same >= 0) return same;
+  const back = find(from);
+  if (back >= 0) return back;
+  if (!last.key || !list.some((d) => d[last.key!] !== undefined)) return 0;
+  return Math.max(0, Math.min(last.index, list.length - 1));
 }

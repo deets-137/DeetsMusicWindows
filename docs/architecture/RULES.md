@@ -726,6 +726,8 @@ the five sharing switches and *Failures*; the words read back as the rows'.
   the fact's label length off the phrase, so *Charging* + *The PC is on battery* reads
   "Charging" + "s on battery". Every yes / no fact whose phrase does not start with its label
   (loaded, playing, explicit, loved, online, charging…). Was there before this build.
+  **Fixed 2026-09-27 late night:** `leafParts` hands the card the parts, and a yes / no phrase
+  is one blank (RULEZ.md §6.5, the grammar rules).
 - A recipe's dot says "A rule sets this now."; a rule of yours names itself.
 
 ## 19. Adding a feature that uses rules

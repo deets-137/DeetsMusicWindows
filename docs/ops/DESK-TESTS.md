@@ -57,6 +57,36 @@ Terms:
   CDP port down until the rebuild ends. Do not edit code during a run.
 - **Restart:** kill the dev exe and the vite process (CLAUDE.md; the memory
   `deetsmusic-dev-runner-ops`), then relaunch. A Rust change is not watched by the runner.
+- **After a hot update, reload before you judge the layout.** A `.ts` save in the middle of a
+  render once left three empty cards and the Diary in the wrong slot; `location.reload()` put it
+  right. It was the update, not the code (2026-09-27 night).
+- **Another session may want the dev app** (DEBUGGING.md, "Two sessions, one dev app"). Ask
+  before starting one; `dev:built` serves a bundle built once, so a `.ts` edit does not reach
+  it, but its runner watches `src-tauri/`, so a Rust edit restarts it mid-bench.
+
+**Tools found in the 2026-09-27 night run** (each one used for a row in §5):
+- **The second app from the CLI:** `deetsmusic --port 47827 --token <bridgeToken>`, the token
+  from `%APPDATA%\com.deetsmusic.second.dev\settings.json`. A setting write asks on that app;
+  press its toast's Allow over CDP (`webview-eval.mjs --second`).
+- **A drag between rows:** `PointerEvent`s (down on the row, a dozen moves, up) dispatched from
+  `webview-eval.mjs` drive `row-drag.ts`. Drop inside the card's visible box: a point below the
+  card's bottom edge hits nothing.
+- **The Windows light / dark switch (look schedule, Windows mode):** write `AppsUseLightTheme`
+  under `HKCU\…\Themes\Personalize` through a WMI-started `reg add` (this session's registry is
+  private, CLAUDE.md), then broadcast `WM_SETTINGCHANGE` with `"ImmersiveColorSet"`
+  (`SendMessageTimeout` to `HWND_BROADCAST`). The write alone changes nothing: programs wait for
+  the broadcast. Put both back after.
+- **Unplug on a desktop (the `charging` fact):** in the page, override the `BatteryManager`
+  object's `charging` getter (`Object.defineProperty`) and dispatch `chargingchange` on it; the
+  app's listener reads the new value. This tests the rule path, not the hardware.
+- **A first run without losing the dev profile:** copy `%APPDATA%\com.deetsmusic.dev` and
+  `%LOCALAPPDATA%\com.deetsmusic.dev\EBWebView` to the scratchpad (~700 MB, two minutes), run
+  `dev:fresh`, then stop the app and copy both back.
+- **A forced dead song:** a fake id in `/play`'s `tracks` is caught by the top-up's id check
+  (`player:deadIds`) before MusicKit sees it, so it does NOT force the dead-next heal (B20).
+- **Keys in a list:** send them to `document.activeElement`, never to `document`. A key
+  outside a list stops its refocus watch (list-keys.ts), so a key on `document` hides the
+  behavior you are testing.
 
 ## 2. The rules
 
@@ -165,3 +195,35 @@ where the table says.
 | # | What | The script | Apps | Who | Notes |
 |---|---|---|---|---|---|
 | A1b | The focus stays through a redraw (the A1 fix) | [COMPASS.md §5a](../features/COMPASS.md) steps 8–10 | one | agent | Read `document.activeElement` after each Enter / Escape; it must be a row, never `<body>` |
+
+**Run of 2026-09-27 night (Claude, his yes to `dev:fresh`, `dev:built`, the Windows theme flip
+and a Diary write).** Left out as retests: B5's EQ per output (passed with a stood-in second
+output, RULES.md §18 step 9), B9 (Claude's part ran; the feel is his), B16 on live (ran
+2026-09-26; only the open-entry redraw was left, run on the dev app). B12 and B13 did not need
+`dev:fresh`: an empty queue and a cleared `quickSeen` are enough.
+
+| # | Date | Result | Seen |
+|---|---|---|---|
+| A1b | 2026-09-27 | **fail** (cause found) | Rulez Enter and Escape, Diary Enter: the focus still drops to `<body>`. The page runs the fix (`KEYS_OF_ROW` is served). **Cause:** WebView2 fires no `focusout` and no `blur` when it removes a focused element (tried on a bare button: zero events), and `onFocusOut` in list-keys.ts is the fix's only trigger. Step 10 (Rewind) not run, same cause |
+| A2 | 2026-09-27 | pass (step 7); step 3 unreachable | 7: with the Library at Fill, the first Escape closes the pop and keeps the grow, the ring back on the pill; the second collapses. 3: the Sort pop is 86 px; at the lowest Max height (745 px, below it the window turns Midi) the pill sits ~280 px above the bottom, so the pop never lacks room below |
+| A3 | 2026-09-27 | pass (Pin) | The second app played Autobahn (0 Kraftwerk rows in the first app's library); Pin on the Friends box → `pin:set`; the Home › Pinned tile played it (`playContext ctx: home`). Pin cleared after. Rename is the input row (not a button) |
+| A4 | 2026-09-27 | empty case unreachable | Every area keeps the `start:` lines (`ALWAYS`, report.rs), so a running app's preview is never empty; *The log is empty.* shows only when the log cannot be read |
+| A6 | 2026-09-27 | pass (drag steps) | Sunshine dragged into Completed: `drop-row done`, `done`, the copy ran (the window had no focus, so it toasted *Couldn't copy*, the known finding); dragged back: `undone`, no toast |
+| B3 | 2026-09-27 | pass, signed-out step **unreachable** | Real wipe, then: the walk starts (`onboardingStep` 1), all 13 `NEW_MARKS` and the cog seen, no dot, the OS-dark pair (Black & Red, Cyber). **Finding:** lib.rs seeds `deetsmusic.db`, `user-token.txt` and `developer-token.json` from `com.deetsmusic.app` into an empty dev dir, so `dev:fresh` opens signed in while the installed app is signed in; the walk began at step 2. ONBOARDING.md §5's "everything goes: you are a stranger, signed out" is not true on this PC. The dev data was restored from a backup after |
+| B6 | 2026-09-27 | pass | Look schedule = Windows mode; `AppsUseLightTheme` set through a WMI-started `reg add` plus a `WM_SETTINGCHANGE "ImmersiveColorSet"` broadcast (the write alone changes nothing: programs wait for the broadcast). Light → `daylight` true, `row:lookSchedule:day` took the skin (`why: daylight`); dark → back. Live Theming kept the theme, as its order says. Windows and the row put back |
+| B11 | 2026-09-27 | pass (step 4) | A title-menu pick (Lilac) ran the cover: `frames appearance theme … 1601 ms`, no `theme-fade` |
+| B12 | 2026-09-27 | pass (step 1) | Restore on launch = Off, a relaunch: *Not playing*; the Diary shows the + box alone, centered (538 against the body's 538). The row put back to Last song |
+| B13 | 2026-09-27 | pass (1–4); step 5 obsolete | Setup: every mark seen but the four Glass Canvas rows, Canvas = Aurora. 1: Covers and Picture wear the dot, Aurora none. 2: a rest on Covers clears its dot only; the cog keeps its dot. 3: Covers → Tiles, Diffusion, Aurora color each wear one; a rest clears each; Picture keeps its dot. 4: Ocean → the cog and the look square go dark; Glass → both light again. 5 checks the N letter, which is a yellow dot since 2026-09-26 |
+| B15 | 2026-09-27 | pass, one cost found | `dev:built`, music, League of Legends on the GPU (`--contended`). GPU on: 232 fps at 0 and at 100 (worst 13 / 21 ms, GPU process 35 / 40 %). `--gpu=off` (WARP): **34 fps at 0, 27 at 100** (worst 63 / 75 ms). OCEAN.md §6 asks for a word in the Animate backgrounds hint then: his call |
+| B16 | 2026-09-27 | pass (the redraw) | Dev app, Agents use the Diary on: entry 1 open, `diary score 1 --song 3 8` → the open row read *8* at once; cleared; the row put back Off |
+| B20 | 2026-09-27 | cannot be forced | Played [Autobahn, a fake id, a real song]: the top-up resolves ids before MusicKit (`player:deadIds … not-found`), so the fake never reaches MusicKit and the advance is clean. A dead-next needs a song that resolves and then fails to start. It stays a watch on live |
+| 18a.3 | 2026-09-27 | pass (faked) | No battery on this PC. The page's `BatteryManager.charging` overridden, `chargingchange` fired: unplugged → the recipe holds `glassFancy`, `backgroundMotion`, `cardSwapMotion`, `appearanceMotion` (`why: fact:charging`), the Fancy scrubber and his own values untouched; plugged in → all four let go. The real unplug on a laptop stays his |
+
+Summary: *12 pass (one faked) · 1 fail · 4 unreachable or not forceable · 3 left out as retests.*
+
+**After the run, the same night: two fixes, re-tested.**
+
+| # | Date | Result | Seen |
+|---|---|---|---|
+| A1b | 2026-09-27 | pass | The fix redone (COMPASS.md §5a, as built). 8: Rulez Enter → the same rule, open; Escape → folded, the ring on it; ↓ → the next rule. 9: Diary Enter → the first song row; Escape → the tile of the entry; the picker's ↓ from the field → a result. 10: Rewind Menu key, Escape → the ring on the row; ↓ moves; a mouse click on a Diary tile → no ring. The first try found a second bug, fixed: Rulez, still watching from step 8, took the ring when the Diary redrew; a key outside the list now stops the watch |
+| B3 | 2026-09-27 | pass (step 1) | `dev:fresh` with `DEETS_NO_SEED`: no token or db seeded, `isAuthorized` false, the tour on *Step 1 of 5: Sign in to Apple Music*. The dev profile restored after |

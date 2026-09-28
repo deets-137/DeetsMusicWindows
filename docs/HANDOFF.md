@@ -116,11 +116,13 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 1. Ask him the two §18a forks (RULES.md §18a, "Found at the run"): does a hand change set aside
    the whole rule or only that setting (today: whole, `onHand` in rules.ts); does a switch row
    under a rule show his value (today) or the rule's.
-2. Ask his yes for `npm run dev:fresh` (B3, B12, B13; it wipes the dev sign-in) and a
-   `dev:built` restart (B15). Then run them, and the A1 re-test (COMPASS.md §5a steps 8–10).
-3. The Rulez condition block cuts a yes / no fact's words ("Charging" + "s on battery",
-   rulez-card.ts `blockHTML`, the label-length slice) — an old bug, not yet fixed; a fix needs no
-   fork (show the fact's own phrase).
+2. ~~The blocked desk tests~~ — run 2026-09-27 night (DESK-TESTS.md §5, the night run). Left
+   from it: the A1 focus fix and the `dev:fresh` seed were both fixed and re-tested the same
+   night (committed). Open: the
+   Ocean album light without a GPU (34 → 27 fps), a hint wording for him (OCEAN.md §6).
+3. ~~The Rulez condition block cuts a yes / no fact's words~~ — fixed 2026-09-27 late night
+   with the word rules in RULEZ.md §6.5 (parts, one case rule, a SAYS test). His look: open a
+   rule of yours with a yes / no condition (Charging, Explicit) and read the blanks.
 4. Then the Rulez design pass (RULEZ.md §15) or Layout (LAYOUT.md), his pick.
 
 **Eight more rule keys, Battery saver, Focus (2026-09-27 evening, built, committed in

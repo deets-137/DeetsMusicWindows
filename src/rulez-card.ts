@@ -20,8 +20,8 @@ import { allRules, known, onRulesChange, recipesOn, ruleIdle, ruleStats, saveUse
 import { RECIPES } from "./rules-recipes";
 import { evalCond, factsOf, validate, type EventId, type Leaf, type MomentRule, type OnHand, type Rule, type StateRule, type Value } from "./rules-eval";
 import {
-  EVENTS, FACTS, SECTIONS, choicesOf, doValueText, doWordOf, dosFor, factWord, formatTime, isComplete,
-  leafText, parseTime, saysOf, sentenceText, stateParts, whenText, whoWins,
+  EVENTS, FACTS, SECTIONS, choicesOf, doValueText, doWordOf, dosFor, formatTime, isComplete,
+  leafParts, leafText, lowerFirst, parseTime, saysOf, sentenceText, stateParts, whenText, whoWins,
   type Choice, type DoWord, type FactWord, type Lists, type Section,
 } from "./rulez-words";
 import { blockOf, fromBlock, isLeaf, liftGroup, rootBlock, toCond, withBlock, type Block, type BlockKind } from "./rulez-blocks";
@@ -649,7 +649,7 @@ export const rulezCard: CardDef = {
       if (r.kind === "state") when = `<span class="rulez__word">While</span>${blank("…", "when", "Picks what starts this rule, or keeps While")}`;
       else {
         const w = r.when ? whenText(r, L) : "";
-        when = `<span class="rulez__word">When</span>${blank(w ? w[0].toLowerCase() + w.slice(1) : "what happens?", "when", "Picks what starts this rule, or While for a rule that holds while its condition is true", "", !r.when)}`;
+        when = `<span class="rulez__word">When</span>${blank(w ? lowerFirst(w) : "what happens?", "when", "Picks what starts this rule, or While for a rule that holds while its condition is true", "", !r.when)}`;
         const cardEvent = r.when && ["card.open", "album.open", "artist.open", "grow.outside", "grow.back", "queue.summon", "goto.artist", "goto.album"].includes(r.when);
         if (cardEvent || r.card !== "*") when += `<span class="rulez__word">in</span>${blank(r.card === "*" ? "any card" : L.cards.find((c) => c.value === r.card)?.label ?? r.card, "in", "Picks the card the event must happen in")}`;
       }
@@ -697,11 +697,13 @@ export const rulezCard: CardDef = {
         const inner = blockOf(m);
         if (inner) return `<div class="rulez__block">${blockHTML(r, inner, p, facts, L)}</div>`;
         if (!isLeaf(m)) return "";
-        const w = factWord(m.fact);
         const holds = evalCond(m, facts as never);
         const mark = showHead ? `<span class="rulez__mark${holds ? " is-yes" : ""}" title="${holds ? "True now" : "Not true now"}">${holds ? "✓" : "✗"}</span>` : "";
-        const rest = leafText(m, L).slice((w?.label ?? "").length).trim() || leafText(m, L);
-        return `<div class="rulez__line">${mark}${blank(w?.label ?? m.fact, "leaf", "Changes or removes this condition", ` data-path="${p.join(".")}"`)}${blank(rest, "leaf", "Changes or removes this condition", ` data-path="${p.join(".")}"`)}</div>`;
+        // The fact's name and the rest as two blanks; a yes / no phrase is one (RULEZ.md §6).
+        const words = leafParts(m, L);
+        const at = ` data-path="${p.join(".")}"`;
+        const hint = "Changes or removes this condition";
+        return `<div class="rulez__line">${mark}${words.name ? blank(words.name, "leaf", hint, at) : ""}${blank(words.rest, "leaf", hint, at)}</div>`;
       });
       const add = `<button class="rulez__add" type="button" data-act="addCond" data-path="${at}" aria-label="Add a condition" title="Adds a condition here">${ICON_PLUS}</button>`;
       const leadWord = lead ? `<span class="rulez__word">${esc(lead)}</span>` : "";

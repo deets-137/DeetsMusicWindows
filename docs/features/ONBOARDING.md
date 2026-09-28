@@ -534,7 +534,11 @@ npm run dev:fresh        # everything goes: you are a stranger, signed out
 npm run dev:fresh:in     # the same wipe, then the Apple token and library cache go back
 ```
 
-`dev:fresh` is the honest test of step 1 — you sign in to Apple again. `dev:fresh:in` keeps
+`dev:fresh` is the honest test of step 1 — you sign in to Apple again. It sets `DEETS_NO_SEED`
+for the app: without it, the dev build's first launch copies the installed app's
+`deetsmusic.db`, `user-token.txt` and `developer-token.json` into the empty dev folder
+(lib.rs), and the "stranger" opened signed in on the tour's step 2 (desk test B3, 2026-09-27
+night; fixed the same night). `dev:fresh:in` keeps
 `user-token.txt` and `deetsmusic.db*`, so you land on a first-run UI already signed in, with
 no Apple round trip; it is the one to use when you test steps 2 onward again and again. Both
 are `--fresh` and `--fresh=keep` on `dev:app`, so they combine with `--perf`, `--built` and

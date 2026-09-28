@@ -120,7 +120,12 @@ pub fn run() {
             // its data dir from the installed app's — the library cache and the persisted
             // user token — so it opens signed-in with the library, zero Apple calls. Only
             // ever copies INTO an empty dev dir; the release dir is never written.
-            if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev") && !db_path.exists() {
+            // `DEETS_NO_SEED` (set by `dev-app.mjs --fresh`): no seed, so the first run is
+            // really signed out (ONBOARDING.md §5; desk test B3, 2026-09-27 night).
+            if dir.file_name().and_then(|n| n.to_str()) == Some("com.deetsmusic.dev")
+                && !db_path.exists()
+                && std::env::var_os("DEETS_NO_SEED").is_none()
+            {
                 let release = dir.with_file_name("com.deetsmusic.app");
                 for name in ["deetsmusic.db", "user-token.txt", "developer-token.json"] {
                     let from = release.join(name);

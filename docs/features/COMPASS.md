@@ -317,7 +317,18 @@ the row and dispatches a `contextmenu` event, so each card's own handlers run.
 
 ### 5a. Rewind, Diary and Rulez — built 2026-09-27, desk test open (the fix of 2026-09-28)
 
-> **Part:** built · 2026-09-27 · the agent's run found one fail, fixed 2026-09-28; steps 8–10 are the re-test
+> **Part:** built · 2026-09-27 · the agent's run found one fail, fixed 2026-09-28, the fix redone 2026-09-27 night (below); steps 8–10 passed (Claude)
+
+**As built, the redo (2026-09-27 night).** The first fix listened for `focusout` on the removed
+row. WebView2, like Chromium, fires no `focusout` and no `blur` when it REMOVES the focused
+element, so the fix never ran (A1b failed). Now a key inside the list arms a
+`MutationObserver` on the page; when a redraw leaves the focus on `<body>`, the ring goes to the
+row `pickRefocus` names (list-keys.ts, tested in `tests/list-keys.test.ts`): the same row by
+key; else the row the keys drilled away from (Escape out of a Diary entry → its tile); else, in
+a list of another kind (a tile became song rows), the first row; else the row at the old index.
+A row whose menu closed over it takes the ring back as it is. The watch stops on any pointer
+press, and on a focus or a key outside the list (a context menu excepted), so a list never takes
+the ring back from another card's redraw. Steps 8–10 passed on the dev app (DESK-TESTS.md §5).
 
 **The fail (the agent's run, DESK-TESTS.md §5 A1).** An Enter or Escape that redraws the list
 dropped the focus to `<body>`: Rulez open and fold, a Diary entry opened and left, Rewind after

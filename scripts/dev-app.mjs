@@ -258,6 +258,10 @@ const child = spawn(
       VITE_PORT: String(port),
       ...(PERF ? { DEETS_NO_DEVTOOLS: "1" } : {}),
       ...(SECOND ? { CARGO_TARGET_DIR: join(root, "src-tauri", "target-second") } : {}),
+      // --fresh (not =keep): the app must not seed the empty dev dir from the installed app's
+      // token and library (lib.rs), or the "signed out" first run opens signed in (desk test
+      // B3, 2026-09-27 night).
+      ...(freshArg && !freshArg.includes("=") ? { DEETS_NO_SEED: "1" } : {}),
     },
   },
 );

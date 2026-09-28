@@ -12,6 +12,37 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, late night — Two desk-test findings fixed: list-keys refocus, `dev:fresh` seed (branch `rules-rulez`)
+
+His call: fix both findings of the night run, without disturbing the other session's bench.
+- **list-keys.ts:** the refocus fix never ran (WebView2 fires no `focusout` on a removed
+  element). Now a key arms a `MutationObserver`; `pickRefocus` (pure, 5 tests in
+  `tests/list-keys.test.ts`) picks the row. The re-test found a second bug: a list still
+  watching took the ring from another card's redraw; a key outside the list now stops the
+  watch. COMPASS.md §5a steps 8–10 pass.
+- **`dev:fresh`:** `dev-app.mjs` sets `DEETS_NO_SEED`, and lib.rs skips the dev seed from the
+  installed app, so the first run is signed out on the tour's step 1 (ONBOARDING.md §5).
+- The tools the run used are now in DESK-TESTS.md §1. A test script's click on the Diary's
+  playing-album box made an Autobahn entry; it was deleted. The dev profile was backed up and
+  restored around the `dev:fresh` test.
+- **The Rulez condition block** ("Charging" + "s on battery"): `leafParts` gives the card the
+  parts, so nothing cuts a phrase. His ask: no grammar the next word must know about. The audit
+  found five copies of "lower the first letter"; one `lowerFirst` replaces them and keeps names
+  ("AirPlay", "EQ"). A test fails when a Do word has no SAYS verb. Rules: RULEZ.md §6.5. Two
+  format dependencies left for §15 (a recipe part's title after `": "`, the `plain` value list).
+  Checked by unit tests only; his look is in HANDOFF.
+
+## 2026-09-27, night, later — The cap measured; the scrubber floats; the playback layouts (branch `rules-rulez`)
+
+The entry below said the progress bar needed no cap. Wrong: the Fancy scrubber's float animates
+on every progress bar while music plays, and the heave cap alone moved nothing (31 → 29 %).
+Stepped too, on Ocean, Glass and Cyber (`ambient.ts`). His "run the layout trace" found the
+page's own cost: the Sound button rebuilt its icon and hint on every Equalizer status, and the
+time labels rewrote the same text; both now write only on a change. Ocean during playback,
+before → after: GPU process 30.4 → 5.9 %, page main thread 15.3 → 3.0 %, layouts 61 → 4 in
+4 s ([OCEAN.md](features/OCEAN.md) §6, [DEBUGGING.md](ops/DEBUGGING.md) §The 2026-09-27 load
+pass). Desk test open: OCEAN.md §6, steps 1–4.
+
 ## 2026-09-27, night — CPU / GPU load: no balancing; the Ocean heave capped (branch `rules-rulez`)
 
 His ask: are CPU thread balancing or GPU load balancing worth it, given the logged numbers?

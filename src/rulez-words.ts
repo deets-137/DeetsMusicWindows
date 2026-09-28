@@ -341,21 +341,44 @@ export function valueText(w: FactWord | undefined, v: Value, lists: Lists): stri
 
 const list = (v: Value | Value[]) => (Array.isArray(v) ? v : [v]);
 
-/** One chip: "Genre is Jazz", "Time is after 8:00 PM", "The music is playing". */
-export function leafText(l: Leaf, lists: Lists, inSentence = false): string {
-  const out = leafWords(l, lists);
-  // Inside a sentence a name starts lower case ("time is after 8 PM"), unless it is a short
-  // form ("EQ preset").
-  return inSentence && /^[A-Z][a-z]/.test(out) ? out[0].toLowerCase() + out.slice(1) : out;
+/**
+ * A phrase as it reads inside a sentence: the first letter goes lower case only when the first
+ * word is an ordinary capitalized word ("Time is after" → "time is after", "The music" → "the
+ * music"). A word with another capital or a digit keeps its case: a name or a short form
+ * ("AirPlay", "EQ preset", "DeetsMusic"). The one place a Rulez phrase changes case, so a new
+ * word needs no rule of its own. A plain one-capital name ("Apple") cannot be told from a
+ * common word here; give such a label a second word first ("The Apple Music…").
+ */
+export function lowerFirst(s: string): string {
+  return /^[A-Z][a-z]*(?![A-Za-z0-9])/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
 }
 
-function leafWords(l: Leaf, lists: Lists): string {
+/**
+ * A condition's words as parts, never one string to cut apart. `name` is the fact's own label
+ * when the phrase is "<name> <rest>" ("Genre" + "is Jazz"); a phrase that is a sentence of its
+ * own ("The PC is on battery", "Until the pause ends") has no name. The Rulez card shows each
+ * part as its own blank (2026-09-27: cutting the label's length off a yes / no phrase showed
+ * "Charging" + "s on battery").
+ */
+export interface LeafParts {
+  name?: string;
+  rest: string;
+}
+
+/** One chip: "Genre is Jazz", "Time is after 8:00 PM", "The music is playing". */
+export function leafText(l: Leaf, lists: Lists, inSentence = false): string {
+  const p = leafParts(l, lists);
+  const out = p.name ? `${p.name} ${p.rest}` : p.rest;
+  return inSentence ? lowerFirst(out) : out;
+}
+
+export function leafParts(l: Leaf, lists: Lists): LeafParts {
   const w = factWord(l.fact);
   const name = w?.label ?? HIDDEN_FACTS[l.fact] ?? l.fact;
   // A built-in fact with a yes / no value reads as its own words ("The entry is new").
-  if (!w && typeof l.is === "boolean") return l.is ? name : `not: ${name.toLowerCase()}`;
-  if (w?.kind === "bool" && l.is !== undefined && !Array.isArray(l.is)) return l.is === true ? w.yes! : w.no!;
-  if (w?.kind === "bool" && l.isNot !== undefined && !Array.isArray(l.isNot)) return l.isNot === true ? w.no! : w.yes!;
+  if (!w && typeof l.is === "boolean") return { rest: l.is ? name : `not: ${lowerFirst(name)}` };
+  if (w?.kind === "bool" && l.is !== undefined && !Array.isArray(l.is)) return { rest: l.is === true ? w.yes! : w.no! };
+  if (w?.kind === "bool" && l.isNot !== undefined && !Array.isArray(l.isNot)) return { rest: l.isNot === true ? w.no! : w.yes! };
   const parts: string[] = [];
   const vals = (v: Value | Value[]) => list(v).map((x) => valueText(w, x, lists)).join(" or ");
   const time = w?.kind === "time";
@@ -365,8 +388,8 @@ function leafWords(l: Leaf, lists: Lists): string {
   if (l.gte !== undefined) parts.push(`${time ? "is from" : "is at least"} ${valueText(w, l.gte, lists)}`);
   if (l.lt !== undefined) parts.push(`${time ? "is before" : "is below"} ${valueText(w, l.lt, lists)}`);
   if (l.lte !== undefined) parts.push(`${time ? "is up to" : "is at most"} ${valueText(w, l.lte, lists)}`);
-  if (l.fact === "now" && l.lt !== undefined) return "Until the pause ends";
-  return `${name} ${parts.join(" and ")}`;
+  if (l.fact === "now" && l.lt !== undefined) return { rest: "Until the pause ends" };
+  return { name, rest: parts.join(" and ") };
 }
 
 /** A whole condition as one line (the locked rows, the hints). Groups inside get parentheses. */
@@ -525,7 +548,9 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   glassFancy: { keep: "keeps Fancy Glass" }, friendsListenAlong: { keep: "keeps Let friends listen along" },
   friendsRoomInvite: { keep: "keeps Put my room code on my box" }, toasts: { keep: "keeps Show notices at" },
 };
-export const saysOf = (w: DoWord, moment: boolean): string => (moment ? SAYS[w.id]?.act : SAYS[w.id]?.keep) ?? w.label.toLowerCase();
+/** Every Do word has its own SAYS phrase (tests/rulez-words.test.ts checks it); the label is only
+ *  a fallback, and it goes through `lowerFirst` so a name in it keeps its case. */
+export const saysOf = (w: DoWord, moment: boolean): string => (moment ? SAYS[w.id]?.act : SAYS[w.id]?.keep) ?? lowerFirst(w.label);
 
 /** A Do word's value as words ("Warm", "40%", "−3 dB"), or "" for a word with none. */
 export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
@@ -548,22 +573,20 @@ export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
   return plain ? label.toLowerCase() : label;
 }
 
-const lower = (s: string) => (s ? s[0].toLowerCase() + s.slice(1) : s);
-
 /** The row's one-line summary: "When the next song plays, DeetsMusic skips ahead, only if The song is explicit." */
 export function sentenceText(r: Rule, lists: Lists): string {
   const cond = condText(r.kind === "state" ? r.while : r.if, lists, true, true);
   if (r.kind === "state") {
     const parts = stateParts(r.set).map(({ word, value }) => (word ? `${saysOf(word, false)} ${doValueText(word, value, lists)}`.trim() : ""));
     const does = parts.filter(Boolean).join(" and ") || "…";
-    return `While ${cond === "Always" ? "it is on" : lower(cond)}, DeetsMusic ${does}.`;
+    return `While ${cond === "Always" ? "it is on" : lowerFirst(cond)}, DeetsMusic ${does}.`;
   }
   const when = whenText(r, lists);
   const inCard = r.card !== "*" ? ` in ${labelOf(lists.cards, r.card)}` : "";
   const d = doWordOf(r);
   const does = d ? `${saysOf(d.word, true)} ${doValueText(d.word, r.kind === "moment" && "playStation" in r.do ? r.do.playStation : d.value, lists)}`.trim() : "…";
-  const only = r.if && cond && cond !== "Always" ? `, only if ${lower(cond)}` : "";
-  return `When ${when ? lower(when) : "…"}${inCard}, DeetsMusic ${does}${only}.`;
+  const only = r.if && cond && cond !== "Always" ? `, only if ${lowerFirst(cond)}` : "";
+  return `When ${when ? lowerFirst(when) : "…"}${inCard}, DeetsMusic ${does}${only}.`;
 }
 
 /** A While row's set as its Do words (the sharing switches are one word). */
