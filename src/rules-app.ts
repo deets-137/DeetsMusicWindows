@@ -51,8 +51,8 @@ export function initRulesApp(): void {
     run: (arg) => {
       const { key, value } = arg as { key: string; value: unknown };
       if (!SETTABLE.has(key)) return diag.warn("rule:set", { key, refused: true });
-      if (key === "theme") pickLook({ theme: value as ThemeName });
-      else if (key === "skin") pickLook({ skin: value as SkinName });
+      if (key === "theme") pickLook({ theme: value as ThemeName }, { by: "rule" });
+      else if (key === "skin") pickLook({ skin: value as SkinName }, { by: "rule" });
       else selectPreset(String(value));
     },
   });

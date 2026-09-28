@@ -27,6 +27,78 @@ key, so the range row reads `ownSetting`. PLAYLIST-WEB.md §11; the desk test is
 choices Claude made inside his picks are listed in §11.2 (a paused song counts; heard is read
 when the web is made; Previous reaches a skipped seed).
 
+## 2026-09-28 — Shots: marks, the change curve, A/B runs
+
+**His ask:** the five tooling changes Claude proposed after the crossfade review, all of them,
+"helps for A/B testing or options comparisons as well". **Built (uncommitted):** SHOTS.md §5f.
+`src/marks.ts` (dev-only, on the TELEMETRY gate; release-check item 5 now also fails on
+`__marks`; a plain `vite build` holds none), marks in frames.ts, dropdown.ts and appearance.ts;
+in shots.mjs the page recorder, input-time anchors, the stall/late labels, the change curve and
+`region`, `--tag`, `--vs`, `--set`, `--repeat`, `--noise`, the side-by-side PNG and compare.txt.
+
+**Decided inside his ask:** the onset is 5 % of the way and the curve reads 96 px grey; red means
+a stall over 25 ms or a long task (a 12 ms miss at 240 Hz is printed, not red); the noise limit is
+35 % CPU with an 8 s wait, and a noisy shot is marked, never refused (bench.mjs refuses); `--vs`
+labels are A, B, C…; a token change is inline style on `<html>`.
+
+**Found on the way:** headless Edge at times sends its own 756×454 window as the frame; the
+console file now says so and the curve reads only the page's box. Two faults of the first build,
+fixed: a token set before `<html>` existed threw and stopped the seed; `%` in a label broke
+ffmpeg's drawtext.
+
+## 2026-09-28 — The theme crossfade strips; the panel leaves first
+
+**His ask:** read the crossfade strips the last sitting left unread. Claude read the 40 real
+frames after Enter in 5 skins (`shots/scratch/theme-pick`). Three findings: ~130 ms with no
+change after Enter; the Compass as a ghost over the cards to ~+350 ms; the known grey middle.
+
+**His calls:** the panel closes with its own exit before the snapshot; a hand pick eases out, a
+rule's change keeps ease-in-out. **Built (uncommitted):** UX-COVERUPS.md §6c.2 (`look.ts`
+`close` + `hand`, `appearance.ts` `panelExits`, two tokens, one CSS rule). **Decided inside
+his calls:** `ease-out` (the plain keyword); the wait is 0.4 of `--pop-out`, then the exit is
+ended (the first build waited the whole exit, and the probe showed Glass held 140 ms after
+the Compass looked gone); a moment rule's `set` counts as a rule. **Found on the way:** the last
+sitting's §6c.1 insert had split the §6c desk test; steps 5–6 are back in place.
+
+**Open:** the ~100 ms snapshot stall between the Compass leaving and the colors moving (headless
+numbers; his desk test says if it reads as a hitch). Nothing committed.
+
+## 2026-09-28 — The motion review; the grow timing and the title menu
+
+**His ask:** a full visual and motion review with the shots tooling: wins, opportunities, hard
+problems. Claude read the 120 clips of `shots/motion/0.25.1/` and ran close-ups in the
+scratchpad. The findings are SHOTS.md §5e.
+
+**His pick:** the grow timing and the title menu first. **His calls:** the rows come in when
+the clip looks open; the collapse is shorter on the same curve "if devices can support it and it
+flows better"; "minimal to no jitter, everything must look intentional" (so no snap at the end).
+
+**Built (uncommitted):** `--grow-rows-at` 0.4 and `--grow-collapse-dur` 0.24 s (skin.css base),
+the timer in `growCard`, the collapse length (CARD-GROW.md §19). Found in the strips and fixed on
+the way: on a collapse the covered card never faded (it snapped to 1), and in Midi a fading
+covered card dropped to a squashed row at the bottom left. The title menu (layout.ts
+`makePicker`) got `.pop`, `enterRows` on open and `dataset.frames`; its `fit()` now measures the
+layout box, because the arrival's scale makes the menu's own rect smaller at open.
+
+**Decided inside his calls (for his look):** the fraction 0.4 (the clip is ~88 % open there on
+the pop ease); 0.24 s for the collapse; every title menu row enters (no cap of 12); the menu
+grows from its top-left corner.
+
+**Measured:** demo, first row +411 ms → +185 ms. The cost in headless Edge, Glass, A/B four
+rounds each on a busy machine (47 % CPU): old 80/81/69/81 frames over the open, new 70/50/69 and
+one run of 6 with a long task. The judge is WebView2 on `dev:built`: CARD-GROW.md §19.1 step 4.
+
+**Tooling:** the motion set's `grow` clip now collapses with Escape (the zone click never did).
+
+**Then, his asks:** fix the `drill` clip, then the theme crossfade. The `drill` clip now opens
+Playlists in `prepare` and clicks a playlist row: a `slide push` line in every skin. **His
+calls on the crossfade:** a hand theme pick crossfades (this reverses his 2026-09-27 call for
+hand picks); the same 500 ms as a rule's; an agent's theme change keeps the cover. Built in
+`look.ts` `paint()` (the `handPick` mark removed). Demo check: Compass Moonlight → Sepia gives
+one `theme-fade` line per skin, 538–570 ms, no cover; a Press skin pick still covers. The strips
+of that run were not read frame by frame (he called it a night). Desk test: UX-COVERUPS.md §6c.1.
+Nothing committed.
+
 ## 2026-09-28 — Cruisin and Pro: recipes in Settings, a start pick (design only)
 
 **His ask:** fold Rulez away for users who will never build a rule; let a beginner turn on an

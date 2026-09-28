@@ -672,6 +672,12 @@
   --grow-dur:        0.34s;
   --grow-ease:       var(--pop-ease);
   --grow-body-fade:  0.09s;             /* the rebuilt body fades in once the clip is open */
+  /* The rows come in at this fraction of --grow-dur, not at its end: on the pop ease the clip
+     looks ~88% open at 0.4, and the soft stop that follows read as an empty card (the motion
+     review, 2026-09-28). 1 = the old order (rows after the clip). A fraction, so it follows
+     --grow-dur. */
+  --grow-rows-at:    0.4;
+  --grow-collapse-dur: 0.24s;           /* the collapse: the same curve, shorter (his call, 2026-09-28) */
   --grow-rows-stagger: 0.012s;          /* every row on screen enters; shorter than --pop-stagger */
   --grow-clip-pad:   0px;
   /* The zone bar hugs the card it will grow: --gap from the card's edge (negative = over
@@ -725,6 +731,12 @@
      low-contrast middle and the still background layers longer. */
   --theme-morph-dur:  500ms;
   --theme-morph-ease: ease-in-out;
+  /* A pick you make by hand moves from the first frame (his call, 2026-09-28): ease-in-out held
+     the old colors ~130 ms after the press. A rule's change keeps ease-in-out (UX-COVERUPS §6c.2). */
+  --theme-morph-hand-ease: ease-out;
+  /* The menu or Compass that made the pick leaves first; the fade starts at this fraction of its
+     --pop-out, where the pop ease has it ~88 % gone (the rest ends with the fade's first frame). */
+  --theme-morph-hand-wait: 0.4;
 
   /* -- album-colored Now Playing text (NEXT-VERSION §7) -- */
   /* 1 = the NP title/subtext/accents take the album's guarded colors; 0 = theme

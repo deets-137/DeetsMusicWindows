@@ -137,9 +137,17 @@ visual design pass on motion, with the shots made ready for Claude to review and
 Built: clips in the shots runner, the motion set (24 clips × 5 skins, `docs/guide/motion.json`),
 the runner as the window for surface changes, and the debug tools (console record, frame
 telemetry, `probe`, `snap`, `--slow`). [SHOTS.md §5a–§5c](guide/SHOTS.md). Next: Claude reviews
-`shots/motion/0.25.1/` and brings him the motion forks, with two findings: a surface change has
-no motion of its own (§5c), and the grown card is empty for ~400 ms by design (CARD-GROW.md
-§13a).
+`shots/motion/0.25.1/` and brings him the motion forks. **Reviewed 2026-09-28** (SHOTS.md §5e).
+Built from it, his calls, uncommitted: the grow timing (rows at 0.4 of the open, a 0.24 s
+collapse, two old collapse faults fixed; desk test CARD-GROW.md §19.1, on `dev:built`, frames
+included), the title menu's `.pop` + `enterRows`, and the theme crossfade for a hand pick
+(an agent keeps the cover; desk test UX-COVERUPS.md §6c.1). Its strips were read later that day:
+the panel now leaves before the snapshot (no Compass ghost) and a hand pick eases out (§6c.2,
+desk test there). The shots runner now explains a gap and runs A/B comparisons (SHOTS.md §5f:
+app marks, stalls vs late frames, a change curve, `--vs`, `--repeat`, `--tag`, a noise gate).
+The motion set's `drill` and `grow`
+clips are fixed. Open forks from the review: the surface-pick motion, the Now Playing song
+change. Nothing of this sitting is committed; his three desk tests come first.
 
 **Next and Previous before the first Play (2026-09-28, built on `visualz`, his hand test
 open).** They did nothing on every launch; now they move the song and stay paused, as Apple

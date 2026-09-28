@@ -1,7 +1,7 @@
 ---
 status: project
 desk_test: none
-sources: [scripts/shots.mjs, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
+sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
 updated: 2026-09-28
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
@@ -294,7 +294,104 @@ where to look. **`SHOTS_DEBUG=1`** prints ffmpeg's full error and keeps a strip'
 
 **Its first find:** with `--slow 4`, the card title menu appears whole in one frame. It opens
 through `makeDropdown` but has no `.pop` and no `enterRows` (CLAUDE.md checklist item 1), and no
-`dataset.frames`, so frames.ts does not time it. For the motion review.
+`dataset.frames`, so frames.ts does not time it. For the motion review. **Fixed 2026-09-28**
+(§5e): `.pop`, `enterRows` on open, `dataset.frames = "title-menu"`.
+
+## 5e. The first motion review (2026-09-28)
+
+Claude read the 120 clips of `shots/motion/0.25.1/` and ran close-ups in the scratchpad
+(`review0928`, `grow-menu`, `uncover`). Swaps, replaces, dropdowns, the right-click menu, the
+quick panel and the Compass run 160–450 ms by skin with 0–2 dropped frames. The findings, by
+payoff:
+
+1. **Grow: the card sat empty ~400 ms** (the pop ease looks open at ~130 ms; the rows waited for
+   the whole clip). **BUILT 2026-09-28**, his calls: CARD-GROW.md §19.
+2. **A theme pick runs the full launch cover**, 1.0–2.0 s with an opaque stage in the middle.
+   A rule's theme change already crossfades (`withThemeFade`, 500 ms). **BUILT 2026-09-28**, his
+   calls: a hand pick crossfades, an agent keeps the cover (UX-COVERUPS.md §6c.1).
+3. **A surface pick in the Compass** leaves the Compass on screen 190–300 ms after Enter, then
+   cuts in one frame. `withAppearanceTransition` has a `surface` kind that only agent changes
+   use. Open.
+4. **The Now Playing song change** is a hard cut of the title and artist. Open.
+5. Smaller: the title menu (fixed, above); the Max diagonal swap crosses two empty cards over a
+   third; the drill push changes the header before the slide and shows both levels for ~50 ms;
+   boot is 0.75 s (Press) to 1.58 s (Ocean).
+
+**The motion set's own faults (both fixed 2026-09-28):** the `drill` clip clicked a Home tile,
+and a Home tile PLAYS (HOME.md), so it recorded a play; it now opens Playlists (`prepare`) and
+clicks a playlist row, and each skin logs a `slide push` line. The `grow` clip's second click on
+the zone does not collapse a grown card, so no collapse was ever recorded; it presses Escape now.
+Six clips give no `[perf] frames` line (title menu until today, drill, hover hint, toasts,
+play, next song).
+
+## 5f. Measuring a gap: marks, the change curve, comparisons (2026-09-28)
+
+> **Part:** built · 2026-09-28
+
+His ask, after the theme crossfade review (UX-COVERUPS.md §6c.2): make the runner explain a gap,
+not only show it, and make an A/B or an options comparison one command. Five parts, each from a
+gap in that review.
+
+**1. App marks on the strip.** `src/marks.ts`: `mark(name, detail)` puts one moment on the
+page's clock in `window.__marks`. Dev and `VITE_PERF` only, on the same gate as frames.ts;
+release-check item 5 fails a bundle that holds `__marks`. The marks are at generic places, so
+most gestures have them with no new code:
+- every frames.ts window: `<name>:begin`, `<name>:end` (menus, grow, swaps, `theme-fade`, the cover);
+- every `makeDropdown` panel: `panel:open`, `panel:close <why>`;
+- the theme fade: `fade:ask`, `fade:exits` (the panel exits ended or cut), `fade:snapshot`
+  (the View Transition's `ready`: the snapshot stall ends here); the cover: `cover:wait`.
+
+A new mark is one `mark()` call. The seed script also records, while a clip runs, each input's
+own timestamp, every `requestAnimationFrame` and the long tasks (`RECORDER` in shots.mjs).
+
+**2. The change curve.** Each step with `"frames": N` gets a curve: how far each real frame is
+from the picture before the step to the picture the step settles on (the last frame before the
+next action step). The log and the console file give `onset` (5 %), 50 % and 90 %, in ms from the
+step's input. The strip shows `change N%` and a bar at the bottom of each frame. `"region":
+selector` on the step measures only that element's box, read when the step starts (it measures
+everything drawn in that box, the cards under a closing panel too). `frames.json` has `changes`.
+
+**3. Comparisons.**
+- `--tag <name>` writes to `<out>-<name>`; `--tag now` uses a timestamp. A rerun keeps the old one.
+- `--vs "<spec>"` runs each shot again with a change: A is the run as is, B, C… one per `--vs`.
+  A spec is `--token=value` (inline style on `<html>`, which beats every theme and skin rule) or
+  `settingKey=value` (JSON, else text); join several with `;`. `--set` puts a spec on every run.
+- Each step with frames gets `<id>.<look>.s<n>.vs.png`: the variants' strips one under the other,
+  each under a banner with its change and its curve. `compare.txt` and the log give the same rows
+  with the frames lines.
+
+**4. The noise gate and repeats.** Before each run the runner reads the CPU load and waits up to
+8 s for it to fall under `--noise` (default 35 %). A shot taken over it is marked `NOISY` in the
+log, the manifest (`cpu`, `noisy`) and the contact sheet. `--repeat <n>` runs each shot n times;
+the log gives the median of each `[perf] frames` line (by its name) with the range of the dropped
+share, and the median curve. A wide range is noise, whatever the median says.
+
+**5. One clock.** A step's time is its input's own `timeStamp` (the strip says `from keydown
+Enter`), not the moment the runner sent it. The frames are sorted by time (a `-12` gap came from a
+frame delivered after a later one). Each frame's label says what its gap was:
+- **red** `stall N`: the page itself missed frames (a rAF gap over 25 ms, or a long task);
+- **yellow** `late`: a gap over 25 ms while the page kept its frames, so the screencast was late;
+- white: on time. A `stall` under 25 ms is printed but not red (at 240 Hz a 12 ms gap is a miss).
+
+The console file's `clock` line gives the rAF period and the screencast's lag behind the page's
+frame (1–3 ms on 2026-09-28: the two clocks agree). A negative or huge lag prints a warning.
+
+**Found while building it:** headless Edge at times sends frames of its own 756×454 window in
+place of the page's viewport (the page is top-left; outside it the page background shows, and it
+snaps where the page fades). The console file says so in a `window` line, and the curve reads
+only the page's box. Seen once in six runs on 2026-09-28; the earlier runs of the day were
+the right size.
+
+**The test run** (`shots/scratch/fade-ab.json`, Glass, the fade as built against
+`--theme-morph-hand-wait=1`, two runs each, a busy machine): the strips show `fade:exits` at
++101 ms against +205 ms. The page curve's 50 % came at +341 against +453 ms. Every run was
+marked noisy (40–68 % CPU), so these numbers are a check of the tool, not a verdict on the fade.
+
+**Example:**
+
+```
+node scripts/shots.mjs --scratch fade-ab --vs "--theme-morph-hand-wait=1" --vs "--theme-morph-hand-ease=linear" --repeat 3
+```
 
 ## 6. Coverage — no shipped feature without a shot
 

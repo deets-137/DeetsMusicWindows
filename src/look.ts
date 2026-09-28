@@ -9,13 +9,13 @@ import { paintSkin, type SkinName } from "./skin";
 import { withAppearanceTransition, withThemeFade } from "./appearance";
 import { noteHandPick } from "./look-schedule";
 
-type Opts = { after?: () => void; by?: "agent" };
+// `close`: the panel that made the pick. Before a theme fade it closes first, so it leaves on its
+// own exit and is not in the old picture (UX-COVERUPS.md §6c.2); under a cover it closes with
+// `after`. `hand` is set by `pickLook` for a pick with no `by`.
+type Opts = { after?: () => void; close?: () => void; by?: "agent" | "rule"; hand?: boolean };
 
 let queued = false;
 let pendingOpts: Opts = {};
-// A change that did not come through `pickLook` came from a rule (the overlay, RULES.md §7).
-// A hand pick that ends a rule also moves the overlay, so the mark is set BEFORE its write.
-let handPick = false;
 
 // np-bus imports agent-settings (through agent-writes), and agent-settings imports this module:
 // a static import here is a cycle. Lazy, as look-schedule.ts does.
@@ -26,13 +26,12 @@ function paint(): void {
   queued = false;
   const opts = pendingOpts;
   pendingOpts = {};
-  const byRule = !handPick;
-  handPick = false;
   const theme = effective("theme");
   const skin = effective("skin");
   const root = document.documentElement;
   const newSkin = root.dataset.skin !== skin;
   if (root.dataset.theme === theme && !newSkin) {
+    opts.close?.();
     opts.after?.();
     return;
   }
@@ -42,10 +41,11 @@ function paint(): void {
     opts.after?.();
     publishAppearance(); // tray panel + extension popup follow (they snap)
   };
-  // A rule's theme change (Live Theming: every song) changes the colors in place; the cover
-  // stays for a hand pick, an agent and any skin change (UX-COVERUPS.md §6c).
-  if (byRule && !newSkin) {
-    withThemeFade(() => paintTheme(theme), after);
+  // A theme-only change — a rule's (Live Theming: every song) or your own pick — changes the
+  // colors in place. The cover stays for any skin change and for an agent, so a change you did
+  // not make stays easy to see (UX-COVERUPS.md §6c; hand picks joined 2026-09-28, his call).
+  if (!newSkin && opts.by !== "agent") {
+    withThemeFade(() => paintTheme(theme), after, { hand: opts.hand, close: opts.close });
     return;
   }
   withAppearanceTransition(newSkin ? "skin" : "theme", () => {
@@ -53,8 +53,11 @@ function paint(): void {
     paintSkin(skin);
   }, {
     skin: newSkin ? skin : undefined,
-    by: opts.by,
-    after,
+    by: opts.by === "agent" ? "agent" : undefined,
+    after: () => {
+      opts.close?.(); // under the opaque cover, so the rise never shows it half-closed
+      after();
+    },
   });
 }
 
@@ -76,8 +79,7 @@ export function pickLook(look: { theme?: ThemeName; skin?: SkinName }, opts: Opt
   const theme = look.theme ?? effective("theme");
   const skin = look.skin ?? effective("skin");
   noteHandPick(); // *For good* keeps this pick when it turns the schedule off (look-schedule.ts)
-  handPick = true;
-  schedule(opts);
+  schedule({ ...opts, hand: !opts.by });
   setSetting("theme", theme);
   setSetting("skin", skin);
 }

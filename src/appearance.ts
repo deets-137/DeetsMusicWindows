@@ -20,6 +20,7 @@
 
 import { effective } from "./settings-store";
 import * as frames from "./frames";
+import { mark } from "./marks";
 import { tokenMs, nextFrame } from "./boot-cover";
 import type { SkinName } from "./skin";
 
@@ -102,27 +103,71 @@ export function withAppearanceTransition(
  * and the live new one agree) and gives the Press record its own group that skips the fade.
  * Snaps when Animate look changes is off or the OS asks for reduced motion; a cover already
  * running (§6a) or the launch cover takes the change instead.
+ *
+ * A hand pick (§6c.2): `close` shuts the panel that made it, and the fade starts only when every
+ * panel's exit has ended, so the old picture holds no half-gone panel (the Compass showed as a
+ * ghost over the cards). Its curve is `--theme-morph-hand-ease`, which moves from the first frame.
  */
 let fading: ViewTransition | null = null;
-export function withThemeFade(fn: () => void, after: () => void): void {
+export function withThemeFade(
+  fn: () => void,
+  after: () => void,
+  opts: { hand?: boolean; close?: () => void } = {},
+): void {
   const root = document.documentElement;
+  const close = opts.close ?? (() => undefined);
   if (phase !== null || root.dataset.boot !== undefined) {
-    withAppearanceTransition("theme", fn, { after });
+    withAppearanceTransition("theme", fn, { after: () => { close(); after(); } });
     return;
   }
   if (!effective("appearanceMotion") || reducedMotion() || typeof document.startViewTransition !== "function") {
+    close();
     fn();
     after();
     return;
   }
-  const endFrames = frames.begin("theme-fade", `skin=${root.dataset.skin ?? "?"}`);
-  root.dataset.themeFade = "";
+  mark("fade:ask", opts.hand ? "hand" : "rule");
+  close();
+  void panelExits().then(() => startThemeFade(fn, after, !!opts.hand));
+}
+
+/** The exits of the `.pop` panels closing now (the Compass, a title bar menu). On the pop ease a
+ *  panel looks gone well before its exit ends (Glass: ~60 of 200 ms), so the fade waits only
+ *  `--theme-morph-hand-wait` of `--pop-out`, then ends the exits: the faint rest goes in the
+ *  same frame the fade starts, and the old picture holds no panel. */
+function panelExits(): Promise<void> {
+  const leaving = document.getAnimations().filter((a) => {
+    const el = (a.effect as KeyframeEffect | null)?.target;
+    return a.playState === "running" && el instanceof Element && el.matches(".pop[hidden]");
+  });
+  if (!leaving.length) return Promise.resolve();
+  const frac = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--theme-morph-hand-wait"));
+  const wait = tokenMs("--pop-out") * (Number.isFinite(frac) ? frac : 1);
+  const ended = Promise.all(leaving.map((a) => a.finished.catch(() => undefined))).then(() => undefined);
+  return Promise.race([ended, new Promise<void>((r) => window.setTimeout(r, wait))]).then(() => {
+    const cut = leaving.filter((a) => a.playState === "running");
+    for (const a of cut) a.finish();
+    mark("fade:exits", cut.length ? `cut ${cut.length}` : "ended");
+  });
+}
+
+function startThemeFade(fn: () => void, after: () => void, hand: boolean): void {
+  const root = document.documentElement;
+  // A cover that started while a panel left (a skin pick right after) takes the change.
+  if (phase !== null || root.dataset.boot !== undefined) {
+    withAppearanceTransition("theme", fn, { after });
+    return;
+  }
+  const endFrames = frames.begin("theme-fade", `skin=${root.dataset.skin ?? "?"}${hand ? " by=hand" : ""}`);
+  root.dataset.themeFade = hand ? "hand" : "";
   // A second change during a fade starts a new one; the browser ends the first where it is.
   const vt = document.startViewTransition(() => {
     fn();
     after();
   });
   fading = vt;
+  // `ready`: the old picture is taken and the blend starts (the snapshot stall ends here).
+  vt.ready.then(() => mark("fade:snapshot"), () => undefined);
   vt.finished
     .catch(() => undefined)
     .finally(() => {
@@ -137,6 +182,7 @@ async function swap(): Promise<void> {
   const root = document.documentElement;
   phase = "wait";
   root.dataset.boot = "wait";
+  mark("cover:wait"); // the veil is opaque; the new look is painted under it
   const batch = jobs;
   jobs = [];
   // In order (theme, then skin, then surface); a failed job must not hold the cover up.

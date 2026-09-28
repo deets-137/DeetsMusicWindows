@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 548 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 552 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -653,6 +653,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-dur` | `0.34s` | — | -- card grow (card-grow.ts, CARD-GROW.md) -- A card opens over its neighbor: the final layout is set once and a clip opens from the old box to the new one over --grow-dur / --grow-ease while the body's content fades (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad opens the clip past the box by the card shadow's reach, so the shadow is not cut off during the motion (0 under a skin with no shadow). The zone bar is the accent line in the gap that shows which card will grow; the rail is the A–Z column of a grown list; the col widths are the fixed columns of a grown song list. |
 | `--grow-ease` | `var(--pop-ease)` | — |  |
 | `--grow-body-fade` | `0.09s` | — | the rebuilt body fades in once the clip is open |
+| `--grow-rows-at` | `0.4` | — | The rows come in at this fraction of --grow-dur, not at its end: on the pop ease the clip looks ~88% open at 0.4, and the soft stop that follows read as an empty card (the motion review, 2026-09-28). 1 = the old order (rows after the clip). A fraction, so it follows --grow-dur. |
+| `--grow-collapse-dur` | `0.24s` | — | the collapse: the same curve, shorter (his call, 2026-09-28) |
 | `--grow-rows-stagger` | `0.012s` | — | every row on screen enters; shorter than --pop-stagger |
 | `--grow-clip-pad` | `0px` | press, ocean, glass |  |
 | `--grow-zone-bar-w` | `3px` | press, glass | The zone bar hugs the card it will grow: --gap from the card's edge (negative = over it), --trim from each end (the card's corner radius, so it runs between the corners), its own radius and an optional glow. |
@@ -689,6 +691,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--agent-motion` | `1.6` | — | an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) |
 | `--theme-morph-dur` | `500ms` | — | A rule's theme change: the colors crossfade in place, no cover (UX-COVERUPS §6c). 500 ms is his call (2026-09-27): shorter reads as a blink on a light ↔ dark change; longer holds the low-contrast middle and the still background layers longer. |
 | `--theme-morph-ease` | `ease-in-out` | — |  |
+| `--theme-morph-hand-ease` | `ease-out` | — | A pick you make by hand moves from the first frame (his call, 2026-09-28): ease-in-out held the old colors ~130 ms after the press. A rule's change keeps ease-in-out (UX-COVERUPS §6c.2). |
+| `--theme-morph-hand-wait` | `0.4` | — | The menu or Compass that made the pick leaves first; the fade starts at this fraction of its --pop-out, where the pop ease has it ~88 % gone (the rest ends with the fade's first frame). |
 
 ### album-colored Now Playing text (NEXT-VERSION §7)
 

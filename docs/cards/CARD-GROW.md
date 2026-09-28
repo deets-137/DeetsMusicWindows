@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
 sources: [src/card-grow.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-09-26
+updated: 2026-09-28
 ---
 # DeetsMusic — growing a card
 
@@ -826,3 +826,45 @@ The same stored list, shown as editable rows: "When I [open an album ▾] in [Li
 [Fill ▾]". A row per card lets one trigger do different things in different cards (Library
 Fills on an album, Search only Grows). The fixed rows of §18.5 are the rules with `card: "*"`.
 Nothing is built until the fixed rows are desk-tested.
+
+## 19. The grow timing pass (2026-09-28, BUILT, desk test open)
+
+> **Part:** built · 2026-09-28
+
+Found by the motion review (SHOTS.md §5e). His calls, 2026-09-28: the rows come in when the
+clip looks open; the collapse gets a shorter length on the same curve ("if devices can support
+it and it flows better"); no snap and no jitter ("everything must look intentional").
+
+- **The rows come in at `--grow-rows-at` of the open (0.4), not at its end.** On the pop ease
+  the clip looks ~88 % open at 0.4 of `--grow-dur`; the soft stop after it read as an empty
+  card. Measured in the demo: the first row showed at +411 ms before, +185 ms after. The token
+  is a fraction, so it follows `--grow-dur`; 1 gives the old order back. `growCard` runs the
+  rows once, at the timer or at the end, whichever comes first.
+- **The collapse runs over `--grow-collapse-dur` (0.24 s), the same ease.** The covered cards' fade
+  in uses the same token, so the fade ends with the clip.
+- **Two old faults, fixed on the way (both seen in the strips):**
+  - On a collapse the covered card never faded: `.is-covering` carries the open's transition,
+    so it ran as a fade out from 1 that the fade in reversed. The card snapped visible. The
+    collapse now sets opacity 0 with no transition first.
+  - In Midi the covered card kept its own grid cell only while `.is-covered`. While it faded
+    (`.is-covering`, `.is-uncovering`) it dropped to a squashed row at the bottom left and
+    faded there, as a "Library" pill. The three states now share the cell (styles.css §Card
+    grow). Max places its slots by name, so it never had this.
+- **The cost (headless Edge, Glass, four rounds each, a busy machine):** the old order gave
+  80, 81, 69, 81 frames over the open; the new order 70, 50, 69, and one run of 6 frames with
+  a long task. The row entry's work now falls inside the clip. The judge is WebView2 on
+  `npm run dev:built`, below.
+
+### 19.1 Desk test
+
+1. `npm run dev:built`, Midi, Glass. Grow the left card from its edge bar. The rows start to
+   come in while the edge is still slowing down; the card is never empty and still.
+2. Escape. The card closes a little faster than it opened. The right card fades back in, in
+   its own place, as the edge passes it. No "Library" pill shows at the bottom left, in either
+   direction.
+3. The same in Ocean and in Max (a wide and a tall grow, and a Fill).
+4. Read the `[perf] frames grow` lines in the log for the opens: compare with a run of the old
+   order, `node scripts/webview-eval.mjs "document.documentElement.style.setProperty('--grow-rows-at','1')"`
+   (dev:built holds DevTools shut; the eval script reaches the page over CDP). If the new order drops
+   frames on your PC, that is the fork: keep 0.4, try 0.5, or go back to 1.
+5. Reduced motion (Windows › Accessibility › Animation effects off): grow and collapse snap.

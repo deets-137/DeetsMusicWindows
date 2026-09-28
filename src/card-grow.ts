@@ -197,13 +197,21 @@ function enterAll(panel: HTMLElement): void {
 interface Motion {
   dur: number;
   ease: string;
+  /** ms into the open when the rows come in: the clip looks open long before its soft stop. */
+  rowsAt: number;
+  /** The collapse's own length: the same curve, shorter (his call, 2026-09-28). */
+  collapseDur: number;
 }
 const motion = (): Motion | null => {
   if (reduced()) return null;
   const dur = tokenMs("--grow-dur");
   if (dur <= 0) return null;
-  const ease = getComputedStyle(document.documentElement).getPropertyValue("--grow-ease").trim() || "ease";
-  return { dur, ease };
+  const cs = getComputedStyle(document.documentElement);
+  const ease = cs.getPropertyValue("--grow-ease").trim() || "ease";
+  const at = parseFloat(cs.getPropertyValue("--grow-rows-at"));
+  const rowsAt = Number.isFinite(at) ? Math.min(1, Math.max(0, at)) * dur : dur;
+  const collapseDur = tokenMs("--grow-collapse-dur") || dur;
+  return { dur, ease, rowsAt, collapseDur };
 };
 
 /** Grow `slot` in `dir`. A grow on another slot ends the one on screen first (no motion). */
@@ -237,17 +245,29 @@ export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
   });
   diag.log("grow", { slot, dir, mode, cause, covered: covered.join("+") });
   emit(); // the card re-reads its state (the Library rebuilds its rows with columns)
+  // The rows come in once, at --grow-rows-at of the open or at its end, whichever is first.
+  let rowsIn = false;
+  let rowsTimer = 0;
+  const showRows = () => {
+    window.clearTimeout(rowsTimer);
+    if (rowsIn) return;
+    rowsIn = true;
+    panel.classList.remove("is-grow-rebuild");
+    enterAll(panel);
+  };
   const finish = () => {
     fresh.forEach((s) => cover(opts!.hosts[s]));
-    panel.classList.remove("is-grow-rebuild");
+    showRows();
     endMotion();
     paintZones();
-    enterAll(panel);
   };
   if (!m) {
     finish();
     return;
   }
+  // The clip is at its final box already (the layout is set once, above), so rows built now
+  // sit where they end; the clip's soft stop finishes over them.
+  if (m.rowsAt < m.dur) rowsTimer = window.setTimeout(showRows, m.rowsAt);
   startMotion();
   const to = rect(panel); // forces the layout at the final size, once
   const pad = clipPad();
@@ -429,12 +449,16 @@ export function collapseGrow(cause: string, withMotion = true): Promise<void> {
     if (!h) return;
     h.classList.remove("is-covered");
     h.inert = false;
-    h.classList.add("is-covering"); // opacity 0, no transition yet
+    // Opacity 0 at once: .is-covering carries the open's fade, and with it this ran as a
+    // fade OUT from 1 that the fade in then reversed — the card never left 1 (2026-09-28).
+    h.style.transition = "none";
+    h.classList.add("is-covering");
   });
   void panel.offsetWidth; // commit the covering state before the fade in
   covered.forEach((s) => {
     const h = opts!.hosts[s];
     if (!h) return;
+    h.style.transition = "";
     h.classList.remove("is-covering");
     h.classList.add("is-uncovering"); // fades to 1 over the grow duration
   });
@@ -442,7 +466,7 @@ export function collapseGrow(cause: string, withMotion = true): Promise<void> {
   const radius = getComputedStyle(panel).borderRadius || "0px";
   const endFrames = frames.begin("grow", `${slot} collapse`);
   const anim = panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(rest, to, pad, radius) }], {
-    duration: m.dur,
+    duration: m.collapseDur,
     easing: m.ease,
     fill: "both",
   });

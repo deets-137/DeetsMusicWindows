@@ -144,7 +144,7 @@ old installs' Guide button opens.
 **`docs/ideas/`** — not built; never tell a user the app does these. **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13). `SHOTS.md` — the pictures and clips of each
 feature, made by a script from the demo; for the guide, a marketing overview, and visual
-debugging (§5a–§5c). `motion.json` beside it is the motion set: every animation in 5 skins.
+debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -213,6 +213,12 @@ debugging (§5a–§5c). `motion.json` beside it is the motion set: every animat
   `shots/scratch/<name>.json`, and the same command runs it. Add `"frames": N` to a step to
   keep the next N real paints after it (files + one labeled PNG), `probe` for a JS answer into
   the console file, `snap` for a 2× picture (`--slow 4` shows fast CSS motion in detail).
+  **To explain a gap or compare options (2026-09-28, SHOTS.md §5f):** the frames at a step carry
+  the app's marks (`src/marks.ts`: panels, frames windows, the theme fade), real page stalls in
+  red against late screencast frames in yellow, and a change curve (onset / 50 % / 90 % from the
+  input; `"region"` for one box). `--vs "--token=value"` runs a variant beside the first and
+  writes a side-by-side PNG; `--repeat n` gives medians; `--tag` keeps a run; a busy CPU marks
+  the row NOISY. Add a `mark()` before you write a one-off probe.
   Press→paint time comes from `[perf] input` in the console file, never from a frame gap
   (the screencast delivers late). The motion set
   (`--list docs/guide/motion.json`) is the before / after view of any motion change. It is NOT

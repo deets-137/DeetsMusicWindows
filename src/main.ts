@@ -148,16 +148,16 @@ window.addEventListener("DOMContentLoaded", () => {
   // teeth, so each step ends on an identical tooth. The CSS transition does the motion.
   initQuickPanel();
 
-  // Theme choices — the launch animation (appearance.ts); the menu closes under the
-  // opaque cover, so the rise never shows it half-closed.
+  // Theme choices — a hand pick crossfades: the menu leaves on its own exit first, then the
+  // colors fade (UX-COVERUPS.md §6c.2). With a cover, the menu closes under it.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     // A hand pick: your theme (look.ts paints it inside the transition and publishes it).
-    el.addEventListener("click", () => pickLook({ theme: el.dataset.themeChoice as ThemeName }, { after: close }));
+    el.addEventListener("click", () => pickLook({ theme: el.dataset.themeChoice as ThemeName }, { close }));
   });
 
   // Skin choices (same pattern as Theme) — the incoming skin's own entrance.
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
-    el.addEventListener("click", () => pickLook({ skin: el.dataset.skinChoice as SkinName }, { after: close }));
+    el.addEventListener("click", () => pickLook({ skin: el.dataset.skinChoice as SkinName }, { close }));
   });
   // The rule chip (RULES.md §9): a bolt while the look schedule shows its look, a hand while
   // your pick holds (a press gives the look back to the schedule).

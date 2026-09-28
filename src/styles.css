@@ -2041,6 +2041,7 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
    the DeetsMusic settings title (plain text trigger). Live only at the card's root. */
 .panel__title.is-pickable { cursor: pointer; }
 .slot-picker__menu {
+  --pop-origin: top left; /* a .pop (layout.ts): it hangs from the title's left edge */
   position: absolute;
   top: calc(100% + var(--space-1));
   left: 0;
@@ -2212,6 +2213,10 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 :root[data-theme-fade]::view-transition-new(root) {
   animation-duration: var(--theme-morph-dur);
   animation-timing-function: var(--theme-morph-ease);
+}
+:root[data-theme-fade="hand"]::view-transition-old(root),
+:root[data-theme-fade="hand"]::view-transition-new(root) {
+  animation-timing-function: var(--theme-morph-hand-ease);
 }
 :root[data-theme-fade] :is(.ocean__bob, .ocean__train, .aurora__blob, .storm__strike, .storm__hold),
 :root[data-theme-fade] .np__aurora::before {
@@ -4005,15 +4010,17 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
    else. The span is inside the stage's own two-row grid, so it can never reach the bento. */
 [data-surface="max"] .stage > .panel[data-slot="queue"][data-grow="tall"] { grid-row: 1 / 3; }
 /* Midi: the content row is row 2. The covered card is placed by hand too, or auto-placement
-   would open a third row for it under the grown one. */
-[data-surface="midi"] .panel[data-grow="wide"]             { grid-area: 2 / 1 / 3 / 3; }
-[data-surface="midi"] .panel[data-slot="left"].is-covered  { grid-area: 2 / 1 / 3 / 2; }
-[data-surface="midi"] .panel[data-slot="right"].is-covered { grid-area: 2 / 2 / 3 / 3; }
+   would open a third row for it under the grown one. The fading states too: without them the
+   card dropped to that squashed row and faded there, at the bottom left (the motion review,
+   2026-09-28). */
+[data-surface="midi"] .panel[data-grow="wide"] { grid-area: 2 / 1 / 3 / 3; }
+[data-surface="midi"] .panel[data-slot="left"]:is(.is-covered, .is-covering, .is-uncovering)  { grid-area: 2 / 1 / 3 / 2; }
+[data-surface="midi"] .panel[data-slot="right"]:is(.is-covered, .is-covering, .is-uncovering) { grid-area: 2 / 2 / 3 / 3; }
 .bento .panel.is-grown { z-index: 2; }                    /* over the covered cards (swap-top is 1) */
 /* Covered cards: they fade under the opening edge, then they are hidden and inert — no
    paint (Ocean sand, Glass frost) and no input. Collapse fades them back as the clip closes. */
 .bento .panel.is-covering   { opacity: 0; transition: opacity var(--grow-dur) var(--grow-ease); }
-.bento .panel.is-uncovering { opacity: 1; transition: opacity var(--grow-dur) var(--grow-ease); }
+.bento .panel.is-uncovering { opacity: 1; transition: opacity var(--grow-collapse-dur) var(--grow-ease); } /* ends with the collapse clip, or uncover() would cut it */
 .bento .panel.is-covered    { visibility: hidden; }
 /* While the clip opens or closes, the body's content is gone AT ONCE (the rows are already
    rebuilt at the new size when the clip starts, so a fade out would show them in the old

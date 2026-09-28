@@ -15,6 +15,7 @@
 import { registry, type CardDef, type CardId, type CardInstance, type MountOpts } from "./cards";
 import { setting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
+import { enterRows } from "./pop";
 import { onCardRequest, requestCard, setCardHostLookup, setDrillSwapCheck, type RequestHow } from "./layout-bus";
 import { initCardMemory, cardMemory, rememberCard, setLiveSnapshots } from "./card-memory";
 import { tokenMs } from "./boot-cover";
@@ -111,7 +112,8 @@ function makePicker(
   if (!head || !title) return { destroy() {} };
 
   const menu = document.createElement("div");
-  menu.className = "slot-picker__menu";
+  menu.className = "slot-picker__menu pop"; // arrives like every dropdown (CLAUDE.md checklist 1)
+  menu.dataset.frames = "title-menu"; // the arrival's [perf] frames line (frames.ts, through makeDropdown)
   menu.setAttribute("role", "menu");
   menu.hidden = true;
   menu.innerHTML = pool
@@ -138,21 +140,31 @@ function makePicker(
   // Fit the menu to the window on every open (the window may have changed size since): a list
   // taller than the room under the title goes to two columns; if even that doesn't fit (a
   // very short window) it scrolls; a menu past the right edge shifts left.
+  // Measured from the layout box (offsetParent + offsets), never the menu's own rect: the .pop
+  // arrival scales it from --pop-scale, so its rect at open is smaller than the menu.
   const FIT_PAD = 6; // px kept clear of the window edge, as the context menu keeps
+  const box = () => {
+    const base = (menu.offsetParent ?? head).getBoundingClientRect();
+    return { top: base.top + menu.offsetTop, right: base.left + menu.offsetLeft + menu.offsetWidth };
+  };
   const fit = () => {
     menu.classList.remove("slot-picker__menu--cols");
     menu.style.maxHeight = "";
     menu.style.left = "";
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
-    const room = () => vh - menu.getBoundingClientRect().top - FIT_PAD;
+    const room = () => vh - box().top - FIT_PAD;
     if (menu.offsetHeight > room()) menu.classList.add("slot-picker__menu--cols");
     if (menu.offsetHeight > room()) menu.style.maxHeight = `${Math.max(0, room())}px`;
-    const over = menu.getBoundingClientRect().right - (vw - FIT_PAD);
+    const over = box().right - (vw - FIT_PAD);
     if (over > 0) menu.style.left = `${-over}px`;
   };
+  const onOpen = () => {
+    fit();
+    enterRows(menu.children, menu.children.length); // every card row, one after another
+  };
 
-  const dd = makeDropdown({ root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen: fit });
+  const dd = makeDropdown({ root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen });
 
   // Drilling cards report root/title state; off-root the picker goes inert and the title
   // reverts to the drilled context title (with the back chevron). Non-drilling cards never

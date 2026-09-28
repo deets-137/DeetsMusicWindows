@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts, src/look.ts, src/rules-facts.ts]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 # UX Cover-ups — latency & jank ledger
 
@@ -297,9 +297,81 @@ menu still ran the cover (veil → wait → lift).
 2. On Ocean and Glass: the sea and the aurora stop for that ½ s, then go on from the same place.
    They never show twice.
 3. On Press with a song playing: the record keeps turning through the fade and never shows twice.
-4. Pick a theme in the title menu: the cover runs, as before.
+4. ~~Pick a theme in the title menu: the cover runs, as before.~~ Changed 2026-09-28, below.
 5. Settings › Animate look changes Off: a rule's theme change snaps.
 6. Watch several songs: the theme changes once per song, never back to your pick and then again.
+
+### 6c.1 Hand picks join the crossfade (2026-09-28)
+
+> **Part:** built · 2026-09-28 · his desk test open
+
+**His calls (2026-09-28, the motion review, SHOTS.md §5e):** a theme you pick by hand (the
+title menu, Settings, the Compass, Reset) crossfades too. This reverses the first call above
+for hand picks only. The same 500 ms (`--theme-morph-dur`). **An agent's theme change keeps the
+§6b cover**, so a change you did not make stays easy to see. Any skin change keeps the cover.
+
+**As built:** `look.ts` `paint()` sends every change with no skin change and no `by: "agent"` to
+`withThemeFade`. ~~A menu or the Compass that made the pick closes inside the fade's update, so
+it fades out with the old colors.~~ Changed the same day: §6c.2.
+
+**Measured (demo, headless Edge, Midi, Moonlight → Sepia from the Compass):** one
+`[perf] frames theme-fade` line per skin, 538–570 ms, no `data-boot`; before, the same pick ran
+the cover for 1.0–2.0 s. A Press pick from the Compass still runs the cover (702 ms lift).
+**The strips, read 2026-09-28** (`shots/scratch/theme-pick/*.s5-key.png`, 40 real frames
+after Enter, 5 skins): one blend, the cards never move, the covers stay solid. Three things
+show: (1) nothing seems to change for ~130 ms after Enter (the ease-in-out start plus the
+snapshot); (2) the Compass is in the old picture, so its rows show as a ghost over the Home
+covers until ~+350 ms; (3) dark → light passes a flat grey middle at ~+240–330 ms (known, the
+500 ms call). Ocean dropped 14 of 105 frames, two long gaps (39, 27 ms) right after Enter; the
+other skins dropped 3–7. (1) and (2) are fixed in §6c.2.
+
+**Desk test:**
+1. `npm run dev:built`. Pick a theme in the title menu (Settings › Theme), then in the Compass,
+   then with Settings › Reset. The colors fade in place in ~½ s; the cards never fade out or rise.
+2. Ocean, Glass: the sea and the aurora hold for the ½ s and never show twice. Press, playing:
+   the record keeps turning.
+3. Pick a skin: the cover runs, as before.
+4. Ask an agent to change the theme (`deetsmusic settings set theme sepia`): the slower cover runs.
+5. Animate look changes off, or reduced motion: every theme pick snaps.
+
+### 6c.2 The panel leaves first; a hand pick moves at once (2026-09-28)
+
+> **Part:** built · 2026-09-28 · his desk test open
+
+**His calls (2026-09-28, after the strips of §6c.1):** the menu or the Compass that made the pick
+closes with its own short exit BEFORE the snapshot, so only the colors fade. A pick you make by
+hand uses an `ease-out` curve, so the change starts on the press; a rule's change keeps
+`ease-in-out` (nobody pressed anything).
+
+**As built:**
+- `pickLook` takes `close` (the panel that made the pick) in place of `after: close`, and marks
+  a pick with no `by` as `hand`. A moment rule's `set` action passes `by: "rule"`.
+- `withThemeFade` calls `close`, then waits for the `.pop[hidden]` exits in flight
+  (`panelExits`), for at most `--theme-morph-hand-wait` (0.4) of `--pop-out`. On the pop ease the
+  panel is ~88 % gone there; `finish()` ends the rest in the frame the fade starts. The full
+  wait was a mistake: on Glass (`--pop-out` 200 ms) it held the colors for ~140 ms after the
+  Compass looked gone.
+- A hand fade sets `<html data-theme-fade="hand">`; the old and new pictures take
+  `--theme-morph-hand-ease` (`ease-out`). The frames line reads `theme-fade skin=… by=hand`.
+- With a cover (a skin change, an agent, a cover in flight), `close` runs under the cover, as before.
+  A cover that starts during the wait takes the change.
+
+**Measured (demo, headless Edge, Midi, Moonlight → Sepia from the Compass, 5 skins):** the Compass
+is gone by ~+50 ms; no ghost in any frame. The colors move from ~+190 ms and are nearly done by
++400 ms; the fade lines read 539–568 ms. The ~100 ms between is the snapshot: two stalls of
+~53 ms in the Ocean strip. A rule's fade pays it too. The grey middle is still there, at
+~+270–330 ms. Dropped frames are the same as before the change (Ocean 13 %, Glass 14 %, Cyber 2 %).
+One noisy run gave 64–85 % on three skins; a rerun at once was back to these.
+
+**Desk test** (with §6c.1):
+1. `npm run dev:built`, Glass. Open the Compass, type "sepia", Enter. The Compass leaves at once;
+   then the colors change. No Compass rows show over the cards at any point.
+2. The same from the title menu (Settings › Theme › a theme): the menu leaves first, then the fade.
+3. Watch the start: the colors begin to change with no pause that reads as lag. If the gap
+   between the Compass leaving and the colors moving reads as a hitch on your PC, say so. That
+   gap is the snapshot, and the fix is a separate fork.
+4. A Live Theming song change (a rule): the fade keeps its slow start and slow end.
+5. Pick a skin from the title menu: the menu closes under the cover, as before.
 
 ---
 
