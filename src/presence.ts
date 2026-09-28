@@ -50,9 +50,11 @@ let pauseTimer: number | undefined; // the clear-after-a-pause timer
  *  2026-09-26 (RULES.md §13): while it runs, the effective switch reads off. */
 const sharing = (): boolean => effective("shareActivityDiscord");
 
-/** The song identity — a card is re-sent when THIS changes, not when a render happens. */
+/** The song identity — a card is re-sent when THIS changes, not when a render happens.
+ *  It is what the card SHOWS: on a station each song has its own title, so the station id
+ *  alone froze the card on the station's first song (found on live, 2026-09-27). */
 const keyOf = (s: PlayerState): string =>
-  s.station ? `station:${s.station.id}` : `${s.title ?? ""}|${s.artist ?? ""}|${s.album ?? ""}`;
+  `${s.station?.id ?? ""}|${s.title ?? ""}|${s.artist ?? ""}|${s.album ?? ""}`;
 
 /** The Apple Music link for the song on now, or nothing for a station or an upload. */
 function link(): string | undefined {
