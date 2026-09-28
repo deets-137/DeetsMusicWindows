@@ -206,9 +206,12 @@ debugging (§5a–§5c). `motion.json` beside it is the motion set: every animat
   desktop moves. A clip gives an MP4, a **frame strip** (one PNG of the motion, each frame
   labeled in ms; this is how you watch motion, since you read pictures and not video), the
   shot's console with the app's own `[perf] frames` / `[perf] input` lines, and `.frames.json`.
-  For one bug, write a scratch list with `probe` (a JS answer into the console file) and
-  `snap` (a picture of that moment) steps, and run it with `--list <file> --out <dir>`
-  (`--slow 4` shows fast CSS motion in detail). The motion set
+  For one bug, use the scratchpad: `--scratch <name>` writes a starter list to
+  `shots/scratch/<name>.json`, and the same command runs it. Add `"frames": N` to a step to
+  keep the next N real paints after it (files + one labeled PNG), `probe` for a JS answer into
+  the console file, `snap` for a 2× picture (`--slow 4` shows fast CSS motion in detail).
+  Press→paint time comes from `[perf] input` in the console file, never from a frame gap
+  (the screencast delivers late). The motion set
   (`--list docs/guide/motion.json`) is the before / after view of any motion change. It is NOT
   a harness to build: it exists, so use it. The limits (not WebView2, a fake MusicKit, no OS
   window): DEBUGGING.md §Seeing it. **Check the strip, not only "ok":** a clip passed while

@@ -51,8 +51,31 @@ window (#16161a, a runner constant, not an app token).
   the new cards before their content (§5c).
 - The grown Home card is empty for ~400 ms before its rows arrive (the `grow` clip, glass).
 
-**Next:** the review itself, clip by clip in `shots/motion/0.25.1/index.html`, then the motion
-forks for him.
+**Committed** `4406dc9`. Then he asked what the three findings would feel like to a user:
+- **Next / Previous before the first Play** was real in the app: `nextTrack` / `prevTrack`
+  asked an empty MusicKit to skip, on every launch (`restoreQueue: "song"`), from every Next
+  (button, tray, media keys, Compass, agent, Rulez). The live log had one on 2026-09-26, 4.2 s
+  after launch. **His call: stay paused, as Apple Music does. Built:** `src/idle-skip.ts` (the
+  rule, 5 tests) and `skipWhileIdle` in `player.ts`. Checked in the demo with a scratch shots
+  list. Decided inside his call: Previous past 3 s of a saved spot restarts the song (MusicKit's
+  own line); Next at the end starts a new lap under repeat all; no play intent (Ocean stays
+  still); a saved spot clears on any move. Desk test: QUEUE.md § Next and Previous before the
+  first Play.
+- **The surface change** (no motion; the layout switches before the window resizes, so the
+  real app likely shows the new layout squeezed or stretched for some frames) and **the empty
+  grown card** (by design, CARD-GROW.md §13a) go to the motion review.
+
+**Then, his ask: a shorter targeted clip, "and a scratchpad". Built (SHOTS.md §5d):**
+`--scratch <name>` (a starter list in `shots/scratch/`, then the same command runs it),
+`"frames": N` on a step (the next N real paints as files and one labeled PNG, gaps over 25 ms
+in red), `--raw`, `SHOTS_DEBUG=1`. Learned on the way: the screencast delivers frames late (a
+365 ms gap against a 96 ms `[perf] input`), so latency is read from `[perf] input`; clip frames
+are 1× and `maxWidth` on the screencast captures Edge's own 756×454 window instead; an odd frame
+width must be padded up for ffmpeg. **Its first find:** the card title menu has no arrival
+motion (no `.pop`, no `enterRows`, no `dataset.frames`) — for the motion review.
+
+**Next:** his hand test of the skip fix; the review itself, clip by clip in
+`shots/motion/0.25.1/index.html`, then the motion forks for him.
 
 ## 2026-09-27 night → 09-28 — 0.25.1 published; the uninstall removes start with Windows (branch `main`)
 

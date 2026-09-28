@@ -1144,17 +1144,21 @@ timing. Claude reads pictures, not video, so the frame strip is how a session wa
 - A layout bug at one size, surface or look: a `snap` or a picture in that look, at that size.
 - A surface change (pick or drag): the runner is the window (SHOTS.md §5c).
 
-**The recipe — one bug, one scratch list:**
-1. Write a list in the scratchpad with one shot: the size, one look (`"looks": [{ "theme":
-   "moonlight", "skin": "glass" }]`), and the steps that reach the bug (`click`, `key`, `type`,
-   `hover`, `rightclick`, `drag`, `wheel`, `resize`, `reload`, `eval`).
-2. Add `probe` steps for state (`{ "probe": "document.documentElement.dataset.surface" }`) and
-   `snap` steps for a picture of a moment.
-3. `node scripts/shots.mjs --list <file> --out <dir>` (add `--slow 4` to see a 150 ms motion
-   in detail).
+**The recipe — one bug, one scratch list (SHOTS.md §5d):**
+1. `node scripts/shots.mjs --scratch <name>` writes a starter list to
+   `shots/scratch/<name>.json` (gitignored) with a `help` block. Set the size, the look and
+   the steps that reach the bug (`click`, `key`, `type`, `hover`, `rightclick`, `drag`,
+   `wheel`, `resize`, `reload`, `eval`).
+2. Add `"frames": N` to the step whose result you need to see: the next N real paints after it
+   come out as files and one labeled PNG. Add `probe` steps for state
+   (`{ "probe": "document.documentElement.dataset.surface" }`) and `snap` for a 2× picture.
+3. Run the same command again (add `--slow 4` to see a 150 ms motion in detail, `--raw` to keep
+   every frame).
 4. Read, in this order: the log's `frames` lines, `<id>.<look>.console.txt` (errors, probes,
-   `window` resizes, with ms), then `<id>.<look>.strip.png`, then `.frames.json` for exact
-   frame times. `index.html` in the out folder shows every clip, its strip and its console.
+   `[perf] input` press→paint times, `window` resizes, with ms), then the step's
+   `.s<k>-<step>.png`, then `.frames.json`. `index.html` in the out folder shows every clip.
+5. **Latency comes from `[perf] input`, not from a gap in the frames:** the screencast can deliver
+   a frame hundreds of ms after the app painted it (365 ms seen against a 96 ms press→paint).
 
 The motion set (`docs/guide/motion.json`, 24 clips × 5 skins) is the regression view for
 motion: run it before and after a motion change, and compare the two contact sheets.

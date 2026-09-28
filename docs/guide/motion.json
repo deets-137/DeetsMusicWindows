@@ -138,7 +138,7 @@
     },
     {
       "id": "next-song",
-      "about": "Playing, then Next: the song changes in Now Playing (cover, title, the Press record, the album color). Play comes first because from a fresh load Next does nothing in the demo: MusicKit has no queue until the first play (SHOTS.md §5b).",
+      "about": "Playing, then Next: the song changes in Now Playing (cover, title, the Press record, the album color). Play comes first so the clip shows a playing song change; a paused Next is its own path (QUEUE.md §Next and Previous before the first Play).",
       "covers": "features/VINYL.md",
       "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
       "prepare": [{ "click": ".np__btn--play" }, { "wait": 1200 }],

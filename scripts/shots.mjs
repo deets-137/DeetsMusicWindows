@@ -11,6 +11,10 @@
 //   --list <file>   another shot list: docs/guide/motion.json (the motion set), or a scratch list for one bug
 //   --out <dir>     write there (default shots/[<list name>/]<version>[-slow<n>]/)
 //   --slow <n>      CSS and Web Animations run n times slower (the clip plays slow too)
+//   --raw           keep every real frame of a clip in <id>.<look>.raw/
+//   --scratch <name>  the scratchpad: run shots/scratch/<name>.json into shots/scratch/<name>/;
+//                   a new name writes a starter list to edit (SHOTS.md §5d)
+// And on any clip step, `"frames": N` keeps the next N real paints after it.
 //
 // Headless: Edge opens no window and uses a throwaway profile, so nothing on the desktop moves
 // and no real Edge profile or app data is touched. No Apple call and no network: the demo
@@ -20,7 +24,7 @@
 // a frame strip (one PNG of the motion, for a review by eye). The dev-app source comes later.
 
 import { spawn, execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -38,9 +42,60 @@ const listArg = (flag) =>
 const only = new Set(listArg("--only"));
 const lookFilter = new Set(listArg("--look"));
 const oneArg = (flag) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : undefined);
-const listFile = oneArg("--list") ? resolve(oneArg("--list")) : join(root, "docs", "guide", "shots.json");
 const slow = Number(oneArg("--slow") ?? 1);
 if (!(slow >= 1)) throw new Error("[shots] --slow takes a number of 1 or more");
+const raw = argv.includes("--raw");
+
+// The scratchpad (SHOTS.md §5d): `--scratch <name>` runs shots/scratch/<name>.json into
+// shots/scratch/<name>/ (gitignored, like all of shots/). A name with no list gets a starter
+// list and the run stops, so the first command of a debug session makes the file to edit.
+const scratch = oneArg("--scratch");
+if (scratch !== undefined && !/^[a-z0-9][a-z0-9-]*$/i.test(scratch)) throw new Error("[shots] --scratch takes a plain name: letters, digits, dashes");
+const scratchDir = join(root, "shots", "scratch");
+const listFile = scratch
+  ? join(scratchDir, `${scratch}.json`)
+  : oneArg("--list")
+    ? resolve(oneArg("--list"))
+    : join(root, "docs", "guide", "shots.json");
+if (scratch && !existsSync(listFile)) {
+  mkdirSync(scratchDir, { recursive: true });
+  writeFileSync(listFile, JSON.stringify(starter(scratch), null, 2) + "\n");
+  console.log(`[shots] new scratch list: ${listFile}\n[shots] edit its steps, then run the same command again.`);
+  process.exit(0);
+}
+
+/** A new scratch list: one clip that shows every debug tool once. `help` is for the reader;
+ *  the runner ignores it. */
+function starter(name) {
+  return {
+    help: [
+      "A scratch list for one bug (SHOTS.md §5d). Run: node scripts/shots.mjs --scratch " + name,
+      "Steps: click, rightclick, hover, key ('Ctrl+Space'), type, wait (ms or a selector), drag {from,to}, wheel (+dy, times), resize [w,h] (+over, steps), reload, eval, probe, snap.",
+      "On any step: \"frames\": N keeps the next N real paints after it (a folder + a labeled PNG); \"strip\": true starts the strip there.",
+      "Shot keys: size (mini, player, midi, max), seconds, prepare (steps before the recording), window (follow the app's set_size), settings, strip {fps, seconds, cols, width}.",
+      "Flags: --slow 4 (CSS motion 4x slower), --raw (keep every real frame), --look theme-skin.",
+      "Read: the log's frames lines, then <id>.<look>.console.txt, then the step's frames PNG.",
+    ],
+    looks: [{ theme: "moonlight", skin: "glass" }],
+    shots: [
+      {
+        id: name,
+        kind: "clip",
+        source: "demo",
+        size: "midi",
+        seconds: 2.5,
+        prepare: [],
+        steps: [
+          { probe: "document.querySelector('.np__title')?.textContent" },
+          { click: "[data-slot=\"left\"] .panel__title", frames: 12 },
+          { wait: 800 },
+          { snap: "open" },
+          { key: "Escape", frames: 8 },
+        ],
+      },
+    ],
+  };
+}
 
 // ── what to shoot ────────────────────────────────────────────────────────────
 
@@ -533,12 +588,15 @@ async function record(page, shot, base, outDir) {
   });
   try {
     const seconds = shot.seconds ?? 4;
+    // The frames come at 1x (495 px wide for Midi), not the page's 2x; a `snap` is 2x. Do not
+    // add maxWidth / maxHeight: with them headless Edge sent its own 756×454 window instead.
     await page.send("Page.startScreencast", { format: "jpeg", quality: 90, everyNthFrame: 1 });
     const t0 = Date.now() / 1000;
     await sleep(300); // a still lead-in, so the first action is seen from rest
     for (const step of shot.steps ?? []) {
       // `"strip": true` on a step starts the strip there (default: the first action).
-      marks.push({ t: Date.now() / 1000 - t0, step: Object.keys(step)[0], what: JSON.stringify(Object.values(step)[0]), strip: step.strip === true });
+      // `"frames": N` keeps the next N real paints after this step (§5b, frames at a step).
+      marks.push({ t: Date.now() / 1000 - t0, step: Object.keys(step)[0], what: JSON.stringify(Object.values(step)[0]), strip: step.strip === true, frames: step.frames ?? 0 });
       await runStep(page, step);
     }
     const left = t0 + seconds - Date.now() / 1000;
@@ -600,10 +658,62 @@ async function record(page, shot, base, outDir) {
     };
     writeFileSync(join(outDir, `${base}.frames.json`), JSON.stringify({ ...stats, times: times.map((t) => Math.round(t * 1000)) }));
     const { gaps: _all, marks: _m, ...brief } = stats;
-    return { file: mp4, poster, strip, stats: { ...brief, drops: stats.gaps.length } };
+
+    // Frames at a step: the next N REAL paints after it, not the MP4 resampled. A dropped frame
+    // is a large gap here, where a resampled strip would show the same picture twice.
+    const frameSets = [];
+    marks.forEach((m, i) => {
+      if (!m.frames) return;
+      const from = t0 + m.t;
+      const picked = frames.filter((f) => f.t >= from).slice(0, m.frames);
+      const name = `${base}.s${i + 1}-${m.step}`;
+      if (!picked.length) {
+        note("frames", `step ${i + 1} (${m.step}): no paint after it — nothing moved, or the clip ended`);
+        return;
+      }
+      keepFrames(picked, from, join(outDir, name));
+      frameStrip(picked, from, join(outDir, `${name}.png`), shot.strip?.width ?? 240, shot.strip?.cols ?? 6);
+      const short = picked.length < m.frames ? ` (asked ${m.frames}; the clip ended or the page stopped painting)` : "";
+      note("frames", `step ${i + 1} (${m.step}): ${picked.length} frames → ${name}/ and ${name}.png${short}`);
+      frameSets.push({ step: i + 1, kind: m.step, count: picked.length, asked: m.frames, dir: name, strip: `${name}.png` });
+    });
+    // --raw: every real frame of the clip, named by its ms from the start.
+    if (raw) keepFrames(frames, t0, join(outDir, `${base}.raw`));
+
+    return { file: mp4, poster, strip, stats: { ...brief, drops: stats.gaps.length }, frameSets };
   } finally {
     off();
     rmSync(work, { recursive: true, force: true });
+  }
+}
+
+/** Copy real frames out, each named `<n>_+<ms>ms.jpg` from `from` (epoch s). */
+function keepFrames(list, from, dir) {
+  rmSync(dir, { recursive: true, force: true }); // a rerun replaces, never mixes
+  mkdirSync(dir, { recursive: true });
+  list.forEach((f, i) => copyFileSync(f.file, join(dir, `${String(i).padStart(3, "0")}_+${Math.round((f.t - from) * 1000)}ms.jpg`)));
+}
+
+/** One PNG of real frames, each labeled with its ms from `from` and the gap before it; a gap
+ *  over 25 ms is labeled in red (a paint missed at 60 Hz). Frames of different sizes go on one
+ *  top-left canvas, as in the MP4. */
+function frameStrip(list, from, out, width, cols) {
+  const tmp = mkdtempSync(join(tmpdir(), "deets-strip-"));
+  try {
+    // Even, as for the MP4: ffmpeg's pad rounds an odd size DOWN, below the frame (495 px).
+    const W = Math.ceil(Math.max(...list.map((f) => f.w)) / 2) * 2;
+    const H = Math.ceil(Math.max(...list.map((f) => f.h)) / 2) * 2;
+    list.forEach((f, i) => {
+      const ms = Math.round((f.t - from) * 1000);
+      const gap = i ? Math.round((f.t - list[i - 1].t) * 1000) : null;
+      const text = gap === null ? `+${ms} ms` : `+${ms} ms  gap ${gap}`;
+      const color = gap !== null && gap > 25 ? "0xff6b6b" : "white";
+      ffmpeg(["-i", f.file, "-vf", `pad=${W}:${H}:0:0:color=0x16161a,scale=${width}:-2,drawtext=fontfile='C\\:/Windows/Fonts/consola.ttf':text='${text}':x=6:y=6:fontsize=14:fontcolor=${color}:box=1:boxcolor=black@0.6:boxborderw=3`, join(tmp, `l${String(i).padStart(3, "0")}.png`)]);
+    });
+    const c = Math.min(cols, list.length);
+    ffmpeg(["-framerate", "1", "-i", join(tmp, "l%03d.png"), "-vf", `tile=${c}x${Math.ceil(list.length / c)}:padding=4:color=black`, "-frames:v", "1", out]);
+  } finally {
+    if (!process.env.SHOTS_DEBUG) rmSync(tmp, { recursive: true, force: true }); else console.log("[shots] kept", tmp);
   }
 }
 
@@ -622,6 +732,7 @@ function ffmpeg(args) {
   try {
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...args], { stdio: ["ignore", "ignore", "pipe"] });
   } catch (e) {
+    if (process.env.SHOTS_DEBUG) console.log("[shots] ffmpeg failed:", JSON.stringify(args), String(e.stderr));
     throw new Error(`ffmpeg: ${String(e.stderr ?? e.message).trim().split("\n").at(-1)}`);
   }
 }
@@ -641,7 +752,9 @@ function contactSheet(manifest) {
         if (!r.file) return `<figure class="bad"><figcaption>${esc(r.look)} — ${esc(r.error ?? "not taken")}</figcaption></figure>`;
         const note = r.ok ? "" : " — kept from an earlier run";
         if (r.kind === "clip") {
-          const perf = (r.perf ?? []).map((p) => `<br><code>${esc(p)}</code>`).join("");
+          const perf =
+            (r.perf ?? []).map((p) => `<br><code>${esc(p)}</code>`).join("") +
+            (r.frameSets ?? []).map((s) => `<br><a href="${esc(s.strip)}">step ${s.step} ${esc(s.kind)}: ${s.count} real frames</a>`).join("");
           const errs = r.consoleErrors ? ` · <b class="err">${r.consoleErrors} error(s)</b>` : "";
           return `<figure><video src="${esc(r.file)}" poster="${esc(r.poster ?? "")}" muted autoplay loop playsinline controls></video><figcaption>${esc(r.look)} · <a href="${esc(r.strip ?? "")}">strip</a> · <a href="${esc(r.console ?? "")}">console</a>${errs}${note}${perf}</figcaption></figure>`;
         }
@@ -676,7 +789,12 @@ ${sections.join("\n")}
 // shots/motion/0.25.1/); --slow n adds `-slow<n>`. So a debug run never lands among the shots of
 // a version. --out names any other place.
 const listName = listFile === join(root, "docs", "guide", "shots.json") ? "" : basename(listFile, ".json");
-const outDir = oneArg("--out") ? resolve(oneArg("--out")) : join(root, "shots", listName, `${version}${slow !== 1 ? `-slow${slow}` : ""}`);
+// A scratch run writes beside its list, no version folder: it is for now, not for a release.
+const outDir = oneArg("--out")
+  ? resolve(oneArg("--out"))
+  : scratch
+    ? join(scratchDir, `${scratch}${slow !== 1 ? `-slow${slow}` : ""}`)
+    : join(root, "shots", listName, `${version}${slow !== 1 ? `-slow${slow}` : ""}`);
 mkdirSync(outDir, { recursive: true });
 const manifestPath = join(outDir, "manifest.json");
 const previous = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : { shots: [] };
@@ -725,6 +843,7 @@ try {
         taken++;
         log(`ok   ${row.file}${row.consoleErrors ? ` — ${row.consoleErrors} console error(s), see ${row.console}` : ""}`);
         for (const p of row.perf ?? []) log(`       frames ${p}`);
+        for (const s of row.frameSets ?? []) log(`       step ${s.step} (${s.kind}): ${s.count}/${s.asked} real frames → ${s.strip}`);
       } catch (e) {
         // The last good capture stays, and the report says this one failed (SHOTS.md §6).
         const old = results.get(key);

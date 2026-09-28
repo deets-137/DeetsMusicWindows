@@ -221,9 +221,10 @@ console file: that is the evidence.
   queue, but MusicKit has none until the first play, so `nextTrack()` → `skipToNextItem()` has
   nothing to skip to. Found because `next-song` recorded one frame in vanilla and press (glass,
   ocean and cyber passed only because their backgrounds keep painting); a probe showed the click
-  landed on the button and the title did not change. **Not yet checked in the real app** —
-  the same path is there (`player.ts` `nextTrack`), so it is an open question for him, not a
-  fix in this branch. The clip now presses Play first (`prepare`).
+  landed on the button and the title did not change. The same path was in the real app, on
+  every launch. **Fixed 2026-09-28, his call: stay paused, as Apple Music does** (QUEUE.md
+  §Next and Previous before the first Play). The clip still presses Play first (`prepare`),
+  to show a playing song change.
 - **A lesson for clip design:** a clip that passes can still show nothing, if something else on
   the page keeps painting. Check the strip, or probe the state the gesture should change.
 
@@ -258,6 +259,42 @@ surface's cards before their content arrives. These are inputs to the motion rev
 **What the demo cannot show:** the OS window's own resize (WebView2 in a Tauri window repaints
 as the OS resizes it; headless Edge has no OS window). The dev-app source (§10 step 4) is the
 way to see it.
+
+## 5d. The scratchpad and frames at a step (2026-09-28)
+
+His ask: a shorter, targeted clip for debugging, "and a scratchpad".
+
+**The scratchpad.** `node scripts/shots.mjs --scratch <name>` runs
+`shots/scratch/<name>.json` and writes to `shots/scratch/<name>/` (no version folder: a
+scratch is for now). A name with no list gets a **starter list** and the run stops: the list
+has a `help` block (every step, shot key and flag in six lines) and one clip that uses each
+debug tool once. Edit it, run the same command again. `shots/` is gitignored, so scratch lists
+never reach the repo. `--slow n` writes to `shots/scratch/<name>-slow<n>/`.
+
+**Frames at a step.** `"frames": N` on any clip step keeps the next N **real** paints after
+that step, not the MP4 resampled:
+- `<id>.<look>.s<k>-<step>/` — one JPEG per paint, named `<n>_+<ms>ms.jpg` from the step.
+- `<id>.<look>.s<k>-<step>.png` — those frames in one picture, each labeled `+ms` and the gap
+  before it; a gap over 25 ms is red.
+- The log and the contact sheet name them; the console file says when fewer than N came (the
+  clip ended, or nothing moved).
+
+**`--raw`** keeps every real frame of a clip in `<id>.<look>.raw/`, for when you do not know
+where to look. **`SHOTS_DEBUG=1`** prints ffmpeg's full error and keeps a strip's temp folder.
+
+**What the real frames can and cannot say (measured 2026-09-28):**
+- **A gap is when the screencast DELIVERED a frame, not when the app painted it.** A click on a
+  card title showed 365 ms with no frame; the app's own `[perf] input pointerup panel__title`
+  said 96 ms. For latency, trust `[perf] input` in the console file; use the frames for WHAT
+  was painted, in what order.
+- Clip frames are 1× (495 px wide for Midi); a `snap` is 2×. Do not pass `maxWidth` /
+  `maxHeight` to the screencast: headless Edge then sends its own 756×454 window.
+- A frame size that is odd (495) must be padded to an even one for ffmpeg (both the MP4 and
+  the strip round up).
+
+**Its first find:** with `--slow 4`, the card title menu appears whole in one frame. It opens
+through `makeDropdown` but has no `.pop` and no `enterRows` (CLAUDE.md checklist item 1), and no
+`dataset.frames`, so frames.ts does not time it. For the motion review.
 
 ## 6. Coverage — no shipped feature without a shot
 
