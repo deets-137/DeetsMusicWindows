@@ -1683,7 +1683,10 @@ body {
   position: absolute;
   inset: 0;
   transform: translateY(calc(var(--ocean-breath) * var(--heave) * -1));
-  transition: transform var(--ocean-breath-dur) var(--ocean-breath-ease);
+  /* stepped at --ambient-fps: re-aimed every 300 ms, a smooth transition never ends and keeps
+     the window compositing at the display rate. ocean.ts writes the stepped copy of the ease
+     (stepped-ease.ts); the smooth one is the fallback. Also the neon and the glow below. */
+  transition: transform var(--ocean-breath-dur) var(--ocean-breath-ease-stepped, var(--ocean-breath-ease));
 }
 .ocean__heave--far  { --heave: var(--ocean-heave-far); }
 .ocean__heave--mid  { --heave: var(--ocean-heave-mid); }
@@ -1729,7 +1732,7 @@ body {
   background-repeat: repeat-x;
   opacity: 0;
   will-change: opacity;
-  transition: opacity var(--ocean-breath-dur) var(--ocean-breath-ease);
+  transition: opacity var(--ocean-breath-dur) var(--ocean-breath-ease-stepped, var(--ocean-breath-ease));
 }
 .ocean__neon[data-on] { opacity: calc(var(--ocean-lit) * (1 + var(--ocean-breath) * var(--ocean-neon-pulse))); }
 /* The album's color, glowing up from the deep (ocean.ts sets --ocean-glow-color on .ocean;
@@ -1749,7 +1752,7 @@ body {
   opacity: calc((var(--ocean-glow) + (var(--ocean-light-glow) - var(--ocean-glow)) * var(--ocean-lit))
                 * (1 + var(--ocean-breath) * 0.5));
   transition: --ocean-glow-color var(--ocean-glow-fade) var(--ocean-breath-ease),
-              opacity var(--ocean-breath-dur) var(--ocean-breath-ease);
+              opacity var(--ocean-breath-dur) var(--ocean-breath-ease-stepped, var(--ocean-breath-ease));
 }
 /* A ripple: two flattened rings on the water from the point of a play or a drop
    (ocean.ts adds and removes them), in the crest ink. */

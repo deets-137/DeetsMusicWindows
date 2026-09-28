@@ -12,6 +12,34 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, night — CPU / GPU load: no balancing; the Ocean heave capped (branch `rules-rulez`)
+
+His ask: are CPU thread balancing or GPU load balancing worth it, given the logged numbers?
+Answer: no, at this size. The main thread has room, the DB shows no contention, and one GPU
+process draws for the whole WebView2 ([DEBUGGING.md](ops/DEBUGGING.md) §The 2026-09-27 load
+pass). The measurement found a different cost: Ocean with music used 31 % GPU-process CPU
+against 8 % without, because the heave's transition is re-aimed every 300 ms and ran at the
+display rate. His call: "cap all three at ambient fps as long as it doesn't have a significant
+visual effect". Built: the heave, the neon pulse and the glow pulse ease on a stepped `linear()`
+copy of their curve ([OCEAN.md](features/OCEAN.md) §6, `src/stepped-ease.ts` + its test). The
+progress bar needed no cap; its per-report layout is the next trace. Memory: the "1 GB" was a
+working-set sum; the live app's private working set is 333 MB (DEBUGGING.md §Which memory number
+to quote). No leak seen; a 5-minute sampler runs on the live app. **Open:** the bench after the
+cap, the playback layout trace, the hour's memory trend. The dev app was shared with the
+wrap-up session by message (DEBUGGING.md, two sessions, one dev app).
+
+## 2026-09-27, night — The rest of the agent desk tests (branch `rules-rulez`)
+
+His ask: what is left to close the branch, which hand tests Claude can reach, then run those
+and skip what already passed. His yes covered `dev:fresh`, `dev:built`, a Windows theme flip and
+a Diary write. Results: [DESK-TESTS.md §5](ops/DESK-TESTS.md), the night run — *12 pass (one
+faked) · 1 fail · 4 unreachable or not forceable · 3 left out as retests.* Three findings, none
+fixed: the A1 focus fix never runs (WebView2 fires no `focusout` on a removed element);
+`dev:fresh` cannot be signed out while the installed app is signed in (lib.rs seeds the token);
+the Ocean album light costs about a fifth of the frame rate without a GPU. Put back: the dev
+data from a backup, Windows dark mode, the look schedule, Restore on launch, `quickSeen`, the
+second app's sharing. Four bench rows went into `scripts/perf-history.csv`. No code changed.
+
 ## 2026-09-27, late evening — Desk tests run by Claude (branch `rules-rulez`)
 
 His ask: run the §18a desk test and every open desk test Claude can reach. On the dev app

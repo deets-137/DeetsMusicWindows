@@ -773,6 +773,85 @@ as the 280 ms sort click and the 175 ms grow — a third instance of the same mi
 day. **Do not quote a frame number that came from a `dev:app` log.** Use the log to choose
 what to point the bench at, and the bench for the number.
 
+## The 2026-09-27 load pass — music-driven motion, and no case for load balancing
+
+He asked whether CPU thread balancing or GPU load balancing would help. The answer came from
+the rows already logged plus one new measurement (`dev:built`, 244 Hz, rows "LB…" contended
+by Edge and "LC…" clean in `perf-history.csv`).
+
+**Balancing: no, at this size.** Each option was tested against a number, not a guess:
+
+| Option | Why not |
+| --- | --- |
+| More Web Workers, `scheduler.postTask` / `yield()` | The main thread has room: gestures hold 226+ fps on `dev:built`, library sort 4 ms, our part of click→sound ~10 ms. The heavy painters (Ocean swell, mosaic, wallpaper) are already in workers. |
+| A pool of SQLite read connections | `db_health` counters at 0; one 3,895-row library. No reader has been seen waiting on `Db::lock`. |
+| EcoQoS (efficiency cores) for background jobs | The jobs are small and rare (Apple calls are rationed). |
+| MMCSS for the AirPlay thread | No dropout under load has been reported. |
+| Pick the integrated or the discrete GPU | One GPU on the owner's PC; no laptop numbers. The Graphics quality row (FUTURE-SETTINGS §25) is the lever for weak machines. |
+
+Only one GPU process draws for the whole WebView2, so GPU work cannot be spread; it can only be
+reduced or moved in time. Look for what draws when nothing needs to, first.
+
+**What was found instead: music-driven motion ran at the display rate.** Ocean idle, clean GPU:
+
+| Run | GPU process | Page |
+| --- | --- | --- |
+| No music | 8 % | 18 % |
+| Music (Equalizer on) | 31 % | 34 % |
+| Music, heave frozen | 23 % | 30 % |
+| Music, NP album spin stopped | 30 % | 34 % |
+| Music, heave + NP spin + progress bar all stopped | 10 % | 37 % |
+
+- **One part alone saves little; all of them together remove the cost.** While any one part
+  moves, Chromium composites the whole window each frame. So A/B each suspect, and then stop
+  them together; a single A/B that saves 1 % does not clear a suspect.
+- **The ambient loops were stepped at `--ambient-fps` (2026-09-13); the music-driven parts were
+  not.** The Ocean heave is re-aimed every 300 ms, so its 1.1 s transition never ends and ran at
+  244 Hz. Capped the same day: OCEAN.md §6 (the stepped `linear()` ease, `src/stepped-ease.ts`).
+- **The page cost is a separate lead.** It stays at ~34–37 % with the GPU back at 10 %. The
+  per-thread trace during playback: main thread 15 %, compositor 15 %, AudioWorklet (the
+  Equalizer) 2.6 %, media 0.7 %; the main thread ran **layout ~15 times a second**. The
+  progress bar sets `width` on each MusicKit time report and the time labels change text; the
+  layout trace that names the source is the next step.
+
+**Two A/B techniques this pass added:**
+- **Freeze a value that JS writes inline:** `--css ".ocean{--ocean-breath:0!important}"`. An
+  `!important` rule in a sheet beats a plain inline `style.setProperty`, so the heave holds
+  still while the code keeps writing.
+- **Play music through the MCP, not the UI:** `control play` / `pause` before each bench. The
+  `playing` column of each row confirms it (`idle` reads the play button's label).
+
+**Two sessions, one dev app.** Only one dev app can hold the bridge (47825), vite (1420) and
+CDP (9222). Before a `dev:app` / `dev:built` or a bench, ask any other session working in this
+repo (SendMessage) and wait for "go". Say which source files you edit: its dev app hot-reloads
+them. When you finish, stop only the dev exe under `src-tauri\target` and the owner of port
+1420, never the installed app (bridge 47826), and tell the other session.
+
+## Which memory number to quote (2026-09-27)
+
+He read "the app takes 1 GB" from `tree_ws_mb`. On the live app at 9 h uptime:
+
+| Measure | Total | What it is |
+| --- | --- | --- |
+| Working set, summed per process (`tree_ws_mb`, the sampler's `total`) | 913 MB | Counts each shared DLL page once PER process. |
+| Private bytes, summed | 1,144 MB | The GPU process alone shows 719 MB, mostly graphics memory the driver reserves; not RAM in use. |
+| **Private working set, summed** | **333 MB** | What Task Manager shows. Renderer 182, GPU 71, Widevine CDM 32, WebView2 browser 23, host 15. |
+
+**Quote the private working set.** Use the WS sums as a trend inside one run only. Read it with:
+
+```powershell
+Get-CimInstance Win32_PerfFormattedData_PerfProc_Process |
+  Where-Object { $ids -contains [int]$_.IDProcess } |
+  Select-Object IDProcess, @{n='PrivWS_MB'; e={[int]($_.WorkingSetPrivate/1MB)}}
+```
+
+with `$ids` the host exe plus every `msedgewebview2.exe` whose command line names the app's
+data folder (`com.deetsmusic.app` for live, `com.deetsmusic.dev` for dev).
+
+**A plateau is not a leak.** Over one bench session the tree rose ~15 MB per pass for six
+passes, then held at 1,099–1,105 MB for six more: a cache filling, then full. A leak keeps
+rising; the leak run below gives the slope.
+
 ## The leak run — `npm run bench <scene> -- --repeat N` (2026-09-17, review item 5)
 
 `perf-history.csv` had no memory column, so a gesture that RETAINS something was invisible to
@@ -874,7 +953,8 @@ running it twice with different `--since` windows.
 
 ## Heaviness sampler — `scripts/heaviness-sample.ps1`
 
-One line per running app (installed + dev) per sample: summed working set, the largest
+One line per running app (installed + dev) per sample: summed working set (a trend, not the
+footprint: §Which memory number to quote), the largest
 renderer, the GPU process, and a 5 s CPU rate (100 = one core), then the dev page's heap /
 DOM / img counts when the dev app answers on its CDP port. `-Loop N` repeats every N
 seconds and appends to `scripts/heaviness-samples.log` (gitignored) until the terminal

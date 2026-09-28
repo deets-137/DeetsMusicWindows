@@ -135,6 +135,26 @@ and the bands hold still. Reduced sets the bands to 15 steps a second.
     Black-Yellow, album light 65, no music, 244 Hz display: 10 s = 2,394 frames, 4 dropped
     (0.2%), worst 21 ms, no long tasks. Busy per thread: the page 0.8%, the GPU process 2.3–3.4%,
     the compositor 5.2%, Viz 2.8%. The page does nothing at idle; the sea is compositor work.
+  - **Measured 2026-09-27 (`dev:built`, 244 Hz, Equalizer on, album light 100, clean GPU),
+    rows "LC…" in `scripts/perf-history.csv`:** idle without music, the GPU process 8 % and the
+    page 18 %; with music, 31 % and 34 %. Freezing the heave cut the GPU to 23 %; the heave,
+    the NP album spin and the progress bar stopped together gave 10 %. Any one part in motion
+    keeps the whole window compositing. The heave is re-aimed every 300 ms (`BREATH_EVERY`),
+    so its 1.1 s transition never ends and runs at the display rate; the ambient loops
+    already stepped at `--ambient-fps`, the heave did not.
+  - **The cap (his call 2026-09-27: "as long as it has no significant visual effect").** The
+    heave's transform, the neon's opacity and the glow's opacity now ease on
+    `--ocean-breath-ease-stepped`: `ocean.ts` samples `--ocean-breath-ease` at
+    `--ambient-fps` and writes it as a CSS `linear()` with one flat run per step
+    (`src/stepped-ease.ts`, `tests/stepped-ease.test.ts`). The shape of the ease is kept;
+    only the in-between frames go. Reduced motion (15 fps) re-steps it. The glow's color fade
+    (once per album) stays smooth. The progress bar needed no cap: it moves only on MusicKit's
+    time reports, a few times a second. Its cost is a layout per report (`width`), which is
+    the open layout trace.
+    **Desk test:** Ocean, a Sound effect on, album light up, a song with loud and quiet
+    parts. (1) The sea still rises and falls softly with the music; no visible stutter next to
+    the swell. (2) Bench `idle --skins ocean` with music: the GPU process falls from ~31 % to
+    near 10 %. (3) Settings › Animate backgrounds › Reduced: still soft, fewer steps.
   - **Recheck:** one heaviness row (22:21) read the dev renderer at 1,625 MB and 75% CPU. It fell
     during a storm of page reloads from another session's saves (the page was 0 minutes old, heap
     486 MB), so it is not the sea's cost. Run the heaviness sampler for an hour on a quiet page

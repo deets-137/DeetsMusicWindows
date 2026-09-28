@@ -27,6 +27,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import { currentCover, lookupPalette } from "./album-color";
 import { albumColor, fromOKLCH, toOKLCH, type RGB } from "./album-slots";
 import { BANDS, seaRows } from "./ocean-texture";
+import { parseBezier, parseSeconds, steppedEase } from "./stepped-ease";
 import type { LayerJob } from "./ocean-worker";
 import type { LayerSpec } from "./ocean-texture";
 import * as diag from "./diag";
@@ -288,6 +289,18 @@ let hops = 0;
 let heaving = false;
 let idleTimer: number | undefined;
 
+/** The heave's curve stepped at --ambient-fps (stepped-ease.ts): the transitions it drives are
+ *  re-aimed every few hops and never end, so a smooth one composites at the display rate. */
+function stepEase(): void {
+  if (!sea) return;
+  const css = getComputedStyle(sea);
+  const curve = parseBezier(css.getPropertyValue("--ocean-breath-ease"));
+  const secs = parseSeconds(css.getPropertyValue("--ocean-breath-dur"));
+  const fps = Number(css.getPropertyValue("--ambient-fps"));
+  if (curve && secs && fps > 0) sea.style.setProperty("--ocean-breath-ease-stepped", steppedEase(curve, secs, fps));
+  else sea.style.removeProperty("--ocean-breath-ease-stepped"); // the smooth curve (the CSS fallback)
+}
+
 function setBreath(b: number): void {
   sea?.style.setProperty("--ocean-breath", b.toFixed(3));
 }
@@ -347,6 +360,7 @@ function enter(): void {
   liveCover = undefined;
   // after the skin's tokens apply, so the sea has its size and colors
   requestAnimationFrame(() => {
+    stepEase();
     void paintSwell();
     followAlbum();
   });
@@ -374,6 +388,11 @@ export function initOcean(): void {
       applyGlow();
     }),
   ).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  // Animate backgrounds › Reduced lowers --ambient-fps: re-step the heave's curve.
+  new MutationObserver(() => requestAnimationFrame(() => active() && stepEase())).observe(root, {
+    attributes: true,
+    attributeFilter: ["data-bg-motion"],
+  });
   // The rows are laid out for the sea's height: a taller or shorter window repaints them,
   // once it settles (the bands stretch to fit meanwhile).
   let resizeTimer: number | undefined;
