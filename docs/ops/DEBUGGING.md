@@ -808,11 +808,28 @@ reduced or moved in time. Look for what draws when nothing needs to, first.
 - **The ambient loops were stepped at `--ambient-fps` (2026-09-13); the music-driven parts were
   not.** The Ocean heave is re-aimed every 300 ms, so its 1.1 s transition never ends and ran at
   244 Hz. Capped the same day: OCEAN.md §6 (the stepped `linear()` ease, `src/stepped-ease.ts`).
-- **The page cost is a separate lead.** It stays at ~34–37 % with the GPU back at 10 %. The
-  per-thread trace during playback: main thread 15 %, compositor 15 %, AudioWorklet (the
-  Equalizer) 2.6 %, media 0.7 %; the main thread ran **layout ~15 times a second**. The
-  progress bar sets `width` on each MusicKit time report and the time labels change text; the
-  layout trace that names the source is the next step.
+  **The heave alone moved nothing (31 → 29 %).** `document.getAnimations()` then showed the
+  real holdout: the Fancy scrubber's float animates on every progress bar while music plays,
+  on Ocean, Glass and Cyber (Cyber's is a `filter`, a repaint per frame). Stepped too
+  (`ambient.ts`, `SCRUB_EASES`). Smooth → stepped, GPU process with music: Ocean 24–31 → 13 %,
+  Glass 46 → 12 %, Cyber 28 → 11 %.
+- **The page cost had its own cause: redundant DOM writes.** The trace showed layout ~15 times
+  a second during playback. A `MutationObserver` over the whole document for 4 s named the
+  writers: the title-bar Sound button was rebuilt (`innerHTML` + `title`) on every Equalizer
+  bus status, ~4 a second, with nothing changed (`renderIcon`, sound-panel.ts); the NP time
+  labels rewrote the same text on every MusicKit time report. Both now write only on a change.
+  Trace during playback on Ocean, before → after both fixes: GPU process 30.4 → 5.9 %, page
+  main thread 15.3 → 3.0 %, compositor 15.2 → 7.1 %, layouts 61 → 4 in 4 s.
+
+**Finding what moves or writes, in the running page** (`scripts/webview-eval.mjs`):
+- `document.getAnimations()` lists every running CSS animation and transition with its name and
+  target. Anything in that list with a smooth timing function runs at the display rate.
+- A `MutationObserver` on `document` (`subtree`, `attributes`, `characterData`, `childList`)
+  for a few seconds, counted by type and element, names who writes to the DOM and how often.
+  A write that sets the same value still counts, and it can still cost a layout.
+
+**`dev:built` does not hot-reload.** It serves a fixed bundle: after an edit, stop it (the dev exe
+and the owner of port 1420) and start it again before the next bench.
 
 **Two A/B techniques this pass added:**
 - **Freeze a value that JS writes inline:** `--css ".ocean{--ocean-breath:0!important}"`. An

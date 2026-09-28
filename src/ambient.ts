@@ -20,6 +20,32 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { effective, onSettingsChange } from "./settings-store";
+import { onSkinChange } from "./skin";
+import { parseBezier, parseSeconds, steppedEase } from "./stepped-ease";
+
+// The fancy scrubbers' float (styles.css): while music plays, each skin's handle moves on every
+// progress bar — Ocean's bob and ripple, Glass's sheen, Cyber's breathing glow. At the display
+// rate that alone kept the window compositing (and Cyber's glow is a filter: a repaint per
+// frame). So each is stepped at --ambient-fps like the loops, with its ease kept
+// (stepped-ease.ts). A keyframe's timing function eases ONE segment, so the steps are counted
+// per segment. [token, the duration token, the ease in styles.css, the segment's share of it]
+const SCRUB_EASES: [string, string, string, number][] = [
+  ["--scrub-bob-ease-stepped", "--scrub-bob-dur", "ease-in-out", 0.5], // 0 → 50 % → 100 %
+  ["--scrub-ripple-ease-stepped", "--scrub-bob-dur", "ease-out", 0.7], // the spread, 0 → 70 %
+  ["--scrub-sheen-ease-stepped", "--scrub-sheen-dur", "ease-in-out", 1], // alternate, one way
+  ["--scrub-breathe-ease-stepped", "--scrub-breathe-dur", "ease-in-out", 1],
+];
+
+function stepScrubEases(root: HTMLElement): void {
+  const css = getComputedStyle(root);
+  const fps = Number(css.getPropertyValue("--ambient-fps"));
+  for (const [token, durToken, ease, share] of SCRUB_EASES) {
+    const secs = parseSeconds(css.getPropertyValue(durToken));
+    const curve = parseBezier(ease);
+    if (secs && curve && fps > 0) root.style.setProperty(token, steppedEase(curve, secs * share, fps));
+    else root.style.removeProperty(token); // the smooth ease (the CSS fallback)
+  }
+}
 
 export function initAmbient(): void {
   const win = getCurrentWindow();
@@ -27,8 +53,10 @@ export function initAmbient(): void {
 
   const applyMotion = () => {
     root.dataset.bgMotion = effective("backgroundMotion");
+    requestAnimationFrame(() => stepScrubEases(root)); // Reduced lowers --ambient-fps
   };
   applyMotion();
+  onSkinChange(() => requestAnimationFrame(() => stepScrubEases(root))); // a skin may set its own durations
   onSettingsChange((k) => {
     if (k === "backgroundMotion") applyMotion();
   });

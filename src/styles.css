@@ -3577,8 +3577,11 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   opacity: 0;
   transform: scale(1);
 }
-[data-fancy-scrub="on"][data-playing="on"][data-skin="ocean"] .scrub__handle::after { animation: scrub-bob var(--scrub-bob-dur) ease-in-out infinite; }
-[data-fancy-scrub="on"][data-playing="on"][data-skin="ocean"] .scrub__handle::before { animation: scrub-ripple var(--scrub-bob-dur) ease-out infinite; }
+/* stepped at --ambient-fps, like Glass's sheen and Cyber's breath below (ambient.ts writes the
+   stepped eases; the smooth ones are the fallback): at the display rate, these alone kept the
+   window compositing while music played */
+[data-fancy-scrub="on"][data-playing="on"][data-skin="ocean"] .scrub__handle::after { animation: scrub-bob var(--scrub-bob-dur) var(--scrub-bob-ease-stepped, ease-in-out) infinite; }
+[data-fancy-scrub="on"][data-playing="on"][data-skin="ocean"] .scrub__handle::before { animation: scrub-ripple var(--scrub-bob-dur) var(--scrub-ripple-ease-stepped, ease-out) infinite; }
 [data-fancy-scrub="on"][data-skin="ocean"] .scrub[data-dragging] .scrub__handle::after { animation: none; transform: translateY(1px) scale(0.9); }
 @keyframes scrub-bob    { 50% { transform: translateY(calc(-1 * var(--scrub-bob-amp))); } }
 @keyframes scrub-ripple { 0% { transform: scale(0.9); opacity: 0.4; } 70% { transform: scale(var(--scrub-ripple-scale)); opacity: 0; } 100% { transform: scale(var(--scrub-ripple-scale)); opacity: 0; } }
@@ -3606,13 +3609,13 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   border-radius: 50%;
   background: radial-gradient(circle at 32% 30%, var(--glint) 0, color-mix(in srgb, var(--glint) 40%, transparent) 22%, transparent 48%);
 }
-[data-fancy-scrub="on"][data-playing="on"][data-skin="glass"] .scrub__handle::before { animation: scrub-sheen var(--scrub-sheen-dur) ease-in-out infinite alternate; }
+[data-fancy-scrub="on"][data-playing="on"][data-skin="glass"] .scrub__handle::before { animation: scrub-sheen var(--scrub-sheen-dur) var(--scrub-sheen-ease-stepped, ease-in-out) infinite alternate; }
 [data-fancy-scrub="on"][data-skin="glass"] .scrub:is(:hover, [data-dragging]) { --handle-scale: var(--scrub-lens-scale); }
 @keyframes scrub-sheen { to { transform: translate(28%, 22%); } }
 
 /* Cyber — the bolt, charged: it keeps its mask and breathes a --title glow while music
    plays; a held bolt burns tight and bright, and a release flickers once. */
-[data-fancy-scrub="on"][data-playing="on"][data-skin="cyber"] .scrub__handle { animation: scrub-breathe var(--scrub-breathe-dur) ease-in-out infinite alternate; }
+[data-fancy-scrub="on"][data-playing="on"][data-skin="cyber"] .scrub__handle { animation: scrub-breathe var(--scrub-breathe-dur) var(--scrub-breathe-ease-stepped, ease-in-out) infinite alternate; }
 [data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-dragging] .scrub__handle { animation: none; filter: drop-shadow(0 0 var(--scrub-glow-held) var(--title)) brightness(1.3); }
 [data-fancy-scrub="on"][data-skin="cyber"] .scrub[data-released] .scrub__handle { animation: scrub-flicker var(--scrub-flicker-dur) steps(2, start) 1; }
 @keyframes scrub-breathe { from { filter: drop-shadow(0 0 var(--scrub-glow-min) var(--title)); } to { filter: drop-shadow(0 0 var(--scrub-glow-max) var(--title)); } }

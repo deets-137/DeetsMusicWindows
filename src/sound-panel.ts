@@ -1106,10 +1106,16 @@ function renderMeter(): void {
   meterHold = { limiterDb: 0, peakDb: -Infinity, since: now };
 }
 
+/** What the button last showed: every bus status (about 4 a second while music plays) calls
+ *  renderIcon, and rebuilding the same icon and hint forced a layout each time (2026-09-27). */
+let shownIcon = "";
+let shownTitle = "";
+
 function renderIcon(): void {
   if (!parts) return;
   const on = setting("soundEq") || adaptiveOn();
-  parts.btn.innerHTML = icon(sound.activePreset().bands, setting("soundEq"));
+  const html = icon(sound.activePreset().bands, setting("soundEq"));
+  if (html !== shownIcon) parts.btn.innerHTML = shownIcon = html;
   parts.btn.toggleAttribute("data-armed", on);
   const what: string[] = [];
   if (setting("soundEq")) what.push(`${sound.activePreset().name} EQ`);
@@ -1118,9 +1124,10 @@ function renderIcon(): void {
     if (setting("soundLowVol") !== "off") what.push("Fuller at low volume");
     if (sound.crossfeedState().on) what.push("Crossfeed");
   }
-  parts.btn.title = what.length
+  const title = what.length
     ? `Sound: ${what.join(" · ")}`
     : adaptiveUnhidden() ? "Sound: the equalizer and adaptive sound. Everything is off" : "Sound: the equalizer. It is off";
+  if (title !== shownTitle) parts.btn.title = shownTitle = title; // hint.ts moves it to data-hint
 }
 
 function renderCurve(): void {

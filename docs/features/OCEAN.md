@@ -148,13 +148,21 @@ and the bands hold still. Reduced sets the bands to 15 steps a second.
     `--ambient-fps` and writes it as a CSS `linear()` with one flat run per step
     (`src/stepped-ease.ts`, `tests/stepped-ease.test.ts`). The shape of the ease is kept;
     only the in-between frames go. Reduced motion (15 fps) re-steps it. The glow's color fade
-    (once per album) stays smooth. The progress bar needed no cap: it moves only on MusicKit's
-    time reports, a few times a second. Its cost is a layout per report (`width`), which is
-    the open layout trace.
+    (once per album) stays smooth. **The progress bar's motion is the Fancy scrubber's float**
+    (bob + ripple here, the sheen on Glass, the breathing glow on Cyber), which runs only while
+    music plays. It is stepped the same way, for every skin, by `ambient.ts` (`SCRUB_EASES`).
+    Without it, the heave cap alone moved nothing (31 → 29 %): the floats kept the window
+    compositing at 244 Hz.
+    **Result, music playing, smooth → stepped (GPU process / page):** Ocean 24–31 / 27–34 →
+    13 / 22; Glass 46 / 24 → 12 / 15; Cyber 28 / 33 → 11 / 15 (rows "LE"). With the two layout
+    guards (DEBUGGING.md §The 2026-09-27 load pass), the Ocean trace during playback: GPU
+    process 30.4 → 5.9 %, page main thread 15.3 → 3.0 %, layouts 61 → 4 in 4 s.
     **Desk test:** Ocean, a Sound effect on, album light up, a song with loud and quiet
     parts. (1) The sea still rises and falls softly with the music; no visible stutter next to
     the swell. (2) Bench `idle --skins ocean` with music: the GPU process falls from ~31 % to
-    near 10 %. (3) Settings › Animate backgrounds › Reduced: still soft, fewer steps.
+    near 10 %. (3) Settings › Animate backgrounds › Reduced: still soft, fewer steps. (4) Fancy
+    scrubber on, music playing, on Ocean, Glass and Cyber: the float bobs and ripples, the
+    sheen drifts and the bolt breathes as before, with no visible stepping.
   - **Recheck:** one heaviness row (22:21) read the dev renderer at 1,625 MB and 75% CPU. It fell
     during a storm of page reloads from another session's saves (the page was 0 minutes old, heap
     486 MB), so it is not the sea's cost. Run the heaviness sampler for an hour on a quiet page

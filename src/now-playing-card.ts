@@ -555,8 +555,11 @@ export const nowPlayingCard: CardDef = {
           seekHold = -1;
         }
         seek.setValue(p.progress); // no-op while dragging
-        if (npElapsed) npElapsed.textContent = fmt(p.currentTime);
-        if (npRemaining) npRemaining.textContent = p.duration ? `-${fmt(p.duration - p.currentTime)}` : "0:00";
+        // Only on a change: the reports come ~4 a second and a text write is a layout.
+        const elapsed = fmt(p.currentTime);
+        const remaining = p.duration ? `-${fmt(p.duration - p.currentTime)}` : "0:00";
+        if (npElapsed && npElapsed.textContent !== elapsed) npElapsed.textContent = elapsed;
+        if (npRemaining && npRemaining.textContent !== remaining) npRemaining.textContent = remaining;
       });
     }
 
