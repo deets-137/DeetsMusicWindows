@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,19 @@ updated: 2026-09-27
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-09-27 night → 09-28 — 0.25.1 published; the uninstall removes start with Windows (branch `main`)
+
+- **0.25.1 live** (`1b23fd5`, his hand test, "Tested, publish it"). He picked 0.25.1 over
+  0.26.0. The log row is RELEASE.md §0a.
+- **His question:** is start with Windows kept across updates? Yes. The installer never
+  touches the Run value, and an update keeps the path. Found on the way: an uninstall left the
+  value too, a login entry for an exe that is gone.
+- **Built, his yes:** `NSIS_HOOK_POSTUNINSTALL` in `src-tauri/nsis/hooks.nsh` removes the value,
+  but not on `/UPDATE` and only when the value points into this `$INSTDIR`. Checked by compiling
+  a copy of the generated `installer.nsi` with the uninstaller signing blanked (no errors, no
+  warnings). The desk test is RELEASE.md §3; it needs the next real build. The old uninstallers
+  in the field do not have the hook.
 
 ## 2026-09-27, later still — The hand tests Claude could reach; the tray on CDP (branch `rules-rulez`)
 

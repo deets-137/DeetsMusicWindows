@@ -125,6 +125,10 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    rule of yours with a yes / no condition (Charging, Explicit) and read the blanks.
 4. Then the Rulez design pass (RULEZ.md §15) or Layout (LAYOUT.md), his pick.
 
+**The uninstall removes start with Windows (2026-09-28, built, not in a release yet).**
+`NSIS_HOOK_POSTUNINSTALL` (RELEASE.md §3). The desk test there runs on the next real build:
+update over it (the Run value stays), then uninstall (the value is gone).
+
 **Eight more rule keys, Battery saver, Focus (2026-09-27 evening, built, committed in
 `3b433bc`, pushed).** Motion, Fancy Glass, the two Friends switches and Show notices are rule
 keys; the recipe Battery saver holds four of them off while not charging; Focus also stops

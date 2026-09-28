@@ -24,6 +24,14 @@
 ; Both marks live in the app data folder, which an uninstall keeps (RELEASE.md §5).
 ; DeetsMusic Beta (docs/ops/BETA.md) is never asked: the full app's installer owns the question.
 ;
+; POSTUNINSTALL — remove the start-with-Windows value (2026-09-28). The app writes it
+; (`HKCU\…\Run`, named ${PRODUCTNAME}, `"<exe>" --tray`: settings.rs autostart_write), and the
+; template never removes it, so an uninstall left a login entry for an exe that is gone. Not on
+; /UPDATE: an update keeps the same path, so the value stays right and the user's choice stays.
+; Only a value that points into THIS $INSTDIR is removed; one that points elsewhere is not ours.
+; The app's `autostart_seeded` flag lives in the app data, so a reinstall that keeps the data
+; does not turn start-with-Windows back on; a reinstall after "Delete app data" does.
+;
 ; DeetsMusic Beta builds from this same file, so nothing here names the app: ${PRODUCTNAME}
 ; and ${BUNDLEID} are the template's own defines ("DeetsMusic Beta", com.deetsmusic.beta).
 
@@ -116,6 +124,28 @@
 
 !macro NSIS_HOOK_PREUNINSTALL
   !insertmacro DeetsStopCli
+!macroend
+
+; The template declares StrFunc's StrLoc for the installer only; the uninstaller needs its own.
+${UnStrLoc}
+
+!macro NSIS_HOOK_POSTUNINSTALL
+  ${If} $UpdateMode <> 1
+    Push $0
+    Push $1
+    ClearErrors
+    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
+    ${IfNot} ${Errors}
+      ; StrLoc compares without case, as Windows compares paths.
+      ${UnStrLoc} $1 $0 "$INSTDIR\" ">"
+      ${If} $1 != ""
+        DetailPrint "Removing ${PRODUCTNAME} from start with Windows..."
+        DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
+      ${EndIf}
+    ${EndIf}
+    Pop $1
+    Pop $0
+  ${EndIf}
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL

@@ -283,10 +283,23 @@ elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
 
 ## 3. The NSIS hooks
 
-`src-tauri/nsis/hooks.nsh` supplies three macros that Tauri splices into the generated
+`src-tauri/nsis/hooks.nsh` supplies four macros that Tauri splices into the generated
 installer:
 
 - **`NSIS_HOOK_PREINSTALL`** and **`NSIS_HOOK_PREUNINSTALL`** — stop the bundled CLI.
+- **`NSIS_HOOK_POSTUNINSTALL`** (2026-09-28) — remove the start-with-Windows value
+  (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, named `${PRODUCTNAME}`). The app writes
+  it (`settings.rs` `autostart_write`) and Tauri's template never removed it, so an uninstall
+  left a login entry for an exe that was gone. Skipped on `/UPDATE`: an update keeps the same
+  path and the user's choice. Only a value that points into this `$INSTDIR` is removed. The
+  app's `autostart_seeded` flag is in the app data, so a reinstall that keeps the data does not
+  turn start-with-Windows on again; a reinstall after **Delete app data** does. The hook runs
+  in the NEW uninstaller only: an install on 0.25.1 or older still leaves the value when it
+  uninstalls. It also runs when the reinstall page's "uninstall first" choice runs the old
+  uninstaller without `/UPDATE`, so that path turns start-with-Windows off.
+  **Desk test:** install the build, check the value
+  (`reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v DeetsMusic`), update over it
+  with the next build (the value stays), then uninstall (the value is gone).
 - **`NSIS_HOOK_POSTINSTALL`** — offer the browser extension walkthrough
   ([EXTENSION.md](../integrations/EXTENSION.md) §6). Asked at most once per PC (2026-09-14): never on an
   updater or silent install (`$UpdateMode = 1`, `IfSilent`), never once the extension has
@@ -420,7 +433,8 @@ install the beta again over itself: only the beta closes, and it starts again.
 "$LOCALAPPDATA/DeetsMusic/uninstall.exe"        # add /S for no prompts
 ```
 
-Or Settings → Installed apps. The `PREUNINSTALL` hook stops the CLI first.
+Or Settings → Installed apps. The `PREUNINSTALL` hook stops the CLI first. The
+`POSTUNINSTALL` hook removes the start-with-Windows value (§3).
 
 User data is **not** part of the install root, so this leaves it. Remove it deliberately:
 
