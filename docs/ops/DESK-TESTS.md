@@ -84,6 +84,17 @@ Terms:
   `dev:fresh`, then stop the app and copy both back.
 - **A forced dead song:** a fake id in `/play`'s `tracks` is caught by the top-up's id check
   (`player:deadIds`) before MusicKit sees it, so it does NOT force the dead-next heal (B20).
+- **The tray panel (2026-09-27 late night):** `node scripts/webview-eval.mjs --tray "<js>"`.
+  In dev, `dev-app.mjs` gives the tray window the main window's browser arguments, so WebView2
+  runs it in the same browser process and it is a target on the same CDP port (with none of its
+  own it ran alone and no script could reach it: B2). Release builds are unchanged.
+- **A network drop, held:** network emulation lasts only while its CDP session is open, so a
+  drop test is one small Node script that keeps the socket: `Network.emulateNetworkConditions
+  {offline}` + `setCacheDisabled`, then a seek past the buffer (MusicKit buffers a whole song in
+  seconds, so a cut alone does nothing), with `invoke("apple_force_offline", {secs})` holding the
+  app's own Apple check out.
+- **An AirPlay speaker another app holds** refuses the dev app (`airplay: connect refused: the
+  speaker is held by DeetsMusic`). The live app playing to it is his music: leave it.
 - **Keys in a list:** send them to `document.activeElement`, never to `document`. A key
   outside a list stops its refocus watch (list-keys.ts), so a key on `document` hides the
   behavior you are testing.
@@ -227,3 +238,13 @@ Summary: *12 pass (one faked) · 1 fail · 4 unreachable or not forceable · 3 l
 |---|---|---|---|
 | A1b | 2026-09-27 | pass | The fix redone (COMPASS.md §5a, as built). 8: Rulez Enter → the same rule, open; Escape → folded, the ring on it; ↓ → the next rule. 9: Diary Enter → the first song row; Escape → the tile of the entry; the picker's ↓ from the field → a result. 10: Rewind Menu key, Escape → the ring on the row; ↓ moves; a mouse click on a Diary tile → no ring. The first try found a second bug, fixed: Rulez, still watching from step 8, took the ring when the Diary redrew; a key outside the list now stops the watch |
 | B3 | 2026-09-27 | pass (step 1) | `dev:fresh` with `DEETS_NO_SEED`: no token or db seeded, `isAuthorized` false, the tour on *Step 1 of 5: Sign in to Apple Music*. The dev profile restored after |
+
+**The hand tests Claude could reach (2026-09-27 late night, dev app, his ask).**
+
+| # | Date | Result | Seen |
+|---|---|---|---|
+| B2 | 2026-09-27 | pass | With the tray on CDP (`--tray`): Live Theming on Sunshine's cover took the theme Moonlight → Black & Yellow, then a skin pick by hand Ocean → Glass; the tray panel's `data-theme` / `data-skin` matched the main window each time |
+| Drop | 2026-09-27 | pass | WORKLOG 2026-09-27 14:00 (`d1805fc`): Sunshine at 65 s, the webview cut offline and the Apple check forced out, a seek past the buffer: the song stopped (`resumeArmed {at: 65}`). Network back, the check still out, Play: `resumeOnPlay {at: 65, used: true}`, `resumeSeek {at: 65, done: true}`, 73 s eight seconds later, hushed until the seek. No toast in the first second |
+| B10 chime | 2026-09-27 | **not run** | The speaker refused the dev app: `connect refused: the speaker is held by DeetsMusic` — his live app was playing to Living Room. Not taken over. His, with the live app off the speaker |
+| B11 | 2026-09-27 | pass (step 2); step 3 not reached | Ocean: one 629 ms fade; the six sea loops `paused` through it, their clock held at 18,426 ms, then on from 18,426. Glass: 590 ms; `aurora-drift` and the album aurora spin held at 3,638 ms, then on from there. Press (step 3): the Live Theming fade fell in the song-load gap, when the record is paused anyway; a mid-song rule fade could not be made without more holds on his profile. The record's group rule is in styles.css; his eye |
+| Diary 4d | 2026-09-27 | pass (1, 2, 3, 5, 6); 4 his eye | DIARY.md §4d. 1: Midi 700 px: the two boxes 133 px side by side, nothing cut, no sideways scroll. 2: Midi 495 px, card 230: boxes one tile (96), the top row scrolls (208 in 180), the shelves stay put. 3: nothing loaded: the + box 144 = 1.5 × 96, centered. 5: Max 950, card 437: note 72 (the cap; 20 % = 75); Max 760, card 342: note 56 (= 20 %). 6: a tall inline height (what the drag sets) stops at half the entry: 188 / 140 |

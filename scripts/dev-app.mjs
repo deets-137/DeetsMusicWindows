@@ -178,15 +178,16 @@ if (freshArg) {
   );
 }
 
+const mainArgs = `${conf.app.windows.find((w) => w.label === "main")?.additionalBrowserArgs ?? ""} --remote-debugging-port=${cdp}${gpuMode ? " " + GPU_FLAGS[gpuMode] : ""}`.trim();
 const windows = conf.app.windows.map((w) => ({
   ...w,
   title: `${w.title} (${SECOND ? "dev 2" : "dev"})`,
-  ...(w.label === "main"
-    ? {
-        additionalBrowserArgs:
-          `${w.additionalBrowserArgs ?? ""} --remote-debugging-port=${cdp}${gpuMode ? " " + GPU_FLAGS[gpuMode] : ""}`.trim(),
-      }
-    : {}),
+  // The tray panel too, dev only (2026-09-27): WebView2 shares a browser process only between
+  // webviews with the SAME arguments. With none of its own, the tray ran in a second process
+  // with no CDP port, so no script could read it (desk test B2). Given the main window's
+  // arguments it joins that process and is a target on the same port
+  // (`webview-eval.mjs --tray`). A release build keeps the tray's own, empty arguments.
+  ...(w.label === "main" || w.label === "tray" ? { additionalBrowserArgs: mainArgs } : {}),
 }));
 
 // --perf  : hold DevTools shut (it renders in the same GPU process and distorts every

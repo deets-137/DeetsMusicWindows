@@ -19,12 +19,17 @@ const fail = (msg, code = 2) => {
 const argv = process.argv.slice(2);
 const second = argv[0] === "--second";
 if (second) argv.shift();
+// --tray: the tray panel's webview (`tray.html`), a CDP target in dev since 2026-09-27
+// (dev-app.mjs gives it the main window's arguments). It exists once the app has started;
+// it may be hidden, and a script still reads and drives it.
+const tray = argv[0] === "--tray";
+if (tray) argv.shift();
 const shot = argv[0] === "--shot" ? argv[1] : null;
 // --shot FILE x,y,w,h[,scale]: only that part of the window, magnified (a close look at a small mark).
 const clipArg = shot && argv[2] ? argv[2].split(",").map(Number) : null;
 const clip = clipArg ? { x: clipArg[0], y: clipArg[1], width: clipArg[2], height: clipArg[3], scale: clipArg[4] ?? 1 } : undefined;
 const expr = shot ? "" : argv.join(" ");
-if (!expr && !shot) fail('usage: node scripts/webview-eval.mjs [--second] "__toast.demo()" | --shot out.png');
+if (!expr && !shot) fail('usage: node scripts/webview-eval.mjs [--second] [--tray] "__toast.demo()" | --shot out.png');
 
 let gen;
 try {
@@ -42,8 +47,8 @@ try {
 } catch {
   fail(`nothing answers on CDP port ${port} — is the dev app running?`);
 }
-const page = targets.find((t) => t.type === "page" && t.url.startsWith(gen.build.devUrl) && !t.url.includes("tray.html"));
-if (!page) fail(`no main-window page among ${targets.length} target(s)`);
+const page = targets.find((t) => t.type === "page" && t.url.startsWith(gen.build.devUrl) && t.url.includes("tray.html") === tray);
+if (!page) fail(`no ${tray ? "tray" : "main-window"} page among ${targets.length} target(s)`);
 
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 const timer = setTimeout(() => fail("no answer in 20 s"), 20_000);

@@ -143,8 +143,8 @@ top-up logs `player:topUpSkip` when it cannot run. Cannot be forced: watch the n
 - **The fail, A1, is fixed 2026-09-28** (list-keys.ts keeps the focus through a redraw;
   COMPASS.md §5a). The re-test is §5a steps 8–10, open.
 - **Blocked on your yes:** B3, B12, B13 need `npm run dev:fresh` (it wipes the dev app's
-  sign-in); B15 needs the dev app restarted as `dev:built`. B2 cannot be driven: the tray
-  webview is not a CDP target, so it is yours (RULES.md §18, the tray follows a look change).
+  sign-in); B15 needs the dev app restarted as `dev:built`. (All run since; B2 passed
+  2026-09-27 late night with the new `webview-eval.mjs --tray`, DESK-TESTS.md §5.)
 - **Two findings, not fixed:** `navigator.clipboard.writeText` refuses a window without focus,
   so a Diary Done from the CLI or an agent toasts *Couldn't copy the Diary entry* (A6; a fork:
   skip the copy when the window is behind, or say so in the toast). `deetsmusic diag --flush`

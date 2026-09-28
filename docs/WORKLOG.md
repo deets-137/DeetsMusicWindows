@@ -12,6 +12,22 @@ updated: 2026-09-27
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-27, later still — The hand tests Claude could reach; the tray on CDP (branch `rules-rulez`)
+
+His ask: run the four open hand tests an agent can reach, and a dev-only tool for the tray.
+- **The tray tool:** in dev, the tray window gets the main window's browser arguments
+  (`dev-app.mjs`), so WebView2 puts it in the same process and on the same CDP port;
+  `webview-eval.mjs --tray` reaches it. No Rust change. B2 passed with it.
+- **Results** (DESK-TESTS.md §5, the late-night table): the network-drop resume passed
+  (`resumeOnPlay {at: 65, used: true}`); the crossfade's step 2 passed on Ocean and Glass (the
+  loops' clock held through the fade and went on from the same point); the narrow Diary card
+  passed steps 1, 2, 3, 5, 6. Not reached: the HomePod chime (his live app held the speaker, not
+  taken over) and the Press record mid-song (the fade came in the song-load gap).
+- Also in this stretch: the Album light hint now says it costs more without a graphics card
+  (his call after the re-bench), and `main` was fast-forwarded to `rules-rulez`.
+- Put back: the dev window 1100×950, own theme Black & Yellow, own skin Ocean, the record Off,
+  the look schedule on Sunrise and sunset, Restore on launch = Last song.
+
 ## 2026-09-27, late night — Two desk-test findings fixed: list-keys refocus, `dev:fresh` seed (branch `rules-rulez`)
 
 His call: fix both findings of the night run, without disturbing the other session's bench.

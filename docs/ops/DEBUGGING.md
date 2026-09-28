@@ -1099,6 +1099,12 @@ node scripts/webview-eval.mjs "JSON.parse(localStorage.getItem('deets.settings')
 its own identity (CDP from 9232; `webview-eval.mjs --second` reaches it). `-- --hidden` starts
 either one with no window (the app's own `--tray` launch); CDP still works.
 
+**The tray panel (2026-09-27).** `webview-eval.mjs --tray "<js>"` runs in the tray panel's
+webview (`tray.html`). WebView2 shares one browser process only between webviews with the same
+arguments; in dev, `dev-app.mjs` gives the tray window the main window's, so it joins that
+process and its CDP port. It exists from launch, hidden or shown. Release builds keep the tray's
+own arguments.
+
 **Calling the app's own modules.** `await import('/src/room.ts')` reaches the SAME module the
 app uses only until Vite hot-updates something. After that the app's copy is
 `/src/room.ts?t=…`, and the plain URL loads a SECOND copy with its own state and sockets
