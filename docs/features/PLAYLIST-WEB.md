@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
 sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts]
-updated: 2026-09-22
+updated: 2026-09-28
 ---
 # DeetsMusic — the playlist web
 
@@ -643,3 +643,55 @@ Restart the dev runner (a schema migration, v8).
    plays. Play something else; the next check (restart) deletes it.
 8. Export a Temp web to Apple Music: the date goes away (kept).
 9. Old web playlists (made before today) show no date and are never deleted.
+
+## 11. Play a web from the song playing (2026-09-28)
+
+> **Part:** built · 2026-09-28
+
+Terms used in this section:
+- **The song playing** — the queue's current song, playing or paused.
+- **Heard** — the song's position when the web is made, in % of its length.
+
+A web whose seed is the song playing plays when it is made. The seed leads the web (§9.1), so
+the web would start that song again. The second row skips it when you heard most of it.
+
+### 11.1 Decisions (his calls, 2026-09-28)
+
+| Fork | Decision |
+|---|---|
+| Which webs play | A **song** seed that is the song playing, from any start: the right-click *Start a Web* row, the panel's **Make playlist**, the Compass. The code answers it: all three end in a known seed. |
+| How it plays | **Replaces the queue**, as Play on a playlist does. A rule changes it: *Plays now, keeps Up Next* or *Plays after the song*. `webPlayMode`, no Settings row. |
+| The skip point | **75 %** of the song. A rule changes it. `webSkipSeedAt`, no Settings row. |
+| Defaults | Both rows **on**. |
+
+### 11.2 As built
+
+- Rows: Settings › Playlists › **Play a web from the song playing** (`webPlayNew`) and **Skip the
+  song you just heard** (`webSkipSeed`), shown while the first is on. Both wear the New badge.
+- `web.ts` `playIfSeedPlaying`, called by `webFrom` (menu, Compass) and the panel's `make`, after
+  the playlist exists and before the chip flies. It reads all four keys with `effective`.
+- Heard is read when the web is made (the build takes a few seconds), with `playbackPosition`
+  over `songDuration` (player.ts). At or past the point, the web starts at its second song. Below
+  it, the song plays again from the start.
+- *Replaces the queue*: `playTracks(list, 1)` keeps the seed behind the start, so Previous
+  reaches it. *Plays now, keeps Up Next*: `playTracksKeepQueue` without the seed when skipped.
+  *Plays after the song*: `queueTracksAt(0, …)` without the seed, always: the song plays on.
+- The play context is `playlist:local:<id>`, as a press on the playlist gives.
+- Log: `web:play` with `from`, `mode`, `heard`, `skip`, `at`.
+- Rulez: four While words in Playback (`rulez-words.ts`); the skip point is a number in %.
+
+### 11.3 Desk test
+
+1. Play a song. Right-click its Now Playing row (or its Queue row): **Start a Web**. The web
+   plays at once and the Queue shows the web. Log: `web:play` with `from: "menu"`.
+2. At about 30 % of a song, start a web from it: the song plays again from 0:00 (`skip: false`).
+3. Seek past 75 % (`control seek` works), start a web: the web's second song plays; Previous
+   goes back to the seed (`skip: true`).
+4. Turn **Skip the song you just heard** off, repeat step 3: the seed plays from the start.
+5. Turn **Play a web from the song playing** off: the Skip row goes away, and a web opens in the
+   Playlists card and plays nothing.
+6. From the panel: search the playing song under Song, Make playlist: step 1's result, with
+   `from: "panel"`. From the Compass: `web <the song>`: `from: "compass"`.
+7. A web from a different song, an album or an artist: nothing plays.
+8. Rulez: a While row *Always* → *A web from the song playing* = *Plays after the song*. Step 1:
+   the song plays on, and the web's other songs sit at the top of Up Next.

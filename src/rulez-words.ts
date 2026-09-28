@@ -211,6 +211,7 @@ const SHARING = ["shareActivityApp", "shareActivityDiscord", "discordRoomInvite"
 const ON_OFF: Choice[] = [{ value: true, label: "On" }, { value: false, label: "Off" }];
 const MOTION: Choice[] = [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }];
 const NOTICES: Choice[] = [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }];
+const WEB_PLAY: Choice[] = [{ value: "replace", label: "Replaces the queue" }, { value: "keep", label: "Plays now, keeps Up Next" }, { value: "after", label: "Plays after the song" }];
 /** A While word that holds one Settings row at a value: its id is the row's key, so `doWordOf`
  *  finds it by the key (RULES.md §18, the rule keys of 2026-09-27). The label is the row's. */
 const keyWord = (key: string, section: Section, label: string, choices: Choice[]): DoWord => ({
@@ -288,6 +289,15 @@ export const DOS: DoWord[] = [
   keyWord("friendsListenAlong", "Sharing", "Let friends listen along", ON_OFF),
   keyWord("friendsRoomInvite", "Sharing", "Put my room code on my box", ON_OFF),
   keyWord("toasts", "Window", "Show notices", NOTICES),
+  // Play a web from the song playing (PLAYLIST-WEB.md §11, 2026-09-28): the mode and the skip
+  // point have no Settings row; these words are how a pro user sets them.
+  keyWord("webPlayNew", "Playback", "Play a web from the song playing", ON_OFF),
+  keyWord("webPlayMode", "Playback", "A web from the song playing", WEB_PLAY),
+  keyWord("webSkipSeed", "Playback", "Skip the song you just heard", ON_OFF),
+  {
+    id: "webSkipSeedAt", section: "Playback", label: "Skip the song you just heard past", input: "number", unit: "%",
+    state: (v) => [{ target: { key: "webSkipSeedAt" }, value: Math.min(100, Math.max(1, Number(v))) }],
+  },
 ];
 
 export const doWord = (id: string): DoWord | undefined => DOS.find((d) => d.id === id);
@@ -547,6 +557,8 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   cardSwapMotion: { keep: "keeps Animate card swaps" }, fancyScrubber: { keep: "keeps Fancy scrubber" },
   glassFancy: { keep: "keeps Fancy Glass" }, friendsListenAlong: { keep: "keeps Let friends listen along" },
   friendsRoomInvite: { keep: "keeps Put my room code on my box" }, toasts: { keep: "keeps Show notices at" },
+  webPlayNew: { keep: "keeps Play a web from the song playing" }, webPlayMode: { keep: "keeps a web from the song playing at" },
+  webSkipSeed: { keep: "keeps Skip the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },
 };
 /** Every Do word has its own SAYS phrase (tests/rulez-words.test.ts checks it); the label is only
  *  a fallback, and it goes through `lowerFirst` so a name in it keeps its case. */

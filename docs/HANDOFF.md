@@ -113,6 +113,7 @@ The short list of what is not finished, as of 2026-09-27. Each item names where 
 When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Pick up here (2026-09-28, next session).** In order:
+0. **Desk test: Play a web from the song playing** (built + committed 2026-09-28, not run): PLAYLIST-WEB.md §11.3.
 1. ~~The two §18a forks~~ — his calls 2026-09-27 late night (RULES.md §18a): a hand change
    sets the whole rule aside (unchanged); a Settings row shows the value in force (built,
    desk-tested by Claude). His look: the rows under Battery saver or Focus, and their dot.

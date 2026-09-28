@@ -12,6 +12,21 @@ updated: 2026-09-28
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-28 — Play a web from the song playing
+
+**His ask:** a Settings row: a web made from the song playing plays at once; a second row skips
+that song when you already heard most of it.
+
+**His calls:** the code decides which webs (a song seed that is the song playing, from every
+start); the web replaces the queue, and a rule can change how (`webPlayMode`, no row); the skip
+point is 75 %, and a rule can change it (`webSkipSeedAt`, no row); both rows on by default.
+
+**Built and committed, NOT desk-tested:** `playIfSeedPlaying` in web.ts, four rule keys, two
+Settings rows with the New badge, the agent specs, four Rulez While words. The first number rule
+key, so the range row reads `ownSetting`. PLAYLIST-WEB.md §11; the desk test is §11.3. The
+choices Claude made inside his picks are listed in §11.2 (a paused song counts; heard is read
+when the web is made; Previous reaches a skipped seed).
+
 ## 2026-09-28 — Cruisin and Pro: recipes in Settings, a start pick (design only)
 
 **His ask:** fold Rulez away for users who will never build a rule; let a beginner turn on an

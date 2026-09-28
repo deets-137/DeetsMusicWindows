@@ -23,7 +23,9 @@ import { enterRows } from "./pop";
 import { searchCatalog, type Album, type Artist, type SearchResults, type SearchType } from "./search";
 import { playlistCreate, playlistAddTracks, requestOpenPlaylist } from "./playlists";
 import { requestCard } from "./layout-bus";
-import { setting, setSetting, onSettingsChange } from "./settings-store";
+import { setting, setSetting, onSettingsChange, effective } from "./settings-store";
+import { playTracks, playTracksKeepQueue, queueTracksAt, playbackPosition, songDuration } from "./player";
+import * as queue from "./queue";
 import { esc } from "./collection-card";
 import { toast } from "./toast";
 import { handOff } from "./handoff";
@@ -190,10 +192,39 @@ async function webFrom(
   await playlistAddTracks(id, list);
   diag.log("web:expiry", { arm: id, days: expireDays });
   diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from, reach });
+  playIfSeedPlaying(seed, list, id, from);
   const open = () => requestOpenPlaylist(`local:${id}`, list);
   const el = chip();
   if (el?.isConnected) handOff(el, "playlists", () => Promise.resolve(list), open, list.length, true);
   else { requestCard("playlists"); open(); }
+}
+
+/**
+ * Play a web from the song playing (PLAYLIST-WEB.md §11). A song seed that is the queue's
+ * current song (playing or paused) plays the new web, on every start: the right-click row,
+ * the panel, the Compass. The seed leads the web (§9.1), so the web would start the song you
+ * hear again: past `webSkipSeedAt` % of it, the web starts at its second song instead.
+ * `webPlayMode` "after" never restarts the seed: the song plays on and the rest follows it.
+ */
+function playIfSeedPlaying(seed: WebSeed, list: Track[], id: number, from: string): void {
+  const cur = queue.getCurrent();
+  if (seed.kind !== "song" || !cur || !list.length) return;
+  const t = seed.track;
+  const same = (!!t.catalogId && cur.catalogId === t.catalogId) || (!!t.libraryId && cur.libraryId === t.libraryId);
+  if (!same || !effective("webPlayNew")) return;
+  const lead = list[0].catalogId === t.catalogId || (!!t.libraryId && list[0].libraryId === t.libraryId);
+  const dur = songDuration();
+  const heard = dur > 0 ? Math.round((playbackPosition() / dur) * 100) : 0;
+  const mode = effective("webPlayMode");
+  const skip = lead && list.length > 1 && (mode === "after" || (effective("webSkipSeed") && heard >= effective("webSkipSeedAt")));
+  const rest = skip ? list.slice(1) : list;
+  const ctx = `playlist:local:${id}`;
+  diag.log("web:play", { from, mode, heard, skip, at: effective("webSkipSeedAt") });
+  const run =
+    mode === "after" ? queueTracksAt(0, rest, ctx)
+    : mode === "keep" ? playTracksKeepQueue(rest, ctx)
+    : playTracks(list, skip ? 1 : 0, ctx); // the seed stays behind the start: Previous reaches it
+  run.catch((e) => console.error("[web] play", e));
 }
 
 /**
@@ -981,6 +1012,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     }
     if (expireDays) diag.log("web:expiry", { arm: id, days: expireDays });
     diag.log("web:make", { kind: result.kind, seed: seedName(seed), expireDays, songs: tracks.length, genres: [...picked], prefer: setting("webPrefer") });
+    playIfSeedPlaying(seed, tracks, id, "panel");
     // The chip flight (handoff.ts, ARTIST-VIEW.md §5): the picked artist row, with the song
     // count, flies to the Playlists card, and the playlist opens under the landing. The panel
     // shrinks into the row first or pops out as it lifts (Web panel closes, `webMakeMotion`). The row must be on screen: typed text hides it, so clear the field first.

@@ -179,6 +179,8 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "glassauroracolor", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
   { section: "Window", row: "drillgrow" }, // Grow on album or artist, the rules engine's first row, built 2026-09-26
   { section: "Menus, hints and notices", row: "gototarget" }, // Go to opens, route 8, built 2026-09-27
+  { section: "Playlists", row: "webplaynew" }, // Play a web from the song playing, built 2026-09-28
+  { section: "Playlists", row: "webskipseed" },
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -338,7 +340,7 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
-    keys: ["playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webMakeMotion"],
+    keys: ["playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt", "webMakeMotion"],
   },
   {
     id: "sound", label: "Sound", hint: adaptiveUnhidden() ? "The equalizer, adaptive sound and their choices. Not your saved presets" : "The equalizer and its choices. Not your saved presets",
@@ -1697,6 +1699,14 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           hint: "Web only leaves the artist's songs unfiltered. Keep 5 keeps at least five",
           options: [{ value: "all", label: "All songs" }, { value: "floor", label: "Keep 5" }, { value: "off", label: "Web only" }],
         },
+        // PLAYLIST-WEB.md §11 (2026-09-28). How it plays and the skip point have no row: a rule sets them.
+        storeToggle("webplaynew", "Play a web from the song playing", "webPlayNew", () =>
+          "A web you start from the song you hear plays at once. It replaces the queue"),
+        {
+          ...storeToggle("webskipseed", "Skip the song you just heard", "webSkipSeed", () =>
+            `The web starts at its second song when you heard ${effective("webSkipSeedAt")}% of the first. Below that, the song plays again from the start`),
+          when: () => ownSetting("webPlayNew"),
+        },
         {
           kind: "choice", id: "webmakemotion", label: "Web panel closes", key: "webMakeMotion",
           hint: "Pop out closes the web panel at once while the artist flies to the playlist",
@@ -2152,7 +2162,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const fx = flashOf(r.id);
     const mark = ` data-set-row="${r.id}"${fx.style}`;
     if (r.kind === "range") {
-      const v = setting(r.key);
+      const v = ownSetting(r.key);
       const fill = ((v - r.min) / (r.max - r.min)) * 100;
       return (
         `<div class="set__row set__row--range${fx.cls}"${mark}${tip}>${label}` +
@@ -2554,7 +2564,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const one = r.step ?? 1;
     const step = e.shiftKey ? one * 10 : one;
     const delta = ({ ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step } as Record<string, number>)[e.key];
-    const to = e.key === "Home" ? r.min : e.key === "End" ? r.max : delta === undefined ? null : Math.round((setting(r.key) + delta) * 100) / 100;
+    const to = e.key === "Home" ? r.min : e.key === "End" ? r.max : delta === undefined ? null : Math.round((ownSetting(r.key) + delta) * 100) / 100;
     if (to === null) return;
     e.preventDefault();
     setSetting(r.key, Math.max(r.min, Math.min(r.max, to)));

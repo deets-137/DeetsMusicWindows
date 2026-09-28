@@ -75,7 +75,7 @@ const storeToggle = (section: string, key: BoolKey, label: string, extra: Partia
 });
 const storeRange = (section: string, key: NumKey, label: string, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "range", min: 0, max: 100,
-  get: () => String(setting(key)),
+  get: () => String(ownSetting(key)),
   set: (v) => setSetting(key, Number(v)),
   ...extra,
 });
@@ -353,6 +353,11 @@ const SPECS: Spec[] = [
     get: () => String(setting("webTempDays")),
     set: (v) => setSetting("webTempDays", Number(v) as 1 | 3 | 5 | 7 | 30),
   }),
+  // PLAYLIST-WEB.md §11. The mode and the skip point have no Settings row; an agent and a rule set them.
+  storeToggle("Playlists", "webPlayNew", "Play a web from the song playing"),
+  storeChoice("Playlists", "webPlayMode", "A web from the song playing", [{ value: "replace", label: "Replaces the queue" }, { value: "keep", label: "Plays now, keeps Up Next" }, { value: "after", label: "Plays after the song" }]),
+  storeToggle("Playlists", "webSkipSeed", "Skip the song you just heard"),
+  storeRange("Playlists", "webSkipSeedAt", "Skip the song you just heard past", { min: 1, max: 100 }),
   // ── Rewind ──
   storeToggle("Rewind", "rewindCard", "Rewind card"),
   storeChoice("Rewind", "fullPlayRule", "Count a play at", [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }]),

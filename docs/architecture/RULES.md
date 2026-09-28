@@ -659,6 +659,10 @@ before any new events. The test: a key is a rule key when a fact we already have
 
 - **The eight keys:** `backgroundMotion`, `appearanceMotion`, `cardSwapMotion`,
   `fancyScrubber`, `glassFancy`, `friendsListenAlong`, `friendsRoomInvite`, `toasts`.
+- **Added 2026-09-28 (his call):** `webPlayNew`, `webPlayMode`, `webSkipSeed`, `webSkipSeedAt`
+  (PLAYLIST-WEB.md §11). `webPlayMode` and `webSkipSeedAt` have no Settings row: a While row in
+  Rulez is how a pro user sets them. `webSkipSeedAt` is the first number rule key, so the range
+  row reads it with `ownSetting`.
 - **Dropped at the check: the network keys** (`streamQuality`, `homeApple`,
   `playlistAutoRefresh`). The only fact for them, `dataSaver`, reads
   `navigator.connection.saveData`, which Windows never sets, not on a metered connection either.

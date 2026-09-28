@@ -364,6 +364,16 @@ export interface Settings {
   /** A temporary web playlist's days: deleted this long after its last play. The web panel's
    *  Temp | N days button remembers it; every new web starts on Temp. No Settings row (PLAYLIST-WEB.md §10). */
   webTempDays: 1 | 3 | 5 | 7 | 30;
+  /** A web whose seed is the song now playing plays when it is made, on every start (the
+   *  right-click row, the web panel, the Compass). PLAYLIST-WEB.md §11. A rule key. */
+  webPlayNew: boolean;
+  /** How that web plays: it replaces the queue, plays now over Up Next, or plays after the
+   *  song. No Settings row: a rule sets it (his call 2026-09-28). PLAYLIST-WEB.md §11. */
+  webPlayMode: "replace" | "keep" | "after";
+  /** The web skips its first song (the seed) when you heard at least `webSkipSeedAt` % of it. */
+  webSkipSeed: boolean;
+  /** The skip point, in % of the song. No Settings row: a rule sets it (his call 2026-09-28). */
+  webSkipSeedAt: number;
   // ── Song of the Day (docs/integrations/DeetsOTD.md §8.4) ──
   /** Offer today's most-played song on the Home shelf, before the picks, with a dashed rim.
    *  Off by default: people prefer to find what they like themselves (owner's words). The
@@ -543,6 +553,10 @@ export const DEFAULTS: Settings = {
   webSeedFilter: "all", // user's call 2026-09-16: a genre pick must not leave the artist's other-genre songs clashing
   webMakeMotion: "shrink", // user's call 2026-09-16: try the shrink first; Pop out is the one-beat close
   webTempDays: 7, // user's call 2026-09-17: a week leaves time to play it again or keep it
+  webPlayNew: true, // user's call 2026-09-28: a web from the song you hear is a wish to hear more like it now
+  webPlayMode: "replace", // user's call 2026-09-28: a web is a new list, as Play on a playlist is
+  webSkipSeed: true, // user's call 2026-09-28: the song you just heard does not start over
+  webSkipSeedAt: 75, // user's call 2026-09-28: most of the song heard; below that it plays again from the top
   sotdSuggest: false, // user's call 2026-09-17: a suggestion row is off until you ask for it
   rewindCard: false,
   rewindAutoShown: false,
@@ -687,7 +701,10 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   // Option 1 of the rule keys (RULES.md §18, 2026-09-27): motion and graphics for Battery saver,
   // the two Friends switches for Focus, and the notices.
   "backgroundMotion", "appearanceMotion", "cardSwapMotion", "fancyScrubber", "glassFancy",
-  "friendsListenAlong", "friendsRoomInvite", "toasts"] as const;
+  "friendsListenAlong", "friendsRoomInvite", "toasts",
+  // Play a web from the song playing (PLAYLIST-WEB.md §11, 2026-09-28): the mode and the skip
+  // point have no Settings row; a rule is how a pro user changes them.
+  "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

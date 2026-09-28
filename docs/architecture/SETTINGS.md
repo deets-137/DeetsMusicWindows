@@ -209,6 +209,8 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Playlists | **No Settings row** (user's call 2026-09-17): the web panel's Temp \| N days button remembers the days; every new web starts on Temp | `webTempDays` | 1 / 3 / 5 / **7** / 30 | `web.ts` `renderLife` → `playlist_create(expire_days)`; the check in `playlist-expiry.ts` — [PLAYLIST-WEB.md §10](../features/PLAYLIST-WEB.md) |
 | Playlists | Web genre chips filter (Web only leaves the artist's songs unfiltered. Keep 5 keeps at least five) — *All songs* / *Keep 5* / *Web only* (2026-09-16) | `webSeedFilter` | **all** / floor / off | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §3–4](../features/PLAYLIST-WEB.md) |
 | Playlists | Web prefers songs (Familiar puts your songs first. Discover puts songs you don't have first) — *Familiar* / *Discover* / *Mix* (2026-09-16) | `webPrefer` | familiar / discover / **mix** | `web.ts` `pickSongs` — [PLAYLIST-WEB.md §4](../features/PLAYLIST-WEB.md) |
+| Playlists | Play a web from the song playing (A web you start from the song you hear plays at once) — toggle (2026-09-28). A rule key | `webPlayNew` | **on** / off | `web.ts` `playIfSeedPlaying` — [PLAYLIST-WEB.md §11](../features/PLAYLIST-WEB.md) |
+| Playlists | Skip the song you just heard (the web starts at its second song past the skip point) — toggle, shown while the row above is on (2026-09-28). A rule key | `webSkipSeed` | **on** / off | `web.ts` `playIfSeedPlaying` — [PLAYLIST-WEB.md §11](../features/PLAYLIST-WEB.md) |
 | Playlists | New cover (How a new playlist's cover starts. Letters and Note keep the theme you made it in) — *Letters* / *Mosaic* / *Note* (2026-09-15) | `newPlaylistCover` | **letters** / mosaic / note | `playlists.ts` `playlistCreate` → `cover-art.ts` — [PLAYLISTS.md §11](../features/PLAYLISTS.md) |
 | Rewind | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
 | Rewind | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
@@ -359,6 +361,8 @@ Pause is never in `roomGuestControls`: a guest's Pause never greys out (ROOMS.md
 | `shuffleMode` | Shuffle is on right now (only read while `shuffleStays` is on; persisted like Apple's) | The Now Playing and toolbar Shuffle buttons |
 | `repeatMode` | **off** / all / one | The Now Playing repeat button |
 | `webTempDays` | A temporary web playlist's life, in days | The web panel's **Temp \| N days** button (PLAYLIST-WEB.md §10) |
+| `webPlayMode` | How a web from the song playing plays: **replace** (the queue) / keep (plays now, Up Next after it) / after (the song plays on, the web follows it). A rule key | A Rulez While row or the agent (his call 2026-09-28, PLAYLIST-WEB.md §11) |
+| `webSkipSeedAt` | The skip point of *Skip the song you just heard*, in % of the song, 1–100 (**75**). A rule key | A Rulez While row or the agent (his call 2026-09-28, PLAYLIST-WEB.md §11) |
 | `onboardingStep` | The NEXT first-run step to show, 1-based; **0** = the walk is over | `walk.ts`; Settings › Tips writes 1 to offer it again. A settings key, not a localStorage once-key (owner's call 2026-09-18), so it survives a localStorage clear and the agent can read it |
 | `rewindAutoShown` | The 50-play one-shot already fired, so a later "off" sticks | `stats.ts` (§4) |
 | `updateSkip` | The version *Skip this version* set aside | `updater.ts` |

@@ -609,6 +609,10 @@ const emitLoadingProgress = emitModelProgress;
 export function playbackPosition(): number {
   return music?.currentPlaybackTime || 0;
 }
+/** The song's length, in seconds (0 before MusicKit knows it). */
+export function songDuration(): number {
+  return music?.currentPlaybackDuration || 0;
+}
 
 // The update restart's saved position (queue-persist.ts): applied once, by the first Play of
 // the restored song (playPause), and only while that song is still the model's current.

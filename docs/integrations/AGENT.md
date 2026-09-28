@@ -348,6 +348,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playlists › Temp web playlist days** (2026-09-17, PLAYLIST-WEB.md §10): `webTempDays`
   (1 | 3 | 5 | 7 | 30). No Settings row: it is the web panel's Temp | N days button under Make
   playlist, and sets the next web playlist only. Every new web starts on Temp.
+- **Playlists › Play a web from the song playing** (2026-09-28, PLAYLIST-WEB.md §11): `webPlayNew`
+  (On | Off), `webSkipSeed` ("Skip the song you just heard": On | Off), and two keys with no
+  Settings row: `webPlayMode` (Replaces the queue | Plays now, keeps Up Next | Plays after the
+  song) and `webSkipSeedAt` (1–100 %, default 75). All four are rule keys.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
   What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
   `diaryGrow` (New entries | Every entry | Never). An agent has no

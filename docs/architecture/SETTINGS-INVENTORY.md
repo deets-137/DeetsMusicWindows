@@ -358,6 +358,8 @@ behind both. The dial and the three live ends are only in the panel.
 | Web size | Songs in a new web playlist | 25 / **50** / 100 |
 | Web prefers songs | Familiar puts your songs first; Discover puts songs you don't have first | Familiar / Discover / **Mix** |
 | Web genre chips filter | What a picked genre chip does to the seed artist's own songs | **All songs** / Keep 5 / Web only |
+| Play a web from the song playing | A web whose seed is the song now playing plays when it is made, from any start. It replaces the queue (a rule can change how) | **On** / Off |
+| Skip the song you just heard | Shown while the row above is on. Past 75% of the song (a rule can change the point), the web starts at its second song; below it, the song plays again from the start | **On** / Off |
 | Web panel closes | How the web panel leaves when you press Make playlist | **Shrink to chip** / Pop out |
 
 ### Rewind
