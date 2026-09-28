@@ -170,6 +170,9 @@ and the bands hold still. Reduced sets the bands to 15 steps a second.
     near 10 %. (3) Settings › Animate backgrounds › Reduced: still soft, fewer steps. (4) Fancy
     scrubber on, music playing, on Ocean, Glass and Cyber: the float bobs and ripples, the
     sheen drifts and the bolt breathes as before, with no visible stepping.
+    **Result:** (2) passed by bench, 2026-09-27 (Ocean 31 → 13 %; the trace 30.4 → 5.9 %).
+    His eye test passed, 2026-09-27: Ocean ("looked good for ocean"), then Glass and Cyber
+    ("look fine too"). Desk test closed.
   - **Recheck:** one heaviness row (22:21) read the dev renderer at 1,625 MB and 75% CPU. It fell
     during a storm of page reloads from another session's saves (the page was 0 minutes old, heap
     486 MB), so it is not the sea's cost. Run the heaviness sampler for an hour on a quiet page
