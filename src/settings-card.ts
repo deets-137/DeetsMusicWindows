@@ -17,7 +17,7 @@ import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
-import { setting, setSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type Settings } from "./settings-store";
+import { setting, setSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type RuleKey, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, defaultSkin, type SkinName } from "./skin";
 import { pickLook } from "./look";
 import { ruleChip, type RuleChip } from "./rule-chip";
@@ -32,6 +32,12 @@ import { userFiles, userFile, renameFile, deleteFile, onFilesChange } from "./us
 const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
 /** The four Glass sliders show under Glass with Fancy Glass on (off holds GLASS_LOCKED). */
 const glassSliders = (): boolean => currentSkin() === "glass" && ownSetting("glassFancy");
+/** What a row shows: the value in force — a rule's while one holds the key (the dot says so),
+ *  else yours (his call 2026-09-27, RULES.md §18a). A press writes your value; a press for what
+ *  you already have still reaches the rule as a hand change (`setSetting`), and the hand change
+ *  sets the whole rule aside. Rows only: the agent, Reset and the Glass sliders' gate read yours. */
+const inForce = <K extends keyof Settings>(key: K): Settings[K] =>
+  (RULE_KEYS as readonly string[]).includes(key) ? (effective(key as RuleKey) as Settings[K]) : ownSetting(key);
 import { libraryAddEnabled, setLibraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { esc } from "./collection-card";
@@ -242,7 +248,7 @@ const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => strin
   id,
   label,
   hint,
-  get: () => ownSetting(key),
+  get: () => inForce(key),
   set: (on) => setSetting(key, on),
 });
 
@@ -411,13 +417,13 @@ export function settingsRows(): SettingEntry[] {
         let control: SettingEntry["control"];
         if (r.kind === "toggle" && r.key) {
           const key = r.key;
-          control = { kind: "toggle", get: () => ownSetting(key), set: (on) => setSetting(key, on) };
+          control = { kind: "toggle", get: () => inForce(key), set: (on) => setSetting(key, on) };
         } else if (r.kind === "choice" && r.key && !r.menu && r.options.length <= SPLIT_MAX) {
           const key = r.key;
           control = {
             kind: "choice",
             options: r.options,
-            get: () => (r.get ? r.get() : String(ownSetting(key))),
+            get: () => (r.get ? r.get() : String(inForce(key))),
             set: (v) => (r.set ? r.set(v) : setSetting(key, v as never)),
           };
         }
@@ -2106,7 +2112,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
   const menuOf = (r: ChoiceRow): Half => ({
     type: "menu",
     options: r.options,
-    get: () => (r.get ? r.get() : String(ownSetting(r.key!))),
+    get: () => (r.get ? r.get() : String(inForce(r.key!))),
     set: (v) => (r.set ? (r.set(v), render()) : setSetting(r.key!, v as never)),
   });
   const halvesOf = (r: Row): Half[] | undefined =>
@@ -2165,7 +2171,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       return `<div class="set__row set__row--choice${sub}${fx.cls}"${mark}${tip}>${label}<div class="set__split">${halves.map((h, i) => halfHTML(r.id, h, i)).join("")}</div></div>`;
     }
     const choice = r as ChoiceRow;
-    const cur = choice.get ? choice.get() : String(ownSetting(choice.key!));
+    const cur = choice.get ? choice.get() : String(inForce(choice.key!));
     const opts = choice.options
       .map((o) => {
         const pill = newPill(choice.id, o.value, cur) ? newBadge(pillKey(choice.id, o.value)) : "";

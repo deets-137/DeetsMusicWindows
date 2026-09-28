@@ -31,6 +31,10 @@ His call: fix both findings of the night run, without disturbing the other sessi
   ("AirPlay", "EQ"). A test fails when a Do word has no SAYS verb. Rules: RULEZ.md §6.5. Two
   format dependencies left for §15 (a recipe part's title after `": "`, the `plain` value list).
   Checked by unit tests only; his look is in HANDOFF.
+- **The two §18a forks, his calls:** a hand change keeps setting the whole rule aside ("feels
+  more intuitive if the rule sticks together"); a Settings row shows the value in force
+  (`inForce`, settings-card.ts). Desk-tested on the dev app with Battery saver and a faked
+  unplug. RULES.md §18a.
 
 ## 2026-09-27, night, later — The cap measured; the scrubber floats; the playback layouts (branch `rules-rulez`)
 

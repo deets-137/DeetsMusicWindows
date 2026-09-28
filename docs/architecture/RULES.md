@@ -719,9 +719,22 @@ the five sharing switches and *Failures*; the words read back as the rows'.
   (rules.ts, "a look is its theme AND its skin"), so turning Animate card swaps on by hand
   brings Fancy Glass and the backgrounds back too, until the charger changes. §8 says "for
   that target". Keep it whole, or hold per target for a rule that is not a look.
+  **His call (2026-09-27 late night): keep it whole** — "feels more intuitive if the rule sticks
+  together". No change to the code; §8's "for that target" is read as "for that rule".
 - **A switch row shows your value, not the rule's.** Under Battery saver, *Animate card swaps*
   reads On while swaps are off; the first press turns your value Off (no visible change), the
   second On. Only the dot says a rule acts.
+  **His call (2026-09-27 late night): show the value in force**, with the dot. One press is a
+  hand change to the other value, which (by the call above) sets the whole rule aside.
+  **Built the same night:** `inForce` in settings-card.ts — every Settings row for a rule key
+  (switches, pills, menus, and the same rows in the quick panel and the Compass) reads
+  `effective`. The agent's `settings get`, the Reset snapshot and the Glass sliders' gate still
+  read your value. A press for the value you already have (own On, held Off, press → On) still
+  reaches the rule: `setSetting` fires the hand change when a rule shows another value.
+  *Desk test (Claude, dev app, Battery saver, a faked unplug):* unplugged, Animate card swaps
+  and Animate look changes read Off and Animate backgrounds Reduced, your values On; one press
+  on Animate card swaps → it reads On, the rule's four keys are held (`holds`), all four rows
+  back; plugged in → the holds end. His look: the rows under a rule, and the dot beside them.
 - **The condition block cuts a yes / no fact's words** (rulez-card.ts, `blockHTML`): it slices
   the fact's label length off the phrase, so *Charging* + *The PC is on battery* reads
   "Charging" + "s on battery". Every yes / no fact whose phrase does not start with its label

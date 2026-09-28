@@ -113,9 +113,9 @@ The short list of what is not finished, as of 2026-09-27. Each item names where 
 When an item closes, delete it here and write the day in WORKLOG.md.
 
 **Pick up here (2026-09-28, next session).** In order:
-1. Ask him the two §18a forks (RULES.md §18a, "Found at the run"): does a hand change set aside
-   the whole rule or only that setting (today: whole, `onHand` in rules.ts); does a switch row
-   under a rule show his value (today) or the rule's.
+1. ~~The two §18a forks~~ — his calls 2026-09-27 late night (RULES.md §18a): a hand change
+   sets the whole rule aside (unchanged); a Settings row shows the value in force (built,
+   desk-tested by Claude). His look: the rows under Battery saver or Focus, and their dot.
 2. ~~The blocked desk tests~~ — run 2026-09-27 night (DESK-TESTS.md §5, the night run). Left
    from it: the A1 focus fix and the `dev:fresh` seed were both fixed and re-tested the same
    night (committed). Open: the
