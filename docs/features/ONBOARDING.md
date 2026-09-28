@@ -130,7 +130,7 @@ nothing about authoring changed when the box did.
 | Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway | settings-card.ts |
 | Settings › Motion | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Settings › Skin settings | Card opacity | Ocean only. How solid the sunken cards are. Lower: the sea shows through | settings-card.ts |
-| Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon | settings-card.ts |
+| Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon, and cost more on a PC without a graphics card | settings-card.ts |
 | Settings › Skin settings (2026-09-24) | Canvas | Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose | settings-card.ts (COVER-WALLPAPER.md §3.7) |
 | Settings › Skin settings (2026-09-24) | Tiles | Glass only. How many album covers sit around the one that plays. One cover: it fills the window alone | settings-card.ts |
 | Settings › Skin settings (2026-09-24; the list 2026-09-27) | Picture · its Choose half | Glass only. The picture behind the cards: one you chose before, or press Choose for a new one. Drop an image file on this row. Right-click to rename or delete a picture · Opens a picture from your PC | settings-card.ts (RULEZ.md §5.2) |

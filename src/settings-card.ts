@@ -1107,7 +1107,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
         },
         {
           kind: "range", id: "oceanlight", label: "Album light", key: "oceanLight", min: 0, max: 100, unit: "%",
-          hint: "Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon",
+          hint: "Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon, and cost more on a PC without a graphics card",
           preview: (v) => {
             previewSkin("oceanLight", v);
             setAlbumLight(v); // the first move above 0 paints the neon, so the drag shows it
