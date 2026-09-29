@@ -44,7 +44,7 @@ export function ruleChip(target: string): RuleChip {
     // `trusted` tells a real press from a script's .click() (a desk test), so the log says
     // which one gave the value back (2026-09-26: a real press read as a mystery).
     diag.log("ui:act", { at: "rule-chip", do: "resume", target, rule: s.ruleId, trusted: e.isTrusted });
-    resumeRule(s.ruleId);
+    resumeRule(s.ruleId, target);
   });
   const unsub = onRulesChange(paint);
   paint();

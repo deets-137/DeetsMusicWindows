@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  validate, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds,
+  validate, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds, holdVerdict, verdictOf,
   builtinRules, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, failingLeaf, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
 } from "../src/rules-eval.ts";
 
@@ -220,7 +220,7 @@ test("onHand next: the hold stands until a fact the rule reads changes", () => {
   const out = handChange(r, "key:theme", { daylight: false, surface: "max" });
   assert.equal(out.do, "hold");
   const holds = out.do === "hold" ? [out.hold] : [];
-  assert.deepEqual(holds[0].snap, { daylight: false }); // only the facts the rule reads
+  assert.equal(holds[0].verdict, true); // the condition's verdict, not the raw values (2026-09-29)
   const res = resolveState([r], { daylight: false }, holds);
   assert.equal(res.set.has("key:theme"), false);
   assert.equal(res.held.get("key:theme"), "look");
@@ -234,6 +234,67 @@ test("a next hold survives a check before its fact is registered (a launch, 2026
   const holds = out.do === "hold" ? [out.hold] : [];
   assert.equal(factsChanged(restart(holds), [r], { surface: "max" }).length, 1); // no daylight yet
   assert.equal(factsChanged(restart(holds), [r], { daylight: true }).length, 0); // the period moved
+});
+
+test("2026-09-29: a next hold under a time fact lasts until the condition flips, not the next tick", () => {
+  const r = st("late", { fact: "time", gte: 22 * 60 }, "night");
+  const out = handChange(r, "key:theme", { time: 22 * 60 + 5 });
+  const holds = out.do === "hold" ? [out.hold] : [];
+  assert.equal(holds[0].verdict, true);
+  assert.equal(factsChanged(holds, [r], { time: 22 * 60 + 6 }).length, 1); // the minute ticks: still held
+  assert.equal(factsChanged(holds, [r], { time: 23 * 60 + 59 }).length, 1);
+  assert.equal(factsChanged(holds, [r], { time: 21 * 60 }).length, 0); // the condition is false: the hold ends
+  // A counter fact: the volume moves inside the band, then out of it.
+  const v = st("loud", { fact: "volume", gt: 50 }, "x");
+  const vo = handChange(v, "key:theme", { volume: 60 });
+  const vh = vo.do === "hold" ? [vo.hold] : [];
+  assert.equal(factsChanged(vh, [v], { volume: 80 }).length, 1);
+  assert.equal(factsChanged(vh, [v], { volume: 40 }).length, 0);
+});
+
+test("2026-09-29: an 'or' rule held across the leaf switch at midnight stays held (Night listening)", () => {
+  const r = st("night", { any: [{ fact: "time", gte: 22 * 60 }, { fact: "time", lt: 6 * 60 }] }, "night");
+  const out = handChange(r, "key:theme", { time: 23 * 60 });
+  const holds = out.do === "hold" ? [out.hold] : [];
+  assert.equal(factsChanged(holds, [r], { time: 0 }).length, 1); // midnight: the other leaf holds now, the condition still does
+  assert.equal(factsChanged(holds, [r], { time: 5 * 60 + 59 }).length, 1);
+  assert.equal(factsChanged(holds, [r], { time: 6 * 60 }).length, 0); // the morning: the condition is false, the hold ends
+});
+
+test("2026-09-29: a hold saved with raw values (before the verdict) is read as the condition's verdict", () => {
+  const r = st("late", { fact: "time", gte: 22 * 60 }, "night");
+  const old = [{ ruleId: "late", target: "key:theme", kind: "next" as const, snap: { time: 22 * 60 + 5 } }];
+  assert.equal(holdVerdict(old[0], r), true);
+  assert.equal(factsChanged(restart(old), [r], { time: 22 * 60 + 30 }).length, 1); // was ended by the tick before
+  assert.equal(factsChanged(restart(old), [r], { time: 21 * 60 }).length, 0);
+  // A value that was missing: undecided reads as true (a hold starts only while the rule acts).
+  assert.equal(holdVerdict({ ruleId: "late", target: "key:theme", kind: "next", snap: {} }, r), true);
+  // A fact with no value now (its module has not registered) is not a change.
+  assert.equal(verdictOf(r.while, {}), null);
+  assert.equal(factsChanged(old, [r], {}).length, 1);
+  // Three-valued: an "or" with one true member is decided even when another is unknown.
+  assert.equal(verdictOf({ any: [{ fact: "time", gte: 0 }, { fact: "surface", is: "max" }] }, { time: 5 }), true);
+  assert.equal(verdictOf({ all: [{ fact: "time", lt: 0 }, { fact: "surface", is: "max" }] }, { time: 5 }), false);
+});
+
+test("2026-09-29: a hold with endsAt ends at that time (the look pick's chip time)", () => {
+  const r = st("look", { fact: "daylight", is: true }, "lilac");
+  const out = handChange(r, "key:theme", { daylight: true });
+  const holds = out.do === "hold" ? [{ ...out.hold, endsAt: 1000 }] : [];
+  assert.equal(factsChanged(holds, [r], { daylight: true, now: 999 }).length, 1);
+  assert.equal(factsChanged(holds, [r], { daylight: true, now: 1000 }).length, 0); // the time came
+  assert.equal(factsChanged(holds, [r], { daylight: true }).length, 1); // no clock yet: not a change
+  assert.equal(factsChanged(restart(holds), [r], { daylight: true, now: 5000 }).length, 0); // a launch after it
+});
+
+test("2026-09-29: resume one target of a holdEach rule; without a target the whole rule", () => {
+  const holds = [
+    { ruleId: "f", target: "key:a", kind: "next" as const, verdict: true },
+    { ruleId: "f", target: "key:b", kind: "next" as const, verdict: true },
+    { ruleId: "g", target: "key:a", kind: "next" as const, verdict: true },
+  ];
+  assert.deepEqual(resume(holds, "f", "key:a").map((h) => `${h.ruleId}/${h.target}`), ["f/key:b", "g/key:a"]);
+  assert.deepEqual(resume(holds, "f").map((h) => h.ruleId), ["g"]);
 });
 
 test("a held target stays yours: a later rule does not take it", () => {

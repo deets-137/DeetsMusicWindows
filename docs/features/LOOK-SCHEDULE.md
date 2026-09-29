@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-15
-sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts, src/look.ts, src/rules-eval.ts]
-updated: 2026-09-26
+sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts, src/look.ts, src/rules-eval.ts, src/rules.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — Look schedule (day look / night look)
 
@@ -100,3 +100,21 @@ day look comes. The chip resumes the schedule. *For good* → the row goes Off, 
 The row set to Off → the look on screen stays as your pick. A reload during a period, with and
 without a held pick → the pre-paint and the app agree (no flash). **His:** Windows mode follows
 the OS light / dark switch.
+
+### 5a. The pick ends at the chip's time (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open (RULES.md §18b, steps 2 and 3)
+
+**His call (2026-09-29): the hold ends at the time the chip shows.** Before, the engine ended a
+hand pick only when `daylight` changed. A pick made at 14:00 ("until 7:00 PM"), the app closed
+before 7:00 PM and opened the next morning, held all the next day, while the pre-paint (which
+ends the hold at `until`) painted the scheduled look first. Now:
+- At the hand change the engine asks this module when the pick ends (`registerHoldEnd`): the
+  plan's next change, read fresh. The hold carries it as `endsAt` and ends when it comes, at
+  launch too (RULES.md §18b).
+- `deets.look.hold.until`, the chip's hint and the status line all read that same time
+  (`pickEnds`). The pre-paint in index.html did not change: it and the engine now end the pick
+  at the same two edges, the period change or `until`.
+- Windows mode has no time: the pick ends when Windows changes mode, as before.
+- A hold saved before this fix takes its time from its old `deets.look.hold` copy at launch
+  (`adoptHoldEnd`).

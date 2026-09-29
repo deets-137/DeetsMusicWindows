@@ -60,6 +60,16 @@ test("the stored shape passes through validate, and a bad one is refused with it
   assert.ok("error" in noWhen && /when/.test(noWhen.error));
 });
 
+test("a hidden built-in event is refused with a clear reason (2026-09-29, it stopped Sleep every day)", () => {
+  const withArm: Known = { ...known, events: new Set([...known.events, "sleep.arm"]), actions: new Set([...known.actions, "sleep"]) };
+  const words = shapeAgentRule({ when: "sleep.arm", do: "pause" }, withArm, [], lists);
+  assert.ok("error" in words && /built-in event/.test(words.error), JSON.stringify(words));
+  const stored = shapeAgentRule({ kind: "moment", when: "sleep.arm", card: "*", do: { sleep: { at: "sun" } } }, withArm, [], lists);
+  assert.ok("error" in stored && /built-in event/.test(stored.error), JSON.stringify(stored));
+  const unknown = shapeAgentRule({ when: "moon.rise", do: "pause" }, withArm, [], lists);
+  assert.ok("error" in unknown && /unknown event/.test(unknown.error));
+});
+
 test("ids never collide and a rule is found by id or by name, any case", () => {
   const a = agentRuleId([], 1000);
   const b = agentRuleId([{ id: a } as Rule], 1000);

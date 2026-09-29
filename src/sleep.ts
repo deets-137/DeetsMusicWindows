@@ -92,9 +92,19 @@ let daily: "clock" | "sun" | null = null;
  *  a sleep ends, and back from sleep or the tray. */
 function armDaily(why: string): void {
   daily = null;
-  emit("sleep.arm", { card: "*" });
+  const ran = emit("sleep.arm", { card: "*" });
+  // `sleep.arm` is a built-in event: Rulez never offers it and the agent is refused it. A rule
+  // of yours on it anyway (a paste, an import, a hand-edited store) wins the pick, and the row's
+  // rule never runs. The row still arms its mark (2026-09-29): a foreign rule never stops it.
+  if (ran !== DAILY_RULE) {
+    const row = setting("sleepSchedule");
+    if (row !== "off") daily = row;
+    if (ran) diag.warn("sleep:foreign", { rule: ran, daily });
+  }
   diag.log("sleep:ask", { why, daily });
 }
+/** The id of the rule the *Sleep every day* row makes (rules-eval.ts `builtinRules`). */
+const DAILY_RULE = "row:sleepSchedule";
 
 /** The schedule's next mark after `now`, or 0 when there is none (off, or a polar day). */
 function nextMark(now: number): number {
@@ -491,6 +501,9 @@ export function sleepOff(): void {
   disarm("compass");
 }
 export const sleepArmed = (): boolean => mode !== "off";
+/** The timer waits for the end of this song or of Up Next: the web at a list's end
+ *  (PLAYLIST-WEB.md §12) plays nothing then, so the music stops as the timer said. */
+export const sleepAtEndArmed = (): boolean => mode === "song" || mode === "queue";
 /** Sleep at the end of this song, or of Up Next, as the panel's two chips do. */
 export function sleepAtEnd(kind: "song" | "queue"): void {
   armEnd(kind);

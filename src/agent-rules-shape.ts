@@ -90,7 +90,13 @@ export function shapeAgentRule(input: unknown, known: Known, existing: readonly 
   } else {
     const when = String(input.when ?? "");
     if (!when) return { error: `a rule needs \`when\`: one of ${EVENTS.map((e) => e.id).join(", ")}` };
-    if (!eventWord(when as MomentRule["when"]) && !known.events.has(when)) return { error: `unknown event ${JSON.stringify(when)}; ask for the words` };
+    // Only the events Rulez offers (EVENTS). A hidden one (`sleep.arm`) belongs to a built-in
+    // row: a rule of yours on it would win the event and stop *Sleep every day* (2026-09-29).
+    if (!eventWord(when as MomentRule["when"])) {
+      return known.events.has(when)
+        ? { error: `${JSON.stringify(when)} is a built-in event that only DeetsMusic's own rows use; pick one of ${EVENTS.map((e) => e.id).join(", ")}` }
+        : { error: `unknown event ${JSON.stringify(when)}; ask for the words` };
+    }
     const card = typeof input.card === "string" && input.card.trim() ? input.card.trim() : "*";
     const m: MomentRule = { ...base, kind: "moment", when: when as MomentRule["when"], card, do: {} as never };
     if (when === "clock") {

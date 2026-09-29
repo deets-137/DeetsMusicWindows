@@ -39,7 +39,9 @@ export const RECIPES: Recipe[] = [
         id: "recipe:focus:0", kind: "state", source: src("focus"), on: true, name: "Focus: pause sharing",
         while: ALWAYS,
         set: ([...SHARING_KEYS, "friendsListenAlong", "friendsRoomInvite"] as const).map((k) => ({ target: { key: k }, value: false })),
-        onHand: "next",
+        // Each switch holds on its own (his call, 2026-09-29): turning one back on by hand leaves
+        // the other four paused. Battery saver keeps its whole-rule hold (his call, 2026-09-27).
+        onHand: "next", holdEach: true,
       },
       {
         id: "recipe:focus:2", kind: "state", source: src("focus"), on: true, name: "Focus: failures only",

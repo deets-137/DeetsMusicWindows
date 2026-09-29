@@ -14,8 +14,8 @@ import {
   type RuleKey, type Settings,
 } from "./settings-store";
 import {
-  APPLE_CAP, CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, failingLeaf, leafResults, builtinRules, chainDepth, factsChanged, handChange, keepHolds, nextClock, nextEdge,
-  noteFire, pickMoment, readsFact, resolveState, restart, resume as resumeHolds, timeFacts, validate,
+  APPLE_CAP, CHAIN_CAP, EMPTY, ROW_OFF, appleMayRun, failingLeaf, leafResults, builtinRules, chainDepth, factsChanged, handChange, holdVerdict, keepHolds, nextClock, nextEdge,
+  noteFire, pickMoment, readsFact, resolveState, restart, resume as resumeHolds, targetId, timeFacts, validate,
   type EventId, type FactId, type FactValue, type Facts, type Hold, type Known, type MomentRule, type Rule, type RowValues,
   type Leaf, type StateRule, type Stored,
 } from "./rules-eval";
@@ -102,6 +102,14 @@ export function registerProp(id: string, def: PropDef): void {
 /** A row's name and the chip's hints for its rules. */
 export function registerChipText(row: string, text: ChipText): void {
   texts.set(row, text);
+}
+
+/** When a hand pick under a row's rules ends at the latest (ms), asked at the hand change. The
+ *  look schedule's hold ends at the time its chip shows (LOOK-SCHEDULE.md §5a, his call
+ *  2026-09-29); null = only the condition ends it. */
+const holdEnds = new Map<string, () => number | null>();
+export function registerHoldEnd(row: string, end: () => number | null): void {
+  holdEnds.set(row, end);
 }
 
 /** The names the registry knows now (Rulez greys out the words whose module has not registered). */
@@ -444,7 +452,11 @@ function armClock(): void {
   // A timer stops while the PC sleeps: never wait past 15 minutes, and check again when shown.
   const wait = Math.min(next.at - Date.now(), 15 * 60_000);
   clockTimer = window.setTimeout(() => {
-    if (Date.now() >= next.at - 1000) emit("clock", { card: "*", at: next.minute });
+    // A timer the PC slept through runs at wake: "At 7:00 play Morning" must not start at
+    // 13:00. More than a minute late, the moment has passed (2026-09-29).
+    const late = Date.now() - next.at;
+    if (late > 60_000) diag.log("rule:clockLate", { at: next.minute, lateMin: Math.round(late / 60_000) });
+    else if (late >= -1000) emit("clock", { card: "*", at: next.minute });
     armClock();
   }, Math.max(wait, 0) + 50);
 }
@@ -508,6 +520,18 @@ function checkOnce(why: string): void {
     ended.forEach((h) => diag.log("rule:hold", { id: h.ruleId, target: h.target, ended: true }));
     saveHolds();
   }
+  // A `next` hold saved before 2026-09-29 kept raw values: read them once as the condition's
+  // verdict, so a time fact that only ticks no longer ends it.
+  let moved = false;
+  holds = holds.map((h) => {
+    if (h.kind !== "next" || h.verdict !== undefined) return h;
+    const r = all.find((x) => x.id === h.ruleId);
+    if (!r || r.kind !== "state") return h;
+    moved = true;
+    const { snap: _old, ...rest } = h;
+    return { ...rest, verdict: holdVerdict(h, r) };
+  });
+  if (moved) saveHolds();
   let res;
   try {
     res = resolveState(live, f, holds);
@@ -566,6 +590,8 @@ function armTimer(): void {
     const n = def.next?.() ?? null;
     if (n !== null && n > now && (at === null || n < at)) at = n;
   }
+  // A hold that ends at a time (the look schedule's hand pick).
+  for (const h of holds) if (h.endsAt !== undefined && h.endsAt > now && (at === null || h.endsAt < at)) at = h.endsAt;
   if (at === null) return;
   timer = window.setTimeout(() => recheck("timer"), Math.min(at - now + 500, 15 * 60_000));
 }
@@ -580,10 +606,14 @@ function onHand(key: RuleKey): void {
   const out = handChange(rule, target, readFacts());
   diag.log("rule:hand", { id: rule.id, target, do: out.do });
   if (out.do === "hold") {
-    // One hand change holds every target the rule sets (a look is its theme AND its skin).
-    for (const s of rule.set) {
-      const t = s.target && "key" in s.target ? `key:${s.target.key}` : `prop:${(s.target as { prop: string }).prop}`;
-      holds.push({ ...out.hold, target: t });
+    const end = holdEnds.get(rowOf(rule.id))?.() ?? null;
+    const hold = end !== null && end > Date.now() ? { ...out.hold, endsAt: end } : out.hold;
+    // One hand change holds every target the rule sets (a look is its theme AND its skin), unless
+    // the rule holds each target alone (Focus's switches, `holdEach`, his call 2026-09-29).
+    const targets = rule.holdEach ? [target] : rule.set.map((s) => targetId(s.target));
+    for (const t of targets) {
+      holds = holds.filter((h) => !(h.ruleId === rule.id && h.target === t));
+      holds.push({ ...hold, target: t });
     }
     saveHolds();
     recheck("hand");
@@ -623,10 +653,13 @@ export function chipState(target: string): ChipState | null {
   return { kind: "hand", ruleId: hand!, hint: text?.hand?.(target) ?? `Your pick holds. Press to give it back to ${own ? name[0].toLowerCase() + name.slice(1) : name.toLowerCase()}.` };
 }
 
-/** Resume on the chip: the rule acts again at once. */
-export function resumeRule(ruleId: string): void {
-  holds = resumeHolds(holds, ruleId);
-  diag.log("rule:resume", { id: ruleId });
+/** Resume on the chip: the rule acts again at once. A `holdEach` rule gives back only the
+ *  chip's own target (Focus: one switch). */
+export function resumeRule(ruleId: string, target?: string): void {
+  const r = all.find((x) => x.id === ruleId);
+  const one = r?.kind === "state" && r.holdEach ? target : undefined;
+  holds = resumeHolds(holds, ruleId, one);
+  diag.log("rule:resume", { id: ruleId, target: one });
   saveHolds();
   recheck("resume");
 }
@@ -642,6 +675,22 @@ export function resumeRow(prefix: string): void {
 
 /** A rule of this id stands aside for your change now. */
 export const isHeld = (ruleIdPrefix: string): boolean => holds.some((h) => h.ruleId.startsWith(ruleIdPrefix));
+
+/** When the hold of a rule of this id ends at the latest (ms), or null (no hold, or no time). */
+export function holdEndsAt(ruleIdPrefix: string): number | null {
+  const h = holds.find((x) => x.ruleId.startsWith(ruleIdPrefix));
+  return h?.endsAt ?? null;
+}
+
+/** A hold saved before it carried a time: give it `at` (the look schedule reads its old
+ *  pre-paint copy once at launch, 2026-09-29). */
+export function adoptHoldEnd(ruleIdPrefix: string, at: number): void {
+  let moved = false;
+  holds = holds.map((h) => (h.ruleId.startsWith(ruleIdPrefix) && h.endsAt === undefined ? ((moved = true), { ...h, endsAt: at }) : h));
+  if (!moved) return;
+  saveHolds();
+  recheck("hold-end");
+}
 
 /** Be told after each check (the chip repaints). Returns an unsubscribe fn. */
 export function onRulesChange(cb: () => void): () => void {

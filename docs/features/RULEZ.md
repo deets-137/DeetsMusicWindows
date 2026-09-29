@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules-facts.ts, src/album-slots.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 # DeetsMusic — Rulez, the rules builder
 
@@ -878,6 +878,9 @@ works best with a GPU.
 - **With no song or no palette** no rule holds: your theme shows, or the look schedule's. The
   recipe sits above the built-in rules, so while a cover plays it beats the look schedule.
 - **A hand theme pick** holds until the next cover of another color (the rule chip shows it).
+  Since 2026-09-29 (RULES.md §18b) "another color" means a cover for which that rule's condition
+  is false: a red cover after an orange one (both Sepia's words) keeps your pick; a song with no
+  palette keeps it too (undecided is not a change).
 - **The skin does not change.** Only the theme is a color; a rule of your own can add a skin.
 - **To change the mapping:** *Duplicate into your rules* on a recipe line, then edit the copy.
 

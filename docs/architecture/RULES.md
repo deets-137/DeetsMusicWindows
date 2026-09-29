@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: open
-sources: [src/rules-eval.ts, src/rules.ts, src/rule-chip.ts, src/look.ts, src/look-ids.ts, src/settings-store.ts, src/card-grow.ts, src/look-schedule.ts, src/sleep.ts, src/sound.ts, src/presence.ts, src/friends.ts, src/layout.ts, src/collection-card.ts, src/search-card.ts, src/diary-card.ts, src/quick-panel.ts, src/playlists-card.ts]
-updated: 2026-09-27
+sources: [src/rules-eval.ts, src/rules.ts, src/rule-chip.ts, src/look.ts, src/look-ids.ts, src/settings-store.ts, src/card-grow.ts, src/look-schedule.ts, src/sleep.ts, src/sound.ts, src/presence.ts, src/friends.ts, src/layout.ts, src/collection-card.ts, src/search-card.ts, src/diary-card.ts, src/quick-panel.ts, src/playlists-card.ts, src/rules-recipes.ts, src/agent-rules-shape.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — the rules engine
 
@@ -241,7 +241,7 @@ for that target. Its `onHand` says when it acts again:
 
 | `onHand` | The rule acts again | Kept where |
 |---|---|---|
-| `next` | When a fact the rule reads changes | Memory |
+| `next` | When a fact the rule reads changes (since 2026-09-29: when the whole condition's verdict flips, §18b) | Memory |
 | `session` | When the app starts again. Minimize to tray does not end a session | Memory |
 | `off` | When you press Resume (the chip) or turn the row on again | The row (built-in) or the rule |
 | `{ until: Cond }` | When the condition becomes true | Memory |
@@ -498,7 +498,9 @@ Where this section and §1–§17 differ, this section is the code.
 - **A `next` hold survives a restart** (§8 said memory). The engine saves `next` holds to
   `deets.rules.holds` with the facts the rule read; at launch a hold whose facts moved ends at
   the first check. So a hand-picked look still holds until the next day / night change, as
-  `deets.look.hold` did, and the pre-paint keeps reading `deets.look.hold`.
+  `deets.look.hold` did, and the pre-paint keeps reading `deets.look.hold`. (Since 2026-09-29
+  the hold keeps the condition's verdict, not the facts, and a look pick also ends at its chip's
+  time: §18b.)
 - **A leaf can compare numbers:** `{ fact, is?, lt?, gte? }`; every test given must hold. The
   sharing pause is `{ fact: "now", lt: until }`.
 
@@ -746,6 +748,77 @@ the five sharing switches and *Failures*; the words read back as the rows'.
   **Fixed 2026-09-27 late night:** `leafParts` hands the card the parts, and a yes / no phrase
   is one blank (RULEZ.md §6.5, the grammar rules).
 - A recipe's dot says "A rule sets this now."; a rule of yours names itself.
+
+### 18b. The holds, fixed (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open (below)
+
+**His calls (2026-09-29).** Four faults in the holds, each with his decision.
+
+1. **A `next` hold lasts until the rule's condition changes.** Before, `handChange` saved the
+   raw values the rule read (`snap`) and any change ended the hold. A rule on `time`, `now`,
+   `sinceOpen`, `idle`, `volume`, `queueLength` or `battery` ticks, so your hand change was
+   undone within a minute. Now the hold keeps the whole condition's verdict (`Hold.verdict`,
+   true at the hand change) and ends only when that verdict flips (rules-eval.ts `verdictOf`,
+   `factsChanged`). A switch between the members of an "or" group is not a change: Night
+   listening held at 23:00 stays held past midnight and ends at 6:00, when the condition is
+   false; the next time the condition holds, the rule acts again.
+2. **A look pick ends at the time its chip shows.** The hold carries `endsAt` (ms): the plan's
+   next change at the moment you picked (look-schedule.ts `registerHoldEnd`). `factsChanged`
+   ends any hold whose `endsAt` has come (it reads the `now` fact), and the engine's one timer
+   also wakes at the nearest `endsAt` (rules.ts `armTimer`). `deets.look.hold.until` is that same
+   time, so index.html's pre-paint and the engine end the pick at the same two edges: the period
+   changes, or `until` comes. index.html did not change.
+3. **Focus holds each switch on its own.** A state rule can say `holdEach: true`: a hand change
+   holds only the target you changed, and the chip's Resume gives back only that target
+   (`resume(holds, ruleId, target)`, `resumeRule(ruleId, target)`). Only `recipe:focus:0` sets
+   it. Battery saver and the look keep the whole-rule hold (his call, 2026-09-27).
+4. **A hidden event is the app's own.** `shapeAgentRule` refuses an event that Rulez does not
+   offer (today only `sleep.arm`) with "is a built-in event that only DeetsMusic's own rows
+   use". `sleep.ts armDaily` no longer depends on the row's rule winning `sleep.arm`: when
+   another rule wins (a paste, an import, a hand-edited store), the row's own value arms the
+   mark and `sleep:foreign` is logged.
+
+**Decided inside his choices (for his review).**
+- **Undecided is not a change.** `verdictOf` is three-valued: a leaf whose fact has no value
+  (its module has not registered, at launch; no song for a cover fact) is unknown, an "or" with
+  one true member is true and an "and" with one false member is false all the same, and a
+  condition that stays unknown keeps the hold. A hold is made only while the rule acts, so an
+  undecided read at the hand change counts as true.
+- A condition with no leaves (*Always*: Focus, Party) never ends a `next` hold by itself: Resume,
+  the recipe Off, or a change to the rule ends it, as before.
+- **Migration.** A hold saved with `snap` is read once through the rule's While as its verdict
+  (`holdVerdict`; undecided reads as true) and saved in the new form at the first check. A saved
+  look hold with no `endsAt` takes `until` from its old `deets.look.hold` copy at launch
+  (`adoptHoldEnd`).
+- `endsAt` is set only when the time is in the future; Windows mode has none (only the mode
+  change ends the pick, as the pre-paint's `until: null` says).
+- The hold's end time is read fresh from the plan at the hand change (not the last tick's plan,
+  which is stale after the PC sleeps).
+- A second hand change on a `holdEach` target that is held already does not add a second hold.
+- The chip's hint and Settings › Look schedule's status line read the hold's own `endsAt`.
+
+**Tests.** `tests/rules-eval.test.ts`: a time hold lasts through ticks and ends when the condition
+is false; an "or" rule (Night listening) held across the leaf switch at midnight stays held and
+ends at 6:00; a counter (`volume`) inside and outside its band; the old `snap` read as the
+verdict; three-valued `verdictOf`; `endsAt`; resume one target. `tests/rule-keys.test.ts`: Focus is `holdEach`, Battery saver is not, one held
+switch leaves four paused. `tests/agent-rules.test.ts`: `sleep.arm` refused in both forms.
+
+**Desk test.**
+1. Rulez: a While row *Time is before T* (T = three minutes ahead) → *Use theme Sepia*. Pick
+   Lilac in the title menu: the red dot. The minutes tick and Lilac stays (before the fix it
+   went back within a minute). At T the condition is false: the hold ends (`rule:hold … ended`),
+   the dot goes, and Lilac stays as your own theme.
+2. Look schedule on set times, the night time two minutes ahead. At day, pick a theme by hand:
+   the chip says "until" that time. Close the app. Reopen after the time: the night look shows
+   at the first paint and stays (no flash back to your pick). `__rules.holds()` is empty.
+3. The same, reopen before the time: your pick shows at the first paint and in the app; at the
+   time the night look comes by itself.
+4. Focus on. Turn *Share on Discord* on by hand: only it wears the red dot; the other four
+   switches stay Off with the green dot. Press its red dot: only that switch goes Off again.
+5. An agent: `rules add` with `when: "sleep.arm"` is refused with the built-in event message.
+   Paste a rule on `sleep.arm` into the store by hand with *Sleep every day* at a set time: the
+   log shows `sleep:foreign` and the mark is still armed (the sleep panel shows the time).
 
 ## 19. Adding a feature that uses rules
 

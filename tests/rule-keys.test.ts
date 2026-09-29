@@ -36,6 +36,19 @@ test("Focus (2026-09-27) also stops listen-along and the room code, and keeps fa
   assert.equal(set.get("key:toasts")?.value, "failures");
 });
 
+test("2026-09-29: Focus's switches hold one by one; Battery saver still holds as one rule", () => {
+  const focus = recipe("focus").rules.find((r) => r.id === "recipe:focus:0")!;
+  assert.equal(focus.kind === "state" && focus.holdEach, true);
+  const battery = recipe("battery").rules[0];
+  assert.equal(battery.kind === "state" && battery.holdEach, undefined);
+  // One switch held by hand: the other four stay paused.
+  const holds = [{ ruleId: "recipe:focus:0", target: "key:shareActivityApp", kind: "next" as const, verdict: true }];
+  const res = resolveState([focus], {}, holds);
+  assert.equal(res.held.get("key:shareActivityApp"), "recipe:focus:0");
+  for (const k of ["shareActivityDiscord", "discordRoomInvite", "friendsListenAlong", "friendsRoomInvite"])
+    assert.equal(res.set.get(`key:${k}`)?.value, false, k);
+});
+
 test("the new keys read back in their Settings rows' words (2026-09-27)", () => {
   const battery = recipe("battery").rules[0];
   assert.equal(

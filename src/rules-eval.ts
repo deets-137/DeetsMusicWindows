@@ -115,6 +115,10 @@ export interface StateRule extends Named {
   while: Cond;
   set: { target: RuleTarget; value: unknown }[];
   onHand: OnHand;
+  /** A hand change holds only the target you changed (Focus's sharing switches, his call
+   *  2026-09-29). Without it one hand change holds every target the rule sets: a look is its
+   *  theme AND its skin, and Battery saver sticks together (his call, 2026-09-27). */
+  holdEach?: boolean;
 }
 
 export type Rule = MomentRule | StateRule;
@@ -258,17 +262,56 @@ export function pickMoment(rules: readonly Rule[], event: EventId, card: string,
 
 // ── holds (RULES.md §8) ──────────────────────────────────────────
 
-/** A state rule standing aside for one target after a hand change. `next` keeps the facts it
- *  saw; it ends when one of them changes. `session` ends at restart; `until` when its condition holds. */
+/** A state rule standing aside for one target after a hand change. `next` keeps the whole
+ *  condition's verdict at the hand change (`verdict`); it ends when that verdict flips, so a
+ *  time or counter fact that only ticks keeps the hold, and so does a switch between the leaves
+ *  of an "or" group (his call, 2026-09-29: the hold lasts until the rule's CONDITION changes).
+ *  `session` ends at restart; `until` when its condition holds. `endsAt` (ms, any kind): the
+ *  hold ends at that time too — the look schedule's hand pick ends at the time its chip shows
+ *  (LOOK-SCHEDULE.md §5a). */
 export interface Hold {
   ruleId: string;
   target: string; // target id
   kind: "next" | "session" | "until";
+  /** `next`: the rule's While at the hand change (true: a hold starts only while the rule acts). */
+  verdict?: boolean;
+  /** `next`, saved before 2026-09-29: the raw values the rule read. Read once as `verdict`. */
   snap?: Facts;
   until?: Cond;
+  endsAt?: number;
 }
 
 export type HandOutcome = { do: "hold"; hold: Hold } | { do: "learn" } | { do: "off" };
+
+/** A condition's verdict, or null when facts with no value (a module not registered yet, at
+ *  launch; no song for a cover fact) leave it undecided. Three-valued: an "or" with one true
+ *  member is true, an "and" with one false member is false, whatever the unknown ones are. */
+export function verdictOf(c: Cond | undefined, f: Facts): boolean | null {
+  if (!c) return true;
+  if ("all" in c) {
+    let unknown = false;
+    for (const m of c.all) {
+      const v = verdictOf(m as Cond, f);
+      if (v === false) return false;
+      if (v === null) unknown = true;
+    }
+    return unknown ? null : true;
+  }
+  if ("any" in c) {
+    let unknown = false;
+    for (const m of c.any) {
+      const v = verdictOf(m as Cond, f);
+      if (v === true) return true;
+      if (v === null) unknown = true;
+    }
+    return unknown ? null : false;
+  }
+  if ("not" in c) {
+    const v = verdictOf(c.not as Cond, f);
+    return v === null ? null : !v;
+  }
+  return f[c.fact] === undefined ? null : leafHolds(c, f);
+}
 
 /** You changed a value that `rule` set. What the rule does (RULES.md §8). */
 export function handChange(rule: StateRule, target: string, f: Facts): HandOutcome {
@@ -276,12 +319,16 @@ export function handChange(rule: StateRule, target: string, f: Facts): HandOutco
   if (h === "learn") return { do: "learn" };
   if (h === "off") return { do: "off" };
   if (h === "session") return { do: "hold", hold: { ruleId: rule.id, target, kind: "session" } };
-  if (h === "next") {
-    const snap: Facts = {};
-    for (const k of factsOf(rule.while)) snap[k] = f[k];
-    return { do: "hold", hold: { ruleId: rule.id, target, kind: "next", snap } };
-  }
+  // The rule acts on this target, so its condition holds: an undecided read is true.
+  if (h === "next") return { do: "hold", hold: { ruleId: rule.id, target, kind: "next", verdict: verdictOf(rule.while, f) ?? true } };
   return { do: "hold", hold: { ruleId: rule.id, target, kind: "until", until: h.until } };
+}
+
+/** A `next` hold's verdict: its own, or (a hold saved before 2026-09-29) its raw values read
+ *  through the rule's While now; undecided (a value was missing) reads as true, since a hold
+ *  only starts while the rule acts. */
+export function holdVerdict(h: Hold, r: StateRule): boolean {
+  return h.verdict ?? verdictOf(r.while, h.snap ?? {}) ?? true;
 }
 
 /** The holds that still stand after the facts moved to `f`. A hold of a rule that is gone ends too.
@@ -291,18 +338,26 @@ export function factsChanged(holds: readonly Hold[], rules: readonly Rule[], f: 
   return holds.filter((h) => {
     const r = byId.get(h.ruleId);
     if (!r || r.kind !== "state" || !r.on) return false;
-    if (h.kind === "next") return Object.entries(h.snap ?? {}).every(([k, v]) => f[k as FactId] === undefined || JSON.stringify(f[k as FactId]) === JSON.stringify(v));
+    if (h.endsAt !== undefined && typeof f.now === "number" && f.now >= h.endsAt) return false;
+    if (h.kind === "next") {
+      // Only the whole condition's flip ends the hold; undecided is not a change.
+      const now = verdictOf(r.while, f);
+      return now === null || now === holdVerdict(h, r);
+    }
     if (h.kind === "until") return !evalCond(h.until, f);
     return true;
   });
 }
 
-/** Resume on the chip: the holds of that rule end at once. */
-export const resume = (holds: readonly Hold[], ruleId: string): Hold[] => holds.filter((h) => h.ruleId !== ruleId);
+/** Resume on the chip: the holds of that rule end at once — only `target`'s when it is given
+ *  (a `holdEach` rule, whose targets hold one by one). */
+export const resume = (holds: readonly Hold[], ruleId: string, target?: string): Hold[] =>
+  holds.filter((h) => h.ruleId !== ruleId || (target !== undefined && h.target !== target));
 
 /** The app starts again: `session` holds are gone. A `next` hold stays and is checked against
  *  the new facts at the first resolve (his call, 2026-09-26: a look pick survives a restart
- *  until the next day / night change, as `deets.look.hold` did). */
+ *  until the next day / night change, as `deets.look.hold` did; since 2026-09-29 also until
+ *  its `endsAt`, the time the chip showed). */
 export const restart = (holds: readonly Hold[]): Hold[] => holds.filter((h) => h.kind === "next");
 
 /** A row changed and its rules were made again: a hold of a rule whose shape changed ends. */

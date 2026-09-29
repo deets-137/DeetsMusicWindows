@@ -12,7 +12,7 @@
 
 import { setting, setSetting, ownSetting, onSettingsChange, type Settings } from "./settings-store";
 import type { ThemeName, SkinName } from "./look-ids";
-import { isHeld, onRulesChange, recheck, registerChipText, registerFact, resumeRow } from "./rules";
+import { adoptHoldEnd, holdEndsAt, isHeld, onRulesChange, recheck, registerChipText, registerFact, registerHoldEnd, resumeRow } from "./rules";
 import { ZONES, ALIASES } from "./sun-zones";
 
 type Period = "day" | "night";
@@ -211,10 +211,15 @@ function tick(): void {
   listeners.forEach((cb) => cb());
 }
 
-/** The pre-paint's copy of the hold (index.html reads it before any module runs). */
+/** When your pick ends: the time the hold carries (the plan's next change when you picked,
+ *  his call 2026-09-29), else the plan's next change; null = only Windows ends it. */
+const pickEnds = (): number | null => holdEndsAt(RULE) ?? lastPlan?.next ?? null;
+
+/** The pre-paint's copy of the hold (index.html reads it before any module runs). The engine
+ *  ends the hold at the same two edges the pre-paint reads: the period changes, or `until`. */
 function syncHoldKey(): void {
   const p = lastPlan;
-  store(HOLD_KEY, held() && p ? ({ period: p.period, until: p.next } satisfies Hold) : null);
+  store(HOLD_KEY, held() && p ? ({ period: p.period, until: pickEnds() } satisfies Hold) : null);
 }
 
 let handPick = false;
@@ -232,7 +237,8 @@ export function scheduleStatus(): string {
   if (!p) return "";
   const at = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   if (held()) {
-    return p.next === null ? "Your pick stays until Windows changes mode." : `Your pick stays until ${at(p.next)}.`;
+    const end = holdEndsAt(RULE) ?? p.next;
+    return end === null ? "Your pick stays until Windows changes mode." : `Your pick stays until ${at(end)}.`;
   }
   const look = p.period === "day" ? "Day look" : "Night look";
   const mode = setting("lookSchedule");
@@ -263,6 +269,17 @@ function keepShownLook(): void {
 /** Launch, before look.ts paints: the facts and the chip's words, then the plan. The engine
  *  lays the scheduled look before the first paint, so it shows with no animation. */
 export function initLookSchedule(): void {
+  // A hold saved before 2026-09-29 carries no time: its pre-paint copy has it. Read it before
+  // anything writes that copy again, so the engine and the pre-paint end the pick together.
+  try {
+    const old = JSON.parse(localStorage.getItem(HOLD_KEY) ?? "null") as Hold | null;
+    if (old && typeof old.until === "number") adoptHoldEnd(RULE, old.until);
+  } catch {
+    /* no copy: the hold ends at the next day / night change */
+  }
+  // A hand pick ends at the time its chip shows (LOOK-SCHEDULE.md §5a, his call 2026-09-29):
+  // the next change as planned now. Windows mode has none.
+  registerHoldEnd("lookSchedule", () => plan(Date.now())?.next ?? null);
   registerFact("daylight", () => (lastPlan ? lastPlan.period === "day" : undefined));
   registerFact("lookMode", () => setting("lookSchedule"));
   registerChipText("lookSchedule", {
@@ -273,8 +290,8 @@ export function initLookSchedule(): void {
       return `The look schedule shows the ${look} look. Your pick is ${own}.`;
     },
     hand: () => {
-      const p = lastPlan;
-      const at = p?.next != null ? new Date(p.next).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
+      const end = pickEnds();
+      const at = end !== null ? new Date(end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
       const until = at ? `until ${at}` : "until Windows changes mode";
       return `Your pick stays ${until}. Press to go back to the schedule now.`;
     },
