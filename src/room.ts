@@ -38,6 +38,7 @@ import {
 import { toast } from "./toast";
 import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
+import { plainError } from "./plain-error";
 
 // ── the wire (mirrors DeetsMusicRooms/src/protocol.js, its own repo) ─────────
 
@@ -509,7 +510,7 @@ export function sendFriendOffer(to: string, code: string): void {
 
 function fail(text: string, e: unknown): void {
   diag.warn("room:failed", { text, e: String(e) });
-  toast({ kind: "warn", text: `${text} ${String(e instanceof Error ? e.message : e)}` });
+  toast({ kind: "warn", text: `${text} ${plainError(e, "Check your connection, then try again.")}` });
   teardown("failed");
 }
 

@@ -48,6 +48,14 @@ pub struct Friend {
     pub name: String,
     /// Unix milliseconds. Only the list's default order uses it.
     pub added_at: i64,
+    /// Their full public key (base64), pinned the first time the worker hands us one it
+    /// verified for this code (FRIENDS.md §19, trust on first use). A code is only 40 bits
+    /// of that key, so a stranger who grinds a key with the same 40 bits could pass the
+    /// worker's check; they cannot match all 256. Removing the friend drops the pin, which
+    /// is the one way to accept a new key. `None` until the first sight, and in every file
+    /// written before 2026-09-29.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -285,7 +293,7 @@ pub fn friend_add(code: String, name: String) -> Result<Friend, String> {
         if s.friends.len() >= MAX_FRIENDS {
             return Err(format!("{MAX_FRIENDS} friends is the most the list holds."));
         }
-        let friend = Friend { code: code.clone(), name, added_at: now_ms() };
+        let friend = Friend { code: code.clone(), name, added_at: now_ms(), key: None };
         s.friends.push(friend.clone());
         save(s)?;
         Ok(friend)
@@ -312,6 +320,69 @@ pub fn friend_remove(code: String) -> Result<(), String> {
         s.friends.retain(|f| f.code != code);
         save(s)
     })
+}
+
+// ── the key pin (FRIENDS.md §19, 2026-09-29) ─────────────────────────────────
+
+/// What a key the worker handed us means for a friend we already know.
+#[derive(Debug, PartialEq, Eq)]
+enum Pin {
+    /// Nothing pinned yet: this key becomes the pin.
+    First,
+    /// The pinned key. Trusted.
+    Same,
+    /// A different key under the same code. Not trusted, and the pin is NOT replaced.
+    Changed,
+}
+
+/// The pure rule. The first key wins and is never overwritten here: the only way to a new
+/// pin is to remove the friend and add them again.
+fn pin_decision(stored: Option<&str>, seen: &str) -> Pin {
+    match stored {
+        None => Pin::First,
+        Some(k) if k == seen => Pin::Same,
+        Some(_) => Pin::Changed,
+    }
+}
+
+/// A key in its one canonical spelling, if it is a real Ed25519 public key whose friend
+/// code is `code`. The worker already checked this; checking it again here means a broken
+/// or rolled-back worker can never pin a key that is not that person's.
+fn canonical_key_for(code: &str, key_b64: &str) -> Option<String> {
+    let bytes: [u8; 32] = b64().decode(key_b64.trim()).ok()?.try_into().ok()?;
+    let public = VerifyingKey::from_bytes(&bytes).ok()?;
+    (code_for(&public) == code).then(|| b64().encode(public.as_bytes()))
+}
+
+/// Pin a friend's key on first sight, or say whether it matches the pin. Answers
+/// `"pinned"`, `"same"`, `"changed"`, or `"unknown"` (not on your list). An `Err` is a
+/// key that is not that code. It writes the file, so it runs off the UI thread (§8.11).
+#[tauri::command]
+pub async fn friend_pin(code: String, key: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let code = crate::rooms::normalize(&code).ok_or("That is not a friend code.")?;
+        let key = canonical_key_for(&code, &key).ok_or("That key is not that friend code.")?;
+        with_store(|s| {
+            let Some(f) = s.friends.iter_mut().find(|f| f.code == code) else {
+                return Ok("unknown".to_string());
+            };
+            match pin_decision(f.key.as_deref(), &key) {
+                Pin::Same => Ok("same".to_string()),
+                Pin::Changed => {
+                    crate::log::warn(&format!("friends: {code} signed in with a key that is not the pinned one"));
+                    Ok("changed".to_string())
+                }
+                Pin::First => {
+                    f.key = Some(key);
+                    save(s)?;
+                    crate::log::info(&format!("friends: pinned the key of {code}"));
+                    Ok("pinned".to_string())
+                }
+            }
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// A name is yours and local, so the only rules are that it fits on a row and holds no
@@ -412,6 +483,38 @@ mod tests {
         assert_eq!(clean_name("  Sam  "), "Sam");
         assert_eq!(clean_name(""), "Friend");
         assert_eq!(clean_name(&"x".repeat(80)).chars().count(), 24);
+    }
+
+    #[test]
+    fn the_first_key_is_pinned_and_a_different_one_is_not_trusted_2026_09_29() {
+        let a = b64().encode(SigningKey::from_bytes(&[1u8; 32]).verifying_key().as_bytes());
+        let b = b64().encode(SigningKey::from_bytes(&[2u8; 32]).verifying_key().as_bytes());
+        assert_eq!(pin_decision(None, &a), Pin::First);
+        assert_eq!(pin_decision(Some(&a), &a), Pin::Same);
+        assert_eq!(pin_decision(Some(&a), &b), Pin::Changed);
+    }
+
+    #[test]
+    fn only_a_key_that_hashes_to_the_code_can_be_pinned_2026_09_29() {
+        let signing = SigningKey::from_bytes(&[7u8; 32]);
+        let key = "6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=";
+        assert_eq!(canonical_key_for("ZT0JR4QK", key).as_deref(), Some(key));
+        // Whitespace around it is the same key, spelled one way.
+        assert_eq!(canonical_key_for("ZT0JR4QK", &format!(" {key}\n")).as_deref(), Some(key));
+        // The right key for another code, and junk, are refused.
+        assert_eq!(canonical_key_for("ABCD2345", key), None);
+        assert_eq!(canonical_key_for("ZT0JR4QK", "not base64"), None);
+        assert_eq!(canonical_key_for("ZT0JR4QK", &b64().encode([0u8; 16])), None);
+        assert_eq!(code_for(&signing.verifying_key()), "ZT0JR4QK");
+    }
+
+    #[test]
+    fn an_old_file_with_no_key_still_reads_2026_09_29() {
+        let old = r#"{"seed":"","friends":[{"code":"ZT0JR4QK","name":"Sam","addedAt":1}]}"#;
+        let store: Store = serde_json::from_str(old).unwrap();
+        assert_eq!(store.friends[0].key, None);
+        // And a friend with no pin writes no `key` field at all.
+        assert!(!serde_json::to_string(&store.friends[0]).unwrap().contains("key"));
     }
 
     #[test]

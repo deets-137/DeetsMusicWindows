@@ -112,6 +112,9 @@ old installs' Guide button opens.
 - `GRAPHICS-FALLBACK.md` — DESIGNED, not built (2026-09-29): when the GPU process falls back to
   WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers a
   restart; the *If graphics fail* row; the `graphics` fact. Row words and toast text are open.
+- `USAGE-COUNTS.md` — DESIGNED, not built (2026-09-29): anonymous active-install counts, a
+  weekly settings row and weekly health counts (log errors, Apple calls) to DeetsSupport. No ID,
+  no IP, an allow-list, groups under 5 hidden. §2 is the privacy rules; §9 the open forks.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
@@ -144,7 +147,9 @@ old installs' Guide button opens.
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
   commands are background jobs.
 
-**`docs/ideas/`** — not built; never tell a user the app does these. **`docs/guide/`** — the
+**`docs/ideas/`** — not built; never tell a user the app does these. `SECRETS-AND-CSP.md` —
+designed 2026-09-29: a CSP for the webview; DPAPI for the Apple token and Last.fm session.
+**`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13). `SHOTS.md` — the pictures and clips of each
 feature, made by a script from the demo; for the guide, a marketing overview, and visual
 debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins.

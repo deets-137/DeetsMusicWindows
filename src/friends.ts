@@ -38,6 +38,14 @@ import {
 } from "./room";
 import { effective, onSettingsChange, ownSetting, setting, setSetting } from "./settings-store";
 import { toast } from "./toast";
+import { plainError } from "./plain-error";
+import { judgeKey, pinsForWorker } from "./friend-pin";
+
+/** A friends-list write failed: the words for a person, and the raw text in the ring. */
+function friendFailed(what: string, e: unknown, fallback: string): void {
+  diag.warn("friends:failed", { what, e: String(e) });
+  toast({ kind: "warn", text: plainError(e, fallback) });
+}
 
 /** The name the panel and the busy toast use. Nobody has to know what a worker is. */
 const SERVICE = "Friends";
@@ -264,7 +272,9 @@ async function handle(link: Link, ws: WebSocket, message: Record<string, unknown
         pub: me.publicKey,
         sig,
         name: roomName() || "Listener",
-        ...(link.role === "home" ? { friends: listCache.map((f) => f.code) } : {}),
+        // `keys`: the pinned keys, so the worker also refuses a watcher under a friend's
+        // code with another key (§19). An old worker ignores the field.
+        ...(link.role === "home" ? { friends: listCache.map((f) => f.code), keys: pinsForWorker(listCache) } : {}),
       });
       return;
     }
@@ -283,6 +293,12 @@ async function handle(link: Link, ws: WebSocket, message: Record<string, unknown
       return emit();
     }
     case "presence": {
+      // A song under this friend's code from a key that is not theirs is dropped, and the
+      // row shows nothing rather than what a stranger chose to show (§19).
+      if (!trusted(link.of, message.key, "presence")) {
+        link.presence = null;
+        return emit();
+      }
       link.allowed = true;
       link.theirName = String(message.name ?? "");
       link.presence = (message.presence as FriendPresence | null) ?? null;
@@ -301,11 +317,15 @@ async function handle(link: Link, ws: WebSocket, message: Record<string, unknown
     }
     // Somebody pressed Listen Along on your row (§7.3). Your own switch answers it; this
     // is the one place a friend's action reaches your app.
-    case "ask":
-      return answerListenAlong(String(message.from ?? ""), String(message.name ?? "a friend"));
+    case "ask": {
+      const from = String(message.from ?? "");
+      if (!trusted(from, message.key, "ask")) return; // never a room for a stranger (§19)
+      return answerListenAlong(from, String(message.name ?? "a friend"));
+    }
     // Their answer, or a host inviting you by name (§7.1). Both carry a room code.
     case "answer":
     case "invite":
+      if (!trusted(link.of, message.key, String(message.t))) return;
       return arriveAtRoom(message);
     case "error":
       diag.warn("friends:worker", { why: String(message.why ?? "") });
@@ -546,8 +566,69 @@ interface StoredFriend {
   code: string;
   name: string;
   addedAt: number;
+  /** Their full public key, pinned on first sight (friends.rs::friend_pin, §19). */
+  key?: string;
 }
 let listCache: StoredFriend[] = [];
+
+// ── the key pin (FRIENDS.md §19, 2026-09-29) ─────────────────────────────────
+
+/** Codes already warned about this launch: one toast per friend, never one per message. */
+const keyWarned = new Set<string>();
+
+/**
+ * May a message under `code` that carries `key` be acted on? The first key seen is pinned
+ * (in memory at once, on disk in the background); a different key after that is dropped.
+ * A code that is not on your list is left to the rules that already guard it.
+ */
+function trusted(code: string, key: unknown, where: string): boolean {
+  const friend = listCache.find((f) => f.code === code);
+  if (!friend) return true;
+  const verdict = judgeKey(friend.key, key);
+  if (verdict === "legacy" || verdict === "trust") return true;
+  if (verdict === "pin") {
+    friend.key = String(key).trim();
+    void pinKey(friend, friend.key);
+    return true;
+  }
+  keyChanged(friend, where);
+  return false;
+}
+
+async function pinKey(friend: StoredFriend, key: string): Promise<void> {
+  try {
+    const answer = await invoke<string>("friend_pin", { code: friend.code, key });
+    if (answer === "changed") {
+      // The file held another key than the cache: the file wins, and this one is not trusted.
+      friend.key = undefined;
+      await reloadList();
+      keyChanged(friend, "pin");
+      return;
+    }
+    diag.log("friends:key-pinned", { of: friend.code, answer });
+    // The worker learns the pin too, so it refuses a watcher under this code with another key.
+    const link = home();
+    if (answer === "pinned" && link?.ready) {
+      send(link.ws, { t: "friends", list: listCache.map((f) => f.code), keys: pinsForWorker(listCache) });
+    }
+  } catch (e) {
+    // A key that does not hash to the code: the worker should never send one. Unpin it.
+    if (friend.key === key) friend.key = undefined;
+    diag.warn("friends:key-pin-failed", { of: friend.code, e: String(e) });
+  }
+}
+
+function keyChanged(friend: StoredFriend, where: string): void {
+  if (keyWarned.has(friend.code)) return;
+  keyWarned.add(friend.code);
+  diag.warn("friends:key-changed", { of: friend.code, where });
+  const name = friend.name || "a friend";
+  toast({
+    kind: "warn",
+    sticky: true,
+    text: `A different key is using ${name}'s friend code, so DeetsMusic ignores it. If you know ${name} changed keys, remove ${name} and add them again.`,
+  });
+}
 
 async function reloadList(): Promise<void> {
   listCache = await invoke<StoredFriend[]>("friend_list");
@@ -560,7 +641,7 @@ async function reloadList(): Promise<void> {
   }
   // The home socket carries the list, so the worker can tell who may watch you.
   const link = home();
-  if (link?.ready) send(link.ws, { t: "friends", list: listCache.map((f) => f.code) });
+  if (link?.ready) send(link.ws, { t: "friends", list: listCache.map((f) => f.code), keys: pinsForWorker(listCache) });
   emit();
 }
 
@@ -578,18 +659,19 @@ export async function addFriend(code: string, name: string, said?: string | null
     if (text) toast({ kind: "info", text });
     return true;
   } catch (e) {
-    toast({ kind: "warn", text: String(e) });
+    friendFailed("add", e, "Couldn't add that friend. Try again.");
     return false;
   }
 }
 
 export async function renameFriend(code: string, name: string): Promise<void> {
-  await invoke("friend_rename", { code, name }).catch((e) => toast({ kind: "warn", text: String(e) }));
+  await invoke("friend_rename", { code, name }).catch((e) => friendFailed("rename", e, "Couldn't rename that friend. Try again."));
   await reloadList();
 }
 
 export async function removeFriend(code: string): Promise<void> {
-  await invoke("friend_remove", { code }).catch((e) => toast({ kind: "warn", text: String(e) }));
+  await invoke("friend_remove", { code }).catch((e) => friendFailed("remove", e, "Couldn't remove that friend. Try again."));
+  keyWarned.delete(code); // removing drops the pin (§19), so a later change warns again
   await reloadList();
 }
 
@@ -607,7 +689,7 @@ export async function importKey(key: string): Promise<boolean> {
     toast({ kind: "info", text: `Your friend code is now ${formatFriendCode(me.code)}.` });
     return true;
   } catch (e) {
-    toast({ kind: "warn", text: String(e) });
+    friendFailed("importKey", e, "Couldn't use that key. Your friend code did not change.");
     return false;
   }
 }

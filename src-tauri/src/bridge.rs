@@ -676,9 +676,27 @@ async fn handle(app: AppHandle, mut req: Request) {
     let auth = find_header(&req, "Authorization").unwrap_or_default();
     let settings = app.state::<crate::settings::Settings>().get();
     let token = settings.bridge_token;
-    let paired = origin.is_some() || auth.strip_prefix("Bearer ").map(|t| t.trim() == token).unwrap_or(false);
-    // The agent routes (AGENT.md §3) obey the Settings › Connections › Agent control switch. The browser
-    // extension (an Origin) is a different feature and is never gated by it.
+    // A DNS-rebinding page reaches 127.0.0.1 under its own name: only a loopback Host is served
+    // (2026-09-29; before, such a page could read /health).
+    if let Some(host) = find_header(&req, "Host") {
+        // `127.0.0.1:47825`, `localhost`, `[::1]:47825` → the name without the port.
+        let name = match host.strip_prefix('[') {
+            Some(v6) => v6.split(']').next().unwrap_or(""),
+            None => host.split(':').next().unwrap_or(""),
+        };
+        if !matches!(name.to_ascii_lowercase().as_str(), "127.0.0.1" | "localhost" | "::1") {
+            return respond(req, 403, "host".into(), "text/plain", None);
+        }
+    }
+    let token_ok = auth.strip_prefix("Bearer ").map(|t| t.trim() == token).unwrap_or(false);
+    // An extension Origin pairs only the routes the extension calls (every version, checked
+    // 2026-09-29). Any local process or other extension can send that Origin, so it must not
+    // open the agent routes: playback, settings, history, rollback (security review).
+    const EXTENSION_ROUTES: &[&str] = &["/health", "/search", "/resolve", "/add", "/log"];
+    let paired = token_ok || (origin.is_some() && EXTENSION_ROUTES.contains(&path.as_str()));
+    // The agent routes (AGENT.md §3) obey the Settings › Connections › Agent control switch, whatever
+    // the Origin. The browser extension calls none of them (/add, /search, /resolve, /log, /health), and
+    // any local process can send an extension Origin, so the switch holds for it too (2026-09-29).
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
@@ -687,7 +705,7 @@ async fn handle(app: AppHandle, mut req: Request) {
     // `POST /airplay` hands a speaker to another app, which is control, not a
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
     let agent_route = AGENT_ROUTES.contains(&path.as_str()) || (method == Method::Post && path == "/airplay");
-    let agent_off = !settings.agent_control && origin.is_none() && agent_route;
+    let agent_off = !settings.agent_control && agent_route;
 
     if method == Method::Options {
         return respond(req, 204, String::new(), "text/plain", origin);
@@ -1002,7 +1020,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                 Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
             }
         }
-        (Method::Get, "/history") if origin.is_none() && !settings.agent_history => json(
+        (Method::Get, "/history") if !settings.agent_history => json(
             req,
             403,
             serde_json::json!({ "error": "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections." }),

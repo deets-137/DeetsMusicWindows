@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
-sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts]
-updated: 2026-09-27
+sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
@@ -1553,3 +1553,107 @@ flush every 5 minutes). **Step 7 run later the same day: PASS** — a fresh seco
 design, so it always comes before Add friend). One note: the ask toast shows Add · Not now · **Dismiss** (the toast
 module adds Dismiss to every sticky toast); his call, 2026-09-26: keep it for now. **Open: his
 look at the rows and the toast.**
+
+## 19. The friend key pin (as built, 2026-09-29)
+> **Part:** built · 2026-09-29
+
+**The hole (the security review, 2026-09-29).** A friend code is `SHA-256(public key)[0..5]`,
+40 bits (§16.3). The worker accepts any key that hashes to the code
+(`DeetsMusicFriends/src/friends.js`, `auth`). A stranger who grinds about 2^40 keys finds one
+with a friend's code. With it they can sign in as that friend: show a fake song on the
+friend's row, send you an invite under the friend's name, and watch what you play.
+
+**His decision:** the app remembers a friend's full key the first time it sees it, and warns
+if the key changes. Nothing changes for users. This is *trust on first use*: the stranger can
+match 40 bits, never the 256 bits of the key.
+
+### 19.1 Where the app sees a friend's key
+
+Before this change, nowhere: the worker checked the key and kept it. Now the worker puts the
+key each socket **proved** on every message that socket causes:
+
+| Message | Carries `key` of | Arrives on |
+|---|---|---|
+| `presence` | the friend's home socket | your watch socket on their person |
+| `answer`, `invite` | the friend's home socket | the same |
+| `ask` | the friend's watch socket | your home socket |
+
+And your home socket sends your pins to the worker (`keys: {CODE: key}` on `auth` and on
+`friends`). The worker then refuses a **watcher** under a pinned code with another key: it
+gets `denied`, no presence, no invite, and its ask goes nowhere. So the stranger cannot watch
+what you play either.
+
+### 19.2 The rule
+
+`src/friend-pin.ts` `judgeKey(pinned, seen)`, tested in `tests/friend-pin.test.ts`:
+
+| The message | Nothing pinned | The pinned key | Another key |
+|---|---|---|---|
+| carries a key | **pin** it, trust | trust | **drop**, warn |
+| carries no key (a worker from before) | trust, as before | trust | trust |
+
+- **The pin is written once.** `friends.rs::friend_pin` stores the key in `friends.json`
+  (DPAPI, the `key` field on the friend) only if none is stored, and never overwrites. It
+  checks again that the key hashes to the code, so a broken worker cannot pin a wrong key.
+  It is `async` + `spawn_blocking` (§8.11).
+- **A drop:** a presence is replaced by an empty row; an invite, an answer or an ask is
+  ignored (an ask never starts a room). `diag.warn("friends:key-changed", {of, where})`, and
+  one sticky warn toast per friend per launch (TOASTS.md §5).
+- **To accept a new key:** remove the friend and add them again. Removing drops the pin; the
+  next key seen is pinned. The toast says so. (A friend who moves PC with *Copy my key* keeps
+  the same key, so a real change under the same code is rare.)
+
+### 19.3 The files
+
+| Where | What |
+|---|---|
+| `src-tauri/src/friends.rs` | `Friend.key` (optional; old files read as `None`), `pin_decision`, `canonical_key_for`, the `friend_pin` command, 3 new tests (9 in all) |
+| `src-tauri/src/lib.rs` | `friend_pin` registered |
+| `src/friend-pin.ts` | `judgeKey`, `pinsForWorker` |
+| `src/friends.ts` | `trusted`, `pinKey`, `keyChanged`; the `presence`, `ask`, `answer`, `invite` cases; `keys` on `auth` and `friends` |
+| `../DeetsMusicFriends/src/codes.js` | `toBase64`, `sanitizeKeys` (list codes only, 32-byte keys, one spelling) |
+| `../DeetsMusicFriends/src/friends.js` | `state.pub`, `state.keys`, `allowed(home, watcher)`, `key` on the four messages |
+| `../DeetsMusicFriends/src/protocol.js` | the shapes. `PROTOCOL_V` stays 1: all of it is additive |
+| `../DeetsMusicFriends/scripts/check.mjs` | step 7a: the key on each message, a wrong pin denies the watcher and stops its ask and the invite, the right pin feeds it again. **25 of 25 pass against `wrangler dev`, 2026-09-29. NOT deployed.** |
+
+**Backward compatible both ways.** An old app sends no `keys` and ignores `key`: the worker
+behaves as before for it. A new app on the old worker sees no `key`: `legacy`, trusted as
+today. The pin starts to protect when the worker deploys (the owner's call).
+
+**Known limits.** The first key seen wins: if a stranger is already posing as a friend when
+the pin starts, the stranger is pinned, and the real friend gets the warning. Trust in the
+worker stays: it reports the key it verified. Removing and adding again pins whoever is
+online at that time.
+
+### 19.4 Decided inside his choice
+
+- **The warning is a toast, not a mark on the row.** A toast needs no new panel part, token
+  or hover hint; the row simply shows no song. Sticky `warn`, once per friend per launch.
+- **The words:** *"A different key is using {Name}'s friend code, so DeetsMusic ignores it.
+  If you know {Name} changed keys, remove {Name} and add them again."*
+- **A message with no key is trusted** (a worker from before), so nothing breaks before the
+  deploy.
+- **The worker also refuses a watcher** with a key that is not the pin (the "watch what you
+  play" part), through the pins the home socket sends.
+
+### 19.5 The desk test
+
+Needs the worker change. Run it locally first: `npx wrangler@4 dev --port 8795` in
+`../DeetsMusicFriends`, and in each dev app set `friendsUrl` to `http://127.0.0.1:8795`
+(the way §18.8 sets `roomsUrl`), then reload.
+
+1. **Pin on first sight.** Two dev apps that are friends (`dev:app` and `dev:app --
+   --second`). Play a song in B. A's row of B shows it. The ring has
+   `friends:key-pinned {answer: "pinned"}` once. `friends.json` is written once for it.
+2. **Nothing changes for a user.** Restart A: B's row fills as before. Listen Along and an
+   invite work both ways.
+3. **A changed key** cannot be made from the app: it needs a second key with B's code, which
+   is the 2^40 grind. The worker half is `node ../DeetsMusicFriends/scripts/check.mjs
+   http://127.0.0.1:8795`, step 7a (a wrong pin denies the watcher and stops its ask and the
+   invite). The app half is `judgeKey` (`npm test`) and `pin_decision` (`cargo test`).
+4. **Remove and add again.** A removes B and adds B again: B's row fills, and the ring has a
+   new `friends:key-pinned {answer: "pinned"}`.
+5. **An old worker.** Point A back at the live worker (`friendsUrl` empty): rows fill as
+   before (no `key`, `legacy`).
+
+Put `friendsUrl` back to `""` after the test.

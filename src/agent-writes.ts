@@ -449,16 +449,28 @@ async function update(payload: any): Promise<Reply> {
       void rollbackTo(value);
       return waiting(`DeetsMusic is getting ${value}. When it is ready, DeetsMusic asks the user to restart; tell them to answer that question in DeetsMusic.${RESTART_NOTE}`);
     }
+    // Both are settings, so both obey Settings › Connections › Agent changes settings, as
+    // `settings set` does (2026-09-29: they wrote straight through, even when it was Off).
     case "mode": {
       const labels: Record<string, string> = { auto: "Automatic", ask: "Ask", off: "Off" };
       if (!labels[value]) throw unknown("mode takes auto, ask, or off");
-      setSetting("updateMode", value as "auto" | "ask" | "off");
-      said(`An agent set Get updates to ${labels[value]}.`);
-      return done(`Get updates is ${labels[value]}.`);
+      return settingsWrite({ action: "set", key: "updateMode", value });
     }
     case "skip": {
       if (!value) throw unknown("skip takes a version, or none");
       const v = value.toLowerCase() === "none" ? "" : value;
+      const gate = setting("agentSettings");
+      if (gate === "off") throw blocked("Agent changes settings is off in DeetsMusic › Settings › Connections.");
+      const what = v ? `skip DeetsMusic ${v}` : "clear the skipped update";
+      if (gate === "ask") {
+        toast({
+          kind: "info",
+          sticky: true,
+          text: `An agent wants to ${what}.`,
+          actions: [{ label: "Allow", run: () => setSetting("updateSkip", v) }, { label: "Not now" }],
+        });
+        return waiting(`DeetsMusic asked the user to allow this. Tell them to answer the question in DeetsMusic; it applies when they press Allow, so don't send it again.`);
+      }
       setSetting("updateSkip", v);
       said(v ? `An agent skipped DeetsMusic ${v}.` : "An agent cleared the skipped update.");
       return done(v ? `Skipping ${v}.` : "No version is skipped.");

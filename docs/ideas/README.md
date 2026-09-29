@@ -26,5 +26,8 @@ the app can do any of these things.
   2026-09-25), one actor per outside subsystem, one Apple call queue, and where a worker
   speeds the app up (opened 2026-09-25).
 
+- [SECRETS-AND-CSP.md](SECRETS-AND-CSP.md) — designed, not built (2026-09-29): a Content
+  Security Policy for the webview, and DPAPI for the Apple token and the Last.fm session.
+
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).

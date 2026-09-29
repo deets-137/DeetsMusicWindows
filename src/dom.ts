@@ -11,10 +11,11 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, t
   return e;
 }
 
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
-/** Text made safe for HTML, in element content and in a double-quoted attribute. */
-export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ESCAPES[c]);
+/** Text made safe for HTML: element content, and a double- or single-quoted attribute
+ *  (`'` added 2026-09-29; no template uses single quotes today, so none can slip later). */
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
 /** A module's error reporter for a promise chain: `const err = errorOf("menu")`, then
  *  `.catch(err("play now"))` logs `[menu] play now` with the error. Every console.error

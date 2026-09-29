@@ -55,6 +55,7 @@ import { friendsState } from "./friends";
 import * as diag from "./diag";
 import { toast } from "./toast";
 import { parseSum } from "./compass-math";
+import { plainError } from "./plain-error";
 
 // ── the rows ──────────────────────────────────────────────────
 
@@ -736,7 +737,12 @@ function webRow(term: string): Row[] {
       diag.log("web:compass", req);
       void webQuick(req, status, () => list?.querySelector<HTMLElement>(".compass__row.is-web") ?? null)
         .then(() => closeCompass())
-        .catch((e) => { webStatus = null; render(); toast({ kind: "warn", text: String(e instanceof Error ? e.message : e) }); })
+        .catch((e) => {
+          webStatus = null;
+          render();
+          diag.warn("web:compassFailed", { e: String(e) });
+          toast({ kind: "warn", text: plainError(e, `Couldn't make a web from “${seed}”. Try again.`) });
+        })
         .finally(() => { webStatus = null; });
       return false;
     },
