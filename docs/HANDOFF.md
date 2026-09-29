@@ -139,6 +139,13 @@ or Pro (his own settings) to pre-set settings. No mode; one gate: the Rulez card
 under Pro. Every fork is decided but the words and the Pro walk's order
 ([HOP-IN.md §5](features/HOP-IN.md)); ready to build when he says go.
 
+**Graphics fallback (2026-09-29, designed, not built).** A driver update left the live app on
+WARP (software drawing) for 3 hours: 100 % of one core in the GPU process, slow clicks and hovers.
+Design: a `graphics` fact, a built-in rule owned by an *If graphics fail* row that turns the heavy
+effects off, a sticky toast [Restart now] [Turn effects on] [Later]. His calls are in
+[GRAPHICS-FALLBACK.md §2](features/GRAPHICS-FALLBACK.md); the row words, its place and the toast
+text are open (§7). He comes back to it on the evening of 2026-09-29.
+
 **The animation design pass (2026-09-28, branch `visualz`, in progress).** His ask: a full
 visual design pass on motion, with the shots made ready for Claude to review and to help debug.
 Built: clips in the shots runner, the motion set (24 clips × 5 skins, `docs/guide/motion.json`),

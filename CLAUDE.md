@@ -109,6 +109,9 @@ old installs' Guide button opens.
 - `HOP-IN.md` — DESIGNED, not built (2026-09-28): the welcome screen before sign-in, the
   Cruisin / Pro pick, the two presets (Cruisin = defaults, Pro = his own settings), the Rulez
   gate. Recipes in Settings are RULEZ.md §16.
+- `GRAPHICS-FALLBACK.md` — DESIGNED, not built (2026-09-29): when the GPU process falls back to
+  WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers a
+  restart; the *If graphics fail* row; the `graphics` fact. Row words and toast text are open.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
