@@ -109,8 +109,21 @@ docs:check 91 docs). Each doc section named here holds its desk test.
   refuses a watcher with another key). FRIENDS.md §19. The CSP and DPAPI plans are
   docs/ideas/SECRETS-AND-CSP.md, with five open forks.
 
+**His calls after the batch:** an account change also clears the ♥ mirror and the Apple
+playlist mirror (`apple-account-changed` redraws both); the offline first-run toast reads "No
+connection to Apple Music yet. DeetsMusic will connect when you are back online." Committed in
+seven groups and pushed (01bc394 … 00b6965).
+
+**Performance pass (measured first, on `dev:built --hidden`):** built — play log indexes
+(migration **v18**), the tray's volume by event (no 500 ms poll), Now Playing holds its writes
+and the Glass scrub sheen pauses while the window is hidden (GPU 8.3 % → 1.8 % while playing,
+equal to paused). Measured, not built — lazy card loading (≈40 ms parse of a 1,255 ms boot), the
+tray window (2 MB in the shared renderer), sound.ts element sets (no growth). DEBUGGING.md §"The
+2026-09-29 idle pass".
+
 **Open, his forks:** the choices each agent made inside his decisions (listed in this session's
-chat), the five forks in SECRETS-AND-CSP.md, and the performance agent's report.
+chat), the five forks in SECRETS-AND-CSP.md, a cap on the track store's transient map (and what
+it may evict), and whether the 354 ms boot handler deserves a launch pass.
 
 ## 2026-09-28 — The music stopped at a song change
 

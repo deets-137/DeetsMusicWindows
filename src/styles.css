@@ -2200,6 +2200,15 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 }
 /* Off hides the storm, as reduced motion does: a frozen half-drawn bolt reads as a bug. */
 :root[data-bg-motion="off"] .storm { display: none; }
+/* The fancy scrubbers' float (scrub-sheen, scrub-bob, scrub-ripple, scrub-breathe below) is
+   music-driven, not decorative, so it is gated on data-playing and was still running in a
+   hidden window (measured 2026-09-29). Held the same way. The selector carries the two :root
+   attributes the animation rules carry, because each `animation` shorthand resets play-state. */
+:root[data-ambient="paused"][data-fancy-scrub][data-skin] .scrub__handle,
+:root[data-ambient="paused"][data-fancy-scrub][data-skin] .scrub__handle::before,
+:root[data-ambient="paused"][data-fancy-scrub][data-skin] .scrub__handle::after {
+  animation-play-state: paused;
+}
 
 /* A rule's theme change (appearance.ts `withThemeFade`, UX-COVERUPS.md §6c): a View Transition
    crossfade, no cover. Clicks pass through the fade. The old half is a still picture, so for

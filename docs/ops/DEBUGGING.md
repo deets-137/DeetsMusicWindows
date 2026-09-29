@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 # DeetsMusic — Debugging tools
 
@@ -862,6 +862,41 @@ When the installed app was already running, the dev app got 47826, and the `deet
 tools (47825) drove the INSTALLED app: a volume call changed his live volume. Read
 `bridge: listening on …` in the dev log first. Then drive the dev app with
 `deetsmusic --port <its port> …` and `scripts/webview-eval.mjs`, never the MCP.
+
+## The 2026-09-29 idle pass — seven suspects from a read-only review, measured
+
+A morning read of the code named seven costs at launch or at idle. Each was measured before
+anything was built (`dev:built --hidden`, 0.25.2, the installed app running beside it on
+47825, so the dev app took 47826 and was driven with `deetsmusic --port 47826` and
+`webview-eval`). Three were built, four were left as measured.
+
+| # | Suspect | Measured | Verdict |
+| --- | --- | --- | --- |
+| 1 | `play_events` indexed on `started_ts` only; `pin_play_counts` and the playlists list scan it per key. | The log is **1,876 rows** (`query`: `SELECT COUNT(*) FROM plays`). On a synthetic copy of the schema (`idx_bench.py`, Python's sqlite3): 100 queries **2k rows 34 → 24 ms · 20k rows 100 → 23 ms**; plans go `SCAN` → `SEARCH … COVERING INDEX`. | **Built**, schema v18 (`library::migrate_v18`). No gain today that a stopwatch sees; it is what keeps the pins and the playlists list flat as the log grows. |
+| 2 | `np-bus.ts` polled the volume every 500 ms for the whole session. | Two timer wake-ups a second, each a `getVolume()` + `isMuted()`; nothing to time, it is pure waste. | **Built**: `onVolumeChange` subscription, compare kept ([TRAY.md §3](../features/TRAY.md)). |
+| 3 | `sound.ts` `seen` / `routed` grow per `<audio>` element and are never pruned. | After five songs: **1 audio element, `routed` 1**; the logs' highest `routed` ever is 2. MusicKit's pool caps the set at 100 anyway. | Not a leak. `__sound.status().seen` added so it can be read ([SOUND.md §0](../features/SOUND.md)). |
+| 4 | DOM writes go on while the window is hidden and a song plays. | Hidden + paused: page **0.2 %**, GPU process **1.8 %**, Viz 2.4 %. Hidden + playing: page **1.8 %**, GPU **8.3 %**, Viz 8.1 %, compositor 5.4 %, **27 main frames in 5 s**. The `MutationObserver` recipe named the writers: `np__scrub` style ×4, `#np-elapsed` ×4, `#np-remaining` ×4 per 4 s, nothing else; `getAnimations()` showed the Glass `scrub-sheen` still **running** under `data-ambient="paused"`. | **Built**: the NP progress subscriber holds its report while `data-ambient="paused"` and paints it once when the attribute clears (`now-playing-card.ts`); the fancy-scrub floats join the ambient pause rule (styles.css). **After**, same run shape: hidden + playing page **0.6 %**, GPU **1.8 %**, Viz 2.3 %, **0 DOM writes in 4 s**; hidden + paused page 0.2 %, GPU 1.7 %. Clearing `data-ambient` by hand repainted the held label (0:00 → 0:27, the song's real position) within 50 ms. |
+| 5 | One 918 KB main chunk; no card is lazy. | Navigation timing on `dev:built`: `main-*.js` fetched by **160 ms**, module evaluation done by **200 ms** (DCL start), the app's own boot handler **200 → 554 ms**, first paint at **1,255 ms**. Source-map read: the rarely-open cards (Rulez, Diary, Rewind, History) are 235 KB of 2,427 KB source ≈ 10 %, so lazy-loading them saves ≈ 4–10 ms of the ~40 ms parse. Settings card (201 KB) is imported by compass.ts and quick-panel.ts; compass.ts by agent-writes.ts. | **Not built.** Under 1 % of the boot, against cross-imports in card memory, Compass and `NEW_MARKS`. The boot handler's 354 ms is where a launch pass would look next. |
+| 6 | The tray panel is a second WebView2 window at launch, "30–60 MB". | It shares the browser and renderer processes (same origin): the installed app runs **one** renderer (83 MB private) and the panel page holds **2 MB heap, 55 nodes** on the dev app. | **Not built** ([TRAY.md §3](../features/TRAY.md)). |
+| 7 | `track-store.ts` `transient` Map unbounded. | Grows one `Track` (~1 KB) per distinct catalog song played or queued from Search in a session. A cap would have to keep every song the queue still points at, or a Queue row loses its title. | **Not built**: not measurable, and a correct cap is a fork for the owner (eviction rule). |
+
+**How to re-measure #4** (the two numbers to compare, both with the window hidden):
+```
+npm run dev:built -- --hidden                      # in the background; wait for "bridge: listening"
+deetsmusic --port <port> vol 0 && deetsmusic --port <port> play song:<id>
+node scripts/webview-profile.mjs --trace "new Promise(r=>setTimeout(r,5000))"   # playing
+deetsmusic --port <port> pause
+node scripts/webview-profile.mjs --trace "new Promise(r=>setTimeout(r,5000))"   # paused
+```
+Read `CrGpuMain` and `CrRendererMain`. The `MutationObserver` recipe (§The 2026-09-27 load
+pass) over 4 s should count 0 writes while playing hidden, and the first report after the
+window shows must paint the scrubber and both time labels at once (the desk test: hide to the
+tray mid-song for 30 s, open it, the elapsed time reads right on the first frame).
+
+**Launch, for the record (dev:built, 0.25.2):** `[perf] frames boot` 1,255 ms, first frame at
+65 ms, 2.5 % dropped; `boot-history.csv` medians per version are in §Trending start-up. The
+installed app's private working set at 9 h: renderer 83, GPU 91, CDM 58, WebView2 browser 30,
+host 11 MB (read with the §Which memory number to quote snippet).
 
 ## Which memory number to quote (2026-09-27)
 

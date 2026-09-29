@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts]
-updated: 2026-09-10
+updated: 2026-09-29
 ---
 # DeetsRewind — listening stats & the data-viz card
 
@@ -236,7 +236,7 @@ ships, the deeper the first Rewind.**
 ## 6. Build checklist
 
 **Phase A — the event log. ✅ BUILT 2026-07-01.**
-- [x] `play_events` table (§5a schema) in `init_db` (+ an index on `started_ts`).
+- [x] `play_events` table (§5a schema) in `init_db` (+ an index on `started_ts`). Since 2026-09-29 (schema v18) also indexed on `track_id` and on `(context, started_ts)`, for the per-pin counts and the playlists' last-played reads ([DATA-ARCHITECTURE.md §5](../architecture/DATA-ARCHITECTURE.md)).
 - [x] **Start path:** `record_event_start` appends the row where `recordStart`/`recordRestart` fire; the row id returns to `stats.ts`.
 - [x] **End-of-play:** the outgoing row finalizes when the next song starts (`startEvent` → `finalizeEvent`) or on `beforeunload`; `ms_listened` = accumulated forward tick deltas (seek jumps filtered), captured before the model advances.
 - [x] `context` threaded from `TrackHandle.context` through `record_event_start`.

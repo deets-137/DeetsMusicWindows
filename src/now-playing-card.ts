@@ -5,7 +5,7 @@
 
 import {
   playPause, nextTrack, prevTrack, toggleShuffle, cycleRepeat, getRepeat, isShuffleOn, stopStation, onPlayerState, onPlayerProgress, seekToFraction,
-  getVolume, setVolume, toggleMute, isMuted, onVolumeChange, type PlayerState,
+  getVolume, setVolume, toggleMute, isMuted, onVolumeChange, type PlayerState, type PlayerProgress,
 } from "./player";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 import { makeSlider } from "./slider";
@@ -549,18 +549,44 @@ export const nowPlayingCard: CardDef = {
       // where it was let go until a report lands within a second of it, for up to 1.5 s.
       let seekHold = -1;
       let seekHoldUntil = 0;
-      unsubProgress = onPlayerProgress((p) => {
-        if (seekHold >= 0) {
-          if (performance.now() < seekHoldUntil && Math.abs(p.progress - seekHold) * p.duration > 1) return;
-          seekHold = -1;
-        }
+      // While the window cannot be seen (minimized, hidden to the tray: ambient.ts sets
+      // `data-ambient="paused"`), WebView2 still paints every write. These three writes per
+      // MusicKit report kept the hidden window compositing at ~5 fps (GPU process 8.3 % against
+      // 1.8 % paused, 2026-09-29, DEBUGGING.md §The 2026-09-29 idle pass). So the report is kept
+      // and painted once when the window shows again.
+      const root = document.documentElement;
+      let heldProgress: PlayerProgress | null = null;
+      const paint = (p: PlayerProgress) => {
         seek.setValue(p.progress); // no-op while dragging
         // Only on a change: the reports come ~4 a second and a text write is a layout.
         const elapsed = fmt(p.currentTime);
         const remaining = p.duration ? `-${fmt(p.duration - p.currentTime)}` : "0:00";
         if (npElapsed && npElapsed.textContent !== elapsed) npElapsed.textContent = elapsed;
         if (npRemaining && npRemaining.textContent !== remaining) npRemaining.textContent = remaining;
+      };
+      const unsubTick = onPlayerProgress((p) => {
+        if (seekHold >= 0) {
+          if (performance.now() < seekHoldUntil && Math.abs(p.progress - seekHold) * p.duration > 1) return;
+          seekHold = -1;
+        }
+        if (root.dataset.ambient === "paused") {
+          heldProgress = p;
+          return;
+        }
+        heldProgress = null;
+        paint(p);
       });
+      const ambientWatch = new MutationObserver(() => {
+        if (root.dataset.ambient !== "paused" && heldProgress) {
+          paint(heldProgress);
+          heldProgress = null;
+        }
+      });
+      ambientWatch.observe(root, { attributes: true, attributeFilter: ["data-ambient"] });
+      unsubProgress = () => {
+        unsubTick();
+        ambientWatch.disconnect();
+      };
     }
 
     return {

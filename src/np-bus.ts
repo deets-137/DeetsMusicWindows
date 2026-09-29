@@ -22,6 +22,7 @@ import {
   setVolume,
   toggleMute,
   isMuted,
+  onVolumeChange,
   type PlayerState,
   type PlayerProgress,
 } from "./player";
@@ -380,10 +381,14 @@ export function initNpBus(): void {
     loadTracks().catch((e) => console.warn("[np-bus] reload after add", e));
   });
 
-  // Volume edits from the titlebar don't go through player state; poll cheaply.
-  let lastVol = -1;
-  let lastMuted = false;
-  window.setInterval(() => {
+  // Volume edits don't go through player state. Until 2026-09-29 this was a 500 ms poll for
+  // the whole session; `onVolumeChange` fires after every level / mute write, whoever made it
+  // (the pill, the stage row, the tray, the agent, a wind-down's duck), so the poll was two
+  // wake-ups a second for nothing. The compare stays: a duck tick fires the listener with the
+  // same effective level, and the hub needs no publish for that.
+  let lastVol = getVolume();
+  let lastMuted = isMuted();
+  onVolumeChange(() => {
     const v = getVolume();
     const m = isMuted();
     if (v !== lastVol || m !== lastMuted) {
@@ -391,7 +396,7 @@ export function initNpBus(): void {
       lastMuted = m;
       publish(true);
     }
-  }, 500);
+  });
 
   publishAppearance();
   publish(true);

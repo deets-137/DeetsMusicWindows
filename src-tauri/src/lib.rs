@@ -256,6 +256,7 @@ pub fn run() {
             diary::migrate_v15(&conn).expect("v15 migration failed");
             heal::migrate_v16(&conn).expect("v16 migration failed");
             playlists::migrate_v17(&conn).expect("v17 migration failed");
+            library::migrate_v18(&conn).expect("v18 migration failed");
             conn
             }));
             let conn = match opened {

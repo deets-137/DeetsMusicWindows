@@ -955,6 +955,28 @@ pub struct Pin {
     pub act: Option<String>,
 }
 
+/// v18 (2026-09-29): two indexes on `play_events`. Until now only `started_ts` was indexed,
+/// so every count by song (`pin_play_counts`, `song:` keys), every count by container
+/// (`context` keys) and the playlists list's `MAX(started_ts) … WHERE context = …` per row
+/// (playlists.rs) scanned the whole log. At the owner's 1,876 rows the scan is ~0.3 ms per
+/// query and no difference can be measured; at 20,000 rows the same 100 queries go 100 → 23 ms
+/// (DEBUGGING.md §The 2026-09-29 idle pass). Additive and idempotent: `IF NOT EXISTS`, and
+/// the index on (context, started_ts) covers both the count and the MAX.
+pub fn migrate_v18(conn: &Connection) -> Result<(), String> {
+    let had: i64 = conn
+        .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_play_events_track'", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    conn.execute_batch(
+        "CREATE INDEX IF NOT EXISTS idx_play_events_track ON play_events(track_id);
+         CREATE INDEX IF NOT EXISTS idx_play_events_context ON play_events(context, started_ts);",
+    )
+    .map_err(|e| format!("create play_events indexes: {e}"))?;
+    if had == 0 {
+        crate::log::info("migration: v18 added play_events indexes (track_id; context, started_ts)");
+    }
+    meta_set(conn, "schema_version", "18")
+}
+
 /// v12 (2026-09-20): `pins.act` (PINS.md §8.4). Additive, idempotent. v10 is Song of the
 /// Day and v11 is `playlist_refresh`, so the column the doc called v10 is v12.
 pub fn migrate_v12(conn: &Connection) -> Result<(), String> {
@@ -1542,5 +1564,34 @@ mod account_tests {
         assert!(meta_get(&conn, META_LIBRARY_TOTAL).is_none());
         assert!(meta_get(&conn, "storefront").is_none());
         assert_eq!(meta_get(&conn, "queue_state").as_deref(), Some("{}"));
+    }
+
+    // 2026-09-29: the v18 play_events indexes exist, are used, and a second run is a no-op.
+    #[test]
+    fn play_events_indexes_2026_09_29() {
+        let conn = db();
+        migrate_v18(&conn).unwrap();
+        migrate_v18(&conn).unwrap(); // idempotent: IF NOT EXISTS, same version written again
+        assert_eq!(meta_get(&conn, "schema_version").as_deref(), Some("18"));
+        let n: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name IN ('idx_play_events_track', 'idx_play_events_context')",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(n, 2);
+        let plan = |sql: &str| -> String {
+            conn.prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+                .unwrap()
+                .query_map([], |r| r.get::<_, String>(3))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect::<Vec<_>>()
+                .join(" | ")
+        };
+        assert!(plan("SELECT COUNT(*) FROM play_events WHERE track_id = 'x'").contains("idx_play_events_track"));
+        assert!(plan("SELECT COUNT(*) FROM play_events WHERE context = 'x'").contains("idx_play_events_context"));
+        assert!(plan("SELECT MAX(started_ts) FROM play_events WHERE context = 'x'").contains("idx_play_events_context"));
     }
 }

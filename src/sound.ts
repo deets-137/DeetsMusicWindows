@@ -577,7 +577,9 @@ export function setCompare(on: boolean): void {
 }
 
 export function soundStatus() {
-  return { wanted: wanted(), routed: routedCount, state: ctx?.state ?? "none", rate: ctx?.sampleRate ?? null, bus: lastStatus, dropDb: volumeDropDb(), shelves: busConfig(), tap: tapStatus() };
+  // `seen` counts every <audio> MusicKit ever played: bounded by its pool (100, SOUND.md §0);
+  // measured 1 over five songs on 2026-09-29 (DEBUGGING.md §The 2026-09-29 idle pass).
+  return { wanted: wanted(), routed: routedCount, seen: seen.size, state: ctx?.state ?? "none", rate: ctx?.sampleRate ?? null, bus: lastStatus, dropDb: volumeDropDb(), shelves: busConfig(), tap: tapStatus() };
 }
 
 // ── Settings → config (the panel writes settings; this is the one reader) ──────────────

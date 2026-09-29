@@ -320,6 +320,14 @@ started); `last_played` is epoch-ms of the most recent start. The front-end fire
 seeks, and window rebuilds don't inflate the count. Purely local — no Apple calls. The full
 plan for reading this back into a stats card lives in [DEETS-REWIND.md](../features/DEETS-REWIND.md).
 
+**Play log indexes** (as built 2026-09-29, schema v18, `library::migrate_v18`): `play_events`
+carries `idx_play_events_track (track_id)` and `idx_play_events_context (context, started_ts)`
+beside the original `idx_play_events_ts`. Before it, a play count per pin (`pin_play_counts`)
+and the playlists list's last-played `MAX(started_ts) WHERE context = …` per row scanned the
+whole log. At today's 1,876 rows nothing was measurable (~0.3 ms a scan); at 20,000 rows the
+same 100 queries fall 100 → 23 ms ([DEBUGGING.md](../ops/DEBUGGING.md) §The 2026-09-29 idle
+pass). `IF NOT EXISTS`, so it runs on every start and does nothing after the first.
+
 **Sync (`library_sync`):** stale-while-revalidate.
 1. Fetch page 0 → learn `total`.
 2. Compute all remaining offsets, fetch them **≤5 concurrent** (`buffer_unordered(5)`).

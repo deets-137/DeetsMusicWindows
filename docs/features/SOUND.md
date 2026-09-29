@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-24
 sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts, src/settings-store.ts]
-updated: 2026-09-25
+updated: 2026-09-29
 ---
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
@@ -37,6 +37,7 @@ updated: 2026-09-25
 | DRM audio passes through Web Audio. | Silent analyser on a Widevine stream at 256 kbps: peak 0.19, RMS 0.06 (AUDIO-QUALITY §4.4). | An in-app graph is possible. |
 | `music.volume` acts **before** Web Audio. | Same song position, volume 1 → RMS 0.371 / 0.374; volume 0.25 → 0.093 / 0.093. Exactly ×0.25. | The loudness meter must undo the volume (or the volume moves into the graph). A boost after the volume cut cannot clip past what the cut removed. |
 | MusicKit keeps a pool of up to 100 `<audio>` elements and takes one per player. | `musickit.js` v3: `fillAvailableElements` (100), `nextAvailableAudioElement` (`pop`). | More than one element can carry sound over a session. Each element is routed once, the first time it plays (a `createMediaElementSource` cannot be undone). |
+| In practice one element carries a whole session (checked 2026-09-29: `document.querySelectorAll("audio").length` = 1 and `__sound.status().routed` = 1 after five songs on the dev app; the logs' highest `routed` is 2). | DEBUGGING.md §The 2026-09-29 idle pass. | `seen` (every element that ever played) and `routed` are bounded by the pool, at most 100 entries: not a leak, no pruning. `__sound.status().seen` reports the count, so a run that shows it climbing past the pool is the thing to investigate. |
 | Chromium already resamples 44.1 → 48 kHz before Windows (−3.5 dB at 20 kHz). | `probe fidelity --listen`. | A graph at the device rate adds no new resample stage in theory; the probe must confirm that a flat graph measures the same. |
 | **Apple's terms.** DPLA §3.3.6.D (MusicKit): "You may not, and You may not permit Your end users to, download, upload, or **modify any MusicKit Content** … You may play MusicKit Content **only as rendered by the MusicKit APIs or MusicKit JS**." | Read from developer.apple.com, 2026-09-16. | Every effect in this document changes the rendered audio. See §6 fork 0. |
 

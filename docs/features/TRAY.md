@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-09
 sources: [src-tauri/src/tray.rs, src-tauri/src/lib.rs, src-tauri/src/media.rs, src/tray.ts, src/np-bus.ts, src-tauri/src/settings.rs]
-updated: 2026-09-15
+updated: 2026-09-29
 ---
 # Tray panel + minimize-to-tray
 
@@ -104,6 +104,21 @@ bridge /add ──emit "library-changed"─────────────�
 Rust holds the last state so the panel can `np_snapshot` on show, and `/now-playing` on
 the bridge shows exactly what the panel sees (debug). The panel never imports player /
 queue / MusicKit code; `tray.ts` is a pure consumer.
+
+**The volume in the hub is event-driven (as built 2026-09-29).** `np-bus.ts` used to poll
+`getVolume()` / `isMuted()` every 500 ms for the whole session to catch a title-bar volume
+edit. It now subscribes to `onVolumeChange` (player.ts), which fires after every level or mute
+write whoever made it; the old compare stays, so a wind-down's duck tick (same effective level)
+publishes nothing. Two timer wake-ups a second gone; the hub sees the same changes.
+Desk test: move the title-bar volume pill, mute it, and unmute — the tray panel's volume
+follows each within a second (right-click the tray icon → Now Playing panel).
+
+**What the panel window costs (measured 2026-09-29).** It is a second window, not a second
+WebView2 process: same origin, so it shares the browser and renderer processes with the main
+window (the installed app shows ONE renderer, 83 MB private). On the dev app the tray page held
+2 MB of JS heap and 55 DOM nodes. Creating it on first use would save that and one hidden HWND,
+which is not worth the `show_panel` / `tray_panel_resize` / `emit_to(PANEL)` paths that assume
+it exists. Left as is.
 
 ## 4. Debug
 - Panel: `__diag` (the app's ring log) is live on the tray window; `__tray.state()` dumps
