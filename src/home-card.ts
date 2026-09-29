@@ -106,6 +106,7 @@ export const homeCard: CardDef = {
      *  shelf's label changes with the hour. */
     const ordered = (): HomeShelf[] => sortByOrder("home.shelves", shelves, (sh) => sh.id);
     let shownIds: string[] = [];
+    let failed = false; // the last build threw: say so, not "Play something"
 
     const render = () => {
       const scrolled = [...shelfBox.querySelectorAll<HTMLElement>(".search__scroller")].map((el) => el.scrollLeft);
@@ -113,7 +114,12 @@ export const homeCard: CardDef = {
       shownIds = list.map((sh) => sh.id);
       shelfBox.innerHTML = shelves.length
         ? list.map(shelfHTML).join("")
-        : `<p class="lib-empty__msg">${loading ? "Looking through what you play…" : "Play something. Home fills itself."}</p>`;
+        : `<p class="lib-empty__msg">${
+            loading ? "Looking through what you play…"
+            // A failed read is not an empty Home: "Play something" blamed the user (2026-09-29).
+            : failed ? "Home didn't load. Press Refresh to try again."
+            : "Play something. Home fills itself."
+          }</p>`;
       shelfBox.querySelectorAll<HTMLElement>(".search__scroller").forEach((el, i) => {
         if (scrolled[i]) el.scrollLeft = scrolled[i];
       });
@@ -134,8 +140,12 @@ export const homeCard: CardDef = {
       homeShelves()
         .then((s) => {
           if (alive) shelves = s;
+          failed = false;
         })
-        .catch(err("build"))
+        .catch((e) => {
+          failed = true;
+          err("build")(e);
+        })
         .finally(() => {
           pending = false;
           loading = false;

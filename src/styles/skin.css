@@ -620,6 +620,7 @@
   --hero-gap:           var(--space-1); /* title ↔ subtitle ↔ meta stack spacing */
   --hero-cover-hover:   0.85;       /* brightness of a clickable hero cover on hover / file drag */
   --hero-artist-radius: 50%;        /* an artist hero's photo (ARTIST-VIEW.md §1) */
+  --lib-stuck-h:         0px;                   /* the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none */
   --sticky-bar-surface:  var(--panel);          /* a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box */
   --sticky-bar-backdrop: var(--panel-backdrop); /* the card's own frost (Glass); a see-through skin without one adds a blur */
   --lib-row-art-radius: 4px;        /* its corner — a skin shape lever (round still wins) */

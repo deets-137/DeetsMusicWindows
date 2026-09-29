@@ -1235,8 +1235,12 @@ export const libraryCard: CardDef = {
     // Card memory (CARD-MEMORY.md §4): a held request above wins, so `restore` refuses once
     // that drill is open. The library store may still be loading on a cold start: the body
     // waits (hidden) and the levels build when the first tracks land.
+    // Only while the store is still EMPTY does a retry wait for it: with tracks in hand, a key
+    // that did not resolve is gone for good (the album left the library), and the listener
+    // that stayed armed rebuilt the root on the next library notify — at the remembered
+    // scroll, over the query the user had typed and the rows they had picked (2026-09-29).
     if (mountOpts?.memory && card.depth() === 1) {
-      if (!card.restore(mountOpts.memory)) {
+      if (!card.restore(mountOpts.memory) && tracks().length === 0) {
         card.hold();
         const un = onTracksChange((why) => {
           if (why !== "library") return;

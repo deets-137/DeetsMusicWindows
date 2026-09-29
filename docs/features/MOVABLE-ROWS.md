@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-20
 sources: [src/home.ts, src/row-drag.ts, src/collection-card.ts, src/home-card.ts, src/playlists-card.ts, src/radio-card.ts]
-updated: 2026-09-20
+updated: 2026-09-29
 ---
 # DeetsMusic — Movable rows
 
@@ -758,6 +758,16 @@ across a remount (fork S4).
 Playlists, Radio and Search (`src/find-key.ts`, fork S3 = 9B). With no press yet, one card
 with a field takes it; with several, nothing happens rather than the wrong one opening. A
 press inside a text box is left alone.
+
+**Escape in a collection card's search bar (his call, 2026-09-29).** With the bar open and the
+focus on a row, one Escape used to do two things at once: the list's keys went Back a level
+(`list-keys.ts` → `back()`) and the engine's document handler closed the bar. Now the first
+Escape closes the bar and clears its query (`closeSearch` in `collection-card.ts`, first in the
+keys' `back` callback), so the whole list is back with the top row kept in place, and the key
+is spent; the second Escape goes Back. From inside the field, Escape closes and clears the bar
+as before (the field's own Escape cleared it), and never goes Back. Desk test: Library › an
+album, open the search, type "a", click a row (the focus is on it). Escape: the bar closes, the
+full list shows, the card stays on the album. Escape: Back to the root.
 
 ### 13.7 What it writes to the log
 

@@ -480,6 +480,68 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   };
   let animating = false;
 
+  // ── the stuck header (2026-09-29) ──
+  // A view's sticky bar (`.lib-view-bar`, a toolbarBelow context) or column header (`.lib-cols`,
+  // a grown card) covers the rows that scroll under it. Everything that puts a row at the top
+  // — the rail, the search's first match, a sort that keeps its place, the keys — must land the
+  // row UNDER it, so its height is read in one place.
+  const stuckOf = (view: HTMLElement) => view.querySelector<HTMLElement>(":scope > .lib-cols, :scope > .lib-view-bar");
+  /** The first row whose bottom shows under the stuck header, or -1 with no row there. */
+  const topRowIndex = (view: HTMLElement): number => {
+    const under = view.getBoundingClientRect().top + (stuckOf(view)?.offsetHeight ?? 0) + 1;
+    for (const el of view.querySelectorAll<HTMLElement>("[data-idx]")) {
+      if (el.getBoundingClientRect().bottom > under) return Number(el.dataset.idx);
+    }
+    return -1;
+  };
+  /** Scroll so row `i` sits exactly under the stuck header (windowed or not). */
+  const revealAtTop = (view: HTMLElement, i: number) => {
+    const w = windowers.get(view);
+    if (w) w.reveal(i, "start");
+    else view.querySelector(`[data-idx="${i}"]`)?.scrollIntoView({ block: "start" });
+    const row = view.querySelector<HTMLElement>(`[data-idx="${i}"]`);
+    if (row) view.scrollTop += row.getBoundingClientRect().top - view.getBoundingClientRect().top - (stuckOf(view)?.offsetHeight ?? 0);
+  };
+  // The keys (list-keys.ts) scroll a focused row into view with `scrollIntoView`, which knows
+  // nothing of a sticky child: Arrow Up put the row under the header. `scroll-padding-top` on
+  // the view (styles.css, the `--lib-stuck-h` token) keeps the row clear of it; the height is
+  // measured, since the bar grows when its search opens and changes with the skin. One
+  // observer per view, re-pointed when a render replaces the head.
+  const stuckObs = new WeakMap<HTMLElement, { ro: ResizeObserver; el: HTMLElement | null }>();
+  const syncStuck = (view: HTMLElement) => {
+    const stuck = stuckOf(view);
+    const had = stuckObs.get(view);
+    if (had && had.el === stuck) return;
+    had?.ro.disconnect();
+    stuckObs.delete(view);
+    if (!stuck || typeof ResizeObserver !== "function") {
+      view.style.removeProperty("--lib-stuck-h");
+      return;
+    }
+    const ro = new ResizeObserver(() => view.style.setProperty("--lib-stuck-h", `${stuck.offsetHeight}px`));
+    ro.observe(stuck);
+    stuckObs.set(view, { ro, el: stuck });
+  };
+  /** A pane leaves the DOM: its windower and its header observer go with it. */
+  const dropPane = (pane: HTMLElement | null) => {
+    dropWindower(pane);
+    const v = pane?.querySelector<HTMLElement>("[data-view]");
+    if (!v) return;
+    stuckObs.get(v)?.ro.disconnect();
+    stuckObs.delete(v);
+  };
+  /** What a row IS across a re-render: the grouping's pick id, else the item's own id or key,
+   *  else its name — so a sort or a filter can find the same song, album or artist again
+   *  when the list accessor built fresh objects. */
+  const idOf = (g: Grouping, x: any): string => {
+    if (g.pick?.id) return `pick:${g.pick.id(x)}`;
+    if (x && typeof x === "object") {
+      if (typeof x.id === "string") return `id:${x.id}`;
+      if (typeof x.key === "string") return `key:${x.key}`;
+    }
+    return `name:${g.name(x)}`;
+  };
+
   const cur = () => stack[stack.length - 1];
   /** The card this engine runs in, as the layout mounted it ("library"). */
   const cardId = (): string => opts.root.dataset.mounted ?? opts.storeKey;
@@ -689,15 +751,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const view = pane.querySelector<HTMLElement>("[data-view]");
     if (!rail || !view) return;
     // The first row that shows under the sticky header (a windowed view renders ~60 rows).
-    const stuck = view.querySelector<HTMLElement>(":scope > .lib-cols, :scope > .lib-view-bar");
-    const under = view.getBoundingClientRect().top + (stuck?.offsetHeight ?? 0) + 1;
-    let i = -1;
-    for (const el of view.querySelectorAll<HTMLElement>("[data-idx]")) {
-      if (el.getBoundingClientRect().bottom > under) {
-        i = Number(el.dataset.idx);
-        break;
-      }
-    }
+    const i = topRowIndex(view);
     const x = f.items[i];
     const l = x === undefined ? "" : letterOf(g.name(x));
     rail.querySelectorAll<HTMLElement>("[data-rail-letter]").forEach((el) => el.classList.toggle("is-lit", el.dataset.railLetter === l));
@@ -839,6 +893,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // focus it had.
     const settleHead = () => {
       wirePops(pane);
+      syncStuck(view);
       const input = view.querySelector<HTMLInputElement>("[data-search]");
       if (!input) return;
       if (input.value !== f.query) input.value = f.query;
@@ -957,12 +1012,13 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       done = true;
       incoming.removeEventListener("transitionend", finish);
       if (outgoing) {
-        dropWindower(outgoing);
+        dropPane(outgoing);
         outgoing.remove();
       }
       animating = false;
       endFrames();
       onDone?.();
+      if (reloadPending && !isDragging()) reload(); // a reload that landed mid-slide
     };
     const durStr = getComputedStyle(incoming).transitionDuration;
     const durMs = (parseFloat(durStr) || 0) * (durStr.includes("ms") ? 1 : 1000);
@@ -998,7 +1054,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
 
   /** A new level in place, no slide: a rule grow is the motion, and it enters the rows. */
   const place = (f: Frame) => {
-    dropWindower(curPane);
+    dropPane(curPane);
     curPane?.remove();
     const pane = buildPane(f);
     pane.dataset.pos = "center";
@@ -1019,7 +1075,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     f.onBack = old.onBack;
     stack[stack.length - 1] = f;
     setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
-    dropWindower(curPane);
+    dropPane(curPane);
     curPane?.remove();
     const pane = buildPane(f);
     pane.dataset.pos = "center";
@@ -1100,33 +1156,42 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     holding = 0;
     viewport.style.visibility = "";
   };
+  // A press, or a wheel scroll (2026-09-29): the user has taken the card, so a late restore
+  // must not rebuild the root under them at the remembered scroll.
   const onHoldDown = () => {
     cancelled = true;
     release();
+  };
+  const unwatchHold = () => {
+    opts.root.removeEventListener("pointerdown", onHoldDown, { capture: true });
+    opts.root.removeEventListener("wheel", onHoldDown, { capture: true });
   };
   const hold = () => {
     if (holding || cancelled) return;
     viewport.style.visibility = "hidden";
     holding = window.setTimeout(release, tokenMs("--memory-wait"));
     opts.root.addEventListener("pointerdown", onHoldDown, { capture: true });
+    opts.root.addEventListener("wheel", onHoldDown, { capture: true, passive: true });
   };
+  // The last restore of a snapshot: how many levels under the root it resolved. A retry that
+  // resolves no more (the album is still gone) must not rebuild the root — that wiped the
+  // query the user had typed and the rows they had picked in the meantime (2026-09-29).
+  let lastRestore: { s: unknown; resolved: number } | null = null;
 
   /** Build the levels a snapshot names, with no slide. False when there is nothing to build,
    *  or the user moved first (a press, a drill), or it is not a snapshot. */
   const restore = (s: unknown): boolean => {
     const wasHeld = !!holding;
     release();
-    opts.root.removeEventListener("pointerdown", onHoldDown, { capture: true });
+    unwatchHold();
     if (!isSnapshot(s)) return false;
     if (cancelled || stack.length !== 1 || animating) {
       diag.log("memory", { card: opts.storeKey, cause: cancelled ? "cancelled" : "moved" });
       return false;
     }
     const [rootLevel, ...deeper] = s.levels;
-    const f0 = stack[0];
-    f0.query = typeof rootLevel.query === "string" ? rootLevel.query : "";
-    f0.searchOpen = !!f0.query;
-    f0.scroll = Number(rootLevel.scroll) || 0;
+    // Resolve first, build after: a retry with nothing new to show leaves the card alone.
+    const contexts: Context[] = [];
     let stale = false;
     for (const l of deeper) {
       const ctx = typeof l.key === "string" ? opts.resolve?.(l.key) ?? null : null;
@@ -1134,6 +1199,19 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
         stale = true;
         break;
       }
+      contexts.push(ctx);
+    }
+    if (lastRestore?.s === s && contexts.length <= lastRestore.resolved) {
+      diag.log("memory", { card: opts.storeKey, cause: "nothing-new", levels: stack.length });
+      return !stale;
+    }
+    lastRestore = { s, resolved: contexts.length };
+    const f0 = stack[0];
+    f0.query = typeof rootLevel.query === "string" ? rootLevel.query : "";
+    f0.searchOpen = !!f0.query;
+    f0.scroll = Number(rootLevel.scroll) || 0;
+    contexts.forEach((ctx, k) => {
+      const l = deeper[k];
       const f = frameFor(ctx, false);
       if (ctx.groupings.some((x) => x.key === l.grouping)) f.grouping = l.grouping!;
       if (groupingOf(f).sorts.some((x) => x.key === l.sortKey)) f.sortKey = l.sortKey!;
@@ -1143,13 +1221,13 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       f.searchOpen = !!f.query;
       f.scroll = Number(l.scroll) || 0;
       stack.push(f);
-    }
+    });
     const top = cur();
     // The chain goes deeper (CARD-GROW.md §15.3): Back on the level a restore builds returns
     // the card before it, exactly as Back on a level a drill opened does.
     if (stack.length > 1 && pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) top.onBack = pendingReturn.cb;
     pendingReturn = null;
-    dropWindower(curPane);
+    dropPane(curPane);
     curPane?.remove();
     const pane = buildPane(top);
     viewport.appendChild(pane);
@@ -1196,7 +1274,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       cur().sortKey = sk.dataset.sortKey!;
       persist();
       setActive("data-sort-key", sk.dataset.sortKey!);
-      renderViewInto(pane, cur());
+      renderKeepingPlace(pane, cur()); // the top row stays the top row (2026-09-29)
       return;
     }
     const sd = t.closest<HTMLElement>("[data-sort-dir]");
@@ -1204,7 +1282,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       cur().sortDir = sd.dataset.sortDir as SortDir;
       persist();
       setActive("data-sort-dir", sd.dataset.sortDir!);
-      renderViewInto(pane, cur());
+      renderKeepingPlace(pane, cur());
       return;
     }
     const dn = t.closest<HTMLElement>("[data-density]");
@@ -1227,7 +1305,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       f.scroll = 0;
       persist();
       setActive("data-group", f.grouping);
-      renderViewInto(pane, f);
+      // Another kind of row: the top row is not in the new list, so this lands at the top —
+      // and a windowed list no longer keeps a meaningless scrollTop across the switch.
+      renderKeepingPlace(pane, f);
     }
   };
 
@@ -1341,6 +1421,26 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   window.addEventListener("resize", onPopAway);
   const markSearchPill = () => {
     curPane?.querySelector('[data-pop="search"]')?.classList.toggle("is-active", !!cur().query);
+  };
+  /** Escape on the open search: close the bar and clear its query, so the whole list is back
+   *  (the field's own Escape cleared it the same way). The row at the top stays the row at
+   *  the top. True when there was a bar to close — the key is then spent (2026-09-29: one
+   *  Escape closed the bar AND went Back; now the first closes, the second goes back). */
+  const closeSearch = (): boolean => {
+    const f = cur();
+    const pane = curPane;
+    if (!f?.searchOpen || !pane) return false;
+    f.searchOpen = false;
+    pane.querySelector(".lib-searchbar")?.classList.remove("is-open");
+    pane.querySelector('[data-pop="search"]')?.setAttribute("aria-expanded", "false");
+    if (f.query) {
+      f.query = "";
+      const input = pane.querySelector<HTMLInputElement>("[data-search]");
+      if (input) input.value = "";
+      markSearchPill();
+      renderKeepingPlace(pane, f);
+    }
+    return true;
   };
 
   // Row drag (row-drag.ts, DRAG-DROP.md §4): a reorder where the grouping offers one
@@ -1477,7 +1577,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
         f.sortDir = "asc";
       }
       persist();
-      renderViewInto(pane, f);
+      renderKeepingPlace(pane, f);
       return;
     }
 
@@ -1493,7 +1593,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
         const on = filter.active();
         pop.classList.toggle("is-active", on);
         pop.setAttribute("aria-pressed", String(on));
-        renderViewInto(pane, cur());
+        renderKeepingPlace(pane, cur()); // the top row stays, or the top when the filter took it
         return;
       }
       if (which === "search") {
@@ -1591,13 +1691,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const i = Number(letter.dataset.railIndex);
     const view = curPane.querySelector<HTMLElement>("[data-view]");
     if (!view || !Number.isFinite(i)) return;
-    const w = windowers.get(view);
-    if (w) w.reveal(i, "start");
-    else view.querySelector(`[data-idx="${i}"]`)?.scrollIntoView({ block: "start" });
-    // Put the row's top exactly under the sticky column header (or bar), which would cover it.
-    const row = view.querySelector<HTMLElement>(`[data-idx="${i}"]`);
-    const stuck = view.querySelector<HTMLElement>(":scope > .lib-cols, :scope > .lib-view-bar");
-    if (row) view.scrollTop += row.getBoundingClientRect().top - view.getBoundingClientRect().top - (stuck?.offsetHeight ?? 0);
+    revealAtTop(view, i); // the row's top exactly under the sticky column header (or bar)
     litLetter(curPane, cur(), groupingOf(cur()));
   });
 
@@ -1610,6 +1704,15 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     cur().scroll = 0;
     markSearchPill();
     renderViewInto(pane!, cur());
+    // The first match in view. The windower keeps scrollTop on new items, so a search typed
+    // at the S's of a long list opened at its END, and read as "few matches" (2026-09-29).
+    // Only when the first row is above the view: at the top, the hero stays in view.
+    const v = pane!.querySelector<HTMLElement>("[data-view]");
+    if (!v) return;
+    const under = v.getBoundingClientRect().top + (stuckOf(v)?.offsetHeight ?? 0);
+    const first = v.querySelector<HTMLElement>('[data-idx="0"]');
+    if (first && first.getBoundingClientRect().top >= under) return;
+    revealAtTop(v, 0);
   });
 
   // Right-click a tile/row → open its grouping's context menu (cursor-anchored). Only
@@ -1673,10 +1776,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     if (e.key !== "Escape") return;
     pick.clear();
     closePops();
-    if (cur()?.searchOpen) {
-      cur().searchOpen = false;
-      curPane?.querySelector(".lib-searchbar")?.classList.remove("is-open");
-    }
+    // From a row, the list's own keys closed it already (the `back` below, first in line);
+    // from the field or anywhere else, here.
+    closeSearch();
   };
   document.addEventListener("keydown", onDocKey);
   // The keyboard inside the list (list-keys.ts): arrows, Enter, the Menu key, Escape = Back.
@@ -1699,6 +1801,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     },
     count: () => cur().items.length,
     back: () => {
+      if (closeSearch()) return true; // the first Escape closes the search; the next goes back
       if (animating || stack.length <= 1) return false;
       back();
       return true;
@@ -1729,11 +1832,48 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     else v2.scrollTop = keep;
   };
 
+  /** Re-render after a change that REORDERS or REFILTERS the list (a sort, the ♥ filter, a
+   *  group) and keep the user's place by the ROW, not the pixel (his call, 2026-09-29): the
+   *  row at the top of the visible list before the change is found again by its identity
+   *  (`idOf`) and put back at the top, under the stuck header, wherever the new order took it
+   *  — "Sure — Monsune" at the top stays at the top. A row the change removed (a filter),
+   *  or a new kind of row (a group switch): the top of the list. At the top already (the first
+   *  row whole under the header, or the hero in view): the place stays as it is. */
+  const renderKeepingPlace = (pane: HTMLElement, f: Frame) => {
+    const v = pane.querySelector<HTMLElement>("[data-view]");
+    const g0 = groupingOf(f);
+    const keep = v ? v.scrollTop : 0;
+    const i = v ? topRowIndex(v) : -1;
+    const x = i >= 0 ? f.items[i] : undefined;
+    const first = i === 0 ? v!.querySelector<HTMLElement>('[data-idx="0"]') : null;
+    const atTop =
+      !v || x === undefined || (!!first && first.getBoundingClientRect().top >= v.getBoundingClientRect().top + (stuckOf(v)?.offsetHeight ?? 0));
+    const id = x === undefined ? null : idOf(g0, x);
+    renderViewInto(pane, f);
+    const v2 = pane.querySelector<HTMLElement>("[data-view]");
+    if (!v2) return;
+    const w = windowers.get(v2);
+    if (atTop) {
+      // the same top: the plain render reset it, the windower kept it
+      if (w) w.scrollTo(keep);
+      else v2.scrollTop = keep;
+      return;
+    }
+    const g = groupingOf(f);
+    const j = id === null ? -1 : f.items.findIndex((y) => y === x || idOf(g, y) === id);
+    if (j >= 0) revealAtTop(v2, j);
+    else if (w) w.scrollTo(0);
+    else v2.scrollTop = 0;
+  };
+
   // Refresh data without losing the user's place. Live grouping closures pick up
   // new data; we just re-render the visible pane (deeper frames re-render on back).
   function reload() {
-    if (isDragging()) {
-      reloadPending = true; // after the drag (onDragEnd above)
+    // After a drag (onDragEnd above), and after a slide (`slide`'s finish): mid-Back, `curPane`
+    // is already the parent pane while `cur()` is still the child level, so a reload drew the
+    // child's rows under the parent's header, and a click played another song (2026-09-29).
+    if (isDragging() || animating) {
+      reloadPending = true;
       return;
     }
     reloadPending = false;
@@ -1788,11 +1928,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     destroy() {
       release();
       unsubFind();
-      opts.root.removeEventListener("pointerdown", onHoldDown, { capture: true });
+      unwatchHold();
       drag.destroy(); // a drag's document listeners would outlive the card
       unsubDragEnd();
       unregisterDrop();
-      dropWindower(curPane); // its observers outlive the subtree otherwise
+      dropPane(curPane); // its observers outlive the subtree otherwise
       // The pops live on <body>, not the host subtree — drop their handles and panels explicitly.
       for (const b of pops.values()) {
         b.handle?.destroy();

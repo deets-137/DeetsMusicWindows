@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.5
 desk_test: passed 2026-09-19
 sources: [src/card-memory.ts, src/collection-card.ts, src/layout.ts, src/search.ts, src/search-card.ts, scripts/webview-profile.mjs]
-updated: 2026-09-19
+updated: 2026-09-29
 ---
 # Card memory — a card comes back where you left it
 
@@ -101,7 +101,8 @@ Rules:
    them. A deeper level restores its own view state.
 6. **The snapshot stays** in memory after a restore. The next destroy replaces it.
 7. **Log line:** `diag.log("memory", { card, cause, levels, late })`, where `cause` is
-   `restore`, `stale-key`, `cancelled`, `moved` or `load` (the read at launch).
+   `restore`, `stale-key`, `cancelled`, `moved`, `nothing-new` (a retry that resolved no new
+   level, §11a) or `load` (the read at launch).
 
 ## 5. Keys and resolvers per card
 
@@ -261,3 +262,29 @@ Where the build differs from the design above:
   levels build when the first library tracks land.
 - **Not built:** a schema version migration. `v: 1` is checked and anything else is ignored, which
   is enough while the only writer is this version.
+
+### 11a. The stale restore that came back (fixed 2026-09-29)
+
+The Library armed its retry listener (`onTracksChange`, `library-card.ts`) whenever the first
+`restore` returned false — also when the store was already full and the key was simply gone
+(the album left the library). The next library notify (a sync, a ♥) then ran `restore` again,
+which always removed the pane and rebuilt the root at the remembered scroll: the query the
+user had typed and the rows they had picked in the meantime were wiped. Three changes:
+
+- **The Library subscribes only while its store is empty** (`tracks().length === 0`): a cold
+  start waits for the tracks; a stale key with tracks in hand ends the restore there.
+- **`restore` resolves first and builds after.** It remembers how many levels under the root
+  the last try of the same snapshot resolved (`lastRestore`); a retry that resolves no more
+  logs `cause: "nothing-new"` and returns without touching the pane.
+- **A wheel scroll cancels a pending restore**, as a press did (`hold` listens for `wheel` on
+  the card, capture, passive). Rule 2 in §4 reads "the user has not acted": a scroll is an act.
+
+**Desk test (open):**
+1. Library open on an album, remount it (a slot swap). Delete that album from the library (the
+   agent, or Apple on the phone) and swap the Library back: the root shows. Type in its search
+   field, Ctrl+click two rows, then ♥ a song elsewhere (a library notify). The query, the picks
+   and the scroll stay. `diag` shows one `memory nothing-new` line, no second `restore`.
+2. Cold start with a saved Library place two levels deep: the body holds, the levels build when
+   the tracks land (unchanged).
+3. Cold start, wheel-scroll the Library during the hold: the restore stops, the list stays where
+   you scrolled (`memory cancelled`).

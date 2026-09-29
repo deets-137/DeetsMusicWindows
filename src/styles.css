@@ -2445,6 +2445,10 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 /* .lib-view fills the body and scrolls; the modifier class (.lib-list /
    .lib-grid / .lib-empty) set by the controller decides the layout. */
 .lib-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* A row the keys scroll into view (list-keys.ts, scrollIntoView "nearest") stays clear of the
+   view's own sticky child (.lib-view-bar, .lib-cols): the engine writes the header's measured
+   height into --lib-stuck-h on the view (collection-card.ts `syncStuck`, 2026-09-29). */
+.lib-view { scroll-padding-top: var(--lib-stuck-h); }
 /* Windowed (collection-window.ts): only the rows near the viewport exist, between two
    spacers that hold the true scroll height. overflow-anchor off — the windower moves
    scrollTop itself when rows are inserted above; Chromium's anchoring would double it. */

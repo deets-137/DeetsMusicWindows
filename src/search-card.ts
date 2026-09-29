@@ -46,6 +46,7 @@ const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
 const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
 import { ICON_PIN } from "./pins"; // one pin glyph for the app (PINS.md)
+import { plainError } from "./plain-error";
 const RECENTS_CAP = 8;
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
@@ -204,6 +205,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   let songsById = new Map<string, Track>();
   // A drill pane's track list and its queue-origin tag, for a drag from one of its rows.
   const paneTracks = new WeakMap<HTMLElement, { tracks: Track[]; context: string }>();
+  /** The panes whose row listeners are on (wireTrackList adds them once per pane). */
+  const wiredPanes = new WeakSet<HTMLElement>();
 
   // Multi-select (row-pick.ts, NEXT-VERSION §19). This card has TWO song surfaces — the
   // root's Songs results and a drill pane's track list — so the store reads whichever one
@@ -370,7 +373,9 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       })
       .catch((e) => {
         if (token !== queryToken) return;
-        root.innerHTML = `<p class="search__prompt">Search failed: ${esc(String(e))}</p>`;
+        // Plain words: "Search failed: Error: …" read as a bug, not as "no connection" (2026-09-29).
+        console.warn("[search]", e);
+        root.innerHTML = `<p class="search__prompt">${esc(plainError(e, "Couldn't reach Apple Music. Check your connection, then search again."))}</p>`;
       })
       .finally(() => {
         if (token === queryToken) bar.classList.remove("search__bar--busy");
@@ -571,16 +576,27 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     // so the count row can hand it back (§19).
     const ownBar = body.querySelector<HTMLElement>(".lib-actions");
     if (ownBar) paneActions.set(body, ownBar.outerHTML);
-    activeList = () => released(tracks);
-    picks.clear();
+    // Only the pane on top takes the picks: a fetch that lands after Back (or after a newer
+    // drill) must not point Ctrl+A and the count row at a pane that is leaving (2026-09-29).
+    if (body.closest(".spane") === paneStack[paneStack.length - 1]) {
+      activeList = () => released(tracks);
+      picks.clear();
+    }
+    // One pair of listeners per pane, reading the pane's CURRENT list. The Writer pane
+    // repaints in place (the Apple search), and each repaint used to add another pair, so
+    // one row click played two or three times, the first from the old list (2026-09-29).
+    if (wiredPanes.has(body)) return;
+    wiredPanes.add(body);
+    const cur = () => paneTracks.get(body) ?? { tracks, context };
     const start = (list: Track[], idx: number) => {
       // playTracks drops the unreleased songs itself; the store never takes them either.
       const out = released(list);
       addTransientTracks(out);
       out.forEach(materializeTrack);
-      playTracks(list, idx, context).catch((err) => console.error("[search] play", err));
+      playTracks(list, idx, cur().context).catch((err) => console.error("[search] play", err));
     };
     body.addEventListener("click", (e) => {
+      const { tracks, context } = cur();
       // The Play / Shuffle row (NEXT-VERSION §13): this pane's list from the top.
       const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
       if (act) {
@@ -609,6 +625,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
       if (!row) return;
       e.preventDefault();
+      const { tracks, context } = cur();
       const t = tracks[Number(row.dataset.row)];
       if (t && picks.size() && picks.isPicked(t)) {
         menuAt(e, picksMenu(picks.picked(), context));

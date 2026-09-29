@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-13
 sources: [src/collection-window.ts, src/collection-card.ts, src/styles.css, src/styles/skin.css, src/library-card.ts, src/playlists-card.ts]
-updated: 2026-09-17
+updated: 2026-09-29
 ---
 # Library virtualization — option A (windowing) brief
 
@@ -317,3 +317,43 @@ covers, and the hero survives a scroll down and back up.
 **Still to hand-test (the user):** a real scrollbar drag and a wheel flick at 238 Hz; a
 right-click near the window edge then wheel; the max surface (more columns); the installed
 build's memory after an hour.
+
+---
+
+## As built: a sort keeps your place, and the stuck header (2026-09-29)
+
+**Sort keeps your place (his call, 2026-09-29).** A change that reorders or refilters the
+list — a Sort key, the direction, a grown card's column header, the ♥ filter, a Group — used
+to land on a pixel: the plain render reset to the top, the windower kept a `scrollTop` that
+meant nothing in the new order. Now `renderKeepingPlace` (`collection-card.ts`) reads the row
+at the top of the visible list BEFORE the change (`topRowIndex`: the first row whose bottom
+shows under the stuck header), remembers what it is (`idOf`: the grouping's `pick.id`, else
+the item's `id` or `key`, else its name — so a list accessor that builds fresh album or artist
+objects is found again), re-renders, finds the same item in the new order and puts it back at
+the top, under the header (`revealAtTop`, which also serves the letter rail and the search's
+first match; windowed or not, through `Windower.reveal(i, "start")`). "Sure — Monsune" at
+the top stays at the top. The item is gone (the filter took it) or is another kind of row (a
+Group switch): the top of the list. Already at the top (the first row whole under the header,
+the hero in view): the place stays. The in-list search keeps its own rule: the first match.
+
+**The stuck header.** A view's sticky child (`.lib-view-bar` under `toolbarBelow`, `.lib-cols`
+on a grown card) covered a row the keys scrolled into view (`scrollIntoView` "nearest" in
+`list-keys.ts` and `Windower.reveal`). The view now carries `scroll-padding-top:
+var(--lib-stuck-h)` (styles.css; the token's rest value in skin.css is `0px`, a list with no
+header). The engine measures the header with one `ResizeObserver` per view (`syncStuck`,
+re-pointed when a render replaces the head) and writes the height on the view, so an open
+search bar or a skin switch is followed. Every "put this row at the top" path adds the same
+correction, so the padding never doubles it.
+
+**Desk test (open):**
+1. Library › Songs, A–Z. Scroll so a song is the first row under the bar (say "Sure — Monsune").
+   Sort › Artist: the list scrolls to "Sure" in its new place, at the top. Sort ↓ (descending):
+   the same. Group › Albums: the top of the album list. Back to Songs: the top.
+2. The same in a grown card (Max, Fill): click the Artist column header; then the Plays header
+   twice. The top row stays the top row, under the column header.
+3. ♥ filter on with a non-favorite at the top: the list opens at its top. ♥ on with a favorite
+   at the top: that favorite stays at the top. ♥ off: it is still at the top.
+4. At the top of the list (the hero in view), Sort › Artist: nothing moves.
+5. Keys: an artist view (the Songs bar sticks). Arrow down 20 rows, then arrow up 20. The
+   focused row is never under the bar. Open the in-list search (the bar grows): arrow up
+   again — still clear.
