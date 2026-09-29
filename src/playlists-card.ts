@@ -12,7 +12,7 @@ import * as frames from "./frames";
 import { setting } from "./settings-store";
 import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
-  playlistRemoveTrack, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
+  playlistRemoveTrack, playlistRemovePositions, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
   playlistInsertTracks, playlistCoverData,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
@@ -397,9 +397,8 @@ export const playlistsCard: CardDef = {
           menu: (ts) => {
             const where = { context: ctxTag, exclude: p.libraryId };
             if (!handMade(p)) return setMenu(() => ts, ts.length, "song", where); // mirrors have no remove path
-            // Remove a whole set: resolve every row's position FIRST, then delete from the
-            // bottom up, one after the other. Each delete renumbers the rows below it, so a
-            // descending walk is the only order where the positions still to go stay true.
+            // Remove a whole set: resolve every row's position FIRST, then remove them all in
+            // one transaction (2026-09-29) — all of them go, or none do.
             return setMenu(() => ts, ts.length, "song", { ...where, away: [
               {
                 label: `Remove ${picksText(ts.length)} from Playlist`,
@@ -409,8 +408,7 @@ export const playlistsCard: CardDef = {
                     .map((t) => ({ t, i: live.indexOf(t) }))
                     .filter((g) => g.i >= 0)
                     .sort((a, b) => b.i - a.i);
-                  void gone
-                    .reduce((chain, g) => chain.then(() => playlistRemoveTrack(p, g.i)), Promise.resolve())
+                  void playlistRemovePositions(p, gone.map((g) => g.i))
                     .then(() => undoToast(`Removed ${picksText(gone.length)} from “${p.name}”.`, "songs", () =>
                       // Back in from the top down: each insert at its old position restores
                       // the ones below it too.

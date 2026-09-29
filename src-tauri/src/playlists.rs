@@ -321,6 +321,9 @@ pub struct ExportPlan {
     reordered: bool,
     /// Titles of the local songs with no catalog id (uploads) — Apple can't receive them.
     skipped_titles: Vec<String>,
+    /// The Apple copy's catalog ids as read, in Apple's order. The append hands them back, so
+    /// the sync baseline after a Send is this list plus what was sent (§12), with no new read.
+    apple_ids: Vec<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -477,6 +480,110 @@ fn export_diff<'a>(local: &'a [ExportRow], apple: &'a [ExportRow]) -> (Vec<usize
     (add, removed, reordered)
 }
 
+// ── The sync baseline (PLAYLISTS.md §12) ─────────────────────────────────────────────
+//
+// What the Apple copy held the last time DeetsMusic and it agreed: the catalog ids, as a
+// multiset, in Apple's order. Saved at every point of agreement (import, export, Make a New
+// Copy, Send, Get, Match). Settings › Apple Music › "Get songs from Apple copy" › Only new
+// reads it: new = Apple now minus the baseline, so a song removed here on purpose stays out.
+// Keyed by the LOCAL playlist; the Apple id is stored too, so a baseline taken from an older
+// copy (before Make a New Copy) is never read against the new one. Zero Apple calls: every
+// save rides a read or a write that happens anyway.
+
+/// v17 (2026-09-29): the `playlist_apple_baseline` table. `ids` is a JSON array of catalog ids.
+pub fn migrate_v17(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS playlist_apple_baseline (
+            playlist_id INTEGER PRIMARY KEY,
+            apple_id    TEXT NOT NULL,
+            ids         TEXT NOT NULL,
+            saved_at    INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| format!("create playlist_apple_baseline: {e}"))?;
+    crate::library::meta_set(conn, "schema_version", "17")
+}
+
+/// The baseline taken from this Apple copy, or None (never saved, or saved from another copy).
+fn baseline_get(conn: &Connection, id: i64, apple_id: &str) -> Option<Vec<String>> {
+    let (from, ids): (String, String) = conn
+        .query_row("SELECT apple_id, ids FROM playlist_apple_baseline WHERE playlist_id = ?1", [id], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
+        .ok()?;
+    if from != apple_id {
+        return None;
+    }
+    serde_json::from_str(&ids).ok()
+}
+
+/// The stored baseline whatever copy it came from: what a Match holds for its Undo.
+fn baseline_raw(conn: &Connection, id: i64) -> Option<(String, Vec<String>)> {
+    let (from, ids): (String, String) = conn
+        .query_row("SELECT apple_id, ids FROM playlist_apple_baseline WHERE playlist_id = ?1", [id], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
+        .ok()?;
+    Some((from, serde_json::from_str(&ids).ok()?))
+}
+
+fn baseline_set(conn: &Connection, id: i64, apple_id: &str, ids: &[String]) -> Result<(), String> {
+    conn.execute(
+        "INSERT INTO playlist_apple_baseline(playlist_id, apple_id, ids, saved_at) VALUES(?1, ?2, ?3, ?4)
+         ON CONFLICT(playlist_id) DO UPDATE SET apple_id = ?2, ids = ?3, saved_at = ?4",
+        rusqlite::params![id, apple_id, serde_json::to_string(ids).map_err(err)?, now_ms()],
+    )
+    .map_err(err)?;
+    Ok(())
+}
+
+/// Only new (PLAYLISTS.md §12): the Apple rows that are new since the baseline, and that the
+/// local playlist does not already hold. Multisets, first occurrences first: an id twice on
+/// Apple and once in the baseline is new once. The local check keeps a song added on both
+/// sides by hand from landing twice. Returns indexes into `apple`, in Apple's order.
+fn new_since(apple: &[ExportRow], baseline: &[String], local: &[ExportRow]) -> Vec<usize> {
+    use std::collections::HashMap;
+    let mut base: HashMap<&str, usize> = HashMap::new();
+    for b in baseline {
+        *base.entry(b.as_str()).or_default() += 1;
+    }
+    let mut held: HashMap<&str, usize> = HashMap::new();
+    for l in local {
+        *held.entry(l.catalog_id.as_str()).or_default() += 1;
+    }
+    let mut out = Vec::new();
+    for (i, r) in apple.iter().enumerate() {
+        let id = r.catalog_id.as_str();
+        if let Some(n) = base.get_mut(id).filter(|n| **n > 0) {
+            *n -= 1;
+            continue;
+        }
+        if let Some(n) = held.get_mut(id).filter(|n| **n > 0) {
+            *n -= 1;
+            continue;
+        }
+        out.push(i);
+    }
+    out
+}
+
+/// Match the Apple copy (PLAYLISTS.md §12): what making the local playlist the Apple copy
+/// changes, by `track_key` (a catalog id, else a library id, else title + artist) as
+/// multisets. Returns (songs added, songs removed, whether the two lists are the same list).
+fn match_counts(local: &[String], apple: &[String]) -> (u32, u32, bool) {
+    use std::collections::HashMap;
+    let mut n: HashMap<&str, i64> = HashMap::new();
+    for k in apple {
+        *n.entry(k.as_str()).or_default() += 1;
+    }
+    for k in local {
+        *n.entry(k.as_str()).or_default() -= 1;
+    }
+    let added = n.values().filter(|v| **v > 0).map(|v| *v as u32).sum();
+    let removed = n.values().filter(|v| **v < 0).map(|v| (-*v) as u32).sum();
+    (added, removed, local == apple)
+}
+
 /// POST catalog ids to an Apple library playlist, 100 per call, in order. Returns
 /// (added, failed); a failed call is logged and counted, and the rest still go.
 async fn append_to_apple(client: &reqwest::Client, dev: &str, user: &str, apple_id: &str, ids: &[String]) -> (u32, u32) {
@@ -515,7 +622,7 @@ pub async fn playlist_export_plan(
         (rows, skipped, live_copy(&conn, id)?)
     };
     let Some(apple_id) = apple_id else {
-        return Ok(ExportPlan { apple_id: None, add_ids: vec![], add_titles: vec![], removed_titles: vec![], reordered: false, skipped_titles });
+        return Ok(ExportPlan { apple_id: None, add_ids: vec![], add_titles: vec![], removed_titles: vec![], reordered: false, skipped_titles, apple_ids: vec![] });
     };
 
     let dev = apple::developer_token()?;
@@ -532,6 +639,7 @@ pub async fn playlist_export_plan(
         removed_titles,
         reordered,
         skipped_titles,
+        apple_ids: apple_rows.into_iter().map(|r| r.catalog_id).collect(),
     })
 }
 
@@ -547,12 +655,21 @@ pub struct GetSongsResult {
     /// and the whole gesture costs ONE Apple read whether or not it is pressed.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tracks: Vec<Track>,
+    /// Only under `dry_run`: the Apple copy's catalog ids as read. [Get them] hands them back,
+    /// so the offer's write saves the sync baseline with no second read (§12).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    apple_ids: Vec<String>,
 }
 
 /// Get New Songs (PLAYLISTS.md §10.4, fork A): add the songs that are on the Apple copy but
 /// not in the local playlist, at the end. `export_diff` with the sides swapped — the extra
 /// Apple occurrences are the additions. Matched by catalog id. Nothing local is removed or
 /// moved, so there is no confirm. One Apple read per 100 songs; the write is local only.
+///
+/// `since_sync` (Settings › Apple Music › Get songs from Apple copy › Only new, §12): add only
+/// the songs that are new on the Apple copy since the saved baseline, so a song removed here
+/// on purpose stays out. With no baseline for this copy yet, it falls back to the missing
+/// songs once. Either way a real Get saves the baseline: the two sides agree now.
 ///
 /// `dry_run` (PLAYLIST-REFRESH.md D9) reads and DOES NOT WRITE: the automatic refresh peeks,
 /// then offers. "Re-read a cache" and "silently add songs to my playlist" are different
@@ -561,6 +678,7 @@ pub struct GetSongsResult {
 pub async fn playlist_get_apple_songs(
     id: i64,
     dry_run: Option<bool>,
+    since_sync: Option<bool>,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<GetSongsResult, String> {
@@ -571,7 +689,7 @@ pub async fn playlist_get_apple_songs(
         (rows, live_copy(&conn, id)?)
     };
     let Some(apple_id) = apple_id else {
-        return Ok(GetSongsResult { apple_id: None, added_titles: vec![], tracks: vec![] });
+        return Ok(GetSongsResult { apple_id: None, added_titles: vec![], tracks: vec![], apple_ids: vec![] });
     };
 
     let dev = apple::developer_token()?;
@@ -580,26 +698,153 @@ pub async fn playlist_get_apple_songs(
     let apple_tracks = fetch_apple_tracks(&provider, &apple_id).await?;
     let (index, apple_rows): (Vec<usize>, Vec<ExportRow>) = matchable(&apple_tracks).into_iter().unzip();
 
-    let (add, _, _) = export_diff(&apple_rows, &local);
+    let baseline = if since_sync.unwrap_or(false) { baseline_get(&db.lock(), id, &apple_id) } else { None };
+    let add = match &baseline {
+        Some(base) => new_since(&apple_rows, base, &local),
+        None => export_diff(&apple_rows, &local).0,
+    };
     let tracks: Vec<Track> = add.iter().map(|&i| apple_tracks[index[i]].clone()).collect();
+    let apple_ids: Vec<String> = apple_rows.into_iter().map(|r| r.catalog_id).collect();
     if dry {
-        crate::log::info(&format!("playlists: peeked {} new song(s) on {apple_id} for local:{id}", tracks.len()));
+        crate::log::info(&format!(
+            "playlists: peeked {} new song(s) on {apple_id} for local:{id} ({})",
+            tracks.len(),
+            if baseline.is_some() { "since sync" } else { "missing" }
+        ));
         return Ok(GetSongsResult {
             apple_id: Some(apple_id),
             added_titles: tracks.iter().map(|t| t.title.clone()).collect(),
             tracks,
+            apple_ids,
         });
     }
-    if !tracks.is_empty() {
+    {
         let mut conn = db.lock();
-        append_local(&mut conn, id, &tracks)?;
+        let tx = conn.transaction().map_err(err)?;
+        if !tracks.is_empty() {
+            append_in(&tx, id, &tracks)?;
+        }
+        baseline_set(&tx, id, &apple_id, &apple_ids)?;
+        tx.commit().map_err(err)?;
     }
-    crate::log::info(&format!("playlists: got {} song(s) from {apple_id} into local:{id}", tracks.len()));
+    crate::log::info(&format!(
+        "playlists: got {} song(s) from {apple_id} into local:{id} ({})",
+        tracks.len(),
+        if baseline.is_some() { "since sync" } else { "missing" }
+    ));
     Ok(GetSongsResult {
         apple_id: Some(apple_id),
         added_titles: tracks.into_iter().map(|t| t.title).collect(),
         tracks: vec![],
+        apple_ids: vec![],
     })
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchPlan {
+    /// The Apple copy read; None when it is gone from the mirror (nothing was read).
+    apple_id: Option<String>,
+    /// Songs the match puts in, and songs it takes out (multisets, `track_key`).
+    added: u32,
+    removed: u32,
+    /// The local playlist already is the Apple copy: same songs, same order.
+    same: bool,
+    /// The Apple copy's songs in Apple's order. The confirm's [Match] hands them back, so the
+    /// write costs no second read.
+    tracks: Vec<Track>,
+}
+
+/// Match the Apple Copy, step 1 (PLAYLISTS.md §12): read the Apple copy (one read per 100
+/// songs) and count what the match would change, for the confirm. Writes nothing, except the
+/// sync baseline when the two are already the same list (they agree, so it is a sync point).
+#[tauri::command]
+pub async fn playlist_match_plan(
+    id: i64,
+    apple_state: State<'_, AppleState>,
+    db: State<'_, Db>,
+) -> Result<MatchPlan, String> {
+    let (local, apple_id) = {
+        let conn = db.lock();
+        let local: Vec<String> = read_local_tracks(&conn, id)?
+            .iter()
+            .map(|j| serde_json::from_str::<Track>(j).map(|t| track_key(&t)).unwrap_or_else(|_| j.clone()))
+            .collect();
+        (local, live_copy(&conn, id)?)
+    };
+    let Some(apple_id) = apple_id else {
+        return Ok(MatchPlan { apple_id: None, added: 0, removed: 0, same: false, tracks: vec![] });
+    };
+    let dev = apple::developer_token()?;
+    let user = apple_state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
+    let provider = AppleProvider::new(dev, user);
+    // A pre-release song stays out, as append_local keeps it out; the counts say the same.
+    let tracks: Vec<Track> = fetch_apple_tracks(&provider, &apple_id).await?.into_iter().filter(|t| !t.unreleased).collect();
+    let apple: Vec<String> = tracks.iter().map(track_key).collect();
+    let (added, removed, same) = match_counts(&local, &apple);
+    if same {
+        let ids: Vec<String> = matchable(&tracks).into_iter().map(|(_, r)| r.catalog_id).collect();
+        baseline_set(&db.lock(), id, &apple_id, &ids)?;
+    }
+    crate::log::info(&format!("playlists: match plan local:{id} ← {apple_id}: +{added} −{removed}, same {same}"));
+    Ok(MatchPlan { apple_id: Some(apple_id), added, removed, same, tracks })
+}
+
+/// What a match replaced, whole: its Undo puts it back.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchUndo {
+    /// The local rows as they were (the stored Track json, untouched).
+    rows: Vec<String>,
+    /// The baseline as it was: (Apple id, catalog ids), or None when there was none.
+    baseline: Option<(String, Vec<String>)>,
+}
+
+/// Match the Apple Copy, step 2: the local playlist becomes `tracks` (the plan's read), same
+/// songs, same order, and the baseline becomes those songs. One transaction. Returns what it
+/// replaced, for Undo. Zero Apple calls.
+#[tauri::command]
+pub async fn playlist_match_apply(id: i64, apple_id: String, tracks: Vec<Track>, app: tauri::AppHandle) -> Result<MatchUndo, String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let rows = read_local_tracks(&conn, id)?;
+        let baseline = baseline_raw(&conn, id);
+        let jsons = tracks
+            .iter()
+            .filter(|t| !t.unreleased)
+            .map(|t| serde_json::to_string(t).map_err(err))
+            .collect::<Result<Vec<_>, _>>()?;
+        let ids: Vec<String> = matchable(&tracks).into_iter().map(|(_, r)| r.catalog_id).collect();
+        let tx = conn.transaction().map_err(err)?;
+        write_local_tracks(&tx, id, &jsons)?;
+        baseline_set(&tx, id, &apple_id, &ids)?;
+        touch_playlist(&tx, id)?;
+        tx.commit().map_err(err)?;
+        crate::log::info(&format!("playlists: matched local:{id} to {apple_id}, {} → {} song(s)", rows.len(), jsons.len()));
+        Ok(MatchUndo { rows, baseline })
+    })
+    .await
+}
+
+/// Undo a match: the old rows and the old baseline, back in one transaction.
+#[tauri::command]
+pub async fn playlist_match_undo(id: i64, undo: MatchUndo, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let tx = conn.transaction().map_err(err)?;
+        write_local_tracks(&tx, id, &undo.rows)?;
+        match &undo.baseline {
+            Some((apple_id, ids)) => baseline_set(&tx, id, apple_id, ids)?,
+            None => {
+                tx.execute("DELETE FROM playlist_apple_baseline WHERE playlist_id = ?1", [id]).map_err(err)?;
+            }
+        }
+        touch_playlist(&tx, id)?;
+        tx.commit().map_err(err)?;
+        crate::log::info(&format!("playlists: undid the match on local:{id}, {} song(s) back", undo.rows.len()));
+        Ok(())
+    })
+    .await
 }
 
 #[derive(serde::Serialize)]
@@ -635,20 +880,29 @@ pub async fn playlist_import(
     let linked = head.can_edit;
     let mut conn = db.lock();
     let now = now_ms();
-    conn.execute(
+    // One transaction (2026-09-29): the playlist, its folder and its songs land together, or
+    // nothing does. Three separate writes left an empty copy behind when the third failed.
+    let tx = conn.transaction().map_err(err)?;
+    tx.execute(
         "INSERT INTO local_playlists(name, description, created_at, updated_at, exported_apple_id) VALUES(?1, ?2, ?3, ?3, ?4)",
         rusqlite::params![head.name, head.description, now, linked.then(|| apple_id.clone())],
     )
     .map_err(err)?;
-    let id = conn.last_insert_rowid();
+    let id = tx.last_insert_rowid();
     // The hidden original keeps its own membership, so it lists in place if the copy is deleted.
-    conn.execute(
+    tx.execute(
         "INSERT OR IGNORE INTO playlist_folder_members(playlist_key, folder_id)
          SELECT ?1, folder_id FROM playlist_folder_members WHERE playlist_key = ?2",
         rusqlite::params![format!("local:{id}"), apple_id],
     )
     .map_err(err)?;
-    append_local(&mut conn, id, &tracks)?;
+    append_in(&tx, id, &tracks)?;
+    // A linked copy starts in agreement with its original: the first sync baseline (§12).
+    if linked {
+        let ids: Vec<String> = matchable(&tracks).into_iter().map(|(_, r)| r.catalog_id).collect();
+        baseline_set(&tx, id, &apple_id, &ids)?;
+    }
+    tx.commit().map_err(err)?;
     crate::log::info(&format!("playlists: imported {apple_id} → local:{id}, {} song(s), linked {linked}", tracks.len()));
     Ok(ImportResult { id, linked })
 }
@@ -753,12 +1007,14 @@ fn seed_created_copy(conn: &Connection, apple_id: &str, resource: &serde_json::V
 ///   stamp its id at once (a partial failure still leaves a real Apple playlist), then
 ///   append every song with a catalog id.
 /// - `"append"`: send `ids` (from a plan) to the current copy; drop that copy's content
-///   cache so its next open shows the new songs.
+///   cache so its next open shows the new songs. `base` is the plan's `apple_ids`: with it,
+///   the sync baseline is saved (§12).
 #[tauri::command]
 pub async fn playlist_export_apple(
     id: i64,
     mode: String,
     ids: Option<Vec<String>>,
+    base: Option<Vec<String>>,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<ExportResult, String> {
@@ -815,6 +1071,9 @@ pub async fn playlist_export_apple(
             {
                 let conn = db.lock();
                 seed_created_copy(&conn, &apple_id, &body["data"][0], &name, added)?;
+                // The new copy holds what was sent: the first sync baseline for it (§12). A
+                // song whose call failed is not on Apple, so it can never read as new there.
+                baseline_set(&conn, id, &apple_id, &ids)?;
             }
             crate::log::info(&format!(
                 "playlists: exported local:{id} → {apple_id}, {added} added, {failed} failed, {} skipped",
@@ -838,6 +1097,15 @@ pub async fn playlist_export_apple(
                 .map_err(err)?;
                 conn.execute("DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1", [apple_id.as_str()])
                     .map_err(err)?;
+                // The sync baseline (§12): the copy as the plan read it, plus what was sent.
+                // After a partial failure the read alone; the songs that did go are in the
+                // local playlist, so Only new never adds them twice.
+                if let Some(mut base) = base {
+                    if failed == 0 {
+                        base.extend(ids.iter().cloned());
+                    }
+                    baseline_set(&conn, id, &apple_id, &base)?;
+                }
             }
             crate::log::info(&format!("playlists: appended local:{id} → {apple_id}, {added} added, {failed} failed"));
             Ok(ExportResult { apple_id, added, failed, skipped_titles: vec![] })
@@ -970,21 +1238,14 @@ async fn apple_playlists_sync_run(
         crate::log::info(&format!("playlists: kept just-exported {id} (not in Apple's list yet)"));
         seen.insert(id);
     }
-    // Playlists deleted on Apple: drop their orphaned content caches + folder rows.
+    // Playlists gone from Apple's list: drop their content caches. Their folder and refresh
+    // rows are the user's own filing and stay: Apple leaves a playlist out of one read now and
+    // then, and deleting them lost the folders for good (2026-09-29). Both tables are read as
+    // lookups keyed by a listed playlist, so a row for a playlist that is really gone does nothing.
     for id in old.keys() {
         if !seen.contains(id) {
             tx.execute(
                 "DELETE FROM apple_playlist_tracks WHERE playlist_id = ?1",
-                [id.as_str()],
-            )
-            .map_err(err)?;
-            tx.execute(
-                "DELETE FROM playlist_folder_members WHERE playlist_key = ?1",
-                [id.as_str()],
-            )
-            .map_err(err)?;
-            tx.execute(
-                "DELETE FROM playlist_refresh WHERE playlist_key = ?1",
                 [id.as_str()],
             )
             .map_err(err)?;
@@ -1234,8 +1495,8 @@ fn stamp_refresh(conn: &Connection, key: &str) {
 }
 
 /// The stamp alone, for the read-only path: an exported local playlist that was peeked
-/// (PLAYLIST-REFRESH.md D9). A dismissed offer never calls this, so the next check offers
-/// again.
+/// (PLAYLIST-REFRESH.md D9). The peek stamps whether or not the offer is taken, so a
+/// dismissed offer comes back when the playlist is next due, not at the next hourly check.
 #[tauri::command]
 pub async fn playlist_refresh_stamp(key: String, app: tauri::AppHandle) -> Result<(), String> {
     crate::db_thread::run(&app, move |db| {
@@ -1495,6 +1756,8 @@ pub async fn playlist_delete(id: i64, app: tauri::AppHandle) -> Result<(), Strin
         .map_err(err)?;
         tx.execute("DELETE FROM local_playlists WHERE id = ?1", [id])
             .map_err(err)?;
+        tx.execute("DELETE FROM playlist_apple_baseline WHERE playlist_id = ?1", [id])
+            .map_err(err)?;
         tx.commit().map_err(err)
     })
     .await
@@ -1510,7 +1773,54 @@ pub async fn playlist_add_tracks(id: i64, tracks: Vec<Track>, app: tauri::AppHan
     .await
 }
 
+/// The refresh offer's [Get them] (PLAYLIST-REFRESH.md): append only the held songs the
+/// playlist does not hold yet, and say how many went in. The offer is sticky and can wait
+/// in the queue while Get New Songs or a newer offer adds the same songs; a blind append
+/// then put every song in twice (2026-09-29). Matched by catalog id; zero Apple calls.
+///
+/// `apple_id` + `apple_ids`: the peek's read of the Apple copy. Taking the offer is a sync
+/// point, so the baseline is saved from that read (§12), in the same transaction.
+#[tauri::command]
+pub async fn playlist_add_new_tracks(
+    id: i64,
+    tracks: Vec<Track>,
+    apple_id: Option<String>,
+    apple_ids: Option<Vec<String>>,
+    app: tauri::AppHandle,
+) -> Result<u32, String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let (have, _) = export_rows(&conn, id)?;
+        let mut held: std::collections::HashSet<String> = have.into_iter().map(|r| r.catalog_id).collect();
+        let new: Vec<Track> = tracks
+            .into_iter()
+            .filter(|t| match &t.catalog_id {
+                Some(c) if !c.is_empty() => held.insert(c.clone()),
+                _ => true,
+            })
+            .collect();
+        let tx = conn.transaction().map_err(err)?;
+        if !new.is_empty() {
+            append_in(&tx, id, &new)?;
+        }
+        if let (Some(a), Some(ids)) = (&apple_id, &apple_ids) {
+            baseline_set(&tx, id, a, ids)?;
+        }
+        tx.commit().map_err(err)?;
+        Ok(new.iter().filter(|t| !t.unreleased).count() as u32)
+    })
+    .await
+}
+
 fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), String> {
+    let tx = conn.transaction().map_err(err)?;
+    append_in(&tx, id, tracks)?;
+    tx.commit().map_err(err)
+}
+
+/// `append_local` inside a caller's transaction, so an append can land with other writes or
+/// not at all (Import to Edit, Get New Songs with its sync baseline).
+fn append_in(tx: &rusqlite::Transaction, id: i64, tracks: &[Track]) -> Result<(), String> {
     // A pre-release album's unreleased songs stay out: the snapshot would keep the flag
     // (and no play data) past release day (model.rs `Track::unreleased`).
     let kept: Vec<Track>;
@@ -1520,7 +1830,6 @@ fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), 
     } else {
         tracks
     };
-    let tx = conn.transaction().map_err(err)?;
     let next: i64 = tx
         .query_row(
             "SELECT COALESCE(MAX(position) + 1, 0) FROM local_playlist_tracks WHERE playlist_id = ?1",
@@ -1537,9 +1846,21 @@ fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), 
                 .map_err(err)?;
         }
     }
-    tx.execute("UPDATE local_playlists SET updated_at = ?2 WHERE id = ?1", rusqlite::params![id, now_ms()])
+    touch_playlist(tx, id)
+}
+
+/// Stamp a local playlist as changed, and refuse a write to one that is gone: with no row to
+/// stamp, the songs would land as orphans no view reads, and the toast would say "Added"
+/// (an Undo after the playlist's delete, or a drop that raced it; 2026-09-29). The error
+/// rolls the whole transaction back.
+fn touch_playlist(tx: &rusqlite::Transaction, id: i64) -> Result<(), String> {
+    let n = tx
+        .execute("UPDATE local_playlists SET updated_at = ?2 WHERE id = ?1", rusqlite::params![id, now_ms()])
         .map_err(err)?;
-    tx.commit().map_err(err)
+    if n == 0 {
+        return Err("That playlist was deleted.".into());
+    }
+    Ok(())
 }
 
 /// Read a local playlist's tracks in stored order (needed by remove/reorder below;
@@ -1576,8 +1897,28 @@ pub async fn playlist_remove_track(id: i64, position: i64, app: tauri::AppHandle
         jsons.remove(pos);
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &jsons)?;
-        tx.execute("UPDATE local_playlists SET updated_at = ?2 WHERE id = ?1", rusqlite::params![id, now_ms()])
-            .map_err(err)?;
+        touch_playlist(&tx, id)?;
+        tx.commit().map_err(err)
+    })
+    .await
+}
+
+/// Remove a set of rows by their AUTHORED positions, in one transaction (2026-09-29): a picked
+/// set went one call at a time, so a failure halfway left half the set removed. Every position
+/// is checked before anything is written; a repeated position counts once.
+#[tauri::command]
+pub async fn playlist_remove_positions(id: i64, positions: Vec<i64>, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let mut conn = db.lock();
+        let jsons = read_local_tracks(&conn, id)?;
+        let gone: std::collections::HashSet<usize> = positions.iter().map(|&p| p as usize).collect();
+        if let Some(bad) = positions.iter().find(|&&p| p < 0 || p as usize >= jsons.len()) {
+            return Err(format!("playlist_remove_positions: position {bad} out of range"));
+        }
+        let kept: Vec<String> = jsons.into_iter().enumerate().filter(|(i, _)| !gone.contains(i)).map(|(_, j)| j).collect();
+        let tx = conn.transaction().map_err(err)?;
+        write_local_tracks(&tx, id, &kept)?;
+        touch_playlist(&tx, id)?;
         tx.commit().map_err(err)
     })
     .await
@@ -1596,8 +1937,7 @@ pub async fn playlist_reorder(id: i64, from: i64, to: i64, app: tauri::AppHandle
         jsons.insert(t, moved);
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &jsons)?;
-        tx.execute("UPDATE local_playlists SET updated_at = ?2 WHERE id = ?1", rusqlite::params![id, now_ms()])
-            .map_err(err)?;
+        touch_playlist(&tx, id)?;
         tx.commit().map_err(err)
     })
     .await
@@ -1620,8 +1960,7 @@ pub async fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, app: t
         jsons.splice(at..at, new);
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &jsons)?;
-        tx.execute("UPDATE local_playlists SET updated_at = ?2 WHERE id = ?1", rusqlite::params![id, now_ms()])
-            .map_err(err)?;
+        touch_playlist(&tx, id)?;
         tx.commit().map_err(err)
     })
     .await
@@ -1791,4 +2130,77 @@ pub async fn playlist_folder_assign(playlist_key: String, folder_id: Option<i64>
         Ok(())
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rows(ids: &[&str]) -> Vec<ExportRow> {
+        ids.iter().map(|c| ExportRow { catalog_id: c.to_string(), title: c.to_string() }).collect()
+    }
+    fn strs(ids: &[&str]) -> Vec<String> {
+        ids.iter().map(|s| s.to_string()).collect()
+    }
+    fn picked(apple: &[&str], idx: &[usize]) -> Vec<String> {
+        idx.iter().map(|&i| apple[i].to_string()).collect()
+    }
+
+    // The bug the baseline closes (2026-09-29): a song removed here came back on Get.
+    #[test]
+    fn new_since_keeps_a_removed_song_out_2026_09_29() {
+        let apple = ["a", "b", "c"];
+        let got = new_since(&rows(&apple), &strs(&["a", "b", "c"]), &rows(&["a", "c"]));
+        assert!(got.is_empty(), "b was removed here on purpose");
+        // The old diff brings it back: that is the default, and why the baseline exists.
+        assert_eq!(picked(&apple, &export_diff(&rows(&apple), &rows(&["a", "c"])).0), strs(&["b"]));
+    }
+
+    #[test]
+    fn new_since_adds_only_what_apple_gained() {
+        let apple = ["a", "b", "d", "c", "e"];
+        let got = new_since(&rows(&apple), &strs(&["a", "b", "c"]), &rows(&["a"]));
+        assert_eq!(picked(&apple, &got), strs(&["d", "e"]));
+    }
+
+    #[test]
+    fn new_since_counts_duplicates_as_a_multiset() {
+        let apple = ["a", "a", "b"];
+        // One "a" in the baseline: the second one is new.
+        assert_eq!(picked(&apple, &new_since(&rows(&apple), &strs(&["a", "b"]), &[])), strs(&["a"]));
+    }
+
+    #[test]
+    fn new_since_skips_a_new_song_the_playlist_already_holds() {
+        let apple = ["a", "x"];
+        // x is new on Apple, but it was added here by hand too: it must not land twice.
+        assert!(new_since(&rows(&apple), &strs(&["a"]), &rows(&["a", "x"])).is_empty());
+    }
+
+    #[test]
+    fn new_since_ignores_songs_gone_from_apple() {
+        let apple = ["a"];
+        assert!(new_since(&rows(&apple), &strs(&["a", "b", "c"]), &rows(&["a", "b"])).is_empty());
+    }
+
+    #[test]
+    fn match_counts_adds_removes_and_order() {
+        assert_eq!(match_counts(&strs(&["a", "b", "c"]), &strs(&["a", "b", "c"])), (0, 0, true));
+        assert_eq!(match_counts(&strs(&["a", "b", "c"]), &strs(&["c", "b", "a"])), (0, 0, false));
+        assert_eq!(match_counts(&strs(&["a", "x", "y"]), &strs(&["a", "b"])), (1, 2, false));
+        assert_eq!(match_counts(&strs(&["a", "a"]), &strs(&["a"])), (0, 1, false));
+        assert_eq!(match_counts(&[], &strs(&["a", "b"])), (2, 0, false));
+    }
+
+    #[test]
+    fn baseline_is_read_only_for_its_own_copy() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);").unwrap();
+        migrate_v17(&conn).unwrap();
+        baseline_set(&conn, 7, "p.old", &strs(&["a", "b"])).unwrap();
+        assert_eq!(baseline_get(&conn, 7, "p.old"), Some(strs(&["a", "b"])));
+        assert_eq!(baseline_get(&conn, 7, "p.new"), None, "a baseline from an older copy is not read");
+        baseline_set(&conn, 7, "p.new", &strs(&["c"])).unwrap();
+        assert_eq!(baseline_raw(&conn, 7), Some(("p.new".to_string(), strs(&["c"]))));
+    }
 }

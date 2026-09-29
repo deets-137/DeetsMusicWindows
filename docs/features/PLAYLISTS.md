@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: none
-sources: [src/context-menu.ts, src-tauri/src/playlists.rs, src/playlists-card.ts, src/playlists.ts, src-tauri/src/model.rs, src/collection-card.ts]
-updated: 2026-09-20
+sources: [src/context-menu.ts, src-tauri/src/playlists.rs, src/playlists-card.ts, src/playlists.ts, src-tauri/src/model.rs, src/collection-card.ts, src/playlist-export.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — Playlists
 
@@ -67,6 +67,10 @@ updated: 2026-09-20
 > [PLAYLIST-REFRESH.md](PLAYLIST-REFRESH.md) (paper, 2026-09-19, not built): a per-playlist
 > *Refresh ▸ Daily · Weekly ▸ (day) · Off* submenu. §1 there also settles how we tell Apple's
 > playlists from the user's, from signals §2 below already carries.
+>
+> **Built 2026-09-29 (§12), desk test open:** Settings › Apple Music › *Get songs from Apple
+> copy* (All missing | Only new, from a per-playlist sync baseline), **Match the Apple Copy**, and
+> atomic Import to Edit and multi-song Remove.
 >
 > **Still deferred:** the backup file (§10.7, an idea only).
 > This doc still fixes *what* and *why* for those parts.
@@ -470,6 +474,9 @@ delete too: Ctrl+click or Shift+click a run of playlists, right-click one of the
   Apple occurrences). Match by catalog id; rows without one can't be matched.
 - Toast: *Added 3 songs from Apple Music to "Road Trip".* / *"Road Trip" already has every song
   from its Apple copy.*
+- **Since 2026-09-29 (§12):** this stays the default. Settings › Apple Music › *Get songs from
+  Apple copy* › **Only new** adds only the songs new on the Apple copy since the last sync, and
+  **Match the Apple Copy** makes the local playlist the Apple copy.
 
 ### 10.5 Name the skipped uploads
 - Uploaded songs DO work in DeetsMusic (Library, playback by library id, local playlists); only
@@ -597,6 +604,121 @@ Two Settings rows in the Playlists section:
 - Apple policy checked 2026-09-15: the Apple Music Identity Guidelines have no artwork
   rules for apps; the "no 2×2 grid" rule is in the Curator Best Practices and applies to
   playlist art uploaded to Apple.
+
+## 12. Only new, Match the Apple Copy, and two atomic writes — BUILT 2026-09-29
+
+> **Part:** built · 2026-09-29 · desk test open (§12.6)
+
+### 12.1 The problem
+Get New Songs (§10.4) adds *the songs on the Apple copy that the local playlist lacks*. It kept
+no memory, so a song the user removed here on purpose came back on the next Get, and the
+refresh offer (PLAYLIST-REFRESH.md D9) offered it again every time the playlist was due.
+
+### 12.2 The owner's decisions (2026-09-29)
+1. Today's behavior stays the **default**: for some users the Apple copy is the source of truth.
+2. A Settings row switches Get New Songs AND the refresh offer (they share one diff) to *only
+   add songs that are new on the Apple copy since the last sync*. It works from a per-playlist
+   **sync baseline** in SQLite. No Apple calls beyond today's.
+3. **Match the Apple Copy** on the *Apple Music ▸* submenu, beside Get New Songs: the local
+   playlist becomes the Apple copy (same songs, same order). Destructive, so the confirm names
+   the counts, and Undo follows. It resets the baseline. One Apple read per 100 songs. It rides
+   the same one-at-a-time `once()` as the other Apple Music ▸ rows.
+4. Import to Edit and the multi-song Remove are made atomic.
+5. A dismissed refresh offer IS stamped (the code was right; the docs are corrected).
+
+### 12.3 As built
+**The setting.** Settings › Apple Music › **Get songs from Apple copy** — `playlistGetNew`,
+**All missing** (`missing`, default) | **Only new** (`since`). Hint: *Only new adds just the
+songs new on the Apple copy since the last sync, so a song you removed here stays out.* An
+agent may set it both ways (`agent-settings.ts`; not a consent gate — it writes nothing to
+Apple). It carries the N badge (`NEW_MARKS`). It is in no Reset group, like the other Apple
+Music rows.
+
+**The baseline** — table `playlist_apple_baseline` (schema **v17**, `playlists::migrate_v17`):
+`playlist_id` (the local rowid, key) · `apple_id` · `ids` (a JSON array of catalog ids in
+Apple's order — a multiset) · `saved_at`. The Apple id is stored so a baseline from an older
+copy is never read against a new one (Make a New Copy). Deleting the playlist deletes its row.
+It is saved at every point where the two sides agree, from a read or a write that happens
+anyway:
+
+| Sync point | Baseline saved | Where |
+|---|---|---|
+| Import to Edit (a linked copy only) | the imported songs' ids | `playlist_import`, in its transaction |
+| Export / Make a New Copy | every id sent | `playlist_export_apple` `new` |
+| Send New Songs | the plan's read of Apple + the ids sent (the read alone after a partial failure) | `playlist_export_apple` `append`, `base` = `ExportPlan.appleIds` |
+| Get New Songs | the Apple copy as read (either mode) | `playlist_get_apple_songs`, one transaction with the append |
+| The refresh offer's [Get them] | the peek's read | `playlist_add_new_tracks(appleId, appleIds)`, one transaction |
+| Match the Apple Copy | the matched songs' ids | `playlist_match_apply` (and `playlist_match_plan` when already the same) |
+
+A dismissed offer saves nothing, so under Only new the same songs are offered again when the
+playlist is next due.
+
+**The diff** — `new_since(apple, baseline, local)` (pure, playlists.rs): walk the Apple rows in
+order; an id still in the baseline multiset is used up and skipped; else an id the local
+playlist still holds (multiset) is used up and skipped (a song added on both sides by hand must
+not land twice); the rest are new, in Apple's order. **No baseline for this copy yet** (a
+playlist linked before 2026-09-29): the missing-songs diff runs once, and saves the baseline.
+
+**Match the Apple Copy** — `playlist_match_plan(id)` reads the copy (one read per 100 songs)
+and counts by `track_key` multisets (`match_counts`: added, removed, same list). Then:
+- gone from the mirror → sticky warn *The Apple copy of “X” is gone.* **[Make a New Copy]**;
+- the same list → *“X” already matches its Apple copy.* (the plan saves the baseline);
+- else a red sticky question: *Make “X” match its Apple copy? It adds 3 songs and removes 5
+  songs, and takes the Apple order. You can undo it.* **[Match] [Cancel]** (order only: *It
+  changes the order only.*). The question holds the read songs; [Match] writes them with no
+  second read (`playlist_match_apply`: rows + baseline + touch, one transaction), then
+  *“X” now matches its Apple copy.* **[Undo]**. Undo (`playlist_match_undo`) writes back the old
+  rows (their stored JSON, untouched) and the old baseline, or deletes it when there was none.
+- Unreleased songs stay out, as `append_local` keeps them out. Hidden on a Replay, like Get.
+
+**Atomic writes.** `playlist_import`: the playlist row, the folder copy, the songs and the
+baseline are one transaction (`append_in`, the transaction form of `append_local`), so a
+failure leaves no empty copy. The picked-rows Remove in the playlist detail calls
+`playlist_remove_positions(id, positions)`: every position is checked, then the set goes in
+one transaction. Undo is unchanged (the inserts, top down).
+
+### 12.4 Decided inside his choice
+- The row label, pills and hint above; the row sits last in Apple Music, under Export playlists.
+- The menu row reads **Match the Apple Copy** (the submenu's title case) and sits right after
+  Get New Songs.
+- No baseline yet → the old diff once (never *add nothing*, which would lose real new songs).
+- The Only-new "nothing" toast: *The Apple copy of “X” has no new songs.* — never *already has
+  every song*, which would be false after a removal.
+- Match's confirm is the red sticky question of Delete (§10.3), with a plain `info` Undo after.
+- The baseline counts catalog ids only; an upload has none and can't be matched (as today).
+
+### 12.5 Code
+`src-tauri/src/playlists.rs` (`migrate_v17`, `baseline_*`, `new_since`, `match_counts`,
+`playlist_match_plan` / `_apply` / `_undo`, `playlist_remove_positions`, `append_in`, tests at
+the end) · `src/playlists.ts` · `src/playlist-export.ts` (`matchApple`, the menu row) ·
+`src/playlist-refresh.ts` (the peek keeps its read) · `src/playlists-card.ts` (the picked
+Remove) · `settings-store.ts` / `agent-settings.ts` / `settings-card.ts` (the row).
+
+### 12.6 The desk test
+Setup: a local playlist with a live Apple copy (Import to Edit one of your own Apple
+playlists, or Export one). A to E use the default, **All missing**, first.
+1. **Default kept.** Remove song S here. Apple Music ▸ Get New Songs → S comes back, at the
+   end (today's behavior).
+2. Settings › Apple Music › Get songs from Apple copy → **Only new**. The row wears the N until
+   the pointer rests on it.
+3. Remove S again. Get New Songs → *The Apple copy of “X” has no new songs.* S stays out.
+4. In the Music app, add song T to the Apple copy. Get New Songs → only T is added. S stays out.
+5. Refresh offer: set the playlist's Refresh ▸ Daily, set its `fetched_at` back a day, add
+   song U on Apple, remove S here. Open the playlist → the offer names 1 song (U, not S).
+   Dismiss → no offer at the next hourly check; it comes back when the playlist is next due.
+   [Get them] → U lands; the next due check offers nothing.
+6. **Match.** Add two songs here and remove one Apple song here. Apple Music ▸ Match the Apple
+   Copy → the red question says *adds 1 song and removes 2 songs*. Cancel → nothing changes.
+   Again → Match → the list is the Apple copy, same order. **Undo** → the old list is back.
+7. Match on a playlist that already matches → *already matches* and no question.
+8. Press Match twice fast → the second says *DeetsMusic is still working on “X”…*.
+9. Import to Edit a big Apple playlist → one copy, with its songs, in the original's folder.
+10. Pick 5 rows (Ctrl-click) → Remove 5 songs from Playlist → all go at once; Undo → all 5 are
+    back in their places.
+11. `query` over `playlist_apple_baseline`: one row per synced playlist; its `apple_id` is the
+    live copy's id; `meta.schema_version` is 17.
+
+---
 
 ## Decisions (closed)
 

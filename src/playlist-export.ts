@@ -10,25 +10,52 @@
 //    additions → it sends them. Removals or a new order Apple can't copy → a sticky
 //    question BEFORE any write, naming what won't carry over.
 //  - Get New Songs adds the songs only the Apple copy has to the END of the local playlist.
-//    Nothing local is lost, so it doesn't ask (fork A).
+//    Nothing local is lost, so it doesn't ask (fork A). Settings › Apple Music › Get songs
+//    from Apple copy › Only new adds just the songs new there since the last sync (§12).
+//  - Match the Apple Copy makes the local playlist the Apple copy. It replaces local rows, so
+//    it asks first with the counts and offers Undo after (§12).
 //
 // Gated by Settings › Apple Music › Export playlists (`playlistExport`, default on).
 
 import type { Playlist } from "./search";
+import type { Track } from "./library";
 import type { MenuItem } from "./context-menu";
 import { setting } from "./settings-store";
 import { toast, noticeOff } from "./toast";
 import { requestSetting } from "./layout-bus";
 import {
-  playlistExportPlan, playlistExportApple, playlistGetAppleSongs, isReplay, ownCover, names, songs, skippedLine,
-  type ExportPlan, type ExportResult, type GetSongsResult,
+  playlistExportPlan, playlistExportApple, playlistGetAppleSongs, playlistMatchPlan, playlistMatchApply, playlistMatchUndo,
+  isReplay, ownCover, names, songs, skippedLine,
+  type ExportPlan, type ExportResult, type GetSongsResult, type MatchPlan, type MatchUndo,
 } from "./playlists";
 
 export const EXPORT_NOTICE_KEY = "deets.notice.exportOneWay";
 const NOTICE_KEY = EXPORT_NOTICE_KEY;
 
+// One Apple write per playlist at a time. A plan is read from Apple and applied a second
+// later, so a second press in between read the same plan and sent every new song twice (or
+// made two copies); DeetsMusic can't remove them there (2026-09-29).
+const busy = new Set<string>();
+async function once(p: Playlist, work: () => Promise<void>): Promise<void> {
+  const key = p.libraryId ?? p.name;
+  if (busy.has(key)) {
+    toast({ kind: "info", text: `DeetsMusic is still working on “${p.name}” with Apple Music.` });
+    return;
+  }
+  busy.add(key);
+  try {
+    await work();
+  } finally {
+    busy.delete(key);
+  }
+}
+
 /** Make a fresh Apple copy. `again`: an older copy exists and stays on Apple. */
-export async function makeNew(p: Playlist, again: boolean, after: () => void): Promise<void> {
+export function makeNew(p: Playlist, again: boolean, after: () => void): Promise<void> {
+  return once(p, () => makeNewRun(p, again, after));
+}
+
+async function makeNewRun(p: Playlist, again: boolean, after: () => void): Promise<void> {
   let r: ExportResult;
   try {
     r = await playlistExportApple(p, "new");
@@ -72,7 +99,7 @@ export async function makeNew(p: Playlist, again: boolean, after: () => void): P
 async function sendAdds(p: Playlist, plan: ExportPlan, after: () => void): Promise<void> {
   let r: ExportResult;
   try {
-    r = await playlistExportApple(p, "append", plan.addIds);
+    r = await playlistExportApple(p, "append", plan.addIds, plan.appleIds);
   } catch (e) {
     console.error("[export] append", e);
     toast({
@@ -93,7 +120,35 @@ async function sendAdds(p: Playlist, plan: ExportPlan, after: () => void): Promi
 }
 
 /** Send New Songs: compare first, confirm what Apple can't copy, then write. */
-export async function sendNew(p: Playlist, after: () => void): Promise<void> {
+export function sendNew(p: Playlist, after: () => void): Promise<void> {
+  return once(p, () => sendNewRun(p, after));
+}
+
+/** The question's [Add N songs], pressed maybe minutes later: read the plan again (one read)
+ *  and send what is still new, so a send made in between is not sent twice. */
+function sendLater(p: Playlist, after: () => void): Promise<void> {
+  return once(p, async () => {
+    let plan: ExportPlan;
+    try {
+      plan = await playlistExportPlan(p);
+    } catch (e) {
+      console.error("[export] plan", e);
+      toast({ kind: "warn", text: `Couldn't read the Apple copy of “${p.name}”.` });
+      return;
+    }
+    if (!plan.appleId) {
+      toast({ kind: "warn", sticky: true, text: `The Apple copy of “${p.name}” is gone.`, actions: [{ label: "Make a New Copy", run: () => void makeNew(p, true, after) }] });
+      return;
+    }
+    if (!plan.addIds.length) {
+      toast({ kind: "success", text: `The Apple copy of “${p.name}” already has the new songs.` });
+      return;
+    }
+    await sendAdds(p, plan, after);
+  });
+}
+
+async function sendNewRun(p: Playlist, after: () => void): Promise<void> {
   let plan: ExportPlan;
   try {
     plan = await playlistExportPlan(p);
@@ -131,12 +186,16 @@ export async function sendNew(p: Playlist, after: () => void): Promise<void> {
     kind: "warn",
     sticky: true,
     text: `Apple Music can't copy every change to “${p.name}”. DeetsMusic can add ${songs(n)} (${names(plan.addTitles)}) at the end, but it can't ${cant.join(" or ")}.`,
-    actions: [{ label: `Add ${songs(n)}`, run: () => void sendAdds(p, plan, after) }, again],
+    actions: [{ label: `Add ${songs(n)}`, run: () => void sendLater(p, after) }, again],
   });
 }
 
 /** Get New Songs: the Apple copy's extra songs → the end of the local playlist (§10.4). */
-export async function getNew(p: Playlist, after: () => void): Promise<void> {
+export function getNew(p: Playlist, after: () => void): Promise<void> {
+  return once(p, () => getNewRun(p, after));
+}
+
+async function getNewRun(p: Playlist, after: () => void): Promise<void> {
   let r: GetSongsResult;
   try {
     r = await playlistGetAppleSongs(p);
@@ -155,9 +214,79 @@ export async function getNew(p: Playlist, after: () => void): Promise<void> {
     return;
   }
   const n = r.addedTitles.length;
+  // Only new (§12) never claims the playlist has every song: a song removed here stays out.
+  const none = setting("playlistGetNew") === "since"
+    ? `The Apple copy of “${p.name}” has no new songs.`
+    : `“${p.name}” already has every song from its Apple copy.`;
   toast({
     kind: "success",
-    text: n ? `Added ${songs(n)} from Apple Music to “${p.name}”.` : `“${p.name}” already has every song from its Apple copy.`,
+    text: n ? `Added ${songs(n)} from Apple Music to “${p.name}”.` : none,
+  });
+}
+
+/** Match the Apple Copy (§12): the local playlist becomes its Apple copy, same songs, same
+ *  order. It replaces local rows, so it asks first with the counts, and offers Undo after. */
+export function matchApple(p: Playlist, after: () => void): Promise<void> {
+  return once(p, () => matchRun(p, after));
+}
+
+async function matchRun(p: Playlist, after: () => void): Promise<void> {
+  let plan: MatchPlan;
+  try {
+    plan = await playlistMatchPlan(p);
+  } catch (e) {
+    console.error("[export] match plan", e);
+    toast({ kind: "warn", text: `Couldn't read the Apple copy of “${p.name}”.` });
+    return;
+  }
+  if (!plan.appleId) {
+    toast({
+      kind: "warn",
+      sticky: true,
+      text: `The Apple copy of “${p.name}” is gone.`,
+      actions: [{ label: "Make a New Copy", run: () => void makeNew(p, true, after) }],
+    });
+    return;
+  }
+  if (plan.same) {
+    toast({ kind: "success", text: `“${p.name}” already matches its Apple copy.` });
+    return;
+  }
+  const parts: string[] = [];
+  if (plan.added) parts.push(`adds ${songs(plan.added)}`);
+  if (plan.removed) parts.push(`removes ${songs(plan.removed)}`);
+  const what = parts.length ? `It ${parts.join(" and ")}, and takes the Apple order.` : "It changes the order only.";
+  const appleId = plan.appleId;
+  toast({
+    kind: "error",
+    sticky: true,
+    text: `Make “${p.name}” match its Apple copy? ${what} You can undo it.`,
+    actions: [{ label: "Match", run: () => void once(p, () => matchWrite(p, appleId, plan.tracks)) }, { label: "Cancel" }],
+  });
+}
+
+async function matchWrite(p: Playlist, appleId: string, tracks: Track[]): Promise<void> {
+  let undo: MatchUndo;
+  try {
+    undo = await playlistMatchApply(p, appleId, tracks);
+  } catch (e) {
+    console.error("[export] match", e);
+    toast({ kind: "warn", text: `Couldn't match “${p.name}” to its Apple copy.` });
+    return;
+  }
+  toast({
+    kind: "info",
+    text: `“${p.name}” now matches its Apple copy.`,
+    actions: [
+      {
+        label: "Undo",
+        run: () =>
+          void playlistMatchUndo(p, undo).catch((e) => {
+            console.error("[export] undo match", e);
+            toast({ kind: "warn", text: "Couldn't undo that." });
+          }),
+      },
+    ],
   });
 }
 
@@ -176,7 +305,10 @@ export function appleMusicItem(p: Playlist, lists: () => Playlist[], after: () =
         : undefined;
       if (!copy) return [{ label: "Export to Apple Music", run: () => void makeNew(p, !!p.exportedAppleId, after) }];
       const items: MenuItem[] = [{ label: "Send New Songs", run: () => void sendNew(p, after) }];
-      if (!isReplay(p)) items.push({ label: "Get New Songs", run: () => void getNew(p, after) });
+      if (!isReplay(p)) {
+        items.push({ label: "Get New Songs", run: () => void getNew(p, after) });
+        items.push({ label: "Match the Apple Copy", run: () => void matchApple(p, after) });
+      }
       // Apple can't rename its copy. After a rename here, say that a new copy takes the new name.
       items.push({
         label: copy.name === p.name ? "Make a New Copy" : `Make a New Copy (named “${p.name}”)`,

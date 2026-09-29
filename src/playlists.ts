@@ -3,6 +3,7 @@
 // tracks. The frontend only ever sees the normalized model.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import type { MenuItem } from "./context-menu";
@@ -26,6 +27,9 @@ const emitChange = (rowid?: number, appleId?: string) => changeSubs.forEach((cb)
 /** Tell the mounted cards the list changed outside a store call (an agent's export re-synced
  *  the mirror, agent-writes.ts). */
 export const notifyPlaylistsChanged = (): void => emitChange();
+// Another Apple account signed in: Rust cleared the last account's Apple playlists
+// (library.rs `forget_account`), so the cards redraw without them (2026-09-29).
+void listen("apple-account-changed", () => emitChange()).catch(() => {});
 
 // ── toast wording shared by the Apple writes (export, add to an Apple playlist) ──
 
@@ -98,6 +102,17 @@ export function playlistAddTracks(id: number, tracks: Track[]): Promise<void> {
   return invoke<void>("playlist_add_tracks", { id, tracks }).then(() => emitChange(id));
 }
 
+/** Append only the songs a LOCAL playlist does not hold yet (by catalog id); resolves to how
+ *  many went in. The refresh offer's [Get them], which can run after the same songs landed.
+ *  `read` is the peek's read of the Apple copy: taking the offer saves the sync baseline
+ *  from it (PLAYLISTS.md §12). */
+export function playlistAddNewTracks(id: number, tracks: Track[], read?: { appleId: string; appleIds: string[] }): Promise<number> {
+  return invoke<number>("playlist_add_new_tracks", { id, tracks, appleId: read?.appleId ?? null, appleIds: read?.appleIds ?? null }).then((n) => {
+    if (n) emitChange(id);
+    return n;
+  });
+}
+
 /** The local-vs-mirror id seam: local playlists ride a synthetic `local:{rowid}`. */
 const localId = (p: Playlist): number | null => {
   const m = /^local:(\d+)$/.exec(p.libraryId ?? "");
@@ -146,6 +161,14 @@ export function playlistRemoveTrack(p: Playlist, position: number): Promise<void
   return invoke<void>("playlist_remove_track", { id, position }).then(() => emitChange(id));
 }
 
+/** Remove a set of rows from a LOCAL playlist by their authored positions, in one
+ *  transaction: all of them go, or none (2026-09-29). */
+export function playlistRemovePositions(p: Playlist, positions: number[]): Promise<void> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<void>("playlist_remove_positions", { id, positions }).then(() => emitChange(id));
+}
+
 /**
  * Set (an image data URL, already resized by the picker) or clear a LOCAL playlist's
  * own cover (NEXT-VERSION §2). Local only — Apple's API cannot receive a cover.
@@ -184,6 +207,8 @@ export interface ExportPlan {
   reordered: boolean;
   /** Titles of the local songs with no catalog id (uploads): Apple can't receive them. */
   skippedTitles: string[];
+  /** The Apple copy's catalog ids as read. The append hands them back for the sync baseline. */
+  appleIds: string[];
 }
 
 export interface ExportResult {
@@ -202,17 +227,21 @@ export interface GetSongsResult {
   /** Only under `dryRun`: the songs themselves, so the offer can write them with no
    *  second Apple read (PLAYLIST-REFRESH.md §5.1). */
   tracks?: Track[];
+  /** Only under `dryRun`: the Apple copy's catalog ids as read, for the sync baseline. */
+  appleIds?: string[];
 }
 
 /** Get New Songs (PLAYLISTS.md §10.4): add the songs only the Apple copy has, at the end.
- *  One Apple read per 100 songs; the write is local.
+ *  One Apple read per 100 songs; the write is local. Settings › Apple Music › Get songs from
+ *  Apple copy › Only new (`playlistGetNew`, §12) adds only what is new since the last sync.
  *
  *  `dryRun` reads and writes NOTHING (PLAYLIST-REFRESH.md D9) — it is how the automatic
  *  refresh peeks at an exported local playlist before it offers. */
 export function playlistGetAppleSongs(p: Playlist, dryRun = false): Promise<GetSongsResult> {
   const id = localId(p);
   if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
-  return invoke<GetSongsResult>("playlist_get_apple_songs", { id, dryRun }).then((r) => {
+  const sinceSync = setting("playlistGetNew") === "since";
+  return invoke<GetSongsResult>("playlist_get_apple_songs", { id, dryRun, sinceSync }).then((r) => {
     if (!dryRun && r.addedTitles.length) emitChange(id);
     return r;
   });
@@ -264,14 +293,58 @@ export function playlistExportPlan(p: Playlist): Promise<ExportPlan> {
 }
 
 /** Write to Apple Music: `new` makes a fresh copy with every song; `append` sends `ids`
- *  (from a plan) to the current copy. Emits a change so the row's export stamp refreshes. */
-export function playlistExportApple(p: Playlist, mode: "new" | "append", ids?: string[]): Promise<ExportResult> {
+ *  (from a plan) to the current copy. Emits a change so the row's export stamp refreshes.
+ *  `base`: the plan's `appleIds`, so the append saves the sync baseline (§12). */
+export function playlistExportApple(p: Playlist, mode: "new" | "append", ids?: string[], base?: string[]): Promise<ExportResult> {
   const id = localId(p);
   if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
-  return invoke<ExportResult>("playlist_export_apple", { id, mode, ids: ids ?? null }).then((r) => {
+  return invoke<ExportResult>("playlist_export_apple", { id, mode, ids: ids ?? null, base: base ?? null }).then((r) => {
     emitChange(id);
     return r;
   });
+}
+
+/** What Match the Apple Copy would change (PLAYLISTS.md §12), read before any write. */
+export interface MatchPlan {
+  /** The Apple copy read; null when it is gone (nothing was read). */
+  appleId: string | null;
+  added: number;
+  removed: number;
+  /** The playlist already is the Apple copy: same songs, same order. */
+  same: boolean;
+  /** The Apple copy's songs, in its order: [Match] writes these, with no second read. */
+  tracks: Track[];
+}
+
+/** What a match replaced, opaque to the front end: its Undo hands it back. */
+export interface MatchUndo {
+  rows: string[];
+  baseline: [string, string[]] | null;
+}
+
+/** Read the Apple copy and count what a match would change. One Apple read per 100 songs. */
+export function playlistMatchPlan(p: Playlist): Promise<MatchPlan> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<MatchPlan>("playlist_match_plan", { id });
+}
+
+/** Make a LOCAL playlist its Apple copy: `tracks` from the plan, in order. One transaction;
+ *  zero Apple calls. Resolves to what it replaced, for Undo. */
+export function playlistMatchApply(p: Playlist, appleId: string, tracks: Track[]): Promise<MatchUndo> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<MatchUndo>("playlist_match_apply", { id, appleId, tracks }).then((u) => {
+    emitChange(id);
+    return u;
+  });
+}
+
+/** Undo a match: the old songs and the old sync baseline come back. */
+export function playlistMatchUndo(p: Playlist, undo: MatchUndo): Promise<void> {
+  const id = localId(p);
+  if (id == null) return Promise.reject(new Error(`playlist "${p.name}" is not local`));
+  return invoke<void>("playlist_match_undo", { id, undo }).then(() => emitChange(id));
 }
 
 export interface ImportResult {

@@ -1483,9 +1483,17 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   takeRequest();
   takeEntry();
 
+  // A note saves 600 ms after the last key; a quit inside that time lost the last words
+  // (2026-09-29). The tray menu's Quit takes the focus first, so `blur` saves before it;
+  // `pagehide` covers a close.
+  window.addEventListener("blur", flushNote);
+  window.addEventListener("pagehide", flushNote);
+
   return {
     destroy() {
       flushNote();
+      window.removeEventListener("blur", flushNote);
+      window.removeEventListener("pagehide", flushNote);
       destroyed = true;
       window.clearTimeout(pickTimer);
       unsubRequest();

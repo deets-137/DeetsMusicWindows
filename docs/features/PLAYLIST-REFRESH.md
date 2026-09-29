@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-20
 sources: [src-tauri/src/playlists.rs, src-tauri/src/apple.rs, src/context-menu.ts, src/playlists-card.ts, src/playlist-expiry.ts, src/look-schedule.ts]
-updated: 2026-09-20
+updated: 2026-09-29
 ---
 # DeetsMusic — Playlist refresh
 
@@ -243,8 +243,10 @@ question always shows) and never times out.
 | More than three | *4 playlists have new songs on Apple Music.* **[Get them all] [Dismiss]** |
 
 **One toast, not one per playlist** — forced by the cap above. **[Get them all]** writes every
-peeked playlist with `playlist_add_tracks`, no further Apple call (§5.1). Dismiss writes
-nothing and moves no stamp, so the next check offers again.
+peeked playlist with `playlist_add_tracks`, no further Apple call (§5.1). Dismiss writes no
+songs. The peek has already stamped the playlist, so a dismissed offer comes back when the
+playlist is next due (tomorrow for Daily, next week for Weekly), not at the next hourly check
+(corrected 2026-09-29, the owner's call: the code was right, this line was wrong).
 
 Five new rows in TOASTS.md §5.
 
@@ -288,8 +290,11 @@ ships unseen:
    `getNew` from the toast would have read Apple a second time for a result already in hand.
 2. **One** sticky toast per check, not one per playlist — the toast stack caps at 3 and sticky
    toasts hold it (§7.2). More than three playlists collapse to a count.
-3. A dismissed offer **does not move the stamp**, so the next check offers again. A silently
-   forgotten offer would be worse than a repeated one.
+3. A dismissed offer **is stamped** (the peek stamps before it offers), so it comes back when
+   the playlist is next due, not at the next check. *Corrected 2026-09-29 (the owner's call):
+   this line said the stamp did not move; the code always stamped, and that is the behavior he
+   keeps.* Under Settings › Apple Music › Get songs from Apple copy › Only new, a dismiss saves
+   no sync baseline, so the same songs are offered again when it is next due (PLAYLISTS.md §12).
 
 ## 10. The desk test — **PASSED 2026-09-20**
 
@@ -315,7 +320,8 @@ ships unseen:
 11. An exported local playlist set to Daily, with a song added to its Apple copy elsewhere: the
     check **offers** with a sticky toast and the local playlist is **unchanged** (D9). Press
     **[Get them]** — the songs land, and the network shows **no second Apple read** (§5.1).
-    Dismiss instead, and the next check offers again.
+    Dismiss instead, and the offer comes back when the playlist is next due (corrected
+    2026-09-29: the peek stamps, so not at the next check).
 12. Thirty due catalog mirrors at one day change: 25 refetch, one toast counts them, and the
     remaining five refetch when opened (D10).
 13. `npx tsc --noEmit` and `npx vite build` clean.

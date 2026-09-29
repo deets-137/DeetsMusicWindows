@@ -27,7 +27,7 @@ import type { Playlist } from "./search";
 import {
   playlistsCached,
   playlistGetAppleSongs,
-  playlistAddTracks,
+  playlistAddNewTracks,
   playlistRefetch,
   refreshRows,
   refreshStamp,
@@ -171,14 +171,18 @@ async function refetchMirror(p: Playlist): Promise<number | null> {
 interface Peek {
   p: Playlist;
   tracks: Track[];
+  /** The Apple copy as read: taking the offer saves the sync baseline from it (PLAYLISTS.md §12). */
+  read: { appleId: string; appleIds: string[] } | undefined;
 }
 
-/** Read an exported local playlist's Apple copy WITHOUT writing (D9). */
+/** Read an exported local playlist's Apple copy WITHOUT writing (D9). What counts as new
+ *  follows Settings › Apple Music › Get songs from Apple copy (`playlistGetNew`, §12). */
 async function peekLocal(p: Playlist): Promise<Peek | null> {
   try {
     const r = await playlistGetAppleSongs(p, true);
     const tracks = r.tracks ?? [];
-    return tracks.length ? { p, tracks } : null;
+    const read = r.appleId ? { appleId: r.appleId, appleIds: r.appleIds ?? [] } : undefined;
+    return tracks.length ? { p, tracks, read } : null;
   } catch (e) {
     console.error("[refresh] peek", e);
     diag.warn("playlist:refresh", { peekFailed: p.libraryId, why: String(e) });
@@ -211,9 +215,10 @@ function offer(peeks: Peek[]): void {
   });
 }
 
-/** [Get them]: write the songs already in hand. No second Apple read (§5.1). A DISMISSED
- *  offer never stamps, so the next check offers again — a silently forgotten offer would be
- *  worse than a repeated one. */
+/** [Get them]: write the songs already in hand. No second Apple read (§5.1). The peek has
+ *  already stamped the playlist, so a DISMISSED offer comes back when the playlist is next
+ *  due (tomorrow, or next week), not at the next hourly check. Dismiss saves no sync baseline
+ *  (PLAYLISTS.md §12), so under Only new the same songs are offered again then. */
 async function take(peeks: Peek[]): Promise<void> {
   let failed = 0;
   let added = 0;
@@ -221,9 +226,9 @@ async function take(peeks: Peek[]): Promise<void> {
     const id = Number(/^local:(\d+)$/.exec(k.p.libraryId ?? "")?.[1]);
     if (!Number.isFinite(id)) continue;
     try {
-      await playlistAddTracks(id, k.tracks);
+      // Only what is still missing: the offer may have waited while the same songs landed.
+      added += await playlistAddNewTracks(id, k.tracks, k.read);
       await refreshStamp(k.p.libraryId!);
-      added += k.tracks.length;
     } catch (e) {
       console.error("[refresh] take", e);
       failed++;
@@ -233,7 +238,8 @@ async function take(peeks: Peek[]): Promise<void> {
   notifyPlaylistsChanged();
   diag.log("playlist:refresh", { took: added, failed });
   if (failed) toast({ kind: "warn", text: failed === 1 ? "Couldn't add the songs to one playlist." : `Couldn't add the songs to ${failed} playlists.` });
-  else toast({ kind: "success", text: `Added ${songs(added)}.` });
+  else if (added) toast({ kind: "success", text: `Added ${songs(added)}.` });
+  else toast({ kind: "info", text: "Those songs are already in the playlist." });
 }
 
 /** Trigger 1 (D5): a due playlist reads on the way in, before its rows draw. So an opened
