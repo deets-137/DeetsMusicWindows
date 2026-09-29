@@ -12,6 +12,106 @@ updated: 2026-09-28
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-09-29 — Usage counts designed
+
+Designed, not built: [USAGE-COUNTS.md](features/USAGE-COUNTS.md). His calls: on by default with
+a clear off switch; active counts + the version mix + a weekly settings report; settings kept as
+one row per report with no ID; no country; error-log counts and Apple call counts added (the
+health report); privacy first through all of it (§2, 12 rules). Found on the way: the mint's
+`mint_counts` table already gives a rough weekly active count today, and the README's "No
+analytics" line must change in the release that ships this. Eight small forks are open (§9).
+
+## 2026-09-29 — 0.25.2 published; a review of the core
+
+**His ask:** publish 0.25.2, then review the core with other agents. Fix only the no-brainers,
+and bring back the rest. Six reviewers covered playback, the Rust data layer, playlists, the
+things that act alone, the life cycle, and the browsing cards.
+
+**Fixed, NOT committed, NOT desk-tested:**
+- Tray › Open DeetsMusic put the window on an unplugged monitor. A saved position that fits
+  only in part is now pulled onto the monitor (`tray.rs` `fit_on_monitor`).
+- Agent control Off and "Agents read play history" Off now hold for a caller with an extension
+  Origin. Any local process can send that header. The extension calls none of those routes
+  (`bridge.rs`).
+- The launch no longer waits up to 8 s for the mint while the cached token is still valid. It
+  refreshes in the background (`apple.rs`).
+- A full library sync that fails on its first page, or on the write, now sends `error`. Before,
+  the Library ⟳ spun for ever with no toast. A full pass that got fewer songs than Apple
+  counted does not prune (`library.rs`).
+- The Repeat All lap and the Repeat One fallback load with `stopFirst` (`player.ts`). The same
+  `ended` state caused the song that played twice.
+- A sleep timer, rule or AirPlay pause is no longer undone by a recovery load's 4 s check
+  (`pausePlayback` stamps the pause).
+- Search › Writer: each Apple search press added another row listener, so a click played 2–3
+  times. A detail fetch that lands after Back no longer takes the picks.
+- A "The clock reaches" rule the PC slept through no longer fires at wake (`rule:clockLate`).
+- The Sound panel's Dots view no longer resets to Sliders at each restart.
+- An agent's `update mode` / `update skip` now obey Agent changes settings (TOASTS.md §5 row).
+
+**Desk test:** undock or change the resolution, then Tray › Open DeetsMusic → the window is on
+screen. Repeat All on a short album → the lap's first song plays once. Credits › a writer ›
+Search Apple Music twice › click a row → one play. Sound › Dots, EQ off, restart → Dots.
+
+**Second batch (his "go on those fixes"), NOT committed, NOT desk-tested:**
+- Playback: a current song with no play id moves the model to the first live song, with the
+  "Skipped …" toast (`skipDeadCurrent` in `doLoadFromModel`). Before, the next song played twice.
+- The Library engine: a `reload()` during a slide waits for the slide (`animating`). A reload
+  during Back drew the child's rows under the parent, so a click played another song.
+- The in-list search brings the first match into view when it is above the view.
+- Song of the Day: 7 sync commands are `async` + `spawn_blocking`. Release check 9 now reads
+  subfolders, and it found exactly these 7.
+- Playlists: a write to a deleted playlist fails (`touch_playlist`). The Apple mirror sync keeps
+  folder and refresh rows. The refresh offer adds only missing songs (`playlist_add_new_tracks`).
+  Export / Send / Get run one at a time per playlist; the question's [Add N songs] plans again.
+- ♥ writes run in press order per song. A Diary note saves on window `blur` and `pagehide`.
+- Plain words: `src/plain-error.ts` (+ test) for rooms, friends, the Compass web and Search.
+  Home says "Home didn't load" when the read failed.
+- Security: an extension Origin pairs only /health, /search, /resolve, /add, /log. The bridge
+  serves only a loopback Host. `esc()` escapes `'`. The rooms and friends workers take artwork
+  from `mzstatic.com` only. **The workers are edited, NOT deployed** (his call).
+
+**Desk test, second batch:** Search › an album › Back at once while it loads, then Ctrl+A → the
+results take the picks. Library, scroll to S, type in the list's search → the first match shows.
+A playlist refresh offer, Get New Songs, then the offer's [Get them] → "already in the playlist".
+The browser extension still adds a song (the Origin limit).
+
+**Workers DEPLOYED (his permission, "no more than 1 or 2 live users"):** rooms and friends take
+artwork from `mzstatic.com` only; friends also carries the key pin below. Both checks passed
+first (rooms against a local `wrangler dev`). The worker repos are NOT committed.
+
+**Third batch — his 15 decisions, built by six agents in parallel (each on its own files), NOT
+committed, NOT desk-tested.** All checks green on the combined tree (154 tests, 57 cargo tests,
+docs:check 91 docs). Each doc section named here holds its desk test.
+- **Rules (1–3):** a `next` hold ends only when the whole condition's verdict flips (Night
+  listening held at 23:00 lasts to 6:00); a hand-picked look ends at its chip's time
+  (`Hold.endsAt`); Focus holds each switch alone (`holdEach`). An agent rule on a hidden event
+  (`sleep.arm`) is refused. RULES.md §18b, LOOK-SCHEDULE.md §5a.
+- **Playback (4, 5):** Add to Queue with a saved Up Next only queues. A list that ends (Repeat
+  off) waits at its first song, paused, then a temporary web from the album (or the last song)
+  plays, deleted after 1 day; row "Play a web when a list ends" (`listEndWeb`, on). Also
+  `update_install` async with a 3 s AirPlay limit, the failed song is banked (not the next), a
+  dropped no-copy id is banked for the session. QUEUE.md "The end of a list", PLAYLIST-WEB.md §12.
+- **Playlists (6, 9):** row "Get songs from Apple copy" (All missing | Only new,
+  `playlistGetNew`); a per-playlist baseline of the Apple copy (migration **v17**); Apple Music ▸
+  Match the Apple Copy with a confirm and Undo; Import to Edit and multi-remove in one
+  transaction; the dismissed-offer doc corrected. PLAYLISTS.md §12.
+- **Data (7, 10, 13, 14):** sign-in syncs; another account (no overlap with the 100 oldest
+  library ids) clears the library rows, storefront and sync stamps; a full pass only when Apple's
+  count changed or weekly; unchanged rows are not rewritten; a 429 says Apple is busy; the token
+  retries when the network comes back; a database that cannot open shows a message box
+  (`db_open.rs`); every init runs through `boot()` with one "Something didn't load" toast and
+  Restart (`app_restart`). DATA-ARCHITECTURE.md §5a/§5b, DB-HEALTH.md §7, DEBUGGING.md.
+- **Lists (8, 15):** Sort / direction / column / ♥ filter keep the top row's song at the top;
+  Group goes to the top. The first Escape closes the list's search, the second goes back. Card
+  memory no longer rebuilds on a sync; arrow keys stay clear of sticky headers
+  (`--lib-stuck-h`). LIBRARY-VIRTUALIZATION.md, CARD-MEMORY.md §11a, MOVABLE-ROWS.md §13.6.
+- **Security (11, 12):** trust-on-first-use friend keys (friends.rs `friend_pin`, the worker
+  refuses a watcher with another key). FRIENDS.md §19. The CSP and DPAPI plans are
+  docs/ideas/SECRETS-AND-CSP.md, with five open forks.
+
+**Open, his forks:** the choices each agent made inside his decisions (listed in this session's
+chat), the five forks in SECRETS-AND-CSP.md, and the performance agent's report.
+
 ## 2026-09-28 — The music stopped at a song change
 
 **His ask:** why did the music pause? Read from the live ring: a repair loop on one song MusicKit

@@ -281,6 +281,7 @@ under Cyber the whole section is gone.
 | Drop on Now Playing | Dragging a song onto Now Playing | **Keep Up Next** / Replace it |
 | Previous rewinds | What Previous may go back into | **The list** / only Played songs |
 | Restore on launch | What comes back when the app opens | **Last song** (paused, with its queue) / Up Next only / Nothing |
+| Play a web when a list ends | A list that ends with Repeat off: a temporary web (1 day) from the album, or from the last song of any other list, plays next. Off: the list is loaded again at its first song, paused. Nothing in a room, after a station break-out, or while the sleep timer waits for an end | **On** / Off |
 | Shuffle button stays on | The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once | **on** / off |
 | Shuffle keeps picks | Where songs you queued by hand land | **First** / In place / Mixed |
 | Idle shuffle plays | Shuffle with nothing playing | **Library** / Nothing |
@@ -336,6 +337,7 @@ behind both. The dial and the three live ends are only in the panel.
 | Add to Library and ♥ | Lets DeetsMusic write to your Apple Music library. It can never remove from it | on / off |
 | Show ✓ on songs you have | The + on a song row becomes a ✓ when you already have the song | on / **off** |
 | Export playlists | Offers **Export ▸ Apple Music** on playlists made here. DeetsMusic cannot rename, reorder or delete on Apple Music | **on** / off |
+| Get songs from Apple copy | What **Apple Music ▸ Get New Songs** and the refresh offer bring into a playlist made here. **All missing**: every song the Apple copy has and the playlist lacks, so a song you removed comes back. **Only new**: only the songs added to the Apple copy since the last sync; a song you removed stays out | **All missing** / Only new |
 
 ### Last.fm
 

@@ -40,6 +40,7 @@ nothing about authoring changed when the box did.
 |---|---|---|---|
 | Settings › Sharing | Share activity on Discord | Your Discord profile reads “Listening to DeetsMusic” with the song under it. Needs the Discord app open on this PC, and its Activity Privacy switch on | settings-card.ts (FRIENDS.md §8.10) |
 | Settings › Sharing | Pause / Resume | Takes effect at once | settings-card.ts |
+| Settings › Apple Music (2026-09-29) | Get songs from Apple copy | Only new adds just the songs new on the Apple copy since the last sync, so a song you removed here stays out | settings-card.ts (PLAYLISTS.md §12) |
 | Settings › Discord | Let my profile invite people to my room | While you host a listening room, your Discord card carries a Listen Along button. The button holds the room code, so anyone who sees your profile can join | settings-card.ts |
 | Any section header (Settings, Radio, Playlists) | the header itself | Click to open or close. Hold to move this section. New sections appear at the end | settings-card.ts, radio-card.ts, playlists-card.ts — **absent while Settings › Window › Move sections by holding is off** (MOVABLE-ROWS.md §13.1) |
 | A Pinned tile | the grip bar on its cover | Drag to move this pinned item | pins.ts `PIN_GRIP` |

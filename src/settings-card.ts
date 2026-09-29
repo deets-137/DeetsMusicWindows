@@ -181,6 +181,8 @@ const NEW_MARKS: NewMark[] = [
   { section: "Menus, hints and notices", row: "gototarget" }, // Go to opens, route 8, built 2026-09-27
   { section: "Playlists", row: "webplaynew" }, // Play a web from the song playing, built 2026-09-28
   { section: "Playlists", row: "webskipseed" },
+  { section: "Playback", row: "listendweb" }, // Play a web when a list ends, built 2026-09-29
+  { section: "Apple Music", row: "getnewsongs" }, // Get songs from Apple copy, built 2026-09-29
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -328,7 +330,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1346,6 +1348,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           hint: "Last song shows in Now Playing, paused; Up Next parks it at the top of the queue",
           options: [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }],
         },
+        // The end of a list (QUEUE.md §The end of a list, PLAYLIST-WEB.md §12; 2026-09-29).
+        storeToggle("listendweb", "Play a web when a list ends", "listEndWeb", () => "A web of songs like the album or song that ended plays next, and is deleted after 1 day. Off: the list waits at its first song"),
         {
           kind: "toggle", id: "shufflestays", label: "Shuffle button stays on", key: "shuffleStays",
           hint: () => "The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once",
@@ -1486,6 +1490,12 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
         },
         storeToggle("addsquareowned", "Show ✓ on songs you have", "addSquareOwned", () => "On: the + on a song row turns into a ✓ when the song is already in your library. Off: no button"),
         storeToggle("playlistexport", "Export playlists", "playlistExport", () => "Can't rename, reorder, or delete on Apple Music via DeetsMusic"),
+        {
+          // PLAYLISTS.md §12 (his call 2026-09-29): All missing stays the default.
+          kind: "choice", id: "getnewsongs", label: "Get songs from Apple copy", key: "playlistGetNew",
+          hint: "Only new adds just the songs new on the Apple copy since the last sync, so a song you removed here stays out",
+          options: [{ value: "missing", label: "All missing" }, { value: "since", label: "Only new" }],
+        },
       ],
     },
     {

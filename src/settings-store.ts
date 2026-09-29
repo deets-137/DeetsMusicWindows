@@ -269,6 +269,9 @@ export interface Settings {
   /** At launch: bring back last session's song as Now Playing (paused) + Up Next + Previous,
    *  only the queue (song parked at the top of Up Next, Now Playing idle), or nothing. */
   restoreQueue: "song" | "queue" | "off";
+  /** When a list ends with Repeat off: play a temporary web from it (on), or load the list
+   *  again at its first song, paused (off). QUEUE.md §The end of a list. */
+  listEndWeb: boolean;
   /** Where manual picks land on a one-shot shuffle (§5a). */
   shuffleManual: "top" | "hold" | "mix";
   /** Shuffle with nothing playing: play the whole library shuffled, or do nothing (§5b). */
@@ -299,6 +302,10 @@ export interface Settings {
   playlistCreateSummon: "always" | "notmini" | "off";
   /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
   playlistExport: boolean;
+  /** What Get New Songs and the refresh offer bring from a local playlist's Apple copy
+   *  (PLAYLISTS.md §12): every song the copy has and the playlist lacks, or only the songs
+   *  new on the copy since the last sync (a song removed here stays out). */
+  playlistGetNew: "missing" | "since";
   /** The Add-to-Library square on a song row (add-square.ts): on, a song already in your
    *  library shows ✓ on hover; off, it shows no square. SEARCH.md § Add-to-Library square. */
   addSquareOwned: boolean;
@@ -522,6 +529,7 @@ export const DEFAULTS: Settings = {
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
+  listEndWeb: true, // user's call 2026-09-29: an ended album goes on like autoplay, with a web of songs like it
   shuffleManual: "top",
   shuffleIdle: "library",
   goToTarget: "fits", // RULEZ.md §10.1: what Go to did before the row existed, so nothing moves
@@ -535,6 +543,7 @@ export const DEFAULTS: Settings = {
   playlistEagerCounts: true,
   playlistCreateSummon: "notmini", // user's call 2026-09-15: in mini the summon replaces the playlist
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
+  playlistGetNew: "missing", // user's call 2026-09-29: today's behavior stays the default — for some users the Apple copy is the source of truth
   addSquareOwned: false, // user's call 2026-09-17: most playlist and History songs are yours, so a ✓ on each hover says nothing
   nowPlayingCover: "album",
   newPlaylistCover: "letters", // user's call 2026-09-15
@@ -608,9 +617,9 @@ function migrate(into: Partial<Settings>): void {
   // Open sizes replaced the remembered window sizes (2026-09-15, FUTURE-SETTINGS §8a). A
   // remembered size is what made NP small, so they are removed, not copied.
   for (const k of ["mini", "midi", "max", "mini-player"]) localStorage.removeItem(`deets.surface.size.${k}`);
-  // The Sound panel's first default was Dots (2026-09-16, a few hours); the stored value was the
-  // default, not a pick, wherever no effect was ever turned on. Sliders became the default.
-  if ((into.soundEqMode as string | undefined) === "parametric" && !into.soundFirstOn) delete into.soundEqMode;
+  // (Removed 2026-09-29: a Dots → Sliders reset for the few-hours Dots default of 2026-09-16.
+  // It ran on every load, so it also undid a real Dots pick at each restart until the EQ was on.
+  // Every install that held the old default has loaded since, so nothing is left for it to do.)
   // Auto preamp (on/off, a few hours on 2026-09-16) became a four-way choice; its old default
   // is dropped so the new one (Limiter only) applies.
   delete (into as Record<string, unknown>).soundEqAutoPreamp;

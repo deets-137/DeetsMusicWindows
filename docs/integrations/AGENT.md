@@ -352,6 +352,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   (On | Off), `webSkipSeed` ("Skip the song you just heard": On | Off), and two keys with no
   Settings row: `webPlayMode` (Replaces the queue | Plays now, keeps Up Next | Plays after the
   song) and `webSkipSeedAt` (1–100 %, default 75). All four are rule keys.
+- **Playback › Play a web when a list ends** (2026-09-29, QUEUE.md §The end of a list,
+  PLAYLIST-WEB.md §12): `listEndWeb` (On | Off, default On). On: a list that ends with Repeat off
+  plays a temporary web (1 day) made from it. Off: the list waits at its first song, paused.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
   What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
   `diaryGrow` (New entries | Every entry | Never). An agent has no
@@ -453,6 +456,7 @@ Max), **except**:
 | `sotd` (Song of the Day, 2026-09-18, [DeetsOTD.md](DeetsOTD.md) §8.8) — **off only** | Another consent gate: the feature is what lets an agent mark at all, so an agent may turn it off, never on. Its other five rows (`sotdSuggest`, `sotdDayStart`, `sotdPicksPerDay`, `sotdPostMode`, `sotdPostAt`) are ordinary. The webhook link has **no key at all**: no route reads or writes a secret. |
 | `agentSettings` — **read-only** | The permission itself. |
 | `addSquareOwned` (Show ✓ on songs you have, 2026-09-17) — **not** limited, an ordinary toggle | It changes only what the Add-to-Library square shows. It writes nothing to Apple, so it is not a gate. |
+| `playlistGetNew` (Get songs from Apple copy: All missing \| Only new, 2026-09-29, [PLAYLISTS.md](../features/PLAYLISTS.md) §12) — **not** limited, an ordinary choice | It picks what Get New Songs and the refresh offer bring into a LOCAL playlist. It writes nothing to Apple, so it is not a gate. |
 | `rewindAutoShown`, `updateSkip` | Internal flags. `update action=skip` keeps owning the skip. |
 | `glassPictureId` (Glass › Picture, 2026-09-27, RULEZ.md §5) | Its values are file ids that differ per machine, and an agent cannot choose files. `glassCanvas` is exposed; a picture is set through the `rules` verb's `picture` word (§8). |
 | Check for updates, Roll back, App log, the report form | Actions, not values. `update` covers the first two. |

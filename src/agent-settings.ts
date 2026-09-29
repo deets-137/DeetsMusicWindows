@@ -302,6 +302,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "dropPlayQueue", "Drop on Now Playing", [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }]),
   storeChoice("Playback", "previousReach", "Previous rewinds", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
+  storeToggle("Playback", "listEndWeb", "Play a web when a list ends"),
   storeToggle("Playback", "shuffleStays", "Shuffle button stays on"),
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
@@ -327,6 +328,8 @@ const SPECS: Spec[] = [
   },
   storeToggle("Apple Music", "addSquareOwned", "Show ✓ on songs you have"),
   storeToggle("Apple Music", "playlistExport", "Export playlists", { offOnly: true }),
+  // A local write only (PLAYLISTS.md §12): both ways, like any preference.
+  storeChoice("Apple Music", "playlistGetNew", "Get songs from Apple copy", [{ value: "missing", label: "All missing" }, { value: "since", label: "Only new" }]),
   // ── Last.fm (LASTFM.md §6): both write to the user's Last.fm profile, so off only, like the
   //    Apple Music gates. The connect itself is the browser's, never an agent's. ──
   rustToggle("Last.fm", "lastfmScrobble", "Scrobble plays", async () => (await rustSettings()).lastfmScrobble, (on) => invoke("settings_set_lastfm_scrobble", { on }), { offOnly: true }),
