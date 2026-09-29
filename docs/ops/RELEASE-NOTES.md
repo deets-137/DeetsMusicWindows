@@ -32,6 +32,28 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.25.2 — 2026-09-28
+
+**Song changes are steadier.** Sometimes the music stopped or stuttered when one song moved to
+the next. The cause was a library song that Apple sends with no way to play it. DeetsMusic now
+finds that song in the Apple Music catalog and plays it from there. If it can't find the song,
+the song shows dimmed and the queue skips it. When a song fails to start, DeetsMusic tries again
+once before it shows a notice.
+
+**Next and Previous work before the first Play.** After you open the app, Next and Previous did
+nothing until you pressed Play. Now they move to the next or the previous song and stay paused,
+as Apple Music does. This works from the buttons, the tray, the media keys and the Compass.
+
+**Play a web from the song playing.** Start a Web from the song that plays now, and the web
+plays at once. If you heard most of the song, the web starts at the next song. Two new rows in
+Settings › Playlists turn each part off.
+
+**Smoother motion.** A card you grow shows its rows sooner, and it closes without a jump. The
+card title menu opens with the same motion as the other menus. A theme you pick by hand now
+fades in place.
+
+**Fixes.** An uninstall now removes DeetsMusic from the apps that start with Windows.
+
 ## 0.25.1 — 2026-09-27
 
 **Make your own rules.** The new **Rulez** card (in Max) lets you tell DeetsMusic what to do and
