@@ -583,6 +583,23 @@ pub fn ensure_developer_token() -> Result<(), String> {
             install(t.clone());
             return Ok(());
         }
+        // Inside the margin but not expired: use it now and refresh in the background.
+        // Blocking here held the launch (no window) for up to MINT_TIMEOUT on a slow
+        // network (2026-09-29). The new token serves the next Apple call and the next launch;
+        // the old one stays valid for MusicKit this session.
+        if t.exp > unix_now() {
+            install(t.clone());
+            tauri::async_runtime::spawn(async {
+                match fetch_from_mint().await {
+                    Ok(t) => {
+                        persist(&t);
+                        install(t);
+                    }
+                    Err(e) => crate::log::warn(&format!("token: refresh failed ({e}); using cached token")),
+                }
+            });
+            return Ok(());
+        }
     }
 
     // 3. The mint. `reqwest` is async-only; setup() is sync and off the runtime.
@@ -945,6 +962,53 @@ fn respond_ttf(req: tiny_http::Request, bytes: &'static [u8]) {
 #[tauri::command]
 pub fn apple_developer_token() -> Result<String, String> {
     developer_token()
+}
+
+/// The last late mint try (`apple_developer_token_retry`), for its cooldown.
+static LAST_LATE_MINT: Mutex<Option<Instant>> = Mutex::new(None);
+/// At most one late mint try this often: the webview's `online` event can fire in bursts on a
+/// flapping Wi-Fi, and the mint is shared by every install (RELEASE.md §7).
+const LATE_MINT_COOLDOWN: Duration = Duration::from_secs(30);
+
+/// A launch with no developer token at all (an offline first run: no cache, no local key, no
+/// network) used to stay without one until a restart. The front end calls this when the
+/// network comes back (the webview's `online` event, 2026-09-29): one mint try, with a
+/// cooldown. `Ok(true)` = a token is live now (installed by this call or already there), and
+/// `developer-token-changed` tells MusicKit. `Ok(false)` = skipped for the cooldown. `Err` =
+/// the mint failed again. Async: the fetch and the small file write never touch the UI thread.
+#[tauri::command]
+pub async fn apple_developer_token_retry() -> Result<bool, String> {
+    if DEV_TOKEN.lock_or_recover().is_some() {
+        return Ok(true);
+    }
+    {
+        let mut last = LAST_LATE_MINT.lock_or_recover();
+        if last.is_some_and(|at| at.elapsed() < LATE_MINT_COOLDOWN) {
+            return Ok(false);
+        }
+        *last = Some(Instant::now());
+    }
+    crate::log::info("token: none at launch; the network is back, trying the mint again");
+    match fetch_from_mint().await {
+        Ok(t) => {
+            let _ = tauri::async_runtime::spawn_blocking({
+                let t = t.clone();
+                move || persist(&t)
+            })
+            .await;
+            install(t);
+            if let Some(app) = APP_HANDLE.get() {
+                let _ = app.emit("developer-token-changed", ());
+            }
+            Ok(true)
+        }
+        Err(e) => {
+            let msg = format!("no developer token: no local MusicKit key and {e}");
+            crate::log::warn(&format!("token: late mint failed: {e}"));
+            *DEV_TOKEN_ERROR.lock_or_recover() = Some(msg.clone());
+            Err(msg)
+        }
+    }
 }
 
 /// Remote config from the mint (support.md): flags, numbers, a notice, a
@@ -2607,8 +2671,8 @@ const ARTIST_IDS_BATCH: usize = 25;
 /// Incremental by count. The endpoint **rejects `sort`** (a 400 on `sort=-dateAdded`),
 /// so there is no newest-first page to stop early on. Instead one `limit=1` call reads
 /// `meta.total`: unchanged against the stored count, the pass ends there at ONE call.
-/// Changed, it re-pages everything. A full sync re-pages regardless, so a same-count
-/// swap (one artist in, one out) heals within the six-hour window.
+/// Changed, it re-pages everything. The weekly full sync re-pages regardless (`force`), so
+/// a same-count swap (one artist in, one out) heals within a week (2026-09-29).
 ///
 /// Never fatal: the library sync's own result does not depend on it.
 pub(crate) async fn sync_artist_catalog(

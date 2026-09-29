@@ -50,6 +50,12 @@ export interface SyncEvent {
   total?: number;
   /** Set on `error`: which pages failed after a retry. The cache holds what DID fetch. */
   message?: string;
+  /** Set on `error`: Apple's 429 back-off holds — Apple is busy, not the network (2026-09-29). */
+  busy?: boolean;
+  /** Set on `error`: the app started this pass itself (a background job, APPLE-CALLS.md §3). */
+  background?: boolean;
+  /** Set on `done`: how many cached rows really changed. 0 = nothing to reload. */
+  changed?: number;
 }
 
 /** Read cached tracks (ordered by title/artist). */
@@ -65,9 +71,11 @@ export function seenTracks(): Promise<Track[]> {
 
 /** Trigger a background sync of library songs into the cache. `full: true` (the
  *  refresh button) is the complete pass; `false` (startup) lets Rust pick — the cheap
- *  newest-first pass when the last full pass is under six hours old. */
-export function librarySync(full = true): Promise<number> {
-  return invoke<number>("library_sync", { full });
+ *  newest-first pass when Apple's song count is unchanged and the last full pass is under
+ *  seven days old (DATA-ARCHITECTURE.md §5a). `signin` (after a sign-in) also checks whether
+ *  another Apple account signed in, and forgets the old library if so (§5b). */
+export function librarySync(full = true, signin = false): Promise<number> {
+  return invoke<number>("library_sync", { full, signin });
 }
 
 /** Subscribe to sync progress. Returns an unlisten fn. */

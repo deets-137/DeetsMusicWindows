@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.10.0
 desk_test: none
-sources: [src-tauri/src/dbhealth.rs, src-tauri/src/library.rs, src-tauri/src/db_thread.rs, src/stats.ts]
-updated: 2026-09-25
+sources: [src-tauri/src/dbhealth.rs, src-tauri/src/db_open.rs, src-tauri/src/library.rs, src-tauri/src/db_thread.rs, src/stats.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — is the database still writable?
 
@@ -175,3 +175,36 @@ Restart the dev runner (new Rust code).
    `write:`).
 4. Leave the app open for 10 minutes and run it again: `canaryRuns` has gone up on its own.
 5. The log has no `db:` warning lines.
+
+## 7. The file will not open at launch (built 2026-09-29, the owner's call)
+
+> **Part:** built · 2026-09-29
+
+**Before:** `lib.rs` setup opened `deetsmusic.db`, created the tables and ran every migration
+with `.expect()`. A corrupt file or a full disk made setup panic, and the window never
+appeared: the app did not start, and nothing on screen said why.
+
+**Now:** those steps run inside `std::panic::catch_unwind` in setup (a new migration goes inside
+the same block, as the others do). A panic lands in `db_open.rs`:
+
+- one native Windows message box (`MessageBoxW`, a feature of the `windows` crate the app already
+  has; no new dependency), titled "DeetsMusic can't start". It says that DeetsMusic could not
+  open its library file, names the file's full path, names the newest backup (or says there is
+  none), says to check the disk space and start again, and says what moving the file away does.
+  The raw error is the last line, for a bug report.
+- one log line: `db: could not open the library file, exiting: <error> (backups: N)`. The panic
+  hook (LOGGING.md) has already written `panic: …` with the step's message.
+- `std::process::exit(1)`: a clean exit, no crash dialog.
+
+**The backups there are:** only the copy the v2 migration made once (`deetsmusic.v1.<stamp>.bak.db`,
+in the same folder); `db_open::backups` lists any `deetsmusic*.bak.db`, newest first. Most installs
+have none, and the box says so. There is no regular backup of the library file today.
+
+**Desk test (dev app only; Claude or the owner):**
+1. Close the dev app. In `%APPDATA%\com.deetsmusic.dev`, rename `deetsmusic.db` to
+   `deetsmusic.db.keep` (and `-wal` / `-shm` beside it the same way).
+2. Make a text file named `deetsmusic.db` with a line of text in it (not a database).
+3. `npm run dev:app`. The box shows, with the path and "There is no backup of this file." After
+   OK the process ends; the log's last lines are the `panic:` line and `db: could not open …`.
+4. Delete the text file, rename the three files back, start again: the app opens as before.
+5. `cargo test --lib db_open` passes (the words, the two panic payloads).

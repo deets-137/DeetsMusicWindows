@@ -5,6 +5,7 @@ mod apple_calls;
 mod beta;
 mod bridge;
 mod credits;
+mod db_open;
 mod db_thread;
 mod dbhealth;
 mod diary;
@@ -190,6 +191,12 @@ pub fn run() {
                 log::warn("sign-in: a link started the app, but no sign-in was in progress; ignored (start the sign-in from DeetsMusic)");
             }
 
+            // The library file will not open (a corrupt file, a full disk): every step from
+            // here to the last migration panics on failure (`expect`), and a panic in setup
+            // meant the window never appeared. The panic is caught: a native message box names
+            // the file and its backup, and the app exits cleanly (db_open.rs, DB-HEALTH.md §7).
+            // A new step (a migration) goes inside, before `conn` below, as the others are.
+            let opened = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             // v2 migration (catalog-first keys): detect BEFORE opening the main
             // connection, back the file up, then migrate inside one transaction.
             let migrate = library::needs_v2_migration(&db_path);
@@ -248,6 +255,13 @@ pub fn run() {
             diary::migrate_v14(&conn).expect("v14 migration failed");
             diary::migrate_v15(&conn).expect("v15 migration failed");
             heal::migrate_v16(&conn).expect("v16 migration failed");
+            playlists::migrate_v17(&conn).expect("v17 migration failed");
+            conn
+            }));
+            let conn = match opened {
+                Ok(conn) => conn,
+                Err(p) => db_open::fail(&dir, &db_path, &db_open::panic_text(p.as_ref())),
+            };
             app.manage(library::Db(std::sync::Mutex::new(conn)));
             // Every command that takes the lock runs on this one thread, in arrival order.
             db_thread::start(app.handle());
@@ -341,6 +355,8 @@ pub fn run() {
         .on_window_event(|win, ev| tray::on_window_event(win, ev))
         .invoke_handler(invoke_with_watchdog(tauri::generate_handler![
             apple::apple_developer_token,
+            apple::apple_developer_token_retry,
+            app_restart,
             apple::apple_remote_config,
             apple::apple_begin_auth,
             apple::apple_connection_status,
@@ -385,6 +401,7 @@ pub fn run() {
             friends::friend_add,
             friends::friend_rename,
             friends::friend_remove,
+            friends::friend_pin,
             roworder::row_order_all,
             roworder::row_order_set,
             roworder::row_order_reset,
@@ -451,6 +468,9 @@ pub fn run() {
             playlists::playlist_export_plan,
             playlists::playlist_export_apple,
             playlists::playlist_get_apple_songs,
+            playlists::playlist_match_plan,
+            playlists::playlist_match_apply,
+            playlists::playlist_match_undo,
             playlists::playlist_refresh_rows,
             playlists::playlist_refresh_set,
             playlists::playlist_refresh_stamp,
@@ -463,7 +483,9 @@ pub fn run() {
             playlists::playlists_expire,
             playlists::playlist_restore,
             playlists::playlist_add_tracks,
+            playlists::playlist_add_new_tracks,
             playlists::playlist_remove_track,
+            playlists::playlist_remove_positions,
             playlists::playlist_reorder,
             playlists::playlist_insert_tracks,
             playlists::local_playlist_tracks,
@@ -579,6 +601,18 @@ pub fn run() {
                 apple_calls::report("quit");
             }
         });
+}
+
+/// Restart DeetsMusic: the Restart button of the startup guard's toast ("Something didn't
+/// load", main.ts, 2026-09-29). Tauri's own restart (no process plugin): the reply goes out
+/// first, then the app restarts from a short-lived thread, as `beta::request_pull` does.
+#[tauri::command]
+fn app_restart(app: tauri::AppHandle) {
+    log::warn("app: restart asked from the window (a startup part failed)");
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        app.request_restart();
+    });
 }
 
 /// Wrap the generated handler so every command records its name while it runs

@@ -11,6 +11,7 @@
 // (the Library Add toggle) — one switch for "DeetsMusic may write to my Apple account".
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { Track } from "./library";
 import type { MenuItem } from "./context-menu";
 import { libraryAddEnabled } from "./library-add";
@@ -21,6 +22,7 @@ const loved = new Set<string>();
 const known = new Set<string>(); // every id the mirror holds a row for (loved or not)
 const asked = new Set<string>(); // ids already sent to reconcile this session
 let ready = false;
+let accountWatch = false;
 
 const listeners = new Set<() => void>();
 export function onFavoritesChange(cb: () => void): () => void {
@@ -31,6 +33,16 @@ const emit = () => listeners.forEach((cb) => cb());
 
 /** Load the mirror once at boot (zero Apple calls). Safe to call again after a seed. */
 export async function initFavorites(): Promise<void> {
+  if (!accountWatch) {
+    // Another Apple account signed in: Rust cleared the last account's ♥ mirror (library.rs
+    // `forget_account`), so this one starts empty and asks Apple afresh (2026-09-29).
+    accountWatch = true;
+    void listen("apple-account-changed", () => {
+      known.clear();
+      asked.clear();
+      void initFavorites();
+    });
+  }
   try {
     const [l, k] = await Promise.all([
       invoke<string[]>("favorites_cached"),
@@ -61,8 +73,13 @@ export async function setLoved(t: Track, on: boolean): Promise<void> {
   else loved.delete(id);
   known.add(id);
   emit();
+  // One Apple write per song at a time, in press order: two quick ♥ presses could reach Apple
+  // out of order and leave it opposite to the screen (2026-09-29).
+  const prev = inFlight.get(id) ?? Promise.resolve();
+  const call = prev.catch(() => {}).then(() => invoke("favorite_set", { track: t, loved: on }));
+  inFlight.set(id, call);
   try {
-    await invoke("favorite_set", { track: t, loved: on });
+    await call;
   } catch (e) {
     if (was) loved.add(id);
     else loved.delete(id);
@@ -70,8 +87,11 @@ export async function setLoved(t: Track, on: boolean): Promise<void> {
     // The ♥ just flipped back; say why (TOASTS.md). Every ♥ path (menus, Now Playing) lands here.
     toast({ kind: "warn", text: `Couldn't update Favorites for “${t.title}”.` });
     throw e;
+  } finally {
+    if (inFlight.get(id) === call) inFlight.delete(id);
   }
 }
+const inFlight = new Map<string, Promise<unknown>>();
 
 export const toggleLoved = (t: Track): Promise<void> => setLoved(t, !isLoved(t));
 

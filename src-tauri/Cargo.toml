@@ -108,5 +108,8 @@ features = [
   "Win32_System_Variant",
   "Win32_System_WinRT",
   "Win32_UI_Shell_PropertiesSystem",
+  # MessageBoxW: the one native box when the library file will not open (db_open.rs,
+  # docs/ops/DB-HEALTH.md §7). A feature of the crate the app already has; no new download.
+  "Win32_UI_WindowsAndMessaging",
 ]
 

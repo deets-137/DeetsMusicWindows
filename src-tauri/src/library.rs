@@ -279,9 +279,15 @@ fn remap_stat(tx: &rusqlite::Transaction, old: &str, new: &str) -> Result<(), St
 /// is the complete current library), also delete cached rows that are no longer in it —
 /// otherwise songs removed from the Apple library live in the cache forever, with stale
 /// `added_rank`s corrupting the Added-Date order. Never prune from a partial sync.
-fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<(), String> {
+///
+/// Returns how many rows it really changed (inserted, updated or pruned). A row whose json,
+/// sort key and source are already the same is not written again (2026-09-29): the pass is
+/// cheaper on disk, and a pass that changed nothing tells the front end so (`changed: 0`),
+/// which then skips its reload of every card (DATA-ARCHITECTURE.md §5a).
+fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<usize, String> {
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     let mut ids: Vec<String> = Vec::with_capacity(tracks.len());
+    let mut changed = 0usize;
     {
         // A sync write is authoritative: it also GRADUATES a 'seen' row to 'library'
         // (the track joined the library — same canonical key, so feedback rides along).
@@ -289,14 +295,17 @@ fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<
             .prepare_cached(
                 "INSERT INTO tracks(track_id, source, sort_key, json) VALUES(?1, 'library', ?2, ?3)
                  ON CONFLICT(track_id) DO UPDATE SET
-                     sort_key = excluded.sort_key, json = excluded.json, source = 'library'",
+                     sort_key = excluded.sort_key, json = excluded.json, source = 'library'
+                 WHERE tracks.json IS NOT excluded.json
+                    OR tracks.sort_key IS NOT excluded.sort_key
+                    OR tracks.source <> 'library'",
             )
             .map_err(|e| e.to_string())?;
         for t in tracks {
             let Some(id) = track_key(t) else { continue };
             let sort_key = format!("{}\u{1f}{}", t.title.to_lowercase(), t.artist_name.to_lowercase());
             let json = serde_json::to_string(t).map_err(|e| e.to_string())?;
-            stmt.execute(rusqlite::params![id, sort_key, json])
+            changed += stmt.execute(rusqlite::params![id, sort_key, json])
                 .map_err(|e| e.to_string())?;
             ids.push(id);
         }
@@ -318,14 +327,82 @@ fn write_tracks(conn: &mut Connection, tracks: &[Track], prune: bool) -> Result<
         }
         // Prune ONLY synced rows — 'seen' rows are interaction history, not library
         // membership, and a library sync must never delete them.
-        tx.execute(
+        changed += tx.execute(
             "DELETE FROM tracks WHERE source = 'library' AND track_id NOT IN (SELECT id FROM sync_ids)",
             [],
         )
         .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM sync_ids", []).map_err(|e| e.to_string())?;
     }
-    tx.commit().map_err(|e| e.to_string())
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(changed)
+}
+
+// ── The account check (DATA-ARCHITECTURE.md §5b, 2026-09-29) ──────────────────
+
+/// Is the library Apple just sent another account's? The sample is the sign-in sync's first
+/// page in `sort=dateAdded` order: the OLDEST songs of the library, which hardly ever change.
+/// Library ids (`i.…`) belong to one account, so the same account shares most of them with
+/// the cache and another account shares none. No extra Apple call: the full pass reads this
+/// page anyway. An empty cache or an empty sample is never "another account".
+pub(crate) fn other_account(conn: &Connection, sample: &[Track]) -> Result<bool, String> {
+    let ids: Vec<&str> = sample
+        .iter()
+        .filter_map(|t| t.library_id.as_deref())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if ids.is_empty() {
+        return Ok(false);
+    }
+    let cached: i64 = conn
+        .query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if cached == 0 {
+        return Ok(false);
+    }
+    let marks = vec!["?"; ids.len()].join(",");
+    let sql = format!(
+        "SELECT COUNT(*) FROM tracks WHERE source = 'library' AND json_extract(json, '$.libraryId') IN ({marks})"
+    );
+    let known: i64 = conn
+        .query_row(&sql, rusqlite::params_from_iter(ids.iter()), |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    Ok(known == 0)
+}
+
+/// Another Apple account signed in: forget the last account's LIBRARY, so two libraries
+/// never mix. The library rows go (a song with plays is kept as a 'seen' row, so Rewind and
+/// the play history still name it), and so do the sync clock, the stored song and artist
+/// counts, the cached storefront (enrich.rs) and the catalog heal map (keyed by the old
+/// library ids), and the last account's ♥ marks and Apple playlist mirror. User-owned data
+/// stays: local playlists, the Diary, pins, plays.
+/// Returns how many library rows it took out of the Library (kept as 'seen' or deleted).
+pub(crate) fn forget_account(conn: &mut Connection) -> Result<usize, String> {
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let kept = tx.execute(
+        "UPDATE tracks SET source = 'seen'
+         WHERE source = 'library' AND track_id IN (SELECT track_id FROM play_stats)",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    let gone = tx
+        .execute("DELETE FROM tracks WHERE source = 'library'", [])
+        .map_err(|e| e.to_string())?;
+    tx.execute(
+        "DELETE FROM meta WHERE key IN (?1, ?2, 'storefront', 'library_artists_total')",
+        [META_FULL_SYNC_AT, META_LIBRARY_TOTAL],
+    )
+    .map_err(|e| e.to_string())?;
+    // The heal table exists from schema v16; an older file simply has nothing to forget.
+    let _ = tx.execute("DELETE FROM catalog_heal", []);
+    // The last account's ♥ marks and its Apple playlists are that account's, not the user's
+    // own data: they go too, or they show under the new account (his call, 2026-09-29). The
+    // mirror refills at its next sync; the ♥ mirror from the new account's Favorite Songs.
+    tx.execute("DELETE FROM favorites", []).map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM apple_playlist_tracks", []).map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM apple_playlists", []).map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(kept + gone)
 }
 
 // ── Commands ─────────────────────────────────────────────────────────────────
@@ -689,10 +766,16 @@ impl Drop for SyncFlagGuard {
     }
 }
 
-/// A full pass is only due this often on its own; in between, a launch runs the
-/// incremental pass (FUTURE-SETTINGS.md §21 — a Settings row later, not now).
-const FULL_SYNC_EVERY_SECS: i64 = 6 * 60 * 60;
+/// A full pass is due this often on its own (the owner's rule, 2026-09-29; it was six hours).
+/// In between, a launch reads Apple's song count in ONE `limit=1` call: a count that differs
+/// from the one the last full pass stored runs a full pass, the same count runs the
+/// incremental pass (DATA-ARCHITECTURE.md §5a; FUTURE-SETTINGS.md §21 — a Settings row later).
+const FULL_SYNC_EVERY_SECS: i64 = 7 * 24 * 60 * 60;
 const META_FULL_SYNC_AT: &str = "full_sync_at";
+/// Apple's `meta.total` of library songs at the last complete full pass. Compared with the
+/// launch's one-call count, not with our row count: two library copies of one catalog song
+/// are one row here, so the row count can sit below Apple's for ever.
+const META_LIBRARY_TOTAL: &str = "library_songs_total";
 
 pub(crate) fn meta_get(conn: &Connection, key: &str) -> Option<String> {
     conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get(0)).ok()
@@ -1063,37 +1146,66 @@ fn now_secs() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 
-/// Sync library songs into the cache. `full: false` (the startup call) runs the
-/// **incremental** pass when the last complete pass is under six hours old — newest
-/// first, stop at the first page that holds a song we already have, upsert, never
-/// prune — so an album added on the phone this morning is one or two requests, not
-/// forty. `full: true` (the refresh button, or a stale cache) is the complete pass:
-/// pages fetched in parallel (≤5 concurrent), failed pages retried once sequentially,
-/// and on completion the rows no longer in the library are pruned and the timestamp
-/// written. An incomplete full pass upserts what it got, emits `{phase:"error"}`, and
-/// fails — silently dropping pages would mean songs quietly missing from the cache.
-/// Emits `library-sync` progress events per page either way.
+/// A sync `error` event (DATA-ARCHITECTURE.md §7). `busy`: Apple's 429 back-off holds, so the
+/// pass stopped on "too many requests", not on the network (APPLE-CALLS.md §6a). `background`:
+/// the app started this pass itself, so the front end stays quiet about it.
+fn emit_sync_error(app: &AppHandle, message: &str, counts: Option<(usize, u32)>) {
+    let mut v = serde_json::json!({
+        "phase": "error",
+        "message": message,
+        "busy": crate::apple_calls::backing_off().is_some(),
+        "background": crate::apple_calls::in_background(),
+    });
+    if let Some((count, total)) = counts {
+        v["count"] = count.into();
+        v["total"] = total.into();
+    }
+    app.emit("library-sync", v).ok();
+}
+
+/// Sync library songs into the cache (DATA-ARCHITECTURE.md §5a, the cadence of 2026-09-29).
+///
+/// Which pass runs:
+/// - `full: true` (the Library ⟳) → the full pass.
+/// - no full pass on record, or the last one is 7 days old or more → the full pass (the weekly
+///   pass; the only one that also re-pages every library artist).
+/// - otherwise ONE `limit=1` call reads Apple's song count. It differs from the count the last
+///   full pass stored → the full pass. It is the same → the **incremental** pass: newest first,
+///   stop at the first page that holds a song we already have, upsert, never prune.
+///
+/// `signin: true` (the front end, after a sign-in, §5b): the first page of the full pass is read
+/// first, and when it shows another Apple account's library the old library is forgotten
+/// (`forget_account`) before anything is written. The page also serves as the count.
+///
+/// The full pass: pages fetched in parallel (≤5 concurrent), failed pages retried once one at a
+/// time (never while Apple's back-off holds), and on completion the rows no longer in the
+/// library are pruned and the clock and the count written. An incomplete full pass upserts what
+/// it got, emits `{phase:"error"}`, and fails. `done` carries `changed`: how many rows really
+/// changed, so the front end can skip its reload when nothing did.
 ///
 /// The startup pass (`full` not true) is a background job (APPLE-CALLS.md §3): it skips its
-/// turn while Apple's back-off holds. The refresh button is the user's and always goes out.
+/// turn while Apple's back-off holds. The ⟳ and the sign-in pass are the user's and go out.
 #[tauri::command]
 pub async fn library_sync(
     full: Option<bool>,
+    signin: Option<bool>,
     app: AppHandle,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<u32, String> {
-    if full.unwrap_or(false) {
-        return library_sync_run(full, app, apple_state, db).await;
+    let signin = signin.unwrap_or(false);
+    if full.unwrap_or(false) || signin {
+        return library_sync_run(full, signin, app, apple_state, db).await;
     }
     if crate::apple_calls::skip("library_sync") {
         return Ok(0);
     }
-    crate::apple_calls::background("library_sync", library_sync_run(full, app, apple_state, db)).await
+    crate::apple_calls::background("library_sync", library_sync_run(full, false, app, apple_state, db)).await
 }
 
 async fn library_sync_run(
     full: Option<bool>,
+    signin: bool,
     app: AppHandle,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
@@ -1111,27 +1223,83 @@ async fn library_sync_run(
         .ok_or("not connected to Apple Music")?;
     let provider = std::sync::Arc::new(AppleProvider::new(dev.clone(), user.clone()));
 
-    let last_full: Option<i64> = {
+    app.emit("library-sync", serde_json::json!({ "phase": "start" })).ok();
+
+    // Every failure after "start" says "error", or the Library ⟳ spins for ever and no toast
+    // explains it (2026-09-29: the first page and the write returned with `?`).
+    let fail = |e: String| {
+        emit_sync_error(&app, &e, None);
+        e
+    };
+
+    // The sign-in account check (§5b): the full pass's own first page, read first.
+    let mut changed = 0usize;
+    let mut first: Option<Page<Track>> = None;
+    if signin {
+        let page = provider.songs_page(0, 100, false).await.map_err(fail)?;
+        let other = {
+            let conn = db.lock();
+            other_account(&conn, &page.items).map_err(fail)?
+        };
+        if other {
+            let gone = {
+                let mut conn = db.lock();
+                forget_account(&mut conn).map_err(fail)?
+            };
+            changed += gone;
+            // The ♥ marks and the Apple playlists on screen belong to the last account too.
+            app.emit("apple-account-changed", ()).ok();
+            crate::log::warn(&format!(
+                "library: another Apple account signed in; forgot the last account's library ({gone} row(s)), its sync clock and its storefront"
+            ));
+        } else {
+            crate::log::info("library: sign-in sync, same Apple account (or nothing cached)");
+        }
+        first = Some(page);
+    }
+
+    let (last_full, known_total): (Option<i64>, Option<u32>) = {
         let conn = db.lock();
-        meta_get(&conn, META_FULL_SYNC_AT).and_then(|v| v.parse().ok())
+        (
+            meta_get(&conn, META_FULL_SYNC_AT).and_then(|v| v.parse().ok()),
+            meta_get(&conn, META_LIBRARY_TOTAL).and_then(|v| v.parse().ok()),
+        )
     };
     let age = last_full.map(|t| now_secs() - t);
-    let incremental = !full.unwrap_or(true) && age.map(|a| a >= 0 && a < FULL_SYNC_EVERY_SECS).unwrap_or(false);
+    let weekly = age.map(|a| a < 0 || a >= FULL_SYNC_EVERY_SECS).unwrap_or(true);
+    // Apple's count, when a pass must ask for it: the sign-in page already holds it, else one
+    // `limit=1` call. The ⟳ and the weekly pass do not ask; their first page tells them.
+    let mut apple_total: Option<u32> = first.as_ref().map(|p| p.total);
+    let why = if full.unwrap_or(true) && !signin {
+        "asked".to_string()
+    } else if weekly {
+        match age {
+            Some(a) => format!("weekly, last full pass {}h ago", a / 3600),
+            None => "no full pass on record".into(),
+        }
+    } else {
+        let total = match apple_total {
+            Some(t) => t,
+            None => provider.songs_page(0, 1, false).await.map_err(fail)?.total,
+        };
+        apple_total = Some(total);
+        if known_total == Some(total) {
+            String::new() // the same count: the incremental pass
+        } else {
+            format!(
+                "Apple counts {total} song(s), the last full pass {}",
+                known_total.map(|k| k.to_string()).unwrap_or_else(|| "stored no count".into())
+            )
+        }
+    };
 
-    app.emit("library-sync", serde_json::json!({ "phase": "start" })).ok();
-    if incremental {
-        let n = sync_incremental(&app, provider, &db, age.unwrap_or(0)).await;
+    if why.is_empty() {
+        let n = sync_incremental(&app, provider, &db, age.unwrap_or(0), changed).await;
         artist_catalog_pass(&dev, &user, &db, false).await;
         crate::heal::pass(&app, &dev, &user, &db).await; // songs Apple sent with no play id
         return n;
     }
-    crate::log::info(&format!(
-        "library: full sync start ({})",
-        match age {
-            Some(a) => format!("last full pass {}h ago", a / 3600),
-            None => "no full pass on record".into(),
-        }
-    ));
+    crate::log::info(&format!("library: full sync start ({why})"));
 
     let progress = |fetched: usize, total: u32| {
         app.emit(
@@ -1141,13 +1309,19 @@ async fn library_sync_run(
         .ok();
     };
 
-    // First page tells us the total; fan out the rest.
-    let first = provider.songs_page(0, 100, false).await?;
-    let total = first.total;
-    let mut all = first.items;
+    // The first page tells us the total, unless the sign-in page or the count call already
+    // did: then every page goes out in the parallel burst.
+    let (mut all, total, from) = match (first, apple_total) {
+        (Some(p), _) => (p.items, p.total, 100u32),
+        (None, Some(t)) => (Vec::new(), t, 0u32),
+        (None, None) => {
+            let p = provider.songs_page(0, 100, false).await.map_err(fail)?;
+            (p.items, p.total, 100u32)
+        }
+    };
     progress(all.len(), total);
 
-    let offsets: Vec<u32> = (100..total).step_by(100).collect();
+    let offsets: Vec<u32> = (from..total).step_by(100).collect();
     let mut pages = futures::stream::iter(offsets.into_iter().map(|off| {
         let p = provider.clone();
         async move { (off, p.songs_page(off, 100, false).await) }
@@ -1166,10 +1340,15 @@ async fn library_sync_run(
     }
     drop(pages);
 
-    // Second chance: transient blips / throttles usually clear once the parallel
-    // burst is over, so retry stragglers one at a time.
+    // Second chance: transient blips usually clear once the parallel burst is over, so
+    // retry stragglers one at a time. Never into a 429 (2026-09-29): while Apple's back-off
+    // holds, a retry only adds to the load and fails the same way, so the rest are skipped.
     let mut errors: Vec<String> = Vec::new();
     for (off, first_err) in failed {
+        if let Some(left) = crate::apple_calls::backing_off() {
+            errors.push(format!("offset {off}: {first_err}; retry skipped (Apple back-off, {}s left)", left.as_secs()));
+            continue;
+        }
         match provider.songs_page(off, 100, false).await {
             Ok(page) => {
                 all.extend(page.items);
@@ -1180,19 +1359,22 @@ async fn library_sync_run(
     }
 
     let complete = errors.is_empty();
+    // Prune only a pass that holds every song Apple counted. A 200 with `data: []` (or a
+    // page that shifted under a delete on the phone) would otherwise wipe the Library until
+    // the next full pass (2026-09-29). A short pass only leaves stale rows for a while.
+    let prune = complete && all.len() as u64 >= total as u64;
+    if complete && !prune {
+        crate::log::warn(&format!("library: full sync got {}/{total} songs; not pruning", all.len()));
+    }
     {
         let mut conn = db.lock();
-        write_tracks(&mut conn, &all, complete)?;
+        changed += write_tracks(&mut conn, &all, prune).map_err(fail)?;
     }
 
     if !complete {
         let message = format!("{} page(s) failed: {}", errors.len(), errors.join(" | "));
         crate::log::error(&format!("library: sync aborted at {}/{total}, {message}", all.len()));
-        app.emit(
-            "library-sync",
-            serde_json::json!({ "phase": "error", "message": message, "count": all.len(), "total": total }),
-        )
-        .ok();
+        emit_sync_error(&app, &message, Some((all.len(), total)));
         return Err(format!("library sync incomplete — {message}"));
     }
 
@@ -1201,14 +1383,21 @@ async fn library_sync_run(
         if let Err(e) = meta_set(&conn, META_FULL_SYNC_AT, &now_secs().to_string()) {
             crate::log::warn(&format!("library: full sync timestamp not written: {e}"));
         }
+        // The count the next launch compares with: Apple's own number against Apple's own
+        // number, so a library whose pages hold fewer songs than its count (a pass that
+        // does not prune) still settles instead of running a full pass on every launch.
+        if let Err(e) = meta_set(&conn, META_LIBRARY_TOTAL, &total.to_string()) {
+            crate::log::warn(&format!("library: song count not written: {e}"));
+        }
     }
-    // The artist pass rides the sync (HOME.md §10.3). A full pass re-pages regardless
-    // of the count, so an artist swapped for another one heals here.
-    artist_catalog_pass(&dev, &user, &db, true).await;
-    crate::log::info(&format!("library: full sync done, {} of {total} song(s)", all.len()));
+    // The artist pass rides the sync (HOME.md §10.3). Only the weekly pass re-pages every
+    // artist without asking (so an artist swapped for another one heals within a week);
+    // the other passes ask Apple's artist count first, one `limit=1` call.
+    artist_catalog_pass(&dev, &user, &db, weekly).await;
+    crate::log::info(&format!("library: full sync done, {} of {total} song(s), {changed} row(s) changed", all.len()));
     app.emit(
         "library-sync",
-        serde_json::json!({ "phase": "done", "count": all.len(), "total": total }),
+        serde_json::json!({ "phase": "done", "count": all.len(), "total": total, "changed": changed }),
     )
     .ok();
     // Songs Apple sent with no play id get their catalog copy (heal.rs), after `done`:
@@ -1240,6 +1429,7 @@ async fn sync_incremental(
     provider: std::sync::Arc<AppleProvider>,
     db: &State<'_, Db>,
     age_secs: i64,
+    mut changed: usize,
 ) -> Result<u32, String> {
     let mut offset = 0u32;
     let mut new_total = 0u32;
@@ -1250,7 +1440,7 @@ async fn sync_incremental(
             Ok(p) => p,
             Err(e) => {
                 crate::log::warn(&format!("library: incremental sync failed at offset {offset}: {e}"));
-                app.emit("library-sync", serde_json::json!({ "phase": "error", "message": e, "count": new_total, "total": total })).ok();
+                emit_sync_error(app, &e, Some((new_total as usize, total)));
                 return Err(format!("library sync incomplete — {e}"));
             }
         };
@@ -1268,7 +1458,7 @@ async fn sync_incremental(
                     .filter(|id| stmt.exists([id.as_str()]).unwrap_or(false))
                     .count()
             };
-            write_tracks(&mut conn, &page.items, false)?;
+            changed += write_tracks(&mut conn, &page.items, false)?;
             (known, page.items.len() - known)
         };
         new_total += fresh as u32;
@@ -1284,9 +1474,73 @@ async fn sync_incremental(
         conn.query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0)).unwrap_or(0)
     };
     crate::log::info(&format!(
-        "library: incremental sync done, {new_total} new in {pages} page(s); apple total {total}, cached {count} (last full pass {}h ago)",
+        "library: incremental sync done, {new_total} new in {pages} page(s), {changed} row(s) changed; apple total {total}, cached {count} (last full pass {}h ago)",
         age_secs / 3600
     ));
-    app.emit("library-sync", serde_json::json!({ "phase": "done", "count": count, "total": total })).ok();
+    app.emit("library-sync", serde_json::json!({ "phase": "done", "count": count, "total": total, "changed": changed })).ok();
     Ok(new_total)
+}
+
+#[cfg(test)]
+mod account_tests {
+    use super::*;
+
+    fn song(lib: &str, cat: &str) -> Track {
+        Track {
+            library_id: Some(lib.into()),
+            catalog_id: Some(cat.into()),
+            title: format!("t{cat}"),
+            artist_name: "a".into(),
+            ..Default::default()
+        }
+    }
+
+    fn db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+        crate::playlists::init_tables(&conn).unwrap(); // the Apple mirror forget_account clears
+        migrate_v3(&conn).unwrap(); // the ♥ mirror
+        conn
+    }
+
+    // 2026-09-29: the sign-in account check and what it forgets.
+    #[test]
+    fn account_check_2026_09_29() {
+        let mut conn = db();
+        let sample = vec![song("i.A1", "1"), song("i.A2", "2")];
+        // Nothing cached: never "another account".
+        assert!(!other_account(&conn, &sample).unwrap());
+        assert_eq!(write_tracks(&mut conn, &sample, false).unwrap(), 2);
+        // The same rows again change nothing.
+        assert_eq!(write_tracks(&mut conn, &sample, false).unwrap(), 0);
+        // The same account: its library ids are in the cache.
+        assert!(!other_account(&conn, &[song("i.A2", "2"), song("i.A9", "9")]).unwrap());
+        // Another account: the same catalog songs, other library ids.
+        assert!(other_account(&conn, &[song("i.B1", "1"), song("i.B2", "2")]).unwrap());
+        // An empty sample is never another account.
+        assert!(!other_account(&conn, &[]).unwrap());
+
+        // Forget: a song with plays stays as 'seen'; the rest and the clocks go.
+        conn.execute("INSERT INTO play_stats(track_id, partial_count) VALUES('1', 1)", []).unwrap();
+        meta_set(&conn, META_FULL_SYNC_AT, "5").unwrap();
+        meta_set(&conn, META_LIBRARY_TOTAL, "2").unwrap();
+        meta_set(&conn, "storefront", "us").unwrap();
+        meta_set(&conn, "queue_state", "{}").unwrap();
+        conn.execute("INSERT INTO favorites(track_id, loved) VALUES('1', 1)", []).unwrap();
+        conn.execute("INSERT INTO apple_playlists(playlist_id, position, json) VALUES('p.A', 0, '{}')", []).unwrap();
+        conn.execute("INSERT INTO local_playlists(name, created_at, updated_at) VALUES('Mine', 0, 0)", []).unwrap();
+        assert_eq!(forget_account(&mut conn).unwrap(), 2);
+        // The last account's ♥ marks and Apple playlists go; a local playlist stays.
+        let n = |sql: &str| conn.query_row(sql, [], |r| r.get::<_, i64>(0)).unwrap();
+        assert_eq!(n("SELECT COUNT(*) FROM favorites"), 0);
+        assert_eq!(n("SELECT COUNT(*) FROM apple_playlists"), 0);
+        assert_eq!(n("SELECT COUNT(*) FROM local_playlists"), 1);
+        let lib: i64 = conn.query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0)).unwrap();
+        let seen: i64 = conn.query_row("SELECT COUNT(*) FROM tracks WHERE source = 'seen'", [], |r| r.get(0)).unwrap();
+        assert_eq!((lib, seen), (0, 1));
+        assert!(meta_get(&conn, META_FULL_SYNC_AT).is_none());
+        assert!(meta_get(&conn, META_LIBRARY_TOTAL).is_none());
+        assert!(meta_get(&conn, "storefront").is_none());
+        assert_eq!(meta_get(&conn, "queue_state").as_deref(), Some("{}"));
+    }
 }

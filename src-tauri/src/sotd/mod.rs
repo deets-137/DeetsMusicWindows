@@ -188,20 +188,30 @@ const SELECT_PICK: &str = "SELECT id, source, day, track_id, meta, note, marked_
 /// Every pick in a day range (both ends inclusive, `YYYY-MM-DD`), newest first. No range =
 /// all of them: the shelf takes the head, Rewind filters by its own window.
 #[tauri::command]
-pub fn picks_list(from: Option<String>, to: Option<String>, db: State<'_, Db>) -> Result<Vec<Pick>, String> {
-    let conn = db.lock();
-    let lo = from.unwrap_or_else(|| "0000-00-00".into());
-    let hi = to.unwrap_or_else(|| "9999-99-99".into());
-    let sql = format!("{SELECT_PICK} WHERE day >= ?1 AND day <= ?2 ORDER BY day DESC, marked_at DESC");
-    let mut stmt = conn.prepare_cached(&sql).map_err(|e| e.to_string())?;
-    let rows: Vec<Row> = stmt
-        .query_map(params![lo, hi], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?))
-        })
-        .map_err(|e| e.to_string())?
-        .filter_map(Result::ok)
-        .collect();
-    Ok(rows.into_iter().map(|r| row_to_pick(&conn, r)).collect())
+pub async fn picks_list(from: Option<String>, to: Option<String>, app: AppHandle) -> Result<Vec<Pick>, String> {
+    off_ui(move || {
+        let db = app.state::<Db>();
+        let conn = db.lock();
+        let lo = from.unwrap_or_else(|| "0000-00-00".into());
+        let hi = to.unwrap_or_else(|| "9999-99-99".into());
+        let sql = format!("{SELECT_PICK} WHERE day >= ?1 AND day <= ?2 ORDER BY day DESC, marked_at DESC");
+        let mut stmt = conn.prepare_cached(&sql).map_err(|e| e.to_string())?;
+        let rows: Vec<Row> = stmt
+            .query_map(params![lo, hi], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?))
+            })
+            .map_err(|e| e.to_string())?
+            .filter_map(Result::ok)
+            .collect();
+        Ok(rows.into_iter().map(|r| row_to_pick(&conn, r)).collect())
+    })
+    .await
+}
+
+/// A command's database work, off the UI thread: a sync command runs ON it, and the library
+/// sync can hold the lock for seconds (FRIENDS.md §8.11, release check 9; 2026-09-29).
+pub(crate) async fn off_ui<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
 }
 
 fn one_pick(conn: &Connection, id: i64) -> Option<Pick> {
@@ -253,15 +263,18 @@ pub fn title_of(meta: &serde_json::Value) -> String {
 /// `replace` takes today's oldest picks away first; without it, a mark at the limit is
 /// refused, and the caller is the one that knows to offer Replace.
 #[tauri::command]
-pub fn pick_mark(
+pub async fn pick_mark(
     track: serde_json::Value,
     note: Option<String>,
     replace: Option<bool>,
     app: AppHandle,
-    db: State<'_, Db>,
-    settings: State<'_, Settings>,
 ) -> Result<MarkResult, String> {
-    let s = settings.get();
+    off_ui(move || pick_mark_run(track, note, replace, &app)).await
+}
+
+fn pick_mark_run(track: serde_json::Value, note: Option<String>, replace: Option<bool>, app: &AppHandle) -> Result<MarkResult, String> {
+    let db = app.state::<Db>();
+    let s = app.state::<Settings>().get();
     if !s.sotd {
         return Err("sotd-off".into());
     }
@@ -329,14 +342,18 @@ pub fn pick_mark(
 /// Add, change or clear a pick's note. The note is the message's second line, so it only
 /// reaches an outlet on a post that has not gone out yet.
 #[tauri::command]
-pub fn pick_note(id: i64, note: Option<String>, app: AppHandle, db: State<'_, Db>) -> Result<(), String> {
-    {
-        let conn = db.lock();
-        crate::dbhealth::watch("pick note", conn.execute("UPDATE picks SET note = ?1 WHERE id = ?2", params![note, id]))
-            .map_err(|e| e.to_string())?;
-    }
-    changed(&app);
-    Ok(())
+pub async fn pick_note(id: i64, note: Option<String>, app: AppHandle) -> Result<(), String> {
+    off_ui(move || {
+        {
+            let db = app.state::<Db>();
+            let conn = db.lock();
+            crate::dbhealth::watch("pick note", conn.execute("UPDATE picks SET note = ?1 WHERE id = ?2", params![note, id]))
+                .map_err(|e| e.to_string())?;
+        }
+        changed(&app);
+        Ok(())
+    })
+    .await
 }
 
 /// Take a pick away. `delete_post` also deletes what went out, where the outlet allows it
@@ -438,7 +455,12 @@ pub struct PostRecord {
 }
 
 #[tauri::command]
-pub fn post_log(db: State<'_, Db>) -> Result<Vec<PostRecord>, String> {
+pub async fn post_log(app: AppHandle) -> Result<Vec<PostRecord>, String> {
+    off_ui(move || post_log_run(&app)).await
+}
+
+fn post_log_run(app: &AppHandle) -> Result<Vec<PostRecord>, String> {
+    let db = app.state::<Db>();
     let conn = db.lock();
     let mut stmt = conn
         .prepare_cached(
@@ -475,18 +497,21 @@ pub async fn pick_post(id: i64, app: AppHandle) -> Result<(), String> {
 
 /// "Not now": the pick stays, the post does not go, and the tile menu offers Post Now.
 #[tauri::command]
-pub fn pick_skip(id: i64, app: AppHandle) -> Result<(), String> {
-    {
-        let db = app.state::<Db>();
-        let conn = db.lock();
-        let _ = conn.execute(
-            "UPDATE pick_posts SET state = 'skipped', at = ?1 WHERE pick_id = ?2 AND state = 'asking'",
-            params![now_ms(), id],
-        );
-    }
-    crate::log::info(&format!("sotd:post:skip id={id}"));
-    changed(&app);
-    Ok(())
+pub async fn pick_skip(id: i64, app: AppHandle) -> Result<(), String> {
+    off_ui(move || {
+        {
+            let db = app.state::<Db>();
+            let conn = db.lock();
+            let _ = conn.execute(
+                "UPDATE pick_posts SET state = 'skipped', at = ?1 WHERE pick_id = ?2 AND state = 'asking'",
+                params![now_ms(), id],
+            );
+        }
+        crate::log::info(&format!("sotd:post:skip id={id}"));
+        changed(&app);
+        Ok(())
+    })
+    .await
 }
 
 // ── setup ────────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { isConnected } from "./apple";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import * as health from "./apple-health";
+import * as diag from "./diag";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -145,8 +146,19 @@ export function initTrackStore(): void {
   // the rows and "in your library" follow at once.
   void listen("catalog-heal", () => void refreshHeals());
   onSyncEvent((e) => {
-    // Reload on error too: an incomplete sync still upserted the pages that DID fetch.
-    if (e.phase === "done" || e.phase === "error") loadTracks();
+    // Reload on error too: an incomplete sync still upserted the pages that DID fetch. A pass
+    // that changed no row (`changed: 0`, 2026-09-29) skips the reload and the fan-out to every
+    // card: the cache is what the store already holds.
+    if (e.phase === "done" && e.changed === 0) diag.log("library:syncNoChange", { count: e.count, total: e.total });
+    else if (e.phase === "done" || e.phase === "error") loadTracks();
+    // Apple said "too many requests" (APPLE-CALLS.md §6a): not the connection, and not a new
+    // toast. The user's own pass gets the busy toast (usually already on screen from the 429
+    // itself); a pass the app started stays quiet, as every background job does.
+    if (e.phase === "error" && e.busy) {
+      diag.warn("library:syncBusy", { background: !!e.background, count: e.count, total: e.total });
+      if (!e.background) health.tellBusy();
+      return;
+    }
     // One listener for every sync (startup, the Library ⟳), so one toast per failed pass.
     // The spinner alone just stops, which reads as done (TOASTS.md).
     if (e.phase === "error") {
@@ -168,14 +180,51 @@ export function initTrackStore(): void {
   // Stale-while-revalidate, ONCE per session (not per card mount): kick a background
   // re-sync at startup if signed in. Lives here — not in the Library card — so swapping
   // the card in and out of a slot doesn't re-trigger a full Apple sync each time.
-  // `false` = Rust picks the incremental pass inside the six-hour window.
+  // `false` = Rust picks the pass: the one-call count check, then the incremental pass or
+  // the full one (DATA-ARCHITECTURE.md §5a).
   isConnected().then((c) => {
-    if (c)
-      librarySync(false).catch((e) => {
-        // A concurrent sync (the Library card auto-syncs on open too) is deduped by
-        // the Rust SYNC_IN_FLIGHT guard — expected, not a failure. Only surface real errors.
-        const msg = e instanceof Error ? e.message : String(e);
-        if (!msg.includes("already in progress")) console.error("[track-store] sync", e);
-      });
+    if (c) void backgroundSync("launch");
   });
+  // A sign-in syncs at once (2026-09-29): before, the library waited for the next launch.
+  // The sign-in pass also checks whether another Apple account signed in, and forgets the
+  // old library if so (§5b). It must run: a pass already in flight (a launch sync) makes it
+  // wait for that one's end and go once more.
+  window.addEventListener("deets:signed-in", () => void signInSync());
+  // The developer token arrived late (an offline first run, main.ts): the launch sync
+  // failed without it, so it runs now.
+  window.addEventListener("deets:dev-token-ready", () => {
+    void isConnected().then((c) => {
+      if (c) void backgroundSync("devToken");
+    });
+  });
+}
+
+const inFlight = (e: unknown): boolean => String(e instanceof Error ? e.message : e).includes("already in progress");
+
+async function backgroundSync(why: string): Promise<void> {
+  try {
+    await librarySync(false);
+  } catch (e) {
+    // A concurrent sync (the Library ⟳) is deduped by the Rust SYNC_IN_FLIGHT guard —
+    // expected, not a failure. Only surface real errors.
+    if (!inFlight(e)) console.error(`[track-store] sync (${why})`, e);
+  }
+}
+
+/** A pass in flight holds the Rust guard until its catalog heal ends too, after `done`. */
+const SIGNIN_RETRY_MS = 3000;
+const SIGNIN_TRIES = 40; // two minutes, then the next launch's sync catches up
+
+async function signInSync(): Promise<void> {
+  diag.log("library:signInSync");
+  for (let attempt = 1; attempt <= SIGNIN_TRIES; attempt++) {
+    try {
+      await librarySync(false, true);
+      return;
+    } catch (e) {
+      if (!inFlight(e)) return void console.error("[track-store] sign-in sync", e);
+      if (attempt === SIGNIN_TRIES) return void diag.warn("library:signInSyncGaveUp", { attempt });
+      await new Promise((r) => window.setTimeout(r, SIGNIN_RETRY_MS));
+    }
+  }
 }

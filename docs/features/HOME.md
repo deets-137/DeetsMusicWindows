@@ -373,11 +373,13 @@ artist at a time, one call each — 3 rows against 1,731 library artist names.
 (`400 Invalid Parameter` on `sort=-dateAdded`), so there is no newest-first page to stop
 early on. Instead one `limit=1` call reads `meta.total`. Unchanged against the stored count,
 the pass ends there — **one call**. Changed, it re-pages all 14 and upserts `artist_catalog`
-— **15 calls**, only after you added or removed an artist. A full sync re-pages regardless,
-so a same-count swap heals within six hours.
+— **15 calls**, only after you added or removed an artist. The weekly full sync re-pages
+regardless, so a same-count swap heals within a week (2026-09-29; it was every full sync,
+and a full sync ran on most launches — DATA-ARCHITECTURE.md §5a).
 
-The stored count is a new `meta` key. `library_sync` is a full pass whenever the last one is
-six hours old or more, and it runs once per launch (library.rs, `FULL_SYNC_EVERY_SECS`).
+The stored count is a new `meta` key. Since 2026-09-29 `library_sync` is a full pass when
+Apple's song count changed or the last one is 7 days old or more (library.rs,
+`FULL_SYNC_EVERY_SECS`, DATA-ARCHITECTURE.md §5a).
 
 **The name join.** `artist_catalog` stays keyed by the LIBRARY artist name, because that is
 the name our tracks carry. A library artist can map to a catalog artist with a shorter name

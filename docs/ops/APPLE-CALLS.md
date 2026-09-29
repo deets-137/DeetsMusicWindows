@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: open
-sources: [src-tauri/src/apple.rs, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src/apple-health.ts, src-tauri/src/heal.rs]
-updated: 2026-09-28
+sources: [src-tauri/src/apple.rs, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src/apple-health.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts]
+updated: 2026-09-29
 ---
 # Apple calls — the counter and the 429 back-off
 
@@ -140,3 +140,29 @@ updated: 2026-09-28
 - Unit tests: the groups, the classes, `Retry-After` as seconds and as a date, the summary line.
 - **Known gap:** a user call that gets a 429 may also show its own failure toast ("Couldn't
   search") beside the busy toast. Not seen: no 429 has ever reached a log.
+
+## 6a. The library sync and a 429 (as built 2026-09-29)
+
+- **Before:** a 429 on a page of the full sync ended it with `phase: "error"`, and the sync toast
+  said "Check your connection" / "Try Refresh in Library". The straggler retry loop (failed pages
+  retried one at a time) did not ask `backing_off()`, so it sent more requests into the 429.
+- **Now:** the retry loop asks `apple_calls::backing_off()` before each page; while it holds, the
+  rest are skipped (`retry skipped (Apple back-off, Ns left)` in the error message). Every sync
+  `error` event carries `busy` (the back-off holds) and `background` (`apple_calls::in_background()`).
+- **The front end** (track-store.ts): `busy` shows no sync toast. The user's pass (the ⟳, the
+  sign-in pass) calls `tellBusy()` (apple-health.ts), which shows the §3 busy toast only when
+  one is not already on screen — the 429 itself usually just showed it. A background pass stays
+  quiet, as §3 says. Diag: `library:syncBusy { background }`.
+- **The sync's own cost** (DATA-ARCHITECTURE.md §5a, the same day): a launch is now 1 call
+  (`limit=1` count) + 1–2 incremental pages + 1 artist count, where a full pass (~40–60 calls)
+  used to run on most launches. The full pass runs when the count changed, weekly, or on the ⟳.
+
+### Desk test (dev app; restart the runner: new Rust)
+
+1. `apple_force_429 { n: 1, secs: 30 }` (§5 step 2's command), then the Library ⟳. The
+   pass's first page gets the 429: ONE busy toast ("… Try again in 30 seconds."), no "Couldn't
+   sync your library. Check your connection.", and `library:syncBusy` in `deetsmusic diag`.
+   (The retry-loop skip needs a 429 in the middle of the parallel burst; the forced 429 hits
+   the next call, which is the first page. Read the code for it: `backing_off()` in the loop.)
+2. Restart the app within the 30 s: the launch sync logs `apple: back-off skip library_sync`
+   (only if a back-off still holds) and no toast.

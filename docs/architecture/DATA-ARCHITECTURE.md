@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: none
-sources: [src/stats.ts, src-tauri/src/heal.rs]
-updated: 2026-09-28
+sources: [src/stats.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — Data Architecture
 
@@ -345,6 +345,69 @@ playable; searched again after 7 days). The song's key stays its library id, so 
 re-keyed; the player reads the map through `playId`, and the track store files the healed id
 under the library row. Outside `tracks` on purpose, as `added_at`: a sync rewrites every row.
 
+### 5a. When a sync runs, and which pass (as built 2026-09-29, the owner's rule)
+
+Before: the incremental pass needed a full pass under 6 hours old, so most launches ran a full
+pass (~40–60 Apple calls, ~20 s, a rewrite of every row). Now (`library_sync_run`, library.rs):
+
+| Trigger | Pass |
+|---|---|
+| The Library ⟳ (`full: true`) | full |
+| No full pass on record, or the last one is **7 days** old or more | full — the **weekly** pass |
+| Otherwise | ONE `limit=1` call reads Apple's song count. It differs from `meta.library_songs_total` (Apple's count at the last complete full pass) → full. The same → incremental |
+
+- The count is compared with Apple's own stored count, never with our row count: two library
+  copies of one catalog song are one row here, so the row count can sit below Apple's for ever.
+- A full pass that already knows the total (the count call, or the sign-in page) sends every page
+  in the parallel burst, page 0 included.
+- `artist_catalog_pass(…, force)`: `force` only on the weekly pass. Every other pass asks the
+  artist count first (one `limit=1` call) and re-pages only when it changed.
+- **Rows that did not change are not written** (`write_tracks`, an upsert with a `WHERE` on the
+  json, the sort key and the source). `done` carries `changed`; `changed: 0` makes the track store
+  skip its reload and its fan-out to every card (diag `library:syncNoChange`).
+- A launch with an unchanged library: 1 count call + 1 incremental page + 1 artist count call.
+- **Sync triggers:** the launch (track-store.ts, when signed in), **a sign-in** (`deets:signed-in`,
+  since 2026-09-29; before, a sign-in waited for the next launch), the late developer token (an
+  offline first run, `deets:dev-token-ready`), and the ⟳. The launch pass is a background job
+  (APPLE-CALLS.md §3); the sign-in pass and the ⟳ are the user's.
+
+### 5b. Another Apple account signs in (as built 2026-09-29)
+
+The sign-in pass (`library_sync { signin: true }`) reads the full pass's own first page first:
+`sort=dateAdded`, the library's 100 OLDEST songs. Library ids (`i.…`) belong to one account.
+
+- **The signal:** the cache holds library rows, and none of the page's library ids is among them
+  → another account (`other_account`). The oldest songs of a library hardly ever change, so the
+  same account shares nearly all 100. No extra Apple call: a full pass reads this page anyway,
+  and the storefront (the same for two accounts in one country) is not needed.
+- **What it forgets** (`forget_account`, one transaction): the library rows (a song that has plays
+  is kept as a `seen` row, so Rewind and the history still name it), `full_sync_at`,
+  `library_songs_total`, `library_artists_total`, the cached `storefront` (enrich.rs) and the
+  `catalog_heal` map (keyed by the old library ids). A full pass follows at once (no clock).
+- **What it keeps:** everything the user made — local playlists, the Diary, pins, plays and play
+  events, ♥ marks, the queue, settings. Not handled here: the Apple playlist mirror
+  (PLAYLISTS.md) of the old account stays until its own sync.
+- A sign-out and a sign-in with the same account: the ids match, nothing is forgotten, and the
+  pass runs by the §5a rule.
+- A sign-in while another pass is in flight: the front end tries again every 3 s for 2 minutes.
+- Log: `library: another Apple account signed in; forgot …` or `library: sign-in sync, same
+  Apple account`.
+
+**Desk test (dev app; restart the runner: new Rust):**
+1. Launch twice within a minute. The second launch's log: one `apple … limit=1` count, then
+   `library: incremental sync done, 0 new …, 0 row(s) changed`, and `library:syncNoChange` in
+   `deetsmusic diag`. No `full sync start`.
+2. Add one song to the library on the phone, then launch. The log: `full sync start (Apple counts
+   N+1 song(s), the last full pass N)`.
+3. The weekly pass: the first launch after this build has no stored count, so it runs one full
+   pass (`… the last full pass stored no count`) and step 1 holds from then on. The 7-day pass
+   itself shows in the log a week later as `full sync start (weekly, last full pass …h ago)`.
+4. Sign out, sign in with the SAME account: the log says `same Apple account`; the Library keeps
+   its songs throughout.
+5. Sign in with ANOTHER Apple account (owner only: needs a second account): the log says
+   `another Apple account signed in`; the Library empties and fills with the new account's songs;
+   Rewind still names the old songs you played; your local playlists and Diary are unchanged.
+
 ---
 
 ## 6. The themed loopback page
@@ -365,7 +428,8 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `apple_connection_status` | apple.rs | is a MUT present? |
 | `apple_disconnect` | apple.rs | clear MUT (memory + file) |
 | `apple_dump_library` | apple.rs | **dev**: write raw API samples to `dev-dumps/` |
-| `library_sync` | library.rs | full songs sync → cache (emits events) |
+| `library_sync(full?, signin?)` | library.rs | songs sync → cache (emits events); which pass: §5a; `signin` = the account check, §5b |
+| `apple_developer_token_retry` | apple.rs | one late mint try when a launch had no developer token (the webview's `online` event; 30 s cooldown); emits `developer-token-changed` on success |
 | `library_tracks(offset, limit)` | library.rs | paged read from cache (synced rows only) |
 | `seen_tracks` | library.rs | all materialized (`source='seen'`) rows — ingested as track-store transients so historical plays resolve cross-session |
 | `record_play(catalogId?, libraryId?, kind)` | library.rs | bump a track's `partial`/`full` play tally |
@@ -377,7 +441,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 
 | Event | Payload |
 |---|---|
-| `library-sync` | `{ phase: "start" \| "progress" \| "done", fetched?, count?, total? }` |
+| `library-sync` | `{ phase: "start" \| "progress" \| "done" \| "error", fetched?, count?, total?, changed? (done), message?, busy?, background? (error) }` (2026-09-29: §5a, APPLE-CALLS.md §6a) |
 | `catalog-heal` | `{ healed, none }` — a heal stored results; the track store re-reads the map |
 
 ---

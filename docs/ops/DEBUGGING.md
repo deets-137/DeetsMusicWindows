@@ -1352,6 +1352,36 @@ failure: <reason>`, `user token captured`.
   (403); not saved` and the app's "didn't accept the sign-in" toast. A `&error=x` link
   instead → `the hosted page reported a failure: x` and the "didn't finish" toast.
 
+## Startup guard — a part that failed at launch (2026-09-29)
+
+About sixty parts start in `main.ts`'s `DOMContentLoaded` handler (`initRules` … `initPlaylistRefresh`).
+Before, one that threw skipped every part after it, and the window opened half-built with
+nothing said. Now each starts through `boot(part, fn)`, in the same order:
+
+- A throw, or a rejected promise from an async part, writes `boot:partFailed { part, err }` to the
+  diag ring (and the console), and the next part still starts.
+- 1.5 s after the launch cover ends (`deets:boot-done`), or 15 s after start, ONE toast if any part
+  failed: "Something didn't load. Restart DeetsMusic." with **Restart** (`app_restart`, Tauri's own
+  restart; lib.rs). `boot:toldFailed { parts }` names them. A part that fails later is logged only.
+- Read it: `deetsmusic diag` / the `diag` MCP tool, filter `boot:`.
+
+**Desk test (dev app):** add `throw new Error("test")` as the first line of `initSleep` in
+`src/sleep.ts` (Vite reloads). The window opens whole: the Compass (Ctrl+Space) and
+the playlist refresh still work, the sleep clock does not. After the cover, the toast shows once;
+`diag` has `boot:partFailed { part: "initSleep" }`. Press Restart: the app restarts. Remove the line.
+
+**The late developer token (the same day):** a launch with no developer token (an offline first
+run) no longer needs a restart. The webview's `online` event calls `apple_developer_token_retry`
+(one mint try, 30 s cooldown). On success: `token: source=worker …` in the log, the "Can't reach the
+token service" toast goes, `developer-token-changed` reaches the player, `deets:dev-token-ready`
+runs the launch library sync, and `warmPlayer` configures MusicKit (`player:configured`). A player
+start that failed for the missing token forgets itself (`player:configureRetryable`), so the next
+start configures. Desk test (owner): `DEETS_DEV_NO_TOKEN=1` forces only the launch state, and
+this PC signs a token locally from the `.p8` with no network, so the real test is the installed
+build on a PC (or Windows Sandbox) that never ran DeetsMusic: Wi-Fi off, start the app (the toast
+shows), Wi-Fi on. The toast goes within a few seconds, the library syncs after a sign-in, and a
+song plays with no restart.
+
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.
 2. `__diag.dump()` (or `__diag.copy()` to paste it somewhere).

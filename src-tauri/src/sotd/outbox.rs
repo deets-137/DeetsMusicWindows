@@ -288,37 +288,43 @@ pub struct Missed {
 }
 
 #[tauri::command]
-pub fn picks_missed(app: AppHandle) -> Vec<Missed> {
-    let grace = app.state::<Settings>().get().sotd_day_start;
-    let now = now_ms();
-    due_rows(&app)
-        .into_iter()
-        .filter(|(_, due, day)| *due <= now && day_ends(day, grace) <= now)
-        .filter_map(|(id, _, day)| super::pick_by_id(&app, id).map(|p| Missed { id, title: super::title_of(&p.meta), day }))
-        .collect::<Vec<_>>()
-        .into_iter()
-        .fold(Vec::new(), |mut acc, m| {
-            if !acc.iter().any(|x: &Missed| x.id == m.id) {
-                acc.push(m);
-            }
-            acc
-        })
+pub async fn picks_missed(app: AppHandle) -> Result<Vec<Missed>, String> {
+    super::off_ui(move || {
+        let grace = app.state::<Settings>().get().sotd_day_start;
+        let now = now_ms();
+        Ok(due_rows(&app)
+            .into_iter()
+            .filter(|(_, due, day)| *due <= now && day_ends(day, grace) <= now)
+            .filter_map(|(id, _, day)| super::pick_by_id(&app, id).map(|p| Missed { id, title: super::title_of(&p.meta), day }))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .fold(Vec::new(), |mut acc, m| {
+                if !acc.iter().any(|x: &Missed| x.id == m.id) {
+                    acc.push(m);
+                }
+                acc
+            }))
+    })
+    .await
 }
 
 /// "Skip" on the missed-time question: the pick stays, the posts do not go.
 #[tauri::command]
-pub fn picks_missed_skip(id: i64, app: AppHandle) -> Result<(), String> {
-    {
-        let db = app.state::<Db>();
-        let conn = db.lock();
-        let _ = conn.execute(
-            "UPDATE pick_posts SET state = 'skipped', due_ts = NULL, at = ?1 WHERE pick_id = ?2 AND state = 'waiting'",
-            rusqlite::params![now_ms(), id],
-        );
-    }
-    crate::log::info(&format!("sotd:post:skip id={id} (missed time)"));
-    super::changed(&app);
-    Ok(())
+pub async fn picks_missed_skip(id: i64, app: AppHandle) -> Result<(), String> {
+    super::off_ui(move || {
+        {
+            let db = app.state::<Db>();
+            let conn = db.lock();
+            let _ = conn.execute(
+                "UPDATE pick_posts SET state = 'skipped', due_ts = NULL, at = ?1 WHERE pick_id = ?2 AND state = 'waiting'",
+                rusqlite::params![now_ms(), id],
+            );
+        }
+        crate::log::info(&format!("sotd:post:skip id={id} (missed time)"));
+        super::changed(&app);
+        Ok(())
+    })
+    .await
 }
 
 // ── start ────────────────────────────────────────────────────────────────────

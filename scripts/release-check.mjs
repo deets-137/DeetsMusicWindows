@@ -240,7 +240,8 @@ if (signed.length) {
   const ALLOW = new Map();
   const blocking = [];
   const soft = [];
-  for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".rs"))) {
+  // Recursive: the commands in src/sotd/ went unread until 2026-09-29.
+  for (const file of readdirSync(srcDir, { recursive: true }).filter((f) => String(f).endsWith(".rs"))) {
     const raw = readFileSync(join(srcDir, file), "utf8");
     const code = blankOut(raw);
     const fns = new Map();

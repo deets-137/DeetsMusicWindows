@@ -271,21 +271,35 @@ pub fn sync_menu(app: &AppHandle) {
     }
 }
 
-/// Put the window back where the last session left it (`settings.json` → `windowPos`).
-/// Guarded on the monitor layout: a position from a monitor that is now unplugged would
-/// park the window off-screen, so an unmatched position is discarded and Windows places
-/// the window as it normally would.
+/// A remembered position, checked against the monitors plugged in now. A position on no
+/// monitor (one since unplugged) is `None`, so Windows places the window as it normally
+/// would. A position on a monitor is pulled in so the whole window stays on it (a lower
+/// resolution would otherwise leave most of the window off the edge). 2026-09-29: this
+/// ran only at launch, so a tray-started app still opened on an undocked monitor.
+fn fit_on_monitor(
+    app: &AppHandle,
+    w: &tauri::WebviewWindow,
+    p: PhysicalPosition<i32>,
+) -> Option<PhysicalPosition<i32>> {
+    let mons = app.available_monitors().ok()?;
+    let m = mons.iter().find(|m| {
+        let (mp, sz) = (m.position(), m.size());
+        p.x >= mp.x && p.y >= mp.y && p.x < mp.x + sz.width as i32 && p.y < mp.y + sz.height as i32
+    })?;
+    let (mp, ms) = (m.position(), m.size());
+    let size = w.outer_size().unwrap_or_default();
+    let x = p.x.min(mp.x + ms.width as i32 - size.width as i32).max(mp.x);
+    let y = p.y.min(mp.y + ms.height as i32 - size.height as i32).max(mp.y);
+    Some(PhysicalPosition::new(x, y))
+}
+
+/// Put the window back where the last session left it (`settings.json` → `windowPos`),
+/// guarded on the monitor layout by `fit_on_monitor`.
 fn restore_window_pos(app: &AppHandle) {
     let Some([x, y]) = app.state::<crate::settings::Settings>().get().window_pos else { return };
     let Some(w) = app.get_webview_window(MAIN) else { return };
-    let on_a_monitor = app.available_monitors().is_ok_and(|mons| {
-        mons.iter().any(|m| {
-            let (p, sz) = (m.position(), m.size());
-            x >= p.x && y >= p.y && x < p.x + sz.width as i32 && y < p.y + sz.height as i32
-        })
-    });
-    if on_a_monitor {
-        w.set_position(PhysicalPosition::new(x, y)).ok();
+    if let Some(p) = fit_on_monitor(app, &w, PhysicalPosition::new(x, y)) {
+        w.set_position(p).ok();
     }
 }
 
@@ -396,7 +410,7 @@ pub fn tray_place_main(app: AppHandle) {
     w.set_skip_taskbar(popped).ok();
     if let Some(p) = at {
         anchor(&app, &w, p);
-    } else if let Some(p) = restore {
+    } else if let Some(p) = restore.and_then(|p| fit_on_monitor(&app, &w, p)) {
         w.set_position(p).ok();
     }
     MAIN_SHOWN.store(true, std::sync::atomic::Ordering::SeqCst); // the launch show is moot now

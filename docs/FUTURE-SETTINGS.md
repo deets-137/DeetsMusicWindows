@@ -999,7 +999,11 @@ another device disappears at the next full pass. The refresh button in the Libra
 always a full pass, and a full pass writes `meta.full_sync_at` in the cache db (it dies with
 the cache, so a fresh db always full-syncs).
 
-**Options.** The window: 1 h · 6 h *(current default)* · 24 h · only on refresh (never
+> **2026-09-29 (the owner's rule, DATA-ARCHITECTURE.md §5a):** the window is now **7 days**,
+> and in between ONE `limit=1` count call runs the full pass only when Apple's song count
+> changed; otherwise the incremental pass. The options below predate that.
+
+**Options.** The window: 1 h · 6 h *(the default until 2026-09-29)* · 24 h · only on refresh (never
 automatic). Possibly a second switch: incremental at startup on/off.
 
 **Where.** Settings › Library, one CHOICE row ("Check library fully every"). **Wiring.** A

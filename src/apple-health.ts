@@ -172,11 +172,23 @@ void listen<{ s: number; hinted: boolean }>("apple-busy", (e) => {
   const { s, hinted } = e.payload;
   diag.warn("apple:busy", { s, hinted });
   backoffUntil = Date.now() + s * 1000;
+  tellBusy(s, hinted);
+});
+
+/** The busy toast, at most one on screen. Also the user's library sync that stopped on a 429
+ *  (track-store.ts, 2026-09-29): usually the `apple-busy` event already showed it, so this adds
+ *  nothing; it shows only when that toast has gone. With no `s`, the back-off's own time left. */
+export function tellBusy(s?: number, hinted = false): void {
   if (Date.now() < busyUntil) return;
+  if (s === undefined) {
+    const left = Math.ceil((backoffUntil - Date.now()) / 1000);
+    s = left > 0 ? left : 60;
+    hinted = left > 0;
+  }
   busyUntil = Date.now() + BUSY_TOAST_MS;
   const wait = !hinted && s === 60 ? "a minute" : `${s} ${s === 1 ? "second" : "seconds"}`;
   toast({ kind: "warn", text: `Apple Music is busy right now. Try again in ${wait}.`, timeout: BUSY_TOAST_MS });
-});
+}
 
 // The counter's hourly line and the back-off's arm / skip / off, copied into the ring so the
 // `diag` tool sees them live (CLAUDE.md checklist item 6). Rust already wrote the log line.

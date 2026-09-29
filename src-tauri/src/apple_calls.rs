@@ -33,6 +33,12 @@ fn current_job() -> Option<&'static str> {
     BACKGROUND.try_with(|j| *j).ok()
 }
 
+/// Is this call inside a background job? (The library sync's error payload says so, so the
+/// front end stays quiet about a job the user never started, §3.)
+pub fn in_background() -> bool {
+    current_job().is_some()
+}
+
 static APP: std::sync::OnceLock<AppHandle> = std::sync::OnceLock::new();
 
 // ── A: the counter (§2) ───────────────────────────────────────────────────────
