@@ -277,10 +277,37 @@ async fn fetch(app: &AppHandle, update: &Update) -> Result<Vec<u8>, String> {
     }
 }
 
+/// The AirPlay teardown before an install waits this long at most (2026-09-29): the session's
+/// disconnect joins its sender thread, and a speaker that stopped answering must not hold the
+/// install. Past it, the install goes on; the process exit ends the session anyway.
+const AIRPLAY_STOP_LIMIT: Duration = Duration::from_secs(3);
+
 /// Run the verified installer. On Windows the plugin starts NSIS with `/P /UPDATE /R`
 /// (passive, relaunch after) and exits this process, so the caller saves its state first.
+///
+/// `async` + `spawn_blocking` (CLAUDE.md › Conventions, 2026-09-29): a synchronous command runs
+/// on the UI thread, and this one joins the AirPlay thread and writes the installer to disk.
 #[tauri::command]
-pub fn update_install(app: AppHandle) -> Result<(), String> {
+pub async fn update_install(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || install_blocking(&app))
+        .await
+        .map_err(|e| format!("install failed: {e}"))?
+}
+
+/// Stop AirPlay on its own thread and wait for it at most AIRPLAY_STOP_LIMIT.
+fn airplay_shutdown_bounded(app: &AppHandle) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let a = app.clone();
+    std::thread::spawn(move || {
+        crate::airplay::shutdown(&a);
+        let _ = tx.send(());
+    });
+    if rx.recv_timeout(AIRPLAY_STOP_LIMIT).is_err() {
+        crate::log::warn(&format!("update: the AirPlay stop took over {} s; installing anyway", AIRPLAY_STOP_LIMIT.as_secs()));
+    }
+}
+
+fn install_blocking(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<UpdateState>();
     let (update, bytes) = {
         let mut g = state.inner.lock_or_recover();
@@ -297,8 +324,8 @@ pub fn update_install(app: AppHandle) -> Result<(), String> {
         state.inner.lock_or_recover().bytes = Some(bytes);
         return Err("A dev build doesn't install updates.".into());
     }
-    crate::log::info(&format!("update: installing {} over {}; the app exits now", update.version, current_version(&app)));
-    crate::airplay::shutdown(&app);
+    crate::log::info(&format!("update: installing {} over {}; the app exits now", update.version, current_version(app)));
+    airplay_shutdown_bounded(app);
     update.install(bytes).map_err(|e| {
         let msg = format!("install failed: {e}");
         crate::log::error(&format!("update: {msg}"));

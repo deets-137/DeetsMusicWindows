@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: passed 2026-09-24
-sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs]
-updated: 2026-09-28
+sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -267,8 +267,15 @@ Inserting into the queue is **gapless** and never rebuilds: `enqueueNext` / `enq
   index never moves — `windowPos` stays valid and `nowPlayingItemIndex` is unchanged. The
   new items simply appear at `windowPos+1…` in *both* MusicKit and the model. (Contrast a
   `setQueue` rebuild, which re-buffers `current`.)
-- **Bootstrap:** with nothing playing there's no `current` to insert after, so both ops
+- **Bootstrap:** with nothing in the queue at all (no `current` AND no Up Next), both ops
   fall back to `playContext(block, 0)` — start the block fresh.
+- **A saved Up Next (2026-09-29, his call: only add it to the queue).** Before, the bootstrap
+  ran whenever there was no `current`, so an Add to Queue after a restore with *Restore on
+  launch = Up Next* started the block and threw the saved Up Next away. Now `modelOnlyQueue()`
+  decides: no `current`, or a `current` MusicKit was never fed (a restore with *Last song*, a
+  network drop — no now-playing item, not playing, not loading) → the model changes only
+  (`playNextMany` / `addToQueueMany` / `insertManyAt`; `player:enqueueIdle`). The first Play
+  loads it through `playPause`, as for any restore.
 
 `queueTracksNext` / `queueTracksLater` are the `Track[]` wrappers the Library uses (a song
 is a 1-track list; an album is its tracks in disc/track order). The right-click **menu**
@@ -336,7 +343,8 @@ A song or collection dropped on the Queue card lands at the insertion line
 (`insertInQueue(at, handles)` / `queueTracksAt` in `player.ts`). The model takes the block
 with `queue.insertManyAt(at, …)` (`origin: "manual"`), then `reconcileUpcoming()` mirrors the
 new order into MusicKit — the same gapless suffix rebuild as a reorder. Radio mode: model
-only, with the break-out flag (as Play Next). Nothing playing: `playContext(block, 0)`.
+only, with the break-out flag (as Play Next). Nothing in the queue at all: `playContext(block,
+0)`; a saved Up Next MusicKit does not hold: model only (2026-09-29, above).
 Logged as `player:insert { at, n }`.
 
 ---
@@ -553,6 +561,80 @@ catalog ids for Lawn and "Mom + Pop" (`6783958184`, `6783958627`) are NOT_FOUND 
 old dead-id path banked them, and Lawn played by its library id, which now has a play id. Not
 reached: the healed-id path (no song needed it after Apple's repair), the "in your library" answer,
 and the retries (a failed song change cannot be forced).
+
+### Which song failed, and a dropped song with no copy (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open (live only)
+
+Two fixes read from the code, not from a trace:
+1. **A `mediaPlaybackError` "currently unavailable" banked the wrong song.** `onPlaybackError`
+   called `healDeadNext`, which banks `peekNext()`. When MusicKit had already advanced into the
+   failed song, the model followed it, so `peekNext()` was the song AFTER the failed one: a live
+   song, skipped for 7 days. Now, when MusicKit's `nowPlayingItem` is the model's `current` and
+   that song never made sound (`heardEntry`, the end-of-song heal's rule), the current song is
+   banked (`healDeadNext(…, failed)`); the jump still goes to the first live upcoming song. A
+   current that made sound is the old song still on screen: the next one is banked, as before.
+   `player:deadNext` carries `current: true|false`.
+2. **A dropped library id with no copy was fed again forever.** `noteDropped` asks
+   `catalog_heal_one`; when the answer is "no copy" (`null`, not a failed call) the id goes into
+   `deadIds` for the session (not on disk: the heal pass looks again in 7 days).
+   `player:healAsked` carries `banked`.
+
+**Desk test (live only; a failure cannot be forced).** After the next `player:playbackError`
+with "unavailable": the `player:deadNext` line's `id` is the song that did not play, and the
+song after it plays. After the next `player:insertDropped` of an `i.` id: `player:healAsked`
+with `banked: 1` when there is no copy, and no second `insertDropped` of that id this session.
+
+## The end of a list (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open
+
+**Before.** A list that ended with Repeat off left the model empty (`maybeFinishQueue` →
+`player:queueEnd` → `queue.advance()`). A Play then reached `playPause`'s last branch and
+started the whole library from "A".
+
+**His calls (2026-09-29).**
+- **On (default): autoplay.** A temporary web plays: from the album that ended, or, for any
+  other list (a playlist, the library), from the last song played. It is deleted after 1 day.
+  PLAYLIST-WEB.md §12 has the web.
+- **Off: a record that has ended.** The list is loaded again at its first song, PAUSED.
+- Settings › Playback › **Play a web when a list ends** (`listEndWeb`).
+- Nothing starts in a listening room or a station.
+
+**As built** (`player.ts`):
+- `maybeFinishQueue`'s queue-end branch keeps the finished list (`finishedList`: the plan; after
+  a restart, with no plan, the heard songs that share the last song's context), advances as
+  before, then calls `afterListEnd`.
+- `afterListEnd` returns at once in a room, after a station break-out (`resumeStation`: the
+  station returns, `maybeResumeStation`), or outside queue mode. Otherwise, in BOTH cases, it
+  sets the list again at its first song (`queue.setContext(list, 0, shuffle mode)`) and feeds it
+  to MusicKit paused (`loadFromModel(m, false, { stopFirst: true })`, as Stop Station does). So
+  the model is never empty after an end, and Play never reaches the library branch.
+- Why feed MusicKit, not the model only: MusicKit sits in `ended` with no song while the model
+  has Up Next again. That is the exact shape `onEndedWithoutItem` heals, and its dry-window path
+  would advance and PLAY. `cueingListEnd` closes that heal until the paused load is in.
+- With `listEndWeb` on, the hook web.ts registered (`onListEnd`, from `initTitleWeb`) builds the
+  web. It plays only while `stillIdle()`: the paused first song is still `current`, no load came
+  after, nothing plays, no room, no station. A Play or a click during the build wins.
+- Log: `player:listEnd {n, ctx, web}` at the end; `player:listEnd {web: "none", idle}` when no
+  web played. web.ts writes `web:listEnd`.
+
+**Desk test.** `npm run dev:app`.
+1. Repeat off. Play a short album from the Library; `control seek 97` on each song (or pick the
+   last song). At the end: the log shows `player:queueEnd`, then `player:listEnd {web: true}`.
+   Now Playing shows the album's first song, paused, for a few seconds; then a web plays and the
+   toast reads "Playing “<Album> … Web”, a web from what just ended". The Queue card shows the
+   web; no song of the album is in it. The Playlists card has the web with "Expires <tomorrow>".
+2. Settings › Playback › Play a web when a list ends: Off. Repeat step 1: the album's first song
+   waits, paused, at 0:00, with the album in Up Next. Press Play: the album plays from song 1,
+   not the library.
+3. On again. Play a playlist to its end: the web's seed is the last song (`web:listEnd {fire:
+   "song"}`).
+4. At the end of a list, press Play before the web arrives: the list plays from its start, and
+   the log shows `web:listEnd {skip: "user acted"}`; nothing replaces it.
+5. Queue a station after a list (Add to Queue on a station): at the end the station plays, no web.
+6. Sleep timer "at the end of Up Next", then let the list end: no web (`web:listEnd {skip:
+   "sleep"}`), the list waits paused.
 
 ## Restore across sessions (2026-09-12)
 

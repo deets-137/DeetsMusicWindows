@@ -24,7 +24,8 @@ import { searchCatalog, type Album, type Artist, type SearchResults, type Search
 import { playlistCreate, playlistAddTracks, requestOpenPlaylist } from "./playlists";
 import { requestCard } from "./layout-bus";
 import { setting, setSetting, onSettingsChange, effective } from "./settings-store";
-import { playTracks, playTracksKeepQueue, queueTracksAt, playbackPosition, songDuration } from "./player";
+import { playTracks, playTracksKeepQueue, queueTracksAt, playbackPosition, songDuration, onListEnd, type ListEnd } from "./player";
+import { sleepAtEndArmed } from "./sleep";
 import * as queue from "./queue";
 import { esc } from "./collection-card";
 import { toast } from "./toast";
@@ -33,7 +34,7 @@ import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import type { Artwork, Track } from "./library";
-import { tracks } from "./track-store";
+import { tracks, trackById } from "./track-store";
 import { creditIndex } from "./artist-credit";
 import { albumKey } from "./rewind";
 import { APPLE_SIGIL } from "./apple-sigil";
@@ -164,6 +165,23 @@ export async function webQuick(r: WebRequest, status: (text: string) => void, ch
   return webFrom(seed, r, status, chip, "compass");
 }
 
+/** Build the web of a known seed and pick its songs by the panel's settings, with no panel:
+ *  webFrom's first half, shared with the web at a list's end (§12). */
+async function buildWebList(seed: WebSeed, r: { reach?: 1 | 2 | 3; genres?: string[] }) {
+  const wanted = r.reach ?? setting("webReach");
+  const reach = seed.kind === "album" ? Math.min(ALBUM_MAX_REACH, wanted) : wanted;
+  const res = await invoke<WebResult>("web_build", { seed, reach, fresh: false });
+  const have = new Set(res.songs.flatMap((s) => s.track.genres));
+  const want = (r.genres ?? []).map((g) => g.trim().toLowerCase()).filter(Boolean);
+  let picked = new Set([...have].filter((g) => want.some((w) => g.toLowerCase().startsWith(w) || g.toLowerCase().includes(w))));
+  // A song or album seed picks its own genres, as the panel does (§9.1).
+  if (!picked.size && seed.kind !== "artist") picked = new Set(res.genres.filter((g) => !NOT_A_GENRE.has(g) && have.has(g)));
+  const list = pickSongs(res, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"));
+  const genres = picked.size <= NAME_GENRES ? [...picked].join(" & ") : "";
+  const name = `${seedName(seed)}${genres ? ` ${genres}` : ""} Web`;
+  return { res, picked, list, name, reach };
+}
+
 /** Build, pick and make the playlist from a known seed: the Compass's path after its seed
  *  search, and the right-click "Start a Web" row's whole path. */
 async function webFrom(
@@ -173,19 +191,9 @@ async function webFrom(
   chip: () => HTMLElement | null,
   from: string,
 ): Promise<void> {
-  const wanted = r.reach ?? setting("webReach");
-  const reach = seed.kind === "album" ? Math.min(ALBUM_MAX_REACH, wanted) : wanted;
   status(`Reading the web of ${seedName(seed)}…`);
-  const res = await invoke<WebResult>("web_build", { seed, reach, fresh: false });
-  const have = new Set(res.songs.flatMap((s) => s.track.genres));
-  const want = (r.genres ?? []).map((g) => g.trim().toLowerCase()).filter(Boolean);
-  let picked = new Set([...have].filter((g) => want.some((w) => g.toLowerCase().startsWith(w) || g.toLowerCase().includes(w))));
-  // A song or album seed picks its own genres, as the panel does (§9.1).
-  if (!picked.size && seed.kind !== "artist") picked = new Set(res.genres.filter((g) => !NOT_A_GENRE.has(g) && have.has(g)));
-  const list = pickSongs(res, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"));
+  const { res, picked, list, name, reach } = await buildWebList(seed, r);
   if (!list.length) throw new Error("The web had no songs to pick");
-  const genres = picked.size <= NAME_GENRES ? [...picked].join(" & ") : "";
-  const name = `${seedName(seed)}${genres ? ` ${genres}` : ""} Web`;
   const expireDays = setting("webTempDays"); // every new web starts on Temp, as the panel does
   status("Making the playlist…");
   const id = await playlistCreate(name, undefined, expireDays);
@@ -225,6 +233,67 @@ function playIfSeedPlaying(seed: WebSeed, list: Track[], id: number, from: strin
     : mode === "keep" ? playTracksKeepQueue(rest, ctx)
     : playTracks(list, skip ? 1 : 0, ctx); // the seed stays behind the start: Previous reaches it
   run.catch((e) => console.error("[web] play", e));
+}
+
+// ── A web when a list ends (PLAYLIST-WEB.md §12, his call 2026-09-29: "autoplay") ──
+// player.ts loads the finished list again, paused, and calls this. The seed is the album that
+// ended; any other list (a playlist, the library) seeds from its last song. The web is built
+// and picked as the right-click row does, the songs you just heard are left out, and the
+// playlist is temporary for LIST_END_DAYS. It plays only if nothing changed meanwhile.
+/** His call: a web made at a list's end is deleted after 24 hours (the §10 clock: the later of
+ *  Make and the last play from it). */
+const LIST_END_DAYS = 1;
+/** A catalog album id in a `search-albums:<id>` context. */
+const CATALOG_ALBUM = /^search-albums:(\d+)$/;
+
+function listEndSeed(e: ListEnd): WebSeed | null {
+  const t = trackById(e.last.catalogId) ?? trackById(e.last.libraryId);
+  if (!t) return null;
+  const ctx = e.last.context ?? "";
+  const catalogAlbum = CATALOG_ALBUM.exec(ctx)?.[1];
+  // An album context: `album:<albumKey>` (the Library, Home, Rewind) or `search-albums:<id>`.
+  // A library album has no catalog id: one of its songs finds it (web.rs `read_album`).
+  if (ctx.startsWith("album:") || catalogAlbum) {
+    const songId = t.catalogId;
+    if (catalogAlbum || songId)
+      return { kind: "album", album: { title: t.albumName ?? t.title, artistName: t.artistName, artwork: t.artwork, genres: t.genres, catalogId: catalogAlbum }, songId };
+  }
+  return t.catalogId ? { kind: "song", track: t } : null;
+}
+
+async function webAtListEnd(e: ListEnd): Promise<boolean> {
+  if (sleepAtEndArmed()) {
+    diag.log("web:listEnd", { skip: "sleep" });
+    return false;
+  }
+  const seed = listEndSeed(e);
+  if (!seed) {
+    diag.log("web:listEnd", { skip: "no seed", ctx: e.last.context ?? null });
+    return false;
+  }
+  diag.log("web:listEnd", { fire: seed.kind, seed: seedName(seed), ctx: e.last.context ?? null });
+  const { res, picked, list: all, name, reach } = await buildWebList(seed, {});
+  // The web leads with its seed (§9.1): the album or the song you just heard. Leave out every
+  // song of the finished list, so the web goes on instead of starting over.
+  const heard = new Set(e.list.flatMap((h) => [h.catalogId, h.libraryId]).filter((id): id is string => !!id));
+  const list = all.filter((t) => !(t.catalogId && heard.has(t.catalogId)) && !(t.libraryId && heard.has(t.libraryId)));
+  if (!list.length || !e.stillIdle()) {
+    diag.log("web:listEnd", { skip: list.length ? "user acted" : "no songs", built: all.length });
+    return false;
+  }
+  const id = await playlistCreate(name, undefined, LIST_END_DAYS);
+  await playlistAddTracks(id, list);
+  diag.log("web:expiry", { arm: id, days: LIST_END_DAYS });
+  diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays: LIST_END_DAYS, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from: "listEnd", reach });
+  // The build takes seconds: a Play, a click or a room in that time wins. The playlist stays
+  // (temporary, in the Playlists card) and nothing plays over the user.
+  if (!e.stillIdle()) {
+    diag.log("web:listEnd", { skip: "user acted", made: id });
+    return false;
+  }
+  await playTracks(list, 0, `playlist:local:${id}`);
+  toast({ kind: "info", text: `Playing “${name}”, a web from what just ended` });
+  return true;
 }
 
 /**
@@ -1226,6 +1295,9 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
 // ── The title bar's Web item (PLAYLIST-WEB.md §1a): its own panel, headed "Web" ──
 let titleWeb: { open: () => void } | null = null;
 export function initTitleWeb(): void {
+  // The web at a list's end (§12). Registered here, at startup, not at module load: a
+  // module-level call could run inside an import cycle before player.ts has set its hook.
+  onListEnd(webAtListEnd);
   const btn = document.getElementById("web-btn");
   if (btn) titleWeb = mountWeb(btn, "Web");
 }

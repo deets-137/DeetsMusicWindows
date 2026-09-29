@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
-sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts]
-updated: 2026-09-28
+sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts, src/player.ts]
+updated: 2026-09-29
 ---
 # DeetsMusic — the playlist web
 
@@ -695,3 +695,53 @@ the web would start that song again. The second row skips it when you heard most
 7. A web from a different song, an album or an artist: nothing plays.
 8. Rulez: a While row *Always* → *A web from the song playing* = *Plays after the song*. Step 1:
    the song plays on, and the web's other songs sit at the top of Up Next.
+
+## 12. A web when a list ends (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open
+
+His call (2026-09-29): a list that ends with Repeat off goes on like an autoplay feature, with a
+**temporary web** made from it. The player side (the paused reload, the guards) is QUEUE.md
+§The end of a list.
+
+### 12.1 Decisions
+
+| Fork | Decision |
+|---|---|
+| The seed | **The album that ended** (a song seed for any other list: the last song played) |
+| How long it lives | **24 hours**: `expire_days = 1`, the §10 clock (the later of Make and the last play from it) |
+| The switch | Settings › Playback › **Play a web when a list ends** (`listEndWeb`), **on** by default. Off: the list waits at its first song, paused |
+| Where it never runs | a listening room, a station (and the end of a break-out block: the station returns) |
+
+### 12.2 As built
+
+- `web.ts` `webAtListEnd`, registered with `player.onListEnd` in `initTitleWeb` (startup). The
+  hook takes the last song, the finished list and `stillIdle()`.
+- **The seed** (`listEndSeed`): a context `album:<albumKey>` (Library, Home, Rewind) or
+  `search-albums:<catalog id>` is an album seed. A library album has no catalog id: the last
+  song's catalog id finds it (`songId`, §9.4). Any other context is a song seed from the last
+  song. A song with no catalog id (an upload) seeds nothing.
+- **The build** is the right-click row's (`buildWebList`, shared with `webFrom`): the panel's
+  Reach (2 at most for an album), Size, Prefer and seed filter; a song or album seed picks its
+  own genres. The name is the usual "`<Album>` `<Genre>` Web".
+- **Songs you just heard are left out**: every song of the finished list (by catalog or library
+  id). An album seed's own tracks lead a web (§9.1), so without this the web would start the
+  album again.
+- **It plays only if nothing changed** during the build (a few seconds): `stillIdle()` is checked
+  before the playlist is made and again before it plays. A Play, a click, a room: the web does
+  not play. If the check fails after the make, the temporary playlist stays in the Playlists card.
+- It plays with `playTracks(list, 0, "playlist:local:<id>")`, so the play context is the
+  playlist's and §10.3 rule 2 (never deleted while it plays) holds.
+- **Not while the sleep timer waits for an end** (`sleepAtEndArmed`, sleep.ts): the music stops
+  as the timer said.
+- Toast (info): "Playing “X Web”, a web from what just ended" (TOASTS.md §5). A failed build
+  shows nothing: the list waits, paused.
+- Log: `web:listEnd {fire, seed, ctx}` / `{skip: "sleep" | "no seed" | "no songs" | "user acted"}`,
+  then the usual `web:expiry {arm, days: 1}` and `web:make {from: "listEnd"}`.
+- Apple calls: a web build as §5 / §9.5a counts them. An album built before costs 0.
+
+### 12.3 Desk test
+
+QUEUE.md §The end of a list, steps 1–6. Also: 7. The Playlists card lists the web with
+"Expires <tomorrow's date>". 8. An album from Search (a `search-albums:` context) ends: the web's
+log line reads `web:listEnd {fire: "album"}` and `web: built seed=album:<title>`.

@@ -234,6 +234,16 @@ export function initPlayer(): Promise<any> {
     console.log("[player] configured — authorized:", music.isAuthorized);
     return music;
   })();
+  // No developer token yet (an offline first run, main.ts) fails BEFORE configure: forget the
+  // failed start, so the next call configures once the token arrives — no restart
+  // (2026-09-29). A failure after configure keeps the promise: its events are already wired.
+  const mine = initPromise;
+  mine.catch(() => {
+    if (initPromise === mine && !configuredToken) {
+      initPromise = null;
+      diag.warn("player:configureRetryable");
+    }
+  });
   return initPromise;
 }
 
@@ -735,17 +745,101 @@ function maybeFinishQueue(): void {
   if (r === "all" && queue.refillFromPlan(isShuffleOn())) {
     diag.log("player:repeatLap", snap());
     queue.advance();
-    loadFromModel(music).catch((e) => console.warn("[player] repeat lap:", e));
+    // `stopFirst`: MusicKit sits in `ended` here, the state the dead-next heal needed a full
+    // stop() for (a song fed from `ended` played with no index and then played twice).
+    loadFromModel(music, true, { stopFirst: true }).catch((e) => console.warn("[player] repeat lap:", e));
     return;
   }
   if (r === "one") {
     diag.log("player:repeatOne", snap());
-    loadFromModel(music).catch((e) => console.warn("[player] repeat one:", e));
+    loadFromModel(music, true, { stopFirst: true }).catch((e) => console.warn("[player] repeat one:", e));
     return;
   }
   diag.log("player:queueEnd", snap());
   songChangeSeen();
+  const last = queue.getCurrent();
+  const list = finishedList(last);
   queue.advance();
+  afterListEnd(last, list);
+}
+
+// ── The end of a list (QUEUE.md §The end of a list, 2026-09-29) ────────────────────
+// A list that plays out with Repeat off no longer leaves the model empty: Play then started
+// the whole library from "A" (playPause's last branch). The finished list is loaded again at
+// its first song, PAUSED (a record that has ended), and — with Settings › Playback ›
+// "Play a web when a list ends" on (`listEndWeb`) — the end hook (web.ts) builds a temporary
+// web from it and plays that. Never after a station break-out (the station returns) or in a
+// room: maybeFinishQueue runs only in queue mode, and resumeStation is checked here.
+
+/** What a finished list hands the end hook. */
+export interface ListEnd {
+  /** The song that just ended. */
+  last: TrackHandle;
+  /** The finished list, in list order. */
+  list: TrackHandle[];
+  /** True while nothing has changed since the end: the paused list is still Now Playing,
+   *  nothing plays or loads. The hook plays its web only then (a Play in the meantime wins). */
+  stillIdle: () => boolean;
+}
+type ListEndHook = (e: ListEnd) => Promise<boolean>;
+let listEndHook: ListEndHook | null = null;
+/** web.ts registers the web builder here (player.ts cannot import web.ts: web.ts imports it). */
+export function onListEnd(fn: ListEndHook): void {
+  listEndHook = fn;
+}
+
+/** The list that just finished: the context's plan, or after a restart (no plan) the heard
+ *  songs that share the last song's context, oldest first. */
+function finishedList(last: TrackHandle | null): TrackHandle[] {
+  const plan = queue.getPlan();
+  if (plan.length) return plan.slice();
+  if (!last) return [];
+  const ctx = last.context;
+  const same = queue.getHistory().filter((e) => e.played && e.context === ctx);
+  const seen = new Set<string>();
+  const out: TrackHandle[] = [];
+  for (const e of [...same, last]) {
+    const id = e.catalogId ?? e.libraryId;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ catalogId: e.catalogId, libraryId: e.libraryId, context: e.context });
+  }
+  return out;
+}
+
+/** True from the end of a list until its paused reload is fed: MusicKit still sits in `ended`
+ *  with no song while the model has Up Next again, the exact shape onEndedWithoutItem heals. */
+let cueingListEnd = false;
+
+function afterListEnd(last: TrackHandle | null, list: TrackHandle[]): void {
+  if (!music || !last || !list.length || resumeStation || roomBridge || mode !== "queue") return;
+  const m = music;
+  // The finished list at its first song, paused. Fed to MusicKit now (as Stop Station does),
+  // so MusicKit holds a song again: the end-of-song heal (onEndedWithoutItem) never mistakes
+  // the new Up Next for a failed advance, and Play or an Add to Queue take the normal path.
+  cueingListEnd = true;
+  queue.setContext(list, 0, isShuffleOn());
+  const web = setting("listEndWeb") && !!listEndHook;
+  diag.log("player:listEnd", { n: list.length, ctx: last.context ?? null, web });
+  void (async () => {
+    try {
+      await loadFromModel(m, false, { stopFirst: true });
+    } catch (e) {
+      console.warn("[player] list end reload:", e);
+    } finally {
+      cueingListEnd = false;
+    }
+    if (!web || !listEndHook) return;
+    const cued = queue.getCurrent();
+    const gen = loadGen;
+    const stillIdle = (): boolean =>
+      mode === "queue" && !roomBridge && !resumeStation && !isLoading && loadGen === gen && queue.getCurrent() === cued && !music?.isPlaying;
+    const played = await listEndHook({ last, list, stillIdle }).catch((e) => {
+      console.warn("[player] list end web:", e);
+      return false;
+    });
+    if (!played) diag.log("player:listEnd", { web: "none", idle: stillIdle() });
+  })();
 }
 
 // ── Pause source ─────────────────────────────────────────────────────────────
@@ -1382,8 +1476,14 @@ function noteDropped(where: string, sent: string[]): void {
   if (!ask.length) return;
   ask.forEach((id) => healAsked.add(id));
   void (async () => {
-    const got = await Promise.all(ask.map((id) => invoke<string | null>("catalog_heal_one", { libraryId: id }).catch(() => null)));
-    diag.log("player:healAsked", { n: ask.length, healed: got.filter(Boolean).length });
+    // `undefined` = the call failed (offline, a 429): nothing is known, so nothing is banked.
+    const got = await Promise.all(ask.map((id) => invoke<string | null>("catalog_heal_one", { libraryId: id }).catch(() => undefined)));
+    // No catalog copy (null): MusicKit left the id out and nothing can replace it, so bank it
+    // for this session (not on disk: the heal pass looks again in 7 days). Before 2026-09-29
+    // it was fed again at every repair and dropped again each time.
+    const none = ask.filter((_, i) => got[i] === null);
+    none.forEach((id) => deadIds.add(id));
+    diag.log("player:healAsked", { n: ask.length, healed: got.filter(Boolean).length, banked: none.length });
     await refreshHeals(); // playId now answers the catalog copy, or nothing
     await reconcileUpcoming();
   })();
@@ -1474,8 +1574,29 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
   // Any finite-window load IS queue-mode playback — jumps, Play Now, the break-out,
   // Previous re-window all land here, so radio exits in one place.
   exitRadio();
-  const current = queue.getCurrent();
-  if (!current) return;
+  const first = queue.getCurrent();
+  if (!first) return;
+  let current = first;
+  // A current song with no play id (banked dead, or never had one) is fed as nothing: the
+  // window then starts on the first upcoming song while the model still names the dead one,
+  // one song behind, so that upcoming song played twice (2026-09-29, review). Move the model
+  // to the first live song instead, as healDeadNext does. False: nothing live is left.
+  const skipDeadCurrent = (): boolean => {
+    if (playId(current)) return true;
+    const k = queue.getUpcoming().findIndex((h) => !!playId(h));
+    const deadId = current.catalogId ?? current.libraryId;
+    diag.log("player:deadCurrent", { id: deadId ?? null, to: k });
+    if (deadId) noteDeadSongs([deadId]); // the same "Skipped …" toast, once per burst
+    if (k < 0 || !queue.jumpTo(k)) return false;
+    const next = queue.getCurrent();
+    if (!next) return false;
+    current = next;
+    return true;
+  };
+  if (!skipDeadCurrent()) {
+    console.warn("[player] nothing playable in window");
+    return;
+  }
   // A pending grow is moot (this load re-windows); an in-flight one must finish first.
   cancelGrow();
   if (topUp) {
@@ -1567,6 +1688,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
           markDead(bad, "not-found");
           diag.log("player:deadIds", { n: bad.length, attempt, bad: bad.slice(0, 10) });
           console.warn(`[player] ${bad.length} unresolvable id(s) dropped from window; retrying`);
+          if (!skipDeadCurrent()) throw e; // the banked id was the current song's, and none is left
           ({ ids, pos } = buildWindow(ID_FALLBACK_FWD));
           if (!ids.length) throw e; // everything in the window was dead
         }
@@ -1882,6 +2004,15 @@ export async function stopStation(): Promise<void> {
 // playing yet there's no `current` to insert after, so we bootstrap by playing the
 // block as a fresh context. See docs/features/QUEUE.md.
 
+/** The model holds a queue that MusicKit does not: no current song (a restored Up Next), or
+ *  a current song MusicKit has not been fed (a restore with Restore on launch = Song, a
+ *  network drop). An insert then changes the model only; the first Play loads it. */
+function modelOnlyQueue(): boolean {
+  if (mode !== "queue") return false;
+  if (!queue.getCurrent()) return true;
+  return !music?.nowPlayingItem && !music?.isPlaying && !isLoading && !loadingContext;
+}
+
 /** Shared core: filter to playable handles, bootstrap if idle, else mutate model + MusicKit. */
 async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise<void> {
   if (roomBridge) return roomBridge.enqueue(handles, where);
@@ -1891,8 +2022,18 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
   const libOnly = playable.filter((h) => !h.catalogId && h.libraryId).length;
   diag.log("player:enqueue", { where, n: playable.length, libOnly });
 
-  if (!queue.getCurrent()) {
-    await playContext(playable, 0); // nothing playing → start the block
+  if (!queue.getCurrent() && !queue.getUpcoming().length) {
+    await playContext(playable, 0); // nothing at all in the queue → start the block
+    return;
+  }
+  if (modelOnlyQueue()) {
+    // A saved Up Next with nothing in MusicKit (a restore with Restore on launch = Queue,
+    // or the model's song not fed yet): add it to the queue only, his call 2026-09-29.
+    // Before, the block started playing and replaced the saved Up Next. The first Play
+    // loads the model through the normal path (playPause).
+    if (where === "next") queue.playNextMany(playable);
+    else queue.addToQueueMany(playable);
+    diag.log("player:enqueueIdle", { where, n: playable.length });
     return;
   }
   if (mode === "radio") {
@@ -1942,11 +2083,12 @@ export async function insertInQueue(at: number, handles: TrackHandle[]): Promise
   if (!playable.length) return;
   await initPlayer();
   diag.log("player:insert", { at, n: playable.length });
-  if (!queue.getCurrent()) {
-    await playContext(playable, 0);
+  if (!queue.getCurrent() && !queue.getUpcoming().length) {
+    await playContext(playable, 0); // nothing at all in the queue → start the block
     return;
   }
   queue.insertManyAt(at, playable);
+  if (modelOnlyQueue()) return; // a saved Up Next MusicKit does not hold: the first Play loads it
   if (mode === "radio") {
     pendingBreakout = true;
     return;
@@ -2427,8 +2569,10 @@ const isUnavailable = (e: unknown): boolean =>
  * stay exact. (Reconciling MusicKit's upcoming in place and skipping again was tried
  * first and left the index-based follow one song off.) False = nothing left to play.
  */
-async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean> {
-  const nx = queue.peekNext();
+async function healDeadNext(m: any, why: string, bank: boolean, failed?: TrackHandle): Promise<boolean> {
+  // `failed`: the song that failed is the model's current, not the next one (onPlaybackError,
+  // 2026-09-29). It is banked; the jump below still moves to the first live upcoming song.
+  const nx = failed ?? queue.peekNext();
   const id = nx ? playId(nx) : undefined;
   if (!id) return false;
   // Bank only on MusicKit's own word (the skip rejection). The end-of-song shape also
@@ -2436,7 +2580,7 @@ async function healDeadNext(m: any, why: string, bank: boolean): Promise<boolean
   // LIVE songs for the session (observed 2026-09-12); an unbanked re-window onto a truly
   // dead song fails into the id re-feed, whose NOT_FOUND retry banks it properly.
   if (bank) markDead([id], "unavailable");
-  diag.log("player:deadNext", { id, why, bank });
+  diag.log("player:deadNext", { id, why, bank, current: !!failed });
   perf.event("deadNext", { id, why, bank });
   console.warn(`[player] next song ${bank ? "unavailable" : "failed to start"} (${id}); ${bank ? "moving on" : "re-windowing onto it"}`);
   const k = queue.getUpcoming().findIndex((h) => !!playId(h));
@@ -2511,7 +2655,7 @@ let endRetried: unknown = null;
 function onEndedWithoutItem(): void {
   const m = music;
   const S = window.MusicKit?.PlaybackStates;
-  if (!m || !S || endHealing || loadingContext || isLoading || mode !== "queue") return;
+  if (!m || !S || endHealing || cueingListEnd || loadingContext || isLoading || mode !== "queue") return;
   const st = m.playbackState;
   if ((st !== S.ended && st !== S.completed) || m.nowPlayingItem || !queue.getUpcoming().length) return;
   const items: any[] = m.queue?.items ?? [];
@@ -2566,7 +2710,15 @@ function onPlaybackError(e: any): void {
     onMusicKitTrouble(msg, "playbackError");
     return;
   }
-  healDeadNext(music, msg, true).catch((err) => console.warn("[player] dead-next heal:", err));
+  // Which song is unavailable? When MusicKit already names the model's current as its
+  // now-playing item and that song never made sound (heardEntry, the rule the end-of-song
+  // heal uses), MusicKit advanced into it and it failed: bank IT. Before 2026-09-29 this
+  // always banked peekNext(), the song AFTER the failed one — a live song, skipped for 7 days.
+  // A current that was heard is the old song still on screen: the next one failed, as before.
+  const cur = queue.getCurrent();
+  const npId: string | undefined = music.nowPlayingItem?.id;
+  const failedIsCurrent = !!cur && !!npId && isEntry(cur, npId) && heardEntry !== cur;
+  healDeadNext(music, msg, true, failedIsCurrent && cur ? cur : undefined).catch((err) => console.warn("[player] dead-next heal:", err));
 }
 
 // ── Apple trouble recovery (TOASTS.md §Apple health) ─────────────────────────────
@@ -3025,6 +3177,9 @@ export function getAppliedGain(): number {
 
 /** Pause, if anything plays. No sign-in check: pausing never needs one. */
 export async function pausePlayback(why = "sleep"): Promise<void> {
+  // A deliberate pause (sleep timer, rule, lost speaker): a recovery load's check must not
+  // start the music again (2026-09-29). Stamped even when silent: the load may still start.
+  lastUserPauseAt = performance.now();
   if (!music?.isPlaying) return;
   notePause(why);
   await music.pause();
