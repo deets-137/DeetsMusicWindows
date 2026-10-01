@@ -42,7 +42,7 @@ import {
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
 import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
-import { addSquareHTML } from "./add-square";
+import { addSquareHTML, markCellHTML } from "./add-square";
 import { unreleasedHint } from "./release";
 import { fullViews, FULL_LIB, type FullViews } from "./library-full";
 
@@ -388,19 +388,29 @@ export interface SongOpts {
 
 // ── the columns of a grown card (CARD-GROW.md §9a) ──────────────────────────────
 // Wide: Title · Artist · Album · Length · ♥. Full adds Genre · Year (· Plays where the
-// tallies are known). An album's list keeps its track number as the lead cell and drops the
-// Album column: every row shares it.
+// tallies are known). An album's list (`numbered`) leads with the mark column (no header:
+// the ♥ square in the Lib view; + / ✓ / ♥ in the Full view, CARD-GROW.md §9b) and the track
+// number, and drops the Album and ♥ columns: every row shares the album, and the mark is the ♥.
 const HEART_MARK =
   '<svg class="lib-row__heart-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>';
 const END = "lib-cols__cell--end";
-function songColumns(cols: ColumnMode, o: SongOpts): ColumnSpec[] {
+function songColumns(cols: ColumnMode, o: SongOpts, list: () => Track[]): ColumnSpec[] {
+  // The # column is as wide as the album's widest number, so the gap on each side of a
+  // number is the card's column gap (his ask, 2026-10-01). The "#↑" header may be wider:
+  // it spills left into the mark column's empty header (styles.css).
+  const digits = o.numbered ? String(Math.max(1, ...list().map((t, i) => t.trackNumber ?? i + 1))).length : 0;
   const specs: ColumnSpec[] = [
-    o.numbered ? { key: "lead", label: "#", sortKey: "track", width: "auto", cls: END } : { key: "lead", label: "", width: "auto" },
+    ...(o.numbered
+      ? [
+          { key: "mark", label: "", width: "var(--grow-col-mark)" },
+          { key: "lead", label: "#", sortKey: "track", width: `calc(${digits} * var(--grow-col-num-digit))`, cls: `${END} lib-cols__cell--spill` },
+        ]
+      : [{ key: "lead", label: "", width: "auto" }]),
     { key: "title", label: "Title", sortKey: "az", width: "minmax(0, 2fr)" },
     { key: "artist", label: "Artist", sortKey: "artist", width: "minmax(0, 1.3fr)" },
     ...(o.hideCover ? [] : [{ key: "album", label: "Album", sortKey: "album", width: "minmax(0, 1.3fr)" }]),
     { key: "time", label: "Length", sortKey: "time", width: "var(--grow-col-time)", cls: END },
-    { key: "heart", label: "♥", width: "var(--grow-col-heart)", cls: "lib-cols__cell--center" },
+    ...(o.numbered ? [] : [{ key: "heart", label: "♥", width: "var(--grow-col-heart)", cls: "lib-cols__cell--center" }]),
   ];
   if (cols === "full") {
     specs.push(
@@ -412,14 +422,16 @@ function songColumns(cols: ColumnMode, o: SongOpts): ColumnSpec[] {
   return specs;
 }
 function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): string {
-  const lead = o.numbered ? `<span class="lib-row__num lib-row__cell--end">${t.trackNumber ?? idx + 1}</span>` : rowThumb(t.artwork, false, t.title);
+  const lead = o.numbered
+    ? `<span class="lib-row__mark">${markCellHTML(t, !!o.mark)}</span><span class="lib-row__num lib-row__cell--end">${t.trackNumber ?? idx + 1}</span>`
+    : rowThumb(t.artwork, false, t.title);
   const cells = [
     lead,
-    `<span class="lib-row__cell lib-row__title">${esc(t.title)}${explicitBadge(t)}${o.mark ? markSquare(t) : ""}</span>`,
+    `<span class="lib-row__cell lib-row__title">${esc(t.title)}${explicitBadge(t)}${o.mark && !o.numbered ? markSquare(t) : ""}</span>`,
     `<span class="lib-row__cell lib-row__artist">${esc(t.artistName)}</span>`,
     ...(o.hideCover ? [] : [`<span class="lib-row__cell lib-row__album">${esc(t.albumName ?? "")}</span>`]),
     `<span class="lib-row__cell lib-row__cell--end lib-row__time">${fmtClock(t.durationMs)}</span>`,
-    `<span class="lib-row__cell lib-row__cell--center lib-row__heart">${isLoved(t) ? HEART_MARK : ""}</span>`,
+    ...(o.numbered ? [] : [`<span class="lib-row__cell lib-row__cell--center lib-row__heart">${isLoved(t) ? HEART_MARK : ""}</span>`]),
   ];
   if (cols === "full") {
     cells.push(
@@ -471,7 +483,7 @@ export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<T
             t,
             !!o.mark,
           ),
-    columns: (cols) => songColumns(cols, o),
+    columns: (cols) => songColumns(cols, o, list),
     isSelected: o.selectedId ? (t) => trackId(t) === o.selectedId : undefined,
     // Click a song → play it and queue the rest of THIS list from here, in the
     // current sort order (the engine hands us the live sorted view).

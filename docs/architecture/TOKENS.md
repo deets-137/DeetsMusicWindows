@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 553 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 555 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -669,6 +669,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-rail-fs` | `10px` | — |  |
 | `--grow-col-time` | `3.6em` | — |  |
 | `--grow-col-heart` | `2em` | — |  |
+| `--grow-col-mark` | `var(--icon-lg)` | — | an album's mark column: one add-square (CARD-GROW.md §9b) |
+| `--grow-col-num-digit` | `1ch` | — | an album's # column: one digit; the column is as many as its widest number |
 | `--grow-col-year` | `3.4em` | — |  |
 | `--grow-col-plays` | `3.6em` | — |  |
 | `--fly-dur` | `0.42s` | press, ocean | -- chip flight (handoff.ts, ARTIST-VIEW.md §5) -- A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease. --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing. Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base = a straight glide that shrinks into the card (Glass uses it). |

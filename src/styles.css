@@ -4144,7 +4144,9 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
 .lib-row--cols .lib-row__artist { font-size: var(--fs-text); }
 .lib-row__cell--end    { text-align: end; font-variant-numeric: tabular-nums; }
 .lib-row__cell--center { text-align: center; }
-.lib-row--cols .lib-row__num { text-align: end; font-variant-numeric: tabular-nums; }
+/* width: the plain row's cover-slot width would overflow the # column, so the numbers ran
+   past the header's end (CARD-GROW.md §9b). */
+.lib-row--cols .lib-row__num { width: auto; min-width: 0; text-align: end; font-variant-numeric: tabular-nums; }
 .lib-row__title .lib-src-badge { display: inline-block; vertical-align: -0.15em; margin-left: var(--space-1); }
 .lib-row__heart-mark { width: var(--icon-sm); height: var(--icon-sm); fill: var(--title); vertical-align: middle; }
 .lib-cols {
@@ -4178,6 +4180,9 @@ button.lib-cols__cell { cursor: pointer; display: inline-flex; align-items: cent
 button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .lib-cols__cell--end    { text-align: end; justify-content: flex-end; }
 .lib-cols__cell--center { text-align: center; justify-content: center; }
+/* An album's "#↑" (CARD-GROW.md §9b): the column is only as wide as the widest track number, so
+   the label and its arrow spill left, into the mark column's empty header, and are never cut. */
+.lib-cols__cell--spill { overflow: visible; text-overflow: clip; }
 .lib-cols__arrow { flex: 0 0 auto; width: var(--caret-size); height: var(--caret-size); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
 /* The letter rail: A–Z down the right side of a grown card's list, beside the scroller (the
@@ -4268,6 +4273,14 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .lib-row:hover .lib-row__title > .add-square:not([hidden]), .lib-row__title > .add-square--mark.is-in,
 .lib-row__title > .add-square.is-busy { display: inline-grid; }
 .lib-row.is-unreleased { cursor: default; opacity: var(--unreleased-opacity); }
+/* An album's mark column (CARD-GROW.md §9b): one square at rest, never cut by the title. Lib:
+   the ♥ square, filled when loved. Full: the + / ✓ square, or the filled ♥ in its place while
+   the song is in your library and loved. */
+.lib-row__mark { display: grid; place-items: center; }
+.lib-row__mark > .add-square--cell:not([hidden]) { display: grid; }
+.lib-row__mark > .love-square:not([hidden]) ~ .add-square { display: none; }
+.panel__action.love-square svg { fill: none; stroke: currentColor; }
+.panel__action.love-square.is-on svg { fill: currentColor; }
 
 /* ── Rulez (RULEZ.md §6): a list of rules; a press opens one to its sentence ──────────────── */
 .rulez { overflow-y: auto; overflow-x: hidden; }

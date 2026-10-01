@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
-sources: [src/card-grow.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-09-28
+sources: [src/card-grow.ts, src/add-square.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
+updated: 2026-10-01
 ---
 # DeetsMusic — growing a card
 
@@ -248,6 +248,83 @@ adds two things to the Library song list, both keyed off `data-grow`:
 
 Both are Library-only in the MVP. The Playlist drill and the History card use the same row
 shape and can take the columns later with a selector change.
+
+## 9b. An album's song columns: the mark column (his calls, 2026-10-01)
+
+> **Part:** built · 2026-10-01 · desk test: Claude's shots run passed (below); his eye open
+
+**The faults on live (0.25.x).** In a grown album the track numbers do not sit under the "#"
+header: the lead column is `width: auto`, and each row is its own grid, so the header and the
+rows size it differently. The Add square (+ / ✓) of the Full view sits inside the Title cell,
+after the title, so a long title's ellipsis cuts it off.
+
+**Scope: album lists only.** These are the two `songsGrouping` calls with `numbered: true`: the
+Library's album drill (`library-card.ts`, the Lib view) and Apple's whole album
+(`library-full.ts`, the Full view, also used by Search). Library Songs, playlists, History and
+the artist view keep §9a's columns and their ♥ column. Full and Lib exist in many places, so an
+album drilled from the Library can show either view.
+
+**The columns.** Mark · # · Title · Artist · Length (· Genre · Year in a full card). The ♥ column
+is removed. The mark column is the first column and has no header label. The # column is as wide as
+the album's widest track number, so the numbers sit under the header and the gap on each side
+of a number is the card's column gap (his ask, 2026-10-01). The "#↑" header spills left into
+the empty mark header (`.lib-cols__cell--spill`).
+
+**What the mark column shows:**
+
+| View | Song state | Mark | A click |
+|---|---|---|---|
+| Lib | loved | filled ♥ | un-loves it: hollow ♥ |
+| Lib | not loved | hollow ♥ | loves it: filled ♥ |
+| Full | not in your library | + (the Add square) | adds it: ✓ |
+| Full | in your library | ✓ (the Add square, marked) | as today |
+| Full | in your library and loved | filled ♥ | un-loves it: back to ✓ |
+
+The right-click menu still loves a song. In the Full view a song is loved from the menu, and
+then the ✓ becomes the filled ♥. Love goes through `setLoved` (favorites.ts), so a refused Apple
+write flips the mark back and shows the existing toast. The mark follows `onFavoritesChange`.
+
+**Not changed:** the resting (not grown) album rows, and the tall state, which keep the plain row.
+
+**Build notes.** `songColumns` / `songColsHTML` (library-card.ts) take the mark column when
+`numbered` is set; the Add square leaves the Title cell. The heart button joins the icon-square
+control family of the Add square (UI-ARCHITECTURE.md §2a): same size, fill and hover. New
+hover hints go in the ONBOARDING.md §1 ledger.
+
+**His calls on the last two points (2026-10-01):** the hints are *Add to Favorites* (hollow)
+and *Remove from Favorites* (filled). When the ♥ is not offered (`favoriteOffered` false:
+consent off, or no catalog id), the Lib-view cell is empty.
+
+**As built (2026-10-01).** `markCellHTML` (add-square.ts) draws the cell; the ♥ square is a
+`.panel__action.add-square.love-square` with `data-love`, heard by the same capture-phase click
+as the Add square, so a press never plays the row or starts a drag (`isAddSquare` takes both).
+It repaints on `onFavoritesChange` and on every library change. In the Full view the cell
+holds the ♥ then the Add square; CSS hides the Add square while the ♥ shows. The + shows at
+rest in this column (before, it waited for the row hover). Tokens: `--grow-col-mark`
+(one square, `--icon-lg`) and `--grow-col-num-digit` (1ch; the # column is the widest number's digits times it). The artist's Full song list (not an
+album) keeps the square in its title cell and the ♥ column.
+
+**Desk test.** Grow (Fill) a card on an album, in each view:
+1. Lib view: the "#" header sits over the numbers. The first column shows a ♥ on every row:
+   filled on loved songs. Press a hollow ♥: it fills, the song does not play. Press it again:
+   it empties. Right-click › Favorite on another row: its ♥ fills.
+2. Full view (the Full chip): songs you have show ✓, the others show +, both at rest, also
+   on a long title. Press +: it turns, then shows ✓. Right-click › Favorite on a ✓ row: the ✓
+   becomes a filled ♥. Press the ♥: the ✓ comes back.
+3. Library Songs, a playlist, History: the ♥ column is still there and unchanged.
+4. Turn off Add to Library in Settings: the Lib-view cells are empty; the Full-view ✓ stays.
+
+**Claude's run (2026-10-01, shots on the demo, Max, Press; the list is
+[ops/checks/album-mark.json](../ops/checks/album-mark.json)).** Steps 1–4 passed on the probes
+and the pictures. The ♥ press did not start the song. The run found the real cause of the
+numbers fault: in a column, `.lib-row__num` kept the plain row's cover-slot width
+(`--lib-row-art`, 36 px), wider than the # column, so the numbers ran 5 px past the header's
+end. `.lib-row--cols .lib-row__num` now sets `width: auto`; after it the numbers and the "#"
+end on the same pixel. A second run after the column was sized to its digits: mark to number
+9 px, number to title 8 px, the column gap 8 px (the 1 px is the number's smaller type against
+the `ch` of the row's type). **Not reached:** the + state. Every song of the demo album is in the
+library, so a + to ✓ press is a hand test on the real app (an album you have only part of, in
+the Full view).
 
 ## 9. Wide cards (hand-designed after the MVP)
 

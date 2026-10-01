@@ -1,0 +1,316 @@
+{
+  "about": "An album's grown song columns (CARD-GROW.md §9b): the mark column (Lib ♥; Full ✓ / ♥), the # column under its header, the ♥ column kept on Library Songs, and Add to Library off. Max, Press, Fill on the right card.",
+  "desk_test": "cards/CARD-GROW.md §9b, steps 1–4",
+  "made": "2026-10-01",
+  "pass": "lib: numRights all equal headerRight; hearts off/on follow the presses; the Now Playing title does not change on a ♥ press; the menu Favorite fills row 4. full: rows read check (heart on the loved song), titleSquares 0; the menu Favorite turns the ✓ to a ♥ (addShown false); the ♥ press brings the ✓ back. others: the Library Songs heads still hold ♥. add-off: stored off, Lib all hidden, Full all check. The + state is not in the demo (every song of this album is in the library).",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/album-mark.json  → shots/album-mark/<version>/",
+  "looks": [
+    {
+      "theme": "moonlight",
+      "skin": "press"
+    }
+  ],
+  "shots": [
+    {
+      "id": "lib",
+      "about": "Step 1: Lib view. Fill the album; press a hollow ♥ twice; right-click › Favorite on another row.",
+      "kind": "clip",
+      "source": "demo",
+      "size": "max",
+      "seconds": 9,
+      "steps": [
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "type": "Salt & Signal",
+          "delay": 30
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "eval": "__grow.grow('right', 'full', 'desk')"
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "snap": "lib-grown"
+        },
+        {
+          "probe": "(() => { const v = document.querySelector('[data-slot=right] .lib-view[data-cols]'); const r = v.querySelector('.lib-row'); const m = r.querySelector('.lib-row__mark').getBoundingClientRect(); const n = r.querySelector('.lib-row__num'); const nb = n.getBoundingClientRect(); const rg = document.createRange(); rg.selectNodeContents(n); const tb = rg.getBoundingClientRect(); const t = r.querySelector('.lib-row__title').getBoundingClientRect(); const a = r.querySelector('.lib-row__artist').getBoundingClientRect(); const h = v.querySelector('.lib-cols [data-col-sort=track]'); const hr = document.createRange(); hr.selectNodeContents(h); const hb = hr.getBoundingClientRect(); return JSON.stringify({ markToDigit: Math.round(tb.left - m.right), digitToTitle: Math.round(t.left - tb.right), titleToArtist: Math.round(a.left - t.right), colGap: getComputedStyle(r).columnGap, numCell: Math.round(nb.width), header: [Math.round(hb.left), Math.round(hb.right)], markLeft: Math.round(m.left), digitRight: Math.round(tb.right) }); })()"
+        },
+        {
+          "probe": "(() => { const v = document.querySelector('[data-slot=right] .lib-view[data-cols]'); if (!v) return 'no cols'; const h = v.querySelector('.lib-cols [data-col-sort=track]').getBoundingClientRect(); const n = [...v.querySelectorAll('.lib-row__num')].map(e => Math.round(e.getBoundingClientRect().right)); return JSON.stringify({ template: v.style.getPropertyValue('--cols-template'), headerRight: Math.round(h.right), numRights: n, heads: [...v.querySelectorAll('.lib-cols__cell')].map(c => c.textContent), hearts: [...v.querySelectorAll('.lib-row')].map(r => { const b = r.querySelector('[data-love]'); return b ? (b.hidden ? 'hidden' : b.classList.contains('is-on') ? 'on' : 'off') : 'none'; }), adds: v.querySelectorAll('[data-add]').length }); })()"
+        },
+        {
+          "probe": "document.querySelector('[data-slot=np]').innerText.split('\\n').slice(0,3).join(' | ')"
+        },
+        {
+          "click": "[data-slot=right] .lib-row[data-idx=\"0\"] button[data-love]"
+        },
+        {
+          "wait": 500
+        },
+        {
+          "snap": "lib-loved"
+        },
+        {
+          "probe": "(() => { const b = document.querySelector('[data-slot=right] .lib-row[data-idx=\"0\"] button[data-love]'); return JSON.stringify({ on: b.classList.contains('is-on'), title: b.title, np: document.querySelector('[data-slot=np]').innerText.split('\\n').slice(0,2).join(' | ') }); })()"
+        },
+        {
+          "click": "[data-slot=right] .lib-row[data-idx=\"0\"] button[data-love]"
+        },
+        {
+          "wait": 500
+        },
+        {
+          "probe": "(() => { const b = document.querySelector('[data-slot=right] .lib-row[data-idx=\"0\"] button[data-love]'); return JSON.stringify({ on: b.classList.contains('is-on'), title: b.title }); })()"
+        },
+        {
+          "eval": "(() => { const r = document.querySelector('[data-slot=right] .lib-row[data-idx=\"3\"] .lib-row__title').getBoundingClientRect(); document.querySelector('[data-slot=right] .lib-row[data-idx=\"3\"] .lib-row__title').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 5, button: 2 })); })()"
+        },
+        {
+          "wait": 500
+        },
+        {
+          "snap": "lib-menu"
+        },
+        {
+          "eval": "[...document.querySelectorAll('[role=menuitem]')].find(b => /^(Favorite|Unfavorite)/.test(b.textContent.trim()))?.click()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "snap": "lib-menu-loved"
+        },
+        {
+          "probe": "JSON.stringify([...document.querySelectorAll('[data-slot=right] .lib-row')].map(r => { const b = r.querySelector('[data-love]'); return b ? (b.hidden ? 'hidden' : b.classList.contains('is-on') ? 'on' : 'off') : 'none'; }))"
+        }
+      ],
+      "covers": "cards/CARD-GROW.md"
+    },
+    {
+      "id": "full",
+      "about": "Step 2: Full view. + and ✓ at rest; right-click › Favorite on a ✓ row turns it to ♥; press the ♥: ✓ again.",
+      "kind": "clip",
+      "source": "demo",
+      "size": "max",
+      "seconds": 9,
+      "steps": [
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "type": "Salt & Signal",
+          "delay": 30
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "eval": "__grow.grow('right', 'full', 'desk')"
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "eval": "document.querySelector('[data-slot=right] [data-coll-views] [data-split=full]').click()"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "snap": "full-grown"
+        },
+        {
+          "probe": "(() => { const v = document.querySelector('[data-slot=right] .lib-view[data-cols]'); if (!v) return 'no cols'; const st = (r) => { const l = r.querySelector('[data-love]'); const a = r.querySelector('[data-add]'); const vis = (e) => e && getComputedStyle(e).display !== 'none' && !e.hidden; return vis(l) ? (l.classList.contains('is-on') ? 'heart' : 'heart-off?') : vis(a) ? (a.classList.contains('is-in') ? 'check' : 'plus') : 'empty'; }; return JSON.stringify({ heads: [...v.querySelectorAll('.lib-cols__cell')].map(c => c.textContent), rows: [...v.querySelectorAll('.lib-row')].map(r => r.querySelector('.lib-row__title').textContent.trim().slice(0, 18) + ':' + st(r)), titleSquares: v.querySelectorAll('.lib-row__title [data-add]').length }); })()"
+        },
+        {
+          "eval": "window.__markRow = [...document.querySelectorAll('[data-slot=right] .lib-row')].find(r => { const a = r.querySelector('[data-add]'); const l = r.querySelector('[data-love]'); return a && a.classList.contains('is-in') && l && l.hidden; })?.dataset.idx ?? null"
+        },
+        {
+          "probe": "String(window.__markRow)"
+        },
+        {
+          "eval": "(() => { const t = document.querySelector('[data-slot=right] .lib-row[data-idx=\"' + window.__markRow + '\"] .lib-row__title'); const r = t.getBoundingClientRect(); t.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 5, button: 2 })); })()"
+        },
+        {
+          "wait": 500
+        },
+        {
+          "eval": "[...document.querySelectorAll('[role=menuitem]')].find(b => /^Favorite/.test(b.textContent.trim()))?.click()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "snap": "full-loved"
+        },
+        {
+          "probe": "(() => { const r = document.querySelector('[data-slot=right] .lib-row[data-idx=\"' + window.__markRow + '\"]'); const l = r.querySelector('[data-love]'); const a = r.querySelector('[data-add]'); return JSON.stringify({ heart: !l.hidden && l.classList.contains('is-on'), title: l.title, addShown: getComputedStyle(a).display !== 'none' }); })()"
+        },
+        {
+          "eval": "document.querySelector('[data-slot=right] .lib-row[data-idx=\"' + window.__markRow + '\"] button[data-love]').click()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "snap": "full-unloved"
+        },
+        {
+          "probe": "(() => { const r = document.querySelector('[data-slot=right] .lib-row[data-idx=\"' + window.__markRow + '\"]'); const l = r.querySelector('[data-love]'); const a = r.querySelector('[data-add]'); return JSON.stringify({ heartHidden: l.hidden, check: getComputedStyle(a).display !== 'none' && a.classList.contains('is-in') }); })()"
+        }
+      ],
+      "covers": "cards/CARD-GROW.md"
+    },
+    {
+      "id": "others",
+      "about": "Step 3: Library Songs and a playlist, filled: the ♥ column is still there.",
+      "kind": "clip",
+      "source": "demo",
+      "size": "max",
+      "seconds": 6,
+      "steps": [
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "type": "Salt & Signal",
+          "delay": 30
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "eval": "__grow.grow('right', 'full', 'desk')"
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "click": "[data-slot=right] .panel__back, [data-slot=right] [data-back]"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "snap": "library-grown"
+        },
+        {
+          "probe": "(() => { const v = document.querySelector('[data-slot=right] .lib-view[data-cols]'); return v ? JSON.stringify([...v.querySelectorAll('.lib-cols__cell')].map(c => c.textContent)) : 'no cols: ' + document.querySelector('[data-slot=right] .panel__title')?.textContent; })()"
+        }
+      ],
+      "covers": "cards/CARD-GROW.md"
+    },
+    {
+      "id": "add-off",
+      "about": "Step 4: Add to Library off. Lib-view cells are empty; the Full view keeps the ✓.",
+      "kind": "clip",
+      "source": "demo",
+      "size": "max",
+      "seconds": 8,
+      "steps": [
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "type": "Add to Library and",
+          "delay": 30
+        },
+        {
+          "wait": 700
+        },
+        {
+          "snap": "off-compass"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "click": "button[data-row=\"libraryadd\"]"
+        },
+        {
+          "wait": 500
+        },
+        {
+          "snap": "off-row"
+        },
+        {
+          "probe": "JSON.stringify({ stored: localStorage.getItem('deets.libraryAdd'), checked: document.querySelector('button[data-row=\"libraryadd\"]')?.getAttribute('aria-checked') })"
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "type": "Salt & Signal",
+          "delay": 30
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "eval": "__grow.grow('right', 'full', 'desk')"
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "snap": "off-lib"
+        },
+        {
+          "probe": "JSON.stringify([...document.querySelectorAll('[data-slot=right] .lib-row')].map(r => { const b = r.querySelector('[data-love]'); return b ? (b.hidden ? 'hidden' : 'shown') : 'none'; }))"
+        },
+        {
+          "eval": "document.querySelector('[data-slot=right] [data-coll-views] [data-split=full]').click()"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "snap": "off-full"
+        },
+        {
+          "probe": "JSON.stringify([...document.querySelectorAll('[data-slot=right] .lib-row')].map(r => { const a = r.querySelector('[data-add]'); const l = r.querySelector('[data-love]'); return (l && !l.hidden ? 'heart ' : '') + (a ? (getComputedStyle(a).display === 'none' || a.hidden ? 'add-hidden' : a.classList.contains('is-in') ? 'check' : 'plus') : 'no-add'); }))"
+        }
+      ],
+      "covers": "cards/CARD-GROW.md"
+    }
+  ]
+}

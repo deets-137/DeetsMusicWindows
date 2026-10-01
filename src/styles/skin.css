@@ -697,6 +697,8 @@
   --grow-rail-fs:    10px;
   --grow-col-time:   3.6em;
   --grow-col-heart:  2em;
+  --grow-col-mark:   var(--icon-lg);   /* an album's mark column: one add-square (CARD-GROW.md §9b) */
+  --grow-col-num-digit: 1ch;           /* an album's # column: one digit; the column is as many as its widest number */
   --grow-col-year:   3.4em;
   --grow-col-plays:  3.6em;
 
