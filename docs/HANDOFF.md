@@ -263,6 +263,18 @@ demo, for the user guide and a marketing overview. F1–F4 closed and the pictur
 **After that:** the telemetry pass's last part, the AirPlay stall and switch timing (AIRPLAY.md
 §13.2, a crate change too).
 
+**On the docket — Friends see your picks and your Diary** (his call 2026-10-01, not designed;
+**he talks it through 2026-10-02**, aiming for a meaningful integration): [FRIENDS.md
+§20](integrations/FRIENDS.md) has today's facts and the questions. The user guide's story (a
+local web of picks and diaries among friends, no algorithm, docs/guide/marketing.md §1) waits
+for it. Today a friend sees only what you play now; Song of the Day goes to a Discord channel;
+the Diary is private.
+
+**The user guide is a wiki** (his calls 2026-10-01): one page per card or workflow, each with a
+walkthrough video, the steps, and FAQs that link to that workflow's open issues. "The workflow
+is the product." [DOCS-ORG.md §13.10](DOCS-ORG.md), folders and positioning in
+[guide/marketing.md](guide/marketing.md) §1. Next: the outline block for each page.
+
 **On the docket — Layout** (designed 2026-09-27, every fork his, not built):
 [LAYOUT.md](features/LAYOUT.md). Two Settings › Window rows set the artist view's order and
 hide its shelves, and set each button on a fixed list (§6) to On / Faded / Hidden. Each part is

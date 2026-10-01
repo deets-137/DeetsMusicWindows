@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
 sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts]
-updated: 2026-09-29
+updated: 2026-10-01
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
@@ -1657,3 +1657,25 @@ Needs the worker change. Run it locally first: `npx wrangler@4 dev --port 8795` 
    before (no `key`, `legacy`).
 
 Put `friendsUrl` back to `""` after the test.
+
+## 20. Friends see your picks and your Diary (on the docket, 2026-10-01)
+> **Part:** idea · 2026-10-01
+
+**His call (2026-10-01):** put it on the docket before the user guide tells the story. The
+guide's positioning (docs/guide/marketing.md §1) is a local web among friends: Songs of the Day
+and Diary entries that friends see and share, with no algorithm. The app does not do this yet,
+so the guide waits for it.
+
+**What a friend gets today (read 2026-10-01):**
+- **Presence only** (§4): the song you play now, its artist and artwork, how long ago, Play this,
+  and Join when you host a room. One switch, Share what I play, and Pause sharing for an hour.
+- **Song of the Day** posts to one Discord channel through a webhook (DeetsOTD.md §8.3). Friends
+  in the app do not see it.
+- **The Diary is private** (DIARY.md §10): Export copies one text; agents read it only after
+  *Agents use the Diary* is on; it is not in the `query` export.
+
+**Not designed.** Every fork is his. The questions a design must answer, for that sitting:
+what is shared (picks, Diary entries, scores, notes); who sees it (all friends, some, one);
+opt-in per item or one switch; where a friend sees it (the friend row, Home, a card); whether a
+friend can answer it (a reply, a ♥, Add to Diary); the worker's storage and its free-tier cost
+(§5 has the limits); and what stays on the PC.

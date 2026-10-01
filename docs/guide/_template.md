@@ -22,6 +22,9 @@ consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.
 
 ![Lorem ipsum: what the reader sees in the app](../assets/quick-settings/window.png)
 
+<!-- The walkthrough video of this workflow (DOCS-ORG §13.10): a shot id and look, never a
+     file path (SHOTS.md §6). Example: shot: playlist-web-walkthrough · moonlight-glass -->
+
 ## Sit amet consectetur
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam, quis
@@ -59,6 +62,11 @@ Consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolor
 
 **Ut enim ad minim veniam?**
 Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+**Open issues for this workflow**
+<!-- Links to the open issues and bugs for this workflow (DOCS-ORG §13.10). Where the links
+     come from is open. This block also carries the "50 cents" bit (marketing.md §1); the
+     owner writes its words. -->
 
 ## Sub-sections that were their own page
 

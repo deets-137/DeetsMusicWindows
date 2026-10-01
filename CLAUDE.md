@@ -128,6 +128,9 @@ old installs' Guide button opens.
 - `AIRPLAY.md` — play on a HomePod; the shared sender crate.
 - `ROOMS.md` — listening rooms; the worker is `../DeetsMusicRooms`.
 - `FRIENDS.md` — Friends and Discord Rich Presence; the worker is `../DeetsMusicFriends`.
+  §20 is ON THE DOCKET (an idea, 2026-10-01, every fork his): friends see your Songs of the Day
+  and your Diary, a local web of picks with no algorithm. Today a friend sees only presence;
+  the Diary is private. Do not tell a user it exists.
 - `DeetsOTD.md` — Song of the Day and its outlets.
 - `PROVIDERS.md` — Apple Music and Spotify in one library.
 - `LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users.
@@ -150,9 +153,11 @@ old installs' Guide button opens.
 **`docs/ideas/`** — not built; never tell a user the app does these. `SECRETS-AND-CSP.md` —
 designed 2026-09-29: a CSP for the webview; DPAPI for the Apple token and Last.fm session.
 **`docs/guide/`** — the
-user guide for deets.solutions (DOCS-ORG.md §13). `SHOTS.md` — the pictures and clips of each
+user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
+with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
 feature, made by a script from the demo; for the guide, a marketing overview, and visual
-debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins.
+debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `marketing.md` — the
+shipped features as a tech spec, with the shot of each, for the intro video; he directs it (§1).
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

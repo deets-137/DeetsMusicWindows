@@ -874,6 +874,92 @@ uploads each image a written page uses to R2 beside `guide.json`, and the build 
 path — version-locked like the text. **B** the page links the image on GitHub `main` — no
 upload, but a picture can show a newer app than the Download button. Recommendation: **A**.
 
+### 13.10 The wiki: one page per workflow (the owner, 2026-10-01)
+> **Part:** designed · 2026-10-01 · forks §13.10 (the FAQ links)
+
+**His framing: the workflow is the product.** This replaces U9's eight task pages. U1–U8 hold:
+the source is `docs/guide/`, Claude keeps the outline, he writes every word, a page publishes
+only at `state: written`.
+
+- **Folders, roughly one per card or workflow** (confirmed): Listen on purpose · Get started ·
+  Play · Find · Library · Playlists · Your listening · The look · Sound · Make it yours ·
+  Together · Connect · Help · the Rulez appendix. The pages in each, and the positioning that
+  orders them, are in [guide/marketing.md](guide/marketing.md) §1.
+- **A page has three parts:** a video that walks through the workflow (from the shots runner,
+  SHOTS.md), the steps, and short FAQ-style instructions at the bottom. The FAQ links to the
+  open issues and bugs for that workflow. That issue space also carries his "50 cents" bit
+  (marketing.md §1, kept unmodified); its words are his.
+- **The positioning** (marketing.md §1): no algorithm of our own; a conscious engagement with
+  Apple's; friends' recommendations; deep ways to customize and automate.
+
+**Why the issue links (his words, 2026-10-01):** they give users a way to see all open tickets
+and community requests, and they are transparent about the direction of the app.
+
+**His direction (2026-10-01): the workflow key is the Bugs form's area dropdown.** One list of
+areas ties the in-app report, the issue, and the wiki page together. Read against the code the
+same day:
+- The dropdown is `REPORT_AREAS` in `src/settings-card.ts`: Playback · Sign-in · Library or
+  playlists · AirPlay · Updates · Something else (6 values).
+- **The area never leaves the PC today.** It only picks which log lines go with the report
+  (`area_tags` in `src-tauri/src/report.rs`). The post to DeetsSupport carries `kind`, `title`,
+  `body` and `meta: { version, log }`, with no area.
+- The site's boards (`DeetsSolutions/deetsmusic/deetsmusic.js`, `KINDS = ["suggestion",
+  "issue"]`) have no area either, and a post made on the site has no dropdown.
+
+#### 13.10a The area: his calls (2026-10-01) — designed, NOT built
+> **Part:** designed · 2026-10-01
+
+His word: "we're documenting all of this but not implementing yet, there's many things in
+motion." A first build was started and fully reverted the same day; no code changed.
+
+| Fork | His call |
+|---|---|
+| The area list | **The workflow folders.** Sign-in and Updates fold into Get started, AirPlay into Sound. "Listen on purpose" and "Help" are not areas (they hold no workflow). |
+| Where the area lives | **A column on `posts`**, lined up with a **`version` column**, so status can be tracked by area and by version. A live D1 migration is fine (his words: "not worried about live migration"). |
+| The site's post form | **The same dropdown.** |
+| Old posts with no area | **Sorted afterwards.** He named **Cactus Needle 3**, a tiny decision model (or another small one), to sort them. |
+| The boards | **The area on each post, and an area filter.** A guide page's FAQ links to the board with its area picked. |
+
+**The list (keys are shared by the app, the worker and the site):**
+
+| Key | Label | Log tags it keeps (report.rs `area_tags`; plus `start:`, `panic:` and every ERROR) |
+|---|---|---|
+| `start` | Get started | sign-in, token, account, apple, webview, update, beta, boot, launch, autostart, watchdog, walk, ui, card, grow, quick, window |
+| `play` | Play | player, apple, token, smtc, audio-out, sleep, order, busy, toast, window |
+| `find` | Find music | compass, apple, library, ui, card, grow |
+| `library` | Library | library, favorites, pin, stats, enrich, migration, db, apple |
+| `playlists` | Playlists | playlists, playlist, web, credits, migration, db, apple |
+| `listening` | Your listening | stats, diary, sotd, db |
+| `look` | The look | ui, wallpaper, ocean, rule, boot |
+| `sound` | Sound | sound, loudness, audio-out, airplay, player |
+| `custom` | Make it yours | ui, rule, card, grow, order, quick |
+| `together` | Together | room, rooms, friends, presence, lastfm, sotd |
+| `connect` | Connect | bridge, query, smtc, autostart |
+| `rulez` | Rulez | rule, files, clip |
+| `other` | Something else | the whole tail |
+
+The tags were read from the app's own log calls on 2026-10-01. The labels are the folder names
+he confirmed. Two words are his to check at build time: the row label *What went wrong* (it now
+also files a suggestion) and its hint.
+
+**The build, in three repos (when he says go):**
+1. **App:** `REPORT_AREAS` (settings-card.ts) gets the list; `report_send` takes `area` and
+   sends it as a top-level field (an unknown area sends `other`); `area_tags` gets the table
+   above; a test that every area but `other` cuts the log. `meta.version` stays, for old
+   workers.
+2. **DeetsSupport:** a migration adds `area TEXT` and `version TEXT` to `posts` and backfills
+   `version` from `json_extract(meta, '$.version')`; an index on `(app, public, area)`; the
+   intake validates `area` against one `AREAS` set and writes both columns; `PUBLIC_COLS`
+   carries both (the `VERSION_COL` extract goes); `GET /posts?area=` filters, and its cache key
+   carries the area; an owner route sets a post's area. Apply the migration before the worker
+   deploy. Both are his call.
+3. **DeetsSolutions:** the area dropdown in both post forms; the area on each post and on the
+   ticket page; an area filter on the boards; **Set area** in the owner's menu. Site strings
+   follow the `[ph]` rule.
+4. **Later:** sort the old posts with Cactus Needle 3, then the guide pages link their area.
+
+What the code has today is above (the 6 areas, the area never leaving the PC).
+
 ---
 
 ## 14. Release tags and the tasks index

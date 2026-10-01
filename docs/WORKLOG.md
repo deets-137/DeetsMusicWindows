@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-28
+updated: 2026-10-01
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,32 @@ updated: 2026-09-28
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-01 — The guide and the intro video: the outline and the positioning (docs only)
+
+- `docs/guide/marketing.md`: the shipped features as a tech spec, each with its shot and its
+  source (demo or dev), and a "do not claim" list. He directs it; he writes every word.
+- His positioning is in its §1: no algorithm, listen on purpose, friends' recommendations, a
+  local web of picks and diaries, deep customization and automations. Apple's algorithm is
+  shown as a conscious engagement, not hidden (his call).
+- **On the docket:** friends see your picks and your Diary (FRIENDS.md §20, an idea, every fork
+  his). Read today: a friend sees only presence; Song of the Day goes to a Discord channel; the
+  Diary is private.
+- Found: RULEZ, DIARY, QUICK-SETTINGS and FULL-LIB carry `status: built`, but the release notes
+  ship them. SETTINGS-INVENTORY.md says Home has three shelves and leaves out the Diary and
+  Rulez cards. Not fixed in this sitting.
+- The wiki shape and the Rulez appendix outline: marketing.md §1. **Later the same sitting he
+  confirmed the folders** (one per card or workflow) and the page shape: a walkthrough video,
+  the steps, FAQs linked to that workflow's open issues. "The workflow is the product."
+  DOCS-ORG.md §13.10 (replaces U9); `_template.md` gained the video and issue-link slots. Open:
+  where the issue links come from.
+- Friends sharing goes into HANDOFF and CLAUDE.md as a docket item; he talks it through
+  2026-10-02.
+- **The area (his calls):** the Bugs form's dropdown becomes the workflow folders, on the site's
+  form too; an `area` and a `version` column on DeetsSupport `posts`; area on each post and a
+  board filter; old posts sorted later with Cactus Needle 3. DOCS-ORG.md §13.10a. **Designed
+  only:** a build was started and reverted in full at his word ("documenting, not implementing
+  yet; many things in motion"). No code changed.
 
 ## 2026-09-29 — Usage counts designed
 
