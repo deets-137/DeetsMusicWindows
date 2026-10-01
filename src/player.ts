@@ -24,7 +24,7 @@ import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
-import { nearSongEnd, isSongEnd, stallCanHappen } from "./pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
@@ -552,7 +552,10 @@ function emitProgress(): void {
   if (!isLoading && currentTime > HEARD_S) {
     const cur = queue.getCurrent();
     const npId: string | undefined = music?.nowPlayingItem?.id;
-    if (cur && npId && isEntry(cur, npId)) heardEntry = cur;
+    if (cur && npId && isEntry(cur, npId)) {
+      heardEntry = cur;
+      heardAt = performance.now();
+    }
   }
   // While a (re)window loads, the outgoing song still ticks through the teardown. The
   // scrubber already shows the incoming song at 0 (emitLoadingProgress, UX-COVERUPS.md §1);
@@ -987,8 +990,11 @@ function onNowPlayingChange(): void {
       stats.recordStart(queue.getCurrent());
       diag.log("player:npRoom", snap());
     } else {
+      // Read before the follow: a song change while music was meant to play must reach sound.
+      const meantToPlay = !!music?.isPlaying || wasPlaying || silentArmed;
       const short = syncModelToMusicKit();
       diag.log("player:np", snap());
+      if (meantToPlay) watchForSound("songChange");
       // The model is the master: MusicKit started a song the model did not expect → re-window
       // onto the model's song. That load records the start and grows the window itself.
       if (correctDrift(short)) {
@@ -2445,8 +2451,30 @@ export function roomHasSong(): boolean {
 
 // ── Transport ────────────────────────────────────────────────────────────────
 
+/**
+ * One line per transport press, written at the press before anything can return early
+ * (2026-10-01): a Play that did nothing on live left no line, so a stuck song could not be
+ * told from a press that never came. `from` is the place (button, space, tray, agent, rule…);
+ * `state` is MusicKit's state at the press.
+ */
+function logPress(what: "playPause" | "next" | "prev", from: string): void {
+  const m = music;
+  const S = window.MusicKit?.PlaybackStates;
+  diag.log("player:press", {
+    do: what,
+    from,
+    state: m && S ? S[m.playbackState] ?? m.playbackState : null,
+    id: m?.nowPlayingItem?.id ?? null,
+    at: m ? Math.round(m.currentPlaybackTime ?? 0) : null,
+    playing: !!m?.isPlaying,
+    mode,
+    room: !!roomBridge,
+  });
+}
+
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */
 export async function playPause(why = "button"): Promise<void> {
+  logPress("playPause", why);
   if (music?.isPlaying) notePause(roomBridge ? `room:${why}` : why);
   if (roomBridge) return roomBridge.playPause(); // a room command (ROOMS.md §10)
   if (!music?.isPlaying) await requireSignIn(); // pausing never needs a sign-in
@@ -2465,6 +2493,7 @@ export async function playPause(why = "button"): Promise<void> {
     perf.mark("window");
     await m.play();
     scheduleGrow(); // a preloaded window is the small click window — grow it like any click
+    watchForSound("play"); // a stuck song ignores play(): the check reloads it
     return;
   }
   // Nothing loaded in MusicKit but the model has a plan — a restored session
@@ -2532,7 +2561,8 @@ function skipWhileIdle(way: "next" | "prev"): boolean {
   return true;
 }
 
-export async function nextTrack(): Promise<void> {
+export async function nextTrack(from = "button"): Promise<void> {
+  logPress("next", from);
   transport("next");
   if (roomBridge) return roomBridge.next();
   if (skipWhileIdle("next")) return;
@@ -2636,6 +2666,59 @@ async function recoverLoad(m: any, why: string): Promise<void> {
   window.setTimeout(check, RECOVER_CHECK_MS);
 }
 
+// ── A song change must end in sound (2026-10-01) ─────────────────────────────────
+// On live, "Two Years" ended, MusicKit named "Drop Dead Gorgeous" as now playing, and no sound
+// came: no error, no pause line, no `ended`. The heals above key on `ended` with no item, so
+// none ran, and Play did nothing either; Next then Previous (a reload) brought the song back.
+// So every song change the model follows while music was meant to play, and every Play press,
+// arms one check SILENT_START_MS later. No sound for that entry since the arm → the recovery
+// load, which checks itself once more and toasts on a second miss. The rule is pure
+// (silentStartStep, pause-rules.ts); its test is tests/pause-rules.test.ts.
+const SILENT_START_MS = 4000;
+/** A song MusicKit still buffers gets this many more looks before the reload. */
+const SILENT_START_LOOKS = 1;
+let silentWatch = 0;
+/** A check is waiting: a Next or Previous pressed on a silent song still means "play". */
+let silentArmed = false;
+
+function watchForSound(why: string): void {
+  window.clearTimeout(silentWatch);
+  silentArmed = false;
+  const entry = queue.getCurrent();
+  if (!entry || mode !== "queue") return;
+  silentArmed = true;
+  const gen = loadGen;
+  const armedAt = performance.now();
+  let looks = 0;
+  const check = (): void => {
+    silentArmed = false;
+    const mk = music;
+    const S = window.MusicKit?.PlaybackStates;
+    // A newer load, a song change, a station or a heal in flight owns the music now.
+    if (!mk || !S || mode !== "queue" || loadGen !== gen || queue.getCurrent() !== entry) return;
+    if (isLoading || loadingContext || endHealing) return;
+    const st = mk.playbackState;
+    const step = silentStartStep({
+      playing: !!mk.isPlaying,
+      heard: heardEntry === entry && heardAt > armedAt,
+      userPaused: lastUserPauseAt > armedAt,
+      buffering: st === S.loading || st === S.waiting || st === S.stalled,
+      looks,
+      maxLooks: SILENT_START_LOOKS,
+    });
+    if (step === "fine") return;
+    if (step === "look") {
+      looks++;
+      silentArmed = true;
+      silentWatch = window.setTimeout(check, SILENT_START_MS);
+      return;
+    }
+    diag.warn("player:silentStart", { why, id: playId(entry) ?? null, state: S[st] ?? st, s: Math.round((performance.now() - armedAt) / 1000), output: outputKind() });
+    recoverLoad(mk, `silentStart:${why}`).catch((e) => console.warn("[player] silent start reload:", e));
+  };
+  silentWatch = window.setTimeout(check, SILENT_START_MS);
+}
+
 /**
  * The auto-advance twin of the skip rejection: when a song ends and the NEXT item in
  * MusicKit's queue is unplayable, MusicKit emits no error at all — it just goes to
@@ -2649,6 +2732,8 @@ async function recoverLoad(m: any, why: string): Promise<void> {
 let endHealing = false;
 /** The last queue entry MusicKit played sound for (emitProgress). */
 let heardEntry: unknown = null;
+/** When the last tick past HEARD_S came (performance.now): sound since a moment, not only ever. */
+let heardAt = -Infinity;
 const HEARD_S = 0.5;
 /** The entry the end-of-song heal already retried: a second failure skips it. */
 let endRetried: unknown = null;
@@ -2943,7 +3028,8 @@ if (import.meta.env.DEV) {
 }
 
 /** Restart the song if we're past the intro, otherwise skip back. */
-export async function prevTrack(): Promise<void> {
+export async function prevTrack(from = "button"): Promise<void> {
+  logPress("prev", from);
   transport("prev");
   if (roomBridge) return roomBridge.previous();
   if (skipWhileIdle("prev")) return;

@@ -96,8 +96,8 @@ export function initRulesPlayback(): void {
 
   registerAction("play", { cost: "free", run: () => (isPlayingNow() ? undefined : playPause("rule")) });
   registerAction("pause", { cost: "free", run: () => pausePlayback("rule") });
-  registerAction("next", { cost: "free", run: () => nextTrack() });
-  registerAction("prev", { cost: "free", run: () => prevTrack() });
+  registerAction("next", { cost: "free", run: () => nextTrack("rule") });
+  registerAction("prev", { cost: "free", run: () => prevTrack("rule") });
   registerAction("shuffle", { cost: "free", run: (on) => setShuffleMode(!!on) });
   registerAction("repeat", { cost: "free", run: (m) => setRepeat(m as "off" | "all" | "one") });
   registerAction("volume", { cost: "free", run: (v) => setVolume(Math.max(0, Math.min(100, Number(v))) / 100) });

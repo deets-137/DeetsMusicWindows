@@ -292,15 +292,15 @@ export const nowPlayingCard: CardDef = {
     });
 
     playBtn.addEventListener("click", () => {
-      playPause().catch((e) => console.error("[player] play/pause failed:", e));
+      playPause("np-card").catch((e) => console.error("[player] play/pause failed:", e));
     });
 
     // Prev / Next — native skip within MusicKit's fed window.
     host.querySelector<HTMLElement>('.np__controls [aria-label="Previous"]')?.addEventListener("click", () => {
-      prevTrack().catch((e) => console.error("[player] prev failed:", e));
+      prevTrack("np-card").catch((e) => console.error("[player] prev failed:", e));
     });
     host.querySelector<HTMLElement>('.np__controls [aria-label="Next"]')?.addEventListener("click", () => {
-      nextTrack().catch((e) => console.error("[player] next failed:", e));
+      nextTrack("np-card").catch((e) => console.error("[player] next failed:", e));
     });
 
     // Add to Library square (option B, 2026-09-10), the tray panel's four states: hidden

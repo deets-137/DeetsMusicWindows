@@ -161,9 +161,9 @@ async function run(cmd: NpCommand): Promise<void> {
       if (lastState.playing) return playPause(cmd.from ?? "tray");
       return;
     case "next":
-      return nextTrack();
+      return nextTrack(cmd.from ?? "tray");
     case "previous":
-      return prevTrack();
+      return prevTrack(cmd.from ?? "tray");
     case "seek":
       return seekToFraction(cmd.value ?? 0);
     case "volume":
@@ -231,8 +231,8 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
         case "play-pause": await playPause("agent"); break;
         case "play": if (!lastState.playing) await playPause("agent"); break;
         case "pause": if (lastState.playing) await playPause("agent"); break;
-        case "next": await nextTrack(); break;
-        case "previous": await prevTrack(); break;
+        case "next": await nextTrack("agent"); break;
+        case "previous": await prevTrack("agent"); break;
         case "seek": await seekToFraction(v ?? 0); break;
         case "volume": setVolume(v ?? 0); break;
         case "mute": toggleMute(); break;

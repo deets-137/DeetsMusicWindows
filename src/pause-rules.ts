@@ -21,3 +21,21 @@ export function isSongEnd(p: { evidence: boolean; idBefore: string | null; idNow
 export function stallCanHappen(mode: string, upcoming: number): boolean {
   return mode === "radio" || upcoming > 0;
 }
+
+/**
+ * A song change or a Play that must end in sound (2026-10-01): what one check does. Sound
+ * since the arm, or a user pause since it, is fine. A song MusicKit still buffers gets
+ * `maxLooks` more looks. Anything else is silent: reload it.
+ */
+export function silentStartStep(p: {
+  playing: boolean;
+  heard: boolean;
+  userPaused: boolean;
+  buffering: boolean;
+  looks: number;
+  maxLooks: number;
+}): "fine" | "look" | "reload" {
+  if (p.playing || p.heard || p.userPaused) return "fine";
+  if (p.buffering && p.looks < p.maxLooks) return "look";
+  return "reload";
+}

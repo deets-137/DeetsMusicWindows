@@ -126,6 +126,17 @@ Player events (`src/player.ts`):
   once, quietly.
 - `player:recoverSilent` / `player:recoverGaveUp` — `{ why, id, state }` a recovery load was
   silent 4 s later: loaded once more / silent again, the toast.
+- `player:silentStart` — `{ why, id, state, s, output }` (a warn, 2026-10-01) a song change the
+  model followed while music was meant to play (`why: songChange`), or a Play press
+  (`why: play`), had no sound 4 s later (8 s when MusicKit still buffers). `state` is the
+  MusicKit state it sat in. The recovery load follows (`silentStart:<why>`), so a second miss is
+  `player:recoverSilent`, then the toast. The rule is `silentStartStep` (pause-rules.ts).
+- `player:press` — `{ do, from, state, id, at, playing, mode, room }` every Play / Pause, Next
+  and Previous press, written first, before a room, an idle skip or a sign-in can return
+  (2026-10-01). `do` is `playPause` / `next` / `prev`; `from` is the place: `np-card` (the Now
+  Playing buttons), `space`, `compass`, `tray` (or the tray panel's own `from`), `agent`, `rule`,
+  `airplay:reconnected`; `state` is MusicKit's state at the press. Before it, a Play that did
+  nothing left no line, and `player:next` / `player:prev` named neither the place nor the state.
 - `player:shuffle` — `{ idle, n | up }` the one-shot shuffle button (`idle: true` = nothing
   was playing → whole library shuffled as a fresh context; `false` = upcoming reshuffled +
   reconciled)

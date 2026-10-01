@@ -12,6 +12,36 @@ updated: 2026-10-01
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-01 — A silent song change on live; the check after every song change; a press log (built, committed, NOT desk-tested)
+
+**The report.** On live (AirPlay, Living Room), at 15:15:11 "Two Years" ended. MusicKit named
+"Drop Dead Gorgeous" (index 14) as now playing and never played it: no error, no `player:pause`
+line, no `ended`. He pressed Play a few times (no line: Play presses were not logged), then
+Next ("Be Who You Are", also silent), then Previous, which reloaded the song and it played.
+The end-of-song heals key on `ended` with NO now-playing item, and the stall line starts from a
+pause, so nothing ran. The state MusicKit sat in is unknown (not paused or stopped).
+
+**His pick: a check after every song change.** Built in player.ts (`watchForSound`):
+- Armed on a song change the model follows in queue mode when music was meant to play
+  (playing, was playing, or a check still waiting, so a Next on a silent song counts), and
+  after a Play press on a loaded song.
+- 4 s later: sound since the arm, or a user pause, is fine. Still buffering (loading /
+  waiting / stalled): one more 4 s look. Else `player:silentStart` and the recovery load,
+  whose own check reloads once more and then toasts "Playback stopped. Try the song again."
+- `player:press` (his ask, same sitting) logs every Play / Pause, Next and Previous press at
+  the press: the place it came from (`np-card`, `space`, `compass`, `tray`, `agent`, `rule`)
+  and MusicKit's state. Callers now pass the place.
+- The rule is `silentStartStep` in pause-rules.ts, with a test. DEBUGGING.md has the lines.
+
+**Decided inside his pick (for him to see):** 4 s for the first look (the recovery check's
+value); one extra look while MusicKit buffers (8 s worst); a song that made sound once and was
+then paused by a media key is left alone; radio and rooms are not covered (queue mode only).
+
+**Desk test.** Hard to force. Run the live-shaped build on AirPlay for an evening.
+`deetsmusic diag --tag player:silentStart` after any stall: one line with `state`, then music.
+Each Play, Next or Previous press shows one `player:press` line with `from` and `state`. Pause a song in its first 4 s: no reload.
+
+
 ## 2026-10-01 — The guide and the intro video: the outline and the positioning (docs only)
 
 - `docs/guide/marketing.md`: the shipped features as a tech spec, each with its shot and its
