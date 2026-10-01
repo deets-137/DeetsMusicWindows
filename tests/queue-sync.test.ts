@@ -1,7 +1,7 @@
 // queue-sync.ts: what MusicKit's upcoming window should hold (QUEUE.md §The model is the master).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR } from "../src/queue-sync.ts";
+import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats } from "../src/queue-sync.ts";
 
 const id = (e: { id?: string }) => e.id;
 
@@ -42,4 +42,47 @@ test("repairAtSongChange 2026-09-28: a near difference now, a far one waits for 
   assert.equal(repairAtSongChange(REPAIR_NEAR - 1), true);
   assert.equal(repairAtSongChange(REPAIR_NEAR), false);
   assert.equal(repairAtSongChange(155), false); // the Lawn loop
+});
+
+// What MusicKit does with one call that holds an id twice: it keeps only the LAST copy
+// (probed 2026-10-01). A model of it, to show the split keeps every copy.
+const mkOneCall = (ids: string[]) => ids.filter((x, i) => ids.lastIndexOf(x) === i);
+
+test("headPart / tailPart stop before a repeat", () => {
+  assert.deepEqual(headPart(["a", "b", "a", "c"]), ["a", "b"]);
+  assert.deepEqual(tailPart(["a", "b", "a", "c"]), ["b", "a", "c"]);
+  assert.deepEqual(headPart([]), []);
+});
+
+test("splitRepeats: no repeat is one part, every copy is kept, no part repeats an id", () => {
+  assert.deepEqual(splitRepeats(["a", "b", "c"]), [["a", "b", "c"]]);
+  const ids = ["a", "b", "a", "c", "a"];
+  const parts = splitRepeats(ids);
+  assert.deepEqual(parts, [["a", "b"], ["a", "c"], ["a"]]);
+  assert.deepEqual(parts.flat(), ids);
+  for (const p of parts) assert.equal(new Set(p).size, p.length);
+});
+
+test("splitRepeats 2026-10-01: a top-up with repeats lands whole in MusicKit", () => {
+  // The case from the log: rows 1–19 of the sent list all come back later in it.
+  const first = Array.from({ length: 19 }, (_, i) => `s${i}`);
+  const rest = Array.from({ length: 63 }, (_, i) => `t${i}`);
+  const sent = [...first, ...rest, ...first, ...first.slice(0, 8)];
+  assert.equal(mkOneCall(sent).length, sent.length - 27); // one call: 27 lost, the bug
+  assert.equal(mkOneCall(sent)[0], "t0"); // and the wrong song first
+  const parts = splitRepeats(sent);
+  assert.ok(parts.length <= 3);
+  assert.deepEqual(parts.flatMap(mkOneCall), sent); // in parts: every copy, in order
+});
+
+test("playNext order: parts from the end, each put right after the current song, keep the list's order", () => {
+  const ids = ["a", "b", "a", "c"];
+  let left = ids.slice();
+  let up: string[] = []; // MusicKit's Up Next, as playNext builds it
+  while (left.length) {
+    const part = tailPart(left);
+    up = [...mkOneCall(part), ...up];
+    left = left.slice(0, left.length - part.length);
+  }
+  assert.deepEqual(up, ids);
 });

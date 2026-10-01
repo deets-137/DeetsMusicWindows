@@ -229,10 +229,45 @@ function rebuild(why: string): void {
   relist(false);
 }
 
+// ── the launch batch (RULES.md §18c, 2026-09-29) ─────────────────
+// About ninety parts register at launch. Each registration used to filter the rules again and
+// run a whole check (read every fact, resolve every state rule, repaint Rulez): ~80 ms of the
+// launch handler. main.ts holds the registry while a group of modules starts; the group's
+// registrations only fill the maps, and its release runs ONE relist and ONE check. A check asked
+// for meanwhile (a seam, a row) waits for the same release. An event inside a hold relists
+// first, so it never runs on a stale live list.
+let holdDepth = 0;
+let heldDirty = false;
+
+/** Hold the registry until the returned release (main.ts, at launch). Nests; the last release
+ *  runs the one relist and check. A second call of the same release does nothing. */
+export function holdRegistry(): () => void {
+  holdDepth++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    holdDepth--;
+    if (holdDepth === 0) settle();
+  };
+}
+
+/** Run the relist and check a hold kept back, now. */
+function settle(): void {
+  if (!heldDirty) return;
+  heldDirty = false;
+  relistNow(true);
+}
+
 /** Filter to the rules the registry can run now. A rule naming a part not registered yet (a
  *  module that inits later) waits; a user rule that is broken is logged once. */
 function relist(check = true): void {
   if (!started) return;
+  if (holdDepth > 0) return void (heldDirty = true);
+  relistNow(check);
+}
+
+function relistNow(check: boolean): void {
   const k = known();
   skipWhy.clear();
   live = all.filter((r) => {
@@ -316,6 +351,11 @@ export function decided(event: EventId, ctx: EmitCtx): MomentRule["do"] | null {
 
 function fire(event: EventId, ctx: EmitCtx): MomentRule | null {
   if (!started) return null;
+  if (holdDepth > 0 && heldDirty) {
+    // An event inside the launch batch: the live list first (its check still waits).
+    heldDirty = false;
+    relistNow(true);
+  }
   if (checking) {
     diag.log("rule", { event, applied: false, reason: "held" });
     return null;
@@ -495,6 +535,7 @@ function loadHolds(): Hold[] {
 /** Check every state rule against the facts now, and lay or lift their values. */
 export function recheck(why: string): void {
   if (!started) return;
+  if (holdDepth > 0) return void (heldDirty = true); // the release checks (the launch batch)
   if (checking) {
     again = true;
     return;

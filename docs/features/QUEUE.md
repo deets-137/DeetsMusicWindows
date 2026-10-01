@@ -226,6 +226,14 @@ tested a *subsequence*, so a model-only song passed as aligned and nothing was l
    collapses them, so `loadFromModel`'s window still dedups). The expected upcoming is the
    model's live ids, in order, capped to `WINDOW_FWD`. Reconciles are serialized on one
    chain, so the song-change repair and the top-up cannot splice the same suffix twice.
+   > **Not true inside one call (found 2026-10-01):** when one `playLater` call carries an id
+   > twice, MusicKit keeps only the LAST copy. The model allows repeats (a new Play keeps the
+   > `manual` entries ahead of the new list, queue.ts `setContext`), so a top-up of 109 ids
+   > with 27 repeats left MusicKit 19 songs short from position 8, and every repair re-sent the
+   > same list and collapsed the same way: a `misalign` no reconcile can clear. A simulation of
+   > "keep the last copy" gave MusicKit's exact length (98) and first song. **Fixed the same
+   > day:** an insert never carries an id twice in one call (§ Repeats in one insert). Also: an insert (`insertInQueue`) reconciles
+   > directly, so it never logs `player:repair`.
 2. **Repair on every edit.** The invariant is now a **prefix**: MusicKit's upcoming equals
    the start of the model's live upcoming. `ensureAligned(where)` runs after Play Next, Add
    to Queue, Remove, Move and each song change. On a mismatch it logs `player:misalign`,
@@ -346,6 +354,74 @@ new order into MusicKit — the same gapless suffix rebuild as a reorder. Radio 
 only, with the break-out flag (as Play Next). Nothing in the queue at all: `playContext(block,
 0)`; a saved Up Next MusicKit does not hold: model only (2026-09-29, above).
 Logged as `player:insert { at, n }`.
+
+### Repeats in one insert (2026-10-01)
+
+> **Part:** built · 2026-10-01 · Claude's desk test passed (1, 3, a three-step play); his hand test open
+
+**His call (2026-10-01):** a user may queue a song as many times as they want. A rule against
+it would not make sense to them. Build what is needed so a queue with repeats plays smoothly.
+
+**What MusicKit does (probed on the dev app, 2026-10-01):**
+
+| Call | Result |
+|---|---|
+| One `playLater` with `[A, B, A]` | adds B, A: a repeat **inside one call** collapses, the last copy kept |
+| `playLater([C])`, then `playLater([C])` | C twice: kept |
+| `playLater([B])` with B already queued | B again: kept |
+| `playNext([C])` with C already queued | C again: kept |
+
+So MusicKit holds repeats. Only a repeat inside one call is lost.
+
+**The design.**
+1. **One insert call never carries an id twice.** A pure rule in `queue-sync.ts`,
+   `splitRepeats(ids)`: walk the list in order and start a new part at an id the current part
+   already holds. `[A, B, A, C, A]` → `[A, B]`, `[A, C]`, `[A]`. The parts are as few as the most
+   repeated id needs (27 repeats in one list gave 2–3 parts).
+2. **Every MusicKit insert goes through it:** `reconcileUpcoming` (top-ups and repairs),
+   `enqueue` (Play Next / Add to Queue of a list that holds a song twice), the moves.
+   `playLater` sends the parts in order. `playNext` inserts each part right after the current
+   song, so it sends the parts in REVERSE order to keep the list's order.
+3. **The NOT_FOUND retry works per part.** `insertWithRetry` today rebuilds and re-sends the
+   whole list after a dead id. With parts, a retry of part 2 must not send part 1 again (that
+   would add real duplicates). Each part keeps its own handles and its own rebuild.
+4. **`setQueue` stays as it is.** `loadFromModel` feeds the current song alone and grows the
+   window through the reconcile, so the split covers the grow too.
+5. **Nothing else changes.** The model, the Queue card and the alignment check already allow
+   repeats (§The model is the master); `isEntry` and the slot count (`mkUpcomingIndex`) already
+   handle a song that sits in the window twice.
+
+**Cost.** One more MusicKit call per extra part, only for a list with repeats. A list with
+none sends one call, as today.
+
+**Tests (pure, `tests/queue-sync.test.ts`):** `splitRepeats` keeps order, keeps every copy,
+never puts an id twice in a part, gives one part for a list with no repeats, and the
+2026-10-01 case (109 ids, 27 repeats) rebuilt from the log.
+
+**Desk test.**
+1. Play a list. Right-click the song playing › Start a Web with *Plays after the song* (a
+   Rulez rule), then play a second web from the same seed. Up Next holds repeats. The ring has
+   `player:reconcile` and NO `player:misalign`; `__player.queue().aligned.aligned` is true.
+2. Add to Queue the same song three times. Each copy plays in its turn, and the Queue card
+   moves through all three.
+3. Play Next on an album that holds a song twice (or a playlist with a repeat): the album's
+   order is kept in MusicKit (`__player.queue()`, model and MusicKit side by side).
+4. Drag a song in Up Next past another copy of itself: still aligned.
+
+**As built (2026-10-01).** `headPart`, `tailPart`, `splitRepeats` in `queue-sync.ts` (four tests
+in `tests/queue-sync.test.ts`, one on the 2026-10-01 case). `insertWithRetry` (player.ts) sends
+the parts: forward for `playLater`, from the end (`"reverse"`) for `playNext` (Play Next, Move to
+Top). It counts the ids already in; a NOT_FOUND retry rebuilds and sends only the rest. If the
+rebuild moved the ids already sent, it stops (`player:insertStop`) instead of sending a part
+twice; the next reconcile repairs. More than one part logs `player:insertParts {where, parts, n}`.
+The window size (`WINDOW_FWD`) is unchanged: only the number of calls changes.
+
+**Claude's run (2026-10-01, `dev:built`):** (1) the repro: a 44-song web played while 74
+added songs waited, 27 repeats → `insertParts {reconcile, parts: 2, n: 109}`, aligned 117 / 117
+(before the fix: 19 short and a `misalign`). (3) Play Next of a playlist [Talk Is Cheap, Bye
+honey, Talk Is Cheap] → `insertParts {enqueue:next, parts: 2}`, the same order in the model and
+MusicKit. Next three times: each copy played in its turn, aligned each time, no `desync`, no
+`misalign`. Steps 2 and 4 are his hand test.
 
 ---
 

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/room-panel.ts]
-updated: 2026-09-19
+updated: 2026-10-01
 ---
 # LESSONS — what the owner tends to want in DeetsMusic
 
@@ -183,6 +183,22 @@ is the part that yields space.
   Give that one a fixed size and let the other flex. A guarantee about the flexible part
   belongs to the WINDOW (a floor, or a flip to a surface that fits), not to a fight between
   the two cards.
+
+### 4.14 Clarity, consistency and elegance: one rhythm, measured
+He values visual clarity, consistency and elegance as much as function (his words, 2026-10-01).
+A list reads as one rhythm: every gap the same, every edge on one line, one job per column, and
+no control cut off by the text beside it.
+- *Evidence:* in a grown album (CARD-GROW.md §9b) the track numbers ran 5 px past the "#"
+  header, and the + / ✓ square sat inside the Title cell, so a long title's ellipsis hid it.
+  Both were on live. The cause of the first was not the column: the number cell kept a width
+  from the plain row, made for the cover slot. After the fix, a one-digit number still had a
+  wide empty space before it; he asked that it match the gaps between columns. Now the # column
+  is as wide as the album's widest number, and the gaps measure 9, 8 and 8 px.
+- *Apply:* a control gets its own cell, never the end of a text that truncates. When a layout
+  reuses a cell from another layout (a plain row turned into columns), check every width,
+  padding and alignment it brings with it. Measure the edges and the gaps with a probe, not by
+  eye, and look at the picture too. Bring him the remaining pixel (here, 9 against 8) with its
+  cause, not a rounded "it lines up".
 
 ## 5. Tie-breakers
 

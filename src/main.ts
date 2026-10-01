@@ -1,5 +1,8 @@
+// FIRST: the launch reads leave before any other module's calls, so the library is the
+// database thread's first job (boot-prefetch.ts, DEBUGGING.md §Launch).
+import "./boot-prefetch";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { type ThemeName } from "./theme";
+import { type ThemeName, syncWindowBackground } from "./theme";
 import { initLook, pickLook } from "./look";
 import { type SkinName } from "./skin";
 import { applySurface, currentSurface, fullSurface, initSurface, isNarrowWindow, isPlayerView, onNarrowChange, onSurfaceChange, type MiniView, type SurfaceName } from "./surface";
@@ -36,7 +39,7 @@ import { initSleep } from "./sleep";
 import { initCompass, compassOpen, CARD_KEYS } from "./compass";
 import { initPlaylistExpiry } from "./playlist-expiry";
 import { initPlaylistRefresh } from "./playlist-refresh";
-import { initSound } from "./sound";
+import { initSound, startSoundContext } from "./sound";
 import { initSoundPanel } from "./sound-panel";
 import { initRoomPanel } from "./room-panel";
 import { initTitleWeb } from "./web";
@@ -55,7 +58,7 @@ import { initUpdater } from "./updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
-import { initRules, registerFact, registerProp, setAppleGate } from "./rules";
+import { initRules, registerFact, registerProp, setAppleGate, holdRegistry } from "./rules";
 import { initRulesPlayback } from "./rules-playback";
 import { initRulesApp, emitAppOpen } from "./rules-app";
 import { initRulesFiles } from "./rules-files";
@@ -63,6 +66,9 @@ import { initRulesFacts } from "./rules-facts";
 import { initRulesWindow } from "./rules-window";
 import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
+import { launchMark } from "./launch-perf";
+
+launchMark("module");
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region on .drag-region in index.html.
@@ -101,15 +107,60 @@ function tellBootFailed(): void {
     actions: [{ label: "Restart", run: () => void invoke("app_restart").catch((e) => console.error("[boot] restart", e)) }],
   });
 }
+// ── Under the cover (DEBUGGING.md §Launch, 2026-09-29) ─────────────────────────────
+// The handler below starts only what the window needs to show: the look, the surface, the
+// cards and their data, the title bar. Every other part goes on `later`, in the same order as
+// before. The handler's end lets the launch reads leave for Rust (a call leaves only when the
+// page task ends); `runLater` then starts the parts a few at a time, one short task each
+// (about 8 ms), while the database answers. The launch cover waits for the last of them, so
+// the window never shows a part missing, and the lift runs on a quiet page. The rules registry
+// is held for the whole run: one relist and one check at its end (RULES.md §18c).
+const LATER_SLICE_MS = 8;
+const later: [string, () => unknown][] = [];
+/** A macrotask that does not wait for a frame (setTimeout nests to 4 ms; this does not). */
+function nextTask(fn: () => void): void {
+  const ch = new MessageChannel();
+  ch.port1.onmessage = () => fn();
+  ch.port2.postMessage(null);
+}
+function runLater(): Promise<void> {
+  const release = holdRegistry();
+  return new Promise((resolve) => {
+    let i = 0;
+    const slice = () => {
+      const t0 = performance.now();
+      while (i < later.length) {
+        const [part, fn] = later[i++];
+        boot(part, fn);
+        if (performance.now() - t0 > LATER_SLICE_MS) break;
+      }
+      if (i < later.length) return nextTask(slice);
+      release();
+      launchMark("late");
+      diag.log("boot:later", { parts: later.length, ms: Math.round(performance.now() - begun) });
+      resolve();
+    };
+    const begun = performance.now();
+    nextTask(slice);
+  });
+}
+
 // After the launch cover (the toast is seen, and the parts that start late have started),
 // or after 15 s if the cover never ends. A part that fails later than that is logged only.
 window.addEventListener("deets:boot-done", () => window.setTimeout(tellBootFailed, 1500), { once: true });
 window.setTimeout(tellBootFailed, 15_000);
 
 window.addEventListener("DOMContentLoaded", () => {
+  launchMark("handler:begin");
+  // The rules registry is held in groups (RULES.md §18c): each group's registrations end in ONE
+  // relist and check. A group ends where the next part reads what the rules decide: the look
+  // (initLook), then the cards (initLayout).
+  let releaseRules = holdRegistry();
   boot("initRules", () => initRules()); // the rules engine (RULES.md): before the look and the cards, which register into it
   boot("setAppleGate", () => setAppleGate(appleBackingOff)); // a rule's Apple action waits while Apple asks us to (RULES.md §20.5)
   boot("initLookSchedule", () => initLookSchedule()); // the day/night rules' facts first (LOOK-SCHEDULE.md), so the first paint has them
+  releaseRules(); // the check: the schedule's look is on the store before the first paint
+  releaseRules = holdRegistry();
   boot("initLook", () => initLook()); // the theme and skin from the store, with the schedule's look on top (RULES.md §7a)
   boot("initSkinSettings", () => initSkinSettings()); // before the first paint, so a card never flashes the default look
   boot("initSurface", () => initSurface());
@@ -166,7 +217,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const settingsRoot = document.querySelector<HTMLElement>(".settings");
   const trigger = document.getElementById("settings-trigger");
   const menu = document.getElementById("settings-menu");
-  if (!settingsRoot || !trigger || !menu) return;
+  if (!settingsRoot || !trigger || !menu) {
+    releaseRules(); // a broken page still gets its rules checked
+    return;
+  }
 
   menu.classList.add("pop"); // arrives and leaves like the Vol. and "Play on" panels
   menu.dataset.frames = "settings";
@@ -244,6 +298,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // anchor + show the window at the click. Order matters — the anchor needs the mini size,
   // so we resize first.
   void listen("tray-pop", () => {
+    syncWindowBackground(true); // a pop under the launch cover: the window's own color first (theme.ts)
     applySurface("mini", setting("trayView"))
       .catch((e) => console.error("[tray] mini", e))
       .then(() => invoke("tray_place_main"))
@@ -278,6 +333,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Tray menu "Open DeetsMusic": the real app — back to the full surface (midi/max) at
   // its own remembered size; Rust then restores the pre-pop position and pins it.
   void listen("tray-open", () => {
+    syncWindowBackground(true);
     applySurface(fullSurface())
       .catch((e) => console.error("[tray] full", e))
       .then(() => invoke("tray_place_main"))
@@ -423,7 +479,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   window.addEventListener("deets:sign-in", () => void signIn()); // the "Sign in" toast button
   boot("paintAccount", () => paintAccount());
-  boot("initLastfm", () => initLastfm()); // the flyout's second account (LASTFM.md §4)
+  later.push(["initLastfm", () => initLastfm()]); // the flyout's second account (LASTFM.md §4)
 
   // No developer token at all (a first run offline, or the mint's KILL switch —
   // RELEASE.md §7): Rust logged it at setup and every Apple call will fail with the
@@ -478,20 +534,23 @@ window.addEventListener("DOMContentLoaded", () => {
   boot("initFavorites", () => initFavorites()); // the ♥ mirror (favorites.ts) — local, zero Apple calls
   boot("initPins", () => initPins()); // the pins mirror (pins.ts, PINS.md) — local, zero Apple calls
   boot("initRowOrder", () => initRowOrder()); // the saved row order (row-order.ts, MOVABLE-ROWS.md) — local, one read
-  boot("initPresence", () => initPresence()); // Discord Rich Presence (presence.ts, FRIENDS.md §8) — opens nothing until you switch it on
-  boot("initFriends", () => initFriends()); // Friends (friends.ts, FRIENDS.md §5) — mints the key, then one socket
+  later.push(["initPresence", () => initPresence()]); // Discord Rich Presence (presence.ts, FRIENDS.md §8) — opens nothing until you switch it on
+  later.push(["initFriends", () => initFriends()]); // Friends (friends.ts, FRIENDS.md §5) — mints the key, then one socket
                       // per friend. No heartbeat, and nothing you play leaves this PC until
                       // Settings › Sharing says so.
-  boot("initRoomFriends", () => initRoomFriends()); // add a room member as a friend (room-friends.ts, FRIENDS.md §18) — listens only
-  boot("initSotd", () => initSotd()); // Song of the Day (sotd.ts, DeetsOTD.md) — the picks mirror, the Ask toast
+  later.push(["initRoomFriends", () => initRoomFriends()]); // add a room member as a friend (room-friends.ts, FRIENDS.md §18) — listens only
+  later.push(["initSotd", () => initSotd()]); // Song of the Day (sotd.ts, DeetsOTD.md) — the picks mirror, the Ask toast
                    // and the posts that were left waiting. Local, zero Apple calls.
   // Last session's song + Up Next + Previous, per Settings › Restore on launch. A throw still
   // gives the launch cover a settled promise, so the window shows.
   const restored = boot("initQueuePersist", () => initQueuePersist()) ?? Promise.resolve();
-  boot("initUpdater", () => initUpdater()); // RELEASE.md §6: scheduled checks per Settings › Updates
-  // Warm MusicKit + the DRM module at idle so the session's first click pays neither
-  // (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the click before this).
-  window.setTimeout(() => boot("warmPlayer", () => warmPlayer()), 1500);
+  later.push(["initUpdater", () => initUpdater()]); // RELEASE.md §6: scheduled checks per Settings › Updates
+  // Warm MusicKit + the DRM module under the launch cover, as the window shows, so the
+  // session's first click pays neither (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the
+  // click before this). It waited a fixed 1.5 s after the handler until 2026-09-29.
+  window.addEventListener("deets:window-shown", () => boot("warmPlayer", () => warmPlayer()), { once: true });
+  // The sound effects' context, once the lift is done (sound.ts startSoundContext; SOUND.md §1a).
+  window.addEventListener("deets:boot-done", () => boot("startSoundContext", () => startSoundContext()), { once: true });
   boot("frames", () => frames.init()); // dev-only frame telemetry (frames.ts): scroll / scrub / slide / drag windows
 
   // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
@@ -500,9 +559,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ── Cards + layout: mount Now Playing (anchored top) + the two swappable content slots
   //    from the persisted assignment, and wire each slot's title picker. ──
+  releaseRules(); // the check: the cards mount on what the rules decide (surface, output, on top)
+  releaseRules = holdRegistry();
   boot("initLayout", () => initLayout());  // The launch cover (boot-cover.ts, UX-COVERUPS.md §6): the window shows once the queue is
-  // restored, the library loaded and the window at its size, then the cards rise into place.
-  boot("runBootCover", () => runBootCover(restored, [tracksLoaded(), surfaceSized()]));
+  // restored, the library loaded, the window at its size and the `later` parts started; then
+  // the cards rise into place.
+  let lateDone: () => void = () => {};
+  const late = new Promise<void>((r) => (lateDone = r));
+  const covered = boot("runBootCover", () => (runBootCover(restored, [tracksLoaded(), surfaceSized(), late]), true));
+  // No cover (it threw): nothing will hand the window its color, so give it now (theme.ts).
+  if (!covered) syncWindowBackground(true);
 
   // The first-run walk (walk.ts, ONBOARDING.md §4). It waits for the launch cover, because
   // a sprite standing under a control the cover still hides points at nothing. It returns
@@ -511,11 +577,11 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("deets:boot-done", () => boot("initWalk", () => initWalk()), { once: true });
   // Rulez's words (RULES.md §20): playback, window, the value-writing actions. "The app opens"
   // fires once the launch cover is done, so a rule acts on cards you can see.
-  boot("initRulesPlayback", () => initRulesPlayback());
-  boot("initRulesApp", () => initRulesApp());
-  boot("initRulesFacts", () => initRulesFacts()); // route 5: the ♥, Diary score, plays, queue, idle, battery, network (RULEZ.md §3)
-  boot("initRulesFiles", () => initRulesFiles()); // RULEZ.md §5: your own pictures and sounds in a rule; loads the file list (and the old wallpaper, once)
-  boot("initRulesWindow", () => initRulesWindow()); // RULEZ.md §10.1: the window's width and height, one recheck per settled resize
+  later.push(["initRulesPlayback", () => initRulesPlayback()]);
+  later.push(["initRulesApp", () => initRulesApp()]);
+  later.push(["initRulesFacts", () => initRulesFacts()]); // route 5: the ♥, Diary score, plays, queue, idle, battery, network (RULEZ.md §3)
+  later.push(["initRulesFiles", () => initRulesFiles()]); // RULEZ.md §5: your own pictures and sounds in a rule; loads the file list (and the old wallpaper, once)
+  later.push(["initRulesWindow", () => initRulesWindow()]); // RULEZ.md §10.1: the window's width and height, one recheck per settled resize
   window.addEventListener("deets:boot-done", () => boot("emitAppOpen", () => emitAppOpen()), { once: true });
 
   // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it
@@ -640,13 +706,13 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // ── Sleep timer (NEXT-VERSION §17): the alarm clock left of the pill ──
-  boot("initSoundPanel", () => initSoundPanel()); // the title bar's Sound item (SOUND.md §2.3)
-  boot("initSleep", () => initSleep());
-  boot("initRoomPanel", () => initRoomPanel()); // the title bar's Room item (ROOMS.md §1)
-  boot("initTitleWeb", () => initTitleWeb()); // the title bar's Web item (PLAYLIST-WEB.md §1a)
-  boot("initCompass", () => initCompass()); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
-  boot("initPlaylistExpiry", () => initPlaylistExpiry()); // temporary web playlists (PLAYLIST-WEB.md §10)
-  boot("initPlaylistRefresh", () => initPlaylistRefresh()); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)
+  later.push(["initSoundPanel", () => initSoundPanel()]); // the title bar's Sound item (SOUND.md §2.3)
+  later.push(["initSleep", () => initSleep()]);
+  later.push(["initRoomPanel", () => initRoomPanel()]); // the title bar's Room item (ROOMS.md §1)
+  later.push(["initTitleWeb", () => initTitleWeb()]); // the title bar's Web item (PLAYLIST-WEB.md §1a)
+  later.push(["initCompass", () => initCompass()]); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
+  later.push(["initPlaylistExpiry", () => initPlaylistExpiry()]); // temporary web playlists (PLAYLIST-WEB.md §10)
+  later.push(["initPlaylistRefresh", () => initPlaylistRefresh()]); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)
 
   // The skins' scrubber motion (UI-ARCHITECTURE §3 SCRUBBERS) runs only while music plays:
   // one attribute on <html>, so the CSS loops never tick over a paused player.
@@ -655,4 +721,7 @@ window.addEventListener("DOMContentLoaded", () => {
       document.documentElement.dataset.playing = s.playing ? "on" : "off";
     }),
   );
+  releaseRules(); // the critical path's check; `runLater` holds the registry again for its parts
+  launchMark("handler:end");
+  void runLater().finally(lateDone);
 });

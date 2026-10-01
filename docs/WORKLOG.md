@@ -12,6 +12,40 @@ updated: 2026-10-01
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-01 — An album's mark column; the numbers under "#" (built, committed 79bab91, Claude's shots run)
+
+**The report.** A screenshot from live: in a grown album, the track numbers did not sit under
+the "#" header, and the Full view's + / ✓ square showed only when the title was shorter than its
+column (the square sat inside the Title cell, so the ellipsis cut it off).
+
+**His calls.** Albums only (the Lib and Full views; Full and Lib exist in many places). A first
+column with no header: in the Lib view a ♥ square (filled when loved, hollow when not, a press
+flips it); in the Full view the + / ✓, or a filled ♥ while the song is in your library and
+loved (un-love it: the ✓ again). The ♥ column leaves album lists. Hints *Add to Favorites* /
+*Remove from Favorites*; an empty cell when the ♥ is not offered. Then: make the gap between
+the mark and the number the same as the gaps between columns.
+
+**Built.** CARD-GROW.md §9b. `markCellHTML` in add-square.ts (the ♥ square shares the Add
+square's capture-phase click, so a press never plays the row or starts a drag). The numbers
+fault was not the column width: `.lib-row__num` kept the plain row's cover-slot width (36 px)
+inside a 31 px column. Now `width: auto`, and the # column is as wide as the album's widest
+number (`--grow-col-num-digit`), with the "#↑" header spilling left into the empty mark header.
+
+**Decided inside his calls (for him to see):** the + shows at rest in the column (before, on
+hover); the artist's Full song list keeps the old layout (not an album); the ♥ square wears the
+Add square's family.
+
+**Desk test.** Claude's run with shots on the demo, Max, Press: steps 1–4 passed (CARD-GROW.md
+§9b). The list is [ops/checks/album-mark.json](ops/checks/album-mark.json). Measured gaps: mark
+to number 9 px, number to title 8 px, column gap 8 px. **Open:** the + to ✓ press (every song of
+the demo album is in the library), a hand test on an album you have only part of, Full view;
+his eye on the strips.
+
+**What it taught (his ask, same sitting).** The lesson is LESSONS.md §4.14 (clarity, consistency,
+elegance: one rhythm, measured). The six tool gaps the run hit (a click on a covered control
+passed, timed notices over controls, no right-click step, a reload wipes raw storage, no + in
+the demo, a hand-written alignment probe) are SHOTS.md §5g, each a proposal for his fork.
+
 ## 2026-10-01 — A silent song change on live; the check after every song change; a press log (built, committed, NOT desk-tested)
 
 **The report.** On live (AirPlay, Living Room), at 15:15:11 "Two Years" ended. MusicKit named
@@ -41,6 +75,52 @@ then paused by a media key is left alone; radio and rooms are not covered (queue
 `deetsmusic diag --tag player:silentStart` after any stall: one line with `state`, then music.
 Each Play, Next or Previous press shows one `player:press` line with `from` and `state`. Pause a song in its first 4 s: no reload.
 
+## 2026-10-01 — Desk-test run: the 09-28 / 09-29 work; a checks archive
+
+**His ask:** run the open desk tests an agent can run, the motion ones with the shots runner, a
+network and a battery drop with debug tools; keep the scripts for later runs. No code changed.
+- **Results:** DESK-TESTS.md §5, the 10-01 run. *6 pass (one faked) · 1 not met · 2 findings ·
+  1 fork.* Play a web from the song playing 1–8, Next / Previous before Play, the network drop
+  (auto resume after reconnect), the unplug (Battery saver, faked), the grow timing and the theme
+  crossfade (shots, 5 skins) pass. The launch pass is not met on this PC today.
+- **Findings, not fixed:** *Plays after the song* → `misalign` with no `repair`; the launch's
+  library → ready gap ~250 ms (was ~50).
+- **His fork:** `--grow-rows-at` 0.4 leaves the grown card empty and still ~130 ms (0.25 would
+  start the rows as the clip looks open). The A/B strips are in `shots/grow-timing/0.25.2/`.
+- **New: [ops/checks/](ops/checks/README.md)**, his ask: the archive of re-runnable test scripts,
+  each with a description (`about`, `desk_test`, `pass`, `run`). Three to start:
+  `grow-timing.json`, `theme-crossfade.json` (shots lists) and `drop.mjs` (a network drop held on
+  one CDP socket, or `BatteryManager.charging` flipped, on the dev app). Placed in `docs/ops/`,
+  not `docs/guide/`, because the guide area is the user guide on the site.
+- **The findings, investigated (his ask, same day; no code changed):**
+  - *Misalign:* reproduced with a plain Play of a 44-song web while 74 `manual` entries waited.
+    Up Next held 27 repeats; MusicKit's `playLater` kept only the last copy of each, so it was 19
+    songs short from position 8 (`mkId` *Liability* where the model wants *For the Gone*). A
+    keep-the-last simulation matched its length (98) and first song exactly. Every repair re-sends
+    the same list, so it never clears. QUEUE.md layer 1 corrected with a note.
+  - *Launch:* the replies arrive on time (`library_tracks` ~613 ms, `main_ready` a 3 ms call);
+    the page's main thread was busy. The dev layout restored a Settings card in Max (left there by
+    the web test). With Home in that slot: `ready` 855 / 983 ms, `warm` 2,467 / 2,796 ms. Home was
+    left in the slot.
+  - *Grow rows at:* real app, Home wide in Max, `--grow-rows-at` 0.4 against 0.25. GPU on: 57–68
+    frames (worst 33–46 ms) against 59–69 (worst 25–29 ms). `--gpu=off`: 5–6 frames either way,
+    416–558 ms against 437–637 ms. The timer only starts ~30 row animations; the row build happens
+    at the click.
+- **His calls on the findings:** repeats stay allowed (a user may queue a song many times), and
+  the fix is built; the grow stays at 0.4; the launch gap is his fork (below).
+- **Built: repeats in one insert** (QUEUE.md § Repeats in one insert). A MusicKit probe first:
+  separate calls keep repeats, only one call with a repeat inside collapses (last copy kept). So
+  `insertWithRetry` sends each list in parts with no id twice (`headPart` / `tailPart` /
+  `splitRepeats`, queue-sync.ts, 4 tests), forward for `playLater`, from the end for `playNext`,
+  and a retry re-sends only the parts not in yet. Desk test on `dev:built`: the repro aligned
+  117 / 117 in 2 parts; Play Next of [A, B, A] in order; each copy played in its turn. `npm test`
+  158 pass, `tsc` clean. Not committed.
+- **The launch gap, explained:** a Settings card on screen at launch builds every open section's
+  rows (82 rows, 12 sections, 658 nodes) before the window shows: +200–250 ms on a reload. The
+  same idea as the Library's windowing (build what is on screen first), at a far smaller size.
+- **Seen during the run:** nine Rulez rules of his were deleted in the dev window during the run
+  (a person's pace, through the row menu; read as his). Nine test webs (local 8–16) stay in the dev
+  profile until 2026-10-08.
 
 ## 2026-10-01 — The guide and the intro video: the outline and the positioning (docs only)
 
@@ -67,6 +147,22 @@ Each Play, Next or Previous press shows one `player:press` line with `from` and 
   board filter; old posts sorted later with Cactus Needle 3. DOCS-ORG.md §13.10a. **Designed
   only:** a build was started and reverted in full at his word ("documenting, not implementing
   yet; many things in motion"). No code changed.
+
+## 2026-09-29 — A faster launch (built, NOT committed, NOT desk-tested)
+
+**His plan:** items 1–5 and 7 of the launch review, the parts that are not needed to show the
+window moved under the cover, item 6 (the tray webview) measured only. Record and numbers:
+[DEBUGGING.md §Launch](ops/DEBUGGING.md). Window shown 1,301 → 1,126 ms from the exe start
+(nav → shown 860 → 669), the handler 220 → 69 ms, the first playable click 3,495 → 2,561 ms,
+the lift's dropped frames 0.7 → 0.55 % (medians, dev:built, cold, debug Rust).
+- The launch reads first (`boot-prefetch.ts`); `library_tracks` as stored rows
+  (DATA-ARCHITECTURE.md §5c); the AudioContext after the lift (SOUND.md §1a); the rules
+  registry held in groups (RULES.md §18c); one style read before `main_ready`; `warmPlayer` at
+  `main_ready`; 18 parts in `runLater` slices before `main_ready`.
+- New dev line `[perf] launch …` (`launch-perf.ts`), `window.__launch`.
+- DEBUGGING.md's "first paint 1,255 ms" corrected: it is the lift's length; boot-history's
+  `to_first_paint_ms` is `setup()` start → the lift's END.
+- Item 6's plan (lazy tray window, ~120–170 ms more) is in the §Launch section; not built.
 
 ## 2026-09-29 — Usage counts designed
 
@@ -180,6 +276,11 @@ tray window (2 MB in the shared renderer), sound.ts element sets (no growth). DE
 **Open, his forks:** the choices each agent made inside his decisions (listed in this session's
 chat), the five forks in SECRETS-AND-CSP.md, a cap on the track store's transient map (and what
 it may evict), and whether the 354 ms boot handler deserves a launch pass.
+
+**His calls, later the same day:** no cap on the transient map (about 1 KB per Search song, about
+1 MB on a heavy day, reset at each launch; an eviction rule that drops a song still in the queue
+or history would show rows with no title). The launch pass was built: the entry "A faster
+launch" above.
 
 ## 2026-09-28 — The music stopped at a song change
 

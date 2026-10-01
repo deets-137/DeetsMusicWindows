@@ -17,6 +17,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { effective } from "./settings-store";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { launchMark } from "./launch-perf";
 
 const CAP_MS = 2500;
 
@@ -53,6 +54,7 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
   const root = document.documentElement;
   const t0 = performance.now();
   void restored.finally(() => {
+    launchMark("queue");
     if (root.dataset.boot === "hold") root.dataset.boot = "wait";
   });
   let capped = false;
@@ -68,6 +70,10 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
     } catch (e) {
       console.warn("[boot] main_ready", e);
     }
+    launchMark("ready");
+    // The window is on screen (or would be: a `--tray` launch keeps it hidden). The warm-up
+    // starts here, under the cover (main.ts, 2026-09-29).
+    window.dispatchEvent(new Event("deets:window-shown"));
     diag.log("boot:ready", { ms: Math.round(performance.now() - t0), capped });
     if (!effective("appearanceMotion") || reducedMotion()) {
       delete root.dataset.boot;
@@ -93,5 +99,6 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
  *  (walk.ts): a sprite under a control the cover still hides points at nothing. Fired
  *  once, on both paths — the fade and the reduced-motion snap. */
 function done(): void {
+  launchMark("lift");
   window.dispatchEvent(new Event("deets:boot-done"));
 }

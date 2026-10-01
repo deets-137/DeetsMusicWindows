@@ -11,6 +11,8 @@ import * as perf from "./perf";
 import { toast } from "./toast";
 import * as health from "./apple-health";
 import * as diag from "./diag";
+import { launchMark } from "./launch-perf";
+import { takeBootRead } from "./boot-prefetch";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -36,7 +38,7 @@ interface Heals {
 }
 async function loadHeals(): Promise<void> {
   try {
-    const h = await invoke<Heals>("catalog_heals");
+    const h = await (takeBootRead("heals") ?? invoke<Heals>("catalog_heals"));
     healed = new Map(h.healed);
     noCopy = new Set(h.none);
   } catch (e) {
@@ -76,7 +78,12 @@ export async function loadTracks(): Promise<void> {
     // The durable 'seen' rows (materialized catalog-only tracks) ride along into the
     // TRANSIENT map, so historical feedback (Rewind, play stats) resolves to metadata
     // across sessions — while the browsable library stays synced rows only.
-    const [page, seen] = await Promise.all([libraryTracks(0, 100000), seenTracks(), loadHeals()]);
+    // The first load takes the reads main.ts asked for at module load (boot-prefetch.ts).
+    const [page, seen] = await Promise.all([
+      takeBootRead("library") ?? libraryTracks(0, 100000),
+      takeBootRead("seen") ?? seenTracks(),
+      loadHeals(),
+    ]);
     all = page.items;
     index();
     for (const t of seen) {
@@ -142,6 +149,7 @@ export function initTrackStore(): void {
   if (started) return;
   started = true;
   firstLoad = loadTracks();
+  void firstLoad.then(() => launchMark("library"));
   // A heal pass (after a sync) or the player's backstop found catalog copies: re-index, so
   // the rows and "in your library" follow at once.
   void listen("catalog-heal", () => void refreshHeals());

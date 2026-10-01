@@ -820,6 +820,56 @@ switch leaves four paused. `tests/agent-rules.test.ts`: `sleep.arm` refused in b
    Paste a rule on `sleep.arm` into the store by hand with *Sleep every day* at a set time: the
    log shows `sleep:foreign` and the mark is still armed (the sleep panel shows the time).
 
+### 18c. The launch batch (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open (below)
+
+**Why.** About ninety parts register at launch. Each `registerEvent` / `registerFact` /
+`registerAction` / `registerProp` ran `relist`, and `relist` ran a whole `recheck`: every fact
+read, every state rule resolved, every `onRulesChange` subscriber told (Rulez drew its whole list
+each time). On a cold launch that was ~55 ms inside the handler and ~28 ms after it
+(DEBUGGING.md §Launch).
+
+**As built.**
+- `holdRegistry()` returns a release. While any hold is open, `relist` and `recheck` only mark
+  the registry dirty. The last release runs ONE `relist` and ONE check. A second call of the
+  same release does nothing; holds nest.
+- main.ts holds the registry in four groups, each released where the next part reads what the
+  rules decide:
+  1. `initRules`, `setAppleGate`, `initLookSchedule` → release, so `initLook` paints the
+     schedule's look on the first paint (§7a, LOOK-SCHEDULE.md). Unchanged from before.
+  2. `initLook` through every part before `initLayout` → release, so the cards mount on
+     the `surface`, `output` and Keep-on-top values.
+  3. `initLayout` … the end of the handler → release.
+  4. `runLater` (the parts under the cover, DEBUGGING.md §Launch) → one release after its last
+     part.
+- **An event inside a hold** (`emit`, `cancelled`, `decided`) relists first, so a moment rule
+  never runs on a stale live list. The state check still waits for the release.
+- Rulez draws at most once per frame for checks (`requestAnimationFrame` in its
+  `onRulesChange` subscriber).
+
+**What stays the same.** The final state is the same function of the same registry: the
+overlay, the properties, the holds. **Saved holds (§18b):** a check with partial facts reads
+the missing ones as undecided, and undecided never ends a `next` hold, so the fewer checks can
+only keep a hold the old sequence also kept. **onHand:** a hand change during a hold records its
+hold at once (`onHand` does not wait); only its check waits for the release. No hand change can
+happen at launch before the window shows.
+
+**Measured** (dev:built, cold): the launch handler 220 → 65 ms together with the parts moved under
+the cover; `boot:later` runs its 18 parts in ~46 ms. The same two look rules apply at the same
+points (the schedule's look before `initLook`; the album color rule when its fact arrives,
+before `main_ready`).
+
+**Desk test.**
+1. Look schedule on. Quit and start the app at day and at night (set times): the right look
+   shows at the first paint, no flash (the pre-paint and the first check agree).
+2. Pick a theme by hand under the schedule; quit; start: your pick still holds (the red dot);
+   `__rules.holds()` lists it.
+3. Keep on top: Always. Quit and start: the window is on top at once.
+4. Open Rulez in Max. Quit and start with Rulez showing: the list draws once, with no greyed
+   words (every part registered before the window shows).
+5. `__diag.events().filter(e => e.tag === "boot:later")` shows the parts and ms.
+
 ## 19. Adding a feature that uses rules
 
 > **Part:** guide · 2026-09-26

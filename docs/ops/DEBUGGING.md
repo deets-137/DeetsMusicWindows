@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts]
+sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
 updated: 2026-09-29
 ---
 # DeetsMusic — Debugging tools
@@ -89,7 +89,8 @@ bridge (the CLI probes the port list; the installed app would win).
 - **Cold start:** stop the dev exe (`Get-Process deetsmusic | ? Path -like '*target\debug*'
   | Stop-Process`; the `dev:app` runner exits with it), relaunch `npm run dev:app` in the
   background, wait for the `start:` line in the log, give the idle warm-up ~5 s, then
-  `play`. A click inside the first 1.5 s pays the old init cost by design.
+  `play`. A click before the warm-up ends (`player:drmWarm`, ~2.1 s after navigation since
+  2026-09-29, §Launch) pays the rest of the init cost by design.
 - **Queue restore:** `play`, `control next`, wait >1 s for the debounce, stop + relaunch,
   `list queue` should show the same Now + Up Next; `control play` resumes it.
 Limits: the MCP always plays a list from its first song (a 3,895-row library click stays
@@ -887,7 +888,7 @@ anything was built (`dev:built --hidden`, 0.25.2, the installed app running besi
 | 2 | `np-bus.ts` polled the volume every 500 ms for the whole session. | Two timer wake-ups a second, each a `getVolume()` + `isMuted()`; nothing to time, it is pure waste. | **Built**: `onVolumeChange` subscription, compare kept ([TRAY.md §3](../features/TRAY.md)). |
 | 3 | `sound.ts` `seen` / `routed` grow per `<audio>` element and are never pruned. | After five songs: **1 audio element, `routed` 1**; the logs' highest `routed` ever is 2. MusicKit's pool caps the set at 100 anyway. | Not a leak. `__sound.status().seen` added so it can be read ([SOUND.md §0](../features/SOUND.md)). |
 | 4 | DOM writes go on while the window is hidden and a song plays. | Hidden + paused: page **0.2 %**, GPU process **1.8 %**, Viz 2.4 %. Hidden + playing: page **1.8 %**, GPU **8.3 %**, Viz 8.1 %, compositor 5.4 %, **27 main frames in 5 s**. The `MutationObserver` recipe named the writers: `np__scrub` style ×4, `#np-elapsed` ×4, `#np-remaining` ×4 per 4 s, nothing else; `getAnimations()` showed the Glass `scrub-sheen` still **running** under `data-ambient="paused"`. | **Built**: the NP progress subscriber holds its report while `data-ambient="paused"` and paints it once when the attribute clears (`now-playing-card.ts`); the fancy-scrub floats join the ambient pause rule (styles.css). **After**, same run shape: hidden + playing page **0.6 %**, GPU **1.8 %**, Viz 2.3 %, **0 DOM writes in 4 s**; hidden + paused page 0.2 %, GPU 1.7 %. Clearing `data-ambient` by hand repainted the held label (0:00 → 0:27, the song's real position) within 50 ms. |
-| 5 | One 918 KB main chunk; no card is lazy. | Navigation timing on `dev:built`: `main-*.js` fetched by **160 ms**, module evaluation done by **200 ms** (DCL start), the app's own boot handler **200 → 554 ms**, first paint at **1,255 ms**. Source-map read: the rarely-open cards (Rulez, Diary, Rewind, History) are 235 KB of 2,427 KB source ≈ 10 %, so lazy-loading them saves ≈ 4–10 ms of the ~40 ms parse. Settings card (201 KB) is imported by compass.ts and quick-panel.ts; compass.ts by agent-writes.ts. | **Not built.** Under 1 % of the boot, against cross-imports in card memory, Compass and `NEW_MARKS`. The boot handler's 354 ms is where a launch pass would look next. |
+| 5 | One 918 KB main chunk; no card is lazy. | Navigation timing on `dev:built`: `main-*.js` fetched by **160 ms**, module evaluation done by **200 ms** (DCL start), the app's own boot handler **200 → 554 ms**, and a `[perf] frames boot` window of **1,255 ms** (corrected 2026-09-29: that is the length of the cover's lift animation, not a first paint; the page's first paint is at ~140 ms, the window shows at `main_ready`, §Launch). Source-map read: the rarely-open cards (Rulez, Diary, Rewind, History) are 235 KB of 2,427 KB source ≈ 10 %, so lazy-loading them saves ≈ 4–10 ms of the ~40 ms parse. Settings card (201 KB) is imported by compass.ts and quick-panel.ts; compass.ts by agent-writes.ts. | **Not built.** Under 1 % of the boot, against cross-imports in card memory, Compass and `NEW_MARKS`. The boot handler's 354 ms is where a launch pass would look next. |
 | 6 | The tray panel is a second WebView2 window at launch, "30–60 MB". | It shares the browser and renderer processes (same origin): the installed app runs **one** renderer (83 MB private) and the panel page holds **2 MB heap, 55 nodes** on the dev app. | **Not built** ([TRAY.md §3](../features/TRAY.md)). |
 | 7 | `track-store.ts` `transient` Map unbounded. | Grows one `Track` (~1 KB) per distinct catalog song played or queued from Search in a session. A cap would have to keep every song the queue still points at, or a Queue row loses its title. | **Not built**: not measurable, and a correct cap is a fork for the owner (eviction rule). |
 
@@ -904,10 +905,130 @@ pass) over 4 s should count 0 writes while playing hidden, and the first report 
 window shows must paint the scrubber and both time labels at once (the desk test: hide to the
 tray mid-song for 30 s, open it, the elapsed time reads right on the first frame).
 
-**Launch, for the record (dev:built, 0.25.2):** `[perf] frames boot` 1,255 ms, first frame at
-65 ms, 2.5 % dropped; `boot-history.csv` medians per version are in §Trending start-up. The
+**Launch, for the record (dev:built, 0.25.2):** `[perf] frames boot` 1,255 ms (the lift's own
+length: `--boot-dur` plus the staggers, §Launch), first frame of the lift at 65 ms, 2.5 % dropped; `boot-history.csv` medians per version are in §Trending start-up. The
 installed app's private working set at 9 h: renderer 83, GPU 91, CDM 58, WebView2 browser 30,
 host 11 MB (read with the §Which memory number to quote snippet).
+
+## Launch — the 2026-09-29 launch pass
+
+> **Part:** built · 2026-09-29 · desk test open (below)
+
+**Terms.** *nav* = the main page's navigation start (`performance.timeOrigin`). *Shown* = the
+return of `main_ready`: Rust shows the window inside that command. *The lift* = the cover's fade
+and the cards' rise after the window shows (`[perf] frames boot` measures it). *First playable
+click* = `player:drmWarm`: MusicKit is configured and the DRM module is warm, so a click pays
+neither cost.
+
+**How it was measured.** `npm run dev:built -- --hidden`, the installed app running beside it
+(the dev app on bridge 47826), cold: a new process per launch. A scratch script started the
+runner, read the exe's start from `Win32_Process.CreationDate`, attached CDP to the page, and
+read `window.__launch`, the resource timing of the `ipc.localhost` calls, the tray page's
+`timeOrigin` and the log (`start:`, `[perf] frames boot`). Medians: 5 launches before, 8 after.
+
+**The line to read.** Every launch now writes one line (src/launch-perf.ts, TELEMETRY only):
+
+```
+[perf] launch module 151 · handler 152→219 · late 265 · library 512 · queue 465 · ready 549 ·
+       lift 1853 · configured 1692 · warm 1994 (ms from navigation start)
+```
+
+`window.__launch` holds the same numbers. The exe start → nav part is not in it (Rust and
+WebView2): read the process start from `Win32_Process.CreationDate` against `timeOrigin`.
+
+**Before / after (medians, ms).**
+
+| Measure | Before | After | What moved it |
+| --- | ---: | ---: | --- |
+| exe start → nav | 440 | 477 | nothing here; noise on the machine (the same code path) |
+| nav → Rust `setup()` begins | 278 | 285 | nothing here (item 6) |
+| DOMContentLoaded handler | 220 | 69 | items 3, 4, 5 and the parts under the cover |
+| the parts under the cover end | (in the handler) | 284 | `runLater`: 18 parts, ~46 ms of work |
+| `library_tracks` reply at the page | 739 | 489 | items 1, 2 |
+| library in the store | 800 | 604 | items 1, 2 |
+| window shown (nav) | 860 | 669 | all |
+| **window shown (exe start)** | **1,301** | **1,126** | all (−175; −191 from nav) |
+| the lift: dropped frames | 0.7 % | 0.55 % | not worse with the warm-up under it (item 7) |
+| the lift: worst gap | 38 | 43 | within the spread (21–59 after, 33–52 before) |
+| lift ends (nav) | 2,137 | 1,972 | follows the window |
+| MusicKit configured (nav) | 2,755 | 1,785 | item 7 |
+| **first playable click (exe start)** | **3,495** | **2,561** | item 7 (−934) |
+
+**The debug build.** The dev exe is an unoptimized Rust build. It inflates every Rust number:
+the `library_tracks` job (100–160 ms before, ~80 after) and the serde write of its reply
+(~150 ms before) run about ten times faster in a release build. So on the installed app, item 2
+saves far less than here, and `setup()` and the tray webview's build weigh MORE in the total.
+The page's numbers (the handler, the rules, the AudioContext, the style passes) are release-shaped
+(`dev:built` is the release bundle) and carry over.
+
+**What changed, per item.**
+1. **The launch reads go first** (`src/boot-prefetch.ts`, main.ts's first import; taken once by
+   track-store.ts `loadTracks` and queue-persist.ts). A page's calls leave only when its task
+   ends: all the calls of the module evaluation and the handler reached Rust together, about
+   50 ms after the handler ended. And Rust answers nothing before `setup()` ends. So the gain is
+   the order (the library is the database thread's first job) and the shorter handler.
+   DATA-ARCHITECTURE.md §5c.
+2. **`library_tracks` sends the rows as stored** (`Page<Box<RawValue>>`, library.rs). The job
+   100–160 → ~80 ms, the reply ~150 → ~35 ms after the job. DATA-ARCHITECTURE.md §5c.
+3. **The AudioContext waits for the lift** (sound.ts `startSoundContext`, at `deets:boot-done`):
+   ~90–115 ms out of the handler. SOUND.md §1a.
+4. **The rules registry is held in groups** (rules.ts `holdRegistry`): one relist and one check
+   per group, and Rulez draws once per frame. RULES.md §18c.
+5. **One computed-style read before `main_ready`**: theme.ts `syncWindowBackground` does not
+   read while `data-boot` is hold / wait (a tray pop asks with `force`; a cover that failed to
+   start gives the color at once); `main_ready` still carries the canvas color. ambient.ts
+   `stepScrubEases` runs after `deets:boot-done` in an idle callback (the floats run only while
+   music plays; the CSS smooth ease stands until then). The look pre-paint (index.html) did not
+   change.
+7. **`warmPlayer` at `main_ready`** (`deets:window-shown`, boot-cover.ts) instead of 1.5 s after
+   the handler. Configure lands during the lift; the lift's dropped frames did not rise, so no
+   delay was needed.
+
+**Under the cover (main.ts `later` / `runLater`).** The handler starts what the window needs:
+the rules and the look, the skin, the surface, the ambient and wallpaper layers, the title bar
+and its menus, the account row, the track store, ♥, pins, the row order, the queue restore,
+Now Playing, the cards (`initLayout`), the cover, the volume pill and AirPlay. After it, in
+~8 ms slices (a `MessageChannel` task each, so the calls and replies run between them): Last.fm,
+Discord presence, Friends, room friends, Song of the Day, the updater, the five Rulez modules
+(playback, app, facts, files, window), the Sound, Sleep, Room and Web title items, the Compass,
+the playlist expiry and refresh. Each still starts through `boot(part, fn)`, so a throw is
+logged and the one failure toast still comes. The cover waits for the last slice
+(`main_ready` needs it), so the window never shows a part missing and the lift runs on a quiet
+page; in every launch measured the slices ended ~200 ms before the library arrived, so the wait
+costs nothing today. `diag` `boot:later` gives the parts and the ms. The weekly Replay (8 s) and
+the Rulez *The app opens* event (at the lift's end) are unchanged.
+
+**Item 6, measured only: the tray webview.** The tray page's navigation starts **~140 ms** after
+the main page's, and Rust's `setup()` begins **~280 ms** after it. Tauri builds the config
+windows in order (main, then tray) and runs `setup()` after both, and no command is answered
+before `setup()` ends (the tray's own first calls land right at its end). So nearly all of the
+~280 ms nav → setup gap is the tray's build, and it is now the launch's gate: the library call
+leaves the page at ~nav + 220 and waits until ~nav + 340. **Plan (not built):** `"create":
+false` on the tray window in tauri.conf.json; tray.rs builds it with
+`WebviewWindowBuilder::from_config` after `deets:boot-done` in an idle moment (it shares the
+main page's renderer process, so its load must not land on the lift), and a right-click before
+that builds it on the spot. Every `get_webview_window("tray")` must accept `None` (np-bus
+publishes, the panel resize, the tray panel commands). **Expected:** setup begins ~20 ms after
+nav; the gate becomes the page's own handler (~nav + 220), so the window shows **~120–170 ms**
+sooner (debug build; more of the total in release, where the Rust work is faster). To size it
+exactly, log `Instant` around the tray's `build()` in setup once it is built there.
+
+**Also considered, not built.** Opening the database on a thread before the webviews (a plugin's
+`setup` runs before Tauri builds the windows): the requests cannot reach Rust before `setup()`
+ends, so it gains nothing until item 6 is built, and it moves `log::init`, the dev seed, the
+migrations and their failure box off the setup thread. Revisit after item 6.
+
+**Desk test.**
+1. Start the app from the pinned taskbar button, three times. The window shows with the look you
+   expect (no white frame, no flash of another theme), and the cards rise as before.
+2. The title bar is complete in the first shown frame: Sound, Sleep, Room, Web, the volume pill.
+3. Right after the lift, press Play on the restored song: sound comes at once (no ~1 s
+   configure). In DevTools, `__launch.warm` is before your click.
+4. Ctrl+Space right after the lift: the Compass opens.
+5. Theme by the look schedule at night: the first frame is the night look.
+6. Right-click the tray icon during the launch: the tray panel opens on the theme's color.
+7. `grep "\[perf\] launch" %APPDATA%\com.deetsmusic.dev\deetsmusic.log | tail -3` after three
+   `dev:built` launches: `ready` near 600–700, `warm` near 2,000–2,100.
 
 ## Which memory number to quote (2026-09-27)
 
@@ -991,9 +1112,16 @@ node scripts/boot-log.mjs --show 30
 node scripts/boot-log.mjs --json
 ```
 
-A row carries the version, `to_first_paint_ms` (the app's own `start:` line to the first
-painted frame — what the person actually sits through), the boot window frames.ts measured,
-its dropped % and worst gap, the long tasks, and whether the GPU was accelerated.
+A row carries the version, `to_first_paint_ms`, the boot window frames.ts measured, its dropped %
+and worst gap, the long tasks, and whether the GPU was accelerated.
+
+**What `to_first_paint_ms` is (corrected 2026-09-29).** Despite its name, it runs from the
+`start:` line to the `[perf] frames boot` line. `start:` is written when Rust's `setup()` begins
+(about 720 ms after the exe starts: the WebView2 start and both webviews come first), and the
+frames line is written when the cover's LIFT ENDS. So it is start of setup → the end of the lift
+animation, which includes the ~1.25 s lift itself. It is not a first paint and not the moment
+the window shows; for those, read the `[perf] launch` line (§Launch). The column keeps its name
+so the history stays one file.
 
 **It sees the dev app.** The boot line rides the telemetry gate, so an ordinary installed
 release writes none — by design. An installed build made with `VITE_PERF=1` does, and that is

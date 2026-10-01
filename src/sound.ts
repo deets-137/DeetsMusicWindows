@@ -111,6 +111,11 @@ function syncMeter(): void {
 // ── The context and the bus ──────────────────────────────────────────────────────────
 
 let ctx: AudioContext | null = null;
+/** Launch: may the settings and the rules make the context yet (SOUND.md §1a, 2026-09-29)?
+ *  main.ts opens it with `startSoundContext`; a play never waits for it. */
+let contextAllowed = false;
+let openGate: () => void = () => {};
+const contextGate = new Promise<void>((r) => (openGate = r));
 let bus: AudioWorkletNode | null = null;
 /** After the bus: the AirPlay tap, then the sink gain (0 while a speaker plays alone). */
 let tap: AudioWorkletNode | null = null;
@@ -686,7 +691,10 @@ function applySettings(): void {
   const on = wanted();
   if (on !== was) diag.log(on ? "sound:on" : "sound:off", { eq: config.eqOn, lowVolume: config.lowVolume, crossfeed: config.crossfeed.on, routed: routedCount });
   if (on && !setting("soundFirstOn")) setSetting("soundFirstOn", Date.now());
-  if (on) void ensureContext().catch(() => {});
+  // At launch the context waits for main.ts (`startSoundContext`, after the window shows): its
+  // creation cost ~90–115 ms of the launch handler (DEBUGGING.md §Launch). A play before that
+  // makes it on the spot (the play hook). After launch, turning an effect on makes it at once.
+  if (on && contextAllowed) void ensureContext().catch(() => {});
   push();
   emit();
 }
@@ -889,7 +897,7 @@ function setRuleTone(part: keyof typeof ruleTone, db: unknown): void {
   const was = wanted();
   ruleTone[part] = v;
   diag.log("sound:ruleTone", { part, db: v });
-  if (wanted() && !was) void ensureContext().catch(() => {});
+  if (wanted() && !was && contextAllowed) void ensureContext().catch(() => {}); // at launch: startSoundContext
   syncMeter();
   push();
   emit();
@@ -954,6 +962,7 @@ async function setBalanceWatch(on: boolean): Promise<void> {
     return;
   }
   try {
+    await contextGate; // at launch, after the cover (startSoundContext)
     await ensureContext();
   } catch {
     return;
@@ -996,6 +1005,19 @@ function registerSoundRules(): void {
   const sync = () => void setBalanceWatch(ruleReads(["songBass", "songMids", "songTreble"]));
   onRulesChange(sync);
   sync();
+}
+
+/**
+ * main.ts, once the launch cover is done: make the context now if an effect is on, so the
+ * first play is routed before its first sample, as before. Until this runs, the play hook
+ * makes it at a play (the element is routed a moment into the song).
+ */
+export function startSoundContext(): void {
+  if (contextAllowed) return;
+  contextAllowed = true;
+  openGate();
+  diag.log("sound:contextAllowed", { wanted: wanted(), ctx: !!ctx });
+  if (wanted()) void ensureContext().catch(() => {});
 }
 
 export function initSound(): void {

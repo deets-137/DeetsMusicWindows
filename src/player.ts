@@ -30,9 +30,10 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
-import { expectedIds, suffixPlan, repairAtSongChange } from "./queue-sync";
+import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart } from "./queue-sync";
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
+import { launchMark } from "./launch-perf";
 
 declare global {
   interface Window {
@@ -231,6 +232,7 @@ export function initPlayer(): Promise<any> {
     (window as any).__music = music; // introspect the opaque instance (dev + bug reports)
     (window as any).__player = { snap, queue: queueDump };
     diag.log("player:configured", { authorized: !!music.isAuthorized });
+    launchMark("configured");
     console.log("[player] configured — authorized:", music.isAuthorized);
     return music;
   })();
@@ -283,6 +285,7 @@ async function warmDrm(): Promise<void> {
     const access = await navigator.requestMediaKeySystemAccess("com.widevine.alpha", config);
     warmKeys = await access.createMediaKeys();
     diag.log("player:drmWarm", { keySystem: access.keySystem });
+    launchMark("warm");
     perf.note("drm", "warm");
   } catch (e) {
     diag.log("player:drmWarmFailed", { e: String(e) });
@@ -1512,27 +1515,51 @@ const liveIds = (hs: TrackHandle[]): string[] =>
  * names as unresolvable, rebuild the id list (playId swaps in library-id fallbacks or
  * drops the handle), retry. Ends silently once nothing playable is left — the model
  * keeps its entries; the window builders skip dead ones. See docs/features/QUEUE.md.
+ *
+ * A song may sit in the queue many times (his call, 2026-10-01), but one MusicKit call that
+ * holds an id twice keeps only the last copy. So the list goes in PARTS with no id twice
+ * (queue-sync.ts `headPart`): one call for a list with no repeat. `playNext` puts each call
+ * right after the current song, so its parts go from the end (`order: "reverse"`). A retry
+ * re-sends only the parts not in yet: the parts in already resolved, so the rebuild keeps them.
+ * QUEUE.md §Repeats in one insert.
  */
 async function insertWithRetry(
   where: string,
   run: (ids: string[]) => Promise<void>,
   rebuild: () => string[],
+  order: "forward" | "reverse" = "forward",
 ): Promise<void> {
   let ids = rebuild();
-  for (let attempt = 0; ids.length; attempt++) {
+  let done = 0; // ids in MusicKit already: from the start (forward) or from the end (reverse)
+  let parts = 0;
+  let fails = 0;
+  const sentOf = (list: string[]) => (order === "forward" ? list.slice(0, done) : list.slice(list.length - done));
+  while (done < ids.length) {
+    const left = order === "forward" ? ids.slice(done) : ids.slice(0, ids.length - done);
+    const part = order === "forward" ? headPart(left) : tailPart(left);
     try {
-      await run(ids);
-      noteDropped(where, ids);
-      return;
+      await run(part);
+      done += part.length;
+      parts++;
     } catch (e) {
       const bad = unresolvedIds(e);
-      if (!bad.length || attempt >= 2) throw e; // not a resolve failure, or persistently bad
+      if (!bad.length || fails >= 2) throw e; // not a resolve failure, or persistently bad
       markDead(bad, "not-found");
-      diag.log("player:deadIds", { where, n: bad.length, attempt, bad: bad.slice(0, 10) });
+      diag.log("player:deadIds", { where, n: bad.length, attempt: fails, bad: bad.slice(0, 10) });
       console.warn(`[player] ${where}: ${bad.length} unresolvable id(s) dropped; retrying`);
+      fails++;
+      const sent = sentOf(ids);
       ids = rebuild();
+      // Never send a part twice: if the rebuild moved the parts already in, stop here. The
+      // alignment check after the insert logs it, and the next reconcile repairs from there.
+      if (sentOf(ids).join() !== sent.join()) {
+        diag.log("player:insertStop", { where, done, why: "rebuild moved the sent parts" });
+        return;
+      }
     }
   }
+  if (parts > 1) diag.log("player:insertParts", { where, parts, n: done });
+  noteDropped(where, ids);
 }
 
 // Loads are SERIALIZED and COALESCED. Two concurrent loadFromModel calls would
@@ -2057,7 +2084,7 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
   if (where === "next") {
     queue.playNextMany(playable);
     if (typeof m.playNext === "function")
-      await insertWithRetry("enqueue:next", (ids) => m.playNext({ songs: ids }), () => liveIds(playable));
+      await insertWithRetry("enqueue:next", (ids) => m.playNext({ songs: ids }), () => liveIds(playable), "reverse");
   } else {
     queue.addToQueueMany(playable);
     if (typeof m.playLater === "function")
@@ -2184,7 +2211,7 @@ export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<
   if (id) {
     const one = () => liveIds([entry]); // re-resolves after a dead-id bank (fallback or drop)
     if (to === "top" && typeof m.playNext === "function")
-      await insertWithRetry("move-top", (ids) => m.playNext({ songs: ids }), one);
+      await insertWithRetry("move-top", (ids) => m.playNext({ songs: ids }), one, "reverse");
     else if (to === "bottom" && typeof m.playLater === "function")
       await insertWithRetry("move-bottom", (ids) => m.playLater({ songs: ids }), one);
   }

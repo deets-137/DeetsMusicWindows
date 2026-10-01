@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
-updated: 2026-09-28
+updated: 2026-10-01
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
 
@@ -392,6 +392,42 @@ marked noisy (40–68 % CPU), so these numbers are a check of the tool, not a ve
 ```
 node scripts/shots.mjs --scratch fade-ab --vs "--theme-morph-hand-wait=1" --vs "--theme-morph-hand-ease=linear" --repeat 3
 ```
+
+## 5g. What the album-mark desk test needed (2026-10-01)
+
+> **Part:** idea · 2026-10-01 · each item is his fork; none is built
+
+The first desk test of a layout (not a motion) on the runner: CARD-GROW.md §9b, the list
+[ops/checks/album-mark.json](../ops/checks/album-mark.json). It passed, but six gaps in the
+tool cost reruns or left a step out. Each gap and a proposal:
+
+1. **A click on a covered control said "ok".** The demo's "Replay updated" notice sits over the
+   Max header's right end (the Full | Lib chip). The `click` step clicked the notice; the view did
+   not change and the shot passed. The probe after it was the only thing that showed it.
+   *Proposal:* before a `click`, the runner checks `elementFromPoint` at the target's center. If
+   that is not the target or inside it, the step fails and names the element on top. (The same
+   class of fault as §5b: a passing shot whose click did nothing.)
+2. **Timed notices cover controls.** *Proposal:* a shot key `"toasts": "off"` that holds the
+   timed notices (the sticky ones are a feature to shoot), or a runner default that clears them
+   before each step.
+3. **No right-click and no menu step.** The run fired `contextmenu` from an `eval` and found the
+   menu row by its text. *Proposal:* a `rightclick` step (a selector) and a `menu` step (a row's
+   label: `"menu": "Favorite"`), so a menu path is a gesture, as a user makes it.
+4. **A reload wipes a plain `localStorage` key.** The runner seeds a clean store on every load,
+   so `deets.libraryAdd = off` was lost; the run went through the Settings row instead. That is
+   the better test, but a state with no row cannot be set. *Proposal:* a shot key `"storage"`
+   (raw keys, seeded with the store), beside `settings`.
+5. **The demo cannot show a +.** Every song of every demo album is in the library, so the Full
+   view never shows the Add square's + (the + to ✓ press is still a hand test). *Proposal:* one
+   demo album that is only partly in the library (demo/catalog.ts).
+6. **Column alignment took a hand-written probe.** The fault was 5 px: the numbers ended past
+   the "#" header because a cell kept a width from the plain row. *Proposal:* a `__cols.check()`
+   on the TELEMETRY gate (beside `__grow`) that returns, per column, the header's and the cells'
+   left and right edges and the gap to the next column, and flags any edge that differs by 1 px
+   or more. A list of rows is checked in one probe, in every skin.
+
+**A note for probes:** hint.ts moves every `title` into `data-hint` and removes the attribute.
+A probe reads `aria-label` or `data-hint`, never `title` (an empty `title` here is not a bug).
 
 ## 6. Coverage — no shipped feature without a shot
 

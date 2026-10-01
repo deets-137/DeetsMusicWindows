@@ -145,6 +145,9 @@ old installs' Guide button opens.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
 - `DESK-TESTS.md` — the open desk tests as one runbook for an agent in its own session: the
   setup, the rules, the list with who can run each (agent / owner), the results table.
+- `checks/README.md` — the archive of re-runnable test scripts (his ask, 2026-10-01): a shots
+  list or a drive script written for a desk test is kept there with a description, for a
+  regression run later. `checks/drop.mjs` holds a network drop or an unplug on the dev app.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which

@@ -408,8 +408,14 @@ pub(crate) fn forget_account(conn: &mut Connection) -> Result<usize, String> {
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 /// Read a page of cached tracks, ordered by title/artist.
+///
+/// The rows go out as stored (2026-09-29, DATA-ARCHITECTURE.md §The launch read). Every row is
+/// written by `serde_json::to_string(&Track)`, so the stored text IS the wire shape; parsing each
+/// one into a `Track` only to write it again cost the launch's biggest read most of its time
+/// (3,977 rows, 2.2 MB). `RawValue` still checks that each row is JSON, and a bad row fails the
+/// call as a bad `Track` did before.
 #[tauri::command]
-pub async fn library_tracks(offset: u32, limit: u32, app: tauri::AppHandle) -> Result<Page<Track>, String> {
+pub async fn library_tracks(offset: u32, limit: u32, app: tauri::AppHandle) -> Result<Page<Box<serde_json::value::RawValue>>, String> {
     crate::db_thread::run(&app, move |db| {
         let conn = db.lock();
         // Library views show synced rows only; 'seen' rows exist for feedback joins.
@@ -425,8 +431,7 @@ pub async fn library_tracks(offset: u32, limit: u32, app: tauri::AppHandle) -> R
         let mut items = Vec::new();
         for row in rows {
             let s = row.map_err(|e| e.to_string())?;
-            let t: Track = serde_json::from_str(&s).map_err(|e| e.to_string())?;
-            items.push(t);
+            items.push(serde_json::value::RawValue::from_string(s).map_err(|e| e.to_string())?);
         }
         let next_offset = (offset + limit < total).then_some(offset + limit);
         Ok(Page {
@@ -1593,5 +1598,56 @@ mod account_tests {
         assert!(plan("SELECT COUNT(*) FROM play_events WHERE track_id = 'x'").contains("idx_play_events_track"));
         assert!(plan("SELECT COUNT(*) FROM play_events WHERE context = 'x'").contains("idx_play_events_context"));
         assert!(plan("SELECT MAX(started_ts) FROM play_events WHERE context = 'x'").contains("idx_play_events_context"));
+    }
+}
+
+#[cfg(test)]
+mod launch_read_tests {
+    use super::*;
+    use crate::model::{Artwork, PlayParams};
+
+    // 2026-09-29: `library_tracks` sends the stored rows as they are (RawValue). The page it
+    // sends must be the same text the old parse-and-write sent, for every row the sync writes.
+    #[test]
+    fn stored_rows_are_the_wire_shape_2026_09_29() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+        let full = Track {
+            library_id: Some("i.A".into()),
+            catalog_id: Some("1".into()),
+            title: "A \"quoted\" title · ü".into(),
+            artist_name: "Artist".into(),
+            album_name: Some("Album".into()),
+            artwork: Some(Artwork { url_template: "https://x/{w}x{h}bb.jpg".into(), width: 100, height: 100, bg_color: None, text_colors: None }),
+            duration_ms: Some(1000),
+            track_number: Some(1),
+            disc_number: Some(1),
+            genres: vec!["Pop".into()],
+            has_lyrics: true,
+            release_date: Some("2020-01-01".into()),
+            added_rank: Some(0),
+            play_params: PlayParams { id: Some("i.A".into()), catalog_id: Some("1".into()), kind: Some("song".into()), is_library: true },
+            ..Default::default()
+        };
+        let bare = Track { library_id: Some("i.B".into()), title: "B".into(), artist_name: "b".into(), ..Default::default() };
+        write_tracks(&mut conn, &[full, bare], false).unwrap();
+        let rows: Vec<String> = conn
+            .prepare("SELECT json FROM tracks WHERE source = 'library' ORDER BY sort_key")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        let typed = Page {
+            items: rows.iter().map(|s| serde_json::from_str::<Track>(s).unwrap()).collect::<Vec<_>>(),
+            total: 2,
+            next_offset: None,
+        };
+        let raw = Page {
+            items: rows.iter().map(|s| serde_json::value::RawValue::from_string(s.clone()).unwrap()).collect::<Vec<_>>(),
+            total: 2,
+            next_offset: None,
+        };
+        assert_eq!(serde_json::to_string(&raw).unwrap(), serde_json::to_string(&typed).unwrap());
     }
 }

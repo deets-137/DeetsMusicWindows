@@ -18,6 +18,7 @@ import * as queue from "./queue";
 import { setting } from "./settings-store";
 import { onTracksChange } from "./track-store";
 import { refreshPlayerState, playbackPosition, setResumeAt } from "./player";
+import { takeBootRead } from "./boot-prefetch";
 
 const SAVE_DEBOUNCE_MS = 500;
 let timer: number | undefined;
@@ -39,7 +40,7 @@ export async function initQueuePersist(): Promise<void> {
   started = true;
   let fromUpdate = false;
   try {
-    const json = await invoke<string | null>("queue_state_get");
+    const json = await (takeBootRead("queue") ?? invoke<string | null>("queue_state_get")); // asked at module load (boot-prefetch.ts)
     const s = json ? (JSON.parse(json) as queue.QueueSnapshot) : null;
     fromUpdate = !!s?.updateRestart;
     const mode = fromUpdate ? "song" : setting("restoreQueue");

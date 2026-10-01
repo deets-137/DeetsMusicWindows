@@ -27,7 +27,9 @@ tauri-plugin-opener = "2"
 # match the pin to a window and would otherwise launch the exe again (TRAY.md).
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# raw_value: `library_tracks` sends the stored rows as they are, with no parse and re-write
+# (DATA-ARCHITECTURE.md §The launch read, 2026-09-29).
+serde_json = { version = "1", features = ["raw_value"] }
 jsonwebtoken = "9"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] } # gzip: Apple compresses some replies (the playlist create) whatever we ask for
 tiny_http = "0.12"

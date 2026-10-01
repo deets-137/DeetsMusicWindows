@@ -16,8 +16,15 @@ export function paintTheme(name: ThemeName): void {
  * Paint the NATIVE window in the theme's canvas color. During an animated resize
  * (surface.ts) the frame can outrun the page by a frame; the strip that shows is then
  * canvas, not white. Reads the body's computed background so the role resolves.
+ *
+ * Not while the launch cover holds the hidden window (`data-boot` hold / wait, 2026-09-29):
+ * the read forces a whole style pass on a page still being built, and `main_ready` gives the
+ * window this same color when it shows it (boot-cover.ts: the launch's one read). A tray pop
+ * before that asks with `force` (main.ts).
  */
-function syncWindowBackground(): void {
+export function syncWindowBackground(force = false): void {
+  const boot = document.documentElement.dataset.boot;
+  if (!force && (boot === "hold" || boot === "wait")) return;
   const m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(getComputedStyle(document.body).backgroundColor);
   if (!m) return;
   import("@tauri-apps/api/window")

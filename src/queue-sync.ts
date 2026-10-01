@@ -3,8 +3,8 @@
 // DOM here, so tests/queue-sync.test.ts can pin the rules (the 2026-09-24 repeated-song bug
 // lived in the first function).
 
-/** The model's upcoming ids, in order, capped to the window. **No dedup:** `playLater` keeps
- *  a repeated id, and deduping against the songs MusicKit already held left a re-queued,
+/** The model's upcoming ids, in order, capped to the window. **No dedup:** MusicKit keeps a
+ *  repeated id across calls (one call is split at a repeat: `headPart`), and deduping against the songs MusicKit already held left a re-queued,
  *  already-heard song out of MusicKit entirely (2026-09-24). An entry with no playable id
  *  (`idOf` → null) is skipped. */
 export function expectedIds<E>(upcoming: readonly E[], cap: number, idOf: (e: E) => string | null | undefined): string[] {
@@ -15,6 +15,38 @@ export function expectedIds<E>(upcoming: readonly E[], cap: number, idOf: (e: E)
     if (id) out.push(id);
   }
   return out;
+}
+
+/** The longest start of `ids` with no id twice: what one MusicKit insert call may carry.
+ *  One `playLater` / `playNext` call that holds an id twice keeps only its LAST copy, while
+ *  separate calls keep every copy (probed 2026-10-01, QUEUE.md §Repeats in one insert). */
+export function headPart(ids: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of ids) {
+    if (seen.has(id)) break;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+/** The longest end of `ids` with no id twice. `playNext` puts each call right after the
+ *  current song, so its parts go from the end of the list to the start. */
+export function tailPart(ids: readonly string[]): string[] {
+  return headPart([...ids].reverse()).reverse();
+}
+
+/** `ids` cut into parts with no id twice in a part, in order. A list with no repeat is one
+ *  part; the parts are as few as the most repeated id needs. */
+export function splitRepeats(ids: readonly string[]): string[][] {
+  const parts: string[][] = [];
+  for (let at = 0; at < ids.length; ) {
+    const part = headPart(ids.slice(at));
+    parts.push(part);
+    at += part.length;
+  }
+  return parts;
 }
 
 /** How far ahead a difference must be repaired at a song change. A repair cuts MusicKit's

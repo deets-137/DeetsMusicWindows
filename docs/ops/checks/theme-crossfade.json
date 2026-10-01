@@ -1,0 +1,55 @@
+{
+  "about": "A hand theme pick crossfades in place; the panel that made it leaves first; a skin pick keeps the cover (UX-COVERUPS.md §6c.1, §6c.2). Every skin.",
+  "desk_test": "architecture/UX-COVERUPS.md §6c.1 steps 1–3, §6c.2 steps 1, 2, 5",
+  "made": "2026-10-01",
+  "pass": "Theme picks: the Compass or the menu is gone in the first ~50 ms of the strip; no frame shows its rows over the cards; the colors blend in place in ~0.5 s; the cards never fade out or rise. The console has one '[perf] frames theme-fade … by=hand' line per pick and no 'appearance' line; the probe reads boot=- . Skin pick: the cover runs (an 'appearance' line), the menu closes under it.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/theme-crossfade.json  → shots/theme-crossfade/<version>/",
+  "looks": [{ "theme": "moonlight", "skin": "*" }],
+  "shots": [
+    {
+      "id": "theme-compass",
+      "about": "Ctrl+Space, type 'sepia', Enter: the Compass leaves, then the colors fade.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 2.5,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "sepia", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "frames": 40, "strip": true },
+        { "wait": 900 },
+        { "probe": "document.documentElement.dataset.theme + ' boot=' + (document.documentElement.dataset.boot ?? '-')" }
+      ]
+    },
+    {
+      "id": "theme-menu",
+      "about": "The app title's menu › Theme › Sepia: the menu leaves, then the colors fade.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "steps": [
+        { "click": "#settings-trigger" },
+        { "wait": 400 },
+        { "hover": "#settings-menu .menu__row[data-row=\"theme\"]" },
+        { "wait": 500 },
+        { "click": "#settings-menu [data-theme-choice=\"sepia\"]", "frames": 40, "strip": true },
+        { "wait": 900 },
+        { "probe": "document.documentElement.dataset.theme + ' boot=' + (document.documentElement.dataset.boot ?? '-')" }
+      ]
+    },
+    {
+      "id": "skin-compass",
+      "about": "A skin pick (Press) from the Compass keeps the cover.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 3,
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "type": "press", "delay": 60 },
+        { "wait": 500 },
+        { "key": "Enter", "strip": true },
+        { "wait": 1800 },
+        { "probe": "document.documentElement.dataset.skin" }
+      ]
+    }
+  ]
+}

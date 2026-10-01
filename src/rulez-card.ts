@@ -971,7 +971,12 @@ export const rulezCard: CardDef = {
     body.addEventListener("click", onClick);
     body.addEventListener("contextmenu", onContext);
 
-    const offRules = onRulesChange(render);
+    // One draw per frame for the checks (RULES.md §18c): a launch runs a check per group of
+    // modules, and each one drew the whole list again (~28 ms each on a cold launch).
+    let rulesFrame = 0;
+    const offRules = onRulesChange(() => {
+      if (!rulesFrame) rulesFrame = requestAnimationFrame(() => ((rulesFrame = 0), render()));
+    });
     const offFiles = onFilesChange(render); // a new picture or sound shows in the menus
     const offSettings = onSettingsChange((key) => {
       if (key === "rules" || key === "soundOutputNames" || key === "soundEqUser") render();
@@ -984,6 +989,7 @@ export const rulezCard: CardDef = {
       snapshot: (): Snap => ({ view, open: openId }),
       destroy() {
         destroyed = true;
+        cancelAnimationFrame(rulesFrame);
         window.clearTimeout(logTimer);
         offDiag();
         offFiles();

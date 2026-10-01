@@ -89,6 +89,40 @@ MusicKit <audio> (volume applied here, by MusicKit)
   time with no device: the EQ's response, the meter against reference tones, the limiter — from
   `scripts/webview-eval.mjs`, silent.
 
+### 1a. The context at launch waits for the cover (2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open (below)
+
+**As built.** With an effect on, `applySettings` made the `AudioContext` inside the launch
+handler. `new AudioContext` and the worklet load cost **90–115 ms** of that handler on a cold
+launch (DEBUGGING.md §Launch). Now:
+
+- At launch, `applySettings`, a rule's tone (`setRuleTone`) and the balance watch do not make
+  the context. `contextAllowed` is false until main.ts calls **`startSoundContext()`** at
+  `deets:boot-done` (the cover's lift has ended). It then makes the context if an effect is on
+  (`wanted()`), as before. The balance watch waits on the same gate (`contextGate`).
+- **A play never waits.** The play hook (`installPlayHook`) makes the context on the spot, as it
+  always did when none existed. A play before the lift ends (a click during the lift, a rule on
+  *The app opens*) is routed once the context is up, a moment into the song.
+- After launch nothing changed: an effect turned on makes the context at once.
+- `diag.log("sound:contextAllowed", { wanted, ctx })` marks the gate opening; `sound:context`
+  follows when the context runs.
+
+Measured (dev:built): the context runs about 120 ms after the lift ends (`contextAllowed` at
+1,853 ms, `sound:context` at 1,976 ms from navigation). The `boot-done` listener for it is added
+before the one for *The app opens*, so a rule's play at launch finds the context already coming.
+
+**Desk test.**
+1. EQ on. Quit and start the app. In DevTools after the cover: `__diag.events().filter(e =>
+   /sound:(contextAllowed|context)/.test(e.tag))` shows `contextAllowed` then `context`, after
+   `boot:ready`.
+2. Press Play on the restored song: the EQ is heard from the first second (turn a band to +12 dB
+   to hear it). The Sound panel's meter moves.
+3. EQ off. Quit and start: `contextAllowed` shows `wanted: false` and no `sound:context` follows.
+   Turn the EQ on in the Sound panel: `sound:context` follows at once.
+4. EQ on. Quit, start, and press Play during the lift: the song plays; the EQ comes in within a
+   moment (the log shows `sound:route`).
+
 ## 2. Advanced EQ
 
 ### 2.1 The engine

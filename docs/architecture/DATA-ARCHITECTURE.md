@@ -339,7 +339,40 @@ pass). `IF NOT EXISTS`, so it runs on every start and does nothing after the fir
 and re-renders on `done`.
 
 **Read (`library_tracks(offset, limit)`):** paged `Page<Track>` from SQLite, ordered
-by `sort_key`.
+by `sort_key`. Since 2026-09-29 the rows go out as stored (§5c).
+
+### 5c. The launch read (as built 2026-09-29)
+
+> **Part:** built · 2026-09-29 · desk test open (below)
+
+The launch's biggest read is `library_tracks(0, 100000)`: 3,977 rows, 2.2 MB. Two changes:
+
+1. **The rows go out as stored.** Every `tracks.json` is written by `serde_json::to_string(&Track)`
+   (`write_tracks`, `materialize_track`), so the stored text is already the wire shape. The
+   command parsed each row into a `Track` and serialized it again. It now returns
+   `Page<Box<RawValue>>` (serde_json's `raw_value` feature): `RawValue::from_string` checks that
+   each row is JSON and sends it untouched. The wire shape is the same; a row that is not JSON
+   fails the call, as a bad `Track` did. `launch_read_tests` in library.rs asserts the old and
+   the new page serialize to the same text, for a full row and a bare one.
+2. **It is the database thread's first job.** `src/boot-prefetch.ts` is main.ts's first import
+   and asks for `library_tracks`, `seen_tracks`, `catalog_heals` and `queue_state_get` before any
+   other module calls Rust. track-store.ts and queue-persist.ts take those promises once
+   (`takeBootRead`); every later load calls Rust as before. One call each, no double load.
+
+**What gates it now.** A page's calls leave only when its task ends, and Rust answers none
+before its `setup()` ends (the tray webview is built first; DEBUGGING.md §Launch, item 6). The
+library call now reaches Rust at setup's end (~nav + 340 ms) instead of ~nav + 440.
+
+Measured (dev:built, debug Rust, cold): the job 100–160 → ~80 ms; its reply reaches the page
+~35 ms after the job (was ~150 ms, the serde re-write in a debug build); the library is in
+the store at nav + ~560 (was ~800). A release build runs serde about ten times faster, so the
+debug numbers overstate the old cost; the order and the handler's length are what carry over.
+
+**Desk test.**
+1. Start the app: the Library card lists every song, sorted as before; Search finds a library
+   song as "in your library"; a queue restored from last session shows its titles and covers.
+2. `__launch` in DevTools: `library` is well before `ready`.
+3. Library ⟳: the list reloads (a second `library_tracks` call, not the launch read).
 
 **The catalog heal** (2026-09-28, schema v16, `heal.rs`,
 [QUEUE.md §A library song Apple sends with no play id](../features/QUEUE.md)):

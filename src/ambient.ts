@@ -51,12 +51,25 @@ export function initAmbient(): void {
   const win = getCurrentWindow();
   const root = document.documentElement;
 
+  // The steps read the computed tokens: a whole style pass. At launch that pass landed on the
+  // page still being built (25 ms before the window showed, DEBUGGING.md §Launch), and the floats
+  // run only while music plays. So the first steps wait for the cover to lift, then an idle
+  // moment; until then the CSS fallback (the smooth ease) stands. (2026-09-29)
+  let launched = false;
+  const step = () => {
+    if (launched) requestAnimationFrame(() => stepScrubEases(root));
+  };
+  window.addEventListener("deets:boot-done", () => {
+    launched = true;
+    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(() => stepScrubEases(root), { timeout: 2000 });
+    else window.setTimeout(() => stepScrubEases(root), 200); // a browser with no idle callback (the web demo in Safari)
+  }, { once: true });
   const applyMotion = () => {
     root.dataset.bgMotion = effective("backgroundMotion");
-    requestAnimationFrame(() => stepScrubEases(root)); // Reduced lowers --ambient-fps
+    step(); // Reduced lowers --ambient-fps
   };
   applyMotion();
-  onSkinChange(() => requestAnimationFrame(() => stepScrubEases(root))); // a skin may set its own durations
+  onSkinChange(step); // a skin may set its own durations
   onSettingsChange((k) => {
     if (k === "backgroundMotion") applyMotion();
   });

@@ -70,9 +70,11 @@ more motion than the wait deserves.
 ## 4. First play / context start — **configure + buffer** (mostly fixed 2026-09-12)
 **Where:** the first `playPause`/`playContext` of a session used to lazily configure
 MusicKit (token fetch + `configure`, ~1 s) and spawn the browser's DRM module (~0.6–1.3 s
-inside the first stream). **Fixed:** `main.ts` calls `warmPlayer()` 1.5 s after launch —
-MusicKit configures and the Widevine module is created at idle. A click inside that
-1.5 s still pays the old cost.
+inside the first stream). **Fixed:** `main.ts` calls `warmPlayer()` at launch — MusicKit
+configures and the Widevine module is created off the click path. Since 2026-09-29 it starts
+when the window shows (`deets:window-shown`, under the cover's lift) instead of a fixed 1.5 s
+after the handler: the player is warm ~0.9 s sooner, and the lift drops no more frames
+(DEBUGGING.md §Launch). A click before the warm-up ends still pays the rest of the cost.
 **What remains (Apple's):** the first play per page still makes an account check, three
 cold TLS handshakes (api / play / audio hosts), the Widevine service-certificate fetch
 and the license — measured 1.7–1.9 s click-to-audible cold vs 1.0–1.7 warm. The
@@ -110,7 +112,10 @@ WebView2's white, then the theme's canvas, then a resize to the saved surface si
 behind an opaque `--canvas` cover (`<html data-boot>`, index.html), then calls `main_ready`
 (tray.rs), which gives the window the canvas color and shows it. The cover fades and the
 cards rise into place, one slot after the next (`src/boot-cover.ts`).
-- **Ready** = queue restored + library loaded + window at its size, capped at 2.5 s.
+- **Ready** = queue restored + library loaded + window at its size + the parts that start
+  under the cover (main.ts `later`, since 2026-09-29, DEBUGGING.md §Launch), capped at 2.5 s.
+  `main_ready` carries the page's one computed-style read of the launch (the canvas color);
+  `theme.ts` does not read it again while the cover holds the hidden window.
 - **Clicks:** blocked until the queue is restored (a Play press before that played the
   library from the top), then they pass while the rest finishes and the fade runs.
 - **Tokens** (skin tier): `--boot-dur`, `--boot-ease`, `--boot-rise`, `--boot-stagger`,

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/webview-eval.mjs, scripts/dev-app.mjs, src/diag.ts]
-updated: 2026-09-27
+updated: 2026-10-01
 ---
 # Desk tests — the runbook for an agent
 
@@ -248,3 +248,20 @@ Summary: *12 pass (one faked) · 1 fail · 4 unreachable or not forceable · 3 l
 | B10 chime | 2026-09-27 | **not run** | The speaker refused the dev app: `connect refused: the speaker is held by DeetsMusic` — his live app was playing to Living Room. Not taken over. His, with the live app off the speaker |
 | B11 | 2026-09-27 | pass (step 2); step 3 not reached | Ocean: one 629 ms fade; the six sea loops `paused` through it, their clock held at 18,426 ms, then on from 18,426. Glass: 590 ms; `aurora-drift` and the album aurora spin held at 3,638 ms, then on from there. Press (step 3): the Live Theming fade fell in the song-load gap, when the record is paused anyway; a mid-song rule fade could not be made without more holds on his profile. The record's group rule is in styles.css; his eye |
 | Diary 4d | 2026-09-27 | pass (1, 2, 3, 5, 6); 4 his eye | DIARY.md §4d. 1: Midi 700 px: the two boxes 133 px side by side, nothing cut, no sideways scroll. 2: Midi 495 px, card 230: boxes one tile (96), the top row scrolls (208 in 180), the shelves stay put. 3: nothing loaded: the + box 144 = 1.5 × 96, centered. 5: Max 950, card 437: note 72 (the cap; 20 % = 75); Max 760, card 342: note 56 (= 20 %). 6: a tall inline height (what the drag sets) stops at half the entry: 188 / 140 |
+
+**Run of 2026-10-01 (Claude, his ask: the 09-28 / 09-29 tests, the shots for the motion ones).**
+`dev:built`, the installed app running beside it (dev bridge 47826). The shots lists and the drop
+script are kept in [checks/](checks/README.md) for a later run.
+
+| # | Date | Result | Seen |
+|---|---|---|---|
+| Web 11.3 | 2026-10-01 | pass (1–8) | PLAYLIST-WEB.md §11.3. 1–2: Start a Web on Now Playing at 1 % / 14 % → `web:play {from: menu, mode: replace, skip: false}`, the seed again from 0:00. 3: at 81 % → `skip: true`, *Talk Is Cheap* (the second song); Previous ×2 → the seed. 4: Skip off, 81 % → `skip: false`. 5: Play a web off → the Skip row hides, `web:make` only, the song plays on, the web opens in the Playlist card. 6: the panel (Song, *'Bout It*, Make playlist) → `from: panel`; the Compass `web bout it` → `from: compass`. 7: a web from another song → no `web:play`. 8: a While Always rule (added and removed with the CLI) → `mode: after`, the song plays on, the web at the top of Up Next. Both rows put back on. Steps 7's album / artist seeds not run. **Finding:** after step 8's insert, `player:insert {at:0, n:29}` → `reconcile {d:0, mk:76, expected:105}` → `player:misalign`, and no `player:repair` follows, though QUEUE.md says each misalign gets one. Still misaligned 100 s later. Nine test webs (local 8–16) are left in the dev profile; they expire 2026-10-08 |
+| Next/Prev idle | 2026-10-01 | pass | QUEUE.md § Next and Previous before the first Play. Quit paused on *'Bout It*; cold start: Next → *Talk Is Cheap*, Next → *Bye, honey*, Previous → *Talk Is Cheap*, each paused at 0:00, MusicKit empty, one `player:idleSkip` each. `np_command next` (the tray's and the media keys' path) → `np-bus:command {from: tray}` + `idleSkip`. Play → *Bye, honey* plays. The real media key not pressed: Windows would send it to whichever app owns the media session (his live app). The dev tray panel shows *Not playing* for a restored, paused song, so its buttons go to the Windows source |
+| Drop | 2026-10-01 | pass | `checks/drop.mjs net 25`, a seek to 85 % inside it: `loadSegmentError` → `resumeArmed {at: 131}`, the toast held 4.9 s, then *can't reach Apple Music*. Back: *Apple Music is working again* ~12 s after the network, `resumeAfterReconnect {at: 131}` (no press needed), hushed, `resumeSeek {done: true}` |
+| 18a.3 | 2026-10-01 | pass (faked) | Battery saver turned on from its Rulez row; `drop.mjs battery off` → the four holds (`why: fact:charging`), `data-glass-fancy=off`, `data-bg-motion=reduced`; `on` → all four end, his values back. Recipe turned off after |
+| Grow 19.1 | 2026-10-01 | pass (1–3) with one gap | Shots (`checks/grow-timing.json`, 5 skins): Midi, Max wide / tall / Fill, each with Escape; all 20 probes right. Collapse: the covered card fades in its own cell, no pill. **The gap:** the clip looks fully open at ~+90 ms; the rows come at +218 (Glass), so the card is still and empty ~130 ms. The old order (`--grow-rows-at: 1`): +89 to +417, ~330 ms. The new order also gives fewer frames over the open in every skin (50 / 63 / 46 / 62 / 26 against 81 / 76 / 72 / 75 / 63; headless Edge). His fork, step 4: 0.4, or ~0.25. Collapse: the grown card's rows go at once and come back after it (his eye). Steps 4 on WebView2 and 5 not run |
+| Fade 6c | 2026-10-01 | pass (6c.1 1, 3; 6c.2 1, 2, 5) | Shots (`checks/theme-crossfade.json`, 5 skins): Compass and title menu → one `theme-fade … by=hand` each (535–578 ms), no `appearance`, `boot=-`; the panel gone by ~+50 ms, no ghost (Ocean strip read). A skin pick → the cover (`appearance` 928–1,115 ms). The grey middle at ~+280–330 ms, as known. The agent pick (6c.1 step 4), Settings › Reset and reduced motion not run |
+| Launch | 2026-10-01 | **not met** (cause open) | DEBUGGING.md § Launch step 7, `dev:built -- --hidden`, three cold launches: `ready` 1,175 / 1,176 / 1,277, `warm` 2,793 / 2,810 / 2,854 (target 600–700 and 2,000–2,100). The machine is slower than on 09-29 (`module` 208–326 against 153–165), but the library → ready gap grew more: ~250 ms against ~50. Three launches with the window shown: the same shape. Steps 1–6 (his eye) not run |
+
+Summary: *6 pass (one faked) · 1 not met · 2 findings (the step 8 misalign, the launch gap) · 1 fork (grow rows at).*
+
