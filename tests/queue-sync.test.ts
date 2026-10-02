@@ -1,7 +1,7 @@
 // queue-sync.ts: what MusicKit's upcoming window should hold (QUEUE.md §The model is the master).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats } from "../src/queue-sync.ts";
+import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats, skipToSameId } from "../src/queue-sync.ts";
 
 const id = (e: { id?: string }) => e.id;
 
@@ -85,4 +85,16 @@ test("playNext order: parts from the end, each put right after the current song,
     left = left.slice(0, left.length - part.length);
   }
   assert.deepEqual(up, ids);
+});
+
+test("skipToSameId 2026-10-01: a skip onto an adjacent copy is found, any other skip is not", () => {
+  const ids = ["a", "b", "b", "c"];
+  assert.equal(skipToSameId(ids, 1, 1), true); // Next from the first copy
+  assert.equal(skipToSameId(ids, 2, -1), true); // Previous from the second copy
+  assert.equal(skipToSameId(ids, 0, 1), false);
+  assert.equal(skipToSameId(ids, 2, 1), false);
+  assert.equal(skipToSameId(ids, 3, 1), false); // the end of the window
+  assert.equal(skipToSameId(ids, 0, -1), false); // the start of the window
+  assert.equal(skipToSameId(ids, -1, 1), false); // no now-playing item
+  assert.equal(skipToSameId([null, null], 0, 1), false); // no ids
 });

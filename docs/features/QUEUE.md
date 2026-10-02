@@ -429,8 +429,37 @@ song does not start it.** Next, or Previous within 3 s, lands on the copy (the m
 both move, aligned), then `player:pause {why: "outside"}` ~1 s later, or MusicKit plays on from the
 old copy's place; there is no `perf:sound`. A song that ENDS into its copy plays it, and a skip into
 a different song is fine. MusicKit seems to treat a skip to an item with the same id as no change
-of media. The cure (restart the copy at 0:00 after such a skip, or move there another way) is to
-build and test; his go.
+of media.
+
+**The cure, built 2026-10-01 (his call: reload, not restart in place).** Before a Next or a
+Previous, `skipCopyByLoad` (player.ts) reads MusicKit's window. If the item one step away has the
+same id as the item playing (`skipToSameId`, queue-sync.ts, one test), the model moves one step
+and `loadFromModel` loads from it, as a click on a Queue row does. It logs `player:copySkip
+{dir, id, np}`. Only this skip pays the ~1 s load; every other skip stays gapless. Queue mode
+only; Previous after 3 s still restarts the song.
+
+**Desk test (copy skip).**
+1. Add to Queue the song playing twice, so Up Next starts with two copies of it.
+2. Press Next. The first copy starts at 0:00 and plays. The ring has `player:copySkip {dir: 1}`
+   and `perf:sound`; no `player:pause {why: "outside"}` in the next 2 s.
+3. Press Next again. The second copy starts at 0:00 and plays (the same lines).
+4. Within 3 s, press Previous. The first copy starts at 0:00 (`player:copySkip {dir: -1}`).
+5. `__player.queue().aligned.aligned` is true after each step, and the Queue card shows the copy
+   playing.
+6. Press Next onto a different song: no `player:copySkip`, the skip is gapless as before.
+
+Note for step 4: after a reload, MusicKit holds nothing before the song (index 0), so a Previous
+there takes `player:prevRewindow`, which reloads too. The `copySkip` Previous needs the copy at
+index 1 or later: let the first copy END into the second, then press Previous.
+
+**Claude's run (2026-10-01, `dev:app`, the Now Playing buttons pressed in the window): all pass.**
+Up Next [Talk Is Cheap, Talk Is Cheap, Gold] under Talk Is Cheap. (2) `copySkip {dir: 1}`, a
+pause named `load`, `perf:sound` 242 ms, playing at 3 s from 0:00. (3) the same, 198 ms. (4) at
+index 0: `prevRewindow`, playing; after a song end into the copy (index 1): `copySkip {dir: -1}`,
+playing at 2 s. (5) aligned after every step. (6) Next from the last copy onto Gold: a gapless
+`player:np` at index 1, no `copySkip`, `perf:sound` 452 ms. No `outside` pause, `misalign`,
+`desync` or `silentStart` in the run. Seen once: the `load` pause after the dir −1 reload logged
+`at: -218` (MusicKit's time while it changes item); a log value only.
 
 ---
 

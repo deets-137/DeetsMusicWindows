@@ -49,6 +49,15 @@ export function splitRepeats(ids: readonly string[]): string[][] {
   return parts;
 }
 
+/** Does a skip from MusicKit's item `np` one step in `dir` land on the same id? MusicKit takes
+ *  such a skip as no change of song: it pauses about 1 s later, or plays on from the old copy's
+ *  place (Claude's desk test, 2026-10-01). So that skip reloads from the model instead. */
+export function skipToSameId(ids: readonly (string | null | undefined)[], np: number, dir: 1 | -1): boolean {
+  if (np < 0 || np >= ids.length) return false;
+  const here = ids[np];
+  return !!here && ids[np + dir] === here;
+}
+
 /** How far ahead a difference must be repaired at a song change. A repair cuts MusicKit's
  *  upcoming from the first difference and appends it again, and at a song change that work
  *  meets the next song's own start. Near the play head it cannot wait: MusicKit plays into

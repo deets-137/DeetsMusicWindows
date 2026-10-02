@@ -30,7 +30,7 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
-import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart } from "./queue-sync";
+import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId } from "./queue-sync";
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
 import { launchMark } from "./launch-perf";
@@ -2605,6 +2605,7 @@ export async function nextTrack(from = "button"): Promise<void> {
   perf.mark("context");
   perf.mark("window");
   if (typeof m.skipToNextItem !== "function") return;
+  if (await skipCopyByLoad(m, 1)) return;
   try {
     await m.skipToNextItem();
   } catch (e) {
@@ -3082,7 +3083,27 @@ export async function prevTrack(from = "button"): Promise<void> {
     await loadFromModel(m);
     return;
   }
+  if (await skipCopyByLoad(m, -1)) return;
   if (typeof m.skipToPreviousItem === "function") await m.skipToPreviousItem();
+}
+
+/**
+ * A skip onto an adjacent copy of the song playing (QUEUE.md § Repeats in one insert): MusicKit
+ * takes a skip to the same id as no change of song, so the copy never starts. Move the model
+ * one step and load from it, as a click on a Queue row does (his call, 2026-10-01: the ~1 s load
+ * only on this skip; every other skip stays gapless). False: not such a skip.
+ */
+async function skipCopyByLoad(m: any, dir: 1 | -1): Promise<boolean> {
+  if (mode !== "queue") return false;
+  const ids: (string | undefined)[] = (m.queue?.items ?? []).map((it: any) => it?.id);
+  const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
+  if (!skipToSameId(ids, np, dir)) return false;
+  if (dir === 1 ? !queue.peekNext() : !queue.getHistory().length) return false;
+  diag.log("player:copySkip", { dir, id: ids[np] ?? null, np });
+  if (dir === 1) queue.advance();
+  else queue.previous();
+  await loadFromModel(m);
+  return true;
 }
 
 /** Seek to a fraction (0..1) of the current track's duration. */

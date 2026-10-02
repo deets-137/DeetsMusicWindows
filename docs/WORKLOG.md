@@ -12,6 +12,15 @@ updated: 2026-10-01
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-01 — A skip onto an adjacent copy of a song (built, uncommitted, NOT desk-tested)
+
+- The fail from the evening run: Next, or Previous within 3 s, onto an adjacent copy of the song
+  playing did not start the copy. His call: **reload**, not restart in place. Restart in place
+  was unproven, because MusicKit paused about 1 s after such a skip.
+- Built: `skipToSameId` (queue-sync.ts, one test) and `skipCopyByLoad` (player.ts): the model
+  moves one step and loads from it; `player:copySkip`. QUEUE.md § Repeats in one insert has the
+  desk test. `tsc` clean, 160 tests pass, docs:check clean.
+
 ## 2026-10-01 — An album's mark column; the numbers under "#" (built, committed 79bab91, Claude's shots run)
 
 **The report.** A screenshot from live: in a grown album, the track numbers did not sit under

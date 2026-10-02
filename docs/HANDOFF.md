@@ -119,7 +119,9 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    `playLater` keeps only the last copy of an id repeated in one call; each insert is now split
    so no call repeats an id. Claude's desk tests: alignment passes everywhere, but **a skip
    (Next, or Previous within 3 s) between two adjacent copies of one song does not start it**
-   (QUEUE.md § Repeats in one insert, the evening run): open, his go for the cure. It touches
+   (QUEUE.md § Repeats in one insert, the evening run). **The cure is built 2026-10-01, his call:
+   such a skip reloads from the model (`player:copySkip`); uncommitted; Claude's desk test there
+   passed every step.** It touches
    playback: his hand test before a release. The live
    log's 58 `misalign` lines are another cause (a library id with no play id) and all predate
    0.25.2, which banks such ids; (b) the launch: not a regression. A Settings card on screen
