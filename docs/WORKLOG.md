@@ -118,6 +118,38 @@ network and a battery drop with debug tools; keep the scripts for later runs. No
 - **The launch gap, explained:** a Settings card on screen at launch builds every open section's
   rows (82 rows, 12 sections, 658 nodes) before the window shows: +200–250 ms on a reload. The
   same idea as the Library's windowing (build what is on screen first), at a far smaller size.
+- **The content-visibility rule, tried and measured (his ask), then taken out:** `content-visibility:
+  auto` on open sections, `dev:built`, Settings in slot c, four reloads each. Library → `ready`:
+  baseline 219–276 ms (median ~256), with the rule 259–299 (median ~286). No gain. A CPU profile
+  across a reload (`dev:perf`) showed why: the cost is not section size. `markScrollable`
+  (settings-card.ts) reads `scrollHeight` straight after the render, which forces the page's
+  first full style and layout pass there (90 ms counted on it); `tokenMs` (42 ms) and
+  `album-color` (16 ms) force style too. Moving the read into the ResizeObserver gave 158–276 ms
+  (median ~209): inside the noise (the `library` mark itself drifted 634 → 799 → 745 ms between
+  launches), so it was reverted too. The layout and the rows must be built once anyway; only
+  building fewer rows before the window shows (the deferred-build option) would remove work.
+- **Built: the Settings rows on screen first** (his call; SETTINGS.md §3b). While the boot cover
+  is up, a render builds open sections' rows only until they fill the window; one idle render
+  after the lift builds the rest. Library → window shown: median ~256 → ~201 ms; window shown
+  median 890 → 836 ms; the fill 17–24 ms; 82 of 82 rows after it. `tsc` clean, 159 tests pass,
+  the bundle builds. Not committed.
+- **Desk tests of the three pieces, run by Claude (his ask; DESK-TESTS.md §5, the evening run):**
+  *8 pass · 2 partial · 1 fail · 2 noisy.* The launch: the title bar whole and the look final at
+  the first shown frame, the Compass at the lift in 32 ms, the tray's look right; a Play pressed
+  right at the lift waits ~250–550 ms more than one 5 s later (partial), and cold timing was noisy
+  (League of Legends running, load 78 %). Settings §3b: all three steps pass. Repeats: the moves
+  pass; **fail: a skip between two adjacent copies of one song does not start it** (it pauses ~1 s
+  later, or plays on from the old place). Early moments were read with a probe installed before
+  the page (CDP `addScriptToEvaluateOnNewDocument`) on reloads; the scripts stayed in the
+  scratchpad. A slip: a Compass Enter on *Agent changes settings* moved it Ask → Off (Enter cycles
+  a choice row); put back at once.
+- **Collapse on outside click: default Off** (his call; "settings over custom rules"). A grown card
+  stays open when he presses the Queue. `settings-store.ts` default `false`; SETTINGS.md,
+  SETTINGS-INVENTORY.md, CARD-GROW.md §8 updated. Only new installs get it: every save stores the
+  whole object, so an install that saved any setting keeps its stored `true`; his call: new
+  installs only, no one-time switch. His live app: set Off over the CLI, his Allow (confirmed Off). With it off the
+  Pin button hides (nothing to pin against). The Party recipe's "grown cards stay" is now moot
+  unless a user turns the setting on.
 - **Seen during the run:** nine Rulez rules of his were deleted in the dev window during the run
   (a person's pace, through the row menu; read as his). Nine test webs (local 8–16) stay in the dev
   profile until 2026-10-08.

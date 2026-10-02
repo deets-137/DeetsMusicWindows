@@ -145,7 +145,7 @@ header action tokens that exist.
 - **Esc** collapses it, unless a menu, a dropdown or a text field has focus (that Esc closes
   the menu first, as today).
 - **A click outside the card** collapses it when the setting row "Collapse on outside click"
-  is on (§8). The stage column counts as outside.
+  is on (§8; off by default since 2026-10-01). The stage column counts as outside.
 - **The Pin button** shows next to Collapse while that setting is on. A pinned card ignores
   outside clicks. Collapse, its edge zones and Esc still work. The pin ends when the card
   collapses.
@@ -206,7 +206,7 @@ builds again at that size.
 | Key | Label | Pills | Default | Why |
 |---|---|---|---|---|
 | `cardGrow` | Grow cards from edges | On / Off | On | The feature is new and must be easy to turn off. |
-| `cardGrowOutside` | Collapse on outside click | On / Off | On | A grow is temporary. Pin covers the case where you want it to stay. |
+| `cardGrowOutside` | Collapse on outside click | On / Off | Off (since 2026-10-01) | His call, 2026-10-01: a grown card stays open while you work beside it (the Queue, a menu); Esc, the edge zones or Collapse close it. Settings before custom rules: the default, not a rule, gives this. It was On ("a grow is temporary; Pin covers the case where you want it to stay"). An install that stored `true` keeps it: new installs only, no one-time switch (his call). |
 | `cardGrowPick` | Grown card on a new pick | Keeps size / Collapses | Keep | Decided 6A. |
 
 Each key gets a spec in `agent-settings.ts` and a line in AGENT.md. Each row gets a hint in

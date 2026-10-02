@@ -423,6 +423,15 @@ honey, Talk Is Cheap] → `insertParts {enqueue:next, parts: 2}`, the same order
 MusicKit. Next three times: each copy played in its turn, aligned each time, no `desync`, no
 `misalign`. Steps 2 and 4 are his hand test.
 
+**Claude's evening run (2026-10-01, DESK-TESTS.md §5):** step 4 passed (Move to Top and a drag
+past a copy, aligned). Step 2 found a bug, open: **a skip between two ADJACENT copies of one
+song does not start it.** Next, or Previous within 3 s, lands on the copy (the model and MusicKit
+both move, aligned), then `player:pause {why: "outside"}` ~1 s later, or MusicKit plays on from the
+old copy's place; there is no `perf:sound`. A song that ENDS into its copy plays it, and a skip into
+a different song is fine. MusicKit seems to treat a skip to an item with the same id as no change
+of media. The cure (restart the copy at 0:00 after such a skip, or move there another way) is to
+build and test; his go.
+
 ---
 
 ## Dead ids — NOT_FOUND self-healing (2026-07-02)

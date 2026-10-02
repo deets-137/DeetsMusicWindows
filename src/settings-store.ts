@@ -443,7 +443,8 @@ export const DEFAULTS: Settings = {
                        // square cover AND the Queue's 2.5 rows (docs/cards/STAGE-COLUMN.md §5);
                        // 950 clears every skin and still fits a 1080p work area (1032).
   cardGrow: true, // new and easy to turn off (CARD-GROW.md §8)
-  cardGrowOutside: true, // a grow is temporary; Pin covers "keep it"
+  cardGrowOutside: false, // his call 2026-10-01: a grown card stays open while you work beside it
+                          // (the Queue, a menu); Esc, the X or Collapse closes it. Was true.
   compassCloseAway: true, // user's call 2026-09-17: the bar is a passing thing; a click elsewhere means "not now"
   maxShortWindow: "flip", // the width already behaves this way: a window that no longer fits a
                           // surface becomes the one that does, instead of refusing to move

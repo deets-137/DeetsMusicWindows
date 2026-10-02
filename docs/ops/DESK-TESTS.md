@@ -265,3 +265,21 @@ script are kept in [checks/](checks/README.md) for a later run.
 
 Summary: *6 pass (one faked) · 1 not met · 2 findings (the step 8 misalign, the launch gap) · 1 fork (grow rows at).*
 
+
+**Run of 2026-10-01 evening (Claude, his ask: the desk tests of the three untested pieces).** `dev:built`; the queue steps with the window hidden (League of Legends was running: load 78 %, so the cold launch numbers are noisy). Early moments were read with a probe installed before the page (CDP `Page.addScriptToEvaluateOnNewDocument`) on reloads.
+
+| # | Date | Result | Seen |
+|---|---|---|---|
+| Launch 2, 5 | 2026-10-01 | pass | DEBUGGING.md § Launch. At `deets:window-shown`, three reloads: Sound, Sleep, Room, Web and the volume pill present; the look final (black-red/Glass), no change after it (two same-value writes under the cover) |
+| Launch 3 | 2026-10-01 | **partial** | `warm` before the press every time (945–1,023 ms on reloads). Press → MusicKit `playing`: 1,280 / 1,612 ms at the lift's end against 1,021 / 1,055 ms 5 s later: a press right at the lift still waits ~250–550 ms for work that runs then. On cold launches `warm` lands 480–555 ms AFTER the lift (as on 09-29: 2,113 against 1,935) |
+| Launch 4 | 2026-10-01 | pass | Ctrl+Space at the lift's end: the Compass open in 32 ms, twice |
+| Launch 6 | 2026-10-01 | partial | After the launch the tray panel's look matches the main window (black-red/Glass, dark ground). A tray right-click DURING the launch cannot be pressed from a script |
+| Launch 7 | 2026-10-01 | noisy | Three cold `--hidden` launches, Settings on screen: `ready` 1,349–1,405, `warm` 3,163–3,237 ms; every stage later than this afternoon (`module`, `library` too) with the CPU at 78 %. Re-run on a quiet machine. Step 1 (the taskbar, three times) is his |
+| Repeats 2 | 2026-10-01 | **fail** (one finding) | QUEUE.md § Repeats in one insert. Add to Queue one song three times: model and MusicKit both hold the three copies, aligned, and Next steps 2 → 1 → 0 with the Queue card. **Finding:** a SKIP between two adjacent copies of one song does not start it: Next (and Previous within 3 s) lands on the copy, then `player:pause {why: outside}` ~1 s later, or MusicKit plays on from the old copy's place; no `perf:sound`. A song that ENDS into its copy plays it. A skip into a different song is fine |
+| Repeats 4 | 2026-10-01 | pass | Up Next [Talk Is Cheap, Click Bait, Talk Is Cheap]: Move to Top on Click Bait, and a drag of the last copy to the top (`insertParts` on the reconcile): aligned each time |
+| Settings 3b.1 | 2026-10-01 | pass | The window shows with 39 of 82 rows; all 82 318–462 ms after the lift (the idle fill) |
+| Settings 3b.2 | 2026-10-01 | pass | Keep card places on restart on, Settings at 1,800 px, reload: 82 rows at the window-shown moment, no fill, back at 1,800. The setting put back off |
+| Settings 3b.3 | 2026-10-01 | pass | During the lift: Rulez › the Diary grow rule › Open in Settings: 82 rows at once, `diarygrow` flashed |
+| Settings 3b.4 | 2026-10-01 | noisy | See Launch 7 |
+
+Summary: *8 pass · 2 partial · 1 fail (adjacent copies) · 2 noisy.* A slip during the run: a Compass Enter on *Agent changes settings* moved it Ask → Off (Enter cycles a choice row); put back to Ask at once.

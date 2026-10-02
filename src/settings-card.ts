@@ -2341,6 +2341,35 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     );
   };
 
+  // ── at launch: the rows on screen first (his call, 2026-10-01, the launch gap) ──
+  // A Settings card on screen at launch built every open section's rows before the window
+  // could show (82 rows for ~1 on screen: +200–250 ms, WORKLOG 2026-10-01). While the boot
+  // cover is up, a render builds the open sections' rows, in order, only until they would fill
+  // the window; a later open section shows its head. The rest comes in one render once the
+  // cover has lifted, in an idle moment so it misses the lift's frames. Never deferred: a card
+  // that card memory reopens scrolled down (its place must be there), a search, a row request
+  // (`focusRow`), the quick panel, and a card mounted after the launch.
+  const memScroll = (mountOpts?.memory as { scroll?: unknown } | undefined)?.scroll;
+  let bootRows = !parts && !!document.documentElement.dataset.boot && !(typeof memScroll === "number" && memScroll > 0);
+  /** Fewest px a row takes: the estimate only sets how many rows the first screen builds, and a
+   *  low one builds a few rows too many, never too few. Not a style value (no token): reading
+   *  `--set-row-h` here would force the style pass this defers. */
+  const BOOT_ROW_MIN_PX = 24;
+  const fillRows = () => {
+    if (!bootRows) return;
+    bootRows = false;
+    if (!alive) return;
+    const t = performance.now();
+    render();
+    diag.log("settings:bootRows", { filled: Math.round(performance.now() - t) });
+  };
+  if (bootRows) {
+    const idle = () =>
+      typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(fillRows, { timeout: 500 }) : setTimeout(fillRows, 0);
+    window.addEventListener("deets:boot-done", idle, { once: true });
+    window.setTimeout(fillRows, 5000); // a lift that never ends must not leave the rows out
+  }
+
   const render = () => {
     dropMenus();
     // A report field being typed in survives the rebuild: its focus and caret come back.
@@ -2380,10 +2409,15 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       (s) => s.title,
     );
     shownTitles = drawn.map((s) => s.title);
+    // At launch, the rows that fill the window (above); a search always shows every match.
+    let budget = bootRows && !query ? Math.ceil(window.innerHeight / BOOT_ROW_MIN_PX) : Infinity;
     body.innerHTML = drawn
       .map((s, i) => {
+        const open = openNow(s);
+        const build = open && budget > 0;
+        if (build) budget -= rowsOf(s).length;
         // The tail is markup, not indexed rows, so a filtered section never shows it.
-        const inside = openNow(s) ? rowsOf(s).map(rowHTML).join("") + (query ? "" : tailOf(s)) : "";
+        const inside = build ? rowsOf(s).map(rowHTML).join("") + (query ? "" : tailOf(s)) : "";
         const count = query ? rowsOf(s).length : undefined;
         return `<section class="set__section" data-sec="${esc(s.title)}" data-idx="${i}">${headHTML(s, count)}${inside}</section>`;
       })
@@ -2747,6 +2781,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     }
     flashId = id;
     flashAt = performance.now();
+    bootRows = false; // the row it names must be there to scroll to
     render();
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     body.querySelector<HTMLElement>(`[data-set-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });

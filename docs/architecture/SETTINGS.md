@@ -119,7 +119,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Window | Max window when short (A Max window dragged shorter than the stage column can hold) — pills *Becomes Midi* / *Stops at floor* (2026-09-17, [STAGE-COLUMN.md](../cards/STAGE-COLUMN.md) §5) | `maxShortWindow` | **flip** / floor | `surface.ts`; only *flip* needs `surfaceAutoFlip` on |
 | Window | Keep on top (The window stays above other windows. Player: only while it shows the player) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always) | `alwaysOnTop` | **off** / always / player | the rules engine ([RULES.md](RULES.md) §13): a state rule on the `window.onTop` property (`registerProp` in `main.ts`), while `surface` = player or always |
 | Window | Grow cards from edges (Click the gap beside a card to open it over its neighbor. Hover a card's title for the button) (2026-09-16, [CARD-GROW.md](../cards/CARD-GROW.md) §8) | `cardGrow` | **on** / off | `card-grow.ts` `enabled()`: off = no zones, no button, no menu items; a grow on screen collapses at once |
-| Window | Collapse on outside click (A click outside a grown card collapses it. Pin holds it open) | `cardGrowOutside` | **on** / off | `card-grow.ts` (the document pointerdown listener; the Pin button shows only while this is on) |
+| Window | Collapse on outside click (A click outside a grown card collapses it. Pin holds it open) | `cardGrowOutside` | on / **off** (default off since 2026-10-01, his call; an install that stored `true` keeps it) | `card-grow.ts` (the document pointerdown listener; the Pin button shows only while this is on) |
 | Window | Grown card on a new pick (Pick another card in a grown card's title: it keeps the size, or collapses first) — pills *Keeps size* / *Collapses* | `cardGrowPick` | **keep** / collapse | `layout.ts` `setSlot` |
 | Window | Keep view when grown (A card that grows keeps the view you are in; the tile size still follows the card's size) — pills *Keep* / *Per size* (2026-09-17, [CARD-GROW.md](../cards/CARD-GROW.md) §13a) | `cardGrowView` | **keep** / size | `collection-card.ts` `reload()` on a size change |
 | Window | Grow on album or artist (An album or artist opens with more room: taller in Max, wider in Midi. Back returns it) — *Vertical* / *Full* / *Off* (2026-09-26, [RULES.md](RULES.md) §13) | `drillGrow` | **vertical** / full / off | the rules engine: `rules-eval.ts` `builtinRules` → `card-grow.ts` `growByRule` |
@@ -373,6 +373,37 @@ Pause is never in `roomGuestControls`: a guest's Pause never greys out (ROOMS.md
 | `quickSeen` | The New badges already seen: quick-panel icons, Settings rows, sections and pills, by key ([QUICK-SETTINGS.md](../features/QUICK-SETTINGS.md) §8, §10) | `settings-card.ts` `seeNew` on the first hover; a fresh install starts with every `NEW_MARKS` key seen |
 | `friendsUrl`, `roomsUrl` | The friends and rooms worker origins; only a dev build changes them | `friends.ts` / `room.ts` read them; `dev-app.mjs` seeds a local worker |
 | `rules` | The user's own rules ([RULES.md](RULES.md) §12); the built-in rules are never stored | The Rulez card and the agent `rules` verb |
+
+## 3b. At launch: the rows on screen first (2026-10-01)
+
+> **Part:** built · 2026-10-01 · Claude measured it; his desk test open
+
+**Why.** A Settings card on screen at launch built every open section's rows before the window
+could show: 82 rows for about one row on screen, and `render()` ran several times during the
+boot as its data arrived. +200–250 ms to the window (WORKLOG 2026-10-01). `content-visibility`
+on the sections gave nothing; the cost was the rows' build and the forced layout, not their size.
+
+**As built (`settings-card.ts`, his call).** While the boot cover is up (`data-boot`), a render
+builds the open sections' rows, in order, until they would fill the window
+(`innerHeight / BOOT_ROW_MIN_PX`, 24 px: a low estimate builds a few rows too many, never too
+few). A later open section shows its head. Once the cover lifts (`deets:boot-done`), one render
+in an idle moment builds the rest (`settings:bootRows {filled}` in the ring; a 5 s fallback).
+Never deferred: a card that card memory reopens scrolled down, a search, a row request
+(`focusRow`), the quick panel, a card mounted after the launch.
+
+**Measured (`dev:built`, Settings in a Max slot, four reloads each):** library → window shown
+219–276 ms (median ~256) before, 188–221 ms (median ~201) after; window shown median 890 →
+836 ms. The fill after the lift takes 17–24 ms. Every row is there after it (82 of 82).
+
+**Desk test.**
+1. Max, Settings in a slot, at the top. Start the app: the window shows, the lift runs, and the
+   Settings card looks the same as before. Scroll down at once: every open section has its rows.
+2. Scroll Settings down, quit, start again (Keep card places on restart on): it opens at the
+   same place, rows there (built in full).
+3. During the launch, press a toast's [Settings] button or open a row from the Compass: the row
+   is there, flashed.
+4. `[perf] launch` lines on three `dev:built` launches with Settings on screen: `ready` near the
+   same launch with Home in that slot.
 
 ## 4. The Rewind gate
 

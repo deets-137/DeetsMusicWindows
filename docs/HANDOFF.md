@@ -117,14 +117,17 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    (DESK-TESTS.md §5, the 10-01 run). **Left from that run** (investigated the same day):
    (a) **a bug, FIXED 2026-10-01, uncommitted (his call: repeats are allowed):** MusicKit's
    `playLater` keeps only the last copy of an id repeated in one call; each insert is now split
-   so no call repeats an id. Claude's desk test passed; his hand test (Add to Queue one song
-   three times, a drag past a copy) is QUEUE.md § Repeats in one insert steps 2 and 4. It
-   touches playback: his hand test before a release. The live
+   so no call repeats an id. Claude's desk tests: alignment passes everywhere, but **a skip
+   (Next, or Previous within 3 s) between two adjacent copies of one song does not start it**
+   (QUEUE.md § Repeats in one insert, the evening run): open, his go for the cure. It touches
+   playback: his hand test before a release. The live
    log's 58 `misalign` lines are another cause (a library id with no play id) and all predate
    0.25.2, which banks such ids; (b) the launch: not a regression. A Settings card on screen
    at launch builds all its open sections' rows before the window shows: +200–250 ms (reload:
-   `ready` 907–1,332 with Settings, 556–600 with Home). Whether to build it after the window
-   shows is his call; (c) the grow's `--grow-rows-at` stays 0.4 (his call, 2026-10-01); (d) his eye
+   `ready` 907–1,332 with Settings, 556–600 with Home). `content-visibility` on open sections
+   was tried and measured: no gain, taken out (WORKLOG 2026-10-01). **Built instead (his call):
+   the rows on screen first, the rest after the lift** (SETTINGS.md §3b): window shown median
+   890 → 836 ms; uncommitted, his desk test open; (c) the grow's `--grow-rows-at` stays 0.4 (his call, 2026-10-01); (d) his eye
    on the strips in `shots/grow-timing/0.25.2/` and
    `shots/theme-crossfade/0.25.2/`. The re-runnable lists are in [ops/checks/](ops/checks/README.md).
 0a. **The music stopped at a song change + the catalog heal** (built + committed 2026-09-28,

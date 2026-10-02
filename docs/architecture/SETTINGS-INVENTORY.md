@@ -186,7 +186,7 @@ which restarts the first-run walk.
 | Control | What it does | Choices |
 |---|---|---|
 | Grow cards from edges | Click the gap beside a card to open it over its neighbor | **on** / off |
-| Collapse on outside click | A click outside a grown card collapses it. Pin holds it open | **on** / off |
+| Collapse on outside click | A click outside a grown card collapses it. Pin holds it open | on / **off** (since 2026-10-01) |
 | Grown card on a new pick | Pick another card in a grown card's title | **Keeps size** / Collapses |
 | Keep view when grown | A grow or collapse keeps the view you are in, or takes that size's own | **Keep** / Per size |
 | Grow on album or artist | An album or artist that opens grows its card: over the card below in Max (*Vertical*) or over the whole window (*Full*); wider in Midi with either. Back off that level returns it. A grow already on screen is left alone | **Vertical** / Full / Off |
