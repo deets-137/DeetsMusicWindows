@@ -28,6 +28,8 @@ the app can do any of these things.
 
 - [SECRETS-AND-CSP.md](SECRETS-AND-CSP.md) — designed, not built (2026-09-29): a Content
   Security Policy for the webview, and DPAPI for the Apple token and the Last.fm session.
+- [fullscreen-player.md](fullscreen-player.md) — an idea (2026-10-01): grow the Now Playing
+  card so the cover is as large as the window allows, in Midi and Max; the layouts and forks.
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).
