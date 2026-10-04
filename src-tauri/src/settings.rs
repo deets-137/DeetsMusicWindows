@@ -60,6 +60,9 @@ pub struct SettingsData {
     /// The volume (0–100) a speaker was last left at, by speaker name. A speaker never
     /// used before starts at `AIRPLAY_FIRST_VOLUME` so nobody gets blasted.
     pub airplay_speaker_volumes: std::collections::HashMap<String, f64>,
+    /// The delay (ms) the Auto retune settled on for a speaker, by speaker name. The next
+    /// connect starts there, so the mid-song retune reconnect is rare (AIRPLAY.md §13.5).
+    pub airplay_speaker_latency_ms: std::collections::HashMap<String, u32>,
     /// × hides the main window to the tray instead of quitting (default on).
     pub minimize_to_tray: bool,
     /// The CLI / MCP routes on the bridge answer (AGENT-SETUP.md). Off → 403 with a
@@ -120,6 +123,7 @@ impl Default for SettingsData {
             airplay_last_speaker: None,
             airplay_firewall_exe: None,
             airplay_speaker_volumes: std::collections::HashMap::new(),
+            airplay_speaker_latency_ms: std::collections::HashMap::new(),
             minimize_to_tray: true,
             agent_control: true,
             agent_history: true,

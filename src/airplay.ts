@@ -39,6 +39,8 @@ type Capture = "app" | "system";
 interface Status {
   connected: Connected | null;
   connecting: string | null;
+  /** A reconnect in place (a retune, a Settings change) is between its two sessions. */
+  reconnecting: boolean;
   error: string | null;
   lastSpeaker: Speaker | null;
   speakers: SpeakerInfo[];
@@ -58,7 +60,7 @@ const api = {
 
 // ── one state, many panels ──
 
-let status: Status = { connected: null, connecting: null, error: null, lastSpeaker: null, speakers: [], firewallSeeded: true, capture: "app" };
+let status: Status = { connected: null, connecting: null, reconnecting: false, error: null, lastSpeaker: null, speakers: [], firewallSeeded: true, capture: "app" };
 let scanning = false;
 let busy = false;
 /** A note shown in the state line for a moment (the firewall sentence, a failure). */
@@ -124,13 +126,17 @@ const refresh = async () => {
   try {
     const was = status.connected;
     const s = await api.status();
-    const wasConnected = !!was;
-    status = s;
-    // Connected a moment ago, gone now, and Rust says why: the speaker dropped the session.
-    if (was && !s.connected && s.error && !recovery) void recover(was.speaker);
-    applyTakeover(s.connected);
-    if (wasConnected && !s.connected && s.error) note = s.error; // "Lost Living Room."
-    if (!s.firewallSeeded && !note) note = null;
+    // Between the two sessions of a reconnect in place (AIRPLAY.md §13.5): keep the last
+    // state, so the PC stays silent, the tap stays armed and the panel still says playing.
+    if (!(was && !s.connected && s.reconnecting)) {
+      const wasConnected = !!was;
+      status = s;
+      // Connected a moment ago, gone now, and Rust says why: the speaker dropped the session.
+      if (was && !s.connected && s.error && !recovery) void recover(was.speaker);
+      applyTakeover(s.connected);
+      if (wasConnected && !s.connected && s.error) note = s.error; // "Lost Living Room."
+      if (!s.firewallSeeded && !note) note = null;
+    }
   } catch (e) {
     console.warn("[airplay] status", e);
   }

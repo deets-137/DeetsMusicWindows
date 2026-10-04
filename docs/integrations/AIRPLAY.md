@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-19
 sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
-updated: 2026-09-25
+updated: 2026-10-02
 ---
 # DeetsMusic — AirPlay (play on a HomePod)
 
@@ -623,3 +623,77 @@ speaker has closed. Nothing listens for the Windows sleep and wake events today.
 - Or on wake only: probe the session with one round trip and a 2 s timeout. No reply →
   `airplay: drop {how: wake}`, then reconnect, or show the lost state.
 - In both: the panel never says connected until a reply proves it.
+
+### 13.4 Stutters: the stats line (2026-10-02)
+
+> **Part:** built · 2026-10-02 · desk test open
+
+**The complaint (2026-10-02, live 0.25.3):** the sound on the Living Room HomePod stutters.
+**What the logs showed:** the capture heard sound in every 10 s window, and the tap's worst
+gap was 115 ms (under the 500 ms prefill), so the app did not run dry. The keep-alive replies
+took 2, 3 and 5 s in the first minute of the 16:00:49 session (yesterday: 98.5 % under 1 s).
+The Auto delay retuned from 300 ms to 1281 ms, so the RTT p95 was about 258 ms. Ping from the
+PC (on a cable): the router 10 ms average, the HomePod **96 ms average, 242 ms worst**. The slow
+part is the hop to the HomePod, not the app.
+**The gap:** the crate counts resend requests, starved packets and the RTT (`Session::stats`),
+but nothing logged them, so a stutter left no trace.
+
+**As built:** `airplay_status` (polled every 2 s while connected) writes one line per 60 s:
+`airplay: stats 60 s: <packets> packets, <n> resend requests, <n> starved, rtt last <ms> ms
+p95 <ms> ms, delay <ms> ms`. The counts are for that 60 s window; the RTT is the last 60
+keep-alives. How to read it: resend requests rise → the speaker loses packets on the network;
+starved rises → the app ran out of sound (look at the tap gap in `diag airplay:tapDisarmed`);
+both stay at 0 during a stutter → the cause is on the speaker side.
+
+**Desk test (restart: new Rust):** play on the HomePod for 5 minutes. `deetsmusic.log` has about
+5 `airplay: stats` lines with about 7,500 packets each (44,100 frames ÷ 352 per packet × 60 s).
+Note the time of each
+stutter you hear, and compare it with the line for that minute.
+
+### 13.5 The retune gap (2026-10-02)
+
+> **Part:** built · 2026-10-02 · desk test open
+
+**The fault:** the Auto delay (§5 decision 5) starts every connect at 300 ms. After 10 s of
+round trips it reconnects with `250 ms + 4 × p95 RTT`. The reconnect is a new session: about
+2.4 s of no sound in the middle of the first song (16:00:49 → 16:00:51 on 2026-10-02). During
+the gap the status poll saw "not connected", so the PC output came back and the tap was
+disarmed until the next poll (`airplay:tapDisarmed` / `tapArmed` in `diag`).
+
+**His call (2026-10-02):** remember the tuned delay per speaker, and run a retune that is still
+needed at the next song change or a pause.
+
+**As built:**
+- **settings.json** `airplaySpeakerLatencyMs` (Rust settings, by speaker name, like
+  `airplaySpeakerVolumes`): the delay the retune settled on. `connect_speaker` starts there;
+  a speaker never tuned starts at 300 ms.
+- **The decision** (`airplay_status`, once per session after 10 s): target within 100 ms of
+  the current delay → the delay is remembered, no reconnect. Else, paused → reconnect now;
+  playing → `airplay: retune due: A ms → B ms (rtt p95 N ms), at the next song or a pause`.
+- **The run** (`on_np_state`, the front end's now-playing publish): the title, artist or album
+  changes, or the player pauses → `airplay: retune at song change|pause: A ms → B ms`. At a
+  song change the music pauses (`np-command` pause, from `airplay-retune`), the session
+  reconnects, the delay is remembered, and the music plays again. The reconnect runs off the
+  UI thread (`np_publish` is a sync command).
+- **The gap is held:** `airplay_status` has `reconnecting: true` between the two sessions. The
+  poll in `airplay.ts` keeps its last state, so the PC stays silent, the tap stays armed and
+  the panel still says playing. This also covers the reconnect after a Settings › AirPlay
+  change.
+- **A failed reconnect** sets "Lost <speaker>.", so `recover` (§13.3) reconnects. The music
+  stays paused.
+- Decided inside his call: pause and play around the reconnect at a song change, so the new
+  song's start is not lost in the gap (it costs a pause of about 2 s at the song's start); a
+  Settings change keeps the current delay (it went back to 300 ms with no retune before);
+  the one-retune-per-session rule is unchanged, so a tuned delay is checked again at each
+  connect and can move down too.
+
+**Desk test (restart: new Rust):**
+1. First connect to the HomePod (no remembered delay), music playing. After about 10 s the log
+   has `retune due`. The song plays on with no gap. At the next song: one pause of about 2 s at
+   its start, `retune at song change`, then it plays. The PC speakers never play.
+2. Disconnect, connect again. No `retune due` line if the network is the same (the remembered
+   delay is in the band), and no gap.
+3. Connect with the music paused for more than 10 s: `retune at pause` (or no retune), no
+   play starts by itself.
+4. Change Settings › AirPlay › Send to speaker while playing: the PC speakers stay silent
+   during the reconnect.

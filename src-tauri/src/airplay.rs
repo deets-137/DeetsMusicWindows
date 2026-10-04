@@ -38,6 +38,8 @@ struct Live {
     heard_logged: (Instant, u64, u64),
     /// What the last diagnostic line said ("sound", "silence", "nothing") and when.
     heard_said: Option<(&'static str, Instant)>,
+    /// Session stats at the start of the current 60 s window (the `stats` line, §13.4).
+    stats_logged: (Instant, session::Stats),
     speaker: AirplaySpeaker,
     /// The tap ring this session drains (DeetsMusic only), or None for the loopback.
     tap: Option<std::sync::Arc<Ring>>,
@@ -47,6 +49,9 @@ struct Live {
     starved_logged: bool,
     /// Auto delay retunes once, from the first seconds of round-trip data.
     retuned: bool,
+    /// A retune that is due (the target delay, frames). It waits for the next song change
+    /// or a pause, so the reconnect never cuts a song in the middle (AIRPLAY.md §13.5).
+    retune_to: Option<u32>,
     meta: Metadata,
     art_url: Option<String>,
     /// Last progress sent: (wall clock, position) so a drift beyond 2 s (a seek) resends.
@@ -59,6 +64,8 @@ pub struct AirplayState {
     speakers: Mutex<Vec<SpeakerInfo>>,
     /// The speaker a connect is in flight to (the dropdown shows "Connecting…").
     connecting: Mutex<Option<String>>,
+    /// True while `reconnect` is between its two sessions.
+    reconnecting: Mutex<bool>,
     /// The last connect failure, in plain words, until the next attempt.
     error: Mutex<Option<String>>,
     /// Where `airplay_tap` chunks go while a tap session is live; dropped otherwise.
@@ -93,6 +100,9 @@ pub struct Connected {
 pub struct Status {
     pub connected: Option<Connected>,
     pub connecting: Option<String>,
+    /// A reconnect in place (a retune, a Settings change) is between its two sessions: the
+    /// front end keeps the PC silent and the tap armed through it.
+    pub reconnecting: bool,
     pub error: Option<String>,
     pub last_speaker: Option<AirplaySpeaker>,
     pub speakers: Vec<SpeakerInfo>,
@@ -179,7 +189,36 @@ fn latency_frames(rtt_p95_ms: Option<f64>) -> u32 {
         Some(rtt) => (250.0 + 4.0 * rtt).round() as u32,
         None => 300,
     };
+    ms_to_frames(ms)
+}
+
+fn ms_to_frames(ms: u32) -> u32 {
     (ms * SAMPLE_RATE / 1000).clamp(MIN_LATENCY_FRAMES, MAX_LATENCY_FRAMES)
+}
+
+fn frames_to_ms(frames: u32) -> u32 {
+    frames * 1000 / SAMPLE_RATE
+}
+
+/// The first delay for a speaker: where the Auto retune last settled for it, else 300 ms.
+fn first_latency(app: &AppHandle, speaker: &str) -> u32 {
+    match app.state::<Settings>().get().airplay_speaker_latency_ms.get(speaker) {
+        Some(&ms) => ms_to_frames(ms),
+        None => latency_frames(None),
+    }
+}
+
+fn remember_latency(app: &AppHandle, speaker: &str, frames: u32) {
+    let ms = frames_to_ms(frames);
+    let settings = app.state::<Settings>();
+    if settings.get().airplay_speaker_latency_ms.get(speaker) == Some(&ms) {
+        return;
+    }
+    if let Err(e) = settings.update(|d| {
+        d.airplay_speaker_latency_ms.insert(speaker.to_string(), ms);
+    }) {
+        log(&format!("remember delay: {e}"));
+    }
 }
 
 // ── the session ─────────────────────────────────────────────────────────
@@ -198,7 +237,7 @@ fn plain_error(speaker: &str, e: &str) -> String {
     }
 }
 
-fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>) -> Result<Live, String> {
+fn start_live(app: &AppHandle, speaker: AirplaySpeaker, latency: u32, retuned: bool) -> Result<Live, String> {
     let settings = app.state::<Settings>().get();
     let ip: Ipv4Addr = speaker.ip.parse().map_err(|_| format!("bad speaker address {}", speaker.ip))?;
     // `send` rides the claim file (AIRPLAY.md §11): it says what this stream carries, so the
@@ -219,7 +258,7 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
     };
     let handle = app.clone();
     let config = Config {
-        latency_frames: latency_frames(rtt_p95_ms),
+        latency_frames: latency,
         // Where this speaker was last left, else the safe first level; the
         // handshake sets it on the speaker before any audio flows.
         volume_pct: settings.airplay_speaker_volumes.get(&speaker.name).copied().unwrap_or(AIRPLAY_FIRST_VOLUME),
@@ -250,11 +289,13 @@ fn start_live(app: &AppHandle, speaker: AirplaySpeaker, rtt_p95_ms: Option<f64>)
         capture,
         heard_logged: (Instant::now(), 0, 0),
         heard_said: None,
+        stats_logged: (Instant::now(), session::Stats::default()),
         speaker,
         tap,
         starved_since: None,
         starved_logged: false,
-        retuned: rtt_p95_ms.is_some(),
+        retuned,
+        retune_to: None,
         meta: Metadata::default(),
         art_url: None,
         progress: None,
@@ -315,7 +356,8 @@ fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), Strin
     stop_live(&state);
     *state.error.lock_or_recover() = None;
     *state.connecting.lock_or_recover() = Some(speaker.name.clone());
-    let result = start_live(app, speaker.clone(), None);
+    let latency = first_latency(app, &speaker.name);
+    let result = start_live(app, speaker.clone(), latency, false);
     *state.connecting.lock_or_recover() = None;
     match result {
         Ok(live) => {
@@ -335,16 +377,32 @@ fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), Strin
     }
 }
 
-/// Reconnect in place (auto retune, a preference change). Keeps the speaker.
-fn reconnect(app: &AppHandle, rtt_p95_ms: Option<f64>) -> Result<(), String> {
+/// Reconnect in place (auto retune, a preference change). Keeps the speaker, and the
+/// delay too unless `latency` (frames) names a new one.
+fn reconnect(app: &AppHandle, latency: Option<u32>) -> Result<(), String> {
     let state = app.state::<AirplayState>();
-    let Some(live) = state.live.lock_or_recover().take() else { return Ok(()) };
+    // Set before the old session goes and cleared after the new one is in place, so no
+    // status poll ever sees the gap as a plain "not connected".
+    *state.reconnecting.lock_or_recover() = true;
+    let Some(live) = state.live.lock_or_recover().take() else {
+        *state.reconnecting.lock_or_recover() = false;
+        return Ok(());
+    };
     let speaker = live.speaker.clone();
+    let name = speaker.name.clone();
+    let latency = latency.unwrap_or(live.session.config.latency_frames);
     live.session.disconnect();
     publish_tap(&state); // between sessions: no ring
-    let mut live = start_live(app, speaker, rtt_p95_ms)?;
-    live.retuned = true;
-    *state.live.lock_or_recover() = Some(live);
+    match start_live(app, speaker, latency, true) {
+        Ok(live) => *state.live.lock_or_recover() = Some(live),
+        Err(e) => {
+            // The poll's recover (airplay.ts) reconnects on a "Lost" error.
+            *state.error.lock_or_recover() = Some(format!("Lost {name}."));
+            *state.reconnecting.lock_or_recover() = false;
+            return Err(e);
+        }
+    }
+    *state.reconnecting.lock_or_recover() = false;
     publish_tap(&state);
     let np = app.state::<bridge::Hub>().np.lock_or_recover().clone();
     push_now_playing(app, &np, true);
@@ -373,7 +431,59 @@ pub fn shutdown(app: &AppHandle) {
 /// title/artist/album on change, cover art on change, progress on a track
 /// change, a play/pause flip, or a seek. Cheap when nothing changed.
 pub fn on_np_state(app: &AppHandle, np: &NpState) {
+    // A retune that waits (AIRPLAY.md §13.5) runs at the next song change or pause.
+    let due = {
+        let state = app.state::<AirplayState>();
+        let mut guard = state.live.lock_or_recover();
+        match guard.as_mut() {
+            Some(live) if live.retune_to.is_some() => {
+                // The same fields `push_now_playing` sends; it has not stored this publish yet.
+                let meta = Metadata {
+                    title: np.title.clone().or_else(|| np.station.clone()).unwrap_or_default(),
+                    artist: np.artist.clone().unwrap_or_default(),
+                    album: np.album.clone().unwrap_or_default(),
+                };
+                if meta != live.meta {
+                    live.retune_to.take().map(|t| (t, "song change"))
+                } else if !np.playing {
+                    live.retune_to.take().map(|t| (t, "pause"))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    };
     push_now_playing(app, np, false);
+    if let Some((target, why)) = due {
+        // np_publish runs on the UI thread: the reconnect blocks for seconds, so it runs off it.
+        let (app, playing) = (app.clone(), np.playing);
+        tauri::async_runtime::spawn_blocking(move || retune(&app, target, why, playing));
+    }
+}
+
+/// The Auto retune's reconnect. While playing (a song change), the music pauses for the
+/// reconnect and plays again after it, so the new song's start is not lost in the gap.
+fn retune(app: &AppHandle, target: u32, why: &str, playing: bool) {
+    let state = app.state::<AirplayState>();
+    let Some((name, current)) = state.live.lock_or_recover().as_ref().map(|l| (l.speaker.name.clone(), l.session.config.latency_frames)) else { return };
+    log(&format!("retune at {why}: {} ms → {} ms", frames_to_ms(current), frames_to_ms(target)));
+    let command = |kind: &str| {
+        let _ = app.emit_to("main", "np-command", NpCommand { kind: kind.to_string(), value: None, from: Some("airplay-retune".into()) });
+    };
+    if playing {
+        command("pause");
+    }
+    match reconnect(app, Some(target)) {
+        Ok(()) => {
+            remember_latency(app, &name, target);
+            if playing {
+                command("play");
+            }
+        }
+        // The music stays paused; airplay.ts's recover sees "Lost" and reconnects.
+        Err(e) => log(&format!("retune reconnect failed: {e}")),
+    }
 }
 
 fn push_now_playing(app: &AppHandle, np: &NpState, force: bool) {
@@ -525,32 +635,31 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
             *state.error.lock_or_recover() = Some(format!("Lost {name}."));
         }
 
-        // Auto delay: after 10 s of round trips, settle the buffer once.
-        let retune = {
-            let live = state.live.lock_or_recover();
-            match live.as_ref() {
-                Some(l) if !l.retuned => {
-                    let st = l.session.stats();
-                    if st.seconds >= 10 && st.rtt_p95_ms > 0.0 {
-                        let target = latency_frames(Some(st.rtt_p95_ms));
-                        let current = l.session.config.latency_frames;
-                        let diff_ms = (target as i64 - current as i64).unsigned_abs() as u32 * 1000 / SAMPLE_RATE;
-                        if diff_ms >= 100 { Some(st.rtt_p95_ms) } else { None }
+        // Auto delay: after 10 s of round trips, settle the buffer once. A retune is a
+        // reconnect (a gap of about 2 s), so it runs at once only while paused; while
+        // playing it waits for the next song change (`on_np_state`, AIRPLAY.md §13.5).
+        let playing = app.state::<bridge::Hub>().np.lock_or_recover().playing;
+        let mut retune_now = None;
+        if let Some(l) = state.live.lock_or_recover().as_mut() {
+            let st = l.session.stats();
+            if !l.retuned && st.seconds >= 10 && st.rtt_p95_ms > 0.0 {
+                l.retuned = true; // decided once per session, so it never flaps
+                let target = latency_frames(Some(st.rtt_p95_ms));
+                let current = l.session.config.latency_frames;
+                if frames_to_ms((target as i64 - current as i64).unsigned_abs() as u32) >= 100 {
+                    if playing {
+                        log(&format!("retune due: {} ms → {} ms (rtt p95 {:.0} ms), at the next song or a pause", frames_to_ms(current), frames_to_ms(target), st.rtt_p95_ms));
+                        l.retune_to = Some(target);
                     } else {
-                        None
+                        retune_now = Some(target);
                     }
+                } else {
+                    remember_latency(&app, &l.speaker.name, current); // inside the band: this delay holds
                 }
-                _ => None,
             }
-        };
-        if let Some(rtt) = retune {
-            if let Err(e) = reconnect(&app, Some(rtt)) {
-                log(&format!("retune reconnect failed: {e}"));
-            }
-        } else if let Some(l) = state.live.lock_or_recover().as_mut() {
-            if !l.retuned && l.session.stats().seconds >= 10 && l.session.stats().rtt_p95_ms > 0.0 {
-                l.retuned = true; // inside the band: call it tuned so we never flap
-            }
+        }
+        if let Some(target) = retune_now {
+            retune(&app, target, "paused", false);
         }
 
         // Diagnostic: what the capture heard, judged per 10 s window. "silence" while
@@ -571,6 +680,24 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
                     l.heard_said = Some((verdict, Instant::now()));
                 }
                 l.heard_logged = (Instant::now(), all, loud);
+            }
+            // Diagnostic (AIRPLAY.md §13.4): the stream's health per 60 s. Resend requests
+            // mean packets the speaker lost on the network; starved packets mean the app
+            // ran out of sound; the RTT is the last 60 keep-alives.
+            if l.stats_logged.0.elapsed() >= Duration::from_secs(60) {
+                let st = l.session.stats();
+                let was = &l.stats_logged.1;
+                log(&format!(
+                    "stats {} s: {} packets, {} resend requests, {} starved, rtt last {:.0} ms p95 {:.0} ms, delay {} ms",
+                    l.stats_logged.0.elapsed().as_secs(),
+                    st.packets_sent - was.packets_sent,
+                    st.retransmit_requests - was.retransmit_requests,
+                    st.starved_packets - was.starved_packets,
+                    st.rtt_last_ms,
+                    st.rtt_p95_ms,
+                    st.latency_ms,
+                ));
+                l.stats_logged = (Instant::now(), st);
             }
             // Tap mode (AIRPLAY.md §12 item 13): the player says playing but the tap delivers
             // nothing. Logged once per session; the panel shows a note; no automatic switch
@@ -609,6 +736,7 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         let status = Status {
             connected,
             connecting: state.connecting.lock_or_recover().clone(),
+            reconnecting: *state.reconnecting.lock_or_recover(),
             error: state.error.lock_or_recover().clone(),
             last_speaker: settings.airplay_last_speaker,
             speakers: state.speakers.lock_or_recover().clone(),
