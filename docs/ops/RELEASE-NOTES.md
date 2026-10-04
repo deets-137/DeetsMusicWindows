@@ -32,6 +32,79 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.25.4 — 2026-10-04
+
+**A song that stops loading picks up again.** Sometimes Apple's stream stopped in the middle
+of a song and the music went quiet, and Play did nothing. Now DeetsMusic loads the song again
+after 8 seconds and goes on from just before where it stopped.
+
+**AirPlay plays without a gap.** DeetsMusic remembers the best delay for each speaker, so the
+music no longer stops for a moment while it tunes the connection in the middle of a song.
+
+**Music keeps going when a list ends.** When an album or a playlist ends, a short web of songs
+like it plays next. Turn it off in Settings › Playlists › *Play a web when a list ends*.
+
+**Repeats in your queue play.** Add the same song to the queue as many times as you want. Each
+copy plays in its turn, and Next or Previous onto a copy starts it from the beginning.
+
+**Steadier playback.** When a song changes but no sound comes, DeetsMusic now loads it again.
+A song that can't play is skipped with a notice, and the next song no longer plays twice.
+
+**A faster start.** The window shows sooner, and Settings shows its first rows at once.
+
+**Your library stays in step.** Signing in syncs your library. Another Apple account starts a
+fresh library. A full sync runs each week or when Apple's song count changes.
+
+**Playlists.** *Get songs from Apple copy* can bring only the new songs, so a song you removed
+stays out. **Apple Music › Match the Apple Copy** makes a playlist the same as its Apple copy,
+and you can undo it.
+
+**Lists.** A sort keeps your place. The first Escape closes the search in a list. An album you
+grow shows a ♥ or + / ✓ column, and its track numbers sit under "#".
+
+**Rules.** A rule's hold lasts until its condition changes. A look you pick by hand ends at the
+time its chip shows.
+
+**Safer.** Browser extensions can reach only what the extension needs. A friend's key is
+remembered, and a message with another key is ignored.
+
+**Fixes.** A grown card stays open while you work beside it (new installs). Less work while the
+window is hidden.
+
+## 0.25.3 — 2026-10-01
+
+Built and installed by hand on 2026-10-01; never published. Its notes ride 0.25.4.
+
+**Music keeps going when a list ends.** When an album or a playlist ends, a short web of songs
+like it plays next. Turn it off in Settings › Playlists › *Play a web when a list ends*.
+
+**Repeats in your queue play.** Add the same song to the queue as many times as you want. Each
+copy plays in its turn, and Next or Previous onto a copy starts it from the beginning.
+
+**Steadier playback.** When a song changes but no sound comes, DeetsMusic now loads it again.
+A song that can't play is skipped with a notice, and the next song no longer plays twice.
+
+**A faster start.** The window shows sooner, and Settings shows its first rows at once.
+
+**Your library stays in step.** Signing in syncs your library. Another Apple account starts a
+fresh library. A full sync runs each week or when Apple's song count changes.
+
+**Playlists.** *Get songs from Apple copy* can bring only the new songs, so a song you removed
+stays out. **Apple Music › Match the Apple Copy** makes a playlist the same as its Apple copy,
+and you can undo it.
+
+**Lists.** A sort keeps your place. The first Escape closes the search in a list. An album you
+grow shows a ♥ or + / ✓ column, and its track numbers sit under "#".
+
+**Rules.** A rule's hold lasts until its condition changes. A look you pick by hand ends at the
+time its chip shows.
+
+**Safer.** Browser extensions can reach only what the extension needs. A friend's key is
+remembered, and a message with another key is ignored.
+
+**Fixes.** A grown card stays open while you work beside it (new installs). Less work while the
+window is hidden.
+
 ## 0.25.2 — 2026-09-28
 
 **Song changes are steadier.** Sometimes the music stopped or stuttered when one song moved to
