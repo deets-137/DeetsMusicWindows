@@ -24,7 +24,7 @@ import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep } from "./pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, MID_STALL_MS } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
@@ -919,8 +919,84 @@ function logPauseSource(): void {
       diag.log("player:stall-end", { s: Math.round((performance.now() - stall.since) / 1000), after: stall.after });
       stall = null;
     }
+    endMidStall("played");
   }
+  const buffering = st === S.waiting || st === S.stalled;
+  if (!midStall && midStallArms({
+    wasPlaying,
+    buffering,
+    loading: isLoading || loadingContext || endHealing,
+    at: music.currentPlaybackTime ?? 0,
+    duration: music.currentPlaybackDuration ?? 0,
+  })) armMidStall();
   if (st !== S.waiting && st !== S.loading) wasPlaying = playing;
+}
+
+// ── A song that stops loading in the middle (2026-10-03, QUEUE.md §Mid-song stall) ──
+// On live, "Sepulveda" went from playing to `waiting` 30 s in, with no error, and stayed
+// there; the pause lines above skip `waiting`, so nothing logged it and nothing reloaded it.
+// Now a buffer in the middle of a playing song arms one check MID_STALL_MS later. Still
+// buffering then → in the queue, reload the song STALL_BACK_S before the stop; in a station
+// or a room, log only. The rule is pure (midStallStep, pause-rules.ts). A second stall of the
+// same song right after its reload is not reloaded again: the toast says so.
+let midStall: { id: string | null; entry: unknown; at: number; since: number; gen: number; timer: number } | null = null;
+/** The song the last stall reload was for, and when: a second stall soon after gives up. */
+let midStallReloaded: { entry: unknown; at: number } | null = null;
+const MID_STALL_AGAIN_MS = 30_000;
+
+function armMidStall(): void {
+  const m = music;
+  if (!m) return;
+  midStall = {
+    id: m.nowPlayingItem?.id ?? null,
+    entry: mode === "queue" ? queue.getCurrent() : null,
+    at: m.currentPlaybackTime ?? 0,
+    since: performance.now(),
+    gen: loadGen,
+    timer: window.setTimeout(checkMidStall, MID_STALL_MS),
+  };
+}
+
+/** The stall is over; one `player:buffer` line says how, when it lasted a second or more
+ *  (a seek's short buffer is left out). */
+function endMidStall(end: string): void {
+  const s = midStall;
+  if (!s) return;
+  window.clearTimeout(s.timer);
+  midStall = null;
+  const secs = (performance.now() - s.since) / 1000;
+  if (secs >= 1 || end !== "played") diag.log("player:buffer", { id: s.id, at: Math.round(s.at), s: Math.round(secs), end, mode });
+}
+
+function checkMidStall(): void {
+  const s = midStall;
+  const m = music;
+  const S = window.MusicKit?.PlaybackStates;
+  if (!s || !m || !S) return;
+  const st = m.playbackState;
+  const step = midStallStep({
+    playing: !!m.isPlaying,
+    userPaused: lastUserPauseAt > s.since,
+    // A load, a heal or a Play check in flight owns the music now (watchForSound reloads it).
+    sameSong: (m.nowPlayingItem?.id ?? null) === s.id && loadGen === s.gen && !isLoading && !endHealing && !silentArmed
+      && (mode !== "queue" || queue.getCurrent() === s.entry),
+    buffering: st === S.waiting || st === S.stalled || st === S.loading,
+    canReload: mode === "queue" && !roomBridge && !!s.entry,
+  });
+  if (step === "fine") return endMidStall("moved on");
+  endMidStall(step === "reload" ? "reload" : "left");
+  if (step !== "reload") return;
+  const last = midStallReloaded;
+  const again = !!last && last.entry === s.entry && performance.now() - last.at < MID_STALL_AGAIN_MS;
+  if (again) {
+    midStallReloaded = null;
+    diag.warn("player:midStallGaveUp", { id: s.id, at: Math.round(s.at) });
+    toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+    return;
+  }
+  midStallReloaded = { entry: s.entry, at: performance.now() };
+  diag.warn("player:midStall", { id: s.id, at: Math.round(s.at), s: Math.round((performance.now() - s.since) / 1000), state: S[st] ?? st, output: outputKind() });
+  recoverLoad(m, "midStall", resumeSpot(s.at)).catch((e) => console.warn("[player] stall reload:", e));
 }
 
 window.addEventListener("pagehide", () => {
@@ -2518,9 +2594,11 @@ export async function playPause(why = "button"): Promise<void> {
     perf.mark("model");
     perf.mark("context");
     perf.mark("window");
+    // Armed BEFORE the await: on a song stuck in `waiting`, play() never settles, so a check
+    // armed after it never ran (live, 2026-10-04: Play at 0:13 did nothing, no silentStart).
+    watchForSound("play"); // a stuck song ignores play(): the check reloads it
     await m.play();
     scheduleGrow(); // a preloaded window is the small click window — grow it like any click
-    watchForSound("play"); // a stuck song ignores play(): the check reloads it
     return;
   }
   // Nothing loaded in MusicKit but the model has a plan — a restored session
@@ -2665,8 +2743,9 @@ const RECOVER_LOADING_LOOKS = 3;
 let lastUserPauseAt = -Infinity;
 let recoverAgain: unknown = null;
 
-async function recoverLoad(m: any, why: string): Promise<void> {
-  await loadFromModel(m, true, { stopFirst: true });
+/** `atSec`: start the song there (a mid-song stall, a Play on a stuck song); 0 = the top. */
+async function recoverLoad(m: any, why: string, atSec = 0): Promise<void> {
+  await loadAndResumeAt(m, atSec, { stopFirst: true });
   const entry = queue.getCurrent();
   const gen = loadGen;
   const startedAt = performance.now();
@@ -2689,7 +2768,7 @@ async function recoverLoad(m: any, why: string): Promise<void> {
     }
     recoverAgain = entry;
     diag.warn("player:recoverSilent", { why, id, state: S[st] ?? st });
-    recoverLoad(mk, `${why}:again`).catch((e) => console.warn("[player] recovery reload:", e));
+    recoverLoad(mk, `${why}:again`, atSec).catch((e) => console.warn("[player] recovery reload:", e));
   };
   window.setTimeout(check, RECOVER_CHECK_MS);
 }
@@ -2742,7 +2821,10 @@ function watchForSound(why: string): void {
       return;
     }
     diag.warn("player:silentStart", { why, id: playId(entry) ?? null, state: S[st] ?? st, s: Math.round((performance.now() - armedAt) / 1000), output: outputKind() });
-    recoverLoad(mk, `silentStart:${why}`).catch((e) => console.warn("[player] silent start reload:", e));
+    // A Play on a song that had played starts it again where it stopped (2026-10-03); a
+    // song change that never made sound starts from the top.
+    const at = why === "play" && heardEntry === entry ? resumeSpot(lastHeardAt) : 0;
+    recoverLoad(mk, `silentStart:${why}`, at).catch((e) => console.warn("[player] silent start reload:", e));
   };
   silentWatch = window.setTimeout(check, SILENT_START_MS);
 }
@@ -2990,11 +3072,11 @@ const RESUME_CONFIRM_MS = 3000;
  *  seek before the first sound (`seekMs`) was ignored. So: wait until it plays, seek, and seek
  *  once more if the clock has not reached the spot. Resolves when the song has loaded; the seek
  *  goes on after that. */
-async function loadAndResumeAt(m: any, sec: number): Promise<void> {
-  if (sec <= 3) return loadFromModel(m); // the opening seconds: start from the top
+async function loadAndResumeAt(m: any, sec: number, opts: LoadOpts = {}): Promise<void> {
+  if (sec <= 3) return loadFromModel(m, true, opts); // the opening seconds: start from the top
   hushForResume(true);
   try {
-    await loadFromModel(m);
+    await loadFromModel(m, true, opts);
   } catch (e) {
     hushForResume(false);
     throw e;

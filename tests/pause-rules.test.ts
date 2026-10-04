@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep } from "../src/pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot } from "../src/pause-rules";
 
 // The 2026-09-24 read: 86 of 93 `outside` pauses were song changes (DEBUGGING.md).
 test("a pause at the last seconds is the song ending (2026-09-25)", () => {
@@ -35,4 +35,30 @@ test("a silent song change is reloaded; sound, a pause or a short buffer is not 
   assert.equal(silentStartStep({ ...silent, userPaused: true }), "fine");
   assert.equal(silentStartStep({ ...silent, buffering: true }), "look"); // a slow network gets one more look
   assert.equal(silentStartStep({ ...silent, buffering: true, looks: 1 }), "reload");
+});
+
+// Live, "Sepulveda": `waiting` 30 s in, no error, no log, no reload.
+test("a buffer in the middle of a playing song arms the stall watch (2026-10-03)", () => {
+  const mid = { wasPlaying: true, buffering: true, loading: false, at: 30, duration: 200 };
+  assert.equal(midStallArms(mid), true);
+  assert.equal(midStallArms({ ...mid, wasPlaying: false }), false); // it was not playing
+  assert.equal(midStallArms({ ...mid, loading: true }), false); // our own load
+  assert.equal(midStallArms({ ...mid, at: 0 }), false); // a song change passes through waiting
+  assert.equal(midStallArms({ ...mid, at: 199 }), false); // the song's end
+  assert.equal(midStallArms({ ...mid, buffering: false }), false);
+});
+
+test("a stall still buffering at the check is reloaded in the queue, logged elsewhere (2026-10-03)", () => {
+  const stuck = { playing: false, userPaused: false, sameSong: true, buffering: true, canReload: true };
+  assert.equal(midStallStep(stuck), "reload");
+  assert.equal(midStallStep({ ...stuck, canReload: false }), "logOnly"); // a station or a room
+  assert.equal(midStallStep({ ...stuck, playing: true }), "fine"); // it came back by itself
+  assert.equal(midStallStep({ ...stuck, userPaused: true }), "fine");
+  assert.equal(midStallStep({ ...stuck, sameSong: false }), "fine"); // a skip
+  assert.equal(midStallStep({ ...stuck, buffering: false }), "fine"); // paused from outside: the pause logger's
+});
+
+test("a stall reload starts 2 s before the stop (2026-10-03)", () => {
+  assert.equal(resumeSpot(30), 28);
+  assert.equal(resumeSpot(1), 0);
 });

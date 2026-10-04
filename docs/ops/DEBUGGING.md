@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
-updated: 2026-09-29
+updated: 2026-10-03
 ---
 # DeetsMusic — Debugging tools
 
@@ -132,6 +132,12 @@ Player events (`src/player.ts`):
   (`why: play`), had no sound 4 s later (8 s when MusicKit still buffers). `state` is the
   MusicKit state it sat in. The recovery load follows (`silentStart:<why>`), so a second miss is
   `player:recoverSilent`, then the toast. The rule is `silentStartStep` (pause-rules.ts).
+- `player:buffer` — `{ id, at, s, end, mode }` (2026-10-03) a buffer in the middle of a playing
+  song (`waiting` / `stalled`), written when it ends: `played` (MusicKit got out by itself; only
+  when it lasted 1 s or more), `reload`, `left` (a station or a room: logged only), `moved on`.
+- `player:midStall` — `{ id, at, s, state, output }` (a warn) still buffering 8 s after the
+  arm: the song reloads 2 s before `at`. `player:midStallGaveUp` — the same song stalled again
+  within 30 s of that reload: the toast. QUEUE.md §Mid-song stall.
 - `player:press` — `{ do, from, state, id, at, playing, mode, room }` every Play / Pause, Next
   and Previous press, written first, before a room, an idle skip or a sign-in can return
   (2026-10-01). `do` is `playPause` / `next` / `prev`; `from` is the place: `np-card` (the Now

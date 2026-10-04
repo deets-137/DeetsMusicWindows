@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-01
+updated: 2026-10-04
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,28 @@ updated: 2026-10-01
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-03 — Mid-song stall watch (built, uncommitted, NOT desk-tested)
+
+**The report.** "Why did Sepulveda pause on live?" (2026-10-02 16:23, AirPlay). Read from the
+live log: 30 s in, MusicKit went to `waiting` with no error and no press, and stayed there. A
+HomePod Pause came 9 s later (a no-op: already not playing). Play did nothing; Next, then
+Previous back to it, which paused at 0:02 (`outside`), the same shape as "In Love" after
+Previous at 03:23 that morning (not worked on; his second fork, not picked yet). The cause
+inside MusicKit is not in our logs.
+
+**His picks:** 8 s wait; 2 s back; toast only on a second fail; queue only (stations and rooms
+log); the Play-press heal also starts at the stop.
+
+**Built:** `midStallArms` / `midStallStep` / `resumeSpot` (pause-rules.ts, three tests);
+`armMidStall` / `checkMidStall` in player.ts; `recoverLoad` takes a start second and loads
+through `loadAndResumeAt` (hushed until the seek). Decided inside his picks: QUEUE.md §Mid-song
+stall. Desk test: there. `npx tsc --noEmit` and `npm test` (163) pass.
+
+**2026-10-04, the same stall again on live (0.25.3):** "That's Why I Love You" went to `waiting`
+at 0:12 (no press, no error); Play at 0:13 found it `waiting` and did nothing; `sound:startLost`
+5 s later; no `player:silentStart` in the 40 s after. Cause of that miss: `playPause` armed the
+Play check after `await m.play()`, which never settles on a stuck song. Fixed: armed before it.
 
 ## 2026-10-01 — A skip onto an adjacent copy of a song (built, uncommitted, NOT desk-tested)
 

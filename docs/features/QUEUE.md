@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: passed 2026-09-24
-sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts]
-updated: 2026-09-29
+sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts]
+updated: 2026-10-04
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -612,6 +612,52 @@ The song that MusicKit leaves out (Lawn) is healed: the next section.
 MusicKit holds under 50 songs) still repairs. The retries cannot be forced from the session:
 after the next `player:retryCurrent` or `player:keyRetry` on live, the same seconds must show one
 `player:loadWindow` and the song playing, with no toast.
+
+### Mid-song stall (2026-10-03)
+> **Part:** built · 2026-10-03
+
+**The report.** On live (AirPlay), 2026-10-02 16:23, "Sepulveda" went from playing to MusicKit's
+`waiting` state 30 s in. No error came and the network was fine. Nothing logged it: the pause
+lines skip `waiting`, and the stall line starts only from a pause at a song's end. A Play press
+then did nothing (still `waiting`); Next and Previous followed. The cause inside MusicKit (most
+likely one audio segment request that never finished) is not in our logs.
+
+**His picks (2026-10-03):** wait 8 s; start again 2 s before the stop; no toast when the reload
+works, the toast when it fails twice; the queue only (a station or a room logs only); a Play
+press on a stuck song also starts it at the stop position.
+
+**As built** (player.ts `armMidStall` / `checkMidStall`; the rules `midStallArms`,
+`midStallStep`, `resumeSpot` in pause-rules.ts, tested):
+- **Arm.** In `logPauseSource`: the state goes to `waiting` or `stalled` while the song was
+  playing, outside our own loads and heals, at 1 s or later and not in the song's last 2 s.
+- **Check, 8 s later** (`MID_STALL_MS`). Sound, a user pause, another song, a newer load or a
+  Play check in flight → nothing. A pause from outside (no longer buffering) → nothing; the
+  pause lines own it. Still buffering → in the queue, `player:midStall` and `recoverLoad` at
+  2 s before the stop (`loadAndResumeAt`: silent until the seek, the network-drop resume's way;
+  `seekMs` is ignored before the first sound). In a station or a room: the log line only.
+- **Twice.** The recovery load checks itself (`player:recoverSilent`, then the toast). A second
+  stall of the same song within 30 s of its stall reload is not reloaded: `player:midStallGaveUp`
+  and "Playback stopped. Try the song again."
+- **Play on a stuck song.** `watchForSound("play")` reloads at 2 s before the last heard second
+  when that song had made sound; a song change that never made sound still starts at 0:00.
+- **The Play check is armed before `play()` (2026-10-04).** Live, 0.25.3: "That's Why I Love
+  You" went to `waiting` at 0:12, Play at 0:13 did nothing, and no `player:silentStart` came.
+  On a stuck song `m.play()` never settles, and `playPause` armed `watchForSound("play")` after
+  the await, so the check never ran. It is now armed first.
+- **Log.** `player:buffer {id, at, s, end, mode}` once per stall that lasted 1 s or more, or that
+  ended in a reload or a log-only (`end`: `played` · `reload` · `left` · `moved on`). This
+  counts how often MusicKit buffers mid-song and gets out by itself.
+
+**Decided inside his picks (Claude, for him to see):** the watch does not arm in a song's first
+second or its last 2 s (a song change passes through `waiting`); a buffer under 1 s that plays
+again is not logged (a seek's short buffer); the "fails twice" window is 30 s.
+
+**Desk test.** Hard to force on demand. (a) Play a queue; in DevTools › Network set "Offline"
+for 10 s mid-song, then back online. If MusicKit sits in `waiting` (not `loadSegmentError`, which
+is the network-drop resume), the ring shows `player:buffer {end: reload}`, `player:midStall`,
+then the song from 2 s before the stop. (b) A short throttle (Slow 3G, 3 s) that plays again:
+`player:buffer {end: played}` only. (c) Pause during a buffer: no reload. On live after any
+stall: `deetsmusic diag --tag player:buffer`.
 
 ### A library song Apple sends with no play id (2026-09-28)
 

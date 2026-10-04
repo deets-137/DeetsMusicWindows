@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-09-28
+updated: 2026-10-03
 ---
 # DeetsMusic — Handoff
 
@@ -132,6 +132,9 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    890 → 836 ms; uncommitted, his desk test open; (c) the grow's `--grow-rows-at` stays 0.4 (his call, 2026-10-01); (d) his eye
    on the strips in `shots/grow-timing/0.25.2/` and
    `shots/theme-crossfade/0.25.2/`. The re-runnable lists are in [ops/checks/](ops/checks/README.md).
+0b. **Mid-song stall watch** (built 2026-10-03, uncommitted, NOT desk-tested; his picks): a song
+   stuck in `waiting` 8 s in the middle reloads 2 s before the stop. QUEUE.md §Mid-song stall
+   has the desk test. It touches playback: his hand test before a release.
 0a. **The music stopped at a song change + the catalog heal** (built + committed 2026-09-28,
    Claude ran part of it on the dev app): QUEUE.md §The music stopped at a song change and §A
    library song Apple sends with no play id. Not reached yet: a healed id in use, "in your

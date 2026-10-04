@@ -39,3 +39,38 @@ export function silentStartStep(p: {
   if (p.buffering && p.looks < p.maxLooks) return "look";
   return "reload";
 }
+
+// ── A song that stops loading in the middle (2026-10-03, QUEUE.md §Mid-song stall) ──
+// On live, "Sepulveda" went from playing to MusicKit's `waiting` 30 s in, with no error, and
+// stayed there: nothing logged it and nothing reloaded it.
+
+/** How long a song may buffer in the middle before it is reloaded (his choice: 8 s). */
+export const MID_STALL_MS = 8000;
+/** The reload starts this many seconds before the stop, so the cut bar is heard again. */
+export const STALL_BACK_S = 2;
+
+/** Does a buffer arm the watch? Only one in the middle of a song that was playing: not a load,
+ *  not the song's first second (a song change passes through `waiting`), not its last seconds. */
+export function midStallArms(p: { wasPlaying: boolean; buffering: boolean; loading: boolean; at: number; duration: number }): boolean {
+  return p.wasPlaying && p.buffering && !p.loading && p.at >= 1 && !nearSongEnd(p.at, p.duration);
+}
+
+/**
+ * The watch's one check, MID_STALL_MS after the arm. Sound, a user pause, another song or a
+ * pause from outside (no longer buffering) is fine. In a station or a room it only logs.
+ */
+export function midStallStep(p: {
+  playing: boolean;
+  userPaused: boolean;
+  sameSong: boolean;
+  buffering: boolean;
+  canReload: boolean;
+}): "fine" | "logOnly" | "reload" {
+  if (p.playing || p.userPaused || !p.sameSong || !p.buffering) return "fine";
+  return p.canReload ? "reload" : "logOnly";
+}
+
+/** Where a reload starts: STALL_BACK_S before `at`, never below 0. Seconds. */
+export function resumeSpot(at: number): number {
+  return Math.max(0, at - STALL_BACK_S);
+}
