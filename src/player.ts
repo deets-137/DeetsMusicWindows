@@ -1054,10 +1054,12 @@ function onNowPlayingChange(): void {
         loadingContext = true;
         const m = music;
         setTimeout(() => {
-          loadFromModel(m, true, { stopFirst: true }).catch((e) => {
-            loadingContext = false; // never leave follow wedged if the load bailed
-            console.warn("[player] breakout load:", e);
-          });
+          loadFromModel(m, true, { stopFirst: true })
+            .then(() => checkBreakout(m))
+            .catch((e) => {
+              loadingContext = false; // never leave follow wedged if the load bailed
+              console.warn("[player] breakout load:", e);
+            });
         }, 0);
       } else {
         pendingBreakout = false; // an emptied block (rows removed) — stay in radio
@@ -1086,6 +1088,29 @@ function onNowPlayingChange(): void {
     }
   }
   emit();
+}
+
+/**
+ * The break-out load can lose to the station: MusicKit's next station song is already
+ * loading when the break-out starts, and it can stay the now-playing item after our
+ * stop + setQueue + play (2026-10-06: "Better Days" queued, "LOVE UR NAME" played, and the
+ * model named Better Days). No song change fires after that, so `correctDrift` never runs.
+ * The model is the master: compare once the load settles, and load the model's song again
+ * once. A second miss is logged, never looped.
+ */
+async function checkBreakout(m: any, again = false): Promise<void> {
+  const cur = queue.getCurrent();
+  const npId: string | undefined = m?.nowPlayingItem?.id;
+  if (!cur || mode !== "queue" || (npId && isEntry(cur, npId))) return;
+  const data = { npId: npId ?? null, want: playId(cur) ?? null, again };
+  if (again) {
+    diag.warn("player:breakoutGaveUp", data);
+    return;
+  }
+  diag.warn("player:breakoutMiss", data);
+  perf.event("breakoutMiss", data);
+  await loadFromModel(m, true, { stopFirst: true });
+  await checkBreakout(m, true);
 }
 
 /**

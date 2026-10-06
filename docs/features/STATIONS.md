@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/start-station.ts, src/radio-card.ts, src/radio.ts]
-updated: 2026-09-15
+updated: 2026-10-06
 ---
 # DeetsMusic — Stations (radio) & audio-feature enrichment
 
@@ -77,7 +77,13 @@ fixed list**. So radio mode is a `PlayerMode = "queue" | "radio"` flag on the pl
   it primed to advance, and that advance AbortErrors our `setQueue`, leaving the station's next
   song playing under a model already moved to the block) and the block placed at **index 0**
   (skips the `changeToMediaAtIndex` that also raced the transition). The station's next song
-  may sound for a beat while it buffers. Starting a station
+  may sound for a beat while it buffers. **The check after the swap (2026-10-06):** the
+  station's next song can still win. It stays MusicKit's now-playing item after the load, and
+  no song change fires, so `correctDrift` never runs (a queued *Better Days* played as *LOVE
+  UR NAME* while the model named *Better Days*). `checkBreakout` (player.ts) compares
+  MusicKit's item with the model's `current` once the load settles. On a miss it logs
+  `player:breakoutMiss` and loads the model's song again once; a second miss logs
+  `player:breakoutGaveUp` and stops. The model is the master (QUEUE.md). Starting a station
   disposes manual picks too (an explicit departure — keeping them would trigger an instant
   break-out). [FUTURE-SETTINGS §17](../FUTURE-SETTINGS.md): optionally resume the station when
   the block ends (default: stop).
