@@ -888,7 +888,9 @@ export function initCardGrow(o: Opts): void {
   });
   // Esc collapses, unless a menu, a popover or a text field takes it first.
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !state || animating) return;
+    // A key that a list already spent on its own Back step (list-keys.ts) is one step, not two:
+    // Escape in Rulez folded the open rule AND left Fill (2026-10-06).
+    if (e.key !== "Escape" || !state || animating || e.defaultPrevented) return;
     const t = e.target;
     if (t instanceof Element && t.closest("input, textarea, [contenteditable]")) return;
     if (document.querySelector(".ctx-menu, .lib-pop:not([hidden]), .slot-picker__menu:not([hidden]), .pop:not([hidden])")) return;

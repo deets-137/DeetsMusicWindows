@@ -263,6 +263,9 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
             if (openWraps[depth] !== wrap) return; // latch moved on while items resolved
             fly.hidden = false;
             placeFly(fly, host);
+            // A flyout that holds a field (a note, a genre, a time) is ready to type, as a
+            // top-level field is: no second click into the box (Rulez review, 2026-10-06).
+            fly.querySelector<HTMLInputElement>(":scope > .ctx-menu__field > input")?.focus({ preventScroll: true });
           };
           if (fly.dataset.built) show();
           else
@@ -384,8 +387,14 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
   const onPointerDown = (e: PointerEvent) => {
     if (!menu.contains(e.target as Node)) closeContextMenu();
   };
+  // Escape closes the menu and stops there: the key is spent. Without the stop it also reached
+  // the list under the menu (Rulez folded its open rule) and the grow (the card left Fill),
+  // since both looked after the menu was already gone (Rulez review, 2026-10-06).
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") closeContextMenu();
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeContextMenu();
   };
   // A scroll INSIDE the menu (a long flyout scrolling its own list) must not dismiss;
   // any outside scroll still does. Capture so scrolls in any container are seen.

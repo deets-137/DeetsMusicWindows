@@ -135,6 +135,15 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 0b. **Mid-song stall watch** (built 2026-10-03, uncommitted, NOT desk-tested; his picks): a song
    stuck in `waiting` 8 s in the middle reloads 2 s before the stop. QUEUE.md §Mid-song stall
    has the desk test. It touches playback: his hand test before a release.
+0c. **The station break-out check** (built 2026-10-06, uncommitted, NOT desk-tested; his pick):
+   after the break-out load, MusicKit's song is compared with the model's and loaded again once
+   on a miss (`player:breakoutMiss`). STATIONS.md §1; the desk test is in WORKLOG 2026-10-06.
+   It touches playback: his hand test before a release.
+0d. **The Rulez review fixes** (built 2026-10-06, uncommitted; Claude's shots check passed, his
+   hand test open): four bugs (Esc, When → Do, flyout field focus, Enter takes the library's
+   spelling), one row per Settings row in a shut fold, recipes at full strength with a
+   Duplicate chip, the row glide. RULEZ.md §17 has the desk test. The Esc change reaches every
+   grown card (CARD-GROW.md, Esc) and the field focus every menu (context-menu.ts).
 0a. **The music stopped at a song change + the catalog heal** (built + committed 2026-09-28,
    Claude ran part of it on the dev app): QUEUE.md §The music stopped at a song change and §A
    library song Apple sends with no play id. Not reached yet: a healed id in use, "in your

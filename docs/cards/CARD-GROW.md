@@ -143,7 +143,10 @@ header action tokens that exist.
   in a zone.
 - **An edge zone of the grown card.** A click on any of its zones collapses it.
 - **Esc** collapses it, unless a menu, a dropdown or a text field has focus (that Esc closes
-  the menu first, as today).
+  the menu first, as today). **2026-10-06:** a context menu now spends the key (it stops it
+  after it closes), and a list's own Back step (list-keys.ts: Rulez folds its open rule, a
+  drilled album goes Back) spends it too (`defaultPrevented`). One Esc is one step; the next Esc
+  collapses. Before, a menu's Esc and a list's Back also collapsed the grow (RULEZ.md §17).
 - **A click outside the card** collapses it when the setting row "Collapse on outside click"
   is on (§8; off by default since 2026-10-01). The stage column counts as outside.
 - **The Pin button** shows next to Collapse while that setting is on. A pinned card ignores

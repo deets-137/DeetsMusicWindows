@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 555 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 557 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -536,6 +536,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--rulez-lead-w` | `var(--icon-md)` | — |  |
 | `--rulez-idle-opacity` | `var(--unreleased-opacity)` | — | a draft or an off rule: the same "does not run" |
 | `--rulez-name-max-w` | `16em` | — | a long rule name ends in … so the summary keeps room |
+| `--rulez-fold-dur` | `var(--dur-med)` | — | a rule opening or closing: the Library search bar's glide |
+| `--rulez-fold-ease` | `var(--ease-ui)` | — |  |
 | `--font-mono` | `"Cascadia Mono", Consolas, ui-monospace, monospace` | — | log text |
 | `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
 | `--np-stage-glyph` | `96px` | — | placeholder ♪ on the stage |

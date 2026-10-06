@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules-facts.ts, src/album-slots.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
-updated: 2026-09-29
+updated: 2026-10-06
 ---
 # DeetsMusic — Rulez, the rules builder
 
@@ -14,7 +14,9 @@ built), your own files in a rule (§5), the sentence row (§6), the agent's verb
 as built (§8), snapshots (§9), FUTURE-SETTINGS as rules (§10), the album color facts and Live
 Theming (§11), moving a rule and its hover box (§12), cases (§13) and one row per recipe (§14).
 **Next: a full pass on custom rules (§15)** before any more building on recipes or cases.
-Recipes in Settings and the Cruisin / Pro start pick are designed in §16 (forks open).
+Recipes in Settings and the Cruisin / Pro start pick are designed in §16 (forks open). The
+motion and UX review of 2026-10-06 and its fixes are §17 (where §1–§14 and §17 differ, §17 is
+the code).
 Designed and built 2026-09-27 on branch `rules-rulez`; §1–§2 were RULES.md §20–§21 until the
 split the same day.
 
@@ -1070,3 +1072,71 @@ turns on a recipe only in the Rulez card, and that card is in Max only, behind a
   build: one verb action over `setRecipe`, a line in AGENT.md.
 - **The `desc` lines are now user copy for a stranger.** Each one is read again before build, in
   the Tips voice (ONBOARDING.md §3), with no rule words ("state", "moment", "while").
+
+## 17. The motion and UX review, and its fixes (2026-10-06)
+
+> **Part:** built · 2026-10-06 · Claude's shots check passed; his hand test open
+
+His ask: look at the card as a motion and UX designer, as a beginner, an intermediate user, a
+pro, a tech-savvy user and a user who does not know the card exists. Three walks with the
+shots runner on the web demo (`shots/scratch/rulez-ux.json`, `-ux2`, `-ux3`).
+
+### 17.1 What the review found
+
+- **Bugs.** (1) One Esc to close a condition menu also folded the open rule and took Rulez out
+  of Fill: the context menu closed itself in the capture phase, then list-keys' Back and the
+  grow's Esc both ran. (2) After you picked When, nothing moved you to Do (§6.3 said the Do blank
+  takes focus). (3) A field in a flyout (a note, a genre, a time) did not take focus. (4) Genre,
+  Artist and Album saved what you typed: "Ja" + Enter made "Genre is Ja", which no song matches.
+- **The first screen.** One line for you, then 18 locked rows: 7 recipes dimmed because they were
+  off (read as "not available"), and 11 "Made by Settings" rows with names repeated (×4, ×2, ×2).
+- **What works.** The sentence; the live line with ✓ / ✗; who wins; a draft that turns itself On
+  when complete; Logs in Words and Raw.
+- **Left as findings, not built** (no pick yet): the When menu opens over the line it fills;
+  flyout labels wrap to two lines; Playback holds about 20 facts; a new rule is never asked for a
+  name; the X and the un-fill button sit side by side; Logs › Last ran lists every "never"; Delete
+  has no undo; "Copy as text" gives JSON; the recipe sentence "time is from 10:00 PM".
+- **A correction.** The review said the row did not use the Settings section motion. It did: a
+  Settings section's rows slide in with `enterRows` and its close is instant, as here. He then
+  picked a height glide (17.2).
+
+### 17.2 His picks, as built
+
+| Pick | As built |
+|---|---|
+| Fix the four bugs | **Esc:** context-menu.ts now stops the key after it closes the menu, and card-grow.ts yields to `defaultPrevented`, so a list's Back step (list-keys.ts) is one step too (CARD-GROW.md, Esc). **When → Do:** `advance` opens the next dashed blank of a draft after a pick (When, While, Do, a While part, a While condition); a finished rule stops. A new rule glides open, then its When menu opens. **Field focus:** a flyout's field takes focus when the flyout shows (context-menu.ts, every menu). **Enter:** `resolveTyped` saves the library's spelling: the same name typed in full, else the first suggestion; names that start with the text come first; with no match it stays as typed, as the empty line says. |
+| 2A: one row per Settings row, folded | `settingGroups` makes one locked row per Settings row (the rule's `row` or `fixed` source). It opens like a recipe: "Made by Settings. *N* rules, read-only.", an **Open in Settings** chip, then each rule's sentence and live line. The "Made by Settings" divider is a fold button with the shelf chevron and a count, **shut by default**; it is card memory (`settings` in the snapshot). Its rows enter with `enterRows` when it opens. *Try* tries every rule of the row. |
+| Recipes at full strength | An off recipe is no longer `is-idle`; only the switch says Off. Your own off rules and drafts stay dimmed. |
+| A button in an open recipe | **Duplicate into your rules** (the row menu's words) on the "Made by DeetsMusic. *N* rules, read-only." line. It is the open row's own chip (`.rulez__blank`, the Rulez cell family), so it reads as part of the sentence around it. |
+| Row motion: a height glide | The open part sits in `.rulez__fold` (grid rows 0fr → 1fr, the Library search bar's glide), `--rulez-fold-dur` (= `--dur-med`) and `--rulez-fold-ease` (= `--ease-ui`). Opening one row and closing another cross in the same frames. The row's fill and border fade in the same time. The parts still enter with `enterRows`. Reduced motion: no glide. Other renders wait for the glide; when it ends the shut fold is taken out in place, so the parts' entry motion is not cut. `frames.during("rulez-row")` times it. |
+
+**Decided inside his picks (for his review).**
+- The Esc change reaches every grown card: in a grown, drilled album, Esc now goes Back first and
+  the next Esc collapses (before, one Esc did both).
+- A flyout's field takes focus on hover too, not only on a click.
+- A Settings row opens to its rules like a recipe (before, a locked row did not open).
+- A Settings row's collapsed line shows its sentences one after another (the hover box shows
+  them all).
+- Only "Made by Settings" folds; "Recipes" stays a plain divider.
+
+### 17.3 Desk test
+
+Max, Rulez open (Fill).
+1. Press **+**. The new rule glides open, then the When menu opens. Pick Playback › The next song
+   plays: the Do menu opens by itself.
+2. Do › Window › Show a note: the field has the cursor. Type, Enter: the rule reads as one
+   sentence and turns On.
+3. *only if…* › Playback › Genre: type the first letters of a genre you have, press Enter: the
+   condition names the whole genre.
+4. Open the + of the condition, press Esc: the menu closes; the rule stays open and Rulez stays
+   at Fill. Focus the rule, press Esc: the rule glides shut; Rulez stays at Fill. Esc again: Fill
+   collapses.
+5. Open one rule, then another: one glides shut while the other glides open; the rows below move,
+   they do not jump.
+6. The recipes read at full strength; each switch says Off. Open one: the **Duplicate into your
+   rules** chip copies it to the top of your rules.
+7. "Made by Settings" is shut, with its count. Open it: one row per Settings row ("Grow on album or
+   artist" once). Open that row: four rules, each with its live line, and **Open in Settings**.
+8. Close Rulez and open it again: the fold is as you left it.
+9. Reduced motion (Windows › Accessibility › Animation effects off): rows open and close at once.
+

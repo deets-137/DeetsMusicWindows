@@ -4285,7 +4285,22 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 /* ── Rulez (RULEZ.md §6): a list of rules; a press opens one to its sentence ──────────────── */
 .rulez { overflow-y: auto; overflow-x: hidden; }
 .rulez__list { display: flex; flex-direction: column; gap: var(--rulez-gap); padding-bottom: var(--space-3); }
-.rulez__rule { border: 1px solid transparent; border-radius: var(--radius-control); }
+.rulez__rule {
+  border: 1px solid transparent; border-radius: var(--radius-control);
+  transition: background-color var(--rulez-fold-dur) var(--rulez-fold-ease), border-color var(--rulez-fold-dur) var(--rulez-fold-ease);
+}
+/* The open part glides (rulez-card.ts openRow; his call 2026-10-06): the Library search bar's
+   grid 0fr → 1fr, so an auto height animates and the rows below move with it. */
+.rulez__fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--rulez-fold-dur) var(--rulez-fold-ease);
+}
+.rulez__fold.is-shut { grid-template-rows: 0fr; }
+.rulez__fold-in { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .rulez__rule, .rulez__fold { transition: none; }
+}
 .rulez__rule.is-open { border-color: var(--border); background: var(--surface); }
 .rulez__bar {
   display: grid;
@@ -4300,8 +4315,8 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez__rule:not(.is-locked) > .rulez__bar:hover { background: var(--surface-hover); }
 .rulez__rule.is-locked > .rulez__bar { cursor: default; }
 /* A recipe is one row that opens to its rules (RULEZ.md §14): pressable like your own. */
-.rulez__rule.is-recipe > .rulez__bar { cursor: pointer; }
-.rulez__rule.is-recipe > .rulez__bar:hover { background: var(--surface-hover); }
+.rulez__rule.is-recipe > .rulez__bar, .rulez__rule.is-setrow > .rulez__bar { cursor: pointer; }
+.rulez__rule.is-recipe > .rulez__bar:hover, .rulez__rule.is-setrow > .rulez__bar:hover { background: var(--surface-hover); }
 .rulez__part { display: flex; flex-direction: column; gap: var(--space-1); }
 .rulez__part-name { margin: 0; font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); }
 .rulez__part-said { margin: 0; font-size: var(--fs-subtext); color: var(--text); }
@@ -4372,6 +4387,18 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez__add svg, .rulez__more svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; stroke: currentColor; stroke-width: 1.6; }
 .rulez__add svg { fill: none; }
 .rulez__divider { margin-top: var(--space-3); padding: var(--space-1) 0; color: var(--subtext); font-size: var(--fs-subtext); border-bottom: 1px solid var(--border); }
+/* "Made by Settings" folds (his call, 2026-10-06): the divider as a button, with the shelf
+   fold's chevron and count (.lib-shelf--toggle). */
+.rulez__divider--fold {
+  display: flex; align-items: center; gap: var(--space-1);
+  width: 100%;
+  background: none; border: none; border-bottom: 1px solid var(--border);
+  font-family: var(--font-body); text-align: left;
+  cursor: pointer;
+}
+.rulez__divider--fold:hover { color: var(--text); }
+.rulez__divider--fold:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.rulez__divider--fold.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
 .rulez__empty { margin: var(--space-3) 0; color: var(--subtext); font-size: var(--fs-subtext); }
 .rulez__close svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; }
 

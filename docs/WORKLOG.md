@@ -12,6 +12,41 @@ updated: 2026-10-04
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-06 — The Rulez review and its fixes (built, uncommitted, his hand test open)
+
+**The review.** His ask: look at Rulez as a motion and UX designer, as each kind of user. Three
+walks with the shots runner on the web demo (`shots/scratch/rulez-ux*.json`). The findings and
+his picks are RULEZ.md §17. Claude had said the row did not use the Settings section motion; it
+did (rows slide in, close is instant). He picked a height glide instead.
+
+**Built (his picks).** Esc is one step (context-menu.ts stops the key; card-grow.ts yields to
+`defaultPrevented`). A draft moves on to its next empty blank. A flyout's field takes focus.
+Enter in Genre / Artist / Album saves the library's spelling. One row per Settings row, in a
+"Made by Settings" fold, shut by default. Recipes at full strength. A Duplicate chip in an
+open recipe. The row glide (`--rulez-fold-dur`, `--rulez-fold-ease`).
+
+**Checked.** `shots/scratch/rulez-fix.json` (the probes all pass; the glide's frames line is
+`[perf] frames rulez-row`, 1–4 % dropped). tsc, docs:check. The desk test is RULEZ.md §17.
+
+## 2026-10-06 — The station break-out check (built, uncommitted, NOT desk-tested)
+
+**The report.** "Why did my queued song Better Days skip over to LOVE UR NAME?" Read from the
+live diag ring: on a station, Play Next on *Better Days* (from History) during *Cakewalk*.
+At the song end MusicKit started the station's next song (*LOVE UR NAME*); that change fired
+the break-out, which loaded *Better Days* with `stopFirst` (`player:loadWindow ids:1`, 57 ms).
+MusicKit stayed on *LOVE UR NAME*. No song change fired after the load, so `correctDrift`
+never ran. The model, the stats row and the Queue card named *Better Days*; the sound and
+the NP card (MusicKit's item) were *LOVE UR NAME*.
+
+**The fix (his pick: check after the load; the queue is the master).** `checkBreakout` in
+player.ts runs when the break-out load settles. MusicKit's item is not the model's `current`
+→ `player:breakoutMiss`, one more `stopFirst` load, then one more check; a second miss logs
+`player:breakoutGaveUp` and stops (never a loop, no toast). STATIONS.md §1.
+
+**Desk test.** Play a station. During a song, right-click a song → Play Next. At the song end
+the queued song plays, and the NP card names it. Read `diag` with tag `player:breakout`: a
+`breakoutMiss` line means the race happened and the check fixed it.
+
 ## 2026-10-03 — Mid-song stall watch (built, uncommitted, NOT desk-tested)
 
 **The report.** "Why did Sepulveda pause on live?" (2026-10-02 16:23, AirPlay). Read from the

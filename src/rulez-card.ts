@@ -42,6 +42,7 @@ import { tracks } from "./track-store";
 import { toast } from "./toast";
 import { esc } from "./dom";
 import * as diag from "./diag";
+import * as frames from "./frames";
 import { onFilesChange, pickFile, userFiles, type FileKind } from "./user-files";
 import { fileGone, previewSound } from "./rules-files";
 import { onDiag } from "./diag";
@@ -60,7 +61,27 @@ const ROWS: Record<string, { name: string; row: string | null }> = {
   goToTarget: { name: "Go to opens", row: "gototarget" },
   shuffleIdle: { name: "Idle shuffle plays", row: "shuffleidle" },
 };
-const builtinOf = (r: Rule) => ("row" in r.source ? ROWS[r.source.row] : "fixed" in r.source ? ROWS[r.source.fixed] : undefined);
+const builtinKey = (r: Rule): string | undefined => ("row" in r.source ? r.source.row : "fixed" in r.source ? r.source.fixed : undefined);
+const builtinOf = (r: Rule) => {
+  const key = builtinKey(r);
+  return key ? ROWS[key] : undefined;
+};
+/** The built-in rules, one list per Settings row that makes them, in the engine's order. */
+const settingGroups = (live: readonly Rule[]): Rule[][] => {
+  const by = new Map<string, Rule[]>();
+  for (const r of live) {
+    const key = builtinKey(r);
+    if (!key) continue;
+    const list = by.get(key);
+    if (list) list.push(r);
+    else by.set(key, [r]);
+  }
+  return [...by.values()];
+};
+const groupOf = (r: Rule): Rule[] => {
+  const key = builtinKey(r);
+  return key ? allRules().filter((x) => builtinKey(x) === key) : [r];
+};
 const recipeOf = (r: Rule) => ("recipe" in r.source ? RECIPES.find((x) => x.id === (r.source as { recipe: string }).recipe) : undefined);
 
 const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>';
@@ -88,6 +109,8 @@ type View = "rules" | "logs";
 interface Snap {
   view: View;
   open: string | null;
+  /** The "Made by Settings" fold is open (shut by default, his call 2026-10-06). */
+  settings?: boolean;
 }
 
 export const rulezCard: CardDef = {
@@ -105,6 +128,8 @@ export const rulezCard: CardDef = {
     const snap = (opts?.memory ?? {}) as Partial<Snap>;
     let view: View = snap.view === "logs" ? "logs" : "rules";
     let openId: string | null = snap.open ?? null;
+    let closingId: string | null = null; // a row whose fold is gliding shut (openRow)
+    let settingsOpen = snap.settings === true;
     let raw = false;
     let destroyed = false;
 
@@ -193,7 +218,11 @@ export const rulezCard: CardDef = {
     /** The When blank: an event by section, or While. */
     const whenMenu = (r: Rule): MenuItem[] => {
       const reg = k();
-      const pick = (when: EventId, at?: number) =>
+      const pick = (when: EventId, at?: number) => {
+        pickWhen(when, at);
+        advance(r.id);
+      };
+      const pickWhen = (when: EventId, at?: number) =>
         edit(r.id, "when", (x) => {
           const base = { id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft };
           const cond = x.kind === "state" ? x.while : x.if;
@@ -217,12 +246,14 @@ export const rulezCard: CardDef = {
       items.push(MENU_DIVIDER, {
         label: "While a condition holds",
         badge: chosen(r.kind === "state"),
-        run: () =>
+        run: () => {
           edit(r.id, "while", (x): StateRule => ({
             id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft, kind: "state",
             while: (x.kind === "state" ? x.while : x.if) ?? { all: [] },
             set: x.kind === "state" ? x.set : [], onHand: x.kind === "state" ? x.onHand : "next",
-          })),
+          }));
+          advance(r.id);
+        },
       });
       return items;
     };
@@ -233,8 +264,9 @@ export const rulezCard: CardDef = {
       ...lists().cards.map((c): MenuItem => ({ label: c.label, badge: chosen(r.card === c.value), run: () => edit(r.id, "in", (x) => void ((x as MomentRule).card = String(c.value))) })),
     ];
 
-    /** Suggest from your library as you type (no Apple call). */
-    const suggest = (kind: "genre" | "artist" | "album", text: string, submit: (v: string) => void): ActionItem[] | string => {
+    /** Your library's names that hold `text`: the ones that start with it first, then the rest,
+     *  each A–Z (no Apple call). */
+    const matches = (kind: "genre" | "artist" | "album", text: string): string[] => {
       const q = text.toLowerCase();
       const pool = new Set<string>();
       for (const t of tracks()) {
@@ -242,8 +274,20 @@ export const rulezCard: CardDef = {
         for (const v of vals) if (v && v !== "Music" && v.toLowerCase().includes(q)) pool.add(v);
         if (pool.size > 40) break;
       }
-      const rows = [...pool].sort((a, b) => a.localeCompare(b)).slice(0, 8).map((v): ActionItem => ({ label: v, run: () => submit(v) }));
+      const starts = (v: string) => (v.toLowerCase().startsWith(q) ? 0 : 1);
+      return [...pool].sort((a, b) => starts(a) - starts(b) || a.localeCompare(b));
+    };
+    /** Suggest from your library as you type. */
+    const suggest = (kind: "genre" | "artist" | "album", text: string, submit: (v: string) => void): ActionItem[] | string => {
+      const rows = matches(kind, text).slice(0, 8).map((v): ActionItem => ({ label: v, run: () => submit(v) }));
       return rows.length ? rows : "Nothing in your library matches. Press Enter to use it as typed.";
+    };
+    /** Enter in a suggesting field: the library's own spelling, so "ja" saves "Jazz" and not a
+     *  word no song has (a leaf compares the whole name). The same name typed in full wins over
+     *  a longer one; with no match the text stays as typed, as the empty line says. */
+    const resolveTyped = (kind: "genre" | "artist" | "album", text: string): string => {
+      const found = matches(kind, text);
+      return found.find((v) => v.toLowerCase() === text.toLowerCase()) ?? found[0] ?? text;
     };
 
     /** The value rows for one fact: they build a leaf and hand it to `done`. */
@@ -286,7 +330,7 @@ export const rulezCard: CardDef = {
           const field = (label: string, key: "is" | "isNot"): MenuItem => ({
             input: {
               label, placeholder: w.suggest === "genre" ? "Jazz" : w.label,
-              onSubmit: (v) => L({ [key]: v }),
+              onSubmit: (v) => L({ [key]: w.suggest ? resolveTyped(w.suggest, v) : v }),
               onInput: w.suggest ? (v, show) => show(suggest(w.suggest!, v, (pick) => L({ [key]: pick }))) : undefined,
             },
           });
@@ -322,8 +366,10 @@ export const rulezCard: CardDef = {
           return { ...b, members };
         }),
       );
-    const addTo = (r: Rule, path: number[], node: Leaf | ReturnType<typeof fromBlock>) =>
+    const addTo = (r: Rule, path: number[], node: Leaf | ReturnType<typeof fromBlock>) => {
       editRoot(r, "if:add", (root) => withBlock(root, path, (b) => ({ ...b, members: [...b.members, node] })));
+      advance(r.id); // a While draft's condition, then what it keeps
+    };
 
     const leafMenu = (r: Rule, path: number[]): MenuItem[] => [
       ...factMenu((l) => setLeaf(r, path, l)),
@@ -384,7 +430,7 @@ export const rulezCard: CardDef = {
         ? { label: w.label, badge: chosen(mark), run: () => done(w, true) }
         : { label: w.label, sub: () => doValueItems(w, (v) => done(w, v), moment)! };
     };
-    const setMoment = (r: Rule, w: DoWord, v: Value) =>
+    const setMoment = (r: Rule, w: DoWord, v: Value) => {
       edit(r.id, "do", (x) => {
         if (x.kind !== "moment" || !w.moment) return;
         if (w.id === "playStation") {
@@ -393,12 +439,14 @@ export const rulezCard: CardDef = {
           x.do = { playStation: { id: s.id, name: s.name, isLive: s.isLive, url: s.url, artwork: s.artwork } as never };
         } else x.do = w.moment(v);
       });
+      advance(r.id);
+    };
     const momentDoMenu = (r: MomentRule): MenuItem[] => {
       const cur = doWordOf(r)?.word.id;
       return bySection(dosFor(r), (w) => doRow(w, (ww, v) => setMoment(r, ww, v), cur === w.id, true));
     };
     /** A While row's part `i` (null = a new part) becomes word `w` with value `v`. One target once. */
-    const setPart = (r: StateRule, i: number | null, w: DoWord, v: Value) =>
+    const setPart = (r: StateRule, i: number | null, w: DoWord, v: Value) => {
       edit(r.id, "do", (x) => {
         if (x.kind !== "state" || !w.state) return;
         const parts = stateParts(x.set).map((p) => p.set);
@@ -409,6 +457,8 @@ export const rulezCard: CardDef = {
         else kept.push(next);
         x.set = kept.flat();
       });
+      advance(r.id);
+    };
     const stateDoMenu = (r: StateRule, i: number | null): MenuItem[] => {
       const items = bySection(dosFor(r), (w) => doRow(w, (ww, v) => setPart(r, i, ww, v), false, false));
       if (i !== null)
@@ -461,7 +511,7 @@ export const rulezCard: CardDef = {
       if (!("user" in r.source)) {
         const b = builtinOf(r);
         return [
-          { label: "Try", run: () => toast({ kind: "info", text: `${nameOf(r.id)}: ${tryText(r)}` }) },
+          { label: "Try", run: () => toast({ kind: "info", text: `${nameOf(r.id)}: ${groupOf(r).map(tryText).join(" ")}` }) },
           b?.row ? { label: "Open in Settings", run: () => requestSetting(b.row!) } : { label: "This rule has no Settings row", disabled: true, run: () => {} },
         ];
       }
@@ -590,21 +640,36 @@ export const rulezCard: CardDef = {
         ${moreHTML("Turns the rule on or off, copies, moves or deletes it")}
       </div>`;
       const cls = `rulez__rule${open ? " is-open" : ""}${!r.on || r.draft ? " is-idle" : ""}${r.by === "agent" ? " is-agent" : ""}`;
-      return `<div class="${cls}" data-id="${esc(r.id)}" data-own="1" data-idx="${idx}">${bar}${winsLine}${open ? openHTML(r, L) : ""}</div>`;
+      return `<div class="${cls}" data-id="${esc(r.id)}" data-own="1" data-idx="${idx}">${bar}${winsLine}${shownOpen(r.id) ? foldHTML(openHTML(r, L)) : ""}</div>`;
     };
+    /** The open part sits in a fold, the box that glides (openRow). A row that is closing is still
+     *  drawn with its fold until the glide ends. */
+    const shownOpen = (id: string) => openId === id || closingId === id;
+    const foldHTML = (inner: string) => `<div class="rulez__fold"><div class="rulez__fold-in">${inner}</div></div>`;
+    /** An action inside an open read-only row: the open row's own chip, so it reads as part of
+     *  the sentence around it (the Rulez cell family). */
+    const actHTML = (text: string, act: string, hint: string) => `<button class="rulez__blank rulez__act" type="button" data-act="${act}" title="${esc(hint)}">${esc(text)}</button>`;
 
-    /** A built-in rule: its Settings row's name, its sentence, locked. */
-    const lockedRowHTML = (r: Rule, wins: Map<string, Rule>, L: Lists): string => {
-      const b = builtinOf(r);
-      const w = wins.get(r.id);
+    /** One Settings row: every rule it makes, as one locked row (his call, 2026-10-06, as a recipe
+     *  is one row). A press opens it to each rule's sentence and live line. */
+    const lockedRowHTML = (rules: Rule[], wins: Map<string, Rule>, L: Lists): string => {
+      const first = rules[0];
+      const b = builtinOf(first);
+      const open = openId === first.id;
+      const w = rules.map((r) => wins.get(r.id)).find(Boolean);
       const winsLine = w ? `${winsHTML(w.id)}` : "";
-      return `<div class="rulez__rule is-locked" data-id="${esc(r.id)}"><div class="rulez__bar" title="${esc(`Made by Settings › ${b?.name ?? "a row"}. Change it there.`)}">
+      const count = rules.length === 1 ? "1 rule" : `${rules.length} rules`;
+      const parts = rules.map((r) => `<div class="rulez__part"><p class="rulez__part-said">${esc(sentenceText(r, L))}</p><p class="rulez__live">${esc(tryText(r))}</p></div>`).join("");
+      const body = shownOpen(first.id)
+        ? foldHTML(`<div class="rulez__open"><div class="rulez__line"><p class="rulez__live">Made by Settings. ${count}, read-only.</p>${b?.row ? actHTML("Open in Settings", "settingsRow", "Opens the Settings row that makes these rules") : ""}</div>${parts}</div>`)
+        : "";
+      return `<div class="rulez__rule is-locked is-setrow${open ? " is-open" : ""}" data-id="${esc(first.id)}"><div class="rulez__bar" data-act="open" title="${esc(open ? "Closes this row" : `Made by Settings › ${b?.name ?? "a row"}. ${count}. Press to see them`)}">
         <span class="rulez__lead" aria-hidden="true">${ICON_LOCK}</span>
         <span class="rulez__name">${esc(b?.name ?? "")}</span>
-        <span class="rulez__summary"><span class="rulez__said">${esc(sentenceText(r, L))}</span></span>
+        <span class="rulez__summary"><span class="rulez__said">${esc(rules.map((r) => sentenceText(r, L)).join(" "))}</span></span>
         <span class="rulez__switch"></span>
-        ${moreHTML("Tries this rule, or opens the Settings row that makes it")}
-      </div>${winsLine}</div>`;
+        ${moreHTML("Tries these rules, or opens the Settings row that makes them")}
+      </div>${winsLine}${body}</div>`;
     };
 
     /** A recipe is one row (his call, 2026-09-27): its name, its description, its one switch.
@@ -624,8 +689,14 @@ export const rulezCard: CardDef = {
           return `<div class="rulez__part">${part ? `<p class="rulez__part-name">${esc(part[0].toUpperCase() + part.slice(1))}</p>` : ""}<p class="rulez__part-said">${esc(sentenceText(r, L))}</p><p class="rulez__live">${esc(live)}</p></div>`;
         })
         .join("");
-      const body = open ? `<div class="rulez__open"><p class="rulez__live">Made by DeetsMusic. ${count}, read-only: Duplicate into your rules to change them.</p>${parts}</div>` : "";
-      return `<div class="rulez__rule is-locked is-recipe${open ? " is-open" : ""}${on ? "" : " is-idle"}" data-id="${esc(first.id)}"><div class="rulez__bar" data-act="open" title="${esc(open ? "Closes this recipe" : `Made by DeetsMusic. ${count}. Press to see them`)}">
+      // Read-only, with the way to change it beside the words (his call, 2026-10-06): the same
+      // Duplicate as the row menu, as a chip of the open row.
+      const body = shownOpen(first.id)
+        ? foldHTML(`<div class="rulez__open"><div class="rulez__line"><p class="rulez__live">Made by DeetsMusic. ${count}, read-only.</p>${actHTML("Duplicate into your rules", "duplicate", "Copies this recipe into your rules, where you can change it")}</div>${parts}</div>`)
+        : "";
+      // An off recipe is drawn at full strength: the switch alone says Off (his call, 2026-10-06;
+      // dimmed, every recipe read as not available).
+      return `<div class="rulez__rule is-locked is-recipe${open ? " is-open" : ""}" data-id="${esc(first.id)}"><div class="rulez__bar" data-act="open" title="${esc(open ? "Closes this recipe" : `Made by DeetsMusic. ${count}. Press to see them`)}">
         <span class="rulez__lead" aria-hidden="true">${ICON_LOCK}</span>
         <span class="rulez__name">${esc(rec.name)}</span>
         <span class="rulez__summary"><span class="rulez__said">${esc(rec.desc)}</span></span>
@@ -711,6 +782,21 @@ export const rulezCard: CardDef = {
       return `<div class="rulez__line">${leadWord}${head}</div><div class="rulez__block${path.length ? " is-inner" : ""}">${members.join("")}<div class="rulez__line">${add}</div></div>`;
     };
 
+    // ── the Rules view: yours, the recipes, then the Settings rows (folded shut by default) ──
+    const rulesHTML = (L: Lists): string => {
+      const live = allRules();
+      const wins = whoWins(live);
+      const groups = settingGroups(live);
+      const empty = mine.length ? "" : `<p class="rulez__empty">You have no rules yet. Press + to make one.</p>`;
+      const head = `<button class="rulez__divider rulez__divider--fold${settingsOpen ? "" : " is-collapsed"}" type="button" data-act="settings" aria-expanded="${settingsOpen}" title="${settingsOpen ? "Hides the rules your Settings rows make" : "Shows the rules your Settings rows make"}">
+        <svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg><span>Made by Settings</span><span class="lib-shelf__count">${groups.length}</span></button>`;
+      return `<div class="rulez__list">
+        <div class="rulez__mine">${mine.map((r, i) => ownRowHTML(r, wins, L, i)).join("")}</div>${empty}
+        <div class="rulez__divider">Recipes</div>${RECIPES.map((x) => recipeRowHTML(x, wins, L)).join("")}
+        ${groups.length ? head + (settingsOpen ? groups.map((g) => lockedRowHTML(g, wins, L)).join("") : "") : ""}
+      </div>`;
+    };
+
     // ── the views ──
     const paintViews = () => {
       viewsEl.innerHTML = splitPillHTML(
@@ -730,13 +816,18 @@ export const rulezCard: CardDef = {
     let renderLater = false;
     let pressing = false;
     let lastHTML = ""; // the Rules view as last drawn
-    /** `force`: draw even when the HTML is the same (a move folded the open row by hand). */
+    /** `force`: draw even when the HTML is the same (a move folded the open row by hand, or a
+     *  glide starts and must draw both folds). A glide holds the other renders until it ends. */
     const render = (force = false) => {
       if (destroyed) return;
-      if (pressing || isDragging()) return void (renderLater = true);
+      if (pressing || isDragging() || (glideTimer && !force)) return void (renderLater = true);
       const L = lists();
       mine = clone(userRules());
-      if (openId && !mine.some((r) => r.id === openId) && !RECIPES.some((x) => x.rules[0].id === openId)) openId = null;
+      // An open row that is gone (deleted, or a Settings row behind the shut fold) closes.
+      const keeps = (id: string) =>
+        mine.some((r) => r.id === id) || RECIPES.some((x) => x.rules[0].id === id) || (settingsOpen && settingGroups(allRules()).some((g) => g[0].id === id));
+      if (openId && !keeps(openId)) openId = null;
+      if (closingId && !keeps(closingId)) closingId = null;
       const scroll = body.scrollTop;
       if (view === "logs") {
         lastHTML = "";
@@ -751,15 +842,7 @@ export const rulezCard: CardDef = {
         body.scrollTop = scroll;
         return;
       }
-      const live = allRules();
-      const wins = whoWins(live);
-      const builtins = live.filter((r) => "row" in r.source || "fixed" in r.source);
-      const empty = mine.length ? "" : `<p class="rulez__empty">You have no rules yet. Press + to make one.</p>`;
-      const html = `<div class="rulez__list">
-        <div class="rulez__mine">${mine.map((r, i) => ownRowHTML(r, wins, L, i)).join("")}</div>${empty}
-        <div class="rulez__divider">Recipes</div>${RECIPES.map((x) => recipeRowHTML(x, wins, L)).join("")}
-        ${builtins.length ? `<div class="rulez__divider">Made by Settings</div>${builtins.map((r) => lockedRowHTML(r, wins, L)).join("")}` : ""}
-      </div>`;
+      const html = rulesHTML(L);
       // Nothing to show that is not already shown: keep the rows (a hover box, a hold and the
       // scroll stay where they are). A rule check runs this after every check.
       if (html === lastHTML && !force) return;
@@ -773,14 +856,68 @@ export const rulezCard: CardDef = {
       }
     };
 
-    /** Open one row (closing any other); its parts enter with the row motion. */
-    const openRow = (id: string | null) => {
-      openId = id;
-      render();
-      if (!id) return;
-      const row = body.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"] .rulez__open`);
-      if (row) enterRows(row.children);
+    /** Open one row (closing any other), as a glide: the open part grows from nothing and the
+     *  row it replaces shrinks in the same frames, so the rows below move instead of jumping
+     *  (his call, 2026-10-06; the Library search bar's grid 0fr → 1fr). The parts still enter
+     *  with the row motion. Renders wait for the glide; `then` runs when it ends. */
+    const foldOf = (id: string | null) => (id ? body.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"] > .rulez__fold`) : null);
+    const msOf = (el: HTMLElement | null): number => {
+      if (!el) return 0;
+      const d = getComputedStyle(el).transitionDuration.split(",")[0]?.trim() ?? "0s";
+      return d.endsWith("ms") ? parseFloat(d) : parseFloat(d) * 1000 || 0;
     };
+    let glideTimer = 0;
+    let glideThen: (() => void) | null = null;
+    const endGlide = () => {
+      window.clearTimeout(glideTimer);
+      glideTimer = 0;
+      const shut = foldOf(closingId);
+      closingId = null;
+      const then = glideThen;
+      glideThen = null;
+      if (renderLater || view !== "rules") {
+        renderLater = false;
+        render();
+      } else {
+        // Nothing changed meanwhile: take the shut fold out in place, so the opened row's parts
+        // keep their entry motion (a redraw would cut it short).
+        shut?.remove();
+        lastHTML = rulesHTML(lists());
+      }
+      then?.();
+    };
+    const openRow = (id: string | null, then?: () => void) => {
+      if (glideTimer) endGlide();
+      const was = openId;
+      openId = id;
+      closingId = was && was !== id ? was : null;
+      render(true);
+      const opening = id && id !== was ? foldOf(id) : null;
+      const closing = foldOf(closingId);
+      // Both folds start where they were, then cross over in one style change.
+      opening?.classList.add("is-shut");
+      void body.offsetHeight;
+      opening?.classList.remove("is-shut");
+      closing?.classList.add("is-shut");
+      const open = opening?.querySelector<HTMLElement>(".rulez__open");
+      if (open) enterRows(open.children);
+      const ms = Math.max(msOf(opening), msOf(closing));
+      glideThen = then ?? null;
+      if (!ms) return endGlide();
+      frames.during("rulez-row", ms + 50, opening ? "open" : "close");
+      glideTimer = window.setTimeout(endGlide, ms + 20);
+    };
+    /** A draft goes on to its next empty blank by itself (RULEZ.md §6.3): pick When and the Do
+     *  menu opens; a finished rule stops. After the menu that ran the pick has closed. */
+    const advance = (id: string) =>
+      requestAnimationFrame(() => {
+        if (destroyed || openId !== id || !mine.find((r) => r.id === id)?.draft) return;
+        if (!glideTimer) render();
+        const next = body.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"] .rulez__blank.is-missing`);
+        if (!next) return;
+        next.focus({ preventScroll: true });
+        next.click();
+      });
 
     // ── input ──
     const ruleOf = (el: HTMLElement): Rule | null => {
@@ -804,6 +941,15 @@ export const rulezCard: CardDef = {
       // bar: a rule of yours or a recipe opens; a locked bar has no act, as under the pointer.
       const el = target.closest<HTMLElement>("[data-act]") ?? (target.classList.contains("rulez__rule") ? target.querySelector<HTMLElement>(":scope > .rulez__bar[data-act]") : null);
       if (!el) return;
+      // The "Made by Settings" fold: its rows enter with the row motion, as a Settings section's do.
+      if (el.dataset.act === "settings") {
+        settingsOpen = !settingsOpen;
+        frames.during("fold", 250, settingsOpen ? "open" : "close");
+        diag.log("ui:act", { do: "rulez", what: settingsOpen ? "settings:open" : "settings:close" });
+        render();
+        if (settingsOpen) enterRows(body.querySelectorAll(".rulez__rule.is-setrow"));
+        return;
+      }
       const r = ruleOf(el);
       if (!r) return;
       const act = el.dataset.act;
@@ -814,8 +960,19 @@ export const rulezCard: CardDef = {
         if (rec) setRecipe(rec.id, !recipesOn().includes(rec.id));
         return;
       }
-      // A recipe's row opens to its rules (read-only), one row open at a time as your own.
-      if (act === "open" && recipeOf(r)) return openRow(openId === r.id ? null : r.id);
+      // A recipe's row and a Settings row open to their rules (read-only), one row open at a
+      // time as your own.
+      if (act === "open" && (recipeOf(r) || builtinOf(r))) return openRow(openId === r.id ? null : r.id);
+      if (act === "duplicate") {
+        const rec = recipeOf(r);
+        if (rec) addCopies(rec.rules, "recipe:duplicate");
+        return;
+      }
+      if (act === "settingsRow") {
+        const row = builtinOf(r)?.row;
+        if (row) requestSetting(row);
+        return;
+      }
       if (!own) return;
       if (act === "onoff") {
         if (!r.draft) edit(r.id, r.on ? "off" : "on", (x) => void (x.on = !x.on));
@@ -887,7 +1044,7 @@ export const rulezCard: CardDef = {
             if (!row.classList.contains("is-open")) return;
             reopen = openId;
             openId = null;
-            row.querySelector(".rulez__open")?.remove();
+            row.querySelector(":scope > .rulez__fold")?.remove();
             row.classList.remove("is-open");
           },
         };
@@ -939,10 +1096,12 @@ export const rulezCard: CardDef = {
       const r = { id: newId(), kind: "moment", source: { user: true }, on: false, draft: true, when: "" as EventId, card: "*", do: {} } as unknown as MomentRule;
       mine.unshift(r);
       fresh = r.id;
-      openId = r.id;
       save("add");
-      const blankEl = body.querySelector<HTMLElement>(`[data-id="${CSS.escape(r.id)}"] [data-act="when"]`);
-      if (blankEl) openContextMenuUnder(blankEl, whenMenu(r));
+      // It glides open, then its When menu opens under a blank that has its place.
+      openRow(r.id, () => {
+        const blankEl = body.querySelector<HTMLElement>(`[data-id="${CSS.escape(r.id)}"] [data-act="when"]`);
+        if (blankEl) openContextMenuUnder(blankEl, whenMenu(r));
+      });
     };
 
     const onViews = (e: MouseEvent) => {
@@ -986,7 +1145,7 @@ export const rulezCard: CardDef = {
     enterRows(body.querySelectorAll(".rulez__rule"));
 
     return {
-      snapshot: (): Snap => ({ view, open: openId }),
+      snapshot: (): Snap => ({ view, open: openId, settings: settingsOpen }),
       destroy() {
         destroyed = true;
         cancelAnimationFrame(rulesFrame);
