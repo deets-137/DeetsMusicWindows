@@ -232,6 +232,11 @@ pub struct StationGenre {
 pub struct NamedRef {
     pub id: String,
     pub name: String,
+    /// An album's OWN release date, from the same `include=` read. Without it the album
+    /// pane dated itself by its first song, and a song out first as a single gave a
+    /// deluxe or "Complete" album the single's year (2026-10-05).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_date: Option<String>,
 }
 
 /// A catalog artist's detail view: the artist + their releases + top songs.

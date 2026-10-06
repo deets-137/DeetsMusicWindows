@@ -2527,6 +2527,7 @@ pub async fn catalog_related(
     Ok(node["id"].as_str().map(|id| NamedRef {
         id: id.to_string(),
         name: node["attributes"]["name"].as_str().unwrap_or_default().to_string(),
+        release_date: node["attributes"]["releaseDate"].as_str().map(String::from),
     }))
 }
 

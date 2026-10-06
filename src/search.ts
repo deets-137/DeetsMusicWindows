@@ -85,6 +85,8 @@ export const ALL_TYPES: SearchType[] = ["songs", "albums", "artists", "playlists
 export interface NamedRef {
   id: string;
   name: string;
+  /** An album's own release date (song→album hop only). */
+  releaseDate?: string;
 }
 
 // Session cache for drill-in id resolution, keyed by (kind, id, rel). Lives in the

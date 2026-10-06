@@ -29,7 +29,7 @@ import { comingMark, releaseAt, unreleasedHint, unreleasedToast } from "./releas
 import { explicitBadge, heroCover } from "./library-card";
 import {
   searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
-  ALL_TYPES, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
+  ALL_TYPES, type NamedRef, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
 } from "./search";
 import type { Track, Artwork } from "./library";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
@@ -920,7 +920,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     id: string,
     rel: "artists" | "albums",
     fallbackName: string,
-    fill: (body: HTMLElement, targetId: string, resolvedName: string) => void,
+    fill: (body: HTMLElement, targetId: string, resolvedName: string, ref: NamedRef) => void,
     memory?: { instant?: boolean; scroll?: number },
   ) =>
     pushPane(
@@ -932,7 +932,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
             // The pane header reads the kind; the hero carries the name.
             setTitle(rel === "albums" ? "Album" : "Artist");
-            fill(body, ref.id, ref.name || fallbackName);
+            fill(body, ref.id, ref.name || fallbackName, ref);
           })
           .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
       },
@@ -942,7 +942,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const goToArtist = (kind: "songs" | "albums", id: string, name: string) =>
     drillRelated(kind, id, "artists", name, fillArtist);
   const goToAlbum = (songId: string, name: string) =>
-    drillRelated("songs", songId, "albums", name, (body, albumId, resolved) => fillCollection(body, "albums", albumId, { title: resolved }));
+    drillRelated("songs", songId, "albums", name, (body, albumId, resolved, ref) =>
+      fillCollection(body, "albums", albumId, { title: resolved, releaseDate: ref.releaseDate }));
 
   // Remote drill-ins: other cards' "Go to Artist/Album" summon this card (go-to.ts)
   // and emit an intent here. Same machinery as an in-card drill — a pane pushes on top
@@ -1226,7 +1227,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (o.kind === "artist") openArtist(o.id, "Artist", memory);
     else if (o.kind === "song") openSong(o.track, memory);
     else if (o.kind === "writer") openWriter(o.name, memory);
-    else if (o.kind === "related") drillRelated(o.srcKind, o.srcId, o.rel, o.name, o.rel === "artists" ? fillArtist : (body, albumId, resolved) => fillCollection(body, "albums", albumId, { title: resolved }), memory);
+    else if (o.kind === "related") drillRelated(o.srcKind, o.srcId, o.rel, o.name, o.rel === "artists" ? fillArtist : (body, albumId, resolved, ref) => fillCollection(body, "albums", albumId, { title: resolved, releaseDate: ref.releaseDate }), memory);
     else openCollection(o.kind === "album" ? "albums" : "playlists", o.id, o.meta, undefined, memory);
   };
 
